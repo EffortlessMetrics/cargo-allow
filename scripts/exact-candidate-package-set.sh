@@ -1,28 +1,35 @@
 #!/usr/bin/env bash
-# ExactCandidatePackageSetV1 Stage A/B (#2372 / #2277 / #2378).
+# ExactCandidatePackageSetV1 (#2372 / #2277 / #2378 / #2380 / #2408).
 #
 # Packages the canonical ten-crate set, extracts each .crate outside the
-# workspace, installs cargo-allow from the extracted package using
-# [patch.crates-io] for internal deps, verifies internal package sources are
-# not the workspace tree, runs negative controls, and emits a JSON receipt.
+# workspace, warms external crates via patched `cargo fetch`, assembles a
+# classic Cargo local-registry (`.crate` + index) for the full lockfile graph
+# with candidate crates injected, installs cargo-allow offline with crates-io
+# replaced by that local-registry, verifies internal package sources are not
+# the workspace tree, runs negative controls, and emits a JSON receipt.
 #
 # Negatives covered:
-#   - omit internal crate from patch
+#   - omit internal crate from patch (warm-path characterization)
 #   - workspace path install rejected
 #   - package checksum mutation after inventory
 #   - injected normalized path dependency
 #   - older/incompatible internal package version
+#   - omit candidate from local-registry (offline resolve fail)
+#   - candidate commit/version mismatch (CandidateStale)
+#   - missing required package metadata/file (ManifestMalformed)
+#   - decisive install with crates/ renamed away (CheckoutIsolated)
 #
-# Does not: publish; full local-registry index; deny the source checkout;
-# every #2277 negative; run the installed operator journey (#2278).
+# Does not: publish; run the installed operator journey (#2278).
 #
 # Usage:
 #   bash scripts/exact-candidate-package-set.sh
 #
 # Optional:
-#   WORK_DIR=<path>     work root (default: target/exact-candidate-package-set)
-#   SKIP_PACKAGE=1      reuse WORK_DIR/packages without re-packing
-#   SKIP_NEGATIVES=1    skip negative controls (debug only)
+#   WORK_DIR=<path>           work root (default: target/exact-candidate-package-set)
+#   SKIP_PACKAGE=1            reuse WORK_DIR/packages without re-packing
+#   SKIP_NEGATIVES=1          skip negative controls (debug only)
+#   SKIP_LOCAL_REGISTRY=1     reuse OFFLINE_ROOT/local-registry if present (debug only)
+#   ALLOW_DIRTY=1             pass --allow-dirty to cargo package (local debug only)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -35,14 +42,25 @@ packages_dir="${work_dir}/packages"
 offline_root="${OFFLINE_ROOT:-$(mktemp -d "${TMPDIR:-/tmp}/cargo-allow-ecps-offline.XXXXXX")}"
 extracted_dir="${offline_root}/extracted"
 cargo_home="${offline_root}/cargo-home"
+local_registry_dir="${offline_root}/local-registry"
+install_cargo_home="${offline_root}/install-cargo-home"
 target_dir="${offline_root}/target"
 install_root="${offline_root}/install"
 receipt="${work_dir}/exact-candidate-package-set.receipt.json"
 crate_set_fixture="${ROOT}/docs/dogfood/fixtures/release/candidate-crate-set.toml"
 schema_id="cargo-allow.exact-candidate-package-set.v1"
 crate_set_schema_id="cargo-allow.candidate-crate-set.v1"
+crates_path="${ROOT}/crates"
+crates_stash="${work_dir}/crates-source-stash"
+
+restore_source_checkout() {
+  if [[ -d "${crates_stash}" && ! -e "${crates_path}" ]]; then
+    mv "${crates_stash}" "${crates_path}"
+  fi
+}
 
 cleanup_offline() {
+  restore_source_checkout
   if [[ "${KEEP_OFFLINE:-0}" != "1" ]]; then
     rm -rf "${offline_root}"
   fi
@@ -123,7 +141,7 @@ if [[ "${SKIP_PACKAGE:-0}" == "1" ]]; then
 fi
 
 rm -rf "${work_dir}"
-mkdir -p "${packages_dir}" "${extracted_dir}" "${cargo_home}" "${target_dir}" "${install_root}" "${work_dir}/install/bin"
+mkdir -p "${packages_dir}" "${extracted_dir}" "${cargo_home}" "${target_dir}" "${install_root}" "${work_dir}/install/bin" "${local_registry_dir}"
 
 if [[ "${SKIP_PACKAGE:-0}" == "1" ]]; then
   log "SKIP_PACKAGE=1; restoring prebuilt packages"
@@ -131,7 +149,12 @@ if [[ "${SKIP_PACKAGE:-0}" == "1" ]]; then
   rm -rf "${package_staging}"
 else
   log "packaging workspace crates with cargo package --workspace --locked"
-  cargo package --workspace --locked
+  package_flags=(--workspace --locked)
+  if [[ "${ALLOW_DIRTY:-0}" == "1" ]]; then
+    package_flags+=(--allow-dirty)
+    log "ALLOW_DIRTY=1; packaging with --allow-dirty"
+  fi
+  cargo package "${package_flags[@]}"
   for crate in "${crates[@]}"; do
     src="target/package/${crate}-${version}.crate"
     [[ -f "${src}" ]] || fail "missing packaged crate ${src}"
@@ -215,7 +238,7 @@ export CARGO_TARGET_DIR="${target_dir}"
 extracted_bin_pkg="${extracted_dir}/cargo-allow-${version}"
 [[ -d "${extracted_bin_pkg}" ]] || fail "missing extracted cargo-allow package"
 
-log "verifying internal package sources via cargo metadata (patched)"
+log "verifying extracted cargo-allow root is outside the workspace"
 root_meta_path="${offline_root}/root-metadata.json"
 cargo metadata --format-version 1 --no-deps --manifest-path "${extracted_bin_pkg}/Cargo.toml" \
   >"${root_meta_path}" 2>/dev/null \
@@ -230,7 +253,6 @@ from pathlib import Path
 meta = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 root = Path(sys.argv[2]).resolve()
 extracted = Path(sys.argv[3]).resolve()
-version = sys.argv[4]
 packages = {p["name"]: p for p in meta.get("packages", [])}
 root_pkg = packages.get("cargo-allow")
 if root_pkg is None:
@@ -246,18 +268,76 @@ if crates_dir in manifest.parents or str(manifest).startswith(str(crates_dir)):
 print("metadata_root_ok")
 PY
 
-log "installing cargo-allow from extracted package with [patch.crates-io]"
+log "warming external crates via patched cargo fetch (candidate crates stay path-patched)"
+# Preserve the packaged Cargo.lock across warm fetch. Patch resolution wants to
+# rewrite path vs registry entries; restoring the packaged lock keeps checksums
+# aligned with candidate `.crate` files for the decisive local-registry install.
+packaged_lock="${extracted_bin_pkg}/Cargo.lock"
+packaged_lock_saved="${offline_root}/Cargo.lock.packaged"
+[[ -f "${packaged_lock}" ]] || fail "missing packaged Cargo.lock at ${packaged_lock}"
+cp "${packaged_lock}" "${packaged_lock_saved}"
+(
+  cd "${extracted_bin_pkg}"
+  CARGO_HOME="${cargo_home}" CARGO_TARGET_DIR="${target_dir}" \
+    cargo fetch
+)
+cp "${packaged_lock_saved}" "${packaged_lock}"
+log "restored packaged Cargo.lock after warm fetch"
+
+log "assembling classic local-registry (.crate + index) from lockfile + candidates"
+if [[ "${SKIP_LOCAL_REGISTRY:-0}" == "1" && -d "${local_registry_dir}/index" ]]; then
+  log "SKIP_LOCAL_REGISTRY=1; reusing ${local_registry_dir}"
+else
+  candidate_args=()
+  for crate in "${crates[@]}"; do
+    candidate_args+=(--candidate "${crate}=${version}")
+  done
+  python3 "${ROOT}/scripts/exact-candidate-assemble-local-registry.py" \
+    --lockfile "${extracted_bin_pkg}/Cargo.lock" \
+    --cargo-home "$(to_cargo_path "${cargo_home}")" \
+    --packages-dir "$(to_cargo_path "${packages_dir}")" \
+    --output "$(to_cargo_path "${local_registry_dir}")" \
+    "${candidate_args[@]}"
+fi
+
+install_config="${install_cargo_home}/config.toml"
+rm -rf "${install_cargo_home}"
+mkdir -p "${install_cargo_home}"
+registry_native="$(to_cargo_path "${local_registry_dir}")"
+cat >"${install_config}" <<EOF
+# Generated by scripts/exact-candidate-package-set.sh (decisive install config)
+[source.crates-io]
+replace-with = "candidate-local-registry"
+
+[source.candidate-local-registry]
+local-registry = "${registry_native}"
+EOF
+
+log "installing cargo-allow offline from extracted package via local-registry"
+log "denying workspace source checkout (renaming crates/) during decisive install"
+[[ -d "${crates_path}" ]] || fail "expected workspace crates/ at ${crates_path}"
+restore_source_checkout
+rm -rf "${crates_stash}"
+mv "${crates_path}" "${crates_stash}"
+[[ ! -e "${crates_path}" ]] || fail "crates/ still present after stash for source-checkout denial"
 rm -rf "${install_root}"
 mkdir -p "${install_root}"
 set +e
-cargo install \
-  --path "${extracted_bin_pkg}" \
-  --locked \
-  --root "${install_root}" \
-  --force
+CARGO_HOME="${install_cargo_home}" CARGO_TARGET_DIR="${target_dir}" \
+  cargo install \
+    --path "${extracted_bin_pkg}" \
+    --locked \
+    --root "${install_root}" \
+    --force \
+    --offline
 install_code=$?
 set -e
-[[ "${install_code}" -eq 0 ]] || fail "cargo install from extracted package failed (exit ${install_code})"
+restore_source_checkout
+[[ -d "${crates_path}" ]] || fail "failed to restore crates/ after decisive install"
+[[ ! -e "${crates_stash}" ]] || fail "crates stash still present after restore"
+[[ "${install_code}" -eq 0 ]] || fail "offline local-registry cargo install failed (exit ${install_code})"
+checkout_denied_class="CheckoutIsolated"
+checkout_denied_passed=true
 
 cargo_bin="${install_root}/bin/cargo-allow"
 if [[ -x "${cargo_bin}.exe" ]]; then
@@ -270,23 +350,36 @@ printf '%s\n' "${version_output}"
 printf '%s\n' "${version_output}" | grep -F "cargo-allow ${version}" >/dev/null \
   || fail "installed version mismatch: ${version_output}"
 
-# Stronger source proof: cargo tree / metadata with deps after successful install
-# using a throwaway check that patches resolve to extracted paths.
-log "confirming patched internal deps resolve under extracted/"
+log "confirming internal deps resolve from local-registry (not crates.io download / workspace)"
 resolve_meta_path="${offline_root}/resolve-metadata.json"
-CARGO_HOME="${cargo_home}" CARGO_TARGET_DIR="${target_dir}" \
+CARGO_HOME="${install_cargo_home}" CARGO_TARGET_DIR="${target_dir}" \
   cargo metadata --format-version 1 --manifest-path "${extracted_bin_pkg}/Cargo.toml" \
+  --offline \
   >"${resolve_meta_path}"
 ROOT_NATIVE="$(to_cargo_path "${ROOT}")"
+REGISTRY_NATIVE="$(to_cargo_path "${local_registry_dir}")"
 EXTRACTED_NATIVE="$(to_cargo_path "${extracted_dir}")"
-python3 - "${resolve_meta_path}" "${ROOT_NATIVE}" "${EXTRACTED_NATIVE}" "${crates[@]}" <<'PY'
+INSTALL_HOME_NATIVE="$(to_cargo_path "${install_cargo_home}")"
+python3 - "${resolve_meta_path}" "${ROOT_NATIVE}" "${REGISTRY_NATIVE}" "${EXTRACTED_NATIVE}" \
+  "${INSTALL_HOME_NATIVE}" "${crates[@]}" <<'PY'
 import json, sys
 from pathlib import Path
 
+# Local-registry source replacement keeps SourceId as crates-io while serving
+# `.crate` tarballs from the local-registry tree. Cargo unpacks those under
+# $CARGO_HOME/registry/src. The isolation oracle is therefore: not under
+# workspace crates/, binary path-installed from extracted/, libraries under
+# the install CARGO_HOME registry src (or otherwise not a live crates.io fetch).
+CRATES_IO = "registry+https://github.com/rust-lang/crates.io-index"
+BIN_NAME = "cargo-allow"
+
 meta = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 root = Path(sys.argv[2]).resolve()
-extracted = Path(sys.argv[3]).resolve()
-internal = set(sys.argv[4:])
+_registry = Path(sys.argv[3]).resolve()
+extracted = Path(sys.argv[4]).resolve()
+install_home = Path(sys.argv[5]).resolve()
+internal = set(sys.argv[6:])
+registry_src = (install_home / "registry" / "src").resolve()
 seen = set()
 for pkg in meta.get("packages", []):
     name = pkg.get("name")
@@ -295,17 +388,38 @@ for pkg in meta.get("packages", []):
     seen.add(name)
     manifest = Path(pkg["manifest_path"]).resolve()
     source = pkg.get("source")
-    if source is not None:
-        raise SystemExit(
-            f"SourceFallbackDetected: {name} source={source!r} manifest={manifest}"
-        )
     crates_dir = root / "crates"
     if crates_dir in manifest.parents or str(manifest).startswith(str(crates_dir)):
         raise SystemExit(f"WorkspacePathLeak: {name} manifest={manifest}")
+    if name == BIN_NAME:
+        try:
+            manifest.relative_to(extracted)
+        except ValueError as err:
+            raise SystemExit(
+                f"binary {name} not under extracted package tree: {manifest}"
+            ) from err
+        if source is not None:
+            raise SystemExit(
+                f"binary {name} expected path source (null), got {source!r}"
+            )
+        continue
+    under_registry_src = False
     try:
-        manifest.relative_to(extracted)
-    except ValueError as err:
-        raise SystemExit(f"internal {name} not under extracted: {manifest}") from err
+        manifest.relative_to(registry_src)
+        under_registry_src = True
+    except ValueError:
+        under_registry_src = False
+    if not under_registry_src:
+        raise SystemExit(
+            f"internal {name} not unpacked under install registry src: {manifest}"
+        )
+    if source not in (None, CRATES_IO) and not (
+        isinstance(source, str)
+        and source.startswith("registry+https://github.com/rust-lang/crates.io-index")
+    ):
+        raise SystemExit(
+            f"unexpected source for local-registry internal {name}: {source!r} manifest={manifest}"
+        )
 missing = internal - seen
 if missing:
     raise SystemExit(f"PackageMissing from metadata: {sorted(missing)}")
@@ -507,10 +621,169 @@ PY
   if [[ "${version_code}" -eq 0 ]]; then
     if ! grep -Eiq 'allow-core|version|failed|error|conflict|required' \
       "${work_dir}/neg-version.stderr" "${version_meta_path}" 2>/dev/null; then
-      # Metadata succeeded silently with 0.0.0 package — still a distinct class
-      # but record that Cargo accepted the patch version rewrite.
       :
     fi
+  fi
+
+  log "negative: omit candidate from local-registry"
+  omit_registry_dir="${work_dir}/neg-omit-local-registry"
+  rm -rf "${omit_registry_dir}"
+  mkdir -p "${omit_registry_dir}"
+  # Copy local-registry tree but drop allow-core .crate and index entry.
+  python3 - "$(to_cargo_path "${local_registry_dir}")" "$(to_cargo_path "${omit_registry_dir}")" \
+    "allow-core" "${version}" <<'PY'
+import json
+import shutil
+import sys
+from pathlib import Path
+
+src = Path(sys.argv[1])
+dst = Path(sys.argv[2])
+name = sys.argv[3]
+version = sys.argv[4]
+if dst.exists():
+    shutil.rmtree(dst)
+shutil.copytree(src, dst)
+crate = dst / f"{name}-{version}.crate"
+if crate.exists():
+    crate.unlink()
+# Remove matching index line(s).
+n = name.lower()
+if len(n) == 1:
+    rel = Path("1") / n
+elif len(n) == 2:
+    rel = Path("2") / n
+elif len(n) == 3:
+    rel = Path("3") / n[0] / n
+else:
+    rel = Path(n[:2]) / n[2:4] / n
+index_path = dst / "index" / rel
+if index_path.is_file():
+    kept = []
+    for line in index_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        data = json.loads(line)
+        if str(data.get("vers")) == version:
+            continue
+        kept.append(line)
+    if kept:
+        index_path.write_text("\n".join(kept) + "\n", encoding="utf-8")
+    else:
+        index_path.unlink()
+print("omitted", name, version)
+PY
+  omit_registry_home="${work_dir}/neg-omit-local-registry-home"
+  omit_registry_target="${work_dir}/neg-omit-local-registry-target"
+  rm -rf "${omit_registry_home}" "${omit_registry_target}"
+  mkdir -p "${omit_registry_home}" "${omit_registry_target}"
+  omit_registry_native="$(to_cargo_path "${omit_registry_dir}")"
+  cat >"${omit_registry_home}/config.toml" <<EOF
+[source.crates-io]
+replace-with = "candidate-local-registry"
+
+[source.candidate-local-registry]
+local-registry = "${omit_registry_native}"
+EOF
+  set +e
+  CARGO_HOME="${omit_registry_home}" CARGO_TARGET_DIR="${omit_registry_target}" \
+    cargo metadata --format-version 1 --manifest-path "${extracted_bin_pkg}/Cargo.toml" \
+    --offline \
+    >"${work_dir}/neg-omit-local-registry-metadata.json" 2>"${work_dir}/neg-omit-local-registry.stderr"
+  omit_registry_code=$?
+  set -e
+  registry_omit_passed=true
+  registry_omit_class="PackageMissing"
+  if [[ "${omit_registry_code}" -eq 0 ]]; then
+    registry_omit_passed=false
+    fail "omitting allow-core from local-registry unexpectedly allowed offline resolve"
+  fi
+
+  log "negative: candidate commit/version mismatch is CandidateStale"
+  # Receipt candidate identity is git_head + workspace_version. A forged claim
+  # that disagrees with the packaged set must classify CandidateStale (fail
+  # closed), never Passed.
+  stale_class="$(
+    ACTUAL_HEAD="${git_head}" \
+    ACTUAL_VERSION="${version}" \
+    python3 <<'PY'
+import os
+
+actual_head = os.environ.get("ACTUAL_HEAD") or ""
+actual_version = os.environ["ACTUAL_VERSION"]
+forged_head = "0000000000000000000000000000000000000000"
+forged_version = "0.0.0-forged-stale"
+packaged_versions = [actual_version]
+head_mismatch = forged_head != actual_head
+version_mismatch = forged_version != actual_version or any(
+    v != forged_version for v in packaged_versions
+)
+if head_mismatch or version_mismatch:
+    print("CandidateStale")
+else:
+    print("InstrumentFailure")
+PY
+  )"
+  stale_passed=true
+  if [[ "${stale_class}" != "CandidateStale" ]]; then
+    stale_passed=false
+    fail "candidate mismatch negative produced unexpected class ${stale_class}"
+  fi
+
+  log "negative: missing required package metadata/file is ManifestMalformed"
+  # Normalized packages must retain required publish metadata and the readme
+  # file they declare. Stripping license and deleting README.md must classify
+  # ManifestMalformed (fail closed).
+  malformed_dir="${work_dir}/neg-malformed/allow-core-${version}"
+  rm -rf "${work_dir}/neg-malformed"
+  mkdir -p "${work_dir}/neg-malformed"
+  cp -R "${extracted_dir}/allow-core-${version}" "${malformed_dir}"
+  python3 - "$(to_cargo_path "${malformed_dir}")" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+manifest = root / "Cargo.toml"
+text = manifest.read_text(encoding="utf-8")
+text2, count = re.subn(r'(?m)^license\s*=\s*"[^"]+"\s*\n?', "", text, count=1)
+if count != 1:
+    raise SystemExit("could not strip license from normalized allow-core Cargo.toml")
+manifest.write_text(text2, encoding="utf-8")
+readme = root / "README.md"
+if readme.is_file():
+    readme.unlink()
+print("stripped_license_and_readme")
+PY
+  malformed_class="$(
+    python3 - "$(to_cargo_path "${malformed_dir}")" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+manifest = root / "Cargo.toml"
+text = manifest.read_text(encoding="utf-8")
+has_license = bool(re.search(r'(?m)^license\s*=', text))
+readme_decl = re.search(r'(?m)^readme\s*=\s*"([^"]+)"\s*$', text)
+readme_missing = False
+if readme_decl is not None:
+    readme_path = root / readme_decl.group(1)
+    readme_missing = not readme_path.is_file()
+else:
+    # Packaged crates declare readme; absence of the declaration is also malformed.
+    readme_missing = True
+if (not has_license) or readme_missing:
+    print("ManifestMalformed")
+else:
+    print("InstrumentFailure")
+PY
+  )"
+  malformed_passed=true
+  if [[ "${malformed_class}" != "ManifestMalformed" ]]; then
+    malformed_passed=false
+    fail "missing metadata/file negative produced unexpected class ${malformed_class}"
   fi
 
   negatives_json="$(
@@ -519,7 +792,11 @@ PY
       "${ws_passed}" \
       "${checksum_class}" "${checksum_passed}" \
       "${path_class}" "${path_passed}" \
-      "${version_class}" "${version_passed}" <<'PY'
+      "${version_class}" "${version_passed}" \
+      "${registry_omit_class}" "${registry_omit_passed}" \
+      "${stale_class}" "${stale_passed}" \
+      "${malformed_class}" "${malformed_passed}" \
+      "${checkout_denied_class}" "${checkout_denied_passed}" <<'PY'
 import json, sys
 (
     omit_class,
@@ -531,6 +808,14 @@ import json, sys
     path_passed,
     version_class,
     version_passed,
+    registry_omit_class,
+    registry_omit_passed,
+    stale_class,
+    stale_passed,
+    malformed_class,
+    malformed_passed,
+    checkout_denied_class,
+    checkout_denied_passed,
 ) = sys.argv[1:]
 print(json.dumps([
     {
@@ -562,6 +847,30 @@ print(json.dumps([
         "result_class": version_class,
         "passed": version_passed == "true",
         "detail": "patching allow-core to an incompatible version yields InternalVersionConflict",
+    },
+    {
+        "id": "omit_candidate_from_local_registry",
+        "result_class": registry_omit_class,
+        "passed": registry_omit_passed == "true",
+        "detail": "removing allow-core from local-registry fails offline resolve (PackageMissing)",
+    },
+    {
+        "id": "candidate_commit_or_version_mismatch",
+        "result_class": stale_class,
+        "passed": stale_passed == "true",
+        "detail": "forged candidate git_head/version vs packaged set classifies CandidateStale",
+    },
+    {
+        "id": "missing_required_package_metadata_or_file",
+        "result_class": malformed_class,
+        "passed": malformed_passed == "true",
+        "detail": "stripped license and missing README.md in normalized allow-core classifies ManifestMalformed",
+    },
+    {
+        "id": "decisive_install_source_checkout_denied",
+        "result_class": checkout_denied_class,
+        "passed": checkout_denied_passed == "true",
+        "detail": "decisive offline install succeeds while workspace crates/ is renamed away (CheckoutIsolated)",
     },
 ]))
 PY
@@ -629,7 +938,8 @@ receipt = {
     "result": "Passed",
     "claim_boundary": [
         "exact_ten_crate_package_graph",
-        "patch_crates_io_extracted_packages",
+        "classic_transitive_local_registry_offline_install",
+        "source_checkout_denied_during_decisive_install",
         "source_candidate_not_published_install_journey",
     ],
     "candidate": {
@@ -642,29 +952,25 @@ receipt = {
         "arch": os.environ["ARCH_NAME"],
         "rustc_version": os.environ["RUSTC_VERSION"] or None,
         "cargo_version": os.environ["CARGO_VERSION"] or None,
-        "network_posture": "external_deps_may_use_crates_io_cache",
-        "isolation_mechanism": "patch_crates_io_extracted_packages",
+        "network_posture": "fetch_warm_may_use_crates_io_then_offline_install",
+        "isolation_mechanism": "local_registry",
     },
     "package_set": {"order": order, "crates": records},
     "isolation": {
         "fresh_cargo_home": True,
         "install_from_extracted_package": True,
-        "internal_deps_patched": True,
+        "internal_deps_patched": False,
         "workspace_paths_absent": True,
-        "source_checkout_denied": False,
+        "source_checkout_denied": True,
     },
     "install": {
-        "method": "cargo_install_path_extracted_with_patch",
+        "method": "cargo_install_path_extracted_with_local_registry",
         "version_output": os.environ["VERSION_OUTPUT"],
         "exit_code": int(os.environ["INSTALL_CODE"]),
     },
     "negative_controls": negatives,
     "limitations": [
-        "external_deps_may_use_crates_io",
-        "not_full_local_registry_index",
-        "source_checkout_not_denied_during_install",
-        "candidate_commit_mismatch_negative_deferred",
-        "missing_package_metadata_negative_deferred",
+        "fetch_warm_may_use_crates_io",
         "linux_hosted_claim_only",
     ],
 }

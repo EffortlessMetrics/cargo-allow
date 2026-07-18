@@ -40,12 +40,19 @@ bash scripts/source-candidate-smoke.sh
 ```
 
 That harness path-installs into a temp root (or reuses `CARGO_ALLOW_BIN`),
-runs the brownfield first-hour journey outside the checkout, and writes
-`target/source-candidate-smoke/source-candidate-smoke.receipt.json`. Offline
+runs the brownfield first-hour journey plus refresh (location_drift),
+`diff --base`, prune preview→write, and git policy rollback after prune in an
+isolated git consumer, records omitted-step / preview-apply / malformed-receipt
+/ post-install source-hidden ordinary-scan / package-rebuild omit
+(`MissingAsset`) / wrong-version / ordinary-scan offline / unexpected-network /
+failed-policy-rollback / optional-profile-without-assets (`NotProven`)
+negatives, and writes
+`target/source-candidate-smoke/source-candidate-smoke.receipt.json`.
+It does **not** deny the source tree during path install. Offline
 schema/example characterization remains
 `cargo test -p cargo-allow --test source_candidate_smoke --locked`.
 
-Exact ten-crate isolation (#2277 / #2372 Stage A, #2378 Stage B negatives) is
+Exact ten-crate isolation (#2277 / #2372 / #2378 / #2380 / #2408) is
 proven by:
 
 ```bash
@@ -54,13 +61,17 @@ bash scripts/exact-candidate-package-set.sh
 
 That harness packages the shared
 [`candidate-crate-set.toml`](../dogfood/fixtures/release/candidate-crate-set.toml),
-extracts each `.crate`, installs `cargo-allow` from the extracted package with
-`[patch.crates-io]` for internal deps, verifies workspace paths are absent from
-resolved internal manifests, runs omit-crate / workspace-path / checksum /
-injected-path / version-conflict negatives, and writes
+extracts each `.crate`, warms externals via patched `cargo fetch`, assembles a
+classic Cargo local-registry (`.crate` + index) for the lockfile graph with
+candidate crates injected, installs `cargo-allow` offline with crates-io
+replaced by that local-registry while renaming workspace `crates/` away
+(`source_checkout_denied` / `CheckoutIsolated`), verifies internal manifests
+unpack under the install registry src (not `crates/`), runs omit-crate /
+workspace-path / checksum / injected-path / version-conflict / local-registry
+omit / candidate-mismatch (`CandidateStale`) / missing-metadata
+(`ManifestMalformed`) / source-checkout-denied negatives, and writes
 `target/exact-candidate-package-set/exact-candidate-package-set.receipt.json`
-(`cargo-allow.exact-candidate-package-set.v1`). It does **not** yet build a full
-local-registry index, deny the source checkout, or cover every #2277 negative.
+(`cargo-allow.exact-candidate-package-set.v1`).
 
 Post-publication registry install remains
 [scripts/release-install-smoke.sh](../../scripts/release-install-smoke.sh)

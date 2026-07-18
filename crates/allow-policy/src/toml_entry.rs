@@ -39,7 +39,11 @@ impl AllowEntryToml {
         let kind_text = self
             .kind
             .ok_or_else(|| CargoAllowError::new(format!("{id} missing kind")))?;
-        let kind = FindingKind::from_str(&kind_text)?;
+        // Attribute an unsupported-kind failure to this entry's id so a
+        // multi-entry ledger reports which entry is broken. The bare
+        // `FindingKind` error carries only the offending value (#2005).
+        let kind = FindingKind::from_str(&kind_text)
+            .map_err(|err| CargoAllowError::new(format!("{id} has {err}")))?;
         let last_seen = self.last_seen.into_last_seen(&id)?;
         Ok(AllowEntry {
             id,
@@ -114,7 +118,8 @@ column = 9
         assert_eq!(entry.lifecycle.expires.as_deref(), Some("2027-01-01"));
         assert_eq!(entry.selector.ast_kind.as_deref(), Some("macro_call"));
         assert_eq!(entry.selector.macro_name.as_deref(), Some("panic"));
-        assert_eq!(entry.selector.line_hint, Some(41));
+        // line_hint is accepted in TOML but no longer propagated into Selector.
+        assert_eq!(entry.selector.line_hint, None);
         assert_eq!(
             entry
                 .last_seen
@@ -159,5 +164,48 @@ kind = "generated_code"
             .expect_err("missing kind should fail entry conversion");
 
         assert!(err.to_string().contains("allow-0002 missing kind"));
+    }
+
+    #[test]
+    fn into_allow_entry_attributes_unsupported_kind_to_entry_id() {
+        // A parse error on an entry with an explicit id must name that id so a
+        // multi-entry ledger points at the broken entry, not just the bad
+        // value (#2005).
+        let explicit = toml::from_str::<AllowEntryToml>(
+            r#"
+id = "my-entry"
+kind = "bogus"
+"#,
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("entry parses: {err}")))
+        .into_allow_entry(3)
+        .expect_err("unsupported kind should fail entry conversion");
+        let message = explicit.to_string();
+        assert!(
+            message.contains("my-entry"),
+            "error must attribute to the user's id: {message}"
+        );
+        assert!(
+            message.contains("bogus"),
+            "error must still name the offending kind: {message}"
+        );
+        assert!(
+            !message.contains("allow-0004"),
+            "error must not leak the auto-generated id when the user set one: {message}"
+        );
+
+        // Without an explicit id, the auto-generated id is used (index + 1).
+        let generated = toml::from_str::<AllowEntryToml>(
+            r#"
+kind = "bogus"
+"#,
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("entry parses: {err}")))
+        .into_allow_entry(3)
+        .expect_err("unsupported kind should fail entry conversion");
+        assert!(
+            generated.to_string().contains("allow-0004"),
+            "generated id should attribute to allow-0004: {generated}"
+        );
     }
 }

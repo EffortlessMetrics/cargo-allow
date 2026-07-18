@@ -14,6 +14,10 @@ pub const EXPLAIN_SCHEMA_VERSION: u32 = 1;
 pub const EXPLAIN_SCHEMA_ID: &str = "cargo-allow.explain.v1";
 pub const WHY_SCHEMA_VERSION: u32 = 1;
 pub const WHY_SCHEMA_ID: &str = "cargo-allow.why.v1";
+pub const ADD_FINDING_PLAN_SCHEMA_VERSION: u32 = 1;
+pub const ADD_FINDING_PLAN_SCHEMA_ID: &str = "cargo-allow.add-finding-plan.v1";
+pub const ADD_PLAN_APPLICATION_SCHEMA_VERSION: u32 = 1;
+pub const ADD_PLAN_APPLICATION_SCHEMA_ID: &str = "cargo-allow.add-plan-application.v1";
 pub const PRUNE_SCHEMA_VERSION: u32 = 1;
 pub const PRUNE_SCHEMA_ID: &str = "cargo-allow.prune.v1";
 pub const DOCTOR_SCHEMA_VERSION: u32 = 1;
@@ -98,6 +102,22 @@ pub(crate) const WHY_ARTIFACT: ArtifactContract = ArtifactContract {
     fixed_command: Some("why"),
 };
 
+pub(crate) const ADD_FINDING_PLAN_ARTIFACT: ArtifactContract = ArtifactContract {
+    name: "add-finding-plan",
+    schema_id: ADD_FINDING_PLAN_SCHEMA_ID,
+    schema_version: ADD_FINDING_PLAN_SCHEMA_VERSION,
+    inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
+    fixed_command: Some("why"),
+};
+
+pub(crate) const ADD_PLAN_APPLICATION_ARTIFACT: ArtifactContract = ArtifactContract {
+    name: "add-plan-application",
+    schema_id: ADD_PLAN_APPLICATION_SCHEMA_ID,
+    schema_version: ADD_PLAN_APPLICATION_SCHEMA_VERSION,
+    inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
+    fixed_command: Some("add"),
+};
+
 pub(crate) const LIST_ARTIFACT: ArtifactContract = ArtifactContract {
     name: "list",
     schema_id: LIST_SCHEMA_ID,
@@ -172,6 +192,8 @@ pub(crate) const WORKLIST_ARTIFACT: ArtifactContract = ArtifactContract {
 
 pub const ARTIFACT_CONTRACTS: &[ArtifactContract] = &[
     ADD_ARTIFACT,
+    ADD_FINDING_PLAN_ARTIFACT,
+    ADD_PLAN_APPLICATION_ARTIFACT,
     DOCTOR_ARTIFACT,
     EXPLAIN_ARTIFACT,
     LIST_ARTIFACT,
@@ -239,6 +261,56 @@ pub const SCANNER_LIMITATIONS: &[&str] = &[
     "repository_code_not_executed",
 ];
 
+pub const ADD_FINDING_PLAN_CLAIM_BOUNDARY: &[&str] = &[
+    "source_tree_inventory",
+    "source_syntax_only",
+    "cargo_metadata_not_invoked",
+    "cargo_commands_not_invoked",
+    "rustc_not_invoked",
+    "clippy_not_invoked",
+    "build_scripts_not_executed",
+    "proc_macros_not_executed",
+    "macro_expansion_not_analyzed",
+    "macro_token_tree_contents_not_analyzed",
+    "type_information_not_analyzed",
+    "mir_not_analyzed",
+    "build_output_not_analyzed",
+    "control_flow_not_analyzed",
+    "data_flow_not_analyzed",
+    "external_evidence_tools_not_invoked",
+    "repository_code_not_executed",
+    "source_text_in_identity_fields",
+    "policy_not_mutated",
+    "proof_commands_not_executed",
+    "new_at_plan_creation_only",
+    "targeted_recheck_not_executed",
+    "full_repository_check_not_executed",
+];
+
+pub const ADD_PLAN_APPLICATION_CLAIM_BOUNDARY: &[&str] = &[
+    "source_tree_inventory",
+    "source_syntax_only",
+    "cargo_metadata_not_invoked",
+    "cargo_commands_not_invoked",
+    "rustc_not_invoked",
+    "clippy_not_invoked",
+    "build_scripts_not_executed",
+    "proc_macros_not_executed",
+    "macro_expansion_not_analyzed",
+    "macro_token_tree_contents_not_analyzed",
+    "type_information_not_analyzed",
+    "mir_not_analyzed",
+    "build_output_not_analyzed",
+    "control_flow_not_analyzed",
+    "data_flow_not_analyzed",
+    "external_evidence_tools_not_invoked",
+    "repository_code_not_executed",
+    "source_text_in_identity_fields",
+    "proof_commands_not_executed",
+    "targeted_recheck_not_executed",
+    "full_repository_check_not_executed",
+];
+
 pub const SPEC_SYSTEM_CLAIM_BOUNDARY: &[&str] = &[
     "source_tree_inventory",
     "source_tree_graph_validation",
@@ -286,6 +358,10 @@ pub const SPEC_SYSTEM_SCANNER_LIMITATIONS: &[&str] = &[
 pub fn claim_boundary_for_schema_id(schema_id: &str) -> &'static [&'static str] {
     if schema_id == SPEC_SYSTEM_SCHEMA_ID {
         SPEC_SYSTEM_CLAIM_BOUNDARY
+    } else if schema_id == ADD_FINDING_PLAN_SCHEMA_ID {
+        ADD_FINDING_PLAN_CLAIM_BOUNDARY
+    } else if schema_id == ADD_PLAN_APPLICATION_SCHEMA_ID {
+        ADD_PLAN_APPLICATION_CLAIM_BOUNDARY
     } else {
         CLAIM_BOUNDARY
     }
@@ -400,7 +476,15 @@ pub struct ReportContext<'a> {
     pub tool_version: Option<&'a str>,
     pub lane_posture: Option<&'a BTreeMap<String, allow_core::LaneEnforcementMode>>,
     pub federation: Option<FederationReportContext<'a>>,
+    /// Advisory count of canonical-versus-mirror divergences during active
+    /// drain windows (mirror_divergence / mirror_stale). Feeds the review-item
+    /// tally; it deliberately excludes blocking divergences.
     pub mirror_divergence_entries: Option<usize>,
+    /// Count of blocking federation divergences (drain_expired) that fail the
+    /// run. Kept distinct from `mirror_divergence_entries` so a blocking
+    /// divergence surfaces in the receipt instead of being hidden behind a
+    /// zero advisory count while CI fails (#1945).
+    pub blocking_divergence_entries: Option<usize>,
     /// Git commit SHA when available, for receipt provenance binding (#1850).
     pub git_sha: Option<&'a str>,
     /// SHA-256 hex digest of the policy file content at scan time (#1850).
@@ -436,6 +520,7 @@ impl<'a> ReportContext<'a> {
             lane_posture: None,
             federation: None,
             mirror_divergence_entries: None,
+            blocking_divergence_entries: None,
             git_sha: None,
             policy_digest: None,
             started_at: None,

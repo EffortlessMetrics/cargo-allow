@@ -528,7 +528,12 @@
         "mirror_divergence": {
           "type": "integer",
           "minimum": 0,
-          "description": "Optional count of canonical versus mirror ledger divergences during active drain windows."
+          "description": "Optional advisory count of canonical versus mirror ledger divergences during active drain windows (mirror_divergence / mirror_stale)."
+        },
+        "blocking_divergence": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional count of blocking federation divergences (drain_expired) that fail the run; emitted only when non-zero so a blocking divergence is not hidden behind a zero advisory count."
         }
       }
     },

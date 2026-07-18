@@ -117,7 +117,7 @@ pub(crate) fn lifecycle_change_fields() -> Vec<&'static str> {
         .collect()
 }
 
-pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static [&'static str]); 13]
+pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static [&'static str]); 15]
 {
     [
         (
@@ -135,6 +135,49 @@ pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static
                 "selected_finding",
                 "summary",
                 "tool",
+            ],
+        ),
+        (
+            "add-finding-plan",
+            &[
+                "candidates",
+                "claim_boundary",
+                "command",
+                "finding",
+                "inventory",
+                "inventory_basis_identity",
+                "outcome",
+                "policy",
+                "proof_plans",
+                "repository",
+                "required_fields",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "tool",
+                "tool_version",
+            ],
+        ),
+        (
+            "add-plan-application",
+            &[
+                "added_allow_id",
+                "claim_boundary",
+                "command",
+                "finding_digest",
+                "full_check_argv",
+                "inventory",
+                "plan_digest",
+                "policy_after_digest",
+                "policy_before_digest",
+                "repository_identity",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "target_ledger",
+                "targeted_recheck",
+                "tool",
+                "tool_version",
             ],
         ),
         (
@@ -371,7 +414,7 @@ pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static
     ]
 }
 
-pub(crate) fn expected_top_level_required_fields() -> [(&'static str, &'static [&'static str]); 13]
+pub(crate) fn expected_top_level_required_fields() -> [(&'static str, &'static [&'static str]); 15]
 {
     [
         (
@@ -389,6 +432,49 @@ pub(crate) fn expected_top_level_required_fields() -> [(&'static str, &'static [
                 "selected_finding",
                 "summary",
                 "tool",
+            ],
+        ),
+        (
+            "add-finding-plan",
+            &[
+                "candidates",
+                "claim_boundary",
+                "command",
+                "finding",
+                "inventory",
+                "inventory_basis_identity",
+                "outcome",
+                "policy",
+                "proof_plans",
+                "repository",
+                "required_fields",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "tool",
+                "tool_version",
+            ],
+        ),
+        (
+            "add-plan-application",
+            &[
+                "added_allow_id",
+                "claim_boundary",
+                "command",
+                "finding_digest",
+                "full_check_argv",
+                "inventory",
+                "plan_digest",
+                "policy_after_digest",
+                "policy_before_digest",
+                "repository_identity",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "target_ledger",
+                "targeted_recheck",
+                "tool",
+                "tool_version",
             ],
         ),
         (

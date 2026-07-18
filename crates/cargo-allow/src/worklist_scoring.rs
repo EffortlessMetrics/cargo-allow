@@ -353,6 +353,45 @@ mod tests {
     }
 
     #[test]
+    fn work_item_difficulty_always_matches_schema_enum() {
+        // Regression for #1968: docs/schemas/worklist.schema.json's
+        // work_item.difficulty enum only lists "small"/"medium". This pins
+        // that work_item_difficulty can never emit a value outside
+        // DIFFICULTY_LEVELS, across every work item kind and exception kind,
+        // so a future difficulty tier can't silently fail schema validation.
+        use super::super::worklist_item_kind::WORK_ITEM_KINDS;
+        use super::super::worklist_priority::DIFFICULTY_LEVELS;
+
+        let assert_valid_difficulty = |label: String, difficulty: &'static str| {
+            assert!(
+                DIFFICULTY_LEVELS.contains(&difficulty),
+                "{label} produced difficulty {difficulty:?} outside {DIFFICULTY_LEVELS:?}"
+            );
+        };
+
+        for &kind in WORK_ITEM_KINDS {
+            assert_valid_difficulty(
+                format!("{kind} with no finding/entry"),
+                work_item_difficulty(kind, None, None),
+            );
+
+            for &exception_kind in FindingKind::ALL {
+                let via_finding = finding(exception_kind, Some("family"));
+                assert_valid_difficulty(
+                    format!("{kind}/{exception_kind:?} finding"),
+                    work_item_difficulty(kind, Some(&via_finding), None),
+                );
+
+                let via_entry = entry(exception_kind, Some("family"));
+                assert_valid_difficulty(
+                    format!("{kind}/{exception_kind:?} entry"),
+                    work_item_difficulty(kind, None, Some(&via_entry)),
+                );
+            }
+        }
+    }
+
+    #[test]
     fn exception_family_prefers_current_finding_and_falls_back_to_entry() {
         let current = finding(FindingKind::Panic, Some("expect"));
         let policy = entry(FindingKind::Panic, Some("unwrap"));

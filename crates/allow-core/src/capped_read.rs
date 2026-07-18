@@ -65,6 +65,11 @@ pub fn read_text_file_capped(path: &Path) -> Result<String, CappedReadError> {
     read_text_file_capped_with_limit(path, SOURCE_FILE_READ_MAX_BYTES)
 }
 
+/// Read arbitrary file bytes within the source-tree per-file limit.
+pub fn read_file_capped(path: &Path) -> Result<Vec<u8>, CappedReadError> {
+    read_file_capped_with_limit(path, SOURCE_FILE_READ_MAX_BYTES)
+}
+
 /// Read a UTF-8 text file only when its size is within `limit` bytes.
 ///
 /// Uses `symlink_metadata` for an early regular-file size check, then opens the
@@ -74,6 +79,12 @@ pub fn read_text_file_capped_with_limit(
     path: &Path,
     limit: u64,
 ) -> Result<String, CappedReadError> {
+    let bytes = read_file_capped_with_limit(path, limit)?;
+    String::from_utf8(bytes).map_err(CappedReadError::NotUtf8)
+}
+
+/// Read arbitrary file bytes only when the file stays within `limit`.
+pub fn read_file_capped_with_limit(path: &Path, limit: u64) -> Result<Vec<u8>, CappedReadError> {
     match fs::symlink_metadata(path) {
         Ok(meta) => {
             if meta.file_type().is_file() && meta.len() > limit {
@@ -95,7 +106,7 @@ pub fn read_text_file_capped_with_limit(
     if (bytes.len() as u64) > limit {
         return Err(CappedReadError::Oversized { len: None, limit });
     }
-    String::from_utf8(bytes).map_err(CappedReadError::NotUtf8)
+    Ok(bytes)
 }
 
 #[cfg(test)]

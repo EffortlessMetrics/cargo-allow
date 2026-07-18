@@ -316,6 +316,14 @@ Completed:
 - Add `add --summary-format json --summary-output <path>` for machine-readable
   single-entry add summaries while keeping policy output as TOML.
 - Publish a versioned `cargo-allow.add.v1` JSON schema for saved add summaries.
+- Add `add --from-plan <path>` to consume a `cargo-allow.add-finding-plan.v1`
+  artifact as a fail-closed live-ledger transaction: recompute and verify every
+  plan binding against a fresh scan, require the finding to remain uniquely
+  `New`, atomically replace the ledger, and emit a
+  `cargo-allow.add-plan-application.v1` receipt. Stale or malformed plans fail
+  without changing policy.
+- Publish a versioned `cargo-allow.add-plan-application.v1` JSON schema for
+  saved plan-application receipts.
 
 
 ## Phase 10: Migration And External Dogfood
@@ -500,17 +508,10 @@ cargo-allow can replace bespoke AST/TOML allowlist xtasks.
 `0.3.0` should claim:
 
 ```text
-cargo-allow shows how a PR changes source exception posture.
+cargo-allow is the stable source exception ledger for source trees: it shows
+how a PR changes exception posture and connects retained exceptions to proof
+artifacts.
 ```
 
-`0.4.0` should claim:
-
-```text
-cargo-allow connects source exceptions to proof artifacts.
-```
-
-`1.0` should claim:
-
-```text
-cargo-allow is the stable source exception ledger for source trees.
-```
+No `1.0` milestone is scheduled. Support and stability claims beyond `0.3.0`
+must be earned from release evidence rather than inferred from version naming.

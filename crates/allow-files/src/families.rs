@@ -82,6 +82,20 @@ fn is_package_metadata(file_name: &str) -> bool {
     )
 }
 
+/// Classify a file as a test fixture when it sits under a `fixtures/`,
+/// `testdata/`, or `snapshots/` directory.
+///
+/// The match is on whole path segments, not a bare substring: the leading and
+/// trailing slashes in `/fixtures/` (and the `starts_with` checks) mean a
+/// sibling like `myfixtures/x` or `fixtures_old/x` is not matched, so the
+/// family cannot over-broaden to files that merely contain the word (#1876).
+///
+/// This deliberately runs before [`is_documentation`] in [`file_family`]:
+/// files under these directories are fixture *data* (inputs to tests), not
+/// project documentation, even when they carry a `.md`/`.txt` extension — e.g.
+/// `tests/fixtures/import/kiro/.kiro/specs/auth-feature/design.md` is a fixture,
+/// not a doc. Keeping `test_fixture` ahead of `documentation` classifies such
+/// fixture inputs by where they live rather than by their extension.
 fn is_test_fixture(path: &str) -> bool {
     path.starts_with("fixtures/")
         || path.starts_with("testdata/")

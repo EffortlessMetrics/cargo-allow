@@ -722,7 +722,9 @@ fn spec_system_profile_renders_configured_shadow_mode_in_markdown() {
         format: OutputFormat::Markdown,
         output: Some(output.clone()),
         receipt: None,
-        mode: Some("audit".to_string()),
+        // No `--mode` override: this asserts the shadow *config* renders as
+        // shadow. (An explicit `--mode` now overrides the config mode, #1941.)
+        mode: None,
         deny: Vec::new(),
     });
 

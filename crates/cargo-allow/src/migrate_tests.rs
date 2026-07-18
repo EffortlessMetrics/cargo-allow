@@ -47,6 +47,7 @@ fn migrate_requires_one_input_source() {
         repo_policy: None,
         out: PathBuf::from("target/unused.toml"),
         force: false,
+        update: false,
         summary_format: MigrateSummaryFormat::Human,
         summary_output: None,
     })
@@ -63,6 +64,7 @@ fn migrate_requires_one_input_source() {
         repo_policy: Some(PathBuf::from("policy")),
         out: PathBuf::from("target/unused.toml"),
         force: false,
+        update: false,
         summary_format: MigrateSummaryFormat::Human,
         summary_output: None,
     })
@@ -95,6 +97,7 @@ fn migrate_refuses_existing_output_without_force() {
         repo_policy: Some(policy_dir),
         out,
         force: false,
+        update: false,
         summary_format: MigrateSummaryFormat::Human,
         summary_output: None,
     })
@@ -126,6 +129,7 @@ fn migrate_repo_policy_writes_combined_canonical_policy() {
         repo_policy: Some(policy_dir),
         out: out.clone(),
         force: false,
+        update: false,
         summary_format: MigrateSummaryFormat::Human,
         summary_output: None,
     })
@@ -162,6 +166,7 @@ fn migrate_repo_policy_writes_json_summary_with_inventory_context() {
         repo_policy: Some(policy_dir),
         out: out.clone(),
         force: false,
+        update: false,
         summary_format: MigrateSummaryFormat::Json,
         summary_output: Some(summary_output.clone()),
     })
@@ -273,6 +278,7 @@ fn migrate_repo_policy_summary_counts_unsafe_weak_evidence() {
         repo_policy: Some(policy_dir),
         out,
         force: false,
+        update: false,
         summary_format: MigrateSummaryFormat::Json,
         summary_output: Some(summary_output.clone()),
     })
@@ -326,6 +332,7 @@ fn migrate_repo_policy_summary_counts_unsafe_broken_evidence() {
         repo_policy: Some(policy_dir),
         out,
         force: false,
+        update: false,
         summary_format: MigrateSummaryFormat::Json,
         summary_output: Some(summary_output.clone()),
     })
@@ -382,6 +389,7 @@ fn migrate_repo_policy_human_summary_routes_evidence_repair_queues() {
         repo_policy: Some(policy_dir),
         out,
         force: false,
+        update: false,
         summary_format: MigrateSummaryFormat::Human,
         summary_output: Some(summary_output.clone()),
     })
@@ -434,6 +442,7 @@ fn migrate_from_uses_explicit_root_for_evidence_diagnostics() {
         repo_policy: None,
         out,
         force: false,
+        update: false,
         summary_format: MigrateSummaryFormat::Json,
         summary_output: Some(summary_output.clone()),
     })
@@ -502,6 +511,7 @@ fn migrate_from_infers_root_for_evidence_diagnostics() {
         repo_policy: None,
         out,
         force: false,
+        update: false,
         summary_format: MigrateSummaryFormat::Json,
         summary_output: Some(summary_output.clone()),
     })

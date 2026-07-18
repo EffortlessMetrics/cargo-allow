@@ -22,6 +22,8 @@ fn clap_parses_why_finding_location() {
         "42",
         "--format",
         "json",
+        "--plan",
+        "target/add-plan.json",
         "--root",
         ".",
     ]))
@@ -33,6 +35,7 @@ fn clap_parses_why_finding_location() {
             assert_eq!(args.path, PathBuf::from("src/lib.rs"));
             assert_eq!(args.line, 42);
             assert_eq!(args.format, WhyFormat::Json);
+            assert_eq!(args.plan, Some(PathBuf::from("target/add-plan.json")));
             assert_eq!(args.root.root.as_deref(), Some(std::path::Path::new(".")));
         }
         other => std::panic::panic_any(format!("expected Why command, got {other:?}")),
@@ -328,7 +331,9 @@ fn why_args_round_trip_through_root_args() {
         include_untracked: true,
         format: WhyFormat::Human,
         output: Some(PathBuf::from("target/why.md")),
+        plan: Some(PathBuf::from("target/add-plan.json")),
     };
     assert_eq!(args.line, 3);
     assert!(args.include_untracked);
+    assert_eq!(args.plan, Some(PathBuf::from("target/add-plan.json")));
 }

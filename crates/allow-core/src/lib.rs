@@ -17,8 +17,8 @@ mod ledger_provenance;
 mod policy;
 mod source_tree_path;
 pub use capped_read::{
-    CappedReadError, SOURCE_FILE_READ_MAX_BYTES, read_text_file_capped,
-    read_text_file_capped_with_limit,
+    CappedReadError, SOURCE_FILE_READ_MAX_BYTES, read_file_capped, read_file_capped_with_limit,
+    read_text_file_capped, read_text_file_capped_with_limit,
 };
 pub use date::SimpleDate;
 pub use error::{
@@ -30,7 +30,7 @@ pub use finding::{
     StructuralIdentity, finding_identity_key,
 };
 pub use fingerprint::{
-    allow_entry_content_fingerprint, maybe_line_distance_score, normalize_snippet, stable_hash_hex,
+    allow_entry_content_fingerprint, normalize_snippet, sha256_v1_bytes, stable_hash_hex,
 };
 pub use json::json_escape;
 pub use lane_posture::{

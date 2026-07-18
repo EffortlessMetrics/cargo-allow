@@ -41,7 +41,6 @@ ast_kind = "method_call"
 container = "parses_policy_with_allow"
 callee = "expect"
 normalized_snippet_hash = "fnv1a64:d89cea4b9dc969d2"
-line_hint = 30
 
 [allow.last_seen]
 line = 30
@@ -65,7 +64,6 @@ lint = "clippy::unwrap_used"
 symbol = "#[expect(clippy::unwrap_used, reason = \"policy:allow-0069: lint fixture exercises suppression scanning\")]"
 target_fingerprint = "policy:allow-0069"
 normalized_snippet_hash = "fnv1a64:15b5e01eae57adf1"
-line_hint = 1
 
 [allow.last_seen]
 line = 1
@@ -87,7 +85,6 @@ review_after = "2026-08-15"
 ast_kind = "tracked_file"
 symbol = "docs/release/0.1.11-readiness.md"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/release/0.1.11-readiness.md"
 
 [allow.last_seen]
@@ -110,7 +107,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/CARGO-ALLOW-CLOSEOUT-0053-goal-0004-final.md"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/ledger-coherence/closeouts/CARGO-ALLOW-CLOSEOUT-0053-goal-0004-final.md"
 
 [allow.last_seen]
@@ -133,7 +129,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/CARGO-ALLOW-CLOSEOUT-0051-lifecycle-repair-route-convergence.md"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/ledger-coherence/closeouts/CARGO-ALLOW-CLOSEOUT-0051-lifecycle-repair-route-convergence.md"
 
 [allow.last_seen]
@@ -156,7 +151,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/CARGO-ALLOW-CLOSEOUT-0052-change-control-dogfood.md"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/ledger-coherence/closeouts/CARGO-ALLOW-CLOSEOUT-0052-change-control-dogfood.md"
 
 [allow.last_seen]
@@ -179,7 +173,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "docs/how-to/manage-an-exception.md"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/how-to/manage-an-exception.md"
 
 [allow.last_seen]
@@ -202,7 +195,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/s9-inventory-fallback-diagnostic.md"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/ledger-coherence/closeouts/s9-inventory-fallback-diagnostic.md"
 
 [allow.last_seen]
@@ -225,7 +217,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/s10-inventory-completeness-state.md"
 target_fingerprint = "md"
-line_hint = 1
 
 [[allow]]
 id = "allow-4731"
@@ -243,7 +234,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/s11-broad-add-json-escaping.md"
 target_fingerprint = "md"
-line_hint = 1
 
 [[allow]]
 id = "allow-4732"
@@ -261,7 +251,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/s12-receipt-result-contracts.md"
 target_fingerprint = "md"
-line_hint = 1
 
 [[allow]]
 id = "allow-4733"
@@ -279,7 +268,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/s13-typed-receipt-envelope.md"
 target_fingerprint = "md"
-line_hint = 1
 
 [[allow]]
 id = "allow-4734"
@@ -297,7 +285,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/s14-unique-match-resolution.md"
 target_fingerprint = "md"
-line_hint = 1
 
 [[allow]]
 id = "allow-4735"
@@ -315,7 +302,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/s15-propose-mutation-receipt.md"
 target_fingerprint = "md"
-line_hint = 1
 
 [[allow]]
 id = "allow-4736"
@@ -333,7 +319,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/s16-refresh-mutation-receipt.md"
 target_fingerprint = "md"
-line_hint = 1
 
 [[allow]]
 id = "allow-4737"
@@ -351,7 +336,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/s17-prune-mutation-receipt.md"
 target_fingerprint = "md"
-line_hint = 1
 
 [[allow]]
 id = "allow-4738"
@@ -369,7 +353,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/s18-migrate-mutation-receipt.md"
 target_fingerprint = "md"
-line_hint = 1
 
 [[allow]]
 id = "allow-4739"
@@ -387,7 +370,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/s19-read-model-list-worklist-status.md"
 target_fingerprint = "md"
-line_hint = 1
 
 [[allow]]
 id = "allow-4740"
@@ -405,7 +387,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/s20-explain-read-model-status.md"
 target_fingerprint = "md"
-line_hint = 1
 
 [[allow]]
 id = "allow-4741"
@@ -423,7 +404,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/s21-check-read-model-status.md"
 target_fingerprint = "md"
-line_hint = 1
 
 [[allow]]
 id = "allow-4742"
@@ -441,7 +421,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/s22-report-read-model-status.md"
 target_fingerprint = "md"
-line_hint = 1
 
 [[allow]]
 id = "allow-4743"
@@ -459,7 +438,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/s23-lifecycle-corpus-seed.md"
 target_fingerprint = "md"
-line_hint = 1
 
 [[allow]]
 id = "allow-4744"
@@ -477,7 +455,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/s24-lifecycle-stale-drift.md"
 target_fingerprint = "md"
-line_hint = 1
 
 [[allow]]
 id = "allow-4745"
@@ -495,7 +472,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/s25-lifecycle-occurrence-headroom.md"
 target_fingerprint = "md"
-line_hint = 1
 
 [[allow]]
 id = "allow-4746"
@@ -513,7 +489,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/s26-lifecycle-evidence-health.md"
 target_fingerprint = "md"
-line_hint = 1
 
 [[allow]]
 id = "allow-4747"
@@ -531,7 +506,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/s27-lifecycle-baseline-debt.md"
 target_fingerprint = "md"
-line_hint = 1
 
 [[allow]]
 id = "allow-4728"
@@ -549,7 +523,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/s8-inventory-nested-target.md"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/ledger-coherence/closeouts/s8-inventory-nested-target.md"
 
 [allow.last_seen]
@@ -572,7 +545,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/s7-structured-match-candidates.md"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/ledger-coherence/closeouts/s7-structured-match-candidates.md"
 
 [allow.last_seen]
@@ -595,7 +567,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/s6-structured-validation-diagnostics.md"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/ledger-coherence/closeouts/s6-structured-validation-diagnostics.md"
 
 [allow.last_seen]
@@ -618,7 +589,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/s5-auxiliary-toml-error-locations.md"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/ledger-coherence/closeouts/s5-auxiliary-toml-error-locations.md"
 
 [allow.last_seen]
@@ -640,7 +610,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/ledger-coherence/closeouts/s3-stable-error-codes.md"
 
 [allow.last_seen]
@@ -663,7 +632,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/s1-concurrent-mutation-transaction.md"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/ledger-coherence/closeouts/s1-concurrent-mutation-transaction.md"
 
 [allow.last_seen]
@@ -685,7 +653,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/ledger-coherence/closeouts/s4-native-toml-error-locations.md"
 
 [allow.last_seen]
@@ -708,7 +675,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/s2-occurrence-accounting.md"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/ledger-coherence/closeouts/s2-occurrence-accounting.md"
 
 [allow.last_seen]
@@ -730,7 +696,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/error-codes.md"
 
 [allow.last_seen]
@@ -752,7 +717,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = ".allow/profiles/spec-system.toml"
 
 [allow.last_seen]
@@ -774,7 +738,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/adr/README.md"
 
 [allow.last_seen]
@@ -796,7 +759,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/spec-system/implementation-plan.md"
 
 [allow.last_seen]
@@ -818,7 +780,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/spec-system/closeout.md"
 
 [allow.last_seen]
@@ -840,7 +801,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = ".codex/goals/README.md"
 
 [allow.last_seen]
@@ -862,7 +822,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = ".allow/goals/archive/CARGO-ALLOW-GOAL-0004-core-exception-ledger.toml"
 
 [allow.last_seen]
@@ -884,7 +843,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = ".gitkeep"
-line_hint = 1
 glob = ".allow/goals/archive/.gitkeep"
 
 [allow.last_seen]
@@ -906,7 +864,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/status/SUPPORT_TIERS.md"
 
 [allow.last_seen]
@@ -928,7 +885,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = ".allow/artifacts/doc-artifacts.toml"
 
 [allow.last_seen]
@@ -950,7 +906,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/source-of-truth/doc-artifact-ledger.md"
 
 [allow.last_seen]
@@ -975,7 +930,6 @@ container = "load_fixture"
 callee = "unwrap"
 receiver_fingerprint = "std::fs::read_to_string(path)"
 normalized_snippet_hash = "fnv1a64:f64b7795c44d8e03"
-line_hint = 2
 
 [allow.last_seen]
 line = 2
@@ -999,7 +953,6 @@ container = "token_at"
 symbol = "tokens[idx]"
 target_fingerprint = "idx"
 normalized_snippet_hash = "fnv1a64:707a90fd00693cea"
-line_hint = 6
 
 [allow.last_seen]
 line = 6
@@ -1021,7 +974,6 @@ review_after = "2026-08-01"
 ast_kind = "unsafe_fn"
 container = "read_byte"
 normalized_snippet_hash = "fnv1a64:c9aef8a4d43da165"
-line_hint = 1
 
 [allow.last_seen]
 line = 1
@@ -1043,7 +995,6 @@ review_after = "2026-08-01"
 ast_kind = "unsafe_block"
 container = "read_byte"
 normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
-line_hint = 2
 
 [allow.last_seen]
 line = 2
@@ -1064,7 +1015,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "yml"
-line_hint = 1
 glob = ".github/workflows/ci.yml"
 
 [allow.last_seen]
@@ -1086,7 +1036,6 @@ review_after = "2026-12-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "yml"
-line_hint = 1
 glob = ".github/workflows/release.yml"
 
 [allow.last_seen]
@@ -1108,7 +1057,6 @@ review_after = "2026-12-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "yml"
-line_hint = 1
 glob = ".github/workflows/ub-review.yml"
 
 [allow.last_seen]
@@ -1131,7 +1079,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "AGENTS.md"
 target_fingerprint = "md"
-line_hint = 1
 glob = "AGENTS.md"
 
 [allow.last_seen]
@@ -1153,7 +1100,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "yml"
-line_hint = 1
 glob = ".github/ISSUE_TEMPLATE/bug_report.yml"
 
 [allow.last_seen]
@@ -1175,7 +1121,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "yml"
-line_hint = 1
 glob = ".github/ISSUE_TEMPLATE/config.yml"
 
 [allow.last_seen]
@@ -1197,7 +1142,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "yml"
-line_hint = 1
 glob = ".github/ISSUE_TEMPLATE/feature_request.yml"
 
 [allow.last_seen]
@@ -1219,7 +1163,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "yml"
-line_hint = 1
 glob = ".github/ISSUE_TEMPLATE/policy_model.yml"
 
 [allow.last_seen]
@@ -1241,7 +1184,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "yml"
-line_hint = 1
 glob = ".github/ISSUE_TEMPLATE/cargo-allow-adoption-friction.yml"
 
 [allow.last_seen]
@@ -1263,7 +1205,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = ".github/PULL_REQUEST_TEMPLATE.md"
 
 [allow.last_seen]
@@ -1285,7 +1226,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = ".github/PULL_REQUEST_TEMPLATE/bug_fix.md"
 
 [allow.last_seen]
@@ -1307,7 +1247,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = ".github/PULL_REQUEST_TEMPLATE/docs.md"
 
 [allow.last_seen]
@@ -1329,7 +1268,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = ".github/PULL_REQUEST_TEMPLATE/feature.md"
 
 [allow.last_seen]
@@ -1352,7 +1290,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "CONTRIBUTING.md"
 target_fingerprint = "md"
-line_hint = 1
 glob = "CONTRIBUTING.md"
 
 [allow.last_seen]
@@ -1375,7 +1312,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = ".gitignore"
 target_fingerprint = ".gitignore"
-line_hint = 1
 glob = ".gitignore"
 
 [allow.last_seen]
@@ -1397,7 +1333,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/README.md"
 
 [allow.last_seen]
@@ -1419,7 +1354,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/onboarding.md"
 
 [allow.last_seen]
@@ -1441,7 +1375,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/external-dogfood/ripr-spec-system-adoption.md"
 
 [allow.last_seen]
@@ -1463,7 +1396,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/readiness/self-hosting.md"
 
 [allow.last_seen]
@@ -1485,7 +1417,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/pr-posture.md"
 
 [allow.last_seen]
@@ -1507,7 +1438,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/policy-weakening.md"
 
 [allow.last_seen]
@@ -1529,7 +1459,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "svg"
-line_hint = 1
 glob = "docs/assets/cargo-allow-checkmark.svg"
 
 [allow.last_seen]
@@ -1551,7 +1480,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/how-to/README.md"
 
 [allow.last_seen]
@@ -1573,7 +1501,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/how-to/adopt-no-new-debt.md"
 
 [allow.last_seen]
@@ -1595,7 +1522,6 @@ review_after = "2026-12-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/how-to/adopt-cargo-allow.md"
 
 [allow.last_seen]
@@ -1617,7 +1543,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/how-to/run-in-ci.md"
 
 [allow.last_seen]
@@ -1639,7 +1564,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/how-to/explain-an-allow.md"
 
 [allow.last_seen]
@@ -1661,7 +1585,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/how-to/fix-broken-evidence.md"
 
 [allow.last_seen]
@@ -1683,7 +1606,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/how-to/prune-stale-allows.md"
 
 [allow.last_seen]
@@ -1705,7 +1627,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/how-to/migrate-from-xtask.md"
 
 [allow.last_seen]
@@ -1727,7 +1648,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/how-to/migration-evidence-cookbook.md"
 
 [allow.last_seen]
@@ -1749,7 +1669,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/how-to/close-unsafe-migration-evidence.md"
 
 [allow.last_seen]
@@ -1771,7 +1690,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/how-to/review-pr-posture.md"
 
 [allow.last_seen]
@@ -1793,7 +1711,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/how-to/feed-agent-worklists.md"
 
 [allow.last_seen]
@@ -1815,7 +1732,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/how-to/adopt-spec-system-profile.md"
 
 [allow.last_seen]
@@ -1837,7 +1753,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/how-to/run-spec-system-in-ci.md"
 
 [allow.last_seen]
@@ -1859,7 +1774,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/profiles.md"
 
 [allow.last_seen]
@@ -1881,7 +1795,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/how-to/adopt-cargo-allow-across-repos.md"
 
 [allow.last_seen]
@@ -1903,7 +1816,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/getting-started.md"
 
 [allow.last_seen]
@@ -1925,7 +1837,6 @@ review_after = "2026-10-15"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = "docs/dogfood/fixtures/getting-started/step-inventory.toml"
 
 [allow.last_seen]
@@ -1947,7 +1858,6 @@ review_after = "2026-10-15"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/dogfood/fixtures/getting-started/expected-markers.md"
 
 [allow.last_seen]
@@ -1969,7 +1879,6 @@ review_after = "2026-10-15"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = "docs/dogfood/fixtures/getting-started/published-command-registry.toml"
 
 [allow.last_seen]
@@ -1991,7 +1900,6 @@ review_after = "2026-10-15"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/how-to/troubleshoot-cargo-allow.md"
 
 [allow.last_seen]
@@ -2013,7 +1921,6 @@ review_after = "2026-10-15"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/how-to/rollback-cargo-allow-adoption.md"
 
 [allow.last_seen]
@@ -2035,7 +1942,6 @@ review_after = "2026-10-15"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "yml"
-line_hint = 1
 glob = "docs/dogfood/fixtures/ci/shallow-checkout-missing-base.yml"
 
 [allow.last_seen]
@@ -2057,7 +1963,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/crates.md"
 
 [allow.last_seen]
@@ -2079,7 +1984,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = "policy/allow.toml"
 
 [allow.last_seen]
@@ -2102,7 +2006,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "Cargo.toml"
 target_fingerprint = "toml"
-line_hint = 1
 glob = "Cargo.toml"
 
 [allow.last_seen]
@@ -2125,7 +2028,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "Cargo.lock"
 target_fingerprint = "lock"
-line_hint = 1
 glob = "Cargo.lock"
 
 [allow.last_seen]
@@ -2147,7 +2049,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = "crates/allow-core/Cargo.toml"
 
 [allow.last_seen]
@@ -2169,7 +2070,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = "crates/allow-diff/Cargo.toml"
 
 [allow.last_seen]
@@ -2191,7 +2091,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = "crates/allow-files/Cargo.toml"
 
 [allow.last_seen]
@@ -2213,7 +2112,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = "crates/allow-inventory/Cargo.toml"
 
 [allow.last_seen]
@@ -2235,7 +2133,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = "crates/allow-match/Cargo.toml"
 
 [allow.last_seen]
@@ -2257,7 +2154,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = "crates/allow-policy/Cargo.toml"
 
 [allow.last_seen]
@@ -2279,7 +2175,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = "crates/allow-policy-legacy/Cargo.toml"
 
 [allow.last_seen]
@@ -2301,7 +2196,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = "crates/allow-report/Cargo.toml"
 
 [allow.last_seen]
@@ -2323,7 +2217,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = "crates/allow-rust/Cargo.toml"
 
 [allow.last_seen]
@@ -2345,7 +2238,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = "crates/cargo-allow/Cargo.toml"
 
 [allow.last_seen]
@@ -2367,7 +2259,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/design.md"
 
 [allow.last_seen]
@@ -2389,7 +2280,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/claim-boundaries.md"
 
 [allow.last_seen]
@@ -2411,7 +2301,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/roadmap.md"
 
 [allow.last_seen]
@@ -2433,7 +2322,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/source-exception-ledger.md"
 
 [allow.last_seen]
@@ -2455,7 +2343,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/migration-from-xtask.md"
 
 [allow.last_seen]
@@ -2477,7 +2364,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/schemas/report.schema.json"
 
 [allow.last_seen]
@@ -2499,7 +2385,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/schemas/receipt.schema.json"
 
 [allow.last_seen]
@@ -2521,7 +2406,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/schemas/worklist.schema.json"
 
 [allow.last_seen]
@@ -2543,7 +2427,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/schemas/list.schema.json"
 
 [allow.last_seen]
@@ -2565,7 +2448,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/schemas/explain.schema.json"
 
 [allow.last_seen]
@@ -2587,7 +2469,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/schemas/README.md"
 
 [allow.last_seen]
@@ -2609,7 +2490,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/schemas/prune.schema.json"
 
 [allow.last_seen]
@@ -2631,7 +2511,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/schemas/doctor.schema.json"
 
 [allow.last_seen]
@@ -2653,7 +2532,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/schemas/propose.schema.json"
 
 [allow.last_seen]
@@ -2675,7 +2553,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/schemas/add.schema.json"
 
 [allow.last_seen]
@@ -2697,7 +2574,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/schemas/migrate.schema.json"
 
 [allow.last_seen]
@@ -2719,7 +2595,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/schemas/spec-system.schema.json"
 
 [allow.last_seen]
@@ -2741,7 +2616,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/schemas/common.v1.json"
 
 [allow.last_seen]
@@ -2763,7 +2637,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/dogfood/shiplog-non-rust.md"
 
 [allow.last_seen]
@@ -2785,7 +2658,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/ci.md"
 
 [allow.last_seen]
@@ -2807,7 +2679,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "yml"
-line_hint = 1
 glob = "examples/github-actions/cargo-allow-diff.yml"
 
 [allow.last_seen]
@@ -2829,7 +2700,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "yml"
-line_hint = 1
 glob = "examples/github-actions/cargo-allow-check.yml"
 
 [allow.last_seen]
@@ -2851,7 +2721,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/agents/cargo-allow-worklist.md"
 
 [allow.last_seen]
@@ -2873,7 +2742,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "examples/README.md"
 
 [allow.last_seen]
@@ -2895,7 +2763,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/release/0.1.0.md"
 
 [allow.last_seen]
@@ -2917,7 +2784,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/identity.md"
 
 [allow.last_seen]
@@ -2939,7 +2805,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/crate-namespace.md"
 
 [allow.last_seen]
@@ -2962,7 +2827,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "CODE_OF_CONDUCT.md"
 target_fingerprint = "md"
-line_hint = 1
 glob = "CODE_OF_CONDUCT.md"
 
 [allow.last_seen]
@@ -2984,7 +2848,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/release/0.1.1.md"
 
 [allow.last_seen]
@@ -3006,7 +2869,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/release/0.1.2.md"
 
 [allow.last_seen]
@@ -3028,7 +2890,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/release/0.1.3.md"
 
 [allow.last_seen]
@@ -3050,7 +2911,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/release/0.1.4.md"
 
 [allow.last_seen]
@@ -3072,7 +2932,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/release/0.1.5.md"
 
 [allow.last_seen]
@@ -3094,7 +2953,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/release/0.1.6.md"
 
 [allow.last_seen]
@@ -3116,7 +2974,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/release/0.1.7.md"
 
 [allow.last_seen]
@@ -3138,7 +2995,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/release/github/v0.1.7.md"
 
 [allow.last_seen]
@@ -3160,7 +3016,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/release/0.1.8.md"
 
 [allow.last_seen]
@@ -3182,7 +3037,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/release/github/v0.1.8.md"
 
 [allow.last_seen]
@@ -3205,7 +3059,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "CHANGELOG.md"
 target_fingerprint = "md"
-line_hint = 1
 glob = "CHANGELOG.md"
 
 [allow.last_seen]
@@ -3227,7 +3080,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/source-of-truth/README.md"
 
 [allow.last_seen]
@@ -3249,7 +3101,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/source-of-truth/artifact-taxonomy.md"
 
 [allow.last_seen]
@@ -3271,7 +3122,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/source-of-truth/linking-model.md"
 
 [allow.last_seen]
@@ -3293,7 +3143,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/source-of-truth/agent-operating-model.md"
 
 [allow.last_seen]
@@ -3315,7 +3164,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/templates/proposal.md"
 
 [allow.last_seen]
@@ -3337,7 +3185,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/templates/spec.md"
 
 [allow.last_seen]
@@ -3359,7 +3206,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/templates/adr.md"
 
 [allow.last_seen]
@@ -3381,7 +3227,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/templates/implementation-plan.md"
 
 [allow.last_seen]
@@ -3403,7 +3248,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/templates/plan-item.md"
 
 [allow.last_seen]
@@ -3425,7 +3269,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/templates/closeout.md"
 
 [allow.last_seen]
@@ -3447,7 +3290,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/templates/pr-body.md"
 
 [allow.last_seen]
@@ -3469,7 +3311,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/proposals/CARGO-ALLOW-PROP-0001-spec-system-profile.md"
 
 [allow.last_seen]
@@ -3491,7 +3332,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md"
 
 [allow.last_seen]
@@ -3513,7 +3353,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/release/0.1.9.md"
 
 [allow.last_seen]
@@ -3535,7 +3374,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/release/github/v0.1.9.md"
 
 [allow.last_seen]
@@ -3557,7 +3395,6 @@ review_after = "2026-12-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/release/0.1.10.md"
 
 [allow.last_seen]
@@ -3579,7 +3416,6 @@ review_after = "2026-12-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/release/github/v0.1.10.md"
 
 [allow.last_seen]
@@ -3601,7 +3437,6 @@ review_after = "2026-12-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/release/README.md"
 
 [allow.last_seen]
@@ -3623,7 +3458,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = ".allow/goals/archive/CARGO-ALLOW-GOAL-0001-spec-system-profile.toml"
 
 [allow.last_seen]
@@ -3645,7 +3479,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/proposals/CARGO-ALLOW-PROP-0002-migration-parity.md"
 
 [allow.last_seen]
@@ -3667,7 +3500,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md"
 
 [allow.last_seen]
@@ -3689,7 +3521,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/migration-parity/implementation-plan.md"
 
 [allow.last_seen]
@@ -3711,7 +3542,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/proposals/CARGO-ALLOW-PROP-0003-readiness-policy.md"
 
 [allow.last_seen]
@@ -3733,7 +3563,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/specs/CARGO-ALLOW-SPEC-0003-readiness-policy.md"
 
 [allow.last_seen]
@@ -3755,7 +3584,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/proposals/CARGO-ALLOW-PROP-0004-allow-import-profile.md"
 
 [allow.last_seen]
@@ -3777,7 +3605,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md"
 
 [allow.last_seen]
@@ -3799,7 +3626,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/proposals/CARGO-ALLOW-PROP-0005-structural-identity-quality.md"
 
 [allow.last_seen]
@@ -3821,7 +3647,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/specs/CARGO-ALLOW-SPEC-0005-structural-identity-quality.md"
 
 [allow.last_seen]
@@ -3843,7 +3668,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/proposals/CARGO-ALLOW-PROP-0006-adoption-trust-0.1.10.md"
 
 [allow.last_seen]
@@ -3865,7 +3689,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/specs/CARGO-ALLOW-SPEC-0006-adoption-trust-0.1.10.md"
 
 [allow.last_seen]
@@ -3887,7 +3710,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/migration-parity/gap-inventory.md"
 
 [allow.last_seen]
@@ -3909,7 +3731,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/migration-parity/pr-queue.md"
 
 [allow.last_seen]
@@ -3931,7 +3752,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/migration-parity/closeouts/incremental-slices.md"
 
 [allow.last_seen]
@@ -3953,7 +3773,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/readiness/implementation-plan.md"
 
 [allow.last_seen]
@@ -3975,7 +3794,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/release/0.1.10-implementation-plan.md"
 
 [allow.last_seen]
@@ -3997,7 +3815,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/spec-system/allow-import-plan.md"
 
 [allow.last_seen]
@@ -4019,7 +3836,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/structural-identity/gap-inventory.md"
 
 [allow.last_seen]
@@ -4041,7 +3857,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/structural-identity/implementation-plan.md"
 
 [allow.last_seen]
@@ -4063,7 +3878,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = "tests/fixtures/migration/*.toml"
 
 [allow.last_seen]
@@ -4085,7 +3899,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/dogfood/cargo-allow-panic-baseline.md"
 
 [allow.last_seen]
@@ -4107,7 +3920,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = "docs/dogfood/fixtures/*.toml"
 
 [allow.last_seen]
@@ -4129,7 +3941,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = "docs/dogfood/receipts/cargo-allow-panic-baseline.migrated.toml"
 
 [allow.last_seen]
@@ -4151,7 +3962,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/dogfood/receipts/cargo-allow-panic-baseline.migrate-summary.json"
 
 [allow.last_seen]
@@ -4176,7 +3986,6 @@ container = "load"
 callee = "unwrap"
 receiver_fingerprint = "param:1"
 normalized_snippet_hash = "fnv1a64:09d227b7d728901a"
-line_hint = 2
 
 [allow.last_seen]
 line = 2
@@ -4200,7 +4009,6 @@ container = "load"
 callee = "unwrap"
 receiver_fingerprint = "param:0"
 normalized_snippet_hash = "fnv1a64:dc9ff63ad6f05c95"
-line_hint = 2
 
 [allow.last_seen]
 line = 2
@@ -4222,7 +4030,6 @@ review_after = "2026-11-01"
 ast_kind = "unsafe_block"
 container = "read_right"
 normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
-line_hint = 2
 
 [allow.last_seen]
 line = 2
@@ -4244,7 +4051,6 @@ review_after = "2026-11-01"
 ast_kind = "unsafe_block"
 container = "read_left"
 normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
-line_hint = 6
 
 [allow.last_seen]
 line = 6
@@ -4266,7 +4072,6 @@ review_after = "2026-11-01"
 ast_kind = "unsafe_block"
 container = "read_left"
 normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
-line_hint = 2
 
 [allow.last_seen]
 line = 2
@@ -4288,7 +4093,6 @@ review_after = "2026-11-01"
 ast_kind = "unsafe_block"
 container = "read_right"
 normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
-line_hint = 6
 
 [allow.last_seen]
 line = 6
@@ -4313,7 +4117,6 @@ symbol = "right[0]"
 receiver_fingerprint = "param:1"
 target_fingerprint = "0"
 normalized_snippet_hash = "fnv1a64:60ee0c428de09879"
-line_hint = 2
 
 [allow.last_seen]
 line = 2
@@ -4338,7 +4141,6 @@ symbol = "left[0]"
 receiver_fingerprint = "param:0"
 target_fingerprint = "0"
 normalized_snippet_hash = "fnv1a64:5e1ad0e511ab384a"
-line_hint = 2
 
 [allow.last_seen]
 line = 2
@@ -4362,7 +4164,6 @@ container = "load"
 callee = "expect"
 receiver_fingerprint = "param:0"
 normalized_snippet_hash = "fnv1a64:52b3fc980b9bd224"
-line_hint = 4
 
 [allow.last_seen]
 line = 4
@@ -4386,7 +4187,6 @@ container = "load"
 callee = "expect"
 receiver_fingerprint = "param:0"
 normalized_snippet_hash = "fnv1a64:52b3fc980b9bd224"
-line_hint = 2
 
 [allow.last_seen]
 line = 2
@@ -4410,7 +4210,6 @@ container = "load"
 macro_name = "panic"
 target_fingerprint = "panic"
 normalized_snippet_hash = "fnv1a64:50fbabeac5083a68"
-line_hint = 2
 
 [allow.last_seen]
 line = 2
@@ -4434,7 +4233,6 @@ container = "load"
 macro_name = "panic"
 target_fingerprint = "panic"
 normalized_snippet_hash = "fnv1a64:50fbabeac5083a68"
-line_hint = 2
 
 [allow.last_seen]
 line = 2
@@ -4456,7 +4254,6 @@ review_after = "2026-11-01"
 ast_kind = "unsafe_block"
 container = "access"
 normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
-line_hint = 2
 
 [allow.last_seen]
 line = 2
@@ -4478,7 +4275,6 @@ review_after = "2026-11-01"
 ast_kind = "unsafe_block"
 container = "inner::access"
 normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
-line_hint = 3
 
 [allow.last_seen]
 line = 3
@@ -4502,7 +4298,6 @@ container = "load"
 callee = "expect"
 receiver_fingerprint = "param:0"
 normalized_snippet_hash = "fnv1a64:9faea1b4aa39bd0f"
-line_hint = 2
 
 [allow.last_seen]
 line = 2
@@ -4526,7 +4321,6 @@ container = "load"
 callee = "expect"
 receiver_fingerprint = "param:0"
 normalized_snippet_hash = "fnv1a64:52b3fc980b9bd224"
-line_hint = 2
 
 [allow.last_seen]
 line = 2
@@ -4550,7 +4344,6 @@ lint = "dead_code"
 symbol = "#[expect(dead_code, reason = \"policy:allow-0225: structural identity lint fixture on render\")]"
 target_fingerprint = "policy:allow-0225"
 normalized_snippet_hash = "fnv1a64:fa9243922c7f7584"
-line_hint = 1
 glob = "tests/fixtures/structural-identity/lint_same_different_items/*.rs"
 
 [allow.last_seen]
@@ -4575,7 +4368,6 @@ lint = "dead_code"
 symbol = "#[expect(dead_code, reason = \"policy:allow-0226: structural identity lint fixture on parse\")]"
 target_fingerprint = "policy:allow-0226"
 normalized_snippet_hash = "fnv1a64:7e13a5ebdee85d74"
-line_hint = 4
 glob = "tests/fixtures/structural-identity/lint_same_different_items/*.rs"
 
 [allow.last_seen]
@@ -4597,7 +4389,6 @@ review_after = "2026-12-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "sh"
-line_hint = 1
 glob = "scripts/release-version-preflight.sh"
 
 [allow.last_seen]
@@ -4619,7 +4410,6 @@ review_after = "2026-12-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "sh"
-line_hint = 1
 glob = "scripts/test-release-version-preflight.sh"
 
 [allow.last_seen]
@@ -4641,7 +4431,6 @@ review_after = "2026-12-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "sh"
-line_hint = 1
 glob = "scripts/verify-crate-registry-version.sh"
 
 [allow.last_seen]
@@ -4663,7 +4452,6 @@ review_after = "2026-12-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "sh"
-line_hint = 1
 glob = "scripts/test-verify-crate-registry-version.sh"
 
 [allow.last_seen]
@@ -4685,7 +4473,6 @@ review_after = "2026-12-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "sh"
-line_hint = 1
 glob = "scripts/release-install-smoke.sh"
 
 [allow.last_seen]
@@ -4707,7 +4494,6 @@ review_after = "2026-12-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "sh"
-line_hint = 1
 glob = "scripts/test-release-install-smoke.sh"
 
 [allow.last_seen]
@@ -4729,7 +4515,6 @@ review_after = "2027-01-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "sh"
-line_hint = 1
 glob = "scripts/package-candidate-smoke.sh"
 
 [allow.last_seen]
@@ -4751,7 +4536,6 @@ review_after = "2027-01-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "sh"
-line_hint = 1
 glob = "scripts/test-package-candidate-smoke.sh"
 
 [allow.last_seen]
@@ -4773,7 +4557,6 @@ review_after = "2027-01-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "sh"
-line_hint = 1
 glob = "scripts/source-candidate-smoke.sh"
 
 [allow.last_seen]
@@ -4787,16 +4570,36 @@ family = "release_script"
 path = "scripts/exact-candidate-package-set.sh"
 owner = "core/release"
 classification = "release_automation_script"
-reason = "ExactCandidatePackageSetV1 Stage A harness: package/extract/patch-install ten-crate set and emit receipt (#2372 / #2277)."
-evidence = ["doc:docs/release/README.md", "test:example_exact_candidate_package_set_matches_schema_constants", "issue:2372"]
+reason = "ExactCandidatePackageSetV1 harness: package/extract/local-registry-install ten-crate set and emit receipt (#2408 / #2372 / #2277)."
+evidence = ["doc:docs/release/README.md", "test:example_exact_candidate_package_set_matches_schema_constants", "issue:2408", "issue:2372"]
 created = "2026-07-16"
 review_after = "2027-01-01"
 
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "sh"
-line_hint = 1
 glob = "scripts/exact-candidate-package-set.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4763"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/exact-candidate-assemble-local-registry.py"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Assemble classic Cargo local-registry (.crate + index) for ExactCandidatePackageSetV1 decisive install (#2408)."
+evidence = ["doc:docs/release/README.md", "test:example_exact_candidate_package_set_matches_schema_constants", "issue:2408"]
+created = "2026-07-16"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "py"
+glob = "scripts/exact-candidate-assemble-local-registry.py"
 
 [allow.last_seen]
 line = 1
@@ -4817,7 +4620,6 @@ review_after = "2027-01-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = "docs/dogfood/fixtures/release/candidate-crate-set.toml"
 
 [allow.last_seen]
@@ -4839,7 +4641,6 @@ review_after = "2026-10-15"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/dogfood/fixtures/release/exact-candidate-package-set.v1.schema.json"
 
 [allow.last_seen]
@@ -4861,7 +4662,6 @@ review_after = "2026-10-15"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/dogfood/receipts/exact-candidate-package-set-pass.example.json"
 
 [allow.last_seen]
@@ -4883,7 +4683,6 @@ review_after = "2026-10-15"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "sh"
-line_hint = 1
 glob = "scripts/shallow-diff-base-smoke.sh"
 
 [allow.last_seen]
@@ -4905,7 +4704,6 @@ review_after = "2026-10-15"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "sh"
-line_hint = 1
 glob = "scripts/test-shallow-diff-base-smoke.sh"
 
 [allow.last_seen]
@@ -4927,7 +4725,6 @@ review_after = "2026-10-15"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/dogfood/fixtures/release/source-candidate-smoke-receipt.v1.schema.json"
 
 [allow.last_seen]
@@ -4949,7 +4746,6 @@ review_after = "2026-10-15"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/dogfood/receipts/source-candidate-smoke-pass.example.json"
 
 [allow.last_seen]
@@ -4971,7 +4767,6 @@ review_after = "2026-09-16"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/release/0.1.10-readiness.md"
 
 [allow.last_seen]
@@ -4993,7 +4788,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/dogfood/cargo-allow-unsafe-allowlist.md"
 
 [allow.last_seen]
@@ -5015,7 +4809,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = "docs/dogfood/receipts/cargo-allow-unsafe-allowlist.migrated.toml"
 
 [allow.last_seen]
@@ -5037,7 +4830,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/dogfood/receipts/cargo-allow-unsafe-allowlist.migrate-summary.json"
 
 [allow.last_seen]
@@ -5060,7 +4852,6 @@ review_after = "2026-11-01"
 ast_kind = "unsafe_block"
 container = "alpha::access"
 normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
-line_hint = 3
 
 [allow.last_seen]
 line = 3
@@ -5082,7 +4873,6 @@ review_after = "2026-11-01"
 ast_kind = "unsafe_block"
 container = "beta::access"
 normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
-line_hint = 8
 
 [allow.last_seen]
 line = 8
@@ -5104,7 +4894,6 @@ review_after = "2026-11-01"
 ast_kind = "unsafe_block"
 container = "alpha::access"
 normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
-line_hint = 3
 
 [allow.last_seen]
 line = 3
@@ -5126,7 +4915,6 @@ review_after = "2026-11-01"
 ast_kind = "unsafe_block"
 container = "beta::access"
 normalized_snippet_hash = "fnv1a64:96b6e660e28d5755"
-line_hint = 8
 
 [allow.last_seen]
 line = 8
@@ -5147,7 +4935,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/migration-parity/closeouts/adoption-substrate-lane.md"
 
 [allow.last_seen]
@@ -5169,7 +4956,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/schemas/refresh.schema.json"
 
 [allow.last_seen]
@@ -5191,7 +4977,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = "tests/fixtures/refresh/advisory-drift/policy/allow.toml"
 
 [allow.last_seen]
@@ -5216,7 +5001,6 @@ container = "fixture_refresh_drift"
 lint = "clippy::unwrap_used"
 symbol = "#[expect(clippy::unwrap_used, reason = \"policy:allow-0250: refresh receipt fixture\")]"
 target_fingerprint = "policy:allow-0250"
-line_hint = 2
 
 [allow.last_seen]
 line = 2
@@ -5239,7 +5023,6 @@ ast_kind = "method_call"
 container = "fixture_refresh_drift"
 callee = "unwrap"
 receiver_fingerprint = "Some(1)"
-line_hint = 3
 
 [allow.last_seen]
 line = 3
@@ -5260,7 +5043,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/dogfood/cargo-allow-ripr-style-adoption.md"
 
 [allow.last_seen]
@@ -5282,7 +5064,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = "docs/dogfood/fixtures/ripr-style/*.toml"
 
 [allow.last_seen]
@@ -5304,7 +5085,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = "docs/dogfood/receipts/cargo-allow-ripr-style-adoption.migrated.toml"
 
 [allow.last_seen]
@@ -5326,7 +5106,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/dogfood/receipts/cargo-allow-ripr-style-adoption.migrate-summary.json"
 
 [allow.last_seen]
@@ -5348,7 +5127,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/migration-parity/closeouts/import-parity-lane.md"
 
 [allow.last_seen]
@@ -5370,7 +5148,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = ".allow/goals/archive/CARGO-ALLOW-GOAL-0002-migration-evidence-parity.toml"
 
 [allow.last_seen]
@@ -5392,7 +5169,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/spec-system/closeouts/portable-governance-transition.md"
 
 [allow.last_seen]
@@ -5414,7 +5190,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/spec-system/closeouts/profile-resolution-c2.md"
 
 [allow.last_seen]
@@ -5436,7 +5211,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/spec-system/closeouts/init-writes-c3.md"
 
 [allow.last_seen]
@@ -5458,7 +5232,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = ".allow/goals/README.md"
 
 [allow.last_seen]
@@ -5480,7 +5253,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = ".allow/imports/README.md"
 
 [allow.last_seen]
@@ -5502,7 +5274,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/spec-system/closeouts/dogfood-migration-c4.md"
 
 [allow.last_seen]
@@ -5524,7 +5295,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/proposals/CARGO-ALLOW-PROP-0007-multi-ledger-federation.md"
 
 [allow.last_seen]
@@ -5546,7 +5316,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/specs/CARGO-ALLOW-SPEC-0007-multi-ledger-federation.md"
 
 [allow.last_seen]
@@ -5568,7 +5337,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/adr/CARGO-ALLOW-ADR-0001-multi-ledger-federation.md"
 
 [allow.last_seen]
@@ -5590,7 +5358,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/federation/implementation-plan.md"
 
 [allow.last_seen]
@@ -5612,7 +5379,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/federation/closeouts/f0-design.md"
 
 [allow.last_seen]
@@ -5634,7 +5400,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = "tests/fixtures/federation/*.toml"
 
 [allow.last_seen]
@@ -5656,7 +5421,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/federation/closeouts/f1-config-parse.md"
 
 [allow.last_seen]
@@ -5678,7 +5442,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/federation/closeouts/f2-evaluation.md"
 
 [allow.last_seen]
@@ -5700,7 +5463,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/federation/closeouts/f3-drain-divergence.md"
 
 [allow.last_seen]
@@ -5722,7 +5484,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/spec-system/closeouts/import-i1-model.md"
 
 [allow.last_seen]
@@ -5744,7 +5505,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "tests/fixtures/import/**/*"
 
 [allow.last_seen]
@@ -5767,7 +5527,6 @@ review_after = "2026-11-01"
 ast_kind = "method_call"
 container = "tests::parse_front_matter_extracts_id_and_links"
 callee = "expect"
-line_hint = 261
 
 [allow.last_seen]
 line = 261
@@ -5788,7 +5547,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/spec-system/closeouts/import-i2-generic-adapters.md"
 
 [allow.last_seen]
@@ -5810,7 +5568,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/spec-system/closeouts/import-i2-kiro-spec-kit-adapters.md"
 
 [allow.last_seen]
@@ -5832,7 +5589,6 @@ review_after = "2026-09-18"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = ".allow/config.toml"
 
 [allow.last_seen]
@@ -5855,7 +5611,6 @@ review_after = "2026-11-01"
 ast_kind = "method_call"
 container = "tests::parse_command_registry_reads_command_tables"
 callee = "expect"
-line_hint = 249
 
 [allow.last_seen]
 line = 249
@@ -5876,7 +5631,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/spec-system/closeouts/import-i2-xtask-adapter.md"
 
 [allow.last_seen]
@@ -5898,7 +5652,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/spec-system/closeouts/import-graph-dogfood.md"
 
 [allow.last_seen]
@@ -5920,7 +5673,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/dogfood/cargo-allow-import-graph.md"
 
 [allow.last_seen]
@@ -5942,7 +5694,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/dogfood/receipts/cargo-allow-import-graph-repo.json"
 
 [allow.last_seen]
@@ -5964,7 +5715,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/dogfood/receipts/cargo-allow-import-graph-kiro.json"
 
 [allow.last_seen]
@@ -5986,7 +5736,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/dogfood/receipts/cargo-allow-import-graph-spec-kit.json"
 
 [allow.last_seen]
@@ -6008,7 +5757,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/dogfood/receipts/cargo-allow-import-graph-xtask.json"
 
 [allow.last_seen]
@@ -6030,7 +5778,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/spec-system/closeouts/goal-0003-partial-progress.md"
 
 [allow.last_seen]
@@ -6052,7 +5799,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = "tests/fixtures/import/xtask/xtask/commands.toml"
 
 [allow.last_seen]
@@ -6074,7 +5820,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-line_hint = 1
 glob = ".allow/goals/archive/CARGO-ALLOW-GOAL-0003-portable-governance-substrate.toml"
 
 [allow.last_seen]
@@ -6096,7 +5841,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/proposals/CARGO-ALLOW-PROP-0008-ledger-coherence-change-control.md"
 
 [allow.last_seen]
@@ -6118,7 +5862,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/specs/CARGO-ALLOW-SPEC-0008-ledger-coherence-change-control.md"
 
 [allow.last_seen]
@@ -6140,7 +5883,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/ledger-coherence/implementation-plan.md"
 
 [allow.last_seen]
@@ -6162,7 +5904,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/ledger-coherence/closeouts/goal-0004-registration.md"
 
 [allow.last_seen]
@@ -6184,7 +5925,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/ledger-coherence/closeouts/pr1-canonical-state-model.md"
 
 [allow.last_seen]
@@ -6206,7 +5946,6 @@ review_after = "2026-11-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/ledger-coherence/closeouts/pr2-movement-classification.md"
 
 [allow.last_seen]
@@ -6250,7 +5989,6 @@ review_after = "2026-09-22"
 ast_kind = "method_call"
 container = "join_errors"
 callee = "expect"
-line_hint = 60
 
 [allow.last_seen]
 line = 62
@@ -6305,7 +6043,6 @@ review_after = "2026-10-11"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = ".editorconfig"
-line_hint = 1
 glob = ".editorconfig"
 
 [[allow]]
@@ -6324,7 +6061,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/pr3-4-revision-contract-and-enforcement.md"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/ledger-coherence/closeouts/pr3-4-revision-contract-and-enforcement.md"
 
 [allow.last_seen]
@@ -6346,7 +6082,6 @@ review_after = "2026-10-11"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "justfile"
-line_hint = 1
 glob = "justfile"
 
 [[allow]]
@@ -6365,7 +6100,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "plans/ledger-coherence/closeouts/pr5a-mutation-receipt-envelope.md"
 target_fingerprint = "md"
-line_hint = 1
 glob = "plans/ledger-coherence/closeouts/pr5a-mutation-receipt-envelope.md"
 
 [allow.last_seen]
@@ -6388,7 +6122,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "docs/how-to/explain-why-a-finding.md"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/how-to/explain-why-a-finding.md"
 
 [allow.last_seen]
@@ -6411,7 +6144,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "docs/schemas/why.schema.json"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/schemas/why.schema.json"
 
 [allow.last_seen]
@@ -6456,3 +6188,79 @@ target_fingerprint = "toml"
 line_hint = 1
 glob = ".allow/spec-system/slices/self-hosted-runtime-promotion-v1.toml"
 
+[[allow]]
+id = "allow-9010"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/0.1.11.md"
+owner = "core/release"
+classification = "release_record"
+reason = "Records the 0.1.11 supported-core release scope, evidence, limitations, and rollback."
+evidence = ["issue:2270", "issue:2258"]
+created = "2026-07-17"
+review_after = "2026-10-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/0.1.11.md"
+target_fingerprint = "md"
+glob = "docs/release/0.1.11.md"
+
+[[allow]]
+id = "allow-9011"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/github/v0.1.11.md"
+owner = "core/release"
+classification = "release_record"
+reason = "Public GitHub Release notes for the v0.1.11 supported-core patch."
+evidence = ["doc:docs/release/0.1.11.md", "issue:2258"]
+created = "2026-07-17"
+review_after = "2026-10-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/github/v0.1.11.md"
+target_fingerprint = "md"
+glob = "docs/release/github/v0.1.11.md"
+
+[[allow]]
+id = "allow-9012"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/add-finding-plan.schema.json"
+owner = "core/policy"
+classification = "schema_contract"
+reason = "Defines the stable cargo-allow.add-finding-plan.v1 machine artifact contract emitted by why."
+evidence = ["doc:docs/schemas/README.md", "test:add_finding_plan_output"]
+created = "2026-07-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/add-finding-plan.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/add-finding-plan.schema.json"
+
+[[allow]]
+id = "allow-0299"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/add-plan-application.schema.json"
+owner = "core/policy"
+classification = "schema_contract"
+reason = "Defines the stable cargo-allow.add-plan-application.v1 receipt artifact contract emitted by add --from-plan."
+evidence = ["doc:docs/schemas/README.md", "test:add_from_plan_apply"]
+created = "2026-07-18"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/add-plan-application.schema.json"
+target_fingerprint = "json"
+line_hint = 1
+glob = "docs/schemas/add-plan-application.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
