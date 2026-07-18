@@ -10,6 +10,19 @@ inventory without executing repository code.
 
 ### Added
 
+- `allow-diff` exposes one exact, typed repository-snapshot identity
+  (`repository_snapshot`, `resolve_revision_identity`, `resolve_dirty_state`)
+  so spec plans, captured evidence, and proof receipts share common Git/source
+  freshness inputs instead of each reimplementing revision interpretation. The
+  `RepositorySnapshotIdentity` binds a checkout-independent repository root
+  identity (derived from root-commit ids, never an absolute path), object
+  format, resolved head/base commit and tree, merge base, a distinct
+  worktree/index dirty state (clean vs. tracked-modified / staged / untracked /
+  unavailable / non-repository), and a deterministic selected-source closure
+  hash over caller-supplied load-bearing paths. Git failures and missing bases
+  fail visibly rather than degrading to a clean snapshot. This slice implements
+  the committed-head and committed-range kinds; staged/working-tree/external
+  kinds and consumer wiring are follow-up. (#2225)
 - `cargo-allow add --from-plan <PATH>` consumes a `cargo-allow.add-finding-plan.v1`
   artifact (from `why --plan`) as a fail-closed live-ledger transaction. It
   acquires the mutation lock, strictly parses the v1 plan, recomputes the

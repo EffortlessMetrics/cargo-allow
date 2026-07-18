@@ -130,7 +130,29 @@ pub fn read_file_at_revision(
     }
 }
 
-fn resolve_commit_oid(root: &Path, revision: &str) -> CargoAllowResult<String> {
+/// Resolve the blob object id of `path` at `commit_oid`, or `None` when the
+/// path is absent or is not a regular file. Reuses the exact-path tree lookup
+/// so a snapshot's selected-source identity matches the bytes
+/// [`read_file_at_revision`] would return for the same path and revision.
+pub(crate) fn tree_blob_oid_at_commit(
+    root: &Path,
+    commit_oid: &str,
+    path: &Path,
+) -> CargoAllowResult<Option<String>> {
+    let path_bytes = source_tree_path_bytes(path)?;
+    match lookup_tree_path(root, commit_oid, &path_bytes)? {
+        TreePathLookup::Missing => Ok(None),
+        TreePathLookup::Found { mode, blob_oid, .. } => {
+            if mode.starts_with("100") {
+                Ok(Some(blob_oid))
+            } else {
+                Ok(None)
+            }
+        }
+    }
+}
+
+pub(crate) fn resolve_commit_oid(root: &Path, revision: &str) -> CargoAllowResult<String> {
     validate_revision_input(revision)?;
 
     let mut cmd = git_command(root);
@@ -249,7 +271,7 @@ fn disambiguate_commit_prefix(
     })
 }
 
-fn parse_single_oid(stdout: &[u8], operation: &str) -> CargoAllowResult<String> {
+pub(crate) fn parse_single_oid(stdout: &[u8], operation: &str) -> CargoAllowResult<String> {
     let text = std::str::from_utf8(stdout).map_err(|source| {
         git_error(
             CargoAllowErrorKind::Inventory,
@@ -276,7 +298,7 @@ fn parse_single_oid(stdout: &[u8], operation: &str) -> CargoAllowResult<String> 
     Ok(oid.to_ascii_lowercase())
 }
 
-fn is_full_oid(value: &str) -> bool {
+pub(crate) fn is_full_oid(value: &str) -> bool {
     matches!(value.len(), 40 | 64) && value.bytes().all(|byte| byte.is_ascii_hexdigit())
 }
 
@@ -288,7 +310,7 @@ fn is_full_oid(value: &str) -> bool {
 /// `\` separators to Git `/`. Literal backslash *filename* bytes that exist
 /// only inside a Git tree are preserved when they arrive from Git output, not
 /// from this conversion.
-fn source_tree_path_bytes(path: &Path) -> CargoAllowResult<Vec<u8>> {
+pub(crate) fn source_tree_path_bytes(path: &Path) -> CargoAllowResult<Vec<u8>> {
     reject_host_non_relative_path(path)?;
     #[cfg(unix)]
     {
@@ -519,7 +541,7 @@ fn parse_git_ls_tree_file_entries_z_checked(stdout: &[u8]) -> CargoAllowResult<V
     Ok(files)
 }
 
-fn git_command(root: &Path) -> Command {
+pub(crate) fn git_command(root: &Path) -> Command {
     let mut cmd = Command::new("git");
     cmd.arg("--no-optional-locks").arg("-C").arg(root);
     cmd
@@ -534,7 +556,7 @@ fn literal_pathspec_git_command(root: &Path) -> Command {
     cmd
 }
 
-fn run_git(mut command: Command, operation: &str) -> CargoAllowResult<Output> {
+pub(crate) fn run_git(mut command: Command, operation: &str) -> CargoAllowResult<Output> {
     command.output().map_err(|source| {
         git_error(
             CargoAllowErrorKind::Inventory,
@@ -545,7 +567,7 @@ fn run_git(mut command: Command, operation: &str) -> CargoAllowResult<Output> {
     })
 }
 
-fn git_status_error(operation: &str, output: &Output) -> CargoAllowError {
+pub(crate) fn git_status_error(operation: &str, output: &Output) -> CargoAllowError {
     let stderr = bounded_stderr(&output.stderr);
     let status = output
         .status
@@ -572,7 +594,11 @@ fn bounded_stderr(stderr: &[u8]) -> String {
         .collect()
 }
 
-fn git_error(kind: CargoAllowErrorKind, code: &str, message: impl Into<String>) -> CargoAllowError {
+pub(crate) fn git_error(
+    kind: CargoAllowErrorKind,
+    code: &str,
+    message: impl Into<String>,
+) -> CargoAllowError {
     let message = message.into();
     CargoAllowError::with_kind(kind, message.clone()).with_diagnostic(CargoAllowDiagnostic::error(
         code,

@@ -27,6 +27,7 @@ mod policy_selector;
 mod policy_workspace;
 mod revision;
 mod revision_git;
+mod revision_identity;
 
 pub use finding::{
     FindingPostureChange, FindingPostureKind, finding_identity_key, finding_posture_changes,
@@ -49,6 +50,12 @@ pub use policy_change::{
 pub use policy_scope::selector_precision_score;
 pub use revision::findings_at_revision;
 pub use revision_git::{changed_files, git_tracked_files_at_revision, read_file_at_revision};
+pub use revision_identity::{
+    REPOSITORY_SNAPSHOT_SCHEMA, RepositoryDirtyState, RepositoryObjectFormat,
+    RepositorySnapshotIdentity, RepositorySnapshotKind, RepositorySnapshotRequest,
+    ResolvedRevisionIdentity, SelectedPathIdentity, repository_object_format, repository_snapshot,
+    resolve_dirty_state, resolve_revision_identity,
+};
 
 #[cfg(test)]
 mod tests;
