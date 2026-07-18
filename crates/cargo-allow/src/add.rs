@@ -41,6 +41,11 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     let cwd = std::env::current_dir()
         .map_err(|error| CargoAllowError::new(format!("failed to read cwd: {error}")))?;
     let mutation_root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
+    // Clap enforces this mutual exclusion at parse time via
+    // `conflicts_with = "write"` on `--update`. This guard is the direct-call
+    // safety net for callers that construct `AddArgs` without going through the
+    // parser (e.g. tests), so the update branch below can never run alongside a
+    // `--write` target.
     if args.update && args.write.is_some() {
         return Err(CargoAllowError::with_kind(
             CargoAllowErrorKind::Usage,
@@ -76,15 +81,14 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     let context = AddContext {
         inventory: source_context.inventory(),
         repo_root: Some(root.display().to_string()),
-        config_source: crate::policy_config::config_path(&root, args.config.as_deref())
+        config_source: config_path(&root, args.config.as_deref())
             .map(|path| path.display().to_string()),
     };
     // For the mutation receipt's `result` field: --update writes the live
     // ledger, so report the discovered config path; --write reports its target;
     // otherwise stdout (None).
     let policy_output: Option<String> = if args.update {
-        crate::policy_config::config_path(&root, args.config.as_deref())
-            .map(|path| path.display().to_string())
+        config_path(&root, args.config.as_deref()).map(|path| path.display().to_string())
     } else {
         args.write.as_deref().map(|path| path.display().to_string())
     };
