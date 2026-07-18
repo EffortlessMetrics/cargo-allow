@@ -17,6 +17,21 @@ use crate::{
 use compat_paths::compat_policy_path;
 use compat_scan::{scan_legacy_rust_compat, scan_non_rust_compat};
 
+/// Whether a compat surface ignores `--include-untracked`.
+///
+/// The rust compat kinds, the dependency-surface kind, and the default
+/// non-rust surface all scan the file inventory, so the flag is meaningful
+/// there. The executable/workflow/generated surfaces read a fixed git or
+/// `.gitattributes` source, and the process/network surfaces derive findings
+/// from policy config, so the flag has no effect for them (#1948).
+fn compat_kind_ignores_include_untracked(compat_kind: &str, parsed_filter: &KindFilter) -> bool {
+    is_executable_compat_kind(compat_kind)
+        || is_workflow_compat_kind(compat_kind)
+        || is_process_compat_kind(compat_kind)
+        || is_network_compat_kind(compat_kind)
+        || parsed_filter.kind == FindingKind::GeneratedCode
+}
+
 pub(crate) fn load_compat_world(
     explicit_root: Option<&Path>,
     config: Option<&Path>,
@@ -31,6 +46,15 @@ pub(crate) fn load_compat_world(
             kind: FindingKind::NonRustFile,
             family: FamilyFilter::Any,
         });
+    // The executable/workflow/generated compat surfaces read a fixed git or
+    // .gitattributes source, and the process/network surfaces derive findings
+    // from policy config, so `--include-untracked` would be silently ignored.
+    // Fail closed rather than accept a flag that does nothing (#1948).
+    if include_untracked && compat_kind_ignores_include_untracked(compat_kind, &parsed_filter) {
+        return Err(CargoAllowError::new(format!(
+            "--include-untracked has no effect for --compat --kind {compat_kind}: this compat surface scans a fixed source (git-tracked files, .gitattributes, or policy config), so untracked files are never inventoried; re-run without --include-untracked"
+        )));
+    }
     let cwd =
         env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
     let root = resolve_source_tree_root(explicit_root, cwd)?;
@@ -146,4 +170,59 @@ pub(crate) fn load_compat_world(
     let policy_path = compat_policy_path(config, &root, "policy/non-rust-allowlist.toml");
     let cfg = allow_policy_legacy::load_non_rust_compat_config(policy_path, &findings)?;
     Ok((root, cfg, findings, inventory_facts))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn load_compat_world_rejects_no_effect_include_untracked() {
+        // #1948: compat surfaces that never inventory untracked files must
+        // reject --include-untracked instead of silently ignoring it. The
+        // rejection happens before any filesystem access, so no fixture repo is
+        // needed.
+        for kind in ["executable", "workflow", "process", "network", "generated"] {
+            let err = load_compat_world(None, None, Some(kind), true)
+                .expect_err("compat kind should reject a no-op --include-untracked");
+            assert!(
+                err.to_string()
+                    .contains("--include-untracked has no effect"),
+                "{kind}: unexpected error: {err}"
+            );
+        }
+    }
+
+    #[test]
+    fn compat_kind_ignores_include_untracked_discriminates_surfaces() {
+        let non_rust = KindFilter {
+            kind: FindingKind::NonRustFile,
+            family: FamilyFilter::Any,
+        };
+        let generated = KindFilter {
+            kind: FindingKind::GeneratedCode,
+            family: FamilyFilter::Any,
+        };
+        // Fixed-source / config-only surfaces ignore the flag.
+        assert!(compat_kind_ignores_include_untracked(
+            "executable",
+            &non_rust
+        ));
+        assert!(compat_kind_ignores_include_untracked("workflow", &non_rust));
+        assert!(compat_kind_ignores_include_untracked("process", &non_rust));
+        assert!(compat_kind_ignores_include_untracked("network", &non_rust));
+        assert!(compat_kind_ignores_include_untracked(
+            "generated",
+            &generated
+        ));
+        // Inventory-scanning surfaces honor it.
+        assert!(!compat_kind_ignores_include_untracked(
+            "non-rust", &non_rust
+        ));
+        assert!(!compat_kind_ignores_include_untracked("unsafe", &non_rust));
+        assert!(!compat_kind_ignores_include_untracked(
+            "dependency-surface",
+            &non_rust
+        ));
+    }
 }
