@@ -20,7 +20,7 @@ cargo install cargo-allow --locked
 For a pinned published release with the `spec-system` preview:
 
 ```bash
-cargo install cargo-allow --version 0.1.10 --locked
+cargo install cargo-allow --version 0.1.11 --locked
 ```
 
 Do not pin a release-candidate version in another repository before it is
