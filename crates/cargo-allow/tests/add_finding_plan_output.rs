@@ -46,6 +46,7 @@ fn why_writes_a_new_only_bound_plan_without_overwriting_it() {
         .args(["--kind", "panic", "--path", "src/lib.rs", "--line", "1"])
         .args(["--format", "json", "--output"])
         .arg(&why_path)
+        .arg("--include-untracked")
         .arg("--plan")
         .arg(&plan_path)
         .output()
@@ -70,6 +71,18 @@ fn why_writes_a_new_only_bound_plan_without_overwriting_it() {
             .and_then(serde_json::Value::as_str),
         Some("add")
     );
+    let proof_args = plan
+        .pointer("/proof_plans/0/args")
+        .and_then(serde_json::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("add proof args should be an array"));
+    for required in ["--root", "--config", "--include-untracked"] {
+        assert!(
+            proof_args
+                .iter()
+                .any(|argument| argument.as_str() == Some(required)),
+            "add proof argv should preserve {required}"
+        );
+    }
     for pointer in [
         "/repository/identity",
         "/inventory_basis_identity",

@@ -68,7 +68,7 @@ pub(super) fn render_add_finding_plan(input: AddFindingPlanInput<'_>) -> CargoAl
         tool_version: env!("CARGO_PKG_VERSION").to_string(),
         repository: AddFindingPlanRepository {
             identity: repository_identity,
-            root: root_text,
+            root: root_text.clone(),
         },
         inventory,
         inventory_basis_identity,
@@ -100,16 +100,45 @@ pub(super) fn render_add_finding_plan(input: AddFindingPlanInput<'_>) -> CargoAl
             })
             .collect(),
         required_fields: required_human_fields(cfg, finding),
-        proof_plans: why_next_steps(finding, outcome, candidates)
-            .proof_plans
-            .into_iter()
-            .map(|proof| AddFindingPlanProofPlan {
-                program: proof.program,
-                args: proof.args,
-            })
-            .collect(),
+        proof_plans: scoped_proof_plans(
+            finding,
+            outcome,
+            candidates,
+            &root_text,
+            &normalize_path(&relative_policy),
+            include_untracked,
+        ),
     };
     Ok(allow_report::render_add_finding_plan_json(&plan))
+}
+
+fn scoped_proof_plans(
+    finding: &Finding,
+    outcome: &MatchOutcome,
+    candidates: &[WhyCandidate<'_>],
+    root: &str,
+    policy_path: &str,
+    include_untracked: bool,
+) -> Vec<AddFindingPlanProofPlan> {
+    why_next_steps(finding, outcome, candidates)
+        .proof_plans
+        .into_iter()
+        .map(|mut proof| {
+            proof.args.extend([
+                "--root".to_string(),
+                root.to_string(),
+                "--config".to_string(),
+                policy_path.to_string(),
+            ]);
+            if include_untracked {
+                proof.args.push("--include-untracked".to_string());
+            }
+            AddFindingPlanProofPlan {
+                program: proof.program,
+                args: proof.args,
+            }
+        })
+        .collect()
 }
 
 fn required_human_fields(cfg: &AllowConfig, finding: &Finding) -> Vec<String> {
