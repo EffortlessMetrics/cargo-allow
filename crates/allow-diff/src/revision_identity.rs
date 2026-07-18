@@ -79,6 +79,10 @@ impl RepositoryObjectFormat {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RepositoryDirtyState {
     Clean,
+    /// The worktree/index was not probed for this snapshot. Distinct from
+    /// [`RepositoryDirtyState::Clean`] so an unprobed snapshot is never mistaken
+    /// for a verified-clean one.
+    NotProbed,
     TrackedModified,
     StagedChanges,
     UntrackedPresent,
@@ -96,6 +100,7 @@ impl RepositoryDirtyState {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Clean => "clean",
+            Self::NotProbed => "not_probed",
             Self::TrackedModified => "tracked_modified",
             Self::StagedChanges => "staged_changes",
             Self::UntrackedPresent => "untracked_present",
@@ -184,7 +189,10 @@ impl RepositorySnapshotRequest {
 }
 
 /// One exact repository snapshot identity. Same commit/tree and selected-source
-/// closure yield the same semantic identity across checkout roots.
+/// closure yield the same semantic identity across checkout roots with
+/// equivalent history availability; a shallow clone reports its
+/// `root_identity` as an explicit unavailable sentinel and flags it in
+/// `limitations` rather than emitting a fetch-depth-dependent hash.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RepositorySnapshotIdentity {
     pub schema: &'static str,
@@ -346,12 +354,13 @@ pub fn repository_snapshot(
         }
     };
 
-    let root_identity = repository_root_identity(root, &head.commit)?;
+    let shallow = repository_is_shallow(root);
+    let root_identity = repository_root_identity(root, &head.commit, shallow)?;
     let object_format = repository_object_format(root);
     let dirty_state = if request.probe_dirty_state {
         resolve_dirty_state(root)
     } else {
-        RepositoryDirtyState::Clean
+        RepositoryDirtyState::NotProbed
     };
 
     let mut selected_paths = Vec::new();
@@ -371,8 +380,10 @@ pub fn repository_snapshot(
     if object_format == RepositoryObjectFormat::Unknown {
         limitations.push("object_format_unknown".to_string());
     }
-    if !request.probe_dirty_state {
-        limitations.push("dirty_state_not_probed".to_string());
+    if shallow {
+        // A shallow clone cannot resolve true root commits, so the repository
+        // root identity is not comparable across differently-fetched checkouts.
+        limitations.push("shallow_history_root_identity_unavailable".to_string());
     }
     limitations.push("submodule_nested_state_not_interpreted".to_string());
 
@@ -413,9 +424,15 @@ fn resolve_merge_base(
     cmd.arg("merge-base").arg(base_commit).arg(head_commit);
     let output = run_git(cmd, "git merge-base")?;
     if !output.status.success() {
-        // Unrelated histories: `git merge-base` exits non-zero with no output.
-        // That is a valid, distinct answer (no common ancestor), not a failure.
-        if output.stdout.iter().all(u8::is_ascii_whitespace) && output.stderr.is_empty() {
+        // `git merge-base` documents exit code 1 for "found no merge base" —
+        // unrelated histories, a valid distinct answer. Require that exact code
+        // (plus empty output) so a signal kill (`code() == None`, e.g. OOM or a
+        // sandbox kill) or any other failure surfaces as a hard error instead of
+        // being silently reinterpreted as "no common ancestor".
+        let no_merge_base = output.status.code() == Some(1)
+            && output.stdout.iter().all(u8::is_ascii_whitespace)
+            && output.stderr.is_empty();
+        if no_merge_base {
             return Ok(None);
         }
         return Err(git_status_error("git merge-base", &output));
@@ -423,9 +440,39 @@ fn resolve_merge_base(
     Ok(Some(parse_single_oid(&output.stdout, "git merge-base")?))
 }
 
+/// Sentinel `root_identity` for a shallow clone whose true root commits are not
+/// available. Deliberately not a `sha256:v1:` value so no consumer mistakes it
+/// for a real, comparable identity.
+const SHALLOW_ROOT_IDENTITY: &str = "unavailable:shallow_history";
+
+/// Report whether the repository is a shallow clone (its history is truncated at
+/// a fetch depth, so `--max-parents=0` would return the shallow boundary rather
+/// than the true root).
+fn repository_is_shallow(root: &Path) -> bool {
+    let mut cmd = git_command(root);
+    cmd.arg("rev-parse").arg("--is-shallow-repository");
+    let Ok(output) = cmd.output() else {
+        return false;
+    };
+    output.status.success() && String::from_utf8_lossy(&output.stdout).trim() == "true"
+}
+
 /// Checkout-independent repository identity from the root-commit object ids
 /// reachable from `head_commit`. Never derived from the absolute checkout path.
-fn repository_root_identity(root: &Path, head_commit: &str) -> CargoAllowResult<String> {
+///
+/// A shallow clone cannot see the true root commits — `--max-parents=0` returns
+/// the shallow boundary, which varies by fetch depth — so a shallow repository
+/// yields an explicit [`SHALLOW_ROOT_IDENTITY`] sentinel rather than a
+/// plausible-looking but checkout-dependent hash. The cross-checkout stability
+/// guarantee therefore holds for clones with equivalent (non-shallow) history.
+fn repository_root_identity(
+    root: &Path,
+    head_commit: &str,
+    shallow: bool,
+) -> CargoAllowResult<String> {
+    if shallow {
+        return Ok(SHALLOW_ROOT_IDENTITY.to_string());
+    }
     let mut cmd = git_command(root);
     cmd.arg("rev-list").arg("--max-parents=0").arg(head_commit);
     let output = run_git(cmd, "git rev-list root commits")?;
@@ -478,8 +525,21 @@ fn push_bound_value(output: &mut Vec<u8>, value: &str) {
     output.extend_from_slice(value.as_bytes());
 }
 
+/// Normalize a caller-selected path to a repository-relative, forward-slash
+/// string. Only Windows separators are rewritten: on Unix a literal `\` is a
+/// legal filename byte, not a separator, so rewriting it there would collapse
+/// two genuinely distinct paths into one identity (matching the platform-aware
+/// handling in [`crate::revision_git`]).
 fn normalize_selected_path(path: &Path) -> String {
-    path.to_string_lossy().replace('\\', "/")
+    let text = path.to_string_lossy();
+    #[cfg(windows)]
+    {
+        text.replace('\\', "/")
+    }
+    #[cfg(not(windows))]
+    {
+        text.into_owned()
+    }
 }
 
 #[cfg(test)]

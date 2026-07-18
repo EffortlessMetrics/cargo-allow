@@ -99,7 +99,9 @@ fn repository_snapshot_identity_binds_head_tree_and_selected_closure() {
     assert!(!snapshot.head.tree.is_empty());
     assert!(snapshot.base.is_none());
     assert!(snapshot.merge_base.is_none());
-    assert_eq!(snapshot.dirty_state, RepositoryDirtyState::Clean);
+    // Dirty state is not probed by default, and must not be reported as clean.
+    assert_eq!(snapshot.dirty_state, RepositoryDirtyState::NotProbed);
+    assert!(!snapshot.dirty_state.is_clean());
     assert_eq!(snapshot.selected_paths.len(), 1);
     assert!(snapshot.selected_paths[0].present);
     assert!(snapshot.selected_paths[0].blob_oid.is_some());
@@ -392,14 +394,100 @@ fn repository_snapshot_probe_reflects_dirty_state_when_requested() {
     assert_eq!(probed.dirty_state, RepositoryDirtyState::TrackedModified);
     assert!(!probed.dirty_state.is_clean());
 
-    // Without the probe, dirty state is reported clean and flagged as not probed.
+    // Without the probe, dirty state is `NotProbed` — never a misleading
+    // `Clean` for a tree that was, in fact, dirty on disk.
     let unprobed = repository_snapshot(&root, &RepositorySnapshotRequest::committed_head("HEAD"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("unprobed: {err}")));
-    assert_eq!(unprobed.dirty_state, RepositoryDirtyState::Clean);
+    assert_eq!(unprobed.dirty_state, RepositoryDirtyState::NotProbed);
+    assert!(!unprobed.dirty_state.is_clean());
+}
+
+#[test]
+fn repository_snapshot_identity_shallow_clone_flags_unavailable_root_identity() {
+    let root = init_repo("shallow-src");
+    write(&root, "a.txt", "1\n");
+    commit(&root, "one");
+    write(&root, "b.txt", "2\n");
+    commit(&root, "two");
+    write(&root, "c.txt", "3\n");
+    commit(&root, "three");
+
+    let shallow = temp_root("shallow-clone");
+    let _ = fs::remove_dir_all(&shallow);
+    // `git clone --depth 1 file://...` produces a shallow clone whose true root
+    // commits are absent.
+    let url = format!("file://{}", root.display());
+    let status = Command::new("git")
+        .args(["clone", "-q", "--depth", "1", &url])
+        .arg(&shallow)
+        .status()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("shallow clone: {err}")));
+    assert!(status.success(), "shallow clone should succeed");
+
+    let request = RepositorySnapshotRequest::committed_head("HEAD");
+    let snapshot = repository_snapshot(&shallow, &request)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("shallow snapshot: {err}")));
+    // The identity must not be a plausible-looking sha256 that varies by depth.
+    assert!(!snapshot.root_identity.starts_with("sha256:v1:"));
+    assert_eq!(snapshot.root_identity, "unavailable:shallow_history");
     assert!(
-        unprobed
+        snapshot
             .limitations
             .iter()
-            .any(|note| note == "dirty_state_not_probed")
+            .any(|note| note == "shallow_history_root_identity_unavailable"),
+        "shallow snapshot should flag the unavailable root identity"
+    );
+
+    let _ = fs::remove_dir_all(&shallow);
+}
+
+#[test]
+fn repository_snapshot_identity_unrelated_histories_have_no_merge_base() {
+    let root = init_repo("unrelated");
+    write(&root, "a.txt", "1\n");
+    let first = commit(&root, "first history");
+    // A second, orphaned history shares no ancestor with the first.
+    git(&root, &["checkout", "-q", "--orphan", "other"]);
+    git(&root, &["rm", "-rf", "-q", "."]);
+    write(&root, "b.txt", "2\n");
+    commit(&root, "second history");
+
+    let request = RepositorySnapshotRequest::committed_range(&first, "HEAD");
+    let snapshot = repository_snapshot(&root, &request)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("unrelated snapshot: {err}")));
+    // Unrelated histories: a valid "no common ancestor" answer, not an error.
+    assert!(snapshot.base.is_some());
+    assert_eq!(snapshot.merge_base, None);
+}
+
+#[cfg(unix)]
+#[test]
+fn repository_snapshot_identity_preserves_backslash_filenames_on_unix() {
+    // On Unix a literal backslash is a legal filename byte; two distinct paths
+    // must keep distinct identities rather than collapsing to one.
+    let root = init_repo("backslash-path");
+    write(&root, "a/b", "nested\n");
+    fs::write(root.join("a\\b"), "literal-backslash\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write backslash file: {err}")));
+    commit(&root, "one");
+
+    let request = RepositorySnapshotRequest::committed_head("HEAD")
+        .with_selected_paths([PathBuf::from("a/b"), PathBuf::from("a\\b")]);
+    let snapshot = repository_snapshot(&root, &request)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("snapshot: {err}")));
+    let paths: Vec<&str> = snapshot
+        .selected_paths
+        .iter()
+        .map(|identity| identity.path.as_str())
+        .collect();
+    assert!(paths.contains(&"a/b"), "nested path must be preserved");
+    assert!(
+        paths.contains(&"a\\b"),
+        "literal-backslash filename must be preserved distinctly, got {paths:?}"
+    );
+    // Distinct paths map to distinct blobs.
+    assert_ne!(
+        snapshot.selected_paths[0].blob_oid,
+        snapshot.selected_paths[1].blob_oid
     );
 }
