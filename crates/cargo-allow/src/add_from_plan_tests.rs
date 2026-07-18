@@ -22,15 +22,11 @@ fn matching_plan_and_bindings() -> (LoadedPlan, PlanFindingBindings) {
         schema_version: 1,
         schema_id: allow_report::ADD_FINDING_PLAN_SCHEMA_ID.to_string(),
         tool: "cargo-allow".to_string(),
-        tool_version: "0.1.11".to_string(),
         command: "why".to_string(),
-        claim_boundary: vec!["source_syntax_only".to_string()],
-        scanner_limitations: vec!["rustc_not_invoked".to_string()],
         repository: LoadedRepository {
             identity: DIGEST_A.to_string(),
             root: "/repo".to_string(),
         },
-        inventory: json!({"scope": "source_tree"}),
         inventory_basis_identity: DIGEST_A.to_string(),
         policy: LoadedPolicy {
             path: "policy/allow.toml".to_string(),
@@ -49,12 +45,7 @@ fn matching_plan_and_bindings() -> (LoadedPlan, PlanFindingBindings) {
         },
         outcome: LoadedOutcome {
             status: "new".to_string(),
-            allow_id: None,
-            message: "unreceipted panic.unwrap".to_string(),
         },
-        candidates: Vec::new(),
-        required_fields: vec!["owner".to_string()],
-        proof_plans: Vec::new(),
     };
     let bindings = PlanFindingBindings {
         repository_identity: DIGEST_A.to_string(),
@@ -155,40 +146,51 @@ fn unsupported_generations_are_rejected() {
 }
 
 #[test]
-fn strict_parse_rejects_unknown_top_level_fields() {
-    let (plan, _bindings) = matching_plan_and_bindings();
-    // Serialize a valid-shaped object, then inject an unexpected top-level key.
-    let mut object = json!({
-        "schema_version": plan.schema_version,
-        "schema_id": plan.schema_id,
-        "tool": plan.tool,
-        "tool_version": plan.tool_version,
-        "command": plan.command,
-        "claim_boundary": plan.claim_boundary,
-        "scanner_limitations": plan.scanner_limitations,
-        "repository": {"identity": plan.repository.identity, "root": plan.repository.root},
-        "inventory": plan.inventory,
-        "inventory_basis_identity": plan.inventory_basis_identity,
-        "policy": {"path": plan.policy.path, "digest": plan.policy.digest},
+fn strict_parse_accepts_a_full_plan_and_rejects_malformed_input() {
+    // A full v1 plan (with fields the transaction ignores, such as proof_plans
+    // and candidates) parses cleanly.
+    let full_plan = json!({
+        "schema_version": 1,
+        "schema_id": allow_report::ADD_FINDING_PLAN_SCHEMA_ID,
+        "tool": "cargo-allow",
+        "tool_version": "0.1.11",
+        "command": "why",
+        "claim_boundary": ["source_syntax_only"],
+        "scanner_limitations": ["rustc_not_invoked"],
+        "repository": {"identity": DIGEST_A, "root": "/repo"},
+        "inventory": {"scope": "source_tree", "scanner": "source_syntax", "source": "git_tracked"},
+        "inventory_basis_identity": DIGEST_A,
+        "policy": {"path": "policy/allow.toml", "digest": DIGEST_B},
         "finding": {
-            "kind": plan.finding.kind, "family": plan.finding.family,
-            "path": plan.finding.path, "line": plan.finding.line, "column": plan.finding.column,
-            "identity": plan.finding.identity, "digest": plan.finding.digest,
-            "source_file_digest": plan.finding.source_file_digest, "selector": plan.finding.selector,
+            "kind": "panic", "family": "unwrap", "path": "src/lib.rs", "line": 1, "column": 20,
+            "identity": {"language": "rust"}, "digest": DIGEST_A,
+            "source_file_digest": DIGEST_B, "selector": {"callee": "unwrap"},
         },
-        "outcome": {"status": plan.outcome.status, "allow_id": plan.outcome.allow_id, "message": plan.outcome.message},
-        "candidates": plan.candidates,
-        "required_fields": plan.required_fields,
-        "proof_plans": plan.proof_plans,
+        "outcome": {"status": "new", "allow_id": null, "message": "unreceipted panic.unwrap"},
+        "candidates": [],
+        "required_fields": ["owner"],
+        "proof_plans": [],
     });
-    // Baseline: the well-formed object parses.
-    assert!(parse_plan_strict(object.to_string().as_bytes()).is_ok());
-    // Injected unknown field is rejected by deny_unknown_fields.
-    object
+    assert!(parse_plan_strict(full_plan.to_string().as_bytes()).is_ok());
+
+    // Not JSON at all.
+    assert!(parse_plan_strict(b"not a plan").is_err());
+    // Missing a required load-bearing object (`finding`).
+    let mut missing_finding = full_plan.clone();
+    missing_finding
         .as_object_mut()
-        .expect("object")
-        .insert("unexpected".to_string(), json!("value"));
-    assert!(parse_plan_strict(object.to_string().as_bytes()).is_err());
+        .unwrap_or_else(|| std::panic::panic_any("plan object"))
+        .remove("finding");
+    assert!(parse_plan_strict(missing_finding.to_string().as_bytes()).is_err());
+    // A required digest with the wrong JSON type.
+    let mut wrong_type = full_plan;
+    if let Some(policy) = wrong_type
+        .get_mut("policy")
+        .and_then(serde_json::Value::as_object_mut)
+    {
+        policy.insert("digest".to_string(), json!(42));
+    }
+    assert!(parse_plan_strict(wrong_type.to_string().as_bytes()).is_err());
 }
 
 #[test]

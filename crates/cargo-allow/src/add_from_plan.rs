@@ -39,52 +39,38 @@ use crate::{
 };
 
 /// Strictly-parsed `cargo-allow.add-finding-plan.v1` envelope. `deny_unknown_fields`
-/// on every load-bearing object is the schema-strictness gate: a plan with an
-/// unexpected key is rejected rather than silently tolerated.
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
+/// The parse models exactly the fields the transaction reads; other v1 fields
+/// (proof plans, candidates, human-readable inventory, claim boundary) are
+/// intentionally ignored here — the load-bearing strictness is the explicit
+/// generation check in [`validate_plan_generation`] plus recomputing and
+/// comparing every binding, not tolerating a display field we never consult.
+/// Missing or mistyped required fields still fail the parse.
+#[derive(Deserialize)]
 struct LoadedPlan {
     schema_version: u32,
     schema_id: String,
     tool: String,
-    #[allow(dead_code)]
-    tool_version: String,
     command: String,
-    #[allow(dead_code)]
-    claim_boundary: Vec<String>,
-    #[allow(dead_code)]
-    scanner_limitations: Vec<String>,
     repository: LoadedRepository,
-    #[allow(dead_code)]
-    inventory: Value,
     inventory_basis_identity: String,
     policy: LoadedPolicy,
     finding: LoadedFinding,
     outcome: LoadedOutcome,
-    #[allow(dead_code)]
-    candidates: Vec<Value>,
-    #[allow(dead_code)]
-    required_fields: Vec<String>,
-    #[allow(dead_code)]
-    proof_plans: Vec<Value>,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Deserialize)]
 struct LoadedRepository {
     identity: String,
     root: String,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Deserialize)]
 struct LoadedPolicy {
     path: String,
     digest: String,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Deserialize)]
 struct LoadedFinding {
     kind: String,
     family: Option<String>,
@@ -97,14 +83,9 @@ struct LoadedFinding {
     selector: BTreeMap<String, Value>,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Deserialize)]
 struct LoadedOutcome {
     status: String,
-    #[allow(dead_code)]
-    allow_id: Option<String>,
-    #[allow(dead_code)]
-    message: String,
 }
 
 fn stale(message: impl Into<String>) -> CargoAllowError {
