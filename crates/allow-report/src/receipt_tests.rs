@@ -368,6 +368,39 @@ fn receipt_can_include_evidence_repair_queues_and_source_inventory() {
     assert!(json.contains("\"source_inventory\""));
 }
 
+#[test]
+fn receipt_records_blocking_divergence_distinct_from_advisory_review_items() {
+    // #1945: a blocking drain_expired divergence fails the run but was invisible
+    // in the receipt because only the advisory mirror count was recorded. The
+    // blocking count must now surface in the counts block, and it must not be
+    // laundered into the advisory review-item tally.
+    let mut blocking = ReportContext::source_syntax("git_tracked", None, None, None);
+    blocking.blocking_divergence_entries = Some(2);
+    let blocking_json = render_receipt_with_context("check", &[], true, blocking);
+    assert!(
+        blocking_json.contains("\"blocking_divergence\": 2"),
+        "receipt counts must record the blocking divergence: {blocking_json}"
+    );
+    assert!(
+        blocking_json.contains("\"review_items\": 0"),
+        "a blocking divergence must not inflate advisory review items: {blocking_json}"
+    );
+
+    // By contrast, an advisory mirror divergence does count as a review item and
+    // is not reported as a blocking divergence.
+    let mut advisory = ReportContext::source_syntax("git_tracked", None, None, None);
+    advisory.mirror_divergence_entries = Some(2);
+    let advisory_json = render_receipt_with_context("check", &[], false, advisory);
+    assert!(
+        advisory_json.contains("\"review_items\": 2"),
+        "an advisory mirror divergence counts as a review item: {advisory_json}"
+    );
+    assert!(
+        !advisory_json.contains("\"blocking_divergence\""),
+        "an advisory-only divergence emits no blocking count: {advisory_json}"
+    );
+}
+
 fn outcome(status: MatchStatus, finding_index: Option<usize>) -> MatchOutcome {
     MatchOutcome {
         status,
