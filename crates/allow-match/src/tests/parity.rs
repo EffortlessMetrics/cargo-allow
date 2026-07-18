@@ -301,3 +301,87 @@ fn expired_unique_strongest_does_not_consume_live_occurrence_headroom() {
         "expired unique-strongest candidate must not trip occurrence_limit exceeded"
     );
 }
+
+#[test]
+fn evidence_missing_unique_strongest_does_not_consume_live_occurrence_headroom() {
+    // Same headroom-parity property as the expired case, for EvidenceMissing.
+    // EvidenceMissing shares the non-live `status_consumes_entry` branch today,
+    // but a status that ever leaked into live consumption only through the
+    // many-candidate path is exactly the #2336 failure mode, so pin it.
+    let mut entry = strong_entry();
+    entry.evidence.clear();
+    entry.occurrence_limit = Some(1);
+    let finding = strong_finding();
+    let view = assert_parity(
+        "evidence_missing_limited_two_findings",
+        entry,
+        &[finding.clone(), finding],
+        |cfg| cfg.requirements.unsafe_evidence_required = true,
+        CheckMode::NoNew,
+    );
+    assert_eq!(
+        view.winner_statuses,
+        vec![MatchStatus::EvidenceMissing, MatchStatus::EvidenceMissing]
+    );
+    assert_eq!(view.projection_status, Some(MatchStatus::Stale));
+    assert!(!view.winner_statuses.contains(&MatchStatus::New));
+}
+
+#[test]
+fn invalid_selector_unique_strongest_does_not_consume_live_occurrence_headroom() {
+    // Same headroom-parity property for InvalidSelector (lint suppression
+    // missing the required policy reference), through the unique-strongest path.
+    let mut entry = lint_entry(STRONG_ID);
+    entry.selector.normalized_snippet_hash = Some("fnv1a64:lint".to_string());
+    entry.occurrence_limit = Some(1);
+    let mut finding = lint_finding("expect_attribute");
+    finding.identity.normalized_snippet_hash = Some("fnv1a64:lint".to_string());
+    let view = assert_parity(
+        "invalid_selector_limited_two_findings",
+        entry,
+        &[finding.clone(), finding],
+        |cfg| cfg.requirements.lint_policy_id_required = true,
+        CheckMode::NoNew,
+    );
+    assert_eq!(
+        view.winner_statuses,
+        vec![MatchStatus::InvalidSelector, MatchStatus::InvalidSelector]
+    );
+    assert_eq!(view.projection_status, Some(MatchStatus::Stale));
+    assert!(!view.winner_statuses.contains(&MatchStatus::New));
+}
+
+#[test]
+fn anchored_drift_suppression_has_parity() {
+    // Two occurrences of the strong entry: one drifts from `last_seen`, one
+    // sits exactly on it (anchoring). The anchor must retroactively promote the
+    // drifting occurrence from LocationDrift back to Matched — and that
+    // bookkeeping (drift_outcomes / anchored_entries) must run identically
+    // whether the entry is the only candidate or the unique strongest among
+    // many. The pre-#2336 many-branch never populated this bookkeeping at all,
+    // so this fixture locks the previously-divergent path into parity.
+    let mut entry = strong_entry();
+    entry.last_seen = Some(LastSeen {
+        line: 50,
+        column: 12,
+    });
+
+    let mut drift = strong_finding();
+    drift.span = Some(Span { line: 9, column: 3 });
+    let anchor = strong_finding(); // span defaults to 50:12, exactly last_seen
+
+    let view = assert_parity(
+        "anchored_drift_suppression",
+        entry,
+        &[drift, anchor],
+        |_| {},
+        CheckMode::NoNew,
+    );
+    // The anchor promotes the drifting occurrence back to Matched, so both
+    // occurrences read Matched and the entry stays live (no stale projection).
+    assert_eq!(
+        view.winner_statuses,
+        vec![MatchStatus::Matched, MatchStatus::Matched]
+    );
+    assert_eq!(view.projection_status, None);
+}
