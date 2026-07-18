@@ -688,6 +688,20 @@ fn graph_snapshot_id(
                 requirement_id.as_str()
             );
         }
+        for seam in &node.owned_seams {
+            let _ = writeln!(canonical, "slice_owned_seam|{}|{}", node.id.as_str(), seam);
+        }
+        for seam in &node.shared_seams {
+            let _ = writeln!(canonical, "slice_shared_seam|{}|{}", node.id.as_str(), seam);
+        }
+        for seam in &node.forbidden_seams {
+            let _ = writeln!(
+                canonical,
+                "slice_forbidden_seam|{}|{}",
+                node.id.as_str(),
+                seam
+            );
+        }
     }
     for node in seams.values() {
         let _ = writeln!(
@@ -927,6 +941,43 @@ state = "unchanged"
         let evidence_id = EvidenceClaimId("evidence:forbidden-runtime-promotion".into());
         assert_eq!(first.subjects_for_evidence(&evidence_id).len(), 1);
         assert_eq!(first.related_subjects_for_evidence(&evidence_id).len(), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn snapshot_id_changes_when_slice_seam_sets_change() -> Result<(), String> {
+        let baseline = compile_spec_graph(input()?);
+
+        let mut owned = input()?;
+        owned
+            .implementation_slices
+            .first_mut()
+            .ok_or_else(|| "expected implementation slice".to_string())?
+            .owned_seams
+            .push("seam:additional-owned".into());
+        assert_ne!(baseline.snapshot_id, compile_spec_graph(owned).snapshot_id);
+
+        let mut shared = input()?;
+        shared
+            .implementation_slices
+            .first_mut()
+            .ok_or_else(|| "expected implementation slice".to_string())?
+            .shared_seams
+            .push("seam:additional-shared".into());
+        assert_ne!(baseline.snapshot_id, compile_spec_graph(shared).snapshot_id);
+
+        let mut forbidden = input()?;
+        forbidden
+            .implementation_slices
+            .first_mut()
+            .ok_or_else(|| "expected implementation slice".to_string())?
+            .forbidden_seams
+            .push("seam:additional-forbidden".into());
+        assert_ne!(
+            baseline.snapshot_id,
+            compile_spec_graph(forbidden).snapshot_id
+        );
+
         Ok(())
     }
 
