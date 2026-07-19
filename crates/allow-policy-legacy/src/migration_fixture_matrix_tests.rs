@@ -623,6 +623,15 @@ fn variant_migration_lane_cases() -> Vec<MigrationLaneCase> {
     let Some(unsafe_lane) = variant_lane_descriptor(CompatKind::Unsafe) else {
         return vec![];
     };
+    let Some(generated_lane) = variant_lane_descriptor(CompatKind::Generated) else {
+        return vec![];
+    };
+    let Some(executable_lane) = variant_lane_descriptor(CompatKind::Executable) else {
+        return vec![];
+    };
+    let Some(workflow_lane) = variant_lane_descriptor(CompatKind::Workflow) else {
+        return vec![];
+    };
 
     vec![
         MigrationLaneCase {
@@ -678,6 +687,62 @@ fn variant_migration_lane_cases() -> Vec<MigrationLaneCase> {
             expected_expires: None,
             expect_baseline_debt_markers: false,
             compat_loader: Some(CompatLoader::Unsafe),
+        },
+        // Edge-case fixtures (#2522): wire generated-drift, executable-drift,
+        // and workflow-edge-cases into the matrix so they are actually tested.
+        MigrationLaneCase {
+            lane: "generated drift",
+            fixture_file: "generated-drift.toml",
+            legacy_filename: generated_lane.legacy_filename,
+            entry_id: "fixture-generated-drift",
+            family: Some("generated_code"),
+            expected_owner: "docs",
+            expected_reason: "Generated API docs fixture with .gitattributes drift.",
+            expected_classification: Some("generated_code"),
+            expected_evidence: &["doc:docs/generated/README.md"],
+            expected_links: &["legacy-policy:fixture-generated-drift"],
+            occurrence_limit: OccurrenceLimitExpect::None,
+            expected_created: Some("2026-05-10"),
+            expected_review_after: Some("2026-05-10"),
+            expected_expires: Some("never"),
+            expect_baseline_debt_markers: false,
+            compat_loader: None,
+        },
+        MigrationLaneCase {
+            lane: "executable drift",
+            fixture_file: "executable-drift.toml",
+            legacy_filename: executable_lane.legacy_filename,
+            entry_id: "fixture-executable-drift",
+            family: Some("executable_file"),
+            expected_owner: "ci",
+            expected_reason: "Executable lint script with git tree-mode drift.",
+            expected_classification: Some("executable_file"),
+            expected_evidence: &["doc:docs/ci.md"],
+            expected_links: &["legacy-policy:fixture-executable-drift"],
+            occurrence_limit: OccurrenceLimitExpect::None,
+            expected_created: Some("2026-05-12"),
+            expected_review_after: Some("2026-11-12"),
+            expected_expires: Some("never"),
+            expect_baseline_debt_markers: false,
+            compat_loader: None,
+        },
+        MigrationLaneCase {
+            lane: "workflow edge cases",
+            fixture_file: "workflow-edge-cases.toml",
+            legacy_filename: workflow_lane.legacy_filename,
+            entry_id: "workflow-file-github-workflows-reusable-build-yml-4dba627ef8a35934",
+            family: None,
+            expected_owner: "ci/reusable",
+            expected_reason: "Reusable workflow call fixture with workflow_call trigger.",
+            expected_classification: Some("github_workflow"),
+            expected_evidence: &["doc:docs/ci.md"],
+            expected_links: &[],
+            occurrence_limit: OccurrenceLimitExpect::None,
+            expected_created: Some("2026-05-14"),
+            expected_review_after: Some("2026-11-14"),
+            expected_expires: Some("never"),
+            expect_baseline_debt_markers: false,
+            compat_loader: None,
         },
     ]
 }
