@@ -47,39 +47,16 @@ fn looks_like_self_hosted_id(id: &str) -> bool {
 }
 
 fn contains_graph_id(compilation: &SelfHostedGraphCompilation, id: &str) -> bool {
-    compilation
-        .graph
-        .requirements
-        .keys()
-        .any(|value| value.as_str() == id)
-        || compilation
-            .graph
-            .slices
-            .keys()
-            .any(|value| value.as_str() == id)
-        || compilation
-            .graph
-            .seams
-            .keys()
-            .any(|value| value.as_str() == id)
-        || compilation
-            .graph
-            .evidence_claims
-            .keys()
-            .any(|value| value.as_str() == id)
-        || compilation
-            .graph
-            .subjects
-            .keys()
-            .any(|value| value.as_str() == id)
+    graph_id_kind(compilation, id).is_some()
 }
 
 fn graph_view(compilation: &SelfHostedGraphCompilation, id: &str) -> CargoAllowResult<Value> {
     let kind = graph_id_kind(compilation, id)
         .ok_or_else(|| CargoAllowError::new(format!("no self-hosted graph object `{id}`")))?;
     let related = related_graph_nodes(compilation, id, kind);
-    let result_class = result_class(compilation);
-    let next_actions = next_actions(&compilation.diagnostics, &compilation.graph.diagnostics);
+    let (diagnostics, graph_diagnostics) = scoped_diagnostics(compilation, id, &related);
+    let result_class = result_class(&diagnostics, &graph_diagnostics);
+    let next_actions = next_actions(&diagnostics, &graph_diagnostics);
     Ok(json!({
         "schema_version": 1,
         "schema_id": SELF_HOSTED_VIEW_SCHEMA_ID,
@@ -95,7 +72,7 @@ fn graph_view(compilation: &SelfHostedGraphCompilation, id: &str) -> CargoAllowR
             "graph_snapshot_id": compilation.graph.snapshot_id.as_str(),
         },
         "relationships": related,
-        "findings": findings(&compilation.diagnostics, &compilation.graph.diagnostics),
+        "findings": findings(&diagnostics, &graph_diagnostics),
         "next_actions": next_actions,
         "claim_boundary": [
             "This view proves current structural linkage from retained source files.",
@@ -250,6 +227,7 @@ fn related_graph_nodes(compilation: &SelfHostedGraphCompilation, id: &str, kind:
                 "owned_seams": node.owned_seams,
                 "shared_seams": node.shared_seams,
                 "forbidden_seams": node.forbidden_seams,
+                "source": &compilation.slice_source,
             })).collect::<Vec<_>>(),
         "seams": graph.seams.iter()
             .filter(|(key, _)| seam_ids.contains(key.as_str()))
@@ -298,13 +276,53 @@ fn find_slice_id(
         .unwrap_or_else(|| allow_policy::spec_system::ImplementationSliceId(id.to_string()))
 }
 
-fn result_class(compilation: &SelfHostedGraphCompilation) -> &'static str {
-    if !compilation.graph.diagnostics.is_empty() {
-        "FindingsBlocking"
-    } else if compilation.diagnostics.is_empty() {
-        "Current"
-    } else if compilation
+fn related_ids(related: &Value) -> BTreeSet<String> {
+    let mut ids = BTreeSet::new();
+    for key in ["requirements", "slices", "seams", "evidence", "subjects"] {
+        if let Some(rows) = related.get(key).and_then(Value::as_array) {
+            ids.extend(
+                rows.iter()
+                    .filter_map(|row| row.get("id").and_then(Value::as_str).map(str::to_string)),
+            );
+        }
+    }
+    ids
+}
+
+fn scoped_diagnostics(
+    compilation: &SelfHostedGraphCompilation,
+    id: &str,
+    related: &Value,
+) -> (Vec<SelfHostedGraphDiagnostic>, Vec<GraphDiagnostic>) {
+    let mut ids = related_ids(related);
+    ids.insert(id.to_string());
+    let diagnostics = compilation
         .diagnostics
+        .iter()
+        .filter(|diagnostic| {
+            diagnostic.subject == "rust-inventory" || ids.contains(&diagnostic.subject)
+        })
+        .cloned()
+        .collect();
+    let graph_diagnostics = compilation
+        .graph
+        .diagnostics
+        .iter()
+        .filter(|diagnostic| ids.contains(&diagnostic.subject))
+        .cloned()
+        .collect();
+    (diagnostics, graph_diagnostics)
+}
+
+fn result_class(
+    diagnostics: &[SelfHostedGraphDiagnostic],
+    graph_diagnostics: &[GraphDiagnostic],
+) -> &'static str {
+    if !graph_diagnostics.is_empty() {
+        "FindingsBlocking"
+    } else if diagnostics.is_empty() {
+        "Current"
+    } else if diagnostics
         .iter()
         .all(|diagnostic| diagnostic.code == "spec_graph_rust_inventory_partial")
     {
@@ -390,17 +408,21 @@ fn render_human(id: &str, value: &Value) -> String {
     let source_basis = value.get("source_basis");
     let mut text = String::new();
     text.push_str(&format!(
-        "# cargo-allow explain {id} --profile spec-system\n\n"
+        "# cargo-allow explain {} --profile spec-system\n\n",
+        terminal_safe(id)
     ));
-    text.push_str(&format!("**Result:** `{result_class}`\n\n"));
+    text.push_str(&format!(
+        "**Result:** `{}`\n\n",
+        terminal_safe(result_class)
+    ));
     if let Some(source_basis) = source_basis {
         text.push_str("## Source basis\n\n");
         text.push_str(&format!(
             "- Graph snapshot: `{}`\n- File inventory: `{}` files, `{}`\n- Rust inventory: `{}` with `{}` diagnostic(s)\n\n",
-            value_str(source_basis, "graph_snapshot_id"),
+            terminal_safe(value_str(source_basis, "graph_snapshot_id")),
             value_u64(source_basis, "file_count"),
-            value_str(source_basis, "file_inventory_completeness"),
-            value_str(source_basis, "rust_inventory_status"),
+            terminal_safe(value_str(source_basis, "file_inventory_completeness")),
+            terminal_safe(value_str(source_basis, "rust_inventory_status")),
             value_u64(source_basis, "rust_inventory_diagnostic_count"),
         ));
     }
@@ -417,9 +439,9 @@ fn render_human(id: &str, value: &Value) -> String {
         for finding in findings {
             text.push_str(&format!(
                 "- `{}` (`{}`): {}\n",
-                value_str(&finding, "code"),
-                value_str(&finding, "subject"),
-                value_str(&finding, "message"),
+                terminal_safe(value_str(&finding, "code")),
+                terminal_safe(value_str(&finding, "subject")),
+                terminal_safe(value_str(&finding, "message")),
             ));
         }
         text.push('\n');
@@ -431,7 +453,10 @@ fn render_human(id: &str, value: &Value) -> String {
         .cloned()
         .unwrap_or_default();
     for action in actions {
-        text.push_str(&format!("- {}\n", action.as_str().unwrap_or("")));
+        text.push_str(&format!(
+            "- {}\n",
+            terminal_safe(action.as_str().unwrap_or(""))
+        ));
     }
     text.push('\n');
     text.push_str("## Not proven here\n\n");
@@ -474,9 +499,14 @@ fn render_relationships(text: &mut String, relationships: Option<&Value>) {
                 .or_else(|| row.get("implementation_claim_status"))
                 .or_else(|| row.get("purpose"))
                 .or_else(|| row.get("role"))
-                .map(|value| value.to_string())
-                .unwrap_or_else(|| "".to_string());
-            text.push_str(&format!("- `{id}` `{detail}` ({source}:{line})\n"));
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            text.push_str(&format!(
+                "- `{}` `{}` ({}:{line})\n",
+                terminal_safe(id),
+                terminal_safe(detail),
+                terminal_safe(source),
+            ));
         }
         text.push('\n');
     }
@@ -488,6 +518,19 @@ fn value_str<'a>(value: &'a Value, key: &str) -> &'a str {
 
 fn value_u64(value: &Value, key: &str) -> u64 {
     value.get(key).and_then(Value::as_u64).unwrap_or(0)
+}
+
+fn terminal_safe(value: &str) -> String {
+    value
+        .chars()
+        .map(|character| {
+            if character.is_control() {
+                ' '
+            } else {
+                character
+            }
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -514,22 +557,49 @@ mod tests {
                 return Err(format!("human graph view omitted {expected}: {human}"));
             }
         }
-        let machine = render_self_hosted_explain(&workspace_root(), id, true)
-            .map_err(|error| error.to_string())?
-            .ok_or_else(|| "expected JSON graph view".to_string())?;
-        let value: Value = serde_json::from_str(&machine).map_err(|error| error.to_string())?;
-        let query = value
-            .get("query")
-            .ok_or_else(|| format!("graph view omitted query: {value}"))?;
-        if value_str(query, "id") != id || value_str(query, "kind") != "slice" {
-            return Err(format!("unexpected graph query: {value}"));
+        let compilation =
+            compile_self_hosted_graph(workspace_root()).map_err(|error| error.to_string())?;
+        for (graph_id, expected_kind) in [
+            (
+                "CARGO-ALLOW-SPEC-0009#spec-only-runtime-promotion",
+                "requirement",
+            ),
+            (
+                "seam:allow-policy:spec-system:runtime-promotion-validator",
+                "seam",
+            ),
+            (
+                "evidence:allow-policy:spec-system:runtime-promotion-v1",
+                "evidence",
+            ),
+            (
+                "subject:allow-policy:spec-system:runtime-promotion-accepted",
+                "subject",
+            ),
+        ] {
+            let value = graph_view(&compilation, graph_id).map_err(|error| error.to_string())?;
+            let query = value
+                .get("query")
+                .ok_or_else(|| format!("graph view omitted query: {value}"))?;
+            if value_str(query, "id") != graph_id || value_str(query, "kind") != expected_kind {
+                return Err(format!("unexpected graph query: {value}"));
+            }
+            if !render_human(graph_id, &value).contains(graph_id) {
+                return Err(format!("human graph view omitted {graph_id}"));
+            }
         }
-        let subjects = value
-            .get("relationships")
-            .and_then(|relationships| relationships.get("subjects"))
-            .and_then(Value::as_array);
-        if subjects.is_none_or(|values| values.is_empty()) {
-            return Err(format!("expected subject relationships: {value}"));
+        let missing = match render_self_hosted_explain(
+            &workspace_root(),
+            "subject:allow-policy:spec-system:missing",
+            true,
+        ) {
+            Err(error) => error,
+            Ok(value) => {
+                return Err(format!("expected missing graph error, got {value:?}"));
+            }
+        };
+        if !missing.to_string().contains("no self-hosted graph object") {
+            return Err(format!("unexpected missing graph diagnostic: {missing}"));
         }
         Ok(())
     }

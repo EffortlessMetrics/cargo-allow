@@ -38,6 +38,7 @@ pub struct SelfHostedGraphDiagnostic {
 #[derive(Debug)]
 pub struct SelfHostedGraphCompilation {
     pub graph: CompiledSpecGraph,
+    pub slice_source: SourceLocation,
     pub file_inventory: Inventory,
     pub inventory: RustTestInventory,
     pub diagnostics: Vec<SelfHostedGraphDiagnostic>,
@@ -130,6 +131,7 @@ pub fn compile_self_hosted_graph(
     });
     Ok(SelfHostedGraphCompilation {
         graph,
+        slice_source: SourceLocation::new(SLICE_PATH),
         file_inventory: inventory_snapshot,
         inventory: rust_inventory,
         diagnostics,
