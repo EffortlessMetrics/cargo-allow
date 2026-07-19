@@ -138,6 +138,7 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
         &[
             "unknown",
             "git_tracked",
+            "git_index_staged_candidate",
             "filesystem_fallback",
             "filesystem_include_untracked",
         ],

@@ -33,6 +33,7 @@ mod refresh;
 mod reporting;
 mod selector;
 mod spec_system;
+mod spec_system_source;
 mod spec_system_view;
 pub mod spec_system_workspace;
 mod why;
