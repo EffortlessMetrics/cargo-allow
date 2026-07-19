@@ -11,7 +11,10 @@ pub(crate) fn selector_from_finding(finding: &Finding) -> Selector {
         receiver_fingerprint: finding.identity.receiver_fingerprint.clone(),
         target_fingerprint: finding.identity.target_fingerprint.clone(),
         normalized_snippet_hash: finding.identity.normalized_snippet_hash.clone(),
-        line_hint: finding.span.as_ref().map(|s| s.line),
+        // line_hint is deliberately None: into_selector also forces None on
+        // load, so setting it here would make the in-memory fingerprint differ
+        // from the on-disk fingerprint after the next reload (#2503).
+        line_hint: None,
         glob: matches!(
             finding.kind,
             FindingKind::NonRustFile | FindingKind::GeneratedCode
@@ -68,7 +71,7 @@ mod tests {
                 receiver_fingerprint: Some("recv:value".to_string()),
                 target_fingerprint: Some("target:policy".to_string()),
                 normalized_snippet_hash: Some("fnv1a64:abc".to_string()),
-                line_hint: Some(42),
+                line_hint: None,
                 glob: None,
             }
         );
@@ -98,7 +101,7 @@ mod tests {
             ));
 
             assert_eq!(selector.ast_kind.as_deref(), Some("file"));
-            assert_eq!(selector.line_hint, Some(42));
+            assert_eq!(selector.line_hint, None);
             assert_eq!(selector.glob.as_deref(), expected_glob);
         }
     }

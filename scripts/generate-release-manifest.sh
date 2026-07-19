@@ -42,8 +42,8 @@ crates=(
   allow-files
   allow-rust
   allow-match
-  allow-report
   allow-policy-legacy
+  allow-report
   allow-diff
   cargo-allow
 )
