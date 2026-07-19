@@ -1,5 +1,6 @@
-use allow_core::{CargoAllowError, CargoAllowResult, read_text_file_capped};
-use allow_inventory::{Inventory, InventoryOptions, inventory};
+use crate::spec_system_source::RepositorySourceView;
+use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_inventory::Inventory;
 use allow_policy::spec_system::{
     AuthoredSubjectRole, AuthoredSubjectSelector, CompiledSpecGraph, EvidenceClaimRegistration,
     EvidenceSubjectId, EvidenceSubjectRegistration, EvidenceSubjectRole, GraphCompileInput,
@@ -9,8 +10,8 @@ use allow_policy::spec_system::{
 };
 use allow_rust::{
     RustTestInventory, RustTestInventoryStatus, RustTestResolution, RustTestSelector,
-    RustTestSubject, RustTestTargetIdentity, RustTestTargetKind, inventory_rust_test_subjects,
-    resolve_rust_test_selector,
+    RustTestSubject, RustTestTargetIdentity, RustTestTargetKind,
+    inventory_rust_test_subjects_from_sources, resolve_rust_test_selector,
 };
 use std::path::Path;
 #[cfg(test)]
@@ -42,26 +43,48 @@ pub struct SelfHostedGraphCompilation {
     pub file_inventory: Inventory,
     pub inventory: RustTestInventory,
     pub diagnostics: Vec<SelfHostedGraphDiagnostic>,
+    pub source_identity: Option<String>,
 }
 
 pub fn compile_self_hosted_graph(
     root: impl AsRef<Path>,
 ) -> CargoAllowResult<SelfHostedGraphCompilation> {
-    let root = root.as_ref();
-    let requirement_text = read_source(root, SPEC_PATH)?;
-    let slice_text = read_source(root, SLICE_PATH)?;
-    let seams_text = read_source(root, SEAMS_PATH)?;
-    let evidence_text = read_source(root, EVIDENCE_PATH)?;
+    let view = RepositorySourceView::filesystem(root)?;
+    compile_self_hosted_graph_from_view(&view)
+}
+
+pub fn compile_self_hosted_graph_staged(
+    root: impl AsRef<Path>,
+) -> CargoAllowResult<SelfHostedGraphCompilation> {
+    let view = RepositorySourceView::staged(root)?;
+    compile_self_hosted_graph_from_view(&view)
+}
+
+fn compile_self_hosted_graph_from_view(
+    view: &RepositorySourceView,
+) -> CargoAllowResult<SelfHostedGraphCompilation> {
+    let requirement_text = view.read_text(Path::new(SPEC_PATH))?;
+    let slice_text = view.read_text(Path::new(SLICE_PATH))?;
+    let seams_text = view.read_text(Path::new(SEAMS_PATH))?;
+    let evidence_text = view.read_text(Path::new(EVIDENCE_PATH))?;
     let requirements = parse_requirement_blocks_at(Some(Path::new(SPEC_PATH)), &requirement_text)?;
     let slice = parse_implementation_slice_at(Some(Path::new(SLICE_PATH)), &slice_text)?;
     let seams = parse_authored_seams_at(Some(Path::new(SEAMS_PATH)), &seams_text)?;
     let evidence = parse_authored_evidence_at(Some(Path::new(EVIDENCE_PATH)), &evidence_text)?;
     validate_authored_mapping(&requirements, &slice, &seams, &evidence)?;
 
-    let inventory_snapshot = inventory(root, &InventoryOptions::default())?;
+    let (manifests, sources) = view.rust_inputs()?;
     let rust_inventory =
-        inventory_rust_test_subjects(root, &inventory_snapshot.files, &Default::default())?;
-    let mut diagnostics = Vec::new();
+        inventory_rust_test_subjects_from_sources(manifests, sources, &Default::default());
+    let mut diagnostics = view
+        .limitations()
+        .iter()
+        .map(|limitation| SelfHostedGraphDiagnostic {
+            code: "spec_graph_source_view_partial",
+            subject: "source-view".to_string(),
+            message: limitation.clone(),
+        })
+        .collect::<Vec<_>>();
     if rust_inventory.status == RustTestInventoryStatus::Partial {
         diagnostics.push(SelfHostedGraphDiagnostic {
             code: "spec_graph_rust_inventory_partial",
@@ -132,9 +155,10 @@ pub fn compile_self_hosted_graph(
     Ok(SelfHostedGraphCompilation {
         graph,
         slice_source: SourceLocation::new(SLICE_PATH),
-        file_inventory: inventory_snapshot,
+        file_inventory: view.inventory().clone(),
         inventory: rust_inventory,
         diagnostics,
+        source_identity: view.source_identity().map(str::to_string),
     })
 }
 
@@ -261,19 +285,12 @@ fn resolution_diagnostic(
     }
 }
 
-fn read_source(root: &Path, relative: &str) -> CargoAllowResult<String> {
-    let path = root.join(relative);
-    read_text_file_capped(&path).map_err(|error| {
-        CargoAllowError::new(format!(
-            "failed to read self-hosted source {}: {error}",
-            path.display()
-        ))
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use std::process::Command;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     fn workspace_root() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -375,6 +392,147 @@ mod tests {
         match resolve_rust_test_selector(&inventory, &selector) {
             RustTestResolution::NotFound => Ok(()),
             resolution => Err(format!("expected not found resolution, got {resolution:?}")),
+        }
+    }
+
+    #[test]
+    fn staged_graph_compilation_uses_one_candidate_for_spec_and_subject_inputs()
+    -> Result<(), String> {
+        let root = staged_fixture_repository()?;
+        fs::write(
+            root.join(SEAMS_PATH),
+            include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../.allow/spec-system/seams/runtime-promotion-validator-v1.toml"
+            ))
+            .replace("owner = \"allow-policy\"", "owner = \"worktree-only\""),
+        )
+        .map_err(|error| error.to_string())?;
+
+        let staged = compile_self_hosted_graph_staged(&root).map_err(|error| error.to_string())?;
+        let current = compile_self_hosted_graph(&root).map_err(|error| error.to_string())?;
+        assert_eq!(
+            staged.file_inventory.source,
+            allow_inventory::InventorySource::GitIndexStagedCandidate
+        );
+        assert_eq!(
+            current.file_inventory.source,
+            allow_inventory::InventorySource::GitTracked
+        );
+        assert!(staged.source_identity.is_some());
+        assert_eq!(
+            staged
+                .graph
+                .seams
+                .values()
+                .next()
+                .ok_or_else(|| "staged graph has no seam".to_string())?
+                .owner,
+            "allow-policy"
+        );
+        assert_eq!(
+            current
+                .graph
+                .seams
+                .values()
+                .next()
+                .ok_or_else(|| "current graph has no seam".to_string())?
+                .owner,
+            "worktree-only"
+        );
+        assert_ne!(staged.graph.snapshot_id, current.graph.snapshot_id);
+        fs::remove_dir_all(root).map_err(|error| error.to_string())
+    }
+
+    fn staged_fixture_repository() -> Result<PathBuf, String> {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|error| error.to_string())?
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "cargo-allow-staged-graph-{}-{nonce}",
+            std::process::id()
+        ));
+        let files = [
+            (
+                SPEC_PATH,
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/../../docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md"
+                )),
+            ),
+            (
+                SLICE_PATH,
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/../../.allow/spec-system/slices/self-hosted-runtime-promotion-v1.toml"
+                )),
+            ),
+            (
+                SEAMS_PATH,
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/../../.allow/spec-system/seams/runtime-promotion-validator-v1.toml"
+                )),
+            ),
+            (
+                EVIDENCE_PATH,
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/../../.allow/spec-system/evidence/runtime-promotion-v1.toml"
+                )),
+            ),
+            (
+                "crates/allow-policy/Cargo.toml",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/../allow-policy/Cargo.toml"
+                )),
+            ),
+            (
+                "crates/allow-policy/src/lib.rs",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/../allow-policy/src/lib.rs"
+                )),
+            ),
+            (
+                "crates/allow-policy/src/spec_system/runtime_promotion.rs",
+                include_str!(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/../allow-policy/src/spec_system/runtime_promotion.rs"
+                )),
+            ),
+        ];
+        fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        run_git(&root, &["init", "-q"])?;
+        run_git(&root, &["config", "user.name", "Cargo Allow"])?;
+        run_git(
+            &root,
+            &["config", "user.email", "cargo-allow@example.invalid"],
+        )?;
+        for (path, contents) in files {
+            let full = root.join(path);
+            if let Some(parent) = full.parent() {
+                fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+            }
+            fs::write(full, contents).map_err(|error| error.to_string())?;
+        }
+        run_git(&root, &["add", "--all"])?;
+        Ok(root)
+    }
+
+    fn run_git(root: &Path, args: &[&str]) -> Result<String, String> {
+        let output = Command::new("git")
+            .arg("-C")
+            .arg(root)
+            .args(args)
+            .output()
+            .map_err(|error| error.to_string())?;
+        if output.status.success() {
+            String::from_utf8(output.stdout).map_err(|error| error.to_string())
+        } else {
+            Err(String::from_utf8_lossy(&output.stderr).into_owned())
         }
     }
 }

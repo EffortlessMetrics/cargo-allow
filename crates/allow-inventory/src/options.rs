@@ -20,6 +20,7 @@ impl Default for InventoryOptions {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InventorySource {
     GitTracked,
+    GitIndexStagedCandidate,
     FilesystemFallback,
     FilesystemIncludeUntracked,
 }
@@ -48,6 +49,7 @@ impl InventoryCompleteness {
 impl InventorySource {
     pub const ALL: &[Self] = &[
         Self::GitTracked,
+        Self::GitIndexStagedCandidate,
         Self::FilesystemFallback,
         Self::FilesystemIncludeUntracked,
     ];
@@ -55,6 +57,7 @@ impl InventorySource {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::GitTracked => "git_tracked",
+            Self::GitIndexStagedCandidate => "git_index_staged_candidate",
             Self::FilesystemFallback => "filesystem_fallback",
             Self::FilesystemIncludeUntracked => "filesystem_include_untracked",
         }

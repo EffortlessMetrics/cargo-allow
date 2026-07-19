@@ -4,6 +4,10 @@ use super::InventorySource;
 fn inventory_source_as_str_match_arm_observer() {
     assert_eq!(InventorySource::GitTracked.as_str(), "git_tracked");
     assert_eq!(
+        InventorySource::GitIndexStagedCandidate.as_str(),
+        "git_index_staged_candidate"
+    );
+    assert_eq!(
         InventorySource::FilesystemFallback.as_str(),
         "filesystem_fallback"
     );
