@@ -107,6 +107,13 @@ fn check_spec_system_profile_does_not_require_allow_policy() {
         receipt: Some(receipt.clone()),
         mode: Some("audit".to_string()),
         deny: Vec::new(),
+        phase: None,
+        staged: false,
+        staged_identity_only: false,
+        expect_staged_identity: None,
+        tool_mode: None,
+        tool_digest: None,
+        preview_authorized: false,
     });
 
     assert!(
@@ -202,6 +209,13 @@ fn check_spec_system_profile_reports_explicit_missing_config() {
         receipt: None,
         mode: None,
         deny: Vec::new(),
+        phase: None,
+        staged: false,
+        staged_identity_only: false,
+        expect_staged_identity: None,
+        tool_mode: None,
+        tool_digest: None,
+        preview_authorized: false,
     });
 
     assert!(
@@ -236,6 +250,13 @@ fn check_spec_system_profile_rejects_source_exception_kind_filter() {
         receipt: None,
         mode: None,
         deny: Vec::new(),
+        phase: None,
+        staged: false,
+        staged_identity_only: false,
+        expect_staged_identity: None,
+        tool_mode: None,
+        tool_digest: None,
+        preview_authorized: false,
     });
     let _ = fs::remove_dir_all(&root);
 
@@ -299,6 +320,13 @@ fn check_spec_system_profile_json_report_uses_v1_graph_artifact() {
         receipt: None,
         mode: Some("audit".to_string()),
         deny: Vec::new(),
+        phase: None,
+        staged: false,
+        staged_identity_only: false,
+        expect_staged_identity: None,
+        tool_mode: None,
+        tool_digest: None,
+        preview_authorized: false,
     });
 
     assert!(
@@ -371,6 +399,13 @@ fn spec_system_profile_reports_advisory_findings_without_failing() {
         receipt: None,
         mode: None,
         deny: Vec::new(),
+        phase: None,
+        staged: false,
+        staged_identity_only: false,
+        expect_staged_identity: None,
+        tool_mode: None,
+        tool_digest: None,
+        preview_authorized: false,
     });
 
     assert!(
@@ -415,6 +450,13 @@ fn spec_system_profile_reports_shadow_mode_without_failing_command() {
         receipt: None,
         mode: None,
         deny: Vec::new(),
+        phase: None,
+        staged: false,
+        staged_identity_only: false,
+        expect_staged_identity: None,
+        tool_mode: None,
+        tool_digest: None,
+        preview_authorized: false,
     });
 
     assert!(
@@ -726,6 +768,13 @@ fn spec_system_profile_renders_configured_shadow_mode_in_markdown() {
         // shadow. (An explicit `--mode` now overrides the config mode, #1941.)
         mode: None,
         deny: Vec::new(),
+        phase: None,
+        staged: false,
+        staged_identity_only: false,
+        expect_staged_identity: None,
+        tool_mode: None,
+        tool_digest: None,
+        preview_authorized: false,
     });
 
     assert!(
@@ -888,6 +937,13 @@ fn profile_resolution_honors_explicit_config_override() {
         receipt: None,
         mode: Some("audit".to_string()),
         deny: Vec::new(),
+        phase: None,
+        staged: false,
+        staged_identity_only: false,
+        expect_staged_identity: None,
+        tool_mode: None,
+        tool_digest: None,
+        preview_authorized: false,
     });
     assert!(
         result.is_ok(),
@@ -986,6 +1042,13 @@ fn spec_system_check_json(root: &Path, output: &Path) -> CargoAllowResult<()> {
         receipt: None,
         mode: None,
         deny: Vec::new(),
+        phase: None,
+        staged: false,
+        staged_identity_only: false,
+        expect_staged_identity: None,
+        tool_mode: None,
+        tool_digest: None,
+        preview_authorized: false,
     })
 }
 

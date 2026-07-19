@@ -10,7 +10,7 @@ use std::process;
 
 #[path = "check_args.rs"]
 mod check_args;
-pub(crate) use check_args::CheckArgs;
+pub(crate) use check_args::{CheckArgs, CheckPhase};
 #[path = "check_lane_posture.rs"]
 mod check_lane_posture;
 use check_lane_posture::check_failed_for_outcomes;
@@ -24,11 +24,35 @@ use crate::{
     SourceTreeReportContext, assert_path_within_root, config_path,
     evidence_inventory::current_evidence_source_tree_files, load_compat_world,
     load_world_with_evidence_mode, policy_baseline_debt_entries, print_report, report_config,
-    spec_system, write_file,
+    spec_precommit, spec_system, write_file,
 };
 use allow_inventory::{InventorySource, resolve_source_tree_root};
 
 pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
+    if args.staged || args.phase.is_some() || args.staged_identity_only {
+        if args.staged_identity_only {
+            return spec_precommit::cmd_staged_identity(args);
+        }
+        if !args.staged || !matches!(args.phase, Some(CheckPhase::Precommit)) {
+            return Err(CargoAllowError::with_kind(
+                allow_core::CargoAllowErrorKind::Usage,
+                "--phase precommit requires --staged, and staged evaluation requires --phase precommit",
+            ));
+        }
+        if !matches!(args.profile, Some(ProfileArg::SpecSystem)) {
+            return Err(CargoAllowError::with_kind(
+                allow_core::CargoAllowErrorKind::Usage,
+                "--staged --phase precommit requires --profile spec-system",
+            ));
+        }
+        reject_source_exception_options(
+            args.compat,
+            args.kind.as_deref(),
+            args.include_untracked,
+            &args.deny,
+        )?;
+        return spec_precommit::cmd_spec_precommit(args);
+    }
     if matches!(args.profile, Some(ProfileArg::SpecSystem)) {
         reject_source_exception_options(
             args.compat,
