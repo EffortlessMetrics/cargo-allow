@@ -1,0 +1,36 @@
+schema_version = 1
+policy = "generated-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+# Edge-case: generated file entry with .gitattributes drift — the legacy
+# format records a generator and regenerate_command, but the .gitattributes
+# marking has drifted (e.g. generator changed, path renamed). This fixture
+# characterizes how the compat loader handles a generated entry where the
+# generator metadata may not match the current .gitattributes state.
+[[allow]]
+id = "fixture-generated-drift"
+path = "docs/generated/api.md"
+generator = "cargo xtask docs-api"
+regenerate_command = "cargo xtask docs-api"
+owner = "docs"
+reason = "Generated API docs fixture with .gitattributes drift."
+covered_by = "doc:docs/generated/README.md"
+evidence = ["doc:docs/generated/README.md"]
+links = ["doc:docs/generated/api-source.md"]
+created = "2026-05-10"
+review_after = "2026-11-10"
+expires = "permanent"
+
+# Edge-case: generated entry without a regenerate_command — tests that the
+# compat loader preserves the entry even when the generator field is present
+# but regenerate_command is absent.
+[[allow]]
+id = "fixture-generated-no-regen"
+path = "target/schema_export.json"
+generator = "cargo xtask export"
+owner = "build"
+reason = "Generated export without regenerate command."
+covered_by = "doc:docs/build/README.md"
+created = "2026-05-11"
+expires = "permanent"

@@ -108,6 +108,18 @@ closeout edits.
 - Count-limited `baseline_debt` stays visible; extra scanner findings are not
   laundered into approval.
 
+## Missing-Evidence Variant
+
+The `panic-baseline-no-evidence.toml` fixture (characterized in the fixture
+matrix at `migration_fixture_matrix_tests.rs`) covers the case where a baseline
+entry has no evidence references. The compat loader preserves the entry and
+marks it as visible debt (no evidence laundering). Running the same
+compat → migrate → canonical → worklist pipeline against this fixture
+produces the expected `baseline_debt` routing without evidence links.
+
+This broadens the receipt to cover the full lane acceptance, satisfying
+criterion 6 for the panic-baseline compat kind.
+
 ## What This Does Not Prove
 
 - Full panic-lane parity for this repository or any external repo.
