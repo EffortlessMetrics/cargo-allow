@@ -174,17 +174,38 @@ pub(crate) fn load_world_for_path(
             finding.ledger = Some(provenance.clone());
         }
     }
-    let inventory_facts = InventoryFacts::scanned(InventorySource::GitTracked, files.len());
+    // The fast path doesn't run inventory(), so we can't claim a specific
+    // inventory source. Use source_only with FilesystemFallback to avoid
+    // asserting git-tracking for a file we haven't checked (#2506).
+    let inventory_facts = InventoryFacts::source_only(InventorySource::FilesystemFallback);
     Ok((root, cfg, findings, inventory_facts, federation))
 }
 
 /// Normalize an arbitrary path (absolute or repo-relative) to a repo-relative
 /// PathBuf suitable for the scanner's file list.
 fn normalize_to_repo_relative(root: &Path, path: &Path) -> PathBuf {
-    if path.is_absolute() {
-        path.strip_prefix(root)
+    // On Windows, resolve_source_tree_root returns a canonicalized path with
+    // the \\?\ verbatim prefix, but the user-supplied --path is typically
+    // non-verbatim. strip_prefix compares Component-by-Component and the
+    // prefix types don't match, so it silently fails. Strip the verbatim
+    // prefix from root first, then compare lexically (#2505).
+    let root_stripped = crate::policy_config::strip_verbatim_prefix(root);
+    let path_stripped = crate::policy_config::strip_verbatim_prefix(path);
+    if path_stripped.is_absolute() {
+        path_stripped
+            .strip_prefix(&root_stripped)
             .map(Path::to_path_buf)
-            .unwrap_or_else(|_| path.to_path_buf())
+            .unwrap_or_else(|_| {
+                // If strip_prefix still fails (e.g. path is under root but
+                // canonicalization differs), try a string-based comparison.
+                let path_str = path_stripped.to_string_lossy();
+                let root_str = root_stripped.to_string_lossy();
+                if let Some(rel) = path_str.strip_prefix(&*root_str) {
+                    PathBuf::from(rel.trim_start_matches(['/', '\\']))
+                } else {
+                    path.to_path_buf()
+                }
+            })
     } else {
         path.to_path_buf()
     }
