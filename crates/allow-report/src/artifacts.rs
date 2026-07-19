@@ -38,6 +38,7 @@ pub use migrate::MigrateReport;
 pub use propose::ProposeReport;
 pub use prune::{PruneCandidate, PruneModeContext};
 pub use refresh::{RefreshModeContext, RefreshReport};
+#[allow(unused_imports)]
 pub use release_manifest::{
     ManifestCrate, ManifestGenerations, RELEASE_MANIFEST_CLAIM_BOUNDARY,
     RELEASE_MANIFEST_SCHEMA_ID, RELEASE_MANIFEST_SCHEMA_VERSION, ReleaseManifestV1,
