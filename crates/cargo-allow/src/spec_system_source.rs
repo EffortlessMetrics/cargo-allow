@@ -3,8 +3,9 @@ use allow_core::{
     read_file_capped, source_tree_path_is_ignored,
 };
 use allow_diff::{
-    StagedEntryKind, StagedPathRead, StagedRepositorySnapshot, StagedSnapshotCompleteness,
-    read_staged_path, staged_repository_snapshot,
+    ResolvedRevisionIdentity, StagedEntryKind, StagedPathRead, StagedRepositorySnapshot,
+    StagedSnapshotCompleteness, git_tracked_files_at_revision, read_file_at_revision,
+    read_staged_path, resolve_revision_identity, staged_repository_snapshot,
 };
 use allow_inventory::{
     Inventory, InventoryCompleteness, InventoryOptions, InventorySource, inventory,
@@ -27,6 +28,12 @@ pub(crate) enum RepositorySourceView {
         snapshot: StagedRepositorySnapshot,
         inventory: Inventory,
     },
+    CommittedTree {
+        root: PathBuf,
+        revision: String,
+        identity: ResolvedRevisionIdentity,
+        inventory: Inventory,
+    },
 }
 
 impl RepositorySourceView {
@@ -47,9 +54,44 @@ impl RepositorySourceView {
         })
     }
 
+    pub(crate) fn committed(root: impl AsRef<Path>, revision: &str) -> CargoAllowResult<Self> {
+        let root = root.as_ref();
+        let identity = resolve_revision_identity(root, revision)?;
+        let files = git_tracked_files_at_revision(root, &identity.commit)?;
+        let options = InventoryOptions::default();
+        let mut files = files
+            .into_iter()
+            .filter(|path| !source_tree_path_is_ignored(path, &options.ignored))
+            .collect::<Vec<_>>();
+        files.sort();
+        files.dedup();
+        let completeness = if !options.ignored.is_empty() || !options.generated.is_empty() {
+            InventoryCompleteness::Scoped
+        } else {
+            InventoryCompleteness::Complete
+        };
+        Ok(Self::CommittedTree {
+            root: root.to_path_buf(),
+            revision: identity.commit.clone(),
+            identity,
+            inventory: Inventory {
+                empty_git_tracked: files.is_empty(),
+                files,
+                source: InventorySource::GitTracked,
+                completeness,
+                deleted_tracked: Vec::new(),
+                git_error: None,
+                skipped_paths: Vec::new(),
+                submodule_paths: Vec::new(),
+            },
+        })
+    }
+
     pub(crate) fn inventory(&self) -> &Inventory {
         match self {
-            Self::Filesystem { inventory, .. } | Self::StagedIndex { inventory, .. } => inventory,
+            Self::Filesystem { inventory, .. }
+            | Self::StagedIndex { inventory, .. }
+            | Self::CommittedTree { inventory, .. } => inventory,
         }
     }
 
@@ -57,6 +99,14 @@ impl RepositorySourceView {
         match self {
             Self::Filesystem { .. } => None,
             Self::StagedIndex { snapshot, .. } => Some(&snapshot.identity.semantic_hash),
+            Self::CommittedTree { identity, .. } => Some(&identity.commit),
+        }
+    }
+
+    pub(crate) fn revision_identity(&self) -> Option<&ResolvedRevisionIdentity> {
+        match self {
+            Self::CommittedTree { identity, .. } => Some(identity),
+            Self::Filesystem { .. } | Self::StagedIndex { .. } => None,
         }
     }
 
@@ -64,6 +114,7 @@ impl RepositorySourceView {
         match self {
             Self::Filesystem { .. } => &[],
             Self::StagedIndex { snapshot, .. } => &snapshot.limitations,
+            Self::CommittedTree { .. } => &[],
         }
     }
 
@@ -116,6 +167,18 @@ impl RepositorySourceView {
                         CargoAllowErrorKind::Inventory,
                         format!(
                             "staged source file {} has unsupported entry kind {kind:?}",
+                            path.display()
+                        ),
+                    )),
+                }
+            }
+            Self::CommittedTree { root, revision, .. } => {
+                match read_file_at_revision(root, revision, path)? {
+                    Some(text) => capped_committed_text(path, text),
+                    None => Err(CargoAllowError::with_kind(
+                        CargoAllowErrorKind::Inventory,
+                        format!(
+                            "committed source file {} is absent or unsupported in the parent tree",
                             path.display()
                         ),
                     )),
@@ -179,6 +242,20 @@ fn capped_staged_bytes(path: &Path, bytes: Vec<u8>) -> CargoAllowResult<Vec<u8>>
         ));
     }
     Ok(bytes)
+}
+
+fn capped_committed_text(path: &Path, text: String) -> CargoAllowResult<Vec<u8>> {
+    if (text.len() as u64) > SOURCE_FILE_READ_MAX_BYTES {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Scan,
+            format!(
+                "committed source file {} exceeds the {}-byte source-read limit",
+                path.display(),
+                SOURCE_FILE_READ_MAX_BYTES
+            ),
+        ));
+    }
+    Ok(text.into_bytes())
 }
 
 fn validate_relative_path(path: &Path) -> CargoAllowResult<()> {

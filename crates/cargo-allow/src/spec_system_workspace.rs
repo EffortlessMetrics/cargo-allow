@@ -1,5 +1,6 @@
 use crate::spec_system_source::RepositorySourceView;
-use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
+use allow_diff::{ResolvedRevisionIdentity, resolve_revision_identity, staged_repository_snapshot};
 use allow_inventory::Inventory;
 use allow_policy::spec_system::{
     AuthoredSubjectRole, AuthoredSubjectSelector, CompiledSpecGraph, EvidenceClaimRegistration,
@@ -13,6 +14,7 @@ use allow_rust::{
     RustTestSubject, RustTestTargetIdentity, RustTestTargetKind,
     inventory_rust_test_subjects_from_sources, resolve_rust_test_selector,
 };
+use std::collections::BTreeSet;
 use std::path::Path;
 #[cfg(test)]
 use std::path::PathBuf;
@@ -46,6 +48,71 @@ pub struct SelfHostedGraphCompilation {
     pub source_identity: Option<String>,
 }
 
+#[derive(Debug)]
+pub struct PairedSelfHostedGraphCompilation {
+    pub parent: SelfHostedGraphCompilation,
+    pub candidate: SelfHostedGraphCompilation,
+    pub parent_identity: ResolvedRevisionIdentity,
+    pub candidate_identity_before: String,
+    pub candidate_identity_after: String,
+    pub movements: Vec<SpecGraphMovement>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SpecGraphMovementKind {
+    RequirementAdded,
+    RequirementRemoved,
+    RequirementChanged,
+    ImplementationSliceAdded,
+    ImplementationSliceRemoved,
+    ImplementationSliceChanged,
+    SeamMappingAdded,
+    SeamMappingRemoved,
+    SeamMappingChanged,
+    EvidencePurposeAdded,
+    EvidencePurposeRemoved,
+    EvidencePurposeChanged,
+    EvidenceClaimChanged,
+    SubjectSelectorAdded,
+    SubjectSelectorRemoved,
+    SubjectSelectorChanged,
+    SubjectBodyIdentityChanged,
+    ProfileOrDialectChanged,
+    UnknownOrUncomparable,
+}
+
+impl SpecGraphMovementKind {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::RequirementAdded => "requirement_added",
+            Self::RequirementRemoved => "requirement_removed",
+            Self::RequirementChanged => "requirement_changed",
+            Self::ImplementationSliceAdded => "implementation_slice_added",
+            Self::ImplementationSliceRemoved => "implementation_slice_removed",
+            Self::ImplementationSliceChanged => "implementation_slice_changed",
+            Self::SeamMappingAdded => "seam_mapping_added",
+            Self::SeamMappingRemoved => "seam_mapping_removed",
+            Self::SeamMappingChanged => "seam_mapping_changed",
+            Self::EvidencePurposeAdded => "evidence_purpose_added",
+            Self::EvidencePurposeRemoved => "evidence_purpose_removed",
+            Self::EvidencePurposeChanged => "evidence_purpose_changed",
+            Self::EvidenceClaimChanged => "evidence_claim_changed",
+            Self::SubjectSelectorAdded => "subject_selector_added",
+            Self::SubjectSelectorRemoved => "subject_selector_removed",
+            Self::SubjectSelectorChanged => "subject_selector_changed",
+            Self::SubjectBodyIdentityChanged => "subject_body_identity_changed",
+            Self::ProfileOrDialectChanged => "profile_or_dialect_changed",
+            Self::UnknownOrUncomparable => "unknown_or_uncomparable",
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SpecGraphMovement {
+    pub kind: SpecGraphMovementKind,
+    pub id: String,
+}
+
 pub fn compile_self_hosted_graph(
     root: impl AsRef<Path>,
 ) -> CargoAllowResult<SelfHostedGraphCompilation> {
@@ -58,6 +125,222 @@ pub fn compile_self_hosted_graph_staged(
 ) -> CargoAllowResult<SelfHostedGraphCompilation> {
     let view = RepositorySourceView::staged(root)?;
     compile_self_hosted_graph_from_view(&view)
+}
+
+pub fn compile_paired_self_hosted_graph(
+    root: impl AsRef<Path>,
+) -> CargoAllowResult<PairedSelfHostedGraphCompilation> {
+    let root = root.as_ref();
+    let parent_view = RepositorySourceView::committed(root, "HEAD")?;
+    let candidate_view = RepositorySourceView::staged(root)?;
+    let parent_identity = parent_view.revision_identity().cloned().ok_or_else(|| {
+        CargoAllowError::new("parent source view did not retain its revision identity")
+    })?;
+    let candidate_identity_before = candidate_view
+        .source_identity()
+        .map(str::to_string)
+        .ok_or_else(|| {
+            CargoAllowError::new("staged source view did not retain its candidate identity")
+        })?;
+
+    let parent = compile_self_hosted_graph_from_view(&parent_view)?;
+    let candidate = compile_self_hosted_graph_from_view(&candidate_view)?;
+    let parent_after = resolve_revision_identity(root, "HEAD")?;
+    let candidate_identity_after = staged_repository_snapshot(root)?.identity.semantic_hash;
+    if parent_after != parent_identity {
+        return Err(stale_source_error(
+            "HEAD changed while compiling the paired parent and staged candidate",
+        ));
+    }
+    if candidate_identity_after != candidate_identity_before {
+        return Err(stale_source_error(
+            "Git index changed while compiling the staged candidate",
+        ));
+    }
+    let movements = compare_graphs(&parent.graph, &candidate.graph);
+    Ok(PairedSelfHostedGraphCompilation {
+        parent,
+        candidate,
+        parent_identity,
+        candidate_identity_before,
+        candidate_identity_after,
+        movements,
+    })
+}
+
+fn stale_source_error(message: &str) -> CargoAllowError {
+    CargoAllowError::with_kind(CargoAllowErrorKind::Inventory, message)
+}
+
+fn compare_graphs(
+    parent: &CompiledSpecGraph,
+    candidate: &CompiledSpecGraph,
+) -> Vec<SpecGraphMovement> {
+    let mut movements = Vec::new();
+
+    for id in parent
+        .requirements
+        .keys()
+        .chain(candidate.requirements.keys())
+        .cloned()
+        .collect::<BTreeSet<_>>()
+    {
+        match (
+            parent.requirements.get(&id),
+            candidate.requirements.get(&id),
+        ) {
+            (None, Some(_)) => movements.push(movement(
+                SpecGraphMovementKind::RequirementAdded,
+                id.as_str(),
+            )),
+            (Some(_), None) => movements.push(movement(
+                SpecGraphMovementKind::RequirementRemoved,
+                id.as_str(),
+            )),
+            (Some(before), Some(after)) if before != after => movements.push(movement(
+                SpecGraphMovementKind::RequirementChanged,
+                id.as_str(),
+            )),
+            _ => {}
+        }
+    }
+    for id in parent
+        .slices
+        .keys()
+        .chain(candidate.slices.keys())
+        .cloned()
+        .collect::<BTreeSet<_>>()
+    {
+        match (parent.slices.get(&id), candidate.slices.get(&id)) {
+            (None, Some(_)) => movements.push(movement(
+                SpecGraphMovementKind::ImplementationSliceAdded,
+                id.as_str(),
+            )),
+            (Some(_), None) => movements.push(movement(
+                SpecGraphMovementKind::ImplementationSliceRemoved,
+                id.as_str(),
+            )),
+            (Some(before), Some(after)) if before != after => movements.push(movement(
+                SpecGraphMovementKind::ImplementationSliceChanged,
+                id.as_str(),
+            )),
+            _ => {}
+        }
+    }
+    for id in parent
+        .seams
+        .keys()
+        .chain(candidate.seams.keys())
+        .cloned()
+        .collect::<BTreeSet<_>>()
+    {
+        match (parent.seams.get(&id), candidate.seams.get(&id)) {
+            (None, Some(_)) => movements.push(movement(
+                SpecGraphMovementKind::SeamMappingAdded,
+                id.as_str(),
+            )),
+            (Some(_), None) => movements.push(movement(
+                SpecGraphMovementKind::SeamMappingRemoved,
+                id.as_str(),
+            )),
+            (Some(before), Some(after)) if before != after => movements.push(movement(
+                SpecGraphMovementKind::SeamMappingChanged,
+                id.as_str(),
+            )),
+            _ => {}
+        }
+    }
+    for id in parent
+        .evidence_claims
+        .keys()
+        .chain(candidate.evidence_claims.keys())
+        .cloned()
+        .collect::<BTreeSet<_>>()
+    {
+        match (
+            parent.evidence_claims.get(&id),
+            candidate.evidence_claims.get(&id),
+        ) {
+            (None, Some(_)) => movements.push(movement(
+                SpecGraphMovementKind::EvidencePurposeAdded,
+                id.as_str(),
+            )),
+            (Some(_), None) => movements.push(movement(
+                SpecGraphMovementKind::EvidencePurposeRemoved,
+                id.as_str(),
+            )),
+            (Some(before), Some(after)) if before != after => {
+                let kind = if before.purpose != after.purpose {
+                    SpecGraphMovementKind::EvidencePurposeChanged
+                } else {
+                    SpecGraphMovementKind::EvidenceClaimChanged
+                };
+                movements.push(movement(kind, id.as_str()));
+            }
+            _ => {}
+        }
+    }
+    for id in parent
+        .subjects
+        .keys()
+        .chain(candidate.subjects.keys())
+        .cloned()
+        .collect::<BTreeSet<_>>()
+    {
+        match (parent.subjects.get(&id), candidate.subjects.get(&id)) {
+            (None, Some(_)) => movements.push(movement(
+                SpecGraphMovementKind::SubjectSelectorAdded,
+                id.as_str(),
+            )),
+            (Some(_), None) => movements.push(movement(
+                SpecGraphMovementKind::SubjectSelectorRemoved,
+                id.as_str(),
+            )),
+            (Some(before), Some(after)) => {
+                let selector_changed = before.package != after.package
+                    || before.target != after.target
+                    || before.module_path != after.module_path
+                    || before.test_name != after.test_name;
+                if selector_changed {
+                    movements.push(movement(
+                        SpecGraphMovementKind::SubjectSelectorChanged,
+                        id.as_str(),
+                    ));
+                } else if before.source_identity != after.source_identity {
+                    movements.push(movement(
+                        SpecGraphMovementKind::SubjectBodyIdentityChanged,
+                        id.as_str(),
+                    ));
+                } else if before != after {
+                    movements.push(movement(
+                        SpecGraphMovementKind::UnknownOrUncomparable,
+                        id.as_str(),
+                    ));
+                }
+            }
+            _ => {}
+        }
+    }
+    if parent.diagnostics != candidate.diagnostics {
+        movements.push(movement(
+            SpecGraphMovementKind::UnknownOrUncomparable,
+            "graph-diagnostics",
+        ));
+    }
+    movements.sort_by(|left, right| {
+        left.kind
+            .as_str()
+            .cmp(right.kind.as_str())
+            .then_with(|| left.id.cmp(&right.id))
+    });
+    movements
+}
+
+fn movement(kind: SpecGraphMovementKind, id: &str) -> SpecGraphMovement {
+    SpecGraphMovement {
+        kind,
+        id: id.to_string(),
+    }
 }
 
 fn compile_self_hosted_graph_from_view(
@@ -441,6 +724,64 @@ mod tests {
             "worktree-only"
         );
         assert_ne!(staged.graph.snapshot_id, current.graph.snapshot_id);
+        fs::remove_dir_all(root).map_err(|error| error.to_string())
+    }
+
+    #[test]
+    fn paired_graph_compilation_excludes_dirty_worktree_from_parent_and_candidate()
+    -> Result<(), String> {
+        let root = staged_fixture_repository()?;
+        run_git(&root, &["commit", "-qm", "parent"])?;
+        let seam_source = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../.allow/spec-system/seams/runtime-promotion-validator-v1.toml"
+        ));
+        fs::write(
+            root.join(SEAMS_PATH),
+            seam_source.replace("owner = \"allow-policy\"", "owner = \"candidate-owner\""),
+        )
+        .map_err(|error| error.to_string())?;
+        run_git(&root, &["add", "--", SEAMS_PATH])?;
+        fs::write(
+            root.join(SEAMS_PATH),
+            seam_source.replace("owner = \"allow-policy\"", "owner = \"worktree-only\""),
+        )
+        .map_err(|error| error.to_string())?;
+
+        let paired = compile_paired_self_hosted_graph(&root).map_err(|error| error.to_string())?;
+        assert_eq!(paired.parent_identity.commit.len(), 40);
+        assert_eq!(
+            paired.candidate_identity_before,
+            paired.candidate_identity_after
+        );
+        assert_eq!(
+            paired
+                .parent
+                .graph
+                .seams
+                .values()
+                .next()
+                .ok_or_else(|| "parent graph has no seam".to_string())?
+                .owner,
+            "allow-policy"
+        );
+        assert_eq!(
+            paired
+                .candidate
+                .graph
+                .seams
+                .values()
+                .next()
+                .ok_or_else(|| "candidate graph has no seam".to_string())?
+                .owner,
+            "candidate-owner"
+        );
+        assert!(
+            paired
+                .movements
+                .iter()
+                .any(|movement| { movement.kind == SpecGraphMovementKind::SeamMappingChanged })
+        );
         fs::remove_dir_all(root).map_err(|error| error.to_string())
     }
 
