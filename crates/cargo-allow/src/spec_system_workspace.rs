@@ -21,6 +21,13 @@ const SLICE_PATH: &str = ".allow/spec-system/slices/self-hosted-runtime-promotio
 const SEAMS_PATH: &str = ".allow/spec-system/seams/runtime-promotion-validator-v1.toml";
 const EVIDENCE_PATH: &str = ".allow/spec-system/evidence/runtime-promotion-v1.toml";
 
+pub fn self_hosted_graph_sources_present(root: impl AsRef<Path>) -> bool {
+    let root = root.as_ref();
+    [SPEC_PATH, SLICE_PATH, SEAMS_PATH, EVIDENCE_PATH]
+        .iter()
+        .all(|path| root.join(path).is_file())
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SelfHostedGraphDiagnostic {
     pub code: &'static str,

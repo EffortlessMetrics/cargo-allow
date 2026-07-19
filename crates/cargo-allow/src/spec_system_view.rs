@@ -6,6 +6,7 @@ use std::path::Path;
 
 use crate::spec_system_workspace::{
     SelfHostedGraphCompilation, SelfHostedGraphDiagnostic, compile_self_hosted_graph,
+    self_hosted_graph_sources_present,
 };
 
 const SELF_HOSTED_VIEW_SCHEMA_ID: &str = "cargo_allow.spec_system.self_hosted_graph_view.v1";
@@ -16,6 +17,9 @@ pub(crate) fn render_self_hosted_explain(
     json_format: bool,
 ) -> CargoAllowResult<Option<String>> {
     if !looks_like_self_hosted_id(id) {
+        return Ok(None);
+    }
+    if !self_hosted_graph_sources_present(root) {
         return Ok(None);
     }
     let compilation = compile_self_hosted_graph(root)?;
@@ -393,11 +397,11 @@ fn render_human(id: &str, value: &Value) -> String {
         text.push_str("## Source basis\n\n");
         text.push_str(&format!(
             "- Graph snapshot: `{}`\n- File inventory: `{}` files, `{}`\n- Rust inventory: `{}` with `{}` diagnostic(s)\n\n",
-            source_basis["graph_snapshot_id"].as_str().unwrap_or(""),
-            source_basis["file_count"].as_u64().unwrap_or(0),
-            source_basis["file_inventory_completeness"].as_str().unwrap_or(""),
-            source_basis["rust_inventory_status"].as_str().unwrap_or(""),
-            source_basis["rust_inventory_diagnostic_count"].as_u64().unwrap_or(0),
+            value_str(source_basis, "graph_snapshot_id"),
+            value_u64(source_basis, "file_count"),
+            value_str(source_basis, "file_inventory_completeness"),
+            value_str(source_basis, "rust_inventory_status"),
+            value_u64(source_basis, "rust_inventory_diagnostic_count"),
         ));
     }
     render_relationships(&mut text, value.get("relationships"));
@@ -413,19 +417,20 @@ fn render_human(id: &str, value: &Value) -> String {
         for finding in findings {
             text.push_str(&format!(
                 "- `{}` (`{}`): {}\n",
-                finding["code"].as_str().unwrap_or(""),
-                finding["subject"].as_str().unwrap_or(""),
-                finding["message"].as_str().unwrap_or(""),
+                value_str(&finding, "code"),
+                value_str(&finding, "subject"),
+                value_str(&finding, "message"),
             ));
         }
         text.push('\n');
     }
     text.push_str("## Next actions\n\n");
-    for action in value["next_actions"]
-        .as_array()
+    let actions = value
+        .get("next_actions")
+        .and_then(Value::as_array)
         .cloned()
-        .unwrap_or_default()
-    {
+        .unwrap_or_default();
+    for action in actions {
         text.push_str(&format!("- {}\n", action.as_str().unwrap_or("")));
     }
     text.push('\n');
@@ -446,16 +451,24 @@ fn render_relationships(text: &mut String, relationships: Option<&Value>) {
         ("Evidence", "evidence"),
         ("Subjects", "subjects"),
     ] {
-        let rows = relationships[key].as_array().cloned().unwrap_or_default();
+        let rows = relationships
+            .get(key)
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
         text.push_str(&format!("## {label}\n\n"));
         if rows.is_empty() {
             text.push_str("None.\n\n");
             continue;
         }
         for row in rows {
-            let id = row["id"].as_str().unwrap_or("");
-            let source = row["source"]["path"].as_str().unwrap_or("");
-            let line = row["source"]["line"].as_u64().unwrap_or(0);
+            let id = value_str(&row, "id");
+            let source = row
+                .get("source")
+                .map_or("", |value| value_str(value, "path"));
+            let line = row
+                .get("source")
+                .map_or(0, |value| value_u64(value, "line"));
             let detail = row
                 .get("status")
                 .or_else(|| row.get("implementation_claim_status"))
@@ -467,6 +480,14 @@ fn render_relationships(text: &mut String, relationships: Option<&Value>) {
         }
         text.push('\n');
     }
+}
+
+fn value_str<'a>(value: &'a Value, key: &str) -> &'a str {
+    value.get(key).and_then(Value::as_str).unwrap_or("")
+}
+
+fn value_u64(value: &Value, key: &str) -> u64 {
+    value.get(key).and_then(Value::as_u64).unwrap_or(0)
 }
 
 #[cfg(test)]
@@ -497,13 +518,17 @@ mod tests {
             .map_err(|error| error.to_string())?
             .ok_or_else(|| "expected JSON graph view".to_string())?;
         let value: Value = serde_json::from_str(&machine).map_err(|error| error.to_string())?;
-        if value["query"]["id"] != id || value["query"]["kind"] != "slice" {
+        let query = value
+            .get("query")
+            .ok_or_else(|| format!("graph view omitted query: {value}"))?;
+        if value_str(query, "id") != id || value_str(query, "kind") != "slice" {
             return Err(format!("unexpected graph query: {value}"));
         }
-        if value["relationships"]["subjects"]
-            .as_array()
-            .is_none_or(|values| values.is_empty())
-        {
+        let subjects = value
+            .get("relationships")
+            .and_then(|relationships| relationships.get("subjects"))
+            .and_then(Value::as_array);
+        if subjects.is_none_or(|values| values.is_empty()) {
             return Err(format!("expected subject relationships: {value}"));
         }
         Ok(())
