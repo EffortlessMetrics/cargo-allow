@@ -329,6 +329,7 @@ fn validate_claim(path: Option<&Path>, claim: &mut AuthoredEvidenceClaim) -> Car
                 value,
             )?;
         }
+        validate_target_selector(path, &subject.target, claim.id.as_str())?;
         if !ids.insert(subject.id.as_str()) {
             return Err(invalid_mapping(
                 path,
@@ -348,6 +349,26 @@ fn validate_claim(path: Option<&Path>, claim: &mut AuthoredEvidenceClaim) -> Car
                 "authored evidence {} must name an exact subject",
                 claim.id.as_str()
             ),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_target_selector(
+    path: Option<&Path>,
+    target: &str,
+    evidence_id: &str,
+) -> CargoAllowResult<()> {
+    let Some((kind, name)) = target.split_once(':') else {
+        return Err(invalid_mapping(
+            path,
+            format!("authored evidence {evidence_id} target must use kind:name syntax"),
+        ));
+    };
+    if !matches!(kind, "lib" | "bin" | "integration_test") || name.trim().is_empty() {
+        return Err(invalid_mapping(
+            path,
+            format!("authored evidence {evidence_id} target is not supported: {target}"),
         ));
     }
     Ok(())
@@ -449,7 +470,7 @@ symbol = "spec_or_policy_slice_rejects_unproved_runtime_promotion"
 id = "subject:exact"
 role = "exact_evidence"
 package = "allow-policy"
-target = "lib"
+target = "lib:allow_policy"
 module_path = "spec_system::runtime_promotion::tests"
 test_name = "spec_or_policy_slice_rejects_unproved_runtime_promotion"
 
@@ -457,7 +478,7 @@ test_name = "spec_or_policy_slice_rejects_unproved_runtime_promotion"
 id = "subject:weak"
 role = "related_weak"
 package = "allow-policy"
-target = "lib"
+target = "lib:allow_policy"
 module_path = "spec_system::runtime_promotion::tests"
 test_name = "behavior_change_rejects_implemented_claim_without_evidence_closure"
 "#;
