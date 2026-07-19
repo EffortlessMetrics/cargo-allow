@@ -57,19 +57,18 @@ fn allow_blocks(rendered_policy: &str) -> Vec<&str> {
     let mut offset = 0;
     for line in rendered_policy.split_inclusive('\n') {
         let line_text = line.trim_end_matches('\n').trim_end_matches('\r');
-        if line_text == "[[allow]]" {
-            if let Some(previous) = start.replace(offset) {
-                if let Some(block) = rendered_policy.get(previous..offset) {
-                    blocks.push(block.trim_end());
-                }
-            }
+        if line_text == "[[allow]]"
+            && let Some(previous) = start.replace(offset)
+            && let Some(block) = rendered_policy.get(previous..offset)
+        {
+            blocks.push(block.trim_end());
         }
         offset += line.len();
     }
-    if let Some(previous) = start {
-        if let Some(block) = rendered_policy.get(previous..) {
-            blocks.push(block.trim_end());
-        }
+    if let Some(previous) = start
+        && let Some(block) = rendered_policy.get(previous..)
+    {
+        blocks.push(block.trim_end());
     }
     blocks
 }

@@ -150,10 +150,10 @@ fn compare_mirror_canonical_ledgers(
     for id in canonical_ids.intersection(&mirror_ids) {
         let canonical_entry = canonical_cfg.allow.iter().find(|entry| entry.id == *id);
         let mirror_entry = mirror_cfg.allow.iter().find(|entry| entry.id == *id);
-        if let (Some(canonical_entry), Some(mirror_entry)) = (canonical_entry, mirror_entry) {
-            if entry_sync_fingerprint(canonical_entry) != entry_sync_fingerprint(mirror_entry) {
-                mismatched_shared.insert(id.clone());
-            }
+        if let (Some(canonical_entry), Some(mirror_entry)) = (canonical_entry, mirror_entry)
+            && entry_sync_fingerprint(canonical_entry) != entry_sync_fingerprint(mirror_entry)
+        {
+            mismatched_shared.insert(id.clone());
         }
     }
 

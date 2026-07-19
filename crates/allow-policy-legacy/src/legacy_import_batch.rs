@@ -105,10 +105,10 @@ fn load_lane_config(
     path: &Path,
     non_rust_findings: Option<&[Finding]>,
 ) -> CargoAllowResult<AllowConfig> {
-    if descriptor.legacy_filename == "non-rust-allowlist.toml" {
-        if let Some(findings) = non_rust_findings {
-            return load_non_rust_compat_config(path, findings);
-        }
+    if descriptor.legacy_filename == "non-rust-allowlist.toml"
+        && let Some(findings) = non_rust_findings
+    {
+        return load_non_rust_compat_config(path, findings);
     }
     load_legacy_or_canonical(path)
 }

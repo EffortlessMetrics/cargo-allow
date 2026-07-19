@@ -82,10 +82,9 @@ fn published_subcommands() -> Vec<&'static str> {
         if let Some(value) = trimmed
             .strip_prefix('"')
             .and_then(|rest| rest.strip_suffix('"'))
+            && !value.is_empty()
         {
-            if !value.is_empty() {
-                cmds.push(value);
-            }
+            cmds.push(value);
         }
     }
     cmds

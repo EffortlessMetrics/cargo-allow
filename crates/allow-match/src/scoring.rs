@@ -43,10 +43,10 @@ pub fn classify_match(entry: &AllowEntry, finding: &Finding) -> Option<MatchStre
     if entry.kind != finding.kind {
         return None;
     }
-    if let Some(family) = &entry.family {
-        if finding.family.as_deref() != Some(family.as_str()) {
-            return None;
-        }
+    if let Some(family) = &entry.family
+        && finding.family.as_deref() != Some(family.as_str())
+    {
+        return None;
     }
     if !path_matches(entry, finding) {
         return None;
@@ -108,10 +108,10 @@ pub fn classify_match(entry: &AllowEntry, finding: &Finding) -> Option<MatchStre
     }
     // The snippet hash is the strongest anchor (pins a specific occurrence).
     let has_snippet_hash = sel.normalized_snippet_hash.is_some();
-    if let Some(hash) = &sel.normalized_snippet_hash {
-        if finding.identity.normalized_snippet_hash.as_deref() != Some(hash.as_str()) {
-            return None;
-        }
+    if let Some(hash) = &sel.normalized_snippet_hash
+        && finding.identity.normalized_snippet_hash.as_deref() != Some(hash.as_str())
+    {
+        return None;
     }
 
     let strength = if has_snippet_hash {
@@ -267,20 +267,20 @@ fn path_mismatch_reason(entry: &AllowEntry, finding: &Finding) -> String {
 }
 
 fn path_matches(entry: &AllowEntry, finding: &Finding) -> bool {
-    if let Some(path) = &entry.path {
-        if normalize_path(path) == normalize_path(&finding.path) {
-            return true;
-        }
+    if let Some(path) = &entry.path
+        && normalize_path(path) == normalize_path(&finding.path)
+    {
+        return true;
     }
-    if let Some(glob) = &entry.glob {
-        if glob_matches(glob, &finding.path) {
-            return true;
-        }
+    if let Some(glob) = &entry.glob
+        && glob_matches(glob, &finding.path)
+    {
+        return true;
     }
-    if let Some(glob) = &entry.selector.glob {
-        if glob_matches(glob, &finding.path) {
-            return true;
-        }
+    if let Some(glob) = &entry.selector.glob
+        && glob_matches(glob, &finding.path)
+    {
+        return true;
     }
     false
 }

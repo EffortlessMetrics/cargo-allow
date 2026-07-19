@@ -154,10 +154,10 @@ fn parse_command_registry(text: &str) -> Result<Vec<BTreeMap<String, String>>, S
         };
         let mut fields = BTreeMap::new();
         for (key, value) in table {
-            if let Some(string_value) = value_as_string(value) {
-                if !string_value.is_empty() {
-                    fields.insert(key.clone(), string_value);
-                }
+            if let Some(string_value) = value_as_string(value)
+                && !string_value.is_empty()
+            {
+                fields.insert(key.clone(), string_value);
             }
         }
         if !fields.is_empty() {
@@ -178,10 +178,10 @@ fn value_as_string(value: &toml::Value) -> Option<String> {
 
 fn command_key(command: &BTreeMap<String, String>) -> Option<String> {
     for key in ["name", "id", "command"] {
-        if let Some(value) = command.get(key) {
-            if !value.contains(' ') {
-                return Some(value.clone());
-            }
+        if let Some(value) = command.get(key)
+            && !value.contains(' ')
+        {
+            return Some(value.clone());
         }
     }
     None
@@ -192,15 +192,16 @@ fn collect_command_reference_edges(
     command: &BTreeMap<String, String>,
     edges: &mut Vec<ImportEdge>,
 ) {
-    if let Some(id) = command.get("id") {
-        if !id.is_empty() && !id.contains(' ') {
-            edges.push(ImportEdge {
-                source_id: source_id.to_string(),
-                target_id: id.clone(),
-                kind: ImportEdgeKind::References,
-                provenance: ImportProvenance::GeneratedMarker,
-            });
-        }
+    if let Some(id) = command.get("id")
+        && !id.is_empty()
+        && !id.contains(' ')
+    {
+        edges.push(ImportEdge {
+            source_id: source_id.to_string(),
+            target_id: id.clone(),
+            kind: ImportEdgeKind::References,
+            provenance: ImportProvenance::GeneratedMarker,
+        });
     }
     for (key, value) in command {
         if key.starts_with("linked_") && !value.is_empty() {

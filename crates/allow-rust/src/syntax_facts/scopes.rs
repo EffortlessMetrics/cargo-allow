@@ -31,124 +31,119 @@ fn collect_nested_line_scopes(
     outer_attribute_lines: &[(u32, u32)],
     scopes: &mut BTreeMap<u32, RustLineScope>,
 ) {
-    if node.kind() == "mod_item" {
-        if let Some(name) = node
+    if node.kind() == "mod_item"
+        && let Some(name) = node
             .child_by_field_name("name")
             .and_then(|name| node_text(source, name))
-        {
-            paths.module_path.push(name.to_string());
-            record_module_scope(node, &paths.module_path, scopes);
-            record_attribute_line_module_scopes(outer_attribute_lines, &paths.module_path, scopes);
-            record_outer_module_attribute_scopes(node, &paths.module_path, scopes);
-            visit_child_scopes(node, source, paths, scopes);
-            paths.module_path.pop();
-            return;
-        }
+    {
+        paths.module_path.push(name.to_string());
+        record_module_scope(node, &paths.module_path, scopes);
+        record_attribute_line_module_scopes(outer_attribute_lines, &paths.module_path, scopes);
+        record_outer_module_attribute_scopes(node, &paths.module_path, scopes);
+        visit_child_scopes(node, source, paths, scopes);
+        paths.module_path.pop();
+        return;
     }
 
-    if node.kind() == "impl_item" {
-        if let Some(name) = impl_container_name(node, source) {
-            record_container_scope(node, &name, &paths.module_path, scopes);
-            record_attribute_line_scopes(outer_attribute_lines, &name, &paths.module_path, scopes);
-            record_outer_attribute_scopes(node, &name, &paths.module_path, scopes);
-            paths.impl_path.push(name);
-            visit_child_scopes(node, source, paths, scopes);
-            paths.impl_path.pop();
-            return;
-        }
+    if node.kind() == "impl_item"
+        && let Some(name) = impl_container_name(node, source)
+    {
+        record_container_scope(node, &name, &paths.module_path, scopes);
+        record_attribute_line_scopes(outer_attribute_lines, &name, &paths.module_path, scopes);
+        record_outer_attribute_scopes(node, &name, &paths.module_path, scopes);
+        paths.impl_path.push(name);
+        visit_child_scopes(node, source, paths, scopes);
+        paths.impl_path.pop();
+        return;
     }
 
-    if node.kind() == "enum_item" {
-        if let Some(name) = node
+    if node.kind() == "enum_item"
+        && let Some(name) = node
             .child_by_field_name("name")
             .and_then(|name| node_text(source, name))
-        {
-            record_container_scope(node, name, &paths.module_path, scopes);
-            record_attribute_line_scopes(outer_attribute_lines, name, &paths.module_path, scopes);
-            record_outer_attribute_scopes(node, name, &paths.module_path, scopes);
-            paths.enum_path.push(name.to_string());
-            visit_child_scopes(node, source, paths, scopes);
-            paths.enum_path.pop();
-            return;
-        }
+    {
+        record_container_scope(node, name, &paths.module_path, scopes);
+        record_attribute_line_scopes(outer_attribute_lines, name, &paths.module_path, scopes);
+        record_outer_attribute_scopes(node, name, &paths.module_path, scopes);
+        paths.enum_path.push(name.to_string());
+        visit_child_scopes(node, source, paths, scopes);
+        paths.enum_path.pop();
+        return;
     }
 
-    if matches!(node.kind(), "struct_item" | "union_item") {
-        if let Some(name) = node
+    if matches!(node.kind(), "struct_item" | "union_item")
+        && let Some(name) = node
             .child_by_field_name("name")
             .and_then(|name| node_text(source, name))
-        {
-            record_container_scope(node, name, &paths.module_path, scopes);
-            record_attribute_line_scopes(outer_attribute_lines, name, &paths.module_path, scopes);
-            record_outer_attribute_scopes(node, name, &paths.module_path, scopes);
-            paths.field_owner_path.push(name.to_string());
-            visit_child_scopes(node, source, paths, scopes);
-            paths.field_owner_path.pop();
-            return;
-        }
+    {
+        record_container_scope(node, name, &paths.module_path, scopes);
+        record_attribute_line_scopes(outer_attribute_lines, name, &paths.module_path, scopes);
+        record_outer_attribute_scopes(node, name, &paths.module_path, scopes);
+        paths.field_owner_path.push(name.to_string());
+        visit_child_scopes(node, source, paths, scopes);
+        paths.field_owner_path.pop();
+        return;
     }
 
-    if node.kind() == "trait_item" {
-        if let Some(name) = node
+    if node.kind() == "trait_item"
+        && let Some(name) = node
             .child_by_field_name("name")
             .and_then(|name| node_text(source, name))
-        {
-            record_container_scope(node, name, &paths.module_path, scopes);
-            record_attribute_line_scopes(outer_attribute_lines, name, &paths.module_path, scopes);
-            record_outer_attribute_scopes(node, name, &paths.module_path, scopes);
-            paths.trait_path.push(name.to_string());
-            visit_child_scopes(node, source, paths, scopes);
-            paths.trait_path.pop();
-            return;
-        }
+    {
+        record_container_scope(node, name, &paths.module_path, scopes);
+        record_attribute_line_scopes(outer_attribute_lines, name, &paths.module_path, scopes);
+        record_outer_attribute_scopes(node, name, &paths.module_path, scopes);
+        paths.trait_path.push(name.to_string());
+        visit_child_scopes(node, source, paths, scopes);
+        paths.trait_path.pop();
+        return;
     }
 
-    if node.kind() == "foreign_mod_item" {
-        if let Some(name) = extern_container_name(node, source) {
-            record_container_scope(node, &name, &paths.module_path, scopes);
-            record_attribute_line_scopes(outer_attribute_lines, &name, &paths.module_path, scopes);
-            paths.extern_path.push(name);
-            visit_child_scopes(node, source, paths, scopes);
-            paths.extern_path.pop();
-            return;
-        }
+    if node.kind() == "foreign_mod_item"
+        && let Some(name) = extern_container_name(node, source)
+    {
+        record_container_scope(node, &name, &paths.module_path, scopes);
+        record_attribute_line_scopes(outer_attribute_lines, &name, &paths.module_path, scopes);
+        paths.extern_path.push(name);
+        visit_child_scopes(node, source, paths, scopes);
+        paths.extern_path.pop();
+        return;
     }
 
-    if node.kind() == "enum_variant" {
-        if let Some(name) = enum_variant_container_name(node, source, paths) {
-            record_container_scope(node, &name, &paths.module_path, scopes);
-            record_attribute_line_scopes(outer_attribute_lines, &name, &paths.module_path, scopes);
-            record_outer_attribute_scopes(node, &name, &paths.module_path, scopes);
-            paths.field_owner_path.push(name);
-            visit_child_scopes(node, source, paths, scopes);
-            paths.field_owner_path.pop();
-            return;
-        }
+    if node.kind() == "enum_variant"
+        && let Some(name) = enum_variant_container_name(node, source, paths)
+    {
+        record_container_scope(node, &name, &paths.module_path, scopes);
+        record_attribute_line_scopes(outer_attribute_lines, &name, &paths.module_path, scopes);
+        record_outer_attribute_scopes(node, &name, &paths.module_path, scopes);
+        paths.field_owner_path.push(name);
+        visit_child_scopes(node, source, paths, scopes);
+        paths.field_owner_path.pop();
+        return;
     }
 
-    if matches!(node.kind(), "function_item" | "function_signature_item") {
-        if let Some(name) = node
+    if matches!(node.kind(), "function_item" | "function_signature_item")
+        && let Some(name) = node
             .child_by_field_name("name")
             .and_then(|name| node_text(source, name))
-        {
-            let container = if let Some(impl_name) = paths.impl_path.last() {
-                format!("{impl_name}::{name}")
-            } else if let Some(trait_name) = paths.trait_path.last() {
-                format!("{trait_name}::{name}")
-            } else if let Some(extern_name) = paths.extern_path.last() {
-                format!("{extern_name}::{name}")
-            } else {
-                name.to_string()
-            };
-            record_container_scope(node, &container, &paths.module_path, scopes);
-            record_attribute_line_scopes(
-                outer_attribute_lines,
-                &container,
-                &paths.module_path,
-                scopes,
-            );
-            record_outer_attribute_scopes(node, &container, &paths.module_path, scopes);
-        }
+    {
+        let container = if let Some(impl_name) = paths.impl_path.last() {
+            format!("{impl_name}::{name}")
+        } else if let Some(trait_name) = paths.trait_path.last() {
+            format!("{trait_name}::{name}")
+        } else if let Some(extern_name) = paths.extern_path.last() {
+            format!("{extern_name}::{name}")
+        } else {
+            name.to_string()
+        };
+        record_container_scope(node, &container, &paths.module_path, scopes);
+        record_attribute_line_scopes(
+            outer_attribute_lines,
+            &container,
+            &paths.module_path,
+            scopes,
+        );
+        record_outer_attribute_scopes(node, &container, &paths.module_path, scopes);
     }
 
     if let Some(name) = named_item_container_name(node, source, paths) {

@@ -7,12 +7,11 @@ const RECEIVER_FINGERPRINT_LIMIT: usize = 80;
 const TARGET_FINGERPRINT_LIMIT: usize = 40;
 
 pub(super) fn structural_receiver_fingerprint(receiver: Node<'_>, source: &str) -> Option<String> {
-    if receiver.kind() == "identifier" {
-        if let Some(name) = node_text(source, receiver) {
-            if let Some(index) = parameter_slot_for_name(receiver, source, name) {
-                return Some(format!("param:{index}"));
-            }
-        }
+    if receiver.kind() == "identifier"
+        && let Some(name) = node_text(source, receiver)
+        && let Some(index) = parameter_slot_for_name(receiver, source, name)
+    {
+        return Some(format!("param:{index}"));
     }
     node_text(source, receiver).and_then(truncate_receiver_fingerprint)
 }
@@ -181,24 +180,16 @@ mod tests {
         fingerprints: &mut Vec<String>,
         cursor: &mut tree_sitter::TreeCursor<'_>,
     ) {
-        if node.kind() == "call_expression" {
-            if let Some(function) = node.child_by_field_name("function") {
-                if function.kind() == "field_expression" {
-                    if let Some(field) = function.child_by_field_name("field") {
-                        if let Some(method_name) = node_text(source, field) {
-                            if matches!(method_name, "unwrap" | "expect") {
-                                if let Some(receiver) = function.child_by_field_name("value") {
-                                    if let Some(fingerprint) =
-                                        structural_receiver_fingerprint(receiver, source)
-                                    {
-                                        fingerprints.push(fingerprint);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        if node.kind() == "call_expression"
+            && let Some(function) = node.child_by_field_name("function")
+            && function.kind() == "field_expression"
+            && let Some(field) = function.child_by_field_name("field")
+            && let Some(method_name) = node_text(source, field)
+            && matches!(method_name, "unwrap" | "expect")
+            && let Some(receiver) = function.child_by_field_name("value")
+            && let Some(fingerprint) = structural_receiver_fingerprint(receiver, source)
+        {
+            fingerprints.push(fingerprint);
         }
         if cursor.goto_first_child() {
             loop {
@@ -224,10 +215,10 @@ mod tests {
         targets: &mut Vec<String>,
         cursor: &mut tree_sitter::TreeCursor<'_>,
     ) {
-        if node.kind() == "index_expression" {
-            if let Some(target) = index_target_fingerprint(node, source) {
-                targets.push(target);
-            }
+        if node.kind() == "index_expression"
+            && let Some(target) = index_target_fingerprint(node, source)
+        {
+            targets.push(target);
         }
         if cursor.goto_first_child() {
             loop {

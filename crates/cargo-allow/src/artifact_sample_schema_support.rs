@@ -164,19 +164,19 @@ fn validate_sample_value_constraints(
     value: &Value,
     path: &str,
 ) -> Result<(), String> {
-    if let Some(expected) = schema.get("const") {
-        if value != expected {
-            return Err(format!(
-                "{path} has value {}, expected const {}",
-                value, expected
-            ));
-        }
+    if let Some(expected) = schema.get("const")
+        && value != expected
+    {
+        return Err(format!(
+            "{path} has value {}, expected const {}",
+            value, expected
+        ));
     }
 
-    if let Some(values) = schema.get("enum").and_then(Value::as_array) {
-        if !values.iter().any(|expected| expected == value) {
-            return Err(format!("{path} has value {value}, outside schema enum"));
-        }
+    if let Some(values) = schema.get("enum").and_then(Value::as_array)
+        && !values.iter().any(|expected| expected == value)
+    {
+        return Err(format!("{path} has value {value}, outside schema enum"));
     }
 
     if !schema_accepts_value_type(schema, value) {
@@ -189,34 +189,31 @@ fn validate_sample_value_constraints(
     if let (Some(value), Some(minimum)) = (
         value.as_f64(),
         schema.get("minimum").and_then(Value::as_f64),
-    ) {
-        if value < minimum {
-            return Err(format!(
-                "{path} has numeric value {value}, below minimum {minimum}"
-            ));
-        }
+    ) && value < minimum
+    {
+        return Err(format!(
+            "{path} has numeric value {value}, below minimum {minimum}"
+        ));
     }
 
     if let (Some(value), Some(min_length)) = (
         value.as_str(),
         schema.get("minLength").and_then(Value::as_u64),
-    ) {
-        if value.chars().count() < min_length as usize {
-            return Err(format!(
-                "{path} has string shorter than minLength {min_length}"
-            ));
-        }
+    ) && value.chars().count() < min_length as usize
+    {
+        return Err(format!(
+            "{path} has string shorter than minLength {min_length}"
+        ));
     }
 
     if let (Some(value), Some(pattern)) = (
         value.as_str(),
         schema.get("pattern").and_then(Value::as_str),
-    ) {
-        if !sample_string_matches_supported_pattern(value, pattern) {
-            return Err(format!(
-                "{path} has string {value:?}, outside supported schema pattern {pattern:?}"
-            ));
-        }
+    ) && !sample_string_matches_supported_pattern(value, pattern)
+    {
+        return Err(format!(
+            "{path} has string {value:?}, outside supported schema pattern {pattern:?}"
+        ));
     }
 
     Ok(())

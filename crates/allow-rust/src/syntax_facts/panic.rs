@@ -77,10 +77,10 @@ fn panic_method_call(node: Node<'_>, source: &str) -> Option<(u32, PanicMethodCa
             if cur.goto_first_child() {
                 loop {
                     let ch = cur.node();
-                    if let Some(t) = node_text(source, ch) {
-                        if t != "::" {
-                            last = Some((ch, t));
-                        }
+                    if let Some(t) = node_text(source, ch)
+                        && t != "::"
+                    {
+                        last = Some((ch, t));
                     }
                     if !cur.goto_next_sibling() {
                         break;

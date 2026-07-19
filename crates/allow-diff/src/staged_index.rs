@@ -213,13 +213,13 @@ fn staged_limitations(entries: &[StagedIndexEntry], changes: &[StagedPathChange]
                 display_raw_path(&change.raw_path)
             ));
         }
-        if let Some(previous_raw_path) = &change.previous_raw_path {
-            if change.previous_path.is_none() {
-                limitations.push(format!(
-                    "previous staged change path is not representable on this host: {}",
-                    display_raw_path(previous_raw_path)
-                ));
-            }
+        if let Some(previous_raw_path) = &change.previous_raw_path
+            && change.previous_path.is_none()
+        {
+            limitations.push(format!(
+                "previous staged change path is not representable on this host: {}",
+                display_raw_path(previous_raw_path)
+            ));
         }
         if matches!(
             change.status,

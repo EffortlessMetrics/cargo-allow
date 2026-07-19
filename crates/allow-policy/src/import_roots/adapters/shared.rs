@@ -43,15 +43,16 @@ pub(crate) fn parse_front_matter(text: &str) -> Option<BTreeMap<String, String>>
 
 pub(crate) fn collect_reference_edges(source_id: &str, text: &str, edges: &mut Vec<ImportEdge>) {
     if let Some(front_matter) = parse_front_matter(text) {
-        if let Some(id) = front_matter.get("id") {
-            if !id.is_empty() && !id.contains(' ') {
-                edges.push(ImportEdge {
-                    source_id: source_id.to_string(),
-                    target_id: id.clone(),
-                    kind: ImportEdgeKind::References,
-                    provenance: ImportProvenance::GeneratedMarker,
-                });
-            }
+        if let Some(id) = front_matter.get("id")
+            && !id.is_empty()
+            && !id.contains(' ')
+        {
+            edges.push(ImportEdge {
+                source_id: source_id.to_string(),
+                target_id: id.clone(),
+                kind: ImportEdgeKind::References,
+                provenance: ImportProvenance::GeneratedMarker,
+            });
         }
         for (key, value) in front_matter {
             if key.starts_with("linked_") && !value.is_empty() {
@@ -75,15 +76,14 @@ fn collect_body_reference_edges(source_id: &str, text: &str, edges: &mut Vec<Imp
             .strip_prefix("linked_")
             .and_then(|rest| rest.split_once('='))
             .map(|(_, value)| value.trim().trim_matches('"').trim_matches('\''))
+            && !target.is_empty()
         {
-            if !target.is_empty() {
-                edges.push(ImportEdge {
-                    source_id: source_id.to_string(),
-                    target_id: target.to_string(),
-                    kind: ImportEdgeKind::References,
-                    provenance: ImportProvenance::Discovered,
-                });
-            }
+            edges.push(ImportEdge {
+                source_id: source_id.to_string(),
+                target_id: target.to_string(),
+                kind: ImportEdgeKind::References,
+                provenance: ImportProvenance::Discovered,
+            });
         }
     }
 }
