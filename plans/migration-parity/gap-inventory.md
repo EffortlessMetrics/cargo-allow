@@ -1,8 +1,10 @@
 # Migration Parity Gap Inventory
 
 Living inventory for [CARGO-ALLOW-SPEC-0002](../../docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md)
-and the [PR queue](pr-queue.md). Last reconciled after federation F2 closeout
-CARGO-ALLOW-CLOSEOUT-0011 (#1758; 2026-06-18).
+and the [PR queue](pr-queue.md). Last reconciled after federation F3
+characterization cleanup (2026-07-19): F3 drain-window enforcement and
+mirror divergence reporting re-characterized from `ready` to `done` after
+confirming full implementation in `crates/allow-policy/src/federation/`.
 
 Parity status values:
 
@@ -80,7 +82,7 @@ advisory ratcheting (#1474, #1472) is complete on main.
 | P2 multi-ledger federation F0 (#1473) | F0 design artifacts (PROP-0007 / SPEC-0007 / ADR-0001 / PLAN-0007) define roles, precedence, duplicates, dialects, drain windows, divergence, receipt provenance; no runtime code | done (design-only) | repo-infra | `portable-governance-f0-federation`; [CARGO-ALLOW-CLOSEOUT-0009](../federation/closeouts/f0-design.md); docs/source-of-truth/README.md Level 1 | #1755 |
 | P2 multi-ledger federation F1 (#1473) | **Done.** Ledger registry parse/validate for `[[ledgers]]` in `.allow/config.toml`; precedence ordering, duplicate/path/mirror/dialect validation; doctor and spec-system federation reporting. Multi-ledger check evaluation deferred to F2 | done | repo-infra | `portable-governance-f1-federation`; [CARGO-ALLOW-CLOSEOUT-0010](../federation/closeouts/f1-config-parse.md); `allow-policy::federation`; #1756 merge `21debf6c` | #1756 |
 | P2 multi-ledger federation F2 (#1473) | **Done.** Multi-ledger check evaluation with deterministic precedence; findings, work items, and receipts carry ledger provenance and `federation.ledger_contributors`. Drain enforcement deferred to F3 | done | repo-infra | `portable-governance-f2-federation`; [CARGO-ALLOW-CLOSEOUT-0011](../federation/closeouts/f2-evaluation.md); `allow-policy::federation::evaluate`; #1758 | #1758 |
-| P2 multi-ledger federation F3 (#1473) | Drain-window enforcement and mirror divergence reporting per SPEC-0007 | ready | repo-infra | `portable-governance-f3-federation`; CARGO-ALLOW-PLAN-0007 F3 slice | — |
+| P2 multi-ledger federation F3 (#1473) | **Done.** Drain-window enforcement (`DrainExpired` blocking status) and mirror divergence reporting (`MirrorDivergence` detection with fingerprinting) implemented per SPEC-0007; surfaced in `federation_report.rs` and receipts | done | repo-infra | `crates/allow-policy/src/federation/{divergence,drain,config}.rs`; `crates/cargo-allow/src/federation_report.rs`; `federation_divergence_policy_parse_tests` | — |
 | external ripr adoption | In-repo ripr-style dogfood closed; external repo migration unrequested | blocked | repo-infra | `docs/dogfood/cargo-allow-ripr-style-adoption.md`; `portable-governance-external-ripr` | — |
 | full import mode (#1466) | Umbrella open; characterization slices #1713–#1718 closed | blocked | repo-infra | CARGO-ALLOW-CLOSEOUT-0004; `portable-governance-full-import` | — |
 
