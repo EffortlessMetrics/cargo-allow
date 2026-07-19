@@ -85,7 +85,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = ".allow/spec-system/seams/runtime-promotion-validator-v1.toml"
 target_fingerprint = "toml"
-line_hint = 1
 glob = ".allow/spec-system/seams/runtime-promotion-validator-v1.toml"
 
 [[allow]]
@@ -104,7 +103,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = ".allow/spec-system/evidence/runtime-promotion-v1.toml"
 target_fingerprint = "toml"
-line_hint = 1
 glob = ".allow/spec-system/evidence/runtime-promotion-v1.toml"
 
 [[allow]]
@@ -6204,8 +6202,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md"
 target_fingerprint = "md"
-line_hint = 1
-
 
 [[allow]]
 id = "allow-9009"
@@ -6223,7 +6219,6 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = ".allow/spec-system/slices/self-hosted-runtime-promotion-v1.toml"
 target_fingerprint = "toml"
-line_hint = 1
 glob = ".allow/spec-system/slices/self-hosted-runtime-promotion-v1.toml"
 
 [[allow]]
@@ -6296,8 +6291,52 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 symbol = "docs/schemas/add-plan-application.schema.json"
 target_fingerprint = "json"
-line_hint = 1
 glob = "docs/schemas/add-plan-application.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0302"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/perf-budget-smoke.sh"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Performance budget smoke script for 0.2.0"
+evidence = ["doc:docs/performance-budgets.md"]
+created = "2026-07-19"
+review_after = "2026-10-17"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/perf-budget-smoke.sh"
+target_fingerprint = "sh"
+glob = "scripts/perf-budget-smoke.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0303"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/performance-budgets.md"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "0.2.0 performance budget documentation"
+evidence = ["doc:scripts/perf-budget-smoke.sh"]
+created = "2026-07-19"
+review_after = "2026-10-17"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/performance-budgets.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/performance-budgets.md"
 
 [allow.last_seen]
 line = 1
