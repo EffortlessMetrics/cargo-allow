@@ -33,6 +33,7 @@ mod refresh;
 mod reporting;
 mod selector;
 mod spec_system;
+pub mod spec_system_workspace;
 mod why;
 mod worklist;
 mod world;
