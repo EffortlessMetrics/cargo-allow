@@ -61,9 +61,10 @@ pub use revision_identity::{
     resolve_dirty_state, resolve_revision_identity,
 };
 pub use staged_index::{
-    StagedEntryKind, StagedIndexEntry, StagedPathChange, StagedPathRead, StagedPathStatus,
-    StagedRepositorySnapshot, StagedSnapshotCompleteness, StagedSnapshotIdentity, read_staged_path,
-    read_staged_raw_path, staged_repository_snapshot,
+    STAGED_GIT_CAPABILITY_GENERATION, StagedEntryKind, StagedGitCapabilities, StagedIndexEntry,
+    StagedPathChange, StagedPathRead, StagedPathStatus, StagedRepositorySnapshot,
+    StagedSnapshotCompleteness, StagedSnapshotIdentity, probe_staged_git_capabilities,
+    read_staged_path, read_staged_raw_path, staged_repository_snapshot,
 };
 
 #[cfg(test)]
