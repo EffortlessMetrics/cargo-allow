@@ -10,6 +10,11 @@ inventory without executing repository code.
 
 ### Added
 
+- `scripts/generate-release-manifest.sh` generates a
+  `cargo-allow.release-manifest.v1` JSON manifest from release workflow context
+  (version, git identity, auth source, MSRV, proven platforms, crate checksums)
+  and emits a SHA-256 sidecar. Runs after publish + install-smoke succeed in the
+  release workflow (#2279).
 - `ReleaseManifestV1` (`cargo-allow.release-manifest.v1`) typed schema in
   `allow-report`: binds repository, tag, commit, tree, version, source candidate,
   crates with checksums, auth source, workflow run ID, MSRV, proven platforms,
