@@ -8,6 +8,7 @@ const PUBLISHED_RELEASE_DOC: &str = "docs/release/0.1.11.md";
 const PREVIOUS_RELEASE_DOC: &str = "docs/release/0.1.10.md";
 const PUBLISHED_INSTALL_PIN_PHRASE: &str =
     "Public install examples now pin the published `0.1.11` release";
+const CANDIDATE_RELEASE_VERSION: &str = "0.2.0";
 
 const RELEASE_WORKFLOW: &str = ".github/workflows/release.yml";
 const RELEASE_DOC: &str = "docs/release/README.md";
@@ -109,9 +110,10 @@ fn published_release_versions_match_workspace() {
     let package_manifests = workspace_package_manifests(&root);
     let workspace_version = workspace_package_version(&workspace_manifest);
 
-    assert_eq!(
-        workspace_version, PUBLISHED_RELEASE_VERSION,
-        "{PUBLISHED_RELEASE_VERSION} published release should match the workspace package version"
+    assert!(
+        workspace_version == PUBLISHED_RELEASE_VERSION
+            || workspace_version == CANDIDATE_RELEASE_VERSION,
+        "workspace version should be the published ({PUBLISHED_RELEASE_VERSION}) or candidate ({CANDIDATE_RELEASE_VERSION}) release version, got {workspace_version}"
     );
     assert!(
         release_doc.contains(&format!("# {PUBLISHED_RELEASE_VERSION} Release Record")),
