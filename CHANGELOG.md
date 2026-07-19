@@ -8,6 +8,16 @@ inventory without executing repository code.
 
 ## [Unreleased]
 
+### Added
+
+- Incremental scan cache: `allow-rust::ScanCache` caches parsed findings
+  keyed by file mtime+size. On a repeat scan within the same process, files
+  whose mtime+size hasn't changed are served from cache instead of
+  re-parsing. This is the foundation for faster edit→check loops (#2514).
+  The cache is in-memory only (thread-local), conservatively correct (any
+  cache miss falls through to a full re-parse), and applied transparently
+  in `load_world`/`load_world_with_evidence_mode`.
+
 ## [0.2.0] - 2026-07-19
 
 ### Added

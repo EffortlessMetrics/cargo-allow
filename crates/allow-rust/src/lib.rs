@@ -22,6 +22,7 @@ mod line_scan;
 mod line_unsafe_findings;
 mod package;
 mod safety_comments;
+mod scan_cache;
 mod syntax_facts;
 mod syntax_kinds;
 mod syntax_tree;
@@ -35,6 +36,7 @@ use syntax_facts::syntax_facts;
 pub use package::{
     SourcePackageContext, apply_source_package_context, source_package_contexts_from_sources,
 };
+pub use scan_cache::ScanCache;
 pub use syntax_tree::{RustSyntaxContainer, RustSyntaxTree, parse_rust_syntax};
 pub use test_subjects::{
     RustTestInventory, RustTestInventoryDiagnostic, RustTestInventoryDiagnosticKind,
@@ -81,6 +83,29 @@ pub fn scan_rust_source(path: impl AsRef<Path>, source: &str) -> Vec<Finding> {
     let path = path.as_ref().to_path_buf();
     let syntax = syntax_facts(source);
     scan_source_lines(&path, source, syntax)
+}
+
+/// Scan Rust files with an mtime+size cache for incremental re-evaluation.
+/// On a repeat scan, files whose mtime+size hasn't changed are served from
+/// the cache instead of re-parsing. Falls through to a full re-parse on any
+/// cache miss. Package context is still applied per-file.
+pub fn scan_rust_files_cached(
+    root: impl AsRef<Path>,
+    files: &[PathBuf],
+    cache: &mut ScanCache,
+) -> CargoAllowResult<Vec<Finding>> {
+    let root = root.as_ref();
+    let mut out = Vec::new();
+    let packages = source_package_contexts(root, files)?;
+    for rel in files {
+        if rel.extension().and_then(|e| e.to_str()) != Some("rs") {
+            continue;
+        }
+        let mut findings = cache.scan_file(root, rel)?;
+        apply_source_package_context(rel, &packages, &mut findings);
+        out.extend(findings);
+    }
+    Ok(out)
 }
 
 #[cfg(test)]
