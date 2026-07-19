@@ -3,6 +3,8 @@ use sha2::{Digest, Sha256};
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
+use crate::revision_identity::RepositoryObjectFormat;
+
 #[cfg(unix)]
 use std::ffi::OsString;
 #[cfg(unix)]
@@ -10,6 +12,33 @@ use std::os::unix::ffi::{OsStrExt, OsStringExt};
 
 const STAGED_DIAGNOSTIC_CATEGORY: &str = "git_staged_index";
 const STAGED_IDENTITY_SCHEMA: &str = "cargo-allow.staged-snapshot.v1";
+
+/// Generation of the staged Git capability contract carried by snapshots.
+pub const STAGED_GIT_CAPABILITY_GENERATION: &str = "cargo-allow.staged-git-capabilities.v1";
+
+/// Capability evidence gathered before reading a staged candidate.
+///
+/// The result is intentionally about the Git instrument and repository posture,
+/// not policy evaluation. A snapshot is only produced when the required
+/// fields support the exact staged commands used by this module.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct StagedGitCapabilities {
+    pub generation: String,
+    pub git_version: String,
+    pub object_format: RepositoryObjectFormat,
+    pub supports_sparse_index: bool,
+    pub supports_raw_index_paths: bool,
+    pub supports_raw_change_paths: bool,
+    pub supports_exact_blob_reads: bool,
+    pub supports_linked_worktrees: bool,
+    pub partial_clone: bool,
+    pub no_lazy_fetch_enforced: bool,
+    pub replace_refs_suppressed: bool,
+    /// Whether this host can represent arbitrary raw Git path bytes as a
+    /// native `Path`. Windows remains supported for representable paths but
+    /// reports unrepresentable bytes through snapshot limitations.
+    pub path_bytes_supported: bool,
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum StagedSnapshotCompleteness {
@@ -68,6 +97,7 @@ pub struct StagedSnapshotIdentity {
 #[derive(Clone, Debug)]
 pub struct StagedRepositorySnapshot {
     root: PathBuf,
+    pub capabilities: StagedGitCapabilities,
     pub parent_commit: Option<String>,
     pub entries: Vec<StagedIndexEntry>,
     pub changes: Vec<StagedPathChange>,
@@ -79,6 +109,7 @@ pub struct StagedRepositorySnapshot {
 impl PartialEq for StagedRepositorySnapshot {
     fn eq(&self, other: &Self) -> bool {
         self.parent_commit == other.parent_commit
+            && self.capabilities == other.capabilities
             && self.entries == other.entries
             && self.changes == other.changes
             && self.identity == other.identity
@@ -148,6 +179,7 @@ pub fn read_staged_raw_path(
 
 fn load_snapshot_once(root: &Path) -> CargoAllowResult<StagedRepositorySnapshot> {
     ensure_git_worktree(root)?;
+    let capabilities = probe_staged_git_capabilities(root)?;
     let parent_commit = parent_commit(root)?;
     let entries = read_index_entries(root)?;
     if entries.iter().any(|entry| entry.stage != 0) {
@@ -168,6 +200,7 @@ fn load_snapshot_once(root: &Path) -> CargoAllowResult<StagedRepositorySnapshot>
 
     Ok(StagedRepositorySnapshot {
         root: root.to_path_buf(),
+        capabilities,
         parent_commit: parent_commit.clone(),
         entries,
         changes,
@@ -234,6 +267,202 @@ fn staged_limitations(entries: &[StagedIndexEntry], changes: &[StagedPathChange]
     limitations.sort();
     limitations.dedup();
     limitations
+}
+
+/// Probe the exact Git capabilities required by staged snapshot evaluation.
+///
+/// A failed feature probe is an instrument/capability failure, not a policy
+/// result. The error includes the detected Git identity and every missing
+/// capability so CLI and receipt layers can provide useful remediation.
+pub fn probe_staged_git_capabilities(
+    root: impl AsRef<Path>,
+) -> CargoAllowResult<StagedGitCapabilities> {
+    let root = root.as_ref();
+    let version_output = run_git(git_command(root).arg("--version"), "git --version")?;
+    if !version_output.status.success() {
+        return Err(git_status_error("git --version", &version_output));
+    }
+    let git_version = parse_single_line(&version_output.stdout, "Git version")?;
+
+    let object_format_output = run_git(
+        git_command(root).args(["rev-parse", "--show-object-format"]),
+        "git rev-parse --show-object-format",
+    )?;
+    let object_format = if object_format_output.status.success() {
+        match parse_single_line(&object_format_output.stdout, "Git object format")?.as_str() {
+            "sha1" => RepositoryObjectFormat::Sha1,
+            "sha256" => RepositoryObjectFormat::Sha256,
+            _ => RepositoryObjectFormat::Unknown,
+        }
+    } else {
+        RepositoryObjectFormat::Unknown
+    };
+
+    let index_output = run_git(
+        git_command(root).args(["ls-files", "--stage", "--sparse", "-z"]),
+        "git ls-files --stage --sparse -z capability probe",
+    )?;
+    let supports_sparse_index = index_output.status.success();
+    let first_blob_oid = if supports_sparse_index {
+        first_staged_blob_oid(&index_output.stdout)?
+    } else {
+        None
+    };
+
+    let change_output = run_git(
+        git_command(root).args([
+            "diff",
+            "--cached",
+            "--name-status",
+            "-z",
+            "-M",
+            "-C",
+            "--find-copies-harder",
+            "--",
+        ]),
+        "git diff --cached --name-status -z capability probe",
+    )?;
+    let supports_raw_change_paths = change_output.status.success();
+
+    let supports_exact_blob_reads = match first_blob_oid {
+        Some(object_oid) => {
+            let output = run_git(
+                git_command(root).args(["cat-file", "blob", &object_oid]),
+                "git cat-file blob capability probe",
+            )?;
+            output.status.success()
+        }
+        None => {
+            let output = run_git(
+                git_command(root).args(["cat-file", "--batch-check"]),
+                "git cat-file --batch-check capability probe",
+            )?;
+            output.status.success()
+        }
+    };
+
+    let supports_linked_worktrees = git_capability_command_succeeded(
+        root,
+        ["rev-parse", "--git-dir"],
+        "git rev-parse --git-dir capability probe",
+    )? && git_capability_command_succeeded(
+        root,
+        ["rev-parse", "--git-common-dir"],
+        "git rev-parse --git-common-dir capability probe",
+    )?;
+
+    let partial_clone = git_partial_clone_posture(root)?;
+    let capabilities = StagedGitCapabilities {
+        generation: STAGED_GIT_CAPABILITY_GENERATION.to_string(),
+        git_version,
+        object_format,
+        supports_sparse_index,
+        supports_raw_index_paths: supports_sparse_index,
+        supports_raw_change_paths,
+        supports_exact_blob_reads,
+        supports_linked_worktrees,
+        partial_clone,
+        no_lazy_fetch_enforced: true,
+        replace_refs_suppressed: true,
+        path_bytes_supported: cfg!(unix),
+    };
+
+    let missing = staged_capability_gaps(&capabilities);
+    if missing.is_empty() {
+        Ok(capabilities)
+    } else {
+        Err(staged_capability_error(&capabilities, &missing))
+    }
+}
+
+fn first_staged_blob_oid(stdout: &[u8]) -> CargoAllowResult<Option<String>> {
+    for record in stdout
+        .split(|byte| *byte == 0)
+        .filter(|record| !record.is_empty())
+    {
+        let entry = parse_index_record(record)?;
+        if entry.stage == 0
+            && matches!(
+                entry.kind,
+                StagedEntryKind::RegularFile | StagedEntryKind::ExecutableFile
+            )
+            && !is_zero_oid(&entry.object_oid)
+        {
+            return Ok(Some(entry.object_oid));
+        }
+    }
+    Ok(None)
+}
+
+fn git_capability_command_succeeded(
+    root: &Path,
+    args: [&str; 2],
+    operation: &str,
+) -> CargoAllowResult<bool> {
+    let output = run_git(git_command(root).args(args), operation)?;
+    Ok(output.status.success())
+}
+
+fn git_partial_clone_posture(root: &Path) -> CargoAllowResult<bool> {
+    let output = run_git(
+        git_command(root).args(["config", "--get-regexp", r"^remote\..*\.promisor$"]),
+        "git config promisor capability probe",
+    )?;
+    if output.status.success() {
+        return Ok(true);
+    }
+    if output.status.code() == Some(1) {
+        return Ok(false);
+    }
+    Err(git_status_error(
+        "git config promisor capability probe",
+        &output,
+    ))
+}
+
+fn staged_capability_gaps(capabilities: &StagedGitCapabilities) -> Vec<&'static str> {
+    let mut gaps = Vec::new();
+    if !capabilities.supports_sparse_index {
+        gaps.push("git ls-files --stage --sparse -z");
+    }
+    if !capabilities.supports_raw_index_paths {
+        gaps.push("raw staged index paths");
+    }
+    if !capabilities.supports_raw_change_paths {
+        gaps.push("raw staged change paths");
+    }
+    if !capabilities.supports_exact_blob_reads {
+        gaps.push("exact staged blob reads");
+    }
+    if !capabilities.supports_linked_worktrees {
+        gaps.push("linked-worktree metadata");
+    }
+    if capabilities.object_format == RepositoryObjectFormat::Unknown {
+        gaps.push("sha1/sha256 object format");
+    }
+    if !capabilities.no_lazy_fetch_enforced {
+        gaps.push("disabled lazy fetch");
+    }
+    if !capabilities.replace_refs_suppressed {
+        gaps.push("disabled replace refs");
+    }
+    gaps
+}
+
+fn staged_capability_error(capabilities: &StagedGitCapabilities, gaps: &[&str]) -> CargoAllowError {
+    let code = if !capabilities.supports_sparse_index {
+        "git_sparse_index_unsupported"
+    } else if capabilities.object_format == RepositoryObjectFormat::Unknown {
+        "git_object_format_unsupported"
+    } else {
+        "git_staged_capability_unsupported"
+    };
+    let message = format!(
+        "staged Git capability floor unavailable for {}; missing: {}; ordinary non-staged cargo-allow commands remain available; policy evaluation did not run",
+        capabilities.git_version,
+        gaps.join(", ")
+    );
+    staged_error(CargoAllowErrorKind::Inventory, code, message)
 }
 
 fn ensure_git_worktree(root: &Path) -> CargoAllowResult<()> {
@@ -700,10 +929,12 @@ fn git_command(root: &Path) -> Command {
         .arg("--no-optional-locks")
         .arg("-C")
         .arg(root)
+        .env("GIT_CONFIG_NOSYSTEM", "1")
         .env("GIT_NO_LAZY_FETCH", "1")
         .env("GIT_NO_REPLACE_OBJECTS", "1")
         .env("GIT_TERMINAL_PROMPT", "0")
         .env("GIT_PAGER", "cat")
+        .env("LC_ALL", "C")
         .stdin(Stdio::null());
     command
 }
@@ -852,6 +1083,80 @@ mod tests {
         }
     }
 
+    fn test_capabilities() -> StagedGitCapabilities {
+        StagedGitCapabilities {
+            generation: STAGED_GIT_CAPABILITY_GENERATION.to_string(),
+            git_version: "git version fixture".to_string(),
+            object_format: RepositoryObjectFormat::Sha1,
+            supports_sparse_index: true,
+            supports_raw_index_paths: true,
+            supports_raw_change_paths: true,
+            supports_exact_blob_reads: true,
+            supports_linked_worktrees: true,
+            partial_clone: false,
+            no_lazy_fetch_enforced: true,
+            replace_refs_suppressed: true,
+            path_bytes_supported: true,
+        }
+    }
+
+    #[test]
+    fn staged_git_capability_probe_reports_required_contract() -> Result<(), String> {
+        let repo = TestRepo::new()?;
+        repo.commit_file("value.txt", "base\n")?;
+        repo.write("value.txt", "staged\n")?;
+        repo.git(&["add", "--", "value.txt"])?;
+
+        let capabilities =
+            probe_staged_git_capabilities(&repo.root).map_err(|error| error.to_string())?;
+        if capabilities.generation != STAGED_GIT_CAPABILITY_GENERATION {
+            return Err("staged capability generation was not recorded".to_string());
+        }
+        if capabilities.git_version.trim().is_empty() {
+            return Err("Git executable identity was empty".to_string());
+        }
+        if !matches!(
+            capabilities.object_format,
+            RepositoryObjectFormat::Sha1 | RepositoryObjectFormat::Sha256
+        ) {
+            return Err("Git object format was not recognized".to_string());
+        }
+        if !capabilities.supports_sparse_index
+            || !capabilities.supports_raw_index_paths
+            || !capabilities.supports_raw_change_paths
+            || !capabilities.supports_exact_blob_reads
+            || !capabilities.supports_linked_worktrees
+            || !capabilities.no_lazy_fetch_enforced
+            || !capabilities.replace_refs_suppressed
+        {
+            return Err("current Git did not satisfy the staged capability contract".to_string());
+        }
+        if cfg!(unix) && !capabilities.path_bytes_supported {
+            return Err("Unix Git path-byte support was not recorded".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn unsupported_staged_capabilities_are_typed_before_policy_evaluation() -> Result<(), String> {
+        let mut capabilities = test_capabilities();
+        capabilities.supports_sparse_index = false;
+        let gaps = staged_capability_gaps(&capabilities);
+        let error = staged_capability_error(&capabilities, &gaps);
+        if error
+            .diagnostics()
+            .first()
+            .map(|diagnostic| diagnostic.code.as_str())
+            != Some("git_sparse_index_unsupported")
+        {
+            return Err("sparse capability failure lost its stable diagnostic code".to_string());
+        }
+        if !error.to_string().contains("policy evaluation did not run") {
+            return Err("capability failure did not preserve its claim boundary".to_string());
+        }
+        Ok(())
+    }
+
     #[test]
     fn snapshot_equality_ignores_repository_root() {
         let identity = StagedSnapshotIdentity {
@@ -860,6 +1165,7 @@ mod tests {
         };
         let first = StagedRepositorySnapshot {
             root: PathBuf::from("first"),
+            capabilities: test_capabilities(),
             parent_commit: identity.parent_commit.clone(),
             entries: Vec::new(),
             changes: Vec::new(),
@@ -1000,6 +1306,7 @@ mod tests {
         let limitations = staged_limitations(std::slice::from_ref(&entry), &[]);
         let snapshot = StagedRepositorySnapshot {
             root: PathBuf::from("unused"),
+            capabilities: test_capabilities(),
             parent_commit: None,
             entries: vec![entry],
             changes: Vec::new(),
