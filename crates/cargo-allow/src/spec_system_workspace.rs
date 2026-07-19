@@ -1009,6 +1009,7 @@ mod tests {
     #[test]
     fn spec_precommit_partial_stage_corpus() -> Result<(), String> {
         let root = staged_fixture_repository()?;
+        let _cleanup = FixtureCleanup(root.clone());
         run_git(&root, &["commit", "-qm", "parent"])?;
         let paired = compile_paired_self_hosted_graph(&root).map_err(|error| error.to_string())?;
         let declaration = allow_policy::spec_system::PrecommitChangeDeclaration {
@@ -1031,7 +1032,15 @@ mod tests {
         }) {
             return Err("partial staged candidate without a slice passed".to_string());
         }
-        fs::remove_dir_all(root).map_err(|error| error.to_string())
+        Ok(())
+    }
+
+    struct FixtureCleanup(PathBuf);
+
+    impl Drop for FixtureCleanup {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
     }
 
     fn staged_fixture_repository() -> Result<PathBuf, String> {
