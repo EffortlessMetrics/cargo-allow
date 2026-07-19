@@ -1,0 +1,11 @@
+schema_version = "1.0"
+
+[[seam]]
+id = "seam:allow-policy:spec-system:runtime-promotion-validator"
+generation = 1
+owner = "allow-policy"
+operation = "validate implementation, evidence, and support claims for runtime promotion"
+
+[seam.source]
+path = "crates/allow-policy/src/spec_system/runtime_promotion.rs"
+symbol = "validate_runtime_promotion"

@@ -12,6 +12,7 @@
 //! behavior.
 
 mod active_goal;
+mod authored_mapping;
 mod compiled_graph;
 mod config;
 mod doc_artifacts;
@@ -28,6 +29,12 @@ pub use active_goal::{
     ActiveGoalManifest, ActiveGoalStatus, ActiveGoalWorkItem, ActiveGoalWorkItemStatus,
     parse_active_goal_manifest, parse_active_goal_manifest_at, validate_active_goal_manifest,
     validate_active_goal_manifest_text, validate_active_goal_manifest_text_at,
+};
+pub use authored_mapping::{
+    AUTHORED_MAPPING_SCHEMA_VERSION, AuthoredEvidenceClaim, AuthoredEvidenceSource, AuthoredSeam,
+    AuthoredSeamSource, AuthoredSubjectRole, AuthoredSubjectSelector, parse_authored_evidence,
+    parse_authored_evidence_at, parse_authored_seams, parse_authored_seams_at,
+    validate_authored_mapping,
 };
 pub use compiled_graph::{
     CompiledSpecGraph, EvidenceClaimId, EvidenceClaimNode, EvidenceClaimRegistration,
