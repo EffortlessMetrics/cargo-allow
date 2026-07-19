@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::CLAIM_BOUNDARY_TEXT;
 
 /// Schema constants for the release manifest artifact.
