@@ -8,6 +8,15 @@ inventory without executing repository code.
 
 ## [Unreleased]
 
+### Added
+
+- `ReleaseManifestV1` (`cargo-allow.release-manifest.v1`) typed schema in
+  `allow-report`: binds repository, tag, commit, tree, version, source candidate,
+  crates with checksums, auth source, workflow run ID, MSRV, proven platforms,
+  schema/tool generations, limitations, and claim boundary into one deterministic
+  JSON artifact. This is the foundation for #2279/#2280 — the generator script
+  and signing/attachment workflow build on this schema.
+
 ### Changed
 
 - Raised minimum supported Rust version from 1.85 to 1.95 for the 0.2.0 train

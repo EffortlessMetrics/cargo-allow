@@ -79,6 +79,7 @@ version = "0.1.11"
 dependencies = [
  "allow-core",
  "allow-policy-legacy",
+ "serde",
  "serde_json",
 ]
 
