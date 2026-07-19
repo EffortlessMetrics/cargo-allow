@@ -26,9 +26,12 @@ pub struct AddPlanApplicationV1<'a> {
     pub policy_after_digest: String,
     /// Allow ID added to the ledger.
     pub added_allow_id: String,
-    /// Honest recheck posture. `add --from-plan` never runs a targeted or full
-    /// recheck itself, so this is always `not_executed`; the operator must run
-    /// `full_check_argv` separately.
+    /// Targeted recheck result. After writing the entry, `add --from-plan`
+    /// re-evaluates the target finding against the mutated policy (reusing the
+    /// loaded findings) and reports whether the finding now matches:
+    /// `matched`, `still_new`, `no_outcome`, or `unexpected:<status>`.
+    /// This is NOT a full check — the operator must still run `full_check_argv`
+    /// for CI-grade proof.
     pub targeted_recheck: String,
     /// Authoritative program plus ordered argv for the full-repository check the
     /// operator should run next. Consumers must not shell-split or reconstruct
