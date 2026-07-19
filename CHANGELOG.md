@@ -10,6 +10,12 @@ inventory without executing repository code.
 
 ### Added
 
+- Performance budget smoke (`scripts/perf-budget-smoke.sh`) measures wall-clock
+  elapsed time for the critical operator-loop commands (audit, check, why,
+  diff) and writes a structured receipt. Initial baseline documented in
+  `docs/performance-budgets.md`. The `why` single-file fast path measures
+  ~240ms vs ~22s for full `audit` — a 73x improvement.
+
 - `allow-core` defines a versioned actionable-diagnostic kernel
   (`CargoAllowDiagnosticV1` / `CargoAllowActionV1` / `CargoAllowDiagnosticBatchV1`)
   so every output surface can share one semantic finding/repair object. It keeps
