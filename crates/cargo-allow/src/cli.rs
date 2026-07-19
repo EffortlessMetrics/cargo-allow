@@ -14,7 +14,8 @@ use crate::{
     version
 )]
 pub(crate) struct CargoAllowCli {
-    /// Accept cargo-style color preference before the subcommand.
+    /// Accept cargo-style color preference (accepted for compatibility;
+    /// output is currently plain text — see #2516).
     #[arg(long, value_enum, default_value_t = ColorChoice::Auto)]
     pub(crate) color: ColorChoice,
     #[command(subcommand)]
@@ -64,7 +65,7 @@ pub(crate) enum CargoAllowCommand {
 
 pub(crate) fn run() -> CargoAllowResult<()> {
     let cli = CargoAllowCli::parse_from(normalized_args(env::args()));
-    let _color = cli.color;
+    let _color = cli.color; // Accepted for cargo compatibility; not yet honored (see #2516).
     let Some(command) = cli.command else {
         CargoAllowCli::command()
             .print_help()
