@@ -1,0 +1,61 @@
+schema_version = "1.0"
+
+[[evidence]]
+id = "evidence:allow-policy:spec-system:runtime-promotion-v1"
+requirement_id = "CARGO-ALLOW-SPEC-0009#spec-only-runtime-promotion"
+requirement_generation = 1
+slice_id = "cargo-allow.slice.self-hosted-runtime-promotion.v1"
+slice_generation = 1
+seam_id = "seam:allow-policy:spec-system:runtime-promotion-validator"
+purpose = "positive_acceptance"
+precondition = "An accepted runtime requirement is paired with a spec-or-policy-only implementation slice."
+operation = "Validate the implementation claim, evidence posture, and support posture."
+expected_observable = "The accepted requirement remains accepted while implementation, evidence, and support remain outstanding or unchanged."
+discriminator = "SpecOnlyRuntimePromotionState"
+claim_boundary = "Establishes structural claim posture only; it does not prove runtime execution, test adequacy, or support promotion."
+
+[evidence.source]
+path = "crates/allow-policy/src/spec_system/runtime_promotion.rs"
+symbol = "spec_or_policy_slice_keeps_runtime_requirement_accepted"
+
+[[evidence.subject]]
+id = "subject:allow-policy:spec-system:runtime-promotion-accepted"
+role = "exact_evidence"
+package = "allow-policy"
+target = "lib"
+module_path = "spec_system::runtime_promotion::tests"
+test_name = "spec_or_policy_slice_keeps_runtime_requirement_accepted"
+
+[[evidence]]
+id = "evidence:allow-policy:spec-system:runtime-promotion-forbidden"
+requirement_id = "CARGO-ALLOW-SPEC-0009#spec-only-runtime-promotion"
+requirement_generation = 1
+slice_id = "cargo-allow.slice.self-hosted-runtime-promotion.v1"
+slice_generation = 1
+seam_id = "seam:allow-policy:spec-system:runtime-promotion-validator"
+purpose = "forbidden_runtime_promotion"
+precondition = "A spec-or-policy-only implementation slice attempts an implemented runtime claim."
+operation = "Validate the proposed implementation claim against the accepted runtime requirement."
+expected_observable = "The typed SpecOnlyRuntimeImplementationClaim finding is emitted and accepted requirement/support state remains unchanged."
+discriminator = "SpecOnlyRuntimeImplementationClaim"
+claim_boundary = "Establishes rejection of an unsupported structural claim; it does not prove runtime execution or test adequacy."
+
+[evidence.source]
+path = "crates/allow-policy/src/spec_system/runtime_promotion.rs"
+symbol = "spec_or_policy_slice_rejects_unproved_runtime_promotion"
+
+[[evidence.subject]]
+id = "subject:allow-policy:spec-system:runtime-promotion-forbidden"
+role = "exact_evidence"
+package = "allow-policy"
+target = "lib"
+module_path = "spec_system::runtime_promotion::tests"
+test_name = "spec_or_policy_slice_rejects_unproved_runtime_promotion"
+
+[[evidence.subject]]
+id = "subject:allow-policy:spec-system:runtime-promotion-broad-rejection"
+role = "related_weak"
+package = "allow-policy"
+target = "lib"
+module_path = "spec_system::runtime_promotion::tests"
+test_name = "behavior_change_rejects_implemented_claim_without_evidence_closure"
