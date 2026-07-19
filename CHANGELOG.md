@@ -8,6 +8,17 @@ inventory without executing repository code.
 
 ## [Unreleased]
 
+### Changed
+
+- SHA-pinned `actions/checkout`, `actions/upload-artifact`,
+  `rust-lang/crates-io-auth-action`, and `softprops/action-gh-release` by commit
+  SHA across `release.yml` and `ci.yml` (#1896). `dtolnay/rust-toolchain` and
+  `Swatinem/rust-cache` remain tag-pinned (follow-up).
+- Made crates.io OIDC Trusted Publishing fail-closed in `release.yml` by
+  removing `continue-on-error: true` from the OIDC step (#2281). A release
+  that cannot authenticate via OIDC now fails instead of silently falling back
+  to the `CARGO_REGISTRY_TOKEN` secret.
+
 ### Added
 
 - Performance budget smoke (`scripts/perf-budget-smoke.sh`) measures wall-clock
