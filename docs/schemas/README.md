@@ -597,7 +597,8 @@ Schema compatibility tests also lock:
 - `additionalProperties = false` at the artifact root and nested object schema
   nodes;
 - shared source-tree inventory source values, including `git_tracked`,
-  `filesystem_fallback`, `filesystem_include_untracked`, and `unknown`
+  `git_index_staged_candidate`, `filesystem_fallback`,
+  `filesystem_include_untracked`, and `unknown`
   renderer defaults;
 - shared evidence prefix, evidence-reference status, and diagnostic category vocabularies, including
   canonical prefixes, parser-recognized aliases, local-file evidence prefixes,

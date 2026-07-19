@@ -339,6 +339,7 @@
           "enum": [
             "unknown",
             "git_tracked",
+            "git_index_staged_candidate",
             "filesystem_fallback",
             "filesystem_include_untracked"
           ]
