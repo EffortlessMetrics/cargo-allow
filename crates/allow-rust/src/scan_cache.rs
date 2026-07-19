@@ -52,10 +52,11 @@ impl ScanCache {
         let size = metadata.len();
 
         // Check cache
-        if let Some(entry) = self.entries.get(rel) {
-            if entry.mtime == mtime && entry.size == size {
-                return Ok(entry.findings.clone());
-            }
+        if let Some(entry) = self.entries.get(rel)
+            && entry.mtime == mtime
+            && entry.size == size
+        {
+            return Ok(entry.findings.clone());
         }
 
         // Cache miss — parse the file
