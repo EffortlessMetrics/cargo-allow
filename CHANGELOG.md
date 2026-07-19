@@ -8,6 +8,8 @@ inventory without executing repository code.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-19
+
 ### Added
 
 - Release workflow generates a `ReleaseManifestV1` manifest, attests it with

@@ -13,7 +13,7 @@ dependencies = [
 
 [[package]]
 name = "allow-core"
-version = "0.1.11"
+version = "0.2.0"
 dependencies = [
  "proptest",
  "sha2",
@@ -21,7 +21,7 @@ dependencies = [
 
 [[package]]
 name = "allow-diff"
-version = "0.1.11"
+version = "0.2.0"
 dependencies = [
  "allow-core",
  "allow-files",
@@ -33,21 +33,21 @@ dependencies = [
 
 [[package]]
 name = "allow-files"
-version = "0.1.11"
+version = "0.2.0"
 dependencies = [
  "allow-core",
 ]
 
 [[package]]
 name = "allow-inventory"
-version = "0.1.11"
+version = "0.2.0"
 dependencies = [
  "allow-core",
 ]
 
 [[package]]
 name = "allow-match"
-version = "0.1.11"
+version = "0.2.0"
 dependencies = [
  "allow-core",
  "allow-policy",
@@ -56,7 +56,7 @@ dependencies = [
 
 [[package]]
 name = "allow-policy"
-version = "0.1.11"
+version = "0.2.0"
 dependencies = [
  "allow-core",
  "serde",
@@ -65,7 +65,7 @@ dependencies = [
 
 [[package]]
 name = "allow-policy-legacy"
-version = "0.1.11"
+version = "0.2.0"
 dependencies = [
  "allow-core",
  "allow-match",
@@ -75,7 +75,7 @@ dependencies = [
 
 [[package]]
 name = "allow-report"
-version = "0.1.11"
+version = "0.2.0"
 dependencies = [
  "allow-core",
  "allow-policy-legacy",
@@ -85,7 +85,7 @@ dependencies = [
 
 [[package]]
 name = "allow-rust"
-version = "0.1.11"
+version = "0.2.0"
 dependencies = [
  "allow-core",
  "toml",
@@ -166,7 +166,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-allow"
-version = "0.1.11"
+version = "0.2.0"
 dependencies = [
  "allow-core",
  "allow-diff",
