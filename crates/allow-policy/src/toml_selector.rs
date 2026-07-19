@@ -19,7 +19,11 @@ pub(crate) struct SelectorToml {
     /// the TOML but discarded — `into_selector` always sets `line_hint: None`
     /// on the runtime `Selector`. This field must never be read; if you need
     /// line proximity, use `last_seen` observations instead (#2512).
-    #[serde(default, rename = "line_hint", deserialize_with = "option_u32_or_string")]
+    #[serde(
+        default,
+        rename = "line_hint",
+        deserialize_with = "option_u32_or_string"
+    )]
     _line_hint: Option<u32>,
     glob: Option<String>,
 }
