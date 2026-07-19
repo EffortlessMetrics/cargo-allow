@@ -10,6 +10,12 @@ inventory without executing repository code.
 
 ### Added
 
+- Release workflow generates a `ReleaseManifestV1` manifest, attests it with
+  keyless OIDC-backed build provenance (`actions/attest-build-provenance`), and
+  attaches the manifest + SHA-256 to the GitHub Release. The manifest binds
+  repository, tag, commit, tree, version, crate checksums, auth source,
+  workflow run ID, MSRV, proven platforms, and claim boundary. The attestation
+  binds the manifest to the exact workflow identity that produced it (#2280).
 - `scripts/generate-release-manifest.sh` generates a
   `cargo-allow.release-manifest.v1` JSON manifest from release workflow context
   (version, git identity, auth source, MSRV, proven platforms, crate checksums)

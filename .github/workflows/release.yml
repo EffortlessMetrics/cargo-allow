@@ -45,6 +45,8 @@ jobs:
   publish:
     needs: preflight
     runs-on: ubuntu-latest
+    outputs:
+      auth_source: ${{ steps.registry_token.outputs.source }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: dtolnay/rust-toolchain@stable
@@ -191,8 +193,27 @@ jobs:
     needs: install-smoke
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Generate release manifest
+        env:
+          VERSION: "${GITHUB_REF_NAME#v}"
+          REPOSITORY: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+          COMMIT: ${{ github.sha }}
+          AUTH_SOURCE: ${{ needs.publish.outputs.auth_source }}
+          WORKFLOW_RUN_ID: ${{ github.run_id }}
+          MSRV: "1.95"
+          PLATFORMS: "linux"
+        run: bash scripts/generate-release-manifest.sh
+      - name: Attest release manifest
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: target/cargo-allow/release-manifest-v1.json
       - name: Resolve release notes
         id: notes
         run: |
@@ -217,3 +238,10 @@ jobs:
           body_path: ${{ steps.notes.outputs.body_path }}
           draft: false
           prerelease: false
+      - name: Attach release manifest to GitHub Release
+        uses: softprops/action-gh-release@42dc69e1aa15d09112580998cf2ef0119e2e91ae # v2.4.2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            target/cargo-allow/release-manifest-v1.json
+            target/cargo-allow/release-manifest-v1.sha256
