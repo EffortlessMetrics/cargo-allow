@@ -6357,8 +6357,30 @@ review_after = "2026-10-17"
 ast_kind = "tracked_file"
 symbol = "scripts/generate-release-manifest.sh"
 target_fingerprint = "sh"
-line_hint = 1
 glob = "scripts/generate-release-manifest.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0305"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/cargo-allow-compat-lane-receipts.md"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Migration parity dogfood receipts for six compat lanes"
+evidence = ["doc:plans/migration-parity/gap-inventory.md"]
+created = "2026-07-19"
+review_after = "2026-10-17"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/dogfood/cargo-allow-compat-lane-receipts.md"
+target_fingerprint = "md"
+line_hint = 1
+glob = "docs/dogfood/cargo-allow-compat-lane-receipts.md"
 
 [allow.last_seen]
 line = 1
