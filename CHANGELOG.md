@@ -39,6 +39,17 @@ inventory without executing repository code.
   fail visibly rather than degrading to a clean snapshot. This slice implements
   the committed-head and committed-range kinds; staged/working-tree/external
   kinds and consumer wiring are follow-up. (#2225)
+- `cargo-allow init` now writes the starter policy via the durable `write_file`
+  atomic-replace path instead of raw `fs::write`, matching every other mutation
+  command. An interrupted `init` can no longer leave a partial policy file.
+
+### Changed
+
+- Corrected the product description in `docs/design.md`: cargo-allow is a
+  source-syntax policy linter and durable exception ledger, not "not a linter."
+  The adjacent-tool boundary (does not replace rustc lints, Clippy, etc.) is
+  preserved.
+
 - `cargo-allow add --from-plan <PATH>` consumes a `cargo-allow.add-finding-plan.v1`
   artifact (from `why --plan`) as a fail-closed live-ledger transaction. It
   acquires the mutation lock, strictly parses the v1 plan, recomputes the

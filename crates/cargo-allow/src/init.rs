@@ -66,8 +66,7 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
             CargoAllowError::new(format!("failed to create {}: {e}", parent.display()))
         })?;
     }
-    fs::write(&path, starter_policy(args.strict))
-        .map_err(|e| CargoAllowError::new(format!("failed to write {}: {e}", path.display())))?;
+    crate::io::write_file(&path, &starter_policy(args.strict))?;
     println!("created {}", created_path_display(&root, &path));
     println!();
     println!("next steps:");
