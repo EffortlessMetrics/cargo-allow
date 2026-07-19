@@ -4,9 +4,12 @@ cargo-allow is the source-exception ledger for source trees. Its job is to
 make retained source exceptions visible, owned, scoped, evidenced, expirable,
 diffable, and actionable.
 
-It is not a linter. It does not replace rustc lints, Clippy, cargo-deny,
+cargo-allow is a source-syntax policy linter and durable exception ledger. It
+parses Rust source with tree-sitter, constructs structural findings (unsafe,
+panic, lint suppressions), and checks them against a policy ledger of
+receipted exceptions. It does not replace rustc lints, Clippy, cargo-deny,
 cargo-vet, cargo-geiger, ripr, unsafe-review, coverage tooling, or local test
-suites. Those tools detect adjacent facts. cargo-allow records which source
+suites — those tools detect adjacent facts. cargo-allow records which source
 exceptions a repository permits to remain and why.
 
 cargo-allow scans repository files directly. It may be invoked as `cargo allow`

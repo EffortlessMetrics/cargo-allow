@@ -1,7 +1,6 @@
 use super::*;
 use crate::{CargoAllowCli, CargoAllowCommand, ProfileArg, RootArgs};
 use allow_core::CargoAllowError;
-use allow_policy::starter_policy;
 use clap::Parser;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -167,9 +166,8 @@ fn cmd_init_reports_policy_write_errors() {
     fs::create_dir_all(&policy).unwrap_or_else(|err| {
         std::panic::panic_any(format!("create policy directory target: {err}"))
     });
-    let source_error = fs::write(&policy, starter_policy(false))
-        .expect_err("writing starter policy to a directory should fail");
-
+    // The policy path is a directory, so write_file's atomic rename step fails
+    // with "failed to install" (it cannot rename a temp file over a directory).
     let err = cmd_init(&InitArgs {
         root: RootArgs {
             root: Some(root.clone()),
@@ -182,12 +180,10 @@ fn cmd_init_reports_policy_write_errors() {
     })
     .expect_err("directory policy target should fail policy write");
 
-    assert_eq!(
-        err,
-        CargoAllowError::new(format!(
-            "failed to write {}: {source_error}",
-            policy.display()
-        ))
+    assert!(
+        err.to_string()
+            .contains(&format!("failed to install {}", policy.display())),
+        "expected 'failed to install' error for directory target, got: {err}"
     );
 
     remove_init_fixture_dir(root);
