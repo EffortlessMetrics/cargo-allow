@@ -386,10 +386,9 @@ fn classify_change(
             classes.push(class);
         }
     }
-    if classes.len() == 1 {
-        classes[0]
-    } else {
-        PrecommitChangeClass::UnknownOrMixed
+    match classes.as_slice() {
+        [class] => *class,
+        _ => PrecommitChangeClass::UnknownOrMixed,
     }
 }
 
