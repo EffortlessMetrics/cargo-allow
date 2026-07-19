@@ -155,7 +155,7 @@ mod tests {
         assert_eq!(parsed["crates"][0]["name"], "cargo-allow");
         assert_eq!(parsed["auth_source"], "oidc");
         assert_eq!(parsed["msrv"], "1.95");
-        assert!(parsed["claim_boundary"].as_str().unwrap().len() > 0);
+        assert!(!parsed["claim_boundary"].as_str().unwrap().is_empty());
     }
 
     #[test]
