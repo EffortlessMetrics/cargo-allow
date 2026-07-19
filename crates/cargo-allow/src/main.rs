@@ -27,6 +27,7 @@ mod migrate;
 mod mutation_lock;
 mod plan_bindings;
 mod policy_config;
+pub mod precommit_tool;
 mod propose;
 mod prune;
 mod refresh;
