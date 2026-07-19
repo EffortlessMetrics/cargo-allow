@@ -399,6 +399,13 @@ fn spec_system_init_bootstrapped_profile_loads_via_check() {
         receipt: None,
         mode: Some("audit".to_string()),
         deny: Vec::new(),
+        phase: None,
+        staged: false,
+        staged_identity_only: false,
+        expect_staged_identity: None,
+        tool_mode: None,
+        tool_digest: None,
+        preview_authorized: false,
     });
     assert!(
         result.is_ok(),

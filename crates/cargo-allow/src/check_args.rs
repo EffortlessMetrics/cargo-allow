@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
 use crate::{OutputFormat, ProfileArg, RootArgs, parse_kind_filter_arg};
@@ -38,4 +38,30 @@ pub(crate) struct CheckArgs {
     /// Repeatable. Supported classes mirror receipt `advisory` fields, including `occurrence_headroom`.
     #[arg(long = "deny", value_name = "STATUS")]
     pub(crate) deny: Vec<String>,
+    /// Evaluation phase for profile-specific checks.
+    #[arg(long, value_enum)]
+    pub(crate) phase: Option<CheckPhase>,
+    /// Evaluate the exact Git index candidate instead of the worktree.
+    #[arg(long)]
+    pub(crate) staged: bool,
+    /// Print only the canonical staged candidate identity.
+    #[arg(long)]
+    pub(crate) staged_identity_only: bool,
+    /// Require this staged identity before evaluating or publishing a result.
+    #[arg(long)]
+    pub(crate) expect_staged_identity: Option<String>,
+    /// Tool selection mode for self-hosted staged evaluation.
+    #[arg(long, value_enum)]
+    pub(crate) tool_mode: Option<crate::precommit_tool::ToolSelectionMode>,
+    /// Expected digest for the selected prebuilt cargo-allow executable.
+    #[arg(long)]
+    pub(crate) tool_digest: Option<String>,
+    /// Authorize source-preview evidence for an explicit tool-under-test.
+    #[arg(long)]
+    pub(crate) preview_authorized: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(crate) enum CheckPhase {
+    Precommit,
 }
