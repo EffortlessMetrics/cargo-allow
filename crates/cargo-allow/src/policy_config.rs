@@ -187,7 +187,7 @@ fn lexical_normalize(path: &Path) -> PathBuf {
 /// Strip the Windows verbatim (`\\?\`) prefix from a path so it can be compared
 /// lexically against a non-verbatim path. A no-op on non-Windows platforms and
 /// on paths without the prefix.
-fn strip_verbatim_prefix(path: &Path) -> PathBuf {
+pub(crate) fn strip_verbatim_prefix(path: &Path) -> PathBuf {
     let s = path.as_os_str();
     if let Some(rest) = s.to_str().and_then(|s| s.strip_prefix(r"\\?\")) {
         // `\\?\UNC\server\share\...` -> `\\server\share\...`
