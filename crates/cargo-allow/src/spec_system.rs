@@ -19,6 +19,7 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::spec_system_view::render_self_hosted_explain;
 use crate::{OutputFormat, RootArgs, emit_text, root_relative_path, write_file};
 
 const PROFILE_NAME: &str = "spec-system";
@@ -125,6 +126,12 @@ pub(crate) fn cmd_spec_system_explain(
     args: SpecSystemExplainCommandArgs<'_>,
 ) -> CargoAllowResult<()> {
     let report = build_spec_system_report("explain", args.root, args.config, true, false, None)?;
+    if let Some(rendered) =
+        render_self_hosted_explain(&report.root, args.artifact_id, args.format_json)?
+    {
+        emit_text(args.output, &rendered)?;
+        return Ok(());
+    }
     let report = filter_spec_system_report_for_artifact(&report, args.artifact_id)?;
     let rendered = if args.format_json {
         render_spec_system_json(&report)
