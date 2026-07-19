@@ -15,9 +15,10 @@ pub(crate) struct SelectorToml {
     receiver_fingerprint: Option<String>,
     target_fingerprint: Option<String>,
     normalized_snippet_hash: Option<String>,
-    // line_hint is accepted in TOML for backward compatibility but no longer
-    // propagated into the runtime Selector. The leading underscore suppresses
-    // the dead-code warning without introducing a lint_exception finding.
+    /// Accepted for backward compatibility. The value is parsed to validate
+    /// the TOML but discarded — `into_selector` always sets `line_hint: None`
+    /// on the runtime `Selector`. This field must never be read; if you need
+    /// line proximity, use `last_seen` observations instead (#2512).
     #[serde(
         default,
         rename = "line_hint",
