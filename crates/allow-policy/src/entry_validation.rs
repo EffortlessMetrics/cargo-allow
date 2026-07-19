@@ -83,13 +83,14 @@ pub(crate) fn validate_allow_entry_requirements(
     // non-empty target after the prefix — "doc:" with no path is invalid
     // (#1832).
     for evidence in &entry.evidence {
-        if let Some(reference) = EvidenceReference::parse(evidence) {
-            if reference.kind.is_local_file() && reference.value.as_os_str().is_empty() {
-                return Err(CargoAllowError::new(format!(
-                    "{} evidence reference `{}` has an empty target",
-                    entry.id, evidence
-                )));
-            }
+        if let Some(reference) = EvidenceReference::parse(evidence)
+            && reference.kind.is_local_file()
+            && reference.value.as_os_str().is_empty()
+        {
+            return Err(CargoAllowError::new(format!(
+                "{} evidence reference `{}` has an empty target",
+                entry.id, evidence
+            )));
         }
     }
     if link_scope_validation == LinkScopeValidation::Strict {

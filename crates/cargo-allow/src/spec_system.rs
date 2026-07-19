@@ -2351,20 +2351,20 @@ fn render_spec_system_json(report: &SpecSystemReport) -> String {
         }
         text.push_str("\n    ]\n  },\n");
     }
-    if report.command == "explain" {
-        if let Some(artifact) = report.artifacts.first() {
-            text.push_str(&format!(
-                "  \"explained_artifact_id\": \"{}\",\n",
-                json_escape(&artifact.id)
-            ));
-            text.push_str("  \"proof_commands\": ");
-            render_string_array(
-                &mut text,
-                &spec_system_explain_proof_commands(&artifact.id),
-                "  ",
-            );
-            text.push_str(",\n");
-        }
+    if report.command == "explain"
+        && let Some(artifact) = report.artifacts.first()
+    {
+        text.push_str(&format!(
+            "  \"explained_artifact_id\": \"{}\",\n",
+            json_escape(&artifact.id)
+        ));
+        text.push_str("  \"proof_commands\": ");
+        render_string_array(
+            &mut text,
+            &spec_system_explain_proof_commands(&artifact.id),
+            "  ",
+        );
+        text.push_str(",\n");
     }
     if let Some(readiness) = &report.readiness {
         text.push_str("  \"readiness\": {\n");

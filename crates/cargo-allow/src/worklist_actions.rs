@@ -86,10 +86,10 @@ pub(crate) fn suggested_actions_for_context(
     finding: Option<&Finding>,
     entry: Option<&AllowEntry>,
 ) -> Vec<String> {
-    if kind == MISSING_EVIDENCE {
-        if let Some(family) = high_risk_policy_exception_family(finding, entry) {
-            return high_risk_policy_missing_evidence_actions(family);
-        }
+    if kind == MISSING_EVIDENCE
+        && let Some(family) = high_risk_policy_exception_family(finding, entry)
+    {
+        return high_risk_policy_missing_evidence_actions(family);
     }
     if kind == WEAK_EVIDENCE_REFERENCE {
         if unsafe_exception(finding, entry) {

@@ -124,27 +124,25 @@ pub fn evaluate_source_exception_policy(
         ));
     }
 
-    if let Some(validated) = load_validated_federation_config(root)? {
-        if validated.valid {
-            if let Some(ledger) =
-                resolve_canonical_ledger_for_lane(&validated.config, SOURCE_EXCEPTION_LANE)
-            {
-                let path = root.join(&ledger.path);
-                return Ok((
-                    path,
-                    FederationEvaluation {
-                        federation_version: FEDERATION_VERSION,
-                        precedence_applied: PrecedenceTier::FederationRegistry,
-                        active_provenance: Some(ledger_provenance_from_entry(
-                            ledger,
-                            SOURCE_EXCEPTION_LANE,
-                        )),
-                        ledger_contributors: ledger_contributors_from_config(&validated.config),
-                        divergences: divergences.clone(),
-                    },
-                ));
-            }
-        }
+    if let Some(validated) = load_validated_federation_config(root)?
+        && validated.valid
+        && let Some(ledger) =
+            resolve_canonical_ledger_for_lane(&validated.config, SOURCE_EXCEPTION_LANE)
+    {
+        let path = root.join(&ledger.path);
+        return Ok((
+            path,
+            FederationEvaluation {
+                federation_version: FEDERATION_VERSION,
+                precedence_applied: PrecedenceTier::FederationRegistry,
+                active_provenance: Some(ledger_provenance_from_entry(
+                    ledger,
+                    SOURCE_EXCEPTION_LANE,
+                )),
+                ledger_contributors: ledger_contributors_from_config(&validated.config),
+                divergences: divergences.clone(),
+            },
+        ));
     }
 
     let discovery = discover_config(root);

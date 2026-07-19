@@ -29,12 +29,12 @@ pub(crate) fn validate_policy_header(cfg: &AllowConfig) -> CargoAllowResult<()> 
     }
     validate_optional_text("policy owner", cfg.owner.as_deref())?;
     validate_optional_text("policy status", cfg.status.as_deref())?;
-    if let Some(status) = &cfg.status {
-        if !matches!(status.as_str(), "active" | "advisory") {
-            return Err(CargoAllowError::new(format!(
-                "unsupported policy status `{status}`"
-            )));
-        }
+    if let Some(status) = &cfg.status
+        && !matches!(status.as_str(), "active" | "advisory")
+    {
+        return Err(CargoAllowError::new(format!(
+            "unsupported policy status `{status}`"
+        )));
     }
     Ok(())
 }

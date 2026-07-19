@@ -255,16 +255,17 @@ fn detect_drain_window_issues(
         // would silently disable the drain deadline. Only check non-empty
         // values; a missing/empty field is already reported by the
         // missing-field diagnostic above. (#2007)
-        if let Some(expiry) = drain.expiry.as_deref() {
-            if !expiry.trim().is_empty() && SimpleDate::parse(expiry).is_none() {
-                diagnostics.push(FederationDiagnostic {
+        if let Some(expiry) = drain.expiry.as_deref()
+            && !expiry.trim().is_empty()
+            && SimpleDate::parse(expiry).is_none()
+        {
+            diagnostics.push(FederationDiagnostic {
                     kind: FederationDiagnosticKind::DrainWindowInvalidDate,
                     message: format!(
                         "drain window {window_index} has invalid expiry `{expiry}`; expected YYYY-MM-DD",
                     ),
                     ledger_ids: vec![drain.mirror_ledger.clone()],
                 });
-            }
         }
         if !drain.review_after.trim().is_empty() && SimpleDate::parse(&drain.review_after).is_none()
         {

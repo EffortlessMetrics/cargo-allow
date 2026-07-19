@@ -611,18 +611,17 @@ fn default_integration_targets(root: &Path, source_paths: &[PathBuf]) -> Vec<Dec
             continue;
         };
         let components = path_components(relative);
-        if let [file] = components.as_slice() {
-            if file.ends_with(".rs") {
-                if let Some(name) = file_stem(file) {
-                    targets.push(target_from_path(
-                        RustTestTargetKind::IntegrationTest,
-                        name,
-                        source.clone(),
-                        root,
-                        false,
-                    ));
-                }
-            }
+        if let [file] = components.as_slice()
+            && file.ends_with(".rs")
+            && let Some(name) = file_stem(file)
+        {
+            targets.push(target_from_path(
+                RustTestTargetKind::IntegrationTest,
+                name,
+                source.clone(),
+                root,
+                false,
+            ));
         }
     }
     targets
@@ -704,16 +703,15 @@ impl TestTraversal<'_> {
         let attributes = node_attributes(node, self.source);
         let local_cfg_unknown = attributes.iter().any(|attribute| cfg_is_unknown(attribute));
 
-        if node.kind() == "mod_item" {
-            if let Some(name) = node
+        if node.kind() == "mod_item"
+            && let Some(name) = node
                 .child_by_field_name("name")
                 .and_then(|name| node_text(self.source, name))
-            {
-                self.inline_modules.push(name.to_string());
-                self.visit_children(node, inherited_cfg_unknown || local_cfg_unknown);
-                self.inline_modules.pop();
-                return;
-            }
+        {
+            self.inline_modules.push(name.to_string());
+            self.visit_children(node, inherited_cfg_unknown || local_cfg_unknown);
+            self.inline_modules.pop();
+            return;
         }
 
         if node.kind() == "function_item" {
@@ -891,10 +889,10 @@ fn file_module_prefix(path: &Path, target: &TargetContext) -> Vec<String> {
     let Some(file) = components.pop() else {
         return Vec::new();
     };
-    if let Some(stem) = file_stem(&file) {
-        if !matches!(stem.as_str(), "lib" | "main" | "mod") {
-            components.push(stem);
-        }
+    if let Some(stem) = file_stem(&file)
+        && !matches!(stem.as_str(), "lib" | "main" | "mod")
+    {
+        components.push(stem);
     }
     components
 }

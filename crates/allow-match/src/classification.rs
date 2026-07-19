@@ -12,24 +12,24 @@ pub(crate) fn classify_matched(
     cfg: &AllowConfig,
     mode: CheckMode,
 ) -> (MatchStatus, String) {
-    if entry_is_expired(entry, today) {
-        if let Some(expires) = &entry.lifecycle.expires {
-            return (
-                MatchStatus::Expired,
-                format!("{} matched but expired on {expires}", entry.id),
-            );
-        }
+    if entry_is_expired(entry, today)
+        && let Some(expires) = &entry.lifecycle.expires
+    {
+        return (
+            MatchStatus::Expired,
+            format!("{} matched but expired on {expires}", entry.id),
+        );
     }
-    if entry_review_is_due(entry, today) {
-        if let Some(review_after) = &entry.lifecycle.review_after {
-            return (
-                MatchStatus::ReviewDue,
-                format!(
-                    "{} matched but review is due after {review_after}",
-                    entry.id
-                ),
-            );
-        }
+    if entry_review_is_due(entry, today)
+        && let Some(review_after) = &entry.lifecycle.review_after
+    {
+        return (
+            MatchStatus::ReviewDue,
+            format!(
+                "{} matched but review is due after {review_after}",
+                entry.id
+            ),
+        );
     }
     if cfg.requirements.unsafe_evidence_required
         && entry.kind == FindingKind::Unsafe
@@ -79,16 +79,16 @@ pub(crate) fn classify_matched(
                 ),
             );
         }
-        if let Some(policy_id) = policy_id {
-            if policy_id != entry.id {
-                return (
-                    MatchStatus::InvalidSelector,
-                    format!(
-                        "{} matched lint suppression that references policy:{policy_id}",
-                        entry.id
-                    ),
-                );
-            }
+        if let Some(policy_id) = policy_id
+            && policy_id != entry.id
+        {
+            return (
+                MatchStatus::InvalidSelector,
+                format!(
+                    "{} matched lint suppression that references policy:{policy_id}",
+                    entry.id
+                ),
+            );
         }
     }
     if entry.classification == "baseline_debt"

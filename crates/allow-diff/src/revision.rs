@@ -45,10 +45,10 @@ pub fn findings_at_revision(
             generated: cfg.workspace.generated.clone(),
         },
     ));
-    if has_generated_code_receipt(cfg) {
-        if let Some(text) = read_file_at_revision(root, revision, ".gitattributes")? {
-            findings.extend(allow_policy_legacy::generated_findings_from_gitattributes_text(&text));
-        }
+    if has_generated_code_receipt(cfg)
+        && let Some(text) = read_file_at_revision(root, revision, ".gitattributes")?
+    {
+        findings.extend(allow_policy_legacy::generated_findings_from_gitattributes_text(&text));
     }
     if has_policy_family(cfg, &["github_workflow", "workflow_external_action"]) {
         let mut workflow_sources = Vec::new();

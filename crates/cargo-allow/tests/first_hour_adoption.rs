@@ -98,10 +98,10 @@ fn inventory_steps(inventory: &str) -> Vec<InventoryStep> {
     let mut steps = Vec::new();
     let mut current: Option<InventoryStep> = None;
     let flush = |steps: &mut Vec<InventoryStep>, current: &mut Option<InventoryStep>| {
-        if let Some(step) = current.take() {
-            if !step.id.is_empty() {
-                steps.push(step);
-            }
+        if let Some(step) = current.take()
+            && !step.id.is_empty()
+        {
+            steps.push(step);
         }
     };
 

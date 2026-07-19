@@ -379,10 +379,8 @@ fn workspace_package_version(workspace_manifest: &str) -> String {
             in_workspace_package = line == "[workspace.package]";
             continue;
         }
-        if in_workspace_package {
-            if let Some(version) = manifest_value(line, "version") {
-                return version;
-            }
+        if in_workspace_package && let Some(version) = manifest_value(line, "version") {
+            return version;
         }
     }
     std::panic::panic_any("workspace manifest should declare workspace.package.version");

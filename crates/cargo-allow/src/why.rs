@@ -150,20 +150,20 @@ fn entry_is_related(entry: &AllowEntry, finding: &Finding) -> bool {
     if entry.family.is_some() && entry.family == finding.family {
         return true;
     }
-    if let Some(path) = &entry.path {
-        if normalize_path(path) == normalize_path(&finding.path) {
-            return true;
-        }
+    if let Some(path) = &entry.path
+        && normalize_path(path) == normalize_path(&finding.path)
+    {
+        return true;
     }
-    if let Some(glob) = &entry.glob {
-        if allow_core::glob_matches(glob, &finding.path) {
-            return true;
-        }
+    if let Some(glob) = &entry.glob
+        && allow_core::glob_matches(glob, &finding.path)
+    {
+        return true;
     }
-    if let Some(glob) = &entry.selector.glob {
-        if allow_core::glob_matches(glob, &finding.path) {
-            return true;
-        }
+    if let Some(glob) = &entry.selector.glob
+        && allow_core::glob_matches(glob, &finding.path)
+    {
+        return true;
     }
     false
 }

@@ -135,107 +135,104 @@ fn collect_containers(
     extern_path: &mut Vec<String>,
     containers: &mut Vec<RustSyntaxContainer>,
 ) {
-    if node.kind() == "mod_item" {
-        if let Some(name) = node
+    if node.kind() == "mod_item"
+        && let Some(name) = node
             .child_by_field_name("name")
             .and_then(|name| node_text(source, name))
-        {
-            module_path.push(name.to_string());
-            visit_child_containers(
-                node,
-                source,
-                module_path,
-                impl_path,
-                trait_path,
-                extern_path,
-                containers,
-            );
-            module_path.pop();
-            return;
-        }
+    {
+        module_path.push(name.to_string());
+        visit_child_containers(
+            node,
+            source,
+            module_path,
+            impl_path,
+            trait_path,
+            extern_path,
+            containers,
+        );
+        module_path.pop();
+        return;
     }
 
-    if node.kind() == "impl_item" {
-        if let Some(name) = impl_container_name(node, source) {
-            impl_path.push(name);
-            visit_child_containers(
-                node,
-                source,
-                module_path,
-                impl_path,
-                trait_path,
-                extern_path,
-                containers,
-            );
-            impl_path.pop();
-            return;
-        }
+    if node.kind() == "impl_item"
+        && let Some(name) = impl_container_name(node, source)
+    {
+        impl_path.push(name);
+        visit_child_containers(
+            node,
+            source,
+            module_path,
+            impl_path,
+            trait_path,
+            extern_path,
+            containers,
+        );
+        impl_path.pop();
+        return;
     }
 
-    if node.kind() == "trait_item" {
-        if let Some(name) = node
+    if node.kind() == "trait_item"
+        && let Some(name) = node
             .child_by_field_name("name")
             .and_then(|name| node_text(source, name))
             .map(normalize_scope_text)
-        {
-            trait_path.push(name);
-            visit_child_containers(
-                node,
-                source,
-                module_path,
-                impl_path,
-                trait_path,
-                extern_path,
-                containers,
-            );
-            trait_path.pop();
-            return;
-        }
+    {
+        trait_path.push(name);
+        visit_child_containers(
+            node,
+            source,
+            module_path,
+            impl_path,
+            trait_path,
+            extern_path,
+            containers,
+        );
+        trait_path.pop();
+        return;
     }
 
-    if node.kind() == "foreign_mod_item" {
-        if let Some(name) = extern_container_name(node, source) {
-            extern_path.push(name);
-            visit_child_containers(
-                node,
-                source,
-                module_path,
-                impl_path,
-                trait_path,
-                extern_path,
-                containers,
-            );
-            extern_path.pop();
-            return;
-        }
+    if node.kind() == "foreign_mod_item"
+        && let Some(name) = extern_container_name(node, source)
+    {
+        extern_path.push(name);
+        visit_child_containers(
+            node,
+            source,
+            module_path,
+            impl_path,
+            trait_path,
+            extern_path,
+            containers,
+        );
+        extern_path.pop();
+        return;
     }
 
-    if matches!(node.kind(), "function_item" | "function_signature_item") {
-        if let Some(name) = node
+    if matches!(node.kind(), "function_item" | "function_signature_item")
+        && let Some(name) = node
             .child_by_field_name("name")
             .and_then(|name| node_text(source, name))
-        {
-            let (kind, name) = if let Some(impl_name) = impl_path.last() {
-                ("method", format!("{impl_name}::{name}"))
-            } else if let Some(trait_name) = trait_path.last() {
-                ("method", format!("{trait_name}::{name}"))
-            } else if let Some(extern_name) = extern_path.last() {
-                ("function", format!("{extern_name}::{name}"))
-            } else {
-                ("function", name.to_string())
-            };
-            let start = node.start_position();
-            let end = node.end_position();
-            containers.push(RustSyntaxContainer {
-                kind: kind.to_string(),
-                name,
-                module_path: module_path.clone(),
-                start_line: start.row as u32 + 1,
-                start_column: source_column(source, start.row, start.column),
-                end_line: end.row as u32 + 1,
-                end_column: source_column(source, end.row, end.column),
-            });
-        }
+    {
+        let (kind, name) = if let Some(impl_name) = impl_path.last() {
+            ("method", format!("{impl_name}::{name}"))
+        } else if let Some(trait_name) = trait_path.last() {
+            ("method", format!("{trait_name}::{name}"))
+        } else if let Some(extern_name) = extern_path.last() {
+            ("function", format!("{extern_name}::{name}"))
+        } else {
+            ("function", name.to_string())
+        };
+        let start = node.start_position();
+        let end = node.end_position();
+        containers.push(RustSyntaxContainer {
+            kind: kind.to_string(),
+            name,
+            module_path: module_path.clone(),
+            start_line: start.row as u32 + 1,
+            start_column: source_column(source, start.row, start.column),
+            end_line: end.row as u32 + 1,
+            end_column: source_column(source, end.row, end.column),
+        });
     }
 
     visit_child_containers(

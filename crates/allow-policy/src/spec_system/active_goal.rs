@@ -129,15 +129,15 @@ pub fn validate_active_goal_manifest(
         manifest.linked_plan.as_deref(),
         &[ArtifactKind::ImplementationPlan, ArtifactKind::PlanItem],
     )?;
-    if let Some(status) = manifest.linked_plan_status {
-        if linked_plan.status != status {
-            return Err(CargoAllowError::new(format!(
-                "active goal linked_plan_status {} does not match {} status {}",
-                artifact_status_name(status),
-                linked_plan.id,
-                artifact_status_name(linked_plan.status)
-            )));
-        }
+    if let Some(status) = manifest.linked_plan_status
+        && linked_plan.status != status
+    {
+        return Err(CargoAllowError::new(format!(
+            "active goal linked_plan_status {} does not match {} status {}",
+            artifact_status_name(status),
+            linked_plan.id,
+            artifact_status_name(linked_plan.status)
+        )));
     }
 
     for item in &manifest.work_item {

@@ -58,14 +58,14 @@ pub(crate) fn write_file(path: impl AsRef<Path>, contents: &str) -> CargoAllowRe
             tmp.display()
         )));
     }
-    if let Some(permissions) = existing_permissions {
-        if let Err(error) = fs::set_permissions(&tmp, permissions) {
-            let _ = fs::remove_file(&tmp);
-            return Err(CargoAllowError::new(format!(
-                "failed to preserve permissions for {}: {error}",
-                path.display()
-            )));
-        }
+    if let Some(permissions) = existing_permissions
+        && let Err(error) = fs::set_permissions(&tmp, permissions)
+    {
+        let _ = fs::remove_file(&tmp);
+        return Err(CargoAllowError::new(format!(
+            "failed to preserve permissions for {}: {error}",
+            path.display()
+        )));
     }
     if let Err(error) = file.flush() {
         let _ = fs::remove_file(&tmp);
