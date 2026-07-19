@@ -17,7 +17,7 @@ pub const RELEASE_MANIFEST_CLAIM_BOUNDARY: &str = CLAIM_BOUNDARY_TEXT;
 /// All fields use typed serialization via `serde_json` with deterministic
 /// field ordering. Equal semantic inputs produce equal manifest bytes except
 /// for `generated_at`, which records the wall-clock generation time.
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct ReleaseManifestV1 {
     /// Schema identifier (`cargo-allow.release-manifest.v1`).
     pub schema_id: String,
@@ -80,7 +80,7 @@ pub struct ReleaseManifestV1 {
 }
 
 /// One crate entry in the release manifest.
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct ManifestCrate {
     /// Crate name (e.g. `cargo-allow`).
     pub name: String,
@@ -95,7 +95,7 @@ pub struct ManifestCrate {
 }
 
 /// Schema/tool generation snapshot at release time.
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct ManifestGenerations {
     /// Release manifest schema generation.
     pub release_manifest: u32,
@@ -106,16 +106,28 @@ pub struct ManifestGenerations {
 }
 
 /// Render the manifest as deterministic JSON with stable key ordering.
-pub fn render_release_manifest_json(manifest: &ReleaseManifestV1) -> String {
-    serde_json::to_string_pretty(manifest).unwrap_or_else(|_| "{}".to_string())
+pub fn render_release_manifest_json(
+    manifest: &ReleaseManifestV1,
+) -> Result<String, serde_json::Error> {
+    serde_json::to_string_pretty(manifest)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::error::Error;
+
+    fn field<'a>(
+        value: &'a serde_json::Value,
+        name: &str,
+    ) -> Result<&'a serde_json::Value, String> {
+        value
+            .get(name)
+            .ok_or_else(|| format!("manifest JSON omitted `{name}`"))
+    }
 
     #[test]
-    fn release_manifest_v1_serializes_with_required_fields() {
+    fn release_manifest_v1_serializes_with_required_fields() -> Result<(), Box<dyn Error>> {
         let manifest = ReleaseManifestV1 {
             schema_id: RELEASE_MANIFEST_SCHEMA_ID.to_string(),
             schema_version: RELEASE_MANIFEST_SCHEMA_VERSION,
@@ -146,20 +158,40 @@ mod tests {
             generated_at: "2026-07-19T12:00:00Z".to_string(),
         };
 
-        let json = render_release_manifest_json(&manifest);
-        let parsed: serde_json::Value = serde_json::from_str(&json).expect("manifest JSON parses");
+        let json = render_release_manifest_json(&manifest)?;
+        let parsed: serde_json::Value = serde_json::from_str(&json)?;
+        let decoded: ReleaseManifestV1 = serde_json::from_str(&json)?;
+        if decoded != manifest {
+            return Err("manifest JSON did not round-trip through Deserialize".into());
+        }
 
-        assert_eq!(parsed["schema_id"], RELEASE_MANIFEST_SCHEMA_ID);
-        assert_eq!(parsed["schema_version"], 1);
-        assert_eq!(parsed["version"], "0.2.0");
-        assert_eq!(parsed["crates"][0]["name"], "cargo-allow");
-        assert_eq!(parsed["auth_source"], "oidc");
-        assert_eq!(parsed["msrv"], "1.95");
-        assert!(!parsed["claim_boundary"].as_str().unwrap().is_empty());
+        let crates = field(&parsed, "crates")?
+            .as_array()
+            .ok_or("manifest crates was not a JSON array")?;
+        let first_crate = crates
+            .first()
+            .ok_or("manifest crates array was unexpectedly empty")?;
+        if field(&parsed, "schema_id")? != RELEASE_MANIFEST_SCHEMA_ID
+            || field(&parsed, "schema_version")? != 1
+            || field(&parsed, "version")? != "0.2.0"
+            || field(first_crate, "name")? != "cargo-allow"
+            || field(&parsed, "auth_source")? != "oidc"
+            || field(&parsed, "msrv")? != "1.95"
+        {
+            return Err("manifest JSON omitted or changed a required field".into());
+        }
+        let claim_boundary = parsed
+            .get("claim_boundary")
+            .and_then(serde_json::Value::as_str)
+            .ok_or("manifest claim boundary was not a JSON string")?;
+        if claim_boundary.is_empty() {
+            return Err("manifest claim boundary was empty".into());
+        }
+        Ok(())
     }
 
     #[test]
-    fn release_manifest_v1_skips_none_fields() {
+    fn release_manifest_v1_skips_none_fields() -> Result<(), Box<dyn Error>> {
         let manifest = ReleaseManifestV1 {
             schema_id: RELEASE_MANIFEST_SCHEMA_ID.to_string(),
             schema_version: RELEASE_MANIFEST_SCHEMA_VERSION,
@@ -185,11 +217,15 @@ mod tests {
             generated_at: "2026-07-19T12:00:00Z".to_string(),
         };
 
-        let json = render_release_manifest_json(&manifest);
-        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        let json = render_release_manifest_json(&manifest)?;
+        let parsed: serde_json::Value = serde_json::from_str(&json)?;
 
         // Fields with skip_serializing_if should be absent when None
-        assert!(parsed.get("source_candidate_digest").is_none());
-        assert!(parsed.get("workflow_run_id").is_none());
+        if parsed.get("source_candidate_digest").is_some()
+            || parsed.get("workflow_run_id").is_some()
+        {
+            return Err("None-valued optional fields were serialized".into());
+        }
+        Ok(())
     }
 }

@@ -119,9 +119,11 @@ pub use artifacts::{
     DiffSelectorIdentityChange, DiffSelectorPrecisionChange, DoctorReport, EvidenceReference,
     ExplainReport, FederationDiagnosticSummary, FederationDivergenceKindCount,
     FederationDivergenceRecordSummary, FederationDivergenceSummary, FederationReportContext,
-    LedgerContributorSummary, ListFilters, ListRow, MigrateReport, ProposeReport, PruneCandidate,
-    PruneModeContext, RefreshModeContext, RefreshReport, WhyCandidateEntry, WhyProofPlan,
-    WhyReport, WorklistFilters, WorklistItem,
+    LedgerContributorSummary, ListFilters, ListRow, ManifestCrate, ManifestGenerations,
+    MigrateReport, ProposeReport, PruneCandidate, PruneModeContext,
+    RELEASE_MANIFEST_CLAIM_BOUNDARY, RELEASE_MANIFEST_SCHEMA_ID, RELEASE_MANIFEST_SCHEMA_VERSION,
+    RefreshModeContext, RefreshReport, ReleaseManifestV1, WhyCandidateEntry, WhyProofPlan,
+    WhyReport, WorklistFilters, WorklistItem, render_release_manifest_json,
 };
 pub use contracts::{
     ADD_FINDING_PLAN_CLAIM_BOUNDARY, ADD_FINDING_PLAN_SCHEMA_ID, ADD_FINDING_PLAN_SCHEMA_VERSION,
