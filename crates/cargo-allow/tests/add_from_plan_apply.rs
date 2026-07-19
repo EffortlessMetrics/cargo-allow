@@ -129,7 +129,7 @@ fn add_from_plan_applies_a_verified_plan_and_binds_a_receipt() {
     );
     assert_eq!(
         receipt.pointer("/targeted_recheck").and_then(Value::as_str),
-        Some("not_executed")
+        Some("matched")
     );
     assert_eq!(
         receipt

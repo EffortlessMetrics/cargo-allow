@@ -194,6 +194,25 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
     write_file(&policy_path, &rendered)?;
     let policy_after_digest = sha256_v1_bytes(rendered.as_bytes());
 
+    // Targeted recheck: re-evaluate the target finding against the mutated
+    // policy (already in memory) to confirm the receipt actually landed. This
+    // is NOT a full check — it reuses the loaded findings and the mutated cfg.
+    // The operator still needs to run the full check argv for CI-grade proof.
+    let recheck_outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
+    let targeted_recheck = match recheck_outcomes
+        .iter()
+        .find(|outcome| outcome.finding_index == Some(finding_index))
+    {
+        Some(outcome) => match outcome.status {
+            allow_core::MatchStatus::Matched | allow_core::MatchStatus::LocationDrift => {
+                "matched".to_string()
+            }
+            allow_core::MatchStatus::New => "still_new".to_string(),
+            other => format!("unexpected:{}", other.as_str()),
+        },
+        None => "no_outcome".to_string(),
+    };
+
     let receipt = AddPlanApplicationV1 {
         tool_version: env!("CARGO_PKG_VERSION").to_string(),
         inventory: source_context.inventory(),
@@ -204,7 +223,7 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
         policy_before_digest,
         policy_after_digest,
         added_allow_id,
-        targeted_recheck: "not_executed".to_string(),
+        targeted_recheck: targeted_recheck.to_string(),
         full_check_argv: full_check_argv(
             source_context.source_tree_root(),
             &bindings.policy_path,
