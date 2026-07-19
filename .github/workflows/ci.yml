@@ -6,17 +6,17 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Prove the workspace rust-version pin (1.85) still builds and runs the
+  # Prove the workspace rust-version pin (1.95) still builds and runs the
   # fast package proof. Stable/full suite stays on the `test` job below so
   # the MSRV lane stays short and release-claim oriented (#1901).
   msrv:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: dtolnay/rust-toolchain@1.85.0
+      - uses: dtolnay/rust-toolchain@1.95.0
       - uses: Swatinem/rust-cache@v2
         with:
-          key: msrv-1.85
+          key: msrv-1.95
       - name: MSRV workspace check
         run: cargo check --workspace --all-targets --locked
       - name: MSRV fast cargo-allow package proof
@@ -26,8 +26,8 @@ jobs:
   # reviewed source candidate packages, has no path dependencies, installs
   # from the workspace path, and passes first-hour CLI checks. Uploads a
   # hosted receipt artifact so the readiness claim rests on CI evidence, not
-  # a local run. Linux only for the narrow 0.1.x claim; the msrv lane above
-  # separately proves Rust 1.85.
+  # a local run. Linux only for the narrow claim; the msrv lane above
+  # separately proves Rust 1.95.
   package-smoke:
     runs-on: ubuntu-latest
     steps:

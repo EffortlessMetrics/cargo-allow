@@ -10,6 +10,9 @@ inventory without executing repository code.
 
 ### Changed
 
+- Raised minimum supported Rust version from 1.85 to 1.95 for the 0.2.0 train
+  (#2371). The CI MSRV lane now proves Rust 1.95.0. The 0.1.x package line
+  remains on 1.85.
 - SHA-pinned `actions/checkout`, `actions/upload-artifact`,
   `rust-lang/crates-io-auth-action`, and `softprops/action-gh-release` by commit
   SHA across `release.yml` and `ci.yml` (#1896). `dtolnay/rust-toolchain` and
