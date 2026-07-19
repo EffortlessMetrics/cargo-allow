@@ -825,4 +825,78 @@ state = "unchanged"
         );
         Ok(())
     }
+
+    #[test]
+    fn precommit_partial_stage_corpus() -> Result<(), String> {
+        let (graph, slice) = graph()?;
+        let behavior = PrecommitChangeDeclaration {
+            class: Some(PrecommitChangeClass::BehaviorChange),
+            ..Default::default()
+        };
+        let missing_slice = evaluate_precommit_objectives(PrecommitEvaluationInput {
+            candidate: &graph,
+            slices: &[],
+            movements: &[],
+            declaration: &behavior,
+            subject_resolutions: &[],
+            inventory: PrecommitInventoryPosture::Complete,
+            legacy_baseline: false,
+        });
+        if !missing_slice
+            .findings
+            .iter()
+            .any(|finding| finding.code == PrecommitFindingCode::BehaviorSliceMissing)
+        {
+            return Err("partial candidate without its implementation slice passed".to_string());
+        }
+
+        let bug_fix = PrecommitChangeDeclaration {
+            class: Some(PrecommitChangeClass::BugFix),
+            ..Default::default()
+        };
+        let missing_regression =
+            evaluate_precommit_objectives(input(&graph, &slice, &bug_fix, &[]));
+        if !missing_regression
+            .findings
+            .iter()
+            .any(|finding| finding.code == PrecommitFindingCode::BugFixRegressionMissing)
+        {
+            return Err("bug-fix candidate without an exact regression subject passed".to_string());
+        }
+
+        let stale_subject = [PrecommitMovement {
+            kind: PrecommitMovementKind::SubjectBodyIdentityChanged,
+            id: "subject:negative".to_string(),
+        }];
+        let stale_evidence =
+            evaluate_precommit_objectives(input(&graph, &slice, &behavior, &stale_subject));
+        if !stale_evidence
+            .findings
+            .iter()
+            .any(|finding| finding.code == PrecommitFindingCode::TestBodyIdentityStale)
+        {
+            return Err("changed test body did not invalidate current evidence".to_string());
+        }
+
+        let partial_inventory = evaluate_precommit_objectives(PrecommitEvaluationInput {
+            candidate: &graph,
+            slices: std::slice::from_ref(&slice),
+            movements: &[],
+            declaration: &PrecommitChangeDeclaration {
+                class: Some(PrecommitChangeClass::DocsOnly),
+                ..Default::default()
+            },
+            subject_resolutions: &[],
+            inventory: PrecommitInventoryPosture::Partial,
+            legacy_baseline: false,
+        });
+        if !partial_inventory
+            .findings
+            .iter()
+            .any(|finding| finding.code == PrecommitFindingCode::InventoryPartialOrUnsupported)
+        {
+            return Err("partial inventory was treated as a clean candidate".to_string());
+        }
+        Ok(())
+    }
 }

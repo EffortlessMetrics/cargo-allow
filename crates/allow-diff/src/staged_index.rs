@@ -926,6 +926,43 @@ mod tests {
     }
 
     #[test]
+    fn staged_platform_paths_preserve_spaces_and_supported_newlines() -> Result<(), String> {
+        let repo = TestRepo::new()?;
+        repo.commit_file("path with spaces.txt", "base\n")?;
+        repo.write("path with spaces.txt", "staged spaces\n")?;
+        repo.git(&["add", "--", "path with spaces.txt"])?;
+
+        #[cfg(unix)]
+        {
+            repo.commit_file("line\nbreak.txt", "base\n")?;
+            repo.write("line\nbreak.txt", "staged newline\n")?;
+            repo.git(&["add", "--", "line\nbreak.txt"])?;
+        }
+
+        let snapshot = staged_repository_snapshot(&repo.root).map_err(|error| error.to_string())?;
+        if snapshot.completeness != StagedSnapshotCompleteness::Complete {
+            return Err(format!(
+                "portable path fixture became partial: {:?}",
+                snapshot.limitations
+            ));
+        }
+        if read_staged_path(&snapshot, Path::new("path with spaces.txt"))
+            .map_err(|error| error.to_string())?
+            != StagedPathRead::Regular(b"staged spaces\n".to_vec())
+        {
+            return Err("staged path with spaces did not preserve candidate bytes".to_string());
+        }
+        #[cfg(unix)]
+        if read_staged_path(&snapshot, Path::new("line\nbreak.txt"))
+            .map_err(|error| error.to_string())?
+            != StagedPathRead::Regular(b"staged newline\n".to_vec())
+        {
+            return Err("staged path with newline did not preserve candidate bytes".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
     fn deletion_reads_missing_and_copy_keeps_previous_path() -> Result<(), String> {
         let repo = TestRepo::new()?;
         repo.commit_file("source.txt", "same\n")?;

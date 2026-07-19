@@ -1006,6 +1006,34 @@ mod tests {
         fs::remove_dir_all(root).map_err(|error| error.to_string())
     }
 
+    #[test]
+    fn spec_precommit_partial_stage_corpus() -> Result<(), String> {
+        let root = staged_fixture_repository()?;
+        run_git(&root, &["commit", "-qm", "parent"])?;
+        let paired = compile_paired_self_hosted_graph(&root).map_err(|error| error.to_string())?;
+        let declaration = allow_policy::spec_system::PrecommitChangeDeclaration {
+            class: Some(allow_policy::spec_system::PrecommitChangeClass::BehaviorChange),
+            ..Default::default()
+        };
+        let result = allow_policy::spec_system::evaluate_precommit_objectives(
+            allow_policy::spec_system::PrecommitEvaluationInput {
+                candidate: &paired.candidate.graph,
+                slices: &[],
+                movements: &[],
+                declaration: &declaration,
+                subject_resolutions: &[],
+                inventory: allow_policy::spec_system::PrecommitInventoryPosture::Complete,
+                legacy_baseline: false,
+            },
+        );
+        if !result.findings.iter().any(|finding| {
+            finding.code == allow_policy::spec_system::PrecommitFindingCode::BehaviorSliceMissing
+        }) {
+            return Err("partial staged candidate without a slice passed".to_string());
+        }
+        fs::remove_dir_all(root).map_err(|error| error.to_string())
+    }
+
     fn staged_fixture_repository() -> Result<PathBuf, String> {
         let nonce = SystemTime::now()
             .duration_since(UNIX_EPOCH)
