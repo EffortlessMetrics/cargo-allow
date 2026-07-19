@@ -3,8 +3,13 @@ use allow_inventory::{InventoryOptions, InventorySource, inventory, resolve_sour
 use allow_policy::federation::{
     FederationEvaluation, PrecedenceTier, evaluate_source_exception_policy,
 };
+use std::cell::RefCell;
 use std::env;
 use std::path::{Path, PathBuf};
+
+thread_local! {
+    static SCAN_CACHE: RefCell<allow_rust::ScanCache> = RefCell::new(allow_rust::ScanCache::new());
+}
 
 use crate::{
     EvidenceValidationMode, InventoryFacts, canonical_companion_findings,
@@ -86,7 +91,10 @@ pub(crate) fn load_world_with_evidence_mode(
         )?;
     }
     let mut findings = Vec::new();
-    findings.extend(allow_rust::scan_rust_files(&root, &files)?);
+    findings.extend(SCAN_CACHE.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        allow_rust::scan_rust_files_cached(&root, &files, &mut cache)
+    })?);
     findings.extend(allow_files::scan_files_with_options(
         &files,
         &allow_files::FileScanOptions {
