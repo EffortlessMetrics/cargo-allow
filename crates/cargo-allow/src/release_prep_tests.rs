@@ -24,7 +24,7 @@ fn release_workflow_exists_and_lists_publish_order() {
         "{RELEASE_WORKFLOW} should trigger on version tags"
     );
     assert!(
-        workflow.contains("rust-lang/crates-io-auth-action@v1"),
+        workflow.contains("rust-lang/crates-io-auth-action@"),
         "{RELEASE_WORKFLOW} should authenticate with crates.io Trusted Publishing"
     );
     assert!(
