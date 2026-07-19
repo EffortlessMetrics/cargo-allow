@@ -17,6 +17,7 @@ mod compiled_graph;
 mod config;
 mod doc_artifacts;
 mod implementation_slice;
+mod precommit;
 mod profile_resolution;
 mod requirement;
 mod requirement_adapter;
@@ -56,6 +57,12 @@ pub use implementation_slice::{
     ImplementationClaim, ImplementationClaimStatus, ImplementationSliceClass,
     ImplementationSliceId, ImplementationSliceV1, RequirementDelta, SupportClaimDisposition,
     SupportClaimDispositionState, parse_implementation_slice, parse_implementation_slice_at,
+};
+pub use precommit::{
+    PrecommitChangeClass, PrecommitChangeDeclaration, PrecommitEvaluationInput, PrecommitFinding,
+    PrecommitFindingCode, PrecommitFindingPosture, PrecommitInventoryPosture, PrecommitMovement,
+    PrecommitMovementKind, PrecommitObjectiveEvaluation, PrecommitSubjectResolution,
+    PrecommitSubjectResolutionStatus, evaluate_precommit_objectives,
 };
 pub use profile_resolution::{
     ALLOW_CONFIG_REL_PATH, ProfileConfigProvenance, ResolvedProfileConfig, allow_profile_rel_path,

@@ -5,7 +5,10 @@ use allow_inventory::Inventory;
 use allow_policy::spec_system::{
     AuthoredSubjectRole, AuthoredSubjectSelector, CompiledSpecGraph, EvidenceClaimRegistration,
     EvidenceSubjectId, EvidenceSubjectRegistration, EvidenceSubjectRole, GraphCompileInput,
-    ImplementationSeamRegistration, SourceLocation, compile_spec_graph, parse_authored_evidence_at,
+    ImplementationSeamRegistration, ImplementationSliceV1, PrecommitChangeDeclaration,
+    PrecommitEvaluationInput, PrecommitInventoryPosture, PrecommitMovement, PrecommitMovementKind,
+    PrecommitObjectiveEvaluation, PrecommitSubjectResolution, PrecommitSubjectResolutionStatus,
+    SourceLocation, compile_spec_graph, evaluate_precommit_objectives, parse_authored_evidence_at,
     parse_authored_seams_at, parse_implementation_slice_at, parse_requirement_blocks_at,
     validate_authored_mapping,
 };
@@ -41,11 +44,147 @@ pub struct SelfHostedGraphDiagnostic {
 #[derive(Debug)]
 pub struct SelfHostedGraphCompilation {
     pub graph: CompiledSpecGraph,
+    pub slice: ImplementationSliceV1,
     pub slice_source: SourceLocation,
     pub file_inventory: Inventory,
     pub inventory: RustTestInventory,
     pub diagnostics: Vec<SelfHostedGraphDiagnostic>,
     pub source_identity: Option<String>,
+}
+
+/// Evaluate a paired exact parent/staged graph through the pure policy seam.
+///
+/// Git identity and source reads have already completed at this boundary. This
+/// adapter only translates the paired compiler's normalized movement and
+/// inventory facts into the policy crate's agent-neutral DTO.
+pub fn evaluate_paired_precommit_objectives(
+    paired: &PairedSelfHostedGraphCompilation,
+    declaration: &PrecommitChangeDeclaration,
+    legacy_baseline: bool,
+) -> PrecommitObjectiveEvaluation {
+    let movements = paired
+        .movements
+        .iter()
+        .map(|movement| PrecommitMovement {
+            kind: match movement.kind {
+                SpecGraphMovementKind::RequirementAdded => PrecommitMovementKind::RequirementAdded,
+                SpecGraphMovementKind::RequirementRemoved => {
+                    PrecommitMovementKind::RequirementRemoved
+                }
+                SpecGraphMovementKind::RequirementChanged => {
+                    PrecommitMovementKind::RequirementChanged
+                }
+                SpecGraphMovementKind::ImplementationSliceAdded => {
+                    PrecommitMovementKind::ImplementationSliceAdded
+                }
+                SpecGraphMovementKind::ImplementationSliceRemoved => {
+                    PrecommitMovementKind::ImplementationSliceRemoved
+                }
+                SpecGraphMovementKind::ImplementationSliceChanged => {
+                    PrecommitMovementKind::ImplementationSliceChanged
+                }
+                SpecGraphMovementKind::SeamMappingAdded => PrecommitMovementKind::SeamMappingAdded,
+                SpecGraphMovementKind::SeamMappingRemoved => {
+                    PrecommitMovementKind::SeamMappingRemoved
+                }
+                SpecGraphMovementKind::SeamMappingChanged => {
+                    PrecommitMovementKind::SeamMappingChanged
+                }
+                SpecGraphMovementKind::EvidencePurposeAdded => {
+                    PrecommitMovementKind::EvidencePurposeAdded
+                }
+                SpecGraphMovementKind::EvidencePurposeRemoved => {
+                    PrecommitMovementKind::EvidencePurposeRemoved
+                }
+                SpecGraphMovementKind::EvidencePurposeChanged => {
+                    PrecommitMovementKind::EvidencePurposeChanged
+                }
+                SpecGraphMovementKind::EvidenceClaimChanged => {
+                    PrecommitMovementKind::EvidenceClaimChanged
+                }
+                SpecGraphMovementKind::SubjectSelectorAdded => {
+                    PrecommitMovementKind::SubjectSelectorAdded
+                }
+                SpecGraphMovementKind::SubjectSelectorRemoved => {
+                    PrecommitMovementKind::SubjectSelectorRemoved
+                }
+                SpecGraphMovementKind::SubjectSelectorChanged => {
+                    PrecommitMovementKind::SubjectSelectorChanged
+                }
+                SpecGraphMovementKind::SubjectBodyIdentityChanged => {
+                    PrecommitMovementKind::SubjectBodyIdentityChanged
+                }
+                SpecGraphMovementKind::ProfileOrDialectChanged => {
+                    PrecommitMovementKind::ProfileOrDialectChanged
+                }
+                SpecGraphMovementKind::UnknownOrUncomparable => {
+                    PrecommitMovementKind::UnknownOrUncomparable
+                }
+            },
+            id: movement.id.clone(),
+        })
+        .collect::<Vec<_>>();
+    let mut declaration = declaration.clone();
+    if declaration.changed_subject_ids.is_empty() {
+        declaration.changed_subject_ids = paired
+            .movements
+            .iter()
+            .filter(|movement| {
+                matches!(
+                    movement.kind,
+                    SpecGraphMovementKind::SubjectSelectorAdded
+                        | SpecGraphMovementKind::SubjectSelectorRemoved
+                        | SpecGraphMovementKind::SubjectSelectorChanged
+                        | SpecGraphMovementKind::SubjectBodyIdentityChanged
+                )
+            })
+            .map(|movement| EvidenceSubjectId(movement.id.clone()))
+            .collect();
+    }
+    let inventory = if paired.candidate.inventory.status == RustTestInventoryStatus::Partial {
+        PrecommitInventoryPosture::Partial
+    } else {
+        match paired.candidate.file_inventory.completeness {
+            allow_inventory::InventoryCompleteness::Complete
+            | allow_inventory::InventoryCompleteness::Scoped => PrecommitInventoryPosture::Complete,
+            allow_inventory::InventoryCompleteness::Partial => PrecommitInventoryPosture::Partial,
+            allow_inventory::InventoryCompleteness::Fallback => {
+                PrecommitInventoryPosture::Unsupported
+            }
+        }
+    };
+    let subject_resolutions = paired
+        .candidate
+        .diagnostics
+        .iter()
+        .filter_map(|diagnostic| {
+            let status = match diagnostic.code {
+                "spec_graph_selector_ambiguous" => PrecommitSubjectResolutionStatus::Ambiguous,
+                "spec_graph_selector_not_found" => PrecommitSubjectResolutionStatus::Missing,
+                "spec_graph_rust_inventory_partial" => PrecommitSubjectResolutionStatus::Partial,
+                "spec_graph_subject_non_executable"
+                | "spec_graph_subject_generated_or_parameterized"
+                | "spec_graph_selector_malformed"
+                | "spec_graph_selector_cfg_or_feature_unknown" => {
+                    PrecommitSubjectResolutionStatus::Unsupported
+                }
+                _ => return None,
+            };
+            Some(PrecommitSubjectResolution {
+                id: EvidenceSubjectId(diagnostic.subject.clone()),
+                status,
+            })
+        })
+        .collect::<Vec<_>>();
+    evaluate_precommit_objectives(PrecommitEvaluationInput {
+        candidate: &paired.candidate.graph,
+        slices: std::slice::from_ref(&paired.candidate.slice),
+        movements: &movements,
+        declaration: &declaration,
+        subject_resolutions: &subject_resolutions,
+        inventory,
+        legacy_baseline,
+    })
 }
 
 #[derive(Debug)]
@@ -430,13 +569,14 @@ fn compile_self_hosted_graph_from_view(
         .collect();
     let graph = compile_spec_graph(GraphCompileInput {
         requirement_graphs: vec![requirements],
-        implementation_slices: vec![slice],
+        implementation_slices: vec![slice.clone()],
         seams: seam_registrations,
         evidence_claims: claims,
         subjects,
     });
     Ok(SelfHostedGraphCompilation {
         graph,
+        slice,
         slice_source: SourceLocation::new(SLICE_PATH),
         file_inventory: view.inventory().clone(),
         inventory: rust_inventory,
@@ -782,6 +922,87 @@ mod tests {
                 .iter()
                 .any(|movement| { movement.kind == SpecGraphMovementKind::SeamMappingChanged })
         );
+        fs::remove_dir_all(root).map_err(|error| error.to_string())
+    }
+
+    #[test]
+    fn spec_precommit_change_classes() -> Result<(), String> {
+        let root = staged_fixture_repository()?;
+        run_git(&root, &["commit", "-qm", "parent"])?;
+        let paired = compile_paired_self_hosted_graph(&root).map_err(|error| error.to_string())?;
+        for class in [
+            allow_policy::spec_system::PrecommitChangeClass::BehaviorChange,
+            allow_policy::spec_system::PrecommitChangeClass::BugFix,
+            allow_policy::spec_system::PrecommitChangeClass::SpecOrPolicyChange,
+            allow_policy::spec_system::PrecommitChangeClass::DocsOnly,
+            allow_policy::spec_system::PrecommitChangeClass::Mechanical,
+        ] {
+            let declaration = allow_policy::spec_system::PrecommitChangeDeclaration {
+                class: Some(class),
+                ..Default::default()
+            };
+            let result = evaluate_paired_precommit_objectives(&paired, &declaration, false);
+            assert_eq!(result.change_class, class);
+        }
+        fs::remove_dir_all(root).map_err(|error| error.to_string())
+    }
+
+    #[test]
+    fn spec_precommit_brownfield_no_new() -> Result<(), String> {
+        let root = staged_fixture_repository()?;
+        run_git(&root, &["commit", "-qm", "parent"])?;
+        let paired = compile_paired_self_hosted_graph(&root).map_err(|error| error.to_string())?;
+        let declaration = allow_policy::spec_system::PrecommitChangeDeclaration {
+            class: Some(allow_policy::spec_system::PrecommitChangeClass::BehaviorChange),
+            ..Default::default()
+        };
+        let result = allow_policy::spec_system::evaluate_precommit_objectives(
+            allow_policy::spec_system::PrecommitEvaluationInput {
+                candidate: &paired.candidate.graph,
+                slices: &[],
+                movements: &[],
+                declaration: &declaration,
+                subject_resolutions: &[],
+                inventory: allow_policy::spec_system::PrecommitInventoryPosture::Complete,
+                legacy_baseline: true,
+            },
+        );
+        let finding = result
+            .findings
+            .iter()
+            .find(|finding| {
+                finding.code
+                    == allow_policy::spec_system::PrecommitFindingCode::BehaviorSliceMissing
+            })
+            .ok_or_else(|| "legacy baseline hid a new behavior-slice defect".to_string())?;
+        assert_eq!(
+            finding.posture,
+            allow_policy::spec_system::PrecommitFindingPosture::Blocking
+        );
+        fs::remove_dir_all(root).map_err(|error| error.to_string())
+    }
+
+    #[test]
+    fn spec_precommit_proportionate_changes() -> Result<(), String> {
+        let root = staged_fixture_repository()?;
+        run_git(&root, &["commit", "-qm", "parent"])?;
+        let paired = compile_paired_self_hosted_graph(&root).map_err(|error| error.to_string())?;
+        for class in [
+            allow_policy::spec_system::PrecommitChangeClass::DocsOnly,
+            allow_policy::spec_system::PrecommitChangeClass::Mechanical,
+            allow_policy::spec_system::PrecommitChangeClass::ToolingOrCiChange,
+        ] {
+            let declaration = allow_policy::spec_system::PrecommitChangeDeclaration {
+                class: Some(class),
+                ..Default::default()
+            };
+            let result = evaluate_paired_precommit_objectives(&paired, &declaration, false);
+            assert!(
+                result.findings.is_empty(),
+                "unexpected findings for {class:?}: {:?}",
+                result.findings
+            );
+        }
         fs::remove_dir_all(root).map_err(|error| error.to_string())
     }
 
