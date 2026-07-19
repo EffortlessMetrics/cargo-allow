@@ -203,7 +203,9 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     let rendered = render_policy(&cfg);
     if args.update {
         let policy_path = config_path(&root, args.config.as_deref()).ok_or_else(|| {
-            CargoAllowError::new("no policy config found to update; run `cargo-allow init`")
+            CargoAllowError::new(
+                "policy config disappeared during --update; re-run, or restore policy/allow.toml",
+            )
         })?;
         write_file(&policy_path, &rendered)?;
     } else if let Some(path) = &args.write {

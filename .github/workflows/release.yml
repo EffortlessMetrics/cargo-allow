@@ -13,6 +13,10 @@ on:
         required: false
         default: false
         type: boolean
+      recovery_version:
+        description: "The already-tagged version to recover (e.g. 0.2.0). Must match an existing v* tag."
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -57,6 +61,12 @@ jobs:
           set -euo pipefail
           if [ "${{ github.event_name }}" = "push" ] && [[ "${GITHUB_REF_NAME}" == v* ]]; then
             version="${GITHUB_REF_NAME#v}"
+          elif [ "${{ inputs.publish_recovery }}" = "true" ] && [ -n "${{ inputs.recovery_version }}" ]; then
+            version="${{ inputs.recovery_version }}"
+            if ! git rev-parse "v${version}" >/dev/null 2>&1; then
+              echo "::error::recovery_version v${version} does not match an existing tag"
+              exit 1
+            fi
           else
             version="$(awk '/^\[workspace\.package\]/{f=1;next} /^\[/{if(f) exit} f && /^version = /{gsub(/version = "/,""); gsub(/".*/,""); print; exit}' Cargo.toml)"
           fi
