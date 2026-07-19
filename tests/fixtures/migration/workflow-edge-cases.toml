@@ -1,0 +1,47 @@
+schema_version = 1
+policy = "workflow-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+# Edge-case: workflow with reusable workflow call (workflow_call trigger) —
+# tests that the compat loader handles a workflow that is both a standalone
+# action and a reusable workflow.
+[[entry]]
+path = ".github/workflows/reusable-build.yml"
+owner = "ci/reusable"
+reason = "Reusable workflow call fixture with workflow_call trigger."
+permissions = ["contents:read", "actions:read"]
+secrets_used = []
+external_actions = ["actions/checkout@v4", "actions/upload-artifact@v4"]
+evidence = ["doc:docs/ci.md"]
+links = ["doc:docs/workflows/README.md"]
+created = "2026-05-14"
+review_after = "2026-11-14"
+expires = "permanent"
+
+# Edge-case: workflow with no external actions — tests that the compat loader
+# preserves the entry even when external_actions is empty or absent.
+[[entry]]
+path = ".github/workflows/cleanup.yml"
+owner = "ci/maintenance"
+reason = "Scheduled cleanup workflow with no external actions."
+permissions = ["contents:write"]
+secrets_used = []
+evidence = ["doc:docs/ci.md"]
+created = "2026-05-15"
+expires = "permanent"
+
+# Edge-case: workflow with multiple secrets — tests that the compat loader
+# preserves all secret references.
+[[entry]]
+path = ".github/workflows/deploy.yml"
+owner = "release/deploy"
+reason = "Deploy workflow with multiple secrets."
+permissions = ["contents:write", "id-token:write"]
+secrets_used = ["DEPLOY_KEY", "REGISTRY_TOKEN"]
+external_actions = ["actions/checkout@v4"]
+evidence = ["doc:docs/release/README.md"]
+links = ["doc:docs/deployment.md"]
+created = "2026-05-16"
+review_after = "2026-08-16"
+expires = "permanent"

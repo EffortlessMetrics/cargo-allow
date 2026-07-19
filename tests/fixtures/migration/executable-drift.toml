@@ -1,0 +1,34 @@
+schema_version = 1
+policy = "executable-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+# Edge-case: executable entry with git tree-mode drift — the legacy format
+# records an interpreter and path, but the file's executable bit may have
+# changed in the git tree (e.g. chmod -x after initial allow). This fixture
+# characterizes how the compat loader handles an executable entry where the
+# tree-mode may not match the recorded state.
+[[allow]]
+id = "fixture-executable-drift"
+path = "scripts/lint.sh"
+interpreter = "bash"
+owner = "ci"
+reason = "Executable lint script with git tree-mode drift."
+covered_by = "doc:docs/ci.md"
+evidence = ["doc:docs/ci.md"]
+links = ["doc:docs/contributing.md"]
+created = "2026-05-12"
+review_after = "2026-11-12"
+expires = "permanent"
+
+# Edge-case: executable entry without an interpreter — tests that the compat
+# loader preserves the entry even when the interpreter field is absent (the
+# file is executable but not language-annotated).
+[[allow]]
+id = "fixture-executable-no-interpreter"
+path = "scripts/run.sh"
+owner = "ops"
+reason = "Executable without interpreter annotation."
+covered_by = "doc:docs/ops.md"
+created = "2026-05-13"
+expires = "permanent"
