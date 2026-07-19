@@ -199,6 +199,8 @@ jobs:
       attestations: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Package crates for manifest checksums
+        run: cargo package --workspace --locked
       - name: Generate release manifest
         env:
           VERSION: "${GITHUB_REF_NAME#v}"
