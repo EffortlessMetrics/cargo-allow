@@ -1,10 +1,15 @@
 //! File-level scan cache for incremental re-evaluation.
 //!
-//! Caches parsed Rust findings keyed by `(path, mtime_nanos, size)`. On a
-//! repeat scan, files whose mtime+size hasn't changed are served from the
-//! cache instead of re-parsing. The cache is in-memory only (not persisted
-//! to disk) — it helps within a single process's repeated scans and across
-//! processes via a serde-serialized snapshot.
+//! Caches parsed Rust findings keyed by `(path, mtime, size)`. On a
+//! repeat scan within the same process, files whose mtime+size hasn't
+//! changed are served from the cache instead of re-parsing.
+//!
+//! **Current state:** in-memory only (thread-local). A single CLI
+//! invocation builds the cache, uses it once per file, and discards it
+//! on process exit — so the current practical benefit is zero for the
+//! standard `check` flow. The cache will pay off when a future CLI flow
+//! does multiple scans per process (e.g. watch mode, LSP) or when disk
+//! persistence with cross-version invalidation is added (#2523).
 //!
 //! The cache is conservative: any cache miss falls through to a full
 //! re-parse. Correctness is never compromised — the cache only skips work
