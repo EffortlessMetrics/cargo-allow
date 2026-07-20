@@ -78,17 +78,13 @@ jobs:
         id: registry_token
         env:
           OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
-          FALLBACK_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
           set -euo pipefail
           if [ -n "${OIDC_TOKEN}" ]; then
             echo "source=oidc" >> "${GITHUB_OUTPUT}"
             echo "token=${OIDC_TOKEN}" >> "${GITHUB_OUTPUT}"
-          elif [ -n "${FALLBACK_TOKEN}" ]; then
-            echo "source=secret" >> "${GITHUB_OUTPUT}"
-            echo "token=${FALLBACK_TOKEN}" >> "${GITHUB_OUTPUT}"
           else
-            echo "Configure crates.io Trusted Publishing for release.yml on all workspace crates, or add the CARGO_REGISTRY_TOKEN repository secret." >&2
+            echo "::error::OIDC authentication failed. Configure crates.io Trusted Publishing for release.yml on all workspace crates." >&2
             exit 1
           fi
       - name: Publish workspace crates in dependency order

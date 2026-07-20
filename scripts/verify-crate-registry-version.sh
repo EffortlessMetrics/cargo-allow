@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Verify an exact crate version is visible on crates.io.
 #
+# Uses the crates.io REST API for per-version visibility, not `cargo search`
+# (which returns only the latest/featured version and fails for non-latest
+# checks — #2510).
+#
 # Usage:
 #   scripts/verify-crate-registry-version.sh CRATE VERSION
 set -euo pipefail
@@ -17,13 +21,15 @@ fail() {
   exit 1
 }
 
-search_line="$(CARGO_TERM_COLOR=never cargo search "${crate}" --limit 1 --color never 2>/dev/null | head -n 1 || true)"
-[[ -n "${search_line}" ]] || fail "no search results for ${crate}"
+# Query the crates.io REST API for the exact version. Returns HTTP 200 if
+# the version exists and is not yanked, 404 otherwise.
+status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --connect-timeout 10 --max-time 30 \
+  "https://crates.io/api/v1/crates/${crate}/${version}" 2>/dev/null || echo "000")
 
-expected_prefix="${crate} = \"${version}\""
-if [[ "${search_line}" == "${expected_prefix}"* ]]; then
+if [ "${status}" = "200" ]; then
   log "${crate} ${version} is visible in the crates.io index"
   exit 0
 fi
 
-fail "${crate} ${version} not visible in crates.io index (latest line: ${search_line})"
+fail "${crate} ${version} not visible in crates.io index (HTTP ${status})"

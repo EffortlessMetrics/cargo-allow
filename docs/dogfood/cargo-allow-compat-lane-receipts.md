@@ -1,13 +1,18 @@
-# cargo-allow Compat Lane Dogfood Receipts
+# cargo-allow Compat Lane Characterization
 
-Side-by-side migration parity receipts for compat lanes that have fixture
+Characterization of migration parity for compat lanes that have fixture
 matrices but lacked a standalone dogfood receipt (criterion 6 from
 `plans/migration-parity/pr-queue.md`). Each lane follows the same pipeline:
 compat check → migrate → canonical check → worklist → closeout.
 
-These receipts prove the documented CLI runs end-to-end for each compat kind,
-that owner/reason/evidence/links survive migration, and that debt stays
-visible instead of being laundered into approval.
+**Note:** This is a characterization document, not a run-receipt. Unlike
+the three standalone receipts (panic-baseline, unsafe-allowlist, ripr-style)
+which commit `.migrated.toml` and `.migrate-summary.json` artifacts, this
+document describes the pipeline and defers field-preservation proof to the
+fixture matrix at `tests/fixtures/migration/` +
+`migration_fixture_matrix_tests.rs`. The edge-case fixtures (generated-drift,
+executable-drift, workflow-edge-cases) are wired into the test matrix with
+assertions verifying owner/reason/evidence/links/classification preservation.
 
 ## Lanes Covered
 
@@ -55,13 +60,17 @@ routes remaining debt to the appropriate queue (baseline_debt, broken_evidence,
 weak_evidence). The `closeout.next_queues` in the migrate summary correctly
 routes phase 1 to the debt worklist and phase 2 to the repo no-new guard.
 
-## What This Proves
+## What This Characterizes
 
 - The documented compat → migrate → canonical check → worklist → closeout
-  pipeline runs end-to-end for all six lanes without external tools.
-- Legacy evidence and traceability links survive migration for every lane.
+  pipeline is designed for all six lanes without external tools.
+- Legacy evidence and traceability links survive migration for every lane,
+  as proven by the fixture matrix assertions in `migration_fixture_matrix_tests.rs`.
 - `baseline_debt` and missing-evidence entries stay visible; scanner findings
   are not laundered into approval.
+- The fixture matrix plus this characterization satisfy acceptance criteria
+  1-5 and 7-8 from `pr-queue.md`. Criterion 6 (side-by-side run receipt with
+  committed artifacts) is characterized, not run-receipted.
 - The fixture matrix (`migration_fixture_matrix_tests.rs`) plus this receipt
   satisfy acceptance criteria 1-8 from `pr-queue.md` for these six lanes.
 
