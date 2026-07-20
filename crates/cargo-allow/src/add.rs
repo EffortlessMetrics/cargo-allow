@@ -71,6 +71,11 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
             }
         })
         .or_else(|| config_path(&mutation_root, args.config.as_deref()));
+    // #2487: assert the mutation target is within the source-tree root
+    // before acquiring the lock, preventing out-of-tree writes.
+    if let Some(target) = &mutation_target {
+        crate::policy_config::assert_path_within_root(&mutation_root, target)?;
+    }
     let _mutation_lock = mutation_target.map(MutationLock::acquire).transpose()?;
     let (root, mut cfg, findings, inventory_facts, _federation) = load_world(
         args.root.root.as_deref(),
