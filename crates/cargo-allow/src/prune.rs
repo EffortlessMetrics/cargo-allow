@@ -53,6 +53,7 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
         let path = config_path(&root, args.config.as_deref()).ok_or_else(|| {
             CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
         })?;
+        crate::policy_config::assert_path_within_root(&root, &path)?;
         Some(MutationLock::acquire(path)?)
     } else {
         None

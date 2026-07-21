@@ -109,6 +109,9 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
         .map_err(|error| CargoAllowError::new(format!("failed to read cwd: {error}")))?;
     let mutation_root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
     let mutation_target = config_path(&mutation_root, args.config.as_deref());
+    if let Some(target) = &mutation_target {
+        crate::policy_config::assert_path_within_root(&mutation_root, target)?;
+    }
     let _mutation_lock = mutation_target.map(MutationLock::acquire).transpose()?;
 
     let kind_filter = parse_kind_filter(&plan.finding.kind)?;

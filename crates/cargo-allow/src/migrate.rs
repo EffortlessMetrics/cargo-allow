@@ -1,7 +1,9 @@
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_policy::{render_policy, validate_policy};
 
-use crate::{MutationLock, emit_stderr_text, write_file, write_file_no_overwrite};
+use crate::{
+    MutationLock, emit_stderr_text, resolve_source_tree_root, write_file, write_file_no_overwrite,
+};
 
 #[path = "migrate_args.rs"]
 mod migrate_args;
@@ -25,6 +27,14 @@ use allow_core::{AllowConfig, FindingKind};
 use std::path::{Path, PathBuf};
 
 pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
+    // Containment applies only to --update (live ledger mutation), not to
+    // --out (candidate file output which may target an arbitrary path).
+    if args.update {
+        let cwd = std::env::current_dir()
+            .map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
+        let mutation_root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
+        crate::policy_config::assert_path_within_root(&mutation_root, &args.out)?;
+    }
     let _mutation_lock = MutationLock::acquire(&args.out)?;
     let migration = match (&args.from, &args.repo_policy) {
         (Some(from), None) => load_single_file_migration_config(args.root.root.as_deref(), from)?,
