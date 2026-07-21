@@ -41,10 +41,11 @@ fn scan_rust_files_adds_source_package_context_from_manifest() {
     );
     assert!(source_package_for_path(&files[1], &packages).is_some());
 
-    let findings = scan_rust_files(&root, &files)
+    let scan_result = scan_rust_files(&root, &files)
         .unwrap_or_else(|err| std::panic::panic_any(format!("scan rust files: {err}")));
 
-    let unwrap = findings
+    let unwrap = scan_result
+        .findings
         .iter()
         .find(|finding| finding.family.as_deref() == Some("unwrap"))
         .unwrap_or_else(|| std::panic::panic_any("expected unwrap finding"));
@@ -97,10 +98,11 @@ fn scan_rust_files_ignores_workspace_manifest_without_package_name() {
     .unwrap_or_else(|err| std::panic::panic_any(format!("rust write: {err}")));
     let files = vec![PathBuf::from("Cargo.toml"), PathBuf::from("src/lib.rs")];
 
-    let findings = scan_rust_files(&root, &files)
+    let scan_result = scan_rust_files(&root, &files)
         .unwrap_or_else(|err| std::panic::panic_any(format!("scan rust files: {err}")));
 
-    let unwrap = findings
+    let unwrap = scan_result
+        .findings
         .iter()
         .find(|finding| finding.family.as_deref() == Some("unwrap"))
         .unwrap_or_else(|| std::panic::panic_any("expected unwrap finding"));
@@ -122,10 +124,11 @@ fn scan_rust_files_ignores_invalid_manifest_source_text() {
     .unwrap_or_else(|err| std::panic::panic_any(format!("rust write: {err}")));
     let files = vec![PathBuf::from("Cargo.toml"), PathBuf::from("src/lib.rs")];
 
-    let findings = scan_rust_files(&root, &files)
+    let scan_result = scan_rust_files(&root, &files)
         .unwrap_or_else(|err| std::panic::panic_any(format!("scan rust files: {err}")));
 
-    let unwrap = findings
+    let unwrap = scan_result
+        .findings
         .iter()
         .find(|finding| finding.family.as_deref() == Some("unwrap"))
         .unwrap_or_else(|| std::panic::panic_any("expected unwrap finding"));
@@ -150,10 +153,11 @@ fn scan_rust_files_ignores_non_utf8_manifest_source_text() {
     .unwrap_or_else(|err| std::panic::panic_any(format!("rust write: {err}")));
     let files = vec![PathBuf::from("Cargo.toml"), PathBuf::from("src/lib.rs")];
 
-    let findings = scan_rust_files(&root, &files)
+    let scan_result = scan_rust_files(&root, &files)
         .unwrap_or_else(|err| std::panic::panic_any(format!("scan rust files: {err}")));
 
-    let unwrap = findings
+    let unwrap = scan_result
+        .findings
         .iter()
         .find(|finding| finding.family.as_deref() == Some("unwrap"))
         .unwrap_or_else(|| std::panic::panic_any("expected unwrap finding"));
@@ -175,10 +179,11 @@ fn scan_rust_files_ignores_unreadable_manifest_context() {
     .unwrap_or_else(|err| std::panic::panic_any(format!("rust write: {err}")));
     let files = vec![PathBuf::from("Cargo.toml"), PathBuf::from("src/lib.rs")];
 
-    let findings = scan_rust_files(&root, &files)
+    let scan_result = scan_rust_files(&root, &files)
         .unwrap_or_else(|err| std::panic::panic_any(format!("scan rust files: {err}")));
 
-    let unwrap = findings
+    let unwrap = scan_result
+        .findings
         .iter()
         .find(|finding| finding.family.as_deref() == Some("unwrap"))
         .unwrap_or_else(|| std::panic::panic_any("expected unwrap finding"));

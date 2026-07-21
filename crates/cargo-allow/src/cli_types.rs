@@ -77,6 +77,10 @@ pub(crate) struct InventoryFacts {
     /// Surfaced as an inventory diagnostic so coverage gaps are never silent
     /// (#2048).
     pub(crate) deleted_tracked: Option<usize>,
+    /// Number of tracked `.rs` files the Rust scanner could not read
+    /// (unreadable, non-UTF8, or oversized). When non-zero, `check --mode
+    /// no-new` fails closed to prevent false-clean receipts (#2486).
+    pub(crate) rust_files_skipped: usize,
 }
 
 impl InventoryFacts {
@@ -91,6 +95,7 @@ impl InventoryFacts {
             files_scanned: None,
             empty_git_tracked: false,
             deleted_tracked: None,
+            rust_files_skipped: 0,
         }
     }
 
@@ -101,6 +106,7 @@ impl InventoryFacts {
             files_scanned: Some(files_scanned),
             empty_git_tracked: false,
             deleted_tracked: None,
+            rust_files_skipped: 0,
         }
     }
 
@@ -122,6 +128,11 @@ impl InventoryFacts {
 
     pub(crate) fn with_completeness(mut self, completeness: InventoryCompleteness) -> Self {
         self.completeness = completeness;
+        self
+    }
+
+    pub(crate) fn with_rust_files_skipped(mut self, count: usize) -> Self {
+        self.rust_files_skipped = count;
         self
     }
 }
