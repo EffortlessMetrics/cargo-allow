@@ -28,6 +28,8 @@ use allow_core::{Finding, SimpleDate};
 use propose_baseline::BASELINE_DEBT_DEFAULT_DAYS;
 
 pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
+    // propose --write is candidate output, not a live-ledger mutation.
+    // No containment check — the operator may write the candidate anywhere.
     let _mutation_lock = args
         .write
         .as_deref()

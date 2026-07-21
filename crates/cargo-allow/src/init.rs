@@ -55,6 +55,8 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
         return Ok(());
     }
     let _mutation_lock = MutationLock::acquire(root.join(".cargo-allow-init.lock"))?;
+    // #2490: assert the write target is within the source-tree root.
+    crate::policy_config::assert_path_within_root(&root, &path)?;
     if path.exists() && !args.force {
         return Err(CargoAllowError::new(format!(
             "{} already exists; use --force to overwrite",
