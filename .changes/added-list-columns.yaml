@@ -1,0 +1,9 @@
+kind: Added
+body: >-
+  UX: `cargo-allow list --columns id,status,reason` selects a subset of columns
+  for the human TSV format. Available columns match the existing header
+  (id, status, matches, kind, family, owner, classification, scope,
+  source_package, evidence_count, broken_evidence_references,
+  weak_evidence_references, selector_precision, broad_scope, review_after,
+  expires, reason). Ignored for --format json (the JSON artifact schema is
+  versioned and emits the complete superset). Default behavior is unchanged.

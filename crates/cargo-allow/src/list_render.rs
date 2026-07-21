@@ -8,12 +8,29 @@ pub(super) fn render_list_rows(rows: &[ListRow], filters: &ListFilters<'_>) -> S
     )
 }
 
+#[cfg(test)]
 pub(super) fn render_list_rows_with_context(
     rows: &[ListRow],
     filters: &ListFilters<'_>,
     context: ListContext<'_>,
 ) -> String {
     allow_report::render_list_human(&report_list_rows(rows, filters), context.inventory)
+}
+
+/// Render the list human-format TSV with a column subset (#2595).
+/// `columns` is the resolved projection (defaults to `ListColumn::ALL`
+/// upstream when `--columns` is not supplied).
+pub(super) fn render_list_rows_with_columns(
+    rows: &[ListRow],
+    filters: &ListFilters<'_>,
+    context: ListContext<'_>,
+    columns: &[allow_report::ListColumn],
+) -> String {
+    allow_report::render_list_human_columns(
+        &report_list_rows(rows, filters),
+        context.inventory,
+        columns,
+    )
 }
 
 pub(super) fn render_list_rows_json(

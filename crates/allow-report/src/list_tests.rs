@@ -139,3 +139,146 @@ fn list_json_renderer_records_filters_context_and_rows() {
         ));
     assert!(text.contains(CLAIM_BOUNDARY_TEXT));
 }
+
+#[test]
+fn render_list_human_columns_selects_subset_and_preserves_order() {
+    // #2595: --columns id,status,reason produces a 3-column TSV with the
+    // requested order, and the surrounding inventory/next-steps/claim
+    // boundary text is unchanged.
+    let rows = vec![ListRow {
+        id: "allow-0001",
+        status: "matched",
+        matches: 2,
+        kind: "panic",
+        family: Some("unwrap"),
+        owner: "parser",
+        classification: "reviewed_exception",
+        scope: "src/lib.rs",
+        source_package: Some("allow-core"),
+        evidence_count: 1,
+        broken_evidence_references: 0,
+        weak_evidence_references: 0,
+        selector_precision: 7,
+        broad_scope: false,
+        review_after: Some("2026-10-01"),
+        expires: None,
+        reason: "validated invariant",
+    }];
+
+    let text = render_list_human_columns(
+        &rows,
+        InventoryContext::source_syntax("git_tracked", None, None),
+        &[ListColumn::Id, ListColumn::Status, ListColumn::Reason],
+    );
+
+    // Header row contains exactly the three requested columns in order.
+    assert!(
+        text.contains("id\tstatus\treason\n"),
+        "header should be id\\tstatus\\treason: {text}"
+    );
+    // The data row renders the corresponding cells in the same order.
+    assert!(
+        text.contains("allow-0001\tmatched\tvalidated invariant\n"),
+        "data row should be allow-0001\\tmatched\\tvalidated invariant: {text}"
+    );
+    // Columns not selected must not appear as headers.
+    assert!(
+        !text.contains("matches\t"),
+        "non-selected `matches` column should not appear: {text}"
+    );
+    assert!(
+        !text.contains("owner\t"),
+        "non-selected `owner` column should not appear: {text}"
+    );
+    // Shared scaffolding is preserved.
+    assert!(text.contains("inventory: source_tree/source_syntax via git_tracked"));
+    assert!(text.contains(CLAIM_BOUNDARY_TEXT));
+}
+
+#[test]
+fn render_list_human_default_matches_full_header_row() {
+    // #2595: when no column selection is made, render_list_human must
+    // still produce the full 17-column header (backward compatibility).
+    let rows: Vec<ListRow<'_>> = Vec::new();
+    let text = render_list_human(
+        &rows,
+        InventoryContext::source_syntax("git_tracked", None, None),
+    );
+    assert!(
+        text.contains(
+            "id\tstatus\tmatches\tkind\tfamily\towner\tclassification\tscope\tsource_package\tevidence_count\tbroken_evidence_references\tweak_evidence_references\tselector_precision\tbroad_scope\treview_after\texpires\treason\n"
+        ),
+        "default render must keep the full 17-column header: {text}"
+    );
+}
+
+#[test]
+fn list_column_parse_csv_rejects_unknown_lists_valid_and_dedupes() {
+    // Unknown name surfaces an error listing valid columns.
+    let err = ListColumn::parse_csv("id,bogus,reason").expect_err("unknown column should error");
+    assert!(
+        err.contains("unknown --columns name `bogus`"),
+        "error should name the bad column: {err}"
+    );
+    assert!(
+        err.contains("valid columns:"),
+        "error should list valid columns: {err}"
+    );
+    assert!(
+        err.contains("source_package"),
+        "valid-columns hint should include source_package: {err}"
+    );
+
+    // Valid selection parses in the requested order, with whitespace trimmed.
+    let parsed = ListColumn::parse_csv(" id , status , reason ")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("parse_csv should succeed: {err}")));
+    assert_eq!(
+        parsed,
+        vec![ListColumn::Id, ListColumn::Status, ListColumn::Reason]
+    );
+
+    // Duplicate selection is rejected.
+    let dup_err = ListColumn::parse_csv("id,id").expect_err("duplicate selection should error");
+    assert!(
+        dup_err.contains("duplicate --columns name `id`"),
+        "error should name the duplicate: {dup_err}"
+    );
+
+    // Empty selection is rejected.
+    let empty_err = ListColumn::parse_csv("").expect_err("empty selection should error");
+    assert!(
+        empty_err.contains("empty column name"),
+        "error should explain the empty name: {empty_err}"
+    );
+}
+
+#[test]
+fn list_column_all_is_canonical_seventeen_in_order() {
+    // The default projection is exactly the 17 columns in the pre-#2595
+    // header order. If this changes, the backward-compat assertion above
+    // and the help text in list_args.rs both need updating.
+    assert_eq!(ListColumn::ALL.len(), 17);
+    let headers: Vec<&str> = ListColumn::ALL.iter().map(|c| c.header()).collect();
+    assert_eq!(
+        headers,
+        vec![
+            "id",
+            "status",
+            "matches",
+            "kind",
+            "family",
+            "owner",
+            "classification",
+            "scope",
+            "source_package",
+            "evidence_count",
+            "broken_evidence_references",
+            "weak_evidence_references",
+            "selector_precision",
+            "broad_scope",
+            "review_after",
+            "expires",
+            "reason",
+        ]
+    );
+}

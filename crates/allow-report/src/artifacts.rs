@@ -33,7 +33,7 @@ pub use federation::{
     FederationDivergenceKindCount, FederationDivergenceRecordSummary, FederationDivergenceSummary,
     FederationReportContext, LedgerContributorSummary,
 };
-pub use list::{ListFilters, ListRow};
+pub use list::{ListColumn, ListFilters, ListRow};
 pub use migrate::MigrateReport;
 pub use propose::ProposeReport;
 pub use prune::{PruneCandidate, PruneModeContext};
