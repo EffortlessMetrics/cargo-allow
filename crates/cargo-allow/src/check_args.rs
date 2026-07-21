@@ -31,7 +31,11 @@ pub(crate) struct CheckArgs {
     /// Write machine-readable receipt to a file.
     #[arg(long)]
     pub(crate) receipt: Option<PathBuf>,
-    /// Check mode. Defaults to the policy-configured source-tree gate mode.
+    /// Check mode [possible values: no-new, audit, strict, release].
+    ///   no-new   Fail on new/expired/ambiguous/invalid/evidence-missing (CI gate)
+    ///   audit    Report all advisory statuses without failing (informational)
+    ///   strict   Fail on any non-matched status including stale/review_due/drift
+    ///   release  Release-grade gate (strict + deny advisory escalations)
     #[arg(long, value_parser = ["audit", "no-new", "strict", "release"])]
     pub(crate) mode: Option<String>,
     /// Promote one receipt `advisory` count class to a blocking failure.

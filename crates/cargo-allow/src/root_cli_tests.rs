@@ -240,7 +240,7 @@ mod tests {
         };
         let help = check.render_help().to_string();
 
-        assert!(help.contains("policy-configured source-tree gate mode"));
+        assert!(help.contains("CI gate"));
         assert!(help.contains("--deny"));
         assert!(help.contains("occurrence_headroom"));
         assert!(!help.contains("workspace.default_mode"));

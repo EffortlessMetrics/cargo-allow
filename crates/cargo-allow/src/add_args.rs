@@ -73,10 +73,10 @@ pub(crate) struct AddArgs {
     /// Overwrite an existing output policy file.
     #[arg(long)]
     pub(super) force: bool,
-    /// Update the live policy in place instead of printing or writing a
-    /// candidate file. Resolves the discovered policy/allow.toml, validates
-    /// the full result, and atomically replaces it. Mutually exclusive with
-    /// --write.
+    /// Update the live policy in place instead of printing/writing a candidate
+    /// file. Resolves the discovered policy/allow.toml, validates the full
+    /// result, and atomically replaces it. Recommended for adding one receipt.
+    /// Mutually exclusive with --write.
     #[arg(long, conflicts_with = "write")]
     pub(super) update: bool,
     /// Apply a versioned add-finding plan produced by `why --plan`. Re-scans the
