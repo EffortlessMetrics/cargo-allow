@@ -112,6 +112,34 @@ mod tests {
     }
 
     #[test]
+    fn clap_propagates_version_to_subcommands() {
+        // #2597: `cargo-allow <subcommand> --version` should print the package
+        // version, not error with "unexpected argument". clap's
+        // `propagate_version` mirrors the root `version` onto every subcommand.
+        //
+        // clap performs propagation during command build (triggered by
+        // parsing), so we exercise it by parsing each subcommand with
+        // `--version` and asserting the parse produces a `DisplayVersion`
+        // error rather than an `UnknownArgument` error.
+        for name in [
+            "init", "audit", "check", "diff", "list", "explain", "why", "add", "propose",
+            "worklist", "migrate", "refresh", "prune", "doctor", "tool",
+        ] {
+            let parsed =
+                CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", name, "--version"]));
+            let err = parsed.expect_err(
+                "subcommand {name}: --version should short-circuit to a DisplayVersion error",
+            );
+            assert_eq!(
+                err.kind(),
+                clap::error::ErrorKind::DisplayVersion,
+                "subcommand {name}: --version should be recognized, got {:?}",
+                err.kind()
+            );
+        }
+    }
+
+    #[test]
     fn clap_parses_markdown_alias() {
         let parsed =
             CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "check", "--format", "md"]))

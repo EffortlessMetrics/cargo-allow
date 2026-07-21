@@ -1,0 +1,6 @@
+kind: Added
+body: >-
+  UX: `cargo-allow <subcommand> --version` now prints the package version
+  (e.g. `cargo-allow-check 0.2.0`) instead of erroring with "unexpected
+  argument". clap's `propagate_version` mirrors the root `version` onto every
+  subcommand, matching the convention used by cargo, rustc, and git.

@@ -11,7 +11,8 @@ use crate::{
 #[command(
     name = "cargo-allow",
     about = "Source exception ledger for source trees",
-    version
+    version,
+    propagate_version = true
 )]
 pub(crate) struct CargoAllowCli {
     /// Accept cargo-style color preference (accepted for compatibility;
