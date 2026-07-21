@@ -1,0 +1,6 @@
+kind: Changed
+body: >-
+  UX: `check --help` now lists `--mode` values with one-line descriptions;
+  audit file listings truncate at 20 (human) / 30 (markdown) rows with an
+  explicit "additional files omitted" notice; `add --update` help text now
+  recommends it for adding a single receipt.

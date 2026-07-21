@@ -103,7 +103,8 @@ fn markdown_report_summarizes_non_rust_inventory() {
 
 #[test]
 fn human_report_discloses_omitted_non_rust_inventory_rows() {
-    let findings = (0..41)
+    // HUMAN_FILE_ROW_LIMIT is 20; we render 21 findings so exactly one is omitted.
+    let findings = (0..21)
         .map(|index| {
             file_finding(
                 FindingKind::NonRustFile,
@@ -112,7 +113,7 @@ fn human_report_discloses_omitted_non_rust_inventory_rows() {
             )
         })
         .collect::<Vec<_>>();
-    let outcomes = (0..41)
+    let outcomes = (0..21)
         .map(|index| outcome(MatchStatus::Matched, Some(index)))
         .collect::<Vec<_>>();
 
@@ -121,7 +122,7 @@ fn human_report_discloses_omitted_non_rust_inventory_rows() {
         &findings,
         &outcomes,
         false,
-        ReportContext::source_syntax("git_tracked", None, Some(41), None),
+        ReportContext::source_syntax("git_tracked", None, Some(21), None),
     );
 
     assert!(text.contains("... 1 additional non-Rust file omitted from this listing"));
@@ -129,7 +130,8 @@ fn human_report_discloses_omitted_non_rust_inventory_rows() {
 
 #[test]
 fn markdown_report_discloses_omitted_non_rust_inventory_rows() {
-    let findings = (0..61)
+    // MARKDOWN_FILE_ROW_LIMIT is 30; we render 31 findings so exactly one is omitted.
+    let findings = (0..31)
         .map(|index| {
             file_finding(
                 FindingKind::NonRustFile,
@@ -138,7 +140,7 @@ fn markdown_report_discloses_omitted_non_rust_inventory_rows() {
             )
         })
         .collect::<Vec<_>>();
-    let outcomes = (0..61)
+    let outcomes = (0..31)
         .map(|index| outcome(MatchStatus::Matched, Some(index)))
         .collect::<Vec<_>>();
 
@@ -147,7 +149,7 @@ fn markdown_report_discloses_omitted_non_rust_inventory_rows() {
         &findings,
         &outcomes,
         false,
-        ReportContext::source_syntax("git_tracked", None, Some(61), None),
+        ReportContext::source_syntax("git_tracked", None, Some(31), None),
     );
 
     assert!(text.contains("1 additional non-Rust file omitted from this listing."));

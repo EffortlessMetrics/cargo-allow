@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 
 use crate::text::markdown_cell;
 
-const HUMAN_FILE_ROW_LIMIT: usize = 40;
-const MARKDOWN_FILE_ROW_LIMIT: usize = 60;
+const HUMAN_FILE_ROW_LIMIT: usize = 20;
+const MARKDOWN_FILE_ROW_LIMIT: usize = 30;
 
 #[derive(Debug, Default)]
 pub(crate) struct FilePosture {
