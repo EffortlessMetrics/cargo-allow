@@ -45,13 +45,14 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
     let path = root_relative_path(&root, &args.config);
     if args.dry_run {
         let display = created_path_display(&root, &path);
-        if path.exists() && !args.force {
-            println!("would keep {display}");
+        let action = if path.exists() && !args.force {
+            "keep"
         } else if path.exists() {
-            println!("would overwrite {display}");
+            "overwrite"
         } else {
-            println!("would create {display}");
-        }
+            "create"
+        };
+        print!("{}", dry_run_announcement(action, &display, args.strict));
         return Ok(());
     }
     let _mutation_lock = MutationLock::acquire(root.join(".cargo-allow-init.lock"))?;
@@ -69,12 +70,8 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
         })?;
     }
     crate::io::write_file(&path, &starter_policy(args.strict))?;
-    println!("created {}", created_path_display(&root, &path));
-    println!();
-    println!("next steps:");
-    println!("  cargo-allow audit                  # inventory current exceptions");
-    println!("  cargo-allow check --mode no-new    # enforce no-new-debt");
-    println!("  cargo-allow worklist               # see review-due and stale entries");
+    let display = created_path_display(&root, &path);
+    print!("{}", post_write_announcement("created", &display));
     Ok(())
 }
 
@@ -92,6 +89,63 @@ fn created_path_display(root: &Path, path: &Path) -> String {
         .map(Path::to_path_buf)
         .unwrap_or_else(|_| path.to_path_buf());
     allow_report::source_tree_path_text(&display_path)
+}
+
+/// One-line-per-field preview of the starter policy, for `init --dry-run`.
+///
+/// The full rendered TOML is what `init` (without `--dry-run`) writes; this
+/// summary surfaces the fields an operator is most likely to want to sanity
+/// check before committing to the write: the default gate mode, the source
+/// inventory, ownership, and the requirement posture. Strict mode promotes
+/// `default_mode` to `strict` and turns stale entries into failures.
+fn starter_policy_preview(strict: bool) -> String {
+    let (default_mode, stale_fail) = if strict {
+        ("strict", "true")
+    } else {
+        ("no-new", "false")
+    };
+    format!(
+        "  policy             = cargo-allow\n  \
+         owner              = core/policy\n  \
+         inventory          = git-tracked\n  \
+         default_mode       = {default_mode}\n  \
+         stale_entries_fail = {stale_fail}\n  \
+         evidence_required  = false (unsafe: true)"
+    )
+}
+
+/// Render the full `init --dry-run` announcement: the would-{keep,overwrite,
+/// create} line, the starter policy shape preview, and the next-steps
+/// guidance. Returns the exact bytes to print so the dry-run path stays
+/// testable without capturing stdout (#2596).
+fn dry_run_announcement(action: &str, display: &str, strict: bool) -> String {
+    let mut out = String::new();
+    out.push_str(&format!("would {action} {display}\n"));
+    out.push('\n');
+    out.push_str("starter policy shape:\n");
+    out.push_str(&starter_policy_preview(strict));
+    out.push('\n');
+    out.push_str(&next_steps_block());
+    out
+}
+
+/// Render the post-write announcement: the {created} line and the next-steps
+/// guidance. Kept as a helper so the dry-run and write paths emit identical
+/// next-steps text.
+fn post_write_announcement(action: &str, display: &str) -> String {
+    let mut out = String::new();
+    out.push_str(&format!("{action} {display}\n"));
+    out.push('\n');
+    out.push_str(&next_steps_block());
+    out
+}
+
+fn next_steps_block() -> String {
+    "next steps:\n  \
+     cargo-allow audit                  # inventory current exceptions\n  \
+     cargo-allow check --mode no-new    # enforce no-new-debt\n  \
+     cargo-allow worklist               # see review-due and stale entries\n"
+        .to_string()
 }
 
 #[cfg(test)]
