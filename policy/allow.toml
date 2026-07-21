@@ -6423,8 +6423,95 @@ review_after = "2026-10-17"
 ast_kind = "tracked_file"
 symbol = "docs/release/github/v0.2.0.md"
 target_fingerprint = "md"
-line_hint = 1
 glob = "docs/release/github/v0.2.0.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0308"
+kind = "non_rust_file"
+family = "documentation"
+path = ".changes/README.md"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Changie changelog fragment workflow documentation"
+evidence = ["doc:docs/how-to/manage-changelog.md"]
+created = "2026-07-21"
+review_after = "2026-10-19"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".changes/README.md"
+target_fingerprint = "md"
+glob = ".changes/README.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0309"
+kind = "non_rust_file"
+family = "configuration"
+path = ".changie.yaml"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Changie configuration"
+evidence = ["doc:docs/how-to/manage-changelog.md"]
+created = "2026-07-21"
+review_after = "2026-10-19"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".changie.yaml"
+target_fingerprint = "yaml"
+glob = ".changie.yaml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0310"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/ensure-changelog-fragment.sh"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Pre-commit hook for changelog fragment check"
+evidence = ["doc:docs/how-to/manage-changelog.md"]
+created = "2026-07-21"
+review_after = "2026-10-19"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/ensure-changelog-fragment.sh"
+target_fingerprint = "sh"
+glob = "scripts/ensure-changelog-fragment.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0311"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/how-to/manage-changelog.md"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Changie changelog management guide"
+evidence = ["doc:CONTRIBUTING.md"]
+created = "2026-07-21"
+review_after = "2026-10-19"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/how-to/manage-changelog.md"
+target_fingerprint = "md"
+glob = "docs/how-to/manage-changelog.md"
 
 [allow.last_seen]
 line = 1

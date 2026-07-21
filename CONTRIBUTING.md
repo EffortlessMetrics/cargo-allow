@@ -40,6 +40,19 @@ cargo run -p cargo-allow -- audit --format human
 cargo run -p cargo-allow -- check --mode no-new
 ```
 
+## Changelog
+
+User-facing changes require a changelog fragment. Install
+[changie](https://github.com/miniscruff/changie) and run `changie new` before
+merging a PR that changes user-visible behavior. See
+[Manage the Changelog](docs/how-to/manage-changelog.md) for the full workflow.
+
+```bash
+changie new        # create a fragment for your change
+changie batch v0.2.1  # merge fragments into CHANGELOG.md on release
+changie merge      # archive fragments after batching
+```
+
 If you have [`just`](https://github.com/casey/just) installed, `just ci` runs
 the same checks as the CI workflow (`just --list` shows the individual
 recipes). This is an optional convenience; `cargo` remains the source of truth

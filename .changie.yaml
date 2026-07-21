@@ -1,0 +1,25 @@
+changesDir: .changes
+changesTpl: '### {{.Kind}}'
+changes:
+  - kind: Added
+    body: New features.
+  - kind: Changed
+    body: Changes in existing functionality.
+  - kind: Deprecated
+    body: Soon-to-be removed features.
+  - kind: Removed
+    body: Removed features.
+  - kind: Fixed
+    body: Bug fixes.
+  - kind: Security
+    body: Security fixes.
+  - kind: Documentation
+    body: Documentation improvements.
+envPrefix: ""
+replacements:
+  - path: CHANGELOG.md
+    findTpl: '## [Unreleased]'
+    replaceTpl: '{{.VersionAvailable}}'
+newlines:
+  after: 1
+  before: 1
