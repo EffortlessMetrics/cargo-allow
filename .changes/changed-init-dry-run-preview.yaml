@@ -1,0 +1,6 @@
+kind: Changed
+body: >-
+  UX: `init --dry-run` now prints a one-line-per-field preview of the starter
+  policy shape (default_mode, inventory, owner, requirement posture) and the
+  same next-steps guidance as the non-dry-run path, so operators can sanity
+  check strict vs non-strict before committing to the write.

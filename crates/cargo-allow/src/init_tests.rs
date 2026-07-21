@@ -214,6 +214,83 @@ fn cmd_init_dry_run_does_not_write_default_policy() {
 }
 
 #[test]
+fn dry_run_announcement_includes_preview_and_next_steps() {
+    // #2596: dry-run should preview the starter policy shape and show the
+    // next-steps guidance, not just the would-create line.
+    let out = super::dry_run_announcement("create", "policy/allow.toml", false);
+
+    assert!(
+        out.starts_with("would create policy/allow.toml\n"),
+        "dry-run should announce intent first: {out}"
+    );
+    assert!(
+        out.contains("starter policy shape:"),
+        "dry-run should preview the policy shape: {out}"
+    );
+    assert!(
+        out.contains("default_mode       = no-new"),
+        "non-strict preview should show default_mode = no-new: {out}"
+    );
+    assert!(
+        out.contains("stale_entries_fail = false"),
+        "non-strict preview should show stale_entries_fail = false: {out}"
+    );
+    assert!(
+        out.contains("next steps:"),
+        "dry-run should show next-steps guidance: {out}"
+    );
+    assert!(
+        out.contains("cargo-allow check --mode no-new"),
+        "dry-run next steps should mention the CI gate command: {out}"
+    );
+}
+
+#[test]
+fn dry_run_announcement_strict_preview_promotes_mode_and_stale_failure() {
+    let out = super::dry_run_announcement("create", "policy/allow.toml", true);
+
+    assert!(
+        out.contains("default_mode       = strict"),
+        "strict preview should show strict mode: {out}"
+    );
+    assert!(
+        out.contains("stale_entries_fail = true"),
+        "strict preview should show stale_entries_fail = true: {out}"
+    );
+}
+
+#[test]
+fn dry_run_announcement_keep_and_overwrite_use_action_word() {
+    let keep = super::dry_run_announcement("keep", "policy/allow.toml", false);
+    let overwrite = super::dry_run_announcement("overwrite", "policy/allow.toml", false);
+
+    assert!(
+        keep.starts_with("would keep policy/allow.toml\n"),
+        "keep action should be announced: {keep}"
+    );
+    assert!(
+        overwrite.starts_with("would overwrite policy/allow.toml\n"),
+        "overwrite action should be announced: {overwrite}"
+    );
+}
+
+#[test]
+fn post_write_announcement_shares_next_steps_with_dry_run() {
+    // The non-dry-run path should emit identical next-steps text so the two
+    // paths don't drift.
+    let created = super::post_write_announcement("created", "policy/allow.toml");
+    let dry = super::dry_run_announcement("create", "policy/allow.toml", false);
+
+    assert!(created.starts_with("created policy/allow.toml\n"));
+    let created_steps = created.split("next steps:\n").nth(1).unwrap_or("");
+    let dry_steps = dry.split("next steps:\n").nth(1).unwrap_or("");
+    assert_eq!(
+        created_steps, dry_steps,
+        "next-steps text must match between dry-run and write paths"
+    );
+}
+
+#[test]
 fn spec_system_init_dry_run_does_not_write_bootstrap_files() {
     let root = init_fixture_dir();
 
