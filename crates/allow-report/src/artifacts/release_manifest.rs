@@ -7,6 +7,41 @@ pub const RELEASE_MANIFEST_SCHEMA_ID: &str = "cargo-allow.release-manifest.v1";
 /// The claim boundary text included in every release manifest.
 pub const RELEASE_MANIFEST_CLAIM_BOUNDARY: &str = CLAIM_BOUNDARY_TEXT;
 
+/// The canonical crate publish order — single source of truth for both
+/// the release workflow and the manifest generator.
+pub const PUBLISH_ORDER: &[&str] = &[
+    "allow-core",
+    "allow-policy",
+    "allow-inventory",
+    "allow-files",
+    "allow-rust",
+    "allow-match",
+    "allow-policy-legacy",
+    "allow-report",
+    "allow-diff",
+    "cargo-allow",
+];
+
+/// Result class for the manifest generation gate (#2495/#2497).
+/// A manifest may only be attested when `Complete`.
+#[derive(Debug, Clone, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
+pub enum ManifestResult {
+    /// All required fields are populated, all crate checksums present,
+    /// auth_source is oidc, and the manifest is safe to attest.
+    Complete,
+    /// Some fields are missing (e.g. crate checksums absent, auth_source
+    /// not oidc). The manifest may be emitted as a preview but must NOT
+    /// be attested or attached to a public release.
+    Incomplete,
+}
+
+/// Reasons a manifest is `Incomplete`. Used for diagnostics and receipts.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct ManifestGap {
+    pub field: &'static str,
+    pub detail: String,
+}
+
 /// Structured payload for `cargo-allow.release-manifest.v1`.
 ///
 /// Binds the reviewed source candidate, package graph, registry artifacts,
@@ -50,7 +85,8 @@ pub struct ReleaseManifestV1 {
     pub crates: Vec<ManifestCrate>,
 
     // -- Authentication --
-    /// How the release authenticated with crates.io: `oidc` or `secret`.
+    /// How the release authenticated with crates.io: `oidc` (only accepted
+    /// value for attestation; `secret` produces `Incomplete`).
     pub auth_source: String,
     /// GitHub Actions workflow run ID.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -73,6 +109,11 @@ pub struct ReleaseManifestV1 {
     // -- Claim boundary --
     /// The cargo-allow claim boundary text.
     pub claim_boundary: String,
+
+    // -- Result gate --
+    /// Whether this manifest is complete enough to attest. Only `Complete`
+    /// manifests should be attached to a public release (#2497).
+    pub result: ManifestResult,
 
     // -- Generation metadata --
     /// ISO 8601 timestamp of manifest generation.
@@ -110,6 +151,152 @@ pub fn render_release_manifest_json(
     manifest: &ReleaseManifestV1,
 ) -> Result<String, serde_json::Error> {
     serde_json::to_string_pretty(manifest)
+}
+
+/// Validate a manifest and return its result class plus any gaps (#2497).
+///
+/// A manifest is `Complete` only when:
+/// - schema_id and schema_version match the constants
+/// - auth_source is "oidc"
+/// - every crate has a crate_checksum
+/// - the crate order matches `PUBLISH_ORDER`
+/// - the crate count matches `PUBLISH_ORDER.len()`
+///
+/// Any deviation produces `Incomplete` with a list of gaps explaining why.
+pub fn validate_release_manifest(
+    manifest: &ReleaseManifestV1,
+) -> (ManifestResult, Vec<ManifestGap>) {
+    let mut gaps = Vec::new();
+
+    if manifest.schema_id != RELEASE_MANIFEST_SCHEMA_ID {
+        gaps.push(ManifestGap {
+            field: "schema_id",
+            detail: format!(
+                "expected {}, got {}",
+                RELEASE_MANIFEST_SCHEMA_ID, manifest.schema_id
+            ),
+        });
+    }
+    if manifest.schema_version != RELEASE_MANIFEST_SCHEMA_VERSION {
+        gaps.push(ManifestGap {
+            field: "schema_version",
+            detail: format!(
+                "expected {}, got {}",
+                RELEASE_MANIFEST_SCHEMA_VERSION, manifest.schema_version
+            ),
+        });
+    }
+    if manifest.auth_source != "oidc" {
+        gaps.push(ManifestGap {
+            field: "auth_source",
+            detail: format!(
+                "expected oidc, got {} — attestation requires OIDC authentication",
+                manifest.auth_source
+            ),
+        });
+    }
+    if manifest.crates.len() != PUBLISH_ORDER.len() {
+        gaps.push(ManifestGap {
+            field: "crates",
+            detail: format!(
+                "expected {} crates, got {}",
+                PUBLISH_ORDER.len(),
+                manifest.crates.len()
+            ),
+        });
+    }
+    // Check crate order and checksums
+    for (i, expected_name) in PUBLISH_ORDER.iter().enumerate() {
+        if let Some(crate_entry) = manifest.crates.get(i) {
+            if crate_entry.name != *expected_name {
+                gaps.push(ManifestGap {
+                    field: "crates",
+                    detail: format!(
+                        "position {i}: expected {expected_name}, got {}",
+                        crate_entry.name
+                    ),
+                });
+            }
+            if crate_entry.crate_checksum.is_none() {
+                gaps.push(ManifestGap {
+                    field: "crates",
+                    detail: format!("{} is missing crate_checksum", crate_entry.name),
+                });
+            }
+        }
+    }
+
+    let result = if gaps.is_empty() {
+        ManifestResult::Complete
+    } else {
+        ManifestResult::Incomplete
+    };
+    (result, gaps)
+}
+
+/// Inputs for generating a manifest from release workflow context.
+pub struct ManifestInput<'a> {
+    pub version: &'a str,
+    pub repository: &'a str,
+    pub tag: &'a str,
+    pub commit: &'a str,
+    pub tree: &'a str,
+    pub auth_source: &'a str,
+    pub workflow_run_id: Option<u64>,
+    pub msrv: &'a str,
+    pub platforms_proven: &'a [&'a str],
+    pub crate_checksums: &'a [Option<String>],
+    /// ISO 8601 timestamp string (caller-provided to avoid a chrono dependency).
+    pub generated_at: &'a str,
+}
+
+/// Generate a `ReleaseManifestV1` from typed inputs. The `crate_checksums`
+/// slice must be in `PUBLISH_ORDER` order; each entry is `Some("sha256:...")`
+/// if the `.crate` file was found, or `None` if missing.
+pub fn generate_release_manifest(input: &ManifestInput) -> ReleaseManifestV1 {
+    let crates = PUBLISH_ORDER
+        .iter()
+        .enumerate()
+        .map(|(i, name)| ManifestCrate {
+            name: (*name).to_string(),
+            version: input.version.to_string(),
+            crate_checksum: input.crate_checksums.get(i).cloned().flatten(),
+            registry_checksum: None,
+        })
+        .collect();
+
+    let mut manifest = ReleaseManifestV1 {
+        schema_id: RELEASE_MANIFEST_SCHEMA_ID.to_string(),
+        schema_version: RELEASE_MANIFEST_SCHEMA_VERSION,
+        tool_version: input.version.to_string(),
+        repository: input.repository.to_string(),
+        tag: input.tag.to_string(),
+        commit: input.commit.to_string(),
+        tree: input.tree.to_string(),
+        version: input.version.to_string(),
+        source_candidate_digest: None,
+        crates,
+        auth_source: input.auth_source.to_string(),
+        workflow_run_id: input.workflow_run_id,
+        msrv: input.msrv.to_string(),
+        platforms_proven: input.platforms_proven.iter().map(|s| s.to_string()).collect(),
+        generations: ManifestGenerations {
+            release_manifest: 1,
+            add_finding_plan: 1,
+            mutation_receipt: 1,
+        },
+        limitations: vec![
+            "source-tree-only scan; cargo-allow does not execute repository code".to_string(),
+            "macro-expanded, type-aware, MIR-level, build-aware, control-flow, data-flow, unsafe-proof, test-adequacy, and coverage-proof behavior were not analyzed".to_string(),
+        ],
+        claim_boundary: RELEASE_MANIFEST_CLAIM_BOUNDARY.to_string(),
+        result: ManifestResult::Incomplete,
+        generated_at: input.generated_at.to_string(),
+    };
+
+    let (result, _gaps) = validate_release_manifest(&manifest);
+    manifest.result = result;
+    manifest
 }
 
 #[cfg(test)]
@@ -155,6 +342,7 @@ mod tests {
             },
             limitations: vec!["source-tree-only scan".to_string()],
             claim_boundary: RELEASE_MANIFEST_CLAIM_BOUNDARY.to_string(),
+            result: ManifestResult::Complete,
             generated_at: "2026-07-19T12:00:00Z".to_string(),
         };
 
@@ -214,6 +402,7 @@ mod tests {
             },
             limitations: vec![],
             claim_boundary: RELEASE_MANIFEST_CLAIM_BOUNDARY.to_string(),
+            result: ManifestResult::Incomplete,
             generated_at: "2026-07-19T12:00:00Z".to_string(),
         };
 
@@ -227,5 +416,87 @@ mod tests {
             return Err("None-valued optional fields were serialized".into());
         }
         Ok(())
+    }
+
+    #[test]
+    fn validate_complete_manifest() {
+        let checksums: Vec<Option<String>> = PUBLISH_ORDER
+            .iter()
+            .map(|_| Some("sha256:abc123".to_string()))
+            .collect();
+        let manifest = generate_release_manifest(&ManifestInput {
+            version: "0.2.0",
+            repository: "EffortlessMetrics/cargo-allow",
+            tag: "v0.2.0",
+            commit: "abc123",
+            tree: "def456",
+            auth_source: "oidc",
+            workflow_run_id: Some(12345),
+            msrv: "1.95",
+            platforms_proven: &["linux"],
+            crate_checksums: &checksums,
+            generated_at: "2026-07-20T12:00:00Z",
+        });
+        let (result, gaps) = validate_release_manifest(&manifest);
+        assert_eq!(result, ManifestResult::Complete);
+        assert!(gaps.is_empty(), "gaps: {:?}", gaps);
+        assert_eq!(manifest.crates.len(), PUBLISH_ORDER.len());
+        assert_eq!(manifest.crates[0].name, "allow-core");
+        assert_eq!(manifest.crates[9].name, "cargo-allow");
+    }
+
+    #[test]
+    fn validate_incomplete_on_missing_checksum() {
+        let checksums: Vec<Option<String>> = PUBLISH_ORDER
+            .iter()
+            .enumerate()
+            .map(|(i, _)| {
+                if i == 5 {
+                    None // allow-match missing
+                } else {
+                    Some("sha256:abc123".to_string())
+                }
+            })
+            .collect();
+        let manifest = generate_release_manifest(&ManifestInput {
+            version: "0.2.0",
+            repository: "EffortlessMetrics/cargo-allow",
+            tag: "v0.2.0",
+            commit: "abc123",
+            tree: "def456",
+            auth_source: "oidc",
+            workflow_run_id: None,
+            msrv: "1.95",
+            platforms_proven: &["linux"],
+            crate_checksums: &checksums,
+            generated_at: "2026-07-20T12:00:00Z",
+        });
+        let (result, gaps) = validate_release_manifest(&manifest);
+        assert_eq!(result, ManifestResult::Incomplete);
+        assert!(gaps.iter().any(|g| g.detail.contains("allow-match")));
+    }
+
+    #[test]
+    fn validate_incomplete_on_secret_auth() {
+        let checksums: Vec<Option<String>> = PUBLISH_ORDER
+            .iter()
+            .map(|_| Some("sha256:abc123".to_string()))
+            .collect();
+        let manifest = generate_release_manifest(&ManifestInput {
+            version: "0.2.0",
+            repository: "test",
+            tag: "v0.2.0",
+            commit: "abc",
+            tree: "def",
+            auth_source: "secret",
+            workflow_run_id: None,
+            msrv: "1.95",
+            platforms_proven: &["linux"],
+            crate_checksums: &checksums,
+            generated_at: "2026-07-20T12:00:00Z",
+        });
+        let (result, gaps) = validate_release_manifest(&manifest);
+        assert_eq!(result, ManifestResult::Incomplete);
+        assert!(gaps.iter().any(|g| g.field == "auth_source"));
     }
 }
