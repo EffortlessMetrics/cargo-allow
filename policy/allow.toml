@@ -6516,3 +6516,19 @@ glob = "docs/how-to/manage-changelog.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0312"
+kind = "non_rust_file"
+family = "configuration"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Changie changelog fragments managed by the pre-commit workflow"
+evidence = ["doc:docs/how-to/manage-changelog.md"]
+created = "2026-07-21"
+review_after = "2026-10-19"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "yaml"
+glob = ".changes/*.yaml"
