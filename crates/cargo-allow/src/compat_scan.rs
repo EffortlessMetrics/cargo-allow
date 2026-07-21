@@ -17,7 +17,8 @@ pub(super) fn scan_legacy_rust_compat(
     };
     let inventory = inventory(root, &opts)?;
     let inventory_facts = InventoryFacts::scanned_inventory(&inventory);
-    let mut findings = allow_rust::scan_rust_files(root, &inventory.files)?;
+    let rust_scan = allow_rust::scan_rust_files(root, &inventory.files)?;
+    let mut findings = rust_scan.findings;
     findings.retain(|finding| finding.kind == kind);
     Ok((findings, inventory_facts))
 }

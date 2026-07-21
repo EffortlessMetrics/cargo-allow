@@ -91,10 +91,12 @@ pub(crate) fn load_world_with_evidence_mode(
         )?;
     }
     let mut findings = Vec::new();
-    findings.extend(SCAN_CACHE.with(|cache| {
+    let rust_scan = SCAN_CACHE.with(|cache| {
         let mut cache = cache.borrow_mut();
         allow_rust::scan_rust_files_cached(&root, &files, &mut cache)
-    })?);
+    })?;
+    let rust_files_skipped = rust_scan.files_skipped;
+    findings.extend(rust_scan.findings);
     findings.extend(allow_files::scan_files_with_options(
         &files,
         &allow_files::FileScanOptions {
@@ -112,7 +114,13 @@ pub(crate) fn load_world_with_evidence_mode(
             finding.ledger = Some(provenance.clone());
         }
     }
-    Ok((root, cfg, findings, inventory_facts, federation))
+    Ok((
+        root,
+        cfg,
+        findings,
+        inventory_facts.with_rust_files_skipped(rust_files_skipped),
+        federation,
+    ))
 }
 
 /// Load the full policy but scan only the single file at `target_path` instead
@@ -156,7 +164,8 @@ pub(crate) fn load_world_for_path(
     // Normalize the target path to repo-relative for the scan.
     let files = vec![normalize_to_repo_relative(&root, target_path)];
     let mut findings = Vec::new();
-    findings.extend(allow_rust::scan_rust_files(&root, &files)?);
+    let rust_scan = allow_rust::scan_rust_files(&root, &files)?;
+    findings.extend(rust_scan.findings);
     findings.extend(allow_files::scan_files_with_options(
         &files,
         &allow_files::FileScanOptions {
@@ -234,7 +243,8 @@ fn load_world_without_policy(
     let inventory_facts = InventoryFacts::scanned_inventory(&inventory);
     let files = inventory.files;
     let mut findings = Vec::new();
-    findings.extend(allow_rust::scan_rust_files(root, &files)?);
+    let rust_scan = allow_rust::scan_rust_files(root, &files)?;
+    findings.extend(rust_scan.findings);
     findings.extend(allow_files::scan_files_with_options(
         &files,
         &allow_files::FileScanOptions {

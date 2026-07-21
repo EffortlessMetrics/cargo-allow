@@ -23,6 +23,7 @@ mod line_unsafe_findings;
 mod package;
 mod safety_comments;
 mod scan_cache;
+mod scan_result;
 mod syntax_facts;
 mod syntax_kinds;
 mod syntax_tree;
@@ -37,6 +38,7 @@ pub use package::{
     SourcePackageContext, apply_source_package_context, source_package_contexts_from_sources,
 };
 pub use scan_cache::ScanCache;
+pub use scan_result::RustScanResult;
 pub use syntax_tree::{RustSyntaxContainer, RustSyntaxTree, parse_rust_syntax};
 pub use test_subjects::{
     RustTestInventory, RustTestInventoryDiagnostic, RustTestInventoryDiagnosticKind,
@@ -49,14 +51,17 @@ pub use test_subjects::{
 pub fn scan_rust_files(
     root: impl AsRef<Path>,
     files: &[PathBuf],
-) -> CargoAllowResult<Vec<Finding>> {
+) -> CargoAllowResult<RustScanResult> {
     let root = root.as_ref();
     let mut out = Vec::new();
     let packages = source_package_contexts(root, files)?;
+    let mut files_considered = 0usize;
+    let mut files_skipped = 0usize;
     for rel in files {
         if rel.extension().and_then(|e| e.to_str()) != Some("rs") {
             continue;
         }
+        files_considered += 1;
         let path = root.join(rel);
         // Read each file independently — a single unreadable, non-UTF8, or
         // oversized file must NOT abort the entire workspace scan (#1882,
@@ -65,6 +70,7 @@ pub fn scan_rust_files(
             Ok(text) => text,
             Err(e) => {
                 eprintln!("warning: skipping {} (read error: {e})", path.display());
+                files_skipped += 1;
                 continue;
             }
         };
@@ -76,7 +82,11 @@ pub fn scan_rust_files(
         apply_source_package_context(rel, &packages, &mut findings);
         out.extend(findings);
     }
-    Ok(out)
+    Ok(RustScanResult {
+        findings: out,
+        files_considered,
+        files_skipped,
+    })
 }
 
 pub fn scan_rust_source(path: impl AsRef<Path>, source: &str) -> Vec<Finding> {
@@ -93,19 +103,33 @@ pub fn scan_rust_files_cached(
     root: impl AsRef<Path>,
     files: &[PathBuf],
     cache: &mut ScanCache,
-) -> CargoAllowResult<Vec<Finding>> {
+) -> CargoAllowResult<RustScanResult> {
     let root = root.as_ref();
     let mut out = Vec::new();
     let packages = source_package_contexts(root, files)?;
+    let mut files_considered = 0usize;
+    let mut files_skipped = 0usize;
     for rel in files {
         if rel.extension().and_then(|e| e.to_str()) != Some("rs") {
+            continue;
+        }
+        files_considered += 1;
+        let path = root.join(rel);
+        // Check if the file can be read; if not, count it as skipped (#2486).
+        if read_text_file_capped(&path).is_err() {
+            files_skipped += 1;
+            eprintln!("warning: skipping {} (read error)", path.display());
             continue;
         }
         let mut findings = cache.scan_file(root, rel)?;
         apply_source_package_context(rel, &packages, &mut findings);
         out.extend(findings);
     }
-    Ok(out)
+    Ok(RustScanResult {
+        findings: out,
+        files_considered,
+        files_skipped,
+    })
 }
 
 #[cfg(test)]
