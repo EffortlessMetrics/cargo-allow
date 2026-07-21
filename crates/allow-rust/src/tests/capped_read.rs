@@ -46,16 +46,20 @@ fn scan_rust_files_skips_oversized_sources_without_aborting() {
     )
     .unwrap_or_else(|err| std::panic::panic_any(format!("scan mixed: {err}")));
     assert!(
-        !mixed.is_empty(),
+        !mixed.findings.is_empty(),
         "oversized sibling must not abort the scan"
     );
     assert!(
-        mixed.iter().any(|f| f.path.ends_with("ok.rs")),
+        mixed.findings.iter().any(|f| f.path.ends_with("ok.rs")),
         "findings should come from the readable sibling"
     );
     assert!(
-        mixed.iter().all(|f| !f.path.ends_with("huge.rs")),
+        mixed.findings.iter().all(|f| !f.path.ends_with("huge.rs")),
         "oversized file must not contribute findings"
+    );
+    assert_eq!(
+        mixed.files_skipped, 1,
+        "oversized file must be counted as skipped"
     );
 
     let _ = fs::remove_dir_all(&root);
