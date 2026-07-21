@@ -66,6 +66,7 @@ fn clap_parses_list_json_filters() {
             weak_evidence: true,
             format: ListFormat::Json,
             output: Some(path),
+            columns: None,
             ..
         })) if kind == "unsafe"
             && family == "unsafe_fn"
@@ -77,6 +78,119 @@ fn clap_parses_list_json_filters() {
             && status == "baseline_debt"
             && path == Path::new("target/list.json")
     ));
+}
+
+#[test]
+fn clap_parses_list_columns_arg() {
+    // #2595: --columns is accepted as a free-form string; parse_csv
+    // validation happens downstream in cmd_list.
+    let parsed = CargoAllowCli::try_parse_from(argv(vec![
+        "cargo-allow",
+        "list",
+        "--columns",
+        "id,status,reason",
+    ]))
+    .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse --columns: {err}")));
+
+    assert!(matches!(
+        parsed.command,
+        Some(CargoAllowCommand::List(ListArgs {
+            columns: Some(cols),
+            ..
+        })) if cols == "id,status,reason"
+    ));
+}
+
+#[test]
+fn render_list_rows_with_columns_projects_subset() {
+    // #2595: the adapter threads the column selection through to the
+    // allow-report renderer. Exercises the same path cmd_list uses.
+    let rows = vec![list_row(
+        "allow-0001",
+        FindingKind::Panic,
+        "parser",
+        "reviewed_exception",
+    )];
+    let filters = ListFilters {
+        kind: None,
+        family: None,
+        owner: None,
+        classification: None,
+        path: None,
+        source_package: None,
+        allow_id: None,
+        status: None,
+        expired: false,
+        review_due: false,
+        stale: false,
+        location_drift: false,
+        baseline_debt: false,
+        broad_scope: false,
+        missing_evidence: false,
+        broken_evidence: false,
+        weak_evidence: false,
+    };
+    let context = ListContext {
+        inventory: allow_report::InventoryContext::unknown_source_syntax(),
+        kind_arg: None,
+    };
+    let columns = allow_report::ListColumn::parse_csv("id,kind,owner")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("parse_csv: {err}")));
+
+    let text = render_list_rows_with_columns(&rows, &filters, context, &columns);
+
+    assert!(
+        text.contains("id\tkind\towner\n"),
+        "header should be projected to id\\tkind\\towner: {text}"
+    );
+    // list_row sets owner="parser", id="allow-0001"; FindingKind::Panic
+    // renders as "panic" via as_str() in the adapter.
+    assert!(
+        text.contains("allow-0001\tpanic\tparser\n"),
+        "row should be projected to the three selected columns: {text}"
+    );
+}
+
+#[test]
+fn render_list_rows_with_context_still_emits_full_row() {
+    // Backward-compat: the pre-#2595 adapter still renders the full
+    // 17-column header when no projection is supplied.
+    let rows = vec![list_row(
+        "allow-full",
+        FindingKind::Panic,
+        "parser",
+        "reviewed_exception",
+    )];
+    let filters = ListFilters {
+        kind: None,
+        family: None,
+        owner: None,
+        classification: None,
+        path: None,
+        source_package: None,
+        allow_id: None,
+        status: None,
+        expired: false,
+        review_due: false,
+        stale: false,
+        location_drift: false,
+        baseline_debt: false,
+        broad_scope: false,
+        missing_evidence: false,
+        broken_evidence: false,
+        weak_evidence: false,
+    };
+    let context = ListContext {
+        inventory: allow_report::InventoryContext::unknown_source_syntax(),
+        kind_arg: None,
+    };
+    let text = render_list_rows_with_context(&rows, &filters, context);
+    assert!(
+        text.contains(
+            "id\tstatus\tmatches\tkind\tfamily\towner\tclassification\tscope\tsource_package\tevidence_count\tbroken_evidence_references\tweak_evidence_references\tselector_precision\tbroad_scope\treview_after\texpires\treason\n"
+        ),
+        "full header should still be emitted by the legacy adapter: {text}"
+    );
 }
 
 #[test]

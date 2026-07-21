@@ -20,7 +20,9 @@ pub(crate) use list_args::ListArgs;
 use list_args::{ListFormat, list_filters};
 #[cfg(test)]
 use list_render::render_list_rows;
-use list_render::{render_list_rows_json, render_list_rows_with_context};
+#[cfg(test)]
+use list_render::render_list_rows_with_context;
+use list_render::{render_list_rows_json, render_list_rows_with_columns};
 #[cfg(test)]
 use list_rows::list_rows;
 use list_rows::list_rows_with_source_tree_files;
@@ -59,7 +61,16 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
         kind_arg: args.kind.as_deref(),
     };
     let text = match args.format {
-        ListFormat::Human => render_list_rows_with_context(&rows, &filters, context),
+        ListFormat::Human => {
+            let columns = args
+                .columns
+                .as_deref()
+                .map(allow_report::ListColumn::parse_csv)
+                .transpose()
+                .map_err(allow_core::CargoAllowError::new)?;
+            let columns = columns.unwrap_or_else(|| allow_report::ListColumn::ALL.to_vec());
+            render_list_rows_with_columns(&rows, &filters, context, &columns)
+        }
         ListFormat::Json => render_list_rows_json(&rows, &filters, context),
     };
     emit_text(args.output.as_deref(), &text)?;
