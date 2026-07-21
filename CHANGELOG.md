@@ -8,6 +8,8 @@ inventory without executing repository code.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-19
+
 ### Added
 
 - Incremental scan cache: `allow-rust::ScanCache` caches parsed findings
@@ -17,11 +19,18 @@ inventory without executing repository code.
   The cache is in-memory only (thread-local), conservatively correct (any
   cache miss falls through to a full re-parse), and applied transparently
   in `load_world`/`load_world_with_evidence_mode`.
-
-## [0.2.0] - 2026-07-19
-
-### Added
-
+- Typed manifest validation with `Complete`/`Incomplete` result gate:
+  `validate_release_manifest` checks schema, auth_source, crate order, and
+  checksums before attestation (#2495/#2497). The `PUBLISH_ORDER` constant
+  is the single source of truth for the ten-crate publish order.
+- Scanner completeness tracking: `RustScanResult` carries `files_skipped`
+  from the scanner. `check --mode no-new` fails closed when tracked `.rs`
+  files were unreadable/non-UTF8/oversized, preventing false-clean receipts
+  (#2486/#2493).
+- Atomicity containment: all seven live-ledger mutation commands now call
+  `assert_path_within_root` before acquiring the lock (#2490). The
+  `MutationLock` key is lexically canonicalized so alias-convergent paths
+  acquire the same lock (#2487/#2489).
 - Release workflow generates a `ReleaseManifestV1` manifest, attests it with
   keyless OIDC-backed build provenance (`actions/attest-build-provenance`), and
   attaches the manifest + SHA-256 to the GitHub Release. The manifest binds
