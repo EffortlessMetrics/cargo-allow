@@ -219,7 +219,7 @@ jobs:
           PLATFORMS: "linux"
         run: bash scripts/generate-release-manifest.sh
       - name: Attest release manifest
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45 # v2
         with:
           subject-path: target/cargo-allow/release-manifest-v1.json
       - name: Resolve release notes
@@ -238,13 +238,17 @@ jobs:
           EOF
             echo "body_path=/tmp/release-notes.md" >> "${GITHUB_OUTPUT}"
           fi
-      - name: Create GitHub Release
+      - name: Verify manifest checksum after attestation
+        run: |
+          cd target/cargo-allow
+          echo "${{ hashFiles('target/cargo-allow/release-manifest-v1.sha256') }}" | cut -d' ' -f1 | xargs -I{} sh -c 'echo "{}  release-manifest-v1.json" | sha256sum -c -'
+      - name: Create GitHub Release (draft until manifest attached)
         uses: softprops/action-gh-release@42dc69e1aa15d09112580998cf2ef0119e2e91ae # v2.4.2
         with:
           tag_name: ${{ github.ref_name }}
           name: cargo-allow ${{ github.ref_name }}
           body_path: ${{ steps.notes.outputs.body_path }}
-          draft: false
+          draft: true
           prerelease: false
       - name: Attach release manifest to GitHub Release
         uses: softprops/action-gh-release@42dc69e1aa15d09112580998cf2ef0119e2e91ae # v2.4.2
@@ -253,3 +257,9 @@ jobs:
           files: |
             target/cargo-allow/release-manifest-v1.json
             target/cargo-allow/release-manifest-v1.sha256
+      - name: Publish release after manifest attached
+        uses: softprops/action-gh-release@42dc69e1aa15d09112580998cf2ef0119e2e91ae # v2.4.2
+        with:
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
