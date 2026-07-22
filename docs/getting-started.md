@@ -188,7 +188,7 @@ issue-first lifecycle in [Manage an exception](how-to/manage-an-exception.md):
 | --- | --- | --- |
 | create a strict starter policy | `init` | writes `policy/allow.toml` (use only when chosen in step 4) |
 | generate a reviewed baseline candidate | `propose` | omit `--write` to preview; `--write <path>` to persist |
-| receipt one deliberate finding | `add` | omit `--write` to preview; `--write <new-path>` persists a proposed full policy; existing-ledger update semantics remain a documented 0.2.0 follow-up (#2371) |
+| receipt one deliberate finding | `add` | omit `--write`/`--update` to preview; `--write <new-path>` persists a proposed full policy; `--update` atomically replaces the live `policy/allow.toml` in place (recommended for adding one receipt) |
 | refresh drift for one selected ID | `refresh --allow-id <id>` | `--dry-run` preview; `--write` apply |
 | remove selected stale entries | `prune` | `--dry-run` preview; `--write` apply |
 | repair the source instead of policy | edit code, then rerun `check` | no policy mutation |

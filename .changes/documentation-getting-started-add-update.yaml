@@ -1,0 +1,6 @@
+kind: Documentation
+body: >-
+  Refresh the `add` row in docs/getting-started.md to document `--update` as the
+  in-place ledger mutation path (recommended for adding one receipt). The
+  previous text described update semantics as a 0.2.0 follow-up despite having
+  shipped.
