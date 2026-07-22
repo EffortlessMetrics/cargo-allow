@@ -49,11 +49,7 @@ fn staged_index_parity_over_allow_diff() -> Result<(), String> {
     let repo = init_git_repo("staged-parity")?;
     write_file(&repo, "src/lib.rs", "pub fn staged() {}\n")?;
     commit_all(&repo, "staged seed")?;
-    write_file(
-        &repo,
-        "src/lib.rs",
-        "pub fn staged() { /* staged */ }\n",
-    )?;
+    write_file(&repo, "src/lib.rs", "pub fn staged() { /* staged */ }\n")?;
     git(&repo, &["add", "src/lib.rs"])?;
 
     let snapshot = staged_repository_snapshot(&repo)
