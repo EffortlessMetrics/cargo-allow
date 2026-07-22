@@ -1,11 +1,12 @@
+use crate::git::{git_tracked_files_at_revision, read_file_at_revision};
+use crate::revision_identity::{ResolvedRevisionIdentity, resolve_revision_identity};
+use crate::staged_index::{
+    StagedEntryKind, StagedPathRead, StagedRepositorySnapshot, StagedSnapshotCompleteness,
+    read_staged_path, staged_repository_snapshot,
+};
 use allow_core::{
     CargoAllowError, CargoAllowErrorKind, CargoAllowResult, SOURCE_FILE_READ_MAX_BYTES,
     read_file_capped, source_tree_path_is_ignored,
-};
-use allow_diff::{
-    ResolvedRevisionIdentity, StagedEntryKind, StagedPathRead, StagedRepositorySnapshot,
-    StagedSnapshotCompleteness, git_tracked_files_at_revision, read_file_at_revision,
-    read_staged_path, resolve_revision_identity, staged_repository_snapshot,
 };
 use allow_inventory::{
     Inventory, InventoryCompleteness, InventoryOptions, InventorySource, inventory,

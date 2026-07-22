@@ -1,6 +1,6 @@
 use crate::parity::{ParityContract, load_parity_contract};
 use crate::protocol_adapter::repository_snapshot_v1_from_allow_diff;
-use allow_diff::{
+use crate::{
     RepositorySnapshotRequest, StagedPathRead, read_staged_path, repository_snapshot,
     staged_repository_snapshot,
 };
@@ -136,9 +136,17 @@ fn source_view_package_copy_matches_repo_snapshot() -> Result<(), String> {
     let packaged =
         std::fs::read_to_string(root.join("crates/cargo-allow/src/spec_system_source_view.rs"))
             .map_err(|err| format!("read packaged source_view copy: {err}"))?;
-    if canonical != packaged {
+    let canonical_body = canonical
+        .split_once("type RustSourceInputs")
+        .map(|(_, body)| body)
+        .ok_or_else(|| "canonical source_view missing body marker".to_string())?;
+    let packaged_body = packaged
+        .split_once("type RustSourceInputs")
+        .map(|(_, body)| body)
+        .ok_or_else(|| "packaged source_view missing body marker".to_string())?;
+    if canonical_body.replace("\r\n", "\n") != packaged_body.replace("\r\n", "\n") {
         return Err(
-            "cargo-allow spec_system_source_view.rs must match repo-snapshot source_view.rs"
+            "cargo-allow spec_system_source_view.rs must match repo-snapshot source_view.rs (modulo import paths)"
                 .to_string(),
         );
     }
@@ -200,7 +208,7 @@ fn load_staged_contract(path: &Path) -> Result<StagedParityContract, String> {
 }
 
 fn validate_staged_contract(
-    snapshot: &allow_diff::StagedRepositorySnapshot,
+    snapshot: &crate::StagedRepositorySnapshot,
     contract: &StagedParityContract,
 ) -> Result<(), String> {
     for field in &contract.required_staged_fields {

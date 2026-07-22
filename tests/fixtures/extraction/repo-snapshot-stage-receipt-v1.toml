@@ -1,0 +1,5 @@
+stage = "RepoSnapshot"
+parity_corpus_digest = "sha256:v1:2583-d-repo-snapshot-parity-fixtures"
+old_path_reachability = "allow-diff::revision_identity and allow-diff::staged_index forward via ModuleFacade shims"
+duplicate_authority = "none; repo-snapshot owns git/revision/staged implementation"
+rollback = "revert #2583-D merge and restore allow-diff inline readers"

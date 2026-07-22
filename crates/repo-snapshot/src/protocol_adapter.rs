@@ -1,4 +1,4 @@
-use allow_diff::{
+use crate::revision_identity::{
     RepositorySnapshotIdentity, RepositorySnapshotKind, ResolvedRevisionIdentity,
     SelectedPathIdentity,
 };
