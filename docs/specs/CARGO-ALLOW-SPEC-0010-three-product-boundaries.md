@@ -48,7 +48,7 @@ claim_class = "governance_structure"
 id = "repository-extraction-not-authorized"
 generation = 1
 status = "accepted"
-statement = "Physical repository extraction is not authorized by the three-product design package; monorepo implementation continues until #2559 extraction-readiness evidence passes."
+statement = "Physical repository extraction is not authorized by the three-product design package; monorepo implementation continues until Issue #2558 dogfood, Issue #2559 extraction-readiness evidence, and Issue #2605 exact-candidate interop all pass."
 claim_class = "governance_structure"
 ```
 
@@ -67,7 +67,7 @@ claim_class = "dependency_law"
 id = "intent-no-proof-dep"
 generation = 1
 status = "accepted"
-statement = "cargo-intent must not depend on cargo-proof crates; proof-engine may depend on intent-protocol only."
+statement = "cargo-intent must not depend on cargo-proof crates; proof-engine may depend on intent-protocol but must not depend on intent-engine or cargo-intent crates."
 claim_class = "dependency_law"
 
 [[requirement]]
@@ -200,8 +200,9 @@ updates support tiers, and passes spec-system audit without moving Rust code.
 
 ### Example: Rejected
 
-A PR creates `intent-source` as a convenience crate without updating #2612 and
-#2580 — violates `crate-topology-owned-by-2612`.
+A PR creates `intent-source` as a convenience crate without updating the crate
+topology owner (#2612) and architecture manifest (#2580) — violates
+`crate-topology-owned-by-2612`.
 
 ## Non-Goals
 

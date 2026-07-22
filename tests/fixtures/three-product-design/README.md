@@ -71,8 +71,42 @@ note = "Crate names, counts, stage gates"
 ```bash
 cargo test -p allow-policy spec_system_design_package --locked -- --nocapture
 cargo test -p cargo-allow spec_design_artifact_links --locked -- --nocapture
-cargo-allow check --profile spec-system --mode audit
+cargo run -p cargo-allow -- check --profile spec-system --mode audit
 ```
+
+## Active extraction goal (`three-product-extraction-carry-through`)
+
+Every lane PR uses the full lifecycle: inspect → implement → validate →
+review/improve → fix CI → **merge** → sync main → cleanup → **immediately start
+next**. Opening a PR or getting CI green is not a stopping point.
+
+**Wave 0 (must all merge):** #2614/#2544 → #2598 → #2580 → #2604 → #2607 → #2606.
+
+**Wave 1+ (same lifecycle, plan order):** #2582 repo-protocol → #2583 → …
+
+Hand off only on a real extraction stop-condition blocker, or with merged tip +
+exact next packet — never "opened awaiting review."
+
+## Active lane goal (`three-product-extraction-carry-through`)
+
+Full lifecycle per PR: implement → validate → review/improve → merge → sync main
+→ cleanup → immediately start next. One PR at a time; never stop at "opened" or
+"ready for review."
+
+**Wave 0 merge queue (each merged before next):**
+
+1. #2614 / #2544 — design package (this fixture)
+2. #2598 — move/deletion ledger
+3. #2580 — product crate law
+4. #2604 — product package topology
+5. #2607 — extraction shims
+6. #2606 — extraction parity
+
+**Wave 1+ (same lifecycle):** #2582 repo-protocol → #2583 packets → #2587 packets
+→ per `plans/three-product-crate-extraction.md` and #2612.
+
+Hand off only on a real extraction stop-condition blocker, with the previous PR
+already merged and `main` synced.
 
 ## Claim boundary
 

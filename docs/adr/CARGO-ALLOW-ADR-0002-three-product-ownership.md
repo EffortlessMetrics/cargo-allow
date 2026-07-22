@@ -17,7 +17,8 @@ policy_impact:
 
 ## Context
 
-#2550 settled three product authorities inside one monorepo. #2612 ratified the
+Issue #2550 settled three product authorities inside one monorepo. Issue #2612
+ratified the
 concrete crate graph, stage gates, and forbidden convenience crates. Current
 implementation still embeds intent and proof semantics inside cargo-allow
 transitional modules (`allow-policy::spec_system`, `cargo-allow::spec_system*`).
@@ -65,14 +66,11 @@ publication.
 ### Allowed dependency edges
 
 ```text
-repo-protocol
-  → repo-snapshot, repo-edit, rust-source-index, intent-model, proof-protocol
+repo-protocol → repo-snapshot, repo-edit, rust-source-index
 
-intent-model → intent-protocol → intent-engine
-  → cargo-intent, intent-edit
+intent-model → intent-protocol → intent-engine → cargo-intent, intent-edit
 
-proof-protocol → proof-provider-api
-  → proof-engine, proof-adapter-*, cargo-proof
+proof-protocol → proof-provider-api → proof-engine, proof-adapter-*, cargo-proof
 
 proof-engine → intent-protocol, repo-snapshot, proof-protocol, proof-provider-api
 
@@ -107,7 +105,8 @@ a reviewed publish/package order and a published product requires the dependency
 
 Repository extraction is **not authorized**. Monorepo boundaries must remain
 extractable through public process/protocol contracts and exact-candidate proof
-(#2605, #2559).
+after Issue #2558 dogfood, Issue #2559 extraction-readiness evidence, and Issue
+#2605 exact-candidate interop all pass.
 
 ## Alternatives Considered
 
@@ -173,5 +172,6 @@ complies, certify releases, or implement the architecture manifest.
 ## Rollback Or Supersession
 
 Supersede by a new ADR that explicitly replaces CARGO-ALLOW-ADR-0002 and updates
-#2580/#2612 controlling issues in one reviewed topology change. Do not land
-crate additions without updating #2612, #2580, #2598, and #2604 together.
+the controlling issues for architecture manifest (#2580) and crate topology
+(#2612) in one reviewed topology change. Do not land crate additions without
+updating #2612, #2580, #2598, and #2604 together.

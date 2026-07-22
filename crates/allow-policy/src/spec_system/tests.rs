@@ -2947,8 +2947,15 @@ fn spec_system_design_package() {
         );
     }
 
-    let proposal_text =
-        std::fs::read_to_string(&proposal).unwrap_or_else(|err| panic!("proposal readable: {err}"));
+    let proposal_read = std::fs::read_to_string(&proposal);
+    assert!(
+        proposal_read.is_ok(),
+        "proposal readable: {:?}",
+        proposal_read.as_ref().err()
+    );
+    let Ok(proposal_text) = proposal_read else {
+        return;
+    };
     assert!(proposal_text.contains("CARGO-ALLOW-PROP-0010"));
     assert!(proposal_text.contains("cargo-allow   = source-exception ledger"));
     assert!(proposal_text.contains("cargo-intent  = durable authored intent"));
@@ -2958,30 +2965,65 @@ fn spec_system_design_package() {
     assert!(proposal_text.contains("one-way process delegation"));
     assert!(proposal_text.contains("repository extraction is **not authorized**"));
 
-    let adr_text =
-        std::fs::read_to_string(&adr).unwrap_or_else(|err| panic!("adr readable: {err}"));
+    let adr_read = std::fs::read_to_string(&adr);
+    assert!(
+        adr_read.is_ok(),
+        "adr readable: {:?}",
+        adr_read.as_ref().err()
+    );
+    let Ok(adr_text) = adr_read else {
+        return;
+    };
     assert!(adr_text.contains("CARGO-ALLOW-ADR-0002"));
     assert!(adr_text.contains("cargo-allow product → intent-model"));
     assert!(adr_text.contains("#2612"));
 
-    let spec_text =
-        std::fs::read_to_string(&spec).unwrap_or_else(|err| panic!("spec readable: {err}"));
+    let spec_read = std::fs::read_to_string(&spec);
+    assert!(
+        spec_read.is_ok(),
+        "spec readable: {:?}",
+        spec_read.as_ref().err()
+    );
+    let Ok(spec_text) = spec_read else {
+        return;
+    };
     assert!(spec_text.contains("CARGO-ALLOW-SPEC-0010"));
     assert!(spec_text.contains("three-product-authority-split"));
     assert!(spec_text.contains("crate-topology-owned-by-2612"));
     assert!(spec_text.contains("rust-source-index-before-intent-engine"));
     assert!(spec_text.contains("repo-edit-deferred"));
 
-    let plan_text =
-        std::fs::read_to_string(&plan).unwrap_or_else(|err| panic!("plan readable: {err}"));
+    let plan_read = std::fs::read_to_string(&plan);
+    assert!(
+        plan_read.is_ok(),
+        "plan readable: {:?}",
+        plan_read.as_ref().err()
+    );
+    let Ok(plan_text) = plan_read else {
+        return;
+    };
     assert!(plan_text.contains("CARGO-ALLOW-PLAN-0010"));
     assert!(plan_text.contains("Wave 0"));
     assert!(plan_text.contains("#2598"));
 
-    let disposition_text = std::fs::read_to_string(&disposition_map)
-        .unwrap_or_else(|err| panic!("disposition readable: {err}"));
-    let disposition = toml::from_str::<ThreeProductDispositionMap>(&disposition_text)
-        .unwrap_or_else(|err| panic!("disposition map should parse as TOML: {err}"));
+    let disposition_read = std::fs::read_to_string(&disposition_map);
+    assert!(
+        disposition_read.is_ok(),
+        "disposition readable: {:?}",
+        disposition_read.as_ref().err()
+    );
+    let Ok(disposition_text) = disposition_read else {
+        return;
+    };
+    let disposition_parse = toml::from_str::<ThreeProductDispositionMap>(&disposition_text);
+    assert!(
+        disposition_parse.is_ok(),
+        "disposition map should parse as TOML: {:?}",
+        disposition_parse.as_ref().err()
+    );
+    let Ok(disposition) = disposition_parse else {
+        return;
+    };
     assert_eq!(disposition.schema_version, "1.0");
     assert_eq!(disposition.design_package_proposal, "CARGO-ALLOW-PROP-0010");
     assert_eq!(disposition.design_package_adr, "CARGO-ALLOW-ADR-0002");
