@@ -51,7 +51,10 @@ fn parse_product_move_ledger_reads_entries() -> Result<(), String> {
 
 #[test]
 fn parse_product_move_ledger_at_preserves_location() -> Result<(), String> {
-    let err = match parse_product_move_ledger_at(Some(Path::new(".allow/artifacts/product-move-ledger.toml")), "schema_version = [") {
+    let err = match parse_product_move_ledger_at(
+        Some(Path::new(".allow/artifacts/product-move-ledger.toml")),
+        "schema_version = [",
+    ) {
         Ok(_) => return Err("invalid move ledger TOML unexpectedly parsed".to_string()),
         Err(err) => err,
     };

@@ -4,7 +4,7 @@ use super::config::{
 };
 use allow_core::CargoAllowResult;
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MoveLedgerDiagnosticKind {
