@@ -70,12 +70,6 @@ role = "SharedProtocol"
 allowed_domain_dependencies = ["repo-protocol"]
 
 [[planned_crate]]
-name = "repo-protocol"
-owner_product = "shared"
-role = "SharedProtocol"
-stage_issue = 2582
-
-[[planned_crate]]
 name = "repo-snapshot"
 owner_product = "shared"
 role = "SharedSnapshot"

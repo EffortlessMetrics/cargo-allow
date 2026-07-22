@@ -452,6 +452,49 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9031"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/architecture/repo-protocol.md"
+owner = "repo-infra"
+classification = "three_product_protocol_projection"
+reason = "Human projection of the repo-protocol shared transport crate (#2582)."
+evidence = ["doc:crates/repo-protocol/README.md", "doc:policy/product-crates.toml", "doc:policy/product-package-topology.toml"]
+created = "2026-07-22"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/architecture/repo-protocol.md"
+target_fingerprint = "md"
+glob = "docs/architecture/repo-protocol.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9032"
+kind = "non_rust_file"
+family = "package_metadata"
+path = "crates/repo-protocol/Cargo.toml"
+owner = "repo-infra"
+classification = "rust_package_metadata"
+reason = "repo-protocol manifest is tracked shared-protocol package metadata (#2582)."
+evidence = ["doc:crates/repo-protocol/README.md", "doc:policy/product-package-topology.toml", "doc:docs/architecture/repo-protocol.md"]
+created = "2026-07-22"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "crates/repo-protocol/Cargo.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9005"
 kind = "non_rust_file"
 family = "documentation"

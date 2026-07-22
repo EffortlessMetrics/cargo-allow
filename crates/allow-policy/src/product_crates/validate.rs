@@ -70,6 +70,19 @@ pub fn validate_architecture_manifest(
         }
     }
 
+    for shared in &manifest.shared_crate {
+        if let Some(existing) = owners.insert(shared.name.clone(), "shared".to_string()) {
+            diagnostics.push(ArchitectureDiagnostic {
+                kind: ArchitectureDiagnosticKind::DuplicateCrateOwner,
+                message: format!(
+                    "crate `{}` owned by both `{existing}` and shared",
+                    shared.name
+                ),
+                crate_names: vec![shared.name.clone()],
+            });
+        }
+    }
+
     let owned: BTreeSet<String> = owners.keys().cloned().collect();
     for member in workspace_members {
         let crate_name = member

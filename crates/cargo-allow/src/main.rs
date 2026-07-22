@@ -140,8 +140,6 @@ mod compat_panic_integration_tests;
 #[cfg(test)]
 mod compat_test_support;
 #[cfg(test)]
-mod extraction_parity_registry_tests;
-#[cfg(test)]
 mod extraction_shim_registry_tests;
 #[cfg(test)]
 mod product_crate_architecture_tests;
@@ -153,6 +151,8 @@ mod product_package_topology_tests;
 mod readme_tests;
 #[cfg(test)]
 mod release_prep_tests;
+#[cfg(test)]
+mod repo_protocol_parity_tests;
 #[cfg(test)]
 mod report_config_tests;
 #[cfg(test)]

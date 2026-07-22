@@ -28,6 +28,7 @@ mod policy_requirements;
 mod policy_scope;
 mod policy_selector;
 mod policy_workspace;
+mod repo_protocol_adapter;
 mod revision;
 mod revision_git;
 mod revision_identity;
@@ -52,6 +53,7 @@ pub use policy_change::{
     SelectorIdentityChange, SelectorPrecisionChange,
 };
 pub use policy_scope::selector_precision_score;
+pub use repo_protocol_adapter::repository_snapshot_v1_from_identity;
 pub use revision::findings_at_revision;
 pub use revision_git::{changed_files, git_tracked_files_at_revision, read_file_at_revision};
 pub use revision_identity::{
