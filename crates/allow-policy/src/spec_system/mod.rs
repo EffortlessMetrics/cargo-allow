@@ -91,4 +91,6 @@ pub use support_tiers::{
 pub use validate::{validate_doc_artifact_files, validate_doc_artifact_links};
 
 #[cfg(test)]
+mod design_package_tests;
+#[cfg(test)]
 mod tests;
