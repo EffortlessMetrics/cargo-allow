@@ -18,9 +18,8 @@ policy_impact:
 ## Context
 
 Issue #2550 settled three product authorities inside one monorepo. Issue #2612
-ratified the
-concrete crate graph, stage gates, and forbidden convenience crates. Current
-implementation still embeds intent and proof semantics inside cargo-allow
+ratified the concrete crate graph, stage gates, and forbidden convenience crates.
+Current implementation still embeds intent and proof semantics inside cargo-allow
 transitional modules (`allow-policy::spec_system`, `cargo-allow::spec_system*`).
 
 The failure mode to prevent is **accidental authority merge**: treating
@@ -65,14 +64,28 @@ publication.
 
 ### Allowed dependency edges
 
+In the following list, `A → B` means **A depends on B**.
+
 ```text
-repo-protocol → repo-snapshot, repo-edit, rust-source-index
+repo-snapshot → repo-protocol
+repo-edit → repo-protocol, repo-snapshot where required
+rust-source-index → repo-protocol, repo-snapshot
 
-intent-model → intent-protocol → intent-engine → cargo-intent, intent-edit
+intent-model → repo-protocol
+intent-protocol → intent-model, repo-protocol
+intent-engine → intent-model, intent-protocol, repo-protocol,
+                repo-snapshot, rust-source-index
+cargo-intent → intent-engine, intent-protocol
+intent-edit → intent-engine, intent-model, intent-protocol,
+              repo-protocol, repo-snapshot, repo-edit
 
-proof-protocol → proof-provider-api → proof-engine, proof-adapter-*, cargo-proof
-
-proof-engine → intent-protocol, repo-snapshot, proof-protocol, proof-provider-api
+proof-protocol → repo-protocol
+proof-provider-api → proof-protocol, repo-protocol
+proof-engine → proof-protocol, proof-provider-api, repo-protocol,
+               repo-snapshot, intent-protocol
+proof-adapter-* → proof-provider-api, proof-protocol, repo-protocol,
+                  provider public/process contracts
+cargo-proof → proof-engine, selected proof-adapter-* crates
 
 cargo-allow implementation crates → repo-protocol, repo-snapshot (where moved
   implementation requires it; repo-edit only after parity cutover)
@@ -105,8 +118,9 @@ a reviewed publish/package order and a published product requires the dependency
 
 Repository extraction is **not authorized**. Monorepo boundaries must remain
 extractable through public process/protocol contracts and exact-candidate proof
-after Issue #2558 dogfood, Issue #2559 extraction-readiness evidence, and Issue
-#2605 exact-candidate interop all pass.
+after Issue #2558 dogfood, Issue #2605 exact-candidate interop, and Issue #2559
+extraction-readiness evidence all pass. Those gates are necessary but do not
+replace a later explicit repository-extraction authorization.
 
 ## Alternatives Considered
 
