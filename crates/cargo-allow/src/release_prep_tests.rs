@@ -229,7 +229,7 @@ fn install_examples_use_published_release() {
 fn release_packages_use_crate_local_readmes() {
     let root = workspace_root();
     let workspace_manifest = read_workspace_file(&root, "Cargo.toml");
-    let package_manifests = workspace_package_manifests(&root);
+    let package_manifests = all_workspace_package_manifests(&root);
 
     assert!(
         workspace_manifest_contains(
@@ -323,6 +323,13 @@ fn read_workspace_file(root: &Path, relative_path: &str) -> String {
 }
 
 fn workspace_package_manifests(root: &Path) -> BTreeMap<String, String> {
+    all_workspace_package_manifests(root)
+        .into_iter()
+        .filter(|(_, manifest)| is_publishable_workspace_package(manifest))
+        .collect()
+}
+
+fn all_workspace_package_manifests(root: &Path) -> BTreeMap<String, String> {
     let crates_dir = root.join("crates");
     let entries = fs::read_dir(&crates_dir)
         .unwrap_or_else(|err| std::panic::panic_any(format!("read crates dir: {err}")));
@@ -350,6 +357,10 @@ fn workspace_package_manifests(root: &Path) -> BTreeMap<String, String> {
         manifests.insert(package, manifest);
     }
     manifests
+}
+
+fn is_publishable_workspace_package(manifest: &str) -> bool {
+    !manifest.contains("publish = false")
 }
 
 fn parse_publish_order(release_doc: &str) -> Vec<String> {

@@ -2,6 +2,8 @@
 
 Provider-neutral repository identity and transport envelopes (#2582).
 
+Most users should use [cargo-allow](https://github.com/EffortlessMetrics/cargo-allow); `repo-protocol` is an internal shared transport crate for three-product extraction.
+
 ## Claim boundary
 
 Identity and transport only: repository snapshots, source anchors, result classes,

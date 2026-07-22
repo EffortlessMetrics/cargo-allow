@@ -69,6 +69,18 @@ fn partial_result_class_denies_clean_completion() {
     assert!(!ResultClassV1::Completed.denies_clean_completion());
 }
 
+#[test]
+fn allow_diff_repository_snapshot_field_parity_fixture() -> Result<(), String> {
+    let snapshot = sample_snapshot();
+    if snapshot.head.commit != "cccccccccccccccccccccccccccccccccccccccc" {
+        return Err("fixture head commit drifted".to_string());
+    }
+    if snapshot.dirty_state != "not_probed" {
+        return Err("fixture dirty_state should mirror allow-diff not_probed".to_string());
+    }
+    Ok(())
+}
+
 fn sample_snapshot() -> RepositorySnapshotV1 {
     RepositorySnapshotV1 {
         schema_id: crate::REPOSITORY_SNAPSHOT_SCHEMA_ID.to_string(),
