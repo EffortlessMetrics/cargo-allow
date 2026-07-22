@@ -179,6 +179,7 @@ dependencies = [
  "allow-rust",
  "clap",
  "fs4",
+ "repo-snapshot",
  "serde",
  "serde_json",
  "toml",
@@ -518,6 +519,17 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+]
+
+[[package]]
+name = "repo-snapshot"
+version = "0.2.0"
+dependencies = [
+ "allow-diff",
+ "repo-protocol",
+ "serde",
+ "serde_json",
+ "toml",
 ]
 
 [[package]]

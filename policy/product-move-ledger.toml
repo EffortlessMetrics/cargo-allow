@@ -105,11 +105,8 @@ target_owner_crate = "repo-snapshot"
 disposition = "MoveToSharedSnapshot"
 status = "current"
 claim_boundary = "Generic staged index reads leave allow-diff after repo-snapshot lands."
+parity_fixture = "tests/fixtures/repo-snapshot/parity-staged-index-v1.toml"
 removal_condition = "issue:#2583 repo-snapshot parity"
-controlling_issue = 2583
-
-[[entry]]
-id = "move-allow-diff-revision-identity"
 current_identity = "crates/allow-diff/src/revision_identity.rs"
 identity_kind = "rust_module"
 current_owner_product = "cargo-allow"
@@ -119,11 +116,8 @@ target_owner_crate = "repo-snapshot"
 disposition = "MoveToSharedSnapshot"
 status = "current"
 claim_boundary = "Revision identity helpers for snapshot consumers."
+parity_fixture = "tests/fixtures/repo-snapshot/parity-committed-head-v1.toml"
 removal_condition = "issue:#2583 repo-snapshot parity"
-controlling_issue = 2583
-
-[[entry]]
-id = "move-allow-rust-test-subjects"
 current_identity = "crates/allow-rust/src/test_subjects.rs"
 identity_kind = "rust_module"
 current_owner_product = "cargo-allow"

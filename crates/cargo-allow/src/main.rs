@@ -152,6 +152,8 @@ mod readme_tests;
 #[cfg(test)]
 mod release_prep_tests;
 #[cfg(test)]
+mod repo_snapshot_parity_tests;
+#[cfg(test)]
 mod report_config_tests;
 #[cfg(test)]
 mod root_cli_compat_tests;
