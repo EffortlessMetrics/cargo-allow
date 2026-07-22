@@ -32,10 +32,13 @@ pub(crate) struct CheckArgs {
     #[arg(long)]
     pub(crate) receipt: Option<PathBuf>,
     /// Check mode [possible values: no-new, audit, strict, release].
-    ///   no-new   Fail on new/expired/ambiguous/invalid/evidence-missing (CI gate)
+    ///   no-new   Fail on new/expired/ambiguous/invalid_selector/
+    ///            missing_required_field/evidence_missing (CI gate)
     ///   audit    Report all advisory statuses without failing (informational)
-    ///   strict   Fail on any non-matched status including stale/review_due/drift
-    ///   release  Release-grade gate (strict + deny advisory escalations)
+    ///   strict   Fail on any non-matched status except location_drift
+    ///            (so stale/review_due/baseline_debt and the no-new set fail)
+    ///   release  Currently equivalent to strict; advisory escalation is
+    ///            driven by --deny, not by this mode
     #[arg(long, value_parser = ["audit", "no-new", "strict", "release"])]
     pub(crate) mode: Option<String>,
     /// Promote one receipt `advisory` count class to a blocking failure.

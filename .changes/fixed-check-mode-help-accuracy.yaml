@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  UX: `check --mode` help text now matches gate semantics. Two inaccuracies
+  corrected: (1) `strict` no longer claims to fail on drift —
+  `is_failure_in_strict` explicitly excludes `location_drift`; the help now
+  documents the exception. (2) `release` no longer claims to add deny
+  escalations — it is currently equivalent to `strict`, and deny escalation
+  is driven by the separate `--deny` flag.
