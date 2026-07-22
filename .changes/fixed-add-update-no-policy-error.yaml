@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  UX: `add --update` with no discovered policy now returns a context-specific
+  error ("no policy config found to update; run `cargo-allow init` or pass
+  --config") instead of the generic load_world message. Matches the
+  `--from-plan` path's error and makes the failure mode clear.

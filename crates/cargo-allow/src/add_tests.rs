@@ -846,7 +846,9 @@ fn cmd_add_update_requires_existing_policy() {
 
     assert_eq!(
         err,
-        CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
+        CargoAllowError::new(
+            "no policy config found to update; run `cargo-allow init` or pass --config"
+        )
     );
     fs::remove_dir_all(root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
