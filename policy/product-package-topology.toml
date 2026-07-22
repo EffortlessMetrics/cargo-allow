@@ -92,3 +92,11 @@ posture = "SharedProtocolInternalOrStabilizing"
 publish = false
 candidate_inclusion = false
 release_order = 210
+
+[[package]]
+package = "repo-snapshot"
+product_family = "shared"
+posture = "SharedImplementationInternalOrExperimental"
+publish = false
+candidate_inclusion = false
+release_order = 220

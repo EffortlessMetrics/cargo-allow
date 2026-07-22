@@ -495,6 +495,115 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9033"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/architecture/repo-snapshot.md"
+owner = "repo-infra"
+classification = "three_product_snapshot_projection"
+reason = "Human projection of the repo-snapshot shared implementation crate (#2583)."
+evidence = ["doc:tests/fixtures/repo-snapshot/README.md", "doc:policy/product-move-ledger.toml", "doc:policy/product-package-topology.toml"]
+created = "2026-07-22"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/architecture/repo-snapshot.md"
+target_fingerprint = "md"
+glob = "docs/architecture/repo-snapshot.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9034"
+kind = "non_rust_file"
+family = "package_metadata"
+path = "crates/repo-snapshot/Cargo.toml"
+owner = "repo-infra"
+classification = "rust_package_metadata"
+reason = "repo-snapshot manifest is tracked shared-snapshot package metadata (#2583)."
+evidence = ["doc:crates/repo-snapshot/README.md", "doc:policy/product-package-topology.toml", "doc:docs/architecture/repo-snapshot.md"]
+created = "2026-07-22"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "crates/repo-snapshot/Cargo.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9035"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/repo-snapshot/README.md"
+owner = "repo-infra"
+classification = "repo_snapshot_parity_fixture"
+reason = "Parity fixture catalog for repo-snapshot extraction (#2583-A)."
+evidence = ["doc:policy/product-move-ledger.toml", "doc:policy/extraction-parity.toml", "doc:docs/architecture/repo-snapshot.md"]
+created = "2026-07-22"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "tests/fixtures/repo-snapshot/README.md"
+target_fingerprint = "md"
+glob = "tests/fixtures/repo-snapshot/README.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9036"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/repo-snapshot/parity-committed-head-v1.toml"
+owner = "repo-infra"
+classification = "repo_snapshot_parity_fixture"
+reason = "Committed-head parity contract for allow-diff revision identity (#2583-A)."
+evidence = ["doc:tests/fixtures/repo-snapshot/README.md", "doc:policy/extraction-parity.toml"]
+created = "2026-07-22"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "tests/fixtures/repo-snapshot/parity-committed-head-v1.toml"
+target_fingerprint = "toml"
+glob = "tests/fixtures/repo-snapshot/parity-committed-head-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9037"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/repo-snapshot/parity-staged-index-v1.toml"
+owner = "repo-infra"
+classification = "repo_snapshot_parity_fixture"
+reason = "Staged-index parity contract for allow-diff staged snapshot (#2583-A)."
+evidence = ["doc:tests/fixtures/repo-snapshot/README.md", "doc:policy/extraction-parity.toml"]
+created = "2026-07-22"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "tests/fixtures/repo-snapshot/parity-staged-index-v1.toml"
+target_fingerprint = "toml"
+glob = "tests/fixtures/repo-snapshot/parity-staged-index-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9005"
 kind = "non_rust_file"
 family = "documentation"

@@ -26,3 +26,6 @@ toml.workspace = true
 fs4 = "0.13.1"
 serde.workspace = true
 serde_json.workspace = true
+
+[dev-dependencies]
+repo-snapshot = { path = "../repo-snapshot" }
