@@ -106,6 +106,132 @@ target_fingerprint = "toml"
 glob = ".allow/spec-system/evidence/runtime-promotion-v1.toml"
 
 [[allow]]
+id = "allow-9015"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/proposals/CARGO-ALLOW-PROP-0010-three-product-design.md"
+owner = "repo-infra"
+classification = "source_truth_proposal"
+reason = "Records the accepted three-product authority split proposal for cargo-allow, cargo-intent, and cargo-proof."
+evidence = ["issue:2544", "doc:.allow/artifacts/doc-artifacts.toml", "doc:docs/templates/proposal.md"]
+created = "2026-07-22"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "docs/proposals/CARGO-ALLOW-PROP-0010-three-product-design.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9016"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/adr/CARGO-ALLOW-ADR-0002-three-product-ownership.md"
+owner = "repo-infra"
+classification = "source_truth_adr"
+reason = "Records durable three-product ownership, dependency law, and crate-topology authority for the extraction lane."
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0010-three-product-design.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0010-three-product-boundaries.md", "issue:2612"]
+created = "2026-07-22"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "docs/adr/CARGO-ALLOW-ADR-0002-three-product-ownership.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9017"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/specs/CARGO-ALLOW-SPEC-0010-three-product-boundaries.md"
+owner = "repo-infra"
+classification = "source_truth_spec"
+reason = "Records normative three-product boundary contract and acceptance evidence for the extraction lane."
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0010-three-product-design.md", "doc:docs/adr/CARGO-ALLOW-ADR-0002-three-product-ownership.md", "doc:docs/templates/spec.md"]
+created = "2026-07-22"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "docs/specs/CARGO-ALLOW-SPEC-0010-three-product-boundaries.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9018"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/three-product-crate-extraction.md"
+owner = "repo-infra"
+classification = "source_truth_implementation_plan"
+reason = "Sequences Wave 0 and Wave 1 PR-sized extraction work after the three-product design package."
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0010-three-product-design.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0010-three-product-boundaries.md", "doc:.allow/artifacts/doc-artifacts.toml"]
+created = "2026-07-22"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "plans/three-product-crate-extraction.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9019"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/three-product-design/README.md"
+owner = "repo-infra"
+classification = "three_product_design_fixture"
+reason = "Reconstruction fixture README for the three-product design package acceptance tests."
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0010-three-product-design.md", "test:spec_system_design_package"]
+created = "2026-07-22"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "tests/fixtures/three-product-design/README.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9020"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/three-product-design/disposition-map.toml"
+owner = "repo-infra"
+classification = "three_product_design_fixture"
+reason = "Disposition-map reconstruction fixture for the three-product design package acceptance tests."
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0010-three-product-design.md", "test:spec_system_design_package"]
+created = "2026-07-22"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "tests/fixtures/three-product-design/disposition-map.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9005"
 kind = "non_rust_file"
 family = "documentation"
