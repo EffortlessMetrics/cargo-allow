@@ -204,6 +204,14 @@ pub(crate) fn cmd_spec_system_init(args: SpecSystemInitCommandArgs<'_>) -> Cargo
         println!("{action} {display}");
     }
 
+    // After the file loop, emit next-steps guidance in both dry-run and write
+    // paths so the spec-system init experience matches the default-profile
+    // init (which prints next steps via init.rs::next_steps_block). The
+    // starter-policy preview is intentionally omitted here because spec-system
+    // init writes .allow/profiles/spec-system.toml, not policy/allow.toml.
+    println!();
+    print!("{}", crate::init::next_steps_block());
+
     Ok(())
 }
 

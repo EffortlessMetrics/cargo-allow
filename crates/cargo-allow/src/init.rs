@@ -140,7 +140,7 @@ fn post_write_announcement(action: &str, display: &str) -> String {
     out
 }
 
-fn next_steps_block() -> String {
+pub(crate) fn next_steps_block() -> String {
     "next steps:\n  \
      cargo-allow audit                  # inventory current exceptions\n  \
      cargo-allow check --mode no-new    # enforce no-new-debt\n  \

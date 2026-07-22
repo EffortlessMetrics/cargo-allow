@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  UX: `init --dry-run --profile spec-system` now prints next-steps guidance
+  after the per-file would-create/keep/overwrite lines, matching the
+  default-profile dry-run experience. Previously the spec-system dry-run path
+  returned silently after listing files. The starter-policy preview is
+  intentionally omitted for spec-system (it writes .allow/profiles/
+  spec-system.toml, not policy/allow.toml).
