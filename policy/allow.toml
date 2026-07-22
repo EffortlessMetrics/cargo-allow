@@ -235,7 +235,7 @@ column = 1
 id = "allow-9021"
 kind = "non_rust_file"
 family = "configuration"
-path = ".allow/artifacts/product-move-ledger.toml"
+path = "policy/product-move-ledger.toml"
 owner = "repo-infra"
 classification = "three_product_move_ledger"
 reason = "Machine-readable move/deletion ledger for three-product extraction (#2598)."
@@ -245,9 +245,9 @@ review_after = "2026-11-01"
 
 [allow.selector]
 ast_kind = "tracked_file"
-symbol = ".allow/artifacts/product-move-ledger.toml"
+symbol = "policy/product-move-ledger.toml"
 target_fingerprint = "toml"
-glob = ".allow/artifacts/product-move-ledger.toml"
+glob = "policy/product-move-ledger.toml"
 
 [allow.last_seen]
 line = 1
@@ -261,7 +261,7 @@ path = "docs/architecture/product-move-map.md"
 owner = "repo-infra"
 classification = "three_product_move_projection"
 reason = "Human projection of the three-product move/deletion ledger (#2598)."
-evidence = ["doc:.allow/artifacts/product-move-ledger.toml", "doc:plans/three-product-crate-extraction.md", "doc:.allow/artifacts/doc-artifacts.toml"]
+evidence = ["doc:policy/product-move-ledger.toml", "doc:plans/three-product-crate-extraction.md", "doc:.allow/artifacts/doc-artifacts.toml"]
 created = "2026-07-22"
 review_after = "2026-11-01"
 

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 #[test]
 fn product_move_ledger_repository_inventory_is_valid() -> Result<(), String> {
     let root = repo_root();
-    let ledger_path = root.join(".allow/artifacts/product-move-ledger.toml");
+    let ledger_path = root.join("policy/product-move-ledger.toml");
     let (validated, diagnostics, report) = validate_product_move_ledger_at(&root, &ledger_path)
         .map_err(|err| format!("validate move ledger: {err}"))?;
 

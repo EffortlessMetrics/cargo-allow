@@ -196,6 +196,7 @@ pub struct ValidatedProductMoveLedger {
 struct ProductMoveLedgerToml {
     schema_version: Option<String>,
     controlling_issue: Option<u32>,
+    ledger_id: Option<String>,
     linked_plan: Option<String>,
     linked_adr: Option<String>,
     #[serde(default)]

@@ -1,5 +1,6 @@
 schema_version = "1.0"
 controlling_issue = 2598
+ledger_id = "CARGO-ALLOW-MOVE-LEDGER-0001"
 linked_plan = "plans/three-product-crate-extraction.md"
 linked_adr = "CARGO-ALLOW-ADR-0002"
 

@@ -761,7 +761,7 @@ linked_support_tier = "CARGO-ALLOW-SUPPORT-0001"
 [[artifact]]
 id = "CARGO-ALLOW-MOVE-LEDGER-0001"
 kind = "policy_ledger"
-path = ".allow/artifacts/product-move-ledger.toml"
+path = "policy/product-move-ledger.toml"
 status = "active"
 owner = "repo-infra"
 created = "2026-07-22"

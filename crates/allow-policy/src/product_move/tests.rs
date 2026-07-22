@@ -52,7 +52,7 @@ fn parse_product_move_ledger_reads_entries() -> Result<(), String> {
 #[test]
 fn parse_product_move_ledger_at_preserves_location() -> Result<(), String> {
     let err = match parse_product_move_ledger_at(
-        Some(Path::new(".allow/artifacts/product-move-ledger.toml")),
+        Some(Path::new("policy/product-move-ledger.toml")),
         "schema_version = [",
     ) {
         Ok(_) => return Err("invalid move ledger TOML unexpectedly parsed".to_string()),
@@ -64,7 +64,7 @@ fn parse_product_move_ledger_at_preserves_location() -> Result<(), String> {
         .ok_or_else(|| "move ledger parse error should have a location".to_string())?;
     assert_eq!(
         location.path.as_deref(),
-        Some(".allow/artifacts/product-move-ledger.toml")
+        Some("policy/product-move-ledger.toml")
     );
     Ok(())
 }
@@ -114,7 +114,7 @@ claim_boundary = "test"
 #[test]
 fn repository_move_ledger_validates_current_paths() -> Result<(), String> {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let ledger_path = root.join(".allow/artifacts/product-move-ledger.toml");
+    let ledger_path = root.join("policy/product-move-ledger.toml");
     let (validated, diagnostics, report) = validate_product_move_ledger_at(&root, &ledger_path)
         .map_err(|err| format!("validate repository move ledger: {err}"))?;
     if !validated.valid {

@@ -1,6 +1,6 @@
 # Product Move Map
 
-Human projection of `.allow/artifacts/product-move-ledger.toml` (#2598). The
+Human projection of `policy/product-move-ledger.toml` (#2598). The
 TOML ledger is the canonical machine source; this document summarizes current
 owners, target dispositions, and deletion conditions for fresh-agent
 reconstruction.
@@ -9,7 +9,7 @@ reconstruction.
 
 | Artifact | Role |
 | --- | --- |
-| `.allow/artifacts/product-move-ledger.toml` | Canonical machine ledger |
+| `policy/product-move-ledger.toml` | Canonical machine ledger |
 | `docs/architecture/product-move-map.md` | Readable projection (this file) |
 | `plans/three-product-crate-extraction.md` | Ordered migration plan |
 | `docs/adr/CARGO-ALLOW-ADR-0002-three-product-ownership.md` | Product ownership law |
