@@ -1,0 +1,65 @@
+# Fresh-agent disposition snapshot for three-product design package.
+# This is a test/reference artifact, not a second authority ledger.
+# Canonical registry: .allow/artifacts/doc-artifacts.toml
+
+schema_version = "1.0"
+design_package_proposal = "CARGO-ALLOW-PROP-0010"
+design_package_adr = "CARGO-ALLOW-ADR-0002"
+design_package_spec = "CARGO-ALLOW-SPEC-0010"
+design_package_plan = "CARGO-ALLOW-PLAN-0010"
+crate_topology_owner_issue = 2612
+
+[[entry]]
+artifact = "CARGO-ALLOW-PROP-0001"
+disposition = "CurrentSupporting"
+note = "Spec-system profile mechanics; product vision superseded by PROP-0010"
+
+[[entry]]
+artifact = "CARGO-ALLOW-SPEC-0001"
+disposition = "CurrentSupporting"
+note = "Structural profile contract"
+
+[[entry]]
+artifact = "CARGO-ALLOW-PROP-0010"
+disposition = "CurrentCanonical"
+note = "Three-product design authority"
+
+[[entry]]
+artifact = "CARGO-ALLOW-ADR-0002"
+disposition = "CurrentCanonical"
+note = "Ownership and dependency direction"
+
+[[entry]]
+artifact = "CARGO-ALLOW-SPEC-0010"
+disposition = "CurrentCanonical"
+note = "Atomic product-boundary requirements"
+
+[[entry]]
+artifact = "plans/spec-system/implementation-plan.md"
+disposition = "HistoricalOnly"
+note = "Pre-three-product sequencing"
+
+[[entry]]
+artifact = "allow-policy::spec_system"
+disposition = "GeneratedOrDerived"
+note = "Transitional source location"
+
+[[entry]]
+artifact = "cargo-allow::spec_system"
+disposition = "GeneratedOrDerived"
+note = "Transitional; delegate or delete per #2601/#2568"
+
+[[entry]]
+artifact = "#2550"
+disposition = "CurrentCanonical"
+note = "Three-product authority law encoded in retained artifacts"
+
+[[entry]]
+artifact = "#2612"
+disposition = "CurrentCanonical"
+note = "Crate names, counts, stage gates"
+
+[[entry]]
+artifact = "#2598"
+disposition = "CurrentSupporting"
+note = "Move/deletion ledger — next implementation after Wave 0"

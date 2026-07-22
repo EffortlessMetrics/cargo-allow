@@ -70,15 +70,24 @@ Starter templates are in [proposal](../templates/proposal.md),
 and [PR body](../templates/pr-body.md).
 The first accepted proposal for this lane is
 [CARGO-ALLOW-PROP-0001](../proposals/CARGO-ALLOW-PROP-0001-spec-system-profile.md).
-The first accepted spec is
+The current three-product design authority is
+[CARGO-ALLOW-PROP-0010](../proposals/CARGO-ALLOW-PROP-0010-three-product-design.md),
+which supersedes PROP-0001's product-vision portions while leaving profile
+mechanics intact. The first accepted spec is
 [CARGO-ALLOW-SPEC-0001](../specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md).
+The current product-boundary spec is
+[CARGO-ALLOW-SPEC-0010](../specs/CARGO-ALLOW-SPEC-0010-three-product-boundaries.md).
 The first support-tier map is
 [CARGO-ALLOW-SUPPORT-0001](../status/SUPPORT_TIERS.md).
 The current repository profile has no live active-goal manifest. Completed
 GOAL-0003 and GOAL-0004 records are retained under the
 [goal archive](../../.allow/goals/archive/) as historical evidence.
-The current implementation plan is
+The historical spec-system implementation plan is
 [CARGO-ALLOW-PLAN-0001](../../plans/spec-system/implementation-plan.md).
+The current three-product extraction plan is
+[CARGO-ALLOW-PLAN-0010](../../plans/three-product-crate-extraction.md).
+Fresh-agent reconstruction guidance lives in
+[tests/fixtures/three-product-design/README.md](../../tests/fixtures/three-product-design/README.md).
 First-hour adoption guidance is in
 [Adopt the spec-system profile](../how-to/adopt-spec-system-profile.md), and CI
 guidance is in

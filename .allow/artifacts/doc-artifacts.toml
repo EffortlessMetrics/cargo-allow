@@ -717,3 +717,43 @@ status = "accepted"
 owner = "repo-infra"
 created = "2026-07-16"
 standalone_reason = "The first design-to-proof walking skeleton is a bounded self-hosted control-plane invariant; no separate product proposal is required."
+
+[[artifact]]
+id = "CARGO-ALLOW-PROP-0010"
+kind = "proposal"
+path = "docs/proposals/CARGO-ALLOW-PROP-0010-three-product-design.md"
+status = "accepted"
+owner = "repo-infra"
+created = "2026-07-22"
+
+[[artifact]]
+id = "CARGO-ALLOW-ADR-0002"
+kind = "adr"
+path = "docs/adr/CARGO-ALLOW-ADR-0002-three-product-ownership.md"
+status = "accepted"
+owner = "repo-infra"
+created = "2026-07-22"
+linked_proposal = "CARGO-ALLOW-PROP-0010"
+linked_spec = "CARGO-ALLOW-SPEC-0010"
+
+[[artifact]]
+id = "CARGO-ALLOW-SPEC-0010"
+kind = "spec"
+path = "docs/specs/CARGO-ALLOW-SPEC-0010-three-product-boundaries.md"
+status = "accepted"
+owner = "repo-infra"
+created = "2026-07-22"
+linked_proposal = "CARGO-ALLOW-PROP-0010"
+linked_adr = "CARGO-ALLOW-ADR-0002"
+
+[[artifact]]
+id = "CARGO-ALLOW-PLAN-0010"
+kind = "implementation_plan"
+path = "plans/three-product-crate-extraction.md"
+status = "active"
+owner = "repo-infra"
+created = "2026-07-22"
+linked_proposal = "CARGO-ALLOW-PROP-0010"
+linked_spec = "CARGO-ALLOW-SPEC-0010"
+linked_adr = "CARGO-ALLOW-ADR-0002"
+linked_support_tier = "CARGO-ALLOW-SUPPORT-0001"
