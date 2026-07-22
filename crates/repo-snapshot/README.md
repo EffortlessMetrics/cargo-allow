@@ -10,4 +10,10 @@ Repository reads and snapshot identity only. No cargo-allow ledger diff semantic
 
 ## PR1 (#2583-A)
 
-Crate skeleton and parity fixtures over current `allow-diff` revision/staged APIs. Implementation moves land in follow-on packets.
+Crate skeleton and parity fixtures over current `allow-diff` revision/staged APIs.
+
+## PR3 (#2583-C)
+
+`repo-snapshot::source_view` owns generic `RepositorySourceView`. `cargo-allow` compiles the
+shared source via `include!` until publish cutover (#2601). Reader cutover from `allow-diff`
+lands in #2583-D.

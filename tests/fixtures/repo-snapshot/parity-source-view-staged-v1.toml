@@ -1,0 +1,9 @@
+scenario_id = "parity-repo-snapshot-source-view-staged-v1"
+allow_diff_module = "cargo-allow::spec_system_source"
+repo_snapshot_module = "repo-snapshot::source_view"
+parity_case = "parity-repo-snapshot-source-view-staged-v1"
+move_ledger_entry = "move-cargo-allow-spec-system-source"
+staged_path = "value.txt"
+indexed_bytes = "staged\n"
+worktree_bytes = "worktree\n"
+forbid_worktree_fallback = true

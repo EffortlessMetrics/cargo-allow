@@ -99,6 +99,54 @@ fn staged_deletion_negative_fixture_ignores_dirty_replacement() -> Result<(), St
     Ok(())
 }
 
+#[test]
+fn source_view_staged_parity_fixture() -> Result<(), String> {
+    let root = workspace_root();
+    let contract_path = crate::parity::source_view_parity_contract_path(&root);
+    let contract = load_source_view_contract(&contract_path)?;
+
+    let repo = init_git_repo("source-view-parity")?;
+    write_file(&repo, &contract.staged_path, &contract.indexed_bytes)?;
+    git(&repo, &["add", &contract.staged_path])?;
+    write_file(&repo, &contract.staged_path, &contract.worktree_bytes)?;
+
+    let view = crate::RepositorySourceView::staged(&repo)
+        .map_err(|err| format!("repo-snapshot staged view: {err}"))?;
+    let read = view
+        .read_text(Path::new(&contract.staged_path))
+        .map_err(|err| format!("repo-snapshot read_text: {err}"))?;
+    if read != contract.indexed_bytes {
+        return Err("staged source view must read indexed bytes, not worktree".to_string());
+    }
+    if !contract.forbid_worktree_fallback {
+        return Err("source-view parity fixture must forbid worktree fallback".to_string());
+    }
+    assert_eq!(
+        contract.repo_snapshot_module,
+        crate::source_view::SourceViewSurface::MODULE_ID
+    );
+    Ok(())
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+struct SourceViewParityContract {
+    scenario_id: String,
+    allow_diff_module: String,
+    repo_snapshot_module: String,
+    parity_case: String,
+    move_ledger_entry: String,
+    staged_path: String,
+    indexed_bytes: String,
+    worktree_bytes: String,
+    forbid_worktree_fallback: bool,
+}
+
+fn load_source_view_contract(path: &Path) -> Result<SourceViewParityContract, String> {
+    let text =
+        std::fs::read_to_string(path).map_err(|err| format!("read {}: {err}", path.display()))?;
+    toml::from_str(&text).map_err(|err| format!("parse {}: {err}", path.display()))
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 struct StagedDeletionParityContract {
     scenario_id: String,
