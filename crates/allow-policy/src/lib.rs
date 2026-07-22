@@ -22,6 +22,7 @@ pub mod import_roots;
 mod lane_validation;
 mod lifecycle;
 mod policy_header;
+pub mod product_move;
 mod render;
 mod render_entry;
 mod render_last_seen;

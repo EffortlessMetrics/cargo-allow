@@ -1,0 +1,179 @@
+schema_version = "1.0"
+controlling_issue = 2598
+linked_plan = "plans/three-product-crate-extraction.md"
+linked_adr = "CARGO-ALLOW-ADR-0002"
+
+# ThreeProductMoveLedgerV1 — machine source for #2598.
+# Report-only in Wave 0 PR1: inventory and validation; no code moves.
+
+[[entry]]
+id = "move-allow-policy-spec-system"
+current_identity = "crates/allow-policy/src/spec_system/"
+identity_kind = "rust_module_tree"
+current_owner_product = "cargo-allow"
+current_owner_crate = "allow-policy"
+target_owner_product = "cargo-intent"
+target_owner_crate = "intent-model"
+disposition = "MoveToIntentModel"
+status = "current"
+claim_boundary = "Domain types and compilation helpers split across intent-model and intent-engine."
+parity_fixture = "tests/fixtures/three-product-design/"
+removal_condition = "issue:#2606 parity receipts"
+controlling_issue = 2584
+
+[[entry]]
+id = "move-cargo-allow-spec-system-app"
+current_identity = "crates/cargo-allow/src/spec_system.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-allow"
+current_owner_crate = "cargo-allow"
+target_owner_product = "cargo-intent"
+target_owner_crate = "cargo-intent"
+disposition = "MoveToCargoIntentApp"
+status = "current"
+claim_boundary = "Application shell and CLI wiring for spec-system profile."
+parity_fixture = "crates/cargo-allow/tests/spec_precommit_conformance.rs"
+removal_condition = "issue:#2601 one-way delegation and issue:#2568 evaluator retirement"
+controlling_issue = 2599
+
+[[entry]]
+id = "move-cargo-allow-spec-system-source"
+current_identity = "crates/cargo-allow/src/spec_system_source.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-allow"
+current_owner_crate = "cargo-allow"
+target_owner_product = "cargo-intent"
+target_owner_crate = "cargo-intent"
+disposition = "MoveToCargoIntentApp"
+status = "current"
+claim_boundary = "Source/dialect resolution for spec-system commands."
+removal_condition = "issue:#2601 one-way delegation"
+controlling_issue = 2599
+
+[[entry]]
+id = "move-cargo-allow-spec-system-workspace"
+current_identity = "crates/cargo-allow/src/spec_system_workspace.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-allow"
+current_owner_crate = "cargo-allow"
+target_owner_product = "cargo-intent"
+target_owner_crate = "intent-engine"
+disposition = "MoveToIntentEngine"
+status = "current"
+claim_boundary = "Workspace compilation and graph assembly."
+removal_condition = "issue:#2606 parity receipts"
+controlling_issue = 2586
+
+[[entry]]
+id = "move-cargo-allow-spec-system-view"
+current_identity = "crates/cargo-allow/src/spec_system_view.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-allow"
+current_owner_crate = "cargo-allow"
+target_owner_product = "cargo-intent"
+target_owner_crate = "cargo-intent"
+disposition = "MoveToCargoIntentApp"
+status = "current"
+claim_boundary = "Human/JSON view rendering for spec-system profile."
+removal_condition = "issue:#2601 one-way delegation"
+controlling_issue = 2599
+
+[[entry]]
+id = "move-cargo-allow-spec-precommit"
+current_identity = "crates/cargo-allow/src/spec_precommit.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-allow"
+current_owner_crate = "cargo-allow"
+target_owner_product = "cargo-intent"
+target_owner_crate = "cargo-intent"
+disposition = "MoveToCargoIntentApp"
+status = "current"
+claim_boundary = "Precommit phase policy command surface."
+parity_fixture = "crates/cargo-allow/tests/spec_precommit_conformance.rs"
+removal_condition = "issue:#2564 first read-only vertical"
+controlling_issue = 2564
+
+[[entry]]
+id = "move-allow-diff-staged-index"
+current_identity = "crates/allow-diff/src/staged_index.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-allow"
+current_owner_crate = "allow-diff"
+target_owner_product = "shared"
+target_owner_crate = "repo-snapshot"
+disposition = "MoveToSharedSnapshot"
+status = "current"
+claim_boundary = "Generic staged index reads leave allow-diff after repo-snapshot lands."
+removal_condition = "issue:#2583 repo-snapshot parity"
+controlling_issue = 2583
+
+[[entry]]
+id = "move-allow-diff-revision-identity"
+current_identity = "crates/allow-diff/src/revision_identity.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-allow"
+current_owner_crate = "allow-diff"
+target_owner_product = "shared"
+target_owner_crate = "repo-snapshot"
+disposition = "MoveToSharedSnapshot"
+status = "current"
+claim_boundary = "Revision identity helpers for snapshot consumers."
+removal_condition = "issue:#2583 repo-snapshot parity"
+controlling_issue = 2583
+
+[[entry]]
+id = "move-allow-rust-test-subjects"
+current_identity = "crates/allow-rust/src/test_subjects.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-allow"
+current_owner_crate = "allow-rust"
+target_owner_product = "shared"
+target_owner_crate = "rust-source-index"
+disposition = "MoveToSharedProtocol"
+status = "current"
+claim_boundary = "Structural test-subject discovery; scanning stays in allow-rust."
+removal_condition = "issue:#2587 rust-source-index parity"
+controlling_issue = 2587
+
+[[entry]]
+id = "move-allow-report-spec-system-schema"
+current_identity = "docs/schemas/spec-system.schema.json"
+identity_kind = "schema"
+current_owner_product = "cargo-allow"
+current_owner_crate = "allow-report"
+target_owner_product = "cargo-intent"
+target_owner_crate = "intent-protocol"
+disposition = "MoveToIntentProtocol"
+status = "current"
+claim_boundary = "Intent-facing schema contracts split from cargo-allow report payloads."
+removal_condition = "issue:#2606 parity receipts"
+controlling_issue = 2585
+
+[[entry]]
+id = "move-spec-system-profile-command"
+current_identity = "cargo-allow check --profile spec-system"
+identity_kind = "command"
+current_owner_product = "cargo-allow"
+current_owner_crate = "cargo-allow"
+target_owner_product = "cargo-intent"
+target_owner_crate = "cargo-intent"
+disposition = "CompatibilityAdapter"
+status = "transitional"
+claim_boundary = "Compatibility CLI remains until #2601 one-way process delegation."
+parity_fixture = "crates/cargo-allow/tests/spec_precommit_conformance.rs"
+removal_condition = "issue:#2601 cutover"
+controlling_issue = 2601
+
+[[entry]]
+id = "move-issue-2568-embedded-evaluator"
+current_identity = "#2568"
+identity_kind = "issue"
+current_owner_product = "cargo-allow"
+current_owner_crate = "cargo-allow"
+target_owner_product = "cargo-intent"
+target_owner_crate = "intent-engine"
+disposition = "DeleteAfterParity"
+status = "current"
+claim_boundary = "Embedded evaluator retirement tracked as implementation owner migration."
+removal_condition = "issue:#2568 closure after parity"
+controlling_issue = 2568

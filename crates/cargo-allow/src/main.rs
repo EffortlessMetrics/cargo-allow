@@ -140,6 +140,8 @@ mod compat_panic_integration_tests;
 #[cfg(test)]
 mod compat_test_support;
 #[cfg(test)]
+mod product_move_ledger_tests;
+#[cfg(test)]
 mod readme_tests;
 #[cfg(test)]
 mod release_prep_tests;
