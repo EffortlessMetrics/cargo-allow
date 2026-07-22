@@ -18,9 +18,14 @@ pub fn staged_parity_contract_path(root: &Path) -> PathBuf {
     root.join("tests/fixtures/repo-snapshot/parity-staged-index-v1.toml")
 }
 
+pub fn staged_deletion_parity_contract_path(root: &Path) -> PathBuf {
+    root.join("tests/fixtures/repo-snapshot/parity-staged-deletion-dirty-replacement-v1.toml")
+}
+
 pub fn parity_contract_paths(root: &Path) -> Vec<PathBuf> {
     let mut paths = revision_parity_contract_paths(root);
     paths.push(staged_parity_contract_path(root));
+    paths.push(staged_deletion_parity_contract_path(root));
     paths
 }
 
