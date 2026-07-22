@@ -545,7 +545,7 @@ fn normalize_selected_path(path: &Path) -> String {
 /// Module surface marker for extraction parity (#2583).
 pub struct RevisionIdentitySurface;
 
-#[allow(dead_code)]
+#[expect(dead_code, reason = "policy:allow-9041: extraction surface marker in publish facade (#2583-D)")]
 impl RevisionIdentitySurface {
     pub const MODULE_ID: &'static str = "repo-snapshot::revision_identity";
 }

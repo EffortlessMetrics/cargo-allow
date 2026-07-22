@@ -1010,7 +1010,7 @@ fn display_raw_path(raw_path: &[u8]) -> String {
 /// Module surface marker for extraction parity (#2583).
 pub struct StagedIndexSurface;
 
-#[allow(dead_code)]
+#[expect(dead_code, reason = "policy:allow-9042: extraction surface marker in publish facade (#2583-D)")]
 impl StagedIndexSurface {
     pub const MODULE_ID: &'static str = "repo-snapshot::staged_index";
 }
