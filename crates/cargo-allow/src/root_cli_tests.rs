@@ -275,6 +275,42 @@ mod tests {
     }
 
     #[test]
+    fn check_mode_help_text_matches_gate_semantics() {
+        // #2592 follow-up: the --mode descriptions must match what each mode
+        // actually does. Two prior inaccuracies are locked out here:
+        //   1. strict must NOT claim to fail on drift, because
+        //      MatchStatus::is_failure_in_strict explicitly excludes
+        //      LocationDrift (policy.rs).
+        //   2. release must document that it is currently equivalent to
+        //      strict and that deny escalation is driven by --deny, not
+        //      implicit in the mode.
+        let mut command = CargoAllowCli::command();
+        let Some(check) = command.find_subcommand_mut("check") else {
+            std::panic::panic_any("check subcommand should exist");
+        };
+        let help = check.render_help().to_string();
+
+        // strict: claims exception for location_drift, not blanket "fails on drift".
+        assert!(
+            help.contains("except location_drift"),
+            "strict help should document the location_drift exception: {help}"
+        );
+        assert!(
+            !help.contains("stale/review_due/drift"),
+            "strict help must not claim to fail on drift: {help}"
+        );
+        // release: documents equivalence to strict and --deny ownership.
+        assert!(
+            help.contains("Currently equivalent to strict"),
+            "release help should document equivalence to strict: {help}"
+        );
+        assert!(
+            help.contains("driven by --deny"),
+            "release help should point to --deny for escalation: {help}"
+        );
+    }
+
+    #[test]
     fn diff_help_describes_kind_filter_as_source_and_policy_posture() {
         let mut command = CargoAllowCli::command();
         let Some(diff) = command.find_subcommand_mut("diff") else {
