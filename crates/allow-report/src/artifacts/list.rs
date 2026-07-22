@@ -100,9 +100,10 @@ impl ListColumn {
     }
 
     /// Parse a comma-separated column selection (e.g. `"id,status,reason"`)
-    /// into ordered variants. Trims whitespace around each name. Returns an
-    /// error listing the valid names on unknown input, empty input, or
-    /// duplicate selections (#2595).
+    /// into ordered variants. Trims whitespace around each name and matches
+    /// case-insensitively (`ID` and `id` are equivalent). Returns an error
+    /// listing the valid names on unknown input, empty input, or duplicate
+    /// selections (#2595).
     pub fn parse_csv(input: &str) -> Result<Vec<ListColumn>, String> {
         let mut seen = Vec::new();
         for raw in input.split(',') {
@@ -137,10 +138,13 @@ impl ListColumn {
     }
 
     fn from_header(name: &str) -> Option<ListColumn> {
+        // Case-insensitive match so `ID`, `Id`, `id` all resolve. The canonical
+        // header names are lowercase; the error message lists those lowercase
+        // names so the operator knows the expected spelling.
         ListColumn::ALL
             .iter()
             .copied()
-            .find(|column| column.header() == name)
+            .find(|column| column.header().eq_ignore_ascii_case(name))
     }
 
     fn valid_names_joined() -> String {
