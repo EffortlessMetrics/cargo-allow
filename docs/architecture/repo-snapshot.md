@@ -10,7 +10,7 @@ skeleton and parity fixtures over current `allow-diff` revision/staged APIs.
 Parity fixtures live under `tests/fixtures/repo-snapshot/`. Packet 2583-B adds the
 staged-deletion negative fixture (staged delete + dirty worktree replacement → path absent).
 Packet 2583-C moves generic `RepositorySourceView` into `repo-snapshot::source_view`;
-`cargo-allow` compiles the shared module via `include!` until publish cutover (#2601).
+`cargo-allow` keeps a package-local copy (`spec_system_source_view.rs`) in sync until publish cutover (#2601).
 Implementation of allow-diff reader cutover lands in packet 2583-D.
 
 ## Module surfaces

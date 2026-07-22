@@ -7,6 +7,7 @@
 mod parity;
 mod revision_identity;
 mod source_view;
+mod source_view_surface;
 mod staged_index;
 
 #[cfg(test)]
@@ -14,7 +15,8 @@ mod protocol_adapter;
 
 pub use parity::{ParityContract, load_parity_contract, parity_contract_paths};
 pub use revision_identity::RevisionIdentitySurface;
-pub use source_view::{RepositorySourceView, SourceViewSurface};
+pub use source_view::RepositorySourceView;
+pub use source_view_surface::SourceViewSurface;
 pub use staged_index::StagedIndexSurface;
 
 #[cfg(test)]
