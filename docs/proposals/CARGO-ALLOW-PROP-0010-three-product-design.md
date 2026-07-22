@@ -122,8 +122,10 @@ no library dependency on intent-engine.
 ### Repository extraction
 
 Physical repository extraction is **not authorized** by this package. The
-monorepo remains the implementation home until #2558 dogfood, #2559
-extraction-readiness evidence, and #2605 exact-candidate interop pass.
+monorepo remains the implementation home until Issue #2558 dogfood, Issue #2605
+exact-candidate interop, and Issue #2559 extraction-readiness evidence all pass.
+Those gates are necessary but do not replace a later explicit
+repository-extraction authorization.
 
 ## Authority Disposition Map
 
@@ -186,7 +188,7 @@ intent/proof products.
 
 - `cargo test -p allow-policy spec_system_design_package`
 - `cargo test -p cargo-allow spec_design_artifact_links`
-- `cargo-allow check --profile spec-system --mode audit`
+- `cargo run -p cargo-allow -- check --profile spec-system --mode audit`
 
 ## Non-Goals
 
