@@ -60,6 +60,16 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
             "pass either --update or --write, not both",
         ));
     }
+    // When --update is set, the operator expects an in-place ledger mutation.
+    // Pre-check for a discovered policy config before load_world so the
+    // no-policy error mentions --update explicitly (matching add_from_plan's
+    // message at add_from_plan.rs:127), instead of the generic load_world
+    // error that doesn't reference the update operation.
+    if args.update && config_path(&mutation_root, args.config.as_deref()).is_none() {
+        return Err(CargoAllowError::new(
+            "no policy config found to update; run `cargo-allow init` or pass --config",
+        ));
+    }
     let mutation_target = args
         .write
         .as_deref()
