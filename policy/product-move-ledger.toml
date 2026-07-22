@@ -48,6 +48,7 @@ target_owner_crate = "cargo-intent"
 disposition = "MoveToCargoIntentApp"
 status = "current"
 claim_boundary = "Source/dialect resolution for spec-system commands."
+parity_fixture = "tests/fixtures/repo-snapshot/parity-source-view-staged-v1.toml"
 removal_condition = "issue:#2601 one-way delegation"
 controlling_issue = 2599
 

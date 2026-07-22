@@ -5,8 +5,10 @@ use std::path::PathBuf;
 fn repo_snapshot_parity_fixtures_registered() -> Result<(), String> {
     let root = repo_root();
     let paths = parity_contract_paths(&root);
-    if paths.len() < 3 {
-        return Err("expected revision, staged, and deletion parity fixtures".to_string());
+    if paths.len() < 4 {
+        return Err(
+            "expected revision, staged, deletion, and source-view parity fixtures".to_string(),
+        );
     }
     for path in paths {
         if !path.is_file() {
