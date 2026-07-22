@@ -150,4 +150,6 @@ mod root_cli_compat_tests;
 #[cfg(test)]
 mod root_cli_tests;
 #[cfg(test)]
+mod spec_design_artifact_links_tests;
+#[cfg(test)]
 mod spec_system_profile_tests;

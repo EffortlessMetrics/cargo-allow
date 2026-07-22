@@ -691,9 +691,15 @@ fn validates_current_repository_support_tier_claims() {
         return;
     };
 
-    assert_eq!(rows.len(), 6);
+    assert_eq!(rows.len(), 8);
     assert!(rows.iter().any(|row| {
         row.surface == "Spec-system profile" && row.tier == SupportTierLevel::Advisory
+    }));
+    assert!(rows.iter().any(|row| {
+        row.surface == "cargo-intent (planned)" && row.tier == SupportTierLevel::Advisory
+    }));
+    assert!(rows.iter().any(|row| {
+        row.surface == "cargo-proof (planned)" && row.tier == SupportTierLevel::Advisory
     }));
     assert!(rows.iter().any(|row| {
         row.surface == "Migration compat lanes" && row.tier == SupportTierLevel::Advisory
@@ -2897,4 +2903,178 @@ fn test_roots() -> SpecSystemRoots {
         support_tiers: "docs/status/SUPPORT_TIERS.md".to_string(),
         artifact_ledger: ".allow/artifacts/doc-artifacts.toml".to_string(),
     }
+}
+
+#[derive(serde::Deserialize)]
+struct ThreeProductDispositionEntry {
+    artifact: String,
+    disposition: String,
+}
+
+#[derive(serde::Deserialize)]
+struct ThreeProductDispositionMap {
+    schema_version: String,
+    design_package_proposal: String,
+    design_package_adr: String,
+    design_package_spec: String,
+    design_package_plan: String,
+    crate_topology_owner_issue: u32,
+    entry: Vec<ThreeProductDispositionEntry>,
+}
+
+#[test]
+fn spec_system_design_package() {
+    let root = repo_root();
+    let fixture_readme = root.join("tests/fixtures/three-product-design/README.md");
+    let disposition_map = root.join("tests/fixtures/three-product-design/disposition-map.toml");
+    let proposal = root.join("docs/proposals/CARGO-ALLOW-PROP-0010-three-product-design.md");
+    let adr = root.join("docs/adr/CARGO-ALLOW-ADR-0002-three-product-ownership.md");
+    let spec = root.join("docs/specs/CARGO-ALLOW-SPEC-0010-three-product-boundaries.md");
+    let plan = root.join("plans/three-product-crate-extraction.md");
+
+    for path in [
+        &fixture_readme,
+        &disposition_map,
+        &proposal,
+        &adr,
+        &spec,
+        &plan,
+    ] {
+        assert!(
+            path.is_file(),
+            "three-product design artifact missing: {}",
+            path.display()
+        );
+    }
+
+    let proposal_read = std::fs::read_to_string(&proposal);
+    assert!(
+        proposal_read.is_ok(),
+        "proposal readable: {:?}",
+        proposal_read.as_ref().err()
+    );
+    let Ok(proposal_text) = proposal_read else {
+        return;
+    };
+    assert!(proposal_text.contains("CARGO-ALLOW-PROP-0010"));
+    assert!(proposal_text.contains("cargo-allow   = source-exception ledger"));
+    assert!(proposal_text.contains("cargo-intent  = durable authored intent"));
+    assert!(proposal_text.contains("cargo-proof   = exact-snapshot evidence"));
+    assert!(proposal_text.contains("rust-source-index"));
+    assert!(proposal_text.contains("repo-edit"));
+    assert!(proposal_text.contains("one-way process delegation"));
+    assert!(proposal_text.contains("repository extraction is **not authorized**"));
+
+    let adr_read = std::fs::read_to_string(&adr);
+    assert!(
+        adr_read.is_ok(),
+        "adr readable: {:?}",
+        adr_read.as_ref().err()
+    );
+    let Ok(adr_text) = adr_read else {
+        return;
+    };
+    assert!(adr_text.contains("CARGO-ALLOW-ADR-0002"));
+    assert!(adr_text.contains("cargo-allow product → intent-model"));
+    assert!(adr_text.contains("#2612"));
+
+    let spec_read = std::fs::read_to_string(&spec);
+    assert!(
+        spec_read.is_ok(),
+        "spec readable: {:?}",
+        spec_read.as_ref().err()
+    );
+    let Ok(spec_text) = spec_read else {
+        return;
+    };
+    assert!(spec_text.contains("CARGO-ALLOW-SPEC-0010"));
+    assert!(spec_text.contains("three-product-authority-split"));
+    assert!(spec_text.contains("crate-topology-owned-by-2612"));
+    assert!(spec_text.contains("rust-source-index-before-intent-engine"));
+    assert!(spec_text.contains("repo-edit-deferred"));
+
+    let plan_read = std::fs::read_to_string(&plan);
+    assert!(
+        plan_read.is_ok(),
+        "plan readable: {:?}",
+        plan_read.as_ref().err()
+    );
+    let Ok(plan_text) = plan_read else {
+        return;
+    };
+    assert!(plan_text.contains("CARGO-ALLOW-PLAN-0010"));
+    assert!(plan_text.contains("Wave 0"));
+    assert!(plan_text.contains("#2598"));
+
+    let disposition_read = std::fs::read_to_string(&disposition_map);
+    assert!(
+        disposition_read.is_ok(),
+        "disposition readable: {:?}",
+        disposition_read.as_ref().err()
+    );
+    let Ok(disposition_text) = disposition_read else {
+        return;
+    };
+    let disposition_parse = toml::from_str::<ThreeProductDispositionMap>(&disposition_text);
+    assert!(
+        disposition_parse.is_ok(),
+        "disposition map should parse as TOML: {:?}",
+        disposition_parse.as_ref().err()
+    );
+    let Ok(disposition) = disposition_parse else {
+        return;
+    };
+    assert_eq!(disposition.schema_version, "1.0");
+    assert_eq!(disposition.design_package_proposal, "CARGO-ALLOW-PROP-0010");
+    assert_eq!(disposition.design_package_adr, "CARGO-ALLOW-ADR-0002");
+    assert_eq!(disposition.design_package_spec, "CARGO-ALLOW-SPEC-0010");
+    assert_eq!(disposition.design_package_plan, "CARGO-ALLOW-PLAN-0010");
+    assert_eq!(disposition.crate_topology_owner_issue, 2612);
+    assert!(
+        disposition
+            .entry
+            .iter()
+            .any(|entry| entry.artifact == "CARGO-ALLOW-PROP-0010"
+                && entry.disposition == "CurrentCanonical"),
+        "disposition map should mark PROP-0010 as CurrentCanonical"
+    );
+
+    let ledger_result = parse_doc_artifact_ledger(include_str!(
+        "../../../../.allow/artifacts/doc-artifacts.toml"
+    ));
+    assert!(
+        ledger_result.is_ok(),
+        "ledger should parse: {:?}",
+        ledger_result.err()
+    );
+    let Ok(ledger) = ledger_result else {
+        return;
+    };
+
+    let design_ids = [
+        "CARGO-ALLOW-PROP-0010",
+        "CARGO-ALLOW-ADR-0002",
+        "CARGO-ALLOW-SPEC-0010",
+        "CARGO-ALLOW-PLAN-0010",
+    ];
+    for id in design_ids {
+        assert!(
+            ledger.artifact.iter().any(|artifact| artifact.id == id),
+            "ledger missing {id}"
+        );
+    }
+
+    let link_result = validate_doc_artifact_links(&ledger);
+    assert!(
+        link_result.is_ok(),
+        "three-product artifact links should validate: {:?}",
+        link_result.err()
+    );
+
+    let file_result = validate_doc_artifact_files(repo_root(), &ledger, &test_roots());
+    assert!(
+        file_result.is_ok(),
+        "three-product artifact files should validate: {:?}",
+        file_result.err()
+    );
 }
