@@ -180,6 +180,7 @@ pub struct MoveEntry {
 pub struct ProductMoveLedger {
     pub schema_version: String,
     pub controlling_issue: u32,
+    pub ledger_id: String,
     pub linked_plan: String,
     pub linked_adr: String,
     pub entry: Vec<MoveEntry>,
@@ -233,6 +234,9 @@ impl ProductMoveLedgerToml {
         let linked_adr = self
             .linked_adr
             .ok_or_else(|| CargoAllowError::new("product move ledger missing linked_adr"))?;
+        let ledger_id = self
+            .ledger_id
+            .ok_or_else(|| CargoAllowError::new("product move ledger missing ledger_id"))?;
 
         let mut entry = Vec::with_capacity(self.entry.len());
         for raw in self.entry {
@@ -256,6 +260,7 @@ impl ProductMoveLedgerToml {
         Ok(ProductMoveLedger {
             schema_version,
             controlling_issue,
+            ledger_id,
             linked_plan,
             linked_adr,
             entry,

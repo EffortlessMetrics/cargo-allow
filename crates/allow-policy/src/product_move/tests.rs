@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 const MINIMAL_LEDGER: &str = r#"
 schema_version = "1.0"
 controlling_issue = 2598
+ledger_id = "CARGO-ALLOW-MOVE-LEDGER-0001"
 linked_plan = "plans/three-product-crate-extraction.md"
 linked_adr = "CARGO-ALLOW-ADR-0002"
 
@@ -75,6 +76,7 @@ fn validate_product_move_ledger_rejects_duplicate_ids() -> Result<(), String> {
         r#"
 schema_version = "1.0"
 controlling_issue = 2598
+ledger_id = "CARGO-ALLOW-MOVE-LEDGER-0001"
 linked_plan = "plans/three-product-crate-extraction.md"
 linked_adr = "CARGO-ALLOW-ADR-0002"
 

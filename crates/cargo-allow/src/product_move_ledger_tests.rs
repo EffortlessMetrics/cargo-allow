@@ -24,8 +24,8 @@ fn product_move_ledger_repository_inventory_is_valid() -> Result<(), String> {
         "ledger controlling issue"
     );
     assert_eq!(
-        validated.ledger.linked_plan,
-        "plans/three-product-crate-extraction.md"
+        validated.ledger.ledger_id, "CARGO-ALLOW-MOVE-LEDGER-0001",
+        "ledger id"
     );
 
     let map = root.join("docs/architecture/product-move-map.md");
