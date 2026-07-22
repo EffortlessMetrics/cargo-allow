@@ -408,6 +408,50 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9029"
+kind = "non_rust_file"
+family = "configuration"
+path = "policy/extraction-parity.toml"
+owner = "repo-infra"
+classification = "three_product_parity_registry"
+reason = "Extraction parity and cutover contracts for three-product extraction (#2606)."
+evidence = ["doc:docs/architecture/extraction-parity.md", "doc:policy/extraction-shims.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
+created = "2026-07-22"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "policy/extraction-parity.toml"
+target_fingerprint = "toml"
+glob = "policy/extraction-parity.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9030"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/architecture/extraction-parity.md"
+owner = "repo-infra"
+classification = "three_product_parity_projection"
+reason = "Human projection of the extraction parity registry (#2606)."
+evidence = ["doc:policy/extraction-parity.toml", "doc:policy/extraction-shims.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
+created = "2026-07-22"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/architecture/extraction-parity.md"
+target_fingerprint = "md"
+glob = "docs/architecture/extraction-parity.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9005"
 kind = "non_rust_file"
 family = "documentation"

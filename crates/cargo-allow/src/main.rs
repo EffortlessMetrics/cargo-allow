@@ -140,6 +140,8 @@ mod compat_panic_integration_tests;
 #[cfg(test)]
 mod compat_test_support;
 #[cfg(test)]
+mod extraction_parity_registry_tests;
+#[cfg(test)]
 mod extraction_shim_registry_tests;
 #[cfg(test)]
 mod product_crate_architecture_tests;
