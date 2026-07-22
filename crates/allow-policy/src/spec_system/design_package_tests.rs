@@ -37,9 +37,9 @@ fn three_product_disposition_map_has_complete_required_set() -> Result<(), Strin
 
     for (artifact, disposition) in required {
         assert!(
-            map.entry.iter().any(|entry| {
-                entry.artifact == artifact && entry.disposition == disposition
-            }),
+            map.entry
+                .iter()
+                .any(|entry| entry.artifact == artifact && entry.disposition == disposition),
             "disposition map missing required pair {artifact} = {disposition}"
         );
     }
