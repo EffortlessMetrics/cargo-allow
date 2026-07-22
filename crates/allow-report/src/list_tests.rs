@@ -253,6 +253,40 @@ fn list_column_parse_csv_rejects_unknown_lists_valid_and_dedupes() {
 }
 
 #[test]
+fn list_column_parse_csv_matches_case_insensitively() {
+    // #2595 follow-up: column names are case-insensitive so operators don't
+    // have to remember the exact casing. ID, Id, and id are equivalent.
+    // The error message still lists canonical lowercase names.
+    for mixed_case in ["ID", "Id", "iD", "STATUS", "Reason"] {
+        let parsed = ListColumn::parse_csv(mixed_case).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("mixed-case {mixed_case} should parse: {err}"))
+        });
+        assert_eq!(
+            parsed.len(),
+            1,
+            "mixed-case {mixed_case} should resolve to one column"
+        );
+    }
+    // Mixed-case input resolves to the same variant as lowercase.
+    let upper = ListColumn::parse_csv("ID,STATUS,REASON")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("uppercase should parse: {err}")));
+    let lower = ListColumn::parse_csv("id,status,reason")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("lowercase should parse: {err}")));
+    assert_eq!(
+        upper, lower,
+        "case variants should resolve to the same columns"
+    );
+
+    // Duplicate detection is case-insensitive too: ID and id are the same
+    // column, so specifying both is a duplicate.
+    let dup_err = ListColumn::parse_csv("ID,id").expect_err("case-variant duplicate should error");
+    assert!(
+        dup_err.contains("duplicate --columns name"),
+        "case-variant duplicate should be detected: {dup_err}"
+    );
+}
+
+#[test]
 fn list_column_all_is_canonical_seventeen_in_order() {
     // The default projection is exactly the 17 columns in the pre-#2595
     // header order. If this changes, the backward-compat assertion above

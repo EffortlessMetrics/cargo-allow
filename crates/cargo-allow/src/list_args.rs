@@ -85,10 +85,10 @@ pub(crate) struct ListArgs {
     /// Output format.
     #[arg(long, value_enum, default_value_t = ListFormat::Human)]
     pub(super) format: ListFormat,
-    /// Select a subset of columns for the human format (comma-separated).
-    /// Example: --columns id,status,reason. Ignored for --format json.
-    /// Available columns: id, status, matches, kind, family, owner,
-    /// classification, scope, source_package, evidence_count,
+    /// Select a subset of columns for the human format (comma-separated,
+    /// case-insensitive). Example: --columns id,status,reason. Ignored for
+    /// --format json. Available columns: id, status, matches, kind, family,
+    /// owner, classification, scope, source_package, evidence_count,
     /// broken_evidence_references, weak_evidence_references,
     /// selector_precision, broad_scope, review_after, expires, reason.
     #[arg(long, value_name = "COLS")]

@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  UX: `list --columns` now matches column names case-insensitively. `ID`,
+  `Id`, and `id` are all accepted. Previously only lowercase names worked,
+  which was a likely source of operator friction since the column names
+  mirror TOML field names. The error message still lists canonical
+  lowercase names.
