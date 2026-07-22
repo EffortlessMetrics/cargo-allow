@@ -1,0 +1,12 @@
+# Canonical machine-readable denominator for the cargo-allow / cargo-intent /
+# cargo-proof monorepo extraction. Owned by issue #2598; target topology is #2612.
+
+schema_id = "cargo-allow.three-product-move-ledger.v1"
+schema_version = 1
+owner_issue = 2598
+topology_issue = 2612
+projection = "docs/architecture/product-move-map.md"
+plan = "plans/three-product-crate-extraction.md"
+claim_boundary = "Inventory and reviewed ownership dispositions for current repository sources; this ledger does not move code, prove parity, or authorize repository extraction."
+
+# Entries are populated and validated in this PR before merge.
