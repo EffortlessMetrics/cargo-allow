@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Build/UX: remove `.changes/*.yaml` from `.gitignore` so changie fragments are
+  tracked normally. The line (added in #2591) contradicted the documented
+  workflow and silently dropped new fragments unless contributors used
+  `git add -f`. The four existing fragments were tracked via force-add; new
+  fragments now stage with a plain `git add`.

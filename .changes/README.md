@@ -5,7 +5,9 @@ This directory holds changelog fragments managed by [changie](https://github.com
 ## Workflow
 
 1. **Before merging a PR**, run `changie new` and select a kind (Added, Changed,
-   Fixed, etc.). This creates a `.yaml` fragment under `.changes/`.
+   Fixed, etc.). This creates a `.yaml` fragment under `.changes/`. Commit the
+   fragment as part of your PR (`git add .changes/<your>.yaml`) — fragments are
+   tracked, not gitignored.
 
 2. **On release**, run `changie batch v0.2.1` (or the next version) to merge
    fragments into `CHANGELOG.md` under a new version heading.
