@@ -1,0 +1,103 @@
+schema_version = "1.0"
+registry_id = "CARGO-ALLOW-PARITY-0001"
+controlling_issue = 2606
+linked_shim_registry = "CARGO-ALLOW-SHIM-REGISTRY-0001"
+
+# ExtractionParityCaseV1 — report-only contracts for #2606 PR1.
+
+[[case]]
+id = "parity-repo-snapshot-staged-index-v1"
+stage = "RepoSnapshot"
+move_ledger_entry = "move-allow-diff-staged-index"
+shim_id = "shim-allow-diff-staged-index"
+old_producer = "allow-diff::staged_index"
+new_producer = "repo-snapshot::staged_index"
+expected_result = "SemanticallyEquivalent"
+disposition = "contract_only"
+claim_boundary = "Contract only; fixture replay lands with repo-snapshot move."
+
+[[case]]
+id = "parity-repo-snapshot-revision-identity-v1"
+stage = "RepoSnapshot"
+move_ledger_entry = "move-allow-diff-revision-identity"
+shim_id = "shim-allow-diff-revision-identity"
+old_producer = "allow-diff::revision_identity"
+new_producer = "repo-snapshot::revision_identity"
+expected_result = "SemanticallyEquivalent"
+disposition = "contract_only"
+claim_boundary = "Contract only; revision identity parity deferred to stage receipt."
+
+[[case]]
+id = "parity-intent-model-spec-system-v1"
+stage = "IntentModel"
+move_ledger_entry = "move-allow-policy-spec-system"
+shim_id = "shim-allow-policy-spec-system-types"
+old_producer = "allow-policy::spec_system"
+new_producer = "intent-model::spec_system"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Contract only; type identity without evaluator duplication."
+
+[[case]]
+id = "parity-cargo-intent-spec-system-delegate-v1"
+stage = "CargoAllowCompatibilityCutover"
+move_ledger_entry = "move-spec-system-profile-command"
+shim_id = "shim-cargo-allow-spec-system-delegate"
+old_producer = "cargo-allow check --profile spec-system"
+new_producer = "cargo-intent public adapter"
+expected_result = "IntentionalDifferenceAccepted"
+disposition = "contract_only"
+claim_boundary = "Process delegation; no cargo-allow lib dep on intent crates."
+
+[[case]]
+id = "parity-rust-source-index-test-subjects-v1"
+stage = "RustSourceIndex"
+move_ledger_entry = "move-allow-rust-test-subjects"
+shim_id = "shim-allow-rust-test-subjects"
+old_producer = "allow-rust::test_subjects"
+new_producer = "rust-source-index::test_subjects"
+expected_result = "SemanticallyEquivalent"
+disposition = "contract_only"
+claim_boundary = "Structural subject inventory parity contract."
+
+[[case]]
+id = "parity-intent-protocol-spec-system-schema-v1"
+stage = "IntentProtocol"
+move_ledger_entry = "move-allow-report-spec-system-schema"
+shim_id = "shim-allow-report-spec-system-schema"
+old_producer = "allow-report::spec_system_schemas"
+new_producer = "intent-protocol::spec_system_schemas"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Schema contract only; renderers consume protocol DTOs."
+
+[[case]]
+id = "parity-proof-protocol-plan-dtos-v1"
+stage = "ProofProtocol"
+move_ledger_entry = "move-issue-2568-embedded-evaluator"
+shim_id = "shim-proof-protocol-legacy-dtos"
+old_producer = "allow-report::proof_plan_dtos"
+new_producer = "proof-protocol::plan_dtos"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Serialization contract only; no parallel proof planner."
+
+[[stage_receipt]]
+stage = "ArchitectureInventory"
+required_fields = [
+  "stage",
+  "move_ledger_generation",
+  "architecture_manifest_digest",
+  "result_class",
+  "claim_boundary",
+]
+
+[[stage_receipt]]
+stage = "RepoSnapshot"
+required_fields = [
+  "stage",
+  "parity_corpus_digest",
+  "old_path_reachability",
+  "duplicate_authority",
+  "rollback",
+]
