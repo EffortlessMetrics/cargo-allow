@@ -1,0 +1,86 @@
+schema_version = "1.0"
+topology_id = "CARGO-ALLOW-PKG-TOPOLOGY-0001"
+controlling_issue = 2604
+linked_architecture_manifest = "CARGO-ALLOW-ARCH-0001"
+
+# ProductPackageTopologyV1 — report-only package classification for #2604 PR1.
+
+[[package]]
+package = "allow-core"
+product_family = "cargo-allow"
+posture = "CargoAllowSupported"
+publish = true
+candidate_inclusion = true
+release_order = 10
+
+[[package]]
+package = "allow-policy"
+product_family = "cargo-allow"
+posture = "CargoAllowSupported"
+publish = true
+candidate_inclusion = true
+release_order = 20
+
+[[package]]
+package = "allow-inventory"
+product_family = "cargo-allow"
+posture = "CargoAllowSupported"
+publish = true
+candidate_inclusion = true
+release_order = 30
+
+[[package]]
+package = "allow-files"
+product_family = "cargo-allow"
+posture = "CargoAllowSupported"
+publish = true
+candidate_inclusion = true
+release_order = 40
+
+[[package]]
+package = "allow-rust"
+product_family = "cargo-allow"
+posture = "CargoAllowSupported"
+publish = true
+candidate_inclusion = true
+release_order = 50
+
+[[package]]
+package = "allow-match"
+product_family = "cargo-allow"
+posture = "CargoAllowSupported"
+publish = true
+candidate_inclusion = true
+release_order = 60
+
+[[package]]
+package = "allow-report"
+product_family = "cargo-allow"
+posture = "CargoAllowSupported"
+publish = true
+candidate_inclusion = true
+release_order = 70
+
+[[package]]
+package = "allow-diff"
+product_family = "cargo-allow"
+posture = "CargoAllowSupported"
+publish = true
+candidate_inclusion = true
+release_order = 80
+
+[[package]]
+package = "allow-policy-legacy"
+product_family = "cargo-allow"
+posture = "LegacyMigration"
+publish = true
+candidate_inclusion = true
+release_order = 90
+
+[[package]]
+package = "cargo-allow"
+product_family = "cargo-allow"
+posture = "CargoAllowSupported"
+publish = true
+candidate_inclusion = true
+release_order = 100

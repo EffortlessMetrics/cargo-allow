@@ -144,6 +144,8 @@ mod product_crate_architecture_tests;
 #[cfg(test)]
 mod product_move_ledger_tests;
 #[cfg(test)]
+mod product_package_topology_tests;
+#[cfg(test)]
 mod readme_tests;
 #[cfg(test)]
 mod release_prep_tests;
