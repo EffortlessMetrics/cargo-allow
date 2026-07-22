@@ -1,8 +1,9 @@
-//! Provider-neutral repository identity and transport envelopes (#2582).
+//! Provider-neutral repository identity and transport envelopes for the cargo-allow
+//! three-product extraction (#2582).
 //!
-//! This crate standardizes cross-product transport while leaving domain payloads
-//! under their owning product or provider. It performs no Git access, filesystem
-//! IO, process execution, or policy evaluation.
+//! This crate defines shared source-tree transport contracts used across cargo-allow,
+//! cargo-intent, and cargo-proof. It does not scan source files, invoke Cargo,
+//! compile code, execute repository artifacts, or access Git or the filesystem.
 
 mod analysis_receipt;
 mod canonical;
