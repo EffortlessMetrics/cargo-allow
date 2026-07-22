@@ -1,0 +1,105 @@
+schema_version = "1.0"
+registry_id = "CARGO-ALLOW-SHIM-REGISTRY-0001"
+controlling_issue = 2607
+linked_move_ledger = "CARGO-ALLOW-MOVE-LEDGER-0001"
+
+# ExtractionShimV1 — report-only registry for #2607 PR1.
+# Seeds planned shims for first extraction moves; no live re-exports yet.
+
+[[shim]]
+id = "shim-allow-diff-staged-index"
+old_identity = "allow-diff::staged_index"
+new_identity = "repo-snapshot::staged_index"
+kind = "ModuleFacade"
+posture = "private"
+status = "planned"
+move_ledger_entry = "move-allow-diff-staged-index"
+controlling_issue = 2583
+latest_allowed_stage = 1
+removal_condition = "issue:#2606 stage-1 cutover receipt"
+parity_case = "parity-repo-snapshot-staged-index-v1"
+claim_boundary = "Identity forwarding only; allow-diff retains policy movement."
+
+[[shim]]
+id = "shim-allow-diff-revision-identity"
+old_identity = "allow-diff::revision_identity"
+new_identity = "repo-snapshot::revision_identity"
+kind = "ModuleFacade"
+posture = "private"
+status = "planned"
+move_ledger_entry = "move-allow-diff-revision-identity"
+controlling_issue = 2583
+latest_allowed_stage = 1
+removal_condition = "issue:#2606 stage-1 cutover receipt"
+parity_case = "parity-repo-snapshot-revision-identity-v1"
+claim_boundary = "Identity forwarding only; no duplicate revision semantics."
+
+[[shim]]
+id = "shim-allow-policy-spec-system-types"
+old_identity = "allow-policy::spec_system"
+new_identity = "intent-model::spec_system"
+kind = "TypeAlias"
+posture = "private"
+status = "planned"
+move_ledger_entry = "move-allow-policy-spec-system"
+controlling_issue = 2584
+latest_allowed_stage = 2
+removal_condition = "issue:#2606 stage-2 cutover receipt"
+parity_case = "parity-intent-model-spec-system-v1"
+claim_boundary = "Type aliases only; old evaluator must not survive cutover."
+
+[[shim]]
+id = "shim-cargo-allow-spec-system-delegate"
+old_identity = "cargo-allow::spec_system*"
+new_identity = "cargo-intent::public_adapter"
+kind = "ProcessProtocolAdapter"
+posture = "public"
+status = "planned"
+move_ledger_entry = "move-spec-system-profile-command"
+controlling_issue = 2601
+latest_allowed_stage = 4
+removal_condition = "issue:#2601 one-way delegation complete"
+parity_case = "parity-cargo-intent-spec-system-delegate-v1"
+claim_boundary = "Process delegation only; no cargo-allow lib dep on intent crates."
+
+[[shim]]
+id = "shim-allow-rust-test-subjects"
+old_identity = "allow-rust::test_subjects"
+new_identity = "rust-source-index::test_subjects"
+kind = "PublicReExport"
+posture = "public"
+status = "planned"
+move_ledger_entry = "move-allow-rust-test-subjects"
+controlling_issue = 2587
+latest_allowed_stage = 5
+removal_condition = "issue:#2606 stage-5 cutover receipt"
+parity_case = "parity-rust-source-index-test-subjects-v1"
+claim_boundary = "Structural subject re-export; scanning stays in allow-rust."
+
+[[shim]]
+id = "shim-allow-report-spec-system-schema"
+old_identity = "allow-report::spec_system_schemas"
+new_identity = "intent-protocol::spec_system_schemas"
+kind = "SchemaCompatibilityAdapter"
+posture = "private"
+status = "planned"
+move_ledger_entry = "move-allow-report-spec-system-schema"
+controlling_issue = 2585
+latest_allowed_stage = 2
+removal_condition = "issue:#2606 stage-2 cutover receipt"
+parity_case = "parity-intent-protocol-spec-system-schema-v1"
+claim_boundary = "Schema adapter only; cargo-allow payloads remain separate."
+
+[[shim]]
+id = "shim-proof-protocol-legacy-dtos"
+old_identity = "allow-report::proof_plan_dtos"
+new_identity = "proof-protocol::plan_dtos"
+kind = "SchemaCompatibilityAdapter"
+posture = "private"
+status = "planned"
+move_ledger_entry = "move-issue-2568-embedded-evaluator"
+controlling_issue = 2588
+latest_allowed_stage = 7
+removal_condition = "issue:#2606 stage-7 cutover receipt"
+parity_case = "parity-proof-protocol-plan-dtos-v1"
+claim_boundary = "Serialization adapter only; no parallel proof planner."

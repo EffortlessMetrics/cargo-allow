@@ -17,6 +17,7 @@ mod evidence_diagnostics;
 mod evidence_path;
 mod evidence_reference;
 mod evidence_validation;
+pub mod extraction_shims;
 pub mod federation;
 pub mod import_roots;
 mod lane_validation;
