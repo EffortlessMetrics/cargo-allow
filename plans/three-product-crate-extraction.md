@@ -12,9 +12,9 @@ linked_support_tier: CARGO-ALLOW-SUPPORT-0001
 
 # Plan: Three-Product Crate Extraction
 
-Issue: #2544 Wave 0 / documentation authority  
+Issue: #2598 Wave 0 / move-deletion denominator  
 Controlling topology: #2612  
-Move/deletion authority: #2598 (not started on this branch)
+Move/deletion authority: `.allow/artifacts/product-move-ledger.toml`
 
 ## Purpose
 
@@ -23,47 +23,59 @@ shared substrate crates without duplicate semantic authority. This plan is the
 current implementation sequence; `plans/spec-system/implementation-plan.md` is
 historical for pre-three-product work.
 
-## Extraction metadata (Wave 0 — this PR)
+## Extraction metadata (Wave 0 — current frontier)
 
 | Field | Value |
 | --- | --- |
-| Issue and stage | #2544 Wave 0 — repository-native design package |
-| Move-ledger entry IDs | N/A — no code moves |
-| Old source / new owner | N/A — authority only |
+| Issue and stage | #2598 / `ArchitectureInventory` |
+| Canonical move ledger | `.allow/artifacts/product-move-ledger.toml` |
+| Checked projection | `docs/architecture/product-move-map.md` |
+| Inventory entries | 37 reviewed path, symbol, asset, command, package, and issue groups |
+| Move-ledger entry IDs | Stable `MOVE-*` / `REMAIN-*` IDs in the canonical ledger |
+| Old source / new owner | Enumerated per ledger row using the closed #2612 topology |
 | New public API | none |
-| Allowed dependency edges | Documented in CARGO-ALLOW-ADR-0002 |
-| Forbidden dependency edges | Documented in CARGO-ALLOW-ADR-0002 and #2612 |
-| Temporary shim IDs | none yet |
-| Latest allowed shim stage | Stage 0 — architecture denominator only |
-| Parity cases | none yet — #2606 owns contracts |
-| Intentional differences | Product authority split documented; code unchanged |
-| Old path reachable after PR? | yes — no code moved |
-| Exact old source made deletable | none |
-| Package/publish impact | none |
-| Rollback | Revert documentation PR; ledger entries removed |
-| Claim boundary | Docs/spec only; no crate moves |
+| Allowed dependency edges | Documented in CARGO-ALLOW-ADR-0002; enforcement begins in #2580 |
+| Forbidden dependency edges | Documented in CARGO-ALLOW-SPEC-0010 and #2612 |
+| Temporary shim IDs | none yet; #2607 registers only shims required by actual moves |
+| Parity cases | Named per movable row; executable contracts land under #2606 |
+| Old path reachable after PR? | yes where recorded; inventory fact, not cutover approval |
+| Exact old source made deletable | Named per row as `deletion_output`; no deletion occurs in #2598 |
+| Package/publish impact | none; current ten-crate candidate remains unchanged |
+| Validation | offline schema/path/discovery checks, negative fixtures, deterministic projection |
+| Rollback | Revert ledger, projection, validator, and this plan update together |
+| Claim boundary | Inventory and target ratification only; no code move or parity claim |
 
 ## Sequencing corrections (normative)
 
 | Decision | Rule |
 | --- | --- |
-| Rust subject extraction | `rust-source-index` before full `intent-engine` migration (Stage 5 before Stage 3 completion criteria that require structural subjects without allow-rust) |
-| Repository editing | `repo-edit` deferred until read-only cargo-intent vertical + #2601 compatibility cutover (Stage 6) |
+| Rust subject extraction | `rust-source-index` before full `intent-engine` migration |
+| Repository editing | `repo-edit` deferred until read-only cargo-intent vertical + #2601 compatibility cutover |
 | Shared publication | `publish = false` until #2604 publish/package order |
 | Intent compatibility | No `cargo-allow → intent` lib dep; parity window → one-way process delegation |
 
 ## Stage map (from #2612)
 
-### Stage 0 — architecture denominator (this PR)
+### Stage 0 — architecture denominator
 
 **Owners:** #2544, #2580, #2598, #2600, #2604, #2606, #2607, #2612
 
-**Exit:**
+**Merged authority:**
 
-- retained proposal, ADR, spec, plan, support tiers, artifact ledger;
-- disposition map for prior authority;
-- fresh-agent reconstruction fixture;
+- CARGO-ALLOW-PROP-0010, ADR-0002, SPEC-0010, and this plan;
+- exact crate names and forbidden convenience crates in #2612;
+- canonical `ThreeProductMoveLedgerV1` and deterministic human projection;
+- current-source discovery checks and seeded negative fixtures;
 - no implementation crate moved.
+
+**Remaining Wave 0 frontier:**
+
+```text
+#2580 ProductCrateArchitectureV1 report-only
+→ #2604 ProductPackageTopologyV1 report-only
+→ #2607 bounded extraction-shim registry
+→ #2606 parity/stage/reachability/cutover contracts
+```
 
 ### Stage 1 — shared source substrate
 
@@ -100,8 +112,7 @@ sequencing correction.
 #2587 rust-source-index
 ```
 
-**Note:** Stage ordering relative to Stage 3 — rust-source-index work starts
-before full intent-engine migration completes.
+The structural index begins before the full Stage 3 migration completes.
 
 ### Stage 6 — semantic authoring
 
@@ -109,12 +120,15 @@ before full intent-engine migration completes.
 #2602 repo-edit → #2613 intent-edit → #2546 semantic edit contract
 ```
 
-Only after read-only cargo-intent vertical and #2601 cutover.
+Only after the read-only cargo-intent vertical and #2601 cutover.
 
 ### Stage 7 — proof product
 
 ```text
-#2588 proof-protocol → #2603 proof-provider-api + adapters → #2589 proof-engine + cargo-proof
+#2588 proof-protocol
+→ #2603 proof-provider-api + proof-adapter-command
+→ #2589 proof-engine + cargo-proof
+→ #2554/#2556/#2555 provider adapters
 ```
 
 ### Stage 8 — exact packaged interop and simplification
@@ -123,20 +137,44 @@ Only after read-only cargo-intent vertical and #2601 cutover.
 #2604 → #2605 → #2558 → #2208 → #2559
 ```
 
-## Recommended PR merge frontier
+## Current move denominator
 
-After Wave 0 merges, start #2598 on a **fresh branch** (not stacked on this PR):
+The machine ledger is authoritative. Its projection makes the next PR directly
+executable and records for every row:
 
 ```text
-1. #2598 PR1 — move/deletion ledger schema and current-source inventory; no moves
-2. #2580 PR1 — ProductCrateArchitectureV1 report-only, seeded from #2612 + #2598
-3. #2604 PR1 — ProductPackageTopologyV1 report-only
-4. #2607 PR1 — extraction-shim registry (seed only shims expected by first moves)
-5. #2606 PR1 — parity-case/stage/cutover receipt contracts
-6. #2582 PR1 — repo-protocol with first migrated envelope + parity evidence
+current source and consumers
+target product/crate/module
+closed disposition and compatibility strategy
+parity cases and cutover receipt
+old-path reachability and duplicate-authority class
+active shim set and latest allowed stage
+package/CI/docs impact
+removal owner or condition
+exact next move and deletion output
 ```
 
-One writer per dependent frontier. Read-only investigation may run in parallel.
+The validator checks current-path existence, target-crate classification,
+closed vocabularies, bounded transitional authority, selected-source discovery,
+negative fixtures, and byte-exact projection freshness. It performs no GitHub or
+network calls.
+
+## Recommended PR merge frontier
+
+Every item is implemented, reviewed, made green, and merged before the next
+branch starts from current `main`:
+
+```text
+1. #2598 — move/deletion ledger and current-source inventory; no moves
+2. #2580 — ProductCrateArchitectureV1 report-only, seeded from #2612 + #2598
+3. #2604 — ProductPackageTopologyV1 report-only
+4. #2607 — extraction-shim registry, seeded only from expected first moves
+5. #2606 — parity-case/stage/reachability/cutover receipt contracts
+6. #2582 — repo-protocol with first migrated envelope + parity evidence
+```
+
+Read-only investigation may run in parallel. Dependent implementation branches
+must not outrun merged contracts.
 
 ## Crate topology reference (#2612 — names and count owned there)
 
@@ -156,49 +194,57 @@ cargo-proof
   proof-adapter-cargo-allow, proof-adapter-ripr, proof-adapter-hawk, cargo-proof
 ```
 
-## Current-code movement map (for #2598)
+## Current-code movement summary
 
-Transitional sources — not cargo-allow permanent ownership:
+The canonical ledger contains the exact path and symbol groups; this table is
+only a compact orientation.
 
 | Current location | Target owner | Notes |
 | --- | --- | --- |
-| `allow-policy::spec_system` | intent-model / intent-engine | Domain types vs compilation |
-| `cargo-allow::spec_system*` | cargo-intent / delegate | Delete after #2601/#2568 |
-| `allow-diff` snapshot reads | repo-snapshot | Generic reads leave allow-diff |
-| `allow-rust` test subjects | rust-source-index | Scanning stays in allow-rust |
-| `allow-report` intent/proof schemas | intent-protocol / proof-protocol | cargo-allow payloads stay |
+| `allow-policy::spec_system` pure domain types | `intent-model` | Requirements, slices, mappings, artifact/support contracts |
+| `allow-policy::spec_system` compiler/policy/source behavior | `intent-engine` | Private graph, profiles, phase policy, compatibility dialects |
+| `cargo-allow::spec_system*` application/query/precommit | `cargo-intent` + `intent-engine` | Legacy commands later delegate one-way |
+| `allow-diff` generic revision/index reads | `repo-snapshot` | Cargo-allow movement remains in `allow-diff` |
+| `allow-rust` structural test subjects | `rust-source-index` | Source-exception scanning remains in `allow-rust` |
+| `allow-report` current intent schemas | `intent-protocol` | Cargo-allow provider payloads remain cargo-allow-owned |
+| Semantic edit plan/apply/settlement sources | `intent-protocol` / `intent-edit` | Never the read-only engine or CLI |
+| Provider integration work | named proof-adapter crates | Through `proof-provider-api`, never private product imports |
 
 ## Proof commands
 
-Wave 0:
-
 ```bash
-cargo test -p allow-policy spec_system_design_package --locked -- --nocapture
-cargo test -p cargo-allow spec_design_artifact_links --locked -- --nocapture
-cargo run -p cargo-allow -- check --profile spec-system --mode audit
-cargo fmt --all --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace --locked
-cargo run -p cargo-allow -- check --mode no-new \
+rtk cargo test -p allow-policy move_ledger --locked -- --nocapture
+rtk cargo fmt --all --check
+rtk cargo clippy --workspace --all-targets -- -D warnings
+rtk cargo test --workspace --locked
+rtk cargo run -p cargo-allow --locked -- check --profile spec-system --mode audit
+rtk cargo run -p cargo-allow --locked -- check --mode no-new \
   --format markdown \
   --receipt target/cargo-allow/check.receipt.json \
   --output target/cargo-allow/check.md
 ```
 
+Hosted CI additionally proves shallow-diff, MSRV, and exact package/install
+behavior.
+
 ## Non-goals
 
-- Rust module moves on Wave 0 branch
-- Creating crates from #2612 topology on Wave 0 branch
-- Beginning #2598 implementation in the same PR
+- Rust module moves in #2598
+- Creating crates from #2612 topology in #2598
+- Runtime dependency enforcement before #2580
+- Package-set changes before #2604
+- Registering hypothetical shims before #2607
+- Calling issue/PR APIs from the offline validator
 - Physical repository extraction
-- Generated progress/status databases
+- Generated live task/progress databases
 
 ## Claim boundary
 
-This plan sequences extraction work and records Wave 0 metadata. It does not
-move code, enforce dependency law at runtime, or prove parity.
+This plan and ledger sequence extraction and record current ownership
+classifications. They do not move code, prove semantic parity, qualify product
+packages, or authorize physical repository extraction.
 
 ## Rollback
 
-Revert the Wave 0 PR. Later stages roll back per-stage using #2606 receipts and
-#2607 shim retirement rules.
+Revert the #2598 ledger, projection, validator, and plan update together. Later
+stages roll back per-stage using #2606 receipts and #2607 shim retirement rules.
