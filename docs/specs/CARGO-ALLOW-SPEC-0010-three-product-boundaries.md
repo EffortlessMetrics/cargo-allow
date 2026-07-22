@@ -19,7 +19,7 @@ policy_impact:
 
 Normative atomic requirements for separating cargo-allow, cargo-intent, and
 cargo-proof inside one monorepo. Crate names and counts are referenced from
-#2612 only; this spec owns product-boundary law.
+Issue #2612 only; this spec owns product-boundary law.
 
 ## Behavior Contract
 
@@ -48,7 +48,7 @@ claim_class = "governance_structure"
 id = "repository-extraction-not-authorized"
 generation = 1
 status = "accepted"
-statement = "Physical repository extraction is not authorized by the three-product design package; monorepo implementation continues until Issue #2558 dogfood, Issue #2559 extraction-readiness evidence, and Issue #2605 exact-candidate interop all pass."
+statement = "Physical repository extraction is not authorized by the three-product design package; monorepo implementation continues until Issue #2558 dogfood, Issue #2605 exact-candidate interop, and Issue #2559 extraction-readiness evidence all pass, after which a separate explicit authorization is still required."
 claim_class = "governance_structure"
 ```
 
@@ -67,7 +67,7 @@ claim_class = "dependency_law"
 id = "intent-no-proof-dep"
 generation = 1
 status = "accepted"
-statement = "cargo-intent must not depend on cargo-proof crates; proof-engine may depend on intent-protocol but must not depend on intent-engine or cargo-intent crates."
+statement = "cargo-intent must not depend on cargo-proof crates; intent-protocol is proof-engine's only cargo-intent dependency, while proof-engine may also depend on its proof and shared-substrate crates."
 claim_class = "dependency_law"
 
 [[requirement]]
@@ -130,7 +130,8 @@ The system must not:
 - add convenience crates from the #2612 explicit non-crate list without a
   reviewed topology change;
 - infer product separation from matching CLI output alone;
-- authorize repository extraction from documentation without #2559 evidence.
+- authorize repository extraction before #2558, #2605, and #2559 all pass or
+  without a separate explicit authorization after those gates.
 
 ## Inputs
 
@@ -188,7 +189,7 @@ forbidden edges from this spec.
 ```bash
 cargo test -p allow-policy spec_system_design_package --locked -- --nocapture
 cargo test -p cargo-allow spec_design_artifact_links --locked -- --nocapture
-cargo-allow check --profile spec-system --mode audit
+cargo run -p cargo-allow -- check --profile spec-system --mode audit
 ```
 
 ## Acceptance Examples
