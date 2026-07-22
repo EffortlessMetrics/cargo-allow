@@ -320,6 +320,50 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9025"
+kind = "non_rust_file"
+family = "configuration"
+path = "policy/product-package-topology.toml"
+owner = "repo-infra"
+classification = "three_product_package_topology"
+reason = "Product package topology manifest for release family classification (#2604)."
+evidence = ["doc:docs/architecture/product-package-topology.md", "doc:policy/product-crates.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
+created = "2026-07-22"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "policy/product-package-topology.toml"
+target_fingerprint = "toml"
+glob = "policy/product-package-topology.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9026"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/architecture/product-package-topology.md"
+owner = "repo-infra"
+classification = "three_product_package_projection"
+reason = "Human projection of the product package topology manifest (#2604)."
+evidence = ["doc:policy/product-package-topology.toml", "doc:docs/architecture/product-crate-law.md", "doc:.allow/artifacts/doc-artifacts.toml"]
+created = "2026-07-22"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/architecture/product-package-topology.md"
+target_fingerprint = "md"
+glob = "docs/architecture/product-package-topology.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9005"
 kind = "non_rust_file"
 family = "documentation"
