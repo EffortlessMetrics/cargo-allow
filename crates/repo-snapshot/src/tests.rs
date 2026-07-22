@@ -1,6 +1,9 @@
 use crate::parity::{ParityContract, load_parity_contract};
 use crate::protocol_adapter::repository_snapshot_v1_from_allow_diff;
-use allow_diff::{RepositorySnapshotRequest, repository_snapshot, staged_repository_snapshot};
+use allow_diff::{
+    RepositorySnapshotRequest, StagedPathRead, read_staged_path, repository_snapshot,
+    staged_repository_snapshot,
+};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -60,6 +63,59 @@ fn staged_index_parity_over_allow_diff() -> Result<(), String> {
         crate::staged_index::StagedIndexSurface::MODULE_ID
     );
     Ok(())
+}
+
+#[test]
+fn staged_deletion_negative_fixture_ignores_dirty_replacement() -> Result<(), String> {
+    let root = workspace_root();
+    let contract_path = crate::parity::staged_deletion_parity_contract_path(&root);
+    let contract = load_staged_deletion_contract(&contract_path)?;
+
+    let repo = init_git_repo("staged-deletion-negative")?;
+    write_file(&repo, &contract.staged_path, "committed\n")?;
+    commit_all(&repo, "seed")?;
+    git(&repo, &["rm", "--", &contract.staged_path])?;
+    write_file(&repo, &contract.staged_path, "dirty replacement\n")?;
+
+    let snapshot = staged_repository_snapshot(&repo)
+        .map_err(|err| format!("allow-diff staged_repository_snapshot: {err}"))?;
+    let read = read_staged_path(&snapshot, Path::new(&contract.staged_path))
+        .map_err(|err| format!("allow-diff read_staged_path: {err}"))?;
+
+    if contract.expected_read != "missing" {
+        return Err(format!(
+            "fixture {} has unsupported expected_read",
+            contract.scenario_id
+        ));
+    }
+    if read != StagedPathRead::Missing {
+        return Err(
+            "staged deletion must not fall back to dirty worktree replacement bytes".to_string(),
+        );
+    }
+    if !contract.forbid_worktree_fallback {
+        return Err("negative fixture must forbid worktree fallback".to_string());
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+struct StagedDeletionParityContract {
+    scenario_id: String,
+    allow_diff_module: String,
+    repo_snapshot_module: String,
+    parity_case: String,
+    move_ledger_entry: String,
+    negative_case: bool,
+    staged_path: String,
+    expected_read: String,
+    forbid_worktree_fallback: bool,
+}
+
+fn load_staged_deletion_contract(path: &Path) -> Result<StagedDeletionParityContract, String> {
+    let text =
+        std::fs::read_to_string(path).map_err(|err| format!("read {}: {err}", path.display()))?;
+    toml::from_str(&text).map_err(|err| format!("parse {}: {err}", path.display()))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]

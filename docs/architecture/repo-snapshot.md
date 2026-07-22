@@ -7,8 +7,9 @@ Human projection of the shared snapshot crate (#2583).
 Exact repository source views and Git snapshot reads. PR1 (#2583-A) lands the crate
 skeleton and parity fixtures over current `allow-diff` revision/staged APIs.
 
-Parity fixtures live under `tests/fixtures/repo-snapshot/`. Implementation moves and
-the staged-deletion negative fixture land in packets 2583-B through 2583-D.
+Parity fixtures live under `tests/fixtures/repo-snapshot/`. Packet 2583-B adds the
+staged-deletion negative fixture (staged delete + dirty worktree replacement → path absent).
+Implementation moves land in packets 2583-C and 2583-D.
 
 ## Module surfaces
 
