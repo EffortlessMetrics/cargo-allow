@@ -1,0 +1,118 @@
+schema_version = "1.0"
+manifest_id = "CARGO-ALLOW-ARCH-0001"
+controlling_issue = 2580
+linked_move_ledger = "CARGO-ALLOW-MOVE-LEDGER-0001"
+
+# ProductCrateArchitectureV1 — report-only ownership manifest for #2580 PR1.
+
+[[product]]
+id = "cargo-allow"
+binary = "cargo-allow"
+owned_crates = [
+  "allow-core",
+  "allow-policy",
+  "allow-inventory",
+  "allow-files",
+  "allow-rust",
+  "allow-match",
+  "allow-report",
+  "allow-diff",
+  "allow-policy-legacy",
+  "cargo-allow",
+]
+forbid_product_dependencies = ["cargo-intent", "cargo-proof"]
+
+[[product]]
+id = "cargo-intent"
+binary = "cargo-intent"
+owned_crates = [
+  "intent-model",
+  "intent-protocol",
+  "intent-engine",
+  "intent-edit",
+  "cargo-intent",
+]
+forbid_product_dependencies = ["cargo-proof"]
+
+[[product]]
+id = "cargo-proof"
+binary = "cargo-proof"
+owned_crates = [
+  "proof-protocol",
+  "proof-provider-api",
+  "proof-engine",
+  "proof-adapter-command",
+  "proof-adapter-cargo-allow",
+  "proof-adapter-ripr",
+  "proof-adapter-hawk",
+  "cargo-proof",
+]
+forbid_product_dependencies = []
+
+[[shared_crate]]
+name = "repo-protocol"
+role = "SharedProtocol"
+allowed_domain_dependencies = []
+
+[[shared_crate]]
+name = "repo-snapshot"
+role = "SharedSnapshot"
+allowed_domain_dependencies = ["repo-protocol"]
+
+[[shared_crate]]
+name = "repo-edit"
+role = "SharedSnapshot"
+allowed_domain_dependencies = ["repo-protocol", "repo-snapshot"]
+
+[[shared_crate]]
+name = "rust-source-index"
+role = "SharedProtocol"
+allowed_domain_dependencies = ["repo-protocol"]
+
+[[planned_crate]]
+name = "repo-protocol"
+owner_product = "shared"
+role = "SharedProtocol"
+stage_issue = 2582
+
+[[planned_crate]]
+name = "repo-snapshot"
+owner_product = "shared"
+role = "SharedSnapshot"
+stage_issue = 2583
+
+[[planned_crate]]
+name = "intent-model"
+owner_product = "cargo-intent"
+role = "CargoIntent"
+stage_issue = 2584
+
+[[planned_crate]]
+name = "intent-protocol"
+owner_product = "cargo-intent"
+role = "CargoIntent"
+stage_issue = 2585
+
+[[planned_crate]]
+name = "intent-engine"
+owner_product = "cargo-intent"
+role = "CargoIntent"
+stage_issue = 2586
+
+[[planned_crate]]
+name = "cargo-intent"
+owner_product = "cargo-intent"
+role = "CargoIntent"
+stage_issue = 2599
+
+[[planned_crate]]
+name = "proof-protocol"
+owner_product = "cargo-proof"
+role = "CargoProof"
+stage_issue = 2588
+
+[[planned_crate]]
+name = "proof-engine"
+owner_product = "cargo-proof"
+role = "CargoProof"
+stage_issue = 2589

@@ -276,6 +276,50 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9023"
+kind = "non_rust_file"
+family = "configuration"
+path = "policy/product-crates.toml"
+owner = "repo-infra"
+classification = "three_product_architecture_manifest"
+reason = "Product/crate ownership manifest for three-product dependency law (#2580)."
+evidence = ["doc:docs/architecture/product-crate-law.md", "doc:policy/product-move-ledger.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
+created = "2026-07-22"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "policy/product-crates.toml"
+target_fingerprint = "toml"
+glob = "policy/product-crates.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9024"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/architecture/product-crate-law.md"
+owner = "repo-infra"
+classification = "three_product_architecture_projection"
+reason = "Human projection of the product crate architecture manifest (#2580)."
+evidence = ["doc:policy/product-crates.toml", "doc:docs/architecture/product-move-map.md", "doc:.allow/artifacts/doc-artifacts.toml"]
+created = "2026-07-22"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/architecture/product-crate-law.md"
+target_fingerprint = "md"
+glob = "docs/architecture/product-crate-law.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9005"
 kind = "non_rust_file"
 family = "documentation"
