@@ -364,6 +364,50 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9027"
+kind = "non_rust_file"
+family = "configuration"
+path = "policy/extraction-shims.toml"
+owner = "repo-infra"
+classification = "three_product_shim_registry"
+reason = "Extraction shim registry for bounded Rust compatibility during three-product extraction (#2607)."
+evidence = ["doc:docs/architecture/extraction-shims.md", "doc:policy/product-move-ledger.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
+created = "2026-07-22"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "policy/extraction-shims.toml"
+target_fingerprint = "toml"
+glob = "policy/extraction-shims.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9028"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/architecture/extraction-shims.md"
+owner = "repo-infra"
+classification = "three_product_shim_projection"
+reason = "Human projection of the extraction shim registry (#2607)."
+evidence = ["doc:policy/extraction-shims.toml", "doc:policy/product-move-ledger.toml", "doc:.allow/artifacts/doc-artifacts.toml"]
+created = "2026-07-22"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/architecture/extraction-shims.md"
+target_fingerprint = "md"
+glob = "docs/architecture/extraction-shims.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9005"
 kind = "non_rust_file"
 family = "documentation"
