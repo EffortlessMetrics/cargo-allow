@@ -2905,6 +2905,23 @@ fn test_roots() -> SpecSystemRoots {
     }
 }
 
+#[derive(serde::Deserialize)]
+struct ThreeProductDispositionEntry {
+    artifact: String,
+    disposition: String,
+}
+
+#[derive(serde::Deserialize)]
+struct ThreeProductDispositionMap {
+    schema_version: String,
+    design_package_proposal: String,
+    design_package_adr: String,
+    design_package_spec: String,
+    design_package_plan: String,
+    crate_topology_owner_issue: u32,
+    entry: Vec<ThreeProductDispositionEntry>,
+}
+
 #[test]
 fn spec_system_design_package() {
     let root = repo_root();
@@ -2930,9 +2947,8 @@ fn spec_system_design_package() {
         );
     }
 
-    let proposal_text = std::fs::read_to_string(&proposal).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("proposal readable: {err}"))
-    });
+    let proposal_text =
+        std::fs::read_to_string(&proposal).unwrap_or_else(|err| panic!("proposal readable: {err}"));
     assert!(proposal_text.contains("CARGO-ALLOW-PROP-0010"));
     assert!(proposal_text.contains("cargo-allow   = source-exception ledger"));
     assert!(proposal_text.contains("cargo-intent  = durable authored intent"));
@@ -2942,35 +2958,44 @@ fn spec_system_design_package() {
     assert!(proposal_text.contains("one-way process delegation"));
     assert!(proposal_text.contains("repository extraction is **not authorized**"));
 
-    let adr_text = std::fs::read_to_string(&adr).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("adr readable: {err}"))
-    });
+    let adr_text =
+        std::fs::read_to_string(&adr).unwrap_or_else(|err| panic!("adr readable: {err}"));
     assert!(adr_text.contains("CARGO-ALLOW-ADR-0002"));
     assert!(adr_text.contains("cargo-allow product → intent-model"));
     assert!(adr_text.contains("#2612"));
 
-    let spec_text = std::fs::read_to_string(&spec).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("spec readable: {err}"))
-    });
+    let spec_text =
+        std::fs::read_to_string(&spec).unwrap_or_else(|err| panic!("spec readable: {err}"));
     assert!(spec_text.contains("CARGO-ALLOW-SPEC-0010"));
     assert!(spec_text.contains("three-product-authority-split"));
     assert!(spec_text.contains("crate-topology-owned-by-2612"));
     assert!(spec_text.contains("rust-source-index-before-intent-engine"));
     assert!(spec_text.contains("repo-edit-deferred"));
 
-    let plan_text = std::fs::read_to_string(&plan).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("plan readable: {err}"))
-    });
+    let plan_text =
+        std::fs::read_to_string(&plan).unwrap_or_else(|err| panic!("plan readable: {err}"));
     assert!(plan_text.contains("CARGO-ALLOW-PLAN-0010"));
     assert!(plan_text.contains("Wave 0"));
     assert!(plan_text.contains("#2598"));
 
-    let disposition_text = std::fs::read_to_string(&disposition_map).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("disposition readable: {err}"))
-    });
-    assert!(disposition_text.contains("CARGO-ALLOW-PROP-0010"));
-    assert!(disposition_text.contains("CurrentCanonical"));
-    assert!(disposition_text.contains("crate_topology_owner_issue = 2612"));
+    let disposition_text = std::fs::read_to_string(&disposition_map)
+        .unwrap_or_else(|err| panic!("disposition readable: {err}"));
+    let disposition = toml::from_str::<ThreeProductDispositionMap>(&disposition_text)
+        .unwrap_or_else(|err| panic!("disposition map should parse as TOML: {err}"));
+    assert_eq!(disposition.schema_version, "1.0");
+    assert_eq!(disposition.design_package_proposal, "CARGO-ALLOW-PROP-0010");
+    assert_eq!(disposition.design_package_adr, "CARGO-ALLOW-ADR-0002");
+    assert_eq!(disposition.design_package_spec, "CARGO-ALLOW-SPEC-0010");
+    assert_eq!(disposition.design_package_plan, "CARGO-ALLOW-PLAN-0010");
+    assert_eq!(disposition.crate_topology_owner_issue, 2612);
+    assert!(
+        disposition
+            .entry
+            .iter()
+            .any(|entry| entry.artifact == "CARGO-ALLOW-PROP-0010"
+                && entry.disposition == "CurrentCanonical"),
+        "disposition map should mark PROP-0010 as CurrentCanonical"
+    );
 
     let ledger_result = parse_doc_artifact_ledger(include_str!(
         "../../../../.allow/artifacts/doc-artifacts.toml"
