@@ -1,7 +1,4 @@
-//! Adapter from `allow-diff` repository snapshot identities to `repo-protocol`
-//! transport envelopes (#2582 parity evidence).
-
-use crate::revision_identity::{
+use allow_diff::{
     RepositorySnapshotIdentity, RepositorySnapshotKind, ResolvedRevisionIdentity,
     SelectedPathIdentity,
 };
@@ -50,40 +47,5 @@ fn selected_path_v1_from_identity(identity: &SelectedPathIdentity) -> SelectedPa
         path: identity.path.clone(),
         present: identity.present,
         blob_oid: identity.blob_oid.clone(),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::revision_identity::{
-        RepositoryDirtyState, RepositorySnapshotIdentity, RepositorySnapshotKind,
-        ResolvedRevisionIdentity,
-    };
-
-    #[test]
-    fn repository_snapshot_v1_preserves_semantic_fields() {
-        let identity = RepositorySnapshotIdentity {
-            schema: crate::revision_identity::REPOSITORY_SNAPSHOT_SCHEMA,
-            kind: RepositorySnapshotKind::CommittedHead,
-            root_identity: "sha256:v1:fixture".to_string(),
-            object_format: RepositoryObjectFormat::Sha1,
-            head: ResolvedRevisionIdentity {
-                requested: "HEAD".to_string(),
-                commit: "cccccccccccccccccccccccccccccccccccccccc".to_string(),
-                tree: "tttttttttttttttttttttttttttttttttttttttt".to_string(),
-            },
-            base: None,
-            merge_base: None,
-            dirty_state: RepositoryDirtyState::NotProbed,
-            selected_paths: Vec::new(),
-            selected_source_closure: "sha256:v1:empty".to_string(),
-            limitations: vec!["fixture".to_string()],
-        };
-        let transport = repository_snapshot_v1_from_identity(&identity);
-        assert_eq!(transport.root_identity, identity.root_identity);
-        assert_eq!(transport.head.commit, identity.head.commit);
-        assert_eq!(transport.dirty_state, "not_probed");
-        assert_eq!(transport.limitations, identity.limitations);
     }
 }

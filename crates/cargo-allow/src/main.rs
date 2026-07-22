@@ -152,6 +152,8 @@ mod readme_tests;
 #[cfg(test)]
 mod release_prep_tests;
 #[cfg(test)]
+mod repo_protocol_adapter;
+#[cfg(test)]
 mod repo_protocol_parity_tests;
 #[cfg(test)]
 mod report_config_tests;

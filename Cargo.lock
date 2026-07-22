@@ -28,7 +28,6 @@ dependencies = [
  "allow-policy",
  "allow-policy-legacy",
  "allow-rust",
- "repo-protocol",
  "sha2",
 ]
 

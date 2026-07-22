@@ -17,5 +17,4 @@ allow-files.workspace = true
 allow-policy-legacy.workspace = true
 allow-policy.workspace = true
 allow-rust.workspace = true
-repo-protocol.workspace = true
 sha2.workspace = true

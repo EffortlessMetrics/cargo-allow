@@ -1,6 +1,7 @@
+use crate::repo_protocol_adapter::repository_snapshot_v1_from_identity;
 use allow_diff::{
     RepositoryDirtyState, RepositoryObjectFormat, RepositorySnapshotIdentity,
-    RepositorySnapshotKind, ResolvedRevisionIdentity, repository_snapshot_v1_from_identity,
+    RepositorySnapshotKind, ResolvedRevisionIdentity,
 };
 use repo_protocol::stable_digest_json;
 use std::path::PathBuf;
