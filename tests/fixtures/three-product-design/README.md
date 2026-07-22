@@ -71,7 +71,7 @@ note = "Crate names, counts, stage gates"
 ```bash
 cargo test -p allow-policy spec_system_design_package --locked -- --nocapture
 cargo test -p cargo-allow spec_design_artifact_links --locked -- --nocapture
-cargo run -p cargo-allow -- check --profile spec-system --mode audit
+cargo run -p cargo-allow --locked -- check --profile spec-system --mode audit
 ```
 
 ## Active extraction goal (`three-product-extraction-carry-through`)
