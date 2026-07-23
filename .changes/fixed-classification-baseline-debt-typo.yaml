@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  Policy: reject near-miss spellings of `baseline_debt` (e.g. `baseline-debt`,
+  `BaselineDebt`, `BASELINE_DEBT`). The exact `baseline_debt` spelling is the
+  only classification with structural lifecycle semantics (requires expires +
+  created, caps at 120 days, blocks in Strict/Release). A typo silently
+  bypassed all three. The check catches case variants, hyphen/whitespace
+  separators, and camelCase. Unrelated classifications are unaffected.
