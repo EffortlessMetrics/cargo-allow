@@ -1,0 +1,13 @@
+scenario_id = "parity-intent-engine-phase-obligations-v1"
+intent_engine_module = "intent-engine::phase_obligations"
+parity_case = "parity-intent-engine-phase-obligations-v1"
+move_ledger_entry = "move-cargo-allow-spec-system-workspace"
+sample_phase = "precommit"
+required_obligation_kinds = [
+  "evidence_review",
+  "implementation_closure",
+  "support_claim_review",
+  "inventory_completeness",
+  "subject_resolution",
+  "policy_alignment",
+]

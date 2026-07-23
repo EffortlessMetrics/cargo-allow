@@ -1,5 +1,17 @@
+mod graph_comparison;
+mod phase_obligations;
 mod workspace;
 
+pub use graph_comparison::{
+    GraphComparisonParityContract, graph_comparison_parity_contract_path,
+    graph_comparison_parity_contract_paths, graph_movement_kinds_fixture_path,
+    load_graph_comparison_parity_contract, load_graph_movement_kinds_fixture,
+};
+pub use phase_obligations::{
+    PhaseObligationsParityContract, load_phase_obligations_parity_contract,
+    load_precommit_obligation_plan_fixture, phase_obligations_parity_contract_path,
+    phase_obligations_parity_contract_paths, precommit_obligation_plan_fixture_path,
+};
 pub use workspace::{
     WorkspaceCompositionParityContract, load_self_hosted_workspace_composition_fixture,
     load_workspace_composition_parity_contract, self_hosted_workspace_composition_fixture_path,

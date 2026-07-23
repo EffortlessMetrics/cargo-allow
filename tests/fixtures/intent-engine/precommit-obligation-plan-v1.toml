@@ -1,0 +1,37 @@
+schema_id = "intent.phase-obligation-plan.v1"
+phase = "precommit"
+
+[[obligations]]
+obligation_id = "inventory-completeness"
+phase = "precommit"
+kind = "inventory_completeness"
+statement = "staged source inventory must be complete before exact subject obligations are current"
+posture = "blocking"
+
+[[obligations]]
+obligation_id = "policy-alignment"
+phase = "precommit"
+kind = "policy_alignment"
+statement = "staged graph policy surface changed and declarations must remain aligned"
+posture = "blocking"
+
+[[obligations]]
+obligation_id = "implementation-closure"
+phase = "precommit"
+kind = "implementation_closure"
+statement = "implementation slice or seam mapping changed and closure must be reviewed"
+posture = "blocking"
+
+[[obligations]]
+obligation_id = "evidence-review"
+phase = "precommit"
+kind = "evidence_review"
+statement = "evidence claim surface changed and receipts must be reviewed"
+posture = "blocking"
+
+[[obligations]]
+obligation_id = "subject-resolution"
+phase = "precommit"
+kind = "subject_resolution"
+statement = "subject selector or inventory binding changed and exact resolution must be current"
+posture = "blocking"
