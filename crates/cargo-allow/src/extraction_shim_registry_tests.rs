@@ -17,11 +17,14 @@ fn extraction_shim_registry_report_only() -> Result<(), String> {
     {
         return Err(format!("missing move ledger links: {diagnostics:?}"));
     }
-    if report.shim_count < 6 {
+    if report.shim_count < 7 {
         return Err("seeded shim inventory too small".to_string());
     }
-    if report.planned_count < 6 {
-        return Err("expected planned shims only in PR1".to_string());
+    if report.active_count < 2 {
+        return Err("expected repo-snapshot shims active after #2583-D".to_string());
+    }
+    if report.planned_count < 5 {
+        return Err("expected remaining shims planned".to_string());
     }
 
     let doc = root.join("docs/architecture/extraction-shims.md");

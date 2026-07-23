@@ -97,32 +97,32 @@ controlling_issue = 2564
 
 [[entry]]
 id = "move-allow-diff-staged-index"
-current_identity = "crates/allow-diff/src/staged_index.rs"
+current_identity = "crates/repo-snapshot/src/staged_index.rs"
 identity_kind = "rust_module"
-current_owner_product = "cargo-allow"
-current_owner_crate = "allow-diff"
+current_owner_product = "shared"
+current_owner_crate = "repo-snapshot"
 target_owner_product = "shared"
 target_owner_crate = "repo-snapshot"
 disposition = "MoveToSharedSnapshot"
-status = "current"
-claim_boundary = "Generic staged index reads leave allow-diff after repo-snapshot lands."
+status = "moved"
+claim_boundary = "Generic staged index reads; allow-diff retains publish-safe ModuleFacade shim."
 parity_fixture = "tests/fixtures/repo-snapshot/parity-staged-index-v1.toml"
-removal_condition = "issue:#2583 repo-snapshot parity"
+removal_condition = "issue:#2606 stage-1 cutover receipt"
 controlling_issue = 2583
 
 [[entry]]
 id = "move-allow-diff-revision-identity"
-current_identity = "crates/allow-diff/src/revision_identity.rs"
+current_identity = "crates/repo-snapshot/src/revision_identity.rs"
 identity_kind = "rust_module"
-current_owner_product = "cargo-allow"
-current_owner_crate = "allow-diff"
+current_owner_product = "shared"
+current_owner_crate = "repo-snapshot"
 target_owner_product = "shared"
 target_owner_crate = "repo-snapshot"
 disposition = "MoveToSharedSnapshot"
-status = "current"
-claim_boundary = "Revision identity helpers for snapshot consumers."
+status = "moved"
+claim_boundary = "Revision identity helpers; allow-diff retains publish-safe ModuleFacade shim."
 parity_fixture = "tests/fixtures/repo-snapshot/parity-committed-head-v1.toml"
-removal_condition = "issue:#2583 repo-snapshot parity"
+removal_condition = "issue:#2606 stage-1 cutover receipt"
 controlling_issue = 2583
 
 [[entry]]

@@ -26,7 +26,7 @@ use std::path::{Path, PathBuf};
 
 use allow_core::{CargoAllowResult, sha256_v1_bytes};
 
-use crate::git::{
+use crate::revision_git::{
     git_command, git_error, git_status_error, is_full_oid, parse_single_oid, resolve_commit_oid,
     run_git, tree_blob_oid_at_commit,
 };
@@ -545,6 +545,14 @@ fn normalize_selected_path(path: &Path) -> String {
 /// Module surface marker for extraction parity (#2583).
 pub struct RevisionIdentitySurface;
 
+#[expect(
+    dead_code,
+    reason = "policy:allow-9056: revision-identity facade marker (#2583-D)"
+)]
 impl RevisionIdentitySurface {
     pub const MODULE_ID: &'static str = "repo-snapshot::revision_identity";
 }
+
+#[cfg(test)]
+#[path = "../revision_identity_tests.rs"]
+mod tests;

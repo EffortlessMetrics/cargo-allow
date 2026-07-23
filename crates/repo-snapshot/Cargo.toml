@@ -14,11 +14,12 @@ publish = false
 
 [dependencies]
 allow-core.workspace = true
-allow-diff.workspace = true
 allow-inventory.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 toml.workspace = true
 
 [dev-dependencies]
+allow-diff = { path = "../allow-diff" }
 repo-protocol = { path = "../repo-protocol" }
