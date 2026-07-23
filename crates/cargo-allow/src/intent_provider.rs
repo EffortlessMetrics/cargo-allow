@@ -176,7 +176,7 @@ fn read_config_executable(
 }
 
 fn discover_on_path() -> Result<Option<PathBuf>, IntentProviderFailure> {
-  let path_var = env::var_os("PATH").ok_or_else(|| {
+    let path_var = env::var_os("PATH").ok_or_else(|| {
         IntentProviderFailure::new(
             IntentProviderFailureClass::Absent,
             "PATH is unset; cannot discover cargo-intent",
@@ -230,8 +230,7 @@ fn resolve_candidate(
 
 fn reject_workspace_leaks(root: &Path, executable: &Path) -> Result<(), IntentProviderFailure> {
     let root = fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
-    let target_root = fs::canonicalize(root.join("target"))
-        .unwrap_or_else(|_| root.join("target"));
+    let target_root = fs::canonicalize(root.join("target")).unwrap_or_else(|_| root.join("target"));
     let crates_root = fs::canonicalize(root.join("crates")).unwrap_or_else(|_| root.join("crates"));
     if path_within(executable, &target_root) {
         return Err(IntentProviderFailure::new(
