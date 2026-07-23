@@ -1,0 +1,9 @@
+kind: Fixed
+body: >-
+  Platform: normalize_path now strips the Windows verbatim prefix (\\?\)
+  before the segment walk, so paths from std::fs::canonicalize no longer
+  produce garbage identity keys where the prefix survives as path segments.
+  Drive letters (C:\) and plain UNC roots (\\server\share) are preserved
+  as meaningful absolute-path identity components. Verbatim UNC paths
+  (\\?\UNC\server\share) fold to a Unix-style absolute root. Child of
+  #1780.
