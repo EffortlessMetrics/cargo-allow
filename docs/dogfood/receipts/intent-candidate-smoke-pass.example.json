@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.intent-candidate-smoke.v1",
+  "tool": "cargo-intent",
+  "result": "Passed",
+  "claim_boundary": [
+    "seven_crate_intent_package_graph",
+    "extracted_path_install_outside_workspace",
+    "source_checkout_denied_during_decisive_install",
+    "no_proof_or_test_invocation",
+    "no_workspace_target_debug_binary"
+  ],
+  "candidate": {
+    "workspace_version": "0.2.0",
+    "crate_set_schema_id": "cargo-allow.intent-candidate-crate-set.v1",
+    "git_head": null
+  },
+  "environment": {
+    "os": "linux",
+    "arch": "x86_64",
+    "rustc_version": null,
+    "cargo_version": null,
+    "network_posture": "may_use_crates_io_for_external_deps",
+    "isolation_mechanism": "path_patch_extracted"
+  },
+  "package_set": {
+    "order": [
+      "allow-core",
+      "allow-inventory",
+      "repo-protocol",
+      "repo-snapshot",
+      "intent-protocol",
+      "intent-engine",
+      "cargo-intent"
+    ],
+    "crates": []
+  },
+  "isolation": {
+    "fresh_cargo_home": true,
+    "install_from_extracted_package": true,
+    "workspace_paths_absent": true,
+    "source_checkout_denied": true,
+    "workspace_target_debug_rejected": true
+  },
+  "install": {
+    "method": "cargo_install_path_extracted_with_patch",
+    "version_output": "cargo-intent 0.2.0",
+    "exit_code": 0
+  },
+  "limitations": [
+    "path_patch_not_classic_local_registry",
+    "linux_hosted_claim_primary"
+  ]
+}

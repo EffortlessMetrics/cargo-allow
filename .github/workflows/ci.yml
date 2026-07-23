@@ -71,6 +71,14 @@ jobs:
           name: source-candidate-smoke-receipt
           path: target/source-candidate-smoke/source-candidate-smoke.receipt.json
           if-no-files-found: warn
+      - name: Intent candidate install smoke (#2599-C)
+        run: bash scripts/intent-candidate-smoke.sh
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: intent-candidate-smoke-receipt
+          path: target/intent-candidate-smoke/intent-candidate-smoke.receipt.json
+          if-no-files-found: warn
   # Hosted characterization for #2366 / #2355: shallow missing-base fails closed,
   # then the same diff succeeds after history is available. Linux-only; keeps PR
   # CI cheap relative to a full matrix.

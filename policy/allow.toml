@@ -7931,3 +7931,87 @@ review_after = "2026-10-19"
 ast_kind = "tracked_file"
 target_fingerprint = "yaml"
 glob = ".changes/*.yaml"
+
+[[allow]]
+id = "allow-9094"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "docs/dogfood/fixtures/release/intent-candidate-crate-set.toml"
+owner = "core/release"
+classification = "docs_executable_contract"
+reason = "Shared seven-crate package order for IntentCandidate install smoke (#2599-C)."
+evidence = ["test:intent_candidate_crate_set_fixture_lists_seven_package_order_crates", "doc:docs/architecture/cargo-intent.md", "issue:2599"]
+created = "2026-07-23"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "docs/dogfood/fixtures/release/intent-candidate-crate-set.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9095"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/intent-candidate-smoke.sh"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "IntentCandidateInstallSmokeV1: package/extract/install seven-crate intent stack outside workspace (#2599-C)."
+evidence = ["doc:docs/architecture/cargo-intent.md", "test:example_intent_candidate_smoke_matches_schema_constants", "issue:2599", "workflow:.github/workflows/ci.yml"]
+created = "2026-07-23"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "sh"
+glob = "scripts/intent-candidate-smoke.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9096"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/test-intent-candidate-smoke.sh"
+owner = "core/release"
+classification = "ci_characterization_script"
+reason = "Characterization wrapper for IntentCandidate install smoke (#2599-C)."
+evidence = ["doc:docs/architecture/cargo-intent.md", "issue:2599"]
+created = "2026-07-23"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "sh"
+glob = "scripts/test-intent-candidate-smoke.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9097"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/receipts/intent-candidate-smoke-pass.example.json"
+owner = "core/release"
+classification = "docs_executable_contract"
+reason = "Example receipt for IntentCandidateInstallSmokeV1 (#2599-C)."
+evidence = ["test:example_intent_candidate_smoke_matches_schema_constants", "issue:2599", "doc:docs/architecture/cargo-intent.md"]
+created = "2026-07-23"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "json"
+glob = "docs/dogfood/receipts/intent-candidate-smoke-pass.example.json"
+
+[allow.last_seen]
+line = 1
+column = 1
