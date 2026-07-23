@@ -452,7 +452,14 @@ fn migrate_from_uses_explicit_root_for_evidence_diagnostics() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("read migrate summary: {err}")));
     let value = serde_json::from_str::<Value>(&summary)
         .unwrap_or_else(|err| std::panic::panic_any(format!("parse migrate summary: {err}")));
-    let expected_root = allow_report::source_tree_path_text(&dir);
+    // #1825: On Windows the source-tree root is canonicalized by
+    // resolve_source_tree_root (yielding long names), while the test's temp
+    // dir from std::env::temp_dir() may use 8.3 short names (RUNNER~1).
+    // Canonicalize before computing the expected root so both sides match.
+    let canonical_dir = dir
+        .canonicalize()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("canonicalize dir: {err}")));
+    let expected_root = allow_report::source_tree_path_text(&canonical_dir);
 
     assert_eq!(
         value.pointer("/input/kind").and_then(Value::as_str),
@@ -521,7 +528,14 @@ fn migrate_from_infers_root_for_evidence_diagnostics() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("read migrate summary: {err}")));
     let value = serde_json::from_str::<Value>(&summary)
         .unwrap_or_else(|err| std::panic::panic_any(format!("parse migrate summary: {err}")));
-    let expected_root = allow_report::source_tree_path_text(&dir);
+    // #1825: On Windows the source-tree root is canonicalized by
+    // resolve_source_tree_root (yielding long names), while the test's temp
+    // dir from std::env::temp_dir() may use 8.3 short names (RUNNER~1).
+    // Canonicalize before computing the expected root so both sides match.
+    let canonical_dir = dir
+        .canonicalize()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("canonicalize dir: {err}")));
+    let expected_root = allow_report::source_tree_path_text(&canonical_dir);
 
     assert_eq!(
         value.pointer("/inventory/source").and_then(Value::as_str),

@@ -210,10 +210,25 @@ fn saved_doctor_output_suggests_init_when_config_is_missing() {
         Some(false),
         "doctor should report missing config in source-tree setup diagnostics"
     );
-    let expected = format!(
-        "cargo-allow init --root \"{}\"",
-        fixture.root_str().replace('\\', "/")
-    );
+    // #1825: On Windows the source-tree root is canonicalized by
+    // resolve_source_tree_root (yielding long names with a verbatim \\?\
+    // prefix), while the test's temp dir may use 8.3 short names. The doctor
+    // output uses the canonicalized root with the verbatim prefix stripped.
+    // Canonicalize and strip the prefix before building the expected command.
+    let canonical_root = fixture
+        .root
+        .canonicalize()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("canonicalize fixture root: {err}")));
+    let canonical_root_str = canonical_root
+        .to_str()
+        .unwrap_or_else(|| std::panic::panic_any("non-UTF-8 canonical root"))
+        .replace('\\', "/");
+    // Strip the verbatim prefix if present (//?/ on forward-slashed paths).
+    let canonical_root_str = canonical_root_str
+        .strip_prefix("//?/")
+        .map(|s| s.to_string())
+        .unwrap_or(canonical_root_str);
+    let expected = format!("cargo-allow init --root \"{canonical_root_str}\"");
     assert_eq!(
         value
             .pointer("/config/suggested_init_command")
