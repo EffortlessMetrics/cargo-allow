@@ -1,0 +1,11 @@
+scenario_id = "parity-intent-protocol-identity-query-v1"
+intent_protocol_module = "intent-protocol::identity_query"
+parity_case = "parity-intent-protocol-identity-query-v1"
+move_ledger_entry = "move-allow-report-spec-system-schema"
+required_identity_fields = [
+  "snapshot.head.commit",
+  "artifact_kind",
+  "artifact_id",
+  "source_path",
+  "content_identity",
+]

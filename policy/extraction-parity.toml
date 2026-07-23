@@ -72,6 +72,17 @@ disposition = "contract_only"
 claim_boundary = "Schema contract only; renderers consume protocol DTOs."
 
 [[case]]
+id = "parity-intent-protocol-identity-query-v1"
+stage = "IntentProtocol"
+move_ledger_entry = "move-allow-report-spec-system-schema"
+shim_id = "shim-allow-report-spec-system-schema"
+old_producer = "allow-report::spec_system_schemas"
+new_producer = "intent-protocol::identity_query"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Contract only; identity/query envelopes without provider argv."
+
+[[case]]
 id = "parity-proof-protocol-plan-dtos-v1"
 stage = "ProofProtocol"
 move_ledger_entry = "move-issue-2568-embedded-evaluator"

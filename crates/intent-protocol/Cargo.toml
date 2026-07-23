@@ -1,0 +1,21 @@
+[package]
+name = "intent-protocol"
+description = "Intent-facing transport envelopes for three-product extraction."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords.workspace = true
+categories.workspace = true
+publish = false
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+toml.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
