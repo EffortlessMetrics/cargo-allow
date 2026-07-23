@@ -2,7 +2,7 @@
 
 Durable authored intent and obligation compiler (#2599).
 
-Most users invoke `cargo intent` through the cargo subcommand alias; this crate is the cargo-intent product shell.
+Most users should use `cargo intent` through the cargo subcommand alias; this crate is the cargo-intent product shell.
 
 ## Claim boundary
 
