@@ -13,5 +13,6 @@ Parity fixtures live under `tests/fixtures/intent-protocol/`.
 ## Module surfaces
 
 - `intent-protocol::identity_query` — identity and query envelopes (#2585-A)
+- `intent-protocol::view_diff_closure` — view, diff, and source-closure envelopes (#2585-B)
 
-View/diff/closure and obligation-plan envelopes land in later #2585 packets.
+Obligation-plan envelopes land in packet 2585-C.

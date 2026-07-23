@@ -1,4 +1,6 @@
-use intent_protocol::identity_query_parity_contract_paths;
+use intent_protocol::{
+    identity_query_parity_contract_paths, view_diff_closure_parity_contract_paths,
+};
 use std::path::PathBuf;
 
 #[test]
@@ -13,12 +15,20 @@ fn intent_protocol_parity_fixtures_registered() -> Result<(), String> {
             return Err(format!("missing parity fixture {}", path.display()));
         }
     }
+    for path in view_diff_closure_parity_contract_paths(&root) {
+        if !path.is_file() {
+            return Err(format!("missing parity fixture {}", path.display()));
+        }
+    }
 
     let doc = root.join("docs/architecture/intent-protocol.md");
     let doc_text =
         std::fs::read_to_string(&doc).map_err(|err| format!("intent-protocol doc: {err}"))?;
     if !doc_text.contains("2585-A") {
         return Err("human projection missing PR1 packet marker".to_string());
+    }
+    if !doc_text.contains("2585-B") {
+        return Err("human projection missing PR2 packet marker".to_string());
     }
 
     let ledger = std::fs::read_to_string(root.join("policy/product-move-ledger.toml"))

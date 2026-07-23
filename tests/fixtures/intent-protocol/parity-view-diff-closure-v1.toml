@@ -1,0 +1,13 @@
+scenario_id = "parity-intent-protocol-view-diff-closure-v1"
+intent_protocol_module = "intent-protocol::view_diff_closure"
+parity_case = "parity-intent-protocol-view-diff-closure-v1"
+move_ledger_entry = "move-allow-report-spec-system-schema"
+required_view_fields = [
+  "snapshot.head.commit",
+  "kind",
+  "revision_hint",
+]
+required_closure_fields = [
+  "selected_paths",
+  "selected_source_closure",
+]
