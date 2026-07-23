@@ -13,3 +13,10 @@ pub struct ViewDiffClosureSurface;
 impl ViewDiffClosureSurface {
     pub const MODULE_ID: &'static str = "intent-protocol::view_diff_closure";
 }
+
+/// Obligation-plan envelope surface (#2585-C).
+pub struct ObligationPlanSurface;
+
+impl ObligationPlanSurface {
+    pub const MODULE_ID: &'static str = "intent-protocol::obligation_plan";
+}
