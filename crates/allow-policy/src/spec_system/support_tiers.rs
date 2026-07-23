@@ -1,20 +1,6 @@
+use super::*;
+
 use allow_core::{CargoAllowError, CargoAllowResult};
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SupportTierRow {
-    pub surface: String,
-    pub tier: SupportTierLevel,
-    pub claim: String,
-    pub proof_command: String,
-    pub notes: String,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SupportTierLevel {
-    Stable,
-    Stabilizing,
-    Advisory,
-}
 
 pub fn validate_support_tier_claims(input: &str) -> CargoAllowResult<Vec<SupportTierRow>> {
     let rows = parse_support_tier_claims(input)?;
@@ -141,12 +127,6 @@ fn parse_support_tier_level(input: &str) -> CargoAllowResult<SupportTierLevel> {
         value => Err(CargoAllowError::new(format!(
             "unknown support-tier level {value}"
         ))),
-    }
-}
-
-impl SupportTierLevel {
-    fn requires_proof_command(self) -> bool {
-        matches!(self, Self::Stable | Self::Stabilizing)
     }
 }
 

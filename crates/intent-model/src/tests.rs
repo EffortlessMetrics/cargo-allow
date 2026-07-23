@@ -33,6 +33,40 @@ fn spec_system_surface_matches_parity_contract() -> Result<(), String> {
     Ok(())
 }
 
+const SPEC_SYSTEM_DTO_FILES: &[&str] = &[
+    "active_goal.rs",
+    "authored_mapping.rs",
+    "compiled_graph.rs",
+    "config.rs",
+    "doc_artifacts.rs",
+    "implementation_slice.rs",
+    "import_roots.rs",
+    "precommit.rs",
+    "requirement.rs",
+    "support_tiers.rs",
+];
+
+#[test]
+fn spec_system_snapshot_matches_intent_model() -> Result<(), String> {
+    let root = workspace_root();
+    for file in SPEC_SYSTEM_DTO_FILES {
+        let canonical = std::fs::read_to_string(
+            root.join(format!("crates/intent-model/src/spec_system/{file}")),
+        )
+        .map_err(|err| format!("read canonical spec_system/{file}: {err}"))?;
+        let packaged = std::fs::read_to_string(root.join(format!(
+            "crates/allow-policy/src/snapshot_package/spec_system/{file}"
+        )))
+        .map_err(|err| format!("read allow-policy snapshot spec_system/{file}: {err}"))?;
+        if canonical.replace("\r\n", "\n") != packaged.replace("\r\n", "\n") {
+            return Err(format!(
+                "allow-policy snapshot_package/spec_system/{file} must match intent-model spec_system/{file}"
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn validate_contract(contract: &SpecSystemParityContract) -> Result<(), String> {
     if contract.scenario_id.is_empty() {
         return Err("empty scenario_id".to_string());

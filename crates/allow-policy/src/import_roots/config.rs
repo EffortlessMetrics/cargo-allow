@@ -198,3 +198,34 @@ pub fn default_import_roots_config() -> ImportRootsConfig {
         ],
     }
 }
+
+impl From<crate::spec_system::ImportNodeRole> for ImportNodeRole {
+    fn from(role: crate::spec_system::ImportNodeRole) -> Self {
+        match role {
+            crate::spec_system::ImportNodeRole::Owned => Self::Owned,
+            crate::spec_system::ImportNodeRole::Imported => Self::Imported,
+            crate::spec_system::ImportNodeRole::Legacy => Self::Legacy,
+            crate::spec_system::ImportNodeRole::Generated => Self::Generated,
+        }
+    }
+}
+
+impl From<&crate::spec_system::ImportRootEntry> for ImportRootEntry {
+    fn from(entry: &crate::spec_system::ImportRootEntry) -> Self {
+        Self {
+            id: entry.id.clone(),
+            path: entry.path.clone(),
+            ecosystem: entry.ecosystem.clone(),
+            role: entry.role.into(),
+        }
+    }
+}
+
+impl From<&crate::spec_system::ImportRootsConfig> for ImportRootsConfig {
+    fn from(config: &crate::spec_system::ImportRootsConfig) -> Self {
+        Self {
+            owned: config.owned.clone(),
+            entries: config.entries.iter().map(ImportRootEntry::from).collect(),
+        }
+    }
+}

@@ -1,5 +1,4 @@
 use super::*;
-use crate::import_roots::ImportNodeRole;
 use allow_core::CargoAllowError;
 use std::path::Path;
 

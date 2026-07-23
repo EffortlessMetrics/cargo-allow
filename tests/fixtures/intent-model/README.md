@@ -10,6 +10,6 @@ owns the implementations.
 | --- | --- | --- |
 | `parity-spec-system-v1.toml` | `parity-intent-model-spec-system-v1` | `move-allow-policy-spec-system` |
 
-Packet 2584-B moves domain DTOs into `intent-model::spec_system`; `allow-policy`
-keeps a publish-safe snapshot copy in sync. Packet 2584-C moves parsing helpers
-and compatibility re-exports.
+Packet 2584-B moved domain DTOs into `intent-model::spec_system`; `allow-policy`
+keeps a publish-safe snapshot copy in `snapshot_package/spec_system/` (sync-tested).
+Packet 2584-C moves parsing helpers and retires duplicate logic from `allow-policy`.

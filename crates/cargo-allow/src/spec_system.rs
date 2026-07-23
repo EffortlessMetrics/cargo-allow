@@ -4,7 +4,7 @@ use allow_policy::federation::{
     FederationLoadOutcome, evaluate_spec_system_ledger, load_federation_config,
 };
 use allow_policy::import_roots::{
-    ImportDiagnosticKind, ImportGraph, discover_import_graph, resolve_import_roots_config,
+    ImportDiagnosticKind, ImportGraph, discover_import_graph, resolve_spec_system_import_roots,
     validate_import_roots_config,
 };
 use allow_policy::spec_system::{
@@ -865,7 +865,7 @@ fn build_spec_system_report(
     if include_work_items {
         work_items.extend(work_items_from_config_findings(&findings));
     }
-    let import_config = resolve_import_roots_config(cfg.import_roots.as_ref());
+    let import_config = resolve_spec_system_import_roots(cfg.import_roots.as_ref());
     let validated_import_roots = validate_import_roots_config(import_config);
     let import_graph = discover_import_graph(&root, &validated_import_roots);
     findings.extend(import_graph_findings(&import_graph));

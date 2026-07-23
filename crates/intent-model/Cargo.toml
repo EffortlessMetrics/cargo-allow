@@ -16,3 +16,6 @@ publish = false
 allow-core.workspace = true
 serde = { workspace = true, features = ["derive"] }
 toml.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

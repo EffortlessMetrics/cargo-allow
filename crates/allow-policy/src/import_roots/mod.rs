@@ -17,6 +17,7 @@ pub use config::{
 };
 pub use discover::{
     ImportEdge, ImportGraph, ImportNode, discover_import_graph, resolve_import_roots_config,
+    resolve_spec_system_import_roots,
 };
 pub use validate::{
     ImportDiagnostic, ImportDiagnosticKind, ValidatedImportRootsConfig,
