@@ -1,0 +1,8 @@
+scenario_id = "parity-intent-engine-evaluator-packet-v1"
+intent_engine_module = "intent-engine::evaluator_packet"
+parity_case = "parity-intent-engine-evaluator-packet-v1"
+move_ledger_entry = "move-cargo-allow-spec-system-workspace"
+required_packet_fields = [
+  "query.identity.artifact_kind",
+  "kind",
+]
