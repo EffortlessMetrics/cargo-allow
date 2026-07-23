@@ -1,0 +1,9 @@
+kind: Fixed
+body: >-
+  Platform/docs: document why symlinks (mode 120000) and gitlinks/submodules
+  (mode 160000) are excluded from git tree file enumeration at base revisions.
+  Their blob content is a target path or commit reference, not parseable
+  source — cargo-allow's claim is source-syntax presence. The `changed_files`
+  path already uses `-z` (NUL-delimited) output to handle embedded newlines
+  (#1918); this PR documents the symlink/gitlink exclusion rationale in the
+  parser and the read-file path. Child of #1780.

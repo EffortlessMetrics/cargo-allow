@@ -122,6 +122,10 @@ pub fn read_file_at_revision(
                     "git ls-tree returned path bytes that do not match the requested source-tree path",
                 ));
             }
+            // Symlinks (120000) and gitlinks (160000) are not regular source
+            // files: their blob content is a target path or commit reference,
+            // not parseable source. Return None so callers treat the path as
+            // absent at this revision (#1826).
             if !mode.starts_with("100") {
                 return Ok(None);
             }
@@ -515,6 +519,12 @@ fn parse_git_ls_tree_file_entries_z_checked(stdout: &[u8]) -> CargoAllowResult<V
         .filter(|record| !record.is_empty())
     {
         match parse_git_tree_record_any(record) {
+            // Only regular files (mode 100644) and executables (100755) carry
+            // source content. Symlinks (120000) store the target path as their
+            // blob content, not Rust source; gitlinks/submodules (160000) point
+            // to commit objects. Both are excluded because cargo-allow's claim
+            // is source-syntax presence, and neither blob type contains
+            // parseable source (#1826). Trees (040000) are directories.
             TreeRecordParse::Entry(entry) if entry.mode.starts_with("100") => {
                 files.push(entry);
             }
