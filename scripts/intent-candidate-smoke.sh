@@ -335,11 +335,20 @@ log "cargo-intent --help"
 log "cargo-intent identity"
 "${cargo_bin}" identity >/dev/null
 
+declare -a install_closure=(
+  allow-core
+  allow-inventory
+  repo-snapshot
+  intent-protocol
+  intent-engine
+  cargo-intent
+)
+
 log "confirming internal deps resolve from extracted/patched graph (not workspace crates/)"
 resolve_meta_path="${offline_root}/resolve-metadata.json"
 cargo metadata --format-version 1 --manifest-path "${extracted_bin_pkg}/Cargo.toml" \
   >"${resolve_meta_path}"
-python3 - "${resolve_meta_path}" "${ROOT_NATIVE}" "${EXTRACTED_NATIVE}" "${crates[@]}" <<'PY'
+python3 - "${resolve_meta_path}" "${ROOT_NATIVE}" "${EXTRACTED_NATIVE}" "${install_closure[@]}" <<'PY'
 import json, sys
 from pathlib import Path
 
