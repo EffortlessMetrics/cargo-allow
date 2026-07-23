@@ -1,8 +1,10 @@
 use crate::IdentityQuerySurface;
+use crate::ObligationPlanSurface;
 use crate::ViewDiffClosureSurface;
 use crate::parity::{
-    IdentityQueryParityContract, ViewDiffClosureParityContract,
-    load_identity_query_parity_contract, load_view_diff_closure_parity_contract,
+    IdentityQueryParityContract, ObligationPlanParityContract, ViewDiffClosureParityContract,
+    load_identity_query_parity_contract, load_obligation_plan_parity_contract,
+    load_view_diff_closure_parity_contract,
 };
 use crate::{
     REPOSITORY_SNAPSHOT_SCHEMA_ID, RepositorySnapshotKindV1, RepositorySnapshotV1,
@@ -20,6 +22,10 @@ fn parity_contracts_load_from_fixtures() -> Result<(), String> {
     for path in crate::parity::view_diff_closure_parity_contract_paths(&root) {
         let contract = load_view_diff_closure_parity_contract(&path)?;
         validate_view_diff_closure_contract(&contract)?;
+    }
+    for path in crate::parity::obligation_plan_parity_contract_paths(&root) {
+        let contract = load_obligation_plan_parity_contract(&path)?;
+        validate_obligation_plan_contract(&contract)?;
     }
     Ok(())
 }
@@ -84,6 +90,55 @@ fn view_diff_closure_surface_matches_parity_contract() -> Result<(), String> {
     }
     if contract.parity_case != "parity-intent-protocol-view-diff-closure-v1" {
         return Err("fixture parity_case mismatch".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn obligation_plan_surface_matches_parity_contract() -> Result<(), String> {
+    let root = workspace_root();
+    let contract_path = crate::parity::obligation_plan_parity_contract_path(&root);
+    let contract = load_obligation_plan_parity_contract(&contract_path)?;
+    if contract.intent_protocol_module != ObligationPlanSurface::MODULE_ID {
+        return Err(format!(
+            "surface marker {} does not match contract {}",
+            ObligationPlanSurface::MODULE_ID,
+            contract.intent_protocol_module
+        ));
+    }
+    if contract.parity_case != "parity-intent-protocol-obligation-plan-v1" {
+        return Err("fixture parity_case mismatch".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn obligation_plan_envelope_roundtrip() -> Result<(), String> {
+    let snapshot = sample_snapshot();
+    let identity = crate::IntentIdentityEnvelopeV1::new(
+        snapshot,
+        crate::IntentArtifactKindV1::ImplementationSlice,
+        "slice/self-hosted-runtime-promotion-v1",
+        ".allow/spec-system/slices/self-hosted-runtime-promotion-v1.toml",
+        "sha256:v1:fixture-slice",
+    );
+    let obligation = crate::IntentPhaseObligationV1 {
+        obligation_id: "obligation-evidence-closure".to_string(),
+        phase: "precommit".to_string(),
+        kind: crate::IntentPhaseObligationKindV1::EvidenceReview,
+        statement: "Review evidence closure before support promotion.".to_string(),
+        posture: crate::IntentObligationPostureV1::Blocking,
+        evidence_refs: vec![
+            "doc:docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md".to_string(),
+        ],
+    };
+    let plan = crate::IntentObligationPlanEnvelopeV1::new(identity, "precommit", vec![obligation]);
+    let json =
+        serde_json::to_string(&plan).map_err(|err| format!("serialize obligation plan: {err}"))?;
+    let decoded: crate::IntentObligationPlanEnvelopeV1 =
+        serde_json::from_str(&json).map_err(|err| format!("deserialize obligation plan: {err}"))?;
+    if decoded.obligations.len() != 1 {
+        return Err("obligation count did not round-trip".to_string());
     }
     Ok(())
 }
@@ -170,6 +225,24 @@ fn validate_view_diff_closure_contract(
     }
     if contract.required_closure_fields.len() < 2 {
         return Err("required_closure_fields too small".to_string());
+    }
+    Ok(())
+}
+
+fn validate_obligation_plan_contract(
+    contract: &ObligationPlanParityContract,
+) -> Result<(), String> {
+    if contract.scenario_id.is_empty() {
+        return Err("empty scenario_id".to_string());
+    }
+    if contract.move_ledger_entry != "move-allow-report-spec-system-schema" {
+        return Err(format!(
+            "unexpected move ledger entry {}",
+            contract.move_ledger_entry
+        ));
+    }
+    if contract.required_obligation_fields.len() < 4 {
+        return Err("required_obligation_fields too small".to_string());
     }
     Ok(())
 }

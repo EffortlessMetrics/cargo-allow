@@ -9,6 +9,7 @@
 mod closure;
 mod diff;
 mod identity;
+mod obligation;
 mod parity;
 mod protocol_surface;
 mod query;
@@ -24,13 +25,20 @@ pub use diff::{
     IntentDiffResponseV1,
 };
 pub use identity::{INTENT_IDENTITY_SCHEMA_ID, IntentArtifactKindV1, IntentIdentityEnvelopeV1};
-pub use parity::{
-    IdentityQueryParityContract, ViewDiffClosureParityContract,
-    identity_query_parity_contract_path, identity_query_parity_contract_paths,
-    load_identity_query_parity_contract, load_view_diff_closure_parity_contract,
-    view_diff_closure_parity_contract_path, view_diff_closure_parity_contract_paths,
+pub use obligation::{
+    INTENT_OBLIGATION_PLAN_RESPONSE_SCHEMA_ID, INTENT_OBLIGATION_PLAN_SCHEMA_ID,
+    IntentObligationPlanEnvelopeV1, IntentObligationPlanResponseV1, IntentObligationPostureV1,
+    IntentPhaseObligationKindV1, IntentPhaseObligationV1,
 };
-pub use protocol_surface::{IdentityQuerySurface, ViewDiffClosureSurface};
+pub use parity::{
+    IdentityQueryParityContract, ObligationPlanParityContract, ViewDiffClosureParityContract,
+    identity_query_parity_contract_path, identity_query_parity_contract_paths,
+    load_identity_query_parity_contract, load_obligation_plan_parity_contract,
+    load_view_diff_closure_parity_contract, obligation_plan_parity_contract_path,
+    obligation_plan_parity_contract_paths, view_diff_closure_parity_contract_path,
+    view_diff_closure_parity_contract_paths,
+};
+pub use protocol_surface::{IdentityQuerySurface, ObligationPlanSurface, ViewDiffClosureSurface};
 pub use query::{
     INTENT_QUERY_RESPONSE_SCHEMA_ID, INTENT_QUERY_SCHEMA_ID, IntentQueryEnvelopeV1,
     IntentQueryKindV1, IntentQueryResponseV1,

@@ -44,6 +44,31 @@ pub fn load_identity_query_parity_contract(
     toml::from_str(&text).map_err(|err| format!("parse {}: {err}", path.display()))
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct ObligationPlanParityContract {
+    pub scenario_id: String,
+    pub parity_case: String,
+    pub move_ledger_entry: String,
+    pub intent_protocol_module: String,
+    pub required_obligation_fields: Vec<String>,
+}
+
+pub fn obligation_plan_parity_contract_path(root: &Path) -> PathBuf {
+    root.join("tests/fixtures/intent-protocol/parity-obligation-plan-v1.toml")
+}
+
+pub fn obligation_plan_parity_contract_paths(root: &Path) -> Vec<PathBuf> {
+    vec![obligation_plan_parity_contract_path(root)]
+}
+
+pub fn load_obligation_plan_parity_contract(
+    path: &Path,
+) -> Result<ObligationPlanParityContract, String> {
+    let text =
+        std::fs::read_to_string(path).map_err(|err| format!("read {}: {err}", path.display()))?;
+    toml::from_str(&text).map_err(|err| format!("parse {}: {err}", path.display()))
+}
+
 pub fn load_view_diff_closure_parity_contract(
     path: &Path,
 ) -> Result<ViewDiffClosureParityContract, String> {

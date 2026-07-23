@@ -1,0 +1,11 @@
+scenario_id = "parity-intent-protocol-obligation-plan-v1"
+intent_protocol_module = "intent-protocol::obligation_plan"
+parity_case = "parity-intent-protocol-obligation-plan-v1"
+move_ledger_entry = "move-allow-report-spec-system-schema"
+required_obligation_fields = [
+  "obligation_id",
+  "phase",
+  "kind",
+  "statement",
+  "posture",
+]

@@ -8,4 +8,4 @@ Report-only contracts for intent-protocol identity/query envelope parity.
 | --- | --- | --- |
 | `parity-identity-query-v1.toml` | `parity-intent-protocol-identity-query-v1` | `move-allow-report-spec-system-schema` |
 
-Packet 2585-A lands identity and query transport envelopes. Packet 2585-B adds view/diff/closure envelopes (`parity-view-diff-closure-v1.toml`). Packet 2585-C adds obligation-plan DTO envelopes.
+Packet 2585-A lands identity and query transport envelopes. Packet 2585-B adds view/diff/closure envelopes (`parity-view-diff-closure-v1.toml`). Packet 2585-C adds obligation-plan DTO envelopes (`parity-obligation-plan-v1.toml`).
