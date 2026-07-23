@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  Policy: validate import-root paths for source-tree-relative safety. Reject
+  absolute paths, drive letters, `..` traversal, and bare `.` — the same
+  validation allow entries already get via `validate_path_scope`. Without
+  this check, `discover.rs` does `root.join(&entry.path)` which silently
+  escapes the source tree when given an absolute or traversal path. Child
+  of #1782.
