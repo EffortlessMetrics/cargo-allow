@@ -196,7 +196,7 @@ else
       write_patch_config "${cargo_home}/config.toml" "${dependency_crates[@]:0:${idx}}"
       cargo package -p "${crate}" --allow-dirty
     fi
-    src="target/package/${crate}-${version}.crate"
+    src="${target_dir}/package/${crate}-${version}.crate"
     [[ -f "${src}" ]] || fail "missing packaged crate ${src}"
     cp "${src}" "${packages_dir}/"
     dest="${extracted_dir}/${crate}-${version}"
@@ -214,7 +214,7 @@ else
   write_patch_config "${cargo_home}/config.toml" "${dependency_crates[@]}"
   cargo package -p cargo-intent --allow-dirty
   crate="cargo-intent"
-  src="target/package/${crate}-${version}.crate"
+  src="${target_dir}/package/${crate}-${version}.crate"
   [[ -f "${src}" ]] || fail "missing packaged crate ${src}"
   cp "${src}" "${packages_dir}/"
   dest="${extracted_dir}/${crate}-${version}"
