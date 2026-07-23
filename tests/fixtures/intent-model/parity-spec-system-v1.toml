@@ -1,0 +1,12 @@
+scenario_id = "parity-intent-model-spec-system-v1"
+allow_policy_module = "allow-policy::spec_system"
+intent_model_module = "intent-model::spec_system"
+parity_case = "parity-intent-model-spec-system-v1"
+move_ledger_entry = "move-allow-policy-spec-system"
+required_config_fields = [
+  "roots.docs",
+  "roots.plans",
+  "requirements.enabled",
+  "generation",
+  "mode",
+]

@@ -1,0 +1,18 @@
+[package]
+name = "intent-model"
+description = "Intent domain types for three-product spec-system extraction."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords.workspace = true
+categories.workspace = true
+publish = false
+
+[dependencies]
+allow-core.workspace = true
+serde = { workspace = true, features = ["derive"] }
+toml.workspace = true

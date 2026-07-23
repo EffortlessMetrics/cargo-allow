@@ -70,12 +70,6 @@ role = "SharedProtocol"
 allowed_domain_dependencies = ["repo-protocol"]
 
 [[planned_crate]]
-name = "intent-model"
-owner_product = "cargo-intent"
-role = "CargoIntent"
-stage_issue = 2584
-
-[[planned_crate]]
 name = "intent-protocol"
 owner_product = "cargo-intent"
 role = "CargoIntent"
