@@ -45,6 +45,18 @@ pub(crate) fn validate_allow_entry_scope(entry: &AllowEntry) -> CargoAllowResult
     }
     if let Some(path) = &entry.path {
         validate_path_scope(&entry.id, path)?;
+        // #1835: `path = "."` covers the entire source tree, which is the
+        // same escape valve that `glob = "**"` is already rejected for (see
+        // validate_supported_glob_syntax). Reject it here so the "narrower
+        // scope" rule is not bypassable via path. The workspace root
+        // legitimately uses `.` and is validated separately in
+        // validate_workspace, not through this entry-level check.
+        if path.to_string_lossy() == "." {
+            return Err(CargoAllowError::new(format!(
+                "{} path `.` covers the entire source tree; use a narrower path or glob scope",
+                entry.id
+            )));
+        }
     }
     if let Some(glob) = &entry.glob {
         validate_glob(&format!("{} glob", entry.id), glob)?;
@@ -205,6 +217,21 @@ mod tests {
         assert_eq!(
             err_text(validate_allow_entry_scope(&invalid_path)),
             "invalid-path path must not contain parent directory segments"
+        );
+    }
+
+    #[test]
+    fn validate_allow_entry_scope_rejects_entire_source_tree_path_dot() {
+        // #1835: `path = "."` covers the entire source tree, which is the
+        // same escape valve that `glob = "**"` is rejected for. The entry
+        // must use a narrower scope. The workspace root legitimately uses
+        // `.` and is validated separately via validate_workspace.
+        let mut dot_entry = entry("dot-entry");
+        dot_entry.path = Some(PathBuf::from("."));
+        dot_entry.selector.glob = Some(".".to_string());
+        assert_eq!(
+            err_text(validate_allow_entry_scope(&dot_entry)),
+            "dot-entry path `.` covers the entire source tree; use a narrower path or glob scope"
         );
     }
 
