@@ -46,7 +46,7 @@ controlling_issue = 2584
 latest_allowed_stage = 2
 removal_condition = "issue:#2606 stage-2 cutover receipt"
 parity_case = "parity-intent-model-spec-system-v1"
-claim_boundary = "Type aliases only; old evaluator must not survive cutover."
+claim_boundary = "Type and parsing re-exports via snapshot_package; graph compilation stays in allow-policy until intent-engine cutover."
 
 [[shim]]
 id = "shim-cargo-allow-spec-system-delegate"

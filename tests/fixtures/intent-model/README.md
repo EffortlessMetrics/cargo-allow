@@ -12,4 +12,5 @@ owns the implementations.
 
 Packet 2584-B moved domain DTOs into `intent-model::spec_system`; `allow-policy`
 keeps a publish-safe snapshot copy in `snapshot_package/spec_system/` (sync-tested).
-Packet 2584-C moves parsing helpers and retires duplicate logic from `allow-policy`.
+Packet 2584-C moved domain parsing helpers into the same canonical modules with
+snapshot parity; graph compilation and precommit evaluation remain in `allow-policy`.
