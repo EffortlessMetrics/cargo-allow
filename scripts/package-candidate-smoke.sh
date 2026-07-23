@@ -124,7 +124,8 @@ if [[ "${SKIP_PACKAGE:-0}" != "1" ]]; then
   log "packaging workspace crates with cargo package --workspace --locked"
   rm -rf "${packages_dir}"
   mkdir -p "${packages_dir}"
-  cargo package --workspace --locked
+  # cargo-intent depends on unpublished intent-* workspace crates; exclude until #2599-C / #2604 publish posture.
+  cargo package --workspace --locked --exclude cargo-intent
   for crate in "${crates[@]}"; do
     crate_file="target/package/${crate}-${version}.crate"
     [[ -f "${crate_file}" ]] || fail "missing packaged crate ${crate_file}"

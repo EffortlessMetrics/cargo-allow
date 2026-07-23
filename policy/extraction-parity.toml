@@ -184,6 +184,7 @@ claim_boundary = "Read-only staged posture and phase obligation skeleton; author
 [[case]]
 id = "parity-cargo-intent-product-identity-v1"
 stage = "CargoIntentFrontDoor"
+move_ledger_entry = "move-cargo-allow-spec-system-app"
 shim_id = "shim-cargo-allow-spec-system-delegate"
 old_producer = "cargo-allow::spec_system"
 new_producer = "cargo-intent::identity"
