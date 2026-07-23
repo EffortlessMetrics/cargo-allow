@@ -336,14 +336,17 @@ mod tests {
     }
 
     #[test]
-    fn unmapped_staged_surface_yields_findings() {
+    fn unmapped_staged_surface_yields_findings() -> Result<(), String> {
         let snapshot = staged_repository_snapshot(Path::new(env!("CARGO_MANIFEST_DIR")))
-            .expect("manifest dir should be a git worktree");
+            .map_err(|error| format!("manifest dir should be a git worktree: {error}"))?;
         let result = result_class_for(
             &snapshot,
             &PhaseObligationPlanV1::new(PRECOMMIT_PHASE_ID, Vec::new()),
             true,
         );
-        assert_eq!(result, ResultClassV1::Findings);
+        if result != ResultClassV1::Findings {
+            return Err("expected findings for unmapped staged surface".to_string());
+        }
+        Ok(())
     }
 }
