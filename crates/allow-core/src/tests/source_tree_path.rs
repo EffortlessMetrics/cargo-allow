@@ -170,6 +170,44 @@ fn normalize_path_preserves_absolute_unix_root() {
 }
 
 #[test]
+fn normalize_path_preserves_windows_drive_letter() {
+    // #1821: a Windows drive letter is a meaningful absolute-path identity
+    // component. Callers (e.g. migrate evidence diagnostics) legitimately
+    // pass absolute roots through normalize_path, so the drive prefix is
+    // preserved — not stripped — to avoid corrupting those identities.
+    // Backslashes are still normalized to forward slashes.
+    assert_eq!(
+        normalize_path(r"C:\Users\proj\src\lib.rs"),
+        "C:/Users/proj/src/lib.rs"
+    );
+    assert_eq!(
+        normalize_path(r"D:/repo/crates\lib.rs"),
+        "D:/repo/crates/lib.rs"
+    );
+    // Lowercase drive letter is preserved too.
+    assert_eq!(normalize_path(r"c:\foo\bar.rs"), "c:/foo/bar.rs");
+}
+
+#[test]
+fn normalize_path_strips_verbatim_prefix() {
+    // #1821: the Windows verbatim prefix `\\?\` (used by
+    // std::fs::canonicalize) is stripped so the path degrades to its
+    // non-verbatim form. This is the case that silently produced wrong
+    // identity keys because the `\\?\` prefix survived as path segments.
+    // Verbatim drive-letter path: the drive letter is preserved after stripping.
+    assert_eq!(
+        normalize_path(r"\\?\C:\proj\src\lib.rs"),
+        "C:/proj/src/lib.rs"
+    );
+    // Verbatim UNC: \\?\UNC\server\share\... — the verbatim prefix is
+    // stripped, and the UNC root folds to a Unix-style absolute.
+    assert_eq!(
+        normalize_path(r"\\?\UNC\server\share\proj\lib.rs"),
+        "/server/share/proj/lib.rs"
+    );
+}
+
+#[test]
 fn allow_entry_path_or_glob_prefers_path_then_entry_glob_then_selector_glob() {
     let mut entry = AllowEntry {
         id: "allow-panic".to_string(),

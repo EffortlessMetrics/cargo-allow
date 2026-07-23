@@ -776,6 +776,61 @@ fn load() {}
 }
 
 #[test]
+fn detects_cfg_attr_deny_forbid_warn_lint_attributes() {
+    // #2578: cfg_attr nested deny/forbid/warn invocations were not detected.
+    // Only allow/expect were recognized inside cfg_attr(...). This test
+    // verifies the three newly-recognized kinds emit findings with the
+    // correct family and lint identity.
+    let src = r#"
+#![cfg_attr(feature = "strict", deny(unsafe_code))]
+#[cfg_attr(target_os = "windows", forbid(clippy::unwrap_used))]
+#[cfg_attr(test, warn(dead_code))]
+fn load() {}
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+
+    let deny = findings
+        .iter()
+        .find(|f| f.family.as_deref() == Some("deny_attribute"))
+        .unwrap_or_else(|| std::panic::panic_any("cfg_attr deny should be found"));
+    assert_eq!(deny.identity.lint.as_deref(), Some("unsafe_code"));
+
+    let forbid = findings
+        .iter()
+        .find(|f| f.family.as_deref() == Some("forbid_attribute"))
+        .unwrap_or_else(|| std::panic::panic_any("cfg_attr forbid should be found"));
+    assert_eq!(forbid.identity.lint.as_deref(), Some("clippy::unwrap_used"));
+
+    let warn = findings
+        .iter()
+        .find(|f| f.family.as_deref() == Some("warn_attribute"))
+        .unwrap_or_else(|| std::panic::panic_any("cfg_attr warn should be found"));
+    assert_eq!(warn.identity.lint.as_deref(), Some("dead_code"));
+}
+
+#[test]
+fn cfg_attr_deny_forbid_warn_detection_ignores_strings() {
+    // #2578: the extended cfg_attr detection must not match deny/forbid/warn
+    // text appearing inside string literals or doc comments.
+    let src = r##"
+#[cfg_attr(feature = "docs", doc = "deny(unsafe_code)")]
+#[cfg_attr(feature = "docs", doc = r#"forbid(clippy::unwrap_used)"#)]
+#[doc = "warn(dead_code) inside a string"]
+fn load() {}
+        "##;
+    let findings = scan_rust_source("src/lib.rs", src);
+
+    assert!(
+        !findings
+            .iter()
+            .any(|f| f.family.as_deref() == Some("deny_attribute")
+                || f.family.as_deref() == Some("forbid_attribute")
+                || f.family.as_deref() == Some("warn_attribute")),
+        "string-embedded deny/forbid/warn text must not produce findings: {findings:?}"
+    );
+}
+
+#[test]
 fn detect_attr_returns_text_after_outer_and_inner_prefixes() {
     assert_eq!(
         detect_attr("#[allow(dead_code)]", "allow"),

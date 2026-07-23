@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Policy: drain window role mismatch now emits a distinct
+  `drain_window_not_mirror` diagnostic kind instead of reusing
+  `unknown_drain_mirror_ledger`. Previously a mirror ledger with the wrong
+  role (e.g. `canonical`) conflated "unknown id" with "wrong role",
+  breaking tooling that buckets by kind. Child of #1782.
