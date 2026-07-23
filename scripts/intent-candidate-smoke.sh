@@ -161,11 +161,10 @@ sha256_file() {
 rm -rf "${work_dir}"
 mkdir -p "${packages_dir}" "${extracted_dir}" "${cargo_home}" "${target_dir}" "${install_root}"
 
-export CARGO_HOME="${cargo_home}"
 export CARGO_TARGET_DIR="${target_dir}"
 
 declare -a crate_records=()
-declare -a patched_so_far=()
+declare -a dependency_crates=("${crates[@]:0:$(( ${#crates[@]} - 1 ))}")
 
 if [[ "${SKIP_PACKAGE:-0}" == "1" ]]; then
   shopt -s nullglob
@@ -180,7 +179,6 @@ if [[ "${SKIP_PACKAGE:-0}" == "1" ]]; then
     mkdir -p "${dest}"
     tar --force-local -xzf "${src}" -C "${extracted_dir}"
     assert_no_path_deps "${dest}" "${crate}"
-    patched_so_far+=("${crate}")
     digest="$(sha256_file "${src}")"
     size="$(wc -c <"${src}" | tr -d ' \r')"
     crate_records+=("${crate}|${crate}-${version}.crate|${digest}|${size}|${crate}-${version}")
@@ -191,9 +189,12 @@ else
     package_flags+=(--allow-dirty)
     log "ALLOW_DIRTY=1; packaging with --allow-dirty"
   fi
-  for crate in "${crates[@]}"; do
-    log "packaging ${crate} with incremental patch (${#patched_so_far[@]} prior)"
-    write_patch_config "${cargo_home}/config.toml" "${patched_so_far[@]}"
+  # Package dependency crates from the workspace without [patch.crates-io].
+  # Incremental patching during packaging mutates Cargo.lock and breaks --locked.
+  unset CARGO_HOME
+  export CARGO_TARGET_DIR="${target_dir}"
+  for crate in "${dependency_crates[@]}"; do
+    log "packaging dependency crate ${crate} from workspace (no patch)"
     cargo package -p "${crate}" "${package_flags[@]}"
     src="target/package/${crate}-${version}.crate"
     [[ -f "${src}" ]] || fail "missing packaged crate ${src}"
@@ -203,12 +204,28 @@ else
     mkdir -p "${dest}"
     tar --force-local -xzf "${src}" -C "${extracted_dir}"
     assert_no_path_deps "${dest}" "${crate}"
-    patched_so_far+=("${crate}")
     digest="$(sha256_file "${src}")"
     size="$(wc -c <"${src}" | tr -d ' \r')"
     crate_records+=("${crate}|${crate}-${version}.crate|${digest}|${size}|${crate}-${version}")
     log "packaged ${crate}-${version}.crate sha256=${digest}"
   done
+  log "packaging cargo-intent with extracted dependency patch"
+  export CARGO_HOME="${cargo_home}"
+  write_patch_config "${cargo_home}/config.toml" "${dependency_crates[@]}"
+  cargo package -p cargo-intent --allow-dirty
+  crate="cargo-intent"
+  src="target/package/${crate}-${version}.crate"
+  [[ -f "${src}" ]] || fail "missing packaged crate ${src}"
+  cp "${src}" "${packages_dir}/"
+  dest="${extracted_dir}/${crate}-${version}"
+  rm -rf "${dest}"
+  mkdir -p "${dest}"
+  tar --force-local -xzf "${src}" -C "${extracted_dir}"
+  assert_no_path_deps "${dest}" "${crate}"
+  digest="$(sha256_file "${src}")"
+  size="$(wc -c <"${src}" | tr -d ' \r')"
+  crate_records+=("${crate}|${crate}-${version}.crate|${digest}|${size}|${crate}-${version}")
+  log "packaged ${crate}-${version}.crate sha256=${digest}"
 fi
 
 extracted_bin_pkg="${extracted_dir}/cargo-intent-${version}"
