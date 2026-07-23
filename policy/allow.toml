@@ -1023,6 +1023,28 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9072"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/intent-protocol/parity-obligation-plan-v1.toml"
+owner = "repo-infra"
+classification = "intent_protocol_parity_fixture"
+reason = "Obligation-plan transport parity contract for intent-protocol (#2585-C)."
+evidence = ["doc:tests/fixtures/intent-protocol/README.md", "doc:policy/extraction-parity.toml"]
+created = "2026-07-23"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "tests/fixtures/intent-protocol/parity-obligation-plan-v1.toml"
+target_fingerprint = "toml"
+glob = "tests/fixtures/intent-protocol/parity-obligation-plan-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9054"
 kind = "non_rust_file"
 family = "test_fixture"
