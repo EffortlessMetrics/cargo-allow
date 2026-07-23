@@ -337,17 +337,18 @@ priority = 20
 "#,
     )?;
 
-    let loaded = load_federation_config(root.path())
-        .unwrap_or_else(|err| std::panic::panic_any(format!("invalid config should still parse: {err}")));
+    let loaded = load_federation_config(root.path()).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("invalid config should still parse: {err}"))
+    });
     assert!(loaded.parsed(), "parsed() should be true (file was found)");
     assert!(
         !loaded.is_valid(),
         "is_valid() should be false (DuplicateId is blocking): {:?}",
         loaded.validated().map(|v| &v.diagnostics)
     );
-    let validated = loaded
-        .validated()
-        .unwrap_or_else(|| std::panic::panic_any("validated() should return the parsed config even when invalid"));
+    let validated = loaded.validated().unwrap_or_else(|| {
+        std::panic::panic_any("validated() should return the parsed config even when invalid")
+    });
     assert!(!validated.valid, "validated.valid should be false");
     assert!(
         !validated.diagnostics.is_empty(),
