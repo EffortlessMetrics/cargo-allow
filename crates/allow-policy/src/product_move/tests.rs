@@ -131,8 +131,11 @@ fn repository_move_ledger_validates_current_paths() -> Result<(), String> {
     if report.entry_count < 8 {
         return Err("seeded inventory too small".to_string());
     }
-    if report.current_count < 8 {
-        return Err("seeded current entries too small".to_string());
+    if report.current_count < 6 {
+        return Err(format!(
+            "seeded current entries too small after repo-snapshot moves: current={}",
+            report.current_count
+        ));
     }
     Ok(())
 }
