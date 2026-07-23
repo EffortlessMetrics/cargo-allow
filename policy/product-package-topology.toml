@@ -108,3 +108,11 @@ posture = "SharedProtocolInternalOrStabilizing"
 publish = false
 candidate_inclusion = false
 release_order = 230
+
+[[package]]
+package = "intent-model"
+product_family = "cargo-intent"
+posture = "CargoIntentExperimental"
+publish = false
+candidate_inclusion = false
+release_order = 310
