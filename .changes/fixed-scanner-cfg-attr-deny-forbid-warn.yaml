@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Scanner: recognize deny/forbid/warn inside cfg_attr(...) as source-syntax lint
+  findings. Previously only allow/expect were detected inside cfg_attr; deny,
+  forbid, and warn invocations passed through without a finding. The detection
+  uses the existing string-literal-safe invocation finder, so text inside
+  strings and doc comments is not matched. Child of #1776.
