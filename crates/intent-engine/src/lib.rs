@@ -12,8 +12,8 @@ mod parity;
 
 pub use engine_surface::EvaluatorPacketSurface;
 pub use packet::{
-    INTENT_ENGINE_PACKET_SCHEMA_ID, INTENT_QUERY_TRANSPORT_SCHEMA_ID,
-    IntentEnginePacketEnvelopeV1, IntentEnginePacketKindV1,
+    INTENT_ENGINE_PACKET_SCHEMA_ID, INTENT_QUERY_TRANSPORT_SCHEMA_ID, IntentEnginePacketEnvelopeV1,
+    IntentEnginePacketKindV1,
 };
 pub use parity::{
     EvaluatorPacketParityContract, evaluator_packet_parity_contract_path,
