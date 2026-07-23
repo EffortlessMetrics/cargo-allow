@@ -1,7 +1,9 @@
 use crate::spec_system_graph_movement::SpecGraphMovementKind;
 use crate::spec_system_workspace_composition::SELF_HOSTED_RUNTIME_PROMOTION;
 use intent_engine::{
-    GraphMovementKindV1, canonical_graph_movement_kinds, evaluator_packet_parity_contract_paths,
+    GraphMovementKindV1, bounded_domain_queries_parity_contract_paths,
+    bounded_domain_query_catalog_fixture_path, canonical_bounded_domain_query_kinds,
+    canonical_graph_movement_kinds, evaluator_packet_parity_contract_paths,
     graph_comparison_parity_contract_paths, graph_movement_kinds_fixture_path,
     phase_obligations_parity_contract_paths, precommit_obligation_plan_fixture_path,
     self_hosted_workspace_composition_fixture_path, workspace_composition_parity_contract_paths,
@@ -27,6 +29,11 @@ fn intent_engine_parity_fixtures_registered() -> Result<(), String> {
         }
     }
     for path in phase_obligations_parity_contract_paths(&root) {
+        if !path.is_file() {
+            return Err(format!("missing parity fixture {}", path.display()));
+        }
+    }
+    for path in bounded_domain_queries_parity_contract_paths(&root) {
         if !path.is_file() {
             return Err(format!("missing parity fixture {}", path.display()));
         }
@@ -99,6 +106,21 @@ fn intent_engine_parity_fixtures_registered() -> Result<(), String> {
         ));
     }
 
+    let query_catalog_fixture = bounded_domain_query_catalog_fixture_path(&root);
+    if !query_catalog_fixture.is_file() {
+        return Err(format!(
+            "missing bounded query catalog fixture {}",
+            query_catalog_fixture.display()
+        ));
+    }
+    let catalog_kinds = intent_engine::load_bounded_domain_query_catalog_fixture(&root)?;
+    for kind in canonical_bounded_domain_query_kinds() {
+        let kind_str = kind.as_str();
+        if !catalog_kinds.iter().any(|fixture| fixture == kind_str) {
+            return Err(format!("catalog fixture missing query kind {kind_str}"));
+        }
+    }
+
     let doc = root.join("docs/architecture/intent-engine.md");
     let doc_text =
         std::fs::read_to_string(&doc).map_err(|err| format!("intent-engine doc: {err}"))?;
@@ -110,6 +132,9 @@ fn intent_engine_parity_fixtures_registered() -> Result<(), String> {
     }
     if !doc_text.contains("2586-C") {
         return Err("human projection missing PR3 packet marker".to_string());
+    }
+    if !doc_text.contains("2586-D") {
+        return Err("human projection missing PR4 packet marker".to_string());
     }
 
     let ledger = std::fs::read_to_string(root.join("policy/product-move-ledger.toml"))

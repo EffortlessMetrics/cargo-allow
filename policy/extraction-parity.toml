@@ -149,6 +149,17 @@ disposition = "contract_only"
 claim_boundary = "Phase obligation compile plan only; authoritative precommit findings remain in allow-policy until intent-engine cutover."
 
 [[case]]
+id = "parity-intent-engine-bounded-domain-queries-v1"
+stage = "IntentEngine"
+move_ledger_entry = "move-cargo-allow-spec-system-workspace"
+shim_id = "shim-cargo-allow-spec-system-workspace"
+old_producer = "cargo-allow::spec_system_workspace"
+new_producer = "intent-engine::domain_queries"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Bounded read-only domain query catalog only; responses are intent-protocol-shaped transport values without graph compilation."
+
+[[case]]
 id = "parity-proof-protocol-plan-dtos-v1"
 stage = "ProofProtocol"
 move_ledger_entry = "move-issue-2568-embedded-evaluator"

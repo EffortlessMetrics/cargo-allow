@@ -1,7 +1,13 @@
+mod domain_queries;
 mod graph_comparison;
 mod phase_obligations;
 mod workspace;
 
+pub use domain_queries::{
+    BoundedDomainQueriesParityContract, bounded_domain_queries_parity_contract_path,
+    bounded_domain_queries_parity_contract_paths, bounded_domain_query_catalog_fixture_path,
+    load_bounded_domain_queries_parity_contract, load_bounded_domain_query_catalog_fixture,
+};
 pub use graph_comparison::{
     GraphComparisonParityContract, graph_comparison_parity_contract_path,
     graph_comparison_parity_contract_paths, graph_movement_kinds_fixture_path,

@@ -1,0 +1,6 @@
+query_kinds = [
+  "workspace_composition",
+  "authority_compile_plan",
+  "movement_kinds_catalog",
+  "phase_obligation_kinds_catalog",
+]

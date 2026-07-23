@@ -360,6 +360,7 @@ dependencies = [
 name = "intent-engine"
 version = "0.2.0"
 dependencies = [
+ "intent-protocol",
  "serde",
  "serde_json",
  "toml",
