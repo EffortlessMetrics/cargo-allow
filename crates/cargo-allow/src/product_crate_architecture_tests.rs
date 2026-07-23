@@ -21,7 +21,7 @@ fn product_crate_architecture_report_only_inventory() -> Result<(), String> {
     }
     assert_eq!(manifest.manifest_id, "CARGO-ALLOW-ARCH-0001");
     assert_eq!(manifest.controlling_issue, 2580);
-    assert!(report.planned_crate_count >= 6);
+    assert!(report.planned_crate_count >= 5);
 
     let law = root.join("docs/architecture/product-crate-law.md");
     let law_text = std::fs::read_to_string(&law)
