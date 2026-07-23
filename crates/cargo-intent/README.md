@@ -14,4 +14,4 @@ Thin binary with `--help` / `--version`, product identity, config entrypoint, hu
 
 ## PR2 (#2599-B)
 
-First vertical: `cargo intent change status --staged --phase precommit`.
+First vertical: `cargo intent change status --staged --phase precommit` — staged snapshot read, phase obligation compile plan, intent-protocol transport, and process exit mapping. Authoritative precommit findings remain in cargo-allow until #2601.

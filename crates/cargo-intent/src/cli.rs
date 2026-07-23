@@ -1,6 +1,6 @@
 use cargo_intent::{
     IdentityFrameV1, IntentConfigV1, OutputFormat, ProcessExitFamilyV1, ProductIdentityV1,
-    emit_frame, exit_code_for_family, load_config,
+    change_status_staged_precommit, emit_frame, exit_code_for_family, load_config,
 };
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
@@ -45,8 +45,35 @@ impl From<FormatArg> for OutputFormat {
 pub enum CargoIntentCommand {
     /// Identity and capability surface.
     Identity,
-    /// Change-oriented intent commands (verticals land in #2599-B).
-    Change,
+    /// Change-oriented intent commands.
+    Change(ChangeCli),
+}
+
+#[derive(Debug, Parser)]
+pub struct ChangeCli {
+    #[command(subcommand)]
+    pub command: ChangeCommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum ChangeCommand {
+    /// Staged change status for a lifecycle phase.
+    Status(StatusArgs),
+}
+
+#[derive(Debug, Parser)]
+pub struct StatusArgs {
+    /// Read staged index posture instead of committed head only.
+    #[arg(long)]
+    pub staged: bool,
+    /// Lifecycle phase selector.
+    #[arg(long, value_enum)]
+    pub phase: Option<PhaseArg>,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum PhaseArg {
+    Precommit,
 }
 
 pub fn run() -> Result<ProcessExitFamilyV1, String> {
@@ -62,9 +89,22 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
             cmd_identity(&config, output_format)?;
             Ok(ProcessExitFamilyV1::Success)
         }
-        Some(CargoIntentCommand::Change) => Err(
-            "change commands are not available yet; see #2599-B for the first vertical".to_string(),
-        ),
+        Some(CargoIntentCommand::Change(change)) => match change.command {
+            ChangeCommand::Status(args) => {
+                validate_change_status_args(&args)?;
+                change_status_staged_precommit(&cli.root, &config, output_format)
+            }
+        },
+    }
+}
+
+fn validate_change_status_args(args: &StatusArgs) -> Result<(), String> {
+    if !args.staged {
+        return Err("change status requires --staged".to_string());
+    }
+    match args.phase {
+        Some(PhaseArg::Precommit) => Ok(()),
+        None => Err("change status requires --phase precommit".to_string()),
     }
 }
 
@@ -93,5 +133,29 @@ pub fn main_exit_code(result: Result<ProcessExitFamilyV1, String>) -> i32 {
             eprintln!("error: {message}");
             exit_code_for_family(ProcessExitFamilyV1::Usage)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn change_status_requires_staged_and_phase() {
+        let args = StatusArgs {
+            staged: false,
+            phase: Some(PhaseArg::Precommit),
+        };
+        assert!(validate_change_status_args(&args).is_err());
+        let args = StatusArgs {
+            staged: true,
+            phase: None,
+        };
+        assert!(validate_change_status_args(&args).is_err());
+        let args = StatusArgs {
+            staged: true,
+            phase: Some(PhaseArg::Precommit),
+        };
+        assert!(validate_change_status_args(&args).is_ok());
     }
 }
