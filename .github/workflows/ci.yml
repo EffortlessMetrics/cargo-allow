@@ -143,3 +143,20 @@ jobs:
           name: cargo-allow-reports
           path: |
             target/cargo-allow/
+
+  # Cross-platform workspace test proof (#1825): run the workspace test suite
+  # on Windows to guard the platform-specific code paths (path separators,
+  # verbatim prefixes, CRLF, MAIN_SEPARATOR_STR). Kept separate from the main
+  # `test` job so lint/doc/audit feedback stays fast on Linux. Windows-only
+  # for now; macOS can be added when the cost/benefit shifts.
+  test-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@42dc69e1aa15d09112580998cf2ef0119e2e91ae # v2
+        with:
+          key: test-windows
+      - name: Full workspace test suite
+        run: cargo test --workspace --locked
+

@@ -1,0 +1,7 @@
+kind: Added
+body: >-
+  CI: add a `test-windows` job that runs `cargo test --workspace --locked` on
+  `windows-latest`, guarding the Windows-specific code paths (path separators,
+  verbatim prefixes, CRLF, MAIN_SEPARATOR_STR). Kept separate from the main
+  `test` job so lint/doc/audit feedback stays fast on Linux. macOS deferred
+  until cost/benefit shifts. Child of #1780.
