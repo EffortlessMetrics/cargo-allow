@@ -933,7 +933,7 @@ target_fingerprint = "policy:allow-9066"
 glob = "crates/intent-model/src/spec_system/mod.rs"
 
 [allow.last_seen]
-line = 4
+line = 2
 column = 1
 
 [[allow]]

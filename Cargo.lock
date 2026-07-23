@@ -180,6 +180,7 @@ dependencies = [
  "clap",
  "fs4",
  "intent-model",
+ "intent-protocol",
  "repo-snapshot",
  "rust-source-index",
  "serde",
@@ -359,6 +360,16 @@ name = "intent-model"
 version = "0.2.0"
 dependencies = [
  "allow-core",
+ "serde",
+ "serde_json",
+ "toml",
+]
+
+[[package]]
+name = "intent-protocol"
+version = "0.2.0"
+dependencies = [
+ "repo-protocol",
  "serde",
  "serde_json",
  "toml",

@@ -144,6 +144,8 @@ mod extraction_shim_registry_tests;
 #[cfg(test)]
 mod intent_model_parity_tests;
 #[cfg(test)]
+mod intent_protocol_parity_tests;
+#[cfg(test)]
 mod product_crate_architecture_tests;
 #[cfg(test)]
 mod product_move_ledger_tests;
