@@ -1,10 +1,12 @@
 use crate::spec_system_graph_movement::SpecGraphMovementKind;
+use crate::spec_system_parity_corpus::{SPEC_SYSTEM_PROFILE_ID, parity_corpus_anchors};
 use crate::spec_system_workspace_composition::SELF_HOSTED_RUNTIME_PROMOTION;
 use intent_engine::{
     GraphMovementKindV1, bounded_domain_queries_parity_contract_paths,
     bounded_domain_query_catalog_fixture_path, canonical_bounded_domain_query_kinds,
     canonical_graph_movement_kinds, evaluator_packet_parity_contract_paths,
     graph_comparison_parity_contract_paths, graph_movement_kinds_fixture_path,
+    parity_corpus_contract_paths, parity_corpus_fixture_path,
     phase_obligations_parity_contract_paths, precommit_obligation_plan_fixture_path,
     self_hosted_workspace_composition_fixture_path, workspace_composition_parity_contract_paths,
 };
@@ -37,6 +39,50 @@ fn intent_engine_parity_fixtures_registered() -> Result<(), String> {
         if !path.is_file() {
             return Err(format!("missing parity fixture {}", path.display()));
         }
+    }
+    for path in parity_corpus_contract_paths(&root) {
+        if !path.is_file() {
+            return Err(format!("missing parity fixture {}", path.display()));
+        }
+    }
+    let corpus_fixture = parity_corpus_fixture_path(&root);
+    if !corpus_fixture.is_file() {
+        return Err(format!(
+            "missing parity corpus fixture {}",
+            corpus_fixture.display()
+        ));
+    }
+    let corpus = intent_engine::load_parity_corpus_fixture(&root)?;
+    for (scenario_id, anchor) in parity_corpus_anchors() {
+        let Some(scenario) = corpus
+            .scenarios
+            .iter()
+            .find(|entry| entry.id == scenario_id)
+        else {
+            return Err(format!("corpus missing scenario {scenario_id}"));
+        };
+        if scenario.old_value != anchor {
+            return Err(format!(
+                "cargo-allow anchor drift for {scenario_id}: {} != {anchor}",
+                scenario.old_value
+            ));
+        }
+        if scenario.old_value != scenario.new_value
+            && scenario.disposition == "SemanticallyEquivalent"
+        {
+            return Err(format!(
+                "silent drift risk for {scenario_id}: old/new differ under SemanticallyEquivalent"
+            ));
+        }
+    }
+    if corpus
+        .scenarios
+        .iter()
+        .find(|scenario| scenario.id == "profile-spec-system")
+        .map(|scenario| scenario.old_value.as_str())
+        != Some(SPEC_SYSTEM_PROFILE_ID)
+    {
+        return Err("profile-spec-system scenario drifted from cargo-allow profile id".to_string());
     }
     let composition_fixture = self_hosted_workspace_composition_fixture_path(&root);
     if !composition_fixture.is_file() {
@@ -135,6 +181,9 @@ fn intent_engine_parity_fixtures_registered() -> Result<(), String> {
     }
     if !doc_text.contains("2586-D") {
         return Err("human projection missing PR4 packet marker".to_string());
+    }
+    if !doc_text.contains("2586-E") {
+        return Err("human projection missing PR5 packet marker".to_string());
     }
 
     let ledger = std::fs::read_to_string(root.join("policy/product-move-ledger.toml"))
