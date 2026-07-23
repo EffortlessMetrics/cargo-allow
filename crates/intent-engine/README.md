@@ -16,6 +16,8 @@ Crate skeleton with evaluator packet envelope bound to `intent-protocol` query t
 
 Generic workspace composition and authority compile plan replacing hard-coded four-file paths in `cargo-allow::spec_system_workspace`.
 
-## PR3+
+## PR3 (#2586-C)
 
-Graph comparison, phase obligations, bounded domain queries, and workspace compilation migration from `allow-policy` / `cargo-allow`.
+Graph comparison movement taxonomy and phase obligation compile plans. `cargo-allow` retains paired graph comparison and precommit evaluation runtime during the parity window.
+
+## PR4+

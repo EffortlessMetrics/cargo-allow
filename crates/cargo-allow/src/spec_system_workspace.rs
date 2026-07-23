@@ -23,6 +23,7 @@ use std::path::Path;
 #[cfg(test)]
 use std::path::PathBuf;
 
+pub use crate::spec_system_graph_movement::{SpecGraphMovement, SpecGraphMovementKind};
 pub use crate::spec_system_workspace_composition::self_hosted_graph_sources_present;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -186,61 +187,6 @@ pub struct PairedSelfHostedGraphCompilation {
     pub candidate_identity_before: String,
     pub candidate_identity_after: String,
     pub movements: Vec<SpecGraphMovement>,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum SpecGraphMovementKind {
-    RequirementAdded,
-    RequirementRemoved,
-    RequirementChanged,
-    ImplementationSliceAdded,
-    ImplementationSliceRemoved,
-    ImplementationSliceChanged,
-    SeamMappingAdded,
-    SeamMappingRemoved,
-    SeamMappingChanged,
-    EvidencePurposeAdded,
-    EvidencePurposeRemoved,
-    EvidencePurposeChanged,
-    EvidenceClaimChanged,
-    SubjectSelectorAdded,
-    SubjectSelectorRemoved,
-    SubjectSelectorChanged,
-    SubjectBodyIdentityChanged,
-    ProfileOrDialectChanged,
-    UnknownOrUncomparable,
-}
-
-impl SpecGraphMovementKind {
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::RequirementAdded => "requirement_added",
-            Self::RequirementRemoved => "requirement_removed",
-            Self::RequirementChanged => "requirement_changed",
-            Self::ImplementationSliceAdded => "implementation_slice_added",
-            Self::ImplementationSliceRemoved => "implementation_slice_removed",
-            Self::ImplementationSliceChanged => "implementation_slice_changed",
-            Self::SeamMappingAdded => "seam_mapping_added",
-            Self::SeamMappingRemoved => "seam_mapping_removed",
-            Self::SeamMappingChanged => "seam_mapping_changed",
-            Self::EvidencePurposeAdded => "evidence_purpose_added",
-            Self::EvidencePurposeRemoved => "evidence_purpose_removed",
-            Self::EvidencePurposeChanged => "evidence_purpose_changed",
-            Self::EvidenceClaimChanged => "evidence_claim_changed",
-            Self::SubjectSelectorAdded => "subject_selector_added",
-            Self::SubjectSelectorRemoved => "subject_selector_removed",
-            Self::SubjectSelectorChanged => "subject_selector_changed",
-            Self::SubjectBodyIdentityChanged => "subject_body_identity_changed",
-            Self::ProfileOrDialectChanged => "profile_or_dialect_changed",
-            Self::UnknownOrUncomparable => "unknown_or_uncomparable",
-        }
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SpecGraphMovement {
-    pub kind: SpecGraphMovementKind,
-    pub id: String,
 }
 
 pub fn compile_self_hosted_graph(

@@ -1,0 +1,25 @@
+scenario_id = "parity-intent-engine-graph-comparison-v1"
+intent_engine_module = "intent-engine::graph_comparison"
+parity_case = "parity-intent-engine-graph-comparison-v1"
+move_ledger_entry = "move-cargo-allow-spec-system-workspace"
+required_movement_kinds = [
+  "requirement_added",
+  "requirement_removed",
+  "requirement_changed",
+  "implementation_slice_added",
+  "implementation_slice_removed",
+  "implementation_slice_changed",
+  "seam_mapping_added",
+  "seam_mapping_removed",
+  "seam_mapping_changed",
+  "evidence_purpose_added",
+  "evidence_purpose_removed",
+  "evidence_purpose_changed",
+  "evidence_claim_changed",
+  "subject_selector_added",
+  "subject_selector_removed",
+  "subject_selector_changed",
+  "subject_body_identity_changed",
+  "profile_or_dialect_changed",
+  "unknown_or_uncomparable",
+]

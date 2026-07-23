@@ -1176,6 +1176,94 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9079"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/intent-engine/graph-movement-kinds-v1.toml"
+owner = "repo-infra"
+classification = "intent_engine_parity_fixture"
+reason = "Graph movement taxonomy fixture for intent-engine (#2586-C)."
+evidence = ["doc:tests/fixtures/intent-engine/README.md", "doc:policy/extraction-parity.toml"]
+created = "2026-07-23"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "tests/fixtures/intent-engine/graph-movement-kinds-v1.toml"
+target_fingerprint = "toml"
+glob = "tests/fixtures/intent-engine/graph-movement-kinds-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9080"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/intent-engine/parity-graph-comparison-v1.toml"
+owner = "repo-infra"
+classification = "intent_engine_parity_fixture"
+reason = "Graph comparison parity contract for intent-engine (#2586-C)."
+evidence = ["doc:tests/fixtures/intent-engine/README.md", "doc:policy/extraction-parity.toml"]
+created = "2026-07-23"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "tests/fixtures/intent-engine/parity-graph-comparison-v1.toml"
+target_fingerprint = "toml"
+glob = "tests/fixtures/intent-engine/parity-graph-comparison-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9081"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/intent-engine/parity-phase-obligations-v1.toml"
+owner = "repo-infra"
+classification = "intent_engine_parity_fixture"
+reason = "Phase obligations parity contract for intent-engine (#2586-C)."
+evidence = ["doc:tests/fixtures/intent-engine/README.md", "doc:policy/extraction-parity.toml"]
+created = "2026-07-23"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "tests/fixtures/intent-engine/parity-phase-obligations-v1.toml"
+target_fingerprint = "toml"
+glob = "tests/fixtures/intent-engine/parity-phase-obligations-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9082"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/intent-engine/precommit-obligation-plan-v1.toml"
+owner = "repo-infra"
+classification = "intent_engine_parity_fixture"
+reason = "Precommit obligation plan sample for intent-engine (#2586-C)."
+evidence = ["doc:tests/fixtures/intent-engine/README.md", "doc:policy/extraction-parity.toml"]
+created = "2026-07-23"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "tests/fixtures/intent-engine/precommit-obligation-plan-v1.toml"
+target_fingerprint = "toml"
+glob = "tests/fixtures/intent-engine/precommit-obligation-plan-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9054"
 kind = "non_rust_file"
 family = "test_fixture"

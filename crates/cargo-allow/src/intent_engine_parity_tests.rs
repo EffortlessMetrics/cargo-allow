@@ -1,7 +1,10 @@
+use crate::spec_system_graph_movement::SpecGraphMovementKind;
 use crate::spec_system_workspace_composition::SELF_HOSTED_RUNTIME_PROMOTION;
 use intent_engine::{
-    evaluator_packet_parity_contract_paths, self_hosted_workspace_composition_fixture_path,
-    workspace_composition_parity_contract_paths,
+    GraphMovementKindV1, canonical_graph_movement_kinds, evaluator_packet_parity_contract_paths,
+    graph_comparison_parity_contract_paths, graph_movement_kinds_fixture_path,
+    phase_obligations_parity_contract_paths, precommit_obligation_plan_fixture_path,
+    self_hosted_workspace_composition_fixture_path, workspace_composition_parity_contract_paths,
 };
 use std::path::PathBuf;
 
@@ -14,6 +17,16 @@ fn intent_engine_parity_fixtures_registered() -> Result<(), String> {
         }
     }
     for path in workspace_composition_parity_contract_paths(&root) {
+        if !path.is_file() {
+            return Err(format!("missing parity fixture {}", path.display()));
+        }
+    }
+    for path in graph_comparison_parity_contract_paths(&root) {
+        if !path.is_file() {
+            return Err(format!("missing parity fixture {}", path.display()));
+        }
+    }
+    for path in phase_obligations_parity_contract_paths(&root) {
         if !path.is_file() {
             return Err(format!("missing parity fixture {}", path.display()));
         }
@@ -57,6 +70,35 @@ fn intent_engine_parity_fixtures_registered() -> Result<(), String> {
         }
     }
 
+    let movement_kinds_fixture = graph_movement_kinds_fixture_path(&root);
+    if !movement_kinds_fixture.is_file() {
+        return Err(format!(
+            "missing graph movement kinds fixture {}",
+            movement_kinds_fixture.display()
+        ));
+    }
+    let fixture_kinds = intent_engine::load_graph_movement_kinds_fixture(&root)?;
+    for kind in canonical_graph_movement_kinds() {
+        let kind_str = kind.as_str();
+        if !fixture_kinds.iter().any(|fixture| fixture == kind_str) {
+            return Err(format!("fixture missing movement kind {kind_str}"));
+        }
+        let cargo_kind = spec_graph_movement_kind_as_str(*kind);
+        if cargo_kind != kind_str {
+            return Err(format!(
+                "cargo-allow movement kind drift for {kind_str}: {cargo_kind}"
+            ));
+        }
+    }
+
+    let obligation_fixture = precommit_obligation_plan_fixture_path(&root);
+    if !obligation_fixture.is_file() {
+        return Err(format!(
+            "missing obligation plan fixture {}",
+            obligation_fixture.display()
+        ));
+    }
+
     let doc = root.join("docs/architecture/intent-engine.md");
     let doc_text =
         std::fs::read_to_string(&doc).map_err(|err| format!("intent-engine doc: {err}"))?;
@@ -66,6 +108,9 @@ fn intent_engine_parity_fixtures_registered() -> Result<(), String> {
     if !doc_text.contains("2586-B") {
         return Err("human projection missing PR2 packet marker".to_string());
     }
+    if !doc_text.contains("2586-C") {
+        return Err("human projection missing PR3 packet marker".to_string());
+    }
 
     let ledger = std::fs::read_to_string(root.join("policy/product-move-ledger.toml"))
         .map_err(|err| format!("move ledger: {err}"))?;
@@ -74,6 +119,64 @@ fn intent_engine_parity_fixtures_registered() -> Result<(), String> {
     }
 
     Ok(())
+}
+
+fn spec_graph_movement_kind_as_str(kind: GraphMovementKindV1) -> &'static str {
+    match kind {
+        GraphMovementKindV1::RequirementAdded => SpecGraphMovementKind::RequirementAdded.as_str(),
+        GraphMovementKindV1::RequirementRemoved => {
+            SpecGraphMovementKind::RequirementRemoved.as_str()
+        }
+        GraphMovementKindV1::RequirementChanged => {
+            SpecGraphMovementKind::RequirementChanged.as_str()
+        }
+        GraphMovementKindV1::ImplementationSliceAdded => {
+            SpecGraphMovementKind::ImplementationSliceAdded.as_str()
+        }
+        GraphMovementKindV1::ImplementationSliceRemoved => {
+            SpecGraphMovementKind::ImplementationSliceRemoved.as_str()
+        }
+        GraphMovementKindV1::ImplementationSliceChanged => {
+            SpecGraphMovementKind::ImplementationSliceChanged.as_str()
+        }
+        GraphMovementKindV1::SeamMappingAdded => SpecGraphMovementKind::SeamMappingAdded.as_str(),
+        GraphMovementKindV1::SeamMappingRemoved => {
+            SpecGraphMovementKind::SeamMappingRemoved.as_str()
+        }
+        GraphMovementKindV1::SeamMappingChanged => {
+            SpecGraphMovementKind::SeamMappingChanged.as_str()
+        }
+        GraphMovementKindV1::EvidencePurposeAdded => {
+            SpecGraphMovementKind::EvidencePurposeAdded.as_str()
+        }
+        GraphMovementKindV1::EvidencePurposeRemoved => {
+            SpecGraphMovementKind::EvidencePurposeRemoved.as_str()
+        }
+        GraphMovementKindV1::EvidencePurposeChanged => {
+            SpecGraphMovementKind::EvidencePurposeChanged.as_str()
+        }
+        GraphMovementKindV1::EvidenceClaimChanged => {
+            SpecGraphMovementKind::EvidenceClaimChanged.as_str()
+        }
+        GraphMovementKindV1::SubjectSelectorAdded => {
+            SpecGraphMovementKind::SubjectSelectorAdded.as_str()
+        }
+        GraphMovementKindV1::SubjectSelectorRemoved => {
+            SpecGraphMovementKind::SubjectSelectorRemoved.as_str()
+        }
+        GraphMovementKindV1::SubjectSelectorChanged => {
+            SpecGraphMovementKind::SubjectSelectorChanged.as_str()
+        }
+        GraphMovementKindV1::SubjectBodyIdentityChanged => {
+            SpecGraphMovementKind::SubjectBodyIdentityChanged.as_str()
+        }
+        GraphMovementKindV1::ProfileOrDialectChanged => {
+            SpecGraphMovementKind::ProfileOrDialectChanged.as_str()
+        }
+        GraphMovementKindV1::UnknownOrUncomparable => {
+            SpecGraphMovementKind::UnknownOrUncomparable.as_str()
+        }
+    }
 }
 
 fn repo_root() -> PathBuf {

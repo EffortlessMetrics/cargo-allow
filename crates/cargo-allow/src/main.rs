@@ -39,6 +39,7 @@ mod spec_system_source;
 mod spec_system_view;
 pub mod spec_system_workspace;
 pub mod spec_system_workspace_composition;
+pub mod spec_system_graph_movement;
 mod why;
 mod worklist;
 mod world;

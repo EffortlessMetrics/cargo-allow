@@ -1,8 +1,13 @@
 use crate::EvaluatorPacketSurface;
+use crate::GraphComparisonSurface;
+use crate::PhaseObligationsSurface;
 use crate::WorkspaceCompilerSurface;
 use crate::parity::{
-    EvaluatorPacketParityContract, WorkspaceCompositionParityContract,
-    load_evaluator_packet_parity_contract, load_self_hosted_workspace_composition_fixture,
+    EvaluatorPacketParityContract, GraphComparisonParityContract,
+    PhaseObligationsParityContract, WorkspaceCompositionParityContract,
+    load_evaluator_packet_parity_contract, load_graph_comparison_parity_contract,
+    load_graph_movement_kinds_fixture, load_phase_obligations_parity_contract,
+    load_precommit_obligation_plan_fixture, load_self_hosted_workspace_composition_fixture,
     load_workspace_composition_parity_contract,
 };
 use std::path::PathBuf;
@@ -17,6 +22,14 @@ fn parity_contracts_load_from_fixtures() -> Result<(), String> {
     for path in crate::parity::workspace_composition_parity_contract_paths(&root) {
         let contract = load_workspace_composition_parity_contract(&path)?;
         validate_workspace_contract(&contract)?;
+    }
+    for path in crate::parity::graph_comparison_parity_contract_paths(&root) {
+        let contract = load_graph_comparison_parity_contract(&path)?;
+        validate_graph_comparison_contract(&contract)?;
+    }
+    for path in crate::parity::phase_obligations_parity_contract_paths(&root) {
+        let contract = load_phase_obligations_parity_contract(&path)?;
+        validate_phase_obligations_contract(&contract)?;
     }
     Ok(())
 }
@@ -105,6 +118,93 @@ fn authority_compile_plan_orders_sources() -> Result<(), String> {
     Ok(())
 }
 
+#[test]
+fn graph_comparison_surface_matches_parity_contract() -> Result<(), String> {
+    let root = workspace_root();
+    let contract_path = crate::parity::graph_comparison_parity_contract_path(&root);
+    let contract = load_graph_comparison_parity_contract(&contract_path)?;
+    if contract.intent_engine_module != GraphComparisonSurface::MODULE_ID {
+        return Err(format!(
+            "surface marker {} does not match contract {}",
+            GraphComparisonSurface::MODULE_ID,
+            contract.intent_engine_module
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn graph_movement_kinds_match_fixture() -> Result<(), String> {
+    let root = workspace_root();
+    let fixture_kinds = load_graph_movement_kinds_fixture(&root)?;
+    let canonical = crate::canonical_graph_movement_kinds()
+        .iter()
+        .map(|kind| kind.as_str().to_string())
+        .collect::<Vec<_>>();
+    if fixture_kinds != canonical {
+        return Err("graph movement kinds fixture drifted from canonical ordering".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn phase_obligations_surface_matches_parity_contract() -> Result<(), String> {
+    let root = workspace_root();
+    let contract_path = crate::parity::phase_obligations_parity_contract_path(&root);
+    let contract = load_phase_obligations_parity_contract(&contract_path)?;
+    if contract.intent_engine_module != PhaseObligationsSurface::MODULE_ID {
+        return Err(format!(
+            "surface marker {} does not match contract {}",
+            PhaseObligationsSurface::MODULE_ID,
+            contract.intent_engine_module
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn compile_phase_obligation_plan_from_movements() -> Result<(), String> {
+    let plan = crate::compile_phase_obligation_plan(&crate::PhaseObligationCompileInputV1 {
+        phase: crate::PRECOMMIT_PHASE_ID.to_string(),
+        movements: vec![
+            crate::GraphMovementV1 {
+                kind: crate::GraphMovementKindV1::RequirementChanged,
+                id: "REQ-0001".to_string(),
+            },
+            crate::GraphMovementV1 {
+                kind: crate::GraphMovementKindV1::SubjectBodyIdentityChanged,
+                id: "subject-1".to_string(),
+            },
+        ],
+        inventory: crate::InventoryPostureV1::Partial,
+        legacy_baseline: false,
+    });
+    if plan.obligations.is_empty() {
+        return Err("expected obligations from movement profile".to_string());
+    }
+    let has_inventory = plan
+        .obligations
+        .iter()
+        .any(|item| item.kind == crate::PhaseObligationKindV1::InventoryCompleteness);
+    if !has_inventory {
+        return Err("partial inventory must surface inventory completeness".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn precommit_obligation_plan_fixture_loads() -> Result<(), String> {
+    let root = workspace_root();
+    let fixture = load_precommit_obligation_plan_fixture(&root)?;
+    if fixture.phase != crate::PRECOMMIT_PHASE_ID {
+        return Err("fixture phase must be precommit".to_string());
+    }
+    if fixture.obligations.len() < 3 {
+        return Err("fixture must include representative obligations".to_string());
+    }
+    Ok(())
+}
+
 fn validate_packet_contract(contract: &EvaluatorPacketParityContract) -> Result<(), String> {
     if contract.scenario_id.is_empty() {
         return Err("empty scenario_id".to_string());
@@ -135,6 +235,33 @@ fn validate_workspace_contract(
     }
     if contract.required_composition_fields.len() < 4 {
         return Err("required_composition_fields too small".to_string());
+    }
+    Ok(())
+}
+
+fn validate_graph_comparison_contract(
+    contract: &GraphComparisonParityContract,
+) -> Result<(), String> {
+    if contract.scenario_id.is_empty() {
+        return Err("empty scenario_id".to_string());
+    }
+    if contract.required_movement_kinds.len() < 10 {
+        return Err("required_movement_kinds too small".to_string());
+    }
+    Ok(())
+}
+
+fn validate_phase_obligations_contract(
+    contract: &PhaseObligationsParityContract,
+) -> Result<(), String> {
+    if contract.scenario_id.is_empty() {
+        return Err("empty scenario_id".to_string());
+    }
+    if contract.required_obligation_kinds.len() < 4 {
+        return Err("required_obligation_kinds too small".to_string());
+    }
+    if contract.sample_phase != crate::PRECOMMIT_PHASE_ID {
+        return Err("sample_phase must be precommit".to_string());
     }
     Ok(())
 }
