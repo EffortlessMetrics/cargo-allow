@@ -33,6 +33,25 @@ fn test_subjects_surface_matches_parity_contract() -> Result<(), String> {
     Ok(())
 }
 
+#[test]
+fn test_subjects_package_copy_matches_rust_source_index() -> Result<(), String> {
+    let root = workspace_root();
+    let canonical =
+        std::fs::read_to_string(root.join("crates/rust-source-index/src/test_subjects.rs"))
+            .map_err(|err| format!("read canonical test_subjects: {err}"))?;
+    let packaged = std::fs::read_to_string(
+        root.join("crates/allow-rust/src/snapshot_package/test_subjects.rs"),
+    )
+    .map_err(|err| format!("read allow-rust snapshot copy: {err}"))?;
+    if canonical.replace("\r\n", "\n") != packaged.replace("\r\n", "\n") {
+        return Err(
+            "allow-rust snapshot_package/test_subjects.rs must match rust-source-index test_subjects.rs"
+                .to_string(),
+        );
+    }
+    Ok(())
+}
+
 fn validate_contract(contract: &TestSubjectsParityContract) -> Result<(), String> {
     if contract.scenario_id.is_empty() {
         return Err("empty scenario_id".to_string());

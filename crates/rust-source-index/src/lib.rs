@@ -8,11 +8,17 @@
 //! Clippy, build scripts, proc macros, or repository code execution.
 
 mod parity;
+mod test_subjects;
 mod test_subjects_surface;
 
 pub use parity::{
     TestSubjectsParityContract, load_test_subjects_parity_contract,
     test_subjects_parity_contract_path, test_subjects_parity_contract_paths,
+};
+pub use test_subjects::{
+    RustTestInventory, RustTestInventoryDiagnostic, RustTestInventoryDiagnosticKind,
+    RustTestInventoryOptions, RustTestInventoryStatus, RustTestResolution, RustTestSelector,
+    RustTestSourceRange, RustTestSubject, RustTestTargetIdentity, RustTestTargetKind,
 };
 pub use test_subjects_surface::TestSubjectsSurface;
 

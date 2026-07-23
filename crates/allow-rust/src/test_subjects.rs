@@ -1,124 +1,15 @@
 use allow_core::{
     CargoAllowError, CargoAllowResult, normalize_path, read_text_file_capped, stable_hash_hex,
 };
-use std::collections::BTreeSet;
 use std::path::{Component, Path, PathBuf};
 use tree_sitter::Node;
 
 use crate::syntax_tree::{node_text, parse_rust_syntax};
 use crate::text::source_column;
 
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub enum RustTestTargetKind {
-    Library,
-    Binary,
-    IntegrationTest,
-}
-
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct RustTestTargetIdentity {
-    pub kind: RustTestTargetKind,
-    pub name: String,
-}
-
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub struct RustTestSelector {
-    pub package: String,
-    pub target: RustTestTargetIdentity,
-    pub module_path: Vec<String>,
-    pub function: String,
-}
-
-impl RustTestSelector {
-    pub fn display_name(&self) -> String {
-        let mut parts = self.module_path.clone();
-        parts.push(self.function.clone());
-        format!(
-            "{}:{}:{}::{}",
-            self.package,
-            target_kind_name(self.target.kind),
-            self.target.name,
-            parts.join("::")
-        )
-    }
-
-    fn validate(&self) -> bool {
-        !self.package.trim().is_empty()
-            && !self.target.name.trim().is_empty()
-            && !self.function.trim().is_empty()
-            && self
-                .module_path
-                .iter()
-                .all(|segment| !segment.trim().is_empty())
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct RustTestSourceRange {
-    pub start_line: u32,
-    pub start_column: u32,
-    pub end_line: u32,
-    pub end_column: u32,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct RustTestSubject {
-    pub selector: RustTestSelector,
-    pub source_path: String,
-    pub source_range: RustTestSourceRange,
-    pub body_identity: String,
-    pub attributes: Vec<String>,
-    pub generated_or_parameterized: bool,
-    pub cfg_or_feature_unknown: bool,
-    pub ignored: bool,
-    pub limitations: Vec<String>,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum RustTestInventoryStatus {
-    Complete,
-    Partial,
-}
-
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
-pub enum RustTestInventoryDiagnosticKind {
-    ManifestReadFailed,
-    ManifestMalformed,
-    SourceReadFailed,
-    SourceParseFailed,
-    TargetUnresolved,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct RustTestInventoryDiagnostic {
-    pub kind: RustTestInventoryDiagnosticKind,
-    pub path: Option<String>,
-    pub message: String,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct RustTestInventory {
-    pub subjects: Vec<RustTestSubject>,
-    pub status: RustTestInventoryStatus,
-    pub diagnostics: Vec<RustTestInventoryDiagnostic>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum RustTestResolution {
-    ResolvedExact(RustTestSubject),
-    Ambiguous(Vec<RustTestSelector>),
-    NotFound,
-    Ignored(RustTestSubject),
-    GeneratedOrParameterized(RustTestSubject),
-    CfgOrFeatureUnknown(RustTestSubject),
-    PartialInventory,
-    MalformedSelector,
-}
-
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct RustTestInventoryOptions {
-    pub additional_test_attributes: BTreeSet<String>,
-}
+#[path = "snapshot_package/test_subjects.rs"]
+mod subject_types;
+pub use subject_types::*;
 
 pub fn inventory_rust_test_subjects(
     root: impl AsRef<Path>,
@@ -924,14 +815,6 @@ fn strip_bom(source: String) -> String {
         .unwrap_or(source)
 }
 
-fn target_kind_name(kind: RustTestTargetKind) -> &'static str {
-    match kind {
-        RustTestTargetKind::Library => "lib",
-        RustTestTargetKind::Binary => "bin",
-        RustTestTargetKind::IntegrationTest => "test",
-    }
-}
-
 fn diagnostic_order(
     left: &RustTestInventoryDiagnostic,
     right: &RustTestInventoryDiagnostic,
@@ -945,6 +828,7 @@ fn diagnostic_order(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::BTreeSet;
 
     fn manifest() -> Vec<(PathBuf, String)> {
         vec![(

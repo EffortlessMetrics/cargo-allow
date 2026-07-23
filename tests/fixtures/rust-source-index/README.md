@@ -10,5 +10,6 @@ owns the implementations.
 | --- | --- | --- |
 | `parity-test-subjects-v1.toml` | `parity-rust-source-index-test-subjects-v1` | `move-allow-rust-test-subjects` |
 
-Packet 2587-B moves subject/selector/result DTOs. Packet 2587-C moves discovery
-and `allow-rust` compatibility re-exports.
+Packet 2587-B moves subject/selector/result DTOs into `rust-source-index::test_subjects`;
+`allow-rust` keeps a publish-safe `snapshot_package/` copy in sync. Packet 2587-C moves
+discovery and `allow-rust` compatibility re-exports.
