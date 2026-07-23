@@ -648,72 +648,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-9040"
-kind = "non_rust_file"
-family = "rust_source"
-path = "crates/repo-snapshot/src/source_view.rs"
-owner = "repo-infra"
-classification = "repo_snapshot_implementation"
-reason = "Generic repository source view implementation moved from cargo-allow (#2583-C)."
-evidence = ["doc:docs/architecture/repo-snapshot.md", "doc:policy/product-move-ledger.toml"]
-created = "2026-07-22"
-review_after = "2026-11-01"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = "crates/repo-snapshot/src/source_view.rs"
-target_fingerprint = "rs"
-glob = "crates/repo-snapshot/src/source_view.rs"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-9041"
-kind = "non_rust_file"
-family = "rust_source"
-path = "crates/cargo-allow/src/spec_system_source_view.rs"
-owner = "repo-infra"
-classification = "spec_system_source"
-reason = "Package-local copy of repo-snapshot source_view for publish-safe cargo-allow (#2583-C)."
-evidence = ["doc:docs/architecture/repo-snapshot.md", "doc:crates/repo-snapshot/src/source_view.rs"]
-created = "2026-07-22"
-review_after = "2026-11-01"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = "crates/cargo-allow/src/spec_system_source_view.rs"
-target_fingerprint = "rs"
-glob = "crates/cargo-allow/src/spec_system_source_view.rs"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-9042"
-kind = "non_rust_file"
-family = "rust_source"
-path = "crates/repo-snapshot/src/source_view_surface.rs"
-owner = "repo-infra"
-classification = "repo_snapshot_implementation"
-reason = "Module surface marker for repo-snapshot source_view parity (#2583-C)."
-evidence = ["doc:docs/architecture/repo-snapshot.md", "doc:policy/product-move-ledger.toml"]
-created = "2026-07-22"
-review_after = "2026-11-01"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = "crates/repo-snapshot/src/source_view_surface.rs"
-target_fingerprint = "rs"
-glob = "crates/repo-snapshot/src/source_view_surface.rs"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-9055"
 kind = "lint_exception"
 family = "expect_attribute"
@@ -974,6 +908,93 @@ review_after = "2026-11-01"
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
 glob = "crates/intent-model/Cargo.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9067"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/intent-protocol/README.md"
+owner = "repo-infra"
+classification = "intent_protocol_parity_fixture"
+reason = "Parity fixture catalog for intent-protocol extraction (#2585-A)."
+evidence = ["doc:docs/architecture/intent-protocol.md", "doc:policy/extraction-parity.toml"]
+created = "2026-07-23"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "tests/fixtures/intent-protocol/README.md"
+target_fingerprint = "md"
+glob = "tests/fixtures/intent-protocol/README.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9068"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/intent-protocol/parity-identity-query-v1.toml"
+owner = "repo-infra"
+classification = "intent_protocol_parity_fixture"
+reason = "Identity/query transport parity contract for intent-protocol (#2585-A)."
+evidence = ["doc:tests/fixtures/intent-protocol/README.md", "doc:policy/extraction-parity.toml"]
+created = "2026-07-23"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "tests/fixtures/intent-protocol/parity-identity-query-v1.toml"
+target_fingerprint = "toml"
+glob = "tests/fixtures/intent-protocol/parity-identity-query-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9069"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/architecture/intent-protocol.md"
+owner = "repo-infra"
+classification = "three_product_snapshot_projection"
+reason = "Human projection of the intent-protocol cargo-intent protocol crate (#2585-A)."
+evidence = ["doc:tests/fixtures/intent-protocol/README.md", "doc:policy/product-move-ledger.toml", "doc:policy/extraction-parity.toml"]
+created = "2026-07-23"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/architecture/intent-protocol.md"
+target_fingerprint = "md"
+glob = "docs/architecture/intent-protocol.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9070"
+kind = "non_rust_file"
+family = "package_metadata"
+path = "crates/intent-protocol/Cargo.toml"
+owner = "repo-infra"
+classification = "rust_package_metadata"
+reason = "intent-protocol manifest is tracked cargo-intent package metadata (#2585-A)."
+evidence = ["doc:crates/intent-protocol/README.md", "doc:policy/product-package-topology.toml", "doc:docs/architecture/intent-protocol.md"]
+created = "2026-07-23"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "crates/intent-protocol/Cargo.toml"
 
 [allow.last_seen]
 line = 1

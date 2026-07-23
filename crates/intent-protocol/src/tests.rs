@@ -1,6 +1,9 @@
 use crate::IdentityQuerySurface;
 use crate::parity::{IdentityQueryParityContract, load_identity_query_parity_contract};
-use repo_protocol::{RepositorySnapshotKindV1, RepositorySnapshotV1, ResolvedRevisionV1};
+use crate::{
+    REPOSITORY_SNAPSHOT_SCHEMA_ID, RepositorySnapshotKindV1, RepositorySnapshotV1,
+    ResolvedRevisionV1,
+};
 use std::path::PathBuf;
 
 #[test]
@@ -59,6 +62,28 @@ fn query_envelope_roundtrip_preserves_identity() -> Result<(), String> {
     Ok(())
 }
 
+const REPO_PROTOCOL_SNAPSHOT_FILES: &[&str] = &["repository_snapshot.rs", "result_class.rs"];
+
+#[test]
+fn repo_protocol_snapshot_matches_canonical() -> Result<(), String> {
+    let root = workspace_root();
+    for file in REPO_PROTOCOL_SNAPSHOT_FILES {
+        let canonical =
+            std::fs::read_to_string(root.join(format!("crates/repo-protocol/src/{file}")))
+                .map_err(|err| format!("read canonical repo-protocol/{file}: {err}"))?;
+        let packaged = std::fs::read_to_string(root.join(format!(
+            "crates/intent-protocol/src/snapshot_package/repo_protocol/{file}"
+        )))
+        .map_err(|err| format!("read intent-protocol snapshot repo_protocol/{file}: {err}"))?;
+        if canonical.replace("\r\n", "\n") != packaged.replace("\r\n", "\n") {
+            return Err(format!(
+                "intent-protocol snapshot_package/repo_protocol/{file} must match repo-protocol/{file}"
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn validate_contract(contract: &IdentityQueryParityContract) -> Result<(), String> {
     if contract.scenario_id.is_empty() {
         return Err("empty scenario_id".to_string());
@@ -77,7 +102,7 @@ fn validate_contract(contract: &IdentityQueryParityContract) -> Result<(), Strin
 
 fn sample_snapshot() -> RepositorySnapshotV1 {
     RepositorySnapshotV1 {
-        schema_id: repo_protocol::REPOSITORY_SNAPSHOT_SCHEMA_ID.to_string(),
+        schema_id: REPOSITORY_SNAPSHOT_SCHEMA_ID.to_string(),
         kind: RepositorySnapshotKindV1::CommittedHead,
         root_identity: "sha256:v1:fixture-root".to_string(),
         object_format: "sha1".to_string(),

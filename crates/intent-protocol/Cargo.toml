@@ -13,7 +13,6 @@ categories.workspace = true
 publish = false
 
 [dependencies]
-repo-protocol.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 toml.workspace = true
