@@ -1,5 +1,8 @@
 //! Git subprocess helpers for repository snapshot reads (#2583-D).
-#![expect(dead_code, reason = "policy:allow-9040: git parser helpers exercised via allow-diff facade tests (#2583-D)")]
+#![expect(
+    dead_code,
+    reason = "policy:allow-9055: git helpers via allow-diff facade (#2583-D)"
+)]
 
 use allow_core::{CargoAllowDiagnostic, CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use std::collections::BTreeSet;
