@@ -18,4 +18,5 @@ Move structural DTOs into `intent-model::spec_system`; `allow-policy` keeps a pu
 
 ## PR3 (#2584-C)
 
-Move domain parsing helpers and `allow-policy` compatibility re-exports.
+Move domain parsing helpers into canonical `intent-model::spec_system` modules;
+`allow-policy` keeps publish-safe snapshot parity and compatibility re-exports.
