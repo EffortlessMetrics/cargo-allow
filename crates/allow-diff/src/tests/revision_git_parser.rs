@@ -7,6 +7,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 #[test]
 fn git_tree_revision_parser_skips_symlinks_and_preserves_newlines() {
+    // #1826: symlinks (mode 120000) and gitlinks/submodules (mode 160000)
+    // are excluded because their blob content is a target path or commit
+    // reference, not parseable source. Only regular files (100644) and
+    // executables (100755) carry source content. Paths with embedded
+    // newlines are preserved (the -z / NUL-delimited output from #1918
+    // ensures the newline inside `line\nbreak.rs` is one path, not two).
     let output = b"100644 blob abc123\tsrc/lib.rs\0\
 120000 blob def456\tsrc/link.rs\0\
 160000 commit 123456\tvendor/submodule\0\
