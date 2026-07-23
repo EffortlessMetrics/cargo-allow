@@ -20,10 +20,10 @@ fn extraction_shim_registry_report_only() -> Result<(), String> {
     if report.shim_count < 7 {
         return Err("seeded shim inventory too small".to_string());
     }
-    if report.active_count < 2 {
-        return Err("expected repo-snapshot shims active after #2583-D".to_string());
+    if report.active_count < 3 {
+        return Err("expected repo-snapshot and rust-source-index shims active".to_string());
     }
-    if report.planned_count < 5 {
+    if report.planned_count < 4 {
         return Err("expected remaining shims planned".to_string());
     }
 
