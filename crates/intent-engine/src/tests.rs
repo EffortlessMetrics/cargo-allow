@@ -1,10 +1,13 @@
+use crate::DomainQueriesSurface;
 use crate::EvaluatorPacketSurface;
 use crate::GraphComparisonSurface;
 use crate::PhaseObligationsSurface;
 use crate::WorkspaceCompilerSurface;
 use crate::parity::{
-    EvaluatorPacketParityContract, GraphComparisonParityContract, PhaseObligationsParityContract,
-    WorkspaceCompositionParityContract, load_evaluator_packet_parity_contract,
+    BoundedDomainQueriesParityContract, EvaluatorPacketParityContract,
+    GraphComparisonParityContract, PhaseObligationsParityContract,
+    WorkspaceCompositionParityContract, load_bounded_domain_queries_parity_contract,
+    load_bounded_domain_query_catalog_fixture, load_evaluator_packet_parity_contract,
     load_graph_comparison_parity_contract, load_graph_movement_kinds_fixture,
     load_phase_obligations_parity_contract, load_precommit_obligation_plan_fixture,
     load_self_hosted_workspace_composition_fixture, load_workspace_composition_parity_contract,
@@ -29,6 +32,10 @@ fn parity_contracts_load_from_fixtures() -> Result<(), String> {
     for path in crate::parity::phase_obligations_parity_contract_paths(&root) {
         let contract = load_phase_obligations_parity_contract(&path)?;
         validate_phase_obligations_contract(&contract)?;
+    }
+    for path in crate::parity::bounded_domain_queries_parity_contract_paths(&root) {
+        let contract = load_bounded_domain_queries_parity_contract(&path)?;
+        validate_bounded_domain_queries_contract(&contract)?;
     }
     Ok(())
 }
@@ -204,6 +211,59 @@ fn precommit_obligation_plan_fixture_loads() -> Result<(), String> {
     Ok(())
 }
 
+#[test]
+fn domain_queries_surface_matches_parity_contract() -> Result<(), String> {
+    let root = workspace_root();
+    let contract_path = crate::parity::bounded_domain_queries_parity_contract_path(&root);
+    let contract = load_bounded_domain_queries_parity_contract(&contract_path)?;
+    if contract.intent_engine_module != DomainQueriesSurface::MODULE_ID {
+        return Err(format!(
+            "surface marker {} does not match contract {}",
+            DomainQueriesSurface::MODULE_ID,
+            contract.intent_engine_module
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn bounded_domain_query_catalog_matches_fixture() -> Result<(), String> {
+    let root = workspace_root();
+    let fixture_kinds = load_bounded_domain_query_catalog_fixture(&root)?;
+    let canonical = crate::canonical_bounded_domain_query_kinds()
+        .iter()
+        .map(|kind| kind.as_str().to_string())
+        .collect::<Vec<_>>();
+    if fixture_kinds != canonical {
+        return Err("bounded domain query catalog drifted from canonical ordering".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn bounded_domain_query_returns_protocol_shaped_response() -> Result<(), String> {
+    let request = crate::BoundedDomainQueryRequestV1::new(
+        crate::BoundedDomainQueryKindV1::MovementKindsCatalog,
+    );
+    let response = crate::execute_bounded_domain_query(&request);
+    if response.result_class != crate::RESULT_CLASS_COMPLETED {
+        return Err("expected completed result class".to_string());
+    }
+    let protocol_json = crate::to_intent_query_response_json(&response);
+    if protocol_json.get("schema_id").and_then(|v| v.as_str())
+        != Some(crate::INTENT_QUERY_RESPONSE_SCHEMA_ID)
+    {
+        return Err("protocol projection missing query-response schema".to_string());
+    }
+    let projected: intent_protocol::IntentQueryResponseV1 =
+        serde_json::from_value(protocol_json)
+            .map_err(|err| format!("deserialize intent-protocol response: {err}"))?;
+    if projected.payload_schema != response.payload_schema {
+        return Err("payload schema mismatch in protocol projection".to_string());
+    }
+    Ok(())
+}
+
 fn validate_packet_contract(contract: &EvaluatorPacketParityContract) -> Result<(), String> {
     if contract.scenario_id.is_empty() {
         return Err("empty scenario_id".to_string());
@@ -261,6 +321,21 @@ fn validate_phase_obligations_contract(
     }
     if contract.sample_phase != crate::PRECOMMIT_PHASE_ID {
         return Err("sample_phase must be precommit".to_string());
+    }
+    Ok(())
+}
+
+fn validate_bounded_domain_queries_contract(
+    contract: &BoundedDomainQueriesParityContract,
+) -> Result<(), String> {
+    if contract.scenario_id.is_empty() {
+        return Err("empty scenario_id".to_string());
+    }
+    if contract.protocol_response_schema != crate::INTENT_QUERY_RESPONSE_SCHEMA_ID {
+        return Err("protocol_response_schema must be intent.query-response.v1".to_string());
+    }
+    if contract.required_query_kinds.len() < 3 {
+        return Err("required_query_kinds too small".to_string());
     }
     Ok(())
 }

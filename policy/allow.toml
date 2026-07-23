@@ -1264,6 +1264,50 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9083"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/intent-engine/bounded-domain-query-catalog-v1.toml"
+owner = "repo-infra"
+classification = "intent_engine_parity_fixture"
+reason = "Bounded domain query catalog fixture for intent-engine (#2586-D)."
+evidence = ["doc:tests/fixtures/intent-engine/README.md", "doc:policy/extraction-parity.toml"]
+created = "2026-07-23"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "tests/fixtures/intent-engine/bounded-domain-query-catalog-v1.toml"
+target_fingerprint = "toml"
+glob = "tests/fixtures/intent-engine/bounded-domain-query-catalog-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9084"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/intent-engine/parity-bounded-domain-queries-v1.toml"
+owner = "repo-infra"
+classification = "intent_engine_parity_fixture"
+reason = "Bounded domain queries parity contract for intent-engine (#2586-D)."
+evidence = ["doc:tests/fixtures/intent-engine/README.md", "doc:policy/extraction-parity.toml"]
+created = "2026-07-23"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "tests/fixtures/intent-engine/parity-bounded-domain-queries-v1.toml"
+target_fingerprint = "toml"
+glob = "tests/fixtures/intent-engine/parity-bounded-domain-queries-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9054"
 kind = "non_rust_file"
 family = "test_fixture"

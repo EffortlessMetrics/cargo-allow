@@ -1,0 +1,11 @@
+scenario_id = "parity-intent-engine-bounded-domain-queries-v1"
+intent_engine_module = "intent-engine::domain_queries"
+parity_case = "parity-intent-engine-bounded-domain-queries-v1"
+move_ledger_entry = "move-cargo-allow-spec-system-workspace"
+protocol_response_schema = "intent.query-response.v1"
+required_query_kinds = [
+  "workspace_composition",
+  "authority_compile_plan",
+  "movement_kinds_catalog",
+  "phase_obligation_kinds_catalog",
+]

@@ -20,4 +20,8 @@ Generic workspace composition and authority compile plan replacing hard-coded fo
 
 Graph comparison movement taxonomy and phase obligation compile plans. `cargo-allow` retains paired graph comparison and precommit evaluation runtime during the parity window.
 
-## PR4+
+## PR4 (#2586-D)
+
+Bounded domain query catalog returning intent-protocol-shaped responses without graph compilation or proof execution.
+
+## PR5+
