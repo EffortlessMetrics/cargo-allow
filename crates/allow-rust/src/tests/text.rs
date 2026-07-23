@@ -17,6 +17,32 @@ fn extract_lints_filters_metadata_empty_segments_and_trailing_text() {
 }
 
 #[test]
+fn extract_lints_does_not_split_on_commas_inside_string_literals() {
+    // #2659: commas inside reason = "..." string literals should not produce
+    // spurious extra lint entries.
+    let lints = extract_lints(r#"clippy::unwrap_used, reason = "see policy: a, b") trailing"#);
+    assert_eq!(
+        lints,
+        vec!["clippy::unwrap_used".to_string()],
+        "comma inside reason string should not produce extra lints: {lints:?}"
+    );
+    // Multiple lints after a reason with commas.
+    let lints = extract_lints(r#"clippy::unwrap_used, reason = "x, y", dead_code) trailing"#);
+    assert_eq!(
+        lints,
+        vec!["clippy::unwrap_used".to_string(), "dead_code".to_string()],
+        "lints after a comma-containing reason should still be detected: {lints:?}"
+    );
+    // Escaped quote inside reason string.
+    let lints = extract_lints(r#"clippy::unwrap_used, reason = "see \"a, b\"") trailing"#);
+    assert_eq!(
+        lints,
+        vec!["clippy::unwrap_used".to_string()],
+        "escaped quotes inside reason should not break string tracking: {lints:?}"
+    );
+}
+
+#[test]
 fn lint_policy_reference_accepts_stable_id_characters_and_stops_at_boundaries() {
     assert_eq!(
         lint_policy_reference("reason = \"policy:ALLOW-123_a-b.\""),
