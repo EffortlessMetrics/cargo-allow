@@ -20,8 +20,21 @@ pub struct FederationLoadResult {
 }
 
 impl FederationLoadResult {
-    pub fn found(&self) -> bool {
+    /// True when the federation config file was found and parsed, regardless
+    /// of whether validation passed. Use [`is_valid`](Self::is_valid) to check
+    /// that the parsed config also passed validation (#1837).
+    pub fn parsed(&self) -> bool {
         !matches!(self.outcome, FederationLoadOutcome::Missing)
+    }
+
+    /// True when the federation config was found, parsed, **and** passed
+    /// validation (`valid == true`). A config with blocking diagnostics
+    /// (e.g. `DuplicateId`) returns false here even though it was parsed.
+    pub fn is_valid(&self) -> bool {
+        match &self.outcome {
+            FederationLoadOutcome::Parsed(validated) => validated.valid,
+            FederationLoadOutcome::Missing => false,
+        }
     }
 
     pub fn validated(&self) -> Option<&ValidatedFederationConfig> {
