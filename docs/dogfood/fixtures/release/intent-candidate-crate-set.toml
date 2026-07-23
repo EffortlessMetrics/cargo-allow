@@ -1,0 +1,17 @@
+# Seven-crate IntentCandidate package / install set (#2599-C).
+# Shared by intent-candidate smoke and extraction parity receipts.
+# Do not fork this list into additional independent copies without updating callers.
+
+schema_id = "cargo-allow.intent-candidate-crate-set.v1"
+schema_version = 1
+
+# Dependency / package order (leaf → binary).
+crates = [
+  "allow-core",
+  "allow-inventory",
+  "repo-protocol",
+  "repo-snapshot",
+  "intent-protocol",
+  "intent-engine",
+  "cargo-intent",
+]

@@ -12,3 +12,13 @@ Product identity, config entrypoint, renderer framework, and exit mapping. `chan
 - `cargo-intent::config` — config entrypoint (#2599-A)
 - `cargo-intent::render` — human/JSON renderer framework (#2599-A)
 - `cargo-intent::exit` — process exit mapping (#2599-A)
+
+## Install smoke (#2599-C)
+
+`scripts/intent-candidate-smoke.sh` packages the seven-crate intent stack from
+`docs/dogfood/fixtures/release/intent-candidate-crate-set.toml`, installs
+`cargo-intent` from extracted packages outside the workspace, and emits
+`cargo-allow.intent-candidate-smoke.v1`. The harness denies workspace
+`crates/` reads during decisive install and rejects accidental
+`target/debug/cargo-intent` usage. It does not invoke proof runners or
+`cargo test`.
