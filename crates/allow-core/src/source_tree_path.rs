@@ -2,11 +2,39 @@ use std::path::Path;
 
 use crate::AllowEntry;
 
+/// Normalize a path for source-tree identity and matching.
+///
+/// All backslashes are converted to forward slashes, `.`/`..` segments are
+/// folded, and the Windows verbatim prefix (`\\?\`) is stripped. This is a
+/// lexical normalization only — it does not touch the filesystem.
+///
+/// # Windows absolute paths (#1821)
+///
+/// `normalize_path` handles three Windows absolute shapes:
+///
+/// - **Verbatim prefix** (`\\?\C:\...` or `\\?\UNC\server\share\...`):
+///   stripped so the path degrades to its non-verbatim form (`C:/...` or
+///   `//server/share/...`). This is the case that silently produced wrong
+///   identity keys because the `\\?\` prefix survived as path segments.
+/// - **Drive letters** (`C:\...`): preserved as `C:/...`. The drive letter
+///   is a meaningful absolute-path identity component, not a repo-relative
+///   segment, and several callers (e.g. migrate evidence diagnostics) pass
+///   absolute roots through this function. Stripping it would corrupt those
+///   identities.
+/// - **UNC roots** (`\\server\share\...`): preserved as `//server/share/...`.
+///   Two leading slashes fold to a single Unix-style absolute root (`/`)
+///   during the segment walk, so `//server/share/foo` → `/server/share/foo`.
+///
+/// The scanner resolves finding paths against the source-tree root before
+/// calling this function, so repo-relative paths are the normal input.
 pub fn normalize_path(path: impl AsRef<Path>) -> String {
     let text = path.as_ref().to_string_lossy().replace('\\', "/");
-    let absolute = text.starts_with('/');
+    // Strip the Windows verbatim prefix (\\?\) so it doesn't survive as path
+    // segments. Drive letters and plain UNC roots are preserved (see docs).
+    let (stripped, force_absolute) = strip_verbatim_prefix(&text);
+    let absolute = force_absolute || stripped.starts_with('/');
     let mut parts = Vec::new();
-    for part in text.split('/') {
+    for part in stripped.split('/') {
         match part {
             "" | "." => {}
             ".." => {
@@ -25,6 +53,25 @@ pub fn normalize_path(path: impl AsRef<Path>) -> String {
     } else {
         normalized
     }
+}
+
+/// Strip the Windows verbatim prefix from a forward-slashed path string.
+///
+/// Returns the stripped path and a flag indicating whether the result should
+/// be treated as absolute (set for verbatim UNC paths where the `\\?\UNC\`
+/// prefix is stripped but the path is still absolute).
+///
+/// - `//?/C:/foo` → `("C:/foo", false)` — drive letter preserved.
+/// - `//?/UNC/server/share/foo` → `("server/share/foo", true)` — verbatim UNC
+///   stripped, force-absolute so the result is `/server/share/foo`.
+fn strip_verbatim_prefix(text: &str) -> (&str, bool) {
+    if let Some(rest) = text.strip_prefix("//?/UNC/") {
+        return (rest, true);
+    }
+    if let Some(rest) = text.strip_prefix("//?/") {
+        return (rest, false);
+    }
+    (text, false)
 }
 
 pub(crate) fn normalize_source_tree_scope(scope: &str) -> String {
