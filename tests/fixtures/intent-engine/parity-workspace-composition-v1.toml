@@ -1,0 +1,12 @@
+scenario_id = "parity-intent-engine-workspace-composition-v1"
+intent_engine_module = "intent-engine::workspace_compiler"
+parity_case = "parity-intent-engine-workspace-composition-v1"
+move_ledger_entry = "move-cargo-allow-spec-system-workspace"
+required_composition_fields = [
+  "composition_id",
+  "requirement_path",
+  "slice_path",
+  "seams_path",
+  "evidence_path",
+  "subject_inventory",
+]

@@ -1,4 +1,5 @@
 use crate::spec_system_source::RepositorySourceView;
+use crate::spec_system_workspace_composition::SELF_HOSTED_RUNTIME_PROMOTION;
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_diff::{ResolvedRevisionIdentity, resolve_revision_identity, staged_repository_snapshot};
 use allow_inventory::Inventory;
@@ -22,17 +23,7 @@ use std::path::Path;
 #[cfg(test)]
 use std::path::PathBuf;
 
-const SPEC_PATH: &str = "docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md";
-const SLICE_PATH: &str = ".allow/spec-system/slices/self-hosted-runtime-promotion-v1.toml";
-const SEAMS_PATH: &str = ".allow/spec-system/seams/runtime-promotion-validator-v1.toml";
-const EVIDENCE_PATH: &str = ".allow/spec-system/evidence/runtime-promotion-v1.toml";
-
-pub fn self_hosted_graph_sources_present(root: impl AsRef<Path>) -> bool {
-    let root = root.as_ref();
-    [SPEC_PATH, SLICE_PATH, SEAMS_PATH, EVIDENCE_PATH]
-        .iter()
-        .all(|path| root.join(path).is_file())
-}
+pub use crate::spec_system_workspace_composition::self_hosted_graph_sources_present;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SelfHostedGraphDiagnostic {
@@ -485,14 +476,20 @@ fn movement(kind: SpecGraphMovementKind, id: &str) -> SpecGraphMovement {
 fn compile_self_hosted_graph_from_view(
     view: &RepositorySourceView,
 ) -> CargoAllowResult<SelfHostedGraphCompilation> {
-    let requirement_text = view.read_text(Path::new(SPEC_PATH))?;
-    let slice_text = view.read_text(Path::new(SLICE_PATH))?;
-    let seams_text = view.read_text(Path::new(SEAMS_PATH))?;
-    let evidence_text = view.read_text(Path::new(EVIDENCE_PATH))?;
-    let requirements = parse_requirement_blocks_at(Some(Path::new(SPEC_PATH)), &requirement_text)?;
-    let slice = parse_implementation_slice_at(Some(Path::new(SLICE_PATH)), &slice_text)?;
-    let seams = parse_authored_seams_at(Some(Path::new(SEAMS_PATH)), &seams_text)?;
-    let evidence = parse_authored_evidence_at(Some(Path::new(EVIDENCE_PATH)), &evidence_text)?;
+    let composition = &SELF_HOSTED_RUNTIME_PROMOTION;
+    let requirement_text = view.read_text(Path::new(composition.requirement_path))?;
+    let slice_text = view.read_text(Path::new(composition.slice_path))?;
+    let seams_text = view.read_text(Path::new(composition.seams_path))?;
+    let evidence_text = view.read_text(Path::new(composition.evidence_path))?;
+    let requirements = parse_requirement_blocks_at(
+        Some(Path::new(composition.requirement_path)),
+        &requirement_text,
+    )?;
+    let slice =
+        parse_implementation_slice_at(Some(Path::new(composition.slice_path)), &slice_text)?;
+    let seams = parse_authored_seams_at(Some(Path::new(composition.seams_path)), &seams_text)?;
+    let evidence =
+        parse_authored_evidence_at(Some(Path::new(composition.evidence_path)), &evidence_text)?;
     validate_authored_mapping(&requirements, &slice, &seams, &evidence)?;
 
     let (manifests, sources) = view.rust_inputs()?;
@@ -577,7 +574,7 @@ fn compile_self_hosted_graph_from_view(
     Ok(SelfHostedGraphCompilation {
         graph,
         slice,
-        slice_source: SourceLocation::new(SLICE_PATH),
+        slice_source: SourceLocation::new(composition.slice_path),
         file_inventory: view.inventory().clone(),
         inventory: rust_inventory,
         diagnostics,
@@ -711,6 +708,7 @@ fn resolution_diagnostic(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::spec_system_workspace_composition::SELF_HOSTED_RUNTIME_PROMOTION;
     use std::fs;
     use std::process::Command;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -823,7 +821,7 @@ mod tests {
     -> Result<(), String> {
         let root = staged_fixture_repository()?;
         fs::write(
-            root.join(SEAMS_PATH),
+            root.join(SELF_HOSTED_RUNTIME_PROMOTION.seams_path),
             include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/../../.allow/spec-system/seams/runtime-promotion-validator-v1.toml"
@@ -877,13 +875,16 @@ mod tests {
             "/../../.allow/spec-system/seams/runtime-promotion-validator-v1.toml"
         ));
         fs::write(
-            root.join(SEAMS_PATH),
+            root.join(SELF_HOSTED_RUNTIME_PROMOTION.seams_path),
             seam_source.replace("owner = \"allow-policy\"", "owner = \"candidate-owner\""),
         )
         .map_err(|error| error.to_string())?;
-        run_git(&root, &["add", "--", SEAMS_PATH])?;
+        run_git(
+            &root,
+            &["add", "--", SELF_HOSTED_RUNTIME_PROMOTION.seams_path],
+        )?;
         fs::write(
-            root.join(SEAMS_PATH),
+            root.join(SELF_HOSTED_RUNTIME_PROMOTION.seams_path),
             seam_source.replace("owner = \"allow-policy\"", "owner = \"worktree-only\""),
         )
         .map_err(|error| error.to_string())?;
@@ -1054,28 +1055,28 @@ mod tests {
         ));
         let files = [
             (
-                SPEC_PATH,
+                SELF_HOSTED_RUNTIME_PROMOTION.requirement_path,
                 include_str!(concat!(
                     env!("CARGO_MANIFEST_DIR"),
                     "/../../docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md"
                 )),
             ),
             (
-                SLICE_PATH,
+                SELF_HOSTED_RUNTIME_PROMOTION.slice_path,
                 include_str!(concat!(
                     env!("CARGO_MANIFEST_DIR"),
                     "/../../.allow/spec-system/slices/self-hosted-runtime-promotion-v1.toml"
                 )),
             ),
             (
-                SEAMS_PATH,
+                SELF_HOSTED_RUNTIME_PROMOTION.seams_path,
                 include_str!(concat!(
                     env!("CARGO_MANIFEST_DIR"),
                     "/../../.allow/spec-system/seams/runtime-promotion-validator-v1.toml"
                 )),
             ),
             (
-                EVIDENCE_PATH,
+                SELF_HOSTED_RUNTIME_PROMOTION.evidence_path,
                 include_str!(concat!(
                     env!("CARGO_MANIFEST_DIR"),
                     "/../../.allow/spec-system/evidence/runtime-promotion-v1.toml"

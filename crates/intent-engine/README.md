@@ -12,6 +12,10 @@ Evaluator packet envelopes and surface markers only. Graph compilation, precommi
 
 Crate skeleton with evaluator packet envelope bound to `intent-protocol` query transport.
 
-## PR2+
+## PR2 (#2586-B)
 
-Graph assembly, precommit evaluation migration, and workspace compilation moves from `allow-policy` / `cargo-allow`.
+Generic workspace composition and authority compile plan replacing hard-coded four-file paths in `cargo-allow::spec_system_workspace`.
+
+## PR3+
+
+Graph comparison, phase obligations, bounded domain queries, and workspace compilation migration from `allow-policy` / `cargo-allow`.

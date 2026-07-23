@@ -38,6 +38,7 @@ mod spec_system;
 mod spec_system_source;
 mod spec_system_view;
 pub mod spec_system_workspace;
+pub mod spec_system_workspace_composition;
 mod why;
 mod worklist;
 mod world;

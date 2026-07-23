@@ -1,3 +1,11 @@
+mod workspace;
+
+pub use workspace::{
+    WorkspaceCompositionParityContract, load_self_hosted_workspace_composition_fixture,
+    load_workspace_composition_parity_contract, self_hosted_workspace_composition_fixture_path,
+    workspace_composition_parity_contract_path, workspace_composition_parity_contract_paths,
+};
+
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 
