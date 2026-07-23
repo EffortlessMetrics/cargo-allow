@@ -180,6 +180,7 @@ dependencies = [
  "clap",
  "fs4",
  "repo-snapshot",
+ "rust-source-index",
  "serde",
  "serde_json",
  "toml",
@@ -532,6 +533,14 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "toml",
+]
+
+[[package]]
+name = "rust-source-index"
+version = "0.2.0"
+dependencies = [
+ "serde",
  "toml",
 ]
 

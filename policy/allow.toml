@@ -783,6 +783,93 @@ line = 1013
 column = 1
 
 [[allow]]
+id = "allow-9058"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/rust-source-index/README.md"
+owner = "repo-infra"
+classification = "rust_source_index_parity_fixture"
+reason = "Parity fixture catalog for rust-source-index extraction (#2587-A)."
+evidence = ["doc:docs/architecture/rust-source-index.md", "doc:policy/extraction-parity.toml"]
+created = "2026-07-22"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "tests/fixtures/rust-source-index/README.md"
+target_fingerprint = "md"
+glob = "tests/fixtures/rust-source-index/README.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9059"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/rust-source-index/parity-test-subjects-v1.toml"
+owner = "repo-infra"
+classification = "rust_source_index_parity_fixture"
+reason = "Test-subject inventory parity contract for allow-rust extraction (#2587-A)."
+evidence = ["doc:tests/fixtures/rust-source-index/README.md", "doc:policy/extraction-parity.toml"]
+created = "2026-07-22"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "tests/fixtures/rust-source-index/parity-test-subjects-v1.toml"
+target_fingerprint = "toml"
+glob = "tests/fixtures/rust-source-index/parity-test-subjects-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9060"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/architecture/rust-source-index.md"
+owner = "repo-infra"
+classification = "three_product_snapshot_projection"
+reason = "Human projection of the rust-source-index shared implementation crate (#2587-A)."
+evidence = ["doc:tests/fixtures/rust-source-index/README.md", "doc:policy/product-move-ledger.toml", "doc:policy/extraction-parity.toml"]
+created = "2026-07-22"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/architecture/rust-source-index.md"
+target_fingerprint = "md"
+glob = "docs/architecture/rust-source-index.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9061"
+kind = "non_rust_file"
+family = "package_metadata"
+path = "crates/rust-source-index/Cargo.toml"
+owner = "repo-infra"
+classification = "rust_package_metadata"
+reason = "rust-source-index manifest is tracked shared-protocol package metadata (#2587-A)."
+evidence = ["doc:crates/rust-source-index/README.md", "doc:policy/product-package-topology.toml", "doc:docs/architecture/rust-source-index.md"]
+created = "2026-07-22"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "crates/rust-source-index/Cargo.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9054"
 kind = "non_rust_file"
 family = "test_fixture"
