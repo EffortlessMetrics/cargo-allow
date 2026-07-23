@@ -32,3 +32,4 @@ repo-snapshot = { path = "../repo-snapshot" }
 rust-source-index = { path = "../rust-source-index" }
 intent-model = { path = "../intent-model" }
 intent-protocol = { path = "../intent-protocol" }
+intent-engine = { path = "../intent-engine" }

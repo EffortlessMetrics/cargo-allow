@@ -105,6 +105,17 @@ disposition = "contract_only"
 claim_boundary = "Contract only; obligation structure without provider argv or proof execution."
 
 [[case]]
+id = "parity-intent-engine-evaluator-packet-v1"
+stage = "IntentEngine"
+move_ledger_entry = "move-cargo-allow-spec-system-workspace"
+shim_id = "shim-allow-policy-spec-system-types"
+old_producer = "cargo-allow::spec_system_workspace"
+new_producer = "intent-engine::evaluator_packet"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Evaluator packet contract only; graph compilation remains in allow-policy until later packets."
+
+[[case]]
 id = "parity-proof-protocol-plan-dtos-v1"
 stage = "ProofProtocol"
 move_ledger_entry = "move-issue-2568-embedded-evaluator"

@@ -179,6 +179,7 @@ dependencies = [
  "allow-rust",
  "clap",
  "fs4",
+ "intent-engine",
  "intent-model",
  "intent-protocol",
  "repo-snapshot",
@@ -353,6 +354,15 @@ checksum = "d466e9454f08e4a911e14806c24e16fba1b4c121d1ea474396f396069cf949d9"
 dependencies = [
  "equivalent",
  "hashbrown",
+]
+
+[[package]]
+name = "intent-engine"
+version = "0.2.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "toml",
 ]
 
 [[package]]
