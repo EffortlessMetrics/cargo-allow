@@ -1,7 +1,7 @@
 use crate::{
-    IdentityFrameV1, OutputFormat, ProcessExitFamilyV1, ProductIdentityV1, PRODUCT_ID,
-    emit_frame, exit_code_for_family, exit_code_for_result_class, exit_family_for_result_class,
-    load_config, load_product_identity_fixture_toml,
+    IdentityFrameV1, OutputFormat, PRODUCT_ID, ProcessExitFamilyV1, ProductIdentityV1, emit_frame,
+    exit_code_for_family, exit_code_for_result_class, exit_family_for_result_class, load_config,
+    load_product_identity_fixture_toml,
 };
 use std::path::PathBuf;
 

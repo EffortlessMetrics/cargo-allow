@@ -172,7 +172,7 @@ claim_boundary = "Old/new parity corpus across profiles, selectors, staged movem
 
 [[case]]
 id = "parity-cargo-intent-product-identity-v1"
-stage = "CargoIntent"
+stage = "CargoIntentFrontDoor"
 move_ledger_entry = "move-cargo-allow-spec-system-app"
 shim_id = "shim-cargo-allow-spec-system-delegate"
 old_producer = "cargo-allow::spec_system"

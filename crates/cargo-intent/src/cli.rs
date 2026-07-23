@@ -63,8 +63,7 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
             Ok(ProcessExitFamilyV1::Success)
         }
         Some(CargoIntentCommand::Change) => Err(
-            "change commands are not available yet; see #2599-B for the first vertical"
-                .to_string(),
+            "change commands are not available yet; see #2599-B for the first vertical".to_string(),
         ),
     }
 }
