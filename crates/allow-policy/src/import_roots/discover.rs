@@ -284,3 +284,10 @@ pub fn resolve_import_roots_config(config: Option<&ImportRootsConfig>) -> Import
         .filter(|cfg| !cfg.entries.is_empty() || cfg.owned.is_some())
         .unwrap_or_else(super::config::default_import_roots_config)
 }
+
+pub fn resolve_spec_system_import_roots(
+    config: Option<&crate::spec_system::ImportRootsConfig>,
+) -> ImportRootsConfig {
+    let converted = config.map(ImportRootsConfig::from);
+    resolve_import_roots_config(converted.as_ref())
+}

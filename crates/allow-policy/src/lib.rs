@@ -82,7 +82,7 @@ pub use import_roots::{
     ImportEdge, ImportEdgeKind, ImportGraph, ImportNode, ImportNodeRole, ImportProvenance,
     ImportRootEntry, ImportRootsConfig, ValidatedImportRootsConfig, default_import_roots_config,
     discover_import_graph, parse_import_roots_config, parse_import_roots_config_at,
-    resolve_import_roots_config, validate_import_roots_config,
+    resolve_import_roots_config, resolve_spec_system_import_roots, validate_import_roots_config,
 };
 
 pub use discovery::{

@@ -36,7 +36,7 @@ old_producer = "allow-policy::spec_system"
 new_producer = "intent-model::spec_system"
 expected_result = "EquivalentWithCanonicalRenaming"
 disposition = "contract_only"
-claim_boundary = "Contract only; type identity without evaluator duplication."
+claim_boundary = "DTO snapshot parity; parsing and graph compilation remain in allow-policy until #2584-C."
 
 [[case]]
 id = "parity-cargo-intent-spec-system-delegate-v1"
