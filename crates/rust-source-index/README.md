@@ -14,7 +14,9 @@ Crate skeleton and parity fixtures over current `allow-rust::test_subjects` inve
 
 ## PR2 (#2587-B)
 
-Move subject/selector/result DTOs and exact content identity types.
+`rust-source-index::test_subjects` owns structural DTOs (`RustTestSelector`, `RustTestSubject`,
+`RustTestInventory`, `RustTestResolution`, etc.). `allow-rust` keeps a publish-safe
+`snapshot_package/test_subjects.rs` copy in sync until #2587-C moves discovery.
 
 ## PR3 (#2587-C)
 

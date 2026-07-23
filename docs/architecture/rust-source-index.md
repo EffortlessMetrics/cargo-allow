@@ -9,8 +9,9 @@ resolution. PR1 (#2587-A) lands the crate skeleton and parity fixtures over curr
 `allow-rust::test_subjects` inventory APIs.
 
 Parity fixtures live under `tests/fixtures/rust-source-index/`. Packet 2587-B moves
-subject/selector/result DTOs. Packet 2587-C moves discovery logic and `allow-rust`
-compatibility re-exports.
+subject/selector/result DTOs into `rust-source-index::test_subjects` with a publish-safe
+`allow-rust` snapshot copy. Packet 2587-C moves discovery logic and retires the duplicate
+resolver from `allow-rust`.
 
 ## Module surfaces
 
