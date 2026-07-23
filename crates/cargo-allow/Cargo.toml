@@ -29,3 +29,4 @@ serde_json.workspace = true
 
 [dev-dependencies]
 repo-snapshot = { path = "../repo-snapshot" }
+rust-source-index = { path = "../rust-source-index" }

@@ -13,6 +13,7 @@ members = [
   "crates/allow-policy-legacy",
   "crates/repo-protocol",
   "crates/repo-snapshot",
+  "crates/rust-source-index",
 ]
 
 [workspace.package]
@@ -38,6 +39,7 @@ allow-report = { path = "crates/allow-report", version = "0.2.0" }
 allow-diff = { path = "crates/allow-diff", version = "0.2.0" }
 repo-protocol = { path = "crates/repo-protocol", version = "0.2.0" }
 repo-snapshot = { path = "crates/repo-snapshot", version = "0.2.0" }
+rust-source-index = { path = "crates/rust-source-index", version = "0.2.0" }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
 sha2 = "0.10.9"

@@ -1,0 +1,15 @@
+scenario_id = "parity-rust-source-index-test-subjects-v1"
+allow_rust_module = "allow-rust::test_subjects"
+rust_source_index_module = "rust-source-index::test_subjects"
+parity_case = "parity-rust-source-index-test-subjects-v1"
+move_ledger_entry = "move-allow-rust-test-subjects"
+required_subject_fields = [
+  "selector.package",
+  "selector.target.kind",
+  "selector.target.name",
+  "selector.module_path",
+  "selector.function",
+  "source_path",
+  "source_range",
+  "body_identity",
+]
