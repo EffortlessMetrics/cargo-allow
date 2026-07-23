@@ -7,3 +7,5 @@ Packet 2586-B lands workspace composition and authority compile plan fixtures (`
 Packet 2586-C lands graph comparison movement taxonomy and phase obligation plan fixtures.
 
 Packet 2586-D lands bounded domain query catalog and intent-protocol-shaped response fixtures.
+
+Packet 2586-E lands old/new parity corpus across profiles, selectors, staged movement, diagnostics, and exit posture.

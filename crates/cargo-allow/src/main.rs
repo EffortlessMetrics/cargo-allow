@@ -36,6 +36,7 @@ mod selector;
 mod spec_precommit;
 mod spec_system;
 pub mod spec_system_graph_movement;
+pub mod spec_system_parity_corpus;
 mod spec_system_source;
 mod spec_system_view;
 pub mod spec_system_workspace;

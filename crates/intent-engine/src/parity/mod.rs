@@ -1,8 +1,13 @@
+mod corpus;
 mod domain_queries;
 mod graph_comparison;
 mod phase_obligations;
 mod workspace;
 
+pub use corpus::{
+    ParityCorpusParityContract, load_parity_corpus_contract, load_parity_corpus_fixture,
+    parity_corpus_contract_path, parity_corpus_contract_paths, parity_corpus_fixture_path,
+};
 pub use domain_queries::{
     BoundedDomainQueriesParityContract, bounded_domain_queries_parity_contract_path,
     bounded_domain_queries_parity_contract_paths, bounded_domain_query_catalog_fixture_path,

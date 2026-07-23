@@ -13,6 +13,8 @@ mod graph_comparison;
 mod graph_comparison_surface;
 mod packet;
 mod parity;
+mod parity_corpus;
+mod parity_corpus_surface;
 mod phase_obligations;
 mod phase_obligations_surface;
 mod workspace;
@@ -39,7 +41,7 @@ pub use packet::{
 };
 pub use parity::{
     BoundedDomainQueriesParityContract, EvaluatorPacketParityContract,
-    GraphComparisonParityContract, PhaseObligationsParityContract,
+    GraphComparisonParityContract, ParityCorpusParityContract, PhaseObligationsParityContract,
     WorkspaceCompositionParityContract, bounded_domain_queries_parity_contract_path,
     bounded_domain_queries_parity_contract_paths, bounded_domain_query_catalog_fixture_path,
     evaluator_packet_parity_contract_path, evaluator_packet_parity_contract_paths,
@@ -47,12 +49,20 @@ pub use parity::{
     graph_movement_kinds_fixture_path, load_bounded_domain_queries_parity_contract,
     load_bounded_domain_query_catalog_fixture, load_evaluator_packet_parity_contract,
     load_graph_comparison_parity_contract, load_graph_movement_kinds_fixture,
+    load_parity_corpus_contract, load_parity_corpus_fixture,
     load_phase_obligations_parity_contract, load_precommit_obligation_plan_fixture,
     load_self_hosted_workspace_composition_fixture, load_workspace_composition_parity_contract,
+    parity_corpus_contract_path, parity_corpus_contract_paths, parity_corpus_fixture_path,
     phase_obligations_parity_contract_path, phase_obligations_parity_contract_paths,
     precommit_obligation_plan_fixture_path, self_hosted_workspace_composition_fixture_path,
     workspace_composition_parity_contract_path, workspace_composition_parity_contract_paths,
 };
+pub use parity_corpus::{
+    PARITY_CORPUS_DIGEST_V1, PARITY_CORPUS_SCHEMA_ID, ParityCorpusDimensionV1,
+    ParityCorpusScenarioV1, ParityCorpusV1, canonical_parity_dispositions, load_parity_corpus_toml,
+    validate_parity_corpus,
+};
+pub use parity_corpus_surface::ParityCorpusSurface;
 pub use phase_obligations::{
     InventoryPostureV1, ObligationPostureV1, PHASE_OBLIGATION_PLAN_SCHEMA_ID, PRECOMMIT_PHASE_ID,
     PhaseObligationCompileInputV1, PhaseObligationItemV1, PhaseObligationKindV1,

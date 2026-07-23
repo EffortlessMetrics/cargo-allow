@@ -1,14 +1,16 @@
 use crate::DomainQueriesSurface;
 use crate::EvaluatorPacketSurface;
 use crate::GraphComparisonSurface;
+use crate::ParityCorpusSurface;
 use crate::PhaseObligationsSurface;
 use crate::WorkspaceCompilerSurface;
 use crate::parity::{
     BoundedDomainQueriesParityContract, EvaluatorPacketParityContract,
-    GraphComparisonParityContract, PhaseObligationsParityContract,
+    GraphComparisonParityContract, ParityCorpusParityContract, PhaseObligationsParityContract,
     WorkspaceCompositionParityContract, load_bounded_domain_queries_parity_contract,
     load_bounded_domain_query_catalog_fixture, load_evaluator_packet_parity_contract,
     load_graph_comparison_parity_contract, load_graph_movement_kinds_fixture,
+    load_parity_corpus_contract, load_parity_corpus_fixture,
     load_phase_obligations_parity_contract, load_precommit_obligation_plan_fixture,
     load_self_hosted_workspace_composition_fixture, load_workspace_composition_parity_contract,
 };
@@ -36,6 +38,10 @@ fn parity_contracts_load_from_fixtures() -> Result<(), String> {
     for path in crate::parity::bounded_domain_queries_parity_contract_paths(&root) {
         let contract = load_bounded_domain_queries_parity_contract(&path)?;
         validate_bounded_domain_queries_contract(&contract)?;
+    }
+    for path in crate::parity::parity_corpus_contract_paths(&root) {
+        let contract = load_parity_corpus_contract(&path)?;
+        validate_parity_corpus_contract(&contract)?;
     }
     Ok(())
 }
@@ -336,6 +342,55 @@ fn validate_bounded_domain_queries_contract(
     }
     if contract.required_query_kinds.len() < 3 {
         return Err("required_query_kinds too small".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn parity_corpus_surface_matches_contract() -> Result<(), String> {
+    let root = workspace_root();
+    let contract_path = crate::parity::parity_corpus_contract_path(&root);
+    let contract = load_parity_corpus_contract(&contract_path)?;
+    if contract.intent_engine_module != ParityCorpusSurface::MODULE_ID {
+        return Err(format!(
+            "surface marker {} does not match contract {}",
+            ParityCorpusSurface::MODULE_ID,
+            contract.intent_engine_module
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn parity_corpus_fixture_records_all_dimensions() -> Result<(), String> {
+    let root = workspace_root();
+    let corpus = load_parity_corpus_fixture(&root)?;
+    if corpus.corpus_digest != crate::PARITY_CORPUS_DIGEST_V1 {
+        return Err("corpus digest drift".to_string());
+    }
+    for scenario in &corpus.scenarios {
+        if !crate::canonical_parity_dispositions()
+            .iter()
+            .any(|disposition| *disposition == scenario.disposition)
+        {
+            return Err(format!(
+                "scenario {} has unknown disposition {}",
+                scenario.id, scenario.disposition
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn validate_parity_corpus_contract(contract: &ParityCorpusParityContract) -> Result<(), String> {
+    if contract.scenario_id.is_empty() {
+        return Err("empty scenario_id".to_string());
+    }
+    if contract.required_dimensions.len() < 5 {
+        return Err("required_dimensions too small".to_string());
+    }
+    if contract.corpus_digest != crate::PARITY_CORPUS_DIGEST_V1 {
+        return Err("corpus_digest mismatch".to_string());
     }
     Ok(())
 }

@@ -24,4 +24,8 @@ Graph comparison movement taxonomy and phase obligation compile plans. `cargo-al
 
 Bounded domain query catalog returning intent-protocol-shaped responses without graph compilation or proof execution.
 
-## PR5+
+## PR5 (#2586-E)
+
+Old/new parity corpus across profiles, selectors, staged movement, diagnostics, and exit posture with recorded dispositions.
+
+## PR6+

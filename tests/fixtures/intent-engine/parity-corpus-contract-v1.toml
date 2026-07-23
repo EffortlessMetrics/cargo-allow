@@ -1,0 +1,12 @@
+scenario_id = "parity-intent-engine-corpus-v1"
+intent_engine_module = "intent-engine::parity_corpus"
+parity_case = "parity-intent-engine-corpus-v1"
+move_ledger_entry = "move-cargo-allow-spec-system-workspace"
+corpus_digest = "sha256:v1:2586-e-spec-system-parity-corpus"
+required_dimensions = [
+  "profile",
+  "selector",
+  "staged_movement",
+  "diagnostic",
+  "exit_posture",
+]

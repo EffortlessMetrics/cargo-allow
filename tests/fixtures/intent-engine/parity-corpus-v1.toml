@@ -1,0 +1,135 @@
+schema_id = "intent.parity-corpus.v1"
+corpus_id = "intent-engine-spec-system-parity-corpus-v1"
+controlling_issue = 2586
+move_ledger_entry = "move-cargo-allow-spec-system-workspace"
+corpus_digest = "sha256:v1:2586-e-spec-system-parity-corpus"
+
+[[scenarios]]
+id = "profile-spec-system"
+dimension = "profile"
+old_producer = "cargo-allow::spec_precommit"
+new_producer = "intent-engine::parity_corpus"
+old_value = "spec-system"
+new_value = "spec-system"
+disposition = "SemanticallyEquivalent"
+claim_boundary = "spec-system profile identifier is unchanged during the parity window."
+
+[[scenarios]]
+id = "profile-ledger-default"
+dimension = "profile"
+old_producer = "cargo-allow::check"
+new_producer = "cargo-allow::check"
+old_value = "ledger"
+new_value = "ledger"
+disposition = "OutOfScope"
+claim_boundary = "Ledger profile remains cargo-allow owned and is not part of intent-engine extraction."
+
+[[scenarios]]
+id = "selector-rust-test-subject"
+dimension = "selector"
+old_producer = "allow-rust::test_subjects"
+new_producer = "rust-source-index::test_subjects"
+old_value = "package.target.module.function"
+new_value = "package.target.module.function"
+disposition = "SemanticallyEquivalent"
+claim_boundary = "Rust test subject selector shape is shared; resolution runtime remains in cargo-allow until cutover."
+
+[[scenarios]]
+id = "selector-workspace-composition"
+dimension = "selector"
+old_producer = "cargo-allow::spec_system_workspace_composition"
+new_producer = "intent-engine::workspace_compiler"
+old_value = "self-hosted-runtime-promotion-v1"
+new_value = "self-hosted-runtime-promotion-v1"
+disposition = "EquivalentWithCanonicalRenaming"
+claim_boundary = "Workspace composition selector is canonical in intent-engine with cargo-allow mirror constants."
+
+[[scenarios]]
+id = "movement-seam-mapping-changed"
+dimension = "staged_movement"
+old_producer = "cargo-allow::spec_system_workspace::compare_graphs"
+new_producer = "intent-engine::graph_comparison"
+old_value = "seam_mapping_changed"
+new_value = "seam_mapping_changed"
+disposition = "EquivalentWithCanonicalRenaming"
+claim_boundary = "Paired graph movement taxonomy is contract-aligned; comparison runtime remains in cargo-allow."
+
+[[scenarios]]
+id = "movement-subject-body-identity-changed"
+dimension = "staged_movement"
+old_producer = "cargo-allow::spec_system_workspace::compare_graphs"
+new_producer = "intent-engine::graph_comparison"
+old_value = "subject_body_identity_changed"
+new_value = "subject_body_identity_changed"
+disposition = "EquivalentWithCanonicalRenaming"
+claim_boundary = "Subject body identity movement triggers blocking precommit evidence review in both paths."
+
+[[scenarios]]
+id = "diagnostic-selector-not-found"
+dimension = "diagnostic"
+old_producer = "cargo-allow::spec_system_workspace"
+new_producer = "intent-engine::parity_corpus"
+old_value = "spec_graph_selector_not_found"
+new_value = "spec_graph_selector_not_found"
+disposition = "SemanticallyEquivalent"
+claim_boundary = "Missing exact subject diagnostic code is recorded before graph consumers consume the subject."
+
+[[scenarios]]
+id = "diagnostic-rust-inventory-partial"
+dimension = "diagnostic"
+old_producer = "cargo-allow::spec_system_workspace"
+new_producer = "intent-engine::parity_corpus"
+old_value = "spec_graph_rust_inventory_partial"
+new_value = "spec_graph_rust_inventory_partial"
+disposition = "SemanticallyEquivalent"
+claim_boundary = "Partial rust inventory diagnostic lowers inventory posture without silent success."
+
+[[scenarios]]
+id = "diagnostic-source-view-partial"
+dimension = "diagnostic"
+old_producer = "cargo-allow::spec_system_source"
+new_producer = "intent-engine::parity_corpus"
+old_value = "spec_graph_source_view_partial"
+new_value = "spec_graph_source_view_partial"
+disposition = "SemanticallyEquivalent"
+claim_boundary = "Source-view limitation diagnostics are surfaced without upgrading inventory completeness."
+
+[[scenarios]]
+id = "exit-passed"
+dimension = "exit_posture"
+old_producer = "cargo-allow::spec_precommit"
+new_producer = "intent-engine::phase_obligations"
+old_value = "Passed:success"
+new_value = "Passed:success"
+disposition = "SemanticallyEquivalent"
+claim_boundary = "Clean precommit completion maps to process exit family success."
+
+[[scenarios]]
+id = "exit-blocking-findings"
+dimension = "exit_posture"
+old_producer = "cargo-allow::spec_precommit"
+new_producer = "intent-engine::phase_obligations"
+old_value = "FindingsBlocking:blocking"
+new_value = "FindingsBlocking:blocking"
+disposition = "SemanticallyEquivalent"
+claim_boundary = "Blocking findings map to process exit family blocking without advisory downgrade."
+
+[[scenarios]]
+id = "exit-stale-input"
+dimension = "exit_posture"
+old_producer = "cargo-allow::spec_precommit"
+new_producer = "intent-engine::parity_corpus"
+old_value = "StaleInput:instrument_failure"
+new_value = "StaleInput:instrument_failure"
+disposition = "SemanticallyEquivalent"
+claim_boundary = "Stale staged identity maps to instrument_failure exit family in cargo-allow precommit."
+
+[[scenarios]]
+id = "exit-malformed-input"
+dimension = "exit_posture"
+old_producer = "cargo-allow::spec_precommit"
+new_producer = "intent-engine::parity_corpus"
+old_value = "MalformedInput:usage"
+new_value = "MalformedInput:usage"
+disposition = "SemanticallyEquivalent"
+claim_boundary = "Malformed CLI input maps to usage exit family without masking as success."
