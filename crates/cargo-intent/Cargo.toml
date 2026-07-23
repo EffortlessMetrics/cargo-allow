@@ -18,6 +18,9 @@ path = "src/main.rs"
 
 [dependencies]
 clap.workspace = true
+intent-engine.workspace = true
+intent-protocol.workspace = true
+repo-snapshot.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 toml.workspace = true

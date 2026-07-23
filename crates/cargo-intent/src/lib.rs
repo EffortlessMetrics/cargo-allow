@@ -8,11 +8,13 @@
 //! does not invoke Cargo, rustc, Clippy, build scripts, proc macros, or proof
 //! commands.
 
+mod change;
 mod config;
 mod exit;
 mod identity;
 mod render;
 
+pub use change::{CHANGE_STATUS_SCHEMA_ID, ChangeStatusReportV1, change_status_staged_precommit};
 pub use config::{ConfigProfileV1, IntentConfigV1, load_config};
 pub use exit::{
     ProcessExitFamilyV1, exit_code_for_family, exit_code_for_result_class,

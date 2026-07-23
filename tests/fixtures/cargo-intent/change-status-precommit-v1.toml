@@ -1,0 +1,8 @@
+schema_id = "cargo-intent.change-status.v1"
+command = "change status"
+phase = "precommit"
+profile = "spec-system"
+result_class = "findings"
+process_exit_family = "blocking"
+unmapped_staged_surface = true
+claim_boundary = "Exact staged source posture and phase obligation skeleton; no graph compilation, policy findings, project execution, or proof."

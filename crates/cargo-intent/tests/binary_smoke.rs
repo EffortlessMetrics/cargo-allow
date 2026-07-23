@@ -42,3 +42,26 @@ fn identity_subcommand_emits_json() -> Result<(), String> {
     }
     Ok(())
 }
+
+#[test]
+fn change_status_subcommand_emits_json() -> Result<(), String> {
+    let bin = std::env::var("CARGO_BIN_EXE_cargo-intent")
+        .map_err(|_| "CARGO_BIN_EXE_cargo-intent not set".to_string())?;
+    let output = Command::new(&bin)
+        .args([
+            "--format",
+            "json",
+            "change",
+            "status",
+            "--staged",
+            "--phase",
+            "precommit",
+        ])
+        .output()
+        .map_err(|err| err.to_string())?;
+    let text = String::from_utf8_lossy(&output.stdout);
+    if !text.contains("cargo-intent.change-status.v1") {
+        return Err("change status json missing schema id".to_string());
+    }
+    Ok(())
+}

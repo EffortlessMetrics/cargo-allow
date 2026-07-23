@@ -4,7 +4,7 @@ Human projection of the cargo-intent product shell (#2599).
 
 ## Claim boundary
 
-Product identity, config entrypoint, renderer framework, and exit mapping. Spec-system evaluation remains in cargo-allow during the parity window until #2599-B and #2601 cutover.
+Product identity, config entrypoint, renderer framework, and exit mapping. `change status --staged --phase precommit` provides read-only staged posture and obligation skeleton only; authoritative spec-system evaluation remains in cargo-allow until #2601 delegation.
 
 ## Module surfaces
 

@@ -171,9 +171,19 @@ disposition = "contract_only"
 claim_boundary = "Old/new parity corpus across profiles, selectors, staged movement, diagnostics, and exit posture; records dispositions without runtime replay."
 
 [[case]]
+id = "parity-cargo-intent-change-status-precommit-v1"
+stage = "CargoIntentFrontDoor"
+move_ledger_entry = "move-cargo-allow-spec-precommit"
+shim_id = "shim-cargo-allow-spec-system-delegate"
+old_producer = "cargo-allow::spec_precommit"
+new_producer = "cargo-intent::change_status"
+expected_result = "IntentionalDifferenceAccepted"
+disposition = "contract_only"
+claim_boundary = "Read-only staged posture and phase obligation skeleton; authoritative precommit findings remain in cargo-allow until #2601."
+
+[[case]]
 id = "parity-cargo-intent-product-identity-v1"
 stage = "CargoIntentFrontDoor"
-move_ledger_entry = "move-cargo-allow-spec-system-app"
 shim_id = "shim-cargo-allow-spec-system-delegate"
 old_producer = "cargo-allow::spec_system"
 new_producer = "cargo-intent::identity"
