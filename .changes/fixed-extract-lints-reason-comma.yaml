@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Scanner: `extract_lints` no longer splits on commas inside double-quoted
+  string literals. A reason like `reason = "see policy: a, b"` previously
+  produced a spurious extra lint entry with a corrupt identity from the
+  comma-separated fragment. The comma split now tracks string-literal state
+  (including escaped quotes) so only top-level commas separate lints.

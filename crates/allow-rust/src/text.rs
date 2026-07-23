@@ -32,8 +32,39 @@ pub(crate) fn extract_lints(text: &str) -> Vec<String> {
         }
         out
     };
-    until_close
-        .split(',')
+    // Split on commas, but skip commas inside double-quoted string literals
+    // (#2659). A reason like `reason = "see policy: a, b"` should not produce
+    // a spurious extra lint from the comma inside the string.
+    let mut parts = Vec::new();
+    let mut current = String::new();
+    let mut in_string = false;
+    let mut escaped = false;
+    for ch in until_close.chars() {
+        if escaped {
+            escaped = false;
+            current.push(ch);
+            continue;
+        }
+        match ch {
+            '\\' if in_string => {
+                escaped = true;
+                current.push(ch);
+            }
+            '"' => {
+                in_string = !in_string;
+                current.push(ch);
+            }
+            ',' if !in_string => {
+                parts.push(std::mem::take(&mut current));
+            }
+            _ => current.push(ch),
+        }
+    }
+    if !current.is_empty() {
+        parts.push(current);
+    }
+    parts
+        .into_iter()
         .filter_map(|part| {
             let lint = part.trim();
             if lint.is_empty()
