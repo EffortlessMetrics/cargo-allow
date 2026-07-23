@@ -1,3 +1,13 @@
+//! Durable authored intent and obligation compiler (#2599).
+//!
+//! Most users should use `cargo intent` through the cargo subcommand alias;
+//! [cargo-allow](https://github.com/EffortlessMetrics/cargo-allow) remains the
+//! direct source-tree exception ledger during extraction. `cargo-intent` is the
+//! product shell for config entrypoint, renderer framework, and process exit
+//! mapping. It parses source-tree inputs without executing repository code and
+//! does not invoke Cargo, rustc, Clippy, build scripts, proc macros, or proof
+//! commands.
+
 mod config;
 mod exit;
 mod identity;
