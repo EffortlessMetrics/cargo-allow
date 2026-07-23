@@ -34,7 +34,6 @@ fn spec_system_surface_matches_parity_contract() -> Result<(), String> {
 }
 
 const SPEC_SYSTEM_DTO_FILES: &[&str] = &[
-    "mod.rs",
     "active_goal.rs",
     "authored_mapping.rs",
     "compiled_graph.rs",

@@ -1,7 +1,6 @@
 //! Spec-system domain DTOs (#2584-B).
 //!
 //! Parsing, validation, and graph compilation remain in `allow-policy` until #2584-C.
-#![allow(dead_code)] // DTO helpers are consumed by allow-policy snapshot impl only.
 
 mod active_goal;
 mod authored_mapping;
