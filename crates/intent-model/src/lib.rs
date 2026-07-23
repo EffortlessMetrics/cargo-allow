@@ -4,8 +4,9 @@
 //! `intent-model` is an internal cargo-intent crate for spec-system domain facts.
 //!
 //! This crate will own spec-system configuration and domain DTOs from
-//! `allow-policy::spec_system`. It does not compile claim graphs, execute proof
-//! commands, or affect default cargo-allow scanning behavior.
+//! `allow-policy::spec_system`. It parses source-tree artifact bytes without
+//! executing repository code and does not invoke Cargo, rustc, Clippy, build
+//! scripts, proc macros, or proof commands.
 
 mod parity;
 mod spec_system_surface;
