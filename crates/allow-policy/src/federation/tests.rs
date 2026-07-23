@@ -351,6 +351,121 @@ linked_closeout = "plans/federation/closeouts/f2-evaluation.md"
 }
 
 #[test]
+fn validate_drain_window_rejects_mirror_ledger_with_wrong_role() {
+    // #1838: a drain window whose mirror_ledger exists but has a non-mirror
+    // role must emit a distinct DrainWindowNotMirror diagnostic, not
+    // UnknownDrainMirrorLedger (which is for truly unknown ids).
+    let config = parse_validated(
+        r#"
+schema_version = "1.0"
+
+[[ledgers]]
+id = "source-policy"
+path = "policy/allow.toml"
+dialect = "cargo-allow"
+role = "canonical"
+priority = 10
+
+[[ledgers]]
+id = "source-policy-mirror"
+path = ".allow/mirror/policy.toml"
+dialect = "cargo-allow"
+role = "canonical"
+mirrors = "source-policy"
+priority = 20
+
+[[drain_windows]]
+mirror_ledger = "source-policy-mirror"
+drain_owner = "repo-infra"
+drain_reason = "test"
+review_after = "2026-12-01"
+expiry = "2026-12-01"
+linked_closeout = "plans/federation/closeouts/f2-evaluation.md"
+"#,
+    );
+    assert!(!config.valid);
+    let role_mismatch = config
+        .diagnostics
+        .iter()
+        .find(|diagnostic| diagnostic.kind == FederationDiagnosticKind::DrainWindowNotMirror);
+    assert!(
+        role_mismatch.is_some(),
+        "expected drain_window_not_mirror for non-mirror role: {:?}",
+        config.diagnostics
+    );
+    // The role mismatch must NOT reuse UnknownDrainMirrorLedger.
+    assert!(
+        !config
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.kind == FederationDiagnosticKind::UnknownDrainMirrorLedger),
+        "role mismatch must not emit unknown_drain_mirror_ledger: {:?}",
+        config.diagnostics
+    );
+}
+
+#[test]
+fn validate_drain_window_missing_field_and_role_mismatch_emit_distinct_kinds() {
+    // #1838: a drain window with missing fields AND a non-mirror ledger
+    // emits two diagnostics with distinct kinds (DrainWindowMissingField and
+    // DrainWindowNotMirror), not a confusing duplicate of the same kind.
+    // Previously the role mismatch reused UnknownDrainMirrorLedger,
+    // conflating "unknown id" with "wrong role".
+    let config = parse_validated(
+        r#"
+schema_version = "1.0"
+
+[[ledgers]]
+id = "source-policy"
+path = "policy/allow.toml"
+dialect = "cargo-allow"
+role = "canonical"
+priority = 10
+
+[[ledgers]]
+id = "source-policy-mirror"
+path = ".allow/mirror/policy.toml"
+dialect = "cargo-allow"
+role = "canonical"
+mirrors = "source-policy"
+priority = 20
+
+[[drain_windows]]
+mirror_ledger = "source-policy-mirror"
+drain_owner = "repo-infra"
+drain_reason = "test"
+review_after = "2026-12-01"
+linked_closeout = "plans/federation/closeouts/f2-evaluation.md"
+"#,
+    );
+    assert!(!config.valid);
+    // Both diagnostics are present with distinct kinds.
+    assert!(
+        config.diagnostics.iter().any(|diagnostic| {
+            diagnostic.kind == FederationDiagnosticKind::DrainWindowMissingField
+        }),
+        "expected drain_window_missing_field: {:?}",
+        config.diagnostics
+    );
+    assert!(
+        config.diagnostics.iter().any(|diagnostic| {
+            diagnostic.kind == FederationDiagnosticKind::DrainWindowNotMirror
+        }),
+        "expected drain_window_not_mirror: {:?}",
+        config.diagnostics
+    );
+    // No UnknownDrainMirrorLedger — the ledger IS known, just wrong role.
+    assert!(
+        !config
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.kind == FederationDiagnosticKind::UnknownDrainMirrorLedger),
+        "known-but-wrong-role must not emit unknown_drain_mirror_ledger: {:?}",
+        config.diagnostics
+    );
+}
+
+#[test]
 fn validate_drain_window_requires_expiry_so_it_cannot_be_permanent() {
     // #2006: a drain window without `expiry` never reports DrainExpired
     // (has_passed_date_str(None, _) is false), so the mirror ledger would live
