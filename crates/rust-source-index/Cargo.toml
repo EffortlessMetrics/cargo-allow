@@ -13,5 +13,8 @@ categories.workspace = true
 publish = false
 
 [dependencies]
+allow-core.workspace = true
 serde = { workspace = true, features = ["derive"] }
 toml.workspace = true
+tree-sitter.workspace = true
+tree-sitter-rust.workspace = true

@@ -52,6 +52,46 @@ fn test_subjects_package_copy_matches_rust_source_index() -> Result<(), String> 
     Ok(())
 }
 
+#[test]
+fn syntax_package_copy_matches_rust_source_index() -> Result<(), String> {
+    let root = workspace_root();
+    let canonical = std::fs::read_to_string(root.join("crates/rust-source-index/src/syntax.rs"))
+        .map_err(|err| format!("read canonical syntax: {err}"))?;
+    let packaged =
+        std::fs::read_to_string(root.join("crates/allow-rust/src/snapshot_package/syntax.rs"))
+            .map_err(|err| format!("read allow-rust snapshot syntax: {err}"))?;
+    if canonical.replace("\r\n", "\n") != packaged.replace("\r\n", "\n") {
+        return Err(
+            "allow-rust snapshot_package/syntax.rs must match rust-source-index syntax.rs"
+                .to_string(),
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn inventory_package_copy_matches_rust_source_index() -> Result<(), String> {
+    let root = workspace_root();
+    let canonical = std::fs::read_to_string(root.join("crates/rust-source-index/src/inventory.rs"))
+        .map_err(|err| format!("read canonical inventory: {err}"))?
+        .replace("\r\n", "\n");
+    let packaged =
+        std::fs::read_to_string(root.join("crates/allow-rust/src/snapshot_package/inventory.rs"))
+            .map_err(|err| format!("read allow-rust snapshot inventory: {err}"))?
+            .replace("\r\n", "\n");
+    let canonical = canonical.replace(
+        "use crate::syntax::{node_text, parse_rust_syntax, source_column};\nuse crate::test_subjects::*;",
+        "use super::subject_syntax::{node_text, parse_rust_syntax, source_column};\nuse super::subject_types::*;",
+    );
+    if canonical != packaged {
+        return Err(
+            "allow-rust snapshot_package/inventory.rs must match rust-source-index inventory.rs (import-adjusted)"
+                .to_string(),
+        );
+    }
+    Ok(())
+}
+
 fn validate_contract(contract: &TestSubjectsParityContract) -> Result<(), String> {
     if contract.scenario_id.is_empty() {
         return Err("empty scenario_id".to_string());
