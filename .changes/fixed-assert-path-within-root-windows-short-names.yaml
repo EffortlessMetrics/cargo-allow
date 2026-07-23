@@ -1,0 +1,9 @@
+kind: Fixed
+body: >-
+  Platform: `assert_path_within_root` now falls back to canonicalizing both
+  sides when the lexical comparison fails, resolving Windows 8.3 short-name
+  vs long-name mismatches (e.g. `RUNNER~1` vs `runneradmin`). The
+  source-tree root is canonicalized by `resolve_source_tree_root` (yielding
+  long names), while output paths from the CLI or test fixtures may use 8.3
+  short names. Without this fix, 16 mutation-command tests fail on Windows
+  CI. Exposed by the new `test-windows` CI job (#1825).
