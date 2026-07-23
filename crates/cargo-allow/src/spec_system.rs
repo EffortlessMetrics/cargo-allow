@@ -1068,7 +1068,8 @@ fn work_items_from_import_graph(graph: &ImportGraph) -> Vec<SpecSystemWorkItem> 
                 ImportDiagnosticKind::BrokenEdge => "broken_import",
                 ImportDiagnosticKind::DuplicateRootId
                 | ImportDiagnosticKind::DuplicateRootPath
-                | ImportDiagnosticKind::UnknownRole => "broken_import",
+                | ImportDiagnosticKind::UnknownRole
+                | ImportDiagnosticKind::InvalidRootPath => "broken_import",
             };
             let path = diagnostic
                 .root_ids
@@ -1111,6 +1112,10 @@ fn import_graph_suggested_actions(kind: ImportDiagnosticKind) -> Vec<String> {
         ImportDiagnosticKind::UnknownRole => {
             vec!["use an import root role of owned, imported, legacy, or generated".to_string()]
         }
+        ImportDiagnosticKind::InvalidRootPath => vec![
+            "use a source-tree-relative path for the import root (no .., absolute, or drive paths)"
+                .to_string(),
+        ],
     }
 }
 
