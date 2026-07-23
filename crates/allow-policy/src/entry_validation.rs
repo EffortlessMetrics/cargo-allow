@@ -50,6 +50,20 @@ pub(crate) fn validate_allow_entry_requirements(
             &format!("{} classification", entry.id),
             &entry.classification,
         )?;
+        // #2661: "baseline_debt" is the only classification with structural
+        // semantics (requires expires + created, caps at 120 days, blocks in
+        // Strict/Release). A typo like "baseline-debt" or "BaselineDebt"
+        // silently bypasses all of these. Reject near-miss spellings so the
+        // typo fails closed instead of creating an uncontrolled immortal
+        // entry.
+        if entry.classification != "baseline_debt"
+            && looks_like_baseline_debt_typo(&entry.classification)
+        {
+            return Err(CargoAllowError::new(format!(
+                "{} classification `{}` looks like a typo of `baseline_debt`; use the exact underscore spelling to get baseline_debt lifecycle enforcement, or pick a different classification",
+                entry.id, entry.classification
+            )));
+        }
     }
     if !entry.reason.is_empty() {
         validate_no_surrounding_whitespace(&format!("{} reason", entry.id), &entry.reason)?;
@@ -245,6 +259,29 @@ fn validate_local_link_scopes(entry: &AllowEntry) -> CargoAllowResult<()> {
     Ok(())
 }
 
+/// Detect near-miss spellings of `baseline_debt` — the only classification
+/// with structural lifecycle semantics. Returns true for case variants
+/// (`BaselineDebt`, `BASELINE_DEBT`), hyphen variants (`baseline-debt`),
+/// whitespace variants (`baseline _debt`), and camelCase variants
+/// (`BaselineDebt`). Does NOT match unrelated classifications like
+/// `reviewed_exception` or free-form text.
+fn looks_like_baseline_debt_typo(classification: &str) -> bool {
+    // Exact match with different separators/case.
+    let normalized = classification.to_ascii_lowercase().replace(['-', ' '], "_");
+    if normalized == "baseline_debt" {
+        return true;
+    }
+    // Fuzzy match: strip all non-alphanumeric characters and compare the
+    // letter sequence. Catches camelCase (BaselineDebt → baselinedebt)
+    // and other separator variations.
+    let letters: String = classification
+        .to_ascii_lowercase()
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric())
+        .collect();
+    letters == "baselinedebt"
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -438,6 +475,65 @@ mod tests {
             )
             .is_ok()
         );
+    }
+
+    #[test]
+    fn validate_classification_rejects_baseline_debt_typo() {
+        // #2661: "baseline_debt" is the only classification with structural
+        // semantics. Typos must fail closed rather than silently bypassing
+        // lifecycle enforcement.
+        let requirements = required();
+        for typo in [
+            "baseline-debt",
+            "BaselineDebt",
+            "BASELINE_DEBT",
+            "baseline _debt",
+        ] {
+            let mut entry = entry("allow-typo");
+            entry.classification = typo.to_string();
+            let err = err_text(validate_allow_entry_requirements(
+                &entry,
+                &requirements,
+                LinkScopeValidation::ReportOnly,
+            ));
+            assert!(
+                err.contains("looks like a typo of `baseline_debt`"),
+                "classification `{typo}` should be rejected as a typo: {err}"
+            );
+        }
+    }
+
+    #[test]
+    fn validate_classification_accepts_exact_baseline_debt_and_unrelated_values() {
+        let requirements = required();
+        // Exact spelling passes.
+        let mut baseline = entry("allow-baseline");
+        baseline.classification = "baseline_debt".to_string();
+        baseline.owner = "unowned".to_string();
+        assert!(
+            validate_allow_entry_requirements(
+                &baseline,
+                &requirements,
+                LinkScopeValidation::ReportOnly
+            )
+            .is_ok(),
+            "exact `baseline_debt` should pass"
+        );
+        // Unrelated classifications pass (the controlled vocabulary is NOT
+        // enforced — only near-misses of baseline_debt are caught).
+        for classification in ["reviewed_exception", "accepted_risk", "whatever"] {
+            let mut entry = entry("allow-other");
+            entry.classification = classification.to_string();
+            assert!(
+                validate_allow_entry_requirements(
+                    &entry,
+                    &requirements,
+                    LinkScopeValidation::ReportOnly
+                )
+                .is_ok(),
+                "classification `{classification}` should pass (not a baseline_debt typo)"
+            );
+        }
     }
 
     #[test]
