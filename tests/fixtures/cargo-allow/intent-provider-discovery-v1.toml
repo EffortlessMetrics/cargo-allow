@@ -1,0 +1,19 @@
+# Intent provider discovery fixture (#2601-A).
+
+schema_id = "cargo-allow.intent-provider-discovery.v1"
+schema_version = 1
+
+discovery_order = [
+  "explicit_environment",
+  "compatibility_config",
+  "path_lookup",
+]
+
+forbidden_path_prefixes = [
+  "target/",
+  "crates/",
+]
+
+config_relative_path = ".allow/compatibility/intent-delegation.toml"
+environment_variable = "CARGO_INTENT_BIN"
+product_name = "cargo-intent"

@@ -17,6 +17,7 @@ use crate::{
         policy_reference_diagnostics_for_source_tree,
     },
     federation_doctor::FederationDoctorFacts,
+    intent_provider::{IntentProviderRequest, discover_intent_provider},
     spec_system,
 };
 
@@ -117,7 +118,11 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         },
     };
     let text = match args.format {
-        DoctorFormat::Human => allow_report::render_doctor_human(report),
+        DoctorFormat::Human => {
+            let mut rendered = allow_report::render_doctor_human(report);
+            rendered.push_str(&intent_provider_doctor_section(&root));
+            rendered
+        }
         DoctorFormat::Json => allow_report::render_doctor_json(report),
     };
     emit_text(args.output.as_deref(), &text)?;
@@ -138,6 +143,22 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         }
     }
     Ok(())
+}
+
+fn intent_provider_doctor_section(root: &Path) -> String {
+    let request = IntentProviderRequest {
+        root,
+        config_path: None,
+        explicit_executable: None,
+    };
+    match discover_intent_provider(&request) {
+        Ok(resolution) => format!(
+            "\nIntent provider: {:?} at {}\n",
+            resolution.discovery_mode,
+            resolution.executable.display()
+        ),
+        Err(failure) => format!("\nIntent provider: unavailable ({failure})\n"),
+    }
 }
 
 fn load_doctor_policy(config: Option<&Path>) -> Option<CargoAllowResult<AllowConfig>> {

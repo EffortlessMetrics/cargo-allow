@@ -20,6 +20,7 @@ mod explain;
 mod federation_doctor;
 mod federation_report;
 mod init;
+mod intent_provider;
 mod io;
 mod kind_filter;
 mod list;
