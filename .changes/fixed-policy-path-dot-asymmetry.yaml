@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Policy: reject `path = "."` on allow entries. The bare-dot path covers the
+  entire source tree, which is the same escape valve that `glob = "**"` is
+  already rejected for. The asymmetry allowed an entry to bypass the
+  "narrower scope" rule via `path = "."`. The workspace root legitimately
+  uses `.` and is unaffected (validated separately). Child of #1782.
