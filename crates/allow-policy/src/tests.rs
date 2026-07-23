@@ -303,6 +303,60 @@ fn load_federation_config_rejects_oversized_config() -> std::io::Result<()> {
     Ok(())
 }
 
+#[test]
+fn load_federation_config_is_valid_distinguishes_parsed_from_valid() -> std::io::Result<()> {
+    // #1837: found()/parsed() returns true when the file was found and parsed,
+    // regardless of validation. is_valid() returns true only when validation
+    // also passed. A config with blocking diagnostics (DuplicateId) should
+    // parse but fail is_valid().
+    let root = TempRoot::new("federation-invalid")?;
+    let config_path = root.path().join(".allow/config.toml");
+    if let Some(parent) = config_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    // Duplicate ledger ids — a blocking diagnostic.
+    std::fs::write(
+        &config_path,
+        r#"
+schema_version = "1.0"
+
+[[ledgers]]
+id = "dup"
+path = "policy/allow.toml"
+dialect = "cargo-allow"
+role = "canonical"
+priority = 10
+
+[[ledgers]]
+id = "dup"
+path = ".allow/mirror/policy.toml"
+dialect = "cargo-allow"
+role = "mirror"
+mirrors = "dup"
+priority = 20
+"#,
+    )?;
+
+    let loaded = load_federation_config(root.path())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("invalid config should still parse: {err}")));
+    assert!(loaded.parsed(), "parsed() should be true (file was found)");
+    assert!(
+        !loaded.is_valid(),
+        "is_valid() should be false (DuplicateId is blocking): {:?}",
+        loaded.validated().map(|v| &v.diagnostics)
+    );
+    let validated = loaded
+        .validated()
+        .unwrap_or_else(|| std::panic::panic_any("validated() should return the parsed config even when invalid"));
+    assert!(!validated.valid, "validated.valid should be false");
+    assert!(
+        !validated.diagnostics.is_empty(),
+        "diagnostics should be non-empty for DuplicateId"
+    );
+
+    Ok(())
+}
+
 struct TempRoot {
     path: std::path::PathBuf,
 }

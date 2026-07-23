@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  Policy: FederationLoadResult now exposes `is_valid()` to distinguish "config
+  was found and parsed" from "config passed validation". Previously `found()`
+  returned true for configs with blocking diagnostics (e.g. DuplicateId),
+  and no method checked validity. `found()` is renamed to `parsed()` with
+  clarified semantics; `is_valid()` returns true only when `valid == true`.
+  Zero callers depended on the old `found()` name. Child of #1782.
