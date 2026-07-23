@@ -1,0 +1,5 @@
+schema_id = "cargo-intent.product-identity.v1"
+product_id = "cargo-intent"
+binary_name = "cargo-intent"
+crate_version = "0.2.0"
+claim_boundary = "Authored intent and obligation compiler shell; no source-exception ledger ownership and no proof execution."

@@ -171,6 +171,17 @@ disposition = "contract_only"
 claim_boundary = "Old/new parity corpus across profiles, selectors, staged movement, diagnostics, and exit posture; records dispositions without runtime replay."
 
 [[case]]
+id = "parity-cargo-intent-product-identity-v1"
+stage = "CargoIntent"
+move_ledger_entry = "move-cargo-allow-spec-system-app"
+shim_id = "shim-cargo-allow-spec-system-delegate"
+old_producer = "cargo-allow::spec_system"
+new_producer = "cargo-intent::identity"
+expected_result = "IntentionalDifferenceAccepted"
+disposition = "contract_only"
+claim_boundary = "Product identity shell only; spec-system commands remain in cargo-allow until #2601 delegation."
+
+[[case]]
 id = "parity-proof-protocol-plan-dtos-v1"
 stage = "ProofProtocol"
 move_ledger_entry = "move-issue-2568-embedded-evaluator"
