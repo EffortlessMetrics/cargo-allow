@@ -36,7 +36,10 @@ pub fn load_graph_movement_kinds_fixture(root: &Path) -> Result<Vec<String>, Str
         std::fs::read_to_string(&path).map_err(|err| format!("read {}: {err}", path.display()))?;
     let table: toml::Table =
         toml::from_str(&text).map_err(|err| format!("parse {}: {err}", path.display()))?;
-    let Some(kinds) = table.get("movement_kinds").and_then(|value| value.as_array()) else {
+    let Some(kinds) = table
+        .get("movement_kinds")
+        .and_then(|value| value.as_array())
+    else {
         return Err("graph movement kinds fixture missing movement_kinds".to_string());
     };
     kinds

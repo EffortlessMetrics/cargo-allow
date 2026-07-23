@@ -3,12 +3,11 @@ use crate::GraphComparisonSurface;
 use crate::PhaseObligationsSurface;
 use crate::WorkspaceCompilerSurface;
 use crate::parity::{
-    EvaluatorPacketParityContract, GraphComparisonParityContract,
-    PhaseObligationsParityContract, WorkspaceCompositionParityContract,
-    load_evaluator_packet_parity_contract, load_graph_comparison_parity_contract,
-    load_graph_movement_kinds_fixture, load_phase_obligations_parity_contract,
-    load_precommit_obligation_plan_fixture, load_self_hosted_workspace_composition_fixture,
-    load_workspace_composition_parity_contract,
+    EvaluatorPacketParityContract, GraphComparisonParityContract, PhaseObligationsParityContract,
+    WorkspaceCompositionParityContract, load_evaluator_packet_parity_contract,
+    load_graph_comparison_parity_contract, load_graph_movement_kinds_fixture,
+    load_phase_obligations_parity_contract, load_precommit_obligation_plan_fixture,
+    load_self_hosted_workspace_composition_fixture, load_workspace_composition_parity_contract,
 };
 use std::path::PathBuf;
 

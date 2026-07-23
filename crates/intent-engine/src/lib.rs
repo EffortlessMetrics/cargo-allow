@@ -41,7 +41,7 @@ pub use parity::{
     workspace_composition_parity_contract_paths,
 };
 pub use phase_obligations::{
-    InventoryPostureV1, ObligationPostureV1, PRECOMMIT_PHASE_ID, PHASE_OBLIGATION_PLAN_SCHEMA_ID,
+    InventoryPostureV1, ObligationPostureV1, PHASE_OBLIGATION_PLAN_SCHEMA_ID, PRECOMMIT_PHASE_ID,
     PhaseObligationCompileInputV1, PhaseObligationItemV1, PhaseObligationKindV1,
     PhaseObligationPlanV1, compile_phase_obligation_plan, load_phase_obligation_plan_toml,
 };
