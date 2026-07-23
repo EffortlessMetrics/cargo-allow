@@ -1,0 +1,9 @@
+# Self-hosted runtime promotion workspace composition (#2586-B).
+# Canonical four-file authority bundle for the walking-skeleton corpus.
+
+composition_id = "self-hosted-runtime-promotion-v1"
+requirement_path = "docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md"
+slice_path = ".allow/spec-system/slices/self-hosted-runtime-promotion-v1.toml"
+seams_path = ".allow/spec-system/seams/runtime-promotion-validator-v1.toml"
+evidence_path = ".allow/spec-system/evidence/runtime-promotion-v1.toml"
+subject_inventory = "rust-source-index"

@@ -105,6 +105,17 @@ disposition = "contract_only"
 claim_boundary = "Contract only; obligation structure without provider argv or proof execution."
 
 [[case]]
+id = "parity-intent-engine-workspace-composition-v1"
+stage = "IntentEngine"
+move_ledger_entry = "move-cargo-allow-spec-system-workspace"
+shim_id = "shim-cargo-allow-spec-system-workspace"
+old_producer = "cargo-allow::spec_system_workspace"
+new_producer = "intent-engine::workspace_compiler"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Workspace composition and authority compile plan only; graph assembly remains in cargo-allow until later packets."
+
+[[case]]
 id = "parity-intent-engine-evaluator-packet-v1"
 stage = "IntentEngine"
 move_ledger_entry = "move-cargo-allow-spec-system-workspace"

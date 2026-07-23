@@ -49,6 +49,20 @@ parity_case = "parity-intent-model-spec-system-v1"
 claim_boundary = "Type and parsing re-exports via snapshot_package; graph compilation stays in allow-policy until intent-engine cutover."
 
 [[shim]]
+id = "shim-cargo-allow-spec-system-workspace"
+old_identity = "cargo-allow::spec_system_workspace"
+new_identity = "intent-engine::workspace_compiler"
+kind = "ModuleFacade"
+posture = "private"
+status = "planned"
+move_ledger_entry = "move-cargo-allow-spec-system-workspace"
+controlling_issue = 2586
+latest_allowed_stage = 3
+removal_condition = "issue:#2606 stage-3 cutover receipt"
+parity_case = "parity-intent-engine-workspace-composition-v1"
+claim_boundary = "Composition and authority plan only; cargo-allow retains graph assembly until intent-engine cutover."
+
+[[shim]]
 id = "shim-cargo-allow-spec-system-delegate"
 old_identity = "cargo-allow::spec_system*"
 new_identity = "cargo-intent::public_adapter"
