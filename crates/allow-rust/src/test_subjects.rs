@@ -828,6 +828,7 @@ fn diagnostic_order(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::BTreeSet;
 
     fn manifest() -> Vec<(PathBuf, String)> {
         vec![(
