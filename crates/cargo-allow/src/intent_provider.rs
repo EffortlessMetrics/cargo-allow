@@ -3,7 +3,7 @@
 //! Discovery order: explicit environment override, compatibility config, then PATH.
 //! Never resolves monorepo workspace `target/` or `crates/` paths.
 
-use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult, sha256_v1_bytes};
+use allow_core::sha256_v1_bytes;
 use serde::Deserialize;
 use std::env;
 use std::ffi::OsStr;
@@ -87,14 +87,14 @@ pub fn discover_intent_provider(
             IntentProviderDiscoveryMode::ExplicitEnvironment,
         );
     }
-    if let Ok(path) = env::var(INTENT_PROVIDER_ENV_VAR) {
-        if !path.trim().is_empty() {
-            return resolve_candidate(
-                request.root,
-                Path::new(path.trim()),
-                IntentProviderDiscoveryMode::ExplicitEnvironment,
-            );
-        }
+    if let Ok(path) = env::var(INTENT_PROVIDER_ENV_VAR)
+        && !path.trim().is_empty()
+    {
+        return resolve_candidate(
+            request.root,
+            Path::new(path.trim()),
+            IntentProviderDiscoveryMode::ExplicitEnvironment,
+        );
     }
     if let Some(path) = read_config_executable(request.root, request.config_path)? {
         return resolve_candidate(
@@ -110,24 +110,6 @@ pub fn discover_intent_provider(
         IntentProviderFailureClass::Absent,
         "cargo-intent provider not found via environment, compatibility config, or PATH",
     ))
-}
-
-pub fn discover_intent_provider_result(
-    request: &IntentProviderRequest<'_>,
-) -> CargoAllowResult<IntentProviderResolution> {
-    discover_intent_provider(request).map_err(map_provider_failure)
-}
-
-fn map_provider_failure(failure: IntentProviderFailure) -> CargoAllowError {
-    let kind = match failure.class {
-        IntentProviderFailureClass::Absent => CargoAllowErrorKind::InvalidConfig,
-        IntentProviderFailureClass::ForbiddenWorkspaceTarget
-        | IntentProviderFailureClass::ForbiddenWorkspaceCrate
-        | IntentProviderFailureClass::WrongProductName
-        | IntentProviderFailureClass::NotExecutable
-        | IntentProviderFailureClass::MalformedConfig => CargoAllowErrorKind::InvalidConfig,
-    };
-    CargoAllowError::with_kind(kind, failure.to_string())
 }
 
 fn read_config_executable(
