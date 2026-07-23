@@ -1,7 +1,11 @@
 //! Structural Rust test-subject inventory for three-product extraction (#2587).
 //!
+//! Most users should use [cargo-allow](https://github.com/EffortlessMetrics/cargo-allow);
+//! `rust-source-index` is an internal shared crate for structural subject facts.
+//!
 //! This crate will own package/target/module/test subject discovery and selector
-//! resolution. Scanning for cargo-allow source exceptions remains in `allow-rust`.
+//! resolution from supplied source-tree bytes. It does not invoke Cargo, rustc,
+//! Clippy, build scripts, proc macros, or repository code execution.
 
 mod parity;
 mod test_subjects_surface;
