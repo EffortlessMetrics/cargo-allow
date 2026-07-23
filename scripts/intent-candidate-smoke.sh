@@ -184,18 +184,18 @@ if [[ "${SKIP_PACKAGE:-0}" == "1" ]]; then
     crate_records+=("${crate}|${crate}-${version}.crate|${digest}|${size}|${crate}-${version}")
   done
 else
-  package_flags=(--locked)
-  if [[ "${ALLOW_DIRTY:-0}" == "1" ]]; then
-    package_flags+=(--allow-dirty)
-    log "ALLOW_DIRTY=1; packaging with --allow-dirty"
-  fi
-  # Package dependency crates from the workspace without [patch.crates-io].
-  # Incremental patching during packaging mutates Cargo.lock and breaks --locked.
-  unset CARGO_HOME
-  export CARGO_TARGET_DIR="${target_dir}"
-  for crate in "${dependency_crates[@]}"; do
-    log "packaging dependency crate ${crate} from workspace (no patch)"
-    cargo package -p "${crate}" "${package_flags[@]}"
+  for idx in "${!dependency_crates[@]}"; do
+    crate="${dependency_crates[$idx]}"
+    if [[ "${idx}" -eq 0 ]]; then
+      log "packaging dependency crate ${crate} from workspace (no patch)"
+      unset CARGO_HOME
+      cargo package -p "${crate}" --locked
+    else
+      log "packaging dependency crate ${crate} with extracted patch (${idx} prior)"
+      export CARGO_HOME="${cargo_home}"
+      write_patch_config "${cargo_home}/config.toml" "${dependency_crates[@]:0:${idx}}"
+      cargo package -p "${crate}" --allow-dirty
+    fi
     src="target/package/${crate}-${version}.crate"
     [[ -f "${src}" ]] || fail "missing packaged crate ${src}"
     cp "${src}" "${packages_dir}/"
@@ -209,7 +209,7 @@ else
     crate_records+=("${crate}|${crate}-${version}.crate|${digest}|${size}|${crate}-${version}")
     log "packaged ${crate}-${version}.crate sha256=${digest}"
   done
-  log "packaging cargo-intent with extracted dependency patch"
+  log "packaging cargo-intent with full extracted dependency patch"
   export CARGO_HOME="${cargo_home}"
   write_patch_config "${cargo_home}/config.toml" "${dependency_crates[@]}"
   cargo package -p cargo-intent --allow-dirty
