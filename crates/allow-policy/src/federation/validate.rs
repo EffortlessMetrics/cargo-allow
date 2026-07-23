@@ -291,7 +291,7 @@ fn detect_drain_window_issues(
         };
         if mirror.role != LedgerRole::Mirror {
             diagnostics.push(FederationDiagnostic {
-                kind: FederationDiagnosticKind::UnknownDrainMirrorLedger,
+                kind: FederationDiagnosticKind::DrainWindowNotMirror,
                 message: format!(
                     "drain window mirror ledger `{}` must have role mirror",
                     drain.mirror_ledger
