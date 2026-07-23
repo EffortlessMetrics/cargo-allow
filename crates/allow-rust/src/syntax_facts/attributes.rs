@@ -110,6 +110,21 @@ fn cfg_attr_lint_kinds(text: &str) -> Vec<(LintAttributeKind, usize)> {
                 .into_iter()
                 .map(|offset| (LintAttributeKind::Expect, offset)),
         )
+        .chain(
+            find_attribute_invocations_outside_rust_strings(text, "deny")
+                .into_iter()
+                .map(|offset| (LintAttributeKind::Deny, offset)),
+        )
+        .chain(
+            find_attribute_invocations_outside_rust_strings(text, "forbid")
+                .into_iter()
+                .map(|offset| (LintAttributeKind::Forbid, offset)),
+        )
+        .chain(
+            find_attribute_invocations_outside_rust_strings(text, "warn")
+                .into_iter()
+                .map(|offset| (LintAttributeKind::Warn, offset)),
+        )
         .collect::<Vec<_>>();
     attributes.sort_by_key(|(_, offset)| *offset);
     attributes
