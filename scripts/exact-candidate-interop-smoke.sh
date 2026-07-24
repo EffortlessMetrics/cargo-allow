@@ -205,10 +205,10 @@ log "journey B: cargo-intent alone (compatible)"
 b_version="$("${cargo_intent_bin}" --version | tr -d '\r')"
 printf '%s\n' "${b_version}" | grep -F "cargo-intent ${version}" >/dev/null \
   || fail "journey B version mismatch: ${b_version}"
-"${cargo_intent_bin}" --format json identity --root "${consumer_dir}" >/dev/null
+"${cargo_intent_bin}" --root "${consumer_dir}" --format json identity >/dev/null
 printf 'staged\n' >"${consumer_dir}/candidate.txt"
 git -C "${consumer_dir}" add candidate.txt
-"${cargo_intent_bin}" change status --staged --phase precommit --root "${consumer_dir}" --format json >/dev/null
+"${cargo_intent_bin}" --root "${consumer_dir}" change status --staged --phase precommit --format json >/dev/null
 record_journey "B" "cargo-intent" "Passed"
 
 # --- Journey C: cargo-proof fake/command provider ---
@@ -217,7 +217,7 @@ obligation_fixture="${ROOT}/tests/fixtures/cargo-proof/obligation-plan-smoke-v1.
 proof_plan_fixture="${ROOT}/tests/fixtures/cargo-proof/proof-plan-smoke-v1.toml"
 [[ -f "${obligation_fixture}" ]] || fail "missing ${obligation_fixture}"
 [[ -f "${proof_plan_fixture}" ]] || fail "missing ${proof_plan_fixture}"
-"${cargo_proof_bin}" plan --obligation-plan "${obligation_fixture}" --format json >/dev/null
+"${cargo_proof_bin}" --format json plan --obligation-plan "${obligation_fixture}" >/dev/null
 dry_run_out="$("${cargo_proof_bin}" dry-run --proof-plan "${proof_plan_fixture}")"
 printf '%s\n' "${dry_run_out}" | grep -F "[structured argv]" >/dev/null \
   || fail "journey C dry-run missing structured argv marker"

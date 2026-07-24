@@ -42,7 +42,10 @@ fn example_exact_candidate_interop_matches_schema_constants() {
         let entry = journeys
             .get(idx)
             .unwrap_or_else(|| std::panic::panic_any("journey entry missing"));
-        assert_eq!(entry.get("id").and_then(serde_json::Value::as_str), Some(*id));
+        assert_eq!(
+            entry.get("id").and_then(serde_json::Value::as_str),
+            Some(*id)
+        );
         assert_eq!(
             entry.get("product").and_then(serde_json::Value::as_str),
             Some(*product)
