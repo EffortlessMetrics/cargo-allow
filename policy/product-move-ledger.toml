@@ -392,8 +392,6 @@ parity_fixture = "tests/fixtures/intent-edit/parity-dialect-adapter-v1.toml"
 removal_condition = "issue:#2606 intent-edit stage-3 cutover receipt"
 controlling_issue = 2613
 
-controlling_issue = 2613
-
 [[entry]]
 id = "introduce-intent-edit-repo-edit-translation"
 current_identity = "crates/intent-edit/src/repo_edit_translation.rs"
