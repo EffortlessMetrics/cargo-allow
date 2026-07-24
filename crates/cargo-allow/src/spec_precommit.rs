@@ -29,7 +29,6 @@ enum SpecPrecommitResultClass {
     Passed,
     FindingsAdvisory,
     FindingsBlocking,
-    #[expect(dead_code, reason = "policy:spec-precommit-schema: retained receipt result class")]
     NotApplicable,
     PartialData,
     StaleInput,
@@ -470,7 +469,11 @@ pub(crate) fn complete_delegated_precommit(
     outcome: DelegatedPrecommitOutcome,
     elapsed: Duration,
 ) -> CargoAllowResult<()> {
-    let result_class = map_delegated_result_class(&outcome);
+    let result_class = if snapshot.changes.is_empty() && outcome.error.is_none() {
+        SpecPrecommitResultClass::NotApplicable
+    } else {
+        map_delegated_result_class(&outcome)
+    };
     let exit_family = if outcome.error.is_some() {
         "instrument_failure"
     } else {
