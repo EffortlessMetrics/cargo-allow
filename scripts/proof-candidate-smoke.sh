@@ -189,7 +189,7 @@ else
     if [[ "${idx}" -eq 0 ]]; then
       log "packaging dependency crate ${crate} from workspace (no patch)"
       unset CARGO_HOME
-      cargo package -p "${crate}" --locked
+      cargo package -p "${crate}" --allow-dirty
     else
       log "packaging dependency crate ${crate} with extracted patch (${idx} prior)"
       export CARGO_HOME="${cargo_home}"
