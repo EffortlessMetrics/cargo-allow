@@ -171,7 +171,7 @@ report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 out = Path(sys.argv[2])
 obligations = (
     report.get("obligation_plan", {})
-    .get("envelope", {})
+    .get("plan", {})
     .get("obligations", [])
 )
 if not obligations:
@@ -184,6 +184,8 @@ lines = [
 ]
 for idx, item in enumerate(obligations):
     kind = item.get("kind", "unknown")
+    if isinstance(kind, dict):
+        kind = next(iter(kind.keys()), "unknown")
     provider = "proof.cargo-allow.v1" if kind == "policy_alignment" else "proof.fake-provider.v1"
     lines.append("[[obligations]]")
     lines.append(f'obligation_id = "obligation-{idx}"')
