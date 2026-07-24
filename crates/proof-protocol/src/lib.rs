@@ -2,8 +2,9 @@
 //! extraction (#2588).
 //!
 //! Most users should use [cargo-allow](https://github.com/EffortlessMetrics/cargo-allow);
-//! `proof-protocol` defines proof plan DTOs and provider-neutral transport without
-//! executing proof commands, spawning processes, or depending on intent crates.
+//! `proof-protocol` defines proof plan DTOs and provider-neutral transport. It
+//! does not scan source files, does not invoke Cargo, compile code, execute
+//! repository code, spawn processes, or depend on intent crates.
 
 mod boundary;
 mod parity;
