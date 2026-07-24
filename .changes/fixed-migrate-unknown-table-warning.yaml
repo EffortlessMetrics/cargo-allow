@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Migrate: unrecognized `.toml` files in a legacy policy directory are now
+  detected and surfaced as warnings instead of being silently skipped. The
+  `LegacyImportBatch` gains an `unmigrated_files` field listing files that
+  didn't match any known lane descriptor, and `load_repo_policy_migration_config`
+  emits a warning for each. Child of #1784.

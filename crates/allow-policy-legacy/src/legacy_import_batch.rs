@@ -29,6 +29,10 @@ pub struct LegacyImportFamily {
 pub struct LegacyImportBatch {
     pub families: Vec<LegacyImportFamily>,
     pub config: AllowConfig,
+    /// Filenames in the legacy directory that were not recognized as known
+    /// lanes and were silently skipped (#1867). Surfaced as warnings so the
+    /// operator knows policy content was left behind.
+    pub unmigrated_files: Vec<String>,
 }
 
 impl LegacyImportBatch {
@@ -93,10 +97,32 @@ pub fn import_legacy_policy_dir(
         )));
     }
 
+    // #1867: detect unrecognized .toml files in the legacy directory that
+    // were silently skipped because they don't match a known lane descriptor.
+    // Collect them so the closeout summary can warn the operator.
+    let known_filenames: std::collections::BTreeSet<&str> = all_legacy_lane_descriptors()
+        .iter()
+        .map(|d| d.legacy_filename)
+        .collect();
+    let mut unmigrated_files = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().and_then(|e| e.to_str()) == Some("toml")
+                && let Some(name) = path.file_name().and_then(|n| n.to_str())
+                && !known_filenames.contains(name)
+            {
+                unmigrated_files.push(name.to_string());
+            }
+        }
+    }
+    unmigrated_files.sort();
+
     validate_policy(&merged)?;
     Ok(LegacyImportBatch {
         families,
         config: merged,
+        unmigrated_files,
     })
 }
 
