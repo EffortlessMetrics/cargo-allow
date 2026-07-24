@@ -72,7 +72,7 @@ status = "active"
 move_ledger_entry = "move-spec-system-profile-command"
 controlling_issue = 2601
 latest_allowed_stage = 4
-removal_condition = "issue:#2568 embedded evaluator retirement"
+removal_condition = "issue:#2568 CI audit retirement receipt; cargo-intent audit parity for module deletion"
 parity_case = "parity-cargo-intent-spec-system-delegate-v1"
 claim_boundary = "Staged precommit delegates via repo.analysis-receipt.v1 when delegate_staged_precommit is enabled; other spec-system surfaces and embedded evaluator fail closed when delegate_spec_system is enabled; cargo-allow validates envelope only."
 

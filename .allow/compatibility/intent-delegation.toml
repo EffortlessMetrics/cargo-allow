@@ -1,0 +1,4 @@
+schema_id = "cargo-allow.intent-delegation.v1"
+delegate_spec_system = true
+delegate_staged_precommit = true
+timeout_secs = 120

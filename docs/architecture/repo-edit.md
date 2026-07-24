@@ -24,5 +24,9 @@ Parity fixtures live under `tests/fixtures/repo-edit/`.
 
 ## Residual (#2568)
 
-Embedded precommit evaluator is retired. `check --profile spec-system --mode audit`
-remains in CI until a later packet delegates or replaces that dogfood lane.
+Embedded precommit evaluator and embedded spec-system CI audit are retired in
+this repository. `.allow/compatibility/intent-delegation.toml` enables
+`delegate_spec_system` and `delegate_staged_precommit`. CI runs
+`scripts/spec-system-cutover-receipt.sh` instead of
+`check --profile spec-system --mode audit`. A cargo-intent audit/doctor/worklist
+vertical is not shipped yet; legacy commands fail closed with migration guidance.

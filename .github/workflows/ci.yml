@@ -194,8 +194,14 @@ jobs:
           RUSTDOCFLAGS: -D warnings
       - run: cargo run -p cargo-allow -- audit --format json --output target/cargo-allow/audit.json
       - run: cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
-      - run: cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json
-      - run: cargo run -p cargo-allow -- check --profile spec-system --mode audit --format markdown --output target/cargo-allow/spec-system.md
+      - name: Spec-system cutover receipt (#2568)
+        run: bash scripts/spec-system-cutover-receipt.sh
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: spec-system-cutover-receipt
+          path: target/spec-system-cutover/spec-system-cutover.receipt.json
+          if-no-files-found: warn
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:

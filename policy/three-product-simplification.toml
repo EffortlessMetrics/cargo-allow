@@ -100,8 +100,8 @@ id = "duplicate-spec-system-ci-audit"
 kind = "ci_lane"
 path = ".github/workflows/ci.yml"
 classification = "MvpSimplify"
-action = "retain"
-reason = "Artifact graph audit complements dogfood; narrow in follow-up after #2568."
+action = "removed"
+reason = "Embedded spec-system audit retired; CI runs spec-system-cutover-receipt (#2568)."
 
 [[entry]]
 id = "rust-source-index"

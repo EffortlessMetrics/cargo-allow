@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.spec-system-cutover-receipt.v1",
+  "tool": "spec-system-cutover-receipt",
+  "result": "Passed",
+  "claim_boundary": [
+    "delegate_spec_system_enabled_repo_wide",
+    "embedded_spec_system_ci_audit_retired",
+    "fail_closed_for_legacy_spec_system_commands",
+    "no_cargo_intent_audit_vertical_claimed",
+    "no_physical_repository_extraction"
+  ],
+  "delegation_config": {
+    "path": ".allow/compatibility/intent-delegation.toml",
+    "schema_id": "cargo-allow.intent-delegation.v1",
+    "delegate_spec_system": true,
+    "delegate_staged_precommit": true
+  },
+  "limitations": [
+    "spec_system_modules_remain_for_external_repos_without_cutover",
+    "cargo_intent_audit_doctor_worklist_not_shipped",
+    "rollback_via_disable_delegate_spec_system"
+  ]
+}
