@@ -495,10 +495,7 @@ mod tests {
             Ok(_) => return Err("malformed json should fail validation".to_string()),
         };
         if failure.class != IntentDelegateFailureClass::MalformedOutput {
-            return Err(format!(
-                "expected MalformedOutput, got {:?}",
-                failure.class
-            ));
+            return Err(format!("expected MalformedOutput, got {:?}", failure.class));
         }
         Ok(())
     }
@@ -525,10 +522,7 @@ mod tests {
             Ok(_) => return Err("empty stdout should fail validation".to_string()),
         };
         if failure.class != IntentDelegateFailureClass::MalformedOutput {
-            return Err(format!(
-                "expected MalformedOutput, got {:?}",
-                failure.class
-            ));
+            return Err(format!("expected MalformedOutput, got {:?}", failure.class));
         }
         Ok(())
     }

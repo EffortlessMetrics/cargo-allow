@@ -22,11 +22,10 @@ fn release_workflow_exists_and_lists_publish_order() {
     let release_doc = read_workspace_file(&root, RELEASE_DOC);
     let workspace_manifest = read_workspace_file(&root, "Cargo.toml");
     let workspace_version = workspace_package_version(&workspace_manifest);
-    let publish_order =
-        parse_publish_order(&read_workspace_file(
-            &root,
-            active_publish_order_doc(&workspace_version),
-        ));
+    let publish_order = parse_publish_order(&read_workspace_file(
+        &root,
+        active_publish_order_doc(&workspace_version),
+    ));
 
     assert!(
         workflow.contains("on:") && workflow.contains("tags:") && workflow.contains("v*"),
@@ -54,15 +53,13 @@ fn release_publish_order_matches_internal_dependency_graph() {
     let root = workspace_root();
     let workspace_manifest = read_workspace_file(&root, "Cargo.toml");
     let workspace_version = workspace_package_version(&workspace_manifest);
-    let release_doc = fs::read_to_string(
-        root.join(active_publish_order_doc(&workspace_version)),
-    )
-    .unwrap_or_else(|err| {
-        std::panic::panic_any(format!(
-            "read {}: {err}",
-            active_publish_order_doc(&workspace_version)
-        ))
-    });
+    let release_doc = fs::read_to_string(root.join(active_publish_order_doc(&workspace_version)))
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!(
+                "read {}: {err}",
+                active_publish_order_doc(&workspace_version)
+            ))
+        });
     let publish_order = parse_publish_order(&release_doc);
     let package_manifests = workspace_package_manifests(&root);
     let package_names = package_manifests.keys().cloned().collect::<BTreeSet<_>>();
