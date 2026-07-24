@@ -6,4 +6,6 @@ Packet 2613-B lands edit plan transport, stable action IDs, and find-before-crea
 
 Packet 2613-C lands dialect adapter and approval/currentness fixtures.
 
-Packet 2613-D+ lands translate to repo-edit, recompile, and settlement fixtures.
+Packet 2613-D lands translate-to-repo-edit fixtures.
+
+Packet 2613-E+ lands recompile and settlement fixtures.

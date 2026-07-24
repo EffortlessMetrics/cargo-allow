@@ -33,12 +33,23 @@ pub struct ApprovalCurrentnessParityContract {
     pub fail_closed_states: Vec<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct RepoEditTranslationParityContract {
+    pub scenario_id: String,
+    pub intent_edit_module: String,
+    pub parity_case: String,
+    pub move_ledger_entry: String,
+    pub required_request_fields: Vec<String>,
+    pub supported_apply_modes: Vec<String>,
+}
+
 pub fn parity_contract_paths(root: &Path) -> Vec<PathBuf> {
     vec![
         root.join("tests/fixtures/intent-edit/parity-boundary-v1.toml"),
         root.join("tests/fixtures/intent-edit/parity-edit-plan-v1.toml"),
         root.join("tests/fixtures/intent-edit/parity-dialect-adapter-v1.toml"),
         root.join("tests/fixtures/intent-edit/parity-approval-currentness-v1.toml"),
+        root.join("tests/fixtures/intent-edit/parity-repo-edit-translation-v1.toml"),
     ]
 }
 
@@ -90,6 +101,22 @@ pub fn load_dialect_adapter_parity_contract(
 pub fn load_approval_currentness_parity_contract(
     path: &Path,
 ) -> Result<ApprovalCurrentnessParityContract, String> {
+    let text =
+        std::fs::read_to_string(path).map_err(|err| format!("read {}: {err}", path.display()))?;
+    toml::from_str(&text).map_err(|err| format!("parse {}: {err}", path.display()))
+}
+
+pub fn repo_edit_translation_parity_contract_path(root: &Path) -> PathBuf {
+    root.join("tests/fixtures/intent-edit/parity-repo-edit-translation-v1.toml")
+}
+
+pub fn repo_edit_translation_parity_contract_paths(root: &Path) -> Vec<PathBuf> {
+    vec![repo_edit_translation_parity_contract_path(root)]
+}
+
+pub fn load_repo_edit_translation_parity_contract(
+    path: &Path,
+) -> Result<RepoEditTranslationParityContract, String> {
     let text =
         std::fs::read_to_string(path).map_err(|err| format!("read {}: {err}", path.display()))?;
     toml::from_str(&text).map_err(|err| format!("parse {}: {err}", path.display()))
