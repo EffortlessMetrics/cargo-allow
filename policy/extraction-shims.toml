@@ -187,3 +187,17 @@ latest_allowed_stage = 5
 removal_condition = "issue:#2606 stage-5 cutover receipt"
 parity_case = "parity-repo-edit-refresh-command-v1"
 claim_boundary = "refresh policy write forwards through repo-edit apply; command UX unchanged."
+
+[[shim]]
+id = "shim-cargo-allow-prune-apply"
+old_identity = "cargo-allow::prune"
+new_identity = "repo-edit::single_target_apply"
+kind = "ModuleFacade"
+posture = "private"
+status = "active"
+move_ledger_entry = "migrate-cargo-allow-prune-command"
+controlling_issue = 2602
+latest_allowed_stage = 6
+removal_condition = "issue:#2606 stage-6 cutover receipt"
+parity_case = "parity-repo-edit-prune-command-v1"
+claim_boundary = "prune policy write forwards through repo-edit apply; command UX unchanged."

@@ -10,5 +10,6 @@ pub fn parity_contract_paths(root: &Path) -> Vec<PathBuf> {
         root.join("tests/fixtures/repo-edit/parity-apply-receipt-v1.toml"),
         root.join("tests/fixtures/repo-edit/parity-init-command-v1.toml"),
         root.join("tests/fixtures/repo-edit/parity-refresh-command-v1.toml"),
+        root.join("tests/fixtures/repo-edit/parity-prune-command-v1.toml"),
     ]
 }

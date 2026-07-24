@@ -8,8 +8,9 @@ use crate::{
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
-    load_world_with_evidence_mode, resolve_source_tree_root, write_file,
+    git_relative_config_path, load_world_with_evidence_mode, resolve_source_tree_root,
 };
+use repo_edit::{SingleTargetApplyRequest, apply_single_target};
 
 #[path = "prune_args.rs"]
 mod prune_args;
@@ -132,7 +133,21 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             &pruned,
             evidence_source_tree_files.as_ref(),
         )?;
-        write_file(&policy_path, &render_policy(&pruned))?;
+        let policy_target = git_relative_config_path(&root, args.config.as_deref())?;
+        let rendered = render_policy(&pruned);
+        apply_single_target(SingleTargetApplyRequest {
+            repository_root: &root,
+            target: &policy_target,
+            contents: &rendered,
+            caller_reference: Some("cargo-allow:prune"),
+            lock_identity: Some(
+                policy_target
+                    .to_string_lossy()
+                    .replace(std::path::MAIN_SEPARATOR, "/"),
+            ),
+            force_create_new: false,
+        })
+        .into_result()?;
         Some(policy_path.clone())
     } else {
         None

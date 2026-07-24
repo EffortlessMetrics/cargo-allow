@@ -82,6 +82,17 @@ disposition = "contract_only"
 claim_boundary = "refresh command rewrites policy via repo-edit apply; last_seen semantics unchanged."
 
 [[case]]
+id = "parity-repo-edit-prune-command-v1"
+stage = "RepoEdit"
+move_ledger_entry = "migrate-cargo-allow-prune-command"
+shim_id = "shim-cargo-allow-prune-apply"
+old_producer = "cargo-allow::prune"
+new_producer = "repo-edit::single_target_apply"
+expected_result = "SemanticallyEquivalent"
+disposition = "contract_only"
+claim_boundary = "prune command rewrites policy via repo-edit apply; stale removal semantics unchanged."
+
+[[case]]
 id = "parity-repo-snapshot-revision-identity-v1"
 stage = "RepoSnapshot"
 move_ledger_entry = "move-allow-diff-revision-identity"
