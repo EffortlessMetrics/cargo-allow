@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.three-product-dogfood.v1",
+  "tool": "three-product-dogfood",
+  "result": "Passed",
+  "claim_boundary": [
+    "monorepo_workspace_binaries",
+    "outside_monorepo_consumer",
+    "intent_to_proof_obligation_bridge",
+    "stubbed_ripr_and_hawk_evidence",
+    "no_physical_repository_extraction"
+  ],
+  "candidate": {
+    "workspace_version": "0.2.0",
+    "stage_fixture_schema_id": "cargo-allow.three-product-dogfood-stages.v1",
+    "git_head": null
+  },
+  "stages": [],
+  "stubbed": {
+    "ripr": "proof-adapter-ripr StaticReport contract only",
+    "hawk": "proof-adapter-hawk StaticReport contract only",
+    "test": "proof.fake-provider.v1 dry-run only"
+  },
+  "limitations": [
+    "linux_hosted_claim_primary",
+    "workspace_target_binaries_not_packaged_candidates"
+  ]
+}

@@ -1,0 +1,20 @@
+# Intent → proof obligation bridge for dogfood (#2558).
+
+schema_id = "cargo-allow.three-product-dogfood-obligation-bridge.v1"
+schema_version = 1
+
+default_plan_id = "three-product-dogfood-obligation"
+
+[[mapping]]
+intent_kind = "policy_alignment"
+provider_id = "proof.cargo-allow.v1"
+proof_kind = "cargo-allow.no-new"
+
+[[mapping]]
+intent_kind = "inventory_completeness"
+provider_id = "proof.fake-provider.v1"
+proof_kind = "cargo-allow.no-new"
+
+[[fallback]]
+provider_id = "proof.fake-provider.v1"
+proof_kind = "cargo-allow.no-new"
