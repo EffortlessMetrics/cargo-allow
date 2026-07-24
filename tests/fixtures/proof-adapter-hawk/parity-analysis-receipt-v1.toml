@@ -1,0 +1,25 @@
+scenario_id = "parity-proof-adapter-hawk-analysis-receipt-v1"
+proof_adapter_hawk_module = "proof-adapter-hawk::analysis_receipt"
+parity_case = "parity-proof-adapter-hawk-analysis-receipt-v1"
+move_ledger_entry = "introduce-proof-adapter-hawk-analysis-receipt"
+required_receipt_fields = [
+  "schema_id",
+  "receipt_id",
+  "hawk_frontend_digest",
+  "hawk_driver_digest",
+  "rustc_release",
+  "rustc_commit",
+  "host_triple",
+  "hawk_schema_generation",
+  "config_path",
+  "config_digest",
+  "manifest_digest",
+  "lockfile_digest",
+  "feature_profile",
+  "target_triple",
+  "snapshot_digest",
+  "product_name",
+  "raw_payload_digest",
+  "execution_mode",
+  "findings",
+]

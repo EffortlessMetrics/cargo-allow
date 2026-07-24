@@ -532,6 +532,39 @@ disposition = "contract_only"
 claim_boundary = "Requirement-grip comparison preserving predictive static evidence posture."
 
 [[case]]
+id = "parity-proof-adapter-hawk-boundary-v1"
+stage = "ProviderAdapters"
+move_ledger_entry = "introduce-proof-adapter-hawk-crate"
+shim_id = "shim-proof-adapter-hawk-crate-scaffold"
+old_producer = "cargo-proof::proof_adapter_hawk_unowned"
+new_producer = "proof-adapter-hawk::boundary"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Hawk adapter scaffold; Hawk liveness remains provider-owned."
+
+[[case]]
+id = "parity-proof-adapter-hawk-analysis-receipt-v1"
+stage = "ProviderAdapters"
+move_ledger_entry = "introduce-proof-adapter-hawk-analysis-receipt"
+shim_id = "shim-proof-adapter-hawk-analysis-receipt"
+old_producer = "cargo-proof::proof_hawk_analysis_receipt_unowned"
+new_producer = "proof-adapter-hawk::analysis_receipt"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "HawkAnalysisReceiptV1 captured-report validation without rustc-private imports."
+
+[[case]]
+id = "parity-proof-adapter-hawk-finding-mapping-v1"
+stage = "ProviderAdapters"
+move_ledger_entry = "introduce-proof-adapter-hawk-finding-mapping"
+shim_id = "shim-proof-adapter-hawk-finding-mapping"
+old_producer = "cargo-proof::proof_hawk_finding_mapping_unowned"
+new_producer = "proof-adapter-hawk::finding_mapping"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Finding-to-adapter result mapping with absence-as-NotProven."
+
+[[case]]
 id = "parity-intent-edit-boundary-v1"
 stage = "IntentEdit"
 move_ledger_entry = "introduce-intent-edit-crate"

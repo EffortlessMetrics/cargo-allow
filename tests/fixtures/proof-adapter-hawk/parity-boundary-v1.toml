@@ -1,0 +1,21 @@
+scenario_id = "parity-proof-adapter-hawk-boundary-v1"
+proof_adapter_hawk_module = "proof-adapter-hawk::boundary"
+parity_case = "parity-proof-adapter-hawk-boundary-v1"
+move_ledger_entry = "introduce-proof-adapter-hawk-crate"
+required_behaviors = [
+  "intent_engine_does_not_depend_on_proof_adapter_hawk",
+  "cargo_allow_does_not_depend_on_proof_adapter_hawk",
+  "allowed_upstream_topology_registered",
+]
+forbidden_dependency_edges = [
+  "proof-adapter-hawk -> intent-model",
+  "proof-adapter-hawk -> intent-engine",
+  "proof-adapter-hawk -> cargo-allow",
+  "proof-adapter-hawk -> allow-core",
+  "cargo-allow product -> proof-adapter-hawk",
+]
+allowed_upstream_crates = [
+  "proof-protocol",
+  "proof-provider-api",
+  "repo-protocol",
+]

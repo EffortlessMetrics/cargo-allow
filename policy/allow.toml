@@ -9433,6 +9433,132 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9171"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/proof-adapter-hawk/parity-boundary-v1.toml"
+owner = "repo-infra"
+classification = "proof_adapter_hawk_parity_fixture"
+reason = "Proof-adapter-hawk boundary parity fixture (#2555)."
+evidence = ["test:proof_adapter_hawk_parity_fixtures_registered", "issue:2555", "doc:policy/extraction-parity.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "tests/fixtures/proof-adapter-hawk/parity-boundary-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9172"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/proof-adapter-hawk/parity-analysis-receipt-v1.toml"
+owner = "repo-infra"
+classification = "proof_adapter_hawk_parity_fixture"
+reason = "Proof-adapter-hawk analysis receipt parity fixture (#2555)."
+evidence = ["test:proof_adapter_hawk_parity_fixtures_registered", "issue:2555", "doc:policy/extraction-parity.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "tests/fixtures/proof-adapter-hawk/parity-analysis-receipt-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9173"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/proof-adapter-hawk/parity-finding-mapping-v1.toml"
+owner = "repo-infra"
+classification = "proof_adapter_hawk_parity_fixture"
+reason = "Proof-adapter-hawk finding mapping parity fixture (#2555)."
+evidence = ["test:proof_adapter_hawk_parity_fixtures_registered", "issue:2555", "doc:policy/extraction-parity.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "tests/fixtures/proof-adapter-hawk/parity-finding-mapping-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9174"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/proof-adapter-hawk/README.md"
+owner = "repo-infra"
+classification = "proof_adapter_hawk_parity_fixture"
+reason = "Proof-adapter-hawk parity fixture catalog (#2555)."
+evidence = ["test:proof_adapter_hawk_parity_fixtures_registered", "issue:2555", "doc:policy/extraction-parity.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "tests/fixtures/proof-adapter-hawk/README.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9175"
+kind = "non_rust_file"
+family = "package_metadata"
+path = "crates/proof-adapter-hawk/Cargo.toml"
+owner = "repo-infra"
+classification = "rust_package_metadata"
+reason = "proof-adapter-hawk manifest is tracked cargo-proof package metadata (#2555)."
+evidence = ["test:proof_adapter_hawk_parity_fixtures_registered", "issue:2555", "doc:policy/product-package-topology.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "crates/proof-adapter-hawk/Cargo.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9176"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/architecture/proof-adapter-hawk.md"
+owner = "repo-infra"
+classification = "architecture_projection"
+reason = "Human projection for proof-adapter-hawk (#2555)."
+evidence = ["test:proof_adapter_hawk_parity_fixtures_registered", "issue:2555", "doc:docs/adr/CARGO-ALLOW-ADR-0002-three-product-ownership.md"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "docs/architecture/proof-adapter-hawk.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9140"
 kind = "non_rust_file"
 family = "test_fixture"

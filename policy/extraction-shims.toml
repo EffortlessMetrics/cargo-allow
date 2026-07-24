@@ -343,6 +343,48 @@ parity_case = "parity-proof-adapter-ripr-grip-comparison-v1"
 claim_boundary = "Requirement-grip comparison preserving predictive static evidence posture."
 
 [[shim]]
+id = "shim-proof-adapter-hawk-crate-scaffold"
+old_identity = "cargo-proof::proof_adapter_hawk_unowned"
+new_identity = "proof-adapter-hawk::boundary"
+kind = "ModuleFacade"
+posture = "private"
+status = "planned"
+move_ledger_entry = "introduce-proof-adapter-hawk-crate"
+controlling_issue = 2555
+latest_allowed_stage = 1
+removal_condition = "issue:#2606 proof-adapter-hawk stage-1 cutover receipt"
+parity_case = "parity-proof-adapter-hawk-boundary-v1"
+claim_boundary = "Hawk adapter scaffold; Hawk liveness remains provider-owned."
+
+[[shim]]
+id = "shim-proof-adapter-hawk-analysis-receipt"
+old_identity = "cargo-proof::proof_hawk_analysis_receipt_unowned"
+new_identity = "proof-adapter-hawk::analysis_receipt"
+kind = "ModuleFacade"
+posture = "private"
+status = "planned"
+move_ledger_entry = "introduce-proof-adapter-hawk-analysis-receipt"
+controlling_issue = 2555
+latest_allowed_stage = 2
+removal_condition = "issue:#2606 proof-adapter-hawk stage-2 cutover receipt"
+parity_case = "parity-proof-adapter-hawk-analysis-receipt-v1"
+claim_boundary = "HawkAnalysisReceiptV1 captured-report validation without rustc-private imports."
+
+[[shim]]
+id = "shim-proof-adapter-hawk-finding-mapping"
+old_identity = "cargo-proof::proof_hawk_finding_mapping_unowned"
+new_identity = "proof-adapter-hawk::finding_mapping"
+kind = "ModuleFacade"
+posture = "private"
+status = "planned"
+move_ledger_entry = "introduce-proof-adapter-hawk-finding-mapping"
+controlling_issue = 2555
+latest_allowed_stage = 3
+removal_condition = "issue:#2606 proof-adapter-hawk stage-3 cutover receipt"
+parity_case = "parity-proof-adapter-hawk-finding-mapping-v1"
+claim_boundary = "Finding-to-adapter result mapping with absence-as-NotProven."
+
+[[shim]]
 id = "shim-cargo-allow-mutation-lock"
 old_identity = "cargo-allow::mutation_lock"
 new_identity = "repo-edit::mutation_lock"
