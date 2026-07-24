@@ -60,19 +60,19 @@ pub fn apply_single_target(request: SingleTargetApplyRequest<'_>) -> SingleTarge
         Ok(bytes) => Some(sha256_v1_bytes(&bytes)),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
         Err(error) => {
-            return failed_response(
+            return failed_response(FailedApplyContext {
                 tool_version,
                 repository_root,
                 target_requested,
                 target_canonical,
-                ApplyOperation::Replace,
-                preconditions,
-                None,
-                request.caller_reference.map(str::to_string),
-                request.lock_identity,
+                operation: ApplyOperation::Replace,
+                preconditions_checked: preconditions,
+                bytes_before_digest: None,
+                caller_reference: request.caller_reference.map(str::to_string),
+                lock_identity: request.lock_identity,
                 limitations,
-                format!("failed to read {} before apply: {error}", joined.display()),
-            );
+                error_detail: format!("failed to read {} before apply: {error}", joined.display()),
+            });
         }
     };
 
@@ -88,19 +88,19 @@ pub fn apply_single_target(request: SingleTargetApplyRequest<'_>) -> SingleTarge
             preconditions.push(PRECONDITION_TARGET_IDENTITY);
         }
         Err(error) => {
-            return failed_response(
+            return failed_response(FailedApplyContext {
                 tool_version,
                 repository_root,
                 target_requested,
                 target_canonical,
                 operation,
-                preconditions,
+                preconditions_checked: preconditions,
                 bytes_before_digest,
-                request.caller_reference.map(str::to_string),
-                request.lock_identity,
+                caller_reference: request.caller_reference.map(str::to_string),
+                lock_identity: request.lock_identity,
                 limitations,
-                error.to_string(),
-            );
+                error_detail: error.to_string(),
+            });
         }
     }
 
@@ -129,23 +129,23 @@ pub fn apply_single_target(request: SingleTargetApplyRequest<'_>) -> SingleTarge
                 error_detail: None,
             },
         },
-        Err(error) => failed_response(
+        Err(error) => failed_response(FailedApplyContext {
             tool_version,
             repository_root,
             target_requested,
             target_canonical,
             operation,
-            preconditions,
+            preconditions_checked: preconditions,
             bytes_before_digest,
-            request.caller_reference.map(str::to_string),
-            request.lock_identity,
+            caller_reference: request.caller_reference.map(str::to_string),
+            lock_identity: request.lock_identity,
             limitations,
-            error.to_string(),
-        ),
+            error_detail: error.to_string(),
+        }),
     }
 }
 
-fn failed_response(
+struct FailedApplyContext {
     tool_version: String,
     repository_root: String,
     target_requested: String,
@@ -157,23 +157,25 @@ fn failed_response(
     lock_identity: Option<String>,
     limitations: Vec<String>,
     error_detail: String,
-) -> SingleTargetApplyResponse {
+}
+
+fn failed_response(context: FailedApplyContext) -> SingleTargetApplyResponse {
     SingleTargetApplyResponse {
         receipt: ApplyReceiptV1 {
-            tool_version,
-            repository_root,
-            target_requested,
-            target_canonical,
-            operation,
+            tool_version: context.tool_version,
+            repository_root: context.repository_root,
+            target_requested: context.target_requested,
+            target_canonical: context.target_canonical,
+            operation: context.operation,
             atomicity_class: AtomicityClass::AtomicSingleTarget,
-            preconditions_checked,
-            bytes_before_digest,
+            preconditions_checked: context.preconditions_checked,
+            bytes_before_digest: context.bytes_before_digest,
             bytes_after_digest: None,
-            lock_identity,
+            lock_identity: context.lock_identity,
             outcome: TargetOutcome::Failed,
-            caller_reference,
-            limitations,
-            error_detail: Some(error_detail),
+            caller_reference: context.caller_reference,
+            limitations: context.limitations,
+            error_detail: Some(context.error_detail),
         },
     }
 }
