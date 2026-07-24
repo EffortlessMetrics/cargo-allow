@@ -1,0 +1,120 @@
+# Three-product simplification inventory (#2208).
+# Classify extraction abstractions before any future repository split.
+
+schema_id = "cargo-allow.three-product-simplification.v1"
+schema_version = 1
+controlling_issue = 2208
+
+classifications = [
+  "MvpRequired",
+  "MvpSimplify",
+  "PostMvpValidatedNeed",
+  "PostMvpUnproven",
+  "DeferUntilSecondAdopter",
+  "RejectOrReplace",
+]
+
+[[entry]]
+id = "cargo-allow-io-shim"
+kind = "module"
+path = "crates/cargo-allow/src/command_support.rs"
+classification = "MvpSimplify"
+action = "removed"
+replacement = "repo-edit write helpers inlined in command_support (#2208)"
+reason = "Thin re-export shim duplicated repo-edit without adding boundary value."
+
+[[entry]]
+id = "proof-adapter-surface-markers"
+kind = "module_pattern"
+path = "crates/proof-*/src/*_surface.rs"
+classification = "MvpRequired"
+action = "retain"
+reason = "Parity contract MODULE_ID anchors for #2606 extraction receipts."
+
+[[entry]]
+id = "proof-engine-cache"
+kind = "crate_module"
+path = "crates/proof-engine/src/cache.rs"
+classification = "PostMvpUnproven"
+action = "retain"
+reason = "Execution cache not exercised in dogfood; keep until second adopter needs it."
+
+[[entry]]
+id = "intent-edit-crate"
+kind = "crate"
+path = "crates/intent-edit"
+classification = "DeferUntilSecondAdopter"
+action = "retain"
+reason = "Semantic authoring deferred per Stage 6; crate scaffold only."
+
+[[entry]]
+id = "repo-edit-crate"
+kind = "crate"
+path = "crates/repo-edit"
+classification = "PostMvpValidatedNeed"
+action = "retain"
+reason = "Atomic write owner for cargo-allow emission paths."
+
+[[entry]]
+id = "cargo-allow-spec-system-modules"
+kind = "module"
+path = "crates/cargo-allow/src/spec_system*.rs"
+classification = "MvpSimplify"
+action = "retain_until_delegate"
+reason = "Transitional; delete after #2568 parity and spec-system audit retirement."
+
+[[entry]]
+id = "obligation-bridge-dogfood"
+kind = "fixture"
+path = "tests/fixtures/three-product-dogfood/obligation-bridge-rules-v1.toml"
+classification = "DeferUntilSecondAdopter"
+action = "retain"
+reason = "Bridging until native intent→proof export exists."
+
+[[entry]]
+id = "fake-proof-provider"
+kind = "provider"
+path = "crates/proof-provider-api/src/fake_provider.rs"
+classification = "MvpRequired"
+action = "retain"
+reason = "Only registered provider in cargo-proof plan registry today."
+
+[[entry]]
+id = "proof-adapter-ripr-hawk"
+kind = "crate"
+path = "crates/proof-adapter-ripr"
+classification = "PostMvpValidatedNeed"
+action = "retain"
+reason = "StaticReport contracts proven; live providers stubbed in dogfood."
+
+[[entry]]
+id = "proof-adapter-hawk-crate"
+kind = "crate"
+path = "crates/proof-adapter-hawk"
+classification = "PostMvpValidatedNeed"
+action = "retain"
+reason = "StaticReport contracts proven; live providers stubbed in dogfood."
+
+[[entry]]
+id = "duplicate-spec-system-ci-audit"
+kind = "ci_lane"
+path = ".github/workflows/ci.yml"
+classification = "MvpSimplify"
+action = "retain"
+reason = "Artifact graph audit complements dogfood; narrow in follow-up after #2568."
+
+[[entry]]
+id = "rust-source-index"
+kind = "crate"
+path = "crates/rust-source-index"
+classification = "PostMvpUnproven"
+action = "retain"
+reason = "Stage 5 extraction incomplete; required before full intent-engine migration."
+
+[[entry]]
+id = "allow-policy-legacy"
+kind = "crate"
+path = "crates/allow-policy-legacy"
+classification = "PostMvpValidatedNeed"
+action = "retain"
+reason = "Migration path for xtask-era ledgers; shrink after migration parity."
