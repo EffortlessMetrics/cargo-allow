@@ -1,0 +1,27 @@
+scenario_id = "parity-proof-adapter-command-registry-v1"
+proof_adapter_command_module = "proof-adapter-command::command_registry"
+parity_case = "parity-proof-adapter-command-registry-v1"
+move_ledger_entry = "introduce-proof-adapter-command-registry"
+required_registry_fields = [
+  "command_id",
+  "program",
+  "argv_prefix",
+  "cwd_policy",
+  "env_allowlist",
+  "read_paths",
+  "write_paths",
+  "network",
+  "timeout_ms",
+  "cancellation",
+]
+required_spec_fields = [
+  "program",
+  "argv",
+  "cwd_policy",
+  "env_allowlist",
+  "read_paths",
+  "write_paths",
+  "network",
+  "timeout_ms",
+  "cancellation",
+]

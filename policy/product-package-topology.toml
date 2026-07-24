@@ -172,3 +172,11 @@ posture = "CargoProofExperimental"
 publish = false
 candidate_inclusion = false
 release_order = 420
+
+[[package]]
+package = "proof-adapter-command"
+product_family = "cargo-proof"
+posture = "CargoProofExperimental"
+publish = false
+candidate_inclusion = false
+release_order = 425

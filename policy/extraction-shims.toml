@@ -203,6 +203,34 @@ parity_case = "parity-proof-provider-api-boundary-v1"
 claim_boundary = "Provider API scaffold and conformance harness only; command adapters land in proof-adapter-command."
 
 [[shim]]
+id = "shim-proof-adapter-command-crate-scaffold"
+old_identity = "cargo-proof::proof_adapter_command_unowned"
+new_identity = "proof-adapter-command::boundary"
+kind = "ModuleFacade"
+posture = "private"
+status = "planned"
+move_ledger_entry = "introduce-proof-adapter-command-crate"
+controlling_issue = 2603
+latest_allowed_stage = 1
+removal_condition = "issue:#2606 proof-adapter-command stage-1 cutover receipt"
+parity_case = "parity-proof-adapter-command-boundary-v1"
+claim_boundary = "Command adapter scaffold only; process execution remains proof-engine owned."
+
+[[shim]]
+id = "shim-proof-adapter-command-registry"
+old_identity = "cargo-proof::proof_command_registry_unowned"
+new_identity = "proof-adapter-command::command_registry"
+kind = "ModuleFacade"
+posture = "private"
+status = "planned"
+move_ledger_entry = "introduce-proof-adapter-command-registry"
+controlling_issue = 2603
+latest_allowed_stage = 2
+removal_condition = "issue:#2606 proof-adapter-command stage-2 cutover receipt"
+parity_case = "parity-proof-adapter-command-registry-v1"
+claim_boundary = "Reviewed command registry and structured argv only; prose must never become executable shell."
+
+[[shim]]
 id = "shim-cargo-allow-mutation-lock"
 old_identity = "cargo-allow::mutation_lock"
 new_identity = "repo-edit::mutation_lock"
