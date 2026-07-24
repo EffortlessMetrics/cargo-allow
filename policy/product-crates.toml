@@ -76,10 +76,10 @@ role = "CargoIntent"
 stage_issue = 2599
 
 [[planned_crate]]
-name = "proof-protocol"
+name = "proof-provider-api"
 owner_product = "cargo-proof"
 role = "CargoProof"
-stage_issue = 2588
+stage_issue = 2603
 
 [[planned_crate]]
 name = "proof-engine"
