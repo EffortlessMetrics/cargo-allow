@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.exact-candidate-interop.v1",
+  "tool": "exact-candidate-interop",
+  "result": "Passed",
+  "claim_boundary": [
+    "outside_monorepo_consumer",
+    "journey_a_cargo_allow_alone",
+    "journey_b_cargo_intent_alone",
+    "journey_c_cargo_proof_fake_provider",
+    "journey_d_cargo_proof_invokes_cargo_allow",
+    "journey_e_cargo_allow_delegates_cargo_intent",
+    "no_workspace_target_debug_binary",
+    "no_workspace_crates_checkout",
+    "no_hidden_path_deps"
+  ],
+  "candidate": {
+    "workspace_version": "0.2.0",
+    "journey_fixture_schema_id": "cargo-allow.exact-candidate-interop-journeys.v1",
+    "git_head": null
+  },
+  "environment": {
+    "os": "linux",
+    "arch": "x86_64",
+    "consumer_outside_workspace": true,
+    "isolation_mechanism": "installed_candidate_binaries"
+  },
+  "journeys": [
+    { "id": "A", "product": "cargo-allow", "result": "Passed" },
+    { "id": "B", "product": "cargo-intent", "result": "Passed" },
+    { "id": "C", "product": "cargo-proof", "result": "Passed" },
+    { "id": "D", "product": "cargo-proof", "result": "Passed" },
+    { "id": "E", "product": "cargo-allow", "result": "Passed" }
+  ],
+  "negative_controls": [],
+  "limitations": [
+    "linux_hosted_claim_primary",
+    "requires_prior_candidate_install_smokes",
+    "dry_run_only_for_journey_c"
+  ]
+}

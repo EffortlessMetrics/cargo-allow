@@ -9559,6 +9559,90 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9177"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "docs/dogfood/fixtures/release/exact-candidate-interop-journeys.toml"
+owner = "core/release"
+classification = "docs_executable_contract"
+reason = "Exact-candidate interop journey inventory fixture (#2605)."
+evidence = ["test:interop_journey_fixture_lists_five_journeys", "issue:2605", "workflow:.github/workflows/ci.yml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "docs/dogfood/fixtures/release/exact-candidate-interop-journeys.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9178"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/receipts/exact-candidate-interop-pass.example.json"
+owner = "core/release"
+classification = "docs_executable_contract"
+reason = "Example receipt for ExactCandidateInteropSmokeV1 (#2605)."
+evidence = ["test:example_exact_candidate_interop_matches_schema_constants", "issue:2605", "workflow:.github/workflows/ci.yml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "json"
+glob = "docs/dogfood/receipts/exact-candidate-interop-pass.example.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9179"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/exact-candidate-interop-smoke.sh"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "ExactCandidateInteropSmokeV1: journeys A–E outside monorepo (#2605)."
+evidence = ["test:example_exact_candidate_interop_matches_schema_constants", "issue:2605", "workflow:.github/workflows/ci.yml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "sh"
+glob = "scripts/exact-candidate-interop-smoke.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9180"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/test-exact-candidate-interop-smoke.sh"
+owner = "core/release"
+classification = "ci_characterization_script"
+reason = "Characterization wrapper for exact-candidate interop smoke (#2605)."
+evidence = ["test:example_exact_candidate_interop_matches_schema_constants", "issue:2605"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "sh"
+glob = "scripts/test-exact-candidate-interop-smoke.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9140"
 kind = "non_rust_file"
 family = "test_fixture"

@@ -87,6 +87,29 @@ jobs:
           name: proof-candidate-smoke-receipt
           path: target/proof-candidate-smoke/proof-candidate-smoke.receipt.json
           if-no-files-found: warn
+      - name: Exact candidate interop smoke (#2605)
+        run: |
+          allow_bin="target/exact-candidate-package-set/install/bin/cargo-allow"
+          intent_bin="target/intent-candidate-smoke/install/bin/cargo-intent"
+          proof_bin="target/proof-candidate-smoke/install/bin/cargo-proof"
+          for bin in "${allow_bin}" "${intent_bin}" "${proof_bin}"; do
+            if [[ -x "${bin}.exe" ]]; then
+              :
+            elif [[ ! -x "${bin}" && ! -f "${bin}" ]]; then
+              echo "missing candidate binary ${bin}" >&2
+              exit 1
+            fi
+          done
+          CARGO_ALLOW_BIN="${allow_bin}" \
+          CARGO_INTENT_BIN="${intent_bin}" \
+          CARGO_PROOF_BIN="${proof_bin}" \
+          bash scripts/exact-candidate-interop-smoke.sh
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: exact-candidate-interop-receipt
+          path: target/exact-candidate-interop/exact-candidate-interop.receipt.json
+          if-no-files-found: warn
   # Hosted characterization for #2366 / #2355: shallow missing-base fails closed,
   # then the same diff succeeds after history is available. Linux-only; keeps PR
   # CI cheap relative to a full matrix.
