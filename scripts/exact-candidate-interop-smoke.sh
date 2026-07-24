@@ -208,7 +208,7 @@ printf '%s\n' "${b_version}" | grep -F "cargo-intent ${version}" >/dev/null \
 "${cargo_intent_bin}" --root "${consumer_dir}" --format json identity >/dev/null
 printf 'staged\n' >"${consumer_dir}/candidate.txt"
 git -C "${consumer_dir}" add candidate.txt
-"${cargo_intent_bin}" --root "${consumer_dir}" change status --staged --phase precommit --format json >/dev/null
+"${cargo_intent_bin}" --root "${consumer_dir}" --format json change status --staged --phase precommit >/dev/null
 record_journey "B" "cargo-intent" "Passed"
 
 # --- Journey C: cargo-proof fake/command provider ---
