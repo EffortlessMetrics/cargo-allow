@@ -18,6 +18,9 @@ fn intent_edit_parity_fixtures_registered() -> Result<(), String> {
     if !doc_text.contains("2613-B") {
         return Err("human projection missing edit-plan packet marker".to_string());
     }
+    if !doc_text.contains("2613-C") {
+        return Err("human projection missing dialect/approval packet marker".to_string());
+    }
 
     let ledger = std::fs::read_to_string(root.join("policy/product-move-ledger.toml"))
         .map_err(|err| format!("move ledger: {err}"))?;
@@ -26,6 +29,9 @@ fn intent_edit_parity_fixtures_registered() -> Result<(), String> {
     }
     if !ledger.contains("introduce-intent-edit-plan") {
         return Err("move ledger missing intent-edit plan entry".to_string());
+    }
+    if !ledger.contains("introduce-intent-edit-dialect-approval") {
+        return Err("move ledger missing intent-edit dialect/approval entry".to_string());
     }
 
     let manifest = root.join("crates/cargo-allow/Cargo.toml");
@@ -42,6 +48,8 @@ fn intent_edit_parity_fixture_paths(root: &std::path::Path) -> Vec<PathBuf> {
     vec![
         root.join("tests/fixtures/intent-edit/parity-boundary-v1.toml"),
         root.join("tests/fixtures/intent-edit/parity-edit-plan-v1.toml"),
+        root.join("tests/fixtures/intent-edit/parity-dialect-adapter-v1.toml"),
+        root.join("tests/fixtures/intent-edit/parity-approval-currentness-v1.toml"),
     ]
 }
 

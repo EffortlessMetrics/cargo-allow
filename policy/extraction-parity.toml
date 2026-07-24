@@ -388,6 +388,28 @@ expected_result = "EquivalentWithCanonicalRenaming"
 disposition = "contract_only"
 claim_boundary = "Edit plan transport, stable action IDs, and find-before-create validation only."
 
+[[case]]
+id = "parity-intent-edit-dialect-adapter-v1"
+stage = "IntentEdit"
+move_ledger_entry = "introduce-intent-edit-dialect-approval"
+shim_id = "shim-intent-edit-dialect-approval"
+old_producer = "cargo-intent::intent_edit_dialect_unowned"
+new_producer = "intent-edit::dialect_adapter"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Dialect selector normalization only; no file parsing or repo-edit apply."
+
+[[case]]
+id = "parity-intent-edit-approval-currentness-v1"
+stage = "IntentEdit"
+move_ledger_entry = "introduce-intent-edit-dialect-approval"
+shim_id = "shim-intent-edit-dialect-approval"
+old_producer = "cargo-intent::intent_edit_approval_unowned"
+new_producer = "intent-edit::approval_currentness"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Approval/currentness envelope and fail-closed validation only."
+
 [[stage_receipt]]
 stage = "ArchitectureInventory"
 required_fields = [

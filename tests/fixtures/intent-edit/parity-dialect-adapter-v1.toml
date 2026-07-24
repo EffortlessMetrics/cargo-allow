@@ -1,0 +1,15 @@
+scenario_id = "parity-intent-edit-dialect-adapter-v1"
+intent_edit_module = "intent-edit::dialect_adapter"
+parity_case = "parity-intent-edit-dialect-adapter-v1"
+move_ledger_entry = "introduce-intent-edit-dialect-approval"
+canonical_dialect_ids = [
+  "cargo-allow",
+  "cargo-allow-doc-artifacts",
+  "spec-system",
+  "generic-toml",
+]
+required_normalization_behaviors = [
+  "forward_slash_paths",
+  "strip_dot_slash_prefix",
+  "strip_allow_prefix_for_spec_system",
+]
