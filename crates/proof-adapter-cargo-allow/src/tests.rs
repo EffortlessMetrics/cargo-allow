@@ -96,10 +96,10 @@ fn process_protocol_compiles_no_new_dry_run() -> Result<(), String> {
     );
     validate_process_protocol_plan(&plan).map_err(|err| err.as_str())?;
     let reports = compile_cargo_allow_dry_run(&plan).map_err(|err| err.as_str())?;
-    if reports.len() != 1 {
-        return Err("expected one dry-run report".to_string());
-    }
-    if reports[0].program != "cargo-allow" {
+    let first = reports
+        .first()
+        .ok_or_else(|| "expected one dry-run report".to_string())?;
+    if first.program != "cargo-allow" {
         return Err("unexpected program in dry-run report".to_string());
     }
     Ok(())
