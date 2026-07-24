@@ -142,3 +142,56 @@ fn change_status_no_project_execution() -> Result<(), String> {
     }
     Ok(())
 }
+
+fn run_change_status_analysis_receipt(repo: &FixtureRepo) -> Result<Output, String> {
+    Command::new(env!("CARGO_BIN_EXE_cargo-intent"))
+        .args([
+            "--root",
+            repo.root
+                .to_str()
+                .ok_or_else(|| "non-UTF-8 fixture root".to_string())?,
+            "--format",
+            "json",
+            "change",
+            "status",
+            "--staged",
+            "--phase",
+            "precommit",
+            "--analysis-receipt",
+        ])
+        .output()
+        .map_err(|error| error.to_string())
+}
+
+#[test]
+fn change_status_analysis_receipt_envelope() -> Result<(), String> {
+    let repo = FixtureRepo::new("analysis-receipt")?;
+    repo.write("README.md", "base\n")?;
+    repo.git(&["add", "--all"])?;
+    repo.git(&["commit", "-qm", "base"])?;
+    repo.write("candidate.txt", "staged bytes\n")?;
+    repo.git(&["add", "--", "candidate.txt"])?;
+
+    let output = run_change_status_analysis_receipt(&repo)?;
+    let envelope = report_value(&output.stdout)?;
+    if envelope.get("schema_id").and_then(Value::as_str) != Some("repo.analysis-receipt.v1") {
+        return Err("missing analysis receipt schema id".to_string());
+    }
+    if envelope.get("provider").and_then(Value::as_str) != Some("cargo-intent") {
+        return Err("analysis receipt provider must be cargo-intent".to_string());
+    }
+    if envelope
+        .get("provider_payload_schema")
+        .and_then(Value::as_str)
+        != Some("cargo-intent.change-status.v1")
+    {
+        return Err("analysis receipt payload schema mismatch".to_string());
+    }
+    let payload = envelope
+        .get("provider_payload")
+        .ok_or_else(|| "missing provider_payload".to_string())?;
+    if payload.get("schema_id").and_then(Value::as_str) != Some("cargo-intent.change-status.v1") {
+        return Err("provider payload missing change-status schema".to_string());
+    }
+    Ok(())
+}

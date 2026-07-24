@@ -26,7 +26,7 @@ use allow_rust::RustTestInventoryStatus;
 use serde::Serialize;
 use std::env;
 use std::path::{Path, PathBuf};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 pub const SPEC_PRECOMMIT_SCHEMA_ID: &str = "cargo-allow.spec-precommit.v1";
 pub const SPEC_PRECOMMIT_SCHEMA_VERSION: u32 = 1;
@@ -140,6 +140,10 @@ pub(crate) fn cmd_staged_identity(args: &CheckArgs) -> CargoAllowResult<()> {
 
 pub(crate) fn cmd_spec_precommit(args: &CheckArgs) -> CargoAllowResult<()> {
     let started = Instant::now();
+    match crate::intent_delegate::try_delegate_staged_precommit(args, started)? {
+        crate::intent_delegate::DelegationDisposition::Disabled => {}
+        crate::intent_delegate::DelegationDisposition::Handle(result) => return result,
+    }
     let root = resolve_root(&args.root)?;
     let snapshot_before = staged_repository_snapshot(&root)?;
     validate_output_paths(
@@ -829,6 +833,16 @@ fn exit_family_for(result: SpecPrecommitResultClass) -> &'static str {
     }
 }
 
+fn static_exit_family(family: &str) -> &'static str {
+    match family {
+        "success" => "success",
+        "blocking" => "blocking",
+        "advisory" => "advisory",
+        "usage" => "usage",
+        _ => "instrument_failure",
+    }
+}
+
 fn tool_summary(selection: &ToolSelectionReceiptV1) -> ToolSelectionSummaryV1 {
     ToolSelectionSummaryV1 {
         result: format!("{:?}", selection.result),
@@ -849,6 +863,157 @@ fn tool_summary_from_failure(
         executable_digest: None,
         channel: None,
         preview_evidence: matches!(mode, ToolSelectionMode::ExplicitToolUnderTest),
+    }
+}
+
+pub(crate) struct DelegatedPrecommitOutcome {
+    pub result_class: repo_protocol::ResultClassV1,
+    pub exit_success: bool,
+    pub staged_identity: String,
+    pub process_exit_family: String,
+    pub provider_claim_boundary: Option<String>,
+    pub unmapped_staged_surface: bool,
+    pub error: Option<String>,
+}
+
+impl DelegatedPrecommitOutcome {
+    pub(crate) fn from_delegate_failure(
+        failure: &crate::intent_delegate::IntentDelegateFailure,
+    ) -> Self {
+        let result_class = match failure.class {
+            crate::intent_delegate::IntentDelegateFailureClass::StaleSource => {
+                repo_protocol::ResultClassV1::StaleInput
+            }
+            crate::intent_delegate::IntentDelegateFailureClass::MalformedOutput => {
+                repo_protocol::ResultClassV1::MalformedInput
+            }
+            crate::intent_delegate::IntentDelegateFailureClass::WrongProduct
+            | crate::intent_delegate::IntentDelegateFailureClass::WrongProtocol => {
+                repo_protocol::ResultClassV1::MalformedInput
+            }
+            crate::intent_delegate::IntentDelegateFailureClass::Timeout => {
+                repo_protocol::ResultClassV1::InstrumentFailure
+            }
+            crate::intent_delegate::IntentDelegateFailureClass::ProviderAbsent
+            | crate::intent_delegate::IntentDelegateFailureClass::IdentityMismatch
+            | crate::intent_delegate::IntentDelegateFailureClass::InstrumentFailure => {
+                repo_protocol::ResultClassV1::InstrumentFailure
+            }
+        };
+        Self {
+            result_class,
+            exit_success: false,
+            staged_identity: String::new(),
+            process_exit_family: "instrument_failure".to_string(),
+            provider_claim_boundary: None,
+            unmapped_staged_surface: false,
+            error: Some(failure.to_string()),
+        }
+    }
+}
+
+pub(crate) fn complete_delegated_precommit(
+    args: &CheckArgs,
+    root: &Path,
+    snapshot: &StagedRepositorySnapshot,
+    outcome: DelegatedPrecommitOutcome,
+    elapsed: Duration,
+) -> CargoAllowResult<()> {
+    let result_class = map_delegated_result_class(&outcome);
+    let exit_family = if outcome.error.is_some() {
+        "instrument_failure"
+    } else {
+        static_exit_family(&outcome.process_exit_family)
+    };
+    let remaining_gates = if outcome.unmapped_staged_surface {
+        vec![
+            "delegated via repo.analysis-receipt.v1",
+            "provider reported unmapped staged surface; embedded graph evaluation skipped",
+        ]
+    } else {
+        vec![
+            "delegated via repo.analysis-receipt.v1",
+            "provider obligation skeleton only; embedded evaluator not invoked",
+        ]
+    };
+    let report = SpecPrecommitReportV1 {
+        schema_id: SPEC_PRECOMMIT_SCHEMA_ID,
+        schema_version: SPEC_PRECOMMIT_SCHEMA_VERSION,
+        command: "check",
+        phase: "precommit",
+        profile: "spec-system",
+        tool_identity: None,
+        tool_selection: None,
+        parent_commit: snapshot.parent_commit.clone(),
+        parent_tree: None,
+        staged_identity_before: Some(snapshot.identity.semantic_hash.clone()),
+        staged_identity_after: Some(outcome.staged_identity.clone()),
+        staged_changes: snapshot.changes.iter().map(staged_change).collect(),
+        change_class: None,
+        findings: Vec::new(),
+        result_class,
+        process_exit_family: exit_family,
+        inventory_completeness: snapshot_completeness(snapshot.completeness),
+        source_view_identity: None,
+        tool_result_class: Some(
+            outcome
+                .provider_claim_boundary
+                .clone()
+                .unwrap_or_else(|| format!("{:?}", outcome.result_class)),
+        ),
+        duration_ms: elapsed.as_millis(),
+        remaining_gates,
+        error: outcome.error.clone(),
+        claim_boundary: CLAIM_BOUNDARY,
+    };
+    emit_report(args, root, &report)?;
+    if matches!(
+        result_class,
+        SpecPrecommitResultClass::Passed
+            | SpecPrecommitResultClass::FindingsAdvisory
+            | SpecPrecommitResultClass::NotApplicable
+    ) && outcome.exit_success
+    {
+        Ok(())
+    } else {
+        Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::PolicyViolation,
+            outcome
+                .error
+                .unwrap_or_else(|| "delegated staged precommit posture is not green".to_string()),
+        ))
+    }
+}
+
+fn map_delegated_result_class(outcome: &DelegatedPrecommitOutcome) -> SpecPrecommitResultClass {
+    if outcome.error.is_some() {
+        return match outcome.result_class {
+            repo_protocol::ResultClassV1::StaleInput => SpecPrecommitResultClass::StaleInput,
+            repo_protocol::ResultClassV1::MalformedInput => {
+                SpecPrecommitResultClass::MalformedInput
+            }
+            _ => SpecPrecommitResultClass::InstrumentFailure,
+        };
+    }
+    match outcome.result_class {
+        repo_protocol::ResultClassV1::Completed => SpecPrecommitResultClass::Passed,
+        repo_protocol::ResultClassV1::Findings => {
+            if outcome.process_exit_family == "advisory" {
+                SpecPrecommitResultClass::FindingsAdvisory
+            } else {
+                SpecPrecommitResultClass::FindingsBlocking
+            }
+        }
+        repo_protocol::ResultClassV1::PartialData => SpecPrecommitResultClass::PartialData,
+        repo_protocol::ResultClassV1::StaleInput => SpecPrecommitResultClass::StaleInput,
+        repo_protocol::ResultClassV1::MalformedInput => SpecPrecommitResultClass::MalformedInput,
+        repo_protocol::ResultClassV1::Unsupported => SpecPrecommitResultClass::Unsupported,
+        repo_protocol::ResultClassV1::InstrumentFailure => {
+            SpecPrecommitResultClass::InstrumentFailure
+        }
+        repo_protocol::ResultClassV1::NotProven
+        | repo_protocol::ResultClassV1::Cancelled
+        | repo_protocol::ResultClassV1::Conflict => SpecPrecommitResultClass::InstrumentFailure,
     }
 }
 

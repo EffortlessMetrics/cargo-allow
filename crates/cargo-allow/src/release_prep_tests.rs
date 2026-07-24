@@ -13,12 +13,19 @@ const CANDIDATE_RELEASE_VERSION: &str = "0.2.0";
 const RELEASE_WORKFLOW: &str = ".github/workflows/release.yml";
 const RELEASE_DOC: &str = "docs/release/README.md";
 
+const CANDIDATE_RELEASE_DOC: &str = "docs/release/0.2.0.md";
+
 #[test]
 fn release_workflow_exists_and_lists_publish_order() {
     let root = workspace_root();
     let workflow = read_workspace_file(&root, RELEASE_WORKFLOW);
     let release_doc = read_workspace_file(&root, RELEASE_DOC);
-    let publish_order = parse_publish_order(&read_workspace_file(&root, PUBLISHED_RELEASE_DOC));
+    let workspace_manifest = read_workspace_file(&root, "Cargo.toml");
+    let workspace_version = workspace_package_version(&workspace_manifest);
+    let publish_order = parse_publish_order(&read_workspace_file(
+        &root,
+        active_publish_order_doc(&workspace_version),
+    ));
 
     assert!(
         workflow.contains("on:") && workflow.contains("tags:") && workflow.contains("v*"),
@@ -44,9 +51,15 @@ fn release_workflow_exists_and_lists_publish_order() {
 #[test]
 fn release_publish_order_matches_internal_dependency_graph() {
     let root = workspace_root();
-    let release_doc = fs::read_to_string(root.join(PUBLISHED_RELEASE_DOC)).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("read {PUBLISHED_RELEASE_DOC}: {err}"))
-    });
+    let workspace_manifest = read_workspace_file(&root, "Cargo.toml");
+    let workspace_version = workspace_package_version(&workspace_manifest);
+    let release_doc = fs::read_to_string(root.join(active_publish_order_doc(&workspace_version)))
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!(
+                "read {}: {err}",
+                active_publish_order_doc(&workspace_version)
+            ))
+        });
     let publish_order = parse_publish_order(&release_doc);
     let package_manifests = workspace_package_manifests(&root);
     let package_names = package_manifests.keys().cloned().collect::<BTreeSet<_>>();
@@ -361,6 +374,14 @@ fn all_workspace_package_manifests(root: &Path) -> BTreeMap<String, String> {
 
 fn is_publishable_workspace_package(manifest: &str) -> bool {
     !manifest.contains("publish = false")
+}
+
+fn active_publish_order_doc(workspace_version: &str) -> &'static str {
+    if workspace_version == CANDIDATE_RELEASE_VERSION {
+        CANDIDATE_RELEASE_DOC
+    } else {
+        PUBLISHED_RELEASE_DOC
+    }
 }
 
 fn parse_publish_order(release_doc: &str) -> Vec<String> {

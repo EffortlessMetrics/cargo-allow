@@ -68,13 +68,13 @@ old_identity = "cargo-allow::spec_system*"
 new_identity = "cargo-intent::public_adapter"
 kind = "ProcessProtocolAdapter"
 posture = "public"
-status = "planned"
+status = "active"
 move_ledger_entry = "move-spec-system-profile-command"
 controlling_issue = 2601
 latest_allowed_stage = 4
-removal_condition = "issue:#2601 one-way delegation complete"
+removal_condition = "issue:#2601-C remaining legacy commands delegated or fail closed"
 parity_case = "parity-cargo-intent-spec-system-delegate-v1"
-claim_boundary = "Process delegation only; no cargo-allow lib dep on intent crates."
+claim_boundary = "Staged precommit delegates via repo.analysis-receipt.v1; cargo-allow validates envelope only."
 
 [[shim]]
 id = "shim-allow-rust-test-subjects"

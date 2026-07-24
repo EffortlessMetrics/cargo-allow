@@ -27,6 +27,7 @@ pub fn change_status_staged_precommit(
     root: &Path,
     config: &IntentConfigV1,
     format: OutputFormat,
+    analysis_receipt: bool,
 ) -> Result<ProcessExitFamilyV1, String> {
     let snapshot = match staged_repository_snapshot(root) {
         Ok(snapshot) => snapshot,
@@ -38,7 +39,14 @@ pub fn change_status_staged_precommit(
     };
     let report = build_report(config, &snapshot)?;
     let family = exit_family_for_result_class(&report.result_class);
-    let rendered = emit_frame(&report, format)?;
+    let rendered = if analysis_receipt && matches!(format, OutputFormat::Json) {
+        let identity = staged_identity_envelope(&snapshot);
+        let envelope = crate::transport::wrap_change_status_report(&report, &identity.snapshot)?;
+        serde_json::to_string_pretty(&envelope)
+            .map_err(|err| format!("serialize analysis receipt envelope: {err}"))?
+    } else {
+        emit_frame(&report, format)?
+    };
     print!("{rendered}");
     Ok(family)
 }

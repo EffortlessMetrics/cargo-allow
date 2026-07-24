@@ -78,20 +78,20 @@ candidate_inclusion = true
 release_order = 90
 
 [[package]]
+package = "repo-protocol"
+product_family = "shared"
+posture = "SharedProtocolInternalOrStabilizing"
+publish = true
+candidate_inclusion = true
+release_order = 95
+
+[[package]]
 package = "cargo-allow"
 product_family = "cargo-allow"
 posture = "CargoAllowSupported"
 publish = true
 candidate_inclusion = true
 release_order = 100
-
-[[package]]
-package = "repo-protocol"
-product_family = "shared"
-posture = "SharedProtocolInternalOrStabilizing"
-publish = false
-candidate_inclusion = false
-release_order = 210
 
 [[package]]
 package = "repo-snapshot"

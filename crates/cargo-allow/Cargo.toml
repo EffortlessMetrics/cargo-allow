@@ -21,6 +21,7 @@ allow-match.workspace = true
 allow-report.workspace = true
 allow-diff.workspace = true
 allow-policy-legacy.workspace = true
+repo-protocol.workspace = true
 clap.workspace = true
 toml.workspace = true
 fs4 = "0.13.1"
@@ -28,6 +29,7 @@ serde.workspace = true
 serde_json.workspace = true
 
 [dev-dependencies]
+cargo-intent = { path = "../cargo-intent" }
 repo-snapshot = { path = "../repo-snapshot" }
 rust-source-index = { path = "../rust-source-index" }
 intent-model = { path = "../intent-model" }

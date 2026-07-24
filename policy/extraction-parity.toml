@@ -47,7 +47,7 @@ old_producer = "cargo-allow check --profile spec-system"
 new_producer = "cargo-intent public adapter"
 expected_result = "IntentionalDifferenceAccepted"
 disposition = "contract_only"
-claim_boundary = "Process delegation; no cargo-allow lib dep on intent crates."
+claim_boundary = "Staged precommit delegates via repo.analysis-receipt.v1; cargo-allow validates envelope only; no intent-protocol lib dep."
 
 [[case]]
 id = "parity-rust-source-index-test-subjects-v1"
