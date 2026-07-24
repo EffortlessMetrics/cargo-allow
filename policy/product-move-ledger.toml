@@ -541,3 +541,33 @@ claim_boundary = "Provider API contracts, fake provider, and conformance harness
 parity_fixture = "tests/fixtures/proof-provider-api/parity-boundary-v1.toml"
 removal_condition = "issue:#2606 proof-provider-api stage-1 cutover receipt"
 controlling_issue = 2603
+
+[[entry]]
+id = "introduce-proof-adapter-command-crate"
+current_identity = "crates/proof-adapter-command/src/lib.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-proof"
+current_owner_crate = "proof-adapter-command"
+target_owner_product = "cargo-proof"
+target_owner_crate = "proof-adapter-command"
+disposition = "MoveToProofAdapterCommand"
+status = "current"
+claim_boundary = "Reviewed command registry and adapter contracts only; process execution remains proof-engine owned."
+parity_fixture = "tests/fixtures/proof-adapter-command/parity-boundary-v1.toml"
+removal_condition = "issue:#2606 proof-adapter-command stage-1 cutover receipt"
+controlling_issue = 2603
+
+[[entry]]
+id = "introduce-proof-adapter-command-registry"
+current_identity = "crates/proof-adapter-command/src/command_registry.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-proof"
+current_owner_crate = "proof-adapter-command"
+target_owner_product = "cargo-proof"
+target_owner_crate = "proof-adapter-command"
+disposition = "MoveToProofAdapterCommand"
+status = "current"
+claim_boundary = "Reviewed command registry, invocation specs, dry-run, and receipt interpretation without prose-to-shell."
+parity_fixture = "tests/fixtures/proof-adapter-command/parity-command-registry-v1.toml"
+removal_condition = "issue:#2606 proof-adapter-command stage-2 cutover receipt"
+controlling_issue = 2603

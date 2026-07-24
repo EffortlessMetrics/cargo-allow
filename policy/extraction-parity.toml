@@ -422,6 +422,28 @@ disposition = "contract_only"
 claim_boundary = "Provider API scaffold and conformance harness only; command adapters land in proof-adapter-command."
 
 [[case]]
+id = "parity-proof-adapter-command-boundary-v1"
+stage = "ProofAdapterCommand"
+move_ledger_entry = "introduce-proof-adapter-command-crate"
+shim_id = "shim-proof-adapter-command-crate-scaffold"
+old_producer = "cargo-proof::proof_adapter_command_unowned"
+new_producer = "proof-adapter-command::boundary"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Command adapter scaffold only; process execution remains proof-engine owned."
+
+[[case]]
+id = "parity-proof-adapter-command-registry-v1"
+stage = "ProofAdapterCommand"
+move_ledger_entry = "introduce-proof-adapter-command-registry"
+shim_id = "shim-proof-adapter-command-registry"
+old_producer = "cargo-proof::proof_command_registry_unowned"
+new_producer = "proof-adapter-command::command_registry"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Reviewed command registry and structured argv only; prose must never become executable shell."
+
+[[case]]
 id = "parity-intent-edit-boundary-v1"
 stage = "IntentEdit"
 move_ledger_entry = "introduce-intent-edit-crate"

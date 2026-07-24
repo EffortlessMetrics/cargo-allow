@@ -161,6 +161,8 @@ mod product_move_ledger_tests;
 #[cfg(test)]
 mod product_package_topology_tests;
 #[cfg(test)]
+mod proof_adapter_command_parity_tests;
+#[cfg(test)]
 mod proof_protocol_parity_tests;
 #[cfg(test)]
 mod proof_provider_api_parity_tests;

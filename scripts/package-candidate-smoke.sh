@@ -128,7 +128,7 @@ if [[ "${SKIP_PACKAGE:-0}" != "1" ]]; then
   mkdir -p "${packages_dir}"
   # cargo-intent depends on unpublished intent-* workspace crates; exclude until #2599-C / #2604 publish posture.
   # proof-provider-api depends on unpublished proof-protocol workspace crate; exclude until #2604 publish posture.
-  cargo package --workspace --locked --exclude cargo-intent --exclude proof-provider-api
+  cargo package --workspace --locked --exclude cargo-intent --exclude proof-provider-api --exclude proof-adapter-command
   for crate in "${crates[@]}"; do
     crate_file="target/package/${crate}-${version}.crate"
     [[ -f "${crate_file}" ]] || fail "missing packaged crate ${crate_file}"
