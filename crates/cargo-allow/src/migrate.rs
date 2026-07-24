@@ -2,7 +2,11 @@ use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_policy::{render_policy, validate_policy};
 
 use crate::{
-    MutationLock, emit_stderr_text, resolve_source_tree_root, write_file, write_file_no_overwrite,
+    MutationLock, emit_stderr_text,
+    evidence_inventory::{
+        current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
+    },
+    resolve_source_tree_root, write_file, write_file_no_overwrite,
 };
 
 #[path = "migrate_args.rs"]
@@ -64,6 +68,21 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
             "warning: the output file contains all migrated entries including any with validation issues"
         );
         eprintln!("warning: review the output and remove or fix invalid entries before using it");
+    }
+    // #1871: validate evidence references against the source tree when
+    // writing to the live ledger (--update), matching what `add` and
+    // `refresh` already enforce. Candidate-file output (--out) skips this
+    // because legacy migrations may reference evidence files that don't
+    // exist yet; the operator reviews the candidate before adopting it.
+    if args.update
+        && let Some(root) = &migration.root
+    {
+        let evidence_source_tree_files = current_evidence_source_tree_files(root, true);
+        validate_evidence_references_for_source_tree(
+            root,
+            &cfg,
+            evidence_source_tree_files.as_ref(),
+        )?;
     }
     if args.update && args.force {
         return Err(CargoAllowError::with_kind(

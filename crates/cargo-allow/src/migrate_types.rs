@@ -1,9 +1,13 @@
 use allow_core::AllowConfig;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub(super) struct MigrationLoad {
     pub(super) cfg: AllowConfig,
     pub(super) context: MigrateContext,
+    /// The resolved source-tree root, used for evidence reference validation
+    /// (#1871). `None` when no root was resolved (e.g. legacy fallback).
+    pub(super) root: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone)]
