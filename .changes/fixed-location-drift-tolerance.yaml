@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  Match: `location_drift` no longer fires on small line shifts (≤3 lines).
+  Previously any 1-line delta from an unrelated edit above the entry would
+  flag as drift, flooding the advisory channel and eroding reviewer trust.
+  A configurable tolerance (DRIFT_LINE_TOLERANCE = 3) suppresses line-only
+  shifts within the band. Column-only changes still always fire (they
+  suggest the finding itself moved, not surrounding code). Child of #1777.
