@@ -33,10 +33,25 @@ pub(crate) fn is_generated_path(path: &Path, generated_patterns: &[String]) -> b
         || is_builtin_generated_file_name(&file_name)
         || text.contains("/generated/")
         || text.starts_with("generated/")
-        || file_name.contains(".generated.")
-        || file_name.ends_with(".generated")
+        || has_generated_extension(&file_name)
         || text.contains("/gen/")
         || text.starts_with("gen/")
+}
+
+/// Detect files whose extension starts with `generated` — e.g.
+/// `bindings.generated.rs`, `schema.generated.json`, `output.generated`.
+/// This matches `.generated` as a standalone extension or as a
+/// double-extension prefix, but NOT compound words like
+/// `report-pre-generated.json` where `generated` is part of a larger
+/// word (#1877).
+fn has_generated_extension(file_name: &str) -> bool {
+    // Split extensions: "bindings.generated.rs" → ["bindings", "generated", "rs"].
+    // The first component is the file stem; everything after is an extension layer.
+    // We check if any extension layer is exactly "generated".
+    let mut parts = file_name.split('.');
+    // Skip the stem (first component).
+    parts.next();
+    parts.any(|ext| ext == "generated")
 }
 
 fn is_builtin_generated_file_name(file_name: &str) -> bool {
@@ -152,6 +167,35 @@ mod tests {
             Path::new("src/general/bindings.rs"),
             &patterns
         ));
+    }
+
+    #[test]
+    fn is_generated_path_does_not_fire_on_compound_word_generated() {
+        // #1877: the old `file_name.contains(".generated.")` heuristic
+        // matched compound words like `report-pre-generated.json` where
+        // `generated` is part of a larger word, not a file extension.
+        let patterns: Vec<String> = Vec::new();
+        for path in [
+            "target/report-pre-generated.json",
+            "docs/pre-generated-summary.md",
+            "src/recently-generated-check.rs",
+        ] {
+            assert!(
+                !is_generated_path(Path::new(path), &patterns),
+                "{path} should NOT be classified as generated"
+            );
+        }
+        // But legitimate `.generated` extensions still match.
+        for path in [
+            "src/api.generated.rs",
+            "src/api.generated",
+            "src/bindings.generated.go",
+        ] {
+            assert!(
+                is_generated_path(Path::new(path), &patterns),
+                "{path} SHOULD be classified as generated (legitimate .generated extension)"
+            );
+        }
     }
 
     #[test]

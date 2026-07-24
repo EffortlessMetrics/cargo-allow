@@ -1,0 +1,9 @@
+kind: Fixed
+body: >-
+  Scanner: the `.generated` suffix/substring heuristic no longer misfires on
+  compound words like `report-pre-generated.json`. The old `contains` and
+  `ends_with` checks matched any filename containing `.generated.` anywhere.
+  The new `has_generated_extension` checks if `generated` appears as an exact
+  extension component (e.g. `bindings.generated.rs`, `api.generated`),
+  preserving legitimate generated-file detection while rejecting false
+  positives from compound words.
