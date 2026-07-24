@@ -488,6 +488,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "proof-engine"
+version = "0.2.0"
+dependencies = [
+ "proof-adapter-command",
+ "proof-protocol",
+ "proof-provider-api",
+ "repo-protocol",
+ "serde",
+ "toml",
+]
+
+[[package]]
 name = "proof-protocol"
 version = "0.2.0"
 dependencies = [

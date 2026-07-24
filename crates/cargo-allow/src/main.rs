@@ -163,6 +163,8 @@ mod product_package_topology_tests;
 #[cfg(test)]
 mod proof_adapter_command_parity_tests;
 #[cfg(test)]
+mod proof_engine_parity_tests;
+#[cfg(test)]
 mod proof_protocol_parity_tests;
 #[cfg(test)]
 mod proof_provider_api_parity_tests;

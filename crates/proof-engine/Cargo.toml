@@ -1,0 +1,21 @@
+[package]
+name = "proof-engine"
+description = "Proof orchestration engine for three-product extraction."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords.workspace = true
+categories.workspace = true
+publish = false
+
+[dependencies]
+proof-adapter-command.workspace = true
+proof-protocol.workspace = true
+proof-provider-api.workspace = true
+repo-protocol.workspace = true
+serde = { workspace = true, features = ["derive"] }
+toml.workspace = true

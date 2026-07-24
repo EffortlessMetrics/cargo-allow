@@ -231,6 +231,20 @@ parity_case = "parity-proof-adapter-command-registry-v1"
 claim_boundary = "Reviewed command registry and structured argv only; prose must never become executable shell."
 
 [[shim]]
+id = "shim-proof-engine-crate-scaffold"
+old_identity = "cargo-proof::proof_engine_unowned"
+new_identity = "proof-engine::boundary"
+kind = "ModuleFacade"
+posture = "private"
+status = "planned"
+move_ledger_entry = "introduce-proof-engine-crate"
+controlling_issue = 2589
+latest_allowed_stage = 1
+removal_condition = "issue:#2606 proof-engine stage-1 cutover receipt"
+parity_case = "parity-proof-engine-boundary-v1"
+claim_boundary = "Engine orchestration scaffold only; cargo-proof CLI lands in follow-on packets."
+
+[[shim]]
 id = "shim-cargo-allow-mutation-lock"
 old_identity = "cargo-allow::mutation_lock"
 new_identity = "repo-edit::mutation_lock"
