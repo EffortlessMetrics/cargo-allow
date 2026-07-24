@@ -241,3 +241,18 @@ claim_boundary = "Generic single-target apply receipt; bounded filesystem eviden
 parity_fixture = "tests/fixtures/repo-edit/parity-apply-receipt-v1.toml"
 removal_condition = "issue:#2606 stage-3 cutover receipt"
 controlling_issue = 2602
+
+[[entry]]
+id = "migrate-cargo-allow-init-command"
+current_identity = "crates/cargo-allow/src/init.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-allow"
+current_owner_crate = "cargo-allow"
+target_owner_product = "shared"
+target_owner_crate = "repo-edit"
+disposition = "MoveToSharedSnapshot"
+status = "moved"
+claim_boundary = "init applies starter policy via repo-edit single_target_apply; UX unchanged."
+parity_fixture = "tests/fixtures/repo-edit/parity-init-command-v1.toml"
+removal_condition = "issue:#2606 stage-4 cutover receipt"
+controlling_issue = 2602

@@ -60,6 +60,17 @@ disposition = "contract_only"
 claim_boundary = "Generic single-target apply receipt; product layers retain semantic authority."
 
 [[case]]
+id = "parity-repo-edit-init-command-v1"
+stage = "RepoEdit"
+move_ledger_entry = "migrate-cargo-allow-init-command"
+shim_id = "shim-cargo-allow-init-apply"
+old_producer = "cargo-allow::init"
+new_producer = "repo-edit::single_target_apply"
+expected_result = "SemanticallyEquivalent"
+disposition = "contract_only"
+claim_boundary = "init command applies starter policy via repo-edit; ledger semantics unchanged."
+
+[[case]]
 id = "parity-repo-snapshot-revision-identity-v1"
 stage = "RepoSnapshot"
 move_ledger_entry = "move-allow-diff-revision-identity"

@@ -1,0 +1,10 @@
+scenario_id = "parity-repo-edit-init-command-v1"
+cargo_allow_module = "cargo-allow::init"
+repo_edit_module = "repo-edit::single_target_apply"
+parity_case = "parity-repo-edit-init-command-v1"
+move_ledger_entry = "migrate-cargo-allow-init-command"
+required_behaviors = [
+  "init_uses_single_target_apply",
+  "existing_policy_requires_force",
+  "containment_checked_before_write",
+]
