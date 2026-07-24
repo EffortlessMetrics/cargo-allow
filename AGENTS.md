@@ -1,13 +1,5 @@
 # cargo-allow Agent Instructions
 
-## Command Wrapper
-
-Always prefix shell commands with `rtk`.
-
-Use `rtk` for git, GitHub, Cargo, tests, file reads, search, and ordinary
-PowerShell commands. If filtered output hides something needed for debugging,
-use `rtk proxy <cmd>`.
-
 ## Operating Model
 
 Start from live state. Check branch, status, open PRs, relevant CI, release
@@ -79,7 +71,7 @@ Run the narrowest useful validation first, then broader checks when practical.
 Use the cargo-allow no-new guard as the default final source-tree check:
 
 ```bash
-rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
+cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
 ```
 
 Report checks as pass, fail, or not run. Include relevant failures and

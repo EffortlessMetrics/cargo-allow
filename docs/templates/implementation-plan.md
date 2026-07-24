@@ -43,10 +43,10 @@ adequacy, or coverage.
 
 ## Validation Baseline
 
-- `rtk cargo fmt --all --check`
-- `rtk cargo clippy --workspace --all-targets -- -D warnings`
-- `rtk cargo test --workspace`
-- `rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md`
+- `cargo fmt --all --check`
+- `cargo clippy --workspace --all-targets -- -D warnings`
+- `cargo test --workspace`
+- `cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md`
 
 Add or remove commands only when the linked spec requires it. Do not list proof
 commands that cargo-allow itself must execute during source-tree scanning.
