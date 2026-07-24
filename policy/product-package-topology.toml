@@ -164,3 +164,11 @@ posture = "CargoProofExperimental"
 publish = false
 candidate_inclusion = false
 release_order = 410
+
+[[package]]
+package = "proof-provider-api"
+product_family = "cargo-proof"
+posture = "CargoProofExperimental"
+publish = false
+candidate_inclusion = false
+release_order = 420
