@@ -1,0 +1,324 @@
+//! Single-target apply with generic receipts (#2602-C).
+
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use allow_core::{CargoAllowError, CargoAllowResult};
+
+use crate::apply_receipt::{ApplyOperation, ApplyReceiptV1, AtomicityClass, TargetOutcome};
+use crate::atomic_write::{write_file, write_file_no_overwrite};
+use crate::containment::assert_path_within_root;
+use crate::digest::sha256_v1_bytes;
+use crate::target_identity::canonicalize_lexically;
+
+const PRECONDITION_CONTAINMENT: &str = "path_within_repository_root";
+const PRECONDITION_TARGET_IDENTITY: &str = "canonical_portable_target_identity";
+
+/// Request to apply bytes to one repository-contained target.
+#[derive(Debug, Clone)]
+pub struct SingleTargetApplyRequest<'a> {
+    pub repository_root: &'a Path,
+    pub target: &'a Path,
+    pub contents: &'a str,
+    pub caller_reference: Option<&'a str>,
+    pub lock_identity: Option<String>,
+    pub force_create_new: bool,
+}
+
+/// Response always carries an apply receipt, even on failure.
+#[derive(Debug, Clone)]
+pub struct SingleTargetApplyResponse {
+    pub receipt: ApplyReceiptV1,
+}
+
+impl SingleTargetApplyResponse {
+    pub fn into_result(self) -> CargoAllowResult<Self> {
+        if self.receipt.applied() {
+            Ok(self)
+        } else {
+            Err(CargoAllowError::new(
+                self.receipt
+                    .error_detail
+                    .clone()
+                    .unwrap_or_else(|| "single-target apply failed".to_string()),
+            ))
+        }
+    }
+}
+
+/// Apply `contents` to `target` under `repository_root`, emitting a generic receipt.
+pub fn apply_single_target(request: SingleTargetApplyRequest<'_>) -> SingleTargetApplyResponse {
+    let tool_version = env!("CARGO_PKG_VERSION").to_string();
+    let repository_root = portable_path(request.repository_root, request.repository_root);
+    let target_requested = portable_path(request.repository_root, request.target);
+    let target_canonical = canonical_portable_path(request.repository_root, request.target);
+    let joined = resolve_target_path(request.repository_root, request.target);
+    let mut preconditions = Vec::new();
+    let limitations = Vec::new();
+
+    let bytes_before_digest = match fs::read(&joined) {
+        Ok(bytes) => Some(sha256_v1_bytes(&bytes)),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+        Err(error) => {
+            return failed_response(FailedApplyContext {
+                tool_version,
+                repository_root,
+                target_requested,
+                target_canonical,
+                operation: ApplyOperation::Replace,
+                preconditions_checked: preconditions,
+                bytes_before_digest: None,
+                caller_reference: request.caller_reference.map(str::to_string),
+                lock_identity: request.lock_identity,
+                limitations,
+                error_detail: format!("failed to read {} before apply: {error}", joined.display()),
+            });
+        }
+    };
+
+    let operation = if bytes_before_digest.is_some() {
+        ApplyOperation::Replace
+    } else {
+        ApplyOperation::Create
+    };
+
+    match assert_path_within_root(request.repository_root, request.target) {
+        Ok(()) => {
+            preconditions.push(PRECONDITION_CONTAINMENT);
+            preconditions.push(PRECONDITION_TARGET_IDENTITY);
+        }
+        Err(error) => {
+            return failed_response(FailedApplyContext {
+                tool_version,
+                repository_root,
+                target_requested,
+                target_canonical,
+                operation,
+                preconditions_checked: preconditions,
+                bytes_before_digest,
+                caller_reference: request.caller_reference.map(str::to_string),
+                lock_identity: request.lock_identity,
+                limitations,
+                error_detail: error.to_string(),
+            });
+        }
+    }
+
+    let write_result = if request.force_create_new {
+        write_file_no_overwrite(&joined, request.contents, false)
+    } else {
+        write_file(&joined, request.contents)
+    };
+
+    match write_result {
+        Ok(()) => SingleTargetApplyResponse {
+            receipt: ApplyReceiptV1 {
+                tool_version,
+                repository_root,
+                target_requested,
+                target_canonical,
+                operation,
+                atomicity_class: AtomicityClass::AtomicSingleTarget,
+                preconditions_checked: preconditions,
+                bytes_before_digest,
+                bytes_after_digest: Some(sha256_v1_bytes(request.contents.as_bytes())),
+                lock_identity: request.lock_identity,
+                outcome: TargetOutcome::Applied,
+                caller_reference: request.caller_reference.map(str::to_string),
+                limitations,
+                error_detail: None,
+            },
+        },
+        Err(error) => failed_response(FailedApplyContext {
+            tool_version,
+            repository_root,
+            target_requested,
+            target_canonical,
+            operation,
+            preconditions_checked: preconditions,
+            bytes_before_digest,
+            caller_reference: request.caller_reference.map(str::to_string),
+            lock_identity: request.lock_identity,
+            limitations,
+            error_detail: error.to_string(),
+        }),
+    }
+}
+
+struct FailedApplyContext {
+    tool_version: String,
+    repository_root: String,
+    target_requested: String,
+    target_canonical: String,
+    operation: ApplyOperation,
+    preconditions_checked: Vec<&'static str>,
+    bytes_before_digest: Option<String>,
+    caller_reference: Option<String>,
+    lock_identity: Option<String>,
+    limitations: Vec<String>,
+    error_detail: String,
+}
+
+fn failed_response(context: FailedApplyContext) -> SingleTargetApplyResponse {
+    SingleTargetApplyResponse {
+        receipt: ApplyReceiptV1 {
+            tool_version: context.tool_version,
+            repository_root: context.repository_root,
+            target_requested: context.target_requested,
+            target_canonical: context.target_canonical,
+            operation: context.operation,
+            atomicity_class: AtomicityClass::AtomicSingleTarget,
+            preconditions_checked: context.preconditions_checked,
+            bytes_before_digest: context.bytes_before_digest,
+            bytes_after_digest: None,
+            lock_identity: context.lock_identity,
+            outcome: TargetOutcome::Failed,
+            caller_reference: context.caller_reference,
+            limitations: context.limitations,
+            error_detail: Some(context.error_detail),
+        },
+    }
+}
+
+fn resolve_target_path(repository_root: &Path, target: &Path) -> PathBuf {
+    if target.is_absolute() {
+        target.to_path_buf()
+    } else {
+        repository_root.join(target)
+    }
+}
+
+fn portable_path(repository_root: &Path, path: &Path) -> String {
+    let joined = resolve_target_path(repository_root, path);
+    let canonical = canonicalize_lexically(&joined);
+    let root = canonicalize_lexically(repository_root);
+    canonical
+        .strip_prefix(&root)
+        .map(path_to_portable_string)
+        .unwrap_or_else(|_| path_to_portable_string(&canonical))
+}
+
+fn canonical_portable_path(repository_root: &Path, target: &Path) -> String {
+    portable_path(repository_root, target)
+}
+
+fn path_to_portable_string(path: &Path) -> String {
+    path.components()
+        .map(|component| component.as_os_str().to_string_lossy())
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::mutation_lock::MutationLock;
+    use std::fs;
+
+    #[test]
+    fn apply_receipt_records_create_and_replace_digests() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let root = TempRoot::new("apply-receipt")?;
+        let target = root.path().join("policy/allow.toml");
+        let lock = MutationLock::acquire(&target)?;
+        let lock_identity = Some("policy/allow.toml".to_string());
+
+        let create = apply_single_target(SingleTargetApplyRequest {
+            repository_root: root.path(),
+            target: Path::new("policy/allow.toml"),
+            contents: "first\n",
+            caller_reference: Some("test:create"),
+            lock_identity: lock_identity.clone(),
+            force_create_new: false,
+        });
+        assert!(create.receipt.applied());
+        assert_eq!(create.receipt.operation, ApplyOperation::Create);
+        assert!(create.receipt.bytes_before_digest.is_none());
+        assert_eq!(
+            create.receipt.bytes_after_digest.as_deref(),
+            Some(sha256_v1_bytes(b"first\n").as_str())
+        );
+
+        let replace = apply_single_target(SingleTargetApplyRequest {
+            repository_root: root.path(),
+            target: Path::new("policy/allow.toml"),
+            contents: "second\n",
+            caller_reference: Some("test:replace"),
+            lock_identity,
+            force_create_new: false,
+        });
+        assert!(replace.receipt.applied());
+        assert_eq!(replace.receipt.operation, ApplyOperation::Replace);
+        assert!(replace.receipt.bytes_before_digest.is_some());
+        assert_ne!(
+            replace.receipt.bytes_before_digest,
+            replace.receipt.bytes_after_digest
+        );
+        drop(lock);
+        Ok(())
+    }
+
+    #[test]
+    fn apply_receipt_json_avoids_absolute_paths() -> Result<(), Box<dyn std::error::Error>> {
+        let root = TempRoot::new("apply-json")?;
+        let response = apply_single_target(SingleTargetApplyRequest {
+            repository_root: root.path(),
+            target: Path::new("policy/allow.toml"),
+            contents: "ledger\n",
+            caller_reference: None,
+            lock_identity: None,
+            force_create_new: false,
+        });
+        let json = crate::apply_receipt::render_apply_receipt_json(&response.receipt, "");
+        assert!(json.contains("\"schema_id\": \"repo-edit.apply-receipt.v1\""));
+        assert!(json.contains("\"target_canonical\": \"policy/allow.toml\""));
+        assert!(!json.contains(&root.path().to_string_lossy().to_string()));
+        Ok(())
+    }
+
+    #[test]
+    fn apply_receipt_fails_closed_outside_root() {
+        let root = TempRoot::new("apply-outside")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("temp dir: {err}")));
+        let response = apply_single_target(SingleTargetApplyRequest {
+            repository_root: root.path(),
+            target: Path::new("../outside.toml"),
+            contents: "nope\n",
+            caller_reference: None,
+            lock_identity: None,
+            force_create_new: false,
+        });
+        assert!(!response.receipt.applied());
+        assert!(
+            response
+                .receipt
+                .error_detail
+                .as_deref()
+                .is_some_and(|detail| detail.contains("outside"))
+        );
+    }
+
+    struct TempRoot {
+        path: PathBuf,
+    }
+
+    impl TempRoot {
+        fn new(label: &str) -> Result<Self, Box<dyn std::error::Error>> {
+            let path =
+                std::env::temp_dir().join(format!("repo-edit-{label}-{}", std::process::id()));
+            let _ = fs::remove_dir_all(&path);
+            fs::create_dir_all(&path)?;
+            Ok(Self { path })
+        }
+
+        fn path(&self) -> &Path {
+            &self.path
+        }
+    }
+
+    impl Drop for TempRoot {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.path);
+        }
+    }
+}

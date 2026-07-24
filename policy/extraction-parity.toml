@@ -50,6 +50,16 @@ disposition = "contract_only"
 claim_boundary = "Single-target atomic create/replace; cargo-allow forwards via ModuleFacade shim."
 
 [[case]]
+id = "parity-repo-edit-apply-receipt-v1"
+stage = "RepoEdit"
+move_ledger_entry = "introduce-repo-edit-apply-receipt"
+old_producer = "planned:cargo-allow-mutation-apply"
+new_producer = "repo-edit::single_target_apply"
+expected_result = "SemanticallyEquivalent"
+disposition = "contract_only"
+claim_boundary = "Generic single-target apply receipt; product layers retain semantic authority."
+
+[[case]]
 id = "parity-repo-snapshot-revision-identity-v1"
 stage = "RepoSnapshot"
 move_ledger_entry = "move-allow-diff-revision-identity"

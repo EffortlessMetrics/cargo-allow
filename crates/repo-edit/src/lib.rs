@@ -6,18 +6,28 @@
 //! does not invoke Cargo, compile code, execute repository artifacts, or decide
 //! ledger or intent semantics.
 
+mod apply_receipt;
 mod atomic_write;
 mod containment;
+mod digest;
 mod mutation_lock;
 mod parity;
+mod single_target_apply;
 mod target_identity;
 
+pub use apply_receipt::{
+    APPLY_RECEIPT_CLAIM_BOUNDARY, APPLY_RECEIPT_SCHEMA_ID, APPLY_RECEIPT_SCHEMA_VERSION,
+    ApplyOperation, ApplyReceiptV1, AtomicityClass, TargetOutcome, render_apply_receipt_json,
+};
 pub use atomic_write::{write_file, write_file_no_overwrite};
-
 pub use containment::assert_path_within_root;
 pub use containment::strip_verbatim_prefix;
+pub use digest::sha256_v1_bytes;
 pub use mutation_lock::MutationLock;
 pub use parity::parity_contract_paths;
+pub use single_target_apply::{
+    SingleTargetApplyRequest, SingleTargetApplyResponse, apply_single_target,
+};
 pub use target_identity::canonicalize_lexically;
 
 #[cfg(test)]

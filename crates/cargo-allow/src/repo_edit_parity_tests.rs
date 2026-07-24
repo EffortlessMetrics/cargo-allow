@@ -5,8 +5,11 @@ use std::path::PathBuf;
 fn repo_edit_parity_fixtures_registered() -> Result<(), String> {
     let root = repo_root();
     let paths = parity_contract_paths(&root);
-    if paths.len() < 3 {
-        return Err("expected lock, containment, and atomic-write parity fixtures".to_string());
+    if paths.len() < 4 {
+        return Err(
+            "expected lock, containment, atomic-write, and apply-receipt parity fixtures"
+                .to_string(),
+        );
     }
     for path in paths {
         if !path.is_file() {
@@ -27,6 +30,9 @@ fn repo_edit_parity_fixtures_registered() -> Result<(), String> {
     }
     if !ledger.contains("move-cargo-allow-atomic-write") {
         return Err("move ledger missing atomic-write entry".to_string());
+    }
+    if !ledger.contains("introduce-repo-edit-apply-receipt") {
+        return Err("move ledger missing apply-receipt entry".to_string());
     }
 
     Ok(())

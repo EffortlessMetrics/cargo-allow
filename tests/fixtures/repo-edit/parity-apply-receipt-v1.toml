@@ -1,0 +1,12 @@
+scenario_id = "parity-repo-edit-apply-receipt-v1"
+cargo_allow_module = "planned:cargo-allow-mutation-apply"
+repo_edit_module = "repo-edit::single_target_apply"
+parity_case = "parity-repo-edit-apply-receipt-v1"
+move_ledger_entry = "introduce-repo-edit-apply-receipt"
+required_behaviors = [
+  "containment_checked_before_write",
+  "portable_target_identity_in_receipt",
+  "bytes_before_after_digests",
+  "failed_apply_still_emits_receipt",
+  "no_absolute_paths_in_receipt_json",
+]
