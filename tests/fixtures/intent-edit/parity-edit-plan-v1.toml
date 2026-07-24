@@ -1,0 +1,13 @@
+scenario_id = "parity-intent-edit-edit-plan-v1"
+intent_edit_module = "intent-edit::edit_plan"
+parity_case = "parity-intent-edit-edit-plan-v1"
+move_ledger_entry = "introduce-intent-edit-plan"
+required_action_fields = [
+  "action_id",
+  "kind",
+  "resolution",
+]
+required_resolution_strategies = [
+  "find_existing",
+  "create_if_missing",
+]

@@ -13,6 +13,7 @@ Parity fixtures live under `tests/fixtures/intent-edit/`.
 ## Module surfaces
 
 - `intent-edit::boundary` — claim boundary and upstream topology markers (#2613-A)
+- `intent-edit::edit_plan` — edit plan transport, stable action IDs, and find-before-create validation (#2613-B)
 
 ## Allowed upstream dependencies
 
