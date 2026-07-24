@@ -1,0 +1,20 @@
+[package]
+name = "intent-edit"
+description = "Intent edit planning, dialect adaptation, and repo-edit settlement for three-product extraction."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords.workspace = true
+categories.workspace = true
+publish = false
+
+[dependencies]
+repo-edit.workspace = true
+
+[dev-dependencies]
+intent-engine.workspace = true
+toml.workspace = true

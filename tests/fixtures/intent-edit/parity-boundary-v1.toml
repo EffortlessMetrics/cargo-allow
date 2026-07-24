@@ -1,0 +1,20 @@
+scenario_id = "parity-intent-edit-boundary-v1"
+intent_edit_module = "intent-edit::boundary"
+parity_case = "parity-intent-edit-boundary-v1"
+move_ledger_entry = "introduce-intent-edit-crate"
+required_behaviors = [
+  "intent_engine_does_not_depend_on_intent_edit",
+  "cargo_allow_does_not_depend_on_intent_edit",
+  "allowed_upstream_topology_registered",
+]
+forbidden_dependency_edges = [
+  "intent-engine -> intent-edit",
+]
+allowed_upstream_crates = [
+  "intent-engine",
+  "intent-model",
+  "intent-protocol",
+  "repo-protocol",
+  "repo-snapshot",
+  "repo-edit",
+]

@@ -1,0 +1,19 @@
+# intent-edit
+
+Intent edit planning and repo-edit settlement for three-product extraction (#2613).
+
+Most users should use [cargo-allow](https://github.com/EffortlessMetrics/cargo-allow) or downstream cargo-intent products; `intent-edit` is an internal cargo-intent crate for plan/find-before-create, dialect adaptation, approval/currentness, and translation to `repo-edit`.
+
+## Claim boundary
+
+Packet 2613-A lands crate scaffold, boundary documentation, parity/ledger registration, and enforced dependency topology (`intent-engine` must not depend on `intent-edit`). Plan/find-before-create, stable action IDs, dialect adapters, approval/currentness, translate-to-repo-edit, recompile, and settlement land in later #2613 packets.
+
+`intent-edit` does not scan source files, does not invoke Cargo, compile code, execute repository artifacts, or run proof commands.
+
+## Packet 2613-A
+
+- `intent-edit::boundary` — claim boundary and upstream topology markers
+
+## Packet 2613-B+
+
+- plan/find-before-create, stable action IDs, dialect adapters, approval/currentness, translate to repo-edit, recompile, settlement

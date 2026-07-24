@@ -355,6 +355,17 @@ expected_result = "EquivalentWithCanonicalRenaming"
 disposition = "contract_only"
 claim_boundary = "Serialization contract only; no parallel proof planner."
 
+[[case]]
+id = "parity-intent-edit-boundary-v1"
+stage = "IntentEdit"
+move_ledger_entry = "introduce-intent-edit-crate"
+shim_id = "shim-intent-edit-crate-scaffold"
+old_producer = "cargo-intent::intent_edit_unowned"
+new_producer = "intent-edit::boundary"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Crate scaffold and dependency topology only; plan/find-before-create lands in #2613-B."
+
 [[stage_receipt]]
 stage = "ArchitectureInventory"
 required_fields = [
