@@ -14,6 +14,7 @@ mod parity;
 mod tests;
 
 pub use boundary::{
-    ALLOWED_UPSTREAM_CRATES, BoundarySurface, FORBIDDEN_DEPENDENCY_EDGES, upstream_surface_markers,
+    ALLOWED_UPSTREAM_CRATES, BoundarySurface, EVALUATOR_PACKET_MODULE_ID,
+    FORBIDDEN_DEPENDENCY_EDGES, upstream_surface_markers,
 };
 pub use parity::{parity_contract_path, parity_contract_paths};

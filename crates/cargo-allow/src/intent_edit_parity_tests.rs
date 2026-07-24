@@ -33,9 +33,7 @@ fn intent_edit_parity_fixtures_registered() -> Result<(), String> {
 }
 
 fn intent_edit_parity_fixture_paths(root: &std::path::Path) -> Vec<PathBuf> {
-    vec![root.join(
-        "tests/fixtures/intent-edit/parity-boundary-v1.toml",
-    )]
+    vec![root.join("tests/fixtures/intent-edit/parity-boundary-v1.toml")]
 }
 
 fn manifest_lists_dependency(manifest_text: &str, crate_name: &str) -> bool {

@@ -1,9 +1,18 @@
 use std::path::PathBuf;
 
 use crate::boundary::{
-    ALLOWED_UPSTREAM_CRATES, BoundarySurface, FORBIDDEN_DEPENDENCY_EDGES, upstream_surface_markers,
+    ALLOWED_UPSTREAM_CRATES, BoundarySurface, EVALUATOR_PACKET_MODULE_ID,
+    FORBIDDEN_DEPENDENCY_EDGES, upstream_surface_markers,
 };
 use crate::parity::parity_contract_paths;
+
+#[test]
+fn intent_engine_surface_matches_topology_marker() -> Result<(), String> {
+    if intent_engine::EvaluatorPacketSurface::MODULE_ID != EVALUATOR_PACKET_MODULE_ID {
+        return Err("intent-engine surface marker drifted from topology contract".to_string());
+    }
+    Ok(())
+}
 
 #[test]
 fn boundary_surface_matches_parity_contract_module() -> Result<(), String> {
