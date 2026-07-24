@@ -2,8 +2,9 @@
 //!
 //! Most users should use [cargo-allow](https://github.com/EffortlessMetrics/cargo-allow);
 //! `proof-provider-api` defines provider-neutral execution contracts over
-//! `proof-protocol` transport. It does not spawn processes, access the network,
-//! or depend on intent crates.
+//! `proof-protocol` transport. It does not scan source files, does not invoke
+//! Cargo, compile code, execute repository code, spawn processes, or depend on
+//! intent crates.
 
 mod boundary;
 mod conformance;
