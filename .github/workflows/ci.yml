@@ -168,3 +168,15 @@ jobs:
       - name: Full workspace test suite
         run: cargo test --workspace --locked
 
+  # Supply-chain audit via cargo-deny (#1897). Checks for known advisories,
+  # disallowed licenses, banned crates, and untrusted source registries.
+  # cargo-allow is a governance tool — it should enforce its own supply chain.
+  cargo-deny:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: EmbarkStudios/cargo-deny-action@c3bbe7e4e3f7baeee1a3dd9aec0a3b2aded580fb # v2.1.1
+        with:
+          arguments: --workspace
+          command: check
+

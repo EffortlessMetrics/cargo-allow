@@ -1,0 +1,24 @@
+# CODEOWNERS for cargo-allow (#1899).
+# Each line is a path glob followed by the GitHub team or username that owns it.
+# GitHub uses this to automatically request review on PRs touching these paths.
+
+# Core workspace and release infrastructure
+* @EffortlessSteven
+
+# Policy validation and matching engine
+/crates/allow-core/         @EffortlessSteven
+/crates/allow-policy/       @EffortlessSteven
+/crates/allow-match/        @EffortlessSteven
+
+# Scanner
+/crates/allow-rust/         @EffortlessSteven
+/crates/allow-files/        @EffortlessSteven
+/crates/allow-inventory/    @EffortlessSteven
+
+# CLI
+/crates/cargo-allow/        @EffortlessSteven
+
+# CI and release
+/.github/                   @EffortlessSteven
+/docs/release/              @EffortlessSteven
+/scripts/                   @EffortlessSteven

@@ -1,0 +1,42 @@
+# cargo-deny configuration for cargo-allow.
+#
+# Runs `cargo deny check` in CI to catch advisories, license violations,
+# banned crates, and disallowed source registries. This is both a governance
+# practice (cargo-allow is a governance tool) and a supply-chain hardening
+# measure (#1786).
+
+[graph]
+# No targets specified — cargo-deny checks all platforms by default.
+
+[advisories]
+# Fail on any advisory with a known fix available.
+db-urls = ["https://github.com/rustsec/advisory-db"]
+yanked = "deny"
+
+[licenses]
+# Allow common permissive licenses.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-DFS-2016",
+    "Unicode-3.0",
+    "Zlib",
+    "CC0-1.0",
+    "MPL-2.0",
+]
+confidence-threshold = 0.8
+
+[bans]
+# Warn on multiple versions of the same crate when they can be avoided.
+multiple-versions = "warn"
+# Warn on wildcard dependencies.
+wildcards = "warn"
+
+[sources]
+# Only allow crates from crates.io.
+unknown-registry = "deny"
+unknown-git = "deny"
