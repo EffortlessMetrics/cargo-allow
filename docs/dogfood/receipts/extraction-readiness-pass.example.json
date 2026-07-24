@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.extraction-readiness.v1",
+  "tool": "extraction-readiness-receipt",
+  "result": "Passed",
+  "claim_boundary": [
+    "monorepo_readiness_only",
+    "checklist_evidence_surfaces_present",
+    "distinct_product_postures_documented",
+    "forbidden_production_deps_absent",
+    "no_physical_repository_extraction",
+    "separate_authorization_still_required"
+  ],
+  "checklist": {
+    "path": "tests/fixtures/extraction-readiness/checklist-v1.toml",
+    "schema_id": "cargo-allow.extraction-readiness-checklist.v1",
+    "item_count": 9
+  },
+  "prerequisite_receipts": {
+    "dogfood": {
+      "path": "target/three-product-dogfood/three-product-dogfood.receipt.json",
+      "schema_id": "cargo-allow.three-product-dogfood.v1",
+      "result": "Passed"
+    },
+    "simplification": {
+      "path": "target/three-product-simplification/simplification-audit.receipt.json",
+      "schema_id": "cargo-allow.three-product-simplification-audit.v1",
+      "result": "Passed"
+    },
+    "exact_candidate_interop": {
+      "path": "target/exact-candidate-interop/exact-candidate-interop.receipt.json",
+      "schema_id": "cargo-allow.exact-candidate-interop.v1",
+      "result": "Passed"
+    }
+  },
+  "limitations": [
+    "interop_receipt_optional_in_test_job",
+    "transitional_shims_and_spec_system_remain",
+    "no_automated_github_repository_creation",
+    "independent_ci_lanes_not_fully_split"
+  ]
+}
