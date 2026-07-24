@@ -14,6 +14,10 @@ Packet 2613-A lands crate scaffold, boundary documentation, parity/ledger regist
 
 - `intent-edit::boundary` — claim boundary and upstream topology markers
 
-## Packet 2613-B+
+## Packet 2613-B
+
+- `intent-edit::edit_plan` — edit plan transport, stable action IDs, and find-before-create validation
+
+## Packet 2613-C+
 
 - plan/find-before-create, stable action IDs, dialect adapters, approval/currentness, translate to repo-edit, recompile, settlement

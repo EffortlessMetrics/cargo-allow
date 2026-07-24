@@ -15,11 +15,17 @@ fn intent_edit_parity_fixtures_registered() -> Result<(), String> {
     if !doc_text.contains("2613-A") {
         return Err("human projection missing packet marker".to_string());
     }
+    if !doc_text.contains("2613-B") {
+        return Err("human projection missing edit-plan packet marker".to_string());
+    }
 
     let ledger = std::fs::read_to_string(root.join("policy/product-move-ledger.toml"))
         .map_err(|err| format!("move ledger: {err}"))?;
     if !ledger.contains("introduce-intent-edit-crate") {
         return Err("move ledger missing intent-edit scaffold entry".to_string());
+    }
+    if !ledger.contains("introduce-intent-edit-plan") {
+        return Err("move ledger missing intent-edit plan entry".to_string());
     }
 
     let manifest = root.join("crates/cargo-allow/Cargo.toml");
@@ -33,7 +39,10 @@ fn intent_edit_parity_fixtures_registered() -> Result<(), String> {
 }
 
 fn intent_edit_parity_fixture_paths(root: &std::path::Path) -> Vec<PathBuf> {
-    vec![root.join("tests/fixtures/intent-edit/parity-boundary-v1.toml")]
+    vec![
+        root.join("tests/fixtures/intent-edit/parity-boundary-v1.toml"),
+        root.join("tests/fixtures/intent-edit/parity-edit-plan-v1.toml"),
+    ]
 }
 
 fn manifest_lists_dependency(manifest_text: &str, crate_name: &str) -> bool {

@@ -271,3 +271,17 @@ latest_allowed_stage = 1
 removal_condition = "issue:#2606 intent-edit stage-1 cutover receipt"
 parity_case = "parity-intent-edit-boundary-v1"
 claim_boundary = "Crate scaffold and dependency topology only; edit planning lands in #2613-B."
+
+[[shim]]
+id = "shim-intent-edit-edit-plan"
+old_identity = "cargo-intent::intent_edit_plan_unowned"
+new_identity = "intent-edit::edit_plan"
+kind = "ModuleFacade"
+posture = "private"
+status = "planned"
+move_ledger_entry = "introduce-intent-edit-plan"
+controlling_issue = 2613
+latest_allowed_stage = 2
+removal_condition = "issue:#2606 intent-edit stage-2 cutover receipt"
+parity_case = "parity-intent-edit-edit-plan-v1"
+claim_boundary = "Edit plan transport and find-before-create validation only; repo-edit translation lands in later packets."
