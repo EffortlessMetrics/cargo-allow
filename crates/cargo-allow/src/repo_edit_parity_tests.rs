@@ -5,9 +5,9 @@ use std::path::PathBuf;
 fn repo_edit_parity_fixtures_registered() -> Result<(), String> {
     let root = repo_root();
     let paths = parity_contract_paths(&root);
-    if paths.len() < 5 {
+    if paths.len() < 6 {
         return Err(
-            "expected lock, containment, atomic-write, apply-receipt, and init parity fixtures"
+            "expected lock, containment, atomic-write, apply-receipt, init, and refresh parity fixtures"
                 .to_string(),
         );
     }
@@ -36,6 +36,9 @@ fn repo_edit_parity_fixtures_registered() -> Result<(), String> {
     }
     if !ledger.contains("migrate-cargo-allow-init-command") {
         return Err("move ledger missing init migration entry".to_string());
+    }
+    if !ledger.contains("migrate-cargo-allow-refresh-command") {
+        return Err("move ledger missing refresh migration entry".to_string());
     }
 
     Ok(())
