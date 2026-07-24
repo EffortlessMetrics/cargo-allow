@@ -13,6 +13,20 @@ use crate::target_identity::canonicalize_lexically;
 
 const PRECONDITION_CONTAINMENT: &str = "path_within_repository_root";
 const PRECONDITION_TARGET_IDENTITY: &str = "canonical_portable_target_identity";
+const LIMITATION_BACKUP_SUFFIX: &str = "backup_extension=toml.bak";
+
+/// How a single-target apply should write when the target may already exist.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SingleTargetApplyMode {
+    /// Atomic replace or create via temp file + rename (`write_file`).
+    #[default]
+    AtomicReplace,
+    /// Fail if the target already exists (`write_file_no_overwrite` without force).
+    CreateNewOnly,
+    /// Back up an existing target to `.toml.bak`, then atomic replace
+    /// (`write_file_no_overwrite` with force).
+    ReplaceWithBackup,
+}
 
 /// Request to apply bytes to one repository-contained target.
 #[derive(Debug, Clone)]
@@ -22,7 +36,7 @@ pub struct SingleTargetApplyRequest<'a> {
     pub contents: &'a str,
     pub caller_reference: Option<&'a str>,
     pub lock_identity: Option<String>,
-    pub force_create_new: bool,
+    pub mode: SingleTargetApplyMode,
 }
 
 /// Response always carries an apply receipt, even on failure.
@@ -54,7 +68,10 @@ pub fn apply_single_target(request: SingleTargetApplyRequest<'_>) -> SingleTarge
     let target_canonical = canonical_portable_path(request.repository_root, request.target);
     let joined = resolve_target_path(request.repository_root, request.target);
     let mut preconditions = Vec::new();
-    let limitations = Vec::new();
+    let mut limitations = Vec::new();
+    if request.mode == SingleTargetApplyMode::ReplaceWithBackup {
+        limitations.push(LIMITATION_BACKUP_SUFFIX.to_string());
+    }
 
     let bytes_before_digest = match fs::read(&joined) {
         Ok(bytes) => Some(sha256_v1_bytes(&bytes)),
@@ -104,10 +121,14 @@ pub fn apply_single_target(request: SingleTargetApplyRequest<'_>) -> SingleTarge
         }
     }
 
-    let write_result = if request.force_create_new {
-        write_file_no_overwrite(&joined, request.contents, false)
-    } else {
-        write_file(&joined, request.contents)
+    let write_result = match request.mode {
+        SingleTargetApplyMode::AtomicReplace => write_file(&joined, request.contents),
+        SingleTargetApplyMode::CreateNewOnly => {
+            write_file_no_overwrite(&joined, request.contents, false)
+        }
+        SingleTargetApplyMode::ReplaceWithBackup => {
+            write_file_no_overwrite(&joined, request.contents, true)
+        }
     };
 
     match write_result {
@@ -229,7 +250,7 @@ mod tests {
             contents: "first\n",
             caller_reference: Some("test:create"),
             lock_identity: lock_identity.clone(),
-            force_create_new: false,
+            mode: SingleTargetApplyMode::AtomicReplace,
         });
         assert!(create.receipt.applied());
         assert_eq!(create.receipt.operation, ApplyOperation::Create);
@@ -245,7 +266,7 @@ mod tests {
             contents: "second\n",
             caller_reference: Some("test:replace"),
             lock_identity,
-            force_create_new: false,
+            mode: SingleTargetApplyMode::AtomicReplace,
         });
         assert!(replace.receipt.applied());
         assert_eq!(replace.receipt.operation, ApplyOperation::Replace);
@@ -267,7 +288,7 @@ mod tests {
             contents: "ledger\n",
             caller_reference: None,
             lock_identity: None,
-            force_create_new: false,
+            mode: SingleTargetApplyMode::AtomicReplace,
         });
         let json = crate::apply_receipt::render_apply_receipt_json(&response.receipt, "");
         assert!(json.contains("\"schema_id\": \"repo-edit.apply-receipt.v1\""));
@@ -286,7 +307,7 @@ mod tests {
             contents: "nope\n",
             caller_reference: None,
             lock_identity: None,
-            force_create_new: false,
+            mode: SingleTargetApplyMode::AtomicReplace,
         });
         assert!(!response.receipt.applied());
         assert!(
@@ -296,6 +317,68 @@ mod tests {
                 .as_deref()
                 .is_some_and(|detail| detail.contains("outside"))
         );
+    }
+
+    #[test]
+    fn apply_create_new_only_rejects_existing_target() -> Result<(), Box<dyn std::error::Error>> {
+        let root = TempRoot::new("apply-create-new")?;
+        let target = root.path().join("policy/candidate.toml");
+        let parent = target
+            .parent()
+            .ok_or("apply test target is missing a parent directory")?;
+        fs::create_dir_all(parent)?;
+        fs::write(&target, "existing\n")?;
+
+        let response = apply_single_target(SingleTargetApplyRequest {
+            repository_root: root.path(),
+            target: Path::new("policy/candidate.toml"),
+            contents: "replacement\n",
+            caller_reference: Some("test:create-new-only"),
+            lock_identity: None,
+            mode: SingleTargetApplyMode::CreateNewOnly,
+        });
+        assert!(!response.receipt.applied());
+        assert!(
+            response
+                .receipt
+                .error_detail
+                .as_deref()
+                .is_some_and(|detail| detail.contains("already exists"))
+        );
+        assert_eq!(fs::read_to_string(&target)?, "existing\n");
+        Ok(())
+    }
+
+    #[test]
+    fn apply_replace_with_backup_preserves_prior_bytes() -> Result<(), Box<dyn std::error::Error>> {
+        let root = TempRoot::new("apply-backup")?;
+        let target = root.path().join("policy/candidate.toml");
+        let parent = target
+            .parent()
+            .ok_or("apply test target is missing a parent directory")?;
+        fs::create_dir_all(parent)?;
+        fs::write(&target, "before\n")?;
+
+        let response = apply_single_target(SingleTargetApplyRequest {
+            repository_root: root.path(),
+            target: Path::new("policy/candidate.toml"),
+            contents: "after\n",
+            caller_reference: Some("test:replace-with-backup"),
+            lock_identity: None,
+            mode: SingleTargetApplyMode::ReplaceWithBackup,
+        });
+        assert!(response.receipt.applied());
+        assert!(
+            response
+                .receipt
+                .limitations
+                .iter()
+                .any(|limit| limit.contains("toml.bak"))
+        );
+        assert_eq!(fs::read_to_string(&target)?, "after\n");
+        let backup = target.with_extension("toml.bak");
+        assert_eq!(fs::read_to_string(backup)?, "before\n");
+        Ok(())
     }
 
     struct TempRoot {

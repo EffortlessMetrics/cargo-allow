@@ -60,6 +60,16 @@ disposition = "contract_only"
 claim_boundary = "Generic single-target apply receipt; product layers retain semantic authority."
 
 [[case]]
+id = "parity-repo-edit-apply-backup-mode-v1"
+stage = "RepoEdit"
+move_ledger_entry = "extend-repo-edit-apply-backup-mode"
+old_producer = "cargo-allow::io::write_file_no_overwrite"
+new_producer = "repo-edit::single_target_apply"
+expected_result = "SemanticallyEquivalent"
+disposition = "contract_only"
+claim_boundary = "Create-new-only and replace-with-backup modes preserve --force .bak semantics."
+
+[[case]]
 id = "parity-repo-edit-init-command-v1"
 stage = "RepoEdit"
 move_ledger_entry = "migrate-cargo-allow-init-command"

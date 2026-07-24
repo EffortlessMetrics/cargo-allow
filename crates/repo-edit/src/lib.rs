@@ -26,7 +26,7 @@ pub use digest::sha256_v1_bytes;
 pub use mutation_lock::MutationLock;
 pub use parity::parity_contract_paths;
 pub use single_target_apply::{
-    SingleTargetApplyRequest, SingleTargetApplyResponse, apply_single_target,
+    SingleTargetApplyMode, SingleTargetApplyRequest, SingleTargetApplyResponse, apply_single_target,
 };
 pub use target_identity::canonicalize_lexically;
 

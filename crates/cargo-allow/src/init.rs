@@ -1,7 +1,7 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_inventory::resolve_source_tree_root;
 use allow_policy::starter_policy;
-use repo_edit::{SingleTargetApplyRequest, apply_single_target};
+use repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 use std::env;
 use std::path::{Path, PathBuf};
 
@@ -71,7 +71,7 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
         contents: &policy_contents,
         caller_reference: Some("cargo-allow:init"),
         lock_identity: Some(created_path_display(&root, &path)),
-        force_create_new: false,
+        mode: SingleTargetApplyMode::AtomicReplace,
     })
     .into_result()?;
     let display = created_path_display(&root, &path);

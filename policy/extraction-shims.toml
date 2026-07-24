@@ -201,3 +201,17 @@ latest_allowed_stage = 6
 removal_condition = "issue:#2606 stage-6 cutover receipt"
 parity_case = "parity-repo-edit-prune-command-v1"
 claim_boundary = "prune policy write forwards through repo-edit apply; command UX unchanged."
+
+[[shim]]
+id = "shim-repo-edit-apply-backup-mode"
+old_identity = "cargo-allow::io::write_file_no_overwrite"
+new_identity = "repo-edit::single_target_apply"
+kind = "ModuleFacade"
+posture = "private"
+status = "active"
+move_ledger_entry = "extend-repo-edit-apply-backup-mode"
+controlling_issue = 2602
+latest_allowed_stage = 7
+removal_condition = "issue:#2606 stage-7 cutover receipt"
+parity_case = "parity-repo-edit-apply-backup-mode-v1"
+claim_boundary = "Create-new-only and replace-with-backup apply modes; atomic write shim remains for direct callers."
