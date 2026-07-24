@@ -118,12 +118,62 @@ pub fn import_legacy_policy_dir(
     }
     unmigrated_files.sort();
 
+    // #1861: detect cross-lane ID collisions before validate_policy so we can
+    // namespace them with the source lane prefix instead of aborting the entire
+    // batch. Each lane's entries get a prefix derived from the legacy filename
+    // stem when a collision is detected (e.g. "allow-1" in two lanes becomes
+    // "non-rust-allowlist--allow-1" and "no-panic-allowlist--allow-1").
+    let mut seen_ids: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    let mut collisions = false;
+    for entry in &merged.allow {
+        if !seen_ids.insert(entry.id.clone()) {
+            collisions = true;
+            break;
+        }
+    }
+
+    if collisions {
+        // Re-walk the family list and namespace each lane's entries with the
+        // legacy filename stem. Track which entries belong to which lane by
+        // the order they were appended.
+        seen_ids.clear();
+        let mut offset = 0usize;
+        for family in &families {
+            let prefix = lane_prefix(&family.legacy_filename);
+            let count = family.entry_count;
+            let lane_entries = merged
+                .allow
+                .get_mut(offset..offset.saturating_add(count))
+                .unwrap_or(&mut []);
+            for entry in lane_entries {
+                let namespaced = format!("{prefix}--{}", entry.id);
+                // Ensure the namespaced ID is itself unique.
+                let mut unique_id = namespaced.clone();
+                let mut suffix = 1;
+                while !seen_ids.insert(unique_id.clone()) {
+                    unique_id = format!("{namespaced}-{suffix}");
+                    suffix += 1;
+                }
+                entry.id = unique_id;
+            }
+            offset += count;
+        }
+    }
+
     validate_policy(&merged)?;
     Ok(LegacyImportBatch {
         families,
         config: merged,
         unmigrated_files,
     })
+}
+
+/// Derive a short namespace prefix from a legacy filename (e.g.
+/// "non-rust-allowlist.toml" → "non-rust-allowlist").
+fn lane_prefix(legacy_filename: &str) -> &str {
+    legacy_filename
+        .strip_suffix(".toml")
+        .unwrap_or(legacy_filename)
 }
 
 fn load_lane_config(
@@ -300,5 +350,79 @@ mod tests {
             .collect::<Vec<_>>();
         rows.sort();
         rows
+    }
+
+    #[test]
+    fn batch_import_namespaces_cross_lane_id_collisions() {
+        // #1861: two lanes that both produce id = "dup-id" should not abort
+        // the batch. The collision detector namespaces them with the lane
+        // prefix so validate_policy sees unique IDs.
+        let dir = fixture_dir();
+        // Two lanes with the same entry ID.
+        fs::write(
+            dir.join("no-panic-allowlist.toml"),
+            r#"
+policy = "no-panic-allowlist"
+owner = "repo"
+status = "advisory"
+
+[[allow]]
+id = "dup-id"
+path = "src/lib.rs"
+family = "unwrap"
+owner = "runtime"
+classification = "reviewed_panic_exception"
+reason = "Checked."
+evidence = ["test:dup"]
+created = "2026-01-01"
+review_after = "2026-09-09"
+
+[allow.selector]
+kind = "method-call"
+callee = "unwrap"
+"#,
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write allowlist: {err}")));
+        fs::write(
+            dir.join("unsafe-allowlist.toml"),
+            r#"
+policy = "unsafe-allowlist"
+owner = "repo"
+status = "advisory"
+
+[[allow]]
+id = "dup-id"
+path = "src/lib.rs"
+family = "unsafe-block"
+owner = "runtime"
+classification = "reviewed_unsafe_boundary"
+reason = "Checked."
+evidence = ["test:dup"]
+created = "2026-01-01"
+review_after = "2026-09-09"
+"#,
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write unsafe: {err}")));
+
+        let batch = import_legacy_policy_dir(&dir, None)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("collision batch: {err}")));
+
+        // Both entries survived with namespaced IDs.
+        let ids: Vec<&str> = batch.config.allow.iter().map(|e| e.id.as_str()).collect();
+        assert_eq!(ids.len(), 2, "both entries should survive: {ids:?}");
+        let unique_ids: std::collections::BTreeSet<&str> = ids.iter().copied().collect();
+        assert_eq!(
+            unique_ids.len(),
+            2,
+            "all IDs should be unique after namespacing: {ids:?}"
+        );
+        assert!(
+            ids.iter().any(|id| id.starts_with("no-panic-allowlist--")),
+            "no-panic lane entry should be namespaced: {ids:?}"
+        );
+        assert!(
+            ids.iter().any(|id| id.starts_with("unsafe-allowlist--")),
+            "unsafe lane entry should be namespaced: {ids:?}"
+        );
     }
 }

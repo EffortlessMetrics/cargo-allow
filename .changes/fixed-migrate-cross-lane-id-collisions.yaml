@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  Migrate: cross-lane ID collisions are now namespaced instead of aborting
+  the entire batch. When two legacy files produce entries with the same ID
+  (e.g. both have `id = "allow-1"`), the batch importer detects the collision
+  and prefixes each entry with its source lane filename stem (e.g.
+  `no-panic-allowlist--allow-1` vs `unsafe-allowlist--allow-1`). Previously
+  the collision was only caught at `validate_policy`, aborting the whole
+  migration with no partial result or pointer to the offending lanes.
+  Child of #1784.
