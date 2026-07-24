@@ -251,7 +251,11 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
             target: &target,
             contents: &rendered,
             caller_reference: Some("cargo-allow:add"),
-            lock_identity: Some(target.to_string_lossy().replace(std::path::MAIN_SEPARATOR, "/")),
+            lock_identity: Some(
+                target
+                    .to_string_lossy()
+                    .replace(std::path::MAIN_SEPARATOR, "/"),
+            ),
             mode,
         })
         .into_result()?;
