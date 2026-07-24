@@ -24,7 +24,9 @@ use crate::parity::{
     parity_contract_paths, recompile_contract_parity_contract_paths,
     repo_edit_translation_parity_contract_paths,
 };
-use crate::recompile_contract::{compile_recompile_contract, validate_recompile_contract};
+use crate::recompile_contract::{
+    TARGET_PHASE_OBLIGATION_PLAN_SCHEMA_ID, compile_recompile_contract, validate_recompile_contract,
+};
 use crate::recompile_contract_surface::RecompileContractSurface;
 use crate::repo_edit_translation::{RepoEditTranslationError, translate_plan_to_repo_edit};
 use crate::repo_edit_translation_surface::RepoEditTranslationSurface;
@@ -419,7 +421,7 @@ fn recompile_contract_surface_matches_parity_contract() -> Result<(), String> {
             contract.intent_edit_module
         ));
     }
-    if contract.target_transport_schema_id != intent_engine::PHASE_OBLIGATION_PLAN_SCHEMA_ID {
+    if contract.target_transport_schema_id != TARGET_PHASE_OBLIGATION_PLAN_SCHEMA_ID {
         return Err("fixture transport schema drifted from intent-engine".to_string());
     }
     Ok(())
@@ -451,12 +453,18 @@ fn compile_recompile_contract_emits_phase_obligation_plan() -> Result<(), String
             .map_err(|err| err.as_str())?;
     let contract = compile_recompile_contract(&translation);
     validate_recompile_contract(&translation, &contract).map_err(|err| err.as_str())?;
-    let obligation_plan = contract.to_phase_obligation_plan();
-    if obligation_plan.schema_id != intent_engine::PHASE_OBLIGATION_PLAN_SCHEMA_ID {
+    let transport = contract.to_phase_obligation_transport_plan();
+    if transport.schema_id != TARGET_PHASE_OBLIGATION_PLAN_SCHEMA_ID {
         return Err("phase obligation plan schema drifted".to_string());
     }
-    if obligation_plan.obligations.is_empty() {
+    if transport.obligations.is_empty() {
         return Err("expected recompile obligations for policy edit".to_string());
+    }
+    let toml = toml::to_string(&transport).map_err(|err| err.to_string())?;
+    let parsed = intent_engine::load_phase_obligation_plan_toml(&toml)
+        .map_err(|err| format!("intent-engine transport parse failed: {err}"))?;
+    if parsed.obligations.is_empty() {
+        return Err("intent-engine rejected recompile transport obligations".to_string());
     }
     Ok(())
 }

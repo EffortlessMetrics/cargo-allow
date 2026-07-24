@@ -54,21 +54,17 @@ pub struct RecompileContractParityContract {
 }
 
 pub fn parity_contract_paths(root: &Path) -> Vec<PathBuf> {
-    vec![
-        root.join("tests/fixtures/intent-edit/parity-boundary-v1.toml"),
-        root.join("tests/fixtures/intent-edit/parity-edit-plan-v1.toml"),
-        root.join("tests/fixtures/intent-edit/parity-dialect-adapter-v1.toml"),
-        root.join("tests/fixtures/intent-edit/parity-approval-currentness-v1.toml"),
-        root.join("tests/fixtures/intent-edit/parity-repo-edit-translation-v1.toml"),
-        root.join("tests/fixtures/intent-edit/parity-recompile-contract-v1.toml"),
-    ]
+    let mut paths = edit_plan_parity_contract_paths(root);
+    paths.extend(dialect_adapter_parity_contract_paths(root));
+    paths.extend(approval_currentness_parity_contract_paths(root));
+    paths.extend(repo_edit_translation_parity_contract_paths(root));
+    paths.extend(recompile_contract_parity_contract_paths(root));
+    paths.insert(0, parity_contract_path(root));
+    paths
 }
 
 pub fn parity_contract_path(root: &Path) -> PathBuf {
-    parity_contract_paths(root)
-        .into_iter()
-        .next()
-        .unwrap_or_else(|| root.join("tests/fixtures/intent-edit/parity-boundary-v1.toml"))
+    root.join("tests/fixtures/intent-edit/parity-boundary-v1.toml")
 }
 
 pub fn edit_plan_parity_contract_path(root: &Path) -> PathBuf {

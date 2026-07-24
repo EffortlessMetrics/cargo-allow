@@ -55,8 +55,9 @@ pub use parity::{
 };
 pub use recompile_contract::{
     INTENT_EDIT_RECOMPILE_CONTRACT_SCHEMA_ID, IntentEditRecompileContractV1,
-    IntentEditRecompileObligationV1, RecompileContractError, compile_recompile_contract,
-    validate_recompile_contract,
+    IntentEditRecompileObligationV1, PRECOMMIT_PHASE_ID, PhaseObligationTransportPlanV1,
+    RecompileContractError, RecompileObligationKindV1, TARGET_PHASE_OBLIGATION_PLAN_SCHEMA_ID,
+    compile_recompile_contract, validate_recompile_contract,
 };
 pub use recompile_contract_surface::RecompileContractSurface;
 pub use repo_edit_translation::{
