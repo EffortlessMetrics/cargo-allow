@@ -103,6 +103,17 @@ disposition = "contract_only"
 claim_boundary = "prune command rewrites policy via repo-edit apply; stale removal semantics unchanged."
 
 [[case]]
+id = "parity-repo-edit-add-command-v1"
+stage = "RepoEdit"
+move_ledger_entry = "migrate-cargo-allow-add-command"
+shim_id = "shim-cargo-allow-add-apply"
+old_producer = "cargo-allow::add"
+new_producer = "repo-edit::single_target_apply"
+expected_result = "SemanticallyEquivalent"
+disposition = "contract_only"
+claim_boundary = "add and add-from-plan policy writes forward through repo-edit apply modes."
+
+[[case]]
 id = "parity-repo-snapshot-revision-identity-v1"
 stage = "RepoSnapshot"
 move_ledger_entry = "move-allow-diff-revision-identity"

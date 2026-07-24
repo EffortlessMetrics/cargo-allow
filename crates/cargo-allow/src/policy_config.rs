@@ -142,6 +142,27 @@ pub(crate) fn strip_verbatim_prefix(path: &Path) -> PathBuf {
     repo_edit::strip_verbatim_prefix(path)
 }
 
+/// Portable repository-relative path for mutation apply targets.
+///
+/// Uses lexical normalization so targets whose parent directories do not exist
+/// yet (common for `--write` candidate output) still resolve under the root.
+pub(crate) fn portable_relative_under_root(root: &Path, path: &Path) -> CargoAllowResult<PathBuf> {
+    let joined = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        root.join(path)
+    };
+    let normalized = repo_edit::canonicalize_lexically(&joined);
+    let root_normalized = repo_edit::canonicalize_lexically(root);
+    normalized.strip_prefix(&root_normalized).map(PathBuf::from).map_err(|_| {
+        CargoAllowError::new(format!(
+            "{} is outside source tree {}",
+            path.display(),
+            root.display()
+        ))
+    })
+}
+
 pub(crate) fn git_relative_config_path(
     root: &Path,
     config: Option<&Path>,

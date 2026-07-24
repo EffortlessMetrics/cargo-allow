@@ -301,3 +301,18 @@ claim_boundary = "prune rewrites policy via repo-edit single_target_apply; UX un
 parity_fixture = "tests/fixtures/repo-edit/parity-prune-command-v1.toml"
 removal_condition = "issue:#2606 stage-6 cutover receipt"
 controlling_issue = 2602
+
+[[entry]]
+id = "migrate-cargo-allow-add-command"
+current_identity = "crates/cargo-allow/src/add.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-allow"
+current_owner_crate = "cargo-allow"
+target_owner_product = "shared"
+target_owner_crate = "repo-edit"
+disposition = "MoveToSharedSnapshot"
+status = "moved"
+claim_boundary = "add and add-from-plan apply policy via repo-edit single_target_apply; UX unchanged."
+parity_fixture = "tests/fixtures/repo-edit/parity-add-command-v1.toml"
+removal_condition = "issue:#2606 stage-8 cutover receipt"
+controlling_issue = 2602
