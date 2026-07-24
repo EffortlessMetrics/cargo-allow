@@ -30,7 +30,7 @@ fn intent_spec_system_cutover_fixture_pins_contract() {
 fn cargo_allow_spec_system_cutover_receipt_pins_reachability() {
     for needle in [
         "CargoAllowCompatibilityCutover",
-        "embedded precommit evaluator removed",
+        "embedded spec-system CI audit retired",
         "#2568",
     ] {
         assert!(RECEIPT.contains(needle), "receipt missing {needle}");

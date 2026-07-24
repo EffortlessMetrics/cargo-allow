@@ -9916,6 +9916,90 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9194"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/compatibility/intent-delegation.toml"
+owner = "core/intent-delegation"
+classification = "intent_delegation_config"
+reason = "Repo-wide spec-system cutover flags (#2568)."
+evidence = ["test:repository_enables_delegate_spec_system_cutover", "issue:2568", "doc:tests/fixtures/cargo-allow/intent-spec-system-cutover-v1.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = ".allow/compatibility/intent-delegation.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9195"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/spec-system-cutover-receipt.sh"
+owner = "core/intent-delegation"
+classification = "spec_system_cutover_receipt"
+reason = "CI receipt proving embedded spec-system audit retirement (#2568)."
+evidence = ["test:ci_runs_cutover_receipt_not_embedded_spec_system_audit", "issue:2568"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "sh"
+glob = "scripts/spec-system-cutover-receipt.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9196"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/receipts/spec-system-cutover-pass.example.json"
+owner = "core/intent-delegation"
+classification = "spec_system_cutover_receipt_example"
+reason = "Example spec-system cutover receipt (#2568)."
+evidence = ["test:example_spec_system_cutover_matches_schema_constants", "issue:2568"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "json"
+glob = "docs/dogfood/receipts/spec-system-cutover-pass.example.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9197"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/three-product/closeouts/CARGO-ALLOW-CLOSEOUT-0014-spec-system-ci-retirement.md"
+owner = "core/intent-delegation"
+classification = "architecture_projection"
+reason = "Closeout for spec-system CI audit retirement (#2568)."
+evidence = ["test:example_spec_system_cutover_matches_schema_constants", "issue:2568"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "plans/three-product/closeouts/CARGO-ALLOW-CLOSEOUT-0014-spec-system-ci-retirement.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9140"
 kind = "non_rust_file"
 family = "test_fixture"

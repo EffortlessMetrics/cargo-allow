@@ -170,16 +170,16 @@ controlling_issue = 2601
 
 [[entry]]
 id = "move-issue-2568-embedded-evaluator"
-current_identity = "#2568"
-identity_kind = "issue"
+current_identity = "tests/fixtures/cargo-allow/cargo-allow-spec-system-cutover-receipt-v1.toml"
+identity_kind = "fixture"
 current_owner_product = "cargo-allow"
 current_owner_crate = "cargo-allow"
 target_owner_product = "cargo-intent"
 target_owner_crate = "intent-engine"
 disposition = "DeleteAfterParity"
-status = "current"
-claim_boundary = "Embedded precommit evaluator removed (#2568); spec-system profile audit remains until later packet."
-removal_condition = "issue:#2568 closure after parity"
+status = "moved"
+claim_boundary = "Embedded spec-system evaluator authority retired (#2568); repo enables delegate_spec_system and CI cutover receipt; cargo-intent audit vertical not shipped."
+removal_condition = "issue:#2568 closure after cargo-intent audit parity or explicit deprecation window"
 controlling_issue = 2568
 
 [[entry]]

@@ -1,5 +1,5 @@
 stage = "CargoAllowCompatibilityCutover"
 parity_corpus_digest = "sha256:v1:2601-c-spec-system-cutover"
-old_path_reachability = "embedded precommit evaluator removed (#2568); spec-system profile commands remain until later packets"
-duplicate_authority = "none when cutover flags enabled; cargo-allow validates repo.analysis-receipt.v1 only"
-rollback = "disable delegate_spec_system in .allow/compatibility/intent-delegation.toml"
+old_path_reachability = "embedded spec-system CI audit retired (#2568); delegate_spec_system enabled repo-wide; legacy commands fail closed"
+duplicate_authority = "none when cutover flags enabled; cargo-allow validates repo.analysis-receipt.v1 for staged precommit only"
+rollback = "disable delegate_spec_system in .allow/compatibility/intent-delegation.toml and restore embedded audit CI only with explicit authorization"
