@@ -122,10 +122,11 @@ fn planner_dry_run_and_execution_gate_pipeline() -> Result<(), String> {
     let plan =
         plan_proof_execution(&obligation_plan, &provider_registry).map_err(|err| err.as_str())?;
     let dry_run = dry_run_proof_plan(&plan).map_err(|err| err.as_str())?;
-    if dry_run.lines.is_empty() {
-        return Err("dry-run produced no lines".to_string());
-    }
-    if !dry_run.lines[0]
+    let first_line = dry_run
+        .lines
+        .first()
+        .ok_or_else(|| "dry-run produced no lines".to_string())?;
+    if !first_line
         .structured_argv
         .starts_with("[structured argv]")
     {

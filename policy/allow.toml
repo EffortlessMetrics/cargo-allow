@@ -8951,18 +8951,17 @@ column = 1
 [[allow]]
 id = "allow-9146"
 kind = "non_rust_file"
-family = "fixture"
+family = "test_fixture"
 path = "tests/fixtures/proof-engine/parity-boundary-v1.toml"
 owner = "repo-infra"
-classification = "three_product_extraction_fixture"
-reason = "Parity boundary fixture for proof-engine crate scaffold (#2589-A)."
+classification = "proof_engine_parity_fixture"
+reason = "Proof-engine boundary parity fixture (#2589-A)."
 evidence = ["test:proof_engine_parity_fixtures_registered", "issue:2589", "doc:policy/extraction-parity.toml"]
 created = "2026-07-24"
 review_after = "2027-01-01"
 
 [allow.selector]
 ast_kind = "tracked_file"
-symbol = "tests/fixtures/proof-engine/parity-boundary-v1.toml"
 target_fingerprint = "toml"
 glob = "tests/fixtures/proof-engine/parity-boundary-v1.toml"
 
@@ -8973,12 +8972,12 @@ column = 1
 [[allow]]
 id = "allow-9147"
 kind = "non_rust_file"
-family = "fixture"
+family = "test_fixture"
 path = "tests/fixtures/proof-engine/README.md"
 owner = "repo-infra"
-classification = "three_product_extraction_fixture"
-reason = "Fixture README for proof-engine parity corpus (#2589-A)."
-evidence = ["test:proof_engine_parity_fixtures_registered", "issue:2589"]
+classification = "proof_engine_parity_fixture"
+reason = "Proof-engine parity fixture catalog (#2589-A)."
+evidence = ["test:proof_engine_parity_fixtures_registered", "issue:2589", "doc:policy/extraction-parity.toml"]
 created = "2026-07-24"
 review_after = "2027-01-01"
 
@@ -8994,10 +8993,10 @@ column = 1
 [[allow]]
 id = "allow-9148"
 kind = "non_rust_file"
-family = "manifest"
+family = "package_metadata"
 path = "crates/proof-engine/Cargo.toml"
 owner = "repo-infra"
-classification = "three_product_crate_manifest"
+classification = "rust_package_metadata"
 reason = "proof-engine manifest is tracked cargo-proof package metadata (#2589-A)."
 evidence = ["test:proof_engine_parity_fixtures_registered", "issue:2589", "doc:policy/product-package-topology.toml"]
 created = "2026-07-24"
@@ -9005,7 +9004,6 @@ review_after = "2027-01-01"
 
 [allow.selector]
 ast_kind = "tracked_file"
-symbol = "crates/proof-engine/Cargo.toml"
 target_fingerprint = "toml"
 glob = "crates/proof-engine/Cargo.toml"
 
@@ -9019,7 +9017,7 @@ kind = "non_rust_file"
 family = "documentation"
 path = "crates/proof-engine/README.md"
 owner = "repo-infra"
-classification = "three_product_crate_readme"
+classification = "proof_engine_crate_readme"
 reason = "proof-engine README documents claim boundary for #2589-A."
 evidence = ["test:proof_engine_parity_fixtures_registered", "issue:2589"]
 created = "2026-07-24"
