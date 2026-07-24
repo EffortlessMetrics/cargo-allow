@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Migrate: legacy `expires` timestamps with timezone/time components are now
+  canonicalized to YYYY-MM-DD for deterministic migration output. Three
+  equivalent encodings (`2025-12-01`, `2025-12-01T00:00:00Z`,
+  `2025-12-01T00:00:00-05:00`) now produce byte-identical Lifecycle values.
+  Child of #1784.

@@ -25,9 +25,38 @@ pub(crate) fn normalize_legacy_expires(expires: Option<String>) -> Option<String
         if value == "permanent" {
             "never".to_string()
         } else {
-            value
+            canonicalize_legacy_date(&value)
         }
     })
+}
+
+/// Canonicalize a legacy date/timestamp to YYYY-MM-DD for deterministic
+/// migration output (#1870).
+///
+/// cargo-allow's `SimpleDate` only parses `YYYY-MM-DD`. Legacy ledgers may
+/// use RFC3339 timestamps with timezones (e.g. `2025-12-01T00:00:00Z` or
+/// `2025-12-01T00:00:00-05:00`). Without canonicalization, two ledgers
+/// expressing the same logical date in different encodings produce
+/// byte-different migration output.
+///
+/// This function strips any time/timezone component and returns just the
+/// date portion. If the input is already a plain date, it passes through
+/// unchanged.
+fn canonicalize_legacy_date(value: &str) -> String {
+    // If it's already a plain YYYY-MM-DD (10 chars, no 'T'), pass through.
+    if value.len() == 10 && !value.contains('T') {
+        return value.to_string();
+    }
+    // Try to extract the date portion before any 'T' separator.
+    if let Some(date_part) = value.split('T').next()
+        && date_part.len() == 10
+    {
+        // Validate it looks like a date (basic sanity check — the downstream
+        // SimpleDate::parse will reject truly malformed values).
+        return date_part.to_string();
+    }
+    // Unknown format — pass through and let downstream validation catch it.
+    value.to_string()
 }
 
 pub(crate) fn is_clippy_exceptions_policy(table: &toml::Table) -> bool {
@@ -105,6 +134,29 @@ mod tests {
             Some("2026-12-31".to_string())
         );
         assert_eq!(normalize_legacy_expires(None), None);
+    }
+
+    #[test]
+    fn normalizes_legacy_expires_strips_timestamps_to_date_only() {
+        // #1870: RFC3339 timestamps with timezones must canonicalize to the
+        // same YYYY-MM-DD for deterministic migration output.
+        assert_eq!(
+            normalize_legacy_expires(Some("2025-12-01T00:00:00Z".to_string())),
+            Some("2025-12-01".to_string())
+        );
+        assert_eq!(
+            normalize_legacy_expires(Some("2025-12-01T00:00:00-05:00".to_string())),
+            Some("2025-12-01".to_string())
+        );
+        assert_eq!(
+            normalize_legacy_expires(Some("2025-12-01T23:59:59+09:00".to_string())),
+            Some("2025-12-01".to_string())
+        );
+        // Plain dates pass through unchanged.
+        assert_eq!(
+            normalize_legacy_expires(Some("2025-12-01".to_string())),
+            Some("2025-12-01".to_string())
+        );
     }
 
     #[test]
