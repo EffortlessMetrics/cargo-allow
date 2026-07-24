@@ -122,7 +122,7 @@ old_producer = "cargo-allow::migrate"
 new_producer = "repo-edit::single_target_apply"
 expected_result = "SemanticallyEquivalent"
 disposition = "contract_only"
-claim_boundary = "migrate --update/--out policy writes forward through repo-edit apply modes; --out is repository-contained."
+claim_boundary = "migrate --update/--out policy writes forward through repo-edit apply modes; in-repository --out uses apply, out-of-tree --out retains atomic_write."
 
 [[case]]
 id = "parity-repo-snapshot-revision-identity-v1"

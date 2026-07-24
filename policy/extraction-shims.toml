@@ -242,4 +242,4 @@ controlling_issue = 2602
 latest_allowed_stage = 9
 removal_condition = "issue:#2606 stage-9 cutover receipt"
 parity_case = "parity-repo-edit-migrate-command-v1"
-claim_boundary = "migrate policy writes forward through repo-edit apply modes; --out is repository-contained."
+claim_boundary = "migrate policy writes forward through repo-edit apply modes; out-of-tree --out retains atomic_write."
