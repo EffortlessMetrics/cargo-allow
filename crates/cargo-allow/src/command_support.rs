@@ -20,6 +20,14 @@ pub(crate) use allow_core::CargoAllowResult;
 pub(crate) use repo_edit::{write_file, write_file_no_overwrite};
 pub(crate) use std::path::Path;
 
+pub(crate) use crate::reporting::{
+    EvidenceReportSummary, ReportRenderArgs, SourceTreeReportContext, print_report, report_config,
+};
+pub(crate) use crate::selector::selector_from_finding;
+pub(crate) use crate::world::{load_world, load_world_for_path, load_world_with_evidence_mode};
+pub(crate) use allow_inventory::resolve_source_tree_root;
+pub(crate) use allow_report::policy_baseline_debt_entries;
+
 pub(crate) fn emit_text(output: Option<&Path>, contents: &str) -> CargoAllowResult<()> {
     if let Some(path) = output {
         write_file(path, contents)?;
@@ -101,10 +109,3 @@ mod io_tests {
         }
     }
 }
-pub(crate) use crate::reporting::{
-    EvidenceReportSummary, ReportRenderArgs, SourceTreeReportContext, print_report, report_config,
-};
-pub(crate) use crate::selector::selector_from_finding;
-pub(crate) use crate::world::{load_world, load_world_for_path, load_world_with_evidence_mode};
-pub(crate) use allow_inventory::resolve_source_tree_root;
-pub(crate) use allow_report::policy_baseline_debt_entries;
