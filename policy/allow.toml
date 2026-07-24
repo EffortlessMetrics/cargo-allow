@@ -9832,6 +9832,90 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9190"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/extraction-readiness/checklist-v1.toml"
+owner = "core/release"
+classification = "extraction_readiness_fixture"
+reason = "Extraction readiness checklist fixture (#2559)."
+evidence = ["test:extraction_readiness_checklist_lists_nine_gate_items", "issue:2559", "doc:docs/specs/CARGO-ALLOW-SPEC-0010-three-product-boundaries.md"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "tests/fixtures/extraction-readiness/checklist-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9191"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/extraction-readiness-receipt.sh"
+owner = "core/release"
+classification = "extraction_readiness_receipt"
+reason = "Monorepo extraction readiness receipt script (#2559)."
+evidence = ["test:example_extraction_readiness_matches_schema_constants", "issue:2559"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "sh"
+glob = "scripts/extraction-readiness-receipt.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9192"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/receipts/extraction-readiness-pass.example.json"
+owner = "core/release"
+classification = "extraction_readiness_receipt_example"
+reason = "Example extraction readiness receipt (#2559)."
+evidence = ["test:example_extraction_readiness_matches_schema_constants", "issue:2559"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "json"
+glob = "docs/dogfood/receipts/extraction-readiness-pass.example.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9193"
+kind = "non_rust_file"
+family = "documentation"
+path = "plans/three-product/closeouts/CARGO-ALLOW-CLOSEOUT-0013-extraction-readiness.md"
+owner = "core/release"
+classification = "architecture_projection"
+reason = "Closeout for extraction readiness receipt (#2559)."
+evidence = ["test:example_extraction_readiness_matches_schema_constants", "issue:2559"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "plans/three-product/closeouts/CARGO-ALLOW-CLOSEOUT-0013-extraction-readiness.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9140"
 kind = "non_rust_file"
 family = "test_fixture"

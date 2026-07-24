@@ -1,0 +1,83 @@
+schema_version = "1.0"
+schema_id = "cargo-allow.extraction-readiness-checklist.v1"
+controlling_issue = 2559
+
+# ExtractionReadinessChecklistV1 — monorepo gate receipt for #2559.
+# Validates evidence surfaces required before physical repository extraction
+# may be separately authorized. Does not create external repositories.
+
+[[item]]
+id = "independent_packaging"
+statement = "Each product has a package topology entry and an exact-candidate interop journey."
+evidence = [
+  "policy/product-package-topology.toml",
+  "scripts/exact-candidate-interop-smoke.sh",
+  "docs/dogfood/fixtures/release/exact-candidate-interop-journeys.toml",
+]
+
+[[item]]
+id = "public_boundaries"
+statement = "Extraction shims and parity cases are registered for transitional identities."
+evidence = [
+  "policy/extraction-shims.toml",
+  "policy/extraction-parity.toml",
+  "docs/architecture/extraction-shims.md",
+]
+
+[[item]]
+id = "distinct_version_support_postures"
+statement = "Product families declare distinct package postures and support-tier rows."
+evidence = [
+  "policy/product-package-topology.toml",
+  "docs/status/SUPPORT_TIERS.md",
+]
+
+[[item]]
+id = "migration_shims_status"
+statement = "Move ledger and shim registry record migration posture without silent drift."
+evidence = [
+  "policy/product-move-ledger.toml",
+  "policy/extraction-shims.toml",
+]
+
+[[item]]
+id = "forbidden_deps_absent"
+statement = "Product binaries do not take forbidden cross-product library dependencies."
+evidence = [
+  "crates/cargo-allow/Cargo.toml",
+  "crates/cargo-intent/Cargo.toml",
+  "crates/cargo-proof/Cargo.toml",
+]
+
+[[item]]
+id = "dogfood_complete"
+statement = "Three-product dogfood pipeline landed with closeout (#2558)."
+evidence = [
+  "scripts/three-product-dogfood-smoke.sh",
+  "plans/three-product/closeouts/CARGO-ALLOW-CLOSEOUT-0011-dogfood-pipeline.md",
+]
+
+[[item]]
+id = "simplification_complete"
+statement = "Mandatory simplification inventory and audit landed with closeout (#2208)."
+evidence = [
+  "policy/three-product-simplification.toml",
+  "scripts/three-product-simplification-audit.sh",
+  "plans/three-product/closeouts/CARGO-ALLOW-CLOSEOUT-0012-simplification-audit.md",
+]
+
+[[item]]
+id = "rollback_documented"
+statement = "Wave-6 closeouts document rollback for dogfood and simplification packets."
+evidence = [
+  "plans/three-product/closeouts/CARGO-ALLOW-CLOSEOUT-0011-dogfood-pipeline.md",
+  "plans/three-product/closeouts/CARGO-ALLOW-CLOSEOUT-0012-simplification-audit.md",
+]
+
+[[item]]
+id = "no_physical_extraction"
+statement = "Readiness receipt stops short of creating or moving external repositories."
+evidence = [
+  "docs/specs/CARGO-ALLOW-SPEC-0010-three-product-boundaries.md",
+  "docs/adr/CARGO-ALLOW-ADR-0002-three-product-ownership.md",
+]
