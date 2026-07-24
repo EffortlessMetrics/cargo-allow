@@ -4,4 +4,6 @@ Packet 2613-A lands crate scaffold, boundary documentation, parity/ledger regist
 
 Packet 2613-B lands edit plan transport, stable action IDs, and find-before-create validation fixtures.
 
-Packet 2613-C+ lands dialect adapters, approval/currentness, translate to repo-edit, recompile, and settlement fixtures.
+Packet 2613-C lands dialect adapter and approval/currentness fixtures.
+
+Packet 2613-D+ lands translate to repo-edit, recompile, and settlement fixtures.

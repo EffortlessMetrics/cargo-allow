@@ -1,16 +1,25 @@
 use std::path::PathBuf;
 
+use crate::approval_currentness::{
+    ApprovalCurrentnessError, IntentEditApprovalCurrentnessV1, IntentEditApprovalStateV1,
+    validate_approval_currentness,
+};
+use crate::approval_currentness_surface::ApprovalCurrentnessSurface;
 use crate::boundary::{
     ALLOWED_UPSTREAM_CRATES, BoundarySurface, EVALUATOR_PACKET_MODULE_ID,
     FORBIDDEN_DEPENDENCY_EDGES, upstream_surface_markers,
 };
+use crate::dialect_adapter::{CANONICAL_DIALECT_IDS, IntentEditDialectV1, adapt_selector};
+use crate::dialect_adapter_surface::DialectAdapterSurface;
 use crate::edit_plan::{
     IntentEditActionKindV1, IntentEditActionV1, IntentEditPlanError, IntentEditPlanV1,
     IntentEditTargetResolutionV1, stable_action_id, validate_edit_plan,
 };
 use crate::edit_plan_surface::EditPlanSurface;
 use crate::parity::{
-    edit_plan_parity_contract_paths, load_edit_plan_parity_contract, parity_contract_paths,
+    approval_currentness_parity_contract_paths, dialect_adapter_parity_contract_paths,
+    edit_plan_parity_contract_paths, load_approval_currentness_parity_contract,
+    load_dialect_adapter_parity_contract, load_edit_plan_parity_contract, parity_contract_paths,
 };
 
 #[test]
@@ -203,6 +212,102 @@ fn validate_edit_plan_accepts_find_then_create() -> Result<(), String> {
         ],
     );
     validate_edit_plan(&plan).map_err(|err| err.as_str().to_string())
+}
+
+#[test]
+fn dialect_adapter_surface_matches_parity_contract() -> Result<(), String> {
+    let root = workspace_root();
+    let contract_path = dialect_adapter_parity_contract_paths(&root)
+        .into_iter()
+        .next()
+        .ok_or_else(|| "missing dialect adapter parity fixture path".to_string())?;
+    let contract = load_dialect_adapter_parity_contract(&contract_path)?;
+    if contract.intent_edit_module != DialectAdapterSurface::MODULE_ID {
+        return Err(format!(
+            "surface marker {} does not match contract {}",
+            DialectAdapterSurface::MODULE_ID,
+            contract.intent_edit_module
+        ));
+    }
+    for dialect_id in CANONICAL_DIALECT_IDS {
+        if !contract
+            .canonical_dialect_ids
+            .iter()
+            .any(|entry| entry == dialect_id)
+        {
+            return Err(format!("fixture missing dialect id {dialect_id}"));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn adapt_selector_normalizes_cargo_allow_paths() -> Result<(), String> {
+    let adapted = adapt_selector(
+        IntentEditDialectV1::CargoAllowPolicy,
+        "./policy\\allow.toml",
+    )
+    .map_err(|err| err.as_str().to_string())?;
+    if adapted != "policy/allow.toml" {
+        return Err(format!("unexpected adapted selector: {adapted}"));
+    }
+    Ok(())
+}
+
+#[test]
+fn adapt_selector_strips_allow_prefix_for_spec_system() -> Result<(), String> {
+    let adapted = adapt_selector(
+        IntentEditDialectV1::SpecSystem,
+        ".allow/spec-system/evidence/x.toml",
+    )
+    .map_err(|err| err.as_str().to_string())?;
+    if adapted != "spec-system/evidence/x.toml" {
+        return Err(format!("unexpected adapted selector: {adapted}"));
+    }
+    Ok(())
+}
+
+#[test]
+fn approval_currentness_surface_matches_parity_contract() -> Result<(), String> {
+    let root = workspace_root();
+    let contract_path = approval_currentness_parity_contract_paths(&root)
+        .into_iter()
+        .next()
+        .ok_or_else(|| "missing approval currentness parity fixture path".to_string())?;
+    let contract = load_approval_currentness_parity_contract(&contract_path)?;
+    if contract.intent_edit_module != ApprovalCurrentnessSurface::MODULE_ID {
+        return Err(format!(
+            "surface marker {} does not match contract {}",
+            ApprovalCurrentnessSurface::MODULE_ID,
+            contract.intent_edit_module
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn validate_approval_currentness_fails_closed_on_stale() -> Result<(), String> {
+    let envelope = IntentEditApprovalCurrentnessV1::new(
+        "plan-stale",
+        IntentEditApprovalStateV1::Approved,
+        repo_protocol::CurrentnessV1::Stale,
+        "sha256:v1:deadbeef",
+    );
+    match validate_approval_currentness(&envelope) {
+        Err(ApprovalCurrentnessError::StaleCurrentness) => Ok(()),
+        other => Err(format!("expected stale_currentness, got {other:?}")),
+    }
+}
+
+#[test]
+fn validate_approval_currentness_accepts_approved_current() -> Result<(), String> {
+    let envelope = IntentEditApprovalCurrentnessV1::new(
+        "plan-approved",
+        IntentEditApprovalStateV1::Approved,
+        repo_protocol::CurrentnessV1::Current,
+        "sha256:v1:deadbeef",
+    );
+    validate_approval_currentness(&envelope).map_err(|err| err.as_str().to_string())
 }
 
 fn manifest_lists_dependency(manifest_text: &str, crate_name: &str) -> bool {

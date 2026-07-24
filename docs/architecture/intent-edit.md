@@ -14,6 +14,8 @@ Parity fixtures live under `tests/fixtures/intent-edit/`.
 
 - `intent-edit::boundary` — claim boundary and upstream topology markers (#2613-A)
 - `intent-edit::edit_plan` — edit plan transport, stable action IDs, and find-before-create validation (#2613-B)
+- `intent-edit::dialect_adapter` — dialect selector normalization (#2613-C)
+- `intent-edit::approval_currentness` — approval/currentness envelope and fail-closed validation (#2613-C)
 
 ## Allowed upstream dependencies
 

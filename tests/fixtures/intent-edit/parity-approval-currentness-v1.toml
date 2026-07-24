@@ -1,0 +1,15 @@
+scenario_id = "parity-intent-edit-approval-currentness-v1"
+intent_edit_module = "intent-edit::approval_currentness"
+parity_case = "parity-intent-edit-approval-currentness-v1"
+move_ledger_entry = "introduce-intent-edit-dialect-approval"
+required_envelope_fields = [
+  "plan_id",
+  "approval_state",
+  "currentness",
+  "content_identity",
+]
+fail_closed_states = [
+  "pending",
+  "rejected",
+  "stale",
+]

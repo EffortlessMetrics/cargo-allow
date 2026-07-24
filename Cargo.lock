@@ -378,6 +378,7 @@ version = "0.2.0"
 dependencies = [
  "intent-engine",
  "repo-edit",
+ "repo-protocol",
  "serde",
  "serde_json",
  "toml",

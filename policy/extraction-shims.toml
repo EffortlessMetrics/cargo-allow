@@ -299,3 +299,17 @@ latest_allowed_stage = 2
 removal_condition = "issue:#2606 intent-edit stage-2 cutover receipt"
 parity_case = "parity-intent-edit-edit-plan-v1"
 claim_boundary = "Edit plan transport and find-before-create validation only; repo-edit translation lands in later packets."
+
+[[shim]]
+id = "shim-intent-edit-dialect-approval"
+old_identity = "cargo-intent::intent_edit_dialect_unowned"
+new_identity = "intent-edit::dialect_adapter"
+kind = "ModuleFacade"
+posture = "private"
+status = "planned"
+move_ledger_entry = "introduce-intent-edit-dialect-approval"
+controlling_issue = 2613
+latest_allowed_stage = 3
+removal_condition = "issue:#2606 intent-edit stage-3 cutover receipt"
+parity_case = "parity-intent-edit-dialect-adapter-v1"
+claim_boundary = "Dialect adapters and approval/currentness envelopes only; repo-edit translation lands in #2613-D."

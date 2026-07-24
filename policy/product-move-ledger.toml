@@ -378,6 +378,21 @@ removal_condition = "issue:#2606 intent-edit stage-2 cutover receipt"
 controlling_issue = 2613
 
 [[entry]]
+id = "introduce-intent-edit-dialect-approval"
+current_identity = "crates/intent-edit/src/dialect_adapter.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-intent"
+current_owner_crate = "intent-edit"
+target_owner_product = "cargo-intent"
+target_owner_crate = "intent-edit"
+disposition = "MoveToIntentEdit"
+status = "current"
+claim_boundary = "Dialect selector adapters and approval/currentness envelopes only; repo-edit translation lands in #2613-D."
+parity_fixture = "tests/fixtures/intent-edit/parity-dialect-adapter-v1.toml"
+removal_condition = "issue:#2606 intent-edit stage-3 cutover receipt"
+controlling_issue = 2613
+
+[[entry]]
 id = "introduce-proof-protocol-crate"
 current_identity = "crates/proof-protocol/src/lib.rs"
 identity_kind = "rust_module"
