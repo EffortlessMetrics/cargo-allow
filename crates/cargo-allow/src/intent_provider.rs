@@ -78,12 +78,15 @@ pub struct IntentDelegationConfigV1 {
     #[serde(default)]
     delegate_staged_precommit: bool,
     #[serde(default)]
+    delegate_spec_system: bool,
+    #[serde(default)]
     timeout_secs: Option<u64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IntentDelegationSettings {
     pub delegate_staged_precommit: bool,
+    pub delegate_spec_system: bool,
     pub timeout_secs: u64,
     pub config_path: PathBuf,
 }
@@ -124,6 +127,7 @@ pub fn load_intent_delegation_settings(
     }
     Ok(Some(IntentDelegationSettings {
         delegate_staged_precommit: config.delegate_staged_precommit,
+        delegate_spec_system: config.delegate_spec_system,
         timeout_secs: config
             .timeout_secs
             .unwrap_or(DEFAULT_DELEGATION_TIMEOUT_SECS),
