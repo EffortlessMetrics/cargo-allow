@@ -186,7 +186,8 @@ for idx, item in enumerate(obligations):
     kind = item.get("kind", "unknown")
     if isinstance(kind, dict):
         kind = next(iter(kind.keys()), "unknown")
-    provider = "proof.cargo-allow.v1" if kind == "policy_alignment" else "proof.fake-provider.v1"
+    # cargo-proof plan registry currently registers fake provider only (#2589-B).
+    provider = "proof.fake-provider.v1"
     lines.append("[[obligations]]")
     lines.append(f'obligation_id = "obligation-{idx}"')
     lines.append(f'provider_id = "{provider}"')
