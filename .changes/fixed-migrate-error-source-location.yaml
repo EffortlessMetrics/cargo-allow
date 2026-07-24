@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  UX: migration parse errors now include the source legacy filename so the
+  operator knows which file the error came from. Previously errors said
+  "missing field `owner`" with no indication of which legacy ledger file.
+  Both the single-file path (`load_legacy_or_canonical`) and the batch
+  path (`load_lane_config`) now wrap errors with the filename and policy
+  key. Child of #1784.

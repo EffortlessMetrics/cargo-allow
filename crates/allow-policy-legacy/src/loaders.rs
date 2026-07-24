@@ -1,4 +1,4 @@
-use allow_core::{AllowConfig, CargoAllowResult};
+use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
 use allow_policy::parse_policy;
 use std::path::Path;
 
@@ -16,11 +16,18 @@ pub use crate::loader_policy_dir::{
 };
 
 pub fn load_legacy_or_canonical(path: impl AsRef<Path>) -> CargoAllowResult<AllowConfig> {
-    let text = read_policy(path.as_ref())?;
-    if let Some(table) = legacy_table_at(Some(path.as_ref()), &text)?
+    let path = path.as_ref();
+    let path_label = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("legacy-policy");
+    let text = read_policy(path)?;
+    if let Some(table) = legacy_table_at(Some(path), &text)?
         && let Some(config) = config_from_legacy_table(&table)?
     {
         return Ok(config);
     }
+    // #1868: attach filename context to parse errors.
     parse_policy(&text)
+        .map_err(|err| CargoAllowError::new(format!("legacy file `{path_label}`: {err}")))
 }
