@@ -35,8 +35,9 @@ use crate::{
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
-    load_world, parse_kind_filter, resolve_source_tree_root, write_file,
+    git_relative_config_path, load_world, parse_kind_filter, resolve_source_tree_root,
 };
+use repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 
 /// Strictly-parsed `cargo-allow.add-finding-plan.v1` envelope. `deny_unknown_fields`
 /// The parse models exactly the fields the transaction reads; other v1 fields
@@ -194,7 +195,20 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
         current_evidence_source_tree_files(&root, args.include_untracked);
     validate_evidence_references_for_source_tree(&root, &cfg, evidence_source_tree_files.as_ref())?;
     let rendered = render_policy(&cfg);
-    write_file(&policy_path, &rendered)?;
+    let policy_target = git_relative_config_path(&root, args.config.as_deref())?;
+    apply_single_target(SingleTargetApplyRequest {
+        repository_root: &root,
+        target: &policy_target,
+        contents: &rendered,
+        caller_reference: Some("cargo-allow:add-from-plan"),
+        lock_identity: Some(
+            policy_target
+                .to_string_lossy()
+                .replace(std::path::MAIN_SEPARATOR, "/"),
+        ),
+        mode: SingleTargetApplyMode::AtomicReplace,
+    })
+    .into_result()?;
     let policy_after_digest = sha256_v1_bytes(rendered.as_bytes());
 
     // Targeted recheck: re-evaluate the target finding against the mutated

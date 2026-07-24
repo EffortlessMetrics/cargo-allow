@@ -215,3 +215,17 @@ latest_allowed_stage = 7
 removal_condition = "issue:#2606 stage-7 cutover receipt"
 parity_case = "parity-repo-edit-apply-backup-mode-v1"
 claim_boundary = "Create-new-only and replace-with-backup apply modes; atomic write shim remains for direct callers."
+
+[[shim]]
+id = "shim-cargo-allow-add-apply"
+old_identity = "cargo-allow::add"
+new_identity = "repo-edit::single_target_apply"
+kind = "ModuleFacade"
+posture = "private"
+status = "active"
+move_ledger_entry = "migrate-cargo-allow-add-command"
+controlling_issue = 2602
+latest_allowed_stage = 8
+removal_condition = "issue:#2606 stage-8 cutover receipt"
+parity_case = "parity-repo-edit-add-command-v1"
+claim_boundary = "add and add-from-plan policy writes forward through repo-edit apply modes."

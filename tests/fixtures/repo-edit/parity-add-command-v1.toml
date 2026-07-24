@@ -1,0 +1,11 @@
+scenario_id = "parity-repo-edit-add-command-v1"
+cargo_allow_module = "cargo-allow::add"
+repo_edit_module = "repo-edit::single_target_apply"
+parity_case = "parity-repo-edit-add-command-v1"
+move_ledger_entry = "migrate-cargo-allow-add-command"
+required_behaviors = [
+  "add_update_uses_atomic_replace",
+  "add_write_uses_create_new_or_backup_mode",
+  "add_from_plan_uses_atomic_replace",
+  "containment_checked_before_write",
+]

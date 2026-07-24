@@ -142,6 +142,58 @@ pub(crate) fn strip_verbatim_prefix(path: &Path) -> PathBuf {
     repo_edit::strip_verbatim_prefix(path)
 }
 
+/// Portable repository-relative path for mutation apply targets.
+///
+/// Prefers filesystem canonicalization when paths exist so Windows short-path
+/// and verbatim-prefix forms still resolve under the root. Falls back to lexical
+/// normalization for targets whose parent directories do not exist yet.
+pub(crate) fn portable_relative_under_root(root: &Path, path: &Path) -> CargoAllowResult<PathBuf> {
+    let root_canonical = root.canonicalize().map_err(|error| {
+        CargoAllowError::new(format!(
+            "failed to canonicalize {}: {error}",
+            root.display()
+        ))
+    })?;
+    let resolved = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        root_canonical.join(path)
+    };
+    let resolved_canonical = best_effort_canonical(&resolved);
+    resolved_canonical
+        .strip_prefix(&root_canonical)
+        .map(PathBuf::from)
+        .map_err(|_| outside_root_error(path, root))
+}
+
+fn best_effort_canonical(path: &Path) -> PathBuf {
+    if let Ok(canonical) = path.canonicalize() {
+        return canonical;
+    }
+    let mut current = path.to_path_buf();
+    while let Some(parent) = current.parent() {
+        if parent.as_os_str().is_empty() {
+            break;
+        }
+        if let Ok(parent_canonical) = parent.canonicalize() {
+            if let Ok(suffix) = path.strip_prefix(parent) {
+                return parent_canonical.join(suffix);
+            }
+            break;
+        }
+        current = parent.to_path_buf();
+    }
+    path.to_path_buf()
+}
+
+fn outside_root_error(path: &Path, root: &Path) -> CargoAllowError {
+    CargoAllowError::new(format!(
+        "{} is outside source tree {}",
+        path.display(),
+        root.display()
+    ))
+}
+
 pub(crate) fn git_relative_config_path(
     root: &Path,
     config: Option<&Path>,

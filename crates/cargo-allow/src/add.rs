@@ -30,8 +30,10 @@ use crate::{
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
-    load_world, parse_kind_filter, resolve_source_tree_root, write_file, write_file_no_overwrite,
+    git_relative_config_path, load_world, parse_kind_filter, portable_relative_under_root,
+    resolve_source_tree_root,
 };
+use repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 
 const ADD_REVIEW_AFTER_DEFAULT_DAYS: i64 = 90;
 
@@ -86,7 +88,10 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     if let Some(target) = &mutation_target {
         crate::policy_config::assert_path_within_root(&mutation_root, target)?;
     }
-    let _mutation_lock = mutation_target.map(MutationLock::acquire).transpose()?;
+    let _mutation_lock = mutation_target
+        .as_ref()
+        .map(MutationLock::acquire)
+        .transpose()?;
     let (root, mut cfg, findings, inventory_facts, _federation) = load_world(
         args.root.root.as_deref(),
         args.config.as_deref(),
@@ -217,14 +222,43 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     validate_evidence_references_for_source_tree(&root, &cfg, evidence_source_tree_files.as_ref())?;
     let rendered = render_policy(&cfg);
     if args.update {
-        let policy_path = config_path(&root, args.config.as_deref()).ok_or_else(|| {
-            CargoAllowError::new(
-                "policy config disappeared during --update; re-run, or restore policy/allow.toml",
-            )
+        let policy_target = git_relative_config_path(&root, args.config.as_deref())?;
+        apply_single_target(SingleTargetApplyRequest {
+            repository_root: &root,
+            target: &policy_target,
+            contents: &rendered,
+            caller_reference: Some("cargo-allow:add"),
+            lock_identity: Some(
+                policy_target
+                    .to_string_lossy()
+                    .replace(std::path::MAIN_SEPARATOR, "/"),
+            ),
+            mode: SingleTargetApplyMode::AtomicReplace,
+        })
+        .into_result()?;
+    } else if args.write.is_some() {
+        let absolute_target = mutation_target.as_ref().ok_or_else(|| {
+            CargoAllowError::new("internal error: --write target missing after containment check")
         })?;
-        write_file(&policy_path, &rendered)?;
-    } else if let Some(path) = &args.write {
-        write_file_no_overwrite(path, &rendered, args.force)?;
+        let target = portable_relative_under_root(&mutation_root, absolute_target)?;
+        let mode = if args.force {
+            SingleTargetApplyMode::ReplaceWithBackup
+        } else {
+            SingleTargetApplyMode::CreateNewOnly
+        };
+        apply_single_target(SingleTargetApplyRequest {
+            repository_root: &mutation_root,
+            target: &target,
+            contents: &rendered,
+            caller_reference: Some("cargo-allow:add"),
+            lock_identity: Some(
+                target
+                    .to_string_lossy()
+                    .replace(std::path::MAIN_SEPARATOR, "/"),
+            ),
+            mode,
+        })
+        .into_result()?;
     } else {
         println!("{rendered}");
     }

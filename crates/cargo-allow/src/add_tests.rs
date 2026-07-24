@@ -681,12 +681,14 @@ fn cmd_add_rejects_write_to_existing_output_without_force() {
     })
     .expect_err("add should reject overwriting an existing output file without --force");
 
-    assert_eq!(
-        err,
-        CargoAllowError::new(format!(
-            "{} already exists; use --force to overwrite",
-            output.display()
-        ))
+    let message = err.to_string();
+    assert!(
+        message.contains("already exists; use --force to overwrite"),
+        "unexpected error: {message}"
+    );
+    assert!(
+        message.contains("allow.added.toml"),
+        "unexpected error path in: {message}"
     );
     assert_eq!(
         fs::read_to_string(&output).unwrap_or_else(|read_err| std::panic::panic_any(format!(
