@@ -71,10 +71,64 @@ pub struct IntentProviderRequest<'a> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct IntentDelegationConfigV1 {
+pub struct IntentDelegationConfigV1 {
     schema_id: String,
     #[serde(default)]
     executable: Option<String>,
+    #[serde(default)]
+    delegate_staged_precommit: bool,
+    #[serde(default)]
+    timeout_secs: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IntentDelegationSettings {
+    pub delegate_staged_precommit: bool,
+    pub timeout_secs: u64,
+    pub config_path: PathBuf,
+}
+
+const DEFAULT_DELEGATION_TIMEOUT_SECS: u64 = 30;
+
+pub fn load_intent_delegation_settings(
+    root: &Path,
+    explicit_config: Option<&Path>,
+) -> Result<Option<IntentDelegationSettings>, IntentProviderFailure> {
+    let config_path = explicit_config
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| root.join(DEFAULT_INTENT_DELEGATION_CONFIG));
+    if !config_path.is_file() {
+        return Ok(None);
+    }
+    let text = fs::read_to_string(&config_path).map_err(|err| {
+        IntentProviderFailure::new(
+            IntentProviderFailureClass::MalformedConfig,
+            format!("read {}: {err}", config_path.display()),
+        )
+    })?;
+    let config: IntentDelegationConfigV1 = toml::from_str(&text).map_err(|err| {
+        IntentProviderFailure::new(
+            IntentProviderFailureClass::MalformedConfig,
+            format!("parse {}: {err}", config_path.display()),
+        )
+    })?;
+    if config.schema_id != INTENT_DELEGATION_CONFIG_SCHEMA_ID {
+        return Err(IntentProviderFailure::new(
+            IntentProviderFailureClass::MalformedConfig,
+            format!(
+                "unexpected schema_id {} in {}",
+                config.schema_id,
+                config_path.display()
+            ),
+        ));
+    }
+    Ok(Some(IntentDelegationSettings {
+        delegate_staged_precommit: config.delegate_staged_precommit,
+        timeout_secs: config
+            .timeout_secs
+            .unwrap_or(DEFAULT_DELEGATION_TIMEOUT_SECS),
+        config_path,
+    }))
 }
 
 pub fn discover_intent_provider(

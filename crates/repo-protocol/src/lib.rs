@@ -14,7 +14,7 @@ mod repository_snapshot;
 mod result_class;
 mod source_anchor;
 
-pub use analysis_receipt::AnalysisReceiptEnvelopeV1;
+pub use analysis_receipt::{ANALYSIS_RECEIPT_SCHEMA_ID, AnalysisReceiptEnvelopeV1};
 pub use canonical::{canonical_json_bytes, stable_digest_hex, stable_digest_json};
 pub use claim_boundary::ClaimBoundaryV1;
 pub use completeness::CompletenessV1;

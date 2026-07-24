@@ -69,6 +69,9 @@ pub struct StatusArgs {
     /// Lifecycle phase selector.
     #[arg(long, value_enum)]
     pub phase: Option<PhaseArg>,
+    /// Emit a provider-neutral `repo.analysis-receipt.v1` envelope in JSON mode.
+    #[arg(long)]
+    pub analysis_receipt: bool,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
@@ -92,7 +95,12 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
         Some(CargoIntentCommand::Change(change)) => match change.command {
             ChangeCommand::Status(args) => {
                 validate_change_status_args(&args)?;
-                change_status_staged_precommit(&cli.root, &config, output_format)
+                change_status_staged_precommit(
+                    &cli.root,
+                    &config,
+                    output_format,
+                    args.analysis_receipt,
+                )
             }
         },
     }
@@ -145,16 +153,19 @@ mod tests {
         let args = StatusArgs {
             staged: false,
             phase: Some(PhaseArg::Precommit),
+            analysis_receipt: false,
         };
         assert!(validate_change_status_args(&args).is_err());
         let args = StatusArgs {
             staged: true,
             phase: None,
+            analysis_receipt: false,
         };
         assert!(validate_change_status_args(&args).is_err());
         let args = StatusArgs {
             staged: true,
             phase: Some(PhaseArg::Precommit),
+            analysis_receipt: false,
         };
         assert!(validate_change_status_args(&args).is_ok());
     }

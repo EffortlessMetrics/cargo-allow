@@ -4,7 +4,7 @@
   "tool": "cargo-allow",
   "result": "Passed",
   "claim_boundary": [
-    "exact_ten_crate_package_graph",
+    "exact_eleven_crate_package_graph",
     "classic_transitive_local_registry_offline_install",
     "source_checkout_denied_during_decisive_install",
     "source_candidate_not_published_install_journey"
@@ -33,6 +33,7 @@
       "allow-report",
       "allow-policy-legacy",
       "allow-diff",
+      "repo-protocol",
       "cargo-allow"
     ],
     "crates": [
@@ -115,6 +116,15 @@
         "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         "size_bytes": 1,
         "extracted_dir": "allow-diff-0.1.10",
+        "no_path_deps": true
+      },
+      {
+        "name": "repo-protocol",
+        "version": "0.1.10",
+        "crate_file": "repo-protocol-0.1.10.crate",
+        "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "size_bytes": 1,
+        "extracted_dir": "repo-protocol-0.1.10",
         "no_path_deps": true
       },
       {

@@ -1,0 +1,33 @@
+# Staged precommit delegation contract fixture (#2601-B).
+
+schema_id = "cargo-allow.intent-staged-precommit-delegate.v1"
+schema_version = 1
+
+delegation_config_schema_id = "cargo-allow.intent-delegation.v1"
+delegation_config_relative_path = ".allow/compatibility/intent-delegation.toml"
+
+provider_product = "cargo-intent"
+envelope_schema_id = "repo.analysis-receipt.v1"
+provider_payload_schema_id = "cargo-intent.change-status.v1"
+
+provider_subcommand = [
+  "change",
+  "status",
+  "--staged",
+  "--phase",
+  "precommit",
+  "--analysis-receipt",
+]
+
+failure_classes = [
+  "provider_absent",
+  "wrong_product",
+  "wrong_protocol",
+  "malformed_output",
+  "timeout",
+  "stale_source",
+  "identity_mismatch",
+]
+
+delegate_flag = "delegate_staged_precommit"
+default_timeout_secs = 30
