@@ -7,5 +7,6 @@ pub fn parity_contract_paths(root: &Path) -> Vec<PathBuf> {
         root.join("tests/fixtures/repo-edit/parity-mutation-lock-alias-v1.toml"),
         root.join("tests/fixtures/repo-edit/parity-path-containment-v1.toml"),
         root.join("tests/fixtures/repo-edit/parity-atomic-write-v1.toml"),
+        root.join("tests/fixtures/repo-edit/parity-apply-receipt-v1.toml"),
     ]
 }

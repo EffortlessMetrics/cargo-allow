@@ -16,6 +16,11 @@ later packets. Product layers retain ledger and semantic edit authority.
 - `repo-edit::containment` — lexical root containment (#1791 / #1825)
 - `repo-edit::target_identity` — lexical canonicalization for lock keys
 
+## Packet 2602-C
+
+- `repo-edit::apply_receipt` — portable single-target apply receipt envelope
+- `repo-edit::single_target_apply` — containment-checked apply with digests
+
 ## Packet 2602-B
 
 - `repo-edit::atomic_write` — temp-write-rename install and create-new overwrite guard

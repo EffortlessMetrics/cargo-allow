@@ -7,10 +7,11 @@ Human projection of the shared mutation substrate crate (#2602).
 Repository-contained target identity, path containment, cross-process lock
 convergence, and single-target atomic write/replace. Packet 2602-A extracts
 `cargo-allow::mutation_lock` and `assert_path_within_root` behind `repo-edit`
-shims. Packet 2602-B extracts `write_file` / `write_file_no_overwrite`.
+shims. Packet 2602-B extracts `write_file` / `write_file_no_overwrite`. Packet
+2602-C introduces generic `repo-edit::single_target_apply` receipts.
 
-Multi-target transactions, generic apply receipts, and cargo-allow command
-migration land in later packets.
+Remaining cargo-allow command migration and multi-target transactions land in
+later packets.
 
 Parity fixtures live under `tests/fixtures/repo-edit/`.
 

@@ -567,6 +567,7 @@ version = "0.2.0"
 dependencies = [
  "allow-core",
  "fs4",
+ "sha2",
 ]
 
 [[package]]
