@@ -8,10 +8,11 @@ Repository-contained target identity, path containment, cross-process lock
 convergence, and single-target atomic write/replace. Packet 2602-A extracts
 `cargo-allow::mutation_lock` and `assert_path_within_root` behind `repo-edit`
 shims. Packet 2602-B extracts `write_file` / `write_file_no_overwrite`. Packet
-2602-C introduces generic `repo-edit::single_target_apply` receipts.
+2602-C introduces generic `repo-edit::single_target_apply` receipts. Packet
+2602-D migrates `cargo-allow init` to apply through repo-edit.
 
-Remaining cargo-allow command migration and multi-target transactions land in
-later packets.
+Further mutation command migration and multi-target transactions land in later
+packets.
 
 Parity fixtures live under `tests/fixtures/repo-edit/`.
 

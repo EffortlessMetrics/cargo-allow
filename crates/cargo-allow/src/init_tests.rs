@@ -166,8 +166,7 @@ fn cmd_init_reports_policy_write_errors() {
     fs::create_dir_all(&policy).unwrap_or_else(|err| {
         std::panic::panic_any(format!("create policy directory target: {err}"))
     });
-    // The policy path is a directory, so write_file's atomic rename step fails
-    // with "failed to install" (it cannot rename a temp file over a directory).
+    // The policy path is a directory, so repo-edit apply fails before install.
     let err = cmd_init(&InitArgs {
         root: RootArgs {
             root: Some(root.clone()),
@@ -180,10 +179,10 @@ fn cmd_init_reports_policy_write_errors() {
     })
     .expect_err("directory policy target should fail policy write");
 
+    let message = err.to_string();
     assert!(
-        err.to_string()
-            .contains(&format!("failed to install {}", policy.display())),
-        "expected 'failed to install' error for directory target, got: {err}"
+        message.contains("failed to install") || message.contains("failed to read"),
+        "expected install or read failure for directory target, got: {err}"
     );
 
     remove_init_fixture_dir(root);

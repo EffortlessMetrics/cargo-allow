@@ -159,3 +159,17 @@ latest_allowed_stage = 2
 removal_condition = "issue:#2606 stage-2 cutover receipt"
 parity_case = "parity-repo-edit-atomic-write-v1"
 claim_boundary = "Single-target atomic write forwarding only; emit helpers stay in cargo-allow."
+
+[[shim]]
+id = "shim-cargo-allow-init-apply"
+old_identity = "cargo-allow::init"
+new_identity = "repo-edit::single_target_apply"
+kind = "ModuleFacade"
+posture = "private"
+status = "active"
+move_ledger_entry = "migrate-cargo-allow-init-command"
+controlling_issue = 2602
+latest_allowed_stage = 4
+removal_condition = "issue:#2606 stage-4 cutover receipt"
+parity_case = "parity-repo-edit-init-command-v1"
+claim_boundary = "init policy write forwards through repo-edit apply; command UX unchanged."

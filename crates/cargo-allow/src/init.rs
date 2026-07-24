@@ -1,8 +1,8 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_inventory::resolve_source_tree_root;
 use allow_policy::starter_policy;
+use repo_edit::{SingleTargetApplyRequest, apply_single_target};
 use std::env;
-use std::fs;
 use std::path::{Path, PathBuf};
 
 #[path = "init_args.rs"]
@@ -64,12 +64,16 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
             path.display()
         )));
     }
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|e| {
-            CargoAllowError::new(format!("failed to create {}: {e}", parent.display()))
-        })?;
-    }
-    crate::io::write_file(&path, &starter_policy(args.strict))?;
+    let policy_contents = starter_policy(args.strict);
+    apply_single_target(SingleTargetApplyRequest {
+        repository_root: &root,
+        target: &args.config,
+        contents: &policy_contents,
+        caller_reference: Some("cargo-allow:init"),
+        lock_identity: Some(created_path_display(&root, &path)),
+        force_create_new: false,
+    })
+    .into_result()?;
     let display = created_path_display(&root, &path);
     print!("{}", post_write_announcement("created", &display));
     Ok(())
