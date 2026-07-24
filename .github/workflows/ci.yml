@@ -153,6 +153,8 @@ jobs:
           name: three-product-dogfood-receipt
           path: target/three-product-dogfood/three-product-dogfood.receipt.json
           if-no-files-found: warn
+      - name: Three-product simplification audit (#2208)
+        run: bash scripts/three-product-simplification-audit.sh
       - name: Verify cargo-allow proof classes are non-empty
         shell: bash
         run: |

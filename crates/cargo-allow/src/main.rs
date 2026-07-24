@@ -22,7 +22,6 @@ mod federation_report;
 mod init;
 mod intent_delegate;
 mod intent_provider;
-mod io;
 mod kind_filter;
 mod list;
 mod migrate;
