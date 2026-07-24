@@ -29,6 +29,7 @@ enum SpecPrecommitResultClass {
     Passed,
     FindingsAdvisory,
     FindingsBlocking,
+    #[expect(dead_code, reason = "policy:spec-precommit-schema: retained receipt result class")]
     NotApplicable,
     PartialData,
     StaleInput,
