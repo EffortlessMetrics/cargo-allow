@@ -9012,21 +9012,169 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-9149"
+id = "allow-9150"
 kind = "non_rust_file"
 family = "documentation"
-path = "crates/proof-engine/README.md"
+path = "docs/architecture/cargo-proof.md"
 owner = "repo-infra"
-classification = "proof_engine_crate_readme"
-reason = "proof-engine README documents claim boundary for #2589-A."
-evidence = ["test:proof_engine_parity_fixtures_registered", "issue:2589"]
+classification = "three_product_snapshot_projection"
+reason = "Human projection of the cargo-proof product shell (#2589-B)."
+evidence = ["test:cargo_proof_parity_fixtures_registered", "issue:2589", "doc:policy/extraction-parity.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/architecture/cargo-proof.md"
+target_fingerprint = "md"
+glob = "docs/architecture/cargo-proof.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9151"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/cargo-proof/product-identity-v1.toml"
+owner = "repo-infra"
+classification = "cargo_proof_parity_fixture"
+reason = "Cargo-proof product identity parity fixture (#2589-B)."
+evidence = ["test:cargo_proof_parity_fixtures_registered", "issue:2589", "doc:policy/extraction-parity.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "tests/fixtures/cargo-proof/product-identity-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9152"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/cargo-proof/obligation-plan-smoke-v1.toml"
+owner = "repo-infra"
+classification = "cargo_proof_parity_fixture"
+reason = "Cargo-proof obligation plan smoke fixture (#2589-B)."
+evidence = ["test:cargo_proof_parity_fixtures_registered", "issue:2589"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "tests/fixtures/cargo-proof/obligation-plan-smoke-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9153"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/cargo-proof/proof-plan-smoke-v1.toml"
+owner = "repo-infra"
+classification = "cargo_proof_parity_fixture"
+reason = "Cargo-proof proof plan smoke fixture (#2589-B)."
+evidence = ["test:cargo_proof_parity_fixtures_registered", "issue:2589"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "tests/fixtures/cargo-proof/proof-plan-smoke-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9154"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/cargo-proof/README.md"
+owner = "repo-infra"
+classification = "cargo_proof_parity_fixture"
+reason = "Cargo-proof parity fixture catalog (#2589-B)."
+evidence = ["test:cargo_proof_parity_fixtures_registered", "issue:2589"]
 created = "2026-07-24"
 review_after = "2027-01-01"
 
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "md"
-glob = "crates/proof-engine/README.md"
+glob = "tests/fixtures/cargo-proof/README.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9155"
+kind = "non_rust_file"
+family = "package_metadata"
+path = "crates/cargo-proof/Cargo.toml"
+owner = "repo-infra"
+classification = "rust_package_metadata"
+reason = "cargo-proof manifest is tracked cargo-proof package metadata (#2589-B)."
+evidence = ["test:cargo_proof_parity_fixtures_registered", "issue:2589", "doc:policy/product-package-topology.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "crates/cargo-proof/Cargo.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9157"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "docs/dogfood/fixtures/release/proof-candidate-crate-set.toml"
+owner = "core/release"
+classification = "release_automation_fixture"
+reason = "Shared six-crate package order for ProofCandidate install smoke (#2589-B)."
+evidence = ["doc:docs/architecture/cargo-proof.md", "issue:2589", "workflow:.github/workflows/ci.yml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "docs/dogfood/fixtures/release/proof-candidate-crate-set.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9158"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/proof-candidate-smoke.sh"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "ProofCandidateInstallSmokeV1: package/extract/install six-crate proof stack outside workspace (#2589-B)."
+evidence = ["doc:docs/architecture/cargo-proof.md", "issue:2589", "workflow:.github/workflows/ci.yml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "sh"
+glob = "scripts/proof-candidate-smoke.sh"
 
 [allow.last_seen]
 line = 1

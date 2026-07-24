@@ -1,0 +1,6 @@
+schema_id = "proof.plan.v1"
+plan_id = "cargo-proof-smoke-plan"
+
+[[commands]]
+program = "cargo-allow"
+args = ["check", "--mode", "no-new"]

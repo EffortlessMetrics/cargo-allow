@@ -1,0 +1,5 @@
+schema_id = "cargo-proof.product-identity.v1"
+product_id = "cargo-proof"
+binary_name = "cargo-proof"
+crate_version = "0.2.0"
+claim_boundary = "Evidence orchestration shell; no source-exception ledger ownership and no process execution."
