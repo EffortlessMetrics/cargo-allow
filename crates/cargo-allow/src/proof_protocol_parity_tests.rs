@@ -15,11 +15,17 @@ fn proof_protocol_parity_fixtures_registered() -> Result<(), String> {
     if !doc_text.contains("2588-A") {
         return Err("human projection missing packet marker".to_string());
     }
+    if !doc_text.contains("2588-B") {
+        return Err("human projection missing plan DTO packet marker".to_string());
+    }
 
     let ledger = std::fs::read_to_string(root.join("policy/product-move-ledger.toml"))
         .map_err(|err| format!("move ledger: {err}"))?;
     if !ledger.contains("introduce-proof-protocol-crate") {
         return Err("move ledger missing proof-protocol scaffold entry".to_string());
+    }
+    if !ledger.contains("introduce-proof-protocol-plan-dtos") {
+        return Err("move ledger missing proof-protocol plan dtos entry".to_string());
     }
 
     let manifest = root.join("crates/cargo-allow/Cargo.toml");
@@ -33,7 +39,14 @@ fn proof_protocol_parity_fixtures_registered() -> Result<(), String> {
 }
 
 fn proof_protocol_parity_fixture_paths(root: &std::path::Path) -> Vec<PathBuf> {
-    vec![root.join("tests/fixtures/proof-protocol/parity-boundary-v1.toml")]
+    vec![
+        root.join("tests/fixtures/proof-protocol/parity-boundary-v1.toml"),
+        root.join("tests/fixtures/proof-protocol/parity-plan-dtos-v1.toml"),
+        root.join("tests/fixtures/proof-protocol/parity-capability-dtos-v1.toml"),
+        root.join("tests/fixtures/proof-protocol/parity-receipt-dtos-v1.toml"),
+        root.join("tests/fixtures/proof-protocol/parity-contradiction-dtos-v1.toml"),
+        root.join("tests/fixtures/proof-protocol/parity-phase-gate-dtos-v1.toml"),
+    ]
 }
 
 fn manifest_lists_dependency(manifest_text: &str, crate_name: &str) -> bool {

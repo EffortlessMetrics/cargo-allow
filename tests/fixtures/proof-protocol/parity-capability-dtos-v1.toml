@@ -1,0 +1,10 @@
+scenario_id = "parity-proof-protocol-capability-dtos-v1"
+proof_protocol_module = "proof-protocol::capability_dtos"
+parity_case = "parity-proof-protocol-capability-dtos-v1"
+move_ledger_entry = "introduce-proof-protocol-capability-dtos"
+required_capability_fields = [
+  "capability_id",
+  "kind",
+  "program",
+  "statement",
+]

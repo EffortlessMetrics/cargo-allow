@@ -347,13 +347,57 @@ claim_boundary = "delegate_spec_system disables embedded authority; staged preco
 [[case]]
 id = "parity-proof-protocol-plan-dtos-v1"
 stage = "ProofProtocol"
-move_ledger_entry = "move-issue-2568-embedded-evaluator"
+move_ledger_entry = "introduce-proof-protocol-plan-dtos"
 shim_id = "shim-proof-protocol-legacy-dtos"
 old_producer = "allow-report::proof_plan_dtos"
 new_producer = "proof-protocol::plan_dtos"
 expected_result = "EquivalentWithCanonicalRenaming"
 disposition = "contract_only"
 claim_boundary = "Serialization contract only; no parallel proof planner."
+
+[[case]]
+id = "parity-proof-protocol-capability-dtos-v1"
+stage = "ProofProtocol"
+move_ledger_entry = "introduce-proof-protocol-capability-dtos"
+shim_id = "shim-proof-protocol-capability-dtos"
+old_producer = "cargo-proof::proof_capability_unowned"
+new_producer = "proof-protocol::capability_dtos"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Capability catalog transport only; provider execution remains caller-owned."
+
+[[case]]
+id = "parity-proof-protocol-receipt-dtos-v1"
+stage = "ProofProtocol"
+move_ledger_entry = "introduce-proof-protocol-receipt-dtos"
+shim_id = "shim-proof-protocol-receipt-dtos"
+old_producer = "cargo-proof::proof_receipt_unowned"
+new_producer = "proof-protocol::receipt_dtos"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Receipt binding transport only; receipt parsing remains repo-protocol owned."
+
+[[case]]
+id = "parity-proof-protocol-contradiction-dtos-v1"
+stage = "ProofProtocol"
+move_ledger_entry = "introduce-proof-protocol-contradiction-dtos"
+shim_id = "shim-proof-protocol-contradiction-dtos"
+old_producer = "cargo-proof::proof_contradiction_unowned"
+new_producer = "proof-protocol::contradiction_dtos"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Contradiction report transport only; adjudication remains caller-owned."
+
+[[case]]
+id = "parity-proof-protocol-phase-gate-dtos-v1"
+stage = "ProofProtocol"
+move_ledger_entry = "introduce-proof-protocol-phase-gate-dtos"
+shim_id = "shim-proof-protocol-phase-gate-dtos"
+old_producer = "cargo-proof::proof_phase_gate_unowned"
+new_producer = "proof-protocol::phase_gate_dtos"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Phase-gate transport only; gate evaluation remains proof-engine owned."
 
 [[case]]
 id = "parity-proof-protocol-boundary-v1"

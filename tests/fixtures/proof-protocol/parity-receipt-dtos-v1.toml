@@ -1,0 +1,11 @@
+scenario_id = "parity-proof-protocol-receipt-dtos-v1"
+proof_protocol_module = "proof-protocol::receipt_dtos"
+parity_case = "parity-proof-protocol-receipt-dtos-v1"
+move_ledger_entry = "introduce-proof-protocol-receipt-dtos"
+required_binding_fields = [
+  "binding_id",
+  "plan_id",
+  "command_index",
+  "analysis_receipt_schema_id",
+  "receipt_digest",
+]

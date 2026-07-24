@@ -101,6 +101,51 @@ fn parity_contracts_load_from_fixtures() -> Result<(), String> {
     Ok(())
 }
 
+#[test]
+fn plan_dtos_surface_matches_parity_contract() -> Result<(), String> {
+    let root = workspace_root();
+    let contract_path = crate::parity::plan_dtos_parity_contract_paths(&root)
+        .into_iter()
+        .next()
+        .ok_or_else(|| "missing plan dtos parity fixture path".to_string())?;
+    let contract = crate::parity::load_plan_dtos_parity_contract(&contract_path)?;
+    if contract.proof_protocol_module != crate::PlanDtosSurface::MODULE_ID {
+        return Err(format!(
+            "surface marker {} does not match contract {}",
+            crate::PlanDtosSurface::MODULE_ID,
+            contract.proof_protocol_module
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn validate_proof_plan_rejects_empty_commands() -> Result<(), String> {
+    let plan = crate::ProofPlanV1::new("plan-empty", Vec::new());
+    match crate::validate_proof_plan(&plan) {
+        Err(crate::ProofPlanError::EmptyCommands) => Ok(()),
+        other => Err(format!("expected empty_commands, got {other:?}")),
+    }
+}
+
+#[test]
+fn receipt_set_requires_repo_protocol_schema() -> Result<(), String> {
+    let set = crate::ProofReceiptSetV1::new(
+        "plan-1",
+        vec![crate::ProofReceiptBindingV1 {
+            binding_id: "binding-1".to_string(),
+            plan_id: "plan-1".to_string(),
+            command_index: 0,
+            analysis_receipt_schema_id: "wrong.schema".to_string(),
+            receipt_digest: "sha256:v1:abc".to_string(),
+        }],
+    );
+    match crate::validate_receipt_set(&set) {
+        Err(crate::ProofReceiptError::SchemaDrift { .. }) => Ok(()),
+        other => Err(format!("expected schema drift, got {other:?}")),
+    }
+}
+
 fn manifest_lists_dependency(manifest_text: &str, crate_name: &str) -> bool {
     let Ok(table) = toml::from_str::<toml::Table>(manifest_text) else {
         return false;

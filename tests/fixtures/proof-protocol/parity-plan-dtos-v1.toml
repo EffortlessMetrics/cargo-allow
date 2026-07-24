@@ -1,0 +1,8 @@
+scenario_id = "parity-proof-protocol-plan-dtos-v1"
+proof_protocol_module = "proof-protocol::plan_dtos"
+parity_case = "parity-proof-protocol-plan-dtos-v1"
+move_ledger_entry = "introduce-proof-protocol-plan-dtos"
+required_command_fields = [
+  "program",
+  "args",
+]

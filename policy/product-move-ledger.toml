@@ -451,3 +451,78 @@ claim_boundary = "Crate scaffold, boundary docs, and dependency topology; plan D
 parity_fixture = "tests/fixtures/proof-protocol/parity-boundary-v1.toml"
 removal_condition = "issue:#2606 proof-protocol stage-1 cutover receipt"
 controlling_issue = 2588
+
+[[entry]]
+id = "introduce-proof-protocol-plan-dtos"
+current_identity = "crates/proof-protocol/src/plan_dtos.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-proof"
+current_owner_crate = "proof-protocol"
+target_owner_product = "cargo-proof"
+target_owner_crate = "proof-protocol"
+disposition = "MoveToProofProtocol"
+status = "current"
+claim_boundary = "Portable proof plan command transport only; provider execution remains caller-owned."
+parity_fixture = "tests/fixtures/proof-protocol/parity-plan-dtos-v1.toml"
+removal_condition = "issue:#2606 proof-protocol stage-2 cutover receipt"
+controlling_issue = 2588
+
+[[entry]]
+id = "introduce-proof-protocol-capability-dtos"
+current_identity = "crates/proof-protocol/src/capability_dtos.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-proof"
+current_owner_crate = "proof-protocol"
+target_owner_product = "cargo-proof"
+target_owner_crate = "proof-protocol"
+disposition = "MoveToProofProtocol"
+status = "current"
+claim_boundary = "Provider capability catalog transport only; execution remains caller-owned."
+parity_fixture = "tests/fixtures/proof-protocol/parity-capability-dtos-v1.toml"
+removal_condition = "issue:#2606 proof-protocol stage-3 cutover receipt"
+controlling_issue = 2588
+
+[[entry]]
+id = "introduce-proof-protocol-receipt-dtos"
+current_identity = "crates/proof-protocol/src/receipt_dtos.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-proof"
+current_owner_crate = "proof-protocol"
+target_owner_product = "cargo-proof"
+target_owner_crate = "proof-protocol"
+disposition = "MoveToProofProtocol"
+status = "current"
+claim_boundary = "Receipt binding transport bound to repo-protocol analysis receipt schema only."
+parity_fixture = "tests/fixtures/proof-protocol/parity-receipt-dtos-v1.toml"
+removal_condition = "issue:#2606 proof-protocol stage-4 cutover receipt"
+controlling_issue = 2588
+
+[[entry]]
+id = "introduce-proof-protocol-contradiction-dtos"
+current_identity = "crates/proof-protocol/src/contradiction_dtos.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-proof"
+current_owner_crate = "proof-protocol"
+target_owner_product = "cargo-proof"
+target_owner_crate = "proof-protocol"
+disposition = "MoveToProofProtocol"
+status = "current"
+claim_boundary = "Contradiction report transport only; adjudication remains caller-owned."
+parity_fixture = "tests/fixtures/proof-protocol/parity-contradiction-dtos-v1.toml"
+removal_condition = "issue:#2606 proof-protocol stage-5 cutover receipt"
+controlling_issue = 2588
+
+[[entry]]
+id = "introduce-proof-protocol-phase-gate-dtos"
+current_identity = "crates/proof-protocol/src/phase_gate_dtos.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-proof"
+current_owner_crate = "proof-protocol"
+target_owner_product = "cargo-proof"
+target_owner_crate = "proof-protocol"
+disposition = "MoveToProofProtocol"
+status = "current"
+claim_boundary = "Phase-gate transport only; gate evaluation remains proof-engine owned."
+parity_fixture = "tests/fixtures/proof-protocol/parity-phase-gate-dtos-v1.toml"
+removal_condition = "issue:#2606 proof-protocol stage-6 cutover receipt"
+controlling_issue = 2588
