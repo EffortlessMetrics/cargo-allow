@@ -1,0 +1,30 @@
+# Three-product dogfood pipeline stage inventory (#2558).
+
+schema_id = "cargo-allow.three-product-dogfood-stages.v1"
+schema_version = 1
+
+stages = [
+  { id = "source_change", product = "consumer", execution = "real" },
+  { id = "cargo_allow_audit", product = "cargo-allow", execution = "real" },
+  { id = "cargo_allow_propose", product = "cargo-allow", execution = "real" },
+  { id = "cargo_allow_check_no_new", product = "cargo-allow", execution = "real" },
+  { id = "cargo_intent_change_status", product = "cargo-intent", execution = "real" },
+  { id = "obligation_plan_bridge", product = "cargo-proof", execution = "bridged" },
+  { id = "cargo_proof_plan", product = "cargo-proof", execution = "real" },
+  { id = "cargo_proof_dry_run", product = "cargo-proof", execution = "real" },
+  { id = "evidence_cargo_allow", product = "cargo-proof", execution = "real" },
+  { id = "evidence_ripr", product = "proof-adapter-ripr", execution = "stubbed" },
+  { id = "evidence_hawk", product = "proof-adapter-hawk", execution = "stubbed" },
+  { id = "evidence_test", product = "proof-adapter-command", execution = "stubbed" },
+  { id = "contradiction_eval", product = "proof-engine", execution = "real" },
+  { id = "repair", product = "cargo-allow", execution = "real" },
+  { id = "precommit_gate", product = "cargo-allow", execution = "real" },
+  { id = "merge_ready_gate", product = "proof-engine", execution = "real" },
+  { id = "reconciliation", product = "cargo-allow", execution = "real" },
+]
+
+stubbed_claim_boundary = [
+  "no_live_ripr_binary",
+  "no_live_hawk_binary",
+  "test_evidence_via_fake_provider_dry_run_only",
+]
