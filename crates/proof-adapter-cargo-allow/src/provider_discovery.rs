@@ -76,15 +76,15 @@ pub fn discover_cargo_allow_provider(
             &contract.product_name,
         );
     }
-    if let Ok(value) = env::var(&contract.environment_variable) {
-        if !value.trim().is_empty() {
-            return resolve_candidate(
-                request.root,
-                Path::new(value.trim()),
-                CargoAllowDiscoveryMode::ExplicitEnvironment,
-                &contract.product_name,
-            );
-        }
+    if let Ok(value) = env::var(&contract.environment_variable)
+        && !value.trim().is_empty()
+    {
+        return resolve_candidate(
+            request.root,
+            Path::new(value.trim()),
+            CargoAllowDiscoveryMode::ExplicitEnvironment,
+            &contract.product_name,
+        );
     }
     if let Some(path) = discover_from_config(request.root, request.config_path, &contract)? {
         return resolve_candidate(
