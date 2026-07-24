@@ -25,6 +25,7 @@ pub(super) fn load_single_file_migration_config(
             legacy_source_files: legacy_source_file_names(from),
             legacy_compat_kinds: legacy_source_compat_kinds(from),
         },
+        root: Some(root),
     })
 }
 
@@ -59,6 +60,7 @@ pub(super) fn load_repo_policy_migration_config(
             legacy_source_files,
             legacy_compat_kinds,
         },
+        root: Some(root),
     })
 }
 

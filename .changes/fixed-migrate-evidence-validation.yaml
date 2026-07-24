@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  CLI: `migrate --update` now validates evidence references against the source
+  tree, matching what `add` and `refresh` already enforce. Without this, a
+  migration could write entries with evidence pointing at non-existent or
+  out-of-tree files to the live ledger. Candidate-file output (`--out`)
+  skips the check because legacy migrations may reference evidence files
+  that don't exist yet. Child of #1784.
