@@ -21,8 +21,9 @@ use crate::parity::{
     edit_plan_parity_contract_paths, load_approval_currentness_parity_contract,
     load_dialect_adapter_parity_contract, load_edit_plan_parity_contract,
     load_recompile_contract_parity_contract, load_repo_edit_translation_parity_contract,
-    parity_contract_paths, recompile_contract_parity_contract_paths,
-    repo_edit_translation_parity_contract_paths,
+    load_settlement_parity_contract, parity_contract_paths,
+    recompile_contract_parity_contract_paths, repo_edit_translation_parity_contract_paths,
+    settlement_parity_contract_paths,
 };
 use crate::recompile_contract::{
     TARGET_PHASE_OBLIGATION_PLAN_SCHEMA_ID, compile_recompile_contract, validate_recompile_contract,
@@ -30,6 +31,10 @@ use crate::recompile_contract::{
 use crate::recompile_contract_surface::RecompileContractSurface;
 use crate::repo_edit_translation::{RepoEditTranslationError, translate_plan_to_repo_edit};
 use crate::repo_edit_translation_surface::RepoEditTranslationSurface;
+use crate::settlement::{
+    IntentEditResidualObligationKindV1, compile_settlement_plan, validate_settlement_plan,
+};
+use crate::settlement_surface::SettlementSurface;
 
 #[test]
 fn intent_engine_surface_matches_topology_marker() -> Result<(), String> {
@@ -465,6 +470,89 @@ fn compile_recompile_contract_emits_phase_obligation_plan() -> Result<(), String
         .map_err(|err| format!("intent-engine transport parse failed: {err}"))?;
     if parsed.obligations.is_empty() {
         return Err("intent-engine rejected recompile transport obligations".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn settlement_surface_matches_parity_contract() -> Result<(), String> {
+    let root = workspace_root();
+    let contract_path = settlement_parity_contract_paths(&root)
+        .into_iter()
+        .next()
+        .ok_or_else(|| "missing settlement parity fixture path".to_string())?;
+    let contract = load_settlement_parity_contract(&contract_path)?;
+    if contract.intent_edit_module != SettlementSurface::MODULE_ID {
+        return Err(format!(
+            "surface marker {} does not match contract {}",
+            SettlementSurface::MODULE_ID,
+            contract.intent_edit_module
+        ));
+    }
+    for kind in [
+        IntentEditResidualObligationKindV1::AwaitApplyReceipt,
+        IntentEditResidualObligationKindV1::AwaitRecompileProof,
+        IntentEditResidualObligationKindV1::AwaitCurrentnessRefresh,
+    ] {
+        if !contract
+            .required_residual_kinds
+            .iter()
+            .any(|entry| entry == kind.as_str())
+        {
+            return Err(format!("fixture missing residual kind {}", kind.as_str()));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn compile_settlement_plan_emits_residual_obligations() -> Result<(), String> {
+    let selector = "policy/allow.toml";
+    let action_id = stable_action_id(IntentEditActionKindV1::ReplaceFile, selector)
+        .map_err(|err| err.as_str())?;
+    let plan = IntentEditPlanV1::new(
+        "plan-settlement",
+        vec![IntentEditActionV1 {
+            action_id: action_id.clone(),
+            kind: IntentEditActionKindV1::ReplaceFile,
+            resolution: IntentEditTargetResolutionV1::FindExisting {
+                selector: selector.to_string(),
+            },
+        }],
+    );
+    let approval = IntentEditApprovalCurrentnessV1::new(
+        "plan-settlement",
+        IntentEditApprovalStateV1::Approved,
+        repo_protocol::CurrentnessV1::Current,
+        "sha256:v1:abc",
+    );
+    let settlement =
+        compile_settlement_plan(&plan, &approval, IntentEditDialectV1::CargoAllowPolicy)
+            .map_err(|err| err.as_str())?;
+    validate_settlement_plan(&settlement).map_err(|err| err.as_str())?;
+    if settlement.residual_obligations.len() < 3 {
+        return Err("expected apply, recompile, and currentness residuals".to_string());
+    }
+    let has_apply = settlement.residual_obligations.iter().any(|item| {
+        item.kind == IntentEditResidualObligationKindV1::AwaitApplyReceipt
+            && item.action_id.as_deref() == Some(action_id.as_str())
+    });
+    if !has_apply {
+        return Err("missing await_apply_receipt residual".to_string());
+    }
+    let has_recompile = settlement
+        .residual_obligations
+        .iter()
+        .any(|item| item.kind == IntentEditResidualObligationKindV1::AwaitRecompileProof);
+    if !has_recompile {
+        return Err("missing await_recompile_proof residual".to_string());
+    }
+    let has_currentness = settlement
+        .residual_obligations
+        .iter()
+        .any(|item| item.kind == IntentEditResidualObligationKindV1::AwaitCurrentnessRefresh);
+    if !has_currentness {
+        return Err("missing await_currentness_refresh residual".to_string());
     }
     Ok(())
 }

@@ -432,6 +432,17 @@ expected_result = "EquivalentWithCanonicalRenaming"
 disposition = "contract_only"
 claim_boundary = "Recompile obligation contract bound to intent-engine transport only."
 
+[[case]]
+id = "parity-intent-edit-settlement-v1"
+stage = "IntentEdit"
+move_ledger_entry = "introduce-intent-edit-settlement"
+shim_id = "shim-intent-edit-settlement"
+old_producer = "cargo-intent::intent_edit_settlement_unowned"
+new_producer = "intent-edit::settlement"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Settlement plan and residual obligations only; apply and proof execution remain caller-owned."
+
 [[stage_receipt]]
 stage = "ArchitectureInventory"
 required_fields = [

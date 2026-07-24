@@ -32,3 +32,5 @@ Packet 2613-A lands crate scaffold, boundary documentation, parity/ledger regist
 - `intent-edit::recompile_contract` — recompile obligations bound to intent-engine phase-obligation transport
 
 ## Packet 2613-F
+
+- `intent-edit::settlement` — settlement plan combining translation, recompile contract, and residual obligations
