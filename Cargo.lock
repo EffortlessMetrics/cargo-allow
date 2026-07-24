@@ -373,6 +373,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "intent-edit"
+version = "0.2.0"
+dependencies = [
+ "intent-engine",
+ "intent-model",
+ "intent-protocol",
+ "repo-edit",
+ "repo-protocol",
+ "repo-snapshot",
+ "toml",
+]
+
+[[package]]
 name = "intent-engine"
 version = "0.2.0"
 dependencies = [

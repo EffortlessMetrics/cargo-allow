@@ -346,3 +346,18 @@ claim_boundary = "propose --write applies via repo-edit single_target_apply; out
 parity_fixture = "tests/fixtures/repo-edit/parity-propose-command-v1.toml"
 removal_condition = "issue:#2606 stage-10 cutover receipt"
 controlling_issue = 2602
+
+[[entry]]
+id = "introduce-intent-edit-crate"
+current_identity = "crates/intent-edit/src/lib.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-intent"
+current_owner_crate = "intent-edit"
+target_owner_product = "cargo-intent"
+target_owner_crate = "intent-edit"
+disposition = "MoveToIntentEdit"
+status = "current"
+claim_boundary = "Crate scaffold, boundary docs, and dependency topology; edit planning lands in #2613-B."
+parity_fixture = "tests/fixtures/intent-edit/parity-boundary-v1.toml"
+removal_condition = "issue:#2606 intent-edit stage-1 cutover receipt"
+controlling_issue = 2613

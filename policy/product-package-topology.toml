@@ -142,6 +142,14 @@ candidate_inclusion = false
 release_order = 320
 
 [[package]]
+package = "intent-edit"
+product_family = "cargo-intent"
+posture = "CargoIntentExperimental"
+publish = false
+candidate_inclusion = false
+release_order = 322
+
+[[package]]
 package = "cargo-intent"
 product_family = "cargo-intent"
 posture = "CargoIntentExperimental"

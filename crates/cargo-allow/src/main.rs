@@ -147,6 +147,8 @@ mod compat_test_support;
 #[cfg(test)]
 mod extraction_shim_registry_tests;
 #[cfg(test)]
+mod intent_edit_parity_tests;
+#[cfg(test)]
 mod intent_engine_parity_tests;
 #[cfg(test)]
 mod intent_model_parity_tests;
