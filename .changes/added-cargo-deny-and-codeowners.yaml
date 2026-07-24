@@ -1,0 +1,6 @@
+kind: Added
+body: >-
+  CI: add cargo-deny supply-chain audit job (`cargo deny check advisories
+  bans licenses sources`) and a `deny.toml` config. Also add `CODEOWNERS`
+  for merge review ownership. cargo-allow is a governance tool — it should
+  enforce its own supply chain. Child of #1786.
