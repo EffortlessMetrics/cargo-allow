@@ -331,3 +331,18 @@ claim_boundary = "migrate applies policy via repo-edit single_target_apply; in-r
 parity_fixture = "tests/fixtures/repo-edit/parity-migrate-command-v1.toml"
 removal_condition = "issue:#2606 stage-9 cutover receipt"
 controlling_issue = 2602
+
+[[entry]]
+id = "migrate-cargo-allow-propose-command"
+current_identity = "crates/cargo-allow/src/propose.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-allow"
+current_owner_crate = "cargo-allow"
+target_owner_product = "shared"
+target_owner_crate = "repo-edit"
+disposition = "MoveToSharedSnapshot"
+status = "moved"
+claim_boundary = "propose --write applies via repo-edit single_target_apply; outside-repo writes rejected."
+parity_fixture = "tests/fixtures/repo-edit/parity-propose-command-v1.toml"
+removal_condition = "issue:#2606 stage-10 cutover receipt"
+controlling_issue = 2602

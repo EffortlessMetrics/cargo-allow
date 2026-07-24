@@ -125,6 +125,17 @@ disposition = "contract_only"
 claim_boundary = "migrate --update/--out policy writes forward through repo-edit apply modes; in-repository --out uses apply, out-of-tree --out retains atomic_write."
 
 [[case]]
+id = "parity-repo-edit-propose-command-v1"
+stage = "RepoEdit"
+move_ledger_entry = "migrate-cargo-allow-propose-command"
+shim_id = "shim-cargo-allow-propose-apply"
+old_producer = "cargo-allow::propose"
+new_producer = "repo-edit::single_target_apply"
+expected_result = "SemanticallyEquivalent"
+disposition = "contract_only"
+claim_boundary = "propose --write is repository-contained and fail-closed outside the source-tree root."
+
+[[case]]
 id = "parity-repo-snapshot-revision-identity-v1"
 stage = "RepoSnapshot"
 move_ledger_entry = "move-allow-diff-revision-identity"
