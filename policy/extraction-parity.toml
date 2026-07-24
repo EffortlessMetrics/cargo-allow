@@ -179,7 +179,7 @@ old_producer = "cargo-allow::spec_precommit"
 new_producer = "cargo-intent::change_status"
 expected_result = "IntentionalDifferenceAccepted"
 disposition = "contract_only"
-claim_boundary = "Read-only staged posture and phase obligation skeleton; staged precommit delegates when delegate_staged_precommit is enabled (#2601-C cutover)."
+claim_boundary = "Read-only staged posture and phase obligation skeleton; staged precommit delegates via cargo-intent only (#2568 embedded evaluator removed)."
 
 [[case]]
 id = "parity-cargo-intent-product-identity-v1"
