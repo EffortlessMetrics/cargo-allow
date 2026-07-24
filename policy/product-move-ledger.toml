@@ -423,6 +423,21 @@ removal_condition = "issue:#2606 intent-edit stage-5 cutover receipt"
 controlling_issue = 2613
 
 [[entry]]
+id = "introduce-intent-edit-settlement"
+current_identity = "crates/intent-edit/src/settlement.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-intent"
+current_owner_crate = "intent-edit"
+target_owner_product = "cargo-intent"
+target_owner_crate = "intent-edit"
+disposition = "MoveToIntentEdit"
+status = "current"
+claim_boundary = "Settlement plan combining translation, recompile contract, and residual obligations; apply and proof execution remain caller-owned."
+parity_fixture = "tests/fixtures/intent-edit/parity-settlement-v1.toml"
+removal_condition = "issue:#2606 intent-edit stage-6 cutover receipt"
+controlling_issue = 2613
+
+[[entry]]
 id = "introduce-proof-protocol-crate"
 current_identity = "crates/proof-protocol/src/lib.rs"
 identity_kind = "rust_module"

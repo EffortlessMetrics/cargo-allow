@@ -1,0 +1,9 @@
+scenario_id = "parity-intent-edit-settlement-v1"
+intent_edit_module = "intent-edit::settlement"
+parity_case = "parity-intent-edit-settlement-v1"
+move_ledger_entry = "introduce-intent-edit-settlement"
+required_residual_kinds = [
+  "await_apply_receipt",
+  "await_recompile_proof",
+  "await_currentness_refresh",
+]

@@ -53,12 +53,22 @@ pub struct RecompileContractParityContract {
     pub required_obligation_fields: Vec<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct SettlementParityContract {
+    pub scenario_id: String,
+    pub intent_edit_module: String,
+    pub parity_case: String,
+    pub move_ledger_entry: String,
+    pub required_residual_kinds: Vec<String>,
+}
+
 pub fn parity_contract_paths(root: &Path) -> Vec<PathBuf> {
     let mut paths = edit_plan_parity_contract_paths(root);
     paths.extend(dialect_adapter_parity_contract_paths(root));
     paths.extend(approval_currentness_parity_contract_paths(root));
     paths.extend(repo_edit_translation_parity_contract_paths(root));
     paths.extend(recompile_contract_parity_contract_paths(root));
+    paths.extend(settlement_parity_contract_paths(root));
     paths.insert(0, parity_contract_path(root));
     paths
 }
@@ -140,6 +150,20 @@ pub fn recompile_contract_parity_contract_paths(root: &Path) -> Vec<PathBuf> {
 pub fn load_recompile_contract_parity_contract(
     path: &Path,
 ) -> Result<RecompileContractParityContract, String> {
+    let text =
+        std::fs::read_to_string(path).map_err(|err| format!("read {}: {err}", path.display()))?;
+    toml::from_str(&text).map_err(|err| format!("parse {}: {err}", path.display()))
+}
+
+pub fn settlement_parity_contract_path(root: &Path) -> PathBuf {
+    root.join("tests/fixtures/intent-edit/parity-settlement-v1.toml")
+}
+
+pub fn settlement_parity_contract_paths(root: &Path) -> Vec<PathBuf> {
+    vec![settlement_parity_contract_path(root)]
+}
+
+pub fn load_settlement_parity_contract(path: &Path) -> Result<SettlementParityContract, String> {
     let text =
         std::fs::read_to_string(path).map_err(|err| format!("read {}: {err}", path.display()))?;
     toml::from_str(&text).map_err(|err| format!("parse {}: {err}", path.display()))

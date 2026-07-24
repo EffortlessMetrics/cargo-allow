@@ -19,6 +19,8 @@ mod recompile_contract;
 mod recompile_contract_surface;
 mod repo_edit_translation;
 mod repo_edit_translation_surface;
+mod settlement;
+mod settlement_surface;
 
 #[cfg(test)]
 mod tests;
@@ -44,14 +46,16 @@ pub use edit_plan::{
 pub use edit_plan_surface::EditPlanSurface;
 pub use parity::{
     ApprovalCurrentnessParityContract, DialectAdapterParityContract, EditPlanParityContract,
-    RecompileContractParityContract, RepoEditTranslationParityContract,
+    RecompileContractParityContract, RepoEditTranslationParityContract, SettlementParityContract,
     approval_currentness_parity_contract_path, approval_currentness_parity_contract_paths,
     dialect_adapter_parity_contract_path, dialect_adapter_parity_contract_paths,
     edit_plan_parity_contract_path, edit_plan_parity_contract_paths,
     load_approval_currentness_parity_contract, load_dialect_adapter_parity_contract,
     load_edit_plan_parity_contract, load_recompile_contract_parity_contract,
-    load_repo_edit_translation_parity_contract, parity_contract_path, parity_contract_paths,
-    recompile_contract_parity_contract_path, recompile_contract_parity_contract_paths,
+    load_repo_edit_translation_parity_contract, load_settlement_parity_contract,
+    parity_contract_path, parity_contract_paths, recompile_contract_parity_contract_path,
+    recompile_contract_parity_contract_paths, settlement_parity_contract_path,
+    settlement_parity_contract_paths,
 };
 pub use recompile_contract::{
     INTENT_EDIT_RECOMPILE_CONTRACT_SCHEMA_ID, IntentEditRecompileContractV1,
@@ -65,3 +69,9 @@ pub use repo_edit_translation::{
     RepoEditTranslationPlanV1, RepoEditTranslationRequestV1, translate_plan_to_repo_edit,
 };
 pub use repo_edit_translation_surface::RepoEditTranslationSurface;
+pub use settlement::{
+    INTENT_EDIT_SETTLEMENT_PLAN_SCHEMA_ID, IntentEditResidualObligationKindV1,
+    IntentEditResidualObligationV1, IntentEditSettlementPlanV1, SettlementError,
+    compile_settlement_plan, validate_settlement_plan,
+};
+pub use settlement_surface::SettlementSurface;

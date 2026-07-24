@@ -27,6 +27,9 @@ fn intent_edit_parity_fixtures_registered() -> Result<(), String> {
     if !doc_text.contains("2613-E") {
         return Err("human projection missing recompile contract marker".to_string());
     }
+    if !doc_text.contains("2613-F") {
+        return Err("human projection missing settlement marker".to_string());
+    }
 
     let ledger = std::fs::read_to_string(root.join("policy/product-move-ledger.toml"))
         .map_err(|err| format!("move ledger: {err}"))?;
@@ -44,6 +47,9 @@ fn intent_edit_parity_fixtures_registered() -> Result<(), String> {
     }
     if !ledger.contains("introduce-intent-edit-recompile-contract") {
         return Err("move ledger missing intent-edit recompile contract entry".to_string());
+    }
+    if !ledger.contains("introduce-intent-edit-settlement") {
+        return Err("move ledger missing intent-edit settlement entry".to_string());
     }
 
     let manifest = root.join("crates/cargo-allow/Cargo.toml");
@@ -64,6 +70,7 @@ fn intent_edit_parity_fixture_paths(root: &std::path::Path) -> Vec<PathBuf> {
         root.join("tests/fixtures/intent-edit/parity-approval-currentness-v1.toml"),
         root.join("tests/fixtures/intent-edit/parity-repo-edit-translation-v1.toml"),
         root.join("tests/fixtures/intent-edit/parity-recompile-contract-v1.toml"),
+        root.join("tests/fixtures/intent-edit/parity-settlement-v1.toml"),
     ]
 }
 
