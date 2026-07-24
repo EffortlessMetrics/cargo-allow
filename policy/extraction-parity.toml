@@ -444,6 +444,17 @@ disposition = "contract_only"
 claim_boundary = "Reviewed command registry and structured argv only; prose must never become executable shell."
 
 [[case]]
+id = "parity-proof-engine-boundary-v1"
+stage = "ProofEngineAndCli"
+move_ledger_entry = "introduce-proof-engine-crate"
+shim_id = "shim-proof-engine-crate-scaffold"
+old_producer = "cargo-proof::proof_engine_unowned"
+new_producer = "proof-engine::boundary"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Engine orchestration scaffold only; cargo-proof CLI lands in follow-on packets."
+
+[[case]]
 id = "parity-intent-edit-boundary-v1"
 stage = "IntentEdit"
 move_ledger_entry = "introduce-intent-edit-crate"
