@@ -144,23 +144,55 @@ pub(crate) fn strip_verbatim_prefix(path: &Path) -> PathBuf {
 
 /// Portable repository-relative path for mutation apply targets.
 ///
-/// Uses lexical normalization so targets whose parent directories do not exist
-/// yet (common for `--write` candidate output) still resolve under the root.
+/// Prefers filesystem canonicalization when paths exist so Windows short-path
+/// and verbatim-prefix forms still resolve under the root. Falls back to lexical
+/// normalization for targets whose parent directories do not exist yet.
 pub(crate) fn portable_relative_under_root(root: &Path, path: &Path) -> CargoAllowResult<PathBuf> {
-    let joined = if path.is_absolute() {
+    let resolved = if path.is_absolute() {
         path.to_path_buf()
     } else {
         root.join(path)
     };
-    let normalized = repo_edit::canonicalize_lexically(&joined);
+    if let Ok(root_canonical) = root.canonicalize() {
+        if let Ok(path_canonical) = resolved.canonicalize() {
+            return path_canonical
+                .strip_prefix(&root_canonical)
+                .map(PathBuf::from)
+                .map_err(|_| outside_root_error(path, root));
+        }
+        if let Some(parent) = resolved.parent().filter(|parent| parent.exists()) {
+            let parent_canonical = parent.canonicalize().map_err(|error| {
+                CargoAllowError::new(format!(
+                    "failed to canonicalize {}: {error}",
+                    parent.display()
+                ))
+            })?;
+            let file_name = resolved.file_name().ok_or_else(|| {
+                CargoAllowError::new(format!(
+                    "mutation target {} has no file name",
+                    resolved.display()
+                ))
+            })?;
+            return parent_canonical
+                .strip_prefix(&root_canonical)
+                .map(|relative_parent| relative_parent.join(file_name))
+                .map_err(|_| outside_root_error(path, root));
+        }
+    }
+    let normalized = repo_edit::canonicalize_lexically(&resolved);
     let root_normalized = repo_edit::canonicalize_lexically(root);
-    normalized.strip_prefix(&root_normalized).map(PathBuf::from).map_err(|_| {
-        CargoAllowError::new(format!(
-            "{} is outside source tree {}",
-            path.display(),
-            root.display()
-        ))
-    })
+    normalized
+        .strip_prefix(&root_normalized)
+        .map(PathBuf::from)
+        .map_err(|_| outside_root_error(path, root))
+}
+
+fn outside_root_error(path: &Path, root: &Path) -> CargoAllowError {
+    CargoAllowError::new(format!(
+        "{} is outside source tree {}",
+        path.display(),
+        root.display()
+    ))
 }
 
 pub(crate) fn git_relative_config_path(
