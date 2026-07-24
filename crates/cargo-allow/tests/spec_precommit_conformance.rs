@@ -1,11 +1,8 @@
-//! Retained end-to-end evidence for the staged pre-commit gate (#2363).
+//! Retained end-to-end evidence for the staged pre-commit gate (#2363 / #2568).
 //!
-//! These fixtures deliberately use a small Git repository. They prove that
-//! the command consumes staged bytes and emits a bounded, current report, but
-//! they do not claim that a local pre-commit run is merge proof.
+//! Embedded evaluator removed; precommit requires cargo-intent delegation.
 
 use allow_diff::{StagedPathRead, read_staged_path, staged_repository_snapshot};
-use serde_json::Value;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -66,12 +63,7 @@ impl Drop for FixtureRepo {
     }
 }
 
-fn report_value(path: &Path) -> Result<Value, String> {
-    let text = fs::read_to_string(path).map_err(|error| error.to_string())?;
-    serde_json::from_str(&text).map_err(|error| error.to_string())
-}
-
-fn run_precommit(repo: &FixtureRepo, output: &Path, receipt: &Path) -> Result<Output, String> {
+fn run_precommit(repo: &FixtureRepo) -> Result<Output, String> {
     Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
         .args([
             "check",
@@ -87,20 +79,17 @@ fn run_precommit(repo: &FixtureRepo, output: &Path, receipt: &Path) -> Result<Ou
             "--format",
             "json",
             "--output",
-            output
+            repo.root
+                .join("target/precommit.json")
                 .to_str()
                 .ok_or_else(|| "non-UTF-8 output path".to_string())?,
-            "--receipt",
-            receipt
-                .to_str()
-                .ok_or_else(|| "non-UTF-8 receipt path".to_string())?,
         ])
         .output()
         .map_err(|error| error.to_string())
 }
 
 #[test]
-fn spec_precommit_conformance() -> Result<(), String> {
+fn staged_snapshot_reads_index_not_worktree() -> Result<(), String> {
     let repo = FixtureRepo::new("candidate")?;
     repo.write("README.md", "base\n")?;
     repo.git(&["add", "--all"])?;
@@ -124,41 +113,25 @@ fn spec_precommit_conformance() -> Result<(), String> {
     {
         return Err("unstaged path leaked into the candidate".to_string());
     }
+    Ok(())
+}
 
-    let output = repo.root.join("target/precommit.json");
-    let receipt = repo.root.join("target/precommit.receipt.json");
-    fs::create_dir_all(
-        output
-            .parent()
-            .ok_or_else(|| "missing output parent".to_string())?,
-    )
-    .map_err(|error| error.to_string())?;
-    let command = run_precommit(&repo, &output, &receipt)?;
+#[test]
+fn spec_precommit_requires_delegation() -> Result<(), String> {
+    let repo = FixtureRepo::new("requires-delegation")?;
+    repo.write("README.md", "base\n")?;
+    repo.git(&["add", "--all"])?;
+    repo.git(&["commit", "-qm", "base"])?;
+    repo.write("candidate.txt", "staged bytes\n")?;
+    repo.git(&["add", "--", "candidate.txt"])?;
+
+    let command = run_precommit(&repo)?;
     if command.status.success() {
-        return Err("unmapped staged surface unexpectedly passed".to_string());
+        return Err("precommit without delegation should fail".to_string());
     }
-    let report = report_value(&output)?;
-    let receipt_value = report_value(&receipt)?;
-    if report != receipt_value {
-        return Err("JSON output and receipt diverged".to_string());
-    }
-    if report.get("result_class").and_then(Value::as_str) != Some("FindingsBlocking") {
-        return Err("unmapped staged surface did not return FindingsBlocking".to_string());
-    }
-    if report.get("staged_identity_before") != report.get("staged_identity_after") {
-        return Err("candidate identity changed during a stable evaluation".to_string());
-    }
-    if report
-        .get("findings")
-        .and_then(Value::as_array)
-        .is_none_or(|findings| {
-            !findings.iter().any(|finding| {
-                finding.get("code").and_then(Value::as_str)
-                    == Some("precommit_unknown_staged_surface")
-            })
-        })
-    {
-        return Err("missing unknown staged-surface finding".to_string());
+    let stderr = String::from_utf8_lossy(&command.stderr);
+    if !stderr.contains("delegate_staged_precommit") {
+        return Err(format!("unexpected stderr: {stderr}"));
     }
     Ok(())
 }
@@ -175,28 +148,12 @@ fn spec_precommit_no_project_execution() -> Result<(), String> {
     )?;
     repo.git(&["add", "--", "tools/not-run.sh"])?;
 
-    let output = repo.root.join("target/precommit.json");
-    let receipt = repo.root.join("target/precommit.receipt.json");
-    fs::create_dir_all(
-        output
-            .parent()
-            .ok_or_else(|| "missing output parent".to_string())?,
-    )
-    .map_err(|error| error.to_string())?;
-    let command = run_precommit(&repo, &output, &receipt)?;
+    let command = run_precommit(&repo)?;
     if command.status.success() {
-        return Err("unmapped project script unexpectedly passed".to_string());
+        return Err("precommit without delegation should fail".to_string());
     }
     if repo.root.join("project-executed.marker").exists() {
         return Err("staged project script was executed".to_string());
-    }
-    let report = report_value(&output)?;
-    if report
-        .get("claim_boundary")
-        .and_then(Value::as_str)
-        .is_none_or(|boundary| !boundary.contains("no project execution"))
-    {
-        return Err("report omitted the no-project-execution claim boundary".to_string());
     }
     Ok(())
 }

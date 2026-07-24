@@ -1,16 +1,10 @@
 //! Bounded staged pre-commit command and receipt projection.
 //!
-//! The command owns orchestration only: Git/source identity capture, tool
-//! identity capture, the paired source compiler, and the pure policy evaluator
-//! remain separate seams. Human output and the machine receipt are projections
-//! of the same report value.
+//! The command owns orchestration and delegation only. Authoritative precommit
+//! evaluation is provided by cargo-intent via repo.analysis-receipt.v1 (#2601/#2568).
 
 use crate::check::CheckArgs;
-use crate::precommit_tool::{
-    CargoAllowToolIdentityV1, ToolCompatibilityRequirement, ToolResultClass, ToolSelectionMode,
-    ToolSelectionReceiptV1, ToolSelectionRequest, current_tool_identity, select_tool,
-    verify_tool_unchanged,
-};
+use crate::precommit_tool::CargoAllowToolIdentityV1;
 use crate::{
     OutputFormat, RootArgs, assert_path_within_root, emit_text, resolve_source_tree_root,
     root_relative_path, write_file,
@@ -20,9 +14,6 @@ use allow_diff::{
     StagedPathChange, StagedPathStatus, StagedRepositorySnapshot, StagedSnapshotCompleteness,
     staged_repository_snapshot,
 };
-use allow_inventory::InventoryCompleteness;
-use allow_policy::spec_system::{PrecommitFindingPosture, PrecommitObjectiveEvaluation};
-use allow_rust::RustTestInventoryStatus;
 use serde::Serialize;
 use std::env;
 use std::path::{Path, PathBuf};
@@ -30,7 +21,7 @@ use std::time::{Duration, Instant};
 
 pub const SPEC_PRECOMMIT_SCHEMA_ID: &str = "cargo-allow.spec-precommit.v1";
 pub const SPEC_PRECOMMIT_SCHEMA_VERSION: u32 = 1;
-const CLAIM_BOUNDARY: &str = "Exact staged source posture and bounded objective evidence; no project execution, runtime proof, hosted CI, hook installation, or release promotion.";
+const CLAIM_BOUNDARY: &str = "Exact staged source posture via cargo-intent delegation; no embedded evaluator, project execution, runtime proof, hosted CI, hook installation, or release promotion.";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "PascalCase")]
@@ -141,348 +132,36 @@ pub(crate) fn cmd_staged_identity(args: &CheckArgs) -> CargoAllowResult<()> {
 pub(crate) fn cmd_spec_precommit(args: &CheckArgs) -> CargoAllowResult<()> {
     let started = Instant::now();
     match crate::intent_delegate::try_delegate_staged_precommit(args, started)? {
+        crate::intent_delegate::DelegationDisposition::Handle(result) => result,
         crate::intent_delegate::DelegationDisposition::Disabled => {
             let root = resolve_root(&args.root)?;
             crate::intent_delegate::reject_embedded_precommit_authority(&root)?;
+            fail_precommit_without_delegation(args, &root, started)
         }
-        crate::intent_delegate::DelegationDisposition::Handle(result) => return result,
     }
-    let root = resolve_root(&args.root)?;
-    let snapshot_before = staged_repository_snapshot(&root)?;
-    validate_output_paths(
-        &root,
-        &snapshot_before,
-        args.output.as_deref(),
-        args.receipt.as_deref(),
-    )?;
+}
 
-    let identity = match current_tool_identity() {
-        Ok(identity) => identity,
-        Err(error) => {
-            return finish_failure(
-                args,
-                &snapshot_before,
-                None,
-                None,
-                FailureOutcome {
-                    result: SpecPrecommitResultClass::InstrumentFailure,
-                    exit_family: "instrument_failure",
-                    message: error.to_string(),
-                    duration_ms: started.elapsed().as_millis(),
-                },
-            );
-        }
-    };
-    let mode = args
-        .tool_mode
-        .unwrap_or(ToolSelectionMode::ExplicitToolUnderTest);
-    let preview_authorized = args.preview_authorized || args.tool_mode.is_none();
-    let expected_digest = args
-        .tool_digest
-        .clone()
-        .unwrap_or_else(|| identity.executable_digest.clone());
-    let selection_request = ToolSelectionRequest {
-        mode,
-        executable: current_executable()?,
-        expected_digest: Some(expected_digest),
-        expected_build_source_commit: None,
-        preview_authorized,
-    };
-    let selection = match select_tool(
-        &selection_request,
-        identity.clone(),
-        &ToolCompatibilityRequirement::current(),
-    ) {
-        Ok(selection) => selection,
-        Err(error) => {
-            let result = tool_failure_result(&error.result);
-            return finish_failure(
-                args,
-                &snapshot_before,
-                Some(identity),
-                Some(tool_summary_from_failure(mode, &error.result)),
-                FailureOutcome {
-                    result,
-                    exit_family: "instrument_failure",
-                    message: error.to_string(),
-                    duration_ms: started.elapsed().as_millis(),
-                },
-            );
-        }
-    };
-    let tool_summary = Some(tool_summary(&selection));
-
-    if let Some(expected) = args.expect_staged_identity.as_deref()
-        && expected != snapshot_before.identity.semantic_hash
-    {
-        return finish_failure(
-            args,
-            &snapshot_before,
-            Some(identity),
-            tool_summary,
-            FailureOutcome {
-                result: SpecPrecommitResultClass::StaleInput,
-                exit_family: "stale_input",
-                message: "the staged identity did not match --expect-staged-identity".to_string(),
-                duration_ms: started.elapsed().as_millis(),
-            },
-        );
-    }
-
-    if snapshot_before.changes.is_empty() {
-        if let Err(error) =
-            verify_tool_unchanged(&selection_request.executable, &selection.executable_digest)
-        {
-            return finish_failure(
-                args,
-                &snapshot_before,
-                Some(identity),
-                tool_summary,
-                FailureOutcome {
-                    result: SpecPrecommitResultClass::StaleInput,
-                    exit_family: "stale_input",
-                    message: error.to_string(),
-                    duration_ms: started.elapsed().as_millis(),
-                },
-            );
-        }
-        let report = SpecPrecommitReportV1 {
-            schema_id: SPEC_PRECOMMIT_SCHEMA_ID,
-            schema_version: SPEC_PRECOMMIT_SCHEMA_VERSION,
-            command: "check",
-            phase: "precommit",
-            profile: "spec-system",
-            tool_identity: Some(identity),
-            tool_selection: tool_summary,
-            parent_commit: snapshot_before.parent_commit.clone(),
-            parent_tree: None,
-            staged_identity_before: Some(snapshot_before.identity.semantic_hash.clone()),
-            staged_identity_after: Some(snapshot_before.identity.semantic_hash.clone()),
-            staged_changes: Vec::new(),
-            change_class: None,
-            findings: Vec::new(),
-            result_class: SpecPrecommitResultClass::NotApplicable,
-            process_exit_family: "success",
-            inventory_completeness: snapshot_completeness(snapshot_before.completeness),
-            source_view_identity: None,
-            tool_result_class: Some(format!("{:?}", selection.result)),
+fn fail_precommit_without_delegation(
+    args: &CheckArgs,
+    root: &Path,
+    started: Instant,
+) -> CargoAllowResult<()> {
+    let snapshot = staged_repository_snapshot(root)?;
+    finish_failure(
+        args,
+        &snapshot,
+        None,
+        None,
+        FailureOutcome {
+            result: SpecPrecommitResultClass::Unsupported,
+            exit_family: "provider_unavailable",
+            message: format!(
+                "staged precommit requires cargo-intent delegation; set delegate_staged_precommit = true in {}",
+                crate::intent_provider::DEFAULT_INTENT_DELEGATION_CONFIG
+            ),
             duration_ms: started.elapsed().as_millis(),
-            remaining_gates: vec!["no staged change was available for objective evaluation"],
-            error: None,
-            claim_boundary: CLAIM_BOUNDARY,
-        };
-        emit_report(args, &root, &report)?;
-        return Ok(());
-    }
-
-    if !staged_graph_inputs_changed(&snapshot_before) {
-        if let Err(error) =
-            verify_tool_unchanged(&selection_request.executable, &selection.executable_digest)
-        {
-            return finish_failure(
-                args,
-                &snapshot_before,
-                Some(identity),
-                tool_summary,
-                FailureOutcome {
-                    result: SpecPrecommitResultClass::StaleInput,
-                    exit_family: "stale_input",
-                    message: error.to_string(),
-                    duration_ms: started.elapsed().as_millis(),
-                },
-            );
-        }
-        let report = report_for_unmapped_staged_surface(
-            &snapshot_before,
-            identity,
-            tool_summary,
-            started.elapsed().as_millis(),
-        );
-        emit_report(args, &root, &report)?;
-        return Err(CargoAllowError::with_kind(
-            CargoAllowErrorKind::PolicyViolation,
-            "staged source changed outside the spec-system graph inputs",
-        ));
-    }
-
-    let paired = match crate::spec_system_workspace::compile_paired_self_hosted_graph(&root) {
-        Ok(paired) => paired,
-        Err(error) => {
-            let result = error_result_class(&error);
-            let exit_family = exit_family_for(result);
-            return finish_failure(
-                args,
-                &snapshot_before,
-                Some(identity),
-                tool_summary,
-                FailureOutcome {
-                    result,
-                    exit_family,
-                    message: error.to_string(),
-                    duration_ms: started.elapsed().as_millis(),
-                },
-            );
-        }
-    };
-
-    if let Err(error) =
-        verify_tool_unchanged(&selection_request.executable, &selection.executable_digest)
-    {
-        return finish_failure(
-            args,
-            &snapshot_before,
-            Some(identity),
-            tool_summary,
-            FailureOutcome {
-                result: SpecPrecommitResultClass::StaleInput,
-                exit_family: "stale_input",
-                message: error.to_string(),
-                duration_ms: started.elapsed().as_millis(),
-            },
-        );
-    }
-    let snapshot_after = staged_repository_snapshot(&root)?;
-    if snapshot_after.identity.semantic_hash != snapshot_before.identity.semantic_hash
-        || snapshot_after.identity.semantic_hash != paired.candidate_identity_after
-    {
-        return finish_failure(
-            args,
-            &snapshot_before,
-            Some(identity),
-            tool_summary,
-            FailureOutcome {
-                result: SpecPrecommitResultClass::StaleInput,
-                exit_family: "stale_input",
-                message: "the Git index changed during staged evaluation".to_string(),
-                duration_ms: started.elapsed().as_millis(),
-            },
-        );
-    }
-
-    let evaluation = crate::spec_system_workspace::evaluate_paired_precommit_objectives(
-        &paired,
-        &Default::default(),
-        false,
-    );
-    let result = result_class(&snapshot_before, &paired.candidate, &evaluation);
-    let report = report_from_evaluation(
-        &snapshot_before,
-        &paired,
-        &evaluation,
-        result,
-        identity,
-        selection,
-        started.elapsed().as_millis(),
-    );
-    emit_report(args, &root, &report)?;
-    if matches!(
-        report.result_class,
-        SpecPrecommitResultClass::Passed
-            | SpecPrecommitResultClass::FindingsAdvisory
-            | SpecPrecommitResultClass::NotApplicable
-    ) {
-        Ok(())
-    } else {
-        Err(CargoAllowError::with_kind(
-            CargoAllowErrorKind::PolicyViolation,
-            report
-                .error
-                .as_deref()
-                .unwrap_or("staged precommit posture is not green"),
-        ))
-    }
-}
-
-fn report_from_evaluation(
-    snapshot: &StagedRepositorySnapshot,
-    paired: &crate::spec_system_workspace::PairedSelfHostedGraphCompilation,
-    evaluation: &PrecommitObjectiveEvaluation,
-    result: SpecPrecommitResultClass,
-    identity: CargoAllowToolIdentityV1,
-    selection: ToolSelectionReceiptV1,
-    duration_ms: u128,
-) -> SpecPrecommitReportV1 {
-    let findings = evaluation
-        .findings
-        .iter()
-        .map(|finding| PrecommitFindingV1 {
-            code: finding.code.as_str().to_string(),
-            subject: finding.subject.clone(),
-            posture: match finding.posture {
-                PrecommitFindingPosture::Blocking => "blocking".to_string(),
-                PrecommitFindingPosture::Advisory => "advisory".to_string(),
-            },
-            message: finding.message.clone(),
-            action: finding.action.clone(),
-        })
-        .collect::<Vec<_>>();
-    SpecPrecommitReportV1 {
-        schema_id: SPEC_PRECOMMIT_SCHEMA_ID,
-        schema_version: SPEC_PRECOMMIT_SCHEMA_VERSION,
-        command: "check",
-        phase: "precommit",
-        profile: "spec-system",
-        tool_identity: Some(identity),
-        tool_selection: Some(tool_summary(&selection)),
-        parent_commit: Some(paired.parent_identity.commit.clone()),
-        parent_tree: Some(paired.parent_identity.tree.clone()),
-        staged_identity_before: Some(paired.candidate_identity_before.clone()),
-        staged_identity_after: Some(paired.candidate_identity_after.clone()),
-        staged_changes: snapshot.changes.iter().map(staged_change).collect(),
-        change_class: Some(evaluation.change_class.as_str().to_string()),
-        findings,
-        result_class: result,
-        process_exit_family: exit_family_for(result),
-        inventory_completeness: inventory_completeness(&paired.candidate),
-        source_view_identity: paired.candidate.source_identity.clone(),
-        tool_result_class: Some(format!("{:?}", selection.result)),
-        duration_ms,
-        remaining_gates: vec![
-            "focused tests and pre-push proof remain outside this command",
-            "full CI and independent review remain outside this command",
-        ],
-        error: None,
-        claim_boundary: CLAIM_BOUNDARY,
-    }
-}
-
-fn report_for_unmapped_staged_surface(
-    snapshot: &StagedRepositorySnapshot,
-    identity: CargoAllowToolIdentityV1,
-    selection: Option<ToolSelectionSummaryV1>,
-    duration_ms: u128,
-) -> SpecPrecommitReportV1 {
-    SpecPrecommitReportV1 {
-        schema_id: SPEC_PRECOMMIT_SCHEMA_ID,
-        schema_version: SPEC_PRECOMMIT_SCHEMA_VERSION,
-        command: "check",
-        phase: "precommit",
-        profile: "spec-system",
-        tool_identity: Some(identity),
-        tool_selection: selection,
-        parent_commit: snapshot.parent_commit.clone(),
-        parent_tree: None,
-        staged_identity_before: Some(snapshot.identity.semantic_hash.clone()),
-        staged_identity_after: Some(snapshot.identity.semantic_hash.clone()),
-        staged_changes: snapshot.changes.iter().map(staged_change).collect(),
-        change_class: Some("unknown_or_mixed".to_string()),
-        findings: vec![PrecommitFindingV1 {
-            code: "precommit_unknown_staged_surface".to_string(),
-            subject: "staged-candidate".to_string(),
-            posture: "blocking".to_string(),
-            message: "the staged candidate changed outside the self-hosted spec-system graph inputs".to_string(),
-            action: "declare and map the affected implementation slice, or stage the governing spec-system inputs before evaluation".to_string(),
-        }],
-        result_class: SpecPrecommitResultClass::FindingsBlocking,
-        process_exit_family: "blocking",
-        inventory_completeness: snapshot_completeness(snapshot.completeness),
-        source_view_identity: None,
-        tool_result_class: None,
-        duration_ms,
-        remaining_gates: vec!["the affected staged source has no graph-backed objective mapping"],
-        error: None,
-        claim_boundary: CLAIM_BOUNDARY,
-    }
+        },
+    )
 }
 
 struct FailureOutcome {
@@ -528,6 +207,7 @@ fn finish_failure(
     emit_report(args, &root, &report)?;
     let kind = match outcome.result {
         SpecPrecommitResultClass::MalformedInput => CargoAllowErrorKind::InvalidConfig,
+        SpecPrecommitResultClass::Unsupported => CargoAllowErrorKind::InvalidConfig,
         SpecPrecommitResultClass::StaleInput => CargoAllowErrorKind::Inventory,
         SpecPrecommitResultClass::FindingsBlocking => CargoAllowErrorKind::PolicyViolation,
         _ => CargoAllowErrorKind::Internal,
@@ -695,12 +375,6 @@ fn validate_output_paths(
     Ok(())
 }
 
-fn current_executable() -> CargoAllowResult<PathBuf> {
-    env::current_exe().map_err(|error| {
-        CargoAllowError::new(format!("failed to resolve current executable: {error}"))
-    })
-}
-
 fn staged_change(change: &StagedPathChange) -> StagedChangeV1 {
     StagedChangeV1 {
         status: staged_status(change.status).to_string(),
@@ -710,27 +384,6 @@ fn staged_change(change: &StagedPathChange) -> StagedChangeV1 {
             .as_ref()
             .map(|path| path.display().to_string()),
     }
-}
-
-fn staged_graph_inputs_changed(snapshot: &StagedRepositorySnapshot) -> bool {
-    const GRAPH_INPUTS: [&str; 4] = [
-        "docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md",
-        ".allow/spec-system/slices/self-hosted-runtime-promotion-v1.toml",
-        ".allow/spec-system/seams/runtime-promotion-validator-v1.toml",
-        ".allow/spec-system/evidence/runtime-promotion-v1.toml",
-    ];
-    snapshot.changes.iter().any(|change| {
-        change
-            .path
-            .as_deref()
-            .map(|path| GRAPH_INPUTS.iter().any(|input| Path::new(input) == path))
-            .unwrap_or(false)
-            || change
-                .previous_path
-                .as_deref()
-                .map(|path| GRAPH_INPUTS.iter().any(|input| Path::new(input) == path))
-                .unwrap_or(false)
-    })
 }
 
 fn staged_status(status: StagedPathStatus) -> &'static str {
@@ -753,89 +406,6 @@ fn snapshot_completeness(completeness: StagedSnapshotCompleteness) -> &'static s
     }
 }
 
-fn inventory_completeness(
-    candidate: &crate::spec_system_workspace::SelfHostedGraphCompilation,
-) -> &'static str {
-    if candidate.inventory.status == RustTestInventoryStatus::Partial {
-        return "partial";
-    }
-    match candidate.file_inventory.completeness {
-        InventoryCompleteness::Complete | InventoryCompleteness::Scoped => "complete",
-        InventoryCompleteness::Partial => "partial",
-        InventoryCompleteness::Fallback => "unsupported",
-    }
-}
-
-fn result_class(
-    snapshot: &StagedRepositorySnapshot,
-    candidate: &crate::spec_system_workspace::SelfHostedGraphCompilation,
-    evaluation: &PrecommitObjectiveEvaluation,
-) -> SpecPrecommitResultClass {
-    if snapshot.changes.is_empty() {
-        return SpecPrecommitResultClass::NotApplicable;
-    }
-    if snapshot.completeness == StagedSnapshotCompleteness::Partial
-        || candidate.inventory.status == RustTestInventoryStatus::Partial
-        || candidate.file_inventory.completeness == InventoryCompleteness::Partial
-    {
-        return SpecPrecommitResultClass::PartialData;
-    }
-    if evaluation
-        .findings
-        .iter()
-        .any(|finding| finding.posture == PrecommitFindingPosture::Blocking)
-    {
-        return SpecPrecommitResultClass::FindingsBlocking;
-    }
-    if evaluation
-        .findings
-        .iter()
-        .any(|finding| finding.posture == PrecommitFindingPosture::Advisory)
-    {
-        return SpecPrecommitResultClass::FindingsAdvisory;
-    }
-    SpecPrecommitResultClass::Passed
-}
-
-fn error_result_class(error: &CargoAllowError) -> SpecPrecommitResultClass {
-    if error.kind() == CargoAllowErrorKind::InvalidConfig
-        || error.kind() == CargoAllowErrorKind::InvalidPolicy
-    {
-        SpecPrecommitResultClass::MalformedInput
-    } else if error.kind() == CargoAllowErrorKind::Inventory
-        && error.to_string().to_ascii_lowercase().contains("changed")
-    {
-        SpecPrecommitResultClass::StaleInput
-    } else {
-        SpecPrecommitResultClass::InstrumentFailure
-    }
-}
-
-fn tool_failure_result(result: &ToolResultClass) -> SpecPrecommitResultClass {
-    match result {
-        ToolResultClass::ToolGenerationUnsupported
-        | ToolResultClass::CandidateSchemaUnsupported => SpecPrecommitResultClass::Unsupported,
-        ToolResultClass::ToolIdentityMismatch
-        | ToolResultClass::ToolChangedDuringRun
-        | ToolResultClass::ToolMissing => SpecPrecommitResultClass::StaleInput,
-        ToolResultClass::PreviewToolNotAuthorized | ToolResultClass::MalformedToolIdentity => {
-            SpecPrecommitResultClass::MalformedInput
-        }
-        ToolResultClass::ToolPrebuiltAndSelected => SpecPrecommitResultClass::Passed,
-    }
-}
-
-fn exit_family_for(result: SpecPrecommitResultClass) -> &'static str {
-    match result {
-        SpecPrecommitResultClass::Passed
-        | SpecPrecommitResultClass::FindingsAdvisory
-        | SpecPrecommitResultClass::NotApplicable => "success",
-        SpecPrecommitResultClass::FindingsBlocking => "blocking",
-        SpecPrecommitResultClass::MalformedInput => "usage",
-        _ => "instrument_failure",
-    }
-}
-
 fn static_exit_family(family: &str) -> &'static str {
     match family {
         "success" => "success",
@@ -843,29 +413,6 @@ fn static_exit_family(family: &str) -> &'static str {
         "advisory" => "advisory",
         "usage" => "usage",
         _ => "instrument_failure",
-    }
-}
-
-fn tool_summary(selection: &ToolSelectionReceiptV1) -> ToolSelectionSummaryV1 {
-    ToolSelectionSummaryV1 {
-        result: format!("{:?}", selection.result),
-        mode: format!("{:?}", selection.mode),
-        executable_digest: Some(selection.executable_digest.clone()),
-        channel: Some(format!("{:?}", selection.identity.channel)),
-        preview_evidence: selection.preview_evidence,
-    }
-}
-
-fn tool_summary_from_failure(
-    mode: ToolSelectionMode,
-    result: &ToolResultClass,
-) -> ToolSelectionSummaryV1 {
-    ToolSelectionSummaryV1 {
-        result: format!("{result:?}"),
-        mode: format!("{mode:?}"),
-        executable_digest: None,
-        channel: None,
-        preview_evidence: matches!(mode, ToolSelectionMode::ExplicitToolUnderTest),
     }
 }
 
@@ -931,12 +478,12 @@ pub(crate) fn complete_delegated_precommit(
     let remaining_gates = if outcome.unmapped_staged_surface {
         vec![
             "delegated via repo.analysis-receipt.v1",
-            "provider reported unmapped staged surface; embedded graph evaluation skipped",
+            "provider reported unmapped staged surface",
         ]
     } else {
         vec![
             "delegated via repo.analysis-receipt.v1",
-            "provider obligation skeleton only; embedded evaluator not invoked",
+            "provider obligation skeleton only; no embedded evaluator",
         ]
     };
     let report = SpecPrecommitReportV1 {
@@ -1131,15 +678,10 @@ mod tests {
         let _ = fs::remove_file(&output);
         let mut args = check_args(Some(output.clone()), None);
         args.expect_staged_identity = Some(snapshot.identity.semantic_hash);
-        let _ = cmd_spec_precommit(&args);
-        let report: serde_json::Value = serde_json::from_str(&fs::read_to_string(&output)?)?;
+        let result = cmd_spec_precommit(&args);
         let _ = fs::remove_file(&output);
-        if report
-            .get("staged_identity_before")
-            .and_then(serde_json::Value::as_str)
-            .is_none()
-        {
-            return Err("precommit report did not retain the staged identity handshake".into());
+        if result.is_ok() {
+            return Err("precommit without delegation should fail".into());
         }
         Ok(())
     }
