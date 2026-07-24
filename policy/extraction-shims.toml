@@ -327,3 +327,17 @@ latest_allowed_stage = 4
 removal_condition = "issue:#2606 intent-edit stage-4 cutover receipt"
 parity_case = "parity-intent-edit-repo-edit-translation-v1"
 claim_boundary = "Translate validated edit plans into repo-edit apply request DTOs only; apply execution remains caller-owned."
+
+[[shim]]
+id = "shim-intent-edit-recompile-contract"
+old_identity = "cargo-intent::intent_edit_recompile_unowned"
+new_identity = "intent-edit::recompile_contract"
+kind = "ModuleFacade"
+posture = "private"
+status = "planned"
+move_ledger_entry = "introduce-intent-edit-recompile-contract"
+controlling_issue = 2613
+latest_allowed_stage = 5
+removal_condition = "issue:#2606 intent-edit stage-5 cutover receipt"
+parity_case = "parity-intent-edit-recompile-contract-v1"
+claim_boundary = "Recompile obligation contract bound to intent-engine transport only; settlement lands in #2613-F."

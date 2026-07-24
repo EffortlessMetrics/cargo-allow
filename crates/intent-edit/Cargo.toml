@@ -15,6 +15,7 @@ publish = false
 [dependencies]
 repo-edit.workspace = true
 repo-protocol.workspace = true
+intent-engine.workspace = true
 serde = { workspace = true, features = ["derive"] }
 toml.workspace = true
 

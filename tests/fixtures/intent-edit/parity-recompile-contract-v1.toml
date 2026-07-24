@@ -1,0 +1,12 @@
+scenario_id = "parity-intent-edit-recompile-contract-v1"
+intent_edit_module = "intent-edit::recompile_contract"
+parity_case = "parity-intent-edit-recompile-contract-v1"
+move_ledger_entry = "introduce-intent-edit-recompile-contract"
+target_transport_schema_id = "intent.phase-obligation-plan.v1"
+required_obligation_fields = [
+  "obligation_id",
+  "phase",
+  "kind",
+  "statement",
+  "action_id",
+]

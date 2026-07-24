@@ -20,9 +20,12 @@ use crate::parity::{
     approval_currentness_parity_contract_paths, dialect_adapter_parity_contract_paths,
     edit_plan_parity_contract_paths, load_approval_currentness_parity_contract,
     load_dialect_adapter_parity_contract, load_edit_plan_parity_contract,
-    load_repo_edit_translation_parity_contract, parity_contract_paths,
+    load_recompile_contract_parity_contract, load_repo_edit_translation_parity_contract,
+    parity_contract_paths, recompile_contract_parity_contract_paths,
     repo_edit_translation_parity_contract_paths,
 };
+use crate::recompile_contract::{compile_recompile_contract, validate_recompile_contract};
+use crate::recompile_contract_surface::RecompileContractSurface;
 use crate::repo_edit_translation::{RepoEditTranslationError, translate_plan_to_repo_edit};
 use crate::repo_edit_translation_surface::RepoEditTranslationSurface;
 
@@ -399,6 +402,63 @@ fn translate_plan_to_repo_edit_rejects_delete_file() -> Result<(), String> {
         Err(RepoEditTranslationError::UnsupportedActionKind { .. }) => Ok(()),
         other => Err(format!("expected unsupported_action_kind, got {other:?}")),
     }
+}
+
+#[test]
+fn recompile_contract_surface_matches_parity_contract() -> Result<(), String> {
+    let root = workspace_root();
+    let contract_path = recompile_contract_parity_contract_paths(&root)
+        .into_iter()
+        .next()
+        .ok_or_else(|| "missing recompile contract parity fixture path".to_string())?;
+    let contract = load_recompile_contract_parity_contract(&contract_path)?;
+    if contract.intent_edit_module != RecompileContractSurface::MODULE_ID {
+        return Err(format!(
+            "surface marker {} does not match contract {}",
+            RecompileContractSurface::MODULE_ID,
+            contract.intent_edit_module
+        ));
+    }
+    if contract.target_transport_schema_id != intent_engine::PHASE_OBLIGATION_PLAN_SCHEMA_ID {
+        return Err("fixture transport schema drifted from intent-engine".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn compile_recompile_contract_emits_phase_obligation_plan() -> Result<(), String> {
+    let selector = "policy/allow.toml";
+    let action_id = stable_action_id(IntentEditActionKindV1::ReplaceFile, selector)
+        .map_err(|err| err.as_str())?;
+    let plan = IntentEditPlanV1::new(
+        "plan-recompile",
+        vec![IntentEditActionV1 {
+            action_id: action_id.clone(),
+            kind: IntentEditActionKindV1::ReplaceFile,
+            resolution: IntentEditTargetResolutionV1::FindExisting {
+                selector: selector.to_string(),
+            },
+        }],
+    );
+    let approval = IntentEditApprovalCurrentnessV1::new(
+        "plan-recompile",
+        IntentEditApprovalStateV1::Approved,
+        repo_protocol::CurrentnessV1::Current,
+        "sha256:v1:abc",
+    );
+    let translation =
+        translate_plan_to_repo_edit(&plan, &approval, IntentEditDialectV1::CargoAllowPolicy)
+            .map_err(|err| err.as_str())?;
+    let contract = compile_recompile_contract(&translation);
+    validate_recompile_contract(&translation, &contract).map_err(|err| err.as_str())?;
+    let obligation_plan = contract.to_phase_obligation_plan();
+    if obligation_plan.schema_id != intent_engine::PHASE_OBLIGATION_PLAN_SCHEMA_ID {
+        return Err("phase obligation plan schema drifted".to_string());
+    }
+    if obligation_plan.obligations.is_empty() {
+        return Err("expected recompile obligations for policy edit".to_string());
+    }
+    Ok(())
 }
 
 fn manifest_lists_dependency(manifest_text: &str, crate_name: &str) -> bool {

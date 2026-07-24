@@ -17,6 +17,7 @@ Parity fixtures live under `tests/fixtures/intent-edit/`.
 - `intent-edit::dialect_adapter` — dialect selector normalization (#2613-C)
 - `intent-edit::approval_currentness` — approval/currentness envelope and fail-closed validation (#2613-C)
 - `intent-edit::repo_edit_translation` — translate validated plans into repo-edit apply request DTOs (#2613-D)
+- `intent-edit::recompile_contract` — recompile obligations bound to intent-engine phase-obligation transport (#2613-E)
 
 ## Allowed upstream dependencies
 
