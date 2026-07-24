@@ -1,0 +1,5 @@
+kind: Added
+body: >-
+  CI: add a coverage job running cargo-tarpaulin on Linux and uploading
+  results to Codecov. Kept separate from the main test job so coverage
+  instrumentation doesn't slow down PR feedback. Child of #1786.

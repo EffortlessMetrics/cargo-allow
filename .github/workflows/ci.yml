@@ -168,6 +168,27 @@ jobs:
       - name: Full workspace test suite
         run: cargo test --workspace --locked
 
+  # Test coverage reporting (#1902). Runs cargo-tarpaulin on Linux and
+  # uploads coverage to Codecov. Kept separate from the main test job so
+  # coverage instrumentation doesn't slow down PR feedback.
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@42dc69e1aa15d09112580998cf2ef0119e2e91ae # v2
+        with:
+          key: coverage
+      - name: Generate coverage report
+        run: |
+          cargo install cargo-tarpaulin
+          cargo tarpaulin --workspace --locked --out xml --output-dir target/cargo-allow
+      - uses: codecov/codecov-action@4650159d642e33fdc30954ca22638caf0df6cac8 # v5.4.3
+        if: always()
+        with:
+          files: target/cargo-allow/cobertura.xml
+          fail_ci_if_error: false
+
   # Supply-chain audit via cargo-deny (#1897). Checks for known advisories,
   # disallowed licenses, banned crates, and untrusted source registries.
   # cargo-allow is a governance tool — it should enforce its own supply chain.
