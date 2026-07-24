@@ -135,6 +135,8 @@ mod artifact_schema_worklist_tests;
 #[cfg(test)]
 mod artifact_top_level_contract_tests;
 #[cfg(test)]
+mod cargo_proof_parity_tests;
+#[cfg(test)]
 mod compat_companion_tests;
 #[cfg(test)]
 mod compat_dependency_tests;

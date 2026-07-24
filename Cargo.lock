@@ -206,6 +206,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "cargo-proof"
+version = "0.2.0"
+dependencies = [
+ "clap",
+ "proof-engine",
+ "proof-protocol",
+ "proof-provider-api",
+ "serde",
+ "serde_json",
+ "toml",
+]
+
+[[package]]
 name = "cc"
 version = "1.2.64"
 source = "registry+https://github.com/rust-lang/crates.io-index"

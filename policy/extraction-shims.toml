@@ -245,6 +245,20 @@ parity_case = "parity-proof-engine-boundary-v1"
 claim_boundary = "Engine orchestration scaffold only; cargo-proof CLI lands in follow-on packets."
 
 [[shim]]
+id = "shim-cargo-proof-crate-scaffold"
+old_identity = "cargo-proof::cargo_proof_unowned"
+new_identity = "cargo-proof::identity"
+kind = "ModuleFacade"
+posture = "private"
+status = "planned"
+move_ledger_entry = "introduce-cargo-proof-crate"
+controlling_issue = 2589
+latest_allowed_stage = 1
+removal_condition = "issue:#2606 cargo-proof stage-1 cutover receipt"
+parity_case = "parity-cargo-proof-product-identity-v1"
+claim_boundary = "Product shell with identity, render, exit mapping, and plan/dry-run wiring only."
+
+[[shim]]
 id = "shim-cargo-allow-mutation-lock"
 old_identity = "cargo-allow::mutation_lock"
 new_identity = "repo-edit::mutation_lock"

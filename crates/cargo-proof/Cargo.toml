@@ -1,0 +1,33 @@
+[package]
+name = "cargo-proof"
+description = "Exact-snapshot evidence orchestration shell for Rust repositories."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords.workspace = true
+categories.workspace = true
+publish = false
+
+[lib]
+name = "cargo_proof"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cargo-proof"
+path = "src/main.rs"
+
+[dependencies]
+clap.workspace = true
+proof-engine.workspace = true
+proof-protocol.workspace = true
+proof-provider-api.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+toml.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

@@ -455,6 +455,28 @@ disposition = "contract_only"
 claim_boundary = "Engine orchestration scaffold only; cargo-proof CLI lands in follow-on packets."
 
 [[case]]
+id = "parity-cargo-proof-product-identity-v1"
+stage = "ProofEngineAndCli"
+move_ledger_entry = "introduce-cargo-proof-crate"
+shim_id = "shim-cargo-proof-crate-scaffold"
+old_producer = "cargo-proof::cargo_proof_unowned"
+new_producer = "cargo-proof::identity"
+expected_result = "IntentionalDifferenceAccepted"
+disposition = "contract_only"
+claim_boundary = "Product identity shell only; process execution remains proof-engine owned."
+
+[[case]]
+id = "parity-cargo-proof-install-smoke-v1"
+stage = "ProofEngineAndCli"
+move_ledger_entry = "introduce-cargo-proof-crate"
+shim_id = "shim-cargo-proof-crate-scaffold"
+old_producer = "cargo-proof package smoke"
+new_producer = "cargo-proof::install_smoke"
+expected_result = "IntentionalDifferenceAccepted"
+disposition = "contract_only"
+claim_boundary = "Isolated six-crate package/install smoke; no process execution; no workspace target/debug binary."
+
+[[case]]
 id = "parity-intent-edit-boundary-v1"
 stage = "IntentEdit"
 move_ledger_entry = "introduce-intent-edit-crate"

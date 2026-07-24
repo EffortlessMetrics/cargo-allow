@@ -1,0 +1,15 @@
+# Six-crate ProofCandidate package / install set (#2589-B).
+# Shared by proof-candidate smoke and extraction parity receipts.
+
+schema_id = "cargo-allow.proof-candidate-crate-set.v1"
+schema_version = 1
+
+# Dependency / package order (leaf → binary).
+crates = [
+  "repo-protocol",
+  "proof-protocol",
+  "proof-provider-api",
+  "proof-adapter-command",
+  "proof-engine",
+  "cargo-proof",
+]

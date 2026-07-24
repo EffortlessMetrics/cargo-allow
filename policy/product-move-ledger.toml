@@ -586,3 +586,18 @@ claim_boundary = "Engine orchestration contracts only; process execution and car
 parity_fixture = "tests/fixtures/proof-engine/parity-boundary-v1.toml"
 removal_condition = "issue:#2606 proof-engine stage-1 cutover receipt"
 controlling_issue = 2589
+
+[[entry]]
+id = "introduce-cargo-proof-crate"
+current_identity = "crates/cargo-proof/src/lib.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-proof"
+current_owner_crate = "cargo-proof"
+target_owner_product = "cargo-proof"
+target_owner_crate = "cargo-proof"
+disposition = "MoveToCargoProofApp"
+status = "current"
+claim_boundary = "Product shell with identity, render, exit mapping, and proof-engine plan/dry-run wiring only; process execution lands in follow-on packets."
+parity_fixture = "tests/fixtures/cargo-proof/product-identity-v1.toml"
+removal_condition = "issue:#2606 cargo-proof stage-1 cutover receipt"
+controlling_issue = 2589

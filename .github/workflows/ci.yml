@@ -79,6 +79,14 @@ jobs:
           name: intent-candidate-smoke-receipt
           path: target/intent-candidate-smoke/intent-candidate-smoke.receipt.json
           if-no-files-found: warn
+      - name: Proof candidate install smoke (#2589-B)
+        run: bash scripts/proof-candidate-smoke.sh
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: proof-candidate-smoke-receipt
+          path: target/proof-candidate-smoke/proof-candidate-smoke.receipt.json
+          if-no-files-found: warn
   # Hosted characterization for #2366 / #2355: shallow missing-base fails closed,
   # then the same diff succeeds after history is available. Linux-only; keeps PR
   # CI cheap relative to a full matrix.
@@ -114,6 +122,8 @@ jobs:
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Build cargo-intent for staged precommit delegation e2e (#2601-B)
         run: cargo build -p cargo-intent --locked
+      - name: Build cargo-proof for proof CLI smoke (#2589-B)
+        run: cargo build -p cargo-proof --locked
       - name: Verify cargo-allow proof classes are non-empty
         shell: bash
         run: |

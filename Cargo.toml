@@ -24,6 +24,7 @@ members = [
   "crates/proof-provider-api",
   "crates/proof-adapter-command",
   "crates/proof-engine",
+  "crates/cargo-proof",
 ]
 
 [workspace.package]
@@ -60,6 +61,7 @@ proof-protocol = { path = "crates/proof-protocol", version = "0.2.0" }
 proof-provider-api = { path = "crates/proof-provider-api", version = "0.2.0" }
 proof-adapter-command = { path = "crates/proof-adapter-command", version = "0.2.0" }
 proof-engine = { path = "crates/proof-engine", version = "0.2.0" }
+cargo-proof = { path = "crates/cargo-proof", version = "0.2.0" }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
 sha2 = "0.10.9"
