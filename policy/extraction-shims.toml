@@ -229,3 +229,17 @@ latest_allowed_stage = 8
 removal_condition = "issue:#2606 stage-8 cutover receipt"
 parity_case = "parity-repo-edit-add-command-v1"
 claim_boundary = "add and add-from-plan policy writes forward through repo-edit apply modes."
+
+[[shim]]
+id = "shim-cargo-allow-migrate-apply"
+old_identity = "cargo-allow::migrate"
+new_identity = "repo-edit::single_target_apply"
+kind = "ModuleFacade"
+posture = "private"
+status = "active"
+move_ledger_entry = "migrate-cargo-allow-migrate-command"
+controlling_issue = 2602
+latest_allowed_stage = 9
+removal_condition = "issue:#2606 stage-9 cutover receipt"
+parity_case = "parity-repo-edit-migrate-command-v1"
+claim_boundary = "migrate policy writes forward through repo-edit apply modes; --out is repository-contained."

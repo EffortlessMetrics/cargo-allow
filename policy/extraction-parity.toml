@@ -114,6 +114,17 @@ disposition = "contract_only"
 claim_boundary = "add and add-from-plan policy writes forward through repo-edit apply modes."
 
 [[case]]
+id = "parity-repo-edit-migrate-command-v1"
+stage = "RepoEdit"
+move_ledger_entry = "migrate-cargo-allow-migrate-command"
+shim_id = "shim-cargo-allow-migrate-apply"
+old_producer = "cargo-allow::migrate"
+new_producer = "repo-edit::single_target_apply"
+expected_result = "SemanticallyEquivalent"
+disposition = "contract_only"
+claim_boundary = "migrate --update/--out policy writes forward through repo-edit apply modes; --out is repository-contained."
+
+[[case]]
 id = "parity-repo-snapshot-revision-identity-v1"
 stage = "RepoSnapshot"
 move_ledger_entry = "move-allow-diff-revision-identity"

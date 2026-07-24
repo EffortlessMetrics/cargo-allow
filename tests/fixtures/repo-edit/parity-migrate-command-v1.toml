@@ -1,0 +1,10 @@
+scenario_id = "parity-repo-edit-migrate-command-v1"
+cargo_allow_module = "cargo-allow::migrate"
+repo_edit_module = "repo-edit::single_target_apply"
+parity_case = "parity-repo-edit-migrate-command-v1"
+move_ledger_entry = "migrate-cargo-allow-migrate-command"
+required_behaviors = [
+  "migrate_update_uses_atomic_replace",
+  "migrate_out_uses_create_new_or_backup_mode",
+  "containment_checked_before_write",
+]
