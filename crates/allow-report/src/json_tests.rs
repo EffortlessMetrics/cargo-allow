@@ -136,6 +136,9 @@ fn json_report_matches_empty_audit_golden_contract() {
     "evidence_missing": 0,
     "baseline_debt": 0
   }},
+  "evidence_repair_queues": [
+
+  ],
   "outcomes": [
 
   ],
@@ -346,7 +349,9 @@ fn json_check_report_omits_audit_remediation_roadmap() {
 }
 
 #[test]
-fn json_report_omits_evidence_repair_queues_when_clean() {
+fn json_report_always_includes_evidence_repair_queues_even_when_clean() {
+    // #1858: evidence_repair_queues is always present (empty array when clean)
+    // for consistent empty-handling across artifacts.
     let json = render_json_with_context(
         "audit",
         &[],
@@ -355,7 +360,10 @@ fn json_report_omits_evidence_repair_queues_when_clean() {
         ReportContext::source_syntax("git_tracked", None, None, None),
     );
 
-    assert!(!json.contains("\"evidence_repair_queues\""));
+    assert!(
+        json.contains("\"evidence_repair_queues\":"),
+        "json report should always include evidence_repair_queues (empty when clean): {json}"
+    );
 }
 
 #[test]

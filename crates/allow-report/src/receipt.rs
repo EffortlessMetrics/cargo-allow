@@ -130,13 +130,13 @@ fn render_receipt_value(input: ReceiptRenderInput<'_>) -> String {
     artifact.insert("counts".to_string(), counts_value(summary, context));
     artifact.insert("advisory".to_string(), advisory_value(summary, context));
 
+    // #1858: always emit evidence_repair_queues (even when empty) for
+    // consistent empty-handling across artifacts.
     let queues = evidence_repair_queues_from_context(summary, context);
-    if !queues.is_empty() {
-        artifact.insert(
-            "evidence_repair_queues".to_string(),
-            Value::Array(queues.into_iter().map(queue_value).collect()),
-        );
-    }
+    artifact.insert(
+        "evidence_repair_queues".to_string(),
+        Value::Array(queues.into_iter().map(queue_value).collect()),
+    );
 
     if let Some(source_inventory) =
         findings.and_then(|findings| render_source_inventory_value(findings, outcomes))
