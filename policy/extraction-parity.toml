@@ -410,6 +410,17 @@ expected_result = "EquivalentWithCanonicalRenaming"
 disposition = "contract_only"
 claim_boundary = "Approval/currentness envelope and fail-closed validation only."
 
+[[case]]
+id = "parity-intent-edit-repo-edit-translation-v1"
+stage = "IntentEdit"
+move_ledger_entry = "introduce-intent-edit-repo-edit-translation"
+shim_id = "shim-intent-edit-repo-edit-translation"
+old_producer = "cargo-intent::intent_edit_translation_unowned"
+new_producer = "intent-edit::repo_edit_translation"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Translate validated edit plans into repo-edit apply request DTOs only."
+
 [[stage_receipt]]
 stage = "ArchitectureInventory"
 required_fields = [

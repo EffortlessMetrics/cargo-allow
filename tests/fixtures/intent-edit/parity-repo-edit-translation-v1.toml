@@ -1,0 +1,14 @@
+scenario_id = "parity-intent-edit-repo-edit-translation-v1"
+intent_edit_module = "intent-edit::repo_edit_translation"
+parity_case = "parity-intent-edit-repo-edit-translation-v1"
+move_ledger_entry = "introduce-intent-edit-repo-edit-translation"
+required_request_fields = [
+  "action_id",
+  "target",
+  "mode",
+  "caller_reference",
+]
+supported_apply_modes = [
+  "atomic_replace",
+  "create_new_only",
+]

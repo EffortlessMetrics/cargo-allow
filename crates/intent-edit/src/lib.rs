@@ -15,6 +15,8 @@ mod dialect_adapter_surface;
 mod edit_plan;
 mod edit_plan_surface;
 mod parity;
+mod repo_edit_translation;
+mod repo_edit_translation_surface;
 
 #[cfg(test)]
 mod tests;
@@ -40,9 +42,16 @@ pub use edit_plan::{
 pub use edit_plan_surface::EditPlanSurface;
 pub use parity::{
     ApprovalCurrentnessParityContract, DialectAdapterParityContract, EditPlanParityContract,
-    approval_currentness_parity_contract_path, approval_currentness_parity_contract_paths,
-    dialect_adapter_parity_contract_path, dialect_adapter_parity_contract_paths,
-    edit_plan_parity_contract_path, edit_plan_parity_contract_paths,
-    load_approval_currentness_parity_contract, load_dialect_adapter_parity_contract,
-    load_edit_plan_parity_contract, parity_contract_path, parity_contract_paths,
+    RepoEditTranslationParityContract, approval_currentness_parity_contract_path,
+    approval_currentness_parity_contract_paths, dialect_adapter_parity_contract_path,
+    dialect_adapter_parity_contract_paths, edit_plan_parity_contract_path,
+    edit_plan_parity_contract_paths, load_approval_currentness_parity_contract,
+    load_dialect_adapter_parity_contract, load_edit_plan_parity_contract,
+    load_repo_edit_translation_parity_contract, parity_contract_path, parity_contract_paths,
+    repo_edit_translation_parity_contract_path, repo_edit_translation_parity_contract_paths,
 };
+pub use repo_edit_translation::{
+    INTENT_EDIT_REPO_EDIT_TRANSLATION_SCHEMA_ID, RepoEditTranslationError,
+    RepoEditTranslationPlanV1, RepoEditTranslationRequestV1, translate_plan_to_repo_edit,
+};
+pub use repo_edit_translation_surface::RepoEditTranslationSurface;

@@ -19,8 +19,12 @@ use crate::edit_plan_surface::EditPlanSurface;
 use crate::parity::{
     approval_currentness_parity_contract_paths, dialect_adapter_parity_contract_paths,
     edit_plan_parity_contract_paths, load_approval_currentness_parity_contract,
-    load_dialect_adapter_parity_contract, load_edit_plan_parity_contract, parity_contract_paths,
+    load_dialect_adapter_parity_contract, load_edit_plan_parity_contract,
+    load_repo_edit_translation_parity_contract, parity_contract_paths,
+    repo_edit_translation_parity_contract_paths,
 };
+use crate::repo_edit_translation::{RepoEditTranslationError, translate_plan_to_repo_edit};
+use crate::repo_edit_translation_surface::RepoEditTranslationSurface;
 
 #[test]
 fn intent_engine_surface_matches_topology_marker() -> Result<(), String> {
@@ -308,6 +312,93 @@ fn validate_approval_currentness_accepts_approved_current() -> Result<(), String
         "sha256:v1:deadbeef",
     );
     validate_approval_currentness(&envelope).map_err(|err| err.as_str().to_string())
+}
+
+#[test]
+fn repo_edit_translation_surface_matches_parity_contract() -> Result<(), String> {
+    let root = workspace_root();
+    let contract_path = repo_edit_translation_parity_contract_paths(&root)
+        .into_iter()
+        .next()
+        .ok_or_else(|| "missing repo-edit translation parity fixture path".to_string())?;
+    let contract = load_repo_edit_translation_parity_contract(&contract_path)?;
+    if contract.intent_edit_module != RepoEditTranslationSurface::MODULE_ID {
+        return Err(format!(
+            "surface marker {} does not match contract {}",
+            RepoEditTranslationSurface::MODULE_ID,
+            contract.intent_edit_module
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn translate_plan_to_repo_edit_maps_replace_file() -> Result<(), String> {
+    let selector = "policy/allow.toml";
+    let action_id = stable_action_id(IntentEditActionKindV1::ReplaceFile, selector)
+        .map_err(|err| err.as_str())?;
+    let plan = IntentEditPlanV1::new(
+        "plan-translate",
+        vec![IntentEditActionV1 {
+            action_id: action_id.clone(),
+            kind: IntentEditActionKindV1::ReplaceFile,
+            resolution: IntentEditTargetResolutionV1::FindExisting {
+                selector: selector.to_string(),
+            },
+        }],
+    );
+    let approval = IntentEditApprovalCurrentnessV1::new(
+        "plan-translate",
+        IntentEditApprovalStateV1::Approved,
+        repo_protocol::CurrentnessV1::Current,
+        "sha256:v1:abc",
+    );
+    let translation =
+        translate_plan_to_repo_edit(&plan, &approval, IntentEditDialectV1::CargoAllowPolicy)
+            .map_err(|err| err.as_str())?;
+    let Some(request) = translation.requests.first() else {
+        return Err("expected one translated request".to_string());
+    };
+    if translation.requests.len() != 1 {
+        return Err("expected exactly one translated request".to_string());
+    }
+    if request.target != "policy/allow.toml" {
+        return Err(format!("unexpected target {}", request.target));
+    }
+    if request.mode != repo_edit::SingleTargetApplyMode::AtomicReplace {
+        return Err("expected atomic replace mode".to_string());
+    }
+    if request.caller_reference != action_id {
+        return Err("caller reference should preserve action id".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn translate_plan_to_repo_edit_rejects_delete_file() -> Result<(), String> {
+    let selector = "policy/allow.toml";
+    let action_id = stable_action_id(IntentEditActionKindV1::DeleteFile, selector)
+        .map_err(|err| err.as_str())?;
+    let plan = IntentEditPlanV1::new(
+        "plan-delete",
+        vec![IntentEditActionV1 {
+            action_id,
+            kind: IntentEditActionKindV1::DeleteFile,
+            resolution: IntentEditTargetResolutionV1::FindExisting {
+                selector: selector.to_string(),
+            },
+        }],
+    );
+    let approval = IntentEditApprovalCurrentnessV1::new(
+        "plan-delete",
+        IntentEditApprovalStateV1::Approved,
+        repo_protocol::CurrentnessV1::Current,
+        "sha256:v1:abc",
+    );
+    match translate_plan_to_repo_edit(&plan, &approval, IntentEditDialectV1::CargoAllowPolicy) {
+        Err(RepoEditTranslationError::UnsupportedActionKind { .. }) => Ok(()),
+        other => Err(format!("expected unsupported_action_kind, got {other:?}")),
+    }
 }
 
 fn manifest_lists_dependency(manifest_text: &str, crate_name: &str) -> bool {

@@ -23,6 +23,8 @@ Packet 2613-A lands crate scaffold, boundary documentation, parity/ledger regist
 - `intent-edit::dialect_adapter` — dialect selector normalization
 - `intent-edit::approval_currentness` — approval/currentness envelope and fail-closed validation
 
-## Packet 2613-D+
+## Packet 2613-D
 
-- plan/find-before-create, stable action IDs, dialect adapters, approval/currentness, translate to repo-edit, recompile, settlement
+- `intent-edit::repo_edit_translation` — translate validated plans into repo-edit apply request DTOs
+
+## Packet 2613-E+
