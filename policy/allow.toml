@@ -8252,6 +8252,27 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9109"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/repo-edit/parity-atomic-write-v1.toml"
+owner = "repo-infra"
+classification = "repo_edit_parity_fixture"
+reason = "Atomic write parity contract (#2602-B)."
+evidence = ["test:repo_edit_parity_fixtures_registered", "issue:2602", "doc:policy/extraction-parity.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "tests/fixtures/repo-edit/parity-atomic-write-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9108"
 kind = "non_rust_file"
 family = "test_fixture"

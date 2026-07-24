@@ -96,8 +96,8 @@ fn write_file_reports_parent_creation_errors() -> Result<(), Box<dyn std::error:
     let file_parent = root.path().join("not-a-directory");
     fs::write(&file_parent, "already a file")?;
     let output = file_parent.join("report.txt");
-    let source_error = fs::create_dir_all(&file_parent)
-        .expect_err("creating a directory over a file should fail");
+    let source_error =
+        fs::create_dir_all(&file_parent).expect_err("creating a directory over a file should fail");
 
     let err = write_file(&output, "contents").expect_err("parent creation should fail");
     let message = err.to_string();
@@ -160,7 +160,10 @@ fn write_file_recoverable_after_stale_temp_from_prior_crash()
     write_file(&target, "the real content")?;
 
     assert_eq!(fs::read_to_string(&target)?, "the real content");
-    assert!(tmp.exists(), "an abandoned temp must not be removed blindly");
+    assert!(
+        tmp.exists(),
+        "an abandoned temp must not be removed blindly"
+    );
     Ok(())
 }
 
