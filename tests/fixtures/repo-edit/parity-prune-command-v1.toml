@@ -1,0 +1,10 @@
+scenario_id = "parity-repo-edit-prune-command-v1"
+cargo_allow_module = "cargo-allow::prune"
+repo_edit_module = "repo-edit::single_target_apply"
+parity_case = "parity-repo-edit-prune-command-v1"
+move_ledger_entry = "migrate-cargo-allow-prune-command"
+required_behaviors = [
+  "prune_uses_single_target_apply",
+  "containment_checked_before_write",
+  "mutation_lock_acquired_for_write",
+]
