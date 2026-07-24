@@ -1,0 +1,11 @@
+scenario_id = "parity-repo-edit-atomic-write-v1"
+cargo_allow_module = "cargo-allow::io"
+repo_edit_module = "repo-edit::atomic_write"
+parity_case = "parity-repo-edit-atomic-write-v1"
+move_ledger_entry = "move-cargo-allow-atomic-write"
+required_behaviors = [
+  "temp_write_rename_install",
+  "create_new_no_overwrite",
+  "force_backup_and_replace",
+  "stale_temp_recovery",
+]

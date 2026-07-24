@@ -6,10 +6,13 @@
 //! does not invoke Cargo, compile code, execute repository artifacts, or decide
 //! ledger or intent semantics.
 
+mod atomic_write;
 mod containment;
 mod mutation_lock;
 mod parity;
 mod target_identity;
+
+pub use atomic_write::{write_file, write_file_no_overwrite};
 
 pub use containment::assert_path_within_root;
 pub use containment::strip_verbatim_prefix;

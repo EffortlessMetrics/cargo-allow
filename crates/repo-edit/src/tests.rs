@@ -4,8 +4,9 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
+use crate::atomic_write::sibling_tmp_path;
 use crate::mutation_lock::{MutationLock, lock_path};
-use crate::{assert_path_within_root, canonicalize_lexically};
+use crate::{assert_path_within_root, canonicalize_lexically, write_file, write_file_no_overwrite};
 
 #[test]
 fn alias_convergent_paths_acquire_the_same_lock() {
@@ -84,6 +85,82 @@ fn rejects_parent_escape_outside_root() -> Result<(), Box<dyn std::error::Error>
     if assert_path_within_root(root.path(), Path::new("../outside.txt")).is_ok() {
         return Err("parent escape should fail".into());
     }
+    Ok(())
+}
+
+#[test]
+fn write_file_reports_parent_creation_errors() -> Result<(), Box<dyn std::error::Error>> {
+    use allow_core::CargoAllowError;
+
+    let root = TempRoot::new("write-parent-error")?;
+    let file_parent = root.path().join("not-a-directory");
+    fs::write(&file_parent, "already a file")?;
+    let output = file_parent.join("report.txt");
+    let source_error = fs::create_dir_all(&file_parent)
+        .expect_err("creating a directory over a file should fail");
+
+    let err = write_file(&output, "contents").expect_err("parent creation should fail");
+    let message = err.to_string();
+
+    assert!(message.contains("failed to create"));
+    assert!(message.contains(&file_parent.display().to_string()));
+    assert_eq!(
+        err,
+        CargoAllowError::new(format!(
+            "failed to create {}: {}",
+            file_parent.display(),
+            source_error
+        ))
+    );
+    Ok(())
+}
+
+#[test]
+fn write_file_no_overwrite_rejects_existing_path_without_force()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = TempRoot::new("no-overwrite")?;
+    let output = root.path().join("policy/allow.toml");
+    write_file(&output, "original")?;
+
+    let err = write_file_no_overwrite(&output, "replacement", false)
+        .expect_err("existing file should require force");
+
+    assert!(err.to_string().contains("already exists"));
+    assert_eq!(fs::read_to_string(&output)?, "original");
+    Ok(())
+}
+
+#[test]
+fn write_file_no_overwrite_replaces_existing_path_with_force()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = TempRoot::new("force-overwrite")?;
+    let output = root.path().join("policy/allow.toml");
+    write_file(&output, "original")?;
+
+    let result = write_file_no_overwrite(&output, "replacement", true);
+
+    assert!(result.is_ok());
+    assert_eq!(fs::read_to_string(&output)?, "replacement");
+    Ok(())
+}
+
+#[test]
+fn write_file_recoverable_after_stale_temp_from_prior_crash()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = TempRoot::new("stale-temp-recover")?;
+    let target = root.path().join("policy/allow.toml");
+    let tmp = sibling_tmp_path(&target);
+
+    let parent = target
+        .parent()
+        .unwrap_or_else(|| std::panic::panic_any("test target must have a parent directory"));
+    fs::create_dir_all(parent)?;
+    fs::write(&tmp, "leftover from a crashed write")?;
+
+    write_file(&target, "the real content")?;
+
+    assert_eq!(fs::read_to_string(&target)?, "the real content");
+    assert!(tmp.exists(), "an abandoned temp must not be removed blindly");
     Ok(())
 }
 

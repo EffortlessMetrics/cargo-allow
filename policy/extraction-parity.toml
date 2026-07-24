@@ -39,6 +39,17 @@ disposition = "contract_only"
 claim_boundary = "Lexical root containment; cargo-allow forwards via ModuleFacade shim."
 
 [[case]]
+id = "parity-repo-edit-atomic-write-v1"
+stage = "RepoEdit"
+move_ledger_entry = "move-cargo-allow-atomic-write"
+shim_id = "shim-cargo-allow-atomic-write"
+old_producer = "cargo-allow::io::write_file"
+new_producer = "repo-edit::atomic_write"
+expected_result = "SemanticallyEquivalent"
+disposition = "contract_only"
+claim_boundary = "Single-target atomic create/replace; cargo-allow forwards via ModuleFacade shim."
+
+[[case]]
 id = "parity-repo-snapshot-revision-identity-v1"
 stage = "RepoSnapshot"
 move_ledger_entry = "move-allow-diff-revision-identity"

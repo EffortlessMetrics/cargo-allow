@@ -4,12 +4,13 @@ Human projection of the shared mutation substrate crate (#2602).
 
 ## Claim boundary
 
-Repository-contained target identity, path containment, and cross-process lock
-convergence only. Packet 2602-A extracts `cargo-allow::mutation_lock` and
-`assert_path_within_root` behind `repo-edit` shims.
+Repository-contained target identity, path containment, cross-process lock
+convergence, and single-target atomic write/replace. Packet 2602-A extracts
+`cargo-allow::mutation_lock` and `assert_path_within_root` behind `repo-edit`
+shims. Packet 2602-B extracts `write_file` / `write_file_no_overwrite`.
 
-Atomic write/replace, multi-target transactions, generic apply receipts, and
-cargo-allow command migration land in later packets.
+Multi-target transactions, generic apply receipts, and cargo-allow command
+migration land in later packets.
 
 Parity fixtures live under `tests/fixtures/repo-edit/`.
 
