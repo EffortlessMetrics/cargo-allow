@@ -3,7 +3,9 @@
 //! Most users should use [cargo-allow](https://github.com/EffortlessMetrics/cargo-allow);
 //! `proof-adapter-cargo-allow` discovers an installed `cargo-allow` binary via public
 //! process protocol, advertises reviewed command capabilities, and compiles dry-run
-//! invocation specs without importing `cargo-allow` private crates.
+//! invocation specs without importing `cargo-allow` private crates. It does not scan
+//! source files, does not invoke Cargo, compile code, execute repository code, or
+//! depend on intent crates.
 
 mod boundary;
 mod cargo_allow_provider;
