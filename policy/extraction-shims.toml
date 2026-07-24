@@ -243,3 +243,17 @@ latest_allowed_stage = 9
 removal_condition = "issue:#2606 stage-9 cutover receipt"
 parity_case = "parity-repo-edit-migrate-command-v1"
 claim_boundary = "migrate policy writes forward through repo-edit apply modes; out-of-tree --out retains atomic_write."
+
+[[shim]]
+id = "shim-cargo-allow-propose-apply"
+old_identity = "cargo-allow::propose"
+new_identity = "repo-edit::single_target_apply"
+kind = "ModuleFacade"
+posture = "private"
+status = "active"
+move_ledger_entry = "migrate-cargo-allow-propose-command"
+controlling_issue = 2602
+latest_allowed_stage = 10
+removal_condition = "issue:#2606 stage-10 cutover receipt"
+parity_case = "parity-repo-edit-propose-command-v1"
+claim_boundary = "propose --write forwards through repo-edit apply; outside-repo writes fail closed."

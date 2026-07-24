@@ -1,11 +1,13 @@
-use allow_core::{CargoAllowResult, FindingKind, MatchStatus};
+use allow_core::{CargoAllowError, CargoAllowResult, FindingKind, MatchStatus};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::render_policy;
 use allow_report::MutationReceipt;
+use repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
+use std::env;
 
 use crate::{
     EvidenceValidationMode, MutationLock, SourceTreeReportContext, emit_stderr_text,
-    load_world_with_evidence_mode, write_file_no_overwrite,
+    load_world_with_evidence_mode, portable_relative_under_root,
 };
 
 #[path = "propose_args.rs"]
@@ -28,11 +30,21 @@ use allow_core::{Finding, SimpleDate};
 use propose_baseline::BASELINE_DEBT_DEFAULT_DAYS;
 
 pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
-    // propose --write is candidate output, not a live-ledger mutation.
-    // No containment check — the operator may write the candidate anywhere.
-    let _mutation_lock = args
-        .write
-        .as_deref()
+    let cwd = env::current_dir()
+        .map_err(|error| CargoAllowError::new(format!("failed to read cwd: {error}")))?;
+    let write_target = args.write.as_deref().map(|path| {
+        if path.is_absolute() {
+            path.to_path_buf()
+        } else {
+            cwd.join(path)
+        }
+    });
+    if let Some(target) = &write_target {
+        let mutation_root = crate::resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
+        crate::policy_config::assert_path_within_root(&mutation_root, target)?;
+    }
+    let _mutation_lock = write_target
+        .as_ref()
         .map(MutationLock::acquire)
         .transpose()?;
     let (root, cfg, findings, inventory_facts, _federation) = load_world_with_evidence_mode(
@@ -107,7 +119,29 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         ],
     };
     if let Some(path) = &args.write {
-        write_file_no_overwrite(path, &rendered, args.force)?;
+        let absolute_target = write_target.as_ref().ok_or_else(|| {
+            CargoAllowError::new("internal error: --write target missing after containment check")
+        })?;
+        let target = portable_relative_under_root(&root, absolute_target)?;
+        let mode = if args.force {
+            SingleTargetApplyMode::ReplaceWithBackup
+        } else {
+            SingleTargetApplyMode::CreateNewOnly
+        };
+        apply_single_target(SingleTargetApplyRequest {
+            repository_root: &root,
+            target: &target,
+            contents: &rendered,
+            caller_reference: Some("cargo-allow:propose"),
+            lock_identity: Some(
+                target
+                    .to_string_lossy()
+                    .replace(std::path::MAIN_SEPARATOR, "/"),
+            ),
+            mode,
+        })
+        .into_result()?;
+        let _ = path;
     } else {
         println!("{rendered}");
     }
