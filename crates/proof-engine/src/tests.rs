@@ -126,10 +126,7 @@ fn planner_dry_run_and_execution_gate_pipeline() -> Result<(), String> {
         .lines
         .first()
         .ok_or_else(|| "dry-run produced no lines".to_string())?;
-    if !first_line
-        .structured_argv
-        .starts_with("[structured argv]")
-    {
+    if !first_line.structured_argv.starts_with("[structured argv]") {
         return Err("dry-run must emit structured argv only".to_string());
     }
     let denied =
