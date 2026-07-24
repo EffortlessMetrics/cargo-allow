@@ -167,6 +167,8 @@ mod proof_adapter_cargo_allow_parity_tests;
 #[cfg(test)]
 mod proof_adapter_command_parity_tests;
 #[cfg(test)]
+mod proof_adapter_ripr_parity_tests;
+#[cfg(test)]
 mod proof_engine_parity_tests;
 #[cfg(test)]
 mod proof_protocol_parity_tests;

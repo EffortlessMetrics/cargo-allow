@@ -301,6 +301,48 @@ parity_case = "parity-proof-adapter-cargo-allow-provider-contract-v1"
 claim_boundary = "Public process discovery and ProofProviderV1 wiring without cargo-allow private imports."
 
 [[shim]]
+id = "shim-proof-adapter-ripr-crate-scaffold"
+old_identity = "cargo-proof::proof_adapter_ripr_unowned"
+new_identity = "proof-adapter-ripr::boundary"
+kind = "ModuleFacade"
+posture = "private"
+status = "planned"
+move_ledger_entry = "introduce-proof-adapter-ripr-crate"
+controlling_issue = 2556
+latest_allowed_stage = 1
+removal_condition = "issue:#2606 proof-adapter-ripr stage-1 cutover receipt"
+parity_case = "parity-proof-adapter-ripr-boundary-v1"
+claim_boundary = "RIPR grip adapter scaffold; authored evidence purpose remains cargo-intent owned."
+
+[[shim]]
+id = "shim-proof-adapter-ripr-grip-receipt"
+old_identity = "cargo-proof::proof_ripr_grip_receipt_unowned"
+new_identity = "proof-adapter-ripr::grip_receipt"
+kind = "ModuleFacade"
+posture = "private"
+status = "planned"
+move_ledger_entry = "introduce-proof-adapter-ripr-grip-receipt"
+controlling_issue = 2556
+latest_allowed_stage = 2
+removal_condition = "issue:#2606 proof-adapter-ripr stage-2 cutover receipt"
+parity_case = "parity-proof-adapter-ripr-grip-receipt-v1"
+claim_boundary = "RiprGripReceiptV1 transport and validation without RIPR crate imports."
+
+[[shim]]
+id = "shim-proof-adapter-ripr-grip-comparison"
+old_identity = "cargo-proof::proof_ripr_grip_comparison_unowned"
+new_identity = "proof-adapter-ripr::grip_comparison"
+kind = "ModuleFacade"
+posture = "private"
+status = "planned"
+move_ledger_entry = "introduce-proof-adapter-ripr-grip-comparison"
+controlling_issue = 2556
+latest_allowed_stage = 3
+removal_condition = "issue:#2606 proof-adapter-ripr stage-3 cutover receipt"
+parity_case = "parity-proof-adapter-ripr-grip-comparison-v1"
+claim_boundary = "Requirement-grip comparison preserving predictive static evidence posture."
+
+[[shim]]
 id = "shim-cargo-allow-mutation-lock"
 old_identity = "cargo-allow::mutation_lock"
 new_identity = "repo-edit::mutation_lock"

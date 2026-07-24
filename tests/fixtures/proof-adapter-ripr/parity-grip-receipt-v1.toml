@@ -1,0 +1,20 @@
+scenario_id = "parity-proof-adapter-ripr-grip-receipt-v1"
+proof_adapter_ripr_module = "proof-adapter-ripr::grip_receipt"
+parity_case = "parity-proof-adapter-ripr-grip-receipt-v1"
+move_ledger_entry = "introduce-proof-adapter-ripr-grip-receipt"
+required_receipt_fields = [
+  "schema_id",
+  "receipt_id",
+  "ripr_provider_id",
+  "ripr_schema_generation",
+  "analyzer_generation",
+  "config_fingerprint",
+  "snapshot_digest",
+  "subject_ref",
+  "seam_ref",
+  "requirement_id",
+  "execution_mode",
+  "completeness",
+  "grip_disposition",
+  "receipt_digest",
+]

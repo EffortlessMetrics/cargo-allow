@@ -499,6 +499,39 @@ disposition = "contract_only"
 claim_boundary = "Snapshot-bound read-only provider contract without workspace target/crates leaks."
 
 [[case]]
+id = "parity-proof-adapter-ripr-boundary-v1"
+stage = "ProviderAdapters"
+move_ledger_entry = "introduce-proof-adapter-ripr-crate"
+shim_id = "shim-proof-adapter-ripr-crate-scaffold"
+old_producer = "cargo-proof::proof_adapter_ripr_unowned"
+new_producer = "proof-adapter-ripr::boundary"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "RIPR grip adapter scaffold; authored evidence purpose remains cargo-intent owned."
+
+[[case]]
+id = "parity-proof-adapter-ripr-grip-receipt-v1"
+stage = "ProviderAdapters"
+move_ledger_entry = "introduce-proof-adapter-ripr-grip-receipt"
+shim_id = "shim-proof-adapter-ripr-grip-receipt"
+old_producer = "cargo-proof::proof_ripr_grip_receipt_unowned"
+new_producer = "proof-adapter-ripr::grip_receipt"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "RiprGripReceiptV1 transport and validation without RIPR crate imports."
+
+[[case]]
+id = "parity-proof-adapter-ripr-grip-comparison-v1"
+stage = "ProviderAdapters"
+move_ledger_entry = "introduce-proof-adapter-ripr-grip-comparison"
+shim_id = "shim-proof-adapter-ripr-grip-comparison"
+old_producer = "cargo-proof::proof_ripr_grip_comparison_unowned"
+new_producer = "proof-adapter-ripr::grip_comparison"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Requirement-grip comparison preserving predictive static evidence posture."
+
+[[case]]
 id = "parity-intent-edit-boundary-v1"
 stage = "IntentEdit"
 move_ledger_entry = "introduce-intent-edit-crate"

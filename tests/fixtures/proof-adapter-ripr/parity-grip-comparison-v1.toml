@@ -1,0 +1,16 @@
+scenario_id = "parity-proof-adapter-ripr-grip-comparison-v1"
+proof_adapter_ripr_module = "proof-adapter-ripr::grip_comparison"
+parity_case = "parity-proof-adapter-ripr-grip-comparison-v1"
+move_ledger_entry = "introduce-proof-adapter-ripr-grip-comparison"
+required_comparison_dispositions = [
+  "likely_discriminating",
+  "likely_relevant_with_limitations",
+  "partially_gripped",
+  "missing_required_discriminator",
+  "wrong_seam_or_owner",
+  "opaque_or_unsupported",
+  "known_analyzer_limitation",
+  "stale_or_invalid_summary",
+  "not_evaluated",
+  "not_proven",
+]
