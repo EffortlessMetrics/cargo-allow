@@ -646,3 +646,48 @@ claim_boundary = "Public process discovery, dry-run argv compilation, and ProofP
 parity_fixture = "tests/fixtures/cargo-allow/proof-provider-discovery-v1.toml"
 removal_condition = "issue:#2606 proof-adapter-cargo-allow stage-3 cutover receipt"
 controlling_issue = 2554
+
+[[entry]]
+id = "introduce-proof-adapter-ripr-crate"
+current_identity = "crates/proof-adapter-ripr/src/lib.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-proof"
+current_owner_crate = "proof-adapter-ripr"
+target_owner_product = "cargo-proof"
+target_owner_crate = "proof-adapter-ripr"
+disposition = "MoveToProofAdapter"
+status = "current"
+claim_boundary = "RIPR grip adapter scaffold; authored evidence purpose remains cargo-intent owned."
+parity_fixture = "tests/fixtures/proof-adapter-ripr/parity-boundary-v1.toml"
+removal_condition = "issue:#2606 proof-adapter-ripr stage-1 cutover receipt"
+controlling_issue = 2556
+
+[[entry]]
+id = "introduce-proof-adapter-ripr-grip-receipt"
+current_identity = "crates/proof-adapter-ripr/src/grip_receipt.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-proof"
+current_owner_crate = "proof-adapter-ripr"
+target_owner_product = "cargo-proof"
+target_owner_crate = "proof-adapter-ripr"
+disposition = "MoveToProofAdapter"
+status = "current"
+claim_boundary = "RiprGripReceiptV1 transport and validation without RIPR crate imports (#2217)."
+parity_fixture = "tests/fixtures/proof-adapter-ripr/parity-grip-receipt-v1.toml"
+removal_condition = "issue:#2606 proof-adapter-ripr stage-2 cutover receipt"
+controlling_issue = 2556
+
+[[entry]]
+id = "introduce-proof-adapter-ripr-grip-comparison"
+current_identity = "crates/proof-adapter-ripr/src/grip_comparison.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-proof"
+current_owner_crate = "proof-adapter-ripr"
+target_owner_product = "cargo-proof"
+target_owner_crate = "proof-adapter-ripr"
+disposition = "MoveToProofAdapter"
+status = "current"
+claim_boundary = "Requirement-grip comparison preserving predictive static evidence posture (#2218)."
+parity_fixture = "tests/fixtures/proof-adapter-ripr/parity-grip-comparison-v1.toml"
+removal_condition = "issue:#2606 proof-adapter-ripr stage-3 cutover receipt"
+controlling_issue = 2556
