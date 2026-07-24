@@ -181,12 +181,25 @@ fn load_lane_config(
     path: &Path,
     non_rust_findings: Option<&[Finding]>,
 ) -> CargoAllowResult<AllowConfig> {
-    if descriptor.legacy_filename == "non-rust-allowlist.toml"
+    let legacy_label = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("legacy-policy");
+    let result = if descriptor.legacy_filename == "non-rust-allowlist.toml"
         && let Some(findings) = non_rust_findings
     {
-        return load_non_rust_compat_config(path, findings);
-    }
-    load_legacy_or_canonical(path)
+        load_non_rust_compat_config(path, findings)
+    } else {
+        load_legacy_or_canonical(path)
+    };
+    // #1868: attach the legacy filename to parse errors so the operator knows
+    // which file the error came from without grep across the policy directory.
+    result.map_err(|err| {
+        CargoAllowError::new(format!(
+            "legacy file `{legacy_label}` (policy key `{}`): {err}",
+            descriptor.legacy_policy_key
+        ))
+    })
 }
 
 fn entry_families_from_config(cfg: &AllowConfig) -> Vec<String> {
