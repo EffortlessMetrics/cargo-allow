@@ -44,6 +44,10 @@ pub(super) fn load_repo_policy_migration_config(
     let batch = allow_policy_legacy::import_legacy_policy_dir(&repo_policy, Some(&findings))?;
     let legacy_source_files = batch.legacy_source_files();
     let legacy_compat_kinds = batch.compat_kind_ids();
+    // #1867: surface unrecognized files from the legacy directory as warnings.
+    for file in &batch.unmigrated_files {
+        eprintln!("warning: legacy directory contains unrecognized file `{file}` — not migrated");
+    }
     Ok(MigrationLoad {
         cfg: batch.config,
         context: MigrateContext {
