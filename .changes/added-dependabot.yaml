@@ -1,0 +1,6 @@
+kind: Added
+body: >-
+  CI: add Dependabot configuration for weekly Rust dependency and GitHub
+  Actions updates. Groups patch-level updates to reduce PR noise. Combined
+  with cargo-deny (#1897), this ensures advisories are caught and patched
+  automatically. Child of #1786.
