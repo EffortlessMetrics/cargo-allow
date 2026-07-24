@@ -23,7 +23,7 @@ use crate::{
     },
     git_relative_config_path, load_world_with_evidence_mode, resolve_source_tree_root,
 };
-use repo_edit::{SingleTargetApplyRequest, apply_single_target};
+use repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 
 pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
     if args.dry_run && args.write {
@@ -109,7 +109,7 @@ pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
                     .to_string_lossy()
                     .replace(std::path::MAIN_SEPARATOR, "/"),
             ),
-            force_create_new: false,
+            mode: SingleTargetApplyMode::AtomicReplace,
         })
         .into_result()?;
         Some(policy_path.clone())

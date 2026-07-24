@@ -243,6 +243,21 @@ removal_condition = "issue:#2606 stage-3 cutover receipt"
 controlling_issue = 2602
 
 [[entry]]
+id = "extend-repo-edit-apply-backup-mode"
+current_identity = "crates/repo-edit/src/single_target_apply.rs"
+identity_kind = "rust_module"
+current_owner_product = "shared"
+current_owner_crate = "repo-edit"
+target_owner_product = "shared"
+target_owner_crate = "repo-edit"
+disposition = "MoveToSharedSnapshot"
+status = "moved"
+claim_boundary = "SingleTargetApplyMode create-new-only and replace-with-backup preserve --force .bak semantics."
+parity_fixture = "tests/fixtures/repo-edit/parity-apply-backup-mode-v1.toml"
+removal_condition = "issue:#2606 stage-7 cutover receipt"
+controlling_issue = 2602
+
+[[entry]]
 id = "migrate-cargo-allow-init-command"
 current_identity = "crates/cargo-allow/src/init.rs"
 identity_kind = "rust_module"

@@ -1,0 +1,10 @@
+scenario_id = "parity-repo-edit-apply-backup-mode-v1"
+cargo_allow_module = "cargo-allow::io::write_file_no_overwrite"
+repo_edit_module = "repo-edit::single_target_apply"
+parity_case = "parity-repo-edit-apply-backup-mode-v1"
+move_ledger_entry = "extend-repo-edit-apply-backup-mode"
+required_behaviors = [
+  "create_new_only_rejects_existing",
+  "replace_with_backup_writes_toml_bak",
+  "backup_limitation_recorded_in_receipt",
+]
