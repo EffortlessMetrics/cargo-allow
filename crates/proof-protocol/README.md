@@ -16,4 +16,8 @@ Packet 2588-A lands crate scaffold, boundary documentation, parity/ledger regist
 
 ## Packet 2588-B+
 
-- `proof-protocol::plan_dtos` and proof-provider-api command adapter surfaces
+- `proof-protocol::plan_dtos` — portable proof plan command transport
+- `proof-protocol::capability_dtos` — provider capability catalog transport
+- `proof-protocol::receipt_dtos` — receipt binding transport bound to repo-protocol
+- `proof-protocol::contradiction_dtos` — contradiction report transport
+- `proof-protocol::phase_gate_dtos` — phase-gate transport

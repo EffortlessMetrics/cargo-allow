@@ -8737,6 +8737,111 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9132"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/proof-protocol/parity-plan-dtos-v1.toml"
+owner = "repo-infra"
+classification = "proof_protocol_parity_fixture"
+reason = "Proof-protocol plan DTO parity fixture (#2588-B)."
+evidence = ["test:proof_protocol_parity_fixtures_registered", "issue:2588", "doc:policy/extraction-parity.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "tests/fixtures/proof-protocol/parity-plan-dtos-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9133"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/proof-protocol/parity-capability-dtos-v1.toml"
+owner = "repo-infra"
+classification = "proof_protocol_parity_fixture"
+reason = "Proof-protocol capability DTO parity fixture (#2588-B)."
+evidence = ["test:proof_protocol_parity_fixtures_registered", "issue:2588", "doc:policy/extraction-parity.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "tests/fixtures/proof-protocol/parity-capability-dtos-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9134"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/proof-protocol/parity-receipt-dtos-v1.toml"
+owner = "repo-infra"
+classification = "proof_protocol_parity_fixture"
+reason = "Proof-protocol receipt DTO parity fixture (#2588-B)."
+evidence = ["test:proof_protocol_parity_fixtures_registered", "issue:2588", "doc:policy/extraction-parity.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "tests/fixtures/proof-protocol/parity-receipt-dtos-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9135"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/proof-protocol/parity-contradiction-dtos-v1.toml"
+owner = "repo-infra"
+classification = "proof_protocol_parity_fixture"
+reason = "Proof-protocol contradiction DTO parity fixture (#2588-B+)."
+evidence = ["test:proof_protocol_parity_fixtures_registered", "issue:2588", "doc:policy/extraction-parity.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "tests/fixtures/proof-protocol/parity-contradiction-dtos-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9136"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/proof-protocol/parity-phase-gate-dtos-v1.toml"
+owner = "repo-infra"
+classification = "proof_protocol_parity_fixture"
+reason = "Proof-protocol phase-gate DTO parity fixture (#2588-B+)."
+evidence = ["test:proof_protocol_parity_fixtures_registered", "issue:2588", "doc:policy/extraction-parity.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "tests/fixtures/proof-protocol/parity-phase-gate-dtos-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9108"
 kind = "non_rust_file"
 family = "test_fixture"

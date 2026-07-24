@@ -1,0 +1,10 @@
+scenario_id = "parity-proof-protocol-phase-gate-dtos-v1"
+proof_protocol_module = "proof-protocol::phase_gate_dtos"
+parity_case = "parity-proof-protocol-phase-gate-dtos-v1"
+move_ledger_entry = "introduce-proof-protocol-phase-gate-dtos"
+required_gate_fields = [
+  "phase_id",
+  "plan_id",
+  "required_binding_ids",
+  "posture",
+]

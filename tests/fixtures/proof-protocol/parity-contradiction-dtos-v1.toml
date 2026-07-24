@@ -1,0 +1,9 @@
+scenario_id = "parity-proof-protocol-contradiction-dtos-v1"
+proof_protocol_module = "proof-protocol::contradiction_dtos"
+parity_case = "parity-proof-protocol-contradiction-dtos-v1"
+move_ledger_entry = "introduce-proof-protocol-contradiction-dtos"
+required_contradiction_fields = [
+  "contradiction_id",
+  "statement",
+  "evidence_refs",
+]
