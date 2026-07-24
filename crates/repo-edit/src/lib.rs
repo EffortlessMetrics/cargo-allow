@@ -1,7 +1,10 @@
-//! Repository-safe target identity, containment, and mutation locking (#2602).
+//! Repository-safe target identity, containment, and mutation locking for the
+//! cargo-allow three-product extraction (#2602).
 //!
 //! This crate owns how approved filesystem targets are named, contained, and
-//! locked. It does not decide what bytes belong in a ledger or intent artifact.
+//! locked for cargo-allow mutation commands. It does not scan source files,
+//! does not invoke Cargo, compile code, execute repository artifacts, or decide
+//! ledger or intent semantics.
 
 mod containment;
 mod mutation_lock;
