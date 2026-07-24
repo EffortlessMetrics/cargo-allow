@@ -189,6 +189,20 @@ parity_case = "parity-proof-protocol-boundary-v1"
 claim_boundary = "Crate scaffold and dependency topology only; plan DTO transport lands in #2588-B."
 
 [[shim]]
+id = "shim-proof-provider-api-crate-scaffold"
+old_identity = "cargo-proof::proof_provider_api_unowned"
+new_identity = "proof-provider-api::boundary"
+kind = "ModuleFacade"
+posture = "private"
+status = "planned"
+move_ledger_entry = "introduce-proof-provider-api-crate"
+controlling_issue = 2603
+latest_allowed_stage = 1
+removal_condition = "issue:#2606 proof-provider-api stage-1 cutover receipt"
+parity_case = "parity-proof-provider-api-boundary-v1"
+claim_boundary = "Provider API scaffold and conformance harness only; command adapters land in proof-adapter-command."
+
+[[shim]]
 id = "shim-cargo-allow-mutation-lock"
 old_identity = "cargo-allow::mutation_lock"
 new_identity = "repo-edit::mutation_lock"

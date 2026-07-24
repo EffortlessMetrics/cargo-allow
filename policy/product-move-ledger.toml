@@ -526,3 +526,18 @@ claim_boundary = "Phase-gate transport only; gate evaluation remains proof-engin
 parity_fixture = "tests/fixtures/proof-protocol/parity-phase-gate-dtos-v1.toml"
 removal_condition = "issue:#2606 proof-protocol stage-6 cutover receipt"
 controlling_issue = 2588
+
+[[entry]]
+id = "introduce-proof-provider-api-crate"
+current_identity = "crates/proof-provider-api/src/lib.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-proof"
+current_owner_crate = "proof-provider-api"
+target_owner_product = "cargo-proof"
+target_owner_crate = "proof-provider-api"
+disposition = "MoveToProofProviderApi"
+status = "current"
+claim_boundary = "Provider API contracts, fake provider, and conformance harness; command adapters land in proof-adapter-command."
+parity_fixture = "tests/fixtures/proof-provider-api/parity-boundary-v1.toml"
+removal_condition = "issue:#2606 proof-provider-api stage-1 cutover receipt"
+controlling_issue = 2603

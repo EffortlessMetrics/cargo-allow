@@ -411,6 +411,17 @@ disposition = "contract_only"
 claim_boundary = "Crate scaffold and dependency topology only; plan DTO transport lands in #2588-B."
 
 [[case]]
+id = "parity-proof-provider-api-boundary-v1"
+stage = "ProofProviderApi"
+move_ledger_entry = "introduce-proof-provider-api-crate"
+shim_id = "shim-proof-provider-api-crate-scaffold"
+old_producer = "cargo-proof::proof_provider_api_unowned"
+new_producer = "proof-provider-api::boundary"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Provider API scaffold and conformance harness only; command adapters land in proof-adapter-command."
+
+[[case]]
 id = "parity-intent-edit-boundary-v1"
 stage = "IntentEdit"
 move_ledger_entry = "introduce-intent-edit-crate"
