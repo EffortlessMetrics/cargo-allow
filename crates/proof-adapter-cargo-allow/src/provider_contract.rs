@@ -2,8 +2,7 @@
 
 use serde::Deserialize;
 
-pub const CARGO_ALLOW_PROVIDER_CONTRACT_SCHEMA_ID: &str =
-    "proof.cargo-allow-provider-contract.v1";
+pub const CARGO_ALLOW_PROVIDER_CONTRACT_SCHEMA_ID: &str = "proof.cargo-allow-provider-contract.v1";
 
 pub const CARGO_ALLOW_PROOF_PROVIDER_ID: &str = "proof.cargo-allow.v1";
 

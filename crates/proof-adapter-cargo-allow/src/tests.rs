@@ -17,16 +17,15 @@ use crate::parity::{
 };
 use crate::process_protocol::{compile_cargo_allow_dry_run, validate_process_protocol_plan};
 use crate::process_protocol_surface::ProcessProtocolSurface;
-use crate::provider_contract::{
-    default_cargo_allow_provider_contract, validate_provider_contract,
-};
+use crate::provider_contract::{default_cargo_allow_provider_contract, validate_provider_contract};
 use crate::provider_contract_surface::ProviderContractSurface;
 use crate::provider_discovery_surface::ProviderDiscoverySurface;
 
 #[test]
 fn boundary_surface_matches_parity_contract_module() -> Result<(), String> {
     let root = workspace_root();
-    let fixture_path = root.join("tests/fixtures/proof-adapter-cargo-allow/parity-boundary-v1.toml");
+    let fixture_path =
+        root.join("tests/fixtures/proof-adapter-cargo-allow/parity-boundary-v1.toml");
     let fixture_text = std::fs::read_to_string(&fixture_path)
         .map_err(|err| format!("read parity fixture: {err}"))?;
     let fixture: toml::Table =
@@ -133,7 +132,8 @@ fn cargo_allow_does_not_depend_on_proof_adapter_cargo_allow() -> Result<(), Stri
 #[test]
 fn allowed_upstream_topology_registered() -> Result<(), String> {
     let root = workspace_root();
-    let fixture_path = root.join("tests/fixtures/proof-adapter-cargo-allow/parity-boundary-v1.toml");
+    let fixture_path =
+        root.join("tests/fixtures/proof-adapter-cargo-allow/parity-boundary-v1.toml");
     let fixture_text = std::fs::read_to_string(&fixture_path)
         .map_err(|err| format!("read parity fixture: {err}"))?;
     let fixture: toml::Table =

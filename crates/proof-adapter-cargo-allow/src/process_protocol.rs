@@ -46,10 +46,11 @@ pub fn compile_cargo_allow_dry_run(
     let mut reports = Vec::with_capacity(plan.commands.len());
     for command in &plan.commands {
         let command_id = resolve_command_id(command, &registry)?;
-        let spec = compile_invocation_spec(&registry, &command_id, command)
-            .map_err(|_| ProcessProtocolError::UnsupportedCommand {
+        let spec = compile_invocation_spec(&registry, &command_id, command).map_err(|_| {
+            ProcessProtocolError::UnsupportedCommand {
                 program: command.program.clone(),
-            })?;
+            }
+        })?;
         reports.push(DryRunCommandReportV1::from_invocation_spec(&spec));
     }
     Ok(reports)
@@ -69,10 +70,7 @@ fn resolve_command_id(
     })
 }
 
-fn matches_plan_command(
-    entry: &ReviewedCommandEntryV1,
-    command: &ProofPlanCommandV1,
-) -> bool {
+fn matches_plan_command(entry: &ReviewedCommandEntryV1, command: &ProofPlanCommandV1) -> bool {
     if entry.program != command.program {
         return false;
     }

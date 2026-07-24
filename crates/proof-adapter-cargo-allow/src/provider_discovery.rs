@@ -211,10 +211,7 @@ fn resolve_candidate(
     })
 }
 
-fn reject_workspace_leaks(
-    root: &Path,
-    executable: &Path,
-) -> Result<(), CargoAllowProviderFailure> {
+fn reject_workspace_leaks(root: &Path, executable: &Path) -> Result<(), CargoAllowProviderFailure> {
     let root = fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
     let target_root = fs::canonicalize(root.join("target")).unwrap_or_else(|_| root.join("target"));
     let crates_root = fs::canonicalize(root.join("crates")).unwrap_or_else(|_| root.join("crates"));

@@ -27,12 +27,17 @@ pub use boundary::{
 };
 pub use cargo_allow_provider::CargoAllowProofProviderV1;
 pub use cargo_allow_provider_surface::CargoAllowProviderSurface;
+pub use parity::{
+    ProviderContractParityContract, load_provider_contract_parity_contract, parity_contract_path,
+    parity_contract_paths, provider_contract_parity_contract_path,
+    provider_contract_parity_contract_paths,
+};
 pub use process_protocol::{
     ProcessProtocolError, compile_cargo_allow_dry_run, validate_process_protocol_plan,
 };
 pub use process_protocol_surface::ProcessProtocolSurface;
 pub use provider_contract::{
-    CARGO_ALLOW_PROVIDER_CONTRACT_SCHEMA_ID, CARGO_ALLOW_PROOF_PROVIDER_ID,
+    CARGO_ALLOW_PROOF_PROVIDER_ID, CARGO_ALLOW_PROVIDER_CONTRACT_SCHEMA_ID,
     CargoAllowProviderContractV1, ProviderAccessPostureV1, ProviderContractError,
     default_cargo_allow_provider_contract, validate_provider_contract,
 };
@@ -42,8 +47,3 @@ pub use provider_discovery::{
     CargoAllowProviderRequest, CargoAllowProviderResolution, discover_cargo_allow_provider,
 };
 pub use provider_discovery_surface::ProviderDiscoverySurface;
-pub use parity::{
-    ProviderContractParityContract, load_provider_contract_parity_contract,
-    parity_contract_path, parity_contract_paths, provider_contract_parity_contract_path,
-    provider_contract_parity_contract_paths,
-};
