@@ -1,0 +1,10 @@
+scenario_id = "parity-repo-edit-path-containment-v1"
+cargo_allow_module = "cargo-allow::policy_config::assert_path_within_root"
+repo_edit_module = "repo-edit::containment"
+parity_case = "parity-repo-edit-path-containment-v1"
+move_ledger_entry = "move-cargo-allow-path-containment"
+required_behaviors = [
+  "lexical_root_containment",
+  "parent_escape_rejected",
+  "missing_leaf_fallback",
+]

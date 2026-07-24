@@ -81,6 +81,7 @@ crates=(
   allow-policy-legacy
   allow-diff
   repo-protocol
+  repo-edit
   cargo-allow
 )
 

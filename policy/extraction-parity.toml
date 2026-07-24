@@ -17,6 +17,28 @@ disposition = "contract_only"
 claim_boundary = "Contract only; fixture replay lands with repo-snapshot move."
 
 [[case]]
+id = "parity-repo-edit-mutation-lock-alias-v1"
+stage = "RepoEdit"
+move_ledger_entry = "move-cargo-allow-mutation-lock"
+shim_id = "shim-cargo-allow-mutation-lock"
+old_producer = "cargo-allow::mutation_lock"
+new_producer = "repo-edit::mutation_lock"
+expected_result = "SemanticallyEquivalent"
+disposition = "contract_only"
+claim_boundary = "Alias-convergent lock paths; cargo-allow forwards via ModuleFacade shim."
+
+[[case]]
+id = "parity-repo-edit-path-containment-v1"
+stage = "RepoEdit"
+move_ledger_entry = "move-cargo-allow-path-containment"
+shim_id = "shim-cargo-allow-path-containment"
+old_producer = "cargo-allow::policy_config::assert_path_within_root"
+new_producer = "repo-edit::containment"
+expected_result = "SemanticallyEquivalent"
+disposition = "contract_only"
+claim_boundary = "Lexical root containment; cargo-allow forwards via ModuleFacade shim."
+
+[[case]]
 id = "parity-repo-snapshot-revision-identity-v1"
 stage = "RepoSnapshot"
 move_ledger_entry = "move-allow-diff-revision-identity"
@@ -248,6 +270,16 @@ required_fields = [
 
 [[stage_receipt]]
 stage = "RepoSnapshot"
+required_fields = [
+  "stage",
+  "parity_corpus_digest",
+  "old_path_reachability",
+  "duplicate_authority",
+  "rollback",
+]
+
+[[stage_receipt]]
+stage = "RepoEdit"
 required_fields = [
   "stage",
   "parity_corpus_digest",

@@ -8143,3 +8143,131 @@ glob = "tests/fixtures/cargo-allow/cargo-allow-spec-system-cutover-receipt-v1.to
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-9103"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/architecture/repo-edit.md"
+owner = "repo-infra"
+classification = "three_product_snapshot_projection"
+reason = "Human projection of the repo-edit shared mutation crate (#2602-A)."
+evidence = ["test:repo_edit_parity_fixtures_registered", "issue:2602", "doc:policy/extraction-parity.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/architecture/repo-edit.md"
+target_fingerprint = "md"
+glob = "docs/architecture/repo-edit.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9104"
+kind = "non_rust_file"
+family = "package_metadata"
+path = "crates/repo-edit/Cargo.toml"
+owner = "repo-infra"
+classification = "rust_package_metadata"
+reason = "repo-edit manifest is tracked shared-mutation package metadata (#2602-A)."
+evidence = ["test:repo_edit_parity_fixtures_registered", "issue:2602", "doc:policy/product-package-topology.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "crates/repo-edit/Cargo.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9105"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/repo-edit/README.md"
+owner = "repo-infra"
+classification = "repo_edit_parity_fixture"
+reason = "Parity fixture catalog for repo-edit extraction (#2602-A)."
+evidence = ["test:repo_edit_parity_fixtures_registered", "issue:2602", "doc:policy/extraction-parity.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "tests/fixtures/repo-edit/README.md"
+target_fingerprint = "md"
+glob = "tests/fixtures/repo-edit/README.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9106"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/repo-edit/parity-mutation-lock-alias-v1.toml"
+owner = "repo-infra"
+classification = "repo_edit_parity_fixture"
+reason = "Mutation lock alias parity contract (#2602-A)."
+evidence = ["test:repo_edit_parity_fixtures_registered", "issue:2602", "doc:policy/extraction-parity.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "tests/fixtures/repo-edit/parity-mutation-lock-alias-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9107"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/repo-edit/parity-path-containment-v1.toml"
+owner = "repo-infra"
+classification = "repo_edit_parity_fixture"
+reason = "Path containment parity contract (#2602-A)."
+evidence = ["test:repo_edit_parity_fixtures_registered", "issue:2602", "doc:policy/extraction-parity.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "tests/fixtures/repo-edit/parity-path-containment-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9108"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/extraction/repo-edit-stage-receipt-v1.toml"
+owner = "repo-infra"
+classification = "extraction_stage_receipt"
+reason = "RepoEdit stage-1 cutover receipt fixture for #2602-A / #2606."
+evidence = ["test:repo_edit_parity_fixtures_registered", "issue:2602", "doc:policy/extraction-parity.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "tests/fixtures/extraction/repo-edit-stage-receipt-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

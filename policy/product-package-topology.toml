@@ -86,6 +86,14 @@ candidate_inclusion = true
 release_order = 95
 
 [[package]]
+package = "repo-edit"
+product_family = "shared"
+posture = "SharedImplementationInternalOrExperimental"
+publish = true
+candidate_inclusion = true
+release_order = 98
+
+[[package]]
 package = "cargo-allow"
 product_family = "cargo-allow"
 posture = "CargoAllowSupported"

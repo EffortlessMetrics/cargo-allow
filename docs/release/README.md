@@ -149,7 +149,9 @@ Internal crates must publish in dependency order:
 7. allow-report
 8. allow-policy-legacy
 9. allow-diff
-10. cargo-allow
+10. repo-protocol
+11. repo-edit
+12. cargo-allow
 ```
 
 Each crate is dry-run verified immediately before upload. The workflow waits for

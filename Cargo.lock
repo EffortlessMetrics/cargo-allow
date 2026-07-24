@@ -179,10 +179,10 @@ dependencies = [
  "allow-rust",
  "cargo-intent",
  "clap",
- "fs4",
  "intent-engine",
  "intent-model",
  "intent-protocol",
+ "repo-edit",
  "repo-protocol",
  "repo-snapshot",
  "rust-source-index",
@@ -560,6 +560,14 @@ name = "regex-syntax"
 version = "0.8.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
+
+[[package]]
+name = "repo-edit"
+version = "0.2.0"
+dependencies = [
+ "allow-core",
+ "fs4",
+]
 
 [[package]]
 name = "repo-protocol"

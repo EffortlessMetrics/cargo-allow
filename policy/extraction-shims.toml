@@ -117,3 +117,31 @@ latest_allowed_stage = 7
 removal_condition = "issue:#2606 stage-7 cutover receipt"
 parity_case = "parity-proof-protocol-plan-dtos-v1"
 claim_boundary = "Serialization adapter only; no parallel proof planner."
+
+[[shim]]
+id = "shim-cargo-allow-mutation-lock"
+old_identity = "cargo-allow::mutation_lock"
+new_identity = "repo-edit::mutation_lock"
+kind = "ModuleFacade"
+posture = "private"
+status = "active"
+move_ledger_entry = "move-cargo-allow-mutation-lock"
+controlling_issue = 2602
+latest_allowed_stage = 1
+removal_condition = "issue:#2606 stage-1 cutover receipt"
+parity_case = "parity-repo-edit-mutation-lock-alias-v1"
+claim_boundary = "Lock convergence forwarding only; cargo-allow retains command orchestration."
+
+[[shim]]
+id = "shim-cargo-allow-path-containment"
+old_identity = "cargo-allow::policy_config::assert_path_within_root"
+new_identity = "repo-edit::containment"
+kind = "ModuleFacade"
+posture = "private"
+status = "active"
+move_ledger_entry = "move-cargo-allow-path-containment"
+controlling_issue = 2602
+latest_allowed_stage = 1
+removal_condition = "issue:#2606 stage-1 cutover receipt"
+parity_case = "parity-repo-edit-path-containment-v1"
+claim_boundary = "Path containment forwarding only; ledger semantics stay in cargo-allow."

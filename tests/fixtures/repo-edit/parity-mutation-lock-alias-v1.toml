@@ -1,0 +1,11 @@
+scenario_id = "parity-repo-edit-mutation-lock-alias-v1"
+cargo_allow_module = "cargo-allow::mutation_lock"
+repo_edit_module = "repo-edit::mutation_lock"
+parity_case = "parity-repo-edit-mutation-lock-alias-v1"
+move_ledger_entry = "move-cargo-allow-mutation-lock"
+lock_directory = "cargo-allow-locks"
+required_behaviors = [
+  "alias_convergent_paths_share_lock",
+  "dot_slash_normalization",
+  "release_on_drop",
+]

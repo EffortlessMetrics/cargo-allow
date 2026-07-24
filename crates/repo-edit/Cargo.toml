@@ -1,0 +1,17 @@
+[package]
+name = "repo-edit"
+description = "Repository-safe target identity, containment, and mutation locking for three-product extraction."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords.workspace = true
+categories.workspace = true
+publish = true
+
+[dependencies]
+allow-core.workspace = true
+fs4 = "0.13.1"
