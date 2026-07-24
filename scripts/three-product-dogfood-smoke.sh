@@ -224,7 +224,7 @@ import sys
 from pathlib import Path
 
 fixture = Path(sys.argv[1]).read_text(encoding="utf-8")
-for needle in ("proof-adapter-ripr", "proof.ripr.v1", "StaticReport"):
+for needle in ("proof-adapter-ripr", "parity-proof-adapter-ripr-boundary-v1"):
     if needle not in fixture:
         raise SystemExit(f"ripr parity fixture missing {needle}")
 print("ripr_stub_contract_ok")
@@ -237,7 +237,7 @@ import sys
 from pathlib import Path
 
 fixture = Path(sys.argv[1]).read_text(encoding="utf-8")
-for needle in ("proof-adapter-hawk", "proof.hawk.v1"):
+for needle in ("proof-adapter-hawk", "proof-adapter-hawk::boundary"):
     if needle not in fixture:
         raise SystemExit(f"hawk parity fixture missing {needle}")
 print("hawk_stub_contract_ok")
