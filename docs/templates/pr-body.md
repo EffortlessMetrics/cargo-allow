@@ -26,10 +26,10 @@ Linked artifacts:
 
 ## Validation
 
-- [ ] `rtk cargo fmt --all --check`
-- [ ] `rtk cargo clippy --workspace --all-targets -- -D warnings`
-- [ ] `rtk cargo test --workspace`
-- [ ] `rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md`
+- [ ] `cargo fmt --all --check`
+- [ ] `cargo clippy --workspace --all-targets -- -D warnings`
+- [ ] `cargo test --workspace`
+- [ ] `cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md`
 
 Add profile-specific commands only after the profile exists. Mark checks as
 `not run` when evidence is absent.
