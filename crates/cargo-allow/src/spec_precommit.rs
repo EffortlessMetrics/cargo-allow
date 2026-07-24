@@ -141,7 +141,10 @@ pub(crate) fn cmd_staged_identity(args: &CheckArgs) -> CargoAllowResult<()> {
 pub(crate) fn cmd_spec_precommit(args: &CheckArgs) -> CargoAllowResult<()> {
     let started = Instant::now();
     match crate::intent_delegate::try_delegate_staged_precommit(args, started)? {
-        crate::intent_delegate::DelegationDisposition::Disabled => {}
+        crate::intent_delegate::DelegationDisposition::Disabled => {
+            let root = resolve_root(&args.root)?;
+            crate::intent_delegate::reject_embedded_precommit_authority(&root)?;
+        }
         crate::intent_delegate::DelegationDisposition::Handle(result) => return result,
     }
     let root = resolve_root(&args.root)?;

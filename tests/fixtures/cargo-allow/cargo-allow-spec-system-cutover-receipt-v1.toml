@@ -1,0 +1,5 @@
+stage = "CargoAllowCompatibilityCutover"
+parity_corpus_digest = "sha256:v1:2601-c-spec-system-cutover"
+old_path_reachability = "embedded spec-system authority gated off when delegate_spec_system is enabled; staged precommit delegates only when delegate_staged_precommit is enabled"
+duplicate_authority = "none when cutover flags enabled; cargo-allow validates repo.analysis-receipt.v1 only"
+rollback = "disable delegate_spec_system in .allow/compatibility/intent-delegation.toml"

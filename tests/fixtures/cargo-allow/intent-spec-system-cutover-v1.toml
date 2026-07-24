@@ -1,0 +1,23 @@
+# Spec-system cutover contract fixture (#2601-C).
+
+schema_id = "cargo-allow.intent-spec-system-cutover.v1"
+schema_version = 1
+
+delegation_config_schema_id = "cargo-allow.intent-delegation.v1"
+delegation_config_relative_path = ".allow/compatibility/intent-delegation.toml"
+
+cutover_flag = "delegate_spec_system"
+staged_precommit_delegate_flag = "delegate_staged_precommit"
+
+fail_closed_surfaces = [
+  "check",
+  "audit",
+  "worklist",
+  "doctor",
+  "explain",
+  "init",
+  "precommit evaluator",
+]
+
+embedded_evaluator_fallback = "forbidden_when_cutover_enabled"
+provider_product = "cargo-intent"

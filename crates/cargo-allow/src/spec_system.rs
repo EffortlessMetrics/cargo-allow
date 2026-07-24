@@ -52,7 +52,15 @@ pub(crate) struct SpecSystemCommandArgs<'a> {
     pub(crate) mode: Option<&'a str>,
 }
 
+fn reject_cutover_embedded_authority(root: &RootArgs, surface: &str) -> CargoAllowResult<()> {
+    let cwd =
+        env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
+    let resolved = resolve_source_tree_root(root.root.as_deref(), cwd)?;
+    crate::intent_delegate::reject_embedded_spec_system_authority(&resolved, surface)
+}
+
 pub(crate) fn cmd_spec_system(args: SpecSystemCommandArgs<'_>) -> CargoAllowResult<()> {
+    reject_cutover_embedded_authority(args.root, args.command)?;
     let mode_override = args.mode.map(parse_spec_system_mode_override).transpose()?;
     let report = build_spec_system_report(
         args.command,
@@ -86,6 +94,7 @@ pub(crate) struct SpecSystemWorklistCommandArgs<'a> {
 pub(crate) fn cmd_spec_system_worklist(
     args: SpecSystemWorklistCommandArgs<'_>,
 ) -> CargoAllowResult<()> {
+    reject_cutover_embedded_authority(args.root, "worklist")?;
     let report = build_spec_system_report("worklist", args.root, args.config, true, false, None)?;
     let rendered = if args.format_json {
         render_spec_system_json(&report)
@@ -105,6 +114,7 @@ pub(crate) struct SpecSystemDoctorCommandArgs<'a> {
 pub(crate) fn cmd_spec_system_doctor(
     args: SpecSystemDoctorCommandArgs<'_>,
 ) -> CargoAllowResult<()> {
+    reject_cutover_embedded_authority(args.root, "doctor")?;
     let report = build_spec_system_report("doctor", args.root, args.config, true, true, None)?;
     let rendered = if args.format_json {
         render_spec_system_json(&report)
@@ -125,6 +135,7 @@ pub(crate) struct SpecSystemExplainCommandArgs<'a> {
 pub(crate) fn cmd_spec_system_explain(
     args: SpecSystemExplainCommandArgs<'_>,
 ) -> CargoAllowResult<()> {
+    reject_cutover_embedded_authority(args.root, "explain")?;
     let report = build_spec_system_report("explain", args.root, args.config, true, false, None)?;
     if let Some(rendered) =
         render_self_hosted_explain(&report.root, args.artifact_id, args.format_json)?
@@ -149,6 +160,7 @@ pub(crate) struct SpecSystemInitCommandArgs<'a> {
 }
 
 pub(crate) fn cmd_spec_system_init(args: SpecSystemInitCommandArgs<'_>) -> CargoAllowResult<()> {
+    reject_cutover_embedded_authority(args.root, "init")?;
     let cwd =
         env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
     let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;

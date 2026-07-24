@@ -58,6 +58,36 @@ pub enum DelegationDisposition {
     Handle(CargoAllowResult<()>),
 }
 
+pub fn embedded_spec_system_cutover_active(
+    root: &Path,
+) -> Result<bool, crate::intent_provider::IntentProviderFailure> {
+    Ok(
+        match crate::intent_provider::load_intent_delegation_settings(root, None)? {
+            Some(settings) => settings.delegate_spec_system,
+            None => false,
+        },
+    )
+}
+
+pub fn reject_embedded_spec_system_authority(root: &Path, surface: &str) -> CargoAllowResult<()> {
+    if embedded_spec_system_cutover_active(root).map_err(|failure| {
+        CargoAllowError::with_kind(CargoAllowErrorKind::InvalidConfig, failure.to_string())
+    })? {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!(
+                "embedded spec-system {surface} authority is disabled while delegate_spec_system is enabled in {}; use cargo-intent or disable delegate_spec_system",
+                crate::intent_provider::DEFAULT_INTENT_DELEGATION_CONFIG
+            ),
+        ));
+    }
+    Ok(())
+}
+
+pub fn reject_embedded_precommit_authority(root: &Path) -> CargoAllowResult<()> {
+    reject_embedded_spec_system_authority(root, "precommit evaluator")
+}
+
 pub fn try_delegate_staged_precommit(
     args: &CheckArgs,
     started: Instant,
