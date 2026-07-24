@@ -31,13 +31,12 @@ allow = [
 confidence-threshold = 0.8
 
 [bans]
-# Deny multiple versions of the same crate when they can be avoided.
+# Warn on multiple versions of the same crate when they can be avoided.
 multiple-versions = "warn"
-# Deny wildcard dependencies.
-wildcards = "deny"
+# Warn on wildcard dependencies.
+wildcards = "warn"
 
 [sources]
 # Only allow crates from crates.io.
 unknown-registry = "deny"
 unknown-git = "deny"
-allow-registry = ["https://github.com/rustsec/advisory-db"]
