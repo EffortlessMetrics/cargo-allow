@@ -1,0 +1,6 @@
+kind: Added
+body: >-
+  CI: matrix the release install-smoke job across ubuntu-latest and
+  windows-latest so the published binary is tested on Windows, not just
+  Linux. The install smoke runs `cargo install`, `cargo-allow --version`,
+  `doctor`, and `check --help` on each OS. Child of #1786.
