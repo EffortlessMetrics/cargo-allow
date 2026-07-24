@@ -1,0 +1,42 @@
+# Exact-candidate interop journey inventory (#2605).
+# Outside-monorepo consumer proof for three-product packaged binaries.
+
+schema_id = "cargo-allow.exact-candidate-interop-journeys.v1"
+schema_version = 1
+
+journeys = [
+  { id = "A", product = "cargo-allow", summary = "source product alone in isolated consumer" },
+  { id = "B", product = "cargo-intent", summary = "intent product alone in isolated consumer" },
+  { id = "C", product = "cargo-proof", summary = "proof product with fake/command provider dry-run" },
+  { id = "D", product = "cargo-proof", summary = "proof dry-run then invoke installed cargo-allow" },
+  { id = "E", product = "cargo-allow", summary = "legacy cargo-allow delegates staged precommit to installed cargo-intent" },
+]
+
+scenario_classes = [
+  "absent",
+  "compatible",
+  "incompatible",
+  "stale",
+  "malformed",
+  "partial",
+  "wrong_snapshot",
+]
+
+forbidden_leaks = [
+  "workspace_target_debug",
+  "workspace_crates_checkout",
+  "undeclared_sibling_crate",
+  "ambient_schema",
+  "private_import",
+  "hidden_path_dep",
+]
+
+discovery_fixtures = [
+  "tests/fixtures/cargo-allow/intent-provider-discovery-v1.toml",
+  "tests/fixtures/cargo-allow/proof-provider-discovery-v1.toml",
+]
+
+proof_fixtures = [
+  "tests/fixtures/cargo-proof/obligation-plan-smoke-v1.toml",
+  "tests/fixtures/cargo-proof/proof-plan-smoke-v1.toml",
+]
