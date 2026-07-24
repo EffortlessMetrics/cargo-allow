@@ -1,0 +1,10 @@
+scenario_id = "parity-repo-edit-refresh-command-v1"
+cargo_allow_module = "cargo-allow::refresh"
+repo_edit_module = "repo-edit::single_target_apply"
+parity_case = "parity-repo-edit-refresh-command-v1"
+move_ledger_entry = "migrate-cargo-allow-refresh-command"
+required_behaviors = [
+  "refresh_uses_single_target_apply",
+  "containment_checked_before_write",
+  "mutation_lock_acquired_for_write",
+]

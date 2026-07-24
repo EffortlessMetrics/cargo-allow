@@ -256,3 +256,18 @@ claim_boundary = "init applies starter policy via repo-edit single_target_apply;
 parity_fixture = "tests/fixtures/repo-edit/parity-init-command-v1.toml"
 removal_condition = "issue:#2606 stage-4 cutover receipt"
 controlling_issue = 2602
+
+[[entry]]
+id = "migrate-cargo-allow-refresh-command"
+current_identity = "crates/cargo-allow/src/refresh.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-allow"
+current_owner_crate = "cargo-allow"
+target_owner_product = "shared"
+target_owner_crate = "repo-edit"
+disposition = "MoveToSharedSnapshot"
+status = "moved"
+claim_boundary = "refresh rewrites policy via repo-edit single_target_apply; UX unchanged."
+parity_fixture = "tests/fixtures/repo-edit/parity-refresh-command-v1.toml"
+removal_condition = "issue:#2606 stage-5 cutover receipt"
+controlling_issue = 2602
