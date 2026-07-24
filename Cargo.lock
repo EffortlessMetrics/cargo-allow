@@ -481,6 +481,7 @@ name = "proof-protocol"
 version = "0.2.0"
 dependencies = [
  "repo-protocol",
+ "serde",
  "toml",
 ]
 
