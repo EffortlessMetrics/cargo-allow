@@ -1044,6 +1044,9 @@ fn diff_json_report_matches_posture_golden_contract() {
     "evidence_missing": 0,
     "baseline_debt": 0
   }},
+  "evidence_repair_queues": [
+
+  ],
   "outcomes": [
 
   ],

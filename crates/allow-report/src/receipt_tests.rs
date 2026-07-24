@@ -84,7 +84,8 @@ fn receipt_matches_empty_check_golden_contract() {
     "missing_required_field": 0,
     "evidence_missing": 0,
     "baseline_debt": 0
-  }}
+  }},
+  "evidence_repair_queues": []
 }}
 "#,
         render_claim_boundary_json(),
@@ -244,7 +245,9 @@ fn receipt_advisory_counts_policy_context() {
 }
 
 #[test]
-fn receipt_omits_evidence_repair_queues_when_clean() {
+fn receipt_always_includes_evidence_repair_queues_even_when_clean() {
+    // #1858: evidence_repair_queues is always present (empty array when clean)
+    // so downstream consumers can distinguish "feature off" from "zero count".
     let json = render_receipt_with_context(
         "check",
         &[],
@@ -252,7 +255,10 @@ fn receipt_omits_evidence_repair_queues_when_clean() {
         ReportContext::source_syntax("git_tracked", None, None, None),
     );
 
-    assert!(!json.contains("\"evidence_repair_queues\""));
+    assert!(
+        json.contains("\"evidence_repair_queues\": []"),
+        "receipt should always include evidence_repair_queues (empty when clean): {json}"
+    );
 }
 
 #[test]

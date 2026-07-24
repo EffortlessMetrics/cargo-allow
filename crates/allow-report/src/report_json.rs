@@ -168,10 +168,9 @@ fn append_evidence_repair_queues_json(
     out: &mut String,
 ) {
     let queues = evidence_repair_queues(summary, ReviewSignals::from_summary(summary, context));
-    if queues.is_empty() {
-        return;
-    }
-
+    // #1858: always emit the array (even when empty) so downstream consumers
+    // can distinguish "feature off" from "zero count" without per-artifact
+    // special-casing.
     out.push_str("  \"evidence_repair_queues\": [\n");
     for (index, queue) in queues.iter().enumerate() {
         if index > 0 {

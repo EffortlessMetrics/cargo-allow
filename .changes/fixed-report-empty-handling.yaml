@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Report: `evidence_repair_queues` is now always present (empty array when
+  clean) across all artifacts — receipt, check/audit/diff JSON reports.
+  Previously the field was conditionally omitted when empty, making it
+  impossible for downstream consumers to distinguish "feature off" from
+  "zero count" without per-artifact special-casing. Child of #1781.
