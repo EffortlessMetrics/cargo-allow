@@ -691,3 +691,48 @@ claim_boundary = "Requirement-grip comparison preserving predictive static evide
 parity_fixture = "tests/fixtures/proof-adapter-ripr/parity-grip-comparison-v1.toml"
 removal_condition = "issue:#2606 proof-adapter-ripr stage-3 cutover receipt"
 controlling_issue = 2556
+
+[[entry]]
+id = "introduce-proof-adapter-hawk-crate"
+current_identity = "crates/proof-adapter-hawk/src/lib.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-proof"
+current_owner_crate = "proof-adapter-hawk"
+target_owner_product = "cargo-proof"
+target_owner_crate = "proof-adapter-hawk"
+disposition = "MoveToProofAdapter"
+status = "current"
+claim_boundary = "Hawk adapter scaffold; Hawk liveness remains provider-owned."
+parity_fixture = "tests/fixtures/proof-adapter-hawk/parity-boundary-v1.toml"
+removal_condition = "issue:#2606 proof-adapter-hawk stage-1 cutover receipt"
+controlling_issue = 2555
+
+[[entry]]
+id = "introduce-proof-adapter-hawk-analysis-receipt"
+current_identity = "crates/proof-adapter-hawk/src/analysis_receipt.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-proof"
+current_owner_crate = "proof-adapter-hawk"
+target_owner_product = "cargo-proof"
+target_owner_crate = "proof-adapter-hawk"
+disposition = "MoveToProofAdapter"
+status = "current"
+claim_boundary = "HawkAnalysisReceiptV1 captured-report validation without rustc-private imports (#2555 Stage A)."
+parity_fixture = "tests/fixtures/proof-adapter-hawk/parity-analysis-receipt-v1.toml"
+removal_condition = "issue:#2606 proof-adapter-hawk stage-2 cutover receipt"
+controlling_issue = 2555
+
+[[entry]]
+id = "introduce-proof-adapter-hawk-finding-mapping"
+current_identity = "crates/proof-adapter-hawk/src/finding_mapping.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-proof"
+current_owner_crate = "proof-adapter-hawk"
+target_owner_product = "cargo-proof"
+target_owner_crate = "proof-adapter-hawk"
+disposition = "MoveToProofAdapter"
+status = "current"
+claim_boundary = "Finding-to-adapter result mapping with absence-as-NotProven (#2555 Stage A)."
+parity_fixture = "tests/fixtures/proof-adapter-hawk/parity-finding-mapping-v1.toml"
+removal_condition = "issue:#2606 proof-adapter-hawk stage-3 cutover receipt"
+controlling_issue = 2555
