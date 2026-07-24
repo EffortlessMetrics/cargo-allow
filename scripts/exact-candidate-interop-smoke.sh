@@ -208,7 +208,19 @@ printf '%s\n' "${b_version}" | grep -F "cargo-intent ${version}" >/dev/null \
 "${cargo_intent_bin}" --root "${consumer_dir}" --format json identity >/dev/null
 printf 'staged\n' >"${consumer_dir}/candidate.txt"
 git -C "${consumer_dir}" add candidate.txt
-"${cargo_intent_bin}" --root "${consumer_dir}" --format json change status --staged --phase precommit >/dev/null
+set +e
+b_status_out="$("${cargo_intent_bin}" --root "${consumer_dir}" --format json change status --staged --phase precommit 2>&1)"
+b_status_exit=$?
+set -e
+printf '%s\n' "${b_status_out}" | python3 -c '
+import json, sys
+report = json.load(sys.stdin)
+if report.get("schema_id") != "cargo-intent.change-status.v1":
+    raise SystemExit(f"unexpected schema_id: {report.get('schema_id')!r}")
+if not report.get("unmapped_staged_surface"):
+    raise SystemExit("expected unmapped_staged_surface for staged candidate")
+'
+[[ "${b_status_exit}" -ne 0 ]] || fail "journey B expected non-zero exit for unmapped staged surface"
 record_journey "B" "cargo-intent" "Passed"
 
 # --- Journey C: cargo-proof fake/command provider ---
