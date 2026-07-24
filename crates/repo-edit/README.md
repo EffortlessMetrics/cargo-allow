@@ -16,4 +16,9 @@ later packets. Product layers retain ledger and semantic edit authority.
 - `repo-edit::containment` — lexical root containment (#1791 / #1825)
 - `repo-edit::target_identity` — lexical canonicalization for lock keys
 
-`cargo-allow` forwards through ModuleFacade shims until cutover receipts land.
+## Packet 2602-B
+
+- `repo-edit::atomic_write` — temp-write-rename install and create-new overwrite guard
+
+`cargo-allow::io` forwards write helpers through ModuleFacade shims; emit helpers
+remain in cargo-allow.

@@ -145,3 +145,17 @@ latest_allowed_stage = 1
 removal_condition = "issue:#2606 stage-1 cutover receipt"
 parity_case = "parity-repo-edit-path-containment-v1"
 claim_boundary = "Path containment forwarding only; ledger semantics stay in cargo-allow."
+
+[[shim]]
+id = "shim-cargo-allow-atomic-write"
+old_identity = "cargo-allow::io::write_file"
+new_identity = "repo-edit::atomic_write"
+kind = "ModuleFacade"
+posture = "private"
+status = "active"
+move_ledger_entry = "move-cargo-allow-atomic-write"
+controlling_issue = 2602
+latest_allowed_stage = 2
+removal_condition = "issue:#2606 stage-2 cutover receipt"
+parity_case = "parity-repo-edit-atomic-write-v1"
+claim_boundary = "Single-target atomic write forwarding only; emit helpers stay in cargo-allow."
