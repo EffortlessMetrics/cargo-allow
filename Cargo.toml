@@ -20,6 +20,7 @@ members = [
   "crates/intent-engine",
   "crates/intent-edit",
   "crates/cargo-intent",
+  "crates/proof-protocol",
 ]
 
 [workspace.package]
@@ -52,6 +53,7 @@ intent-protocol = { path = "crates/intent-protocol", version = "0.2.0" }
 intent-engine = { path = "crates/intent-engine", version = "0.2.0" }
 intent-edit = { path = "crates/intent-edit", version = "0.2.0" }
 cargo-intent = { path = "crates/cargo-intent", version = "0.2.0" }
+proof-protocol = { path = "crates/proof-protocol", version = "0.2.0" }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
 sha2 = "0.10.9"

@@ -356,6 +356,17 @@ disposition = "contract_only"
 claim_boundary = "Serialization contract only; no parallel proof planner."
 
 [[case]]
+id = "parity-proof-protocol-boundary-v1"
+stage = "ProofProtocol"
+move_ledger_entry = "introduce-proof-protocol-crate"
+shim_id = "shim-proof-protocol-crate-scaffold"
+old_producer = "cargo-proof::proof_protocol_unowned"
+new_producer = "proof-protocol::boundary"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Crate scaffold and dependency topology only; plan DTO transport lands in #2588-B."
+
+[[case]]
 id = "parity-intent-edit-boundary-v1"
 stage = "IntentEdit"
 move_ledger_entry = "introduce-intent-edit-crate"

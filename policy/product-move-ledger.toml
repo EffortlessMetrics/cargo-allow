@@ -376,3 +376,18 @@ claim_boundary = "Edit plan transport, stable action IDs, and find-before-create
 parity_fixture = "tests/fixtures/intent-edit/parity-edit-plan-v1.toml"
 removal_condition = "issue:#2606 intent-edit stage-2 cutover receipt"
 controlling_issue = 2613
+
+[[entry]]
+id = "introduce-proof-protocol-crate"
+current_identity = "crates/proof-protocol/src/lib.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-proof"
+current_owner_crate = "proof-protocol"
+target_owner_product = "cargo-proof"
+target_owner_crate = "proof-protocol"
+disposition = "MoveToProofProtocol"
+status = "current"
+claim_boundary = "Crate scaffold, boundary docs, and dependency topology; plan DTO transport lands in #2588-B."
+parity_fixture = "tests/fixtures/proof-protocol/parity-boundary-v1.toml"
+removal_condition = "issue:#2606 proof-protocol stage-1 cutover receipt"
+controlling_issue = 2588

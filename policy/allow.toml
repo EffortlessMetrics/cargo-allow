@@ -8547,6 +8547,91 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9123"
+kind = "non_rust_file"
+family = "package_metadata"
+path = "crates/proof-protocol/Cargo.toml"
+owner = "repo-infra"
+classification = "rust_package_metadata"
+reason = "proof-protocol manifest is tracked cargo-proof package metadata (#2588-A)."
+evidence = ["test:proof_protocol_parity_fixtures_registered", "issue:2588", "doc:policy/product-package-topology.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "crates/proof-protocol/Cargo.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9124"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/proof-protocol/README.md"
+owner = "repo-infra"
+classification = "proof_protocol_parity_fixture"
+reason = "Proof-protocol parity fixture catalog (#2588-A)."
+evidence = ["test:proof_protocol_parity_fixtures_registered", "issue:2588", "doc:policy/extraction-parity.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "tests/fixtures/proof-protocol/README.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9125"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/proof-protocol/parity-boundary-v1.toml"
+owner = "repo-infra"
+classification = "proof_protocol_parity_fixture"
+reason = "Proof-protocol boundary scaffold parity contract (#2588-A)."
+evidence = ["test:proof_protocol_parity_fixtures_registered", "issue:2588", "doc:policy/extraction-parity.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "tests/fixtures/proof-protocol/parity-boundary-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9126"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/architecture/proof-protocol.md"
+owner = "repo-infra"
+classification = "three_product_snapshot_projection"
+reason = "Human projection of the proof-protocol cargo-proof crate (#2588-A)."
+evidence = ["test:proof_protocol_parity_fixtures_registered", "issue:2588", "doc:policy/extraction-parity.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/architecture/proof-protocol.md"
+target_fingerprint = "md"
+glob = "docs/architecture/proof-protocol.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9108"
 kind = "non_rust_file"
 family = "test_fixture"

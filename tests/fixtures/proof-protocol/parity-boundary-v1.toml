@@ -1,0 +1,17 @@
+scenario_id = "parity-proof-protocol-boundary-v1"
+proof_protocol_module = "proof-protocol::boundary"
+parity_case = "parity-proof-protocol-boundary-v1"
+move_ledger_entry = "introduce-proof-protocol-crate"
+required_behaviors = [
+  "intent_engine_does_not_depend_on_proof_protocol",
+  "cargo_allow_does_not_depend_on_proof_protocol",
+  "allowed_upstream_topology_registered",
+]
+forbidden_dependency_edges = [
+  "proof-protocol -> intent-model",
+  "proof-protocol -> intent-engine",
+  "cargo-allow product -> proof-protocol",
+]
+allowed_upstream_crates = [
+  "repo-protocol",
+]
