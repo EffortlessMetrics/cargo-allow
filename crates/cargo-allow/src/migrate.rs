@@ -6,8 +6,10 @@ use crate::{
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
-    resolve_source_tree_root, write_file, write_file_no_overwrite,
+    portable_relative_under_root, resolve_source_tree_root, write_file_no_overwrite,
 };
+use repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
+use std::env;
 
 #[path = "migrate_args.rs"]
 mod migrate_args;
@@ -31,13 +33,11 @@ use allow_core::{AllowConfig, FindingKind};
 use std::path::{Path, PathBuf};
 
 pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
-    // Containment applies only to --update (live ledger mutation), not to
-    // --out (candidate file output which may target an arbitrary path).
-    if args.update {
-        let cwd = std::env::current_dir()
-            .map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
-        let mutation_root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
-        crate::policy_config::assert_path_within_root(&mutation_root, &args.out)?;
+    if args.update && args.force {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            "pass either --update or --force, not both",
+        ));
     }
     let _mutation_lock = MutationLock::acquire(&args.out)?;
     let migration = match (&args.from, &args.repo_policy) {
@@ -84,16 +84,49 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
             evidence_source_tree_files.as_ref(),
         )?;
     }
-    if args.update && args.force {
-        return Err(CargoAllowError::with_kind(
-            CargoAllowErrorKind::Usage,
-            "pass either --update or --force, not both",
-        ));
-    }
-    if args.update {
-        write_file(&args.out, &render_policy(&cfg))?;
+    let cwd = env::current_dir()
+        .map_err(|error| CargoAllowError::new(format!("failed to read cwd: {error}")))?;
+    let repository_root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
+    let output_absolute = if args.out.is_absolute() {
+        args.out.clone()
     } else {
-        write_file_no_overwrite(&args.out, &render_policy(&cfg), args.force)?;
+        cwd.join(&args.out)
+    };
+    let rendered = render_policy(&cfg);
+    match portable_relative_under_root(&repository_root, &output_absolute) {
+        Ok(target) => {
+            crate::policy_config::assert_path_within_root(&repository_root, &output_absolute)?;
+            let mode = if args.update {
+                SingleTargetApplyMode::AtomicReplace
+            } else if args.force {
+                SingleTargetApplyMode::ReplaceWithBackup
+            } else {
+                SingleTargetApplyMode::CreateNewOnly
+            };
+            apply_single_target(SingleTargetApplyRequest {
+                repository_root: &repository_root,
+                target: &target,
+                contents: &rendered,
+                caller_reference: Some(if args.update {
+                    "cargo-allow:migrate"
+                } else {
+                    "cargo-allow:migrate:out"
+                }),
+                lock_identity: Some(
+                    target
+                        .to_string_lossy()
+                        .replace(std::path::MAIN_SEPARATOR, "/"),
+                ),
+                mode,
+            })
+            .into_result()?;
+        }
+        Err(error) => {
+            if args.update {
+                return Err(error);
+            }
+            write_file_no_overwrite(&output_absolute, &rendered, args.force)?;
+        }
     }
     let summary = match args.summary_format {
         MigrateSummaryFormat::Human => render_migrate_summary(
