@@ -1,4 +1,4 @@
-# Canonical eleven-crate ExactCandidate package / publish set (#2277 / #2372 / #2601-B).
+# Canonical twelve-crate ExactCandidate package / publish set (#2277 / #2372 / #2601-B / #2602-A).
 # Shared by release docs, package-candidate smoke, and ExactCandidatePackageSet harness.
 # Do not fork this list into additional independent copies without updating callers.
 
@@ -17,5 +17,6 @@ crates = [
   "allow-policy-legacy",
   "allow-diff",
   "repo-protocol",
+  "repo-edit",
   "cargo-allow",
 ]

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ExactCandidatePackageSetV1 (#2372 / #2277 / #2378 / #2380 / #2408).
 #
-# Packages the canonical eleven-crate set, extracts each .crate outside the
+# Packages the canonical twelve-crate set, extracts each .crate outside the
 # workspace, warms external crates via patched `cargo fetch`, assembles a
 # classic Cargo local-registry (`.crate` + index) for the full lockfile graph
 # with candidate crates injected, installs cargo-allow offline with crates-io
@@ -119,7 +119,7 @@ for i in "${!crates[@]}"; do
   crates[$i]="${crates[$i]//$'\r'/}"
 done
 
-[[ "${#crates[@]}" -eq 11 ]] || fail "expected 11 crates from ${crate_set_fixture}, got ${#crates[@]}"
+[[ "${#crates[@]}" -eq 12 ]] || fail "expected 12 crates from ${crate_set_fixture}, got ${#crates[@]}"
 
 version="$(read_workspace_version)"
 [[ -n "${version}" ]] || fail "could not read workspace.package.version"
@@ -937,7 +937,7 @@ receipt = {
     "tool": "cargo-allow",
     "result": "Passed",
     "claim_boundary": [
-        "exact_eleven_crate_package_graph",
+        "exact_twelve_crate_package_graph",
         "classic_transitive_local_registry_offline_install",
         "source_checkout_denied_during_decisive_install",
         "source_candidate_not_published_install_journey",

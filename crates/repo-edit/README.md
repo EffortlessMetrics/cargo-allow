@@ -2,6 +2,8 @@
 
 Shared repository-safe mutation substrate (#2602).
 
+Most users should use [cargo-allow](https://github.com/EffortlessMetrics/cargo-allow); `repo-edit` is an internal shared implementation crate for three-product extraction.
+
 ## Claim boundary
 
 Target identity, path containment, and cross-process lock convergence only.
