@@ -1,0 +1,19 @@
+# Proof provider discovery fixture (#2567).
+
+schema_id = "cargo-allow.proof-provider-discovery.v1"
+schema_version = 1
+
+discovery_order = [
+  "explicit_environment",
+  "compatibility_config",
+  "path_lookup",
+]
+
+forbidden_path_prefixes = [
+  "target/",
+  "crates/",
+]
+
+config_relative_path = ".allow/compatibility/proof-delegation.toml"
+environment_variable = "CARGO_ALLOW_BIN"
+product_name = "cargo-allow"

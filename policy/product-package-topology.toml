@@ -182,6 +182,14 @@ candidate_inclusion = false
 release_order = 425
 
 [[package]]
+package = "proof-adapter-cargo-allow"
+product_family = "cargo-proof"
+posture = "CargoProofExperimental"
+publish = false
+candidate_inclusion = false
+release_order = 427
+
+[[package]]
 package = "proof-engine"
 product_family = "cargo-proof"
 posture = "CargoProofExperimental"

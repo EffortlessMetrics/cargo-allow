@@ -9181,6 +9181,132 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9159"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/proof-adapter-cargo-allow/parity-boundary-v1.toml"
+owner = "repo-infra"
+classification = "proof_adapter_cargo_allow_parity_fixture"
+reason = "Proof-adapter-cargo-allow boundary parity fixture (#2567)."
+evidence = ["test:proof_adapter_cargo_allow_parity_fixtures_registered", "issue:2567", "doc:policy/extraction-parity.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "tests/fixtures/proof-adapter-cargo-allow/parity-boundary-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9160"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/proof-adapter-cargo-allow/parity-provider-contract-v1.toml"
+owner = "repo-infra"
+classification = "proof_adapter_cargo_allow_parity_fixture"
+reason = "Proof-adapter-cargo-allow provider contract parity fixture (#2567)."
+evidence = ["test:proof_adapter_cargo_allow_parity_fixtures_registered", "issue:2567", "doc:policy/extraction-parity.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "tests/fixtures/proof-adapter-cargo-allow/parity-provider-contract-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9161"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/cargo-allow/proof-provider-discovery-v1.toml"
+owner = "repo-infra"
+classification = "proof_adapter_cargo_allow_parity_fixture"
+reason = "cargo-allow proof provider discovery contract fixture (#2567)."
+evidence = ["test:proof_adapter_cargo_allow_parity_fixtures_registered", "issue:2567", "doc:policy/extraction-parity.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "tests/fixtures/cargo-allow/proof-provider-discovery-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9162"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/proof-adapter-cargo-allow/README.md"
+owner = "repo-infra"
+classification = "proof_adapter_cargo_allow_parity_fixture"
+reason = "Proof-adapter-cargo-allow parity fixture catalog (#2567 / #2554)."
+evidence = ["test:proof_adapter_cargo_allow_parity_fixtures_registered", "issue:2567", "doc:policy/extraction-parity.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "tests/fixtures/proof-adapter-cargo-allow/README.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9163"
+kind = "non_rust_file"
+family = "package_metadata"
+path = "crates/proof-adapter-cargo-allow/Cargo.toml"
+owner = "repo-infra"
+classification = "rust_package_metadata"
+reason = "proof-adapter-cargo-allow manifest is tracked cargo-proof package metadata (#2567 / #2554)."
+evidence = ["test:proof_adapter_cargo_allow_parity_fixtures_registered", "issue:2567", "doc:policy/product-package-topology.toml"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "crates/proof-adapter-cargo-allow/Cargo.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9164"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/architecture/proof-adapter-cargo-allow.md"
+owner = "repo-infra"
+classification = "architecture_projection"
+reason = "Human projection for proof-adapter-cargo-allow (#2567 / #2554)."
+evidence = ["test:proof_adapter_cargo_allow_parity_fixtures_registered", "issue:2567", "doc:docs/adr/CARGO-ALLOW-ADR-0002-three-product-ownership.md"]
+created = "2026-07-24"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "docs/architecture/proof-adapter-cargo-allow.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9140"
 kind = "non_rust_file"
 family = "test_fixture"

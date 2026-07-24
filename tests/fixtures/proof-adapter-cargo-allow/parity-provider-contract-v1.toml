@@ -1,0 +1,21 @@
+scenario_id = "parity-proof-adapter-cargo-allow-provider-contract-v1"
+proof_adapter_cargo_allow_module = "proof-adapter-cargo-allow::provider_contract"
+parity_case = "parity-proof-adapter-cargo-allow-provider-contract-v1"
+move_ledger_entry = "introduce-proof-adapter-cargo-allow-contract"
+required_contract_fields = [
+  "schema_id",
+  "provider_id",
+  "product_name",
+  "access_posture",
+  "snapshot_bound",
+  "discovery_order",
+  "forbidden_path_prefixes",
+  "environment_variable",
+  "config_relative_path",
+  "required_capabilities",
+]
+required_discovery_fields = [
+  "explicit_environment",
+  "compatibility_config",
+  "path_lookup",
+]

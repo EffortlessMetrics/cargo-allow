@@ -601,3 +601,48 @@ claim_boundary = "Product shell with identity, render, exit mapping, and proof-e
 parity_fixture = "tests/fixtures/cargo-proof/product-identity-v1.toml"
 removal_condition = "issue:#2606 cargo-proof stage-1 cutover receipt"
 controlling_issue = 2589
+
+[[entry]]
+id = "introduce-proof-adapter-cargo-allow-crate"
+current_identity = "crates/proof-adapter-cargo-allow/src/lib.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-proof"
+current_owner_crate = "proof-adapter-cargo-allow"
+target_owner_product = "cargo-proof"
+target_owner_crate = "proof-adapter-cargo-allow"
+disposition = "MoveToProofAdapter"
+status = "current"
+claim_boundary = "Snapshot-bound read-only cargo-allow provider scaffold; process execution remains proof-engine owned."
+parity_fixture = "tests/fixtures/proof-adapter-cargo-allow/parity-boundary-v1.toml"
+removal_condition = "issue:#2606 proof-adapter-cargo-allow stage-1 cutover receipt"
+controlling_issue = 2567
+
+[[entry]]
+id = "introduce-proof-adapter-cargo-allow-contract"
+current_identity = "crates/proof-adapter-cargo-allow/src/provider_contract.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-proof"
+current_owner_crate = "proof-adapter-cargo-allow"
+target_owner_product = "cargo-proof"
+target_owner_crate = "proof-adapter-cargo-allow"
+disposition = "MoveToProofAdapter"
+status = "current"
+claim_boundary = "Snapshot-bound read-only provider contract and discovery fixture without workspace target/crates leaks (#2567)."
+parity_fixture = "tests/fixtures/proof-adapter-cargo-allow/parity-provider-contract-v1.toml"
+removal_condition = "issue:#2606 proof-adapter-cargo-allow stage-2 cutover receipt"
+controlling_issue = 2567
+
+[[entry]]
+id = "introduce-proof-adapter-cargo-allow-provider"
+current_identity = "crates/proof-adapter-cargo-allow/src/cargo_allow_provider.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-proof"
+current_owner_crate = "proof-adapter-cargo-allow"
+target_owner_product = "cargo-proof"
+target_owner_crate = "proof-adapter-cargo-allow"
+disposition = "MoveToProofAdapter"
+status = "current"
+claim_boundary = "Public process discovery, dry-run argv compilation, and ProofProviderV1 wiring without cargo-allow private imports (#2554)."
+parity_fixture = "tests/fixtures/cargo-allow/proof-provider-discovery-v1.toml"
+removal_condition = "issue:#2606 proof-adapter-cargo-allow stage-3 cutover receipt"
+controlling_issue = 2554
