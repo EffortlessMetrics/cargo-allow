@@ -259,6 +259,48 @@ parity_case = "parity-cargo-proof-product-identity-v1"
 claim_boundary = "Product shell with identity, render, exit mapping, and plan/dry-run wiring only."
 
 [[shim]]
+id = "shim-proof-adapter-cargo-allow-crate-scaffold"
+old_identity = "cargo-proof::proof_adapter_cargo_allow_unowned"
+new_identity = "proof-adapter-cargo-allow::boundary"
+kind = "ModuleFacade"
+posture = "private"
+status = "planned"
+move_ledger_entry = "introduce-proof-adapter-cargo-allow-crate"
+controlling_issue = 2567
+latest_allowed_stage = 1
+removal_condition = "issue:#2606 proof-adapter-cargo-allow stage-1 cutover receipt"
+parity_case = "parity-proof-adapter-cargo-allow-boundary-v1"
+claim_boundary = "cargo-allow provider scaffold only; process execution remains proof-engine owned."
+
+[[shim]]
+id = "shim-proof-adapter-cargo-allow-contract"
+old_identity = "cargo-proof::proof_cargo_allow_contract_unowned"
+new_identity = "proof-adapter-cargo-allow::provider_contract"
+kind = "ModuleFacade"
+posture = "private"
+status = "planned"
+move_ledger_entry = "introduce-proof-adapter-cargo-allow-contract"
+controlling_issue = 2567
+latest_allowed_stage = 2
+removal_condition = "issue:#2606 proof-adapter-cargo-allow stage-2 cutover receipt"
+parity_case = "parity-proof-adapter-cargo-allow-provider-contract-v1"
+claim_boundary = "Snapshot-bound read-only provider contract without workspace target/crates leaks."
+
+[[shim]]
+id = "shim-proof-adapter-cargo-allow-provider"
+old_identity = "cargo-proof::proof_cargo_allow_provider_unowned"
+new_identity = "proof-adapter-cargo-allow::cargo_allow_provider"
+kind = "ModuleFacade"
+posture = "private"
+status = "planned"
+move_ledger_entry = "introduce-proof-adapter-cargo-allow-provider"
+controlling_issue = 2554
+latest_allowed_stage = 3
+removal_condition = "issue:#2606 proof-adapter-cargo-allow stage-3 cutover receipt"
+parity_case = "parity-proof-adapter-cargo-allow-provider-contract-v1"
+claim_boundary = "Public process discovery and ProofProviderV1 wiring without cargo-allow private imports."
+
+[[shim]]
 id = "shim-cargo-allow-mutation-lock"
 old_identity = "cargo-allow::mutation_lock"
 new_identity = "repo-edit::mutation_lock"

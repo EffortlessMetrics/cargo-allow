@@ -163,6 +163,8 @@ mod product_move_ledger_tests;
 #[cfg(test)]
 mod product_package_topology_tests;
 #[cfg(test)]
+mod proof_adapter_cargo_allow_parity_tests;
+#[cfg(test)]
 mod proof_adapter_command_parity_tests;
 #[cfg(test)]
 mod proof_engine_parity_tests;

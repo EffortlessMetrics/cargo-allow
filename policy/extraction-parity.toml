@@ -477,6 +477,28 @@ disposition = "contract_only"
 claim_boundary = "Isolated six-crate package/install smoke; no process execution; no workspace target/debug binary."
 
 [[case]]
+id = "parity-proof-adapter-cargo-allow-boundary-v1"
+stage = "ProviderAdapters"
+move_ledger_entry = "introduce-proof-adapter-cargo-allow-crate"
+shim_id = "shim-proof-adapter-cargo-allow-crate-scaffold"
+old_producer = "cargo-proof::proof_adapter_cargo_allow_unowned"
+new_producer = "proof-adapter-cargo-allow::boundary"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "cargo-allow provider scaffold only; process execution remains proof-engine owned."
+
+[[case]]
+id = "parity-proof-adapter-cargo-allow-provider-contract-v1"
+stage = "ProviderAdapters"
+move_ledger_entry = "introduce-proof-adapter-cargo-allow-contract"
+shim_id = "shim-proof-adapter-cargo-allow-contract"
+old_producer = "cargo-proof::proof_cargo_allow_contract_unowned"
+new_producer = "proof-adapter-cargo-allow::provider_contract"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Snapshot-bound read-only provider contract without workspace target/crates leaks."
+
+[[case]]
 id = "parity-intent-edit-boundary-v1"
 stage = "IntentEdit"
 move_ledger_entry = "introduce-intent-edit-crate"

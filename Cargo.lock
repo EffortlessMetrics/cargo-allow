@@ -490,6 +490,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "proof-adapter-cargo-allow"
+version = "0.2.0"
+dependencies = [
+ "proof-adapter-command",
+ "proof-protocol",
+ "proof-provider-api",
+ "repo-protocol",
+ "serde",
+ "sha2",
+ "toml",
+]
+
+[[package]]
 name = "proof-adapter-command"
 version = "0.2.0"
 dependencies = [
