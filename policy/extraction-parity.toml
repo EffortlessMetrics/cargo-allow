@@ -421,6 +421,17 @@ expected_result = "EquivalentWithCanonicalRenaming"
 disposition = "contract_only"
 claim_boundary = "Translate validated edit plans into repo-edit apply request DTOs only."
 
+[[case]]
+id = "parity-intent-edit-recompile-contract-v1"
+stage = "IntentEdit"
+move_ledger_entry = "introduce-intent-edit-recompile-contract"
+shim_id = "shim-intent-edit-recompile-contract"
+old_producer = "cargo-intent::intent_edit_recompile_unowned"
+new_producer = "intent-edit::recompile_contract"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Recompile obligation contract bound to intent-engine transport only."
+
 [[stage_receipt]]
 stage = "ArchitectureInventory"
 required_fields = [

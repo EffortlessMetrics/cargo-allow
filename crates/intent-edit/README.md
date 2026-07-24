@@ -27,4 +27,8 @@ Packet 2613-A lands crate scaffold, boundary documentation, parity/ledger regist
 
 - `intent-edit::repo_edit_translation` — translate validated plans into repo-edit apply request DTOs
 
-## Packet 2613-E+
+## Packet 2613-E
+
+- `intent-edit::recompile_contract` — recompile obligations bound to intent-engine phase-obligation transport
+
+## Packet 2613-F

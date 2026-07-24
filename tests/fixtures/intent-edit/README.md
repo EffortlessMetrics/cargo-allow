@@ -8,4 +8,6 @@ Packet 2613-C lands dialect adapter and approval/currentness fixtures.
 
 Packet 2613-D lands translate-to-repo-edit fixtures.
 
-Packet 2613-E+ lands recompile and settlement fixtures.
+Packet 2613-E lands recompile contract fixtures.
+
+Packet 2613-F lands settlement fixtures.
