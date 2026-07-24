@@ -167,17 +167,23 @@ jobs:
   install-smoke:
     needs: publish
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: dtolnay/rust-toolchain@stable
       - name: Verify published cargo-allow installs from crates.io
+        shell: bash
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
           bash scripts/release-install-smoke.sh "${version}"
       - name: Record install-smoke receipt
         if: always()
+        shell: bash
         run: |
           mkdir -p target/cargo-allow
           cat > target/cargo-allow/release-install-smoke.receipt.json <<EOF
@@ -186,13 +192,14 @@ jobs:
             "ref": "${{ github.ref_name }}",
             "sha": "${{ github.sha }}",
             "version": "${GITHUB_REF_NAME#v}",
+            "os": "${{ matrix.os }}",
             "workflow_run_id": ${{ github.run_id }}
           }
           EOF
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
-          name: release-install-smoke-receipt
+          name: release-install-smoke-receipt-${{ matrix.os }}
           path: target/cargo-allow/release-install-smoke.receipt.json
 
   github-release:
