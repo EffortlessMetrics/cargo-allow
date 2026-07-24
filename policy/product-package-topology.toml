@@ -102,6 +102,14 @@ candidate_inclusion = false
 release_order = 220
 
 [[package]]
+package = "repo-edit"
+product_family = "shared"
+posture = "SharedImplementationInternalOrExperimental"
+publish = false
+candidate_inclusion = false
+release_order = 225
+
+[[package]]
 package = "rust-source-index"
 product_family = "shared"
 posture = "SharedProtocolInternalOrStabilizing"

@@ -1,0 +1,10 @@
+//! Parity fixture discovery for repo-edit (#2602-A).
+
+use std::path::{Path, PathBuf};
+
+pub fn parity_contract_paths(root: &Path) -> Vec<PathBuf> {
+    vec![
+        root.join("tests/fixtures/repo-edit/parity-mutation-lock-alias-v1.toml"),
+        root.join("tests/fixtures/repo-edit/parity-path-containment-v1.toml"),
+    ]
+}

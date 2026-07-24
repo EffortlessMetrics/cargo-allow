@@ -178,6 +178,36 @@ target_owner_product = "cargo-intent"
 target_owner_crate = "intent-engine"
 disposition = "DeleteAfterParity"
 status = "current"
-claim_boundary = "Embedded evaluator retirement tracked as implementation owner migration."
+claim_boundary = "Embedded precommit evaluator removed (#2568); spec-system profile audit remains until later packet."
 removal_condition = "issue:#2568 closure after parity"
 controlling_issue = 2568
+
+[[entry]]
+id = "move-cargo-allow-mutation-lock"
+current_identity = "crates/cargo-allow/src/mutation_lock.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-allow"
+current_owner_crate = "cargo-allow"
+target_owner_product = "shared"
+target_owner_crate = "repo-edit"
+disposition = "MoveToSharedSnapshot"
+status = "moved"
+claim_boundary = "Cross-process lock convergence; cargo-allow retains ModuleFacade shim."
+parity_fixture = "tests/fixtures/repo-edit/parity-mutation-lock-alias-v1.toml"
+removal_condition = "issue:#2606 stage-1 cutover receipt"
+controlling_issue = 2602
+
+[[entry]]
+id = "move-cargo-allow-path-containment"
+current_identity = "crates/cargo-allow/src/policy_config.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-allow"
+current_owner_crate = "cargo-allow"
+target_owner_product = "shared"
+target_owner_crate = "repo-edit"
+disposition = "MoveToSharedSnapshot"
+status = "moved"
+claim_boundary = "Lexical root containment; cargo-allow forwards to repo-edit."
+parity_fixture = "tests/fixtures/repo-edit/parity-path-containment-v1.toml"
+removal_condition = "issue:#2606 stage-1 cutover receipt"
+controlling_issue = 2602

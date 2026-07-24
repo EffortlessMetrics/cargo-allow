@@ -1,0 +1,5 @@
+stage = "RepoEdit"
+parity_corpus_digest = "sha256:v1:2602-a-lock-containment"
+old_path_reachability = "cargo-allow forwards mutation_lock and assert_path_within_root via repo-edit shims"
+duplicate_authority = "none; cargo-allow re-exports only"
+rollback = "revert #2602-A merge and restore inline mutation_lock/containment"

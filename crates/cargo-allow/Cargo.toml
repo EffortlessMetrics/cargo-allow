@@ -22,9 +22,9 @@ allow-report.workspace = true
 allow-diff.workspace = true
 allow-policy-legacy.workspace = true
 repo-protocol.workspace = true
+repo-edit.workspace = true
 clap.workspace = true
 toml.workspace = true
-fs4 = "0.13.1"
 serde.workspace = true
 serde_json.workspace = true
 
