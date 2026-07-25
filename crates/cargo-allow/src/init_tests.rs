@@ -2,6 +2,7 @@ use super::*;
 use crate::{CargoAllowCli, CargoAllowCommand, ProfileArg, RootArgs};
 use allow_core::CargoAllowError;
 use clap::Parser;
+use repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -76,6 +77,85 @@ fn cmd_init_writes_relative_config_under_explicit_root() {
     assert!(
         policy.exists(),
         "init should resolve relative config paths under the source-tree root"
+    );
+
+    remove_init_fixture_dir(root);
+}
+
+#[test]
+fn init_non_force_selects_create_new_only_mode() {
+    // #2777: mode selection is the durable contract; CreateNewOnly closes the
+    // exists()-then-AtomicReplace TOCTOU window on the non-force path.
+    assert_eq!(
+        super::init_policy_apply_mode(false),
+        SingleTargetApplyMode::CreateNewOnly
+    );
+    assert_eq!(
+        super::init_policy_apply_mode(true),
+        SingleTargetApplyMode::ReplaceWithBackup
+    );
+}
+
+#[test]
+fn init_non_force_create_new_only_fails_closed_on_late_target() {
+    // #2777: a target that appears after the early exists() probe must not be
+    // overwritten when applying with the non-force init mode.
+    let root = init_fixture_dir();
+    let policy_rel = PathBuf::from("policy/allow.toml");
+    let policy = root.join(&policy_rel);
+    fs::create_dir_all(
+        policy
+            .parent()
+            .unwrap_or_else(|| std::panic::panic_any("fixture policy parent should exist")),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("create policy parent: {err}")));
+    assert!(
+        !policy.exists(),
+        "probe-time absence is required to model the TOCTOU window"
+    );
+
+    fs::write(&policy, "policy = \"foreign\"\n").unwrap_or_else(|err| {
+        std::panic::panic_any(format!("simulate external target creation: {err}"))
+    });
+
+    let contents = allow_policy::starter_policy(false);
+    let response = apply_single_target(SingleTargetApplyRequest {
+        repository_root: &root,
+        target: &policy_rel,
+        contents: &contents,
+        caller_reference: Some("cargo-allow:init"),
+        lock_identity: None,
+        mode: super::init_policy_apply_mode(false),
+    });
+    assert!(
+        !response.receipt.applied(),
+        "non-force init apply must fail when the target appears before write: {:?}",
+        response.receipt.error_detail
+    );
+    assert_eq!(
+        fs::read_to_string(&policy)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read foreign policy: {err}"))),
+        "policy = \"foreign\"\n",
+        "foreign bytes must survive failed non-force init apply"
+    );
+
+    let atomic_response = apply_single_target(SingleTargetApplyRequest {
+        repository_root: &root,
+        target: &policy_rel,
+        contents: &contents,
+        caller_reference: Some("cargo-allow:init"),
+        lock_identity: None,
+        mode: SingleTargetApplyMode::AtomicReplace,
+    });
+    assert!(
+        atomic_response.receipt.applied(),
+        "old AtomicReplace path would have overwritten the late target"
+    );
+    assert!(
+        fs::read_to_string(&policy)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read replaced policy: {err}")))
+            .contains("policy = \"cargo-allow\""),
+        "AtomicReplace demonstrates the pre-#2777 overwrite behavior"
     );
 
     remove_init_fixture_dir(root);
