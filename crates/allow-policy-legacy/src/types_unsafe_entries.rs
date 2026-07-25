@@ -16,4 +16,10 @@ pub(crate) struct LegacyUnsafeRule {
     pub(crate) expires: Option<String>,
     pub(crate) line_hint: Option<u32>,
     pub(crate) last_seen: Option<LastSeen>,
+    /// Legacy provenance fields that don't have first-class cargo-allow
+    /// equivalents (#1865). Preserved via the links channel so compliance
+    /// reviews don't lose them on migration.
+    pub(crate) scope: Option<String>,
+    pub(crate) justification: Option<String>,
+    pub(crate) audit_url: Option<String>,
 }

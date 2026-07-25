@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Migrate: legacy unsafe-allowlist entries now preserve `scope`,
+  `justification`, and `audit_url` provenance fields via the links channel.
+  Previously these compliance-critical fields were silently dropped on
+  migration because neither the `LegacyUnsafeRule` type nor the parser
+  captured them. Child of #1784.

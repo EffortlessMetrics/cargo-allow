@@ -14,6 +14,20 @@ pub(crate) fn entry_from_unsafe_rule(rule: &LegacyUnsafeRule) -> AllowEntry {
         reason: &rule.reason,
         classification: &rule.classification,
     });
+    // #1865: preserve legacy provenance fields (scope, justification,
+    // audit_url) via the links channel so compliance reviews don't lose
+    // them on migration. These don't have first-class cargo-allow fields,
+    // so they ride as structured link references.
+    let mut links = legacy_policy_links(&rule.id);
+    if let Some(scope) = &rule.scope {
+        links.push(format!("legacy-scope:{scope}"));
+    }
+    if let Some(justification) = &rule.justification {
+        links.push(format!("legacy-justification:{justification}"));
+    }
+    if let Some(audit_url) = &rule.audit_url {
+        links.push(format!("audit-url:{audit_url}"));
+    }
     AllowEntry {
         id: rule.id.clone(),
         kind: FindingKind::Unsafe,
@@ -24,7 +38,7 @@ pub(crate) fn entry_from_unsafe_rule(rule: &LegacyUnsafeRule) -> AllowEntry {
         classification,
         reason,
         evidence: unsafe_evidence(rule),
-        links: legacy_policy_links(&rule.id),
+        links,
         occurrence_limit: map_occurrence_limit_none(),
         lifecycle: map_lifecycle(
             rule.created.clone(),
@@ -68,6 +82,9 @@ mod tests {
             owner: "runtime".to_string(),
             classification: "accepted".to_string(),
             reason: "Unsafe read is bounded by caller invariants.".to_string(),
+            scope: None,
+            justification: None,
+            audit_url: None,
             evidence: vec![
                 "unsafe-review:docs/evidence/unsafe/read.json".to_string(),
                 "test:read_bounds".to_string(),
@@ -128,6 +145,9 @@ mod tests {
             owner: "unowned".to_string(),
             classification: "baseline_debt".to_string(),
             reason: "Generated from legacy unsafe allowlist; requires human review.".to_string(),
+            scope: None,
+            justification: None,
+            audit_url: None,
             evidence: Vec::new(),
             created: Some("2026-02-01".to_string()),
             review_after: None,
@@ -157,5 +177,62 @@ mod tests {
         assert_eq!(entry.selector.line_hint, None);
         assert_eq!(entry.selector.glob.as_deref(), Some("src/ffi.rs"));
         assert!(entry.last_seen.is_none());
+    }
+
+    #[test]
+    fn unsafe_rule_preserves_legacy_provenance_fields_in_links() {
+        // #1865: scope, justification, and audit_url must survive migration
+        // via the links channel so compliance reviews don't lose them.
+        let rule = LegacyUnsafeRule {
+            id: "unsafe-audit".to_string(),
+            path: "src/ffi.rs".to_string(),
+            family: "unsafe_fn".to_string(),
+            selector_kind: "unsafe_fn".to_string(),
+            selector_container: None,
+            owner: "security".to_string(),
+            classification: "reviewed_unsafe_boundary".to_string(),
+            reason: "Reviewed per FFI audit.".to_string(),
+            evidence: vec!["unsafe-review:audit.json".to_string()],
+            created: Some("2026-01-01".to_string()),
+            review_after: Some("2026-10-01".to_string()),
+            expires: Some("2027-01-01".to_string()),
+            line_hint: None,
+            last_seen: None,
+            scope: Some("crate::ffi::unsafe_read".to_string()),
+            justification: Some("Raw pointer is validated upstream.".to_string()),
+            audit_url: Some("https://audit.example.com/reports/ffi-001".to_string()),
+        };
+
+        let entry = entry_from_unsafe_rule(&rule);
+
+        assert!(
+            entry
+                .links
+                .contains(&"legacy-scope:crate::ffi::unsafe_read".to_string()),
+            "scope should be preserved in links: {:?}",
+            entry.links
+        );
+        assert!(
+            entry
+                .links
+                .contains(&"legacy-justification:Raw pointer is validated upstream.".to_string()),
+            "justification should be preserved in links: {:?}",
+            entry.links
+        );
+        assert!(
+            entry
+                .links
+                .contains(&"audit-url:https://audit.example.com/reports/ffi-001".to_string()),
+            "audit_url should be preserved in links: {:?}",
+            entry.links
+        );
+        // The legacy-policy link should still be present alongside the new ones.
+        assert!(
+            entry
+                .links
+                .contains(&"legacy-policy:unsafe-audit".to_string()),
+            "legacy-policy link should be preserved: {:?}",
+            entry.links
+        );
     }
 }

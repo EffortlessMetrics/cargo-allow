@@ -110,6 +110,9 @@ status = "active"
                 line: 7,
                 column: 12,
             }),
+            scope: None,
+            justification: None,
+            audit_url: None,
         }];
 
         let cfg = config_from_unsafe_rules(&table, &rules)
