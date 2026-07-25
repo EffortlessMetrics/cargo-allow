@@ -5,7 +5,9 @@ use allow_core::FindingKind;
 
 use super::scan_source_lines;
 use crate::syntax_facts::syntax_facts_with_outcome;
-use crate::syntax_kinds::{RustSyntaxFacts, SafetyCommentAssociation, UnsafeSyntaxConstruct, UnsafeSyntaxKind};
+use crate::syntax_kinds::{
+    RustSyntaxFacts, SafetyCommentAssociation, UnsafeSyntaxConstruct, UnsafeSyntaxKind,
+};
 
 #[test]
 fn scan_source_lines_call_presence_observer() {

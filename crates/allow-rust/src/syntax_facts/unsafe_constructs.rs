@@ -71,8 +71,9 @@ fn unsafe_syntax_construct(node: Node<'_>, source: &str) -> Option<(u32, UnsafeS
                 source,
             )
         }),
-        "unsafe_block" => unsafe_child_anchor(node)
-            .map(|(point, start_byte)| located_construct(source, point, start_byte, UnsafeSyntaxKind::Block, None)),
+        "unsafe_block" => unsafe_child_anchor(node).map(|(point, start_byte)| {
+            located_construct(source, point, start_byte, UnsafeSyntaxKind::Block, None)
+        }),
         _ => None,
     }
 }
@@ -88,8 +89,9 @@ fn unsafe_modifier_construct(
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
         if child.kind() == keyword_kind {
-            return unsafe_anchor
-                .map(|(point, start_byte)| located_construct(source, point, start_byte, kind, symbol.clone()));
+            return unsafe_anchor.map(|(point, start_byte)| {
+                located_construct(source, point, start_byte, kind, symbol.clone())
+            });
         }
         if unsafe_anchor.is_none() {
             unsafe_anchor = unsafe_child_anchor(child);

@@ -2,7 +2,9 @@ use allow_core::{Finding, FindingKind};
 
 use crate::finding_builder::push_finding;
 use crate::line_context::LineContext;
-use crate::syntax_kinds::{SafetyCommentAssociation, UnsafeAttribute, UnsafeSyntaxConstruct, UnsafeSyntaxKind};
+use crate::syntax_kinds::{
+    SafetyCommentAssociation, UnsafeAttribute, UnsafeSyntaxConstruct, UnsafeSyntaxKind,
+};
 
 pub(crate) fn scan_unsafe_constructs(
     context: UnsafeLineContext<'_>,
@@ -70,10 +72,8 @@ fn apply_safety_comment_fingerprint(
 pub(crate) struct UnsafeLineContext<'a> {
     pub(crate) line: LineContext<'a>,
     pub(crate) line_no: u32,
-    pub(crate) safety_comment_associations: &'a std::collections::BTreeMap<
-        (u32, u32),
-        SafetyCommentAssociation,
-    >,
+    pub(crate) safety_comment_associations:
+        &'a std::collections::BTreeMap<(u32, u32), SafetyCommentAssociation>,
 }
 
 impl UnsafeLineContext<'_> {

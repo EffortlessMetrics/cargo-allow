@@ -2,9 +2,7 @@ use std::collections::BTreeMap;
 
 use tree_sitter::Node;
 
-use crate::syntax_kinds::{
-    RustSyntaxFacts, SafetyCommentAssociation, SafetyCommentFact,
-};
+use crate::syntax_kinds::{RustSyntaxFacts, SafetyCommentAssociation, SafetyCommentFact};
 
 pub(super) fn associate_safety_comments(
     root: Node<'_>,
@@ -69,7 +67,9 @@ pub(super) fn associate_safety_comments(
         } else {
             SafetyCommentAssociation::NearbyAmbiguous
         };
-        facts.safety_comment_associations.insert(anchor, association);
+        facts
+            .safety_comment_associations
+            .insert(anchor, association);
     }
 }
 
@@ -94,7 +94,10 @@ fn structural_comment_candidates(
     candidates
 }
 
-fn preceding_safety_comment_indices(anchor_node: Node<'_>, comments: &[SafetyCommentFact]) -> Vec<usize> {
+fn preceding_safety_comment_indices(
+    anchor_node: Node<'_>,
+    comments: &[SafetyCommentFact],
+) -> Vec<usize> {
     let Some(statement) = statement_or_item_ancestor(anchor_node) else {
         return Vec::new();
     };
@@ -231,7 +234,9 @@ mod tests {
             .as_deref();
         match fingerprint {
             Some("safety-comment:present") => Some(SafetyCommentAssociation::Attached),
-            Some("safety-comment:nearby-ambiguous") => Some(SafetyCommentAssociation::NearbyAmbiguous),
+            Some("safety-comment:nearby-ambiguous") => {
+                Some(SafetyCommentAssociation::NearbyAmbiguous)
+            }
             _ => None,
         }
     }
@@ -306,10 +311,7 @@ unsafe fn second() {}
             })
             .expect("first unsafe fn should be recorded");
         assert_eq!(
-            outcome
-                .facts
-                .safety_comment_associations
-                .get(&first_anchor),
+            outcome.facts.safety_comment_associations.get(&first_anchor),
             Some(&SafetyCommentAssociation::Attached)
         );
 

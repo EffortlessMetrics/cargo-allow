@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
 use crate::syntax_kinds::{
-    IndexExpression, LintAttribute, PanicMacroInvocation, PanicMethodCall, SafetyCommentAssociation,
-    UnsafeAttribute, UnsafeSyntaxConstruct,
+    IndexExpression, LintAttribute, PanicMacroInvocation, PanicMethodCall,
+    SafetyCommentAssociation, UnsafeAttribute, UnsafeSyntaxConstruct,
 };
 
 pub(crate) struct SyntaxLineFacts<'a> {

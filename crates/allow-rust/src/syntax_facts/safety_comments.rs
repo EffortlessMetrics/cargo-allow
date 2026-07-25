@@ -22,12 +22,14 @@ pub(super) fn record_node_safety_comments(
 
     let start_line = node.start_position().row as u32 + 1;
     let end_line = node.end_position().row as u32 + 1;
-    facts.safety_comment_facts.push(crate::syntax_kinds::SafetyCommentFact {
-        start_byte: node.start_byte(),
-        end_byte: node.end_byte(),
-        start_line,
-        end_line,
-    });
+    facts
+        .safety_comment_facts
+        .push(crate::syntax_kinds::SafetyCommentFact {
+            start_byte: node.start_byte(),
+            end_byte: node.end_byte(),
+            start_line,
+            end_line,
+        });
     for line in start_line..=end_line {
         facts.safety_comment_lines.insert(line);
     }

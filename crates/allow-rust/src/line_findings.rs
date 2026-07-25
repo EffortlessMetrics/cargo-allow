@@ -61,7 +61,9 @@ mod tests {
     use std::collections::BTreeMap;
     use std::path::Path;
 
-    fn empty_syntax<'a>(associations: &'a BTreeMap<(u32, u32), SafetyCommentAssociation>) -> SyntaxLineFacts<'a> {
+    fn empty_syntax<'a>(
+        associations: &'a BTreeMap<(u32, u32), SafetyCommentAssociation>,
+    ) -> SyntaxLineFacts<'a> {
         SyntaxLineFacts {
             lint_attributes: &[],
             panic_macros: &[],
