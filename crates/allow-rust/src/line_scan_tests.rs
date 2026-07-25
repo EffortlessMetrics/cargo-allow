@@ -1,25 +1,17 @@
+use std::collections::BTreeMap;
 use std::path::Path;
 
 use allow_core::FindingKind;
 
 use super::scan_source_lines;
-use crate::syntax_kinds::{RustSyntaxFacts, UnsafeSyntaxConstruct, UnsafeSyntaxKind};
+use crate::syntax_facts::syntax_facts_with_outcome;
+use crate::syntax_kinds::{RustSyntaxFacts, SafetyCommentAssociation, UnsafeSyntaxConstruct, UnsafeSyntaxKind};
 
 #[test]
 fn scan_source_lines_call_presence_observer() {
     let source = "fn read() {\n    // SAFETY: pointer validated by caller.\n    unsafe { core::ptr::read(ptr) }\n}\n";
-    let mut syntax = RustSyntaxFacts::default();
-    syntax.safety_comment_lines.insert(2);
-    syntax.unsafe_constructs.insert(
-        3,
-        vec![UnsafeSyntaxConstruct {
-            kind: UnsafeSyntaxKind::Block,
-            column: 5,
-            symbol: None,
-        }],
-    );
-
-    let findings = scan_source_lines(Path::new("src/lib.rs"), source, syntax);
+    let outcome = syntax_facts_with_outcome(source);
+    let findings = scan_source_lines(Path::new("src/lib.rs"), source, outcome.facts);
 
     match findings.as_slice() {
         [finding] => {
@@ -40,4 +32,28 @@ fn scan_source_lines_call_presence_observer() {
         RustSyntaxFacts::default(),
     );
     assert_eq!(empty, Vec::new());
+}
+
+#[test]
+fn scan_source_lines_uses_structural_association_map() {
+    let source = "fn read() {\n    unsafe { core::ptr::read(ptr) }\n}\n";
+    let mut syntax = RustSyntaxFacts::default();
+    syntax.unsafe_constructs.insert(
+        2,
+        vec![UnsafeSyntaxConstruct {
+            kind: UnsafeSyntaxKind::Block,
+            column: 5,
+            start_byte: 0,
+            symbol: None,
+        }],
+    );
+    syntax
+        .safety_comment_associations
+        .insert((2, 5), SafetyCommentAssociation::Attached);
+
+    let findings = scan_source_lines(Path::new("src/lib.rs"), source, syntax);
+    assert_eq!(
+        findings[0].identity.target_fingerprint.as_deref(),
+        Some("safety-comment:present")
+    );
 }

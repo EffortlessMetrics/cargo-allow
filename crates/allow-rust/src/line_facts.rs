@@ -1,6 +1,8 @@
+use std::collections::BTreeMap;
+
 use crate::syntax_kinds::{
-    IndexExpression, LintAttribute, PanicMacroInvocation, PanicMethodCall, UnsafeAttribute,
-    UnsafeSyntaxConstruct,
+    IndexExpression, LintAttribute, PanicMacroInvocation, PanicMethodCall, SafetyCommentAssociation,
+    UnsafeAttribute, UnsafeSyntaxConstruct,
 };
 
 pub(crate) struct SyntaxLineFacts<'a> {
@@ -10,5 +12,5 @@ pub(crate) struct SyntaxLineFacts<'a> {
     pub(crate) index_expressions: &'a [IndexExpression],
     pub(crate) unsafe_constructs: &'a [UnsafeSyntaxConstruct],
     pub(crate) unsafe_attributes: &'a [UnsafeAttribute],
-    pub(crate) safety_comment_nearby: bool,
+    pub(crate) safety_comment_associations: &'a BTreeMap<(u32, u32), SafetyCommentAssociation>,
 }

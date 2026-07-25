@@ -35,7 +35,8 @@ pub(crate) fn scan_line(
     scan_unsafe_constructs(
         UnsafeLineContext {
             line: context,
-            safety_comment_nearby: syntax.safety_comment_nearby,
+            line_no,
+            safety_comment_associations: syntax.safety_comment_associations,
         },
         syntax.unsafe_constructs,
         syntax.unsafe_attributes,
@@ -53,12 +54,14 @@ mod tests {
     use crate::line_facts::SyntaxLineFacts;
     use crate::syntax_kinds::{
         IndexExpression, LintAttribute, LintAttributeKind, PanicMacroInvocation, PanicMacroKind,
-        PanicMethodCall, PanicMethodKind, UnsafeSyntaxConstruct, UnsafeSyntaxKind,
+        PanicMethodCall, PanicMethodKind, SafetyCommentAssociation, UnsafeSyntaxConstruct,
+        UnsafeSyntaxKind,
     };
     use allow_core::{Finding, FindingKind};
+    use std::collections::BTreeMap;
     use std::path::Path;
 
-    fn empty_syntax<'a>() -> SyntaxLineFacts<'a> {
+    fn empty_syntax<'a>(associations: &'a BTreeMap<(u32, u32), SafetyCommentAssociation>) -> SyntaxLineFacts<'a> {
         SyntaxLineFacts {
             lint_attributes: &[],
             panic_macros: &[],
@@ -66,12 +69,13 @@ mod tests {
             index_expressions: &[],
             unsafe_constructs: &[],
             unsafe_attributes: &[],
-            safety_comment_nearby: false,
+            safety_comment_associations: associations,
         }
     }
 
     #[test]
     fn scan_line_skips_blank_and_comment_lines_before_routing_facts() {
+        let associations = BTreeMap::new();
         let lint_attributes = [LintAttribute {
             kind: LintAttributeKind::Allow,
             text: "#[allow(clippy::unwrap_used)]".to_string(),
@@ -79,7 +83,7 @@ mod tests {
         }];
         let syntax = SyntaxLineFacts {
             lint_attributes: &lint_attributes,
-            ..empty_syntax()
+            ..empty_syntax(&associations)
         };
         let container = Some("parse".to_string());
         let modules = vec!["parser".to_string()];
@@ -102,7 +106,7 @@ mod tests {
             &modules,
             SyntaxLineFacts {
                 lint_attributes: &lint_attributes,
-                ..empty_syntax()
+                ..empty_syntax(&associations)
             },
             &mut findings,
         );
@@ -122,6 +126,7 @@ mod tests {
         let unsafe_constructs = [UnsafeSyntaxConstruct {
             kind: UnsafeSyntaxKind::Block,
             column: 32,
+            start_byte: 0,
             symbol: Some("unsafe".to_string()),
         }];
         let panic_methods = [PanicMethodCall {
@@ -143,6 +148,7 @@ mod tests {
         }];
         let container = Some("parse".to_string());
         let modules = vec!["parser".to_string(), "lexer".to_string()];
+        let associations = BTreeMap::from([((7, 32), SafetyCommentAssociation::Attached)]);
         let mut findings = Vec::new();
 
         scan_line(
@@ -158,7 +164,7 @@ mod tests {
                 index_expressions: &index_expressions,
                 unsafe_constructs: &unsafe_constructs,
                 unsafe_attributes: &[],
-                safety_comment_nearby: true,
+                safety_comment_associations: &associations,
             },
             &mut findings,
         );

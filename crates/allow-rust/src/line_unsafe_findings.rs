@@ -2,7 +2,7 @@ use allow_core::{Finding, FindingKind};
 
 use crate::finding_builder::push_finding;
 use crate::line_context::LineContext;
-use crate::syntax_kinds::{UnsafeAttribute, UnsafeSyntaxConstruct, UnsafeSyntaxKind};
+use crate::syntax_kinds::{SafetyCommentAssociation, UnsafeAttribute, UnsafeSyntaxConstruct, UnsafeSyntaxKind};
 
 pub(crate) fn scan_unsafe_constructs(
     context: UnsafeLineContext<'_>,
@@ -26,9 +26,10 @@ pub(crate) fn scan_unsafe_constructs(
                 {
                     id.container = unsafe_construct.symbol.clone();
                 }
-                if context.safety_comment_nearby {
-                    id.target_fingerprint = Some("safety-comment:present".to_string());
-                }
+                apply_safety_comment_fingerprint(
+                    id,
+                    context.safety_comment_association(unsafe_construct.column),
+                );
             },
             findings,
         );
@@ -41,18 +42,46 @@ pub(crate) fn scan_unsafe_constructs(
             "unsafe_attr",
             |id| {
                 id.symbol = attribute.symbol.clone();
-                if context.safety_comment_nearby {
-                    id.target_fingerprint = Some("safety-comment:present".to_string());
-                }
+                apply_safety_comment_fingerprint(
+                    id,
+                    context.safety_comment_association(attribute.column),
+                );
             },
             findings,
         );
     }
 }
 
+fn apply_safety_comment_fingerprint(
+    id: &mut allow_core::StructuralIdentity,
+    association: Option<SafetyCommentAssociation>,
+) {
+    match association {
+        Some(SafetyCommentAssociation::Attached) => {
+            id.target_fingerprint = Some("safety-comment:present".to_string());
+        }
+        Some(SafetyCommentAssociation::NearbyAmbiguous) => {
+            id.target_fingerprint = Some("safety-comment:nearby-ambiguous".to_string());
+        }
+        None => {}
+    }
+}
+
 pub(crate) struct UnsafeLineContext<'a> {
     pub(crate) line: LineContext<'a>,
-    pub(crate) safety_comment_nearby: bool,
+    pub(crate) line_no: u32,
+    pub(crate) safety_comment_associations: &'a std::collections::BTreeMap<
+        (u32, u32),
+        SafetyCommentAssociation,
+    >,
+}
+
+impl UnsafeLineContext<'_> {
+    fn safety_comment_association(&self, column: u32) -> Option<SafetyCommentAssociation> {
+        self.safety_comment_associations
+            .get(&(self.line_no, column))
+            .copied()
+    }
 }
 
 #[cfg(test)]
@@ -65,7 +94,8 @@ mod tests {
     fn scan_unsafe_constructs_projects_construct_families_and_identity() {
         let container = Some("read".to_string());
         let modules = vec!["ffi".to_string()];
-        let context = unsafe_context(&container, &modules, true);
+        let associations = associations_with(Some(SafetyCommentAssociation::Attached));
+        let context = unsafe_context(&container, &modules, &associations);
         let constructs = [
             unsafe_construct(9, UnsafeSyntaxKind::Fn, Some("read")),
             unsafe_construct(17, UnsafeSyntaxKind::Block, Some("unsafe block")),
@@ -106,7 +136,8 @@ mod tests {
     fn scan_unsafe_constructs_uses_impl_and_trait_symbols_as_container_fallbacks() {
         let container = None;
         let modules = Vec::new();
-        let context = unsafe_context(&container, &modules, false);
+        let associations = associations_with(None);
+        let context = unsafe_context(&container, &modules, &associations);
         let constructs = [
             unsafe_construct(5, UnsafeSyntaxKind::Impl, Some("<Handle as Send>")),
             unsafe_construct(11, UnsafeSyntaxKind::Trait, Some("Marker")),
@@ -136,14 +167,17 @@ mod tests {
     fn scan_unsafe_constructs_projects_unsafe_attributes_and_empty_inputs() {
         let container = Some("export".to_string());
         let modules = vec!["ffi".to_string(), "symbols".to_string()];
-        let context = unsafe_context(&container, &modules, true);
+        let associations = associations_with(Some(SafetyCommentAssociation::Attached));
+        let context = unsafe_context(&container, &modules, &associations);
         let attributes = [
             UnsafeAttribute {
                 column: 3,
+                start_byte: 0,
                 symbol: Some("no_mangle".to_string()),
             },
             UnsafeAttribute {
                 column: 19,
+                start_byte: 0,
                 symbol: Some("export_name".to_string()),
             },
         ];
@@ -152,8 +186,9 @@ mod tests {
         scan_unsafe_constructs(context, &[], &[], &mut findings);
         assert!(findings.is_empty());
 
+        let associations = associations_with(Some(SafetyCommentAssociation::Attached));
         scan_unsafe_constructs(
-            unsafe_context(&container, &modules, true),
+            unsafe_context(&container, &modules, &associations),
             &[],
             &attributes,
             &mut findings,
@@ -178,7 +213,7 @@ mod tests {
     fn unsafe_context<'a>(
         container: &'a Option<String>,
         module_stack: &'a [String],
-        safety_comment_nearby: bool,
+        associations: &'a std::collections::BTreeMap<(u32, u32), SafetyCommentAssociation>,
     ) -> UnsafeLineContext<'a> {
         UnsafeLineContext {
             line: LineContext {
@@ -188,8 +223,21 @@ mod tests {
                 container,
                 module_stack,
             },
-            safety_comment_nearby,
+            line_no: 42,
+            safety_comment_associations: associations,
         }
+    }
+
+    fn associations_with(
+        association: Option<SafetyCommentAssociation>,
+    ) -> std::collections::BTreeMap<(u32, u32), SafetyCommentAssociation> {
+        let mut associations = std::collections::BTreeMap::new();
+        if let Some(association) = association {
+            for column in [3, 5, 9, 11, 17, 19] {
+                associations.insert((42, column), association);
+            }
+        }
+        associations
     }
 
     fn unsafe_construct(
@@ -200,6 +248,7 @@ mod tests {
         UnsafeSyntaxConstruct {
             kind,
             column,
+            start_byte: 0,
             symbol: symbol.map(str::to_string),
         }
     }

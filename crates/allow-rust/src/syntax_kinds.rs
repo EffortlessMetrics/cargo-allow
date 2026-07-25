@@ -73,13 +73,29 @@ impl UnsafeSyntaxKind {
 pub(crate) struct UnsafeSyntaxConstruct {
     pub(crate) kind: UnsafeSyntaxKind,
     pub(crate) column: u32,
+    pub(crate) start_byte: usize,
     pub(crate) symbol: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct UnsafeAttribute {
     pub(crate) column: u32,
+    pub(crate) start_byte: usize,
     pub(crate) symbol: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct SafetyCommentFact {
+    pub(crate) start_byte: usize,
+    pub(crate) end_byte: usize,
+    pub(crate) start_line: u32,
+    pub(crate) end_line: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SafetyCommentAssociation {
+    Attached,
+    NearbyAmbiguous,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -181,6 +197,8 @@ pub(crate) struct RustSyntaxFacts {
     pub(crate) panic_methods: BTreeMap<u32, Vec<PanicMethodCall>>,
     pub(crate) scopes: BTreeMap<u32, RustLineScope>,
     pub(crate) safety_comment_lines: BTreeSet<u32>,
+    pub(crate) safety_comment_facts: Vec<SafetyCommentFact>,
+    pub(crate) safety_comment_associations: BTreeMap<(u32, u32), SafetyCommentAssociation>,
     pub(crate) unsafe_constructs: BTreeMap<u32, Vec<UnsafeSyntaxConstruct>>,
     pub(crate) unsafe_attributes: BTreeMap<u32, Vec<UnsafeAttribute>>,
 }

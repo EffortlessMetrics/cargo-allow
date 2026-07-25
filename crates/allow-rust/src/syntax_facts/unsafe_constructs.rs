@@ -71,8 +71,8 @@ fn unsafe_syntax_construct(node: Node<'_>, source: &str) -> Option<(u32, UnsafeS
                 source,
             )
         }),
-        "unsafe_block" => unsafe_child_point(node)
-            .map(|point| located_construct(source, point, UnsafeSyntaxKind::Block, None)),
+        "unsafe_block" => unsafe_child_anchor(node)
+            .map(|(point, start_byte)| located_construct(source, point, start_byte, UnsafeSyntaxKind::Block, None)),
         _ => None,
     }
 }
@@ -84,27 +84,28 @@ fn unsafe_modifier_construct(
     symbol: Option<String>,
     source: &str,
 ) -> Option<(u32, UnsafeSyntaxConstruct)> {
-    let mut unsafe_point = None;
+    let mut unsafe_anchor = None;
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
         if child.kind() == keyword_kind {
-            return unsafe_point
-                .map(|point| located_construct(source, point, kind, symbol.clone()));
+            return unsafe_anchor
+                .map(|(point, start_byte)| located_construct(source, point, start_byte, kind, symbol.clone()));
         }
-        if unsafe_point.is_none() {
-            unsafe_point = unsafe_child_point(child);
+        if unsafe_anchor.is_none() {
+            unsafe_anchor = unsafe_child_anchor(child);
         }
     }
     None
 }
 
-fn unsafe_child_point(node: Node<'_>) -> Option<tree_sitter::Point> {
+fn unsafe_child_anchor(node: Node<'_>) -> Option<(tree_sitter::Point, usize)> {
     if node.kind() == "unsafe" {
-        return Some(node.start_position());
+        return Some((node.start_position(), node.start_byte()));
     }
     let mut cursor = node.walk();
-    node.children(&mut cursor)
-        .find_map(|child| (child.kind() == "unsafe").then(|| child.start_position()))
+    node.children(&mut cursor).find_map(|child| {
+        (child.kind() == "unsafe").then(|| (child.start_position(), child.start_byte()))
+    })
 }
 
 fn item_name(node: Node<'_>, source: &str) -> Option<String> {
@@ -144,6 +145,7 @@ fn collect_foreign_item_names(node: Node<'_>, source: &str, item_names: &mut Vec
 fn located_construct(
     source: &str,
     point: tree_sitter::Point,
+    start_byte: usize,
     kind: UnsafeSyntaxKind,
     symbol: Option<String>,
 ) -> (u32, UnsafeSyntaxConstruct) {
@@ -152,6 +154,7 @@ fn located_construct(
         UnsafeSyntaxConstruct {
             kind,
             column: source_column(source, point.row, point.column),
+            start_byte,
             symbol,
         },
     )

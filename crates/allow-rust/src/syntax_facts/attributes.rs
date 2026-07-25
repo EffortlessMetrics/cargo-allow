@@ -40,6 +40,7 @@ pub(super) fn record_node_attributes(node: Node<'_>, source: &str, facts: &mut R
         for offset in unsafe_attribute_offsets {
             attributes.push(UnsafeAttribute {
                 column: source_column(source, start.row, start.column + offset),
+                start_byte: node.start_byte(),
                 symbol: unsafe_attribute_symbol(text, offset),
             });
         }

@@ -1,10 +1,3 @@
-use std::collections::BTreeSet;
-
-pub(crate) fn has_nearby_safety_comment(safety_comments: &BTreeSet<u32>, line_no: u32) -> bool {
-    let first = line_no.saturating_sub(3).max(1);
-    (first..=line_no).any(|line| safety_comments.contains(&line))
-}
-
 /// Returns true when `comment_text` is the raw text of a tree-sitter
 /// `line_comment` or `block_comment` node whose body starts with `SAFETY:`.
 pub(crate) fn comment_node_text_is_safety_marker(comment_text: &str, kind: &str) -> bool {
@@ -53,17 +46,6 @@ fn block_comment_body(text: &str) -> Option<&str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn has_nearby_safety_comment_call_presence_observer() {
-        let safety_comments = BTreeSet::from([1, 4, 10]);
-
-        assert!(has_nearby_safety_comment(&safety_comments, 1));
-        assert!(has_nearby_safety_comment(&safety_comments, 3));
-        assert!(has_nearby_safety_comment(&safety_comments, 7));
-        assert!(!has_nearby_safety_comment(&safety_comments, 8));
-        assert!(!has_nearby_safety_comment(&safety_comments, 0));
-    }
 
     #[test]
     fn comment_node_text_is_safety_marker_line_comment_forms() {
