@@ -159,7 +159,8 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
         || evidence.has_broken_evidence_links()
         || federation_bundle.has_blocking_divergence()
         || (!args.deny.is_empty() && deny_escalation_failed(&args.deny, &summary, context))
-        || (inventory_facts.rust_files_skipped > 0 && mode == CheckMode::NoNew);
+        || (inventory_facts.rust_files_skipped > 0 && mode == CheckMode::NoNew)
+        || (inventory_facts.rust_files_with_parse_errors > 0 && mode == CheckMode::NoNew);
     if should_emit_report_stdout(args.output.as_deref(), args.receipt.as_deref(), args.format) {
         print_report(ReportRenderArgs {
             command: "check",

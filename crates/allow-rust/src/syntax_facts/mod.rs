@@ -9,13 +9,25 @@ mod panic;
 mod scopes;
 mod unsafe_constructs;
 
-pub(crate) fn syntax_facts(source: &str) -> RustSyntaxFacts {
+pub(crate) struct SyntaxFactsOutcome {
+    pub facts: RustSyntaxFacts,
+    pub has_parse_error: bool,
+}
+
+pub(crate) fn syntax_facts_with_outcome(source: &str) -> SyntaxFactsOutcome {
     let Ok(tree) = parse_rust_syntax(source) else {
-        return RustSyntaxFacts::default();
+        return SyntaxFactsOutcome {
+            facts: RustSyntaxFacts::default(),
+            has_parse_error: true,
+        };
     };
 
+    let has_parse_error = tree.has_error();
     let mut facts = RustSyntaxFacts::default();
     collector::collect_syntax_facts(tree.tree.root_node(), source, &mut facts);
     scopes::collect_line_scopes(tree.tree.root_node(), source, &mut facts.scopes);
-    facts
+    SyntaxFactsOutcome {
+        facts,
+        has_parse_error,
+    }
 }
