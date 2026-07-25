@@ -1,0 +1,5 @@
+kind: Documentation
+body: >-
+  Test: add integration test for the `tool` subcommand which previously had
+  zero binary-level coverage. Exercises both JSON and human output formats,
+  asserting schema_id, digest shape, version, and capability generations.
