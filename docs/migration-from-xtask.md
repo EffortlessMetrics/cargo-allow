@@ -333,3 +333,86 @@ Recommended order:
 
 Unsafe comes later because its evidence requirements are stronger and should
 link to unsafe-review or equivalent boundary-review artifacts.
+
+## Bespoke xtask/ripr Ledger Migration
+
+Some repositories enforce source exceptions through bespoke xtask gates that
+store semantic selectors as flat triples (`selector`, `container`, `callee`,
+`receiver`) rather than shiplog-style per-lane TOML files. cargo-allow can
+import those ledgers when the file declares `dialect = "xtask-ripr"`.
+
+Example legacy input (`policy/no-panic-ledger.toml`):
+
+```toml
+schema_version = 1
+dialect = "xtask-ripr"
+
+[[entries]]
+id = "unwrap-after-validate"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "parser"
+reason = "Pins unwrap on optional after validation."
+classification = "reviewed_panic_exception"
+evidence = ["test:unwrap_after_validate"]
+created = "2026-06-18"
+review_after = "2026-12-18"
+selector = "method_call"
+container = "load"
+callee = "unwrap"
+receiver = "optional_value"
+```
+
+When the finding moves but the semantic selector still matches, preserve
+advisory drift hints from the legacy ledger:
+
+```toml
+line_hint = 14
+
+[entries.last_seen]
+line = 14
+column = 8
+```
+
+Migrate a single bespoke ledger file:
+
+```bash
+cargo-allow migrate \
+  --from policy/no-panic-ledger.toml \
+  --out target/cargo-allow/bespoke-migrated.toml \
+  --summary-format json \
+  --summary-output target/cargo-allow/bespoke-migrate-summary.json
+```
+
+`migrate --from` auto-detects `dialect = "xtask-ripr"` before legacy or
+canonical dispatch. The migration summary records `input_kind = "bespoke"` and
+compat kind `bespoke-ledger`.
+
+After migration, run canonical check in no-new mode:
+
+```bash
+cargo-allow check \
+  --config target/cargo-allow/bespoke-migrated.toml \
+  --mode no-new
+```
+
+When a migrated entry's `last_seen` coordinates differ from the current finding
+location but the semantic selector still matches, cargo-allow reports
+`MatchStatus::LocationDrift` as an advisory instead of failing no-new. Use
+`cargo-allow refresh` to record operator-approved `last_seen` updates after
+reviewing drift advisories.
+
+Characterization fixtures live under
+`tests/fixtures/migration/bespoke-ledger-*.toml`. The in-repo ripr-style
+multi-family dogfood receipt
+(`docs/dogfood/cargo-allow-ripr-style-adoption.md`) documents shiplog-style
+batch migration; bespoke ledger import is a separate single-file path today.
+
+### Bespoke Migration Claim Boundary
+
+Migration preserves owner, reason, evidence, semantic selector triples,
+`receiver`/`receiver_fingerprint`, and optional `last_seen`/`line_hint` hints.
+It does not execute legacy xtasks, scan with macro expansion or type analysis,
+import bespoke ledgers through `--repo-policy` batch mode, or prove external
+`ripr` repository cutover.
