@@ -1,7 +1,7 @@
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
-use crate::RootArgs;
+use crate::{RootArgs, parse_kind_filter_arg};
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct AddArgs {
@@ -12,10 +12,13 @@ pub(crate) struct AddArgs {
     pub(super) config: Option<PathBuf>,
     /// Finding kind to add. Required for ordinary target selection; omitted with
     /// `--from-plan`, where the kind is taken from the plan.
+    /// Same vocabulary as check/audit/diff: panic, unsafe, lint-exception,
+    /// non-rust, generated, policy-exception.
     #[arg(
         long,
         required_unless_present = "from_plan",
-        conflicts_with = "from_plan"
+        conflicts_with = "from_plan",
+        value_parser = parse_kind_filter_arg
     )]
     pub(super) kind: Option<String>,
     /// Path containing the finding. Use with --line to receipt one specific

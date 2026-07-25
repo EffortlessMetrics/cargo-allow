@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  UX: `why --kind` and `add --kind` now use the same `parse_kind_filter_arg`
+  value_parser as check/audit/diff. A typo now produces "unknown kind `X`;
+  supported kinds: panic, unsafe, lint-exception, ..." instead of the bare
+  "unsupported finding kind `X`" with no hint of valid values.

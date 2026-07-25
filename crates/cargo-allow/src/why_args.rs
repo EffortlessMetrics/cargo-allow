@@ -1,7 +1,7 @@
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
-use crate::RootArgs;
+use crate::{RootArgs, parse_kind_filter_arg};
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct WhyArgs {
@@ -11,7 +11,9 @@ pub(crate) struct WhyArgs {
     #[arg(long)]
     pub(super) config: Option<PathBuf>,
     /// Finding kind near the location (required to disambiguate).
-    #[arg(long)]
+    /// Same vocabulary as check/audit/diff: panic, unsafe, lint-exception,
+    /// non-rust, generated, policy-exception.
+    #[arg(long, value_parser = parse_kind_filter_arg)]
     pub(super) kind: String,
     /// Path containing the finding.
     #[arg(long)]
