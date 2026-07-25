@@ -1,0 +1,4 @@
+kind: Documentation
+body: >-
+  Fix MSRV documentation drift: three docs said 1.85 but workspace requires 1.95
+  since the 0.2.0 train.

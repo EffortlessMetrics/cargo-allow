@@ -6,7 +6,7 @@ no-new-debt enforcement path — the same path cargo-allow dogfoods on itself.
 
 ## Prerequisites
 
-- Rust toolchain (MSRV 1.85+)
+- Rust toolchain (MSRV 1.95+)
 - `cargo-allow` installed: `cargo install --git https://github.com/EffortlessMetrics/cargo-allow`
 - A git repository (cargo-allow scans git-tracked files)
 
