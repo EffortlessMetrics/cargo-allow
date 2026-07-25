@@ -1,0 +1,5 @@
+kind: Documentation
+body: >-
+  Add SECURITY.md with private vulnerability reporting path, supported versions
+  table, response timeline, scope guidance, and hardening measures inventory.
+  Child of #1785.

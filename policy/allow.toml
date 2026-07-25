@@ -10125,3 +10125,25 @@ glob = ".github/dependabot.yml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0481"
+kind = "non_rust_file"
+family = "documentation"
+path = "SECURITY.md"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Security policy and vulnerability reporting guide"
+evidence = ["doc:CONTRIBUTING.md"]
+created = "2026-07-25"
+review_after = "2026-10-19"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "SECURITY.md"
+target_fingerprint = "md"
+glob = "SECURITY.md"
+
+[allow.last_seen]
+line = 1
+column = 1
