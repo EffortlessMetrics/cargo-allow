@@ -12,11 +12,12 @@ dependency law during extraction.
 | `policy/product-move-ledger.toml` | Move/deletion inventory (#2598) |
 | `docs/adr/CARGO-ALLOW-ADR-0002-three-product-ownership.md` | Product ownership ADR |
 
-## Current workspace ownership (report-only)
+## Current workspace ownership
 
-All current workspace members are owned by the `cargo-allow` product until
-extraction PRs land new crates. Planned intent/proof/shared crates are listed as
-`planned_crate` entries and are not required to exist yet.
+Products, shared crates, and planned crates are declared in the manifest. The
+validator loads the workspace package graph through `cargo metadata` and checks
+direct dependency edges against product `forbid_product_dependencies`,
+`forbidden_crate_dependency`, and shared `allowed_domain_dependencies`.
 
 ## Validation
 
@@ -27,5 +28,8 @@ cargo test -p cargo-allow product_crate_architecture --locked
 
 ## Claim boundary
 
-Report-only ownership inventory and workspace drift checks for #2580 PR1. Does
-not invoke `cargo metadata` or enforce dependency edges yet.
+PR2 (#2580): ownership inventory, workspace drift checks, and `cargo metadata`
+dependency-law diagnostics for forbidden product edges, explicit forbidden crate
+edges, and shared-protocol domain leaks. Dev/build dependency bypasses remain
+visible in diagnostics. Does not enforce no-new blocking, transitional shim
+registry coupling, or independent binary-closure proofs yet.

@@ -1,0 +1,19 @@
+{
+  "packages": [
+    {
+      "name": "cargo-allow",
+      "dependencies": [
+        { "name": "allow-core", "kind": null },
+        { "name": "intent-engine", "kind": null }
+      ]
+    },
+    {
+      "name": "allow-core",
+      "dependencies": []
+    },
+    {
+      "name": "intent-engine",
+      "dependencies": []
+    }
+  ]
+}

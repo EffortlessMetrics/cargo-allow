@@ -1,0 +1,14 @@
+{
+  "packages": [
+    {
+      "name": "repo-protocol",
+      "dependencies": [
+        { "name": "intent-model", "kind": null }
+      ]
+    },
+    {
+      "name": "intent-model",
+      "dependencies": []
+    }
+  ]
+}
