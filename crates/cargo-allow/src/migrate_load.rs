@@ -34,11 +34,12 @@ pub(super) fn load_single_file_migration_config(
             },
             input_path: normalize_path(from),
             legacy_source_files: match source {
-                SingleFileMigrationSource::BespokeLedger => vec![from
-                    .file_name()
-                    .and_then(|name| name.to_str())
-                    .unwrap_or("bespoke-ledger.toml")
-                    .to_string()],
+                SingleFileMigrationSource::BespokeLedger => vec![
+                    from.file_name()
+                        .and_then(|name| name.to_str())
+                        .unwrap_or("bespoke-ledger.toml")
+                        .to_string(),
+                ],
                 SingleFileMigrationSource::LegacyOrCanonical => legacy_source_file_names(from),
             },
             legacy_compat_kinds: match source {

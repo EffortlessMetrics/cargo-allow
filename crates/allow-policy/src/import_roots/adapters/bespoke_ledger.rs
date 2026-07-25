@@ -86,8 +86,7 @@ fn parse_bespoke_entry(
     let table = entry.as_table().ok_or_else(|| {
         CargoAllowError::new(format!("bespoke ledger entry {index} is not a table"))
     })?;
-    let context = string_field(table, "id")
-        .unwrap_or_else(|| format!("bespoke-{index:04}"));
+    let context = string_field(table, "id").unwrap_or_else(|| format!("bespoke-{index:04}"));
     let owner = required_non_empty_field(table, "owner", &context)?;
     let reason = required_non_empty_field(table, "reason", &context)?;
     let kind = match string_field(table, "kind") {
@@ -100,8 +99,8 @@ fn parse_bespoke_entry(
     };
     let path = string_field(table, "path").map(|path| normalize_path(&path));
     let family = string_field(table, "family");
-    let classification = string_field(table, "classification")
-        .unwrap_or_else(|| "baseline_debt".to_string());
+    let classification =
+        string_field(table, "classification").unwrap_or_else(|| "baseline_debt".to_string());
     let evidence = string_array_field(table, "evidence");
     let links = bespoke_links(table, &context);
     let lifecycle = Lifecycle {
@@ -150,10 +149,10 @@ fn selector_from_entry_table(
     let macro_name = string_field(table, "macro_name");
     let lint = string_field(table, "lint");
     let symbol = string_field(table, "symbol");
-    let receiver_fingerprint = string_field(table, "receiver_fingerprint")
-        .or_else(|| string_field(table, "receiver"));
-    let target_fingerprint = string_field(table, "target_fingerprint")
-        .or_else(|| string_field(table, "target"));
+    let receiver_fingerprint =
+        string_field(table, "receiver_fingerprint").or_else(|| string_field(table, "receiver"));
+    let target_fingerprint =
+        string_field(table, "target_fingerprint").or_else(|| string_field(table, "target"));
     let normalized_snippet_hash = string_field(table, "normalized_snippet_hash");
     let line_hint = table
         .get("line_hint")
@@ -253,9 +252,8 @@ fn required_non_empty_field(
     key: &str,
     context: &str,
 ) -> CargoAllowResult<String> {
-    let value = string_field(table, key).ok_or_else(|| {
-        CargoAllowError::new(format!("{context} missing required field `{key}`"))
-    })?;
+    let value = string_field(table, key)
+        .ok_or_else(|| CargoAllowError::new(format!("{context} missing required field `{key}`")))?;
     if value.trim().is_empty() {
         return Err(CargoAllowError::new(format!(
             "{context} field `{key}` must not be empty"
@@ -404,8 +402,9 @@ callee = "unwrap"
             "cargo-allow-{slug}-{}-{stamp}.toml",
             std::process::id()
         ));
-        let text = fs::read_to_string(&source)
-            .unwrap_or_else(|err| std::panic::panic_any(format!("read fixture {fixture_rel}: {err}")));
+        let text = fs::read_to_string(&source).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("read fixture {fixture_rel}: {err}"))
+        });
         fs::write(&path, text)
             .unwrap_or_else(|err| std::panic::panic_any(format!("stage fixture: {err}")));
         path
