@@ -412,7 +412,7 @@ claim_boundary = "Provider-independent proof corpus, result taxonomy, binding id
 
 [[case]]
 id = "parity-proof-engine-ripr-routing-v1"
-stage = "ProofEngine"
+stage = "ProofEngineAndCli"
 move_ledger_entry = "introduce-proof-engine-ripr-routing"
 shim_id = "shim-proof-engine-ripr-routing"
 old_producer = "ripr::proof_route"
