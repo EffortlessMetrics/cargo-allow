@@ -5,7 +5,8 @@ mod routing;
 use std::path::{Path, PathBuf};
 
 pub use routing::{
-    load_ripr_routing_contract, ripr_routing_contract_path, ripr_routing_fixture_path,
+    RiprRoutingParityContract, load_ripr_routing_contract, ripr_routing_contract_path,
+    ripr_routing_fixture_path,
 };
 
 pub fn parity_contract_paths(root: &Path) -> Vec<PathBuf> {

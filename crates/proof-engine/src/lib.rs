@@ -74,7 +74,10 @@ pub use obligation_plan::{
     ObligationPlanError, load_obligation_plan_toml, validate_obligation_plan,
 };
 pub use obligation_plan_surface::ObligationPlanSurface;
-pub use parity::{parity_contract_path, parity_contract_paths};
+pub use parity::{
+    load_ripr_routing_contract, parity_contract_path, parity_contract_paths,
+    ripr_routing_contract_path, RiprRoutingParityContract,
+};
 pub use phase_gate::{
     PHASE_GATE_EVALUATION_SCHEMA_ID, PhaseGateError, PhaseGateEvaluationV1, PhaseGateOutcomeV1,
     evaluate_phase_gate,
