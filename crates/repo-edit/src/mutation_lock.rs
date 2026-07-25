@@ -1,5 +1,4 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
-use fs4::fs_std::FileExt;
 use std::fs::{self, File, OpenOptions};
 use std::path::{Path, PathBuf};
 
@@ -35,7 +34,7 @@ impl MutationLock {
                     path.display()
                 ))
             })?;
-        file.lock_exclusive().map_err(|error| {
+        file.lock().map_err(|error| {
             CargoAllowError::new(format!(
                 "failed to acquire mutation lock {}: {error}",
                 path.display()
