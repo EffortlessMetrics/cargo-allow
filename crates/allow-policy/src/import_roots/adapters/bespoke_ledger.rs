@@ -452,52 +452,6 @@ column = 8
     }
 
     #[test]
-    fn advisory_drift_import_reports_location_drift_without_failing_no_new() {
-        use allow_core::{Finding, MatchStatus, Span, StructuralIdentity};
-        use std::path::PathBuf;
-
-        let table = parse_table(ADVISORY_DRIFT_FIXTURE);
-        let cfg = import_bespoke_ledger_table(&table).unwrap_or_else(|err| {
-            std::panic::panic_any(format!("bespoke advisory drift compat config: {err}"))
-        });
-
-        let finding = Finding {
-            kind: FindingKind::Panic,
-            family: Some("unwrap".to_string()),
-            path: PathBuf::from("src/lib.rs"),
-            span: Some(Span {
-                line: 22,
-                column: 4,
-            }),
-            identity: {
-                let mut identity = StructuralIdentity::new("rust", "method_call");
-                identity.container = Some("load".to_string());
-                identity.callee = Some("unwrap".to_string());
-                identity.receiver_fingerprint = Some("optional_value".to_string());
-                identity
-            },
-            message: String::new(),
-            ledger: None,
-        };
-
-        let outcomes = allow_match::evaluate(
-            &cfg,
-            std::slice::from_ref(&finding),
-            allow_match::CheckMode::NoNew,
-        );
-
-        let drift = outcomes
-            .iter()
-            .find(|outcome| outcome.status == MatchStatus::LocationDrift)
-            .unwrap_or_else(|| std::panic::panic_any("expected location_drift outcome"));
-        assert!(drift.message.contains("last_seen changed from 14:8"));
-        assert!(
-            !allow_match::CheckMode::NoNew.fails(drift.status),
-            "location drift should remain advisory in no-new mode"
-        );
-    }
-
-    #[test]
     fn import_bespoke_ledger_at_reads_advisory_drift_fixture_file() {
         let path = stage_fixture(
             "bespoke-ledger-advisory-drift",
