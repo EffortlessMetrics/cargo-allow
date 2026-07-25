@@ -148,10 +148,11 @@ fn trailing_safety_comment_indices(
 
     let mut cursor = statement.walk();
     for child in statement.children(&mut cursor) {
-        if is_comment_node(child.kind()) && child.start_byte() >= anchor_byte {
-            if let Some(index) = comment_index_for_node(comments, child) {
-                candidates.push(index);
-            }
+        if is_comment_node(child.kind())
+            && child.start_byte() >= anchor_byte
+            && let Some(index) = comment_index_for_node(comments, child)
+        {
+            candidates.push(index);
         }
     }
 
