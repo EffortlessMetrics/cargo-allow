@@ -156,8 +156,8 @@ fn selector_from_entry_table(
     let target_fingerprint =
         string_field(table, "target_fingerprint").or_else(|| string_field(table, "target"));
     let normalized_snippet_hash = string_field(table, "normalized_snippet_hash");
-    let line_hint = optional_u32_field(table, "line_hint")
-        .or_else(|| last_seen.map(|seen| seen.line));
+    let line_hint =
+        optional_u32_field(table, "line_hint").or_else(|| last_seen.map(|seen| seen.line));
     let glob = string_field(table, "selector_glob").or_else(|| path.map(str::to_string));
     let selector = Selector {
         ast_kind: Some(ast_kind.clone()),
@@ -480,8 +480,11 @@ column = 8
             ledger: None,
         };
 
-        let outcomes =
-            allow_match::evaluate(&cfg, std::slice::from_ref(&finding), allow_match::CheckMode::NoNew);
+        let outcomes = allow_match::evaluate(
+            &cfg,
+            std::slice::from_ref(&finding),
+            allow_match::CheckMode::NoNew,
+        );
 
         let drift = outcomes
             .iter()
