@@ -140,7 +140,7 @@ pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
         ))],
         result: if args.write { "written" } else { "stdout" },
         next_commands: vec![
-            format!("cargo-allow explain --id {}", original_entry.id),
+            format!("cargo-allow explain {}", original_entry.id),
             "cargo-allow check --mode no-new".to_string(),
         ],
     };

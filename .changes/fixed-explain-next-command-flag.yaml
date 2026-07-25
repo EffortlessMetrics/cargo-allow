@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  UX: mutation receipt next-commands for `add` and `refresh` used the invalid
+  `cargo-allow explain --id <id>` flag. The `id` argument is positional, so
+  the suggested command errored with "unexpected argument '--id'". Fixed to
+  `cargo-allow explain <id>`.
