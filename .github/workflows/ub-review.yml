@@ -32,7 +32,7 @@ jobs:
             exit 1
           fi
       - name: Run ub-review
-        uses: EffortlessMetrics/ub-review@f0620c358f4a9032d3f832fda92488fd198ab6e9
+        uses: EffortlessMetrics/ub-review@a1e64c65e39aadf341f4e5cb14094b9a87f592ad
         with:
           profile: gh-runner
           posting: review
