@@ -77,6 +77,10 @@ pub use federation::{
     parse_federation_config, validate_federation_config,
 };
 
+pub use import_roots::adapters::{
+    BESPOKE_LEDGER_DIALECT, import_bespoke_ledger_at, import_bespoke_ledger_table,
+    import_bespoke_ledger_text, is_bespoke_ledger_dialect,
+};
 pub use import_roots::{
     DEFAULT_OWNED_IMPORT_ROOT, ImportConfidence, ImportDiagnostic, ImportDiagnosticKind,
     ImportEdge, ImportEdgeKind, ImportGraph, ImportNode, ImportNodeRole, ImportProvenance,
