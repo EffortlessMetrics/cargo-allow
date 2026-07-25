@@ -72,6 +72,13 @@ pub struct PlannedCrate {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ForbiddenCrateDependency {
+    pub from: String,
+    pub to: String,
+    pub repair_hint: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ArchitectureManifest {
     pub schema_version: String,
     pub manifest_id: String,
@@ -80,6 +87,7 @@ pub struct ArchitectureManifest {
     pub product: Vec<ProductDefinition>,
     pub shared_crate: Vec<SharedCrateDefinition>,
     pub planned_crate: Vec<PlannedCrate>,
+    pub forbidden_crate_dependency: Vec<ForbiddenCrateDependency>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -95,6 +103,8 @@ struct ArchitectureManifestToml {
     shared_crate: Vec<SharedCrateDefinitionToml>,
     #[serde(default)]
     planned_crate: Vec<PlannedCrateToml>,
+    #[serde(default)]
+    forbidden_crate_dependency: Vec<ForbiddenCrateDependencyToml>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -124,6 +134,14 @@ struct PlannedCrateToml {
     owner_product: String,
     role: String,
     stage_issue: u32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ForbiddenCrateDependencyToml {
+    from: String,
+    to: String,
+    repair_hint: Option<String>,
 }
 
 impl ArchitectureManifestToml {
@@ -169,6 +187,16 @@ impl ArchitectureManifestToml {
             });
         }
 
+        let forbidden_crate_dependency = self
+            .forbidden_crate_dependency
+            .into_iter()
+            .map(|entry| ForbiddenCrateDependency {
+                from: entry.from,
+                to: entry.to,
+                repair_hint: entry.repair_hint,
+            })
+            .collect();
+
         Ok(ArchitectureManifest {
             schema_version,
             manifest_id,
@@ -177,6 +205,7 @@ impl ArchitectureManifestToml {
             product,
             shared_crate,
             planned_crate,
+            forbidden_crate_dependency,
         })
     }
 }

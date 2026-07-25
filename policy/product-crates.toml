@@ -3,7 +3,7 @@ manifest_id = "CARGO-ALLOW-ARCH-0001"
 controlling_issue = 2580
 linked_move_ledger = "CARGO-ALLOW-MOVE-LEDGER-0001"
 
-# ProductCrateArchitectureV1 — report-only ownership manifest for #2580 PR1.
+# ProductCrateArchitectureV1 — ownership manifest with cargo-metadata dependency law (#2580 PR2).
 
 [[product]]
 id = "cargo-allow"
@@ -86,3 +86,8 @@ name = "proof-engine"
 owner_product = "cargo-proof"
 role = "CargoProof"
 stage_issue = 2589
+
+[[forbidden_crate_dependency]]
+from = "proof-engine"
+to = "intent-engine"
+repair_hint = "intent-protocol"

@@ -1,5 +1,6 @@
 use allow_policy::product_crates::{
-    ArchitectureDiagnosticKind, validate_architecture_manifest_at, workspace_members_from_manifest,
+    ArchitectureDiagnosticKind, load_workspace_dependency_graph, validate_architecture_manifest_at,
+    validate_architecture_with_dependency_graph_at, workspace_members_from_manifest,
 };
 use std::path::PathBuf;
 
@@ -28,6 +29,47 @@ fn product_crate_architecture_report_only_inventory() -> Result<(), String> {
         .map_err(|err| format!("product crate law readable: {err}"))?;
     if !law_text.contains("cargo-allow") {
         return Err("human projection missing cargo-allow ownership".to_string());
+    }
+
+    Ok(())
+}
+
+#[test]
+fn product_crate_dependency_law_loads_workspace_graph() -> Result<(), String> {
+    let root = repo_root();
+    let members = workspace_members_from_manifest(&root)
+        .map_err(|err| format!("workspace members: {err}"))?;
+    let manifest_path = root.join("policy/product-crates.toml");
+    let graph = load_workspace_dependency_graph(&root)
+        .map_err(|err| format!("load workspace dependency graph: {err}"))?;
+    if graph.edges.is_empty() {
+        return Err("workspace dependency graph should contain dependency edges".to_string());
+    }
+
+    let (_, diagnostics, _) =
+        validate_architecture_with_dependency_graph_at(&root, &manifest_path, &members, &graph)
+            .map_err(|err| format!("validate with dependency graph: {err}"))?;
+
+    let dev_bypasses: Vec<_> = diagnostics
+        .iter()
+        .filter(|diag| diag.kind == ArchitectureDiagnosticKind::ForbiddenProductDependency)
+        .filter(|diag| diag.message.contains("cargo-allow") && diag.message.contains("dev"))
+        .collect();
+    if dev_bypasses.is_empty() {
+        return Err(
+            "expected cargo-allow dev dependency bypasses on intent crates to remain visible"
+                .to_string(),
+        );
+    }
+
+    let has_normal_forbidden = diagnostics.iter().any(|diag| {
+        diag.kind == ArchitectureDiagnosticKind::ForbiddenProductDependency
+            && diag.message.contains("normal dependency")
+    });
+    if has_normal_forbidden {
+        return Err(format!(
+            "workspace should not have forbidden normal product dependencies yet: {diagnostics:?}"
+        ));
     }
 
     Ok(())

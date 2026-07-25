@@ -1,0 +1,19 @@
+{
+  "packages": [
+    {
+      "name": "proof-engine",
+      "dependencies": [
+        { "name": "proof-protocol", "kind": null },
+        { "name": "intent-engine", "kind": null }
+      ]
+    },
+    {
+      "name": "proof-protocol",
+      "dependencies": []
+    },
+    {
+      "name": "intent-engine",
+      "dependencies": []
+    }
+  ]
+}
