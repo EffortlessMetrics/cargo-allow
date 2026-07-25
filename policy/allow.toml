@@ -320,7 +320,7 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-9204"
+id = "allow-9208"
 kind = "non_rust_file"
 family = "test_fixture"
 path = "tests/fixtures/product-crates/README.md"
@@ -342,7 +342,7 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-9205"
+id = "allow-9209"
 kind = "non_rust_file"
 family = "test_fixture"
 path = "tests/fixtures/product-crates/forbidden-cargo-allow-to-intent-engine.json"
@@ -364,7 +364,7 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-9206"
+id = "allow-9210"
 kind = "non_rust_file"
 family = "test_fixture"
 path = "tests/fixtures/product-crates/forbidden-proof-engine-to-intent-engine.json"
@@ -386,7 +386,7 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-9207"
+id = "allow-9211"
 kind = "non_rust_file"
 family = "test_fixture"
 path = "tests/fixtures/product-crates/shared-protocol-domain-leak.json"
