@@ -63,10 +63,38 @@ fn source_tree_path_filter_matches_exact_subtree_and_glob_scope() {
         "crates/allow-core"
     ));
     assert!(source_tree_path_matches_filter(
-        "scripts/**/*.sh",
-        "scripts/release/build.sh"
+        "scripts/release/build.sh",
+        "scripts/**/*.sh"
     ));
     assert!(source_tree_path_matches_filter("README.md", "."));
+}
+
+#[test]
+fn source_tree_path_filter_matches_glob_pattern_as_filter() {
+    // #2776: a glob pattern in the filter_path argument (e.g. from
+    // `--path 'src/**/*.rs'`) must match against the item_path, not the
+    // other way around. Previously the wildcard check was applied to the
+    // item_path (which never contains wildcards), making this branch dead.
+    assert!(source_tree_path_matches_filter(
+        "src/allow-core/lib.rs",
+        "src/**/*.rs"
+    ));
+    assert!(source_tree_path_matches_filter(
+        "src/allow-match/scoring.rs",
+        "src/**/*.rs"
+    ));
+    assert!(!source_tree_path_matches_filter(
+        "docs/README.md",
+        "src/**/*.rs"
+    ));
+    assert!(source_tree_path_matches_filter(
+        "crates/parser/src/lib.rs",
+        "crates/*/src/*.rs"
+    ));
+    assert!(!source_tree_path_matches_filter(
+        "crates/parser/tests/main.rs",
+        "crates/*/src/*.rs"
+    ));
 }
 
 #[test]
