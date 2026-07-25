@@ -25,10 +25,7 @@ fn product_move_ledger_repository_inventory_is_valid() -> Result<(), String> {
     for entry in &validated.ledger.entry {
         assert!(map_text.contains(&format!("### `{}`", entry.id)));
         assert!(map_text.contains(&format!("- Disposition: `{}`", entry.disposition)));
-        assert!(map_text.contains(&format!(
-            "- Removal: {}",
-            entry.removal_issue_or_condition
-        )));
+        assert!(map_text.contains(&format!("- Removal: {}", entry.removal_issue_or_condition)));
         assert!(map_text.contains(&format!("- Deletion output: {}", entry.deletion_output)));
     }
 

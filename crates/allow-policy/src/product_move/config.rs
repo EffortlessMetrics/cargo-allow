@@ -2,8 +2,7 @@ use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use serde::Deserialize;
 use std::path::Path;
 
-pub const PRODUCT_MOVE_LEDGER_SCHEMA_ID: &str =
-    "cargo-allow.three-product-move-ledger.v1";
+pub const PRODUCT_MOVE_LEDGER_SCHEMA_ID: &str = "cargo-allow.three-product-move-ledger.v1";
 pub const PRODUCT_MOVE_LEDGER_SCHEMA_VERSION: u32 = 1;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]

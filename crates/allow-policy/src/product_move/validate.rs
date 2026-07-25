@@ -135,9 +135,7 @@ pub fn render_product_move_map(ledger: &ProductMoveLedger) -> String {
         "2. **#2604** — `ProductPackageTopologyV1` without changing the ten-crate candidate.\n",
     );
     out.push_str("3. **#2607** — register only shims required by the first source moves.\n");
-    out.push_str(
-        "4. **#2606** — parity, stage, reachability, and cutover receipt contracts.\n",
-    );
+    out.push_str("4. **#2606** — parity, stage, reachability, and cutover receipt contracts.\n");
     out.push_str(
         "5. **#2582** — first real move: minimal `repo-protocol` envelope with parity evidence.\n\n",
     );
@@ -163,10 +161,7 @@ pub fn render_product_move_map(ledger: &ProductMoveLedger) -> String {
             entry.removal_issue_or_condition
         ));
         out.push_str(&format!("- Next: {}\n", entry.next_move));
-        out.push_str(&format!(
-            "- Deletion output: {}\n\n",
-            entry.deletion_output
-        ));
+        out.push_str(&format!("- Deletion output: {}\n\n", entry.deletion_output));
     }
     out.push_str("## Transition rules\n\n");
     out.push_str(
@@ -539,7 +534,10 @@ fn required_field_missing(entry: &MoveEntry) -> bool {
         || entry.target_module.trim().is_empty()
         || entry.schema_producer_impact.trim().is_empty()
         || entry.expected_cutover_receipt.trim().is_empty()
-        || entry.selected_public_producer_after_cutover.trim().is_empty()
+        || entry
+            .selected_public_producer_after_cutover
+            .trim()
+            .is_empty()
         || entry.package_ci_docs_impact.is_empty()
         || entry.removal_issue_or_condition.trim().is_empty()
         || entry.migration_owner_issue.trim().is_empty()
@@ -586,7 +584,8 @@ fn collect_files(root: &Path, relative: &Path, out: &mut BTreeSet<String>) -> Re
         )
     })?;
     for entry in entries {
-        let entry = entry.map_err(|error| format!("move-ledger discovery entry failed: {error}"))?;
+        let entry =
+            entry.map_err(|error| format!("move-ledger discovery entry failed: {error}"))?;
         let child = relative.join(entry.file_name());
         let child_path = entry.path();
         if child_path.is_symlink() {

@@ -23,8 +23,7 @@ fn first_entry_mut(ledger: &mut ProductMoveLedger) -> Result<&mut MoveEntry, Str
 
 #[test]
 fn parse_product_move_ledger_requires_exact_schema() -> Result<(), String> {
-    let current =
-        include_str!("../../../../policy/product-move-ledger.toml").replace("\r\n", "\n");
+    let current = include_str!("../../../../policy/product-move-ledger.toml").replace("\r\n", "\n");
     let missing = current.replacen(
         "schema_id = \"cargo-allow.three-product-move-ledger.v1\"\n",
         "",
@@ -62,16 +61,14 @@ fn parse_product_move_ledger_requires_exact_schema() -> Result<(), String> {
         return Err("unknown discovery field unexpectedly parsed".to_string());
     }
 
-    let unknown_entry = current.replacen(
-        "[[entry]]\n",
-        "[[entry]]\nunknown_entry_field = true\n",
-        1,
-    );
+    let unknown_entry =
+        current.replacen("[[entry]]\n", "[[entry]]\nunknown_entry_field = true\n", 1);
     if parse_product_move_ledger(&unknown_entry).is_ok() {
         return Err("unknown entry field unexpectedly parsed".to_string());
     }
 
-    let missing_required_entry = current.replacen("id = \"MOVE-INTENT-MODEL-REQUIREMENTS\"\n", "", 1);
+    let missing_required_entry =
+        current.replacen("id = \"MOVE-INTENT-MODEL-REQUIREMENTS\"\n", "", 1);
     if parse_product_move_ledger(&missing_required_entry).is_ok() {
         return Err("missing required entry field unexpectedly parsed".to_string());
     }
@@ -96,8 +93,7 @@ fn explicit_root_validation_rejects_missing_and_escaping_paths() -> Result<(), S
     let root = repo_root();
 
     let current_text = include_str!("../../../../policy/product-move-ledger.toml");
-    let original_path =
-        "current_paths = [\"crates/allow-policy/src/spec_system/requirement.rs\"]";
+    let original_path = "current_paths = [\"crates/allow-policy/src/spec_system/requirement.rs\"]";
     let missing_text = current_text.replacen(
         original_path,
         "current_paths = [\"missing/current/source.rs\"]",
@@ -123,11 +119,8 @@ fn explicit_root_validation_rejects_missing_and_escaping_paths() -> Result<(), S
             .any(|diagnostic| diagnostic.kind == MoveLedgerDiagnosticKind::MissingCurrentPath)
     );
 
-    let escaping_text = current_text.replacen(
-        original_path,
-        "current_paths = [\"../outside.rs\"]",
-        1,
-    );
+    let escaping_text =
+        current_text.replacen(original_path, "current_paths = [\"../outside.rs\"]", 1);
     if escaping_text == current_text {
         return Err("escaping-path fixture replacement did not apply".to_string());
     }
@@ -287,8 +280,7 @@ deletion_output = "none"
     )
     .map_err(|error| format!("write temp projection: {error}"))?;
     let ledger_path = root.join("policy/product-move-ledger.toml");
-    std::fs::write(&ledger_path, text)
-        .map_err(|error| format!("write temp ledger: {error}"))?;
+    std::fs::write(&ledger_path, text).map_err(|error| format!("write temp ledger: {error}"))?;
     let (_, diagnostics, _) = validate_product_move_ledger_at(&root, &ledger_path)
         .map_err(|error| format!("validate temp ledger: {error}"))?;
     assert!(diagnostics.iter().any(|diagnostic| {
@@ -306,8 +298,8 @@ fn regenerate_product_move_map_projection() -> Result<(), String> {
     let ledger_path = root.join("policy/product-move-ledger.toml");
     let text = std::fs::read_to_string(&ledger_path)
         .map_err(|error| format!("read move ledger: {error}"))?;
-    let ledger = parse_product_move_ledger(&text)
-        .map_err(|error| format!("parse move ledger: {error}"))?;
+    let ledger =
+        parse_product_move_ledger(&text).map_err(|error| format!("parse move ledger: {error}"))?;
     let projection = render_product_move_map(&ledger);
     std::fs::write(root.join(&ledger.projection), projection)
         .map_err(|error| format!("write move map projection: {error}"))?;
