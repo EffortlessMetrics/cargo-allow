@@ -2824,3 +2824,37 @@ claim_boundary = "Generic single-target apply receipt; bounded filesystem eviden
 next_move = "Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607."
 deletion_output = "Deferred to extraction cutover and parity receipts."
 
+[[entry]]
+id = "introduce-proof-protocol-proof-corpus"
+source_kind = "RustModule"
+current_paths = ["crates/proof-protocol/src/proof_corpus.rs"]
+current_refs = []
+current_identity = "crates/proof-protocol/src/proof_corpus.rs"
+current_product = "cargo-proof"
+current_crate = "proof-protocol"
+current_consumers = ["extraction shims", "parity harness"]
+posture = "PrivateImplementation"
+target_product = "cargo-proof"
+target_crate = "proof-protocol"
+target_module = "proof_protocol"
+disposition = "MoveToProofProtocol"
+compatibility_strategy = "ParallelParityThenDelete"
+schema_producer_impact = "shim-linked operational row; canonical producer deferred to extraction cutover"
+parity_case_ids = ["PARITY-INTRODUCE_PROOF_PROTOCOL_PROOF_CORPUS"]
+cutover_stage = "ArchitectureInventory"
+expected_cutover_receipt = "CUTOVER-ARCHITECTURE-INVENTORY"
+old_path_reachability_disposition = "OldPathStillReachable"
+active_shim_ids = []
+latest_allowed_shim_stage = "ArchitectureInventory"
+duplicate_authority_class = "BoundedParityOnly"
+selected_public_producer_after_cutover = "repository"
+package_ci_docs_impact = ["extraction shims", "parity fixtures"]
+removal_issue_or_condition = "issue:#2683 external RIPR proof corpus parity receipt"
+migration_owner_issue = "#2708"
+risk = "Medium"
+rollback = "Retain shim-linked row until extraction cutover receipts land."
+status = "TargetRatified"
+claim_boundary = "Provider-independent proof corpus, result taxonomy, and composition honesty fixtures only; real provider execution and RIPR production routing remain out of scope."
+next_move = "Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607."
+deletion_output = "Deferred to extraction cutover and parity receipts."
+
