@@ -58,24 +58,35 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
     let _mutation_lock = MutationLock::acquire(root.join(".cargo-allow-init.lock"))?;
     // #2490: assert the write target is within the source-tree root.
     crate::policy_config::assert_path_within_root(&root, &path)?;
-    if path.exists() && !args.force {
+    let path_existed = path.exists();
+    if path_existed && !args.force {
         return Err(CargoAllowError::new(format!(
             "{} already exists; use --force to overwrite",
             path.display()
         )));
     }
     let policy_contents = starter_policy(args.strict);
+    // #2777: use CreateNewOnly for the non-force path (race-free) and
+    // ReplaceWithBackup for --force, matching add.rs semantics.
+    let mode = if args.force {
+        SingleTargetApplyMode::ReplaceWithBackup
+    } else {
+        SingleTargetApplyMode::CreateNewOnly
+    };
     apply_single_target(SingleTargetApplyRequest {
         repository_root: &root,
         target: &args.config,
         contents: &policy_contents,
         caller_reference: Some("cargo-allow:init"),
         lock_identity: Some(created_path_display(&root, &path)),
-        mode: SingleTargetApplyMode::AtomicReplace,
+        mode,
     })
     .into_result()?;
+    // #2778: report the correct action word — "overwrote" for --force on
+    // an existing file, "created" for a new file.
+    let action = if path_existed { "overwrote" } else { "created" };
     let display = created_path_display(&root, &path);
-    print!("{}", post_write_announcement("created", &display));
+    print!("{}", post_write_announcement(action, &display));
     Ok(())
 }
 
