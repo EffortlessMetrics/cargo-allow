@@ -202,10 +202,7 @@ pub fn load_proof_corpus_toml(text: &str) -> Result<ProofCorpusV1, String> {
 
 pub fn validate_proof_corpus(corpus: &ProofCorpusV1) -> Result<(), String> {
     if corpus.profile_id != RIPR_EXTERNAL_PROOF_PROFILE_ID {
-        return Err(format!(
-            "unexpected proof profile_id {}",
-            corpus.profile_id
-        ));
+        return Err(format!("unexpected proof profile_id {}", corpus.profile_id));
     }
     if corpus.scenarios.is_empty() {
         return Err("proof corpus must include scenarios".to_string());
@@ -360,10 +357,7 @@ pub fn validate_provider_envelope(envelope: &ProviderEnvelopeV1) -> Result<(), S
     Ok(())
 }
 
-pub fn provider_envelope_distinct(
-    left: &ProviderEnvelopeV1,
-    right: &ProviderEnvelopeV1,
-) -> bool {
+pub fn provider_envelope_distinct(left: &ProviderEnvelopeV1, right: &ProviderEnvelopeV1) -> bool {
     left.envelope_namespace != right.envelope_namespace
         || left.result_class != right.result_class
         || left.payload_digest != right.payload_digest

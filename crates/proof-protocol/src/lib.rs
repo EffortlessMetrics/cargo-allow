@@ -12,12 +12,12 @@ mod capability_dtos_surface;
 mod contradiction_dtos;
 mod contradiction_dtos_surface;
 mod parity;
-mod proof_corpus;
-mod proof_corpus_surface;
 mod phase_gate_dtos;
 mod phase_gate_dtos_surface;
 mod plan_dtos;
 mod plan_dtos_surface;
+mod proof_corpus;
+mod proof_corpus_surface;
 mod receipt_dtos;
 mod receipt_dtos_surface;
 
@@ -51,15 +51,6 @@ pub use parity::{
     proof_corpus_fixture_path, receipt_dtos_parity_contract_path,
     receipt_dtos_parity_contract_paths,
 };
-pub use proof_corpus::{
-    BindingCurrentnessV1, PROOF_CORPUS_DIGEST_V1, PROOF_CORPUS_SCHEMA_ID,
-    RIPR_EXTERNAL_PROOF_PROFILE_ID, ProofBindingIdentityV1, ProofCorpusDimensionV1,
-    ProofCorpusScenarioV1, ProofCorpusV1, ProofResultStateV1, ProviderEnvelopeV1,
-    canonical_proof_result_states, compose_blocking_aggregate, evaluate_binding_currentness,
-    load_proof_corpus_toml, provider_envelope_distinct, validate_composition_honesty,
-    validate_proof_corpus, validate_provider_envelope,
-};
-pub use proof_corpus_surface::ProofCorpusSurface;
 pub use phase_gate_dtos::{
     PROOF_PHASE_GATE_SCHEMA_ID, ProofPhaseGateError, ProofPhaseGatePostureV1, ProofPhaseGateV1,
     validate_phase_gate,
@@ -70,6 +61,15 @@ pub use plan_dtos::{
     ProofPlanV1, load_proof_plan_toml, validate_proof_plan,
 };
 pub use plan_dtos_surface::PlanDtosSurface;
+pub use proof_corpus::{
+    BindingCurrentnessV1, PROOF_CORPUS_DIGEST_V1, PROOF_CORPUS_SCHEMA_ID, ProofBindingIdentityV1,
+    ProofCorpusDimensionV1, ProofCorpusScenarioV1, ProofCorpusV1, ProofResultStateV1,
+    ProviderEnvelopeV1, RIPR_EXTERNAL_PROOF_PROFILE_ID, canonical_proof_result_states,
+    compose_blocking_aggregate, evaluate_binding_currentness, load_proof_corpus_toml,
+    provider_envelope_distinct, validate_composition_honesty, validate_proof_corpus,
+    validate_provider_envelope,
+};
+pub use proof_corpus_surface::ProofCorpusSurface;
 pub use receipt_dtos::{
     PROOF_RECEIPT_BINDING_SCHEMA_ID, PROOF_RECEIPT_SET_SCHEMA_ID, ProofReceiptBindingV1,
     ProofReceiptError, ProofReceiptSetV1, validate_receipt_set,

@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use crate::ProofCorpusSurface;
 use crate::boundary::{
     ALLOWED_UPSTREAM_CRATES, BoundarySurface, FORBIDDEN_DEPENDENCY_EDGES, upstream_surface_markers,
 };
@@ -7,7 +8,6 @@ use crate::parity::{
     load_proof_corpus_contract, load_proof_corpus_fixture, parity_contract_paths,
     proof_corpus_contract_path,
 };
-use crate::ProofCorpusSurface;
 
 #[test]
 fn boundary_surface_matches_parity_contract_module() -> Result<(), String> {
@@ -204,8 +204,7 @@ fn binding_currentness_distinguishes_missing_stale_and_incomparable() -> Result<
         tool_identity: "cargo-proof@0.1.0".to_string(),
         proof_reference_id: "crates/ripr/src/lib.rs::tests::proof_smoke".to_string(),
     };
-    if crate::evaluate_binding_currentness(&expected, None)
-        != crate::BindingCurrentnessV1::Missing
+    if crate::evaluate_binding_currentness(&expected, None) != crate::BindingCurrentnessV1::Missing
     {
         return Err("missing binding should be missing".to_string());
     }
