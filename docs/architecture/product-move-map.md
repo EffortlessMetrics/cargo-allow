@@ -7,7 +7,7 @@
 ## Denominator
 
 - Ledger schema: `cargo-allow.three-product-move-ledger.v1` generation `1`
-- Entries: **82**
+- Entries: **84**
 - Topology authority: Issue **#2612**
 - Move/deletion owner: Issue **#2598**
 - Current posture: inventory and target ratification only; no implementation moved.
@@ -15,14 +15,14 @@
 ### Status counts
 
 - `RepositoryDecisionRequired`: **1**
-- `TargetRatified`: **81**
+- `TargetRatified`: **83**
 
 ### Disposition counts
 
 - `CompatibilityAdapter`: **5**
 - `DeleteAfterParity`: **1**
 - `HistoricalReaderOnly`: **2**
-- `MoveToCargoIntentApp`: **3**
+- `MoveToCargoIntentApp`: **5**
 - `MoveToCargoProofApp`: **1**
 - `MoveToIntentEdit`: **6**
 - `MoveToIntentEngine`: **10**
@@ -927,6 +927,28 @@
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
 - Removal: issue:#2606 stage-1 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `move-cargo-allow-spec-precommit`
+
+- Current: crates/cargo-allow/src/spec_precommit.rs
+- Target: `cargo-intent / cargo-intent::cargo_intent`
+- Disposition: `MoveToCargoIntentApp`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2564 first read-only vertical
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `move-cargo-allow-spec-system-app`
+
+- Current: crates/cargo-allow/src/spec_system.rs
+- Target: `cargo-intent / cargo-intent::cargo_intent`
+- Disposition: `MoveToCargoIntentApp`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2601 one-way delegation and issue:#2568 evaluator retirement
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
 - Deletion output: Deferred to extraction cutover and parity receipts.
 
