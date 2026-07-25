@@ -1,4 +1,4 @@
-use allow_policy::product_move::{MoveLedgerDiagnosticKind, validate_product_move_ledger_at};
+use allow_policy::product_move::{render_product_move_map, validate_product_move_ledger_at};
 use std::path::PathBuf;
 
 #[test]
@@ -6,33 +6,30 @@ fn product_move_ledger_repository_inventory_is_valid() -> Result<(), String> {
     let root = repo_root();
     let ledger_path = root.join("policy/product-move-ledger.toml");
     let (validated, diagnostics, report) = validate_product_move_ledger_at(&root, &ledger_path)
-        .map_err(|err| format!("validate move ledger: {err}"))?;
+        .map_err(|error| format!("validate move ledger: {error}"))?;
 
-    assert!(validated.valid, "diagnostics: {diagnostics:?}");
-    assert!(
-        diagnostics
-            .iter()
-            .all(|diag| diag.kind != MoveLedgerDiagnosticKind::MissingCurrentPath),
-        "missing current paths: {diagnostics:?}"
-    );
-    assert!(
-        report.entry_count >= 8,
-        "seeded inventory should cover primary seams"
-    );
+    if !validated.valid {
+        return Err(format!("move ledger diagnostics: {diagnostics:?}"));
+    }
+    assert_eq!(report.entry_count, 84);
+    assert_eq!(report.target_ratified_count, 83);
+    assert_eq!(report.decision_required_count, 1);
+    assert_eq!(validated.ledger.controlling_issue, 2598);
+    assert_eq!(validated.ledger.topology_issue, 2612);
+    assert_eq!(validated.ledger.ledger_id, "CARGO-ALLOW-MOVE-LEDGER-0001");
+
+    let map_text = std::fs::read_to_string(root.join(&validated.ledger.projection))
+        .map_err(|error| format!("product move map readable: {error}"))?;
     assert_eq!(
-        validated.ledger.controlling_issue, 2598,
-        "ledger controlling issue"
-    );
-    assert_eq!(
-        validated.ledger.ledger_id, "CARGO-ALLOW-MOVE-LEDGER-0001",
-        "ledger id"
+        map_text.replace("\r\n", "\n"),
+        render_product_move_map(&validated.ledger)
     );
 
-    let map = root.join("docs/architecture/product-move-map.md");
-    let map_text =
-        std::fs::read_to_string(&map).map_err(|err| format!("product move map readable: {err}"))?;
-    if !map_text.contains("move-allow-policy-spec-system") {
-        return Err("human projection missing primary inventory row".to_string());
+    for entry in &validated.ledger.entry {
+        assert!(map_text.contains(&format!("### `{}`", entry.id)));
+        assert!(map_text.contains(&format!("- Disposition: `{}`", entry.disposition)));
+        assert!(map_text.contains(&format!("- Removal: {}", entry.removal_issue_or_condition)));
+        assert!(map_text.contains(&format!("- Deletion output: {}", entry.deletion_output)));
     }
 
     Ok(())
