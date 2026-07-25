@@ -30,6 +30,8 @@ mod planner;
 mod planner_surface;
 mod provider_registry;
 mod provider_registry_surface;
+mod ripr_routing;
+mod ripr_routing_surface;
 
 #[cfg(test)]
 mod tests;
@@ -86,3 +88,12 @@ pub use provider_registry::{
     validate_provider_registry,
 };
 pub use provider_registry_surface::ProviderRegistrySurface;
+pub use ripr_routing::{
+    PHASE_PREFLIGHT, PHASE_ROUTE, ProofClaimPostureV1, ProofClaimV1,
+    RIPR_PREFLIGHT_RECEIPT_SCHEMA_ID, RIPR_ROUTE_RECEIPT_SCHEMA_ID,
+    RIPR_ROUTING_AGGREGATE_SCHEMA_ID, RiprPreflightClaimInputV1, RiprPreflightReceiptV1,
+    RiprRouteClaimInputV1, RiprRouteReceiptV1, RiprRoutingAggregateV1, RiprRoutingError,
+    compose_preflight_receipt, compose_route_receipt, compose_routing_aggregate,
+    preflight_claim_result_state, route_claim_result_state,
+};
+pub use ripr_routing_surface::RiprRoutingSurface;

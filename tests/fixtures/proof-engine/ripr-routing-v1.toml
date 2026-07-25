@@ -1,0 +1,73 @@
+schema_id = "proof.ripr-routing-fixture.v1"
+fixture_id = "ripr-routing-v1"
+controlling_issue = 2713
+move_ledger_entry = "introduce-proof-engine-ripr-routing"
+profile_id = "ripr-external-proof-profile-v1"
+corpus_digest = "sha256:v1:2708-ripr-external-proof-corpus"
+claim_boundary = "Fixture-backed route/preflight composition only; live ripr-swarm dual-run remains blocked on external SHA pin and network."
+
+[[scenarios]]
+id = "route-selected-not-run"
+phase = "route"
+posture = "required"
+selected = true
+provider_registered = true
+execution_approval = "denied"
+provider_executed = false
+provider_passed = false
+expected_state = "selected_not_run"
+claim_boundary = "Execution gate denial must not upgrade to proof_passed."
+
+[[scenarios]]
+id = "route-provider-unavailable"
+phase = "route"
+posture = "required"
+selected = true
+provider_registered = false
+execution_approval = "explicit"
+provider_executed = false
+provider_passed = false
+expected_state = "provider_unavailable"
+claim_boundary = "Unregistered provider must remain distinct from proof failure."
+
+[[scenarios]]
+id = "preflight-missing-binding"
+phase = "preflight"
+posture = "required"
+currentness = "missing"
+gate_outcome = "blocked"
+expected_state = "missing"
+claim_boundary = "Missing required binding must fail closed in the required aggregate."
+
+[[scenarios]]
+id = "preflight-stale-binding"
+phase = "preflight"
+posture = "required"
+currentness = "stale"
+gate_outcome = "blocked"
+expected_state = "stale"
+claim_boundary = "Stale binding must remain distinct from missing and proof_failed."
+
+[[scenarios]]
+id = "aggregate-advisory-gap"
+phase = "aggregate"
+posture = "advisory"
+expected_state = "provider_unavailable"
+required_aggregate = "proof_passed"
+claim_boundary = "Advisory provider_unavailable must not block required proof_passed aggregate."
+
+[[scenarios]]
+id = "aggregate-missing-required"
+phase = "aggregate"
+posture = "required"
+expected_state = "missing"
+required_aggregate = "missing"
+claim_boundary = "Missing required claim must block the required aggregate."
+
+[[scenarios]]
+id = "aggregate-non-execution-not-passed"
+phase = "aggregate"
+posture = "required"
+expected_state = "selected_not_run"
+required_aggregate = "selected_not_run"
+claim_boundary = "Non-execution cannot be laundered into proof_passed through composition."

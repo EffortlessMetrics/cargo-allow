@@ -8991,6 +8991,48 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9200"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/proof-engine/ripr-routing-v1.toml"
+owner = "repo-infra"
+classification = "proof_engine_parity_fixture"
+reason = "Route/preflight composition fixture consuming external RIPR proof corpus (#2713)."
+evidence = ["test:proof_engine_parity_fixtures_registered", "issue:2713", "doc:policy/extraction-parity.toml"]
+created = "2026-07-25"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "tests/fixtures/proof-engine/ripr-routing-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9201"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/proof-engine/ripr-routing-contract-v1.toml"
+owner = "repo-infra"
+classification = "proof_engine_parity_fixture"
+reason = "Route/preflight composition contract for external RIPR cutover (#2713)."
+evidence = ["test:proof_engine_parity_fixtures_registered", "issue:2713", "doc:policy/extraction-parity.toml"]
+created = "2026-07-25"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "tests/fixtures/proof-engine/ripr-routing-contract-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9148"
 kind = "non_rust_file"
 family = "package_metadata"

@@ -14,10 +14,18 @@ use crate::currentness::{evaluate_currentness, receipt_set_digest};
 use crate::dry_run::dry_run_proof_plan;
 use crate::execution::{ExecutionApprovalV1, evaluate_execution_gate, require_explicit_execution};
 use crate::obligation_plan::{ChangeObligationPlanV1, ChangeObligationV1};
-use crate::parity::parity_contract_paths;
+use crate::parity::{
+    load_ripr_routing_contract, parity_contract_paths, ripr_routing_contract_path,
+};
 use crate::phase_gate::evaluate_phase_gate;
 use crate::planner::plan_proof_execution;
 use crate::provider_registry::{ProviderRegistryV1, register_validated_provider};
+use crate::ripr_routing::{
+    ProofClaimPostureV1, RiprPreflightClaimInputV1, RiprRouteClaimInputV1, RiprRoutingError,
+    compose_preflight_receipt, compose_route_receipt, compose_routing_aggregate,
+};
+use crate::ripr_routing_surface::RiprRoutingSurface;
+use proof_protocol::ProofResultStateV1;
 
 #[test]
 fn boundary_surface_matches_parity_contract_module() -> Result<(), String> {
@@ -193,6 +201,170 @@ fn parity_fixture_paths_exist() -> Result<(), String> {
     Ok(())
 }
 
+#[test]
+fn ripr_routing_surface_matches_contract() -> Result<(), String> {
+    let root = workspace_root();
+    let contract = load_ripr_routing_contract(&ripr_routing_contract_path(&root))?;
+    if contract.proof_engine_module != RiprRoutingSurface::MODULE_ID {
+        return Err(format!(
+            "surface marker {} does not match contract {}",
+            RiprRoutingSurface::MODULE_ID,
+            contract.proof_engine_module
+        ));
+    }
+    if !contract.required_phases.contains(&"route".to_string()) {
+        return Err("contract must require route phase".to_string());
+    }
+    if !contract.required_phases.contains(&"preflight".to_string()) {
+        return Err("contract must require preflight phase".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn ripr_routing_non_execution_cannot_compose_to_passed() -> Result<(), String> {
+    let snapshot = "sha256:repo-head";
+    let plan_id = "plan-2713-non-exec";
+    let route = compose_route_receipt(
+        snapshot,
+        plan_id,
+        &[RiprRouteClaimInputV1 {
+            claim_id: "claim-route-1".to_string(),
+            proof_reference_id: "crates/ripr/src/lib.rs::tests::proof_smoke".to_string(),
+            posture: ProofClaimPostureV1::Required,
+            selected: true,
+            provider_registered: true,
+            execution_approval: crate::execution::ExecutionApprovalV1::Denied,
+            provider_executed: false,
+            provider_passed: false,
+        }],
+    )
+    .map_err(routing_err)?;
+    let preflight = compose_preflight_receipt(
+        snapshot,
+        plan_id,
+        &[RiprPreflightClaimInputV1 {
+            claim_id: "claim-preflight-1".to_string(),
+            proof_reference_id: "crates/ripr/src/lib.rs::tests::proof_smoke".to_string(),
+            posture: ProofClaimPostureV1::Required,
+            currentness: crate::currentness::CurrentnessStatusV1::Current,
+            gate_outcome: crate::phase_gate::PhaseGateOutcomeV1::Open,
+        }],
+    )
+    .map_err(routing_err)?;
+    let aggregate =
+        compose_routing_aggregate(snapshot, plan_id, &route, &preflight).map_err(routing_err)?;
+    if aggregate.required_aggregate == ProofResultStateV1::ProofPassed {
+        return Err("non-execution route must not compose to proof_passed".to_string());
+    }
+    if aggregate.required_aggregate != ProofResultStateV1::SelectedNotRun {
+        return Err(format!(
+            "expected selected_not_run aggregate, got {}",
+            aggregate.required_aggregate.as_str()
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn ripr_routing_missing_required_claim_blocks_aggregate() -> Result<(), String> {
+    let snapshot = "sha256:repo-head";
+    let plan_id = "plan-2713-missing";
+    let route = compose_route_receipt(
+        snapshot,
+        plan_id,
+        &[RiprRouteClaimInputV1 {
+            claim_id: "claim-route-1".to_string(),
+            proof_reference_id: "crates/ripr/src/lib.rs::tests::proof_smoke".to_string(),
+            posture: ProofClaimPostureV1::Required,
+            selected: true,
+            provider_registered: true,
+            execution_approval: crate::execution::ExecutionApprovalV1::Explicit,
+            provider_executed: true,
+            provider_passed: true,
+        }],
+    )
+    .map_err(routing_err)?;
+    let preflight = compose_preflight_receipt(
+        snapshot,
+        plan_id,
+        &[RiprPreflightClaimInputV1 {
+            claim_id: "claim-preflight-1".to_string(),
+            proof_reference_id: "crates/ripr/src/lib.rs::tests::proof_smoke".to_string(),
+            posture: ProofClaimPostureV1::Required,
+            currentness: crate::currentness::CurrentnessStatusV1::Missing,
+            gate_outcome: crate::phase_gate::PhaseGateOutcomeV1::Blocked,
+        }],
+    )
+    .map_err(routing_err)?;
+    let aggregate =
+        compose_routing_aggregate(snapshot, plan_id, &route, &preflight).map_err(routing_err)?;
+    if aggregate.required_aggregate == ProofResultStateV1::ProofPassed {
+        return Err("missing required claim must not compose to proof_passed".to_string());
+    }
+    if aggregate.required_aggregate != ProofResultStateV1::Missing {
+        return Err(format!(
+            "expected missing aggregate, got {}",
+            aggregate.required_aggregate.as_str()
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn ripr_routing_advisory_gap_does_not_block_required_aggregate() -> Result<(), String> {
+    let snapshot = "sha256:repo-head";
+    let plan_id = "plan-2713-advisory";
+    let route = compose_route_receipt(
+        snapshot,
+        plan_id,
+        &[
+            RiprRouteClaimInputV1 {
+                claim_id: "claim-route-required".to_string(),
+                proof_reference_id: "crates/ripr/src/lib.rs::tests::proof_smoke".to_string(),
+                posture: ProofClaimPostureV1::Required,
+                selected: true,
+                provider_registered: true,
+                execution_approval: crate::execution::ExecutionApprovalV1::Explicit,
+                provider_executed: true,
+                provider_passed: true,
+            },
+            RiprRouteClaimInputV1 {
+                claim_id: "claim-route-advisory".to_string(),
+                proof_reference_id: "crates/ripr/src/lib.rs::tests::advisory_hint".to_string(),
+                posture: ProofClaimPostureV1::Advisory,
+                selected: true,
+                provider_registered: false,
+                execution_approval: crate::execution::ExecutionApprovalV1::Denied,
+                provider_executed: false,
+                provider_passed: false,
+            },
+        ],
+    )
+    .map_err(routing_err)?;
+    let preflight = compose_preflight_receipt(
+        snapshot,
+        plan_id,
+        &[RiprPreflightClaimInputV1 {
+            claim_id: "claim-preflight-required".to_string(),
+            proof_reference_id: "crates/ripr/src/lib.rs::tests::proof_smoke".to_string(),
+            posture: ProofClaimPostureV1::Required,
+            currentness: crate::currentness::CurrentnessStatusV1::Current,
+            gate_outcome: crate::phase_gate::PhaseGateOutcomeV1::Open,
+        }],
+    )
+    .map_err(routing_err)?;
+    let aggregate =
+        compose_routing_aggregate(snapshot, plan_id, &route, &preflight).map_err(routing_err)?;
+    if aggregate.required_aggregate != ProofResultStateV1::ProofPassed {
+        return Err(format!(
+            "advisory gaps must not block required aggregate, got {}",
+            aggregate.required_aggregate.as_str()
+        ));
+    }
+    Ok(())
+}
+
 fn manifest_lists_dependency(manifest_text: &str, crate_name: &str) -> bool {
     let Ok(table) = toml::from_str::<toml::Table>(manifest_text) else {
         return false;
@@ -220,4 +392,8 @@ fn manifest_lists_any_dependency(manifest_text: &str, crate_name: &str) -> bool 
 
 fn workspace_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
+fn routing_err(err: RiprRoutingError) -> String {
+    err.as_str().to_string()
 }
