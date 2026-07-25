@@ -1,0 +1,18 @@
+schema_version = 1
+dialect = "xtask-ripr"
+
+[[entries]]
+id = "fixture-semantic-unwrap"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "parser"
+reason = "Semantic selector pins unwrap on optional after validation."
+classification = "reviewed_panic_exception"
+evidence = ["test:bespoke_semantic_round_trip"]
+created = "2026-06-18"
+review_after = "2026-12-18"
+selector = "method_call"
+container = "load"
+callee = "unwrap"
+receiver = "optional_value"

@@ -21,3 +21,7 @@ Packet 2588-A lands crate scaffold, boundary documentation, parity/ledger regist
 - `proof-protocol::receipt_dtos` — receipt binding transport bound to repo-protocol
 - `proof-protocol::contradiction_dtos` — contradiction report transport
 - `proof-protocol::phase_gate_dtos` — phase-gate transport
+
+## Packet 2708
+
+- `proof-protocol::proof_corpus` — provider-independent proof corpus, result taxonomy, binding identities, and composition honesty for external RIPR cutover (#2683)

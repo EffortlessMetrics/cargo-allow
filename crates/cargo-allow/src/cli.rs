@@ -56,7 +56,7 @@ pub(crate) enum CargoAllowCommand {
     Propose(propose::ProposeArgs),
     /// Emit actionable work items for humans or agents.
     Worklist(worklist::WorklistArgs),
-    /// Convert compatible legacy policy files.
+    /// Convert compatible legacy policy files and xtask/ripr bespoke ledgers.
     Migrate(migrate::MigrateArgs),
     /// Record operator-approved advisory drift refresh for one allow entry.
     Refresh(refresh::RefreshArgs),

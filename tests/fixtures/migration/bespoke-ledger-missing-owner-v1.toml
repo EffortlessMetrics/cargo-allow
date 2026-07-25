@@ -1,0 +1,10 @@
+schema_version = 1
+dialect = "xtask-ripr"
+
+[[entries]]
+id = "missing-owner"
+kind = "panic"
+reason = "owner is required for bespoke ledger entries"
+selector = "method_call"
+container = "load"
+callee = "unwrap"

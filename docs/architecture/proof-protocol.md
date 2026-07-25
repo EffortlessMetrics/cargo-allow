@@ -10,6 +10,8 @@ Plan DTO transport lands in #2588-B. Proof-provider-api surfaces land in #2603.
 
 Parity fixtures live under `tests/fixtures/proof-protocol/`.
 
+- `proof-protocol::proof_corpus` — provider-independent proof corpus, result taxonomy, and composition honesty (#2708)
+
 ## Module surfaces
 
 - `proof-protocol::boundary` — claim boundary and upstream topology markers (#2588-A)

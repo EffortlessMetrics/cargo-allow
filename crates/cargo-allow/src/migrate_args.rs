@@ -7,7 +7,7 @@ use crate::RootArgs;
 pub(crate) struct MigrateArgs {
     #[command(flatten)]
     pub(super) root: RootArgs,
-    /// Legacy or canonical policy file to migrate.
+    /// Legacy, bespoke xtask/ripr (`dialect = "xtask-ripr"`), or canonical policy file to migrate.
     #[arg(long)]
     pub(super) from: Option<PathBuf>,
     /// Directory containing compatible legacy policy files.

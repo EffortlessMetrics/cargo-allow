@@ -15,7 +15,7 @@
 //! re-parse. Correctness is never compromised — the cache only skips work
 //! that would produce identical findings.
 
-use crate::scan_rust_source;
+use crate::scan_rust_source_with_completeness;
 use allow_core::{CargoAllowResult, Finding};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -30,6 +30,7 @@ struct CacheEntry {
     mtime: SystemTime,
     size: u64,
     findings: Vec<Finding>,
+    has_parse_error: bool,
 }
 
 impl ScanCache {
@@ -41,7 +42,7 @@ impl ScanCache {
 
     /// Scan a single Rust file, using the cache if the file hasn't changed.
     /// Falls through to a full re-parse on any cache miss.
-    pub fn scan_file(&mut self, root: &Path, rel: &Path) -> CargoAllowResult<Vec<Finding>> {
+    pub fn scan_file(&mut self, root: &Path, rel: &Path) -> CargoAllowResult<(Vec<Finding>, bool)> {
         let abs = root.join(rel);
 
         // Read metadata for cache key
@@ -49,7 +50,7 @@ impl ScanCache {
             Ok(m) => m,
             Err(_) => {
                 // Can't read metadata — skip caching, let the caller handle it
-                return Ok(Vec::new());
+                return Ok((Vec::new(), false));
             }
         };
 
@@ -61,16 +62,16 @@ impl ScanCache {
             && entry.mtime == mtime
             && entry.size == size
         {
-            return Ok(entry.findings.clone());
+            return Ok((entry.findings.clone(), entry.has_parse_error));
         }
 
         // Cache miss — parse the file
         let text = match allow_core::read_text_file_capped(&abs) {
             Ok(text) => text,
-            Err(_) => return Ok(Vec::new()),
+            Err(_) => return Ok((Vec::new(), false)),
         };
         let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
-        let findings = scan_rust_source(rel, text);
+        let scan = scan_rust_source_with_completeness(rel, text);
 
         // Store in cache
         self.entries.insert(
@@ -78,11 +79,12 @@ impl ScanCache {
             CacheEntry {
                 mtime,
                 size,
-                findings: findings.clone(),
+                findings: scan.findings.clone(),
+                has_parse_error: scan.has_parse_error,
             },
         );
 
-        Ok(findings)
+        Ok((scan.findings, scan.has_parse_error))
     }
 
     /// Scan multiple files, using the cache for unchanged files.
@@ -93,7 +95,7 @@ impl ScanCache {
             if rel.extension().and_then(|e| e.to_str()) != Some("rs") {
                 continue;
             }
-            let findings = self.scan_file(root, rel)?;
+            let (findings, _has_parse_error) = self.scan_file(root, rel)?;
             out.extend(findings);
         }
         Ok(out)

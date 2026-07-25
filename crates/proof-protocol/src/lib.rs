@@ -16,6 +16,8 @@ mod phase_gate_dtos;
 mod phase_gate_dtos_surface;
 mod plan_dtos;
 mod plan_dtos_surface;
+mod proof_corpus;
+mod proof_corpus_surface;
 mod receipt_dtos;
 mod receipt_dtos_surface;
 
@@ -37,14 +39,16 @@ pub use contradiction_dtos::{
 pub use contradiction_dtos_surface::ContradictionDtosSurface;
 pub use parity::{
     CapabilityDtosParityContract, ContradictionDtosParityContract, PhaseGateDtosParityContract,
-    PlanDtosParityContract, ReceiptDtosParityContract, capability_dtos_parity_contract_path,
-    capability_dtos_parity_contract_paths, contradiction_dtos_parity_contract_path,
-    contradiction_dtos_parity_contract_paths, load_capability_dtos_parity_contract,
-    load_contradiction_dtos_parity_contract, load_phase_gate_dtos_parity_contract,
-    load_plan_dtos_parity_contract, load_receipt_dtos_parity_contract, parity_contract_path,
-    parity_contract_paths, phase_gate_dtos_parity_contract_path,
+    PlanDtosParityContract, ProofCorpusParityContract, ReceiptDtosParityContract,
+    capability_dtos_parity_contract_path, capability_dtos_parity_contract_paths,
+    contradiction_dtos_parity_contract_path, contradiction_dtos_parity_contract_paths,
+    load_capability_dtos_parity_contract, load_contradiction_dtos_parity_contract,
+    load_phase_gate_dtos_parity_contract, load_plan_dtos_parity_contract,
+    load_proof_corpus_contract, load_proof_corpus_fixture, load_receipt_dtos_parity_contract,
+    parity_contract_path, parity_contract_paths, phase_gate_dtos_parity_contract_path,
     phase_gate_dtos_parity_contract_paths, plan_dtos_parity_contract_path,
-    plan_dtos_parity_contract_paths, receipt_dtos_parity_contract_path,
+    plan_dtos_parity_contract_paths, proof_corpus_contract_path, proof_corpus_contract_paths,
+    proof_corpus_fixture_path, receipt_dtos_parity_contract_path,
     receipt_dtos_parity_contract_paths,
 };
 pub use phase_gate_dtos::{
@@ -57,6 +61,15 @@ pub use plan_dtos::{
     ProofPlanV1, load_proof_plan_toml, validate_proof_plan,
 };
 pub use plan_dtos_surface::PlanDtosSurface;
+pub use proof_corpus::{
+    BindingCurrentnessV1, PROOF_CORPUS_DIGEST_V1, PROOF_CORPUS_SCHEMA_ID, ProofBindingIdentityV1,
+    ProofCorpusDimensionV1, ProofCorpusScenarioV1, ProofCorpusV1, ProofResultStateV1,
+    ProviderEnvelopeV1, RIPR_EXTERNAL_PROOF_PROFILE_ID, canonical_proof_result_states,
+    compose_blocking_aggregate, evaluate_binding_currentness, load_proof_corpus_toml,
+    provider_envelope_distinct, validate_composition_honesty, validate_proof_corpus,
+    validate_provider_envelope,
+};
+pub use proof_corpus_surface::ProofCorpusSurface;
 pub use receipt_dtos::{
     PROOF_RECEIPT_BINDING_SCHEMA_ID, PROOF_RECEIPT_SET_SCHEMA_ID, ProofReceiptBindingV1,
     ProofReceiptError, ProofReceiptSetV1, validate_receipt_set,

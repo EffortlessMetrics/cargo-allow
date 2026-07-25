@@ -400,6 +400,17 @@ disposition = "contract_only"
 claim_boundary = "Phase-gate transport only; gate evaluation remains proof-engine owned."
 
 [[case]]
+id = "parity-proof-protocol-corpus-v1"
+stage = "ProofProtocol"
+move_ledger_entry = "introduce-proof-protocol-proof-corpus"
+shim_id = "shim-proof-protocol-proof-corpus"
+old_producer = "ripr::proof_route"
+new_producer = "proof-protocol::proof_corpus"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Provider-independent proof corpus, result taxonomy, binding identities, and negative experiments; does not execute real RIPR providers or cut over production routing."
+
+[[case]]
 id = "parity-proof-protocol-boundary-v1"
 stage = "ProofProtocol"
 move_ledger_entry = "introduce-proof-protocol-crate"

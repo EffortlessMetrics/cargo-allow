@@ -81,6 +81,10 @@ pub(crate) struct InventoryFacts {
     /// (unreadable, non-UTF8, or oversized). When non-zero, `check --mode
     /// no-new` fails closed to prevent false-clean receipts (#2486).
     pub(crate) rust_files_skipped: usize,
+    /// Number of tracked `.rs` files whose tree-sitter parse tree contains
+    /// errors. When non-zero, `check --mode no-new` fails closed so partial
+    /// parses cannot masquerade as complete scans (#2658).
+    pub(crate) rust_files_with_parse_errors: usize,
 }
 
 impl InventoryFacts {
@@ -96,6 +100,7 @@ impl InventoryFacts {
             empty_git_tracked: false,
             deleted_tracked: None,
             rust_files_skipped: 0,
+            rust_files_with_parse_errors: 0,
         }
     }
 
@@ -107,6 +112,7 @@ impl InventoryFacts {
             empty_git_tracked: false,
             deleted_tracked: None,
             rust_files_skipped: 0,
+            rust_files_with_parse_errors: 0,
         }
     }
 
@@ -133,6 +139,11 @@ impl InventoryFacts {
 
     pub(crate) fn with_rust_files_skipped(mut self, count: usize) -> Self {
         self.rust_files_skipped = count;
+        self
+    }
+
+    pub(crate) fn with_rust_files_with_parse_errors(mut self, count: usize) -> Self {
+        self.rust_files_with_parse_errors = count;
         self
     }
 }

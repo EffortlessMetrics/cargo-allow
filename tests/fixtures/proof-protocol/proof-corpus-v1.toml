@@ -1,0 +1,235 @@
+schema_id = "proof.corpus.v1"
+corpus_id = "ripr-external-proof-corpus-v1"
+controlling_issue = 2708
+move_ledger_entry = "introduce-proof-protocol-proof-corpus"
+corpus_digest = "sha256:v1:2708-ripr-external-proof-corpus"
+profile_id = "ripr-external-proof-profile-v1"
+
+[[scenarios]]
+id = "result-not-selected"
+dimension = "result_state"
+result_state = "not_selected"
+producer = "proof-engine::planner"
+input_condition = "obligation omitted from plan"
+expected_state = "not_selected"
+claim_boundary = "Unselected obligations remain outside the composed proof aggregate."
+
+[[scenarios]]
+id = "result-selected-not-run"
+dimension = "result_state"
+result_state = "selected_not_run"
+producer = "proof-engine::execution"
+input_condition = "provider selected but execution gate denied"
+expected_state = "selected_not_run"
+claim_boundary = "Selected-but-not-run is distinct from provider failure and from proof passed."
+
+[[scenarios]]
+id = "result-provider-unavailable"
+dimension = "result_state"
+result_state = "provider_unavailable"
+producer = "proof-engine::provider_registry"
+input_condition = "registered provider missing from registry"
+expected_state = "provider_unavailable"
+claim_boundary = "Provider discovery failure is machine-distinct from proof failure."
+
+[[scenarios]]
+id = "result-provider-tempfail"
+dimension = "result_state"
+result_state = "provider_tempfail"
+producer = "proof-adapter-command::process_protocol"
+input_condition = "provider process exited with infrastructure tempfail"
+expected_state = "provider_tempfail"
+claim_boundary = "Infrastructure tempfail is distinct from proof failure and from missing receipts."
+
+[[scenarios]]
+id = "result-proof-failed"
+dimension = "result_state"
+result_state = "proof_failed"
+producer = "proof-provider-api::provider_api"
+input_condition = "provider executed and returned failing proof result"
+expected_state = "proof_failed"
+claim_boundary = "Executed proof failure is distinct from missing, stale, and non-execution states."
+
+[[scenarios]]
+id = "result-proof-passed"
+dimension = "result_state"
+result_state = "proof_passed"
+producer = "proof-provider-api::provider_api"
+input_condition = "provider executed and returned passing proof result"
+expected_state = "proof_passed"
+claim_boundary = "Only executed proof success may contribute to a blocking passed aggregate."
+
+[[scenarios]]
+id = "result-missing"
+dimension = "result_state"
+result_state = "missing"
+producer = "proof-engine::currentness"
+input_condition = "required receipt binding absent from captured store"
+expected_state = "missing"
+claim_boundary = "Missing receipts are distinct from stale receipts and from proof failure."
+
+[[scenarios]]
+id = "result-stale"
+dimension = "result_state"
+result_state = "stale"
+producer = "proof-engine::currentness"
+input_condition = "captured receipt digest mismatches expected snapshot digest"
+expected_state = "stale"
+claim_boundary = "Stale receipts are distinct from missing receipts and from proof failure."
+
+[[scenarios]]
+id = "result-incomparable"
+dimension = "result_state"
+result_state = "incomparable"
+producer = "proof-protocol::proof_corpus"
+input_condition = "repository snapshot or tool identity mismatch across compared plans"
+expected_state = "incomparable"
+claim_boundary = "Mixed identities must not be silently normalized into pass or fail."
+
+[[scenarios]]
+id = "result-opaque"
+dimension = "result_state"
+result_state = "opaque"
+producer = "proof-adapter-ripr::grip_receipt"
+input_condition = "provider reports semantic relevance unknown within namespaced envelope"
+expected_state = "opaque"
+claim_boundary = "Opaque provider semantics remain namespaced and distinct from unsupported."
+
+[[scenarios]]
+id = "result-unsupported"
+dimension = "result_state"
+result_state = "unsupported"
+producer = "proof-provider-api::provider_api"
+input_condition = "provider capability not advertised for requested proof kind"
+expected_state = "unsupported"
+claim_boundary = "Unsupported capability is distinct from opaque semantic unknowns."
+
+[[scenarios]]
+id = "composition-non-execution-cannot-pass"
+dimension = "composition"
+result_state = "selected_not_run"
+producer = "proof-protocol::proof_corpus"
+input_condition = "blocking aggregate includes selected_not_run"
+expected_state = "selected_not_run"
+composed_aggregate = "selected_not_run"
+claim_boundary = "A provider that did not execute cannot emit proof_passed through composition."
+
+[[scenarios]]
+id = "composition-warning-cannot-block"
+dimension = "composition"
+result_state = "proof_passed"
+producer = "proof-engine::phase_gate"
+input_condition = "advisory-only gate with missing binding"
+expected_state = "proof_passed"
+composed_aggregate = "advisory"
+claim_boundary = "Warning-only evidence cannot become blocking merely through composition."
+
+[[scenarios]]
+id = "composition-missing-blocks-aggregate"
+dimension = "composition"
+result_state = "missing"
+producer = "proof-engine::phase_gate"
+input_condition = "blocking gate with missing required binding"
+expected_state = "missing"
+composed_aggregate = "blocked"
+claim_boundary = "Blocking aggregate fails closed when a load-bearing proof is missing."
+
+[[scenarios]]
+id = "identity-snapshot-mismatch"
+dimension = "identity_binding"
+result_state = "incomparable"
+producer = "proof-protocol::proof_corpus"
+input_condition = "repo_snapshot_id differs between request and receipt"
+expected_state = "incomparable"
+claim_boundary = "Exact repository snapshot binding is required for comparable proof receipts."
+
+[[scenarios]]
+id = "identity-tool-mismatch"
+dimension = "identity_binding"
+result_state = "incomparable"
+producer = "proof-protocol::proof_corpus"
+input_condition = "tool_identity differs between request and receipt"
+expected_state = "incomparable"
+claim_boundary = "Tool identity mismatch makes receipts incomparable rather than stale."
+
+[[scenarios]]
+id = "identity-phase-stale"
+dimension = "identity_binding"
+result_state = "stale"
+producer = "proof-protocol::proof_corpus"
+input_condition = "phase_id differs with matching snapshot and tool identity"
+expected_state = "stale"
+claim_boundary = "Phase drift with stable snapshot/tool identity is stale, not incomparable."
+
+[[scenarios]]
+id = "identity-proof-reference-stale"
+dimension = "identity_binding"
+result_state = "stale"
+producer = "proof-protocol::proof_corpus"
+input_condition = "proof_reference_id renamed while file still exists"
+expected_state = "stale"
+claim_boundary = "Symbol-backed proof references become stale when identity changes at the same snapshot."
+
+[[scenarios]]
+id = "envelope-ripr-grip"
+dimension = "provider_envelope"
+result_state = "opaque"
+producer = "proof-adapter-ripr::grip_receipt"
+input_condition = "ripr::grip_receipt.v1 payload preserved in namespaced envelope"
+expected_state = "opaque"
+claim_boundary = "RIPR grip semantics remain in ripr:: namespace without flattening to generic proof_passed."
+
+[[scenarios]]
+id = "envelope-hawk-finding"
+dimension = "provider_envelope"
+result_state = "proof_failed"
+producer = "proof-adapter-hawk::finding_mapping"
+input_condition = "hawk::finding_result.v1 payload preserved in namespaced envelope"
+expected_state = "proof_failed"
+claim_boundary = "Hawk finding classes remain namespaced and do not collapse into repo-protocol result classes."
+
+[[scenarios]]
+id = "negative-missing-not-failed"
+dimension = "negative_experiment"
+result_state = "missing"
+producer = "proof-protocol::proof_corpus"
+input_condition = "compare missing vs proof_failed aggregates"
+expected_state = "missing"
+claim_boundary = "Missing and proof_failed remain machine-distinct in normalized receipts."
+
+[[scenarios]]
+id = "negative-stale-not-failed"
+dimension = "negative_experiment"
+result_state = "stale"
+producer = "proof-protocol::proof_corpus"
+input_condition = "compare stale vs proof_failed aggregates"
+expected_state = "stale"
+claim_boundary = "Stale and proof_failed remain machine-distinct in normalized receipts."
+
+[[scenarios]]
+id = "negative-tempfail-not-unavailable"
+dimension = "negative_experiment"
+result_state = "provider_tempfail"
+producer = "proof-protocol::proof_corpus"
+input_condition = "compare provider_tempfail vs provider_unavailable aggregates"
+expected_state = "provider_tempfail"
+claim_boundary = "Provider tempfail and provider unavailable remain machine-distinct."
+
+[[scenarios]]
+id = "negative-opaque-not-unsupported"
+dimension = "negative_experiment"
+result_state = "opaque"
+producer = "proof-protocol::proof_corpus"
+input_condition = "compare opaque vs unsupported provider envelopes"
+expected_state = "opaque"
+claim_boundary = "Opaque semantic unknowns remain distinguishable from unsupported capability."
+
+[[scenarios]]
+id = "negative-non-execution-not-passed"
+dimension = "negative_experiment"
+result_state = "provider_unavailable"
+producer = "proof-protocol::proof_corpus"
+input_condition = "compose provider_unavailable with proof_passed"
+expected_state = "provider_unavailable"
+composed_aggregate = "provider_unavailable"
+claim_boundary = "Non-execution states cannot be upgraded to proof_passed by composition."

@@ -1,10 +1,17 @@
 use allow_core::{CargoAllowError, CargoAllowResult, FindingKind, normalize_path};
 use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
+use allow_policy::import_bespoke_ledger_at;
 use std::env;
 use std::path::{Path, PathBuf};
 
 use super::migrate_types::{MigrateContext, MigrationLoad};
 use crate::root_relative_path;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SingleFileMigrationSource {
+    BespokeLedger,
+    LegacyOrCanonical,
+}
 
 pub(super) fn load_single_file_migration_config(
     explicit_root: Option<&Path>,
@@ -14,19 +21,46 @@ pub(super) fn load_single_file_migration_config(
     let inventory = inventory(&root, &InventoryOptions::default())?;
     let inventory_source = inventory.source;
     let files_scanned = inventory.files.len();
+    let (cfg, source) = load_single_file_policy(from)?;
     Ok(MigrationLoad {
-        cfg: allow_policy_legacy::load_legacy_or_canonical(from)?,
+        cfg,
         context: MigrateContext {
             inventory_source: inventory_source.as_str().to_string(),
             source_tree_root: Some(allow_report::source_tree_path_text(&root)),
             inventory_files: Some(files_scanned),
-            input_kind: "from".to_string(),
+            input_kind: match source {
+                SingleFileMigrationSource::BespokeLedger => "bespoke".to_string(),
+                SingleFileMigrationSource::LegacyOrCanonical => "from".to_string(),
+            },
             input_path: normalize_path(from),
-            legacy_source_files: legacy_source_file_names(from),
-            legacy_compat_kinds: legacy_source_compat_kinds(from),
+            legacy_source_files: match source {
+                SingleFileMigrationSource::BespokeLedger => vec![
+                    from.file_name()
+                        .and_then(|name| name.to_str())
+                        .unwrap_or("bespoke-ledger.toml")
+                        .to_string(),
+                ],
+                SingleFileMigrationSource::LegacyOrCanonical => legacy_source_file_names(from),
+            },
+            legacy_compat_kinds: match source {
+                SingleFileMigrationSource::BespokeLedger => vec!["bespoke-ledger"],
+                SingleFileMigrationSource::LegacyOrCanonical => legacy_source_compat_kinds(from),
+            },
         },
         root: Some(root),
     })
+}
+
+fn load_single_file_policy(
+    from: &Path,
+) -> CargoAllowResult<(allow_core::AllowConfig, SingleFileMigrationSource)> {
+    if let Some(cfg) = import_bespoke_ledger_at(from)? {
+        return Ok((cfg, SingleFileMigrationSource::BespokeLedger));
+    }
+    Ok((
+        allow_policy_legacy::load_legacy_or_canonical(from)?,
+        SingleFileMigrationSource::LegacyOrCanonical,
+    ))
 }
 
 pub(super) fn load_repo_policy_migration_config(
@@ -112,6 +146,29 @@ mod tests {
     use allow_policy::render_policy;
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn load_single_file_migration_config_imports_bespoke_ledger() {
+        let root = unique_test_dir("migrate-load-bespoke");
+        let from = root.join("bespoke.toml");
+        fs::write(&from, bespoke_ledger_fixture_text())
+            .unwrap_or_else(|err| std::panic::panic_any(format!("write bespoke ledger: {err}")));
+
+        let migration = load_single_file_migration_config(Some(&root), &from)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("load bespoke migrate: {err}")));
+
+        assert_eq!(migration.cfg.allow.len(), 1);
+        assert_eq!(
+            migration.cfg.allow.first().map(|entry| entry.id.as_str()),
+            Some("fixture-semantic-unwrap")
+        );
+        assert_eq!(migration.context.input_kind, "bespoke");
+        assert_eq!(
+            migration.context.legacy_compat_kinds,
+            vec!["bespoke-ledger"]
+        );
+        remove_test_dir(&root);
+    }
 
     #[test]
     fn load_single_file_migration_config_call_presence_observer() {
@@ -222,6 +279,25 @@ mod tests {
         assert!(fallback.exists());
         remove_test_dir(&explicit);
         remove_test_dir(&policy_parent);
+    }
+
+    fn bespoke_ledger_fixture_text() -> &'static str {
+        r#"
+schema_version = 1
+dialect = "xtask-ripr"
+
+[[entries]]
+id = "fixture-semantic-unwrap"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "parser"
+reason = "Semantic selector pins unwrap on optional after validation."
+selector = "method_call"
+container = "load"
+callee = "unwrap"
+receiver = "optional_value"
+"#
     }
 
     fn canonical_policy_config() -> AllowConfig {

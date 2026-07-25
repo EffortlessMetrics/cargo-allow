@@ -14,5 +14,4 @@ publish = true
 
 [dependencies]
 allow-core.workspace = true
-fs4 = "0.13.1"
 sha2 = "0.11.0"
