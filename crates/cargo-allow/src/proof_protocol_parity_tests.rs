@@ -27,6 +27,9 @@ fn proof_protocol_parity_fixtures_registered() -> Result<(), String> {
     if !ledger.contains("introduce-proof-protocol-plan-dtos") {
         return Err("move ledger missing proof-protocol plan dtos entry".to_string());
     }
+    if !ledger.contains("introduce-proof-protocol-proof-corpus") {
+        return Err("move ledger missing proof-protocol proof corpus entry".to_string());
+    }
 
     let manifest = root.join("crates/cargo-allow/Cargo.toml");
     let manifest_text = std::fs::read_to_string(&manifest)
@@ -46,6 +49,8 @@ fn proof_protocol_parity_fixture_paths(root: &std::path::Path) -> Vec<PathBuf> {
         root.join("tests/fixtures/proof-protocol/parity-receipt-dtos-v1.toml"),
         root.join("tests/fixtures/proof-protocol/parity-contradiction-dtos-v1.toml"),
         root.join("tests/fixtures/proof-protocol/parity-phase-gate-dtos-v1.toml"),
+        root.join("tests/fixtures/proof-protocol/proof-corpus-v1.toml"),
+        root.join("tests/fixtures/proof-protocol/proof-corpus-contract-v1.toml"),
     ]
 }
 
