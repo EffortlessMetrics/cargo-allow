@@ -9,12 +9,12 @@ pub(crate) fn has_nearby_safety_comment(safety_comments: &BTreeSet<u32>, line_no
 /// `line_comment` or `block_comment` node whose body starts with `SAFETY:`.
 pub(crate) fn comment_node_text_is_safety_marker(comment_text: &str, kind: &str) -> bool {
     match kind {
-        "line_comment" => line_comment_body(comment_text).is_some_and(|body| {
-            body.starts_with("SAFETY:")
-        }),
-        "block_comment" => block_comment_body(comment_text).is_some_and(|body| {
-            body.starts_with("SAFETY:")
-        }),
+        "line_comment" => {
+            line_comment_body(comment_text).is_some_and(|body| body.starts_with("SAFETY:"))
+        }
+        "block_comment" => {
+            block_comment_body(comment_text).is_some_and(|body| body.starts_with("SAFETY:"))
+        }
         _ => false,
     }
 }
@@ -33,7 +33,11 @@ fn block_comment_body(text: &str) -> Option<&str> {
     rest = rest.strip_prefix('*').unwrap_or(rest);
 
     for line in rest.lines() {
-        let line = line.trim_end().strip_suffix("*/").unwrap_or(line).trim_end();
+        let line = line
+            .trim_end()
+            .strip_suffix("*/")
+            .unwrap_or(line)
+            .trim_end();
         let content = line
             .trim_start()
             .strip_prefix('*')

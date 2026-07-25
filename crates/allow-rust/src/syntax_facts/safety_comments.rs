@@ -4,7 +4,11 @@ use crate::safety_comments::comment_node_text_is_safety_marker;
 use crate::syntax_kinds::RustSyntaxFacts;
 use crate::syntax_tree::node_text;
 
-pub(super) fn record_node_safety_comments(node: Node<'_>, source: &str, facts: &mut RustSyntaxFacts) {
+pub(super) fn record_node_safety_comments(
+    node: Node<'_>,
+    source: &str,
+    facts: &mut RustSyntaxFacts,
+) {
     if !matches!(node.kind(), "line_comment" | "block_comment") {
         return;
     }

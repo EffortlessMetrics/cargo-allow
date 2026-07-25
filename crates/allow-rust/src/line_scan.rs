@@ -55,7 +55,10 @@ pub(crate) fn scan_source_lines(
                     .get(&line_no)
                     .map(Vec::as_slice)
                     .unwrap_or(&[]),
-                safety_comment_nearby: has_nearby_safety_comment(&syntax.safety_comment_lines, line_no),
+                safety_comment_nearby: has_nearby_safety_comment(
+                    &syntax.safety_comment_lines,
+                    line_no,
+                ),
             },
             &mut findings,
         );
