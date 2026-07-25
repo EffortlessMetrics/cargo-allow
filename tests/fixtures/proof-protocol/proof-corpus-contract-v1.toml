@@ -1,0 +1,13 @@
+scenario_id = "parity-proof-protocol-corpus-v1"
+proof_protocol_module = "proof-protocol::proof_corpus"
+parity_case = "parity-proof-protocol-corpus-v1"
+move_ledger_entry = "introduce-proof-protocol-proof-corpus"
+corpus_digest = "sha256:v1:2708-ripr-external-proof-corpus"
+profile_id = "ripr-external-proof-profile-v1"
+required_dimensions = [
+  "result_state",
+  "composition",
+  "identity_binding",
+  "provider_envelope",
+  "negative_experiment",
+]

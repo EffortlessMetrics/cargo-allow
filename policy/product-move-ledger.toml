@@ -528,6 +528,21 @@ removal_condition = "issue:#2606 proof-protocol stage-6 cutover receipt"
 controlling_issue = 2588
 
 [[entry]]
+id = "introduce-proof-protocol-proof-corpus"
+current_identity = "crates/proof-protocol/src/proof_corpus.rs"
+identity_kind = "rust_module"
+current_owner_product = "cargo-proof"
+current_owner_crate = "proof-protocol"
+target_owner_product = "cargo-proof"
+target_owner_crate = "proof-protocol"
+disposition = "MoveToProofProtocol"
+status = "current"
+claim_boundary = "Provider-independent proof corpus, result taxonomy, and composition honesty fixtures only; real provider execution and RIPR production routing remain out of scope."
+parity_fixture = "tests/fixtures/proof-protocol/proof-corpus-contract-v1.toml"
+removal_condition = "issue:#2683 external RIPR proof corpus parity receipt"
+controlling_issue = 2708
+
+[[entry]]
 id = "introduce-proof-provider-api-crate"
 current_identity = "crates/proof-provider-api/src/lib.rs"
 identity_kind = "rust_module"

@@ -1,4 +1,11 @@
-//! Parity fixture discovery for proof-protocol (#2588-A / #2588-B).
+//! Parity fixture discovery for proof-protocol (#2588-A / #2588-B / #2708).
+
+mod corpus;
+
+pub use corpus::{
+    ProofCorpusParityContract, load_proof_corpus_contract, load_proof_corpus_fixture,
+    proof_corpus_contract_path, proof_corpus_contract_paths, proof_corpus_fixture_path,
+};
 
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
@@ -58,6 +65,8 @@ pub fn parity_contract_paths(root: &Path) -> Vec<PathBuf> {
     paths.extend(receipt_dtos_parity_contract_paths(root));
     paths.extend(contradiction_dtos_parity_contract_paths(root));
     paths.extend(phase_gate_dtos_parity_contract_paths(root));
+    paths.extend(proof_corpus_contract_paths(root));
+    paths.push(proof_corpus_fixture_path(root));
     paths.insert(0, parity_contract_path(root));
     paths
 }

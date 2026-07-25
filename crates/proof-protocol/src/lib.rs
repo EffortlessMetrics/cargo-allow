@@ -12,6 +12,8 @@ mod capability_dtos_surface;
 mod contradiction_dtos;
 mod contradiction_dtos_surface;
 mod parity;
+mod proof_corpus;
+mod proof_corpus_surface;
 mod phase_gate_dtos;
 mod phase_gate_dtos_surface;
 mod plan_dtos;
@@ -37,16 +39,27 @@ pub use contradiction_dtos::{
 pub use contradiction_dtos_surface::ContradictionDtosSurface;
 pub use parity::{
     CapabilityDtosParityContract, ContradictionDtosParityContract, PhaseGateDtosParityContract,
-    PlanDtosParityContract, ReceiptDtosParityContract, capability_dtos_parity_contract_path,
-    capability_dtos_parity_contract_paths, contradiction_dtos_parity_contract_path,
-    contradiction_dtos_parity_contract_paths, load_capability_dtos_parity_contract,
-    load_contradiction_dtos_parity_contract, load_phase_gate_dtos_parity_contract,
-    load_plan_dtos_parity_contract, load_receipt_dtos_parity_contract, parity_contract_path,
-    parity_contract_paths, phase_gate_dtos_parity_contract_path,
+    PlanDtosParityContract, ProofCorpusParityContract, ReceiptDtosParityContract,
+    capability_dtos_parity_contract_path, capability_dtos_parity_contract_paths,
+    contradiction_dtos_parity_contract_path, contradiction_dtos_parity_contract_paths,
+    load_capability_dtos_parity_contract, load_contradiction_dtos_parity_contract,
+    load_phase_gate_dtos_parity_contract, load_plan_dtos_parity_contract,
+    load_proof_corpus_contract, load_proof_corpus_fixture, load_receipt_dtos_parity_contract,
+    parity_contract_path, parity_contract_paths, phase_gate_dtos_parity_contract_path,
     phase_gate_dtos_parity_contract_paths, plan_dtos_parity_contract_path,
-    plan_dtos_parity_contract_paths, receipt_dtos_parity_contract_path,
+    plan_dtos_parity_contract_paths, proof_corpus_contract_path, proof_corpus_contract_paths,
+    proof_corpus_fixture_path, receipt_dtos_parity_contract_path,
     receipt_dtos_parity_contract_paths,
 };
+pub use proof_corpus::{
+    BindingCurrentnessV1, PROOF_CORPUS_DIGEST_V1, PROOF_CORPUS_SCHEMA_ID,
+    RIPR_EXTERNAL_PROOF_PROFILE_ID, ProofBindingIdentityV1, ProofCorpusDimensionV1,
+    ProofCorpusScenarioV1, ProofCorpusV1, ProofResultStateV1, ProviderEnvelopeV1,
+    canonical_proof_result_states, compose_blocking_aggregate, evaluate_binding_currentness,
+    load_proof_corpus_toml, provider_envelope_distinct, validate_composition_honesty,
+    validate_proof_corpus, validate_provider_envelope,
+};
+pub use proof_corpus_surface::ProofCorpusSurface;
 pub use phase_gate_dtos::{
     PROOF_PHASE_GATE_SCHEMA_ID, ProofPhaseGateError, ProofPhaseGatePostureV1, ProofPhaseGateV1,
     validate_phase_gate,
