@@ -12,7 +12,9 @@ pub use config::{
     ProductMoveLedger, parse_product_move_ledger, parse_product_move_ledger_at,
 };
 pub use validate::{
-    MoveLedgerDiagnostic, MoveLedgerDiagnosticKind, MoveLedgerReport, ValidatedProductMoveLedger,
+    MoveLedgerDiagnostic, MoveLedgerDiagnosticKind, MoveLedgerReport,
+    PRODUCT_MOVE_LEDGER_RELATIVE_PATH, ValidatedProductMoveLedger,
+    format_product_move_ledger_diagnostics, product_move_ledger_blocks_enforced_check,
     render_product_move_map, validate_product_move_ledger, validate_product_move_ledger_at,
 };
 

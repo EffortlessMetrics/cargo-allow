@@ -39,6 +39,8 @@ pub struct MoveDiscovery {
     pub selected_files: Vec<String>,
     #[serde(default)]
     pub filename_tokens: Vec<String>,
+    #[serde(default)]
+    pub no_new_enforcement: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]

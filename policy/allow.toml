@@ -9079,7 +9079,7 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-9200"
+id = "allow-9204"
 kind = "non_rust_file"
 family = "test_fixture"
 path = "tests/fixtures/proof-engine/ripr-routing-v1.toml"
@@ -9100,7 +9100,7 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-9201"
+id = "allow-9205"
 kind = "non_rust_file"
 family = "test_fixture"
 path = "tests/fixtures/proof-engine/ripr-routing-contract-v1.toml"

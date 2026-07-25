@@ -7,7 +7,7 @@
 ## Denominator
 
 - Ledger schema: `cargo-allow.three-product-move-ledger.v1` generation `1`
-- Entries: **85**
+- Entries: **102**
 - Topology authority: Issue **#2612**
 - Move/deletion owner: Issue **#2598**
 - Current posture: inventory and target ratification only; no implementation moved.
@@ -15,27 +15,27 @@
 ### Status counts
 
 - `RepositoryDecisionRequired`: **1**
-- `TargetRatified`: **84**
+- `TargetRatified`: **101**
 
 ### Disposition counts
 
 - `CompatibilityAdapter`: **5**
 - `DeleteAfterParity`: **1**
 - `HistoricalReaderOnly`: **2**
-- `MoveToCargoIntentApp`: **5**
-- `MoveToCargoProofApp`: **1**
-- `MoveToIntentEdit`: **6**
-- `MoveToIntentEngine`: **10**
-- `MoveToIntentModel`: **5**
-- `MoveToIntentProtocol`: **3**
-- `MoveToProofAdapter`: **9**
+- `MoveToCargoIntentApp`: **6**
+- `MoveToCargoProofApp`: **2**
+- `MoveToIntentEdit`: **7**
+- `MoveToIntentEngine`: **11**
+- `MoveToIntentModel`: **6**
+- `MoveToIntentProtocol`: **4**
+- `MoveToProofAdapter`: **13**
 - `MoveToProofAdapterCommand`: **2**
-- `MoveToProofEngine`: **3**
-- `MoveToProofProtocol`: **7**
-- `MoveToProofProviderApi`: **2**
-- `MoveToRustSourceIndex`: **1**
-- `MoveToSharedProtocol`: **3**
-- `MoveToSharedSnapshot`: **15**
+- `MoveToProofEngine`: **4**
+- `MoveToProofProtocol`: **8**
+- `MoveToProofProviderApi`: **3**
+- `MoveToRustSourceIndex`: **2**
+- `MoveToSharedProtocol`: **4**
+- `MoveToSharedSnapshot`: **17**
 - `RemainCargoAllowCore`: **3**
 - `RemainProviderOwned`: **1**
 - `RepositoryDecisionRequired`: **1**
@@ -49,6 +49,193 @@
 5. **#2582** — first real move: minimal `repo-protocol` envelope with parity evidence.
 
 ## Entries
+
+### `INVENTORY-CARGO_INTENT-SRC`
+
+- Current: Extracted cargo-intent source tree under no-new intent/proof/shared enforcement (#2598)
+- Target: `cargo-intent / cargo-intent::cargo-intent`
+- Disposition: `MoveToCargoIntentApp`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: #2599 cutover receipt, then delete compatibility scaffold
+- Next: Register new cargo-intent sources in this row before landing extraction changes.
+- Deletion output: Delete scaffold sources after parity cutover and old-path retirement.
+
+### `INVENTORY-CARGO_PROOF-SRC`
+
+- Current: Extracted cargo-proof source tree under no-new intent/proof/shared enforcement (#2598)
+- Target: `cargo-proof / cargo-proof::cargo-proof`
+- Disposition: `MoveToCargoProofApp`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: #2589 cutover receipt, then delete compatibility scaffold
+- Next: Register new cargo-proof sources in this row before landing extraction changes.
+- Deletion output: Delete scaffold sources after parity cutover and old-path retirement.
+
+### `INVENTORY-INTENT_EDIT-SRC`
+
+- Current: Extracted intent-edit source tree under no-new intent/proof/shared enforcement (#2598)
+- Target: `cargo-intent / intent-edit::intent-edit`
+- Disposition: `MoveToIntentEdit`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: #2613 cutover receipt, then delete compatibility scaffold
+- Next: Register new intent-edit sources in this row before landing extraction changes.
+- Deletion output: Delete scaffold sources after parity cutover and old-path retirement.
+
+### `INVENTORY-INTENT_ENGINE-SRC`
+
+- Current: Extracted intent-engine source tree under no-new intent/proof/shared enforcement (#2598)
+- Target: `cargo-intent / intent-engine::intent-engine`
+- Disposition: `MoveToIntentEngine`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: #2586 cutover receipt, then delete compatibility scaffold
+- Next: Register new intent-engine sources in this row before landing extraction changes.
+- Deletion output: Delete scaffold sources after parity cutover and old-path retirement.
+
+### `INVENTORY-INTENT_MODEL-SRC`
+
+- Current: Extracted intent-model source tree under no-new intent/proof/shared enforcement (#2598)
+- Target: `cargo-intent / intent-model::intent-model`
+- Disposition: `MoveToIntentModel`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: #2584 cutover receipt, then delete compatibility scaffold
+- Next: Register new intent-model sources in this row before landing extraction changes.
+- Deletion output: Delete scaffold sources after parity cutover and old-path retirement.
+
+### `INVENTORY-INTENT_PROTOCOL-SRC`
+
+- Current: Extracted intent-protocol source tree under no-new intent/proof/shared enforcement (#2598)
+- Target: `cargo-intent / intent-protocol::intent-protocol`
+- Disposition: `MoveToIntentProtocol`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: #2585 cutover receipt, then delete compatibility scaffold
+- Next: Register new intent-protocol sources in this row before landing extraction changes.
+- Deletion output: Delete scaffold sources after parity cutover and old-path retirement.
+
+### `INVENTORY-PROOF_ADAPTER_CARGO_ALLOW-SRC`
+
+- Current: Extracted proof-adapter-cargo-allow source tree under no-new intent/proof/shared enforcement (#2598)
+- Target: `cargo-proof / proof-adapter-cargo-allow::proof-adapter-cargo-allow`
+- Disposition: `MoveToProofAdapter`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: #2567 cutover receipt, then delete compatibility scaffold
+- Next: Register new proof-adapter-cargo-allow sources in this row before landing extraction changes.
+- Deletion output: Delete scaffold sources after parity cutover and old-path retirement.
+
+### `INVENTORY-PROOF_ADAPTER_COMMAND-SRC`
+
+- Current: Extracted proof-adapter-command source tree under no-new intent/proof/shared enforcement (#2598)
+- Target: `cargo-proof / proof-adapter-command::proof-adapter-command`
+- Disposition: `MoveToProofAdapter`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: #2603 cutover receipt, then delete compatibility scaffold
+- Next: Register new proof-adapter-command sources in this row before landing extraction changes.
+- Deletion output: Delete scaffold sources after parity cutover and old-path retirement.
+
+### `INVENTORY-PROOF_ADAPTER_HAWK-SRC`
+
+- Current: Extracted proof-adapter-hawk source tree under no-new intent/proof/shared enforcement (#2598)
+- Target: `cargo-proof / proof-adapter-hawk::proof-adapter-hawk`
+- Disposition: `MoveToProofAdapter`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: #2555 cutover receipt, then delete compatibility scaffold
+- Next: Register new proof-adapter-hawk sources in this row before landing extraction changes.
+- Deletion output: Delete scaffold sources after parity cutover and old-path retirement.
+
+### `INVENTORY-PROOF_ADAPTER_RIPR-SRC`
+
+- Current: Extracted proof-adapter-ripr source tree under no-new intent/proof/shared enforcement (#2598)
+- Target: `cargo-proof / proof-adapter-ripr::proof-adapter-ripr`
+- Disposition: `MoveToProofAdapter`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: #2556 cutover receipt, then delete compatibility scaffold
+- Next: Register new proof-adapter-ripr sources in this row before landing extraction changes.
+- Deletion output: Delete scaffold sources after parity cutover and old-path retirement.
+
+### `INVENTORY-PROOF_ENGINE-SRC`
+
+- Current: Extracted proof-engine source tree under no-new intent/proof/shared enforcement (#2598)
+- Target: `cargo-proof / proof-engine::proof-engine`
+- Disposition: `MoveToProofEngine`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: #2589 cutover receipt, then delete compatibility scaffold
+- Next: Register new proof-engine sources in this row before landing extraction changes.
+- Deletion output: Delete scaffold sources after parity cutover and old-path retirement.
+
+### `INVENTORY-PROOF_PROTOCOL-SRC`
+
+- Current: Extracted proof-protocol source tree under no-new intent/proof/shared enforcement (#2598)
+- Target: `cargo-proof / proof-protocol::proof-protocol`
+- Disposition: `MoveToProofProtocol`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: #2588 cutover receipt, then delete compatibility scaffold
+- Next: Register new proof-protocol sources in this row before landing extraction changes.
+- Deletion output: Delete scaffold sources after parity cutover and old-path retirement.
+
+### `INVENTORY-PROOF_PROVIDER_API-SRC`
+
+- Current: Extracted proof-provider-api source tree under no-new intent/proof/shared enforcement (#2598)
+- Target: `cargo-proof / proof-provider-api::proof-provider-api`
+- Disposition: `MoveToProofProviderApi`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: #2603 cutover receipt, then delete compatibility scaffold
+- Next: Register new proof-provider-api sources in this row before landing extraction changes.
+- Deletion output: Delete scaffold sources after parity cutover and old-path retirement.
+
+### `INVENTORY-REPO_EDIT-SRC`
+
+- Current: Extracted repo-edit source tree under no-new intent/proof/shared enforcement (#2598)
+- Target: `shared / repo-edit::repo-edit`
+- Disposition: `MoveToSharedSnapshot`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: #2602 cutover receipt, then delete compatibility scaffold
+- Next: Register new repo-edit sources in this row before landing extraction changes.
+- Deletion output: Delete scaffold sources after parity cutover and old-path retirement.
+
+### `INVENTORY-REPO_PROTOCOL-SRC`
+
+- Current: Extracted repo-protocol source tree under no-new intent/proof/shared enforcement (#2598)
+- Target: `shared / repo-protocol::repo-protocol`
+- Disposition: `MoveToSharedProtocol`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: #2582 cutover receipt, then delete compatibility scaffold
+- Next: Register new repo-protocol sources in this row before landing extraction changes.
+- Deletion output: Delete scaffold sources after parity cutover and old-path retirement.
+
+### `INVENTORY-REPO_SNAPSHOT-SRC`
+
+- Current: Extracted repo-snapshot source tree under no-new intent/proof/shared enforcement (#2598)
+- Target: `shared / repo-snapshot::repo-snapshot`
+- Disposition: `MoveToSharedSnapshot`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: #2583 cutover receipt, then delete compatibility scaffold
+- Next: Register new repo-snapshot sources in this row before landing extraction changes.
+- Deletion output: Delete scaffold sources after parity cutover and old-path retirement.
+
+### `INVENTORY-RUST_SOURCE_INDEX-SRC`
+
+- Current: Extracted rust-source-index source tree under no-new intent/proof/shared enforcement (#2598)
+- Target: `shared / rust-source-index::rust-source-index`
+- Disposition: `MoveToRustSourceIndex`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: #2587 cutover receipt, then delete compatibility scaffold
+- Next: Register new rust-source-index sources in this row before landing extraction changes.
+- Deletion output: Delete scaffold sources after parity cutover and old-path retirement.
 
 ### `MOVE-ALLOW-POLICY-SPEC-FACADE`
 
