@@ -171,6 +171,64 @@ mod tests {
     }
 
     #[test]
+    fn load_bespoke_ledger_migration_reports_location_drift_without_failing_no_new() {
+        use allow_core::{Finding, MatchStatus, Span, StructuralIdentity};
+        use std::path::PathBuf;
+
+        let root = unique_test_dir("migrate-load-bespoke-drift");
+        let from = root.join("bespoke-drift.toml");
+        let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/fixtures/migration/bespoke-ledger-advisory-drift-v1.toml");
+        let text = fs::read_to_string(&fixture).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("read bespoke advisory drift fixture: {err}"))
+        });
+        fs::write(&from, text).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("write bespoke drift ledger: {err}"))
+        });
+
+        let migration =
+            load_single_file_migration_config(Some(&root), &from).unwrap_or_else(|err| {
+                std::panic::panic_any(format!("load bespoke drift migrate: {err}"))
+            });
+
+        let finding = Finding {
+            kind: FindingKind::Panic,
+            family: Some("unwrap".to_string()),
+            path: PathBuf::from("src/lib.rs"),
+            span: Some(Span {
+                line: 22,
+                column: 4,
+            }),
+            identity: {
+                let mut identity = StructuralIdentity::new("rust", "method_call");
+                identity.container = Some("load".to_string());
+                identity.callee = Some("unwrap".to_string());
+                identity.receiver_fingerprint = Some("optional_value".to_string());
+                identity
+            },
+            message: String::new(),
+            ledger: None,
+        };
+
+        let outcomes = allow_match::evaluate(
+            &migration.cfg,
+            std::slice::from_ref(&finding),
+            allow_match::CheckMode::NoNew,
+        );
+
+        let drift = outcomes
+            .iter()
+            .find(|outcome| outcome.status == MatchStatus::LocationDrift)
+            .unwrap_or_else(|| std::panic::panic_any("expected location_drift outcome"));
+        assert!(drift.message.contains("last_seen changed from 14:8"));
+        assert!(
+            !allow_match::CheckMode::NoNew.fails(drift.status),
+            "location drift should remain advisory in no-new mode"
+        );
+        remove_test_dir(&root);
+    }
+
+    #[test]
     fn load_single_file_migration_config_call_presence_observer() {
         let root = unique_test_dir("migrate-load-single");
         let canonical_root = root
