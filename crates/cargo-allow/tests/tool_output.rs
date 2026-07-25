@@ -6,9 +6,9 @@
 
 use serde_json::Value;
 
-mod support;
-
-use support::cargo_allow_command;
+fn cargo_allow_command() -> Command {
+    Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+}
 
 #[test]
 fn tool_identity_json_reports_schema_and_digest() {
