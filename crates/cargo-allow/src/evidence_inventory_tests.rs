@@ -117,6 +117,41 @@ fn evidence_reference_diagnostics_for_source_tree_skips_inventory_when_unavailab
 }
 
 #[test]
+fn evidence_reference_rejects_directory_target_as_invalid_local_path() {
+    // #1949: a directory path used as evidence (e.g. `doc:docs/`) must be
+    // flagged as InvalidLocalPath, not silently treated as valid. The base
+    // evidence_reference_diagnostic function catches this at the metadata
+    // level (Ok(_) => InvalidLocalPath "exists but is not a file").
+    let root = fixture_dir();
+    fs::create_dir_all(root.join("docs"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("fixture docs dir: {err}")));
+
+    let entry = test_entry("allow-dir-evidence", vec!["doc:docs"], vec![]);
+    let source_tree_files = BTreeSet::new();
+
+    let diagnostics =
+        evidence_reference_diagnostics_for_source_tree(&root, &entry, Some(&source_tree_files));
+
+    assert_eq!(diagnostics.len(), 1);
+    let diagnostic = diagnostics
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("expected one evidence diagnostic"));
+    assert_eq!(
+        diagnostic.status,
+        EvidenceReferenceStatus::InvalidLocalPath,
+        "directory evidence target should be InvalidLocalPath: {:?}",
+        diagnostic
+    );
+    assert_eq!(
+        diagnostic.message,
+        "local evidence path exists but is not a file"
+    );
+
+    fs::remove_dir_all(&root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
 fn policy_reference_diagnostics_for_source_tree_applies_inventory_to_links() {
     let root = fixture_dir();
     fs::create_dir_all(root.join("docs"))
