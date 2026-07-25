@@ -19,6 +19,10 @@ pub(crate) struct CargoAllowCli {
     /// output is currently plain text — see #2516).
     #[arg(long, value_enum, default_value_t = ColorChoice::Auto)]
     pub(crate) color: ColorChoice,
+    /// Suppress non-essential output (claim boundary, matched inventory,
+    /// non-matched advisory outcomes). Show only result + counts.
+    #[arg(short = 'q', long)]
+    pub(crate) quiet: bool,
     #[command(subcommand)]
     pub(crate) command: Option<CargoAllowCommand>,
 }
@@ -67,6 +71,15 @@ pub(crate) enum CargoAllowCommand {
 pub(crate) fn run() -> CargoAllowResult<()> {
     let cli = CargoAllowCli::parse_from(normalized_args(env::args()));
     let _color = cli.color; // Accepted for cargo compatibility; not yet honored (see #2516).
+    if cli.quiet {
+        // Report renderers check this env var to suppress non-essential output
+        // (claim boundary, matched inventory, advisory outcomes). #2785.
+        // Safety: set_var is safe here because we're single-threaded before
+        // any scan/match work begins.
+        unsafe {
+            std::env::set_var("CARGO_ALLOW_QUIET", "1");
+        }
+    }
     let Some(command) = cli.command else {
         CargoAllowCli::command()
             .print_help()

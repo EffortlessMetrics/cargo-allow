@@ -109,9 +109,11 @@ pub fn render_human_with_context(
         ));
     }
     append_human_omitted_outcome_note(&mut out, non_matched.len());
-    out.push('\n');
-    out.push_str(CLAIM_BOUNDARY_TEXT);
-    out.push('\n');
+    if !crate::contracts::is_quiet() {
+        out.push('\n');
+        out.push_str(CLAIM_BOUNDARY_TEXT);
+        out.push('\n');
+    }
     out.push_str(if failed {
         "Result: failed\n"
     } else {
