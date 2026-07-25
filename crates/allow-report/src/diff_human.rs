@@ -6,7 +6,7 @@ use crate::diff_posture::{
     diff_structural_delta_summary,
 };
 use crate::evidence_repair::evidence_repair_queues_from_counts;
-use crate::ledger_posture::FINDING_CHANGE_LABELS;
+use crate::ledger_posture::{FINDING_CHANGE_LABELS, coverage_movement_from_canonical_fields};
 use crate::{DiffFindingChange, DiffLedgerMovementSummary, DiffPolicyChange};
 use allow_core::PresenceMovement;
 
@@ -373,11 +373,17 @@ fn append_finding_change_human_row(out: &mut String, change: &DiffFindingChange<
         .identity
         .map(|identity| format!(" identity={}", structural_identity_summary(identity)))
         .unwrap_or_default();
+    let coverage_movement = row_coverage_movement(
+        change.movement,
+        change.posture_delta,
+        change.changed_in_diff,
+    );
     out.push_str(&format!(
-        "    {} movement={} posture_delta={} changed_in_diff={} {}{} at {}{}{}\n",
+        "    {} movement={} posture_delta={} coverage_movement={} changed_in_diff={} {}{} at {}{}{}\n",
         change.change,
         change.movement,
         change.posture_delta,
+        coverage_movement,
         change.changed_in_diff,
         change.kind,
         change
@@ -443,11 +449,17 @@ fn append_policy_changes_human_section(
 }
 
 fn append_policy_change_human_row(out: &mut String, change: &DiffPolicyChange<'_>) {
+    let coverage_movement = row_coverage_movement(
+        change.movement,
+        change.posture_delta,
+        change.changed_in_diff,
+    );
     out.push_str(&format!(
-        "    {} movement={} posture_delta={} changed_in_diff={} {} {} {}: {}\n",
+        "    {} movement={} posture_delta={} coverage_movement={} changed_in_diff={} {} {} {}: {}\n",
         change.severity,
         change.movement,
         change.posture_delta,
+        coverage_movement,
         change.changed_in_diff,
         change.allow_id,
         change.kind,
@@ -460,4 +472,13 @@ fn append_policy_change_human_row(out: &mut String, change: &DiffPolicyChange<'_
     if let Some(detail) = policy_change_detail(change) {
         out.push_str(&format!("      detail: {detail}\n"));
     }
+}
+
+fn row_coverage_movement(
+    movement: &str,
+    posture_delta: &str,
+    changed_in_diff: bool,
+) -> &'static str {
+    coverage_movement_from_canonical_fields(movement, posture_delta, changed_in_diff)
+        .unwrap_or("retained")
 }

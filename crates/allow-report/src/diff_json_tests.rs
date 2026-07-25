@@ -89,6 +89,8 @@ fn diff_json_renderer_appends_posture_extension() {
     assert!(json.contains("\"new_findings\": 1"));
     assert!(json.contains("\"policy_failures\": 1"));
     assert!(json.contains("\"change\": \"new\""));
+    assert!(json.contains("\"coverage_movement\": \"new\""));
+    assert!(json.contains("\"coverage_movement\": \"worsened\""));
     assert!(json.contains("\"family\": \"unwrap\""));
     assert!(json.contains("\"severity\": \"fail\""));
     assert!(json.contains("\"kind\": \"scope_broadened\""));
@@ -1077,10 +1079,10 @@ fn diff_json_report_matches_posture_golden_contract() {
       "policy_improvements": 1
     }},
     "finding_changes": [
-      {{"change": "removed", "movement": "removed", "posture_delta": "improved", "changed_in_diff": true, "key": "panic|unwrap|src/lib.rs", "kind": "panic", "family": "unwrap", "path": "src/lib.rs"}}
+      {{"change": "removed", "movement": "removed", "posture_delta": "improved", "changed_in_diff": true, "coverage_movement": "resolved", "key": "panic|unwrap|src/lib.rs", "kind": "panic", "family": "unwrap", "path": "src/lib.rs"}}
     ],
     "policy_changes": [
-      {{"severity": "improvement", "movement": "retained", "posture_delta": "improved", "changed_in_diff": true, "allow_id": "allow-0001", "kind": "selector_precision_increased", "message": "allow-0001 selector precision increased", "selector_precision": {{"before": 42, "after": 92, "removed_fields": [], "added_fields": ["container", "normalized_snippet_hash"]}}}}
+      {{"severity": "improvement", "movement": "retained", "posture_delta": "improved", "changed_in_diff": true, "coverage_movement": "retained", "allow_id": "allow-0001", "kind": "selector_precision_increased", "message": "allow-0001 selector precision increased", "selector_precision": {{"before": 42, "after": 92, "removed_fields": [], "added_fields": ["container", "normalized_snippet_hash"]}}}}
     ]
   }}
 }}

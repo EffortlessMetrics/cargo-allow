@@ -34,6 +34,35 @@ pub const MOVEMENT_PROJECTION_LABELS: &[&str] = &[
     PresenceMovement::Removed.movement_projection(),
 ];
 
+/// Coverage-movement labels for per-entry diff/posture surfaces.
+pub const COVERAGE_MOVEMENT_LABELS: &[&str] = &["new", "worsened", "resolved", "inherited"];
+
+pub fn parse_coverage_movement_label(value: &str) -> Option<&'static str> {
+    COVERAGE_MOVEMENT_LABELS
+        .iter()
+        .copied()
+        .find(|label| *label == value.trim())
+}
+
+pub fn coverage_movement_classification(
+    movement: PresenceMovement,
+    posture_delta: PostureDelta,
+    changed_in_diff: bool,
+) -> &'static str {
+    LedgerPosture::new(movement, posture_delta).coverage_movement_classification(changed_in_diff)
+}
+
+pub fn coverage_movement_from_canonical_fields(
+    movement: &str,
+    posture_delta: &str,
+    changed_in_diff: bool,
+) -> Option<&'static str> {
+    let movement = PresenceMovement::parse_field_name(movement).ok()?;
+    let posture_delta = PostureDelta::parse_field_name(posture_delta)?;
+    let label = coverage_movement_classification(movement, posture_delta, changed_in_diff);
+    Some(parse_coverage_movement_label(label).unwrap_or(label))
+}
+
 pub fn finding_change_label_for(movement: PresenceMovement) -> &'static str {
     movement.finding_change_label()
 }
@@ -80,5 +109,21 @@ mod tests {
         for label in prior_movement {
             assert!(MOVEMENT_PROJECTION_LABELS.contains(&label));
         }
+
+        for label in COVERAGE_MOVEMENT_LABELS {
+            assert_eq!(parse_coverage_movement_label(label), Some(*label));
+        }
+        assert_eq!(
+            coverage_movement_from_canonical_fields("retained", "worsened", true),
+            Some("worsened")
+        );
+        assert_eq!(
+            coverage_movement_classification(
+                PresenceMovement::Retained,
+                PostureDelta::Unchanged,
+                false
+            ),
+            "inherited"
+        );
     }
 }

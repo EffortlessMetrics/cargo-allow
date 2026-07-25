@@ -5,6 +5,7 @@ use crate::diff_movement::append_movement_summary_json;
 use crate::diff_posture::{diff_evidence_delta_summary, diff_structural_delta_summary};
 use crate::explain_json::structural_identity_json;
 use crate::json::{json_string_array, option_json};
+use crate::ledger_posture::coverage_movement_from_canonical_fields;
 use crate::{REPORT_COMMAND_DIFF, REPORT_SCHEMA_ID};
 
 pub fn render_diff_json_with_posture(report_json: &str, report: DiffReport<'_>) -> Option<String> {
@@ -432,11 +433,15 @@ fn append_row_classification_json(
     posture_delta: &str,
     changed_in_diff: bool,
 ) {
+    let coverage_movement =
+        coverage_movement_from_canonical_fields(movement, posture_delta, changed_in_diff)
+            .unwrap_or("retained");
     out.push_str(&format!(
-        "\"movement\": \"{}\", \"posture_delta\": \"{}\", \"changed_in_diff\": {}, ",
+        "\"movement\": \"{}\", \"posture_delta\": \"{}\", \"changed_in_diff\": {}, \"coverage_movement\": \"{}\", ",
         json_escape(movement),
         json_escape(posture_delta),
-        changed_in_diff
+        changed_in_diff,
+        json_escape(coverage_movement)
     ));
 }
 

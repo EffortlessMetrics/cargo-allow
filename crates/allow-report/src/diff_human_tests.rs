@@ -67,6 +67,38 @@ fn diff_finding_human_output_groups_findings_by_change() {
     );
     assert!(text.contains("movement=removed"));
     assert!(text.contains("panic.unwrap at src/old.rs"));
+    assert!(text.contains("coverage_movement=new"));
+    assert!(text.contains("coverage_movement=resolved"));
+}
+
+#[test]
+fn diff_policy_human_output_surfaces_coverage_movement_worsened() {
+    let policy_changes = vec![DiffPolicyChange {
+        severity: "fail",
+        movement: "retained",
+        posture_delta: "worsened",
+        changed_in_diff: true,
+        subject: None,
+        ledger_id: None,
+        lane: None,
+        allow_id: "allow-0001",
+        kind: "scope_broadened",
+        message: "allow-0001 selector scope broadened",
+        exception_identity: None,
+        selector_identity: None,
+        selector_precision: None,
+        scope: None,
+        occurrence_limit: None,
+        lifecycle: None,
+        evidence: None,
+        metadata: None,
+        requirement: None,
+        policy_status: None,
+    }];
+
+    let text = render_diff_policy_changes_human(&policy_changes);
+
+    assert!(text.contains("coverage_movement=worsened"));
 }
 
 #[test]
