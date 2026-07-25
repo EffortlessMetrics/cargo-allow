@@ -1,0 +1,6 @@
+kind: Added
+body: >-
+  Build: add `[profile.release]` with `lto = "thin"`, `strip = true`, and
+  `codegen-units = 1` to reduce binary size and improve runtime performance.
+  The published binary previously shipped with Cargo defaults (no LTO, no
+  strip, full debug paths).
