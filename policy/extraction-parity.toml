@@ -411,6 +411,17 @@ disposition = "contract_only"
 claim_boundary = "Provider-independent proof corpus, result taxonomy, binding identities, and negative experiments; does not execute real RIPR providers or cut over production routing."
 
 [[case]]
+id = "parity-proof-engine-ripr-routing-v1"
+stage = "ProofEngineAndCli"
+move_ledger_entry = "introduce-proof-engine-ripr-routing"
+shim_id = "shim-proof-engine-ripr-routing"
+old_producer = "ripr::proof_route"
+new_producer = "proof-engine::ripr_routing"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Route/preflight composition consuming the #2708 corpus contract with fail-closed required aggregates; does not execute live ripr-swarm providers or claim dual-run parity."
+
+[[case]]
 id = "parity-proof-protocol-boundary-v1"
 stage = "ProofProtocol"
 move_ledger_entry = "introduce-proof-protocol-crate"

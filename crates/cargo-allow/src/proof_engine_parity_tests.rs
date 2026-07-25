@@ -14,6 +14,9 @@ fn proof_engine_parity_fixtures_registered() -> Result<(), String> {
     if !ledger.contains("introduce-proof-engine-crate") {
         return Err("move ledger missing proof-engine scaffold entry".to_string());
     }
+    if !ledger.contains("introduce-proof-engine-ripr-routing") {
+        return Err("move ledger missing proof-engine ripr routing entry".to_string());
+    }
 
     let doc = root.join("docs/architecture/proof-engine.md");
     let doc_text =
@@ -33,7 +36,11 @@ fn proof_engine_parity_fixtures_registered() -> Result<(), String> {
 }
 
 fn proof_engine_parity_fixture_paths(root: &std::path::Path) -> Vec<PathBuf> {
-    vec![root.join("tests/fixtures/proof-engine/parity-boundary-v1.toml")]
+    vec![
+        root.join("tests/fixtures/proof-engine/parity-boundary-v1.toml"),
+        root.join("tests/fixtures/proof-engine/ripr-routing-v1.toml"),
+        root.join("tests/fixtures/proof-engine/ripr-routing-contract-v1.toml"),
+    ]
 }
 
 fn manifest_lists_dependency(manifest_text: &str, crate_name: &str) -> bool {

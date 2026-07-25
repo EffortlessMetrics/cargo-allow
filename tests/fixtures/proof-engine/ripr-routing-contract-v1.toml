@@ -1,0 +1,7 @@
+scenario_id = "parity-proof-engine-ripr-routing-v1"
+proof_engine_module = "proof-engine::ripr_routing"
+parity_case = "parity-proof-engine-ripr-routing-v1"
+move_ledger_entry = "introduce-proof-engine-ripr-routing"
+profile_id = "ripr-external-proof-profile-v1"
+corpus_digest = "sha256:v1:2708-ripr-external-proof-corpus"
+required_phases = ["route", "preflight"]
