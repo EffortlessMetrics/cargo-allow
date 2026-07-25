@@ -1,0 +1,6 @@
+kind: Documentation
+body: >-
+  Fix stale `why` release status note in troubleshoot doc. The note said `why`
+  was "source candidate / Unreleased on Published 0.1.10" — directly
+  contradicting every other doc and the 0.1.11 release notes which shipped it.
+  Child of #1785.

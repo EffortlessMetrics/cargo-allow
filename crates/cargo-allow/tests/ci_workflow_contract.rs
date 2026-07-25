@@ -132,7 +132,7 @@ fn troubleshooting_and_rollback_guides_cover_ops_contract() {
         "location-drift",
         "baseline_debt",
         "cargo-allow doctor",
-        "source candidate",
+        "shipped in Published",
     ] {
         assert!(
             TROUBLESHOOT.contains(required),
