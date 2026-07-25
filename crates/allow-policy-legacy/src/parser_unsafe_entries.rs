@@ -68,6 +68,9 @@ fn parse_unsafe_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyUnsa
             .and_then(|selector| optional_u32_field(selector, "line_hint"))
             .or_else(|| last_seen.as_ref().map(|seen| seen.line)),
         last_seen,
+        scope: string_field(table, "scope"),
+        justification: string_field(table, "justification"),
+        audit_url: string_field(table, "audit_url"),
     })
 }
 
