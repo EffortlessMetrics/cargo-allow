@@ -2,7 +2,6 @@ use super::*;
 use crate::{CargoAllowCli, CargoAllowCommand, ProfileArg, RootArgs};
 use allow_core::CargoAllowError;
 use clap::Parser;
-use repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -87,11 +86,11 @@ fn init_non_force_selects_create_new_only_mode() {
     // #2777: mode selection is the durable contract; CreateNewOnly closes the
     // exists()-then-AtomicReplace TOCTOU window on the non-force path.
     assert_eq!(
-        super::init_policy_apply_mode(false),
+        init_policy_apply_mode(false),
         SingleTargetApplyMode::CreateNewOnly
     );
     assert_eq!(
-        super::init_policy_apply_mode(true),
+        init_policy_apply_mode(true),
         SingleTargetApplyMode::ReplaceWithBackup
     );
 }
@@ -118,14 +117,14 @@ fn init_non_force_create_new_only_fails_closed_on_late_target() {
         std::panic::panic_any(format!("simulate external target creation: {err}"))
     });
 
-    let contents = allow_policy::starter_policy(false);
+    let contents = starter_policy(false);
     let response = apply_single_target(SingleTargetApplyRequest {
         repository_root: &root,
         target: &policy_rel,
         contents: &contents,
         caller_reference: Some("cargo-allow:init"),
         lock_identity: None,
-        mode: super::init_policy_apply_mode(false),
+        mode: init_policy_apply_mode(false),
     });
     assert!(
         !response.receipt.applied(),
