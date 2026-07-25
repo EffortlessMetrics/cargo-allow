@@ -2,8 +2,8 @@ use super::config::parse_architecture_manifest;
 use super::dependency_graph::parse_cargo_metadata_graph;
 use super::validate::{
     ArchitectureDiagnosticKind, validate_architecture_manifest, validate_dependency_law,
-    workspace_members_from_manifest,
 };
+use super::workspace::workspace_members_from_manifest;
 use std::path::PathBuf;
 
 const REPO_MANIFEST: &str = r#"

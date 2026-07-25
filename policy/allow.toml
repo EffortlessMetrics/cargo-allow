@@ -320,6 +320,94 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9200"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/product-crates/README.md"
+owner = "repo-infra"
+classification = "product_crate_architecture_fixture"
+reason = "Fixture catalog for ProductCrateArchitectureV1 dependency-law validation (#2580 PR2)."
+evidence = ["doc:docs/architecture/product-crate-law.md", "doc:policy/product-crates.toml"]
+created = "2026-07-25"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "tests/fixtures/product-crates/README.md"
+target_fingerprint = "md"
+glob = "tests/fixtures/product-crates/README.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9201"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/product-crates/forbidden-cargo-allow-to-intent-engine.json"
+owner = "repo-infra"
+classification = "product_crate_architecture_fixture"
+reason = "Synthetic metadata fixture for forbidden cargo-allow to intent-engine edge (#2580 PR2)."
+evidence = ["doc:tests/fixtures/product-crates/README.md", "doc:policy/product-crates.toml"]
+created = "2026-07-25"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "tests/fixtures/product-crates/forbidden-cargo-allow-to-intent-engine.json"
+target_fingerprint = "json"
+glob = "tests/fixtures/product-crates/forbidden-cargo-allow-to-intent-engine.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9202"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/product-crates/forbidden-proof-engine-to-intent-engine.json"
+owner = "repo-infra"
+classification = "product_crate_architecture_fixture"
+reason = "Synthetic metadata fixture for forbidden proof-engine to intent-engine edge (#2580 PR2)."
+evidence = ["doc:tests/fixtures/product-crates/README.md", "doc:policy/product-crates.toml"]
+created = "2026-07-25"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "tests/fixtures/product-crates/forbidden-proof-engine-to-intent-engine.json"
+target_fingerprint = "json"
+glob = "tests/fixtures/product-crates/forbidden-proof-engine-to-intent-engine.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9203"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/product-crates/shared-protocol-domain-leak.json"
+owner = "repo-infra"
+classification = "product_crate_architecture_fixture"
+reason = "Synthetic metadata fixture for shared-protocol domain leak (#2580 PR2)."
+evidence = ["doc:tests/fixtures/product-crates/README.md", "doc:policy/product-crates.toml"]
+created = "2026-07-25"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "tests/fixtures/product-crates/shared-protocol-domain-leak.json"
+target_fingerprint = "json"
+glob = "tests/fixtures/product-crates/shared-protocol-domain-leak.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9025"
 kind = "non_rust_file"
 family = "configuration"

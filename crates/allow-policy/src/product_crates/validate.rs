@@ -1,6 +1,6 @@
 use super::config::{ArchitectureManifest, parse_architecture_manifest_at};
 use super::dependency_graph::{CargoMetadataGraph, DependencyClass};
-use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_core::CargoAllowResult;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
@@ -143,34 +143,6 @@ pub fn validate_architecture_manifest_at(
     })?;
     let manifest = parse_architecture_manifest_at(Some(manifest_path), &text)?;
     Ok(validate_architecture_manifest(manifest, workspace_members))
-}
-
-pub fn workspace_members_from_manifest(root: &Path) -> CargoAllowResult<Vec<String>> {
-    let cargo_toml = root.join("Cargo.toml");
-    let text = std::fs::read_to_string(&cargo_toml).map_err(|err| {
-        allow_core::CargoAllowError::new(format!(
-            "workspace Cargo.toml unreadable at {}: {err}",
-            cargo_toml.display()
-        ))
-    })?;
-    let parsed: toml::Value = toml::from_str(&text).map_err(|err| {
-        allow_core::CargoAllowError::new(format!("workspace Cargo.toml parse error: {err}"))
-    })?;
-    let members = parsed
-        .get("workspace")
-        .and_then(|workspace| workspace.get("members"))
-        .and_then(|members| members.as_array())
-        .ok_or_else(|| CargoAllowError::new("workspace members missing from Cargo.toml"))?;
-    let mut paths = Vec::with_capacity(members.len());
-    for member in members {
-        let Some(path) = member.as_str() else {
-            return Err(allow_core::CargoAllowError::new(
-                "workspace member entry was not a string",
-            ));
-        };
-        paths.push(path.to_string());
-    }
-    Ok(paths)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

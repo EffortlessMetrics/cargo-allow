@@ -1,5 +1,5 @@
 use allow_policy::product_crates::{
-    ArchitectureDiagnosticKind, load_cargo_metadata_graph, validate_architecture_manifest_at,
+    ArchitectureDiagnosticKind, load_workspace_dependency_graph, validate_architecture_manifest_at,
     validate_architecture_with_dependency_graph_at, workspace_members_from_manifest,
 };
 use std::path::PathBuf;
@@ -35,15 +35,15 @@ fn product_crate_architecture_report_only_inventory() -> Result<(), String> {
 }
 
 #[test]
-fn product_crate_dependency_law_loads_cargo_metadata_graph() -> Result<(), String> {
+fn product_crate_dependency_law_loads_workspace_graph() -> Result<(), String> {
     let root = repo_root();
     let members = workspace_members_from_manifest(&root)
         .map_err(|err| format!("workspace members: {err}"))?;
     let manifest_path = root.join("policy/product-crates.toml");
-    let graph = load_cargo_metadata_graph(&root)
-        .map_err(|err| format!("load cargo metadata graph: {err}"))?;
+    let graph = load_workspace_dependency_graph(&root)
+        .map_err(|err| format!("load workspace dependency graph: {err}"))?;
     if graph.edges.is_empty() {
-        return Err("cargo metadata graph should contain dependency edges".to_string());
+        return Err("workspace dependency graph should contain dependency edges".to_string());
     }
 
     let (_, diagnostics, _) =

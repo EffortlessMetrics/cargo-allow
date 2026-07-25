@@ -15,9 +15,10 @@ dependency law during extraction.
 ## Current workspace ownership
 
 Products, shared crates, and planned crates are declared in the manifest. The
-validator loads the workspace package graph through `cargo metadata` and checks
-direct dependency edges against product `forbid_product_dependencies`,
-`forbidden_crate_dependency`, and shared `allowed_domain_dependencies`.
+validator loads declared workspace dependency edges from each member `Cargo.toml`
+without invoking `cargo metadata`, then checks direct edges against product
+`forbid_product_dependencies`, `forbidden_crate_dependency`, and shared
+`allowed_domain_dependencies`.
 
 ## Validation
 
@@ -28,8 +29,9 @@ cargo test -p cargo-allow product_crate_architecture --locked
 
 ## Claim boundary
 
-PR2 (#2580): ownership inventory, workspace drift checks, and `cargo metadata`
-dependency-law diagnostics for forbidden product edges, explicit forbidden crate
-edges, and shared-protocol domain leaks. Dev/build dependency bypasses remain
-visible in diagnostics. Does not enforce no-new blocking, transitional shim
-registry coupling, or independent binary-closure proofs yet.
+PR2 (#2580): ownership inventory, workspace drift checks, and workspace
+`Cargo.toml` dependency-law diagnostics for forbidden product edges, explicit
+forbidden crate edges, and shared-protocol domain leaks. Dev/build dependency
+bypasses remain visible in diagnostics. Does not invoke `cargo metadata` or
+enforce no-new blocking, transitional shim registry coupling, or independent
+binary-closure proofs yet.

@@ -2,7 +2,6 @@ use allow_core::{CargoAllowError, CargoAllowResult};
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::path::Path;
-use std::process::Command;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum DependencyClass {
@@ -27,6 +26,14 @@ impl DependencyClass {
             _ => Self::Normal,
         }
     }
+
+    fn section_name(self) -> &'static str {
+        match self {
+            Self::Normal => "dependencies",
+            Self::Dev => "dev-dependencies",
+            Self::Build => "build-dependencies",
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -41,32 +48,51 @@ pub struct CargoMetadataGraph {
     pub edges: Vec<DependencyEdge>,
 }
 
-pub fn load_cargo_metadata_graph(root: &Path) -> CargoAllowResult<CargoMetadataGraph> {
-    let manifest_path = root.join("Cargo.toml");
-    let output = Command::new("cargo")
-        .arg("metadata")
-        .arg("--format-version")
-        .arg("1")
-        .arg("--manifest-path")
-        .arg(&manifest_path)
-        .output()
-        .map_err(|err| {
+pub fn load_workspace_dependency_graph(root: &Path) -> CargoAllowResult<CargoMetadataGraph> {
+    let members = super::workspace::workspace_members_from_manifest(root)?;
+    let mut edges = Vec::new();
+    for member in members {
+        let manifest_path = root.join(&member).join("Cargo.toml");
+        let text = std::fs::read_to_string(&manifest_path).map_err(|err| {
             CargoAllowError::new(format!(
-                "failed to invoke cargo metadata at {}: {err}",
+                "workspace crate manifest unreadable at {}: {err}",
                 manifest_path.display()
             ))
         })?;
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(CargoAllowError::new(format!(
-            "cargo metadata failed at {}: {stderr}",
-            manifest_path.display()
-        )));
+        let parsed: toml::Value = toml::from_str(&text).map_err(|err| {
+            CargoAllowError::new(format!(
+                "workspace crate manifest parse error at {}: {err}",
+                manifest_path.display()
+            ))
+        })?;
+        let Some(package_name) = parsed
+            .get("package")
+            .and_then(|package| package.get("name"))
+            .and_then(|name| name.as_str())
+        else {
+            continue;
+        };
+        for class in [
+            DependencyClass::Normal,
+            DependencyClass::Dev,
+            DependencyClass::Build,
+        ] {
+            let Some(section) = parsed.get(class.section_name()) else {
+                continue;
+            };
+            let Some(table) = section.as_table() else {
+                continue;
+            };
+            for dependency_name in table.keys() {
+                edges.push(DependencyEdge {
+                    from: package_name.to_string(),
+                    to: dependency_name.clone(),
+                    class,
+                });
+            }
+        }
     }
-    let stdout = String::from_utf8(output.stdout).map_err(|err| {
-        CargoAllowError::new(format!("cargo metadata output was not valid UTF-8: {err}"))
-    })?;
-    parse_cargo_metadata_graph(&stdout)
+    Ok(CargoMetadataGraph { edges })
 }
 
 pub fn parse_cargo_metadata_graph(input: &str) -> CargoAllowResult<CargoMetadataGraph> {
