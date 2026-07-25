@@ -84,6 +84,10 @@ pub use import_roots::{
     discover_import_graph, parse_import_roots_config, parse_import_roots_config_at,
     resolve_import_roots_config, resolve_spec_system_import_roots, validate_import_roots_config,
 };
+pub use import_roots::adapters::{
+    BESPOKE_LEDGER_DIALECT, import_bespoke_ledger_at, import_bespoke_ledger_table,
+    import_bespoke_ledger_text, is_bespoke_ledger_dialect,
+};
 
 pub use discovery::{
     DISCOVERY_REL_PATHS, NATIVE_LEDGER_REL_PATH, SkippedPolicyCandidate, discover_config,
