@@ -66,20 +66,13 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
         )));
     }
     let policy_contents = starter_policy(args.strict);
-    // #2777: use CreateNewOnly for the non-force path (race-free) and
-    // ReplaceWithBackup for --force, matching add.rs semantics.
-    let mode = if args.force {
-        SingleTargetApplyMode::ReplaceWithBackup
-    } else {
-        SingleTargetApplyMode::CreateNewOnly
-    };
     apply_single_target(SingleTargetApplyRequest {
         repository_root: &root,
         target: &args.config,
         contents: &policy_contents,
         caller_reference: Some("cargo-allow:init"),
         lock_identity: Some(created_path_display(&root, &path)),
-        mode,
+        mode: init_policy_apply_mode(args.force),
     })
     .into_result()?;
     // #2778: report the correct action word — "overwrote" for --force on
@@ -95,6 +88,17 @@ fn spec_system_config_arg(config: &Path) -> Option<PathBuf> {
         None
     } else {
         Some(config.to_path_buf())
+    }
+}
+
+/// #2777: non-force uses exclusive create (`CreateNewOnly`); `--force` uses
+/// `ReplaceWithBackup`. Do not use `AtomicReplace` on the non-force path — that
+/// leaves a TOCTOU window after `exists()`.
+fn init_policy_apply_mode(force: bool) -> SingleTargetApplyMode {
+    if force {
+        SingleTargetApplyMode::ReplaceWithBackup
+    } else {
+        SingleTargetApplyMode::CreateNewOnly
     }
 }
 
