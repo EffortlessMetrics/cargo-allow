@@ -7,7 +7,7 @@
 ## Denominator
 
 - Ledger schema: `cargo-allow.three-product-move-ledger.v1` generation `1`
-- Entries: **84**
+- Entries: **85**
 - Topology authority: Issue **#2612**
 - Move/deletion owner: Issue **#2598**
 - Current posture: inventory and target ratification only; no implementation moved.
@@ -15,7 +15,7 @@
 ### Status counts
 
 - `RepositoryDecisionRequired`: **1**
-- `TargetRatified`: **83**
+- `TargetRatified`: **84**
 
 ### Disposition counts
 
@@ -30,7 +30,7 @@
 - `MoveToIntentProtocol`: **3**
 - `MoveToProofAdapter`: **9**
 - `MoveToProofAdapterCommand`: **2**
-- `MoveToProofEngine`: **2**
+- `MoveToProofEngine`: **3**
 - `MoveToProofProtocol`: **7**
 - `MoveToProofProviderApi`: **2**
 - `MoveToRustSourceIndex`: **1**
@@ -674,6 +674,17 @@
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
 - Removal: issue:#2606 proof-engine stage-1 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-proof-engine-ripr-routing`
+
+- Current: crates/proof-engine/src/ripr_routing.rs
+- Target: `cargo-proof / proof-engine::ripr_routing`
+- Disposition: `MoveToProofEngine`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2683 external RIPR route/preflight cutover receipt
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
 - Deletion output: Deferred to extraction cutover and parity receipts.
 
