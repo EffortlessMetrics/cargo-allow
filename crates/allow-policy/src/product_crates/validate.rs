@@ -197,13 +197,9 @@ pub fn validate_dependency_law(
             continue;
         };
 
-        if let Some(diag) = check_forbidden_crate_dependency(
-            manifest,
-            &edge.from,
-            &edge.to,
-            edge.class,
-            &owners,
-        ) {
+        if let Some(diag) =
+            check_forbidden_crate_dependency(manifest, &edge.from, &edge.to, edge.class, &owners)
+        {
             let key = (
                 diag.kind,
                 diag.crate_names.join("->"),
@@ -343,17 +339,11 @@ fn crate_owner_map(manifest: &ArchitectureManifest) -> BTreeMap<String, CrateOwn
     let mut owners = BTreeMap::new();
     for product in &manifest.product {
         for crate_name in &product.owned_crates {
-            owners.insert(
-                crate_name.clone(),
-                CrateOwner::Product(product.id.clone()),
-            );
+            owners.insert(crate_name.clone(), CrateOwner::Product(product.id.clone()));
         }
     }
     for shared in &manifest.shared_crate {
-        owners.insert(
-            shared.name.clone(),
-            CrateOwner::Shared(shared.name.clone()),
-        );
+        owners.insert(shared.name.clone(), CrateOwner::Shared(shared.name.clone()));
     }
     owners
 }
@@ -378,11 +368,7 @@ fn shared_allowed_map(manifest: &ArchitectureManifest) -> BTreeMap<String, BTree
     for shared in &manifest.shared_crate {
         map.insert(
             shared.name.clone(),
-            shared
-                .allowed_domain_dependencies
-                .iter()
-                .cloned()
-                .collect(),
+            shared.allowed_domain_dependencies.iter().cloned().collect(),
         );
     }
     map

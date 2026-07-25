@@ -8,9 +8,8 @@ mod dependency_graph;
 mod validate;
 
 pub use config::{
-    ArchitectureManifest, CrateRole, ForbiddenCrateDependency, PlannedCrate,
-    ProductDefinition, SharedCrateDefinition, parse_architecture_manifest,
-    parse_architecture_manifest_at,
+    ArchitectureManifest, CrateRole, ForbiddenCrateDependency, PlannedCrate, ProductDefinition,
+    SharedCrateDefinition, parse_architecture_manifest, parse_architecture_manifest_at,
 };
 pub use dependency_graph::{
     CargoMetadataGraph, DependencyClass, DependencyEdge, load_cargo_metadata_graph,

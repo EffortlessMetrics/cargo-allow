@@ -46,21 +46,14 @@ fn product_crate_dependency_law_loads_cargo_metadata_graph() -> Result<(), Strin
         return Err("cargo metadata graph should contain dependency edges".to_string());
     }
 
-    let (_, diagnostics, _) = validate_architecture_with_dependency_graph_at(
-        &root,
-        &manifest_path,
-        &members,
-        &graph,
-    )
-    .map_err(|err| format!("validate with dependency graph: {err}"))?;
+    let (_, diagnostics, _) =
+        validate_architecture_with_dependency_graph_at(&root, &manifest_path, &members, &graph)
+            .map_err(|err| format!("validate with dependency graph: {err}"))?;
 
     let dev_bypasses: Vec<_> = diagnostics
         .iter()
         .filter(|diag| diag.kind == ArchitectureDiagnosticKind::ForbiddenProductDependency)
-        .filter(|diag| {
-            diag.message.contains("cargo-allow")
-                && diag.message.contains("dev")
-        })
+        .filter(|diag| diag.message.contains("cargo-allow") && diag.message.contains("dev"))
         .collect();
     if dev_bypasses.is_empty() {
         return Err(
