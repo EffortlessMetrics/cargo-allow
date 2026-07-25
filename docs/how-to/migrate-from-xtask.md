@@ -18,6 +18,18 @@ suppress cargo-allow findings just to match the old checker.
 
 ## Generate Canonical Policy
 
+For a bespoke xtask/ripr ledger file (`dialect = "xtask-ripr"`), migrate the
+single file instead of `--repo-policy`:
+
+```bash
+cargo-allow migrate \
+  --from policy/no-panic-ledger.toml \
+  --out target/cargo-allow/bespoke-migrated.toml
+```
+
+See [Bespoke xtask/ripr ledger migration](../migration-from-xtask.md#bespoke-xtaskripr-ledger-migration)
+for selector triples, advisory drift, and claim boundary.
+
 For a supported legacy policy directory:
 
 ```bash
