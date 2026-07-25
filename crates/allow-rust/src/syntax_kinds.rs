@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum LintAttributeKind {
@@ -180,6 +180,7 @@ pub(crate) struct RustSyntaxFacts {
     pub(crate) panic_macros: BTreeMap<u32, Vec<PanicMacroInvocation>>,
     pub(crate) panic_methods: BTreeMap<u32, Vec<PanicMethodCall>>,
     pub(crate) scopes: BTreeMap<u32, RustLineScope>,
+    pub(crate) safety_comment_lines: BTreeSet<u32>,
     pub(crate) unsafe_constructs: BTreeMap<u32, Vec<UnsafeSyntaxConstruct>>,
     pub(crate) unsafe_attributes: BTreeMap<u32, Vec<UnsafeAttribute>>,
 }

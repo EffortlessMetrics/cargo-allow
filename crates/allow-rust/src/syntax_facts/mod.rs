@@ -6,6 +6,7 @@ mod collector;
 mod fingerprint;
 mod index;
 mod panic;
+mod safety_comments;
 mod scopes;
 mod unsafe_constructs;
 

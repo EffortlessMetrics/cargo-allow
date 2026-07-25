@@ -3,7 +3,7 @@ use std::path::Path;
 
 use crate::line_facts::SyntaxLineFacts;
 use crate::line_findings::scan_line;
-use crate::safety_comments::{has_nearby_safety_comment, safety_comment_lines};
+use crate::safety_comments::has_nearby_safety_comment;
 use crate::syntax_kinds::RustSyntaxFacts;
 
 pub(crate) fn scan_source_lines(
@@ -11,7 +11,6 @@ pub(crate) fn scan_source_lines(
     source: &str,
     syntax: RustSyntaxFacts,
 ) -> Vec<Finding> {
-    let safety_comments = safety_comment_lines(source);
     let mut findings = Vec::new();
 
     for (line_idx, raw_line) in source.lines().enumerate() {
@@ -56,7 +55,7 @@ pub(crate) fn scan_source_lines(
                     .get(&line_no)
                     .map(Vec::as_slice)
                     .unwrap_or(&[]),
-                safety_comment_nearby: has_nearby_safety_comment(&safety_comments, line_no),
+                safety_comment_nearby: has_nearby_safety_comment(&syntax.safety_comment_lines, line_no),
             },
             &mut findings,
         );

@@ -9,6 +9,7 @@ use crate::syntax_kinds::{RustSyntaxFacts, UnsafeSyntaxConstruct, UnsafeSyntaxKi
 fn scan_source_lines_call_presence_observer() {
     let source = "fn read() {\n    // SAFETY: pointer validated by caller.\n    unsafe { core::ptr::read(ptr) }\n}\n";
     let mut syntax = RustSyntaxFacts::default();
+    syntax.safety_comment_lines.insert(2);
     syntax.unsafe_constructs.insert(
         3,
         vec![UnsafeSyntaxConstruct {
