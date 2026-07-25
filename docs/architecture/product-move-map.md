@@ -7,7 +7,7 @@
 ## Denominator
 
 - Ledger schema: `cargo-allow.three-product-move-ledger.v1` generation `1`
-- Entries: **37**
+- Entries: **80**
 - Topology authority: Issue **#2612**
 - Move/deletion owner: Issue **#2598**
 - Current posture: inventory and target ratification only; no implementation moved.
@@ -15,22 +15,27 @@
 ### Status counts
 
 - `RepositoryDecisionRequired`: **1**
-- `TargetRatified`: **36**
+- `TargetRatified`: **79**
 
 ### Disposition counts
 
-- `CompatibilityAdapter`: **4**
+- `CompatibilityAdapter`: **5**
 - `DeleteAfterParity`: **1**
 - `HistoricalReaderOnly`: **2**
 - `MoveToCargoIntentApp`: **3**
-- `MoveToIntentEngine`: **9**
-- `MoveToIntentModel`: **4**
-- `MoveToIntentProtocol`: **2**
-- `MoveToProofEngine`: **1**
-- `MoveToProofProviderApi`: **1**
+- `MoveToCargoProofApp`: **1**
+- `MoveToIntentEdit`: **6**
+- `MoveToIntentEngine`: **10**
+- `MoveToIntentModel`: **5**
+- `MoveToIntentProtocol`: **3**
+- `MoveToProofAdapter`: **9**
+- `MoveToProofAdapterCommand`: **2**
+- `MoveToProofEngine`: **2**
+- `MoveToProofProtocol`: **6**
+- `MoveToProofProviderApi`: **2**
 - `MoveToRustSourceIndex`: **1**
-- `MoveToSharedProtocol`: **2**
-- `MoveToSharedSnapshot`: **2**
+- `MoveToSharedProtocol`: **3**
+- `MoveToSharedSnapshot`: **14**
 - `RemainCargoAllowCore`: **3**
 - `RemainProviderOwned`: **1**
 - `RepositoryDecisionRequired`: **1**
@@ -451,6 +456,479 @@
 - Removal: Retain through #2559, then delete or reduce after extraction closeout
 - Next: Keep the migration denominator checked while moves land.
 - Deletion output: Delete or reduce to supported long-lived architecture checks after #2559.
+
+### `extend-repo-edit-apply-backup-mode`
+
+- Current: crates/repo-edit/src/single_target_apply.rs
+- Target: `shared / repo-edit::repo_edit`
+- Disposition: `MoveToSharedSnapshot`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 stage-7 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-cargo-proof-crate`
+
+- Current: crates/cargo-proof/src/lib.rs
+- Target: `cargo-proof / cargo-proof::cargo_proof`
+- Disposition: `MoveToCargoProofApp`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 cargo-proof stage-1 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-intent-edit-crate`
+
+- Current: crates/intent-edit/src/lib.rs
+- Target: `cargo-intent / intent-edit::intent_edit`
+- Disposition: `MoveToIntentEdit`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 intent-edit stage-1 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-intent-edit-dialect-approval`
+
+- Current: crates/intent-edit/src/dialect_adapter.rs
+- Target: `cargo-intent / intent-edit::intent_edit`
+- Disposition: `MoveToIntentEdit`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 intent-edit stage-3 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-intent-edit-plan`
+
+- Current: crates/intent-edit/src/edit_plan.rs
+- Target: `cargo-intent / intent-edit::intent_edit`
+- Disposition: `MoveToIntentEdit`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 intent-edit stage-2 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-intent-edit-recompile-contract`
+
+- Current: crates/intent-edit/src/recompile_contract.rs
+- Target: `cargo-intent / intent-edit::intent_edit`
+- Disposition: `MoveToIntentEdit`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 intent-edit stage-5 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-intent-edit-repo-edit-translation`
+
+- Current: crates/intent-edit/src/repo_edit_translation.rs
+- Target: `cargo-intent / intent-edit::intent_edit`
+- Disposition: `MoveToIntentEdit`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 intent-edit stage-4 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-intent-edit-settlement`
+
+- Current: crates/intent-edit/src/settlement.rs
+- Target: `cargo-intent / intent-edit::intent_edit`
+- Disposition: `MoveToIntentEdit`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 intent-edit stage-6 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-proof-adapter-cargo-allow-contract`
+
+- Current: crates/proof-adapter-cargo-allow/src/provider_contract.rs
+- Target: `cargo-proof / proof-adapter-cargo-allow::proof_adapter_cargo_allow`
+- Disposition: `MoveToProofAdapter`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 proof-adapter-cargo-allow stage-2 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-proof-adapter-cargo-allow-crate`
+
+- Current: crates/proof-adapter-cargo-allow/src/lib.rs
+- Target: `cargo-proof / proof-adapter-cargo-allow::proof_adapter_cargo_allow`
+- Disposition: `MoveToProofAdapter`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 proof-adapter-cargo-allow stage-1 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-proof-adapter-cargo-allow-provider`
+
+- Current: crates/proof-adapter-cargo-allow/src/cargo_allow_provider.rs
+- Target: `cargo-proof / proof-adapter-cargo-allow::proof_adapter_cargo_allow`
+- Disposition: `MoveToProofAdapter`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 proof-adapter-cargo-allow stage-3 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-proof-adapter-command-crate`
+
+- Current: crates/proof-adapter-command/src/lib.rs
+- Target: `cargo-proof / proof-adapter-command::proof_adapter_command`
+- Disposition: `MoveToProofAdapterCommand`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 proof-adapter-command stage-1 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-proof-adapter-command-registry`
+
+- Current: crates/proof-adapter-command/src/command_registry.rs
+- Target: `cargo-proof / proof-adapter-command::proof_adapter_command`
+- Disposition: `MoveToProofAdapterCommand`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 proof-adapter-command stage-2 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-proof-adapter-hawk-analysis-receipt`
+
+- Current: crates/proof-adapter-hawk/src/analysis_receipt.rs
+- Target: `cargo-proof / proof-adapter-hawk::proof_adapter_hawk`
+- Disposition: `MoveToProofAdapter`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 proof-adapter-hawk stage-2 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-proof-adapter-hawk-crate`
+
+- Current: crates/proof-adapter-hawk/src/lib.rs
+- Target: `cargo-proof / proof-adapter-hawk::proof_adapter_hawk`
+- Disposition: `MoveToProofAdapter`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 proof-adapter-hawk stage-1 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-proof-adapter-hawk-finding-mapping`
+
+- Current: crates/proof-adapter-hawk/src/finding_mapping.rs
+- Target: `cargo-proof / proof-adapter-hawk::proof_adapter_hawk`
+- Disposition: `MoveToProofAdapter`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 proof-adapter-hawk stage-3 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-proof-adapter-ripr-crate`
+
+- Current: crates/proof-adapter-ripr/src/lib.rs
+- Target: `cargo-proof / proof-adapter-ripr::proof_adapter_ripr`
+- Disposition: `MoveToProofAdapter`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 proof-adapter-ripr stage-1 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-proof-adapter-ripr-grip-comparison`
+
+- Current: crates/proof-adapter-ripr/src/grip_comparison.rs
+- Target: `cargo-proof / proof-adapter-ripr::proof_adapter_ripr`
+- Disposition: `MoveToProofAdapter`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 proof-adapter-ripr stage-3 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-proof-adapter-ripr-grip-receipt`
+
+- Current: crates/proof-adapter-ripr/src/grip_receipt.rs
+- Target: `cargo-proof / proof-adapter-ripr::proof_adapter_ripr`
+- Disposition: `MoveToProofAdapter`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 proof-adapter-ripr stage-2 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-proof-engine-crate`
+
+- Current: crates/proof-engine/src/lib.rs
+- Target: `cargo-proof / proof-engine::proof_engine`
+- Disposition: `MoveToProofEngine`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 proof-engine stage-1 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-proof-protocol-capability-dtos`
+
+- Current: crates/proof-protocol/src/capability_dtos.rs
+- Target: `cargo-proof / proof-protocol::proof_protocol`
+- Disposition: `MoveToProofProtocol`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 proof-protocol stage-3 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-proof-protocol-contradiction-dtos`
+
+- Current: crates/proof-protocol/src/contradiction_dtos.rs
+- Target: `cargo-proof / proof-protocol::proof_protocol`
+- Disposition: `MoveToProofProtocol`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 proof-protocol stage-5 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-proof-protocol-crate`
+
+- Current: crates/proof-protocol/src/lib.rs
+- Target: `cargo-proof / proof-protocol::proof_protocol`
+- Disposition: `MoveToProofProtocol`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 proof-protocol stage-1 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-proof-protocol-phase-gate-dtos`
+
+- Current: crates/proof-protocol/src/phase_gate_dtos.rs
+- Target: `cargo-proof / proof-protocol::proof_protocol`
+- Disposition: `MoveToProofProtocol`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 proof-protocol stage-6 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-proof-protocol-plan-dtos`
+
+- Current: crates/proof-protocol/src/plan_dtos.rs
+- Target: `cargo-proof / proof-protocol::proof_protocol`
+- Disposition: `MoveToProofProtocol`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 proof-protocol stage-2 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-proof-protocol-receipt-dtos`
+
+- Current: crates/proof-protocol/src/receipt_dtos.rs
+- Target: `cargo-proof / proof-protocol::proof_protocol`
+- Disposition: `MoveToProofProtocol`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 proof-protocol stage-4 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-proof-provider-api-crate`
+
+- Current: crates/proof-provider-api/src/lib.rs
+- Target: `cargo-proof / proof-provider-api::proof_provider_api`
+- Disposition: `MoveToProofProviderApi`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 proof-provider-api stage-1 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `migrate-cargo-allow-add-command`
+
+- Current: crates/cargo-allow/src/add.rs
+- Target: `shared / repo-edit::repo_edit`
+- Disposition: `MoveToSharedSnapshot`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 stage-8 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `migrate-cargo-allow-init-command`
+
+- Current: crates/cargo-allow/src/init.rs
+- Target: `shared / repo-edit::repo_edit`
+- Disposition: `MoveToSharedSnapshot`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 stage-4 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `migrate-cargo-allow-migrate-command`
+
+- Current: crates/cargo-allow/src/migrate.rs
+- Target: `shared / repo-edit::repo_edit`
+- Disposition: `MoveToSharedSnapshot`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 stage-9 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `migrate-cargo-allow-propose-command`
+
+- Current: crates/cargo-allow/src/propose.rs
+- Target: `shared / repo-edit::repo_edit`
+- Disposition: `MoveToSharedSnapshot`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 stage-10 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `migrate-cargo-allow-prune-command`
+
+- Current: crates/cargo-allow/src/prune.rs
+- Target: `shared / repo-edit::repo_edit`
+- Disposition: `MoveToSharedSnapshot`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 stage-6 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `migrate-cargo-allow-refresh-command`
+
+- Current: crates/cargo-allow/src/refresh.rs
+- Target: `shared / repo-edit::repo_edit`
+- Disposition: `MoveToSharedSnapshot`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 stage-5 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `move-allow-diff-revision-identity`
+
+- Current: crates/repo-snapshot/src/revision_identity.rs
+- Target: `shared / repo-snapshot::repo_snapshot`
+- Disposition: `MoveToSharedSnapshot`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 stage-1 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `move-allow-diff-staged-index`
+
+- Current: crates/repo-snapshot/src/staged_index.rs
+- Target: `shared / repo-snapshot::repo_snapshot`
+- Disposition: `MoveToSharedSnapshot`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 stage-1 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `move-allow-policy-spec-system`
+
+- Current: crates/allow-policy/src/spec_system/
+- Target: `cargo-intent / intent-model::intent_model`
+- Disposition: `MoveToIntentModel`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 parity receipts
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `move-allow-report-spec-system-schema`
+
+- Current: docs/schemas/spec-system.schema.json
+- Target: `cargo-intent / intent-protocol::intent_protocol`
+- Disposition: `MoveToIntentProtocol`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 parity receipts
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `move-allow-rust-test-subjects`
+
+- Current: crates/allow-rust/src/test_subjects.rs
+- Target: `shared / rust-source-index::rust_source_index`
+- Disposition: `MoveToSharedProtocol`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2587 rust-source-index parity
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `move-cargo-allow-atomic-write`
+
+- Current: crates/cargo-allow/src/command_support.rs
+- Target: `shared / repo-edit::repo_edit`
+- Disposition: `MoveToSharedSnapshot`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 stage-2 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `move-cargo-allow-mutation-lock`
+
+- Current: crates/cargo-allow/src/mutation_lock.rs
+- Target: `shared / repo-edit::repo_edit`
+- Disposition: `MoveToSharedSnapshot`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 stage-1 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `move-cargo-allow-path-containment`
+
+- Current: crates/cargo-allow/src/policy_config.rs
+- Target: `shared / repo-edit::repo_edit`
+- Disposition: `MoveToSharedSnapshot`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 stage-1 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `move-cargo-allow-spec-system-workspace`
+
+- Current: crates/cargo-allow/src/spec_system_workspace.rs
+- Target: `cargo-intent / intent-engine::intent_engine`
+- Disposition: `MoveToIntentEngine`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 parity receipts
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `move-spec-system-profile-command`
+
+- Current: cargo-allow check --profile spec-system
+- Target: `cargo-intent / cargo-intent::cargo_intent`
+- Disposition: `CompatibilityAdapter`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2601 cutover
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
 
 ## Transition rules
 

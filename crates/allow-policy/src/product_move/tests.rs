@@ -192,8 +192,8 @@ fn repository_move_ledger_is_complete_and_projection_is_current() -> Result<(), 
     if !validated.valid {
         return Err(format!("move ledger diagnostics: {diagnostics:?}"));
     }
-    assert_eq!(report.entry_count, 37);
-    assert_eq!(report.target_ratified_count, 36);
+    assert_eq!(report.entry_count, 80);
+    assert_eq!(report.target_ratified_count, 79);
     assert_eq!(report.decision_required_count, 1);
 
     let projection = std::fs::read_to_string(root.join(&validated.ledger.projection))
