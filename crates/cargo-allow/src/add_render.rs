@@ -27,7 +27,7 @@ pub(super) fn add_mutation_receipt<'a, 'b>(
         after_fingerprints: vec![Some(allow_core::allow_entry_content_fingerprint(entry))],
         result,
         next_commands: vec![
-            format!("cargo-allow explain --id {}", entry.id),
+            format!("cargo-allow explain {}", entry.id),
             "cargo-allow check --mode no-new".to_string(),
         ],
     }
