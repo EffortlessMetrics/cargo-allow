@@ -1,0 +1,23 @@
+schema_version = 1
+dialect = "xtask-ripr"
+
+[[entries]]
+id = "fixture-bespoke-drift"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "parser"
+reason = "Fixture keeps unwrap with advisory drift hints."
+classification = "reviewed_panic_exception"
+evidence = ["test:bespoke_advisory_drift_round_trip"]
+created = "2026-06-18"
+review_after = "2026-12-18"
+selector = "method_call"
+container = "load"
+callee = "unwrap"
+receiver = "optional_value"
+line_hint = 14
+
+[entries.last_seen]
+line = 14
+column = 8

@@ -59,6 +59,7 @@ name = "allow-policy"
 version = "0.2.0"
 dependencies = [
  "allow-core",
+ "allow-match",
  "serde",
  "toml",
 ]
