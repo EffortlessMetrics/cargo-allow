@@ -4,9 +4,8 @@ Use this matrix when a local or CI run fails closed. Prefer the cheapest next
 command. Do **not** broaden `policy/allow.toml` or add `baseline_debt` merely to
 get green.
 
-Channel note: rows that name `why` are **source candidate / Unreleased on
-Published `0.1.10`**. On the Published path use `list` / `explain` / `worklist`
-instead. See
+Channel note: `why` shipped in Published `0.1.11`. Use it freely alongside
+`list` / `explain` / `worklist`. See
 [`published-command-registry.toml`](../dogfood/fixtures/getting-started/published-command-registry.toml).
 
 | Symptom | Meaning | Next command |
