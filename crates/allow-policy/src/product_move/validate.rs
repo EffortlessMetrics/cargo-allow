@@ -3,6 +3,8 @@ use allow_core::{CargoAllowError, CargoAllowResult};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Component, Path};
 
+pub const PRODUCT_MOVE_LEDGER_RELATIVE_PATH: &str = "policy/product-move-ledger.toml";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MoveLedgerDiagnosticKind {
     DuplicateId,
@@ -92,6 +94,38 @@ pub fn validate_product_move_ledger_at(
         valid: diagnostics.is_empty(),
     };
     Ok((validated, diagnostics, report))
+}
+
+pub fn product_move_ledger_blocks_enforced_check(root: &Path) -> CargoAllowResult<bool> {
+    let ledger_path = root.join(PRODUCT_MOVE_LEDGER_RELATIVE_PATH);
+    if !ledger_path.is_file() {
+        return Ok(false);
+    }
+    let (validated, diagnostics, _) = validate_product_move_ledger_at(root, &ledger_path)?;
+    if !validated.ledger.discovery.no_new_enforcement {
+        return Ok(false);
+    }
+    Ok(!diagnostics.is_empty())
+}
+
+pub fn format_product_move_ledger_diagnostics(diagnostics: &[MoveLedgerDiagnostic]) -> String {
+    diagnostics
+        .iter()
+        .map(|diagnostic| {
+            let entry_ids = if diagnostic.entry_ids.is_empty() {
+                String::new()
+            } else {
+                format!(" [{}]", diagnostic.entry_ids.join(", "))
+            };
+            format!(
+                "{}: {}{}",
+                diagnostic.kind.as_str(),
+                diagnostic.message,
+                entry_ids
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("; ")
 }
 
 fn normalize_projection_text(text: &str) -> String {
