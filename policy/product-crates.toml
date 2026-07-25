@@ -3,7 +3,7 @@ manifest_id = "CARGO-ALLOW-ARCH-0001"
 controlling_issue = 2580
 linked_move_ledger = "CARGO-ALLOW-MOVE-LEDGER-0001"
 
-# ProductCrateArchitectureV1 — ownership manifest with cargo-metadata dependency law (#2580 PR2).
+# ProductCrateArchitectureV1 — full family inventory with denominator cross-checks (#2580 PR3).
 
 [[product]]
 id = "cargo-allow"
@@ -68,24 +68,6 @@ allowed_domain_dependencies = ["repo-protocol", "repo-snapshot"]
 name = "rust-source-index"
 role = "SharedProtocol"
 allowed_domain_dependencies = ["repo-protocol"]
-
-[[planned_crate]]
-name = "cargo-intent"
-owner_product = "cargo-intent"
-role = "CargoIntent"
-stage_issue = 2599
-
-[[planned_crate]]
-name = "proof-provider-api"
-owner_product = "cargo-proof"
-role = "CargoProof"
-stage_issue = 2603
-
-[[planned_crate]]
-name = "proof-engine"
-owner_product = "cargo-proof"
-role = "CargoProof"
-stage_issue = 2589
 
 [[forbidden_crate_dependency]]
 from = "proof-engine"

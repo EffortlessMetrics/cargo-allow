@@ -13,6 +13,13 @@ pub enum ArchitectureDiagnosticKind {
     ForbiddenProductDependency,
     ForbiddenCrateDependency,
     SharedProtocolDomainLeak,
+    ManifestTopologyLinkMismatch,
+    ManifestMoveLedgerLinkMismatch,
+    PackageTopologyFamilyMismatch,
+    ArchitectureCrateMissingFromTopology,
+    PackageTopologyCrateMissingFromArchitecture,
+    PlannedCrateNowPresent,
+    MoveLedgerUnknownTargetCrate,
 }
 
 impl ArchitectureDiagnosticKind {
@@ -25,6 +32,17 @@ impl ArchitectureDiagnosticKind {
             Self::ForbiddenProductDependency => "forbidden_product_dependency",
             Self::ForbiddenCrateDependency => "forbidden_crate_dependency",
             Self::SharedProtocolDomainLeak => "shared_protocol_domain_leak",
+            Self::ManifestTopologyLinkMismatch => "manifest_topology_link_mismatch",
+            Self::ManifestMoveLedgerLinkMismatch => "manifest_move_ledger_link_mismatch",
+            Self::PackageTopologyFamilyMismatch => "package_topology_family_mismatch",
+            Self::ArchitectureCrateMissingFromTopology => {
+                "architecture_crate_missing_from_topology"
+            }
+            Self::PackageTopologyCrateMissingFromArchitecture => {
+                "package_topology_crate_missing_from_architecture"
+            }
+            Self::PlannedCrateNowPresent => "planned_crate_now_present",
+            Self::MoveLedgerUnknownTargetCrate => "move_ledger_unknown_target_crate",
         }
     }
 }

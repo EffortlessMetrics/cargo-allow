@@ -2,8 +2,11 @@
 //!
 //! PR2 adds workspace Cargo.toml dependency graph validation with deterministic
 //! diagnostics for forbidden product edges and shared-protocol domain leaks.
+//! PR3 cross-checks architecture ownership against #2598 move ledger and #2604
+//! package topology denominators.
 
 mod config;
+mod cross_check;
 mod dependency_graph;
 mod validate;
 mod workspace;
@@ -11,6 +14,9 @@ mod workspace;
 pub use config::{
     ArchitectureManifest, CrateRole, ForbiddenCrateDependency, PlannedCrate, ProductDefinition,
     SharedCrateDefinition, parse_architecture_manifest, parse_architecture_manifest_at,
+};
+pub use cross_check::{
+    DenominatorReport, validate_architecture_denominators, validate_architecture_denominators_at,
 };
 pub use dependency_graph::{
     CargoMetadataGraph, DependencyClass, DependencyEdge, load_workspace_dependency_graph,

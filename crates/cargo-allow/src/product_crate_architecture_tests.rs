@@ -1,5 +1,6 @@
 use allow_policy::product_crates::{
-    ArchitectureDiagnosticKind, load_workspace_dependency_graph, validate_architecture_manifest_at,
+    ArchitectureDiagnosticKind, load_workspace_dependency_graph,
+    validate_architecture_denominators_at, validate_architecture_manifest_at,
     validate_architecture_with_dependency_graph_at, workspace_members_from_manifest,
 };
 use std::path::PathBuf;
@@ -22,7 +23,7 @@ fn product_crate_architecture_report_only_inventory() -> Result<(), String> {
     }
     assert_eq!(manifest.manifest_id, "CARGO-ALLOW-ARCH-0001");
     assert_eq!(manifest.controlling_issue, 2580);
-    assert!(report.planned_crate_count >= 3);
+    assert_eq!(report.planned_crate_count, 0);
 
     let law = root.join("docs/architecture/product-crate-law.md");
     let law_text = std::fs::read_to_string(&law)
@@ -72,6 +73,41 @@ fn product_crate_dependency_law_loads_workspace_graph() -> Result<(), String> {
         ));
     }
 
+    Ok(())
+}
+
+#[test]
+fn product_crate_architecture_denominators_align() -> Result<(), String> {
+    let root = repo_root();
+    let members = workspace_members_from_manifest(&root)
+        .map_err(|err| format!("workspace members: {err}"))?;
+    let manifest_path = root.join("policy/product-crates.toml");
+    let text = std::fs::read_to_string(&manifest_path)
+        .map_err(|err| format!("manifest readable: {err}"))?;
+    let manifest = allow_policy::product_crates::parse_architecture_manifest(&text)
+        .map_err(|err| format!("parse manifest: {err}"))?;
+    let (diagnostics, report) = validate_architecture_denominators_at(&root, &manifest, &members)
+        .map_err(|err| format!("validate denominators: {err}"))?;
+    if diagnostics.iter().any(|diag| {
+        matches!(
+            diag.kind,
+            ArchitectureDiagnosticKind::ManifestTopologyLinkMismatch
+                | ArchitectureDiagnosticKind::ManifestMoveLedgerLinkMismatch
+                | ArchitectureDiagnosticKind::PackageTopologyFamilyMismatch
+                | ArchitectureDiagnosticKind::ArchitectureCrateMissingFromTopology
+                | ArchitectureDiagnosticKind::PackageTopologyCrateMissingFromArchitecture
+                | ArchitectureDiagnosticKind::PlannedCrateNowPresent
+                | ArchitectureDiagnosticKind::MoveLedgerUnknownTargetCrate
+        )
+    }) {
+        return Err(format!("architecture denominators drift: {diagnostics:?}"));
+    }
+    if report.architecture_crate_count != report.workspace_member_count {
+        return Err(format!(
+            "architecture inventory count {} should match workspace members {}",
+            report.architecture_crate_count, report.workspace_member_count
+        ));
+    }
     Ok(())
 }
 
