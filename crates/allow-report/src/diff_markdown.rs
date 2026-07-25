@@ -362,7 +362,7 @@ fn append_finding_highlight_row(
     out.push_str(&format!(
         "| `{}` | `{}` | `{}` | `{}` | `{}` |",
         markdown_cell(change.change),
-        markdown_cell(&coverage_movement),
+        markdown_cell(coverage_movement),
         markdown_cell(change.kind),
         markdown_cell(change.family.unwrap_or("")),
         markdown_cell(&finding_location(change))
@@ -475,7 +475,7 @@ fn append_policy_highlight_row(out: &mut String, change: &DiffPolicyChange<'_>) 
         markdown_cell(change.severity),
         markdown_cell(change.allow_id),
         markdown_cell(change.kind),
-        markdown_cell(&coverage_movement),
+        markdown_cell(coverage_movement),
         markdown_cell(&detail),
         markdown_cell(change.message)
     ));
@@ -623,7 +623,7 @@ fn append_finding_change_markdown_row(
     out.push_str(&format!(
         "| `{}` | `{}` | `{}` | `{}` | `{}` |",
         markdown_cell(change.change),
-        markdown_cell(&coverage_movement),
+        markdown_cell(coverage_movement),
         markdown_cell(change.kind),
         markdown_cell(change.family.unwrap_or("")),
         markdown_cell(&finding_location(change))
@@ -734,7 +734,7 @@ fn append_policy_changes_markdown_table<'a>(
             markdown_cell(change.severity),
             markdown_cell(change.allow_id),
             markdown_cell(change.kind),
-            markdown_cell(&coverage_movement),
+            markdown_cell(coverage_movement),
             markdown_cell(&detail),
             markdown_cell(change.message)
         ));
