@@ -54,7 +54,7 @@ fn diff_pr_summary_markdown_reports_net_posture() {
     assert!(summary.contains("> Claim boundary: scanned source-tree/source syntax only;"));
     assert!(summary.contains("cargo-allow did not invoke Cargo metadata"));
     assert!(summary.contains("### Finding Improvements"));
-    assert!(summary.contains("| `removed` | `panic` | `unwrap` | `src/lib.rs` |"));
+    assert!(summary.contains("| `removed` | `resolved` | `panic` | `unwrap` | `src/lib.rs` |"));
     assert!(summary.contains("### Policy Improvements"));
     assert!(summary.contains("| `allow-0001` | `selector_precision_increased` |"));
     assert!(
@@ -519,11 +519,11 @@ fn diff_finding_markdown_groups_findings_by_change() {
         attention < improvements,
         "markdown finding sections should show attention before improvements"
     );
-    assert!(markdown.contains("| Change | Kind | Family | Path | Source Package | Identity |"));
+    assert!(markdown.contains("| Change | Coverage Movement | Kind | Family | Path | Source Package | Identity |"));
     assert!(
-        markdown.contains("| `new` | `unsafe` | `unsafe_block` | `src/new.rs:7:3` | `runtime` | `ast_kind=unsafe_block,container=runtime_init,callee=dangerous_call` |")
+        markdown.contains("| `new` | `new` | `unsafe` | `unsafe_block` | `src/new.rs:7:3` | `runtime` | `ast_kind=unsafe_block,container=runtime_init,callee=dangerous_call` |")
     );
-    assert!(markdown.contains("| `removed` | `panic` | `unwrap` | `src/old.rs` |"));
+    assert!(markdown.contains("| `removed` | `resolved` | `panic` | `unwrap` | `src/old.rs` |"));
 }
 
 #[test]
@@ -612,9 +612,9 @@ fn diff_policy_markdown_groups_policy_changes_by_severity() {
         failures < review && review < improvements,
         "markdown policy sections should be ordered by reviewer severity"
     );
-    assert!(markdown.contains("| `fail` | `allow-fail` | `scope_broadened` |"));
-    assert!(markdown.contains("| `review` | `allow-review` | `expiry_extended` |"));
-    assert!(markdown.contains("| `improvement` | `allow-improved` | `evidence_added` |"));
+    assert!(markdown.contains("| `fail` | `allow-fail` | `scope_broadened` | `worsened` |"));
+    assert!(markdown.contains("| `review` | `allow-review` | `expiry_extended` | `retained` |"));
+    assert!(markdown.contains("| `improvement` | `allow-improved` | `evidence_added` | `retained` |"));
 }
 
 #[test]
@@ -653,10 +653,10 @@ fn diff_pr_summary_markdown_highlights_policy_review_required() {
     assert!(summary.contains("### Policy Review Required"));
     assert!(!summary.contains("### Policy Failures"));
     assert!(
-        summary.contains("| Severity | Allow ID | Kind | Detail | Message |"),
+        summary.contains("| Severity | Allow ID | Kind | Coverage Movement | Detail | Message |"),
         "policy review rows should include structured details"
     );
-    assert!(summary.contains("| `review` | `allow\\|0042` | `evidence_removed` |"));
+    assert!(summary.contains("| `review` | `allow\\|0042` | `evidence_removed` | `retained` |"));
     assert!(summary.contains("evidence.evidence: removed: test:old-proof; added: none"));
     assert!(summary.contains("allow-0042 evidence removed from policy"));
 }
@@ -714,9 +714,9 @@ fn diff_pr_summary_markdown_highlights_policy_failures_separately() {
 
     assert!(summary.contains("**Net posture:** `worse`"));
     assert!(summary.contains("### Policy Failures"));
-    assert!(summary.contains("| `fail` | `allow-0001` | `scope_broadened` |"));
+    assert!(summary.contains("| `fail` | `allow-0001` | `scope_broadened` | `worsened` |"));
     assert!(summary.contains("### Policy Review Required"));
-    assert!(summary.contains("| `review` | `allow-0002` | `expiry_extended` |"));
+    assert!(summary.contains("| `review` | `allow-0002` | `expiry_extended` | `retained` |"));
 }
 
 #[test]
@@ -746,8 +746,8 @@ fn diff_pr_summary_markdown_highlights_new_findings() {
 
     assert!(summary.contains("**Net posture:** `review-required`"));
     assert!(summary.contains("### Finding Attention"));
-    assert!(summary.contains("| Change | Kind | Family | Path | Source Package | Identity |"));
-    assert!(summary.contains("| `new` | `panic` | `unwrap` | `src/lib.rs:12:5` | `parser` | `ast_kind=method_call,callee=unwrap` |"));
+    assert!(summary.contains("| Change | Coverage Movement | Kind | Family | Path | Source Package | Identity |"));
+    assert!(summary.contains("| `new` | `new` | `panic` | `unwrap` | `src/lib.rs:12:5` | `parser` | `ast_kind=method_call,callee=unwrap` |"));
     assert!(
         !summary.contains("### Finding Improvements"),
         "new-only summaries should not create finding improvement rows"

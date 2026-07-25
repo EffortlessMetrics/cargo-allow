@@ -1,4 +1,4 @@
-use allow_core::{AllowConfig, AllowEntry, PostureDelta, PresenceMovement};
+use allow_core::{AllowConfig, AllowEntry, LedgerPosture, PostureDelta, PresenceMovement};
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::finding::{FindingPostureChange, FindingPostureKind};
@@ -10,6 +10,13 @@ pub struct DiffRowClassification {
     pub movement: PresenceMovement,
     pub posture_delta: PostureDelta,
     pub changed_in_diff: bool,
+}
+
+impl DiffRowClassification {
+    pub fn coverage_movement_classification(self) -> &'static str {
+        LedgerPosture::new(self.movement, self.posture_delta)
+            .coverage_movement_classification(self.changed_in_diff)
+    }
 }
 
 /// Canonical movement counts for dual-summary blocks.
@@ -263,6 +270,24 @@ mod tests {
             finding_posture_subject(&change),
             "panic.unwrap at src/lib.rs"
         );
+    }
+
+    #[test]
+    fn row_classification_projects_coverage_movement() {
+        let worsened = classify_policy_change(&PolicyChange::new(
+            "allow-0001",
+            PolicyChangeKind::ScopeBroadened,
+            PolicyChangeSeverity::Fail,
+            "scope broadened",
+        ));
+        assert_eq!(worsened.coverage_movement_classification(), "worsened");
+
+        let inherited = DiffRowClassification {
+            movement: PresenceMovement::Retained,
+            posture_delta: PostureDelta::Unchanged,
+            changed_in_diff: false,
+        };
+        assert_eq!(inherited.coverage_movement_classification(), "inherited");
     }
 
     #[test]

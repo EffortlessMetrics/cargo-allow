@@ -261,6 +261,36 @@ impl LedgerPosture {
             PresenceMovement::Retained => "retained",
         }
     }
+
+    /// Per-entry coverage-movement classification for diff/posture surfaces.
+    ///
+    /// Collapses orthogonal movement and posture delta into the shared
+    /// `new` / `worsened` / `resolved` / `inherited` vocabulary. Retained rows
+    /// with other posture deltas fall back to [`Self::movement_projection`].
+    pub fn coverage_movement_classification(self, touched_in_diff: bool) -> &'static str {
+        match self.movement {
+            PresenceMovement::Introduced => "new",
+            PresenceMovement::Removed => "resolved",
+            PresenceMovement::Retained if self.delta == PostureDelta::Worsened => "worsened",
+            PresenceMovement::Retained
+                if self.delta == PostureDelta::Unchanged && !touched_in_diff =>
+            {
+                "inherited"
+            }
+            PresenceMovement::Retained => self.movement_projection(touched_in_diff),
+        }
+    }
+
+    /// Parse a coverage-movement classification label.
+    pub fn parse_coverage_movement_classification(value: &str) -> Option<&'static str> {
+        match value.trim() {
+            "new" => Some("new"),
+            "worsened" => Some("worsened"),
+            "resolved" => Some("resolved"),
+            "inherited" => Some("inherited"),
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]

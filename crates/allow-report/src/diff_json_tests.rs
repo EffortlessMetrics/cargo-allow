@@ -89,6 +89,8 @@ fn diff_json_renderer_appends_posture_extension() {
     assert!(json.contains("\"new_findings\": 1"));
     assert!(json.contains("\"policy_failures\": 1"));
     assert!(json.contains("\"change\": \"new\""));
+    assert!(json.contains("\"coverage_movement\": \"new\""));
+    assert!(json.contains("\"coverage_movement\": \"worsened\""));
     assert!(json.contains("\"family\": \"unwrap\""));
     assert!(json.contains("\"severity\": \"fail\""));
     assert!(json.contains("\"kind\": \"scope_broadened\""));

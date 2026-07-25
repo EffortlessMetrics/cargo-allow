@@ -46,6 +46,53 @@ fn inherited_projection_requires_retained_unchanged_and_not_touched() {
     assert_eq!(touched_retained.movement_projection(true), "retained");
 }
 
+/// Characterization: coverage-movement classification uses the four-value vocabulary.
+#[test]
+fn coverage_movement_classification_labels_match_spec_contract() {
+    let cases = [
+        (
+            LedgerPosture::new(PresenceMovement::Introduced, PostureDelta::ReviewRequired),
+            true,
+            "new",
+        ),
+        (
+            LedgerPosture::new(PresenceMovement::Removed, PostureDelta::Improved),
+            true,
+            "resolved",
+        ),
+        (
+            LedgerPosture::new(PresenceMovement::Retained, PostureDelta::Unchanged),
+            false,
+            "inherited",
+        ),
+        (
+            LedgerPosture::new(PresenceMovement::Retained, PostureDelta::Worsened),
+            true,
+            "worsened",
+        ),
+    ];
+    for (posture, touched_in_diff, expected) in cases {
+        assert_eq!(
+            posture.coverage_movement_classification(touched_in_diff),
+            expected
+        );
+        assert_eq!(
+            LedgerPosture::parse_coverage_movement_classification(expected),
+            Some(expected)
+        );
+    }
+}
+
+/// Characterization: retained review/improvement rows keep movement projection fallback.
+#[test]
+fn coverage_movement_classification_falls_back_for_other_retained_deltas() {
+    let review = LedgerPosture::new(PresenceMovement::Retained, PostureDelta::ReviewRequired);
+    assert_eq!(review.coverage_movement_classification(true), "retained");
+
+    let improved = LedgerPosture::new(PresenceMovement::Retained, PostureDelta::Improved);
+    assert_eq!(improved.coverage_movement_classification(true), "retained");
+}
+
 /// Characterization: net posture JSON spellings from diff artifacts.
 #[test]
 fn net_posture_labels_match_current_diff_artifact_strings() {

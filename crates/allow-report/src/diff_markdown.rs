@@ -6,7 +6,7 @@ use crate::diff_posture::{
     diff_structural_delta_summary,
 };
 use crate::evidence_repair::evidence_repair_queues_from_counts;
-use crate::ledger_posture::FINDING_CHANGE_LABELS;
+use crate::ledger_posture::{FINDING_CHANGE_LABELS, coverage_movement_from_canonical_fields};
 use crate::text::markdown_cell;
 use crate::{CLAIM_BOUNDARY_TEXT, DiffFindingChange, DiffLedgerMovementSummary, DiffPolicyChange};
 use allow_core::PresenceMovement;
@@ -331,14 +331,14 @@ fn append_finding_highlight_header(
     include_source_package: bool,
     include_identity: bool,
 ) {
-    out.push_str("| Change | Kind | Family | Path |");
+    out.push_str("| Change | Coverage Movement | Kind | Family | Path |");
     if include_source_package {
         out.push_str(" Source Package |");
     }
     if include_identity {
         out.push_str(" Identity |");
     }
-    out.push_str("\n|---|---|---|---|");
+    out.push_str("\n|---|---|---|---|---|");
     if include_source_package {
         out.push_str("---|");
     }
@@ -354,9 +354,11 @@ fn append_finding_highlight_row(
     include_source_package: bool,
     include_identity: bool,
 ) {
+    let coverage_movement = row_coverage_movement(change.movement, change.posture_delta, change.changed_in_diff);
     out.push_str(&format!(
-        "| `{}` | `{}` | `{}` | `{}` |",
+        "| `{}` | `{}` | `{}` | `{}` | `{}` |",
         markdown_cell(change.change),
+        markdown_cell(&coverage_movement),
         markdown_cell(change.kind),
         markdown_cell(change.family.unwrap_or("")),
         markdown_cell(&finding_location(change))
@@ -435,7 +437,7 @@ fn append_policy_severity_highlights(
 
     out.push_str(heading);
     out.push_str("\n\n");
-    out.push_str("| Severity | Allow ID | Kind | Detail | Message |\n|---|---|---|---|---|\n");
+    out.push_str("| Severity | Allow ID | Kind | Coverage Movement | Detail | Message |\n|---|---|---|---|---|---|\n");
     for change in policy_changes
         .iter()
         .filter(|change| change.severity == severity)
@@ -459,11 +461,13 @@ fn append_omitted_summary_note(out: &mut String, count: usize, singular_label: &
 
 fn append_policy_highlight_row(out: &mut String, change: &DiffPolicyChange<'_>) {
     let detail = policy_change_detail(change).unwrap_or_else(|| "none".to_string());
+    let coverage_movement = row_coverage_movement(change.movement, change.posture_delta, change.changed_in_diff);
     out.push_str(&format!(
-        "| `{}` | `{}` | `{}` | {} | {} |\n",
+        "| `{}` | `{}` | `{}` | `{}` | {} | {} |\n",
         markdown_cell(change.severity),
         markdown_cell(change.allow_id),
         markdown_cell(change.kind),
+        markdown_cell(&coverage_movement),
         markdown_cell(&detail),
         markdown_cell(change.message)
     ));
@@ -580,14 +584,14 @@ fn append_finding_change_table_header(
     include_source_package: bool,
     include_identity: bool,
 ) {
-    out.push_str("| Change | Kind | Family | Path |");
+    out.push_str("| Change | Coverage Movement | Kind | Family | Path |");
     if include_source_package {
         out.push_str(" Source Package |");
     }
     if include_identity {
         out.push_str(" Identity |");
     }
-    out.push_str("\n|---|---|---|---|");
+    out.push_str("\n|---|---|---|---|---|");
     if include_source_package {
         out.push_str("---|");
     }
@@ -603,9 +607,11 @@ fn append_finding_change_markdown_row(
     include_source_package: bool,
     include_identity: bool,
 ) {
+    let coverage_movement = row_coverage_movement(change.movement, change.posture_delta, change.changed_in_diff);
     out.push_str(&format!(
-        "| `{}` | `{}` | `{}` | `{}` |",
+        "| `{}` | `{}` | `{}` | `{}` | `{}` |",
         markdown_cell(change.change),
+        markdown_cell(&coverage_movement),
         markdown_cell(change.kind),
         markdown_cell(change.family.unwrap_or("")),
         markdown_cell(&finding_location(change))
@@ -703,14 +709,16 @@ fn append_policy_changes_markdown_table<'a>(
     changes: impl Iterator<Item = &'a DiffPolicyChange<'a>>,
 ) {
     let changes = changes.collect::<Vec<_>>();
-    out.push_str("| Severity | Allow ID | Kind | Detail | Message |\n|---|---|---|---|---|\n");
+    out.push_str("| Severity | Allow ID | Kind | Coverage Movement | Detail | Message |\n|---|---|---|---|---|---|\n");
     for change in changes.iter().take(DIFF_MARKDOWN_CHANGE_LIMIT) {
         let detail = policy_change_detail(change).unwrap_or_else(|| "none".to_string());
+        let coverage_movement = row_coverage_movement(change.movement, change.posture_delta, change.changed_in_diff);
         out.push_str(&format!(
-            "| `{}` | `{}` | `{}` | {} | {} |\n",
+            "| `{}` | `{}` | `{}` | `{}` | {} | {} |\n",
             markdown_cell(change.severity),
             markdown_cell(change.allow_id),
             markdown_cell(change.kind),
+            markdown_cell(&coverage_movement),
             markdown_cell(&detail),
             markdown_cell(change.message)
         ));
@@ -722,4 +730,9 @@ fn append_policy_changes_markdown_table<'a>(
         ));
     }
     out.push('\n');
+}
+
+fn row_coverage_movement(movement: &str, posture_delta: &str, changed_in_diff: bool) -> &'static str {
+    coverage_movement_from_canonical_fields(movement, posture_delta, changed_in_diff)
+        .unwrap_or("retained")
 }
