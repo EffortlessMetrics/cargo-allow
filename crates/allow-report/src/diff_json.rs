@@ -433,12 +433,9 @@ fn append_row_classification_json(
     posture_delta: &str,
     changed_in_diff: bool,
 ) {
-    let coverage_movement = coverage_movement_from_canonical_fields(
-        movement,
-        posture_delta,
-        changed_in_diff,
-    )
-    .unwrap_or("retained");
+    let coverage_movement =
+        coverage_movement_from_canonical_fields(movement, posture_delta, changed_in_diff)
+            .unwrap_or("retained");
     out.push_str(&format!(
         "\"movement\": \"{}\", \"posture_delta\": \"{}\", \"changed_in_diff\": {}, \"coverage_movement\": \"{}\", ",
         json_escape(movement),

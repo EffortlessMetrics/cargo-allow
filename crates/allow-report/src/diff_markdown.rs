@@ -354,7 +354,11 @@ fn append_finding_highlight_row(
     include_source_package: bool,
     include_identity: bool,
 ) {
-    let coverage_movement = row_coverage_movement(change.movement, change.posture_delta, change.changed_in_diff);
+    let coverage_movement = row_coverage_movement(
+        change.movement,
+        change.posture_delta,
+        change.changed_in_diff,
+    );
     out.push_str(&format!(
         "| `{}` | `{}` | `{}` | `{}` | `{}` |",
         markdown_cell(change.change),
@@ -461,7 +465,11 @@ fn append_omitted_summary_note(out: &mut String, count: usize, singular_label: &
 
 fn append_policy_highlight_row(out: &mut String, change: &DiffPolicyChange<'_>) {
     let detail = policy_change_detail(change).unwrap_or_else(|| "none".to_string());
-    let coverage_movement = row_coverage_movement(change.movement, change.posture_delta, change.changed_in_diff);
+    let coverage_movement = row_coverage_movement(
+        change.movement,
+        change.posture_delta,
+        change.changed_in_diff,
+    );
     out.push_str(&format!(
         "| `{}` | `{}` | `{}` | `{}` | {} | {} |\n",
         markdown_cell(change.severity),
@@ -607,7 +615,11 @@ fn append_finding_change_markdown_row(
     include_source_package: bool,
     include_identity: bool,
 ) {
-    let coverage_movement = row_coverage_movement(change.movement, change.posture_delta, change.changed_in_diff);
+    let coverage_movement = row_coverage_movement(
+        change.movement,
+        change.posture_delta,
+        change.changed_in_diff,
+    );
     out.push_str(&format!(
         "| `{}` | `{}` | `{}` | `{}` | `{}` |",
         markdown_cell(change.change),
@@ -712,7 +724,11 @@ fn append_policy_changes_markdown_table<'a>(
     out.push_str("| Severity | Allow ID | Kind | Coverage Movement | Detail | Message |\n|---|---|---|---|---|---|\n");
     for change in changes.iter().take(DIFF_MARKDOWN_CHANGE_LIMIT) {
         let detail = policy_change_detail(change).unwrap_or_else(|| "none".to_string());
-        let coverage_movement = row_coverage_movement(change.movement, change.posture_delta, change.changed_in_diff);
+        let coverage_movement = row_coverage_movement(
+            change.movement,
+            change.posture_delta,
+            change.changed_in_diff,
+        );
         out.push_str(&format!(
             "| `{}` | `{}` | `{}` | `{}` | {} | {} |\n",
             markdown_cell(change.severity),
@@ -732,7 +748,11 @@ fn append_policy_changes_markdown_table<'a>(
     out.push('\n');
 }
 
-fn row_coverage_movement(movement: &str, posture_delta: &str, changed_in_diff: bool) -> &'static str {
+fn row_coverage_movement(
+    movement: &str,
+    posture_delta: &str,
+    changed_in_diff: bool,
+) -> &'static str {
     coverage_movement_from_canonical_fields(movement, posture_delta, changed_in_diff)
         .unwrap_or("retained")
 }

@@ -373,7 +373,11 @@ fn append_finding_change_human_row(out: &mut String, change: &DiffFindingChange<
         .identity
         .map(|identity| format!(" identity={}", structural_identity_summary(identity)))
         .unwrap_or_default();
-    let coverage_movement = row_coverage_movement(change.movement, change.posture_delta, change.changed_in_diff);
+    let coverage_movement = row_coverage_movement(
+        change.movement,
+        change.posture_delta,
+        change.changed_in_diff,
+    );
     out.push_str(&format!(
         "    {} movement={} posture_delta={} coverage_movement={} changed_in_diff={} {}{} at {}{}{}\n",
         change.change,
@@ -445,7 +449,11 @@ fn append_policy_changes_human_section(
 }
 
 fn append_policy_change_human_row(out: &mut String, change: &DiffPolicyChange<'_>) {
-    let coverage_movement = row_coverage_movement(change.movement, change.posture_delta, change.changed_in_diff);
+    let coverage_movement = row_coverage_movement(
+        change.movement,
+        change.posture_delta,
+        change.changed_in_diff,
+    );
     out.push_str(&format!(
         "    {} movement={} posture_delta={} coverage_movement={} changed_in_diff={} {} {} {}: {}\n",
         change.severity,
@@ -466,7 +474,11 @@ fn append_policy_change_human_row(out: &mut String, change: &DiffPolicyChange<'_
     }
 }
 
-fn row_coverage_movement(movement: &str, posture_delta: &str, changed_in_diff: bool) -> &'static str {
+fn row_coverage_movement(
+    movement: &str,
+    posture_delta: &str,
+    changed_in_diff: bool,
+) -> &'static str {
     coverage_movement_from_canonical_fields(movement, posture_delta, changed_in_diff)
         .unwrap_or("retained")
 }

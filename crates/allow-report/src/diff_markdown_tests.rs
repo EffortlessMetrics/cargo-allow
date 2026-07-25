@@ -519,7 +519,9 @@ fn diff_finding_markdown_groups_findings_by_change() {
         attention < improvements,
         "markdown finding sections should show attention before improvements"
     );
-    assert!(markdown.contains("| Change | Coverage Movement | Kind | Family | Path | Source Package | Identity |"));
+    assert!(markdown.contains(
+        "| Change | Coverage Movement | Kind | Family | Path | Source Package | Identity |"
+    ));
     assert!(
         markdown.contains("| `new` | `new` | `unsafe` | `unsafe_block` | `src/new.rs:7:3` | `runtime` | `ast_kind=unsafe_block,container=runtime_init,callee=dangerous_call` |")
     );
@@ -614,7 +616,9 @@ fn diff_policy_markdown_groups_policy_changes_by_severity() {
     );
     assert!(markdown.contains("| `fail` | `allow-fail` | `scope_broadened` | `worsened` |"));
     assert!(markdown.contains("| `review` | `allow-review` | `expiry_extended` | `retained` |"));
-    assert!(markdown.contains("| `improvement` | `allow-improved` | `evidence_added` | `retained` |"));
+    assert!(
+        markdown.contains("| `improvement` | `allow-improved` | `evidence_added` | `retained` |")
+    );
 }
 
 #[test]
@@ -746,7 +750,9 @@ fn diff_pr_summary_markdown_highlights_new_findings() {
 
     assert!(summary.contains("**Net posture:** `review-required`"));
     assert!(summary.contains("### Finding Attention"));
-    assert!(summary.contains("| Change | Coverage Movement | Kind | Family | Path | Source Package | Identity |"));
+    assert!(summary.contains(
+        "| Change | Coverage Movement | Kind | Family | Path | Source Package | Identity |"
+    ));
     assert!(summary.contains("| `new` | `new` | `panic` | `unwrap` | `src/lib.rs:12:5` | `parser` | `ast_kind=method_call,callee=unwrap` |"));
     assert!(
         !summary.contains("### Finding Improvements"),
