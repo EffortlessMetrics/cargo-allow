@@ -63,8 +63,10 @@ pub fn render_list_human_columns(
         out.push_str("(no allow entries matched filters)\n");
     }
     append_list_next_steps(&mut out, rows);
-    out.push_str(CLAIM_BOUNDARY_TEXT);
-    out.push('\n');
+    if !crate::contracts::is_quiet() {
+        out.push_str(CLAIM_BOUNDARY_TEXT);
+        out.push('\n');
+    }
     out
 }
 

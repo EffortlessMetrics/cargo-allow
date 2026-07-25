@@ -10147,3 +10147,24 @@ glob = "SECURITY.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0482"
+kind = "unsafe"
+family = "unsafe_block"
+path = "crates/cargo-allow/src/cli.rs"
+owner = "core/cli"
+classification = "reviewed_exception"
+reason = "set_var requires unsafe in Rust 2024 edition; safe here because single-threaded before scan work begins"
+evidence = ["doc:CONTRIBUTING.md"]
+created = "2026-07-25"
+review_after = "2026-10-19"
+
+[allow.selector]
+ast_kind = "unsafe_block"
+container = "run"
+normalized_snippet_hash = "fnv1a64:2944683783674e0a"
+
+[allow.last_seen]
+line = 79
+column = 9

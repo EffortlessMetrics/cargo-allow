@@ -1,0 +1,6 @@
+kind: Added
+body: >-
+  UX: add `--quiet`/`-q` global flag that suppresses the 600-char claim boundary
+  boilerplate and non-matched advisory outcomes in human-format output. Only
+  the result line and counts are shown. Works across check, audit, and list.
+  Machine formats (JSON, SARIF, markdown) are unaffected.

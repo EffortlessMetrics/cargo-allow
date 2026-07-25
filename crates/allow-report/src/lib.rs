@@ -144,7 +144,7 @@ pub use contracts::{
     SPEC_SYSTEM_CLAIM_BOUNDARY, SPEC_SYSTEM_SCANNER_LIMITATIONS, SPEC_SYSTEM_SCHEMA_ID,
     SPEC_SYSTEM_SCHEMA_VERSION, WHY_SCHEMA_ID, WHY_SCHEMA_VERSION, WORKLIST_SCHEMA_ID,
     WORKLIST_SCHEMA_VERSION, artifact_contract_for_schema_id, claim_boundary_for_schema_id,
-    scanner_limitations_for_schema_id,
+    is_quiet, scanner_limitations_for_schema_id,
 };
 pub use diff::{
     DiffNetPosture, diff_net_posture, diff_posture_summary, insert_markdown_pr_summary,

@@ -377,6 +377,14 @@ pub fn scanner_limitations_for_schema_id(schema_id: &str) -> &'static [&'static 
 
 pub const CLAIM_BOUNDARY_TEXT: &str = "Claim boundary: scanned source-tree/source syntax only; cargo-allow did not invoke Cargo metadata, Cargo commands, rustc, Clippy, build scripts, proc macros, external evidence tools, or repository code. Macro expansion, macro token-tree contents, type information, MIR, build output, control flow, and data flow were not analyzed. Identity fields (symbol, callee, container, module, macro_name, lint) carry source-derived text and are emitted in CI artifacts; set CARGO_ALLOW_REDACT_IDENTITY=1 to redact them (structural hashes are preserved for matching).";
 
+/// Check if the `--quiet` flag was set (via `CARGO_ALLOW_QUIET=1` env var).
+/// When true, report renderers suppress non-essential output: claim boundary
+/// text, matched inventory listings, and advisory outcomes. Only result +
+/// counts are shown (#2785).
+pub fn is_quiet() -> bool {
+    std::env::var_os("CARGO_ALLOW_QUIET").is_some_and(|v| v == "1")
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct InventoryContext<'a> {
     pub scope: &'a str,
