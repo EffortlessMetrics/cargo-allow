@@ -109,10 +109,7 @@ pub fn scan_rust_source(path: impl AsRef<Path>, source: &str) -> Vec<Finding> {
     scan_rust_source_with_completeness(path, source).findings
 }
 
-pub fn scan_rust_source_with_completeness(
-    path: impl AsRef<Path>,
-    source: &str,
-) -> RustSourceScan {
+pub fn scan_rust_source_with_completeness(path: impl AsRef<Path>, source: &str) -> RustSourceScan {
     let path = path.as_ref().to_path_buf();
     let outcome = syntax_facts::syntax_facts_with_outcome(source);
     let findings = scan_source_lines(&path, source, outcome.facts);
