@@ -14,6 +14,8 @@ pub struct RustScanResult {
     pub files_considered: usize,
     /// Number of `.rs` files that were skipped due to read errors.
     pub files_skipped: usize,
+    /// Number of `.rs` files whose tree-sitter parse tree contains errors.
+    pub files_with_parse_errors: usize,
 }
 
 impl RustScanResult {
@@ -22,12 +24,18 @@ impl RustScanResult {
         self.findings.extend(other.findings);
         self.files_considered += other.files_considered;
         self.files_skipped += other.files_skipped;
+        self.files_with_parse_errors += other.files_with_parse_errors;
         self
     }
 
     /// Whether any tracked Rust files were skipped during the scan.
     pub fn has_skipped(&self) -> bool {
         self.files_skipped > 0
+    }
+
+    /// Whether any successfully-read Rust files had tree-sitter parse errors.
+    pub fn has_parse_errors(&self) -> bool {
+        self.files_with_parse_errors > 0
     }
 }
 

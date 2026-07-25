@@ -10,6 +10,7 @@ mod indexing;
 mod lint;
 mod package;
 mod panic;
+mod parse_error;
 mod scope;
 mod structural_identity;
 mod syntax_tree;

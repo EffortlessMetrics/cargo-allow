@@ -96,6 +96,7 @@ pub(crate) fn load_world_with_evidence_mode(
         allow_rust::scan_rust_files_cached(&root, &files, &mut cache)
     })?;
     let rust_files_skipped = rust_scan.files_skipped;
+    let rust_files_with_parse_errors = rust_scan.files_with_parse_errors;
     findings.extend(rust_scan.findings);
     findings.extend(allow_files::scan_files_with_options(
         &files,
@@ -118,7 +119,9 @@ pub(crate) fn load_world_with_evidence_mode(
         root,
         cfg,
         findings,
-        inventory_facts.with_rust_files_skipped(rust_files_skipped),
+        inventory_facts
+            .with_rust_files_skipped(rust_files_skipped)
+            .with_rust_files_with_parse_errors(rust_files_with_parse_errors),
         federation,
     ))
 }

@@ -32,7 +32,6 @@ mod text;
 
 use line_scan::scan_source_lines;
 use package::source_package_contexts;
-use syntax_facts::syntax_facts;
 
 pub use package::{
     SourcePackageContext, apply_source_package_context, source_package_contexts_from_sources,
@@ -57,6 +56,7 @@ pub fn scan_rust_files(
     let packages = source_package_contexts(root, files)?;
     let mut files_considered = 0usize;
     let mut files_skipped = 0usize;
+    let mut files_with_parse_errors = 0usize;
     for rel in files {
         if rel.extension().and_then(|e| e.to_str()) != Some("rs") {
             continue;
@@ -78,7 +78,11 @@ pub fn scan_rust_files(
         // detected on BOM-prefixed files (common on Windows-edited sources)
         // (#1881).
         let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
-        let mut findings = scan_rust_source(rel, text);
+        let scan = scan_rust_source_with_completeness(rel, text);
+        if scan.has_parse_error {
+            files_with_parse_errors += 1;
+        }
+        let mut findings = scan.findings;
         apply_source_package_context(rel, &packages, &mut findings);
         out.extend(findings);
     }
@@ -86,13 +90,29 @@ pub fn scan_rust_files(
         findings: out,
         files_considered,
         files_skipped,
+        files_with_parse_errors,
     })
 }
 
+/// Scan outcome for a single Rust source file, including parse completeness.
+#[derive(Debug, Clone)]
+pub struct RustSourceScan {
+    pub findings: Vec<Finding>,
+    pub has_parse_error: bool,
+}
+
 pub fn scan_rust_source(path: impl AsRef<Path>, source: &str) -> Vec<Finding> {
+    scan_rust_source_with_completeness(path, source).findings
+}
+
+pub fn scan_rust_source_with_completeness(path: impl AsRef<Path>, source: &str) -> RustSourceScan {
     let path = path.as_ref().to_path_buf();
-    let syntax = syntax_facts(source);
-    scan_source_lines(&path, source, syntax)
+    let outcome = syntax_facts::syntax_facts_with_outcome(source);
+    let findings = scan_source_lines(&path, source, outcome.facts);
+    RustSourceScan {
+        findings,
+        has_parse_error: outcome.has_parse_error,
+    }
 }
 
 /// Scan Rust files with an mtime+size cache for incremental re-evaluation.
@@ -109,6 +129,7 @@ pub fn scan_rust_files_cached(
     let packages = source_package_contexts(root, files)?;
     let mut files_considered = 0usize;
     let mut files_skipped = 0usize;
+    let mut files_with_parse_errors = 0usize;
     for rel in files {
         if rel.extension().and_then(|e| e.to_str()) != Some("rs") {
             continue;
@@ -121,7 +142,10 @@ pub fn scan_rust_files_cached(
             eprintln!("warning: skipping {} (read error)", path.display());
             continue;
         }
-        let mut findings = cache.scan_file(root, rel)?;
+        let (mut findings, has_parse_error) = cache.scan_file(root, rel)?;
+        if has_parse_error {
+            files_with_parse_errors += 1;
+        }
         apply_source_package_context(rel, &packages, &mut findings);
         out.extend(findings);
     }
@@ -129,6 +153,7 @@ pub fn scan_rust_files_cached(
         findings: out,
         files_considered,
         files_skipped,
+        files_with_parse_errors,
     })
 }
 
