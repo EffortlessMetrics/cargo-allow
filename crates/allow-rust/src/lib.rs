@@ -80,10 +80,6 @@ pub fn scan_rust_files(
         let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
         let scan = scan_rust_source_with_completeness(rel, text);
         if scan.has_parse_error {
-            eprintln!(
-                "warning: partial parse for {} (tree-sitter parse errors)",
-                path.display()
-            );
             files_with_parse_errors += 1;
         }
         let mut findings = scan.findings;
@@ -148,10 +144,6 @@ pub fn scan_rust_files_cached(
         }
         let (mut findings, has_parse_error) = cache.scan_file(root, rel)?;
         if has_parse_error {
-            eprintln!(
-                "warning: partial parse for {} (tree-sitter parse errors)",
-                path.display()
-            );
             files_with_parse_errors += 1;
         }
         apply_source_package_context(rel, &packages, &mut findings);
