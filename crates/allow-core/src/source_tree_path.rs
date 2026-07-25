@@ -108,7 +108,13 @@ pub fn source_tree_path_matches_filter(item_path: &str, filter_path: &str) -> bo
             .strip_prefix(filter_path)
             .map(|suffix| suffix.starts_with('/'))
             .unwrap_or(false)
-        || (source_tree_scope_has_wildcard(&item_path) && glob_matches_str(&item_path, filter_path))
+        // #2776: support glob matching in BOTH directions. The filter may
+        // be a glob (e.g. `--path 'src/**/*.rs'` from CLI), or the item
+        // path may be a glob (e.g. a broad-scope allow entry's scope).
+        || (source_tree_scope_has_wildcard(filter_path)
+            && glob_matches_str(filter_path, &item_path))
+        || (source_tree_scope_has_wildcard(&item_path)
+            && glob_matches_str(&item_path, filter_path))
 }
 
 pub fn source_tree_path_is_ignored(path: impl AsRef<Path>, patterns: &[String]) -> bool {

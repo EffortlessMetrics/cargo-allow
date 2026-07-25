@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Core: `source_tree_path_matches_filter` now correctly supports glob patterns
+  in BOTH the filter argument (e.g. `--path 'src/**/*.rs'`) AND the item path
+  (e.g. broad-scope allow entries). Previously the wildcard check was applied
+  only to the item path (which never contains wildcards in normal usage),
+  making the filter-side glob branch dead code.
