@@ -5,6 +5,7 @@
 //! output shape.
 
 use serde_json::Value;
+use std::process::Command;
 
 fn cargo_allow_command() -> Command {
     Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
