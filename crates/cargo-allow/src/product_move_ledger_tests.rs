@@ -20,7 +20,10 @@ fn product_move_ledger_repository_inventory_is_valid() -> Result<(), String> {
 
     let map_text = std::fs::read_to_string(root.join(&validated.ledger.projection))
         .map_err(|error| format!("product move map readable: {error}"))?;
-    assert_eq!(map_text, render_product_move_map(&validated.ledger));
+    assert_eq!(
+        map_text.replace("\r\n", "\n"),
+        render_product_move_map(&validated.ledger)
+    );
 
     for entry in &validated.ledger.entry {
         assert!(map_text.contains(&format!("### `{}`", entry.id)));
