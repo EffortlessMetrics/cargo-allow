@@ -2790,3 +2790,37 @@ claim_boundary = "Compatibility CLI remains until #2601 one-way process delegati
 next_move = "Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607."
 deletion_output = "Deferred to extraction cutover and parity receipts."
 
+[[entry]]
+id = "introduce-repo-edit-apply-receipt"
+source_kind = "RustModule"
+current_paths = ["crates/repo-edit/src/single_target_apply.rs"]
+current_refs = []
+current_identity = "crates/repo-edit/src/single_target_apply.rs"
+current_product = "shared"
+current_crate = "repo-edit"
+current_consumers = ["extraction shims", "parity harness"]
+posture = "PrivateImplementation"
+target_product = "shared"
+target_crate = "repo-edit"
+target_module = "repo_edit"
+disposition = "MoveToSharedSnapshot"
+compatibility_strategy = "ParallelParityThenDelete"
+schema_producer_impact = "shim-linked operational row; canonical producer deferred to extraction cutover"
+parity_case_ids = ["PARITY-INTRODUCE_REPO_EDIT_APPLY_RECEIPT"]
+cutover_stage = "ArchitectureInventory"
+expected_cutover_receipt = "CUTOVER-ARCHITECTURE-INVENTORY"
+old_path_reachability_disposition = "OldPathStillReachable"
+active_shim_ids = []
+latest_allowed_shim_stage = "ArchitectureInventory"
+duplicate_authority_class = "BoundedParityOnly"
+selected_public_producer_after_cutover = "repository"
+package_ci_docs_impact = ["extraction shims", "parity fixtures"]
+removal_issue_or_condition = "issue:#2606 stage-3 cutover receipt"
+migration_owner_issue = "#2602"
+risk = "Medium"
+rollback = "Retain shim-linked row until extraction cutover receipts land."
+status = "TargetRatified"
+claim_boundary = "Generic single-target apply receipt; bounded filesystem evidence only."
+next_move = "Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607."
+deletion_output = "Deferred to extraction cutover and parity receipts."
+

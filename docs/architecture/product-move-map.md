@@ -7,7 +7,7 @@
 ## Denominator
 
 - Ledger schema: `cargo-allow.three-product-move-ledger.v1` generation `1`
-- Entries: **80**
+- Entries: **81**
 - Topology authority: Issue **#2612**
 - Move/deletion owner: Issue **#2598**
 - Current posture: inventory and target ratification only; no implementation moved.
@@ -15,7 +15,7 @@
 ### Status counts
 
 - `RepositoryDecisionRequired`: **1**
-- `TargetRatified`: **79**
+- `TargetRatified`: **80**
 
 ### Disposition counts
 
@@ -35,7 +35,7 @@
 - `MoveToProofProviderApi`: **2**
 - `MoveToRustSourceIndex`: **1**
 - `MoveToSharedProtocol`: **3**
-- `MoveToSharedSnapshot`: **14**
+- `MoveToSharedSnapshot`: **15**
 - `RemainCargoAllowCore`: **3**
 - `RemainProviderOwned`: **1**
 - `RepositoryDecisionRequired`: **1**
@@ -751,6 +751,17 @@
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
 - Removal: issue:#2606 proof-provider-api stage-1 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `introduce-repo-edit-apply-receipt`
+
+- Current: crates/repo-edit/src/single_target_apply.rs
+- Target: `shared / repo-edit::repo_edit`
+- Disposition: `MoveToSharedSnapshot`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 stage-3 cutover receipt
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
 - Deletion output: Deferred to extraction cutover and parity receipts.
 
