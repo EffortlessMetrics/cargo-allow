@@ -75,8 +75,8 @@ pub use obligation_plan::{
 };
 pub use obligation_plan_surface::ObligationPlanSurface;
 pub use parity::{
-    load_ripr_routing_contract, parity_contract_path, parity_contract_paths,
-    ripr_routing_contract_path, RiprRoutingParityContract,
+    RiprRoutingParityContract, load_ripr_routing_contract, parity_contract_path,
+    parity_contract_paths, ripr_routing_contract_path,
 };
 pub use phase_gate::{
     PHASE_GATE_EVALUATION_SCHEMA_ID, PhaseGateError, PhaseGateEvaluationV1, PhaseGateOutcomeV1,
