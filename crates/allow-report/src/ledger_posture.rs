@@ -59,11 +59,7 @@ pub fn coverage_movement_from_canonical_fields(
 ) -> Option<&'static str> {
     let movement = PresenceMovement::parse_field_name(movement).ok()?;
     let posture_delta = PostureDelta::parse_field_name(posture_delta)?;
-    let label = coverage_movement_classification(
-        movement,
-        posture_delta,
-        changed_in_diff,
-    );
+    let label = coverage_movement_classification(movement, posture_delta, changed_in_diff);
     Some(parse_coverage_movement_label(label).unwrap_or(label))
 }
 
