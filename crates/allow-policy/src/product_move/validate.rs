@@ -94,6 +94,10 @@ pub fn validate_product_move_ledger_at(
     Ok((validated, diagnostics, report))
 }
 
+fn normalize_projection_text(text: &str) -> String {
+    text.replace("\r\n", "\n")
+}
+
 pub fn render_product_move_map(ledger: &ProductMoveLedger) -> String {
     let mut entries = ledger.entry.iter().collect::<Vec<_>>();
     entries.sort_by(|left, right| left.id.cmp(&right.id));
@@ -497,7 +501,8 @@ fn collect_root_diagnostics(root: &Path, ledger: &ProductMoveLedger) -> Vec<Move
     if is_safe_repo_relative(&ledger.projection) {
         let projection_path = root.join(&ledger.projection);
         match std::fs::read_to_string(&projection_path) {
-            Ok(current) if current == render_product_move_map(ledger) => {}
+            Ok(current)
+                if normalize_projection_text(&current) == render_product_move_map(ledger) => {}
             Ok(_) => diagnostics.push(diagnostic(
                 MoveLedgerDiagnosticKind::ProjectionDrift,
                 format!("product move map is stale: {}", projection_path.display()),

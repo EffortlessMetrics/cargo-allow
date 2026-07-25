@@ -191,7 +191,10 @@ fn repository_move_ledger_is_complete_and_projection_is_current() -> Result<(), 
 
     let projection = std::fs::read_to_string(root.join(&validated.ledger.projection))
         .map_err(|error| format!("read move-map projection: {error}"))?;
-    assert_eq!(projection, render_product_move_map(&validated.ledger));
+    assert_eq!(
+        projection.replace("\r\n", "\n"),
+        render_product_move_map(&validated.ledger)
+    );
     Ok(())
 }
 
