@@ -1,4 +1,4 @@
-use allow_core::FindingKind;
+use allow_core::{Finding, FindingKind};
 
 use super::test_support::{test_entry, test_finding};
 use super::{WORK_ITEM_KINDS, proof_commands};
@@ -128,6 +128,7 @@ fn proof_commands_use_finding_kind_when_present() {
             "cargo-allow explain allow-unsafe",
             "cargo-allow list --allow-id allow-unsafe --format json",
             "cargo-allow worklist --allow-id allow-unsafe --format json",
+            "cargo-allow why --kind lint-exception --path src/lib.rs --line 1 --format json",
             "cargo-allow check --kind lint-exception --mode no-new",
             "cargo-allow worklist --item-kind new_unreceipted_finding --format json",
             "cargo-allow worklist --kind lint-exception --format json",
@@ -367,6 +368,58 @@ fn stale_allow_proof_commands_include_prune_closeout() {
             .iter()
             .any(|command| command == "cargo-allow prune --stale --format json"),
         "stale work items should produce an artifact-ready prune preview"
+    );
+}
+
+#[test]
+fn new_unreceipted_proof_commands_include_why_routing_when_finding_has_span() {
+    let finding = test_finding(
+        FindingKind::Panic,
+        Some("unwrap"),
+        "src/lib.rs",
+        "call_expr",
+    );
+
+    let commands = proof_commands("new_unreceipted_finding", Some(&finding), None);
+
+    assert!(
+        commands.iter().any(|command| command
+            == "cargo-allow why --kind panic --path src/lib.rs --line 1 --format json"),
+        "new_unreceipted proof commands should route to why for receipting: {commands:?}"
+    );
+}
+
+#[test]
+fn new_unreceipted_proof_commands_omit_why_routing_without_finding() {
+    let commands = proof_commands("new_unreceipted_finding", None, None);
+
+    assert!(
+        commands
+            .iter()
+            .all(|command| !command.starts_with("cargo-allow why")),
+        "why routing should be omitted when no finding is available: {commands:?}"
+    );
+}
+
+#[test]
+fn new_unreceipted_proof_commands_omit_why_routing_without_span() {
+    let finding = Finding {
+        kind: FindingKind::Panic,
+        family: Some("unwrap".to_string()),
+        path: std::path::PathBuf::from("src/lib.rs"),
+        span: None,
+        identity: allow_core::StructuralIdentity::new("rust", "call_expr"),
+        message: "unwrap".to_string(),
+        ledger: None,
+    };
+
+    let commands = proof_commands("new_unreceipted_finding", Some(&finding), None);
+
+    assert!(
+        commands
+            .iter()
+            .all(|command| !command.starts_with("cargo-allow why")),
+        "why routing should be omitted when finding has no span: {commands:?}"
     );
 }
 

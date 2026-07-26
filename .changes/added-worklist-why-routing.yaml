@@ -1,0 +1,7 @@
+kind: Added
+body: >-
+  Worklist proof commands for `new_unreceipted_finding` now include a
+  `cargo-allow why --kind {kind} --path {path} --line {line} --format json`
+  routing command when a finding with a span is available. This gives operators
+  a concrete receipting next step instead of only re-listing queries. The `why`
+  routing is omitted when no finding or span is present (entry-only contexts).
