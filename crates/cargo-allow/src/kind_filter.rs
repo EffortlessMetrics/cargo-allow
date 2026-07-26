@@ -189,6 +189,130 @@ pub(crate) fn is_network_compat_kind(kind: &str) -> bool {
     )
 }
 
+/// A grouped kind entry for the vocabulary command. Each group maps a
+/// canonical kind filter name to the aliases an operator can type.
+pub(crate) struct KindGroup {
+    pub(crate) canonical: &'static str,
+    pub(crate) aliases: &'static [&'static str],
+}
+
+/// The complete kind-filter vocabulary, grouped by canonical name. This is the
+/// single source of truth for the `vocabulary` command and for help text.
+pub(crate) const KIND_GROUPS: &[KindGroup] = &[
+    KindGroup {
+        canonical: "panic",
+        aliases: &[
+            "panic",
+            "panic-family",
+            "panic_family",
+            "no-panic",
+            "no_panic",
+            "no-panic-baseline",
+            "no_panic_baseline",
+            "no-panic-allowlist",
+            "no_panic_allowlist",
+            "panic-allowlist",
+            "panic_allowlist",
+        ],
+    },
+    KindGroup {
+        canonical: "unsafe",
+        aliases: &[
+            "unsafe",
+            "unsafe-allowlist",
+            "unsafe_allowlist",
+            "unsafe-policy",
+            "unsafe_policy",
+        ],
+    },
+    KindGroup {
+        canonical: "lint-exception",
+        aliases: &[
+            "lint-exception",
+            "lint_exception",
+            "clippy",
+            "clippy-exception",
+            "clippy-exceptions",
+            "clippy_exception",
+            "clippy_exceptions",
+            "lint",
+            "lint-suppression",
+            "lint_suppression",
+        ],
+    },
+    KindGroup {
+        canonical: "non-rust",
+        aliases: &[
+            "non-rust",
+            "non_rust",
+            "non-rust-file",
+            "non_rust_file",
+            "file",
+        ],
+    },
+    KindGroup {
+        canonical: "generated",
+        aliases: &["generated", "generated-code", "generated_code"],
+    },
+    KindGroup {
+        canonical: "policy-exception",
+        aliases: &["policy-exception", "policy_exception", "policy"],
+    },
+    KindGroup {
+        canonical: "executable",
+        aliases: &[
+            "executable",
+            "executable-file",
+            "executable_file",
+            "executable-bit",
+            "exec",
+        ],
+    },
+    KindGroup {
+        canonical: "workflow",
+        aliases: &[
+            "workflow",
+            "workflows",
+            "github-workflow",
+            "github_workflow",
+            "workflow-action",
+        ],
+    },
+    KindGroup {
+        canonical: "dependency-surface",
+        aliases: &[
+            "dependency-surface",
+            "dependency_surface",
+            "dependency-surfaces",
+            "dependency",
+            "dependencies",
+            "dep-surface",
+            "dep",
+        ],
+    },
+    KindGroup {
+        canonical: "process",
+        aliases: &[
+            "process",
+            "processes",
+            "process-policy",
+            "process-spawn",
+            "process_spawn",
+            "proc",
+        ],
+    },
+    KindGroup {
+        canonical: "network",
+        aliases: &[
+            "network",
+            "net",
+            "network-policy",
+            "network-destination",
+            "network_destination",
+        ],
+    },
+];
+
 #[cfg(test)]
 #[path = "kind_filter_tests.rs"]
 mod tests;

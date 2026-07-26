@@ -1,0 +1,7 @@
+kind: Added
+body: >-
+  New `cargo-allow vocabulary` command lists all finding kinds (with aliases),
+  evidence prefixes (with local-file vs traceability categories), and match
+  statuses. Operators no longer need to trigger an error to discover the
+  vocabulary — `cargo-allow vocabulary` prints the full catalog in human or
+  JSON format. Supports `--format human|json` and `--output`.
