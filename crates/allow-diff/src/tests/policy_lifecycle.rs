@@ -35,13 +35,17 @@ fn detects_created_lifecycle_provenance_changes() {
         .iter()
         .find(|change| change.kind == PolicyChangeKind::CreatedRemoved)
         .unwrap_or_else(|| std::panic::panic_any("created removal should be reported"));
+    let expected_created = base
+        .allow
+        .first()
+        .and_then(|entry| entry.lifecycle.created.as_deref());
     assert_eq!(
         created_removed.lifecycle.as_ref().map(|change| (
             change.field,
             change.before.as_deref(),
             change.after.as_deref()
         )),
-        Some((LifecycleChangeField::Created, Some("2026-05-26"), None))
+        Some((LifecycleChangeField::Created, expected_created, None))
     );
 
     let mut changed = entry("allow-1");

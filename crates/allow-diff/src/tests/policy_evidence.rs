@@ -1,12 +1,16 @@
 use super::*;
+use allow_core::SimpleDate;
 
 #[test]
 fn detects_evidence_removed_and_lifecycle_extended() {
     let base = config_with(entry("allow-1"));
     let mut weaker = entry("allow-1");
     weaker.evidence.clear();
-    weaker.lifecycle.expires = Some("2026-12-01".to_string());
-    weaker.lifecycle.review_after = Some("2026-10-01".to_string());
+    // Extend expires and review_after beyond the base's healthy-lifecycle dates
+    // so the diff detects them as extensions, not shortenings.
+    let today = SimpleDate::today_utc_approx();
+    weaker.lifecycle.expires = Some(today.add_days(365).to_string());
+    weaker.lifecycle.review_after = Some(today.add_days(200).to_string());
     let head = config_with(weaker);
 
     let changes = policy_changes(&base, &head);
@@ -30,17 +34,21 @@ fn detects_evidence_removed_and_lifecycle_extended() {
         .find(|change| change.kind == PolicyChangeKind::ExpiryExtended)
         .unwrap_or_else(|| std::panic::panic_any("expiry extension should be reported"));
     assert_eq!(expiry.severity, PolicyChangeSeverity::Review);
+    let base_expires = base
+        .allow
+        .first()
+        .and_then(|entry| entry.lifecycle.expires.as_deref());
+    let head_expires = head
+        .allow
+        .first()
+        .and_then(|entry| entry.lifecycle.expires.as_deref());
     assert_eq!(
         expiry.lifecycle.as_ref().map(|change| (
             change.field,
             change.before.as_deref(),
             change.after.as_deref()
         )),
-        Some((
-            LifecycleChangeField::Expires,
-            Some("2026-09-01"),
-            Some("2026-12-01")
-        ))
+        Some((LifecycleChangeField::Expires, base_expires, head_expires))
     );
     assert!(changes.iter().any(
         |change| change.kind == PolicyChangeKind::ReviewAfterExtended

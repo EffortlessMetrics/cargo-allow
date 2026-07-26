@@ -1,5 +1,6 @@
 use allow_core::{
-    AllowConfig, AllowEntry, Finding, FindingKind, Lifecycle, Selector, Span, StructuralIdentity,
+    AllowConfig, AllowEntry, Finding, FindingKind, Lifecycle, Selector, SimpleDate, Span,
+    StructuralIdentity,
 };
 use std::fs;
 use std::path::PathBuf;
@@ -9,6 +10,28 @@ pub(super) fn config_with(entry: AllowEntry) -> AllowConfig {
     let mut cfg = AllowConfig::empty();
     cfg.allow.push(entry);
     cfg
+}
+
+/// Build a healthy (not-yet-due, not-expired) Lifecycle relative to today so
+/// test fixtures never silently flip to "review due" or "expired" as calendar
+/// time advances. Created ~60 days ago, review in ~90 days, expires in ~180.
+fn healthy_lifecycle() -> Lifecycle {
+    let today = SimpleDate::today_utc_approx();
+    Lifecycle {
+        created: Some(today.add_days(-60).to_string()),
+        review_after: Some(today.add_days(90).to_string()),
+        expires: None,
+    }
+}
+
+/// Like [healthy_lifecycle] but also sets an expiry ~180 days out.
+fn healthy_lifecycle_with_expiry() -> Lifecycle {
+    let today = SimpleDate::today_utc_approx();
+    Lifecycle {
+        created: Some(today.add_days(-60).to_string()),
+        review_after: Some(today.add_days(90).to_string()),
+        expires: Some(today.add_days(180).to_string()),
+    }
 }
 
 pub(super) fn entry(id: &str) -> AllowEntry {
@@ -24,11 +47,7 @@ pub(super) fn entry(id: &str) -> AllowEntry {
         evidence: vec!["test:range_is_validated".to_string()],
         links: Vec::new(),
         occurrence_limit: Some(1),
-        lifecycle: Lifecycle {
-            created: Some("2026-05-26".to_string()),
-            review_after: Some("2026-08-01".to_string()),
-            expires: Some("2026-09-01".to_string()),
-        },
+        lifecycle: healthy_lifecycle_with_expiry(),
         selector: Selector {
             ast_kind: Some("method_call".to_string()),
             container: Some("load".to_string()),
@@ -53,11 +72,7 @@ pub(super) fn dependency_surface_entry(path: &str) -> AllowEntry {
         evidence: vec!["legacy-policy:dependency-surface".to_string()],
         links: Vec::new(),
         occurrence_limit: None,
-        lifecycle: Lifecycle {
-            created: Some("2026-05-26".to_string()),
-            review_after: Some("2026-08-01".to_string()),
-            expires: None,
-        },
+        lifecycle: healthy_lifecycle(),
         selector: Selector {
             ast_kind: Some("dependency_surface".to_string()),
             symbol: Some(path.to_string()),
@@ -81,11 +96,7 @@ pub(super) fn generated_code_entry(path: &str) -> AllowEntry {
         evidence: vec!["legacy-policy:generated".to_string()],
         links: Vec::new(),
         occurrence_limit: None,
-        lifecycle: Lifecycle {
-            created: Some("2026-05-26".to_string()),
-            review_after: Some("2026-08-01".to_string()),
-            expires: None,
-        },
+        lifecycle: healthy_lifecycle(),
         selector: Selector {
             ast_kind: Some("tracked_file".to_string()),
             symbol: Some(path.to_string()),
@@ -115,11 +126,7 @@ pub(super) fn workflow_entry(
         evidence: vec!["legacy-policy:workflow".to_string()],
         links: Vec::new(),
         occurrence_limit: None,
-        lifecycle: Lifecycle {
-            created: Some("2026-05-26".to_string()),
-            review_after: Some("2026-08-01".to_string()),
-            expires: None,
-        },
+        lifecycle: healthy_lifecycle(),
         selector: Selector {
             ast_kind: Some(ast_kind.to_string()),
             symbol: Some(path.to_string()),
@@ -143,11 +150,7 @@ pub(super) fn executable_entry(path: &str) -> AllowEntry {
         evidence: vec!["legacy-policy:executable".to_string()],
         links: Vec::new(),
         occurrence_limit: None,
-        lifecycle: Lifecycle {
-            created: Some("2026-05-26".to_string()),
-            review_after: Some("2026-08-01".to_string()),
-            expires: None,
-        },
+        lifecycle: healthy_lifecycle(),
         selector: Selector {
             ast_kind: Some("git_executable_file".to_string()),
             symbol: Some(path.to_string()),
@@ -177,11 +180,7 @@ pub(super) fn config_policy_entry(
         evidence: vec!["legacy-policy:policy".to_string()],
         links: Vec::new(),
         occurrence_limit: None,
-        lifecycle: Lifecycle {
-            created: Some("2026-05-26".to_string()),
-            review_after: Some("2026-08-01".to_string()),
-            expires: None,
-        },
+        lifecycle: healthy_lifecycle(),
         selector: Selector {
             ast_kind: Some(family.to_string()),
             symbol: Some(symbol.to_string()),
