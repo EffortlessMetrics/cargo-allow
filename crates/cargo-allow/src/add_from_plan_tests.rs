@@ -208,3 +208,39 @@ fn full_check_argv_carries_root_config_and_optional_untracked() {
             .any(|arg| arg == "--include-untracked")
     );
 }
+
+#[test]
+fn enrich_with_regen_hint_appends_plan_regeneration_command() {
+    let (plan, _) = matching_plan_and_bindings();
+    let plan_path = std::path::Path::new("target/cargo-allow/add-finding-plan.json");
+    let error = stale("policy changed since the plan was generated");
+    let enriched = enrich_with_regen_hint(error, plan_path, &plan);
+
+    let message = enriched.to_string();
+    assert!(
+        message.contains("regenerate with cargo-allow why --plan"),
+        "enriched error should include regeneration hint: {message}"
+    );
+    assert!(
+        message.contains("--kind panic --path src/lib.rs --line 1"),
+        "enriched error should include plan finding coordinates: {message}"
+    );
+}
+
+#[test]
+fn enrich_with_regen_hint_is_idempotent() {
+    let (plan, _) = matching_plan_and_bindings();
+    let plan_path = std::path::Path::new("target/cargo-allow/add-finding-plan.json");
+    let error = stale("finding path changed since the plan was generated");
+    let enriched_once = enrich_with_regen_hint(error, plan_path, &plan);
+    let enriched_twice = enrich_with_regen_hint(enriched_once, plan_path, &plan);
+
+    let hint_count = enriched_twice
+        .to_string()
+        .matches("regenerate with")
+        .count();
+    assert_eq!(
+        hint_count, 1,
+        "enrich should not duplicate the hint on re-application"
+    );
+}

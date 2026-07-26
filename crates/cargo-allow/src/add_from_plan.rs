@@ -96,6 +96,34 @@ fn stale(message: impl Into<String>) -> CargoAllowError {
     ))
 }
 
+/// Append a plan-regeneration hint to an add --from-plan rejection error. This
+/// prevents the operator from being stuck: they know exactly how to regenerate
+/// the plan with `cargo-allow why --plan`.
+fn enrich_with_regen_hint(
+    error: CargoAllowError,
+    plan_path: &Path,
+    plan: &LoadedPlan,
+) -> CargoAllowError {
+    let kind = &plan.finding.kind;
+    let path = &plan.finding.path;
+    let hint = match plan.finding.line {
+        Some(line) => format!(
+            "; regenerate with cargo-allow why --plan {} --kind {kind} --path {path} --line {line}",
+            plan_path.display()
+        ),
+        None => format!(
+            "; regenerate with cargo-allow why --plan {} --kind {kind} --path {path}",
+            plan_path.display()
+        ),
+    };
+    let message = error.to_string();
+    if message.contains("(policy unchanged)") && !message.contains("regenerate with") {
+        CargoAllowError::new(format!("{message}{hint}"))
+    } else {
+        error
+    }
+}
+
 pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowResult<()> {
     reject_conflicting_from_plan_flags(args)?;
 
@@ -136,11 +164,13 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
     let finding_line = plan
         .finding
         .line
-        .ok_or_else(|| stale("plan finding has no source line to locate"))?;
+        .ok_or_else(|| stale("plan finding has no source line to locate"))
+        .map_err(|error| enrich_with_regen_hint(error, plan_path, &plan))?;
     let finding_path = PathBuf::from(&plan.finding.path);
     let (finding_index, finding) =
         select_add_finding(&findings, kind_filter, &finding_path, finding_line as u32)
-            .map_err(|error| stale(error.to_string()))?;
+            .map_err(|error| stale(error.to_string()))
+            .map_err(|error| enrich_with_regen_hint(error, plan_path, &plan))?;
 
     // The finding must still be uniquely `New`; a receipted, blocked, or
     // otherwise non-New posture (including replay after a prior successful
@@ -149,8 +179,11 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
     let selected = outcomes
         .iter()
         .find(|outcome| outcome.finding_index == Some(finding_index))
-        .ok_or_else(|| stale("selected finding produced no evaluation outcome"))?;
-    ensure_addable_outcome(selected.status).map_err(|error| stale(error.to_string()))?;
+        .ok_or_else(|| stale("selected finding produced no evaluation outcome"))
+        .map_err(|error| enrich_with_regen_hint(error, plan_path, &plan))?;
+    ensure_addable_outcome(selected.status)
+        .map_err(|error| stale(error.to_string()))
+        .map_err(|error| enrich_with_regen_hint(error, plan_path, &plan))?;
 
     // Recompute every binding from the live scan and require an exact match.
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
@@ -161,7 +194,8 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
         args.include_untracked,
         finding,
     )?;
-    verify_bindings(&plan, &bindings, source_context.source_tree_root())?;
+    verify_bindings(&plan, &bindings, source_context.source_tree_root())
+        .map_err(|error| enrich_with_regen_hint(error, plan_path, &plan))?;
 
     // Construct the entry canonically from the live finding plus operator
     // judgment. Approval metadata is never read from the plan.
