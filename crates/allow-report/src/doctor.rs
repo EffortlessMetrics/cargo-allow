@@ -55,10 +55,15 @@ pub fn render_doctor_human(facts: DoctorReport<'_>) -> String {
                 }
             }
         }
-        None => out.push_str(&format!(
-            "config: not found; run `{}`\n",
-            suggested_init_command(facts.source_tree_root)
-        )),
+        None => {
+            out.push_str(&format!(
+                "config: not found; run `{}`\n",
+                suggested_init_command(facts.source_tree_root)
+            ));
+            out.push_str(
+                "  tip: `cargo-allow audit` works without a policy to surface source findings before bootstrapping\n",
+            );
+        }
     }
     out.push_str(&format!(
         "inventory: source_tree/source_syntax via {}; files scanned: {}; completeness: {}\n",
