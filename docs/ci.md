@@ -42,7 +42,7 @@ scan should remain usable even when the checked-out repository does not build.
 cargo-allow's own GitHub Actions workflow runs two proof lanes on pull requests
 and `main`:
 
-- **MSRV (`1.85`)**: `cargo check --workspace --all-targets --locked` plus the
+- **MSRV (`1.95`)**: `cargo check --workspace --all-targets --locked` plus the
   fast `cargo-allow` package binary tests, on the declared workspace
   `rust-version`. This keeps the 0.1.x install claim honest before any later
   MSRV raise.

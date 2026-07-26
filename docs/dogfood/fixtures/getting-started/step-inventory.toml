@@ -22,7 +22,7 @@ id = "install_prereqs"
 channel = "both"
 argv_head = ""
 exit_class = "success"
-output_id = "Rust 1.85"
+output_id = "Rust 1.95"
 
 [[step]]
 id = "doctor_no_policy"

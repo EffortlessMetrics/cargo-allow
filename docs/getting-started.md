@@ -33,7 +33,7 @@ snippets remains [#2278](https://github.com/EffortlessMetrics/cargo-allow/issues
 
 For the `0.1.x` line:
 
-- **Rust 1.85 or newer** (workspace `rust-version`) to build or install
+- **Rust 1.95 or newer** (workspace `rust-version`) to build or install
   cargo-allow itself.
 - Installing from crates.io or from source may need a **C toolchain** because
   cargo-allow's own parser dependencies compile native code.
@@ -278,7 +278,7 @@ and `crates/cargo-allow/tests/first_hour_adoption.rs` (consumable by #2278):
 | Step ID | Stage |
 | --- | --- |
 | `channel_select` | Choose published vs source-candidate channel |
-| `install_prereqs` | Rust 1.85+ / C toolchain for installing cargo-allow |
+| `install_prereqs` | Rust 1.95+ / C toolchain for installing cargo-allow |
 | `doctor_no_policy` | Healthy doctor with no policy yet |
 | `audit_clean` | Clean audit; no manufactured baseline debt |
 | `audit_with_finding` | Audit with retained findings → bootstrap choice |
