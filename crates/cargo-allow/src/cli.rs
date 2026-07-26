@@ -17,11 +17,11 @@ use crate::{
 pub(crate) struct CargoAllowCli {
     /// Accept cargo-style color preference (accepted for compatibility;
     /// output is currently plain text — see #2516).
-    #[arg(long, value_enum, default_value_t = ColorChoice::Auto)]
+    #[arg(long, value_enum, default_value_t = ColorChoice::Auto, global = true)]
     pub(crate) color: ColorChoice,
     /// Suppress non-essential output (claim boundary, matched inventory,
     /// non-matched advisory outcomes). Show only result + counts.
-    #[arg(short = 'q', long)]
+    #[arg(short = 'q', long, global = true)]
     pub(crate) quiet: bool,
     #[command(subcommand)]
     pub(crate) command: Option<CargoAllowCommand>,
