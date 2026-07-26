@@ -15,6 +15,9 @@ pub(crate) fn check_outcome_fails(
     {
         return false;
     }
+    if status == MatchStatus::Stale && cfg.requirements.stale_entries_fail {
+        return true;
+    }
     mode.fails(status)
 }
 

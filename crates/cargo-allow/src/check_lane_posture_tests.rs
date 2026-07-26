@@ -142,6 +142,92 @@ fn unresolved_outcome_does_not_inherit_policy_exception_shadow_lane() {
     ));
 }
 
+#[test]
+fn stale_outcome_is_advisory_in_no_new_by_default() {
+    let cfg = AllowConfig::empty();
+    let findings = vec![panic_finding()];
+    let outcomes = vec![MatchOutcome {
+        status: MatchStatus::Stale,
+        allow_id: Some("allow-stale".to_string()),
+        candidate_ids: Vec::new(),
+        finding_index: Some(0),
+        message: "stale entry".to_string(),
+        score: 0,
+    }];
+
+    assert!(!check_failed_for_outcomes(
+        &outcomes,
+        &findings,
+        &cfg,
+        CheckMode::NoNew
+    ));
+}
+
+#[test]
+fn stale_outcome_fails_no_new_when_stale_entries_fail_enabled() {
+    let mut cfg = AllowConfig::empty();
+    cfg.requirements.stale_entries_fail = true;
+    let findings = vec![panic_finding()];
+    let outcomes = vec![MatchOutcome {
+        status: MatchStatus::Stale,
+        allow_id: Some("allow-stale".to_string()),
+        candidate_ids: Vec::new(),
+        finding_index: Some(0),
+        message: "stale entry".to_string(),
+        score: 0,
+    }];
+
+    assert!(check_failed_for_outcomes(
+        &outcomes,
+        &findings,
+        &cfg,
+        CheckMode::NoNew
+    ));
+}
+
+#[test]
+fn stale_outcome_fails_audit_when_stale_entries_fail_enabled() {
+    let mut cfg = AllowConfig::empty();
+    cfg.requirements.stale_entries_fail = true;
+    let findings = vec![panic_finding()];
+    let outcomes = vec![MatchOutcome {
+        status: MatchStatus::Stale,
+        allow_id: Some("allow-stale".to_string()),
+        candidate_ids: Vec::new(),
+        finding_index: Some(0),
+        message: "stale entry".to_string(),
+        score: 0,
+    }];
+
+    assert!(check_failed_for_outcomes(
+        &outcomes,
+        &findings,
+        &cfg,
+        CheckMode::Audit
+    ));
+}
+
+#[test]
+fn stale_outcome_is_advisory_in_audit_by_default() {
+    let cfg = AllowConfig::empty();
+    let findings = vec![panic_finding()];
+    let outcomes = vec![MatchOutcome {
+        status: MatchStatus::Stale,
+        allow_id: Some("allow-stale".to_string()),
+        candidate_ids: Vec::new(),
+        finding_index: Some(0),
+        message: "stale entry".to_string(),
+        score: 0,
+    }];
+
+    assert!(!check_failed_for_outcomes(
+        &outcomes,
+        &findings,
+        &cfg,
+        CheckMode::Audit
+    ));
+}
+
 fn lifecycle_entry(id: &str, expires: Option<&str>, review_after: Option<&str>) -> AllowEntry {
     AllowEntry {
         id: id.to_string(),

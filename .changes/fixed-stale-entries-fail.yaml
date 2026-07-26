@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  Policy: `stale_entries_fail = true` now actually fails `check` when stale
+  ledger entries are present. Previously the flag was parsed from TOML and
+  rendered by init/diff but never read by the check exit-code path, so setting
+  it had no effect. Without the flag, Stale remains advisory-only as before.
