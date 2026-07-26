@@ -1,0 +1,9 @@
+kind: Added
+body: >-
+  Check output now includes a blocking-status breakdown in the result line when
+  the check fails. Instead of bare `Result: failed`, operators now see
+  `Result: failed (3 new, 1 expired, 2 ambiguous)` with counts for each blocking
+  status present. The reason is computed from the outcomes summary and emitted
+  in both human and markdown formats. When the failure comes from out-of-band
+  conditions (evidence links, federation divergence, inventory parse errors),
+  the plain `Result: failed` is preserved.

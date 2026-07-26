@@ -114,12 +114,47 @@ pub fn render_human_with_context(
         out.push_str(CLAIM_BOUNDARY_TEXT);
         out.push('\n');
     }
-    out.push_str(if failed {
-        "Result: failed\n"
+    if failed {
+        match check_failure_reason(&summary) {
+            Some(reason) => out.push_str(&format!("Result: failed ({reason})\n")),
+            None => out.push_str("Result: failed\n"),
+        }
     } else {
-        "Result: passed/advisory\n"
-    });
+        out.push_str("Result: passed/advisory\n");
+    }
     out
+}
+
+/// Build a human-readable reason for why a check failed, based on blocking
+/// status counts from the summary. Returns None if no blocking statuses are
+/// present (the failure may come from evidence links, federation divergence,
+/// inventory parse errors, or other out-of-band conditions).
+fn check_failure_reason(summary: &Summary) -> Option<String> {
+    let mut parts: Vec<(String, usize)> = Vec::new();
+    for status in [
+        MatchStatus::New,
+        MatchStatus::Expired,
+        MatchStatus::Ambiguous,
+        MatchStatus::InvalidSelector,
+        MatchStatus::MissingRequiredField,
+        MatchStatus::EvidenceMissing,
+        MatchStatus::BaselineDebt,
+    ] {
+        let count = summary.count(status);
+        if count > 0 {
+            parts.push((status.as_str().replace('_', " "), count));
+        }
+    }
+    if parts.is_empty() {
+        return None;
+    }
+    Some(
+        parts
+            .iter()
+            .map(|(label, count)| format!("{count} {label}"))
+            .collect::<Vec<_>>()
+            .join(", "),
+    )
 }
 
 fn render_audit_summary_human(
@@ -242,7 +277,14 @@ pub fn render_markdown_with_context(
     out.push_str(&format!("# cargo-allow {command}\n\n"));
     out.push_str(&format!(
         "**Result:** {}\n\n",
-        if failed { "failed" } else { "passed/advisory" }
+        if failed {
+            match check_failure_reason(&summary) {
+                Some(reason) => format!("failed ({reason})"),
+                None => "failed".to_string(),
+            }
+        } else {
+            "passed/advisory".to_string()
+        }
     ));
     out.push_str(&format!("Findings scanned: `{}`\n\n", findings.len()));
     out.push_str(&format!(
@@ -901,6 +943,73 @@ mod tests {
         assert_eq!(
             policy_missing_evidence_note(&summary, matching_context),
             None
+        );
+    }
+
+    #[test]
+    fn check_failure_reason_lists_blocking_status_counts() {
+        let outcomes = review_outcomes();
+        let summary = Summary::from_outcomes(&outcomes);
+        let reason = check_failure_reason(&summary);
+
+        assert!(reason.is_some(), "should have a reason");
+        let reason = reason.unwrap_or_default();
+
+        assert!(
+            reason.contains("1 new"),
+            "reason should include new count: {reason}"
+        );
+        assert!(
+            reason.contains("1 expired"),
+            "reason should include expired count: {reason}"
+        );
+        assert!(
+            reason.contains("1 ambiguous"),
+            "reason should include ambiguous count: {reason}"
+        );
+        assert!(
+            reason.contains("1 evidence missing"),
+            "reason should include evidence missing: {reason}"
+        );
+    }
+
+    #[test]
+    fn check_failure_reason_returns_none_when_all_matched() {
+        let outcomes = vec![
+            outcome(MatchStatus::Matched, "matched"),
+            outcome(MatchStatus::Matched, "matched"),
+        ];
+        let summary = Summary::from_outcomes(&outcomes);
+
+        assert!(check_failure_reason(&summary).is_none());
+    }
+
+    #[test]
+    fn render_human_includes_failure_reason_on_failed_check() {
+        let outcomes = vec![
+            outcome(MatchStatus::New, "new source exception"),
+            outcome(MatchStatus::Expired, "expired policy entry"),
+        ];
+        let text = render_human("check", &[], &outcomes, true);
+
+        assert!(
+            text.contains("Result: failed (1 new"),
+            "failed result should include blocking reason: `{text}`"
+        );
+        assert!(
+            text.contains("1 expired"),
+            "failed result should include expired count: `{text}`"
+        );
+    }
+
+    #[test]
+    fn render_human_shows_plain_failed_when_no_blocking_outcomes() {
+        // Failure can come from evidence links or federation, not just outcomes.
+        let text = render_human("check", &[], &[], true);
+
+        assert!(
+            text.contains("Result: failed\n"),
+            "failed with no blocking outcomes should be plain: `{text}`"
         );
     }
 }
