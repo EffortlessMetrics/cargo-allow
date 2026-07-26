@@ -1,0 +1,9 @@
+kind: Fixed
+body: >-
+  UX: `explain` now emits next-step blocks for entries with expired or
+  review-due lifecycle dates. Previously, an entry that still matched its
+  finding and had evidence would fall through to empty next-steps, leaving the
+  operator with no remediation guidance at exactly the moment they needed it.
+  Expired entries now route to the `expired_allow` worklist actions; review-due
+  entries route to the `review_due` worklist actions. Entries with future dates
+  are unaffected.

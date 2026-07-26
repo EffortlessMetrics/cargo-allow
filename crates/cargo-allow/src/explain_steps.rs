@@ -1,4 +1,4 @@
-use allow_core::{AllowEntry, Finding, FindingKind, MatchOutcome, MatchStatus};
+use allow_core::{AllowEntry, Finding, FindingKind, MatchOutcome, MatchStatus, SimpleDate};
 
 use crate::worklist;
 
@@ -111,6 +111,42 @@ pub(super) fn explain_next_steps(
         let kind = "weak_evidence_reference";
         return (
             worklist::suggested_link_actions_for_context(kind, finding, Some(entry))
+                .into_iter()
+                .take(2)
+                .collect(),
+            worklist::proof_commands(kind, finding, Some(entry))
+                .into_iter()
+                .take(EXPLAIN_PROOF_COMMAND_LIMIT)
+                .collect(),
+        );
+    }
+    // Lifecycle-driven next steps: an entry with expired or review-due dates
+    // needs operator action even when findings still match and evidence is
+    // present. Without this branch, explain would return empty next-steps for
+    // exactly the entries that most need remediation guidance (#2817).
+    let today = SimpleDate::today_utc_approx();
+    let is_expired = entry
+        .lifecycle
+        .expires
+        .as_deref()
+        .filter(|&expires| expires != "never")
+        .and_then(SimpleDate::parse)
+        .is_some_and(|date| date < today);
+    let is_review_due = entry
+        .lifecycle
+        .review_after
+        .as_deref()
+        .and_then(SimpleDate::parse)
+        .is_some_and(|date| date <= today);
+    if is_expired || is_review_due {
+        let finding = findings.first();
+        let kind = if is_expired {
+            "expired_allow"
+        } else {
+            "review_due"
+        };
+        return (
+            worklist::suggested_actions_for_context(kind, finding, Some(entry))
                 .into_iter()
                 .take(2)
                 .collect(),
@@ -290,6 +326,66 @@ mod tests {
             Some("add unsafe-review, test, spec, or boundary evidence for the unsafe exception")
         );
         assert!(proofs.contains(&"cargo-allow explain allow-missing-evidence".to_string()));
+    }
+
+    #[test]
+    fn explain_next_steps_for_expired_entry_with_evidence() {
+        let mut entry = test_entry("allow-expired", FindingKind::Panic);
+        entry.evidence = vec!["test:existing-proof".to_string()];
+        entry.lifecycle.expires = Some("2020-01-01".to_string());
+
+        let (actions, proofs) =
+            explain_next_steps(&entry, &[], &[], ExplainReferenceAttention::default());
+
+        assert!(
+            !actions.is_empty(),
+            "expired entry with evidence should still get next steps"
+        );
+        assert!(
+            actions
+                .iter()
+                .any(|action| action.contains("expired") || action.contains("remove")),
+            "expired entry should suggest removal or renewal: {actions:?}"
+        );
+        assert!(proofs.contains(&"cargo-allow explain allow-expired".to_string()));
+    }
+
+    #[test]
+    fn explain_next_steps_for_review_due_entry_with_evidence() {
+        let mut entry = test_entry("allow-review-due", FindingKind::Panic);
+        entry.evidence = vec!["test:existing-proof".to_string()];
+        entry.lifecycle.review_after = Some("2020-01-01".to_string());
+
+        let (actions, proofs) =
+            explain_next_steps(&entry, &[], &[], ExplainReferenceAttention::default());
+
+        assert!(
+            !actions.is_empty(),
+            "review-due entry with evidence should still get next steps"
+        );
+        assert!(
+            actions
+                .iter()
+                .any(|action| action.contains("review") || action.contains("update")),
+            "review-due entry should suggest review: {actions:?}"
+        );
+        assert!(proofs.contains(&"cargo-allow explain allow-review-due".to_string()));
+    }
+
+    #[test]
+    fn explain_next_steps_skips_lifecycle_when_not_due() {
+        let mut entry = test_entry("allow-future", FindingKind::Panic);
+        entry.evidence = vec!["test:existing-proof".to_string()];
+        entry.lifecycle.expires = Some("2099-12-31".to_string());
+        entry.lifecycle.review_after = Some("2099-12-31".to_string());
+
+        let (actions, _proofs) =
+            explain_next_steps(&entry, &[], &[], ExplainReferenceAttention::default());
+
+        assert!(
+            actions.is_empty(),
+            "entry with future dates and evidence should get no next steps"
+        );
     }
 
     #[test]
