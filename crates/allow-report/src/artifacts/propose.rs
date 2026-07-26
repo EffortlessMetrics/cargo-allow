@@ -10,5 +10,6 @@ pub struct ProposeReport<'a> {
     pub findings_scanned: usize,
     pub baseline_debt_entries_proposed: usize,
     pub unsafe_baseline_debt_entries_proposed: usize,
+    pub truncated_new_findings: usize,
     pub mutation_receipt: MutationReceipt<'a>,
 }

@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  UX: `propose` now warns when the --max limit truncates the proposal. Instead
+  of silently stopping at 50 findings, the summary emits "truncated: N more new
+  finding(s) not proposed; rerun with --max 0 to see all". The JSON summary
+  includes a `truncated_new_findings` count field (0 when not truncated). The
+  propose schema is updated to include the new field.

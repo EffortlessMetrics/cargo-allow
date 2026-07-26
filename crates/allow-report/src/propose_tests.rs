@@ -15,6 +15,7 @@ fn propose_json_renderer_records_options_summary_and_defaults() {
         findings_scanned: 54,
         baseline_debt_entries_proposed: 2,
         unsafe_baseline_debt_entries_proposed: 1,
+        truncated_new_findings: 0,
         mutation_receipt: sample_mutation_receipt(),
     };
     let json = render_propose_json(report.clone());
@@ -70,7 +71,8 @@ fn propose_json_renderer_records_options_summary_and_defaults() {
   "summary": {{
     "findings_scanned": 54,
     "baseline_debt_entries_proposed": 2,
-    "unsafe_baseline_debt_entries_proposed": 1
+    "unsafe_baseline_debt_entries_proposed": 1,
+    "truncated_new_findings": 0
   }},
   "follow_up_queues": [
     {{
@@ -156,6 +158,7 @@ fn propose_renderer_omits_follow_up_queues_when_nothing_proposed() {
         findings_scanned: 12,
         baseline_debt_entries_proposed: 0,
         unsafe_baseline_debt_entries_proposed: 0,
+        truncated_new_findings: 0,
         mutation_receipt: sample_mutation_receipt(),
     };
     report.mutation_receipt.result = "stdout";
