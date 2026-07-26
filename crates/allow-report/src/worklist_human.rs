@@ -56,7 +56,12 @@ pub fn render_worklist_human(
             item.id, item.risk, item.difficulty, item.kind
         ));
         if let Some(path) = item.path {
-            out.push_str(&format!("  path: {path}\n"));
+            if let Some(line) = item.line {
+                let col = item.column.map_or(String::new(), |c| format!(":{c}"));
+                out.push_str(&format!("  path: {path}:{line}{col}\n"));
+            } else {
+                out.push_str(&format!("  path: {path}\n"));
+            }
         }
         if let Some(package) = item.source_package {
             out.push_str(&format!("  source package: {package}\n"));

@@ -47,6 +47,8 @@ fn report_worklist_items(items: &[WorkItem]) -> Vec<allow_report::WorklistItem<'
             candidate_ids: &item.candidate_ids,
             finding_index: item.finding_index,
             path: item.path.as_deref(),
+            line: item.line,
+            column: item.column,
             evidence_reference: item.evidence_reference.as_ref().map(|reference| {
                 allow_report::EvidenceReference {
                     raw: &reference.raw,

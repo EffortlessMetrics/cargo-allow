@@ -1,0 +1,8 @@
+kind: Added
+body: >-
+  Worklist items now carry finding `line` and `column` when available. Human
+  output renders `path: <path>:<line>:<column>` when a span is present, and
+  JSON output emits `line`/`column` fields conditionally. Advisory-derived
+  items (occurrence headroom, generated debt, missing evidence, broad scope,
+  mirror divergence) omit them since they are not tied to a specific finding
+  span.

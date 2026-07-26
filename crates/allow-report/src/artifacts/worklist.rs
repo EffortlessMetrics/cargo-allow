@@ -41,6 +41,8 @@ pub struct WorklistItem<'a> {
     pub candidate_ids: &'a [String],
     pub finding_index: Option<usize>,
     pub path: Option<&'a str>,
+    pub line: Option<u32>,
+    pub column: Option<u32>,
     pub evidence_reference: Option<EvidenceReference<'a>>,
     pub source_package: Option<&'a str>,
     pub message: &'a str,

@@ -198,6 +198,8 @@ pub(crate) fn sample_worklist_json_for_contract_test() -> String {
         candidate_ids: Vec::new(),
         finding_index: Some(0),
         path: Some("src/lib.rs".to_string()),
+        line: None,
+        column: None,
         evidence_reference: None,
         source_package: Some("parser".to_string()),
         message: "allow-baseline is generated baseline debt and still needs human review"

@@ -55,6 +55,8 @@ pub(crate) struct WorkItem {
     pub(super) candidate_ids: Vec<String>,
     pub(super) finding_index: Option<usize>,
     pub(super) path: Option<String>,
+    pub(super) line: Option<u32>,
+    pub(super) column: Option<u32>,
     pub(super) evidence_reference: Option<WorkItemEvidenceReference>,
     pub(super) source_package: Option<String>,
     pub(super) message: String,

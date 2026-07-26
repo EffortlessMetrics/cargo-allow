@@ -74,6 +74,8 @@ fn worklist_filters_by_advisory_shortcuts() {
         suggested_actions: Vec::new(),
         proof_commands: Vec::new(),
         ledger: WorkItemLedger::default(),
+        line: None,
+        column: None,
     };
     let mut broad = baseline.clone();
     broad.id = "work-broad-scope-0002".to_string();
@@ -139,6 +141,8 @@ fn worklist_filters_by_missing_evidence() {
         suggested_actions: Vec::new(),
         proof_commands: Vec::new(),
         ledger: WorkItemLedger::default(),
+        line: None,
+        column: None,
     };
     let mut evidenced = missing.clone();
     evidenced.id = "work-review-due-0002".to_string();
@@ -197,6 +201,8 @@ fn worklist_filters_by_evidence_health_shortcuts() {
         suggested_actions: Vec::new(),
         proof_commands: Vec::new(),
         ledger: WorkItemLedger::default(),
+        line: None,
+        column: None,
     };
     let mut weak = broken.clone();
     weak.id = "work-weak-evidence-reference-0002".to_string();
