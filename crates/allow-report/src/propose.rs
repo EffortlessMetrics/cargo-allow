@@ -11,7 +11,7 @@ pub fn render_propose_human(report: ProposeReport<'_>) -> String {
         report.inventory.scope,
         report.inventory.scanner,
         report.inventory.source,
-        propose_inventory_files_suffix(report.inventory)
+        report.inventory.files_scanned_suffix()
     ));
     if let Some(root) = report.inventory.root {
         out.push_str(&format!("source_tree_root: {root}\n"));
@@ -55,15 +55,6 @@ pub fn render_propose_human(report: ProposeReport<'_>) -> String {
     out.push_str(CLAIM_BOUNDARY_TEXT);
     out.push('\n');
     out
-}
-
-fn propose_inventory_files_suffix(inventory: crate::InventoryContext<'_>) -> String {
-    let mut suffix = inventory
-        .files_scanned
-        .map(|files| format!("; files scanned: {files}"))
-        .unwrap_or_default();
-    suffix.push_str(&inventory.completeness_suffix());
-    suffix
 }
 
 pub fn render_propose_json(report: ProposeReport<'_>) -> String {

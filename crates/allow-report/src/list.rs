@@ -50,7 +50,7 @@ pub fn render_list_human_columns(
         inventory.scope,
         inventory.scanner,
         inventory.source,
-        list_inventory_files_suffix(inventory)
+        inventory.files_scanned_suffix()
     ));
     if let Some(root) = inventory.root {
         out.push_str(&format!("source_tree_root: {root}\n"));
@@ -88,15 +88,6 @@ fn push_row(out: &mut String, row: &ListRow<'_>, columns: &[ListColumn]) {
         out.push_str(&column.value(row));
     }
     out.push('\n');
-}
-
-fn list_inventory_files_suffix(inventory: InventoryContext<'_>) -> String {
-    let mut suffix = inventory
-        .files_scanned
-        .map(|files| format!("; files scanned: {files}"))
-        .unwrap_or_default();
-    suffix.push_str(&inventory.completeness_suffix());
-    suffix
 }
 
 /// Suggests per-entry commands for rows with actionable statuses or broken

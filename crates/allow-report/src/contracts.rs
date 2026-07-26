@@ -462,6 +462,18 @@ impl<'a> InventoryContext<'a> {
             .map(|completeness| format!("; completeness: {completeness}"))
             .unwrap_or_default()
     }
+
+    /// Render the "files scanned" + "completeness" suffix used by all human
+    /// report renderers. Centralizes the format so it stays consistent across
+    /// add, list, migrate, propose, prune, refresh, and worklist outputs.
+    pub fn files_scanned_suffix(self) -> String {
+        let mut suffix = self
+            .files_scanned
+            .map(|files| format!("; files scanned: {files}"))
+            .unwrap_or_default();
+        suffix.push_str(&self.completeness_suffix());
+        suffix
+    }
 }
 
 impl<'a> Default for InventoryContext<'a> {
