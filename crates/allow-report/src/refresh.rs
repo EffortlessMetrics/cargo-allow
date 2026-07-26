@@ -14,7 +14,7 @@ pub fn render_refresh_human(report: RefreshReport<'_>) -> String {
         report.inventory.scope,
         report.inventory.scanner,
         report.inventory.source,
-        refresh_inventory_files_suffix(report.inventory)
+        report.inventory.files_scanned_suffix()
     ));
     if let Some(root) = report.inventory.root {
         out.push_str(&format!("Source tree root: {root}\n"));
@@ -57,15 +57,6 @@ pub fn render_refresh_human(report: RefreshReport<'_>) -> String {
     out.push_str(CLAIM_BOUNDARY_TEXT);
     out.push('\n');
     out
-}
-
-fn refresh_inventory_files_suffix(inventory: crate::InventoryContext<'_>) -> String {
-    let mut suffix = inventory
-        .files_scanned
-        .map(|files| format!("; files scanned: {files}"))
-        .unwrap_or_default();
-    suffix.push_str(&inventory.completeness_suffix());
-    suffix
 }
 
 pub fn render_refresh_json(report: RefreshReport<'_>) -> String {

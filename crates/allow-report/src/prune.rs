@@ -22,7 +22,7 @@ pub fn render_prune_human_with_context(
         inventory.scope,
         inventory.scanner,
         inventory.source,
-        prune_inventory_files_suffix(inventory)
+        inventory.files_scanned_suffix()
     ));
     if let Some(root) = inventory.root {
         out.push_str(&format!("Source tree root: {root}\n"));
@@ -71,15 +71,6 @@ pub fn render_prune_human_with_context(
     out.push_str(CLAIM_BOUNDARY_TEXT);
     out.push('\n');
     out
-}
-
-fn prune_inventory_files_suffix(inventory: InventoryContext<'_>) -> String {
-    let mut suffix = inventory
-        .files_scanned
-        .map(|files| format!("; files scanned: {files}"))
-        .unwrap_or_default();
-    suffix.push_str(&inventory.completeness_suffix());
-    suffix
 }
 
 pub fn render_prune_json(

@@ -674,13 +674,7 @@ fn audit_recommended_next_step(
 }
 
 fn inventory_files_suffix(context: ReportContext<'_>) -> String {
-    let mut suffix = context
-        .inventory
-        .files_scanned
-        .map(|files| format!("; files scanned: {files}"))
-        .unwrap_or_default();
-    suffix.push_str(&context.inventory.completeness_suffix());
-    suffix
+    context.inventory.files_scanned_suffix()
 }
 
 fn inventory_files_markdown_suffix(context: ReportContext<'_>) -> String {
