@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  UX: the why/add workflow is now visible from the CLI surfaces operators see
+  first. Check remediation roadmap suggests `cargo-allow why` for new findings.
+  Init next-steps include `why` and `add --update`. Doctor suggests `audit` when
+  config is missing (audit works without a policy). Add without --update now
+  prints "Nothing was persisted. Rerun with --update to apply." on stderr.

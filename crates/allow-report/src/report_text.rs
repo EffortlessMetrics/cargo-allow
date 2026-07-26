@@ -601,6 +601,11 @@ fn append_remediation_roadmap_human(summary: &Summary, signals: ReviewSignals, o
     for item in items {
         out.push_str(&format!("  {}: {}\n", item.label, item.command));
     }
+    if summary.count(MatchStatus::New) > 0 {
+        out.push_str(
+            "  To diagnose and receipt a new finding: cargo-allow why --kind <kind> --path <path> --line <line>\n",
+        );
+    }
 }
 
 fn append_remediation_roadmap_markdown(
@@ -616,6 +621,9 @@ fn append_remediation_roadmap_markdown(
     out.push_str("| Signal | Command |\n|---|---|\n");
     for item in items {
         out.push_str(&format!("| {} | `{}` |\n", item.label, item.command));
+    }
+    if summary.count(MatchStatus::New) > 0 {
+        out.push_str("\nTo diagnose and receipt a new finding: `cargo-allow why --kind <kind> --path <path> --line <line>`\n");
     }
 }
 

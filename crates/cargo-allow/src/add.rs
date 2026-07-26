@@ -261,6 +261,9 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         .into_result()?;
     } else {
         println!("{rendered}");
+        eprintln!(
+            "Nothing was persisted. Rerun with --update to write this entry into the live policy."
+        );
     }
     emit_stderr_text(args.summary_output.as_deref(), &summary)?;
     Ok(())
