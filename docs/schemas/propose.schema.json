@@ -90,6 +90,11 @@
           "type": "integer",
           "minimum": 0,
           "description": "Number of proposed baseline_debt entries for unsafe findings. Generated unsafe baseline entries still require real evidence and human review."
+        },
+        "truncated_new_findings": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of new findings not proposed because the --max limit was reached. Non-zero means the proposal is incomplete; rerun with --max 0 to see all."
         }
       }
     },

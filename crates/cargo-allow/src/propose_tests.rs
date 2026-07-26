@@ -92,9 +92,12 @@ fn clap_accepts_maximum_propose_expiry_window() {
 #[test]
 fn propose_summary_reports_generated_baseline_boundary() {
     let text = render_propose_summary(
-        12,
-        3,
-        1,
+        super::propose_render::ProposeCounts {
+            findings_scanned: 12,
+            proposed_entries: 3,
+            unsafe_proposed_entries: 1,
+            truncated_new_findings: 0,
+        },
         "2026-08-01",
         Some(Path::new("policy/allow.proposed.toml")),
         ProposeContext {

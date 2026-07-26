@@ -56,6 +56,10 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         EvidenceValidationMode::ReportOnly,
     )?;
     let outcomes = evaluate(&cfg, &findings, CheckMode::Audit);
+    let new_findings_total = outcomes
+        .iter()
+        .filter(|o| o.status == MatchStatus::New)
+        .count();
     let mut proposed = cfg.clone();
     let start = proposed.allow.len() + 1;
     let mut proposed_entries = 0;
@@ -151,19 +155,19 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         kind_filter: args.kind.as_deref(),
         mutation_receipt,
     };
+    let truncated_new_findings = new_findings_total.saturating_sub(proposed_entries);
+    let counts = propose_render::ProposeCounts {
+        findings_scanned: findings.len(),
+        proposed_entries,
+        unsafe_proposed_entries,
+        truncated_new_findings,
+    };
     let summary = match args.summary_format {
-        ProposeSummaryFormat::Human => render_propose_summary(
-            findings.len(),
-            proposed_entries,
-            unsafe_proposed_entries,
-            expires.as_str(),
-            args.write.as_deref(),
-            context,
-        ),
+        ProposeSummaryFormat::Human => {
+            render_propose_summary(counts, expires.as_str(), args.write.as_deref(), context)
+        }
         ProposeSummaryFormat::Json => render_propose_summary_json(
-            findings.len(),
-            proposed_entries,
-            unsafe_proposed_entries,
+            counts,
             expires.as_str(),
             args.write.as_deref(),
             args.force,
@@ -179,9 +183,12 @@ pub(crate) fn sample_propose_json_for_contract_test() -> String {
     use std::path::Path;
 
     render_propose_summary_json(
-        12,
-        3,
-        1,
+        propose_render::ProposeCounts {
+            findings_scanned: 12,
+            proposed_entries: 3,
+            unsafe_proposed_entries: 1,
+            truncated_new_findings: 0,
+        },
         "2026-08-01",
         Some(Path::new("policy/allow.proposed.toml")),
         true,

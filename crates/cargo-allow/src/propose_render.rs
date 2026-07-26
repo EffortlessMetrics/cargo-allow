@@ -1,10 +1,17 @@
 use super::ProposeContext;
 use std::path::Path;
 
+/// Bundled propose summary counts to keep the render function signatures
+/// under clippy's argument-count threshold.
+pub(super) struct ProposeCounts {
+    pub(super) findings_scanned: usize,
+    pub(super) proposed_entries: usize,
+    pub(super) unsafe_proposed_entries: usize,
+    pub(super) truncated_new_findings: usize,
+}
+
 pub(super) fn render_propose_summary(
-    findings: usize,
-    proposed_entries: usize,
-    unsafe_proposed_entries: usize,
+    counts: ProposeCounts,
     expires: &str,
     output: Option<&Path>,
     context: ProposeContext<'_>,
@@ -16,17 +23,16 @@ pub(super) fn render_propose_summary(
         expires,
         policy_output: output_text.as_deref(),
         force: false,
-        findings_scanned: findings,
-        baseline_debt_entries_proposed: proposed_entries,
-        unsafe_baseline_debt_entries_proposed: unsafe_proposed_entries,
+        findings_scanned: counts.findings_scanned,
+        baseline_debt_entries_proposed: counts.proposed_entries,
+        unsafe_baseline_debt_entries_proposed: counts.unsafe_proposed_entries,
+        truncated_new_findings: counts.truncated_new_findings,
         mutation_receipt: context.mutation_receipt,
     })
 }
 
 pub(super) fn render_propose_summary_json(
-    findings: usize,
-    proposed_entries: usize,
-    unsafe_proposed_entries: usize,
+    counts: ProposeCounts,
     expires: &str,
     output: Option<&Path>,
     force: bool,
@@ -39,9 +45,10 @@ pub(super) fn render_propose_summary_json(
         expires,
         policy_output: output_text.as_deref(),
         force,
-        findings_scanned: findings,
-        baseline_debt_entries_proposed: proposed_entries,
-        unsafe_baseline_debt_entries_proposed: unsafe_proposed_entries,
+        findings_scanned: counts.findings_scanned,
+        baseline_debt_entries_proposed: counts.proposed_entries,
+        unsafe_baseline_debt_entries_proposed: counts.unsafe_proposed_entries,
+        truncated_new_findings: counts.truncated_new_findings,
         mutation_receipt: context.mutation_receipt,
     })
 }
