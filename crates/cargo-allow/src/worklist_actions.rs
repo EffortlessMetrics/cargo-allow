@@ -235,6 +235,7 @@ pub(crate) fn proof_commands(
         ));
     }
     append_closeout_commands(kind, &mut commands);
+    append_resolution_commands(kind, finding, entry, &mut commands);
     let kind_arg = worklist_kind_arg(finding, entry);
     let has_unsafe_kind_check = kind_arg == Some("unsafe");
     let shortcut_arg = worklist_shortcut_arg(kind);
@@ -283,6 +284,27 @@ fn append_closeout_commands(kind: &str, commands: &mut Vec<String>) {
     if kind == STALE_ALLOW {
         commands.push("cargo-allow prune --stale --dry-run".to_string());
         commands.push("cargo-allow prune --stale --format json".to_string());
+    }
+}
+
+/// Add actionable resolution commands for item kinds that currently route only
+/// to re-listings. The operator gets a concrete next step toward closing the
+/// item, not just another query.
+fn append_resolution_commands(
+    kind: &str,
+    finding: Option<&Finding>,
+    entry: Option<&AllowEntry>,
+    commands: &mut Vec<String>,
+) {
+    if kind == NEW_UNRECEIPTED_FINDING
+        && let Some(kind_arg) = worklist_kind_arg(finding, entry)
+        && let Some(finding) = finding
+        && let Some(line) = finding.span.as_ref().map(|span| span.line)
+    {
+        let path = finding.path.to_string_lossy();
+        commands.push(format!(
+            "cargo-allow why --kind {kind_arg} --path {path} --line {line} --format json"
+        ));
     }
 }
 
