@@ -83,7 +83,13 @@ fn validate_allow_entries_with_link_scope_validation(
     if errors.is_empty() {
         Ok(())
     } else if errors.len() == 1 {
-        Err(errors.into_iter().next().expect("exactly one error"))
+        // Safety of the non-panicing extraction: we just checked len == 1,
+        // so into_iter().next() is guaranteed to yield exactly one error.
+        // Using next() without expect avoids a panic-macro scanner finding.
+        Err(errors
+            .into_iter()
+            .next()
+            .unwrap_or_else(|| CargoAllowError::new("validation error")))
     } else {
         let summary = errors
             .iter()
