@@ -101,6 +101,8 @@ fn work_item_from_evidence_diagnostic(
         candidate_ids: Vec::new(),
         finding_index: None,
         path,
+        line: None,
+        column: None,
         evidence_reference: Some(evidence_reference),
         source_package: None,
         message: format!(

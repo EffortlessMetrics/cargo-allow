@@ -24,6 +24,8 @@ fn item(kind: &'static str, risk: &'static str, difficulty: &'static str) -> Wor
         candidate_ids: &[],
         finding_index: None,
         path: None,
+        line: None,
+        column: None,
         evidence_reference: None,
         source_package: None,
         message: "fixture",

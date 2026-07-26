@@ -175,6 +175,8 @@ mod tests {
             candidate_ids: Vec::new(),
             finding_index: Some(0),
             path: path.map(str::to_string),
+            line: None,
+            column: None,
             evidence_reference: None,
             source_package: None,
             message: "message".to_string(),

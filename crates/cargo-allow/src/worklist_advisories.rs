@@ -53,6 +53,8 @@ pub(super) fn work_items_from_policy_advisories(
                 path: finding
                     .map(|finding| normalize_path(&finding.path))
                     .or_else(|| Some(entry.path_or_glob())),
+                line: None,
+                column: None,
                 evidence_reference: None,
                 source_package: source_package_name(finding),
                 message: format!(
@@ -88,6 +90,8 @@ pub(super) fn work_items_from_policy_advisories(
                 path: finding
                     .map(|finding| normalize_path(&finding.path))
                     .or_else(|| Some(entry.path_or_glob())),
+                line: None,
+                column: None,
                 evidence_reference: None,
                 source_package: source_package_name(finding),
                 message: format!(
@@ -125,6 +129,8 @@ pub(super) fn work_items_from_policy_advisories(
                 path: finding
                     .map(|finding| normalize_path(&finding.path))
                     .or_else(|| Some(entry.path_or_glob())),
+                line: None,
+                column: None,
                 evidence_reference: None,
                 source_package: source_package_name(finding),
                 message: format!("{} has no evidence references", entry.id),
@@ -157,6 +163,8 @@ pub(super) fn work_items_from_policy_advisories(
                 candidate_ids: Vec::new(),
                 finding_index: outcome.finding_index,
                 path: Some(scope.clone()),
+                line: None,
+                column: None,
                 evidence_reference: None,
                 source_package: source_package_name(finding),
                 message: format!("{} uses a broad source-tree scope `{}`", entry.id, scope),

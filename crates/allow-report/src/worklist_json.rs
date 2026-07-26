@@ -141,6 +141,12 @@ fn render_work_item_json(item: &WorklistItem<'_>) -> String {
             .unwrap_or_else(|| "null".to_string())
     ));
     out.push_str(&format!("      \"path\": {},\n", option_json(item.path)));
+    if let Some(line) = item.line {
+        out.push_str(&format!("      \"line\": {line},\n"));
+    }
+    if let Some(column) = item.column {
+        out.push_str(&format!("      \"column\": {column},\n"));
+    }
     if let Some(reference) = item.evidence_reference.as_ref() {
         out.push_str("      \"evidence_reference\": ");
         out.push_str(&render_worklist_evidence_reference_json(reference));
@@ -288,6 +294,8 @@ mod tests {
             candidate_ids: &[],
             finding_index: Some(3),
             path: Some("src/lib.rs"),
+            line: None,
+            column: None,
             evidence_reference: Some(crate::EvidenceReference {
                 raw: "test:unsafe_fixture",
                 prefix: Some("test"),
@@ -397,6 +405,8 @@ mod tests {
             candidate_ids: &[],
             finding_index: None,
             path: None,
+            line: None,
+            column: None,
             evidence_reference: None,
             source_package: None,
             suggested_actions: &suggested_actions,

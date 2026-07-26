@@ -63,6 +63,10 @@ fn work_item_from_outcome_with_status(
     let path = finding
         .map(|finding| normalize_path(&finding.path))
         .or_else(|| entry.map(|entry| entry.path_or_glob()));
+    let (line, column) = finding
+        .and_then(|finding| finding.span.as_ref())
+        .map(|span| (Some(span.line), Some(span.column)))
+        .unwrap_or((None, None));
     let source_package =
         finding.and_then(|finding| finding.source_package_name().map(ToOwned::to_owned));
     let exception_kind = work_item_exception_kind(finding, entry);
@@ -92,6 +96,8 @@ fn work_item_from_outcome_with_status(
         candidate_ids: outcome.candidate_ids.clone(),
         finding_index: outcome.finding_index,
         path,
+        line,
+        column,
         evidence_reference: None,
         source_package,
         message: if status == outcome.status {

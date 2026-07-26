@@ -30,6 +30,8 @@ pub(super) fn work_items_from_federation_divergences(
                 candidate_ids: Vec::new(),
                 finding_index: None,
                 path: Some(record.mirror_path.clone()),
+                line: None,
+                column: None,
                 evidence_reference: None,
                 source_package: None,
                 message: record.message.clone(),
