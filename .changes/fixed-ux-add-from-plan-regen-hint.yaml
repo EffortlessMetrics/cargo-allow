@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  UX: `add --from-plan` rejection errors now append a plan-regeneration hint.
+  Instead of just "(policy unchanged)", operators see "; regenerate with
+  cargo-allow why --plan <path> --kind <kind> --path <path> --line <line>" so
+  they know exactly how to regenerate a stale plan. The hint is applied at the
+  top-level error propagation sites within cmd_add_from_plan where the plan
+  context is available.
