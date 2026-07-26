@@ -337,6 +337,41 @@ mod tests {
         );
     }
 
+    #[test]
+    fn quiet_flag_works_after_subcommand() {
+        // #global-flags: --quiet and --color are global, so they should parse
+        // both before and after the subcommand name, matching cargo/git convention.
+        let parsed = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "check",
+            "--quiet",
+            "--mode",
+            "no-new",
+        ]))
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("CLI should parse --quiet after subcommand: {err}"))
+        });
+
+        assert!(parsed.quiet);
+        assert!(matches!(parsed.command, Some(CargoAllowCommand::Check(_))));
+    }
+
+    #[test]
+    fn color_flag_works_after_subcommand() {
+        let parsed = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "check",
+            "--color=never",
+            "--mode",
+            "no-new",
+        ]))
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("CLI should parse --color after subcommand: {err}"))
+        });
+
+        assert_eq!(parsed.color, ColorChoice::Never);
+    }
+
     fn argv(items: Vec<&str>) -> Vec<String> {
         items.into_iter().map(String::from).collect()
     }

@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  CLI: `--quiet`/`-q` and `--color` are now global flags, so they work both
+  before and after the subcommand name. Previously, `cargo-allow check --quiet`
+  failed with "unexpected argument" — the operator had to write
+  `cargo-allow --quiet check`, which contradicts cargo/git convention. Now both
+  forms work.
