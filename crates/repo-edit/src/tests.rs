@@ -68,6 +68,28 @@ fn lock_is_released_when_guard_drops() -> Result<(), Box<dyn std::error::Error>>
 }
 
 #[test]
+fn acquire_with_timeout_returns_descriptive_error_on_timeout() {
+    let root = TempRoot::new("lock-timeout")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("temp dir: {err}")));
+    let target = root.path().join("policy/allow.toml");
+    let _first = MutationLock::acquire(&target)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("acquire first: {err}")));
+
+    let result = MutationLock::acquire_with_timeout(&target, Duration::from_millis(300));
+
+    let err = result.expect_err("should timeout when lock is held");
+    let message = err.to_string();
+    assert!(
+        message.contains("held by another process"),
+        "timeout error should mention held lock: {message}"
+    );
+    assert!(
+        message.contains("stale processes"),
+        "timeout error should suggest checking for stale processes: {message}"
+    );
+}
+
+#[test]
 fn lexical_canonicalization_matches_lock_identity() {
     let root = TempRoot::new("canonicalize")
         .unwrap_or_else(|err| std::panic::panic_any(format!("temp dir: {err}")));

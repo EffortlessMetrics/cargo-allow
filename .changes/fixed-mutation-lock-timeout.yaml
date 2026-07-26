@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  Atomicity: mutation lock now has a 30-second timeout instead of blocking
+  indefinitely. Uses std::fs::File::try_lock (stabilized in Rust 1.89) in a
+  polling loop. On timeout, emits a descriptive error: "mutation lock held by
+  another process; waited 30s for <path>; check for stale processes or rerun
+  after the current mutation completes". The public `acquire()` API is
+  unchanged; `acquire_with_timeout()` is available for custom timeouts.
