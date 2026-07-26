@@ -68,6 +68,7 @@ Healthy output with **no policy yet** includes markers such as:
 
 ```text
 config: not found; run `cargo-allow init --root "…"`
+  tip: `cargo-allow audit` works without a policy to surface source findings before bootstrapping
 inventory: source_tree/source_syntax
 Claim boundary: scanned source-tree/source syntax only
 ```
