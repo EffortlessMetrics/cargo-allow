@@ -4,7 +4,7 @@ use std::env;
 
 use crate::{
     add, audit, check, diff, doctor, explain, init, list, migrate, precommit_tool, propose, prune,
-    refresh, why, worklist,
+    refresh, vocabulary, why, worklist,
 };
 
 #[derive(Debug, Parser)]
@@ -64,6 +64,8 @@ pub(crate) enum CargoAllowCommand {
     Prune(prune::PruneArgs),
     /// Validate local setup.
     Doctor(doctor::DoctorArgs),
+    /// List finding kinds, evidence prefixes, and match statuses.
+    Vocabulary(vocabulary::VocabularyArgs),
     /// Inspect the selected cargo-allow tool identity and capabilities.
     Tool(precommit_tool::ToolArgs),
 }
@@ -102,6 +104,7 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::Refresh(args) => refresh::cmd_refresh(&args),
         CargoAllowCommand::Prune(args) => prune::cmd_prune(&args),
         CargoAllowCommand::Doctor(args) => doctor::cmd_doctor(&args),
+        CargoAllowCommand::Vocabulary(args) => vocabulary::cmd_vocabulary(&args),
         CargoAllowCommand::Tool(args) => precommit_tool::cmd_tool(&args),
     }
 }
@@ -169,7 +172,21 @@ impl CargoAllowCommand {
     /// follows. A future `Allow` command can use the bare `allow` name because
     /// the shim no longer steals it without a following known subcommand.
     pub(crate) const SUBCOMMANDS: &[&str] = &[
-        "init", "audit", "check", "diff", "list", "explain", "why", "add", "propose", "worklist",
-        "migrate", "refresh", "prune", "doctor", "tool",
+        "init",
+        "audit",
+        "check",
+        "diff",
+        "list",
+        "explain",
+        "why",
+        "add",
+        "propose",
+        "worklist",
+        "migrate",
+        "refresh",
+        "prune",
+        "doctor",
+        "vocabulary",
+        "tool",
     ];
 }
