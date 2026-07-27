@@ -98,11 +98,40 @@ pub(crate) fn column(line: &str, needle: &str) -> u32 {
 }
 
 pub(crate) fn source_column(source: &str, row: usize, byte_column: usize) -> u32 {
-    source
-        .lines()
-        .nth(row)
-        .map(|line| byte_column_to_char_column(line, byte_column))
-        .unwrap_or(1)
+    // Fast path: find the start of the requested line by counting newlines
+    // in the byte slice. This avoids the Lines iterator overhead which re-checks
+    // for \r\n on every yield. Still O(row) per call, but with lower constant
+    // factor. A full O(1) fix would require pre-computing line-start offsets
+    // once per file scan — see #2666 for the batch approach.
+    let bytes = source.as_bytes();
+    let mut current_row = 0;
+    let mut line_start = 0;
+    for (i, &byte) in bytes.iter().enumerate() {
+        if current_row == row {
+            break;
+        }
+        if byte == b'\n' {
+            current_row += 1;
+            line_start = i + 1;
+        }
+    }
+    if current_row < row {
+        return 1;
+    }
+    // Find the line text from line_start to the next newline or end.
+    let line_end = bytes
+        .get(line_start..)
+        .and_then(|slice| slice.iter().position(|&b| b == b'\n'))
+        .map(|pos| line_start + pos)
+        .unwrap_or(bytes.len());
+    // Handle \r\n: strip trailing \r if present.
+    let line_end = if line_end > line_start && bytes.get(line_end - 1) == Some(&b'\r') {
+        line_end - 1
+    } else {
+        line_end
+    };
+    let line = source.get(line_start..line_end).unwrap_or("");
+    byte_column_to_char_column(line, byte_column)
 }
 
 pub(crate) fn byte_column_to_char_column(line: &str, byte_column: usize) -> u32 {
