@@ -93,17 +93,22 @@ fn json_vocabulary_parses_and_contains_expected_fields() {
 #[test]
 fn json_vocabulary_kind_group_has_aliases_array() {
     let json = render_vocabulary_json();
-    let parsed: serde_json::Value = serde_json::from_str(&json).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("vocabulary JSON should parse: {err}"))
-    });
+    let parsed: serde_json::Value = serde_json::from_str(&json)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("vocabulary JSON parse: {err}")));
 
-    let panic_group = parsed["kinds"]
-        .as_array()
-        .and_then(|kinds| kinds.iter().find(|k| k["canonical"] == "panic"))
+    let kinds = parsed
+        .pointer("/kinds")
+        .and_then(|v| v.as_array())
+        .unwrap_or_else(|| std::panic::panic_any("kinds should be an array"));
+
+    let panic_group = kinds
+        .iter()
+        .find(|k| k.pointer("/canonical") == Some(&serde_json::json!("panic")))
         .unwrap_or_else(|| std::panic::panic_any("panic kind group should exist"));
 
-    let aliases = panic_group["aliases"]
-        .as_array()
+    let aliases = panic_group
+        .pointer("/aliases")
+        .and_then(|v| v.as_array())
         .unwrap_or_else(|| std::panic::panic_any("panic group should have aliases array"));
     assert!(
         aliases.iter().any(|a| a == "no-panic-allowlist"),
