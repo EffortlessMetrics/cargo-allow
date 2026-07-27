@@ -10,7 +10,7 @@ use crate::{
 #[derive(Debug, Parser)]
 #[command(
     name = "cargo-allow",
-    about = "Source exception ledger for source trees",
+    about = "Source-tree exception ledger and policy scanner for Rust repositories",
     version,
     propagate_version = true
 )]
