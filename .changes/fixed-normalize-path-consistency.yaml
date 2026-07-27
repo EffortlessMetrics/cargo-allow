@@ -1,0 +1,11 @@
+kind: Fixed
+body: >-
+  Core: replaced naive `to_string_lossy().replace('\\', "/")` with the central
+  `normalize_path` at 6 safe sites across allow-files, allow-policy
+  (federation/evaluate, product_move/validate, spec_system/profile_resolution).
+  This ensures verbatim-prefix stripping (`\\?\`), `.`/`..` folding, and UNC
+  handling are applied consistently — the same class of bug that produced wrong
+  identity keys on Windows (#1821, #2505). Sites with intentional divergence
+  (path_text.rs display, diff.rs pre-validation, evidence_render.rs invalid
+  path display, federation/config.rs escape prevention) were left as-is after
+  analysis.

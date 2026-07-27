@@ -12,7 +12,7 @@ pub fn is_rust_source(path: &Path) -> bool {
 }
 
 pub(crate) fn is_builtin_allowed(path: &Path) -> bool {
-    let text = path.to_string_lossy().replace('\\', "/");
+    let text = normalize_path(path);
     let lower = text.to_ascii_lowercase();
     matches!(
         lower.as_str(),
