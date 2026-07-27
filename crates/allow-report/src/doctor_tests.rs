@@ -86,7 +86,10 @@ fn doctor_json_renderer_records_root_config_and_inventory() {
     "found": false,
     "path": null,
     "valid": null
-  }}
+  }},
+  "evidence_repair_queues": [
+
+  ]
 }}
 "#,
         render_claim_boundary_json(),
@@ -305,7 +308,9 @@ fn doctor_json_renderer_routes_evidence_repair_queues() {
 }
 
 #[test]
-fn doctor_json_renderer_omits_evidence_repair_queues_when_clean() {
+fn doctor_json_renderer_always_includes_evidence_repair_queues_even_when_clean() {
+    // #1858: doctor should always emit evidence_repair_queues (even when empty)
+    // for consistent empty-handling across artifacts, matching receipt and report.
     let json = render_doctor_json(DoctorReport {
         source_tree_root: "H:/Code/Rust/cargo-allow",
         root_discovery: "nearest_git_root",
@@ -334,7 +339,10 @@ fn doctor_json_renderer_omits_evidence_repair_queues_when_clean() {
         federation_divergences: None,
     });
 
-    assert!(!json.contains("\"evidence_repair_queues\""));
+    assert!(
+        json.contains("\"evidence_repair_queues\":"),
+        "doctor should always emit evidence_repair_queues even when clean: {json}"
+    );
 }
 
 #[test]

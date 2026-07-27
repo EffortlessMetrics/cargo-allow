@@ -75,7 +75,7 @@ fn saved_doctor_output_routes_redundant_segment_evidence_scope_repair_queue() {
     );
     assert!(diagnostic.contains("evidence path must not contain current directory segments"));
     let queues = value
-        .pointer("/config/evidence_repair_queues")
+        .pointer("/evidence_repair_queues")
         .and_then(serde_json::Value::as_array)
         .unwrap_or_else(|| {
             std::panic::panic_any("doctor should route redundant evidence repair queue")
@@ -120,7 +120,7 @@ fn saved_doctor_output_routes_redundant_segment_link_scope_repair_queue() {
     assert!(diagnostic.contains("allow-redundant-segment-link-scope link `doc:docs/./safety.md`"));
     assert!(diagnostic.contains("link path must not contain current directory segments"));
     let queues = value
-        .pointer("/config/evidence_repair_queues")
+        .pointer("/evidence_repair_queues")
         .and_then(serde_json::Value::as_array)
         .unwrap_or_else(|| {
             std::panic::panic_any("doctor should route redundant link repair queue")

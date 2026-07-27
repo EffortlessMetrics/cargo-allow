@@ -246,9 +246,9 @@ pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
             facts.submodule_paths
         ));
     }
-    append_doctor_evidence_repair_queues_json(facts, &mut out);
     out.push_str("\n  },\n");
     append_federation_doctor_json(facts, &mut out);
+    append_doctor_evidence_repair_queues_json(facts, &mut out);
     out.push_str("\n}\n");
     out
 }
@@ -380,20 +380,19 @@ fn federation_status_text(valid: Option<bool>) -> String {
 
 fn append_doctor_evidence_repair_queues_json(facts: DoctorReport<'_>, out: &mut String) {
     let queues = doctor_evidence_repair_queues(facts);
-    if queues.is_empty() {
-        return;
-    }
-
-    out.push_str(",\n    \"evidence_repair_queues\": [\n");
+    // #1858: always emit the array (even when empty) so downstream consumers
+    // can distinguish "feature off" from "zero count" without per-artifact
+    // special-casing. Receipt and report already do this; doctor now matches.
+    out.push_str(",\n  \"evidence_repair_queues\": [\n");
     for (index, queue) in queues.iter().enumerate() {
         if index > 0 {
             out.push_str(",\n");
         }
-        out.push_str("      {\n");
-        push_evidence_repair_queue_json_fields(out, queue, "        ");
-        out.push_str("      }");
+        out.push_str("    {\n");
+        push_evidence_repair_queue_json_fields(out, queue, "      ");
+        out.push_str("    }");
     }
-    out.push_str("\n    ]");
+    out.push_str("\n  ]");
 }
 
 fn doctor_evidence_repair_queues(facts: DoctorReport<'_>) -> Vec<EvidenceRepairQueue> {
