@@ -9,6 +9,7 @@ mod evaluation;
 mod lint;
 mod mode;
 mod parity;
+mod property;
 mod scoring;
 mod selector_precision;
 
