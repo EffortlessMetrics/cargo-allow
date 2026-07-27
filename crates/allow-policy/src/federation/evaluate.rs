@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use allow_core::{CargoAllowError, CargoAllowResult, LedgerProvenance};
+use allow_core::{CargoAllowError, CargoAllowResult, LedgerProvenance, normalize_path};
 
 use super::FederationConfig;
 use super::config::{LedgerEntry, LedgerRole, ValidatedFederationConfig};
@@ -236,13 +236,13 @@ fn ledger_provenance_from_lane_contributor(
 }
 
 fn normalize_repo_relative(path: &Path) -> String {
-    path.to_string_lossy().replace('\\', "/")
+    normalize_path(path)
 }
 
 fn normalize_repo_relative_path(path: &Path, root: &Path) -> String {
     path.strip_prefix(root)
-        .map(|relative| relative.to_string_lossy().replace('\\', "/"))
-        .unwrap_or_else(|_| path.to_string_lossy().replace('\\', "/"))
+        .map(normalize_path)
+        .unwrap_or_else(|_| normalize_path(path))
 }
 
 fn missing_policy_config_error(skipped: &[SkippedPolicyCandidate]) -> CargoAllowError {

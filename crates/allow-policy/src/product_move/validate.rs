@@ -1,5 +1,5 @@
 use super::config::{MoveDiscovery, MoveEntry, ProductMoveLedger, parse_product_move_ledger_at};
-use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_core::{CargoAllowError, CargoAllowResult, normalize_path};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Component, Path};
 
@@ -613,7 +613,7 @@ fn collect_files(root: &Path, relative: &Path, out: &mut BTreeSet<String>) -> Re
         ));
     }
     if absolute.is_file() {
-        out.insert(relative.to_string_lossy().replace('\\', "/"));
+        out.insert(normalize_path(relative));
         return Ok(());
     }
     let entries = std::fs::read_dir(&absolute).map_err(|error| {
@@ -633,7 +633,7 @@ fn collect_files(root: &Path, relative: &Path, out: &mut BTreeSet<String>) -> Re
         if child_path.is_dir() {
             collect_files(root, &child, out)?;
         } else if child_path.is_file() {
-            out.insert(child.to_string_lossy().replace('\\', "/"));
+            out.insert(normalize_path(&child));
         }
     }
     Ok(())

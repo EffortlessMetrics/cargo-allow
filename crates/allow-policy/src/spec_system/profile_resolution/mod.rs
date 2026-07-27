@@ -1,3 +1,4 @@
+use allow_core::normalize_path;
 use std::path::Path;
 
 /// Relative path for a profile-specific config under `.allow/profiles/`.
@@ -105,7 +106,7 @@ pub fn profile_config_conflict_message(resolved: &ResolvedProfileConfig) -> Opti
 }
 
 fn normalize_repo_relative_path(path: &Path) -> String {
-    path.to_string_lossy().replace('\\', "/")
+    normalize_path(path)
 }
 
 #[cfg(test)]
