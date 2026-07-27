@@ -136,13 +136,16 @@ pub fn scan_rust_files_cached(
         }
         files_considered += 1;
         let path = root.join(rel);
-        // Check if the file can be read; if not, count it as skipped (#2486).
-        if read_text_file_capped(&path).is_err() {
+        // Scan the file via cache; scan_file returns a skipped flag when the
+        // file can't be read (oversized, binary, permission-denied) (#2801).
+        // This eliminates the previous double-read: the probe read at line 140
+        // was redundant with scan_file's own read.
+        let (mut findings, has_parse_error, skipped) = cache.scan_file(root, rel)?;
+        if skipped {
             files_skipped += 1;
             eprintln!("warning: skipping {} (read error)", path.display());
             continue;
         }
-        let (mut findings, has_parse_error) = cache.scan_file(root, rel)?;
         if has_parse_error {
             files_with_parse_errors += 1;
         }

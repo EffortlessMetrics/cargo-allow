@@ -1,0 +1,9 @@
+kind: Fixed
+body: >-
+  Scanner: eliminated double-read of each file in the cached scan path (#2801).
+  Previously `scan_rust_files_cached` read each file twice: once to probe
+  readability (line 140), then again inside `ScanCache::scan_file` for the
+  cache. Now `scan_file` returns a `skipped` flag when the file can't be read,
+  and the caller uses it directly — one read per file instead of two. Also
+  closes the silent skip accounting gap: `scan_file` now reports skips via the
+  return value instead of silently returning empty findings.

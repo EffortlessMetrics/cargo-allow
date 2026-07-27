@@ -42,15 +42,23 @@ impl ScanCache {
 
     /// Scan a single Rust file, using the cache if the file hasn't changed.
     /// Falls through to a full re-parse on any cache miss.
-    pub fn scan_file(&mut self, root: &Path, rel: &Path) -> CargoAllowResult<(Vec<Finding>, bool)> {
+    ///
+    /// Returns `(findings, has_parse_error, skipped)`. When `skipped` is true,
+    /// the file could not be read (oversized, binary, permission-denied) and
+    /// the caller should count it as a skipped file (#2801).
+    pub fn scan_file(
+        &mut self,
+        root: &Path,
+        rel: &Path,
+    ) -> CargoAllowResult<(Vec<Finding>, bool, bool)> {
         let abs = root.join(rel);
 
         // Read metadata for cache key
         let metadata = match std::fs::metadata(&abs) {
             Ok(m) => m,
             Err(_) => {
-                // Can't read metadata — skip caching, let the caller handle it
-                return Ok((Vec::new(), false));
+                // Can't read metadata — skip
+                return Ok((Vec::new(), false, true));
             }
         };
 
@@ -62,13 +70,13 @@ impl ScanCache {
             && entry.mtime == mtime
             && entry.size == size
         {
-            return Ok((entry.findings.clone(), entry.has_parse_error));
+            return Ok((entry.findings.clone(), entry.has_parse_error, false));
         }
 
-        // Cache miss — parse the file
+        // Cache miss — read and parse the file
         let text = match allow_core::read_text_file_capped(&abs) {
             Ok(text) => text,
-            Err(_) => return Ok((Vec::new(), false)),
+            Err(_) => return Ok((Vec::new(), false, true)),
         };
         let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
         let scan = scan_rust_source_with_completeness(rel, text);
@@ -84,7 +92,7 @@ impl ScanCache {
             },
         );
 
-        Ok((scan.findings, scan.has_parse_error))
+        Ok((scan.findings, scan.has_parse_error, false))
     }
 
     /// Scan multiple files, using the cache for unchanged files.
@@ -95,7 +103,7 @@ impl ScanCache {
             if rel.extension().and_then(|e| e.to_str()) != Some("rs") {
                 continue;
             }
-            let (findings, _has_parse_error) = self.scan_file(root, rel)?;
+            let (findings, _has_parse_error, _skipped) = self.scan_file(root, rel)?;
             out.extend(findings);
         }
         Ok(out)
