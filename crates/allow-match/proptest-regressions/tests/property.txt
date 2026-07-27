@@ -1,7 +1,0 @@
-# Seeds for failure cases proptest has generated in the past. It is
-# automatically read and these particular cases re-run before any
-# novel cases are generated.
-#
-# It is recommended to check this file in to source control so that
-# everyone who runs the test benefits from these saved cases.
-cc 68ce406bdf8049ed46d1ee11a7cb4bd89a8c2a82cc5f5c7b25e3599aba53b57c # shrinks to ast_kind = "unwrap", callee = "unwrap", container = "load"

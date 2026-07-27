@@ -8,7 +8,7 @@ root = "."
 inventory = "git-tracked"
 default_mode = "no-new"
 ignored = [".git/**", "target/**"]
-generated = ["target/**", "vendor/**"]
+generated = ["target/**", "vendor/**", "**/proptest-regressions/**"]
 
 [requirements]
 owner_required = true
