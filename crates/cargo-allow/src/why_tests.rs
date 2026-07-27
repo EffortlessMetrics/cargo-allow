@@ -1,6 +1,6 @@
 use super::why_render::why_next_steps;
 use super::*;
-use crate::{CargoAllowCli, CargoAllowCommand, RootArgs};
+use crate::{CargoAllowCli, CargoAllowCommand, HumanJsonFormat, RootArgs};
 use allow_core::{
     AllowEntry, Finding, FindingKind, Lifecycle, MatchOutcome, MatchStatus, Selector, Span,
     StructuralIdentity, normalize_path,
@@ -34,7 +34,7 @@ fn clap_parses_why_finding_location() {
             assert_eq!(args.kind, "panic");
             assert_eq!(args.path, PathBuf::from("src/lib.rs"));
             assert_eq!(args.line, 42);
-            assert_eq!(args.format, WhyFormat::Json);
+            assert_eq!(args.format, HumanJsonFormat::Json);
             assert_eq!(args.plan, Some(PathBuf::from("target/add-plan.json")));
             assert_eq!(args.root.root.as_deref(), Some(std::path::Path::new(".")));
         }
@@ -329,7 +329,7 @@ fn why_args_round_trip_through_root_args() {
         path: PathBuf::from("crates/foo/src/lib.rs"),
         line: 3,
         include_untracked: true,
-        format: WhyFormat::Human,
+        format: HumanJsonFormat::Human,
         output: Some(PathBuf::from("target/why.md")),
         plan: Some(PathBuf::from("target/add-plan.json")),
     };

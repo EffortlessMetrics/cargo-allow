@@ -2,7 +2,7 @@ use allow_core::CargoAllowResult;
 use allow_match::{CheckMode, evaluate};
 
 use crate::{
-    EvidenceValidationMode, SourceTreeReportContext, emit_text,
+    EvidenceValidationMode, HumanJsonFormat, SourceTreeReportContext, emit_text,
     evidence_inventory::current_evidence_source_tree_files, load_world_with_evidence_mode,
 };
 
@@ -17,7 +17,7 @@ mod list_rows;
 #[path = "list_types.rs"]
 mod list_types;
 pub(crate) use list_args::ListArgs;
-use list_args::{ListFormat, list_filters};
+use list_args::list_filters;
 #[cfg(test)]
 use list_render::render_list_rows;
 #[cfg(test)]
@@ -61,7 +61,7 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
         kind_arg: args.kind.as_deref(),
     };
     let text = match args.format {
-        ListFormat::Human => {
+        HumanJsonFormat::Human => {
             let columns = args
                 .columns
                 .as_deref()
@@ -71,7 +71,7 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
             let columns = columns.unwrap_or_else(|| allow_report::ListColumn::ALL.to_vec());
             render_list_rows_with_columns(&rows, &filters, context, &columns)
         }
-        ListFormat::Json => render_list_rows_json(&rows, &filters, context),
+        HumanJsonFormat::Json => render_list_rows_json(&rows, &filters, context),
     };
     emit_text(args.output.as_deref(), &text)?;
     Ok(())

@@ -1,6 +1,5 @@
-use super::worklist_args::WorklistFormat;
 use super::{WorklistArgs, cmd_worklist};
-use crate::{ProfileArg, RootArgs};
+use crate::{HumanJsonFormat, ProfileArg, RootArgs};
 use serde_json::Value;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -281,7 +280,7 @@ fn worklist_args(root: &Path, output: &Path) -> WorklistArgs {
         broken_evidence: false,
         weak_evidence: false,
         include_untracked: false,
-        format: WorklistFormat::Json,
+        format: HumanJsonFormat::Json,
         output: Some(output.to_path_buf()),
     }
 }

@@ -11,13 +11,14 @@ mod refresh_select;
 #[path = "refresh_types.rs"]
 mod refresh_types;
 use allow_report::MutationReceipt;
-pub(crate) use refresh_args::{RefreshArgs, RefreshFormat};
+pub(crate) use refresh_args::RefreshArgs;
 use refresh_render::{render_refresh_json, render_refresh_result};
 use refresh_select::{apply_last_seen_refresh, select_location_drift_refresh};
 use refresh_types::{RefreshContext, RefreshEmitInput, RefreshRenderInput};
 
 use crate::{
-    EvidenceValidationMode, MutationLock, SourceTreeReportContext, config_path, emit_text,
+    EvidenceValidationMode, HumanJsonFormat, MutationLock, SourceTreeReportContext, config_path,
+    emit_text,
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
@@ -178,8 +179,8 @@ fn render_and_emit(args: &RefreshArgs, input: RefreshEmitInput<'_>) -> CargoAllo
         mutation_receipt: input.mutation_receipt,
     };
     let text = match args.format {
-        RefreshFormat::Human => render_refresh_result(render_input),
-        RefreshFormat::Json => render_refresh_json(render_input),
+        HumanJsonFormat::Human => render_refresh_result(render_input),
+        HumanJsonFormat::Json => render_refresh_json(render_input),
     };
     emit_text(args.output.as_deref(), &text)?;
     Ok(())

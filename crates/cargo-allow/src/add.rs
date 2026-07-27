@@ -16,7 +16,6 @@ mod add_render;
 #[path = "add_types.rs"]
 mod add_types;
 pub(crate) use add_args::AddArgs;
-use add_args::AddSummaryFormat;
 pub(crate) use add_entry::select_add_finding;
 use add_entry::{
     AddBroadRequest, AddEntryRequest, allow_entry_broad, allow_entry_from_finding,
@@ -26,7 +25,7 @@ use add_render::{add_mutation_receipt, render_add_summary, render_add_summary_js
 pub(super) use add_types::AddContext;
 
 use crate::{
-    MutationLock, SourceTreeReportContext, config_path, emit_stderr_text,
+    HumanJsonFormat, MutationLock, SourceTreeReportContext, config_path, emit_stderr_text,
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
@@ -157,10 +156,10 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         }
         broad.occurrence_limit = Some(count);
         let summary = match args.summary_format {
-            AddSummaryFormat::Human => {
+            HumanJsonFormat::Human => {
                 render_add_summary_broad_human(&broad, policy_output.as_deref())
             }
-            AddSummaryFormat::Json => render_add_summary_broad_json(
+            HumanJsonFormat::Json => render_add_summary_broad_json(
                 &broad,
                 policy_output.as_deref(),
                 args.force,
@@ -201,10 +200,10 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
             expires: args.expires.clone(),
         });
         let summary = match args.summary_format {
-            AddSummaryFormat::Human => {
+            HumanJsonFormat::Human => {
                 render_add_summary(&entry, finding, policy_output.as_deref(), context)
             }
-            AddSummaryFormat::Json => render_add_summary_json(
+            HumanJsonFormat::Json => render_add_summary_json(
                 &entry,
                 finding,
                 policy_output.as_deref(),

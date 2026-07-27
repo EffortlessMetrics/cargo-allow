@@ -1,6 +1,6 @@
 use super::test_support::{test_entry, test_finding};
 use super::*;
-use crate::{CargoAllowCli, CargoAllowCommand, ProfileArg, RootArgs};
+use crate::{CargoAllowCli, CargoAllowCommand, HumanJsonFormat, ProfileArg, RootArgs};
 use allow_core::FindingKind;
 use clap::Parser;
 use serde_json::Value;
@@ -35,7 +35,7 @@ fn clap_parses_explain_id_and_config() {
             id,
             config,
             include_untracked: true,
-            format: ExplainFormat::Json,
+            format: HumanJsonFormat::Json,
             output,
             ..
         })) if id == "allow-0001"
@@ -64,7 +64,7 @@ fn clap_parses_spec_system_profile_for_explain() {
         Some(CargoAllowCommand::Explain(ExplainArgs {
             id,
             profile: Some(ProfileArg::SpecSystem),
-            format: ExplainFormat::Json,
+            format: HumanJsonFormat::Json,
             output,
             ..
         })) if id == "CARGO-ALLOW-SPEC-0001"
@@ -86,7 +86,7 @@ fn explain_spec_system_profile_json_reports_one_artifact() {
         config: None,
         profile: Some(ProfileArg::SpecSystem),
         include_untracked: false,
-        format: ExplainFormat::Json,
+        format: HumanJsonFormat::Json,
         output: Some(output.clone()),
     });
 
@@ -180,7 +180,7 @@ fn explain_spec_system_profile_human_reports_artifact_links_and_boundary() {
         config: None,
         profile: Some(ProfileArg::SpecSystem),
         include_untracked: false,
-        format: ExplainFormat::Human,
+        format: HumanJsonFormat::Human,
         output: Some(output.clone()),
     });
 
@@ -217,7 +217,7 @@ fn explain_spec_system_profile_rejects_include_untracked() {
         config: None,
         profile: Some(ProfileArg::SpecSystem),
         include_untracked: true,
-        format: ExplainFormat::Human,
+        format: HumanJsonFormat::Human,
         output: None,
     });
 
@@ -246,7 +246,7 @@ fn explain_spec_system_profile_rejects_unknown_artifact() {
         config: None,
         profile: Some(ProfileArg::SpecSystem),
         include_untracked: false,
-        format: ExplainFormat::Human,
+        format: HumanJsonFormat::Human,
         output: None,
     });
 

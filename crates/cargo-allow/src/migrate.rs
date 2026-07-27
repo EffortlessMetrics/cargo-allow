@@ -2,7 +2,7 @@ use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_policy::{render_policy, validate_policy};
 
 use crate::{
-    MutationLock, emit_stderr_text,
+    HumanJsonFormat, MutationLock, emit_stderr_text,
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
@@ -20,7 +20,6 @@ mod migrate_render;
 #[path = "migrate_types.rs"]
 mod migrate_types;
 pub(crate) use migrate_args::MigrateArgs;
-use migrate_args::MigrateSummaryFormat;
 use migrate_load::{load_repo_policy_migration_config, load_single_file_migration_config};
 use migrate_render::{render_migrate_summary, render_migrate_summary_json};
 use migrate_types::MigrateContext;
@@ -129,13 +128,13 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
         }
     }
     let summary = match args.summary_format {
-        MigrateSummaryFormat::Human => render_migrate_summary(
+        HumanJsonFormat::Human => render_migrate_summary(
             &cfg,
             &migration.context,
             &args.out,
             args.force || args.update,
         ),
-        MigrateSummaryFormat::Json => render_migrate_summary_json(
+        HumanJsonFormat::Json => render_migrate_summary_json(
             &cfg,
             &migration.context,
             &args.out,

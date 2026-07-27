@@ -1,6 +1,6 @@
 use super::*;
 use crate::artifact_contract_support::parse_json_artifact;
-use crate::{CargoAllowCli, CargoAllowCommand};
+use crate::{CargoAllowCli, CargoAllowCommand, HumanJsonFormat};
 use allow_core::{Span, StructuralIdentity};
 use allow_policy::BASELINE_DEBT_MAX_DAYS;
 use clap::Parser;
@@ -27,7 +27,7 @@ fn clap_parses_propose_force() {
         Some(CargoAllowCommand::Propose(ProposeArgs {
             write: Some(path),
             force: true,
-            summary_format: ProposeSummaryFormat::Json,
+            summary_format: HumanJsonFormat::Json,
             summary_output: Some(summary_output),
             ..
         })) if path == Path::new("target/proposed.toml")

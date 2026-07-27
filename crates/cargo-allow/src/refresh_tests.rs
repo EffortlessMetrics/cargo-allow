@@ -1,5 +1,5 @@
-use super::{RefreshArgs, RefreshFormat, cmd_refresh};
-use crate::{CargoAllowCli, CargoAllowCommand};
+use super::{RefreshArgs, cmd_refresh};
+use crate::{CargoAllowCli, CargoAllowCommand, HumanJsonFormat};
 use allow_core::MatchStatus;
 use allow_match::{CheckMode, evaluate};
 use allow_policy::load_policy;
@@ -75,7 +75,7 @@ fn clap_parses_refresh_dry_run_json() {
             allow_id,
             dry_run: true,
             include_untracked: true,
-            format: RefreshFormat::Json,
+            format: HumanJsonFormat::Json,
             output: Some(path),
             ..
         })) if allow_id == "allow-0250" && path == Path::new("target/refresh.json")
@@ -110,7 +110,7 @@ fn refresh_fixture_records_drift_receipt_without_extending_lifecycle() {
         dry_run: true,
         write: false,
         include_untracked: true,
-        format: RefreshFormat::Json,
+        format: HumanJsonFormat::Json,
         output: Some(output_path.clone()),
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("refresh dry-run: {err}")));
@@ -138,7 +138,7 @@ fn refresh_fixture_records_drift_receipt_without_extending_lifecycle() {
         dry_run: false,
         write: true,
         include_untracked: true,
-        format: RefreshFormat::Human,
+        format: HumanJsonFormat::Human,
         output: None,
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("refresh write: {err}")));

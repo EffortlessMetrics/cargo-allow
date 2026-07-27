@@ -1,7 +1,7 @@
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use std::path::PathBuf;
 
-use crate::{ProfileArg, RootArgs, parse_kind_filter, parse_match_status_arg};
+use crate::{HumanJsonFormat, ProfileArg, RootArgs, parse_kind_filter, parse_match_status_arg};
 
 use super::worklist_item_kind::parse_work_item_kind_filter;
 use super::worklist_types::WorklistFilters;
@@ -70,17 +70,11 @@ pub(crate) struct WorklistArgs {
     #[arg(long)]
     pub(super) include_untracked: bool,
     /// Output format.
-    #[arg(long, value_enum, default_value_t = WorklistFormat::Human)]
-    pub(super) format: WorklistFormat,
+    #[arg(long, value_enum, default_value_t = HumanJsonFormat::Human)]
+    pub(super) format: HumanJsonFormat,
     /// Write worklist to a file instead of stdout.
     #[arg(long)]
     pub(super) output: Option<PathBuf>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-pub(super) enum WorklistFormat {
-    Human,
-    Json,
 }
 
 fn parse_worklist_kind_filter(value: &str) -> Result<String, String> {

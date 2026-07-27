@@ -158,6 +158,16 @@ pub(crate) enum OutputFormat {
     Markdown,
 }
 
+/// Shared Human/Json format enum for commands that only produce those two
+/// output styles (list, worklist, doctor, explain, why, prune, refresh, and
+/// the summary-format for add, propose, migrate). Commands that support
+/// HTML/SARIF/Markdown use [OutputFormat] instead.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(crate) enum HumanJsonFormat {
+    Human,
+    Json,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub(crate) enum ProfileArg {
     #[value(name = "spec-system")]

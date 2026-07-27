@@ -1,5 +1,5 @@
 use super::*;
-use crate::{CargoAllowCli, CargoAllowCommand};
+use crate::{CargoAllowCli, CargoAllowCommand, HumanJsonFormat};
 use allow_core::{AllowEntry, CargoAllowError, Lifecycle, Selector};
 use allow_policy::load_policy;
 use clap::Parser;
@@ -33,7 +33,7 @@ fn clap_parses_prune_stale_dry_run() {
             stale: true,
             dry_run: true,
             include_untracked: true,
-            format: PruneFormat::Json,
+            format: HumanJsonFormat::Json,
             output: Some(path),
             ..
         })) if path == Path::new("target/prune.json")
@@ -187,7 +187,7 @@ fn cmd_prune_write_reports_missing_policy_config_with_exact_error() {
         dry_run: false,
         write: true,
         include_untracked: false,
-        format: PruneFormat::Human,
+        format: HumanJsonFormat::Human,
         output: None,
     })
     .expect_err("prune write without policy config should fail");
@@ -231,7 +231,7 @@ fn cmd_prune_write_removes_only_stale_entries_from_policy_file() {
         dry_run: false,
         write: true,
         include_untracked: false,
-        format: PruneFormat::Json,
+        format: HumanJsonFormat::Json,
         output: Some(root.join("prune.json")),
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("prune write: {err}")));
@@ -326,7 +326,7 @@ fn cmd_prune_write_can_remove_stale_broken_evidence_entry() {
         dry_run: false,
         write: true,
         include_untracked: false,
-        format: PruneFormat::Human,
+        format: HumanJsonFormat::Human,
         output: None,
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("prune stale broken evidence: {err}")));
@@ -372,7 +372,7 @@ fn cmd_prune_write_rejects_broken_evidence_that_would_remain() {
         dry_run: false,
         write: true,
         include_untracked: false,
-        format: PruneFormat::Human,
+        format: HumanJsonFormat::Human,
         output: None,
     })
     .expect_err("prune write should reject broken evidence that remains");
@@ -427,7 +427,7 @@ fn cmd_prune_write_rejects_broken_link_that_would_remain() {
         dry_run: false,
         write: true,
         include_untracked: false,
-        format: PruneFormat::Human,
+        format: HumanJsonFormat::Human,
         output: None,
     })
     .expect_err("prune write should reject broken links that remain");
@@ -493,7 +493,7 @@ fn cmd_prune_write_rejects_untracked_evidence_that_would_remain_by_default() {
         dry_run: false,
         write: true,
         include_untracked: false,
-        format: PruneFormat::Human,
+        format: HumanJsonFormat::Human,
         output: None,
     })
     .expect_err("prune write should reject untracked evidence that remains by default");
@@ -556,7 +556,7 @@ fn cmd_prune_write_include_untracked_accepts_untracked_evidence_that_would_remai
         dry_run: false,
         write: true,
         include_untracked: true,
-        format: PruneFormat::Human,
+        format: HumanJsonFormat::Human,
         output: None,
     })
     .unwrap_or_else(|err| {

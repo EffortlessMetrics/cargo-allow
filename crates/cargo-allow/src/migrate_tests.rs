@@ -1,5 +1,5 @@
 use super::*;
-use crate::{CargoAllowCli, CargoAllowCommand};
+use crate::{CargoAllowCli, CargoAllowCommand, HumanJsonFormat};
 use clap::Parser;
 use serde_json::Value;
 use std::fs;
@@ -30,7 +30,7 @@ fn clap_parses_repo_policy_migrate() {
             repo_policy: Some(dir),
             out,
             force: true,
-            summary_format: MigrateSummaryFormat::Json,
+            summary_format: HumanJsonFormat::Json,
             summary_output: Some(summary_output),
             ..
         })) if dir == Path::new("policy")
@@ -48,7 +48,7 @@ fn migrate_requires_one_input_source() {
         out: PathBuf::from("target/unused.toml"),
         force: false,
         update: false,
-        summary_format: MigrateSummaryFormat::Human,
+        summary_format: HumanJsonFormat::Human,
         summary_output: None,
     })
     .expect_err("missing input source should fail");
@@ -65,7 +65,7 @@ fn migrate_requires_one_input_source() {
         out: PathBuf::from("target/unused.toml"),
         force: false,
         update: false,
-        summary_format: MigrateSummaryFormat::Human,
+        summary_format: HumanJsonFormat::Human,
         summary_output: None,
     })
     .expect_err("conflicting input sources should fail");
@@ -98,7 +98,7 @@ fn migrate_refuses_existing_output_without_force() {
         out,
         force: false,
         update: false,
-        summary_format: MigrateSummaryFormat::Human,
+        summary_format: HumanJsonFormat::Human,
         summary_output: None,
     })
     .expect_err("existing output should require --force");
@@ -130,7 +130,7 @@ fn migrate_repo_policy_writes_combined_canonical_policy() {
         out: out.clone(),
         force: false,
         update: false,
-        summary_format: MigrateSummaryFormat::Human,
+        summary_format: HumanJsonFormat::Human,
         summary_output: None,
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("repo-policy migrate: {err}")));
@@ -167,7 +167,7 @@ fn migrate_repo_policy_writes_json_summary_with_inventory_context() {
         out: out.clone(),
         force: false,
         update: false,
-        summary_format: MigrateSummaryFormat::Json,
+        summary_format: HumanJsonFormat::Json,
         summary_output: Some(summary_output.clone()),
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("repo-policy migrate: {err}")));
@@ -279,7 +279,7 @@ fn migrate_repo_policy_summary_counts_unsafe_weak_evidence() {
         out,
         force: false,
         update: false,
-        summary_format: MigrateSummaryFormat::Json,
+        summary_format: HumanJsonFormat::Json,
         summary_output: Some(summary_output.clone()),
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("unsafe repo-policy migrate: {err}")));
@@ -333,7 +333,7 @@ fn migrate_repo_policy_summary_counts_unsafe_broken_evidence() {
         out,
         force: false,
         update: false,
-        summary_format: MigrateSummaryFormat::Json,
+        summary_format: HumanJsonFormat::Json,
         summary_output: Some(summary_output.clone()),
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("unsafe repo-policy migrate: {err}")));
@@ -390,7 +390,7 @@ fn migrate_repo_policy_human_summary_routes_evidence_repair_queues() {
         out,
         force: false,
         update: false,
-        summary_format: MigrateSummaryFormat::Human,
+        summary_format: HumanJsonFormat::Human,
         summary_output: Some(summary_output.clone()),
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("unsafe repo-policy migrate: {err}")));
@@ -443,7 +443,7 @@ fn migrate_from_uses_explicit_root_for_evidence_diagnostics() {
         out,
         force: false,
         update: false,
-        summary_format: MigrateSummaryFormat::Json,
+        summary_format: HumanJsonFormat::Json,
         summary_output: Some(summary_output.clone()),
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("single-file migrate: {err}")));
@@ -519,7 +519,7 @@ fn migrate_from_infers_root_for_evidence_diagnostics() {
         out,
         force: false,
         update: false,
-        summary_format: MigrateSummaryFormat::Json,
+        summary_format: HumanJsonFormat::Json,
         summary_output: Some(summary_output.clone()),
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("single-file migrate: {err}")));

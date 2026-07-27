@@ -4,7 +4,9 @@ use allow_core::{
 };
 use allow_match::{CheckMode, evaluate, explain_match_failure, score_match};
 
-use crate::{SourceTreeReportContext, emit_text, load_world_for_path, parse_kind_filter};
+use crate::{
+    HumanJsonFormat, SourceTreeReportContext, emit_text, load_world_for_path, parse_kind_filter,
+};
 
 #[path = "why_args.rs"]
 mod why_args;
@@ -16,7 +18,6 @@ mod why_render;
 mod why_shell;
 
 pub(crate) use why_args::WhyArgs;
-use why_args::WhyFormat;
 use why_render::{WhyCandidate, render_why_json, render_why_text};
 
 const MAX_CANDIDATES: usize = 8;
@@ -80,8 +81,8 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
         crate::write_file_no_overwrite(plan_path, &plan, false)?;
     }
     let text = match args.format {
-        WhyFormat::Human => render_why_text(finding, &outcome, &candidates),
-        WhyFormat::Json => {
+        HumanJsonFormat::Human => render_why_text(finding, &outcome, &candidates),
+        HumanJsonFormat::Json => {
             render_why_json(source_context.inventory(), finding, &outcome, &candidates)
         }
     };

@@ -1,10 +1,10 @@
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use std::path::PathBuf;
 
 use allow_core::SimpleDate;
 use allow_policy::BASELINE_DEBT_MAX_DAYS;
 
-use crate::{RootArgs, parse_kind_filter_arg};
+use crate::{HumanJsonFormat, RootArgs, parse_kind_filter_arg};
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct ProposeArgs {
@@ -29,8 +29,8 @@ pub(crate) struct ProposeArgs {
     #[arg(long)]
     pub(super) force: bool,
     /// Summary output format. Policy output remains TOML.
-    #[arg(long, value_enum, default_value_t = ProposeSummaryFormat::Human)]
-    pub(super) summary_format: ProposeSummaryFormat,
+    #[arg(long, value_enum, default_value_t = HumanJsonFormat::Human)]
+    pub(super) summary_format: HumanJsonFormat,
     /// Write proposal summary to a file instead of stderr.
     #[arg(long)]
     pub(super) summary_output: Option<PathBuf>,
@@ -38,12 +38,6 @@ pub(crate) struct ProposeArgs {
     /// Default: 50. Use --max 0 for unlimited.
     #[arg(long, default_value_t = 50)]
     pub(super) max: usize,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-pub(super) enum ProposeSummaryFormat {
-    Human,
-    Json,
 }
 
 fn parse_propose_expires_arg(value: &str) -> Result<String, String> {
