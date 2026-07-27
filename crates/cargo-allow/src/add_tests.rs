@@ -126,7 +126,8 @@ fn select_add_finding_fails_closed_on_equal_nearest_findings() {
     assert_eq!(
         err,
         CargoAllowError::new(format!(
-            "ambiguous add request: 2 findings are equally near {}:{}",
+            "ambiguous add request: 2 findings are equally near {}:{}; \
+             specify an exact --line that matches only one finding",
             allow_core::normalize_path(path),
             line
         ))
@@ -153,10 +154,13 @@ fn select_add_finding_reports_missing_nearby_findings() {
     assert_eq!(
         err,
         CargoAllowError::new(format!(
-            "no current {} finding found near {}:{}",
+            "no current {} finding found near {}:{}; \
+             run `cargo-allow check --kind {} --format json` to list current findings, \
+             or use `--include-untracked` if the source file is not git-tracked",
             kind.kind,
             allow_core::normalize_path(path),
-            line
+            line,
+            kind.kind
         ))
     );
 }
