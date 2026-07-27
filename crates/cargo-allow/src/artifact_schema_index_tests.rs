@@ -31,6 +31,9 @@ fn schema_contract_registry_covers_every_documented_artifact_schema() {
             name.strip_suffix(".schema.json")
                 .map(std::string::ToString::to_string)
         })
+        // tool-identity is a self-description contract, not a governed
+        // artifact (no claim_boundary/scanner_limitations/inventory).
+        .filter(|name| name != "tool-identity")
         .collect::<BTreeSet<_>>();
     let registered = schema_contracts()
         .into_iter()
