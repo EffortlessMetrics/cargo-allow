@@ -629,7 +629,10 @@ fn spec_system_init_rejects_strict_source_policy_option() {
     let err = result.expect_err("strict spec-system init should fail");
     assert_eq!(
         err,
-        CargoAllowError::new("--strict is not supported with --profile spec-system")
+        CargoAllowError::with_kind(
+            allow_core::CargoAllowErrorKind::Usage,
+            "--strict is not supported with --profile spec-system; remove --strict or drop --profile spec-system"
+        )
     );
 
     remove_init_fixture_dir(root);

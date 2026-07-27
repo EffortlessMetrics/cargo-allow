@@ -1,5 +1,6 @@
 use allow_core::{
-    AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, Finding, MatchOutcome,
+    AllowConfig, AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding,
+    MatchOutcome,
 };
 use allow_match::{CheckMode, evaluate, score_match};
 use std::path::Path;
@@ -25,8 +26,9 @@ pub(super) use explain_types::ExplainContext;
 pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
     if matches!(args.profile, Some(ProfileArg::SpecSystem)) {
         if args.include_untracked {
-            return Err(CargoAllowError::new(
-                "--include-untracked is not supported with --profile spec-system",
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Usage,
+                "--include-untracked is not supported with --profile spec-system; remove --include-untracked or drop --profile spec-system",
             ));
         }
         return spec_system::cmd_spec_system_explain(spec_system::SpecSystemExplainCommandArgs {

@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_match::{CheckMode, evaluate};
 
 #[path = "audit_args.rs"]
@@ -89,18 +89,21 @@ fn reject_source_exception_options(
     include_untracked: bool,
 ) -> CargoAllowResult<()> {
     if compat {
-        return Err(CargoAllowError::new(
-            "--compat is not supported with --profile spec-system",
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            "--compat is not supported with --profile spec-system; remove --compat or drop --profile spec-system",
         ));
     }
     if kind.is_some() {
-        return Err(CargoAllowError::new(
-            "--kind is not supported with --profile spec-system",
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            "--kind is not supported with --profile spec-system; remove --kind or drop --profile spec-system",
         ));
     }
     if include_untracked {
-        return Err(CargoAllowError::new(
-            "--include-untracked is not supported with --profile spec-system",
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            "--include-untracked is not supported with --profile spec-system; remove --include-untracked or drop --profile spec-system",
         ));
     }
     Ok(())

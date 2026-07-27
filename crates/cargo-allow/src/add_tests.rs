@@ -387,7 +387,12 @@ fn cmd_add_rejects_duplicate_allow_id() {
 
     assert_eq!(
         err,
-        CargoAllowError::new(format!("allow entry id `{duplicate_id}` already exists"))
+        CargoAllowError::with_kind(
+            allow_core::CargoAllowErrorKind::Usage,
+            format!(
+                "allow entry id `{duplicate_id}` already exists; pass a unique --id or omit --id to auto-assign"
+            )
+        )
     );
     assert!(
         !output.exists(),

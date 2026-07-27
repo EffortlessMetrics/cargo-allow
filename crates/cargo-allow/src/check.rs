@@ -339,23 +339,27 @@ fn reject_source_exception_options(
     deny: &[String],
 ) -> CargoAllowResult<()> {
     if compat {
-        return Err(CargoAllowError::new(
-            "--compat is not supported with --profile spec-system",
+        return Err(CargoAllowError::with_kind(
+            allow_core::CargoAllowErrorKind::Usage,
+            "--compat is not supported with --profile spec-system; remove --compat or drop --profile spec-system",
         ));
     }
     if kind.is_some() {
-        return Err(CargoAllowError::new(
-            "--kind is not supported with --profile spec-system",
+        return Err(CargoAllowError::with_kind(
+            allow_core::CargoAllowErrorKind::Usage,
+            "--kind is not supported with --profile spec-system; remove --kind or drop --profile spec-system",
         ));
     }
     if include_untracked {
-        return Err(CargoAllowError::new(
-            "--include-untracked is not supported with --profile spec-system",
+        return Err(CargoAllowError::with_kind(
+            allow_core::CargoAllowErrorKind::Usage,
+            "--include-untracked is not supported with --profile spec-system; remove --include-untracked or drop --profile spec-system",
         ));
     }
     if !deny.is_empty() {
-        return Err(CargoAllowError::new(
-            "--deny is not supported with --profile spec-system",
+        return Err(CargoAllowError::with_kind(
+            allow_core::CargoAllowErrorKind::Usage,
+            "--deny is not supported with --profile spec-system; remove --deny or drop --profile spec-system",
         ));
     }
     Ok(())
@@ -364,3 +368,91 @@ fn reject_source_exception_options(
 #[cfg(test)]
 #[path = "check_receipt_tests.rs"]
 mod receipt_tests;
+
+#[cfg(test)]
+mod provenance_tests {
+    use super::run_provenance;
+
+    #[test]
+    fn run_provenance_emits_rfc3339_utc_timestamp() {
+        let provenance = run_provenance();
+        let ts = &provenance.started_at;
+
+        // Must end with Z (UTC)
+        assert!(ts.ends_with('Z'), "timestamp should end with Z: {ts}");
+
+        // Must have the structure YYYY-MM-DDTHH:MM:SSZ (20 chars)
+        assert_eq!(
+            ts.len(),
+            20,
+            "timestamp should be 20 chars (YYYY-MM-DDTHH:MM:SSZ): {ts}"
+        );
+        assert_eq!(
+            ts.chars().nth(4),
+            Some('-'),
+            "position 4 should be dash: {ts}"
+        );
+        assert_eq!(
+            ts.chars().nth(7),
+            Some('-'),
+            "position 7 should be dash: {ts}"
+        );
+        assert_eq!(
+            ts.chars().nth(10),
+            Some('T'),
+            "position 10 should be T: {ts}"
+        );
+        assert_eq!(
+            ts.chars().nth(13),
+            Some(':'),
+            "position 13 should be colon: {ts}"
+        );
+        assert_eq!(
+            ts.chars().nth(16),
+            Some(':'),
+            "position 16 should be colon: {ts}"
+        );
+
+        // Year should be 2020+ (sanity check against epoch=0 regression)
+        let year: u32 = ts.get(..4).and_then(|s| s.parse().ok()).unwrap_or(0);
+        assert!(
+            year >= 2020,
+            "timestamp year should be 2020+: {ts} (got {year})"
+        );
+
+        // run_id should be non-empty and contain the process ID
+        assert!(!provenance.run_id.is_empty(), "run_id should be non-empty");
+        assert!(
+            provenance.run_id.starts_with("cargo-allow-"),
+            "run_id should start with cargo-allow-: {}",
+            provenance.run_id
+        );
+    }
+
+    #[test]
+    fn run_provenance_components_are_valid() {
+        let provenance = run_provenance();
+        let ts = &provenance.started_at;
+        let parts: Vec<&str> = ts.trim_end_matches('Z').split('T').collect();
+        assert_eq!(parts.len(), 2, "timestamp should have date and time parts");
+
+        let date_parts: Vec<&str> = parts.first().unwrap_or(&"").split('-').collect();
+        assert_eq!(date_parts.len(), 3, "date should have YYYY-MM-DD");
+        let month: u32 = date_parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(0);
+        let day: u32 = date_parts.get(2).and_then(|s| s.parse().ok()).unwrap_or(0);
+        assert!((1..=12).contains(&month), "month should be 1-12: {month}");
+        assert!((1..=31).contains(&day), "day should be 1-31: {day}");
+
+        let time_parts: Vec<&str> = parts.get(1).unwrap_or(&"").split(':').collect();
+        assert_eq!(time_parts.len(), 3, "time should have HH:MM:SS");
+        let h: u32 = time_parts
+            .first()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(99);
+        let m: u32 = time_parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(99);
+        let s: u32 = time_parts.get(2).and_then(|s| s.parse().ok()).unwrap_or(99);
+        assert!(h < 24, "hour should be 0-23: {h}");
+        assert!(m < 60, "minute should be 0-59: {m}");
+        assert!(s < 60, "second should be 0-59: {s}");
+    }
+}
