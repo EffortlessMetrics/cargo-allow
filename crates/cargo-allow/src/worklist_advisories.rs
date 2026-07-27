@@ -167,7 +167,16 @@ pub(super) fn work_items_from_policy_advisories(
                 column: None,
                 evidence_reference: None,
                 source_package: source_package_name(finding),
-                message: format!("{} uses a broad source-tree scope `{}`", entry.id, scope),
+                message: if entry.occurrence_limit.is_none() {
+                    format!(
+                        "{} uses a broad source-tree scope `{}` with no occurrence_limit — \
+                         new findings in scope are silently absorbed; \
+                         add occurrence_limit to pin the current count (#2664)",
+                        entry.id, scope
+                    )
+                } else {
+                    format!("{} uses a broad source-tree scope `{}`", entry.id, scope)
+                },
                 suggested_actions: suggested_actions(BROAD_SCOPE),
                 proof_commands: proof_commands(BROAD_SCOPE, finding, Some(entry)),
                 ledger: WorkItemLedger::from_finding(finding),
