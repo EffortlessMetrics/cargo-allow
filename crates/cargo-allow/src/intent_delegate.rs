@@ -117,7 +117,7 @@ fn delegate_staged_precommit(
     settings: &IntentDelegationSettings,
     started: Instant,
 ) -> CargoAllowResult<()> {
-    let snapshot = staged_repository_snapshot(root).map_err(map_inventory_error)?;
+    let snapshot = staged_repository_snapshot(root)?;
     let provider = match discover_intent_provider(&IntentProviderRequest {
         root,
         config_path: Some(&settings.config_path),
@@ -424,21 +424,19 @@ fn fail_delegated(
     failure: IntentDelegateFailure,
     started: Instant,
 ) -> CargoAllowResult<()> {
-    let _ = complete_delegated_precommit(
+    if let Err(report_error) = complete_delegated_precommit(
         args,
         root,
         snapshot,
         DelegatedPrecommitOutcome::from_delegate_failure(&failure),
         started.elapsed(),
-    );
+    ) {
+        eprintln!("warning: failed to write delegated precommit report: {report_error}");
+    }
     Err(CargoAllowError::with_kind(
         delegate_error_kind(failure.class),
         failure.to_string(),
     ))
-}
-
-fn map_inventory_error(error: allow_core::CargoAllowError) -> CargoAllowError {
-    error
 }
 
 fn delegate_error_kind(class: IntentDelegateFailureClass) -> CargoAllowErrorKind {
