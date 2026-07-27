@@ -10340,3 +10340,24 @@ normalized_snippet_hash = "fnv1a64:2944683783674e0a"
 [allow.last_seen]
 line = 79
 column = 9
+
+[[allow]]
+id = "allow-0483"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/tool-identity.schema.json"
+owner = "core/policy"
+classification = "tool_identity_contract_schema"
+reason = "Defines the stable v1 JSON tool-identity self-description contract emitted by cargo-allow tool identity."
+evidence = ["doc:docs/schemas/README.md", "doc:docs/source-exception-ledger.md"]
+created = "2026-07-26"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "json"
+glob = "docs/schemas/tool-identity.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1

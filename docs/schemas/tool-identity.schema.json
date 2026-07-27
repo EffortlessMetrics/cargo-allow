@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/tool-identity.v1.schema.json",
+  "title": "cargo-allow tool identity v1",
+  "description": "Self-description contract emitted by `cargo-allow tool identity`. This is NOT a governed artifact: it does not carry claim_boundary, scanner_limitations, or inventory fields. It describes the binary's build provenance and supported protocol generations for compatibility checking.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "executable_digest",
+    "reported_version",
+    "target",
+    "command_api_generation",
+    "supported_profile_generations",
+    "supported_schema_generations",
+    "supported_result_generations",
+    "supported_receipt_generations",
+    "staged_git_capability_generation",
+    "channel"
+  ],
+  "properties": {
+    "schema_id": {
+      "const": "cargo-allow.tool-identity.v1"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "executable_digest": {
+      "type": "string",
+      "description": "SHA-256 digest of the cargo-allow executable, prefixed with 'sha256:'."
+    },
+    "reported_version": {
+      "type": "string",
+      "description": "Package version from CARGO_PKG_VERSION at build time."
+    },
+    "build_source_commit": {
+      "type": ["string", "null"],
+      "description": "Git commit hash the binary was built from, if recorded at build time via CARGO_ALLOW_BUILD_COMMIT."
+    },
+    "compiler_identity": {
+      "type": ["string", "null"],
+      "description": "Rust compiler identity string, if recorded at build time via CARGO_ALLOW_RUSTC_IDENTITY."
+    },
+    "target": {
+      "type": "string",
+      "description": "Target triple in ARCH-OS form (e.g. 'x86_64-linux', 'aarch64-windows')."
+    },
+    "profile": {
+      "type": ["string", "null"],
+      "description": "Build profile (e.g. 'release', 'debug'), if recorded at build time."
+    },
+    "command_api_generation": {
+      "type": "string",
+      "description": "Command API generation identifier for CLI compatibility checking."
+    },
+    "supported_profile_generations": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Profile generations this binary can evaluate."
+    },
+    "supported_schema_generations": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Schema generations this binary can produce or validate."
+    },
+    "supported_result_generations": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Precommit result generations this binary can emit."
+    },
+    "supported_receipt_generations": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Receipt generations this binary can produce."
+    },
+    "staged_git_capability_generation": {
+      "type": "string",
+      "description": "Staged-git capability generation identifier."
+    },
+    "channel": {
+      "type": "string",
+      "enum": ["PublishedRelease", "SourcePreview"],
+      "description": "Distribution channel: PublishedRelease for crates.io/published binaries, SourcePreview for local builds."
+    }
+  }
+}

@@ -22,6 +22,18 @@ macro-expansion, or proof-level coverage.
 | Spec-system graph report | `cargo-allow.spec-system.v1` | `cargo-allow check --profile spec-system --format json`, `cargo-allow audit --profile spec-system --format json`, `cargo-allow worklist --profile spec-system --format json`, `cargo-allow doctor --profile spec-system --format json`, `cargo-allow explain <artifact-id> --profile spec-system --format json` |
 | Agent worklist | `cargo-allow.worklist.v1` | `cargo-allow worklist --format json` |
 
+## Self-description contract (not a governed artifact)
+
+| Self-description | Schema ID | Producer |
+|---|---|---|
+| Tool identity | `cargo-allow.tool-identity.v1` | `cargo-allow tool identity --format json` |
+
+The tool-identity contract carries `schema_id`/`schema_version` for
+self-description but is **not** a governed artifact: it omits
+`claim_boundary`, `scanner_limitations`, and `inventory`. Consumers should
+treat it as a build-provenance and compatibility-checking envelope, not as a
+source-tree scan result.
+
 ## Files
 
 - [doctor.schema.json](doctor.schema.json)
@@ -46,6 +58,7 @@ macro-expansion, or proof-level coverage.
 - [migrate.schema.json](migrate.schema.json)
 - [spec-system.schema.json](spec-system.schema.json)
 - [worklist.schema.json](worklist.schema.json)
+- [tool-identity.schema.json](tool-identity.schema.json) self-description contract (not a governed artifact)
 - [common.v1.json](common.v1.json) shared source-tree fragments used as the
   tested vocabulary source for future schema consolidation. Artifact schemas
   remain self-contained for consumer portability. The shared catalog includes
