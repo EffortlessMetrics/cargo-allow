@@ -6,8 +6,8 @@ use std::process::Command;
 
 use serde_json::Value;
 use support::{
-    assert_saved_json_artifact, assert_status, assert_stdout_empty, cargo_allow_command,
-    remove_temp_root, temp_root,
+    assert_saved_json_artifact, assert_stderr_empty, assert_status, assert_stdout_empty,
+    cargo_allow_command, remove_temp_root, temp_root,
 };
 
 /// Full adoption arc: init → audit → check(fail) → why → add → check(pass).
@@ -113,6 +113,7 @@ fn full_adoption_arc_from_init_to_passing_check() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("run why: {err}")));
     assert_status("why", &why, true);
     assert_stdout_empty("why", &why, "--output should not emit JSON to stdout");
+    assert_stderr_empty("why", &why, "--output should not emit side-channel status to stderr");
     let why_report = assert_saved_json_artifact(&why_output, "why", "cargo-allow.why.v1", "why");
     assert_eq!(
         why_report
