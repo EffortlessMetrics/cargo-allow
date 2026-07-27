@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_policy};
 use allow_report::MutationReceipt;
@@ -38,12 +38,14 @@ use std::path::PathBuf;
 
 pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
     if !args.stale {
-        return Err(CargoAllowError::new(
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
             "prune currently supports only --stale",
         ));
     }
     if args.dry_run && args.write {
-        return Err(CargoAllowError::new(
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
             "pass either --dry-run or --write, not both",
         ));
     }

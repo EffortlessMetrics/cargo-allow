@@ -100,9 +100,12 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     )?;
     let id = args.id.clone().unwrap_or_else(|| next_allow_id(&cfg));
     if cfg.allow.iter().any(|entry| entry.id == id) {
-        return Err(CargoAllowError::new(format!(
-            "allow entry id `{id}` already exists"
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            format!(
+                "allow entry id `{id}` already exists; pass a unique --id or omit --id to auto-assign"
+            ),
+        ));
     }
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let context = AddContext {

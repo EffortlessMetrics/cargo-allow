@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_inventory::resolve_source_tree_root;
 use allow_policy::starter_policy;
 use repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
@@ -16,8 +16,9 @@ const DEFAULT_SOURCE_EXCEPTION_CONFIG: &str = "policy/allow.toml";
 pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
     if matches!(args.profile, Some(ProfileArg::SpecSystem)) {
         if args.strict {
-            return Err(CargoAllowError::new(
-                "--strict is not supported with --profile spec-system",
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Usage,
+                "--strict is not supported with --profile spec-system; remove --strict or drop --profile spec-system",
             ));
         }
         let _mutation_lock = if args.dry_run {

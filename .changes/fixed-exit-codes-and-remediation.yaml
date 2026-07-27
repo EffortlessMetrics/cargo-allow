@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  Correctness: usage-class errors now exit with code 2 instead of 1. Previously,
+  spec-system option rejections, prune flag conflicts, diff config validation,
+  and add duplicate-id errors used `CargoAllowError::new()` (which defaults to
+  `Unknown` kind → exit 1), making them indistinguishable from policy-gate
+  failures in CI. Now they use `with_kind(CargoAllowErrorKind::Usage, ...)`
+  → exit 2. Also added remediation hints to all spec-system rejection messages
+  ("remove --flag or drop --profile spec-system"). Added unit tests for the
+  `run_provenance()` RFC 3339 timestamp formatter that was previously untested.

@@ -1,6 +1,6 @@
 use allow_core::{
-    AllowConfig, CargoAllowError, CargoAllowResult, Finding, MatchOutcome, normalize_path,
-    read_text_file_capped, source_tree_path_is_ignored,
+    AllowConfig, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding, MatchOutcome,
+    normalize_path, read_text_file_capped, source_tree_path_is_ignored,
 };
 use allow_inventory::{InventorySource, resolve_source_tree_root};
 use allow_match::{CheckMode, evaluate};
@@ -134,7 +134,8 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     let change_note_failed = !missing_change_notes.is_empty();
     if let Some(template_path) = args.write_change_note_template.as_deref() {
         if !args.require_change_note {
-            return Err(CargoAllowError::new(
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Usage,
                 "--write-change-note-template requires --require-change-note",
             ));
         }
@@ -367,18 +368,21 @@ fn explicit_diff_config_path(root: &Path, config: &Path) -> CargoAllowResult<Pat
     }
     let text = config.to_string_lossy().replace('\\', "/");
     if text.trim().is_empty() || text.trim() != text {
-        return Err(CargoAllowError::new(
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
             "explicit --config path must be source-tree-relative",
         ));
     }
     if text.starts_with('/') || text.contains(':') || text.split('/').any(|part| part == "..") {
-        return Err(CargoAllowError::new(
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
             "explicit --config path must stay inside the source tree",
         ));
     }
     let normalized = normalize_path(config);
     if normalized.is_empty() {
-        return Err(CargoAllowError::new(
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
             "explicit --config path must name a policy file",
         ));
     }
