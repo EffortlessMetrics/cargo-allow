@@ -105,7 +105,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     let finding_changes =
         allow_diff::finding_posture_changes(&base_findings, &head_findings_for_diff);
     let mut policy_changes = policy_changes_for_diff(
-        allow_diff::policy_config_at_revision(&root, &args.base, &policy_path)?,
+        Some(base_cfg.clone()),
         &head_cfg_for_diff,
         args.kind.as_deref(),
     )?;

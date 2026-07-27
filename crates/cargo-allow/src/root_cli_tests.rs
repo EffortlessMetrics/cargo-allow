@@ -263,7 +263,7 @@ mod tests {
         let mut command = CargoAllowCli::command();
         let help = command.render_help().to_string();
 
-        assert!(help.contains("Source exception ledger for source trees"));
+        assert!(help.contains("Source-tree exception ledger and policy scanner"));
 
         let Some(check) = command.find_subcommand_mut("check") else {
             std::panic::panic_any("check subcommand should exist");

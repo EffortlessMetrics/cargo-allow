@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  Two fixes: (1) Standardized the CLI tagline to match Cargo.toml description —
+  "Source-tree exception ledger and policy scanner for Rust repositories"
+  (was "Source exception ledger for source trees"). (2) diff.rs no longer
+  loads the base policy config twice — passes the already-loaded base_cfg to
+  policy_changes_for_diff instead of re-reading it via 3 git subprocesses
+  (#2674).
