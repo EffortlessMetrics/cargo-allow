@@ -127,8 +127,9 @@ callee = "expect"
         !candidates.is_empty(),
         "why should list near-miss candidates for an unreceipted finding"
     );
-    let first_candidate_id = candidates[0]
-        .pointer("/id")
+    let first_candidate_id = candidates
+        .first()
+        .and_then(|c| c.pointer("/id"))
         .and_then(Value::as_str)
         .unwrap_or("");
     assert_eq!(
@@ -146,7 +147,10 @@ callee = "expect"
         "why should suggest proof plans for receipting"
     );
     assert_eq!(
-        proof_plans[0].pointer("/program").and_then(Value::as_str),
+        proof_plans
+            .first()
+            .and_then(|p| p.pointer("/program"))
+            .and_then(Value::as_str),
         Some("cargo-allow"),
         "first proof plan should use cargo-allow"
     );
