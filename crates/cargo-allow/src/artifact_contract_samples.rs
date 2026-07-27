@@ -41,6 +41,7 @@ pub(crate) fn command_artifact_samples() -> Vec<ArtifactSample> {
                 "claim_boundary",
                 "command",
                 "config",
+                "evidence_repair_queues",
                 "federation",
                 "inventory",
                 "root",

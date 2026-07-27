@@ -14,7 +14,8 @@
     "root",
     "config",
     "inventory",
-    "federation"
+    "federation",
+    "evidence_repair_queues"
   ],
   "properties": {
     "schema_version": {
@@ -136,62 +137,6 @@
           "type": "integer",
           "minimum": 0,
           "description": "Optional count of unstructured or unknown-prefix evidence or link references found in the policy. Emitted, including zero, when a policy model is available; omitted when no policy model is available."
-        },
-        "evidence_repair_queues": {
-          "type": "array",
-          "description": "Optional evidence-health repair queues emitted when doctor finds broken local evidence links or weak evidence references.",
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "signal",
-              "count",
-              "command"
-            ],
-            "properties": {
-              "signal": {
-                "enum": [
-                  "broken_evidence_links",
-                  "weak_evidence_references"
-                ],
-                "description": "Evidence-health setup signal routed by this queue."
-              },
-              "label": {
-                "type": "string",
-                "description": "Human-friendly queue label for display and agent logs."
-              },
-              "route_kind": {
-                "enum": [
-                  "worklist_item_kind",
-                  "worklist_filter"
-                ],
-                "description": "Machine routing mode for the follow-up command."
-              },
-              "item_kind": {
-                "enum": [
-                  "broken_evidence_link",
-                  "weak_evidence_reference"
-                ],
-                "description": "Stable cargo-allow worklist item kind routed by this queue."
-              },
-              "worklist_filter": {
-                "enum": [
-                  "broken_evidence",
-                  "weak_evidence"
-                ],
-                "description": "Named worklist filter used by this row when route_kind is worklist_filter."
-              },
-              "count": {
-                "type": "integer",
-                "minimum": 0,
-                "description": "Number of doctor evidence-health items routed by this queue."
-              },
-              "command": {
-                "type": "string",
-                "description": "Suggested cargo-allow worklist command for this queue."
-              }
-            }
-          }
         }
       }
     },
@@ -330,6 +275,55 @@
           }
         }
       }
+    },
+    "evidence_repair_queues": {
+      "type": "array",
+      "description": "Evidence-health repair queues. Always emitted (even when empty, #1858) so downstream consumers can distinguish feature-off from zero count without per-artifact special-casing.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "signal",
+          "count",
+          "command"
+        ],
+        "properties": {
+          "signal": {
+            "enum": [
+              "broken_evidence_links",
+              "weak_evidence_references"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "route_kind": {
+            "enum": [
+              "worklist_item_kind",
+              "worklist_filter"
+            ]
+          },
+          "item_kind": {
+            "enum": [
+              "broken_evidence_link",
+              "weak_evidence_reference"
+            ]
+          },
+          "worklist_filter": {
+            "enum": [
+              "broken_evidence",
+              "weak_evidence"
+            ]
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "command": {
+            "type": "string"
+          }
+        }
+      }
     }
   },
   "$defs": {
@@ -417,8 +411,62 @@
         },
         "completeness": {
           "type": "string",
-          "enum": ["complete", "scoped", "fallback", "partial"],
+          "enum": [
+            "complete",
+            "scoped",
+            "fallback",
+            "partial"
+          ],
           "description": "Authoritative inventory coverage classification for this artifact."
+        }
+      }
+    },
+    "evidence_repair_queues": {
+      "type": "array",
+      "description": "Evidence-health repair queues. Always emitted (even when empty, #1858) so downstream consumers can distinguish feature-off from zero count without per-artifact special-casing.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "signal",
+          "count",
+          "command"
+        ],
+        "properties": {
+          "signal": {
+            "enum": [
+              "broken_evidence_links",
+              "weak_evidence_references"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "route_kind": {
+            "enum": [
+              "worklist_item_kind",
+              "worklist_filter"
+            ]
+          },
+          "item_kind": {
+            "enum": [
+              "broken_evidence_link",
+              "weak_evidence_reference"
+            ]
+          },
+          "worklist_filter": {
+            "enum": [
+              "broken_evidence",
+              "weak_evidence"
+            ]
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "command": {
+            "type": "string"
+          }
         }
       }
     }

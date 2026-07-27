@@ -1,0 +1,9 @@
+kind: Fixed
+body: >-
+  Artifacts: doctor now always emits `evidence_repair_queues` as a top-level
+  array (even when empty), matching the consistency contract that receipt and
+  report already follow (#1858). Previously doctor omitted the field entirely
+  when clean, forcing downstream consumers to special-case doctor vs receipt/
+  report to distinguish "feature off" from "zero count". Also moved the field
+  from inside the `config` object to the top level for consistency with
+  receipt/report, and updated the doctor JSON schema and all contract tests.
