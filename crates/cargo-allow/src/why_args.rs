@@ -3,6 +3,12 @@ use std::path::PathBuf;
 
 use crate::{RootArgs, parse_kind_filter_arg};
 
+/// Explain why a finding at a path/line is unreceipted.
+///
+/// Run `cargo-allow check --format json` (or `cargo-allow audit --format json`)
+/// first to find the kind, path, and line of an unreceipted finding, then pass
+/// those coordinates to `why`. Use `cargo-allow vocabulary` to list accepted
+/// kind values.
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct WhyArgs {
     #[command(flatten)]

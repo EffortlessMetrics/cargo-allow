@@ -108,53 +108,47 @@ pub fn render_doctor_human(facts: DoctorReport<'_>) -> String {
 }
 
 fn append_federation_doctor_human(facts: DoctorReport<'_>, out: &mut String) {
-    match facts.federation_config_found {
-        false => out.push_str("federation config: not found\n"),
-        true => {
-            if let Some(path) = facts.federation_config_path {
-                out.push_str(&format!("federation config: {path}\n"));
-            }
+    if !facts.federation_config_found {
+        out.push_str("federation config: not found\n");
+        return;
+    }
+    if let Some(path) = facts.federation_config_path {
+        out.push_str(&format!("federation config: {path}\n"));
+    }
+    out.push_str(&format!(
+        "federation config status: {}\n",
+        federation_status_text(facts.federation_config_valid)
+    ));
+    if let Some(ledgers) = facts.configured_ledgers {
+        out.push_str(&format!("configured ledgers: {}\n", ledgers.len()));
+        for ledger in ledgers {
             out.push_str(&format!(
-                "federation config status: {}\n",
-                federation_status_text(facts.federation_config_valid)
+                "  - {} ({}) role={} dialect={} mode={} priority={}",
+                ledger.id, ledger.path, ledger.role, ledger.dialect, ledger.mode, ledger.priority
             ));
-            if let Some(ledgers) = facts.configured_ledgers {
-                out.push_str(&format!("configured ledgers: {}\n", ledgers.len()));
-                for ledger in ledgers {
-                    out.push_str(&format!(
-                        "  - {} ({}) role={} dialect={} mode={} priority={}",
-                        ledger.id,
-                        ledger.path,
-                        ledger.role,
-                        ledger.dialect,
-                        ledger.mode,
-                        ledger.priority
-                    ));
-                    if !ledger.lanes.is_empty() {
-                        out.push_str(&format!(" lanes={}", ledger.lanes.join(",")));
-                    }
-                    if let Some(mirrors) = ledger.mirrors {
-                        out.push_str(&format!(" mirrors={mirrors}"));
-                    }
-                    out.push('\n');
-                }
+            if !ledger.lanes.is_empty() {
+                out.push_str(&format!(" lanes={}", ledger.lanes.join(",")));
             }
-            if let Some(diagnostics) = facts.federation_diagnostics {
-                for diagnostic in diagnostics {
-                    out.push_str(&format!(
-                        "federation {}: {}\n",
-                        diagnostic.kind, diagnostic.message
-                    ));
-                }
+            if let Some(mirrors) = ledger.mirrors {
+                out.push_str(&format!(" mirrors={mirrors}"));
             }
-            if let Some(divergences) = facts.federation_divergences {
-                for divergence in divergences {
-                    out.push_str(&format!(
-                        "federation {}: {}\n",
-                        divergence.kind, divergence.message
-                    ));
-                }
-            }
+            out.push('\n');
+        }
+    }
+    if let Some(diagnostics) = facts.federation_diagnostics {
+        for diagnostic in diagnostics {
+            out.push_str(&format!(
+                "federation {}: {}\n",
+                diagnostic.kind, diagnostic.message
+            ));
+        }
+    }
+    if let Some(divergences) = facts.federation_divergences {
+        for divergence in divergences {
+            out.push_str(&format!(
+                "federation {}: {}\n",
+                divergence.kind, divergence.message
+            ));
         }
     }
 }
