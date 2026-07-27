@@ -1,7 +1,7 @@
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use std::path::PathBuf;
 
-use crate::{ProfileArg, RootArgs};
+use crate::{HumanJsonFormat, ProfileArg, RootArgs};
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct ExplainArgs {
@@ -19,15 +19,9 @@ pub(crate) struct ExplainArgs {
     #[arg(long)]
     pub(super) include_untracked: bool,
     /// Output format.
-    #[arg(long, value_enum, default_value_t = ExplainFormat::Human)]
-    pub(super) format: ExplainFormat,
+    #[arg(long, value_enum, default_value_t = HumanJsonFormat::Human)]
+    pub(super) format: HumanJsonFormat,
     /// Write explanation output to a file instead of stdout.
     #[arg(long)]
     pub(super) output: Option<PathBuf>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-pub(super) enum ExplainFormat {
-    Human,
-    Json,
 }

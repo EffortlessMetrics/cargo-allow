@@ -5,7 +5,7 @@ use allow_match::{CheckMode, evaluate, score_match};
 use std::path::Path;
 
 use crate::{
-    EvidenceValidationMode, ProfileArg, SourceTreeReportContext, emit_text,
+    EvidenceValidationMode, HumanJsonFormat, ProfileArg, SourceTreeReportContext, emit_text,
     evidence_inventory::current_evidence_source_tree_files, load_world_with_evidence_mode,
     spec_system,
 };
@@ -19,7 +19,6 @@ mod explain_steps;
 #[path = "explain_types.rs"]
 mod explain_types;
 pub(crate) use explain_args::ExplainArgs;
-use explain_args::ExplainFormat;
 use explain_render::{render_explain_entry, render_explain_entry_json};
 pub(super) use explain_types::ExplainContext;
 
@@ -34,7 +33,7 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
             artifact_id: &args.id,
             root: &args.root,
             config: args.config.as_deref(),
-            format_json: matches!(args.format, ExplainFormat::Json),
+            format_json: matches!(args.format, HumanJsonFormat::Json),
             output: args.output.as_deref(),
         });
     }
@@ -60,14 +59,14 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
     let evidence_source_tree_files =
         current_evidence_source_tree_files(&root, args.include_untracked);
     let text = match args.format {
-        ExplainFormat::Human => explain_entry_text_with_source_tree_files(
+        HumanJsonFormat::Human => explain_entry_text_with_source_tree_files(
             &root,
             &cfg,
             entry,
             &findings,
             evidence_source_tree_files.as_ref(),
         ),
-        ExplainFormat::Json => explain_entry_json_with_source_tree_files(
+        HumanJsonFormat::Json => explain_entry_json_with_source_tree_files(
             &root,
             &cfg,
             entry,

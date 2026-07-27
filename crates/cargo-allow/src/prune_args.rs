@@ -1,7 +1,7 @@
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use std::path::PathBuf;
 
-use crate::RootArgs;
+use crate::{HumanJsonFormat, RootArgs};
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct PruneArgs {
@@ -23,15 +23,9 @@ pub(crate) struct PruneArgs {
     #[arg(long)]
     pub(super) include_untracked: bool,
     /// Output format.
-    #[arg(long, value_enum, default_value_t = PruneFormat::Human)]
-    pub(super) format: PruneFormat,
+    #[arg(long, value_enum, default_value_t = HumanJsonFormat::Human)]
+    pub(super) format: HumanJsonFormat,
     /// Write prune preview/result to a file instead of stdout.
     #[arg(long)]
     pub(super) output: Option<PathBuf>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-pub(super) enum PruneFormat {
-    Human,
-    Json,
 }

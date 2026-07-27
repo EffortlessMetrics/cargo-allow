@@ -1,6 +1,6 @@
 use super::test_support::test_finding_at_line;
 use super::*;
-use crate::{CargoAllowCli, CargoAllowCommand, RootArgs};
+use crate::{CargoAllowCli, CargoAllowCommand, HumanJsonFormat, RootArgs};
 use allow_core::{AllowConfig, AllowEntry, CargoAllowError, MatchOutcome, MatchStatus};
 use allow_policy::render_policy;
 use clap::Parser;
@@ -49,7 +49,7 @@ fn clap_parses_add_from_finding() {
             evidence,
             write: Some(write),
             force: true,
-            summary_format: AddSummaryFormat::Json,
+            summary_format: HumanJsonFormat::Json,
             summary_output: Some(summary_output),
             ..
         })) if kind.as_deref() == Some("panic")
@@ -380,7 +380,7 @@ fn cmd_add_rejects_duplicate_allow_id() {
         force: false,
         update: false,
         from_plan: None,
-        summary_format: AddSummaryFormat::Human,
+        summary_format: HumanJsonFormat::Human,
         summary_output: None,
     })
     .expect_err("add should reject duplicate allow ids");
@@ -426,7 +426,7 @@ fn cmd_add_rejects_already_matched_finding() {
         force: false,
         update: false,
         from_plan: None,
-        summary_format: AddSummaryFormat::Human,
+        summary_format: HumanJsonFormat::Human,
         summary_output: None,
     })
     .expect_err("add should reject already matched findings");
@@ -475,7 +475,7 @@ fn cmd_add_rejects_untracked_local_evidence_by_default() {
         force: false,
         update: false,
         from_plan: None,
-        summary_format: AddSummaryFormat::Human,
+        summary_format: HumanJsonFormat::Human,
         summary_output: None,
     })
     .expect_err("add should reject retained untracked local evidence by default");
@@ -522,7 +522,7 @@ fn cmd_add_include_untracked_accepts_untracked_local_evidence() {
         force: false,
         update: false,
         from_plan: None,
-        summary_format: AddSummaryFormat::Human,
+        summary_format: HumanJsonFormat::Human,
         summary_output: None,
     })
     .unwrap_or_else(|err| {
@@ -582,7 +582,7 @@ fn cmd_add_reports_missing_policy_config_with_exact_error() {
         force: false,
         update: false,
         from_plan: None,
-        summary_format: AddSummaryFormat::Human,
+        summary_format: HumanJsonFormat::Human,
         summary_output: None,
     })
     .expect_err("add without policy config should fail at load_world");
@@ -628,7 +628,7 @@ fn cmd_add_validate_policy_rejects_unsupported_schema_version() {
         force: false,
         update: false,
         from_plan: None,
-        summary_format: AddSummaryFormat::Human,
+        summary_format: HumanJsonFormat::Human,
         summary_output: None,
     })
     .expect_err("add should fail closed when validate_policy rejects schema_version");
@@ -676,7 +676,7 @@ fn cmd_add_rejects_write_to_existing_output_without_force() {
         force: false,
         update: false,
         from_plan: None,
-        summary_format: AddSummaryFormat::Human,
+        summary_format: HumanJsonFormat::Human,
         summary_output: None,
     })
     .expect_err("add should reject overwriting an existing output file without --force");
@@ -732,7 +732,7 @@ fn cmd_add_update_writes_entry_into_live_policy() {
         force: false,
         update: true,
         from_plan: None,
-        summary_format: AddSummaryFormat::Human,
+        summary_format: HumanJsonFormat::Human,
         summary_output: None,
     })
     .unwrap_or_else(|err| {
@@ -783,7 +783,7 @@ fn cmd_add_update_rejects_when_write_also_set() {
         force: false,
         update: true,
         from_plan: None,
-        summary_format: AddSummaryFormat::Human,
+        summary_format: HumanJsonFormat::Human,
         summary_output: None,
     })
     .expect_err("--update and --write together should be rejected");
@@ -841,7 +841,7 @@ fn cmd_add_update_requires_existing_policy() {
         force: false,
         update: true,
         from_plan: None,
-        summary_format: AddSummaryFormat::Human,
+        summary_format: HumanJsonFormat::Human,
         summary_output: None,
     })
     .expect_err("--update without a discovered policy should fail");
@@ -889,7 +889,7 @@ fn cmd_add_update_json_summary_reports_discovered_target_and_written() {
         force: false,
         update: true,
         from_plan: None,
-        summary_format: AddSummaryFormat::Json,
+        summary_format: HumanJsonFormat::Json,
         summary_output: Some(summary_path.clone()),
     })
     .unwrap_or_else(|err| {

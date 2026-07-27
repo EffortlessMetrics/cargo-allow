@@ -1,7 +1,7 @@
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use std::path::PathBuf;
 
-use crate::{RootArgs, parse_kind_filter_arg};
+use crate::{HumanJsonFormat, RootArgs, parse_kind_filter_arg};
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct AddArgs {
@@ -95,15 +95,9 @@ pub(crate) struct AddArgs {
     )]
     pub(super) from_plan: Option<PathBuf>,
     /// Summary output format. Policy output remains TOML.
-    #[arg(long, value_enum, default_value_t = AddSummaryFormat::Human)]
-    pub(super) summary_format: AddSummaryFormat,
+    #[arg(long, value_enum, default_value_t = HumanJsonFormat::Human)]
+    pub(super) summary_format: HumanJsonFormat,
     /// Write add summary to a file instead of stderr.
     #[arg(long)]
     pub(super) summary_output: Option<PathBuf>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-pub(super) enum AddSummaryFormat {
-    Human,
-    Json,
 }

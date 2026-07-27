@@ -4,7 +4,8 @@ use allow_policy::{render_policy, validate_policy};
 use allow_report::MutationReceipt;
 
 use crate::{
-    EvidenceValidationMode, MutationLock, SourceTreeReportContext, config_path, emit_text,
+    EvidenceValidationMode, HumanJsonFormat, MutationLock, SourceTreeReportContext, config_path,
+    emit_text,
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
@@ -21,7 +22,6 @@ mod prune_stale;
 #[path = "prune_types.rs"]
 mod prune_types;
 pub(crate) use prune_args::PruneArgs;
-use prune_args::PruneFormat;
 use prune_render::{render_prune_stale_json, render_prune_stale_result};
 use prune_stale::{
     config_without_prune_candidates, prune_stale_candidates,
@@ -117,8 +117,8 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             "cargo-allow check --mode no-new".to_string(),
         ],
     };
-    let rendered_policy =
-        (args.format == PruneFormat::Human && !candidates.is_empty()).then(|| render_policy(&cfg));
+    let rendered_policy = (args.format == HumanJsonFormat::Human && !candidates.is_empty())
+        .then(|| render_policy(&cfg));
     let removed_toml_blocks = rendered_policy
         .as_deref()
         .map(|rendered| stale_removed_toml_blocks(rendered, &candidates))
@@ -158,7 +158,7 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
         mutation_receipt,
     };
     let text = match args.format {
-        PruneFormat::Human => render_prune_stale_result(
+        HumanJsonFormat::Human => render_prune_stale_result(
             &candidates,
             &removed_toml_blocks,
             args.dry_run,
@@ -166,7 +166,7 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             written_path.as_deref(),
             context,
         ),
-        PruneFormat::Json => render_prune_stale_json(
+        HumanJsonFormat::Json => render_prune_stale_json(
             &candidates,
             args.dry_run,
             args.write,

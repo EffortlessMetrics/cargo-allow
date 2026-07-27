@@ -1,6 +1,6 @@
 use super::test_support::{list_row, row_status, test_entry, test_finding, test_outcome};
 use super::*;
-use crate::{CargoAllowCli, CargoAllowCommand};
+use crate::{CargoAllowCli, CargoAllowCommand, HumanJsonFormat};
 use clap::Parser;
 use serde_json::Value;
 use std::collections::BTreeSet;
@@ -64,7 +64,7 @@ fn clap_parses_list_json_filters() {
             missing_evidence: true,
             broken_evidence: true,
             weak_evidence: true,
-            format: ListFormat::Json,
+            format: HumanJsonFormat::Json,
             output: Some(path),
             columns: None,
             ..

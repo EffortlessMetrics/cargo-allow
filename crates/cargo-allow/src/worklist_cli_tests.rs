@@ -1,5 +1,5 @@
 use super::*;
-use crate::{CargoAllowCli, CargoAllowCommand, ProfileArg};
+use crate::{CargoAllowCli, CargoAllowCommand, HumanJsonFormat, ProfileArg};
 use clap::Parser;
 use std::path::Path;
 
@@ -86,7 +86,7 @@ fn clap_parses_worklist_json_output() {
             missing_evidence: true,
             broken_evidence: true,
             weak_evidence: true,
-            format: WorklistFormat::Json,
+            format: HumanJsonFormat::Json,
             output: Some(path),
             ..
         })) if kind == "unsafe"
@@ -150,7 +150,7 @@ fn clap_parses_spec_system_profile_for_worklist() {
         parsed.command,
         Some(CargoAllowCommand::Worklist(WorklistArgs {
             profile: Some(ProfileArg::SpecSystem),
-            format: WorklistFormat::Json,
+            format: HumanJsonFormat::Json,
             ..
         }))
     ));
@@ -206,7 +206,7 @@ fn clap_parses_migration_closeout_worklist_presets() {
             Some(CargoAllowCommand::Worklist(WorklistArgs {
                 kind: parsed_kind,
                 item_kind: Some(parsed_item_kind),
-                format: WorklistFormat::Json,
+                format: HumanJsonFormat::Json,
                 ..
             })) if parsed_kind.as_deref() == kind && parsed_item_kind == item_kind
         ));

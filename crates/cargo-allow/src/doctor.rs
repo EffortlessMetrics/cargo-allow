@@ -8,10 +8,9 @@ use std::path::Path;
 #[path = "doctor_args.rs"]
 mod doctor_args;
 pub(crate) use doctor_args::DoctorArgs;
-use doctor_args::DoctorFormat;
 
 use crate::{
-    InventoryFacts, ProfileArg, SourceTreeReportContext, config_path, emit_text,
+    HumanJsonFormat, InventoryFacts, ProfileArg, SourceTreeReportContext, config_path, emit_text,
     evidence_inventory::{
         PolicyReferenceDiagnostic, current_evidence_source_tree_files,
         policy_reference_diagnostics_for_source_tree,
@@ -26,7 +25,7 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         return spec_system::cmd_spec_system_doctor(spec_system::SpecSystemDoctorCommandArgs {
             root: &args.root,
             config: args.config.as_deref(),
-            format_json: matches!(args.format, DoctorFormat::Json),
+            format_json: matches!(args.format, HumanJsonFormat::Json),
             output: args.output.as_deref(),
         });
     }
@@ -118,12 +117,12 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         },
     };
     let text = match args.format {
-        DoctorFormat::Human => {
+        HumanJsonFormat::Human => {
             let mut rendered = allow_report::render_doctor_human(report);
             rendered.push_str(&intent_provider_doctor_section(&root));
             rendered
         }
-        DoctorFormat::Json => allow_report::render_doctor_json(report),
+        HumanJsonFormat::Json => allow_report::render_doctor_json(report),
     };
     emit_text(args.output.as_deref(), &text)?;
     // --require-clean: exit non-zero if the policy is invalid or evidence

@@ -1,7 +1,7 @@
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use std::path::PathBuf;
 
-use crate::RootArgs;
+use crate::{HumanJsonFormat, RootArgs};
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct MigrateArgs {
@@ -26,15 +26,9 @@ pub(crate) struct MigrateArgs {
     #[arg(long)]
     pub(super) update: bool,
     /// Summary output format. Policy output remains TOML.
-    #[arg(long, value_enum, default_value_t = MigrateSummaryFormat::Human)]
-    pub(super) summary_format: MigrateSummaryFormat,
+    #[arg(long, value_enum, default_value_t = HumanJsonFormat::Human)]
+    pub(super) summary_format: HumanJsonFormat,
     /// Write migration summary to a file instead of stderr.
     #[arg(long)]
     pub(super) summary_output: Option<PathBuf>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-pub(super) enum MigrateSummaryFormat {
-    Human,
-    Json,
 }

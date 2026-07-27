@@ -1,7 +1,7 @@
 use super::*;
 use crate::artifact_contract_support::parse_json_artifact;
 use crate::init::cmd_init;
-use crate::{CargoAllowCli, CargoAllowCommand, ProfileArg, RootArgs};
+use crate::{CargoAllowCli, CargoAllowCommand, HumanJsonFormat, ProfileArg, RootArgs};
 use clap::Parser;
 use serde_json::Value;
 use std::fs;
@@ -34,7 +34,7 @@ fn clap_parses_doctor_json_output() {
             root: RootArgs { root: Some(root) },
             config: Some(config),
             profile: None,
-            format: DoctorFormat::Json,
+            format: HumanJsonFormat::Json,
         require_clean: false,
             output: Some(output),
         })) if root == Path::new(".")
@@ -61,7 +61,7 @@ fn clap_parses_spec_system_profile_for_doctor() {
         parsed.command,
         Some(CargoAllowCommand::Doctor(DoctorArgs {
             profile: Some(ProfileArg::SpecSystem),
-            format: DoctorFormat::Json,
+            format: HumanJsonFormat::Json,
             require_clean: false,
             ..
         }))
@@ -230,7 +230,7 @@ ignored = ["policy/**", "ignored/**"]
         },
         config: Some(policy),
         profile: None,
-        format: DoctorFormat::Json,
+        format: HumanJsonFormat::Json,
         require_clean: false,
         output: Some(output.clone()),
     })
@@ -288,7 +288,7 @@ ast_kind = "tracked_file"
         },
         config: Some(policy),
         profile: None,
-        format: DoctorFormat::Json,
+        format: HumanJsonFormat::Json,
         require_clean: false,
         output: Some(output.clone()),
     })
@@ -352,7 +352,7 @@ ast_kind = "tracked_file"
         },
         config: Some(policy),
         profile: None,
-        format: DoctorFormat::Json,
+        format: HumanJsonFormat::Json,
         require_clean: false,
         output: Some(output.clone()),
     })
@@ -419,7 +419,7 @@ fn doctor_reports_untracked_local_evidence_as_broken_by_default() {
         },
         config: Some(policy),
         profile: None,
-        format: DoctorFormat::Json,
+        format: HumanJsonFormat::Json,
         require_clean: false,
         output: Some(output.clone()),
     })
@@ -461,7 +461,7 @@ fn spec_system_doctor_reports_missing_readiness() {
         },
         config: None,
         profile: Some(ProfileArg::SpecSystem),
-        format: DoctorFormat::Json,
+        format: HumanJsonFormat::Json,
         require_clean: false,
         output: Some(output.clone()),
     })
@@ -510,7 +510,7 @@ fn spec_system_doctor_reports_ready_when_bootstrap_files_exist() {
         },
         config: None,
         profile: Some(ProfileArg::SpecSystem),
-        format: DoctorFormat::Json,
+        format: HumanJsonFormat::Json,
         require_clean: false,
         output: Some(output.clone()),
     })
@@ -575,7 +575,7 @@ fn spec_system_doctor_recognizes_allow_init_layout() {
         },
         config: None,
         profile: Some(ProfileArg::SpecSystem),
-        format: DoctorFormat::Json,
+        format: HumanJsonFormat::Json,
         require_clean: false,
         output: Some(output.clone()),
     })
@@ -620,7 +620,7 @@ fn spec_system_doctor_reports_profile_config_provenance() {
         },
         config: None,
         profile: Some(ProfileArg::SpecSystem),
-        format: DoctorFormat::Json,
+        format: HumanJsonFormat::Json,
         require_clean: false,
         output: Some(output.clone()),
     })
@@ -697,7 +697,7 @@ linked_plan = "plans/spec-system/implementation-plan.md"
         },
         config: None,
         profile: Some(ProfileArg::SpecSystem),
-        format: DoctorFormat::Json,
+        format: HumanJsonFormat::Json,
         require_clean: false,
         output: Some(output.clone()),
     })
@@ -755,7 +755,7 @@ fn doctor_reports_configured_federation_ledgers() {
         },
         config: None,
         profile: None,
-        format: DoctorFormat::Json,
+        format: HumanJsonFormat::Json,
         require_clean: false,
         output: Some(output.clone()),
     })
@@ -809,7 +809,7 @@ fn spec_system_doctor_reports_federation_ledgers_readiness() {
         },
         config: None,
         profile: Some(ProfileArg::SpecSystem),
-        format: DoctorFormat::Json,
+        format: HumanJsonFormat::Json,
         require_clean: false,
         output: Some(output.clone()),
     })

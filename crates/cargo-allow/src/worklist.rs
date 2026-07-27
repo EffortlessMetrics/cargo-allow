@@ -3,7 +3,7 @@ use allow_match::{CheckMode, evaluate};
 
 use crate::evidence_inventory::current_evidence_source_tree_files;
 use crate::{
-    EvidenceValidationMode, ProfileArg, SourceTreeReportContext, emit_text,
+    EvidenceValidationMode, HumanJsonFormat, ProfileArg, SourceTreeReportContext, emit_text,
     load_world_with_evidence_mode, report_config, spec_system,
 };
 
@@ -37,7 +37,7 @@ pub(crate) use worklist_actions::{
 };
 use worklist_advisories::work_items_from_policy_advisories;
 pub(crate) use worklist_args::WorklistArgs;
-use worklist_args::{WorklistFormat, worklist_filters};
+use worklist_args::worklist_filters;
 #[cfg(test)]
 use worklist_evidence::work_items_from_evidence_diagnostics;
 use worklist_evidence::work_items_from_evidence_diagnostics_with_source_tree_files;
@@ -64,7 +64,7 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         return spec_system::cmd_spec_system_worklist(spec_system::SpecSystemWorklistCommandArgs {
             root: &args.root,
             config: args.config.as_deref(),
-            format_json: matches!(args.format, WorklistFormat::Json),
+            format_json: matches!(args.format, HumanJsonFormat::Json),
             output: args.output.as_deref(),
         });
     }
@@ -108,8 +108,8 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         filters,
     };
     let text = match args.format {
-        WorklistFormat::Json => render_worklist_json_with_context(&items, context),
-        WorklistFormat::Human => render_worklist_human_with_context(&items, context),
+        HumanJsonFormat::Json => render_worklist_json_with_context(&items, context),
+        HumanJsonFormat::Human => render_worklist_human_with_context(&items, context),
     };
     emit_text(args.output.as_deref(), &text)?;
     Ok(())

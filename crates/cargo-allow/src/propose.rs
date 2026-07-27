@@ -6,8 +6,8 @@ use repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_ta
 use std::env;
 
 use crate::{
-    EvidenceValidationMode, MutationLock, SourceTreeReportContext, emit_stderr_text,
-    load_world_with_evidence_mode, portable_relative_under_root,
+    EvidenceValidationMode, HumanJsonFormat, MutationLock, SourceTreeReportContext,
+    emit_stderr_text, load_world_with_evidence_mode, portable_relative_under_root,
 };
 
 #[path = "propose_args.rs"]
@@ -19,7 +19,6 @@ mod propose_render;
 #[path = "propose_types.rs"]
 mod propose_types;
 pub(crate) use propose_args::ProposeArgs;
-use propose_args::ProposeSummaryFormat;
 use propose_baseline::{default_baseline_expiry, entry_from_finding};
 use propose_render::{render_propose_summary, render_propose_summary_json};
 pub(super) use propose_types::ProposeContext;
@@ -163,10 +162,10 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         truncated_new_findings,
     };
     let summary = match args.summary_format {
-        ProposeSummaryFormat::Human => {
+        HumanJsonFormat::Human => {
             render_propose_summary(counts, expires.as_str(), args.write.as_deref(), context)
         }
-        ProposeSummaryFormat::Json => render_propose_summary_json(
+        HumanJsonFormat::Json => render_propose_summary_json(
             counts,
             expires.as_str(),
             args.write.as_deref(),

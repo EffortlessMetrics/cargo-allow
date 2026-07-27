@@ -1,8 +1,10 @@
 use allow_core::CargoAllowResult;
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use std::path::PathBuf;
 
-use crate::{RootArgs, parse_kind_filter, parse_kind_filter_arg, parse_match_status_arg};
+use crate::{
+    HumanJsonFormat, RootArgs, parse_kind_filter, parse_kind_filter_arg, parse_match_status_arg,
+};
 
 use super::list_types::ListFilters;
 
@@ -83,8 +85,8 @@ pub(crate) struct ListArgs {
     #[arg(long)]
     pub(super) weak_evidence: bool,
     /// Output format.
-    #[arg(long, value_enum, default_value_t = ListFormat::Human)]
-    pub(super) format: ListFormat,
+    #[arg(long, value_enum, default_value_t = HumanJsonFormat::Human)]
+    pub(super) format: HumanJsonFormat,
     /// Select a subset of columns for the human format (comma-separated,
     /// case-insensitive). Example: --columns id,status,reason. Ignored for
     /// --format json. Available columns: id, status, matches, kind, family,
@@ -99,12 +101,6 @@ pub(crate) struct ListArgs {
     /// Include untracked files when determining current match status.
     #[arg(long)]
     pub(super) include_untracked: bool,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-pub(super) enum ListFormat {
-    Human,
-    Json,
 }
 
 pub(super) fn list_filters(args: &ListArgs) -> CargoAllowResult<ListFilters<'_>> {
