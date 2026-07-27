@@ -1,0 +1,9 @@
+kind: Fixed
+body: >-
+  Worklist broad-scope advisory now warns when a broad-scope entry has no
+  occurrence_limit (#2664). Previously, a broad-scope entry (e.g.
+  `glob = "src/**/*.rs"`) with no `occurrence_limit` silently absorbed all
+  matching findings with no cap — new findings in scope were invisible to
+  the no-new gate. The worklist message now reads: "uses a broad source-tree
+  scope with no occurrence_limit — new findings in scope are silently
+  absorbed; add occurrence_limit to pin the current count".
