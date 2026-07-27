@@ -1,0 +1,9 @@
+kind: Fixed
+body: >-
+  Check output now surfaces a warning when Rust source files are skipped
+  (oversized, binary, or unreadable) and the check fails closed as a result
+  (#2667). Previously, `check --mode no-new` would fail with exit 1 but the
+  report showed zero new findings and no explanation — leaving the operator
+  to guess why CI failed. Now the human report emits:
+  "warning: N rust source file(s) skipped (oversized, binary, or unreadable);
+  check --mode no-new fails closed when files are skipped".

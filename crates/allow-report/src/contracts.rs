@@ -513,6 +513,10 @@ pub struct ReportContext<'a> {
     pub started_at: Option<&'a str>,
     /// Unique run identifier (process-stable) for correlating receipt to CI run (#1854).
     pub run_id: Option<&'a str>,
+    /// Count of Rust source files skipped during scan (oversized, binary,
+    /// permission-denied). When non-zero and mode is no-new, the check fails
+    /// closed (#2667).
+    pub rust_files_skipped: usize,
 }
 
 impl<'a> ReportContext<'a> {
@@ -545,6 +549,7 @@ impl<'a> ReportContext<'a> {
             policy_digest: None,
             started_at: None,
             run_id: None,
+            rust_files_skipped: 0,
         }
     }
 

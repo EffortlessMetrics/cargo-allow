@@ -155,6 +155,7 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
     if blocking_divergence_count > 0 {
         context.blocking_divergence_entries = Some(blocking_divergence_count);
     }
+    context.rust_files_skipped = inventory_facts.rust_files_skipped;
     if !args.deny.is_empty() {
         validate_deny_statuses(&args.deny, &summary, context)?;
     }

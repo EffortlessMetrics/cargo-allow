@@ -86,6 +86,18 @@ pub fn render_human_with_context(
     if outcomes.is_empty() {
         out.push_str("  no outcomes\n");
     }
+    if context.rust_files_skipped > 0 {
+        out.push_str(&format!(
+            "  warning: {} rust source file{} skipped (oversized, binary, or unreadable); \
+             check --mode no-new fails closed when files are skipped\n",
+            context.rust_files_skipped,
+            if context.rust_files_skipped == 1 {
+                ""
+            } else {
+                "s"
+            }
+        ));
+    }
     if command == "audit" {
         render_source_inventory_human(findings, outcomes, &mut out);
         render_audit_summary_human(&summary, outcomes, context, &mut out);
