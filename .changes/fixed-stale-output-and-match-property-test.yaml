@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Two fixes: (1) Check now removes the stale --output file on the error path so
+  CI doesn't read a prior successful run's report after a failure (#2663). (2)
+  Added property tests for classify_match stability: determinism, stability
+  under repeated calls, and that whitespace-padded selector fields never create
+  false matches (#2678).

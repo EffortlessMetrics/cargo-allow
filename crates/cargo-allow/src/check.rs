@@ -80,6 +80,13 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
             if let Some(path) = &args.receipt {
                 write_check_error_receipt(path, args, &err)?;
             }
+            // Remove the stale --output file so CI doesn't read a prior
+            // successful run's report after a failure (#2663). Best-effort:
+            // if removal fails (permission, read-only FS), the error is
+            // already being propagated.
+            if let Some(output) = &args.output {
+                let _ = std::fs::remove_file(output);
+            }
             Err(err)
         }
     }

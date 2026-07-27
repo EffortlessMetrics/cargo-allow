@@ -17,3 +17,4 @@ allow-core.workspace = true
 [dev-dependencies]
 allow-policy.workspace = true
 allow-rust.workspace = true
+proptest = "1.6"
