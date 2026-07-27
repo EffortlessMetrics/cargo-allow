@@ -22,12 +22,12 @@ pub(crate) struct AddArgs {
     )]
     pub(super) kind: Option<String>,
     /// Path containing the finding. Use with --line to receipt one specific
-    /// occurrence. Mutually exclusive with --glob.
-    #[arg(long)]
+    /// occurrence. Mutually exclusive with --glob. Requires --line.
+    #[arg(long, requires = "line")]
     pub(super) path: Option<PathBuf>,
     /// Line near the finding. Use with --path to receipt one specific
-    /// occurrence. Mutually exclusive with --glob.
-    #[arg(long)]
+    /// occurrence. Mutually exclusive with --glob. Requires --path.
+    #[arg(long, requires = "path")]
     pub(super) line: Option<u32>,
     /// Glob scope for a broad baseline (e.g. `src/foo.rs`, `src/**/*.rs`).
     /// Instead of receipting one occurrence, this receipts every current

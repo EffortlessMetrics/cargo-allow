@@ -83,6 +83,8 @@ mod tests {
             "panic",
             "--path",
             "src/lib.rs",
+            "--line",
+            "1",
             "--owner",
             "runtime",
             "--reason",
@@ -370,6 +372,56 @@ mod tests {
         });
 
         assert_eq!(parsed.color, ColorChoice::Never);
+    }
+
+    #[test]
+    fn add_rejects_path_without_line() {
+        let result = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "add",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--owner",
+            "core",
+            "--reason",
+            "test",
+        ]));
+        assert!(
+            result.is_err(),
+            "--path without --line should fail at parse time"
+        );
+        let err = result.expect_err("should error");
+        assert!(
+            err.to_string().contains("--line"),
+            "error should mention --line: {err}"
+        );
+    }
+
+    #[test]
+    fn add_rejects_line_without_path() {
+        let result = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "add",
+            "--kind",
+            "panic",
+            "--line",
+            "42",
+            "--owner",
+            "core",
+            "--reason",
+            "test",
+        ]));
+        assert!(
+            result.is_err(),
+            "--line without --path should fail at parse time"
+        );
+        let err = result.expect_err("should error");
+        assert!(
+            err.to_string().contains("--path"),
+            "error should mention --path: {err}"
+        );
     }
 
     fn argv(items: Vec<&str>) -> Vec<String> {

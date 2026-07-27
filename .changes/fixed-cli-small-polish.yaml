@@ -1,0 +1,9 @@
+kind: Fixed
+body: >-
+  CLI polish: (1) `add --path` and `--line` now use clap `requires` so passing
+  one without the other fails at parse time with a clear error instead of
+  after the scan completes. (2) `why --help` now includes a long doc comment
+  suggesting `cargo-allow check --format json` to find coordinates and
+  `cargo-allow vocabulary` for accepted kind values. (3) Replaced the only
+  `match` on `bool` in production code (doctor federation renderer) with an
+  early-return guard.
