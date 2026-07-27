@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  Perf: pre-normalize finding paths once before the entry-comparison loop instead
+  of re-normalizing on every (finding × entry) pair (#2791). Previously
+  `path_matches` called `normalize_path(&finding.path)` inside the hot loop,
+  allocating a new String per comparison. Now `classify_match` and
+  `explain_match_failure` pre-compute the normalized finding path once and pass
+  it to `path_matches` as a `&str`, eliminating n×m redundant allocations.
