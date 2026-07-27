@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  Perf: `source_column` now scans bytes directly instead of using `.lines().nth(row)`,
+  reducing per-call overhead on large files with many findings (#2666). The old
+  approach used the `Lines` iterator which re-checks for `\r\n` on every yield.
+  The new approach counts newlines in the byte slice directly with `\r\n`
+  handling, then extracts the line via safe `get()` slicing. Still O(row) per
+  call but with a lower constant factor.
