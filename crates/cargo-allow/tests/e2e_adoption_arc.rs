@@ -6,8 +6,7 @@ use std::process::Command;
 
 use serde_json::Value;
 use support::{
-    assert_saved_json_artifact, assert_status, assert_stderr_empty, assert_stdout_empty,
-    cargo_allow_command, remove_temp_root, temp_root,
+    assert_saved_json_artifact, assert_status, cargo_allow_command, remove_temp_root, temp_root,
 };
 
 /// Full adoption arc: init → audit → check(fail) → why → add → check(pass).
