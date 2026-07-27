@@ -48,7 +48,9 @@ pub fn classify_match(entry: &AllowEntry, finding: &Finding) -> Option<MatchStre
     {
         return None;
     }
-    if !path_matches(entry, finding) {
+    // Pre-normalize the finding path once instead of per-entry comparison (#2791).
+    let finding_path = normalize_path(&finding.path);
+    if !path_matches(entry, finding, &finding_path) {
         return None;
     }
     let sel = &entry.selector;
@@ -156,7 +158,9 @@ pub fn explain_match_failure(entry: &AllowEntry, finding: &Finding) -> Vec<Strin
         }
     }
 
-    if !path_matches(entry, finding) {
+    // Pre-normalize the finding path once (#2791).
+    let finding_path = normalize_path(&finding.path);
+    if !path_matches(entry, finding, &finding_path) {
         reasons.push(path_mismatch_reason(entry, finding));
     }
 
@@ -266,9 +270,9 @@ fn path_mismatch_reason(entry: &AllowEntry, finding: &Finding) -> String {
     }
 }
 
-fn path_matches(entry: &AllowEntry, finding: &Finding) -> bool {
+fn path_matches(entry: &AllowEntry, finding: &Finding, finding_path: &str) -> bool {
     if let Some(path) = &entry.path
-        && normalize_path(path) == normalize_path(&finding.path)
+        && normalize_path(path) == finding_path
     {
         return true;
     }
