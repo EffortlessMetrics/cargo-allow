@@ -93,14 +93,24 @@ receipts. The durable policy file is `policy/allow.toml`.
 Core workflows (Published `0.1.11` and source candidate):
 
 ```bash
-cargo-allow doctor
-cargo-allow audit
-cargo-allow check --mode no-new
-cargo-allow diff --base origin/main
-cargo-allow list
-cargo-allow explain <allow-id>
-cargo-allow why --kind panic --path src/lib.rs --line 42
-cargo-allow worklist --format json
+cargo-allow doctor                    # validate local setup
+cargo-allow audit                     # inventory exceptions and policy health
+cargo-allow check --mode no-new       # CI gate for the exception ledger
+cargo-allow diff --base origin/main   # PR-oriented report with git changed files
+cargo-allow list                      # list allow entries
+cargo-allow explain <allow-id>        # explain one allow entry
+cargo-allow why --kind panic --path src/lib.rs --line 42  # diagnose an unreceipted finding
+cargo-allow add --kind panic --path src/lib.rs --line 42 --update  # receipt a finding
+cargo-allow worklist --format json    # actionable work items
+```
+
+Lifecycle commands for policy maintenance:
+
+```bash
+cargo-allow propose                   # generate temporary baseline_debt entries
+cargo-allow refresh --allow-id <id> --write  # update drifted last_seen location
+cargo-allow prune --stale             # preview or remove stale allow entries
+cargo-allow migrate --from <file>     # convert legacy policy files
 ```
 
 ## What cargo-allow Does Not Claim
