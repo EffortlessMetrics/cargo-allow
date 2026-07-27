@@ -29,8 +29,10 @@ pub(crate) fn select_add_finding<'a>(
     candidates.sort_by_key(|(distance, _, finding)| (*distance, normalize_path(&finding.path)));
     let Some((distance, index, finding)) = candidates.first().copied() else {
         return Err(CargoAllowError::new(format!(
-            "no current {} finding found near {}:{}",
-            kind.kind, normalized_path, line
+            "no current {} finding found near {}:{}; \
+             run `cargo-allow check --kind {} --format json` to list current findings, \
+             or use `--include-untracked` if the source file is not git-tracked",
+            kind.kind, normalized_path, line, kind.kind
         )));
     };
     let tied = candidates
@@ -39,7 +41,8 @@ pub(crate) fn select_add_finding<'a>(
         .count();
     if tied > 1 {
         return Err(CargoAllowError::new(format!(
-            "ambiguous add request: {tied} findings are equally near {}:{}",
+            "ambiguous add request: {tied} findings are equally near {}:{}; \
+             specify an exact --line that matches only one finding",
             normalized_path, line
         )));
     }

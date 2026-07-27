@@ -16,7 +16,8 @@ pub(crate) fn select_location_drift_refresh(
         .position(|entry| entry.id == allow_id)
         .ok_or_else(|| {
             CargoAllowError::new(format!(
-                "allow entry id `{allow_id}` was not found in policy"
+                "allow entry id `{allow_id}` was not found in policy; \
+                 run `cargo-allow list --format json` to see valid entry IDs"
             ))
         })?;
     let outcome = outcomes
@@ -29,7 +30,8 @@ pub(crate) fn select_location_drift_refresh(
         })?;
     if outcome.status != MatchStatus::LocationDrift {
         return Err(CargoAllowError::new(format!(
-            "allow entry `{allow_id}` has status `{}`; refresh requires advisory location_drift",
+            "allow entry `{allow_id}` has status `{}`; refresh requires advisory location_drift; \
+             run `cargo-allow worklist --status location_drift --format json` to find refreshable entries",
             outcome.status.as_str()
         )));
     }
