@@ -125,9 +125,7 @@ pub(crate) fn source_column(source: &str, row: usize, byte_column: usize) -> u32
         .map(|pos| line_start + pos)
         .unwrap_or(bytes.len());
     // Handle \r\n: strip trailing \r if present.
-    let line_end = if line_end > line_start
-        && bytes.get(line_end - 1) == Some(&b'\r')
-    {
+    let line_end = if line_end > line_start && bytes.get(line_end - 1) == Some(&b'\r') {
         line_end - 1
     } else {
         line_end
