@@ -346,7 +346,7 @@ fn read_bounded(mut reader: impl Read, limit: usize) -> std::io::Result<BoundedR
             break;
         }
         let retained = read.min(limit.saturating_sub(bytes.len()));
-        bytes.extend_from_slice(&buffer[..retained]);
+        bytes.extend(buffer.iter().copied().take(retained));
         if retained < read {
             exceeded = true;
         }
@@ -414,7 +414,7 @@ fn terminate_and_reap(child: &mut std::process::Child) -> String {
     format!("{kill}; {wait}")
 }
 
-pub(crate) fn validate_provider_output(
+fn validate_provider_output(
     output: &BoundedProcessOutput,
 ) -> Result<AnalysisReceiptEnvelopeV1, IntentDelegateFailure> {
     if output.stdout_exceeded {
@@ -650,9 +650,7 @@ mod tests {
                 .status()
                 .map_err(|err| err.to_string())
         } else {
-            Command::new("true")
-                .status()
-                .map_err(|err| err.to_string())
+            Command::new("true").status().map_err(|err| err.to_string())
         }
     }
 
@@ -809,13 +807,18 @@ mod tests {
         std::process::exit(0);
     }
 
-    fn write_repeated(mut writer: impl Write, byte: u8, mut remaining: usize) -> Result<(), String> {
+    fn write_repeated(
+        mut writer: impl Write,
+        byte: u8,
+        mut remaining: usize,
+    ) -> Result<(), String> {
         let chunk = [byte; PROVIDER_READ_CHUNK];
         while remaining > 0 {
             let write = remaining.min(chunk.len());
-            writer
-                .write_all(&chunk[..write])
-                .map_err(|err| err.to_string())?;
+            let bytes = chunk
+                .get(..write)
+                .ok_or_else(|| "write chunk exceeded provider buffer".to_string())?;
+            writer.write_all(bytes).map_err(|err| err.to_string())?;
             remaining -= write;
         }
         writer.flush().map_err(|err| err.to_string())

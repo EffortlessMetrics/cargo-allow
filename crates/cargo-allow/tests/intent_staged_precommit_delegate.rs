@@ -183,10 +183,7 @@ fn delegated_staged_precommit_drains_large_analysis_receipt() -> Result<(), Stri
     repo.git(&["commit", "-qm", "base"])?;
 
     for index in 0..1_400 {
-        repo.write(
-            &format!("bulk/candidate-{index:04}.txt"),
-            "staged bytes\n",
-        )?;
+        repo.write(&format!("bulk/candidate-{index:04}.txt"), "staged bytes\n")?;
     }
     repo.git(&["add", "--all"])?;
 
