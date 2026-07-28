@@ -13,7 +13,10 @@ pub struct SupportTierRow {
 pub enum SupportTierLevel {
     Stable,
     Stabilizing,
+    Experimental,
+    Compatibility,
     Advisory,
+    NotIncluded,
 }
 
 impl SupportTierLevel {
@@ -88,7 +91,7 @@ pub fn parse_support_tier_claims(input: &str) -> CargoAllowResult<Vec<SupportTie
     }
 
     Err(CargoAllowError::new(
-        "support-tier claims table with Surface, Tier, Claim, Proof command, and Notes columns not found",
+        "support-tier claims table with Surface, Tier, Claim, Proof command or Proof or evidence, and Notes columns not found",
     ))
 }
 
@@ -113,7 +116,7 @@ fn parse_claims_row(cells: &[String], columns: ClaimsColumns) -> CargoAllowResul
     let surface = cell(cells, columns.surface, "surface")?;
     let tier = parse_support_tier_level(&cell(cells, columns.tier, "tier")?)?;
     let claim = cell(cells, columns.claim, "claim")?;
-    let proof_command = cell(cells, columns.proof_command, "proof command")?;
+    let proof_command = cell(cells, columns.proof_command, "proof command or evidence")?;
     let notes = match columns.notes {
         Some(index) => cell(cells, index, "notes")?,
         None => String::new(),
@@ -145,7 +148,10 @@ fn parse_support_tier_level(input: &str) -> CargoAllowResult<SupportTierLevel> {
     match normalize_cell(input).as_str() {
         "stable" => Ok(SupportTierLevel::Stable),
         "stabilizing" => Ok(SupportTierLevel::Stabilizing),
+        "experimental" => Ok(SupportTierLevel::Experimental),
+        "compatibility" => Ok(SupportTierLevel::Compatibility),
         "advisory" => Ok(SupportTierLevel::Advisory),
+        "not included" => Ok(SupportTierLevel::NotIncluded),
         value => Err(CargoAllowError::new(format!(
             "unknown support-tier level {value}"
         ))),
@@ -160,7 +166,8 @@ fn claims_columns(cells: &[String]) -> CargoAllowResult<Option<ClaimsColumns>> {
     let surface = column_index(&normalized, "surface");
     let tier = column_index(&normalized, "tier");
     let claim = column_index(&normalized, "claim");
-    let proof_command = column_index(&normalized, "proof command");
+    let proof_command = column_index(&normalized, "proof command")
+        .or_else(|| column_index(&normalized, "proof or evidence"));
     let notes = column_index(&normalized, "notes");
 
     let has_claim_marker = surface.is_some() || claim.is_some() || proof_command.is_some();
@@ -172,7 +179,7 @@ fn claims_columns(cells: &[String]) -> CargoAllowResult<Option<ClaimsColumns>> {
         ("Surface", surface),
         ("Tier", tier),
         ("Claim", claim),
-        ("Proof command", proof_command),
+        ("Proof command or Proof or evidence", proof_command),
     ]
     .into_iter()
     .filter_map(|(name, index)| if index.is_none() { Some(name) } else { None })
@@ -245,4 +252,65 @@ fn ensure_non_empty(label: &str, value: &str) -> CargoAllowResult<()> {
         return Err(CargoAllowError::new(format!("{label} must not be empty")));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_generation_two_support_vocabulary() -> Result<(), String> {
+        let input = r#"| Surface | Tier | Claim | Proof or evidence | Limitations |
+| --- | --- | --- | --- | --- |
+| cargo-allow | Stable | Published behavior. | cargo-allow check --mode no-new | Published channel. |
+| cargo-intent | Experimental | Landed walking skeleton. | cargo-intent identity | Not independently published. |
+| Legacy profile | Compatibility | Delegates or fails explicitly. | receipt:compat | Historical surface. |
+| Repository extraction | Not included | No extraction authorization. | spec:convergence | Separate decision. |
+"#;
+        let rows = validate_support_tier_claims(input).map_err(|error| error.to_string())?;
+        let expected = [
+            ("cargo-allow", SupportTierLevel::Stable),
+            ("cargo-intent", SupportTierLevel::Experimental),
+            ("Legacy profile", SupportTierLevel::Compatibility),
+            ("Repository extraction", SupportTierLevel::NotIncluded),
+        ];
+        if rows.len() != expected.len() {
+            return Err(format!(
+                "expected {} support rows, got {}",
+                expected.len(),
+                rows.len()
+            ));
+        }
+        for (surface, tier) in expected {
+            let Some(row) = rows.iter().find(|row| row.surface == surface) else {
+                return Err(format!("missing support-tier row {surface}"));
+            };
+            if row.tier != tier {
+                return Err(format!(
+                    "support-tier row {surface} expected {tier:?}, got {:?}",
+                    row.tier
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn retains_proof_command_header_compatibility() -> Result<(), String> {
+        let input = r#"| Surface | Tier | Claim | Proof command | Notes |
+| --- | --- | --- | --- | --- |
+| cargo-allow | Stabilizing | Source candidate. | cargo-allow check --mode no-new | Exact source candidate. |
+"#;
+        let rows = validate_support_tier_claims(input).map_err(|error| error.to_string())?;
+        let Some(row) = rows.first() else {
+            return Err("proof-command compatibility table produced no rows".to_string());
+        };
+        if row.tier != SupportTierLevel::Stabilizing {
+            return Err(format!(
+                "expected Stabilizing compatibility row, got {:?}",
+                row.tier
+            ));
+        }
+        Ok(())
+    }
 }
