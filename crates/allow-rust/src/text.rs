@@ -32,32 +32,77 @@ pub(crate) fn extract_lints(text: &str) -> Vec<String> {
         }
         out
     };
-    // Split on commas, but skip commas inside double-quoted string literals
-    // (#2659). A reason like `reason = "see policy: a, b"` should not produce
-    // a spurious extra lint from the comma inside the string.
+    // Split on commas, but skip commas inside string literals (#2659, #2780).
+    // Handles plain "..." with \ escapes, raw strings r"..." (no escapes),
+    // and raw strings with hashes r#"..."# (matched hash count).
     let mut parts = Vec::new();
     let mut current = String::new();
-    let mut in_string = false;
-    let mut escaped = false;
-    for ch in until_close.chars() {
-        if escaped {
-            escaped = false;
-            current.push(ch);
+    let mut chars = until_close.chars().peekable();
+    while let Some(ch) = chars.next() {
+        if ch == '"' {
+            // Plain string literal
+            current.push('"');
+            loop {
+                match chars.next() {
+                    Some('\\') => {
+                        current.push('\\');
+                        if let Some(&next) = chars.peek() {
+                            current.push(next);
+                            chars.next();
+                        }
+                    }
+                    Some('"') => {
+                        current.push('"');
+                        break;
+                    }
+                    Some(c) => current.push(c),
+                    None => break,
+                }
+            }
             continue;
         }
-        match ch {
-            '\\' if in_string => {
-                escaped = true;
-                current.push(ch);
+        if ch == 'r' && matches!(chars.peek(), Some('"') | Some('#')) {
+            // Raw string literal: r"...", r#"..."#, r##"..."##, etc.
+            let mut hashes = 0;
+            current.push('r');
+            while chars.peek() == Some(&'#') {
+                hashes += 1;
+                current.push('#');
+                chars.next();
             }
-            '"' => {
-                in_string = !in_string;
-                current.push(ch);
+            if chars.peek() == Some(&'"') {
+                current.push('"');
+                chars.next();
+                // Scan until closing " followed by N hashes
+                loop {
+                    match chars.next() {
+                        Some('"') => {
+                            let mut close_hashes = 0;
+                            while close_hashes < hashes && chars.peek() == Some(&'#') {
+                                close_hashes += 1;
+                                current.push('#');
+                                chars.next();
+                            }
+                            if close_hashes == hashes {
+                                current.push('"');
+                                break;
+                            } else {
+                                // Not enough hashes — this " was inside the raw string
+                                current.insert(current.len() - close_hashes, '"');
+                            }
+                        }
+                        Some(c) => current.push(c),
+                        None => break,
+                    }
+                }
+                continue;
             }
-            ',' if !in_string => {
-                parts.push(std::mem::take(&mut current));
-            }
-            _ => current.push(ch),
+            // 'r' followed by '#' but not '"', treat as normal char
+        }
+        if ch == ',' {
+            parts.push(std::mem::take(&mut current));
+        } else {
+            current.push(ch);
         }
     }
     if !current.is_empty() {
