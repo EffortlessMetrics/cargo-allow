@@ -163,6 +163,7 @@ pub(crate) fn next_steps_block() -> String {
     "next steps:\n  \
      cargo-allow audit                  # inventory current exceptions\n  \
      cargo-allow check --mode no-new    # enforce no-new-debt\n  \
+     cargo-allow vocabulary             # list finding kinds, evidence prefixes, statuses\n  \
      cargo-allow why --kind <kind> --path <path> --line <line>  # diagnose a finding\n  \
      cargo-allow add --update           # receipt a reviewed exception\n  \
      cargo-allow worklist               # see review-due and stale entries\n"
