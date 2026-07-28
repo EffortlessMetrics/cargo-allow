@@ -1,0 +1,35 @@
+name: Diagnostic 2883 Contract
+
+on:
+  push:
+    branches:
+      - diagnostic/2883-contract-log
+
+permissions:
+  contents: read
+
+jobs:
+  contract-log:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run cargo-allow contract tests with retained output
+        id: contract
+        shell: bash
+        run: |
+          set +e
+          mkdir -p target/diagnostic-2883
+          cargo test -p cargo-allow --tests --locked -- --nocapture \
+            > target/diagnostic-2883/contract.log 2>&1
+          code=$?
+          echo "exit_code=${code}" >> "${GITHUB_OUTPUT}"
+          exit 0
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: diagnostic-2883-contract-log
+          path: target/diagnostic-2883/contract.log
+          if-no-files-found: error
+      - name: Preserve contract result
+        shell: bash
+        run: exit "${{ steps.contract.outputs.exit_code }}"
