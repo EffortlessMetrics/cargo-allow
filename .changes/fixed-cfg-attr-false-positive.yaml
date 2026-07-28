@@ -1,0 +1,9 @@
+kind: Fixed
+body: >-
+  Scanner: cfg_attr attribute scanning now scopes to the arguments portion
+  (after the first top-level comma) instead of scanning the entire attribute
+  text (#2660). Previously, attribute-shaped tokens inside the cfg predicate
+  (e.g. `feature = "allow(dead_code)"` in the predicate) could produce
+  spurious findings. The new `cfg_attr_arguments_after_predicate` helper
+  tracks paren/bracket/brace depth and string literals to find the first
+  top-level comma, then only scans after it.
