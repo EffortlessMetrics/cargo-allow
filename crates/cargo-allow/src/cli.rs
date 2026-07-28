@@ -1,7 +1,7 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use std::env;
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsStr;
 
 use crate::{
     add, audit, check, diff, doctor, explain, init, list, migrate, precommit_tool, propose, prune,
@@ -114,12 +114,12 @@ pub(crate) fn run() -> CargoAllowResult<()> {
     }
 }
 
-pub(crate) fn normalized_args<I, S>(args: I) -> Vec<OsString>
+pub(crate) fn normalized_args<I, S>(args: I) -> Vec<S>
 where
     I: IntoIterator<Item = S>,
-    S: Into<OsString>,
+    S: AsRef<OsStr>,
 {
-    let mut args = args.into_iter().map(Into::into).collect::<Vec<_>>();
+    let mut args = args.into_iter().collect::<Vec<_>>();
     if let Some(index) = leading_cargo_allow_shim_index(&args) {
         args.remove(index);
     }
@@ -136,8 +136,12 @@ where
 /// Bare `cargo-allow allow` with no further tokens keeps `allow` so a future
 /// `Allow` subcommand is not permanently reserved. Unknown non-flag tokens
 /// after `allow` also keep it (for example `cargo-allow allow future-cmd`).
-fn leading_cargo_allow_shim_index(args: &[OsString]) -> Option<usize> {
+fn leading_cargo_allow_shim_index<S>(args: &[S]) -> Option<usize>
+where
+    S: AsRef<OsStr>,
+{
     for (index, arg) in args.iter().enumerate().skip(1) {
+        let arg = arg.as_ref();
         if arg == OsStr::new("allow") {
             return if should_strip_cargo_allow_shim(args, index + 1) {
                 Some(index)
@@ -152,9 +156,13 @@ fn leading_cargo_allow_shim_index(args: &[OsString]) -> Option<usize> {
     None
 }
 
-fn should_strip_cargo_allow_shim(args: &[OsString], start: usize) -> bool {
+fn should_strip_cargo_allow_shim<S>(args: &[S], start: usize) -> bool
+where
+    S: AsRef<OsStr>,
+{
     let mut saw_token = false;
     for arg in args.iter().skip(start) {
+        let arg = arg.as_ref();
         saw_token = true;
         if is_known_subcommand(arg) {
             return true;
