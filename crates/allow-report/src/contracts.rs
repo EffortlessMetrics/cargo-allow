@@ -498,7 +498,8 @@ impl<'a> Default for InventoryContext<'a> {
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ReportContext<'a> {
-    /// Terminal styling for human output. Defaults to [`Style::PLAIN`].
+    /// Terminal styling for human output. Defaults to
+    /// [`Style::PLAIN`](crate::style::Style::PLAIN).
     ///
     /// Only the human renderer reads this. JSON, SARIF, markdown, and HTML
     /// never reference it, so those formats cannot emit ANSI regardless of
