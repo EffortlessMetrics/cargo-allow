@@ -35,3 +35,12 @@ updates:
       - "ci"
     commit-message:
       prefix: "ci"
+    ignore:
+      # `dtolnay/rust-toolchain@<version>` selects a Rust toolchain; the tag is
+      # not a dependency version to keep current. The MSRV job pins it to
+      # Cargo.toml `rust-version` on purpose, so an automated bump would prove a
+      # different Rust version than the workspace claims while CI stayed green.
+      # Raising the MSRV is a deliberate, documented change: update
+      # `rust-version`, the pin, the cache key, and the release-workflow MSRV
+      # together (scripts/check-msrv-consistency.sh enforces this).
+      - dependency-name: "dtolnay/rust-toolchain"

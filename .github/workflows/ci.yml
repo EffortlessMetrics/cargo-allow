@@ -13,6 +13,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Runs before the toolchain so drift fails in seconds. `rust-version` in
+      # Cargo.toml is the source of truth; this proves the toolchain pin, the
+      # cache key, and the attested release-manifest MSRV all still match it.
+      - name: MSRV consistency
+        run: bash scripts/check-msrv-consistency.sh
+      # Proves the guard above still fails closed on each drift site, so it
+      # cannot be weakened into a no-op without CI noticing. No toolchain, no
+      # cargo: runs in about a second.
+      - name: MSRV consistency guard characterization
+        run: bash scripts/test-check-msrv-consistency.sh
+      # The action tag IS the proven toolchain, not a dependency version: it
+      # must equal Cargo.toml `rust-version`. Dependabot is configured to leave
+      # this action alone (.github/dependabot.yml); bumping it would keep CI
+      # green while proving a Rust version the workspace does not claim.
       - uses: dtolnay/rust-toolchain@1.95.0
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:

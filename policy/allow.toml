@@ -10361,3 +10361,47 @@ glob = "docs/schemas/tool-identity.schema.json"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0492"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/check-msrv-consistency.sh"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "MSRV consistency guard: proves Cargo.toml rust-version matches the CI toolchain pin, the MSRV cache key, and the attested release-manifest MSRV. Compares declared strings only; does not invoke rustc."
+evidence = ["doc:docs/release/README.md", "issue:2870"]
+created = "2026-07-28"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/check-msrv-consistency.sh"
+target_fingerprint = "sh"
+glob = "scripts/check-msrv-consistency.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0493"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/test-check-msrv-consistency.sh"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "MSRV consistency guard: proves Cargo.toml rust-version matches the CI toolchain pin, the MSRV cache key, and the attested release-manifest MSRV. Compares declared strings only; does not invoke rustc."
+evidence = ["doc:docs/release/README.md", "issue:2870"]
+created = "2026-07-28"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-check-msrv-consistency.sh"
+target_fingerprint = "sh"
+glob = "scripts/test-check-msrv-consistency.sh"
+
+[allow.last_seen]
+line = 1
+column = 1

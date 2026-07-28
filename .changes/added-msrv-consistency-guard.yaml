@@ -1,0 +1,12 @@
+kind: Added
+body: >-
+  CI now proves the MSRV claim is consistent everywhere it is enforced or
+  published. `scripts/check-msrv-consistency.sh` treats `rust-version` under
+  `[workspace.package]` as the source of truth and fails closed when the MSRV
+  job's `dtolnay/rust-toolchain` pin, its `rust-cache` key, or the release
+  workflow's `MSRV` value drift from it. The release value is attested into
+  `ReleaseManifestV1`, so drift previously would have published a false MSRV
+  claim under a real attestation. Dependabot is now configured to leave
+  `dtolnay/rust-toolchain` alone, because that action's tag selects the proven
+  toolchain rather than naming a dependency version — an automated bump kept CI
+  green while proving a Rust version the workspace does not claim.
