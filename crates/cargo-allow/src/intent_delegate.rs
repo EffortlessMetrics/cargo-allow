@@ -757,6 +757,57 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn run_provider_change_status_preserves_non_utf8_root_arg() -> Result<(), String> {
+        use std::ffi::OsString;
+        use std::os::unix::ffi::{OsStrExt, OsStringExt};
+        use std::os::unix::fs::PermissionsExt;
+        use std::path::PathBuf;
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|err| err.to_string())?
+            .as_nanos();
+        let fixture_root = std::env::temp_dir().join(format!(
+            "cargo-allow-intent-native-path-{}-{nonce}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&fixture_root).map_err(|err| err.to_string())?;
+        let script = fixture_root.join("cargo-intent");
+        let capture = fixture_root.join("captured-root.bin");
+        let capture_text = capture
+            .to_str()
+            .ok_or_else(|| "capture path is not UTF-8".to_string())?;
+        let script_text =
+            format!("#!/bin/sh\nprintf '%s' \"$2\" > '{capture_text}'\nprintf '{{}}'\n");
+        std::fs::write(&script, script_text).map_err(|err| err.to_string())?;
+        let mut permissions = std::fs::metadata(&script)
+            .map_err(|err| err.to_string())?
+            .permissions();
+        permissions.set_mode(0o755);
+        std::fs::set_permissions(&script, permissions).map_err(|err| err.to_string())?;
+
+        let mut root_bytes = fixture_root.as_os_str().as_bytes().to_vec();
+        root_bytes.extend_from_slice(b"/repo-");
+        root_bytes.push(0xff);
+        let root = PathBuf::from(OsString::from_vec(root_bytes));
+        std::fs::create_dir_all(&root).map_err(|err| err.to_string())?;
+
+        let output = run_provider_change_status(&script, &root, Duration::from_secs(5))
+            .map_err(|failure| failure.to_string())?;
+        if !output.status.success() {
+            return Err(format!("path-capture provider failed: {}", output.status));
+        }
+        let captured = std::fs::read(&capture).map_err(|err| err.to_string())?;
+        if captured.as_slice() != root.as_os_str().as_bytes() {
+            return Err("provider did not receive the exact OS-native root bytes".to_string());
+        }
+        std::fs::remove_dir_all(fixture_root).map_err(|err| err.to_string())?;
+        Ok(())
+    }
+
     #[test]
     fn run_with_timeout_drains_large_stdout_and_stderr() -> Result<(), String> {
         let mut command = helper_command("large")?;
