@@ -56,7 +56,12 @@ impl MutationLock {
         let start = Instant::now();
         loop {
             match file.try_lock() {
-                Ok(()) => return Ok(Self { file: Some(file), lock_path: Some(path) }),
+                Ok(()) => {
+                    return Ok(Self {
+                        file: Some(file),
+                        lock_path: Some(path),
+                    });
+                }
                 Err(TryLockError::WouldBlock) => {
                     if start.elapsed() >= timeout {
                         return Err(CargoAllowError::new(format!(
