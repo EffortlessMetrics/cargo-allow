@@ -49,11 +49,11 @@ does not grant the historical active-goal file current authority.
 
 ## Validation Baseline
 
-- `rtk cargo fmt --all --check`
-- `rtk cargo clippy --workspace --all-targets -- -D warnings`
-- `rtk cargo test --workspace`
-- `rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md`
-- `rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json`
+- `cargo fmt --all --check`
+- `cargo clippy --workspace --all-targets -- -D warnings`
+- `cargo test --workspace`
+- `cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md`
+- `cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json`
 
 ## PR Sequence
 
@@ -77,9 +77,9 @@ Files:
 
 Validation:
 
-- `rtk cargo run -p cargo-allow -- check --mode no-new`
-- `rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit`
-- `rtk cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest`
+- `cargo run -p cargo-allow -- check --mode no-new`
+- `cargo run -p cargo-allow -- check --profile spec-system --mode audit`
+- `cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest`
 
 Claim boundary: governance registration and issue reconciliation only.
 

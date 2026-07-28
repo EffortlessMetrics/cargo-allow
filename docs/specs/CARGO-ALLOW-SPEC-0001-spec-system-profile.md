@@ -484,7 +484,7 @@ rejected: accepted spec requires linked_proposal or standalone_reason
 Input:
 
 ```text
-proof_commands = ["rtk cargo test --workspace"]
+proof_commands = ["cargo test --workspace"]
 ```
 
 Expected output:
