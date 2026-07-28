@@ -825,7 +825,7 @@ fn build_spec_system_report(
                         status: None,
                         message: "support-tier claims table is missing or invalid".to_string(),
                         suggested_actions: vec![
-                            "add a support-tier table with Surface, Tier, Claim, Proof command, and Notes columns"
+                            "add a support-tier table with Surface, Tier, Claim, Proof command or Proof or evidence, and Notes columns"
                                 .to_string(),
                             "or correct the configured support_tiers path in the spec-system profile config"
                                 .to_string(),
@@ -2953,7 +2953,10 @@ fn support_tier_level_name(tier: SupportTierLevel) -> &'static str {
     match tier {
         SupportTierLevel::Stable => "stable",
         SupportTierLevel::Stabilizing => "stabilizing",
+        SupportTierLevel::Experimental => "experimental",
+        SupportTierLevel::Compatibility => "compatibility",
         SupportTierLevel::Advisory => "advisory",
+        SupportTierLevel::NotIncluded => "not included",
     }
 }
 
