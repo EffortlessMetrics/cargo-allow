@@ -57,9 +57,9 @@ CARGO-ALLOW-SPEC-0007 and CARGO-ALLOW-ADR-0001.
 Every F0 registration PR should run:
 
 ```bash
-rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
-rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json
-rtk cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest
+cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
+cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json
+cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest
 ```
 
 ## F1 Validation (Future)

@@ -165,10 +165,10 @@ rather than a crate-name-only `cargo search` grep.
 Before tagging, confirm packaging and dry-run publish for the full workspace:
 
 ```bash
-rtk cargo package --workspace --locked
+cargo package --workspace --locked
 for crate in allow-core allow-policy allow-inventory allow-files allow-rust \
   allow-match allow-report allow-policy-legacy allow-diff cargo-allow; do
-  rtk cargo publish --dry-run -p "${crate}" --locked
+  cargo publish --dry-run -p "${crate}" --locked
 done
 ```
 
@@ -253,17 +253,17 @@ When automation cannot run, follow the per-release record (for example
 [0.1.9.md](0.1.9.md)):
 
 ```bash
-rtk cargo fmt --all --check
-rtk cargo clippy --workspace --all-targets -- -D warnings
-rtk cargo test --workspace
-rtk cargo package --workspace --locked
+cargo fmt --all --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+cargo package --workspace --locked
 ```
 
 Then publish each crate in order:
 
 ```bash
-rtk cargo publish --dry-run -p <crate> --locked
-rtk cargo publish -p <crate> --locked
+cargo publish --dry-run -p <crate> --locked
+cargo publish -p <crate> --locked
 ```
 
 Create the GitHub Release from `docs/release/github/vX.Y.Z.md` after publication.
@@ -279,7 +279,7 @@ Published crate versions are irreversible. If a published package is wrong:
    published):
 
    ```bash
-   rtk cargo yank <crate> --vers X.Y.Z
+   cargo yank <crate> --vers X.Y.Z
    ```
 
 4. **Fix on `main`** — merge corrective changes under a new patch version; never

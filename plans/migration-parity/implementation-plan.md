@@ -64,16 +64,16 @@ side-by-side checks, or replace repository-specific xtask evidence.
 
 Every PR should run the narrow useful checks for its blast radius:
 
-- `rtk git diff --cached --check`
-- `rtk cargo fmt --all --check`
-- `rtk cargo clippy --workspace --all-targets -- -D warnings`
-- `rtk cargo test --workspace`
-- `rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md`
+- `git diff --cached --check`
+- `cargo fmt --all --check`
+- `cargo clippy --workspace --all-targets -- -D warnings`
+- `cargo test --workspace`
+- `cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md`
 
 Governance registration PRs should also run:
 
-- `rtk cargo run -p cargo-allow -- doctor --profile spec-system --format json`
-- `rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json`
+- `cargo run -p cargo-allow -- doctor --profile spec-system --format json`
+- `cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json`
 
 ## Foundation Already Landed
 

@@ -45,18 +45,18 @@ Run these from the `ripr` repository root. Use the published crate, not a local
 cargo-allow checkout:
 
 ```bash
-rtk cargo install cargo-allow --version 0.1.8 --locked --force
-rtk cargo-allow --version
-rtk git status --short --branch
-rtk gh pr list --state open --limit 20
+cargo install cargo-allow --version 0.1.8 --locked --force
+cargo-allow --version
+git status --short --branch
+gh pr list --state open --limit 20
 ```
 
 Then capture default cargo-allow posture:
 
 ```bash
-rtk cargo-allow doctor
-rtk cargo-allow audit --format json --output target/cargo-allow/audit.json
-rtk cargo-allow check \
+cargo-allow doctor
+cargo-allow audit --format json --output target/cargo-allow/audit.json
+cargo-allow check \
   --mode no-new \
   --format markdown \
   --receipt target/cargo-allow/check.receipt.json \
@@ -90,20 +90,20 @@ cargo-allow adoption-friction issue before inventing a repo-local convention.
 Preview first:
 
 ```bash
-rtk cargo-allow init --profile spec-system --dry-run
+cargo-allow init --profile spec-system --dry-run
 ```
 
 If the dry run matches the repo shape, bootstrap:
 
 ```bash
-rtk cargo-allow init --profile spec-system
-rtk cargo-allow doctor --profile spec-system
-rtk cargo-allow check \
+cargo-allow init --profile spec-system
+cargo-allow doctor --profile spec-system
+cargo-allow check \
   --profile spec-system \
   --mode audit \
   --format json \
   --output target/cargo-allow/spec-system.json
-rtk cargo-allow worklist \
+cargo-allow worklist \
   --profile spec-system \
   --format json \
   --output target/cargo-allow/spec-system-worklist.json
@@ -132,13 +132,13 @@ matter or register the current path with a stable ledger ID.
 Add only non-blocking artifact upload in the first adoption PR:
 
 ```bash
-rtk cargo-allow check \
+cargo-allow check \
   --profile spec-system \
   --mode audit \
   --format json \
   --output target/cargo-allow/spec-system.json
 
-rtk cargo-allow worklist \
+cargo-allow worklist \
   --profile spec-system \
   --format json \
   --output target/cargo-allow/spec-system-worklist.json
@@ -190,12 +190,12 @@ snippets from `target/cargo-allow/spec-system.json`,
 For the `ripr` adoption PR, record:
 
 ```bash
-rtk cargo-allow --version
-rtk cargo-allow doctor
-rtk cargo-allow check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
-rtk cargo-allow doctor --profile spec-system --format json --output target/cargo-allow/spec-system-doctor.json
-rtk cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json
-rtk cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json
+cargo-allow --version
+cargo-allow doctor
+cargo-allow check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
+cargo-allow doctor --profile spec-system --format json --output target/cargo-allow/spec-system-doctor.json
+cargo-allow check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json
+cargo-allow worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json
 ```
 
 If `ripr` needs repository-specific tests for the PR, run those separately.

@@ -71,15 +71,15 @@ Every PR should run the narrow useful checks for its blast radius. Source-tree
 profile work should use this baseline unless the PR explicitly explains a
 smaller or larger proof path:
 
-- `rtk git diff --cached --check`
-- `rtk cargo fmt --all --check`
-- `rtk cargo clippy --workspace --all-targets -- -D warnings`
-- `rtk cargo test --workspace`
-- `rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md`
+- `git diff --cached --check`
+- `cargo fmt --all --check`
+- `cargo clippy --workspace --all-targets -- -D warnings`
+- `cargo test --workspace`
+- `cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md`
 
 Once profile commands exist, also run:
 
-- `rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit`
+- `cargo run -p cargo-allow -- check --profile spec-system --mode audit`
 
 Do not treat those proof commands as commands cargo-allow itself executes
 during a source-tree scan.
@@ -111,7 +111,7 @@ Non-goals: no CLI behavior and no Markdown file validation.
 
 Files: `crates/allow-policy/src/spec_system/*` and focused tests.
 
-Validation: `rtk cargo test -p allow-policy spec_system` plus the baseline.
+Validation: `cargo test -p allow-policy spec_system` plus the baseline.
 
 Claim boundary: config types parse and validate known enum values; no source
 graph scan exists yet.
