@@ -8,13 +8,22 @@ pub fn render_explain_human(report: ExplainReport<'_>) -> String {
     let mut out = String::new();
     out.push_str(&format!("{}\n", entry.id));
     out.push_str(&format!("kind: {}\n", explain_kind_label(entry)));
-    out.push_str(&format!("scope: {}\n", entry.path_or_glob()));
-    out.push_str(&format!("owner: {}\n", empty_as_none(&entry.owner)));
+    out.push_str(&format!(
+        "scope: {}\n",
+        crate::style::sanitize_terminal_text(&entry.path_or_glob())
+    ));
+    out.push_str(&format!(
+        "owner: {}\n",
+        crate::style::sanitize_terminal_text(empty_as_none(&entry.owner))
+    ));
     out.push_str(&format!(
         "classification: {}\n",
         empty_as_none(&entry.classification)
     ));
-    out.push_str(&format!("reason: {}\n", empty_as_none(&entry.reason)));
+    out.push_str(&format!(
+        "reason: {}\n",
+        crate::style::sanitize_terminal_text(empty_as_none(&entry.reason))
+    ));
     out.push_str(&format!("evidence: {}\n", list_or_none(&entry.evidence)));
     if !report.evidence_references.is_empty() {
         out.push_str("\nevidence diagnostics:\n");

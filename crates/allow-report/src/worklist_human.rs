@@ -58,7 +58,10 @@ pub fn render_worklist_human(
         if let Some(path) = item.path {
             if let Some(line) = item.line {
                 let col = item.column.map_or(String::new(), |c| format!(":{c}"));
-                out.push_str(&format!("  path: {path}:{line}{col}\n"));
+                out.push_str(&format!(
+                    "  path: {}:{line}{col}\n",
+                    crate::style::sanitize_terminal_text(path)
+                ));
             } else {
                 out.push_str(&format!("  path: {path}\n"));
             }
@@ -76,7 +79,10 @@ pub fn render_worklist_human(
             out.push_str(&format!("  classification: {classification}\n"));
         }
         if let Some(reason) = item.reason {
-            out.push_str(&format!("  reason: {reason}\n"));
+            out.push_str(&format!(
+                "  reason: {}\n",
+                crate::style::sanitize_terminal_text(reason)
+            ));
         }
         if let Some(created) = item.created {
             out.push_str(&format!("  created: {created}\n"));
