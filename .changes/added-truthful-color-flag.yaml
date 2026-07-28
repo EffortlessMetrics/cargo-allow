@@ -1,0 +1,20 @@
+kind: Added
+body: >-
+  `--color auto|always|never` now does what it advertises (#2572). The flag was
+  parsed and discarded, with help text admitting output was plain regardless.
+  One shared style context in `allow-report` owns the decision, with a
+  documented precedence: explicit flag > `NO_COLOR` > `CLICOLOR_FORCE` >
+  `CARGO_TERM_COLOR=never` > terminal capability > plain. Two deliberate
+  deviations, both conservative: `NO_COLOR` outranks `CLICOLOR_FORCE`, so a
+  user who set it is not overridden by a variable they may not know is
+  exported; and `CARGO_TERM_COLOR` can only disable styling, never enable it,
+  because CI tooling exports `CARGO_TERM_COLOR=always` for cargo's own logs
+  and treating that as permission to style reports puts ANSI into non-TTY CI
+  streams. Machine formats (JSON, SARIF,
+  markdown, HTML, receipts) and `--output` files are never styled — enforced
+  structurally, because only the human renderer can reach the style at all.
+  Colour is supplemental: stripping the escapes yields byte-identical text, so
+  nothing is conveyed by colour alone, and a zero count is never coloured.
+  Repository-derived text (paths, families, scan messages) is sanitized of
+  terminal control characters and never wrapped in escapes, so a crafted
+  filename cannot inject cursor moves or colours into an operator's terminal.

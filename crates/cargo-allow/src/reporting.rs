@@ -135,11 +135,45 @@ impl SourceTreeReportContext {
     }
 }
 
+/// Process-wide output style, decided once by the CLI (#2572).
+///
+/// A `OnceLock` rather than an env var: the decision is made from the parsed
+/// flag plus the environment plus terminal capability, and storing the result
+/// means no renderer re-reads the environment and reaches a different answer.
+static OUTPUT_STYLE: std::sync::OnceLock<allow_report::Style> = std::sync::OnceLock::new();
+
+pub(crate) fn set_output_style(style: allow_report::Style) {
+    let _ = OUTPUT_STYLE.set(style);
+}
+
+/// Defaults to plain, so any path that never called `set_output_style`
+/// (tests, library use) is unstyled rather than accidentally coloured.
+pub(crate) fn output_style() -> allow_report::Style {
+    OUTPUT_STYLE
+        .get()
+        .copied()
+        .unwrap_or(allow_report::Style::PLAIN)
+}
+
+/// Styling applies only to human output written to stdout.
+///
+/// Machine formats are excluded here as well as structurally (their renderers
+/// never read `context.style`), and `--output` files stay plain so a committed
+/// or shared report is portable.
+fn style_for(format: OutputFormat, output: Option<&Path>) -> allow_report::Style {
+    if format == OutputFormat::Human && output.is_none() {
+        output_style()
+    } else {
+        allow_report::Style::PLAIN
+    }
+}
+
 pub(crate) fn print_report(args: ReportRenderArgs<'_>) -> CargoAllowResult<()> {
     let source_context = SourceTreeReportContext::new(args.root, args.inventory_facts);
     let mut context = source_context.report(Some(args.baseline_debt_entries));
     args.evidence.apply_to(&mut context);
     context.enforcement = args.enforcement;
+    context.style = style_for(args.format, args.output);
     let text = match args.format {
         OutputFormat::Human => allow_report::render_human_with_context(
             args.command,

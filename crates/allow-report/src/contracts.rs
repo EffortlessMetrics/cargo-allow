@@ -498,6 +498,13 @@ impl<'a> Default for InventoryContext<'a> {
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ReportContext<'a> {
+    /// Terminal styling for human output. Defaults to
+    /// [`Style::PLAIN`](crate::style::Style::PLAIN).
+    ///
+    /// Only the human renderer reads this. JSON, SARIF, markdown, and HTML
+    /// never reference it, so those formats cannot emit ANSI regardless of
+    /// what the CLI decides (#2572).
+    pub style: crate::style::Style,
     pub inventory: InventoryContext<'a>,
     pub baseline_debt_entries: Option<usize>,
     pub policy_missing_evidence_entries: Option<usize>,
@@ -541,6 +548,9 @@ impl<'a> ReportContext<'a> {
         baseline_debt_entries: Option<usize>,
     ) -> Self {
         Self {
+            // Plain by default: a context built here is not yet known to be
+            // headed for an interactive terminal.
+            style: crate::style::Style::PLAIN,
             inventory: InventoryContext::source_syntax(
                 inventory_source,
                 source_tree_root,
