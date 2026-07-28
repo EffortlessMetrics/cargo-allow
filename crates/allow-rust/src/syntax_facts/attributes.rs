@@ -102,32 +102,73 @@ fn unsafe_attribute_symbol(text: &str, offset: usize) -> Option<String> {
 }
 
 fn cfg_attr_lint_kinds(text: &str) -> Vec<(LintAttributeKind, usize)> {
-    let mut attributes = find_attribute_invocations_outside_rust_strings(text, "allow")
+    // #2660: Scope scanning to cfg_attr arguments (after the first top-level
+    // comma) to avoid false positives from cfg predicate content that happens
+    // to contain attribute-shaped tokens like `allow(...)`.
+    let scan_text = cfg_attr_arguments_after_predicate(text);
+    let base_offset = text.len() - scan_text.len();
+    let mut attributes = find_attribute_invocations_outside_rust_strings(scan_text, "allow")
         .into_iter()
-        .map(|offset| (LintAttributeKind::Allow, offset))
+        .map(|offset| (LintAttributeKind::Allow, offset + base_offset))
         .chain(
-            find_attribute_invocations_outside_rust_strings(text, "expect")
+            find_attribute_invocations_outside_rust_strings(scan_text, "expect")
                 .into_iter()
-                .map(|offset| (LintAttributeKind::Expect, offset)),
+                .map(|offset| (LintAttributeKind::Expect, offset + base_offset)),
         )
         .chain(
-            find_attribute_invocations_outside_rust_strings(text, "deny")
+            find_attribute_invocations_outside_rust_strings(scan_text, "deny")
                 .into_iter()
-                .map(|offset| (LintAttributeKind::Deny, offset)),
+                .map(|offset| (LintAttributeKind::Deny, offset + base_offset)),
         )
         .chain(
-            find_attribute_invocations_outside_rust_strings(text, "forbid")
+            find_attribute_invocations_outside_rust_strings(scan_text, "forbid")
                 .into_iter()
-                .map(|offset| (LintAttributeKind::Forbid, offset)),
+                .map(|offset| (LintAttributeKind::Forbid, offset + base_offset)),
         )
         .chain(
-            find_attribute_invocations_outside_rust_strings(text, "warn")
+            find_attribute_invocations_outside_rust_strings(scan_text, "warn")
                 .into_iter()
-                .map(|offset| (LintAttributeKind::Warn, offset)),
+                .map(|offset| (LintAttributeKind::Warn, offset + base_offset)),
         )
         .collect::<Vec<_>>();
     attributes.sort_by_key(|(_, offset)| *offset);
     attributes
+}
+
+/// Extract the cfg_attr arguments portion: everything after the first top-level
+/// comma in the attribute text. The cfg predicate is before the comma; the
+/// actual attributes (allow, deny, etc.) are after it.
+fn cfg_attr_arguments_after_predicate(text: &str) -> &str {
+    let mut depth: i32 = 0;
+    let mut in_string = false;
+    let mut string_char = '\0';
+    let mut cursor = 0;
+    while cursor < text.len() {
+        let Some(ch) = text.get(cursor..).and_then(|rest| rest.chars().next()) else {
+            break;
+        };
+        if in_string {
+            if ch == string_char && text.get(cursor.wrapping_sub(1)..cursor) != Some("\\") {
+                in_string = false;
+            }
+            cursor += ch.len_utf8();
+            continue;
+        }
+        match ch {
+            '"' | '\'' => {
+                in_string = true;
+                string_char = ch;
+            }
+            '(' | '[' | '{' => depth += 1,
+            ')' | ']' | '}' => depth -= 1,
+            ',' if depth == 0 => {
+                return text.get(cursor + 1..).unwrap_or("");
+            }
+            _ => {}
+        }
+        cursor += ch.len_utf8();
+    }
+    text
 }
 
 fn attribute_name_offset(text: &str, name: &str) -> Option<usize> {
