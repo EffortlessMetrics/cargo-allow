@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  `.gitignore` now ignores `target/` at any depth rather than only `/target`
+  at the repository root. A nested `crates/*/target/` is created by any tool
+  or test that builds from a crate directory, and the root-anchored pattern
+  left those tracked — where they immediately surfaced as new unreceipted
+  non-Rust findings in `check --mode no-new`. Found while adding an
+  integration test that wrote an artifact under `crates/cargo-allow/target/`.

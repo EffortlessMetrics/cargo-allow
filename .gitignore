@@ -1,4 +1,7 @@
-/target
+# Cargo build output. Not `/target`: a nested `crates/*/target/` is created by
+# any tool or test that builds from a crate directory, and a root-anchored
+# pattern leaves those tracked — where they surface as new ledger findings.
+target/
 **/*.rs.bk
 policy/allow.proposed.toml
 .zcode/
