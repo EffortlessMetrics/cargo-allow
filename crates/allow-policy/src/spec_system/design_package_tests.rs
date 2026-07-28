@@ -26,22 +26,30 @@ fn three_product_disposition_map_has_complete_required_set() -> Result<(), Strin
         ("CARGO-ALLOW-SPEC-0001", "CurrentSupporting"),
         ("CARGO-ALLOW-PROP-0010", "CurrentCanonical"),
         ("CARGO-ALLOW-ADR-0002", "CurrentCanonical"),
-        ("CARGO-ALLOW-SPEC-0010", "CurrentCanonical"),
+        ("CARGO-ALLOW-ADR-0003", "CurrentCanonical"),
+        ("CARGO-ALLOW-SPEC-0010", "HistoricalOnly"),
+        ("CARGO-ALLOW-SPEC-0011", "CurrentCanonical"),
         ("plans/spec-system/implementation-plan.md", "HistoricalOnly"),
-        ("allow-policy::spec_system", "GeneratedOrDerived"),
-        ("cargo-allow::spec_system", "GeneratedOrDerived"),
+        ("allow-policy::spec_system", "CompatibilityOnly"),
+        ("cargo-allow::spec_system", "BlockedOnParity"),
         ("#2550", "CurrentCanonical"),
-        ("#2612", "CurrentCanonical"),
+        ("#2612", "CurrentSupporting"),
         ("#2598", "CurrentSupporting"),
+        ("#2604", "CurrentSupporting"),
+        ("#2606", "CurrentSupporting"),
+        ("#2607", "CurrentSupporting"),
     ];
 
     for (artifact, disposition) in required {
-        assert!(
-            map.entry
-                .iter()
-                .any(|entry| entry.artifact == artifact && entry.disposition == disposition),
-            "disposition map missing required pair {artifact} = {disposition}"
-        );
+        if !map
+            .entry
+            .iter()
+            .any(|entry| entry.artifact == artifact && entry.disposition == disposition)
+        {
+            return Err(format!(
+                "disposition map missing required pair {artifact} = {disposition}"
+            ));
+        }
     }
 
     Ok(())
