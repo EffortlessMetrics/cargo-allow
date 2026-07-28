@@ -1,0 +1,137 @@
+# Machine-readable support matrix for cargo-allow (#2478).
+#
+# Every row states a claim AND the evidence that proves it. A claim with no
+# executed evidence is recorded as `not_proven` rather than omitted, so the
+# absence of a platform is visible instead of implied.
+#
+# Consumed by crates/cargo-allow/tests/support_matrix.rs, which fails closed
+# when a row drifts from the repository it describes (MSRV, schema ids, and
+# the CI runners behind each platform claim).
+#
+# SCOPE (deliberate): this file records what the repository currently proves.
+# It does NOT state a support *policy* — how long a release receives fixes,
+# which platforms are committed versus best-effort, or backport rules. Those
+# are maintainer decisions and are marked `undecided` below rather than
+# invented here.
+
+schema_id = "cargo-allow.support-matrix.v1"
+schema_version = 1
+
+[tool]
+name = "cargo-allow"
+# Latest version published to crates.io. Must match the published command
+# registry snapshot used by the first-hour docs contract.
+published_version = "0.1.11"
+published_evidence = "docs/dogfood/fixtures/getting-started/published-command-registry.toml"
+# Workspace version on main. Deliberately unpublished pending the 0.2.0
+# blocker set; see docs/release/0.2.0.md and issue #2501.
+candidate_version = "0.2.0"
+candidate_published = false
+candidate_evidence = "docs/release/0.2.0.md"
+
+[rust]
+# Source of truth is `rust-version` under [workspace.package] in Cargo.toml.
+# scripts/check-msrv-consistency.sh proves the CI pin, the cache key, and the
+# attested release-manifest MSRV all still agree with it.
+msrv = "1.95"
+msrv_evidence = "ci.yml job `msrv` pins dtolnay/rust-toolchain@1.95.0 and runs `cargo check --workspace --all-targets --locked`"
+stable_evidence = "ci.yml job `test` runs the full suite on dtolnay/rust-toolchain@stable"
+
+# Platform rows. `tier` is descriptive of executed evidence, not a promise:
+#   ci_proven   the full workspace test suite runs on this runner every PR
+#   install_proven  a published release was installed and smoke-tested here
+#   not_proven  no CI job executes here; absence is stated, not implied
+
+[[platform]]
+runner = "ubuntu-latest"
+target = "x86_64-unknown-linux-gnu"
+tier = "ci_proven"
+evidence = "ci.yml jobs `test`, `msrv`, `package-smoke`, `shallow-diff-smoke` run on ubuntu-latest"
+install_evidence = "release.yml `install-smoke` matrix includes ubuntu-latest against the published crate on tag push"
+
+[[platform]]
+runner = "windows-latest"
+target = "x86_64-pc-windows-msvc"
+tier = "ci_proven"
+evidence = "ci.yml job `test-windows` runs `cargo test --workspace --locked` on windows-latest"
+install_evidence = "release.yml `install-smoke` matrix includes windows-latest against the published crate on tag push"
+
+[[platform]]
+runner = "none"
+target = "aarch64-apple-darwin"
+tier = "not_proven"
+evidence = "no macOS runner exists in ci.yml or release.yml"
+note = "cargo-allow may build here; the repository does not execute anything that proves it. See #2475/#2476."
+
+[[platform]]
+runner = "none"
+target = "x86_64-apple-darwin"
+tier = "not_proven"
+evidence = "no macOS runner exists in ci.yml or release.yml"
+note = "See #2475/#2476."
+
+# Distribution channels actually available today.
+
+[[channel]]
+name = "crates.io"
+available = true
+command = "cargo install cargo-allow --version 0.1.11 --locked"
+evidence = "release.yml publishes via Trusted Publishing; scripts/release-install-smoke.sh verifies the published crate installs"
+
+[[channel]]
+name = "prebuilt-binary-archive"
+available = false
+evidence = "release.yml attaches a ReleaseManifestV1 and its attestation, not binary archives"
+note = "Tracked by #2464 (Linux) and #2474 (Windows)."
+
+[[channel]]
+name = "cargo-binstall"
+available = false
+evidence = "no binstall metadata exists in Cargo.toml"
+note = "Tracked by #2481; depends on the archives above."
+
+# Stable artifact schemas. Every id below is asserted against
+# allow_report::ARTIFACT_CONTRACTS by the drift test, so this list cannot
+# silently fall behind the code that emits them.
+
+[schemas]
+generation = 1
+ids = [
+  "cargo-allow.add.v1",
+  "cargo-allow.add-finding-plan.v1",
+  "cargo-allow.add-plan-application.v1",
+  "cargo-allow.doctor.v1",
+  "cargo-allow.explain.v1",
+  "cargo-allow.list.v1",
+  "cargo-allow.migrate.v1",
+  "cargo-allow.propose.v1",
+  "cargo-allow.prune.v1",
+  "cargo-allow.receipt.v1",
+  "cargo-allow.refresh.v1",
+  "cargo-allow.report.v1",
+  "cargo-allow.spec-system.v1",
+  "cargo-allow.why.v1",
+  "cargo-allow.worklist.v1",
+]
+
+# Security reporting is documented; the response commitments around it are not
+# yet decided.
+
+[security]
+policy_document = "SECURITY.md"
+policy_document_exists = true
+
+# ---------------------------------------------------------------------------
+# UNDECIDED — maintainer input required (#2478)
+#
+# These are support *policy* claims. They are recorded as undecided rather
+# than given plausible-looking defaults, because publishing a support promise
+# the project has not agreed to is worse than publishing none.
+# ---------------------------------------------------------------------------
+
+[undecided]
+supported_release_window = "TODO: how many published releases receive fixes?"
+security_response_target = "TODO: acknowledgement/patch timeframe for a reported vulnerability"
+backport_policy = "TODO: are fixes backported to the previous minor, or fix-forward only?"
+platform_commitment = "TODO: which ci_proven platforms are *committed* support versus best-effort?"
+msrv_bump_policy = "TODO: does raising the MSRV require a minor bump, and with what notice?"
