@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  Output consistency: report_text.rs, worklist_human.rs, and doctor.rs now
+  interpolate inventory scope/scanner dynamically instead of hardcoding the
+  literal 'source_tree/source_syntax'. This prevents latent bugs if a non-
+  source_syntax scanner is ever used (migrate already uses policy_migration).
+  Doctor now uses a centralized files_scanned_suffix helper instead of
+  hand-rolling the format. Also added unit tests for
+  effective_lane_posture_for_findings verifying configured-lane preservation
+  and Blocking default for unconfigured kinds.

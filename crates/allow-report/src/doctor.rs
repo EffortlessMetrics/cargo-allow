@@ -66,8 +66,9 @@ pub fn render_doctor_human(facts: DoctorReport<'_>) -> String {
         }
     }
     out.push_str(&format!(
-        "inventory: source_tree/source_syntax via {}; files scanned: {}; completeness: {}\n",
-        facts.inventory_source, facts.files_scanned, facts.inventory_completeness
+        "inventory: source_tree/source_syntax via {}{}\n",
+        facts.inventory_source,
+        doctor_inventory_suffix(facts)
     ));
     if facts.empty_git_tracked {
         out.push_str(
@@ -402,6 +403,12 @@ fn doctor_evidence_repair_queues(facts: DoctorReport<'_>) -> Vec<EvidenceRepairQ
         facts.weak_evidence_references.unwrap_or(0),
         0,
     )
+}
+
+fn doctor_inventory_suffix(facts: DoctorReport<'_>) -> String {
+    let mut suffix = format!("; files scanned: {}", facts.files_scanned);
+    suffix.push_str(&format!("; completeness: {}", facts.inventory_completeness));
+    suffix
 }
 
 fn config_status_text(valid: Option<bool>, diagnostic: Option<&str>) -> String {

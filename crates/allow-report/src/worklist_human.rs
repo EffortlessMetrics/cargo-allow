@@ -12,7 +12,9 @@ pub fn render_worklist_human(
     let mut out = String::new();
     out.push_str("cargo-allow worklist\n\n");
     out.push_str(&format!(
-        "Inventory: source_tree/source_syntax via {}{}\n",
+        "Inventory: {}/{} via {}{}\n",
+        inventory.scope,
+        inventory.scanner,
         inventory.source,
         inventory.files_scanned_suffix()
     ));
