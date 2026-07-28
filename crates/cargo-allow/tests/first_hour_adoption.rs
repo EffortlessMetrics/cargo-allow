@@ -225,7 +225,7 @@ fn first_hour_expected_markers_match_live_renderer() {
         "\"new\": 1",
         "\"status\": \"passed\"",
         "\"command\": \"check\"",
-        "Result: passed/advisory",
+        "Result: passed (enforcing)",
         "Result: failed",
         "new: unreceipted",
         "cargo-allow list",
@@ -404,8 +404,8 @@ fn first_hour_expected_markers_match_live_renderer() {
         "check pass human",
     );
     assert!(
-        combined(&check_pass_human).contains("Result: passed/advisory"),
-        "live passing check must emit Result: passed/advisory"
+        combined(&check_pass_human).contains("Result: passed (enforcing)"),
+        "live no-new pass must state the enforcing mode, not advisory"
     );
 
     write_source(

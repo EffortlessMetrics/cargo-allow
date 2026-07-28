@@ -48,9 +48,9 @@ pub fn render_html_with_context(
         "<p class=\"status {}\">Result: {}</p>\n",
         if failed { "failed" } else { "passed" },
         if failed {
-            "failed"
+            "failed".to_string()
         } else {
-            context.enforcement.unwrap_or("advisory")
+            crate::contracts::passed_result_label(context.enforcement)
         }
     ));
     out.push_str(&format!(

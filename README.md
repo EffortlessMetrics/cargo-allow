@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="https://doc.rust-lang.org/cargo/reference/manifest.html#the-rust-version-field"><img src="https://img.shields.io/badge/MSRV-1.85-blue.svg" alt="MSRV" /></a>
+  <a href="https://doc.rust-lang.org/cargo/reference/manifest.html#the-rust-version-field"><img src="https://img.shields.io/badge/MSRV-1.95-blue.svg" alt="MSRV" /></a>
   <a href="#license"><img src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg" alt="License: MIT OR Apache-2.0" /></a>
 </p>
 
@@ -239,6 +239,27 @@ cargo-allow check --mode no-new
 
 Generated baseline entries are intentionally uncomfortable. Review them, narrow
 them, add evidence, or remove them.
+
+To receipt one new finding after that, the supported route is plan-then-apply.
+Source candidate only (current `main`), not the Published `0.1.11` surface:
+
+```bash
+cargo run -p cargo-allow -- why \
+  --kind panic --path src/lib.rs --line 42 \
+  --plan target/cargo-allow/add-plan.json
+
+cargo run -p cargo-allow -- add \
+  --from-plan target/cargo-allow/add-plan.json \
+  --update \
+  --owner core --reason "<why this is acceptable>" \
+  --evidence doc:docs/design.md
+```
+
+`why --plan` is read-only; `add --from-plan --update` re-verifies the plan
+against the live tree before one atomic write and refuses a stale plan. Then
+recheck that finding with `why`, and prove the repository with
+`check --mode no-new`. See
+[Manage an exception](docs/how-to/manage-an-exception.md).
 
 ## CI
 

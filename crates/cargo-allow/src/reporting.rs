@@ -74,6 +74,10 @@ pub(crate) struct ReportRenderArgs<'a> {
     pub(crate) output: Option<&'a Path>,
     pub(crate) root: &'a Path,
     pub(crate) inventory_facts: InventoryFacts,
+    /// `"enforcing"` or `"advisory"`, so the rendered result line states the
+    /// mode that produced a pass. Previously this reached the receipt only,
+    /// which left every report claiming `advisory` regardless of mode (#2832).
+    pub(crate) enforcement: Option<&'a str>,
 }
 
 #[derive(Debug, Clone)]
@@ -135,6 +139,7 @@ pub(crate) fn print_report(args: ReportRenderArgs<'_>) -> CargoAllowResult<()> {
     let source_context = SourceTreeReportContext::new(args.root, args.inventory_facts);
     let mut context = source_context.report(Some(args.baseline_debt_entries));
     args.evidence.apply_to(&mut context);
+    context.enforcement = args.enforcement;
     let text = match args.format {
         OutputFormat::Human => allow_report::render_human_with_context(
             args.command,
@@ -340,6 +345,7 @@ mod tests {
                 output: Some(&output),
                 root: &root,
                 inventory_facts: InventoryFacts::scanned(InventorySource::GitTracked, 7),
+                enforcement: None,
             })
             .unwrap_or_else(|err| std::panic::panic_any(format!("print {file_name}: {err}")));
 

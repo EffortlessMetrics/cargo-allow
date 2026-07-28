@@ -10428,3 +10428,68 @@ normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
 [allow.last_seen]
 line = 3
 column = 1
+
+[[allow]]
+id = "allow-0495"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/how-to/migrate-from-bare-allow.md"
+owner = "core/policy"
+classification = "product_documentation"
+reason = "Documents the migration workflow from bare #[allow]/#[expect] attributes into cargo-allow's durable exception ledger."
+evidence = ["doc:README.md", "doc:docs/how-to/migrate-from-bare-allow.md"]
+created = "2026-07-28"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "docs/how-to/migrate-from-bare-allow.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0496"
+kind = "non_rust_file"
+family = "documentation"
+path = "SUPPORT.md"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Published support matrix and its human-readable rendering; every row is evidence-backed and guarded against drift by crates/cargo-allow/tests/support_matrix.rs."
+evidence = ["test:published_msrv_matches_the_workspace_manifest", "issue:2478"]
+created = "2026-07-28"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "SUPPORT.md"
+target_fingerprint = "md"
+glob = "SUPPORT.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0497"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/support-matrix.toml"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Published support matrix and its human-readable rendering; every row is evidence-backed and guarded against drift by crates/cargo-allow/tests/support_matrix.rs."
+evidence = ["test:published_msrv_matches_the_workspace_manifest", "issue:2478"]
+created = "2026-07-28"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/support-matrix.toml"
+target_fingerprint = "toml"
+glob = "docs/support-matrix.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

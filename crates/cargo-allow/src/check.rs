@@ -4,7 +4,6 @@ use allow_report::{
     RECEIPT_ENFORCEMENT_ADVISORY, RECEIPT_ENFORCEMENT_ENFORCING, ReportContext, Summary,
     render_error_receipt, render_receipt_with_context_and_inventory,
 };
-use std::env;
 use std::path::{Path, PathBuf};
 use std::process;
 
@@ -24,7 +23,7 @@ use check_product_move_guard::product_move_ledger_fails_check;
 use crate::federation_report::FederationReportBundle;
 use crate::{
     EvidenceReportSummary, EvidenceValidationMode, InventoryFacts, ProfileArg, ReportRenderArgs,
-    SourceTreeReportContext, assert_path_within_root, config_path,
+    SourceTreeReportContext, assert_path_within_root, config_path, current_dir,
     evidence_inventory::current_evidence_source_tree_files, load_compat_world,
     load_world_with_evidence_mode, policy_baseline_debt_entries, print_report, report_config,
     spec_precommit, spec_system, write_file,
@@ -193,6 +192,11 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
             output: args.output.as_deref(),
             root: &root,
             inventory_facts,
+            enforcement: Some(if mode.is_advisory() {
+                RECEIPT_ENFORCEMENT_ADVISORY
+            } else {
+                RECEIPT_ENFORCEMENT_ENFORCING
+            }),
         })?;
     }
     if let Some(path) = &args.receipt {
@@ -342,8 +346,7 @@ fn run_provenance() -> RunProvenance {
 }
 
 fn resolve_check_root(args: &CheckArgs) -> CargoAllowResult<PathBuf> {
-    let cwd =
-        env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
+    let cwd = current_dir()?;
     resolve_source_tree_root(args.root.root.as_deref(), cwd)
 }
 

@@ -81,6 +81,8 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
         output: args.output.as_deref(),
         root: &root,
         inventory_facts,
+        // `audit` never fails a run; its pass is advisory by definition.
+        enforcement: Some(allow_report::RECEIPT_ENFORCEMENT_ADVISORY),
     })?;
     Ok(())
 }

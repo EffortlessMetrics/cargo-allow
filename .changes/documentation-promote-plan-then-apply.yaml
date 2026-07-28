@@ -1,0 +1,16 @@
+kind: Documentation
+body: >-
+  Core onboarding now teaches the merged stale-safe finding-to-receipt route
+  (#2456). README, `docs/getting-started.md`, `docs/onboarding.md`, and
+  `docs/how-to/manage-an-exception.md` previously showed
+  `add ... --write policy/allow.toml` as the way to receipt a finding against a
+  live ledger. The supported route is `why --plan` (read-only, New-only) then
+  `add --from-plan --update`, which revalidates every plan binding against the
+  live tree before one atomic write and refuses a stale plan by name. The docs
+  now state the boundary explicitly: a targeted recheck proves one finding is
+  matched and is not a repository proof; the full `check --mode no-new` is.
+  `--write <new-path>` is described as candidate-file output, not a live-ledger
+  apply path. The route is candidate-channel labeled because `--plan`,
+  `--from-plan`, and `--update` are not part of the published 0.1.11 surface,
+  and it is exercised end to end against the real binary by
+  `crates/cargo-allow/tests/receipt_plan_route.rs`.

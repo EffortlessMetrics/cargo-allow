@@ -15,12 +15,11 @@ use allow_policy::spec_system::{
     resolve_profile_config, validate_active_goal_manifest_text_at, validate_doc_artifact_files,
     validate_doc_artifact_links, validate_support_tier_claims,
 };
-use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::spec_system_view::render_self_hosted_explain;
-use crate::{OutputFormat, RootArgs, emit_text, root_relative_path, write_file};
+use crate::{OutputFormat, RootArgs, current_dir, emit_text, root_relative_path, write_file};
 
 const PROFILE_NAME: &str = "spec-system";
 const DEFAULT_OWNED_ARTIFACT_LEDGER: &str = ".allow/artifacts/doc-artifacts.toml";
@@ -53,8 +52,7 @@ pub(crate) struct SpecSystemCommandArgs<'a> {
 }
 
 fn reject_cutover_embedded_authority(root: &RootArgs, surface: &str) -> CargoAllowResult<()> {
-    let cwd =
-        env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
+    let cwd = current_dir()?;
     let resolved = resolve_source_tree_root(root.root.as_deref(), cwd)?;
     crate::intent_delegate::reject_embedded_spec_system_authority(&resolved, surface)
 }
@@ -161,8 +159,7 @@ pub(crate) struct SpecSystemInitCommandArgs<'a> {
 
 pub(crate) fn cmd_spec_system_init(args: SpecSystemInitCommandArgs<'_>) -> CargoAllowResult<()> {
     reject_cutover_embedded_authority(args.root, "init")?;
-    let cwd =
-        env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
+    let cwd = current_dir()?;
     let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;
     let config_path = args
         .config
@@ -681,8 +678,7 @@ fn build_spec_system_report(
     include_readiness: bool,
     mode_override: Option<SpecSystemMode>,
 ) -> CargoAllowResult<SpecSystemReport> {
-    let cwd =
-        env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
+    let cwd = current_dir()?;
     let root = resolve_source_tree_root(root_args.root.as_deref(), cwd)?;
     let loaded_config = load_spec_system_config(&root, config);
     let mut cfg = loaded_config.cfg.clone();

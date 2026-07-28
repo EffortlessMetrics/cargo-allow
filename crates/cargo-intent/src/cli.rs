@@ -94,7 +94,7 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
         }
         Some(CargoIntentCommand::Change(change)) => match change.command {
             ChangeCommand::Status(args) => {
-                validate_change_status_args(&args)?;
+                validate_change_status_args(&args, output_format)?;
                 change_status_staged_precommit(
                     &cli.root,
                     &config,
@@ -106,14 +106,23 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
     }
 }
 
-fn validate_change_status_args(args: &StatusArgs) -> Result<(), String> {
+fn validate_change_status_args(args: &StatusArgs, format: OutputFormat) -> Result<(), String> {
     if !args.staged {
         return Err("change status requires --staged".to_string());
     }
     match args.phase {
-        Some(PhaseArg::Precommit) => Ok(()),
-        None => Err("change status requires --phase precommit".to_string()),
+        Some(PhaseArg::Precommit) => {}
+        None => return Err("change status requires --phase precommit".to_string()),
     }
+    // Analysis receipts are one exact JSON contract.
+    // A human frame is never a compatible fallback.
+    if args.analysis_receipt && format != OutputFormat::Json {
+        return Err(
+            "--analysis-receipt requires --format json; refusing to emit a different output contract"
+                .to_string(),
+        );
+    }
+    Ok(())
 }
 
 fn cmd_identity(config: &IntentConfigV1, format: OutputFormat) -> Result<(), String> {
@@ -148,25 +157,36 @@ pub fn main_exit_code(result: Result<ProcessExitFamilyV1, String>) -> i32 {
 mod tests {
     use super::*;
 
+    fn valid_args() -> StatusArgs {
+        StatusArgs {
+            staged: true,
+            phase: Some(PhaseArg::Precommit),
+            analysis_receipt: false,
+        }
+    }
+
     #[test]
     fn change_status_requires_staged_and_phase() {
         let args = StatusArgs {
             staged: false,
-            phase: Some(PhaseArg::Precommit),
-            analysis_receipt: false,
+            ..valid_args()
         };
-        assert!(validate_change_status_args(&args).is_err());
+        assert!(validate_change_status_args(&args, OutputFormat::Json).is_err());
         let args = StatusArgs {
-            staged: true,
             phase: None,
-            analysis_receipt: false,
+            ..valid_args()
         };
-        assert!(validate_change_status_args(&args).is_err());
+        assert!(validate_change_status_args(&args, OutputFormat::Json).is_err());
+        assert!(validate_change_status_args(&valid_args(), OutputFormat::Human).is_ok());
+    }
+
+    #[test]
+    fn analysis_receipt_requires_json_output() {
         let args = StatusArgs {
-            staged: true,
-            phase: Some(PhaseArg::Precommit),
-            analysis_receipt: false,
+            analysis_receipt: true,
+            ..valid_args()
         };
-        assert!(validate_change_status_args(&args).is_ok());
+        assert!(validate_change_status_args(&args, OutputFormat::Human).is_err());
+        assert!(validate_change_status_args(&args, OutputFormat::Json).is_ok());
     }
 }

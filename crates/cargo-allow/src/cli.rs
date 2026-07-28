@@ -1,10 +1,11 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use std::env;
+use std::ffi::OsStr;
 
 use crate::{
-    add, audit, check, diff, doctor, explain, init, list, migrate, precommit_tool, propose, prune,
-    refresh, vocabulary, why, worklist,
+    add, audit, check, completions, diff, doctor, explain, init, list, migrate, precommit_tool,
+    propose, prune, refresh, vocabulary, why, worklist,
 };
 
 #[derive(Debug, Parser)]
@@ -68,10 +69,16 @@ pub(crate) enum CargoAllowCommand {
     Vocabulary(vocabulary::VocabularyArgs),
     /// Inspect the selected cargo-allow tool identity and capabilities.
     Tool(precommit_tool::ToolArgs),
+    /// Generate a shell completion script.
+    Completions(completions::CompletionsArgs),
 }
 
 pub(crate) fn run() -> CargoAllowResult<()> {
-    let cli = CargoAllowCli::parse_from(normalized_args(env::args()));
+    // Preserve OS-native argv all the way into clap. `std::env::args()` panics
+    // when any argument is not valid UTF-8, which rejected otherwise supported
+    // Unix repository roots before staged delegation could pass the path to
+    // `Command::arg` as an `OsStr` (#2883).
+    let cli = CargoAllowCli::parse_from(normalized_args(env::args_os()));
     let _color = cli.color; // Accepted for cargo compatibility; not yet honored (see #2516).
     if cli.quiet {
         // Report renderers check this env var to suppress non-essential output
@@ -106,10 +113,15 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::Doctor(args) => doctor::cmd_doctor(&args),
         CargoAllowCommand::Vocabulary(args) => vocabulary::cmd_vocabulary(&args),
         CargoAllowCommand::Tool(args) => precommit_tool::cmd_tool(&args),
+        CargoAllowCommand::Completions(args) => completions::cmd_completions(&args),
     }
 }
 
-pub(crate) fn normalized_args(args: impl IntoIterator<Item = String>) -> Vec<String> {
+pub(crate) fn normalized_args<I, S>(args: I) -> Vec<S>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+{
     let mut args = args.into_iter().collect::<Vec<_>>();
     if let Some(index) = leading_cargo_allow_shim_index(&args) {
         args.remove(index);
@@ -127,9 +139,13 @@ pub(crate) fn normalized_args(args: impl IntoIterator<Item = String>) -> Vec<Str
 /// Bare `cargo-allow allow` with no further tokens keeps `allow` so a future
 /// `Allow` subcommand is not permanently reserved. Unknown non-flag tokens
 /// after `allow` also keep it (for example `cargo-allow allow future-cmd`).
-fn leading_cargo_allow_shim_index(args: &[String]) -> Option<usize> {
+fn leading_cargo_allow_shim_index<S>(args: &[S]) -> Option<usize>
+where
+    S: AsRef<OsStr>,
+{
     for (index, arg) in args.iter().enumerate().skip(1) {
-        if arg == "allow" {
+        let arg = arg.as_ref();
+        if arg == OsStr::new("allow") {
             return if should_strip_cargo_allow_shim(args, index + 1) {
                 Some(index)
             } else {
@@ -143,14 +159,18 @@ fn leading_cargo_allow_shim_index(args: &[String]) -> Option<usize> {
     None
 }
 
-fn should_strip_cargo_allow_shim(args: &[String], start: usize) -> bool {
+fn should_strip_cargo_allow_shim<S>(args: &[S], start: usize) -> bool
+where
+    S: AsRef<OsStr>,
+{
     let mut saw_token = false;
     for arg in args.iter().skip(start) {
+        let arg = arg.as_ref();
         saw_token = true;
         if is_known_subcommand(arg) {
             return true;
         }
-        if arg.starts_with('-') {
+        if arg.as_encoded_bytes().first() == Some(&b'-') {
             continue;
         }
         // A non-flag token that is not a known subcommand means `allow` is
@@ -162,8 +182,9 @@ fn should_strip_cargo_allow_shim(args: &[String], start: usize) -> bool {
     saw_token
 }
 
-fn is_known_subcommand(arg: &str) -> bool {
-    CargoAllowCommand::SUBCOMMANDS.contains(&arg)
+fn is_known_subcommand(arg: &OsStr) -> bool {
+    arg.to_str()
+        .is_some_and(|arg| CargoAllowCommand::SUBCOMMANDS.contains(&arg))
 }
 
 impl CargoAllowCommand {

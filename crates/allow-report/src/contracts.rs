@@ -377,6 +377,20 @@ pub fn scanner_limitations_for_schema_id(schema_id: &str) -> &'static [&'static 
 
 pub const CLAIM_BOUNDARY_TEXT: &str = "Claim boundary: scanned source-tree/source syntax only; cargo-allow did not invoke Cargo metadata, Cargo commands, rustc, Clippy, build scripts, proc macros, external evidence tools, or repository code. Macro expansion, macro token-tree contents, type information, MIR, build output, control flow, and data flow were not analyzed. Identity fields (symbol, callee, container, module, macro_name, lint) carry source-derived text and are emitted in CI artifacts; set CARGO_ALLOW_REDACT_IDENTITY=1 to redact them (structural hashes are preserved for matching).";
 
+/// The passing result label, shared by every renderer.
+///
+/// A pass states both the outcome and the mode that produced it, so an
+/// enforcing-mode pass is never reported as advisory. Human, markdown, and
+/// HTML all read from here: three copies of this string previously disagreed,
+/// with only HTML carrying the enforcement mode (#2832).
+///
+/// `enforcement` is `"enforcing"` or `"advisory"`. It falls back to
+/// `"advisory"` for callers that never set a mode, which is the conservative
+/// direction: claiming less enforcement than ran, never more.
+pub fn passed_result_label(enforcement: Option<&str>) -> String {
+    format!("passed ({})", enforcement.unwrap_or("advisory"))
+}
+
 /// Check if the `--quiet` flag was set (via `CARGO_ALLOW_QUIET=1` env var).
 /// When true, report renderers suppress non-essential output: claim boundary
 /// text, matched inventory listings, and advisory outcomes. Only result +
@@ -567,5 +581,26 @@ impl<'a> ReportContext<'a> {
 impl<'a> From<ReportContext<'a>> for InventoryContext<'a> {
     fn from(context: ReportContext<'a>) -> Self {
         context.inventory
+    }
+}
+
+#[cfg(test)]
+mod result_label_tests {
+    use super::*;
+
+    /// An enforcing pass must say so. This is the whole point of the shared
+    /// helper: the label previously lived in three renderers, and only HTML
+    /// carried the mode — and even that never reached a report, because
+    /// `enforcement` was populated on the receipt context alone.
+    #[test]
+    fn an_enforcing_pass_is_not_reported_as_advisory() {
+        assert_eq!(passed_result_label(Some("enforcing")), "passed (enforcing)");
+        assert_eq!(passed_result_label(Some("advisory")), "passed (advisory)");
+    }
+
+    /// A caller that never set a mode must under-claim, not over-claim.
+    #[test]
+    fn an_unknown_mode_falls_back_to_advisory() {
+        assert_eq!(passed_result_label(None), "passed (advisory)");
     }
 }
