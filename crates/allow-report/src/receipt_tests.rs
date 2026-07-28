@@ -179,9 +179,15 @@ fn receipt_matches_empty_check_golden_contract() {
 }
 
 #[test]
-#[should_panic(expected = "receipt artifacts support only the check command")]
+#[should_panic(expected = "receipt artifacts support only registered receipt commands")]
 fn receipt_rejects_unknown_artifact_command() {
     let _ = render_receipt_with_context("audit", &[], false, ReportContext::default());
+}
+
+#[test]
+fn receipt_accepts_diff_artifact_command() {
+    let json = render_receipt_with_context("diff", &[], false, ReportContext::default());
+    assert!(json.contains("\"command\": \"diff\""));
 }
 
 #[test]

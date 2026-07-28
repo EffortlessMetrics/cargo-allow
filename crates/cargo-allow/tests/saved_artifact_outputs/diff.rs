@@ -12,6 +12,7 @@ fn saved_diff_output_covers_clean_posture_report_contract() {
 
     let artifact_dir = fixture.root.join("target/cargo-allow");
     let diff = artifact_dir.join("diff.json");
+    let receipt = artifact_dir.join("diff.receipt.json");
 
     run_cargo_allow(&[
         "diff",
@@ -25,6 +26,8 @@ fn saved_diff_output_covers_clean_posture_report_contract() {
         "json",
         "--output",
         path_arg(&diff),
+        "--receipt",
+        path_arg(&receipt),
     ]);
 
     let value = assert_source_syntax_artifact_with_inventory(
@@ -32,6 +35,19 @@ fn saved_diff_output_covers_clean_posture_report_contract() {
         allow_report::REPORT_SCHEMA_ID,
         "diff",
         "git_tracked",
+    );
+    let receipt_value = assert_source_syntax_artifact_with_inventory(
+        &receipt,
+        allow_report::RECEIPT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        receipt_value
+            .get("status")
+            .and_then(serde_json::Value::as_str),
+        Some("passed"),
+        "diff receipt status"
     );
     assert_eq!(
         value

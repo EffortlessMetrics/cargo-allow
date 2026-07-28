@@ -22,6 +22,9 @@ pub(crate) struct DiffArgs {
     /// Write report to a file instead of stdout.
     #[arg(long)]
     pub(super) output: Option<PathBuf>,
+    /// Write a machine-readable diff receipt to a file.
+    #[arg(long)]
+    pub(super) receipt: Option<PathBuf>,
     /// Base Git revision; resolves to an exact commit before comparison.
     /// When omitted, auto-detects the merge-base of HEAD and its upstream
     /// (@{u}). If no upstream is configured, the command fails with an
@@ -114,6 +117,23 @@ mod tests {
         assert_eq!(
             args.write_change_note_template,
             Some(PathBuf::from(".allow/revisions/next.toml"))
+        );
+    }
+
+    #[test]
+    fn diff_args_accept_receipt_path() {
+        let args = DiffArgs::try_parse_from([
+            "diff",
+            "--base",
+            "HEAD~1",
+            "--receipt",
+            "target/cargo-allow/diff.receipt.json",
+        ])
+        .unwrap_or_else(|err| std::panic::panic_any(format!("receipt path should parse: {err}")));
+
+        assert_eq!(
+            args.receipt,
+            Some(PathBuf::from("target/cargo-allow/diff.receipt.json"))
         );
     }
 }
