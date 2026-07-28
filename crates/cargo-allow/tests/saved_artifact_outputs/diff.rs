@@ -75,6 +75,7 @@ fn saved_diff_output_covers_occurrence_limit_loosening_details() {
 
     let artifact_dir = fixture.root.join("target/cargo-allow");
     let diff = artifact_dir.join("diff.json");
+    let receipt = artifact_dir.join("diff.receipt.json");
 
     run_cargo_allow_expect_status(
         &[
@@ -89,6 +90,8 @@ fn saved_diff_output_covers_occurrence_limit_loosening_details() {
             "json",
             "--output",
             path_arg(&diff),
+            "--receipt",
+            path_arg(&receipt),
         ],
         false,
     );
@@ -105,6 +108,19 @@ fn saved_diff_output_covers_occurrence_limit_loosening_details() {
             .and_then(serde_json::Value::as_str),
         Some("worse"),
         "diff occurrence-limit loosening net posture"
+    );
+    let receipt_value = assert_source_syntax_artifact_with_inventory(
+        &receipt,
+        allow_report::RECEIPT_SCHEMA_ID,
+        "diff",
+        "git_tracked",
+    );
+    assert_eq!(
+        receipt_value
+            .get("status")
+            .and_then(serde_json::Value::as_str),
+        Some("failed"),
+        "failed diff should write a failed receipt"
     );
     assert_eq!(
         value
