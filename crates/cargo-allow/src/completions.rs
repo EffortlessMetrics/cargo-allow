@@ -52,9 +52,10 @@ fn render_completions(shell: Shell) -> CargoAllowResult<String> {
     let mut command = CargoAllowCli::command();
     let mut buffer: Vec<u8> = Vec::new();
     clap_complete::generate(shell, &mut command, "cargo-allow", &mut buffer);
-    String::from_utf8(buffer).map_err(|err| {
-        CargoAllowError::new(format!("completion script was not valid UTF-8: {err}"))
-    })
+    // `generate` writes shell script text, so this conversion does not fail in
+    // practice. Kept fallible rather than unwrapped: this is a panic-scanning
+    // tool, and a "cannot happen" is not a reason to panic in its own binary.
+    String::from_utf8(buffer).map_err(|err| CargoAllowError::new(format!("not UTF-8: {err}")))
 }
 
 #[cfg(test)]
