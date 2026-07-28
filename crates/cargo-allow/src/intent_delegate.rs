@@ -34,29 +34,41 @@ pub enum IntentDelegateFailureClass {
     WrongProduct,
     WrongProtocol,
     MalformedOutput,
-    ProviderOutputTooLarge,
-    ProviderDiagnosticTooLarge,
-    ReaderSettleTimeout,
     Timeout,
     StaleSource,
     IdentityMismatch,
     InstrumentFailure,
 }
 
-impl IntentDelegateFailureClass {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IntentDelegateFailureCode {
+    ProviderAbsent,
+    WrongProduct,
+    WrongProtocol,
+    MalformedProviderOutput,
+    ProviderOutputTooLarge,
+    ProviderDiagnosticTooLarge,
+    ReaderSettleTimeout,
+    ProviderTimeout,
+    StaleSource,
+    IdentityMismatch,
+    ProviderInstrumentFailure,
+}
+
+impl IntentDelegateFailureCode {
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::ProviderAbsent => "provider_absent",
             Self::WrongProduct => "wrong_product",
             Self::WrongProtocol => "wrong_protocol",
-            Self::MalformedOutput => "malformed_provider_output",
+            Self::MalformedProviderOutput => "malformed_provider_output",
             Self::ProviderOutputTooLarge => "provider_output_too_large",
             Self::ProviderDiagnosticTooLarge => "provider_diagnostic_too_large",
             Self::ReaderSettleTimeout => "reader_settle_timeout",
-            Self::Timeout => "provider_timeout",
+            Self::ProviderTimeout => "provider_timeout",
             Self::StaleSource => "stale_source",
             Self::IdentityMismatch => "identity_mismatch",
-            Self::InstrumentFailure => "provider_instrument_failure",
+            Self::ProviderInstrumentFailure => "provider_instrument_failure",
         }
     }
 }
@@ -64,6 +76,7 @@ impl IntentDelegateFailureClass {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IntentDelegateFailure {
     pub class: IntentDelegateFailureClass,
+    pub code: IntentDelegateFailureCode,
     pub detail: String,
 }
 
@@ -71,14 +84,44 @@ impl IntentDelegateFailure {
     fn new(class: IntentDelegateFailureClass, detail: impl Into<String>) -> Self {
         Self {
             class,
+            code: default_failure_code(class),
             detail: detail.into(),
+        }
+    }
+
+    fn with_code(
+        class: IntentDelegateFailureClass,
+        code: IntentDelegateFailureCode,
+        detail: impl Into<String>,
+    ) -> Self {
+        Self {
+            class,
+            code,
+            detail: detail.into(),
+        }
+    }
+}
+
+const fn default_failure_code(class: IntentDelegateFailureClass) -> IntentDelegateFailureCode {
+    match class {
+        IntentDelegateFailureClass::ProviderAbsent => IntentDelegateFailureCode::ProviderAbsent,
+        IntentDelegateFailureClass::WrongProduct => IntentDelegateFailureCode::WrongProduct,
+        IntentDelegateFailureClass::WrongProtocol => IntentDelegateFailureCode::WrongProtocol,
+        IntentDelegateFailureClass::MalformedOutput => {
+            IntentDelegateFailureCode::MalformedProviderOutput
+        }
+        IntentDelegateFailureClass::Timeout => IntentDelegateFailureCode::ProviderTimeout,
+        IntentDelegateFailureClass::StaleSource => IntentDelegateFailureCode::StaleSource,
+        IntentDelegateFailureClass::IdentityMismatch => IntentDelegateFailureCode::IdentityMismatch,
+        IntentDelegateFailureClass::InstrumentFailure => {
+            IntentDelegateFailureCode::ProviderInstrumentFailure
         }
     }
 }
 
 impl std::fmt::Display for IntentDelegateFailure {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.class.as_str(), self.detail)
+        write!(f, "{}: {}", self.code.as_str(), self.detail)
     }
 }
 
@@ -402,13 +445,14 @@ fn settle_readers(
         (Ok(stdout), Ok(stderr)) => Ok((stdout, stderr)),
         (Err(stdout_error), Ok(_)) => Err(stdout_error),
         (Ok(_), Err(stderr_error)) => Err(stderr_error),
-        (Err(stdout_error), Err(stderr_error)) => Err(IntentDelegateFailure::new(
-            if stdout_error.class == IntentDelegateFailureClass::ReaderSettleTimeout
-                || stderr_error.class == IntentDelegateFailureClass::ReaderSettleTimeout
+        (Err(stdout_error), Err(stderr_error)) => Err(IntentDelegateFailure::with_code(
+            IntentDelegateFailureClass::InstrumentFailure,
+            if stdout_error.code == IntentDelegateFailureCode::ReaderSettleTimeout
+                || stderr_error.code == IntentDelegateFailureCode::ReaderSettleTimeout
             {
-                IntentDelegateFailureClass::ReaderSettleTimeout
+                IntentDelegateFailureCode::ReaderSettleTimeout
             } else {
-                IntentDelegateFailureClass::InstrumentFailure
+                IntentDelegateFailureCode::ProviderInstrumentFailure
             },
             format!("{stdout_error}; {stderr_error}"),
         )),
@@ -422,8 +466,9 @@ fn receive_reader(
     let remaining = deadline.saturating_duration_since(Instant::now());
     match task.receiver.recv_timeout(remaining) {
         Ok(result) => result,
-        Err(RecvTimeoutError::Timeout) => Err(IntentDelegateFailure::new(
-            IntentDelegateFailureClass::ReaderSettleTimeout,
+        Err(RecvTimeoutError::Timeout) => Err(IntentDelegateFailure::with_code(
+            IntentDelegateFailureClass::InstrumentFailure,
+            IntentDelegateFailureCode::ReaderSettleTimeout,
             format!(
                 "cargo-intent provider {} reader did not settle within {}ms; a descendant may still hold the pipe open",
                 task.stream,
@@ -472,14 +517,16 @@ fn validate_provider_output(
     output: &BoundedProcessOutput,
 ) -> Result<AnalysisReceiptEnvelopeV1, IntentDelegateFailure> {
     if output.stdout_exceeded {
-        return Err(IntentDelegateFailure::new(
-            IntentDelegateFailureClass::ProviderOutputTooLarge,
+        return Err(IntentDelegateFailure::with_code(
+            IntentDelegateFailureClass::InstrumentFailure,
+            IntentDelegateFailureCode::ProviderOutputTooLarge,
             format!("cargo-intent stdout exceeded {PROVIDER_STDOUT_LIMIT} bytes"),
         ));
     }
     if output.stderr_exceeded {
-        return Err(IntentDelegateFailure::new(
-            IntentDelegateFailureClass::ProviderDiagnosticTooLarge,
+        return Err(IntentDelegateFailure::with_code(
+            IntentDelegateFailureClass::InstrumentFailure,
+            IntentDelegateFailureCode::ProviderDiagnosticTooLarge,
             format!("cargo-intent stderr exceeded {PROVIDER_STDERR_LIMIT} bytes"),
         ));
     }
@@ -647,11 +694,9 @@ fn delegate_error_kind(class: IntentDelegateFailureClass) -> CargoAllowErrorKind
         IntentDelegateFailureClass::WrongProduct
         | IntentDelegateFailureClass::WrongProtocol
         | IntentDelegateFailureClass::MalformedOutput => CargoAllowErrorKind::InvalidConfig,
-        IntentDelegateFailureClass::ProviderOutputTooLarge
-        | IntentDelegateFailureClass::ProviderDiagnosticTooLarge
-        | IntentDelegateFailureClass::ReaderSettleTimeout
-        | IntentDelegateFailureClass::Timeout
-        | IntentDelegateFailureClass::InstrumentFailure => CargoAllowErrorKind::Internal,
+        IntentDelegateFailureClass::Timeout | IntentDelegateFailureClass::InstrumentFailure => {
+            CargoAllowErrorKind::Internal
+        }
         IntentDelegateFailureClass::StaleSource => CargoAllowErrorKind::Inventory,
         IntentDelegateFailureClass::IdentityMismatch => CargoAllowErrorKind::InvalidConfig,
     }
@@ -780,21 +825,21 @@ mod tests {
     }
 
     #[test]
-    fn rejects_provider_stdout_over_budget_with_typed_class() -> Result<(), String> {
+    fn rejects_provider_stdout_over_budget_with_typed_code() -> Result<(), String> {
         let mut output = sample_output(b"{}".to_vec(), Vec::new())?;
         output.stdout_exceeded = true;
         let failure = match validate_provider_output(&output) {
             Err(failure) => failure,
             Ok(_) => return Err("oversized stdout should fail validation".to_string()),
         };
-        if failure.class != IntentDelegateFailureClass::ProviderOutputTooLarge {
+        if failure.code != IntentDelegateFailureCode::ProviderOutputTooLarge {
             return Err(format!("unexpected failure: {failure}"));
         }
         Ok(())
     }
 
     #[test]
-    fn rejects_provider_stderr_over_budget_with_typed_class() -> Result<(), String> {
+    fn rejects_provider_stderr_over_budget_with_typed_code() -> Result<(), String> {
         let envelope = sample_envelope(INTENT_PROVIDER_ID, CHANGE_STATUS_PAYLOAD_SCHEMA);
         let json = serde_json::to_vec(&envelope).map_err(|err| err.to_string())?;
         let mut output = sample_output(json, Vec::new())?;
@@ -803,7 +848,7 @@ mod tests {
             Err(failure) => failure,
             Ok(_) => return Err("oversized stderr should fail validation".to_string()),
         };
-        if failure.class != IntentDelegateFailureClass::ProviderDiagnosticTooLarge {
+        if failure.code != IntentDelegateFailureCode::ProviderDiagnosticTooLarge {
             return Err(format!("unexpected failure: {failure}"));
         }
         Ok(())
@@ -897,7 +942,7 @@ mod tests {
                 ));
             }
         };
-        if failure.class != IntentDelegateFailureClass::ReaderSettleTimeout {
+        if failure.code != IntentDelegateFailureCode::ReaderSettleTimeout {
             return Err(format!("expected ReaderSettleTimeout, got {failure}"));
         }
         if started.elapsed() > Duration::from_secs(3) {
