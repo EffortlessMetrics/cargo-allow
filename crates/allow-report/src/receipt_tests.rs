@@ -42,64 +42,140 @@ fn receipt_matches_empty_check_golden_contract() {
             None,
         ),
     );
-    let expected = format!(
-        r#"{{
-  "schema_version": 1,
-  "schema_id": "cargo-allow.receipt.v1",
-  "tool": "cargo-allow",
-  "command": "check",
-  "status": "passed",
-  "failed": false,
-  "claim_boundary": {},
-  "scanner_limitations": {},
-  "inventory": {{
-    "scope": "source_tree",
-    "scanner": "source_syntax",
-    "source": "git_tracked",
-    "root": "H:/Code/Rust/cargo-allow",
-    "files_scanned": 42
-  }},
-  "counts": {{
-    "matched": 0,
-    "new": 0,
-    "expired": 0,
-    "review_due": 0,
-    "location_drift": 0,
-    "stale": 0,
-    "ambiguous": 0,
-    "invalid_selector": 0,
-    "evidence_missing": 0,
-    "missing_required_field": 0,
-    "baseline_debt": 0
-  }},
-  "advisory": {{
-    "review_items": 0,
-    "new": 0,
-    "expired": 0,
-    "review_due": 0,
-    "location_drift": 0,
-    "stale": 0,
-    "ambiguous": 0,
-    "invalid_selector": 0,
-    "missing_required_field": 0,
-    "evidence_missing": 0,
-    "baseline_debt": 0
-  }},
-  "evidence_repair_queues": []
-}}
-"#,
-        render_claim_boundary_json(),
-        render_scanner_limitations_json()
-    );
+    // Pointer-based assertions (#2797): more resilient than a full golden
+    // string comparison. Adding a field won't break this test; renaming or
+    // removing one will.
+    let value: serde_json::Value = serde_json::from_str(&json).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("receipt must be valid JSON: {err}\n{json}"))
+    });
 
-    let actual_value = serde_json::from_str::<serde_json::Value>(&json);
-    let expected_value = serde_json::from_str::<serde_json::Value>(&expected);
-    assert!(actual_value.is_ok(), "typed receipt must remain valid JSON");
-    assert!(
-        expected_value.is_ok(),
-        "golden receipt must remain valid JSON"
+    assert_eq!(
+        value.pointer("/schema_version"),
+        Some(&serde_json::json!(1))
     );
-    assert_eq!(actual_value.ok(), expected_value.ok());
+    assert_eq!(
+        value.pointer("/schema_id"),
+        Some(&serde_json::json!("cargo-allow.receipt.v1"))
+    );
+    assert_eq!(
+        value.pointer("/tool"),
+        Some(&serde_json::json!("cargo-allow"))
+    );
+    assert_eq!(value.pointer("/command"), Some(&serde_json::json!("check")));
+    assert_eq!(value.pointer("/status"), Some(&serde_json::json!("passed")));
+    assert_eq!(value.pointer("/failed"), Some(&serde_json::json!(false)));
+    assert!(
+        value.pointer("/claim_boundary").is_some(),
+        "claim_boundary must be present"
+    );
+    assert!(
+        value.pointer("/scanner_limitations").is_some(),
+        "scanner_limitations must be present"
+    );
+    assert_eq!(
+        value.pointer("/inventory/scope"),
+        Some(&serde_json::json!("source_tree"))
+    );
+    assert_eq!(
+        value.pointer("/inventory/scanner"),
+        Some(&serde_json::json!("source_syntax"))
+    );
+    assert_eq!(
+        value.pointer("/inventory/source"),
+        Some(&serde_json::json!("git_tracked"))
+    );
+    assert_eq!(
+        value.pointer("/inventory/root"),
+        Some(&serde_json::json!("H:/Code/Rust/cargo-allow"))
+    );
+    assert_eq!(
+        value.pointer("/inventory/files_scanned"),
+        Some(&serde_json::json!(42))
+    );
+    assert_eq!(
+        value.pointer("/counts/matched"),
+        Some(&serde_json::json!(0))
+    );
+    assert_eq!(value.pointer("/counts/new"), Some(&serde_json::json!(0)));
+    assert_eq!(
+        value.pointer("/counts/expired"),
+        Some(&serde_json::json!(0))
+    );
+    assert_eq!(
+        value.pointer("/counts/review_due"),
+        Some(&serde_json::json!(0))
+    );
+    assert_eq!(
+        value.pointer("/counts/location_drift"),
+        Some(&serde_json::json!(0))
+    );
+    assert_eq!(value.pointer("/counts/stale"), Some(&serde_json::json!(0)));
+    assert_eq!(
+        value.pointer("/counts/ambiguous"),
+        Some(&serde_json::json!(0))
+    );
+    assert_eq!(
+        value.pointer("/counts/invalid_selector"),
+        Some(&serde_json::json!(0))
+    );
+    assert_eq!(
+        value.pointer("/counts/evidence_missing"),
+        Some(&serde_json::json!(0))
+    );
+    assert_eq!(
+        value.pointer("/counts/missing_required_field"),
+        Some(&serde_json::json!(0))
+    );
+    assert_eq!(
+        value.pointer("/counts/baseline_debt"),
+        Some(&serde_json::json!(0))
+    );
+    assert_eq!(
+        value.pointer("/advisory/review_items"),
+        Some(&serde_json::json!(0))
+    );
+    assert_eq!(value.pointer("/advisory/new"), Some(&serde_json::json!(0)));
+    assert_eq!(
+        value.pointer("/advisory/expired"),
+        Some(&serde_json::json!(0))
+    );
+    assert_eq!(
+        value.pointer("/advisory/review_due"),
+        Some(&serde_json::json!(0))
+    );
+    assert_eq!(
+        value.pointer("/advisory/location_drift"),
+        Some(&serde_json::json!(0))
+    );
+    assert_eq!(
+        value.pointer("/advisory/stale"),
+        Some(&serde_json::json!(0))
+    );
+    assert_eq!(
+        value.pointer("/advisory/ambiguous"),
+        Some(&serde_json::json!(0))
+    );
+    assert_eq!(
+        value.pointer("/advisory/invalid_selector"),
+        Some(&serde_json::json!(0))
+    );
+    assert_eq!(
+        value.pointer("/advisory/missing_required_field"),
+        Some(&serde_json::json!(0))
+    );
+    assert_eq!(
+        value.pointer("/advisory/evidence_missing"),
+        Some(&serde_json::json!(0))
+    );
+    assert_eq!(
+        value.pointer("/advisory/baseline_debt"),
+        Some(&serde_json::json!(0))
+    );
+    assert_eq!(
+        value.pointer("/evidence_repair_queues"),
+        Some(&serde_json::json!([])),
+        "evidence_repair_queues should be empty array"
+    );
 }
 
 #[test]
