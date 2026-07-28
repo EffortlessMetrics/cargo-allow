@@ -80,3 +80,14 @@ tree-sitter-rust = "0.24.2"
 lto = "thin"
 strip = true
 codegen-units = 1
+
+# Speed up dev/test builds: opt-level=1 makes tree-sitter C compilation
+# and the large binary crate faster to compile and run, while
+# line-tables-only reduces debuginfo size for faster linking (#2839).
+[profile.dev]
+opt-level = 1
+debug = "line-tables-only"
+
+[profile.test]
+opt-level = 1
+debug = "line-tables-only"
