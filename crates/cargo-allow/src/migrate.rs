@@ -6,7 +6,8 @@ use crate::{
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
-    portable_relative_under_root, resolve_source_tree_root, write_file_no_overwrite,
+    portable_relative_under_root, require_json_summary_output, resolve_source_tree_root,
+    write_file_no_overwrite,
 };
 use repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 use std::env;
@@ -32,6 +33,7 @@ use allow_core::{AllowConfig, FindingKind};
 use std::path::{Path, PathBuf};
 
 pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
+    require_json_summary_output(args.summary_format, args.summary_output.as_deref())?;
     if args.update && args.force {
         return Err(CargoAllowError::with_kind(
             CargoAllowErrorKind::Usage,

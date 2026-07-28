@@ -39,7 +39,7 @@ operational pipeline matches.
 
 ## Migration
 
-For each lane, running `cargo-allow migrate --from <fixture> --out <receipt-path> --summary-format json`
+For each lane, running `cargo-allow migrate --from <fixture> --out <receipt-path> --summary-format json --summary-output <summary-path>`
 produces a canonical `policy/allow.toml` format with:
 
 - All entries preserved with original owner, reason, evidence, and links

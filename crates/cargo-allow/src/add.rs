@@ -30,7 +30,7 @@ use crate::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
     git_relative_config_path, load_world, parse_kind_filter, portable_relative_under_root,
-    resolve_source_tree_root,
+    require_json_summary_output, resolve_source_tree_root,
 };
 use repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 
@@ -40,6 +40,7 @@ const ADD_REVIEW_AFTER_DEFAULT_DAYS: i64 = 90;
 use std::path::PathBuf;
 
 pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
+    require_json_summary_output(args.summary_format, args.summary_output.as_deref())?;
     if let Some(plan_path) = args.from_plan.as_deref() {
         return add_from_plan::cmd_add_from_plan(args, plan_path);
     }

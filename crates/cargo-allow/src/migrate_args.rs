@@ -25,10 +25,11 @@ pub(crate) struct MigrateArgs {
     /// Mutually exclusive with --force.
     #[arg(long)]
     pub(super) update: bool,
-    /// Summary output format. Policy output remains TOML.
+    /// Summary output format. JSON requires --summary-output so it cannot be
+    /// mixed with policy or warning text on stderr. Policy output remains TOML.
     #[arg(long, value_enum, default_value_t = HumanJsonFormat::Human)]
     pub(super) summary_format: HumanJsonFormat,
-    /// Write migration summary to a file instead of stderr.
+    /// Write migration summary to a file. Required with --summary-format json.
     #[arg(long)]
     pub(super) summary_output: Option<PathBuf>,
 }
