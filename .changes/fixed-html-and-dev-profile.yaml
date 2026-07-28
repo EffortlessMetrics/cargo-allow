@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  Three fixes: (1) HTML report now shows "N more omitted" notes when non-Rust
+  rows (>60) or non-matched outcomes (>100) are truncated, matching human and
+  markdown output (#2832). (2) HTML result label now uses the actual enforcement
+  label instead of hardcoded "advisory". (3) Added [profile.dev] and
+  [profile.test] with opt-level=1 and debug=line-tables-only for faster test
+  builds (#2839).

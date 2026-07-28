@@ -47,7 +47,13 @@ pub fn render_html_with_context(
     out.push_str(&format!(
         "<p class=\"status {}\">Result: {}</p>\n",
         if failed { "failed" } else { "passed" },
-        if failed { "failed" } else { "passed/advisory" }
+        if failed {
+            "failed"
+        } else {
+            context
+                .enforcement
+                .unwrap_or("advisory")
+        }
     ));
     out.push_str(&format!(
         "<p>Findings scanned: <code>{}</code></p>\n",
@@ -275,6 +281,7 @@ fn render_non_rust_html(findings: &[Finding], outcomes: &[MatchOutcome], out: &m
     }
     let rows = non_rust_file_rows(findings, outcomes);
     if !rows.is_empty() {
+        let total = rows.len();
         out.push_str(
             "<table><thead><tr><th>Status</th><th>Family</th><th>Path</th></tr></thead><tbody>\n",
         );
@@ -287,20 +294,29 @@ fn render_non_rust_html(findings: &[Finding], outcomes: &[MatchOutcome], out: &m
             ));
         }
         out.push_str("</tbody></table>\n");
+        if total > 60 {
+            out.push_str(&format!(
+                "<p class=\"claim\">{} more non-Rust file rows omitted from HTML report.</p>\n",
+                total - 60
+            ));
+        }
     }
 }
 
 fn render_non_matched_html(outcomes: &[MatchOutcome], out: &mut String) {
-    let non_matched = outcomes
+    let non_matched_total = outcomes
         .iter()
         .filter(|outcome| outcome.status != MatchStatus::Matched)
-        .take(100)
-        .collect::<Vec<_>>();
-    if non_matched.is_empty() {
+        .count();
+    if non_matched_total == 0 {
         return;
     }
     out.push_str("<h2>Non-matched Outcomes</h2>\n<ul>\n");
-    for outcome in non_matched {
+    for outcome in outcomes
+        .iter()
+        .filter(|outcome| outcome.status != MatchStatus::Matched)
+        .take(100)
+    {
         out.push_str(&format!(
             "<li><code>{}</code>: {}</li>\n",
             outcome.status.as_str(),
@@ -308,6 +324,12 @@ fn render_non_matched_html(outcomes: &[MatchOutcome], out: &mut String) {
         ));
     }
     out.push_str("</ul>\n");
+    if non_matched_total > 100 {
+        out.push_str(&format!(
+            "<p class=\"claim\">{} more non-matched outcomes omitted from HTML report.</p>\n",
+            non_matched_total - 100
+        ));
+    }
 }
 
 fn inventory_files_html_suffix(context: ReportContext<'_>) -> String {
