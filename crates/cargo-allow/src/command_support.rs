@@ -107,6 +107,7 @@ mod io_tests {
     #[test]
     fn scan_status_is_limited_to_human_terminal_output() -> Result<(), String> {
         let output = Path::new("target/report.txt");
+        emit_scan_status("test", OutputFormat::Human, None, None);
         if !should_emit_scan_status(OutputFormat::Human, None, None, false) {
             return Err("human terminal output should emit scan status".to_string());
         }
