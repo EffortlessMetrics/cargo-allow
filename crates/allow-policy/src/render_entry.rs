@@ -119,7 +119,6 @@ mod tests {
             "callee = \"shell\"",
             "lint = \"policy_exception::process_spawn\"",
             "symbol = \"run: cargo test\"",
-            "line_hint = 24",
             "[allow.last_seen]",
             "line = 24",
             "column = 9",

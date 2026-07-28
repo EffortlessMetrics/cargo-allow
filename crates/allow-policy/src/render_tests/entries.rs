@@ -149,7 +149,6 @@ fn renders_and_parses_selector_metadata() {
         "receiver_fingerprint = \"fnv1a64:receiver\"",
         "target_fingerprint = \"fnv1a64:target\"",
         "normalized_snippet_hash = \"fnv1a64:snippet\"",
-        "line_hint = 42",
         "glob = \"src/parser/span.rs\"",
         "[allow.last_seen]",
         "line = 45",
