@@ -1,0 +1,70 @@
+name: Finalize generation-2 architecture receipts
+
+on:
+  push:
+    branches:
+      - agent/2882-generation-2-architecture
+
+permissions:
+  contents: write
+
+concurrency:
+  group: agent-2882-finalize
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: agent/2882-generation-2-architecture
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+        with:
+          components: rustfmt
+      - name: Format changed Rust sources
+        run: cargo fmt --all
+      - name: Receipt package-identity ADR through cargo-allow
+        run: |
+          cargo run -p cargo-allow --locked -- add \
+            --kind non-rust \
+            --path docs/adr/CARGO-ALLOW-ADR-0003-package-identity-and-versioning.md \
+            --line 1 \
+            --owner repo-infra \
+            --classification architecture_authority \
+            --reason "Retained package identity, independent version-line, publication, and support authority for the landed three-product monorepo." \
+            --evidence spec:docs/specs/CARGO-ALLOW-SPEC-0011-three-product-convergence.md \
+            --review-after 2026-10-26 \
+            --update
+      - name: Receipt generation-2 convergence specification through cargo-allow
+        run: |
+          cargo run -p cargo-allow --locked -- add \
+            --kind non-rust \
+            --path docs/specs/CARGO-ALLOW-SPEC-0011-three-product-convergence.md \
+            --line 1 \
+            --owner repo-infra \
+            --classification architecture_authority \
+            --reason "Current normative convergence, compatibility-cutover, deletion, exact-candidate, and release boundary for the landed three-product monorepo." \
+            --evidence adr:docs/adr/CARGO-ALLOW-ADR-0003-package-identity-and-versioning.md \
+            --review-after 2026-10-26 \
+            --update
+      - name: Focused generation-2 validation
+        run: |
+          cargo fmt --all -- --check
+          cargo test -p allow-policy --test three_product_design --locked -- --nocapture
+          cargo test -p cargo-allow spec_design_artifact_links --locked -- --nocapture
+          cargo run -p cargo-allow --locked -- check --mode no-new
+      - name: Commit generated receipts and formatting, then remove this workflow
+        run: |
+          set -euo pipefail
+          git config user.name EffortlessSteven
+          git config user.email git@effortlesssteven.com
+          git rm .github/workflows/agent-2882-finalize.yml
+          git add policy/allow.toml \
+            crates/allow-policy/tests/three_product_design.rs \
+            crates/cargo-allow/src/spec_design_artifact_links_tests.rs
+          git diff --cached --check
+          git commit -m "docs(architecture): finalize generation-2 authority"
+          git push origin HEAD:agent/2882-generation-2-architecture
