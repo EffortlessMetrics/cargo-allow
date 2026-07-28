@@ -196,6 +196,47 @@ fn render_list_human_columns_selects_subset_and_preserves_order() {
 }
 
 #[test]
+fn render_list_human_sanitizes_repository_control_characters() {
+    let rows = vec![ListRow {
+        id: "allow-\n001",
+        status: "matched",
+        matches: 1,
+        kind: "panic",
+        family: Some("unwrap"),
+        owner: "parser\tteam",
+        classification: "approved",
+        scope: "src/\u{1b}[31mevil.rs",
+        source_package: None,
+        evidence_count: 0,
+        broken_evidence_references: 0,
+        weak_evidence_references: 0,
+        selector_precision: 1,
+        broad_scope: false,
+        review_after: None,
+        expires: None,
+        reason: "line one\r\nline two\u{7f}",
+    }];
+
+    let text = render_list_human_columns(
+        &rows,
+        InventoryContext::source_syntax("git_tracked", None, None),
+        &[
+            ListColumn::Id,
+            ListColumn::Owner,
+            ListColumn::Scope,
+            ListColumn::Reason,
+        ],
+    );
+
+    assert!(text.contains("allow-\\n001\tparser\\tteam\tsrc/�[31mevil.rs"));
+    assert!(text.contains("line one\\r\\nline two�\n"));
+    assert!(!text.contains("allow-\n001"));
+    assert!(!text.contains("parser\tteam"));
+    assert!(!text.contains('\u{1b}'));
+    assert!(!text.contains('\u{7f}'));
+}
+
+#[test]
 fn render_list_human_default_matches_full_header_row() {
     // #2595: when no column selection is made, render_list_human must
     // still produce the full 17-column header (backward compatibility).

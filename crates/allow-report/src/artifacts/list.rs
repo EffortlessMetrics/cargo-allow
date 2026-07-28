@@ -85,15 +85,15 @@ impl ListColumn {
     pub fn value<'a>(self, row: &'a ListRow<'a>) -> std::borrow::Cow<'a, str> {
         use std::borrow::Cow;
         match self {
-            ListColumn::Id => Cow::Borrowed(row.id),
+            ListColumn::Id => sanitized(row.id),
             ListColumn::Status => Cow::Borrowed(row.status),
             ListColumn::Matches => Cow::Owned(row.matches.to_string()),
             ListColumn::Kind => Cow::Borrowed(row.kind),
-            ListColumn::Family => Cow::Borrowed(row.family.unwrap_or("-")),
-            ListColumn::Owner => Cow::Borrowed(empty_as_dash(row.owner)),
-            ListColumn::Classification => Cow::Borrowed(empty_as_dash(row.classification)),
-            ListColumn::Scope => Cow::Borrowed(row.scope),
-            ListColumn::SourcePackage => Cow::Borrowed(row.source_package.unwrap_or("-")),
+            ListColumn::Family => sanitized(row.family.unwrap_or("-")),
+            ListColumn::Owner => sanitized(empty_as_dash(row.owner)),
+            ListColumn::Classification => sanitized(empty_as_dash(row.classification)),
+            ListColumn::Scope => sanitized(row.scope),
+            ListColumn::SourcePackage => sanitized(row.source_package.unwrap_or("-")),
             ListColumn::EvidenceCount => Cow::Owned(row.evidence_count.to_string()),
             ListColumn::BrokenEvidenceReferences => {
                 Cow::Owned(row.broken_evidence_references.to_string())
@@ -103,9 +103,9 @@ impl ListColumn {
             }
             ListColumn::SelectorPrecision => Cow::Owned(row.selector_precision.to_string()),
             ListColumn::BroadScope => Cow::Owned(row.broad_scope.to_string()),
-            ListColumn::ReviewAfter => Cow::Borrowed(row.review_after.unwrap_or("-")),
-            ListColumn::Expires => Cow::Borrowed(row.expires.unwrap_or("-")),
-            ListColumn::Reason => Cow::Borrowed(row.reason),
+            ListColumn::ReviewAfter => sanitized(row.review_after.unwrap_or("-")),
+            ListColumn::Expires => sanitized(row.expires.unwrap_or("-")),
+            ListColumn::Reason => sanitized(row.reason),
         }
     }
 
@@ -168,6 +168,10 @@ impl ListColumn {
             .collect::<Vec<_>>()
             .join(", ")
     }
+}
+
+fn sanitized<'a>(value: &'a str) -> std::borrow::Cow<'a, str> {
+    std::borrow::Cow::Owned(crate::style::sanitize_terminal_text(value))
 }
 
 fn empty_as_dash(value: &str) -> &str {
