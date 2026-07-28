@@ -25,9 +25,10 @@ pub(crate) fn render_selector(out: &mut String, selector: &Selector) {
         "normalized_snippet_hash",
         selector.normalized_snippet_hash.as_deref(),
     );
-    if let Some(v) = selector.line_hint {
-        out.push_str(&format!("line_hint = {}\n", v));
-    }
+    // line_hint is intentionally NOT rendered: the parser always discards it
+    // (toml_selector.rs sets line_hint: None for backward compat). Rendering
+    // it would create a confusing lossy round-trip where the field appears in
+    // the file but is silently dropped on next load (#2512).
     render_optional_string_field(out, "glob", selector.glob.as_deref());
 }
 
@@ -36,7 +37,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn render_selector_writes_present_fields_and_line_hint() {
+    fn render_selector_writes_present_fields_but_not_line_hint() {
         let mut out = String::from("prefix\n");
         let selector = Selector {
             ast_kind: Some("method_call".to_string()),
@@ -48,7 +49,7 @@ mod tests {
             receiver_fingerprint: Some("recv:result".to_string()),
             target_fingerprint: Some("target:unwrap".to_string()),
             normalized_snippet_hash: Some("abc123".to_string()),
-            line_hint: Some(42),
+            line_hint: Some(42), // should NOT be rendered
             glob: Some("src/lib.rs".to_string()),
         };
 
@@ -66,7 +67,6 @@ symbol = \"load_policy::unwrap\"\n\
 receiver_fingerprint = \"recv:result\"\n\
 target_fingerprint = \"target:unwrap\"\n\
 normalized_snippet_hash = \"abc123\"\n\
-line_hint = 42\n\
 glob = \"src/lib.rs\"\n"
         );
     }

@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  Policy: line_hint is now truly inert across the entire lifecycle. The renderer
+  no longer emits it (matching the parser which always discards it), and the
+  bespoke-ledger importer no longer populates it. Previously, refresh --write
+  and bespoke-ledger import would set line_hint, the renderer would write it to
+  TOML, and the parser would silently discard it on next load — a confusing
+  lossy round-trip (#2512).

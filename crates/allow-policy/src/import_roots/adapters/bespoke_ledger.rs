@@ -136,7 +136,7 @@ fn selector_from_entry_table(
     table: &toml::Table,
     path: Option<&str>,
     kind: FindingKind,
-    last_seen: Option<&LastSeen>,
+    _last_seen: Option<&LastSeen>,
 ) -> CargoAllowResult<Selector> {
     let ast_kind = string_field(table, "selector")
         .or_else(|| string_field(table, "ast_kind"))
@@ -156,8 +156,8 @@ fn selector_from_entry_table(
     let target_fingerprint =
         string_field(table, "target_fingerprint").or_else(|| string_field(table, "target"));
     let normalized_snippet_hash = string_field(table, "normalized_snippet_hash");
-    let line_hint =
-        optional_u32_field(table, "line_hint").or_else(|| last_seen.map(|seen| seen.line));
+    // line_hint is intentionally not propagated: the parser discards it (#2512)
+    // and the renderer no longer emits it. Keeping it None makes it truly inert.
     let glob = string_field(table, "selector_glob").or_else(|| path.map(str::to_string));
     let selector = Selector {
         ast_kind: Some(ast_kind.clone()),
@@ -169,7 +169,7 @@ fn selector_from_entry_table(
         receiver_fingerprint,
         target_fingerprint,
         normalized_snippet_hash,
-        line_hint,
+        line_hint: None,
         glob,
     };
     if !selector.has_structural_identity() {
@@ -425,7 +425,7 @@ column = 8
 "#;
 
     #[test]
-    fn import_preserves_last_seen_and_line_hint_for_bespoke() {
+    fn import_preserves_last_seen_but_not_line_hint_for_bespoke() {
         let table = parse_table(ADVISORY_DRIFT_FIXTURE);
         let cfg = import_bespoke_ledger_table(&table).unwrap_or_else(|err| {
             std::panic::panic_any(format!("bespoke advisory drift import: {err}"))
@@ -437,7 +437,8 @@ column = 8
             .find(|entry| entry.id == "fixture-bespoke-drift")
             .unwrap_or_else(|| std::panic::panic_any("expected fixture-bespoke-drift entry"));
 
-        assert_eq!(entry.selector.line_hint, Some(14));
+        // line_hint is intentionally not propagated from bespoke ledgers (#2512).
+        assert_eq!(entry.selector.line_hint, None);
         assert_eq!(
             entry
                 .last_seen
