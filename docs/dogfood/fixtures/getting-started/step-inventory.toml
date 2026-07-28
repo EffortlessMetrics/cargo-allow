@@ -71,7 +71,7 @@ id = "check_no_new_pass"
 channel = "published"
 argv_head = "check"
 exit_class = "success"
-output_id = "Result: passed/advisory"
+output_id = "Result: passed (enforcing)"
 
 [[step]]
 id = "check_no_new_fail"

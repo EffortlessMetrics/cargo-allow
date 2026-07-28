@@ -137,7 +137,10 @@ pub fn render_human_with_context(
             None => out.push_str("Result: failed\n"),
         }
     } else {
-        out.push_str("Result: passed/advisory\n");
+        out.push_str(&format!(
+            "Result: {}\n",
+            crate::contracts::passed_result_label(context.enforcement)
+        ));
     }
     out
 }
@@ -313,7 +316,7 @@ pub fn render_markdown_with_context(
                 None => "failed".to_string(),
             }
         } else {
-            "passed/advisory".to_string()
+            crate::contracts::passed_result_label(context.enforcement)
         }
     ));
     out.push_str(&format!("Findings scanned: `{}`\n\n", findings.len()));

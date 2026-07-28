@@ -186,6 +186,11 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
             output: args.output.as_deref(),
             root: &root,
             inventory_facts,
+            enforcement: Some(if mode.is_advisory() {
+                RECEIPT_ENFORCEMENT_ADVISORY
+            } else {
+                RECEIPT_ENFORCEMENT_ENFORCING
+            }),
         })?;
     }
     if let Some(path) = &args.receipt {

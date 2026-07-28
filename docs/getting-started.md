@@ -162,7 +162,7 @@ Passing baseline (after `propose --write` or an empty `init` ledger with no new
 debt) includes:
 
 ```text
-Result: passed/advisory
+Result: passed (enforcing)
 ```
 
 JSON markers: `"command": "check"`, `"status": "passed"`, and summary `"new": 0`.

@@ -1,0 +1,11 @@
+kind: Fixed
+body: >-
+  The passing result line now states the mode that produced it —
+  `Result: passed (enforcing)` or `Result: passed (advisory)` — in human,
+  markdown, and HTML output. Previously all three hardcoded
+  `passed/advisory`, so an enforcing `check --mode no-new` reported itself as
+  advisory. #2895 fixed the HTML renderer to read `context.enforcement`, but
+  that field was only ever populated on the receipt context, so every rendered
+  report still claimed advisory regardless of mode. `enforcement` is now
+  threaded to the report render path as well, and all three renderers share
+  one `passed_result_label` helper so they cannot drift apart again.
