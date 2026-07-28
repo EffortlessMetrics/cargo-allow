@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  Critical: policy renderer now emits `[lanes.<name>]` sections. Previously,
+  `cfg.lanes` was loaded from TOML but never rendered — every mutation command
+  (add --update, prune --write, refresh --write, migrate --update) silently
+  dropped lane posture, reverting to the default blocking mode on the next run.

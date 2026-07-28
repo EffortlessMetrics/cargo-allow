@@ -16,6 +16,21 @@ pub(crate) fn render_policy_header(out: &mut String, cfg: &AllowConfig) {
     out.push('\n');
 }
 
+pub(crate) fn render_lanes(
+    out: &mut String,
+    lanes: &std::collections::BTreeMap<String, allow_core::LaneConfig>,
+) {
+    if lanes.is_empty() {
+        return;
+    }
+    for (name, lane) in lanes {
+        out.push_str(&format!(
+            "[lanes.{name}]\nmode = \"{}\"\n\n",
+            lane.mode.as_str()
+        ));
+    }
+}
+
 pub(crate) fn render_workspace(out: &mut String, workspace: &WorkspaceConfig) {
     out.push_str("[workspace]\n");
     out.push_str(&format!(
