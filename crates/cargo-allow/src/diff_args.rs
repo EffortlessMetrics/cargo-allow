@@ -23,12 +23,15 @@ pub(crate) struct DiffArgs {
     #[arg(long)]
     pub(super) output: Option<PathBuf>,
     /// Base Git revision; resolves to an exact commit before comparison.
+    /// When omitted, auto-detects the merge-base of HEAD and its upstream
+    /// (@{u}). If no upstream is configured, the command fails with an
+    /// actionable error.
     #[arg(
         long,
         value_parser = parse_revision_arg,
         allow_hyphen_values = true
     )]
-    pub(super) base: String,
+    pub(super) base: Option<String>,
     /// Optional head Git revision; defaults to committed HEAD and resolves first.
     #[arg(
         long,
@@ -86,7 +89,7 @@ mod tests {
                 DiffArgs::try_parse_from(["diff", "--base", revision]).unwrap_or_else(|err| {
                     std::panic::panic_any(format!("revision `{revision}` should parse: {err}"))
                 });
-            assert_eq!(args.base, revision);
+            assert_eq!(args.base.as_deref(), Some(revision));
         }
     }
 

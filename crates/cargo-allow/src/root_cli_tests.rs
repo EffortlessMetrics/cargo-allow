@@ -157,10 +157,13 @@ mod tests {
     }
 
     #[test]
-    fn clap_requires_diff_base() {
-        let parsed = CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "diff"]));
-
-        assert!(parsed.is_err());
+    fn diff_without_base_parses_and_auto_detects() {
+        // --base is now optional; merge-base is auto-detected at runtime (#2788).
+        let parsed = CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "diff"]))
+            .unwrap_or_else(|err| {
+                std::panic::panic_any(format!("diff without --base should parse: {err}"))
+            });
+        assert!(matches!(parsed.command, Some(CargoAllowCommand::Diff(_))));
     }
 
     #[test]
