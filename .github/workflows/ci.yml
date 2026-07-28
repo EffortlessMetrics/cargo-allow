@@ -274,3 +274,48 @@ jobs:
           arguments: --workspace
           command: check
 
+  agent-2883-diagnose:
+    if: github.event_name == 'pull_request' && github.head_ref == 'agent/2883-bounded-intent-delegation' && github.actor != 'github-actions[bot]'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: agent/2883-bounded-intent-delegation
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Capture compiler and Clippy diagnostics
+        shell: bash
+        run: |
+          set +e
+          mkdir -p target/agent-2883-diagnostics
+          cargo check --workspace --all-targets --locked \
+            >target/agent-2883-diagnostics/check.txt 2>&1
+          echo "$?" >target/agent-2883-diagnostics/check.exit
+          cargo clippy --workspace --all-targets --locked -- -D warnings \
+            >target/agent-2883-diagnostics/clippy.txt 2>&1
+          echo "$?" >target/agent-2883-diagnostics/clippy.exit
+          cargo test -p cargo-allow --bins --locked \
+            >target/agent-2883-diagnostics/bin-tests.txt 2>&1
+          echo "$?" >target/agent-2883-diagnostics/bin-tests.exit
+          exit 0
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: agent-2883-diagnostics
+          path: target/agent-2883-diagnostics/
+          if-no-files-found: error
+      - name: Restore CI and remove one-shot helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name EffortlessSteven
+          git config user.email git@effortlesssteven.com
+          git fetch origin main
+          git checkout origin/main -- .github/workflows/ci.yml
+          git rm .github/workflows/agent-2883-diagnose.yml
+          git diff --cached --check
+          git commit -m "ci(intent): remove one-shot diagnostics"
+          git push origin HEAD:agent/2883-bounded-intent-delegation
