@@ -5,6 +5,12 @@ use allow_policy::{
 };
 use std::path::{Path, PathBuf};
 
+/// Centralized "no policy config found" error constructor (#2824).
+/// Used by 18+ sites that previously copy-pasted this message.
+pub(crate) fn missing_policy_config_error() -> CargoAllowError {
+    CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ConfigDiscovery {
     pub path: Option<PathBuf>,
@@ -101,9 +107,7 @@ pub(crate) fn discover_config_path(root: &Path, config: Option<&Path>) -> Config
 
 fn missing_config_error(skipped: &[SkippedPolicyCandidate]) -> CargoAllowError {
     if skipped.is_empty() {
-        return CargoAllowError::new(
-            "no policy config found; run `cargo-allow init` or pass --config",
-        );
+        return missing_policy_config_error();
     }
     let details = skipped
         .iter()

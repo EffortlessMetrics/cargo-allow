@@ -5,7 +5,6 @@ use allow_core::{
 use allow_inventory::{InventorySource, resolve_source_tree_root};
 use allow_match::{CheckMode, evaluate};
 use std::collections::BTreeSet;
-use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
@@ -28,8 +27,8 @@ use diff_render::{
 
 use crate::{
     EvidenceReportSummary, EvidenceValidationMode, InventoryFacts, OutputFormat,
-    SourceTreeReportContext, emit_text, git_relative_config_path, load_world_with_evidence_mode,
-    parse_kind_filter, policy_baseline_debt_entries, report_config,
+    SourceTreeReportContext, current_dir, emit_text, git_relative_config_path,
+    load_world_with_evidence_mode, parse_kind_filter, policy_baseline_debt_entries, report_config,
 };
 
 struct CurrentWorld {
@@ -326,8 +325,7 @@ fn current_world_loaded(current_world: &Option<CurrentWorld>) -> CargoAllowResul
 }
 
 fn resolve_diff_root(explicit_root: Option<&Path>) -> CargoAllowResult<PathBuf> {
-    let cwd =
-        env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
+    let cwd = current_dir()?;
     resolve_source_tree_root(explicit_root, cwd)
 }
 

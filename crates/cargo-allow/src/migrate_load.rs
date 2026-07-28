@@ -1,11 +1,10 @@
 use allow_core::{CargoAllowError, CargoAllowResult, FindingKind, normalize_path};
 use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
 use allow_policy::import_bespoke_ledger_at;
-use std::env;
 use std::path::{Path, PathBuf};
 
 use super::migrate_types::{MigrateContext, MigrationLoad};
-use crate::root_relative_path;
+use crate::{current_dir, root_relative_path};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SingleFileMigrationSource {
@@ -105,8 +104,7 @@ fn repo_policy_source_tree_root(
     if let Some(root) = explicit_root {
         return resolve_source_tree_root(Some(root), root);
     }
-    let cwd =
-        env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
+    let cwd = current_dir()?;
     let full_policy_path = if repo_policy.is_absolute() {
         repo_policy.to_path_buf()
     } else {

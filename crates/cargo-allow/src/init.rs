@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 mod init_args;
 pub(crate) use init_args::InitArgs;
 
-use crate::{MutationLock, ProfileArg, root_relative_path, spec_system};
+use crate::{MutationLock, ProfileArg, current_dir, root_relative_path, spec_system};
 
 const DEFAULT_SOURCE_EXCEPTION_CONFIG: &str = "policy/allow.toml";
 
@@ -40,8 +40,7 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
         });
     }
 
-    let cwd =
-        env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
+    let cwd = current_dir()?;
     let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;
     let path = root_relative_path(&root, &args.config);
     if args.dry_run {

@@ -2,7 +2,6 @@ use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
 use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
 use allow_policy::load_policy_with_reportable_evidence;
 use std::collections::BTreeSet;
-use std::env;
 use std::path::Path;
 
 #[path = "doctor_args.rs"]
@@ -10,8 +9,8 @@ mod doctor_args;
 pub(crate) use doctor_args::DoctorArgs;
 
 use crate::{
-    HumanJsonFormat, InventoryFacts, ProfileArg, SourceTreeReportContext, config_path, emit_text,
-    evidence_inventory::{
+    HumanJsonFormat, InventoryFacts, ProfileArg, SourceTreeReportContext, config_path, current_dir,
+    emit_text, evidence_inventory::{
         PolicyReferenceDiagnostic, current_evidence_source_tree_files,
         policy_reference_diagnostics_for_source_tree,
     },
@@ -30,8 +29,7 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         });
     }
 
-    let cwd =
-        env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
+    let cwd = current_dir()?;
     let root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
     let root_discovery = root_discovery_kind(args.root.root.as_deref(), &root);
     let config = config_path(&root, args.config.as_deref());

@@ -1,10 +1,9 @@
-use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult, Finding};
+use allow_core::{AllowConfig, CargoAllowResult, Finding};
 use allow_inventory::{InventoryOptions, InventorySource, inventory, resolve_source_tree_root};
 use allow_policy::federation::{
     FederationEvaluation, PrecedenceTier, evaluate_source_exception_policy,
 };
 use std::cell::RefCell;
-use std::env;
 use std::path::{Path, PathBuf};
 
 thread_local! {
@@ -12,7 +11,7 @@ thread_local! {
 }
 
 use crate::{
-    EvidenceValidationMode, InventoryFacts, canonical_companion_findings,
+    EvidenceValidationMode, InventoryFacts, canonical_companion_findings, current_dir,
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
@@ -56,8 +55,7 @@ pub(crate) fn load_world_with_evidence_mode(
     InventoryFacts,
     FederationEvaluation,
 )> {
-    let cwd =
-        env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
+    let cwd = current_dir()?;
     let root = resolve_source_tree_root(explicit_root, cwd)?;
     let (policy_path, federation) = match evaluate_source_exception_policy(&root, config) {
         Ok(value) => value,
@@ -147,8 +145,7 @@ pub(crate) fn load_world_for_path(
     InventoryFacts,
     FederationEvaluation,
 )> {
-    let cwd =
-        env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
+    let cwd = current_dir()?;
     let root = resolve_source_tree_root(explicit_root, cwd)?;
     let (policy_path, federation) = match evaluate_source_exception_policy(&root, config) {
         Ok(value) => value,
