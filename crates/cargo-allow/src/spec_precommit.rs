@@ -437,6 +437,10 @@ impl DelegatedPrecommitOutcome {
             crate::intent_delegate::IntentDelegateFailureClass::MalformedOutput => {
                 repo_protocol::ResultClassV1::MalformedInput
             }
+            crate::intent_delegate::IntentDelegateFailureClass::ProviderOutputTooLarge
+            | crate::intent_delegate::IntentDelegateFailureClass::ProviderDiagnosticTooLarge => {
+                repo_protocol::ResultClassV1::MalformedInput
+            }
             crate::intent_delegate::IntentDelegateFailureClass::WrongProduct
             | crate::intent_delegate::IntentDelegateFailureClass::WrongProtocol => {
                 repo_protocol::ResultClassV1::MalformedInput

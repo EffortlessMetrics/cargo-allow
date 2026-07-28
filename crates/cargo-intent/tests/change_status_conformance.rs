@@ -195,3 +195,37 @@ fn change_status_analysis_receipt_envelope() -> Result<(), String> {
     }
     Ok(())
 }
+
+#[test]
+fn change_status_analysis_receipt_rejects_non_json_format() -> Result<(), String> {
+    let repo = FixtureRepo::new("analysis-receipt-human")?;
+    repo.write("README.md", "base\n")?;
+    repo.git(&["add", "--all"])?;
+    repo.git(&["commit", "-qm", "base"])?;
+
+    let output = Command::new(env!("CARGO_BIN_EXE_cargo-intent"))
+        .args([
+            "--root",
+            repo.root
+                .to_str()
+                .ok_or_else(|| "non-UTF-8 fixture root".to_string())?,
+            "--format",
+            "human",
+            "change",
+            "status",
+            "--staged",
+            "--phase",
+            "precommit",
+            "--analysis-receipt",
+        ])
+        .output()
+        .map_err(|error| error.to_string())?;
+    if output.status.success() {
+        return Err("human analysis receipt request unexpectedly succeeded".to_string());
+    }
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    if !stderr.contains("--analysis-receipt requires --format json") {
+        return Err(format!("unexpected validation error: {stderr}"));
+    }
+    Ok(())
+}

@@ -94,7 +94,7 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
         }
         Some(CargoIntentCommand::Change(change)) => match change.command {
             ChangeCommand::Status(args) => {
-                validate_change_status_args(&args)?;
+                validate_change_status_args(&args, output_format)?;
                 change_status_staged_precommit(
                     &cli.root,
                     &config,
@@ -106,11 +106,14 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
     }
 }
 
-fn validate_change_status_args(args: &StatusArgs) -> Result<(), String> {
+fn validate_change_status_args(args: &StatusArgs, format: OutputFormat) -> Result<(), String> {
     if !args.staged {
         return Err("change status requires --staged".to_string());
     }
     match args.phase {
+        Some(PhaseArg::Precommit) if args.analysis_receipt && format != OutputFormat::Json => {
+            Err("--analysis-receipt requires --format json".to_string())
+        }
         Some(PhaseArg::Precommit) => Ok(()),
         None => Err("change status requires --phase precommit".to_string()),
     }
@@ -155,18 +158,29 @@ mod tests {
             phase: Some(PhaseArg::Precommit),
             analysis_receipt: false,
         };
-        assert!(validate_change_status_args(&args).is_err());
+        assert!(validate_change_status_args(&args, OutputFormat::Json).is_err());
         let args = StatusArgs {
             staged: true,
             phase: None,
             analysis_receipt: false,
         };
-        assert!(validate_change_status_args(&args).is_err());
+        assert!(validate_change_status_args(&args, OutputFormat::Json).is_err());
         let args = StatusArgs {
             staged: true,
             phase: Some(PhaseArg::Precommit),
             analysis_receipt: false,
         };
-        assert!(validate_change_status_args(&args).is_ok());
+        assert!(validate_change_status_args(&args, OutputFormat::Json).is_ok());
+    }
+
+    #[test]
+    fn analysis_receipt_requires_json_format() {
+        let args = StatusArgs {
+            staged: true,
+            phase: Some(PhaseArg::Precommit),
+            analysis_receipt: true,
+        };
+        assert!(validate_change_status_args(&args, OutputFormat::Human).is_err());
+        assert!(validate_change_status_args(&args, OutputFormat::Json).is_ok());
     }
 }
