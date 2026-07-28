@@ -15,7 +15,8 @@ const LOCK_POLL_INTERVAL: Duration = Duration::from_millis(100);
 /// Cross-process lock for a single repository mutation target.
 #[derive(Debug)]
 pub struct MutationLock {
-    _file: File,
+    file: Option<File>,
+    lock_path: Option<PathBuf>,
 }
 
 impl MutationLock {
@@ -55,7 +56,12 @@ impl MutationLock {
         let start = Instant::now();
         loop {
             match file.try_lock() {
-                Ok(()) => return Ok(Self { _file: file }),
+                Ok(()) => {
+                    return Ok(Self {
+                        file: Some(file),
+                        lock_path: Some(path),
+                    });
+                }
                 Err(TryLockError::WouldBlock) => {
                     if start.elapsed() >= timeout {
                         return Err(CargoAllowError::new(format!(
@@ -74,6 +80,20 @@ impl MutationLock {
                     )));
                 }
             }
+        }
+    }
+}
+
+impl Drop for MutationLock {
+    /// Release the OS advisory lock (via File drop) and clean up the lock file
+    /// from temp to prevent unbounded accumulation (#2781).
+    fn drop(&mut self) {
+        // Drop the file handle first to release the OS advisory lock.
+        // On Windows, the lock must be released before the file can be deleted.
+        self.file.take();
+        // Best-effort cleanup: remove the lock file from temp.
+        if let Some(path) = self.lock_path.take() {
+            let _ = fs::remove_file(&path);
         }
     }
 }
