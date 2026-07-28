@@ -80,6 +80,12 @@ pub(crate) fn render_non_rust_human(
             out.push_str(&format!("    {:24} {}\n", family, count));
         }
     }
+    // The per-file listing is the matched inventory `--quiet` exists to drop:
+    // on this repository it is 20 rows plus an omission note, against 4 lines
+    // of counts. The counts above stay either way (#2785).
+    if crate::contracts::is_quiet() {
+        return;
+    }
     let rows = non_rust_file_rows(findings, outcomes);
     if !rows.is_empty() {
         out.push_str("  files:\n");
