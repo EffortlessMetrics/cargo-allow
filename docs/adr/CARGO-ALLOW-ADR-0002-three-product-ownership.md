@@ -4,8 +4,13 @@ kind: adr
 status: accepted
 owner: repo-infra
 created: 2026-07-22
+updated: 2026-07-28
 linked_proposal: CARGO-ALLOW-PROP-0010
-linked_spec: CARGO-ALLOW-SPEC-0010
+linked_specs:
+  - CARGO-ALLOW-SPEC-0010
+  - CARGO-ALLOW-SPEC-0011
+related_adrs:
+  - CARGO-ALLOW-ADR-0003
 supersedes: none
 superseded_by: none
 support_tier_impact: advisory
@@ -17,175 +22,274 @@ policy_impact:
 
 ## Context
 
-Issue #2550 settled three product authorities inside one monorepo. Issue #2612
-ratified the concrete crate graph, stage gates, and forbidden convenience crates.
-Current implementation still embeds intent and proof semantics inside cargo-allow
-transitional modules (`allow-policy::spec_system`, `cargo-allow::spec_system*`).
+Cargo-allow began with source-exception policy, repository-intent compilation,
+and proof-oriented governance in one implementation tree. Issue #2550 settled
+three product authorities inside one monorepo, and Issue #2612 ratified the
+logical crate graph.
 
-The failure mode to prevent is **accidental authority merge**: treating
-transitional source locations as evidence that cargo-allow owns intent
-compilation or proof orchestration, or introducing library dependencies that
-would make cargo-allow require cargo-intent/cargo-proof at build time.
+The full logical crate topology now exists. The remaining failure mode is no
+longer missing crate names; it is accidental authority retention:
+
+- a transitional source location can be mistaken for permanent product
+  ownership;
+- a shared crate can import product ontology and cease to be shared;
+- a compatibility facade can retain a second evaluator;
+- a provider adapter can import orchestrator or application internals;
+- a walking-skeleton binary can be treated as a supported product;
+- one workspace can be treated as one release graph.
+
+This ADR owns semantic product boundaries and dependency direction. It does not
+own crates.io naming or version policy; CARGO-ALLOW-ADR-0003 owns those identities.
 
 ## Decision
 
-Adopt three product owners with fixed dependency direction. Crate names and
-counts are owned exclusively by #2612; this ADR owns **ownership** and
-**forbidden edges**.
+Adopt three semantic product owners with a small neutral substrate.
 
-### Product ownership
+### cargo-allow
 
-```text
-cargo-allow
-  source-exception domain, scanner, matching, lifecycle, mutation, diagnostics,
-  and the cargo-allow binary as thin application facade
-
-cargo-intent
-  authored repository-intent sources, authority compilation, private graph IR,
-  phase obligations, read-only domain queries, and later intent-edit settlement
-
-cargo-proof
-  exact-snapshot proof planning, explicit provider execution, receipt validation,
-  currentness, contradictions, and phase-gate composition
-```
-
-### Shared substrate
+Owns:
 
 ```text
-repo-protocol     identity and transport envelopes only
-repo-snapshot     exact committed/index/worktree source views
-repo-edit         safe filesystem mutation (deferred until read-only cutover)
-rust-source-index structural Rust subject inventory (before full intent-engine)
+source inventory and sensor capability
+source-syntax and source-presence findings
+policy/allow.toml parsing and validation
+finding-to-receipt matching, ambiguity and occurrence law
+lifecycle, evidence and no-new posture
+cargo-allow finding/policy/ledger movement
+source-exception mutation plans and receipts
+cargo-allow reports, diagnostics and process-provider payloads
+cargo-allow CLI and release identity
 ```
 
-Shared crates exist because at least two products need the same load-bearing
-implementation. Shared does not imply stable public API or crates.io
-publication.
+Does not own durable repository intent, the private intent graph, proof-provider
+execution, cross-provider currentness, or phase-gate evidence composition.
 
-### Allowed dependency edges
+### cargo-intent
 
-In the following list, `A → B` means **A depends on B**.
+Owns:
+
+```text
+authored proposals, specifications, ADRs, initiatives and requirements
+authority, source-role and dialect resolution
+implementation slices, transactions and semantic effects
+private compiled intent graph and indexes
+parent/candidate graph comparison and impact closure
+phase-aware obligations, inference and posture reconciliation
+bounded read-only domain queries and diagnostics
+semantic edit plans, approval, recompile and settlement through intent-edit
+cargo-intent CLI, rendering and product identity
+```
+
+The compiled graph is disposable private IR. Public consumers receive bounded
+`intent-protocol` values rather than graph nodes.
+
+### cargo-proof
+
+Owns:
+
+```text
+proof-reference and provider identity
+obligation-to-proof planning and provider selection
+explicit registered provider execution or captured-result ingestion
+receipt validation and exact snapshot/config/tool currentness
+cache and stale-result handling
+cross-provider contradiction composition
+phase-gate evidence composition
+cargo-proof CLI, rendering and product identity
+```
+
+Cargo-proof does not decide authored product direction, cargo-allow matching
+semantics, provider-private domain meaning, or final merge policy.
+
+## Shared substrate
+
+```text
+repo-protocol
+  provider-neutral repository, tool, capability, result, completeness,
+  currentness, diagnostic, action and receipt transport only
+
+repo-snapshot
+  exact committed tree, staged index, saved worktree and overlay source views;
+  source identity, bounded reads, limitations and staleness
+
+repo-edit
+  repository-owned target identity, containment, lock sets, generic apply,
+  atomicity/rollback classification and filesystem apply receipts
+
+rust-source-index
+  structural Rust package, target, module, item and test-subject inventory;
+  stable source selectors and explicit parser/cfg limitations
+```
+
+A shared crate exists because at least two products need one load-bearing
+implementation. “Shared” does not imply stable direct API, publication, or
+permission to contain product ontology.
+
+## Dependency direction
+
+In this section, `A → B` means **A depends on B**.
 
 ```text
 repo-snapshot → repo-protocol
-repo-edit → repo-protocol, repo-snapshot where required
-rust-source-index → repo-protocol, repo-snapshot
+repo-edit → repo-protocol and neutral snapshot identities where required
+rust-source-index → repo-protocol and repo-snapshot
 
 intent-model → repo-protocol
-intent-protocol → intent-model, repo-protocol
+intent-protocol → intent-model and repo-protocol
 intent-engine → intent-model, intent-protocol, repo-protocol,
-                repo-snapshot, rust-source-index
-cargo-intent → intent-engine, intent-protocol
+                repo-snapshot and rust-source-index
 intent-edit → intent-engine, intent-model, intent-protocol,
-              repo-protocol, repo-snapshot, repo-edit
+              repo-protocol, repo-snapshot and repo-edit
+cargo-intent → intent-engine, intent-protocol and optional intent-edit
 
 proof-protocol → repo-protocol
-proof-provider-api → proof-protocol, repo-protocol
+proof-provider-api → proof-protocol and repo-protocol
 proof-engine → proof-protocol, proof-provider-api, repo-protocol,
-               repo-snapshot, intent-protocol
-proof-adapter-* → proof-provider-api, proof-protocol, repo-protocol,
-                  provider public/process contracts
-cargo-proof → proof-engine, selected proof-adapter-* crates
+               repo-snapshot and intent-protocol
+proof-adapter-* → proof-provider-api, proof-protocol, repo-protocol and
+                  exact provider public/process contracts
+cargo-proof → proof-engine and selected proof-adapter-* crates
 
-cargo-allow implementation crates → repo-protocol, repo-snapshot (where moved
-  implementation requires it; repo-edit only after parity cutover)
+cargo-allow implementation crates → neutral shared substrate only where the
+                                     moved implementation requires it
 ```
 
-### Forbidden dependency edges
+## Forbidden edges
 
 ```text
-cargo-allow product → intent-model / intent-engine / proof-engine / cargo-proof
-intent-model / intent-protocol → repo-snapshot / filesystem / Git / process
-intent-engine → intent-edit / proof-* / cargo-allow application internals
-proof-protocol / proof-provider-api → intent-model / intent-engine
-proof-engine → intent-engine / cargo-allow private crates
-provider adapters → intent-engine / cargo-allow private modules
-shared substrate → any product-domain ontology crate
+cargo-allow product → intent-model, intent-engine, proof-engine or cargo-proof
+shared substrate → allow, intent or proof product-domain crates
+intent-model or intent-protocol → filesystem, Git, process or repo-snapshot I/O
+intent-engine → intent-edit, proof-* or cargo-allow application internals
+proof-protocol or proof-provider-api → intent-model or intent-engine
+proof-engine → intent-engine or cargo-allow private crates
+provider adapters → intent-engine, proof-engine internals or cargo-allow private modules
 ```
 
-### Compatibility architecture
+A temporary non-final edge is allowed only through an exact move/shim record
+with activating feature/target, owner, reason, parity case, latest stage or
+release, and deletion condition. An undocumented or expired transition fails
+architecture validation.
 
-Legacy cargo-allow intent commands use **one-way process delegation** to an
-installed cargo-intent (#2601). cargo-allow must not depend on intent or proof
-libraries. Parity window exists; then embedded evaluator deletion (#2568).
+## Read-only and mutation boundary
 
-### Publication posture
+```text
+intent-engine
+  compile, compare, query, infer and produce safe action/edit plans
+  never apply filesystem edits
 
-Shared and product-internal crates remain `publish = false` until #2604 records
-a reviewed publish/package order and a published product requires the dependency.
+intent-edit
+  validate semantic plan and approval
+  translate accepted file edits into repo-edit requests
+  apply through repo-edit
+  recompile through intent-engine
+  compare expected and observed movement
+  emit semantic settlement
 
-### Repository extraction
+repo-edit
+  prove only the bounded filesystem operation attempted and observed
+```
 
-Repository extraction is **not authorized**. Monorepo boundaries must remain
-extractable through public process/protocol contracts and exact-candidate proof
-after Issue #2558 dogfood, Issue #2605 exact-candidate interop, and Issue #2559
-extraction-readiness evidence all pass. Those gates are necessary but do not
-replace a later explicit repository-extraction authorization.
+A successful repository write is not automatically a successful semantic
+settlement.
 
-## Alternatives Considered
+## Compatibility boundary
 
-| Alternative | Tradeoff |
+Legacy cargo-allow intent operations use one-way process delegation to an
+installed `cargo-intent` through provider-neutral envelopes. Cargo-allow:
+
+- validates the selected executable and protocol identity;
+- binds the request and response to an exact source subject;
+- drains bounded subprocess output safely;
+- renders a compatibility projection;
+- returns explicit unavailable, incompatible, stale, malformed, timeout and
+  instrument-failure results; and
+- never falls back to an embedded semantic evaluator after cutover.
+
+Historical generations may remain readable but cannot become current authority.
+
+## Current implementation appendix
+
+| Boundary | Status on 2026-07-28 |
 | --- | --- |
-| Single product with feature flags | Hides independent support tiers and couples release stability |
-| cargo-allow library embeds intent-engine | Violates independence; rejected |
-| Universal `common` crate | Accumulates product-domain enums; rejected per #2612 |
-| Immediate repo split | Boundaries unproven; deferred |
-| Raw graph as public API | Couples consumers to internal IR; domain queries required (#2563) |
+| Logical 27-crate topology | landed |
+| cargo-allow core | published `0.1.11`; source candidate `0.2.0` |
+| cargo-intent | landed experimental staged-precommit vertical |
+| cargo-proof | landed experimental planning/dry-run/provider-contract skeleton |
+| shared substrate | landed transitional; package/version/dependency convergence incomplete |
+| process compatibility | first staged operation landed; hardening and broader cutover incomplete |
+| embedded current intent deletion | incomplete |
+| independent exact package qualification | incomplete |
+| physical repository extraction | not authorized |
+
+This appendix reports implementation state; it does not change ownership law.
+
+## Publication and versioning
+
+CARGO-ALLOW-ADR-0003 owns:
+
+- logical/package/library identity separation;
+- `effortless-*` shared package names;
+- cargo-allow `0.2.x` versus experimental shared/intent/proof `0.1.x` lines;
+- transitive registry visibility versus supported direct use; and
+- atomic pre-publication identity migration.
+
+This ADR does not infer support or compatibility from equal workspace membership.
+
+## Repository extraction
+
+Physical repository extraction is not authorized. It may be considered only
+after independent package and CI closures, public-boundary external dogfood,
+shim/private-path deletion, simplification review, and a later explicit
+repository-extraction authorization.
 
 ## Consequences
 
 ### Positive
 
-- cargo-allow remains independently buildable, testable, and releasable.
-- Intent compilation and proof orchestration can mature on separate support
-  tiers.
-- #2580 can machine-check dependency law against a ratified manifest.
-- Extraction sequencing has an enforceable owner per module/type.
+- cargo-allow remains independently buildable, installable and releasable.
+- Intent ontology and proof-provider integrations can evolve on separate support
+  and version lines.
+- Read-only consumers do not inherit mutation authority.
+- Provider-specific dependencies do not contaminate the proof engine.
+- A later repository split is operational rather than another semantic redesign.
 
 ### Negative
 
-- Transitional duplication until #2568 deletes embedded authority.
-- Operators need multiple binaries for full intent-to-proof journey.
-- More crates to coordinate in CI until #2604 product topology lands.
+- The monorepo must maintain explicit package and compatibility contracts during
+  convergence.
+- Temporary duplication is visible until parity and deletion complete.
+- Operators selecting the full journey need multiple binaries.
 
-### Neutral Or Operational
+### Operational
 
-- Historical `spec-system` names remain compatibility/provenance labels.
-- Issue bodies remain research/provenance; retained artifacts are authority.
+- Every move has one writer and one deletion denominator.
+- Dependent branches start from merged `main`.
+- Exact product package closures, not the ambient workspace, qualify releases.
 
-## Support-Tier Impact
+## Rejected alternatives
 
-Adds advisory experimental rows for cargo-intent and cargo-proof. cargo-allow
-source-exception ledger tier unchanged.
+| Alternative | Why rejected |
+| --- | --- |
+| Permanent spec-system inside cargo-allow | Couples the stable ledger to evolving intent and proof semantics. |
+| One universal `common` crate | Becomes a second ontology and hides ownership. |
+| Public raw intent graph | Freezes private storage shape and encourages incidental traversal contracts. |
+| Mutation inside intent-engine | Gives every read-only consumer filesystem write authority. |
+| Provider adapters inside proof-engine | Pulls provider toolchains and private semantics into the core orchestrator. |
+| Immediate repository split | Makes atomic parity and deletion harder before boundaries are proven. |
 
-## Policy Impact
+## Required evidence
 
-Registers this ADR in `.allow/artifacts/doc-artifacts.toml`. Future #2580
-architecture manifest must cite CARGO-ALLOW-ADR-0002 and #2612 topology.
+- generation-2 architecture and package identity validation;
+- selected dependency closure with direct and transitive paths;
+- parity/cutover receipts for moved semantic operations;
+- absence of embedded fallback after cutover;
+- independent installed-candidate proof for each selected product closure.
 
-## Required Evidence
+## Claim boundary
 
-- CARGO-ALLOW-SPEC-0010 atomic requirements
-- #2580 ProductCrateArchitectureV1 (report-only first)
-- #2606 parity/cutover receipts per stage
-- #2607 shim registry bounds
-
-## Non-Goals
-
-- Creating crates or moving modules in this ADR
-- Freezing exact crate count (owned by #2612)
-- Authorizing physical repository extraction
-- Defining every future command surface
-
-## Claim Boundary
-
-This ADR records durable ownership and dependency direction for three products
-and their shared substrate inside one monorepo. It does not prove current code
-complies, certify releases, or implement the architecture manifest.
-
-## Rollback Or Supersession
-
-Supersede by a new ADR that explicitly replaces CARGO-ALLOW-ADR-0002 and updates
-the controlling issues for architecture manifest (#2580) and crate topology
-(#2612) in one reviewed topology change. Do not land crate additions without
-updating #2612, #2580, #2598, and #2604 together.
+This ADR records semantic ownership, dependency direction, side-effect
+boundaries, compatibility law, and current implementation posture. It does not
+prove current code compliance, define package names or versions beyond its link
+to ADR-0003, publish products, authorize cargo-allow 0.2, or authorize physical
+repository extraction.
