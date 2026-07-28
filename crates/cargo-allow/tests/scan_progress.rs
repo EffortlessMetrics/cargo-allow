@@ -29,6 +29,31 @@ fn audit_emits_scan_status_for_human_terminal_output() -> Result<(), String> {
 }
 
 #[test]
+fn check_emits_scan_status_before_a_human_terminal_error() -> Result<(), String> {
+    let root = TempRoot::new("check-scan-progress")?;
+    fs::write(root.path().join("tracked.txt"), "tracked\n").map_err(|error| error.to_string())?;
+
+    let result = run(&[
+        "check",
+        "--root",
+        root.path().to_str().ok_or("non-UTF-8 root")?,
+        "--mode",
+        "no-new",
+    ])?;
+    if result.status.success() {
+        return Err("check unexpectedly succeeded without a policy".to_string());
+    }
+    if !String::from_utf8_lossy(&result.stderr).contains("cargo-allow check: scanning...") {
+        return Err(format!(
+            "check did not emit scan status: {}",
+            String::from_utf8_lossy(&result.stderr)
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
 fn scan_status_stays_off_machine_and_quiet_surfaces() -> Result<(), String> {
     let root = TempRoot::new("scan-progress-suppressed")?;
     fs::write(root.path().join("tracked.txt"), "tracked\n").map_err(|error| error.to_string())?;
