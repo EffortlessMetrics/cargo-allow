@@ -121,26 +121,36 @@ timeout_secs = 30
 
 fn run_delegated_precommit(repo: &FixtureRepo, output: &Path) -> Result<Output, String> {
     Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
-        .args([
-            "check",
-            "--root",
-            repo.root
-                .to_str()
-                .ok_or_else(|| "non-UTF-8 fixture root".to_string())?,
-            "--profile",
-            "spec-system",
-            "--phase",
-            "precommit",
-            "--staged",
-            "--format",
-            "json",
-            "--output",
-            output
-                .to_str()
-                .ok_or_else(|| "non-UTF-8 output path".to_string())?,
-        ])
+        .arg("check")
+        .arg("--root")
+        .arg(&repo.root)
+        .arg("--profile")
+        .arg("spec-system")
+        .arg("--phase")
+        .arg("precommit")
+        .arg("--staged")
+        .arg("--format")
+        .arg("json")
+        .arg("--output")
+        .arg(output)
         .output()
         .map_err(|error| error.to_string())
+}
+
+fn assert_delegated_report(output_path: &Path) -> Result<Vec<u8>, String> {
+    let bytes = fs::read(output_path).map_err(|error| error.to_string())?;
+    let report: Value = serde_json::from_slice(&bytes).map_err(|error| error.to_string())?;
+    let gates = report
+        .get("remaining_gates")
+        .and_then(Value::as_array)
+        .ok_or_else(|| "missing remaining_gates".to_string())?;
+    if !gates
+        .iter()
+        .any(|gate| gate.as_str() == Some("delegated via repo.analysis-receipt.v1"))
+    {
+        return Err("report did not record analysis-receipt delegation".to_string());
+    }
+    Ok(bytes)
 }
 
 #[test]
@@ -159,17 +169,42 @@ fn delegated_staged_precommit_uses_analysis_receipt() -> Result<(), String> {
     if command.status.success() {
         return Err("delegated unmapped staged surface unexpectedly passed".to_string());
     }
-    let report: Value = serde_json::from_slice(&fs::read(&output_path).map_err(|e| e.to_string())?)
-        .map_err(|error| error.to_string())?;
-    let gates = report
-        .get("remaining_gates")
-        .and_then(Value::as_array)
-        .ok_or_else(|| "missing remaining_gates".to_string())?;
-    if !gates
-        .iter()
-        .any(|gate| gate.as_str() == Some("delegated via repo.analysis-receipt.v1"))
-    {
-        return Err("report did not record analysis-receipt delegation".to_string());
+    assert_delegated_report(&output_path)?;
+    Ok(())
+}
+
+#[test]
+fn delegated_staged_precommit_drains_large_analysis_receipt() -> Result<(), String> {
+    let provider = cargo_intent_binary()?;
+    let repo = FixtureRepo::new("large-delegated")?;
+    write_delegation_config(&repo.root, &provider)?;
+    repo.write("README.md", "base\n")?;
+    repo.git(&["add", "--all"])?;
+    repo.git(&["commit", "-qm", "base"])?;
+
+    for index in 0..1_400 {
+        repo.write(
+            &format!("bulk/candidate-{index:04}.txt"),
+            "staged bytes\n",
+        )?;
+    }
+    repo.git(&["add", "--all"])?;
+
+    let output_path = repo.root.join("target/large-precommit.json");
+    let command = run_delegated_precommit(&repo, &output_path)?;
+    if command.status.success() {
+        return Err("large delegated unmapped staged surface unexpectedly passed".to_string());
+    }
+    let stderr = String::from_utf8_lossy(&command.stderr);
+    if stderr.contains("Timeout") || stderr.contains("provider exceeded") {
+        return Err(format!("large delegated receipt timed out: {stderr}"));
+    }
+    let report = assert_delegated_report(&output_path)?;
+    if report.len() <= 64 * 1024 {
+        return Err(format!(
+            "large delegation fixture did not exceed an ordinary pipe buffer: {} bytes",
+            report.len()
+        ));
     }
     Ok(())
 }
