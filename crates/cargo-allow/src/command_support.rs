@@ -31,9 +31,8 @@ pub(crate) use allow_report::policy_baseline_debt_entries;
 /// Centralized current-dir reader (#2824). Replaces 20+ copy-pasted
 /// `env::current_dir().map_err(|e| CargoAllowError::new(...))` sites.
 pub(crate) fn current_dir() -> CargoAllowResult<std::path::PathBuf> {
-    std::env::current_dir().map_err(|e| {
-        allow_core::CargoAllowError::new(format!("failed to read cwd: {e}"))
-    })
+    std::env::current_dir()
+        .map_err(|e| allow_core::CargoAllowError::new(format!("failed to read cwd: {e}")))
 }
 
 pub(crate) fn emit_text(output: Option<&Path>, contents: &str) -> CargoAllowResult<()> {

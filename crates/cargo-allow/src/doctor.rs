@@ -10,7 +10,8 @@ pub(crate) use doctor_args::DoctorArgs;
 
 use crate::{
     HumanJsonFormat, InventoryFacts, ProfileArg, SourceTreeReportContext, config_path, current_dir,
-    emit_text, evidence_inventory::{
+    emit_text,
+    evidence_inventory::{
         PolicyReferenceDiagnostic, current_evidence_source_tree_files,
         policy_reference_diagnostics_for_source_tree,
     },

@@ -52,8 +52,7 @@ pub(crate) struct SpecSystemCommandArgs<'a> {
 }
 
 fn reject_cutover_embedded_authority(root: &RootArgs, surface: &str) -> CargoAllowResult<()> {
-    let cwd =
-        current_dir()?;
+    let cwd = current_dir()?;
     let resolved = resolve_source_tree_root(root.root.as_deref(), cwd)?;
     crate::intent_delegate::reject_embedded_spec_system_authority(&resolved, surface)
 }
@@ -160,8 +159,7 @@ pub(crate) struct SpecSystemInitCommandArgs<'a> {
 
 pub(crate) fn cmd_spec_system_init(args: SpecSystemInitCommandArgs<'_>) -> CargoAllowResult<()> {
     reject_cutover_embedded_authority(args.root, "init")?;
-    let cwd =
-        current_dir()?;
+    let cwd = current_dir()?;
     let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;
     let config_path = args
         .config
@@ -680,8 +678,7 @@ fn build_spec_system_report(
     include_readiness: bool,
     mode_override: Option<SpecSystemMode>,
 ) -> CargoAllowResult<SpecSystemReport> {
-    let cwd =
-        current_dir()?;
+    let cwd = current_dir()?;
     let root = resolve_source_tree_root(root_args.root.as_deref(), cwd)?;
     let loaded_config = load_spec_system_config(&root, config);
     let mut cfg = loaded_config.cfg.clone();
