@@ -1,0 +1,8 @@
+kind: Added
+body: >-
+  UX: `cargo-allow diff` now auto-detects the merge-base of HEAD and its
+  upstream (@{u}) when --base is omitted (#2788). Previously, running
+  `cargo-allow diff` without --base failed with a generic clap error.
+  Now it behaves like `git diff` — if an upstream is configured, the
+  merge-base is computed automatically. If no upstream exists, the error
+  message suggests `--base origin/main`.

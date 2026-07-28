@@ -40,6 +40,21 @@ struct CurrentWorld {
 }
 
 pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
+    // Auto-detect merge-base when --base is omitted (#2788).
+    let base = match &args.base {
+        Some(base) => base.clone(),
+        None => {
+            let root = resolve_diff_root(args.root.root.as_deref())?;
+            auto_detect_merge_base(&root)?.ok_or_else(|| {
+                CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Usage,
+                    "diff requires --base <revision>; \
+                     no upstream was auto-detected for merge-base; \
+                     pass --base origin/main or set an upstream with `git branch --set-upstream-to`",
+                )
+            })?
+        }
+    };
     let current_world = if args.head.is_none() {
         Some(load_current_world(args)?)
     } else {
@@ -53,10 +68,10 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     let policy_path = git_relative_config_path_for_diff(
         &root,
         args.config.as_deref(),
-        &args.base,
+        &base,
         args.head.as_deref(),
     )?;
-    let base_cfg = allow_diff::policy_config_at_revision(&root, &args.base, &policy_path)?
+    let base_cfg = allow_diff::policy_config_at_revision(&root, &base, &policy_path)?
         .unwrap_or_else(AllowConfig::empty);
     let head_cfg_for_diff = if let Some(head) = &args.head {
         allow_diff::policy_config_at_revision(&root, head, &policy_path)?
@@ -64,7 +79,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     } else {
         current_world_loaded(&current_world)?.cfg.clone()
     };
-    let mut base_findings = allow_diff::findings_at_revision(&root, &args.base, &base_cfg)?;
+    let mut base_findings = allow_diff::findings_at_revision(&root, &base, &base_cfg)?;
     if let Some(kind) = &args.kind {
         let parsed = parse_kind_filter(kind)?;
         base_findings.retain(|finding| parsed.matches_finding(finding));
@@ -235,7 +250,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     );
     append_finding_posture_changes(&mut text, args.format, &finding_changes, &head_cfg_for_diff);
     append_policy_changes(&mut text, args.format, &policy_changes, &head_cfg_for_diff);
-    match allow_diff::changed_files(&root, &args.base, args.head.as_deref()) {
+    match allow_diff::changed_files(&root, &base, args.head.as_deref()) {
         Ok(changed) => {
             if args.format == OutputFormat::Human {
                 text.push_str("\nChanged files from git diff:\n");
@@ -314,6 +329,28 @@ fn resolve_diff_root(explicit_root: Option<&Path>) -> CargoAllowResult<PathBuf> 
     let cwd =
         env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
     resolve_source_tree_root(explicit_root, cwd)
+}
+
+/// Auto-detect the merge-base of HEAD and its upstream branch (@{u}).
+/// Returns None if no upstream is configured or git is unavailable.
+fn auto_detect_merge_base(root: &Path) -> CargoAllowResult<Option<String>> {
+    let output = std::process::Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .arg("merge-base")
+        .arg("HEAD")
+        .arg("@{u}")
+        .output()
+        .map_err(|e| CargoAllowError::new(format!("failed to run git merge-base: {e}")))?;
+    if !output.status.success() {
+        return Ok(None);
+    }
+    let oid = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if oid.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(oid))
+    }
 }
 
 fn git_relative_config_path_for_diff(
