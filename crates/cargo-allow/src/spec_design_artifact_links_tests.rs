@@ -13,7 +13,9 @@ fn spec_design_artifact_links() -> Result<(), String> {
     let design_ids = [
         "CARGO-ALLOW-PROP-0010",
         "CARGO-ALLOW-ADR-0002",
+        "CARGO-ALLOW-ADR-0003",
         "CARGO-ALLOW-SPEC-0010",
+        "CARGO-ALLOW-SPEC-0011",
         "CARGO-ALLOW-PLAN-0010",
     ];
     for id in design_ids {
@@ -33,48 +35,84 @@ fn spec_design_artifact_links() -> Result<(), String> {
         }
     }
 
-    let prop = ledger
-        .artifact
-        .iter()
-        .find(|entry| entry.id == "CARGO-ALLOW-PROP-0010")
-        .ok_or_else(|| "proposal registered".to_string())?;
-    let spec = ledger
-        .artifact
-        .iter()
-        .find(|entry| entry.id == "CARGO-ALLOW-SPEC-0010")
-        .ok_or_else(|| "spec registered".to_string())?;
-    let adr = ledger
-        .artifact
-        .iter()
-        .find(|entry| entry.id == "CARGO-ALLOW-ADR-0002")
-        .ok_or_else(|| "adr registered".to_string())?;
-    let plan = ledger
-        .artifact
-        .iter()
-        .find(|entry| entry.id == "CARGO-ALLOW-PLAN-0010")
-        .ok_or_else(|| "plan registered".to_string())?;
+    let prop = artifact(&ledger, "CARGO-ALLOW-PROP-0010")?;
+    let ownership_adr = artifact(&ledger, "CARGO-ALLOW-ADR-0002")?;
+    let package_adr = artifact(&ledger, "CARGO-ALLOW-ADR-0003")?;
+    let historical_spec = artifact(&ledger, "CARGO-ALLOW-SPEC-0010")?;
+    let current_spec = artifact(&ledger, "CARGO-ALLOW-SPEC-0011")?;
+    let plan = artifact(&ledger, "CARGO-ALLOW-PLAN-0010")?;
+    let support = artifact(&ledger, "CARGO-ALLOW-SUPPORT-0001")?;
 
-    if spec.linked_proposal.as_deref() != Some("CARGO-ALLOW-PROP-0010") {
-        return Err("spec linked_proposal mismatch".to_string());
-    }
-    if adr.linked_proposal.as_deref() != Some("CARGO-ALLOW-PROP-0010") {
-        return Err("adr linked_proposal mismatch".to_string());
-    }
-    if adr.linked_spec.as_deref() != Some("CARGO-ALLOW-SPEC-0010") {
-        return Err("adr linked_spec mismatch".to_string());
-    }
-    if plan.linked_proposal.as_deref() != Some("CARGO-ALLOW-PROP-0010") {
-        return Err("plan linked_proposal mismatch".to_string());
-    }
-    if plan.linked_spec.as_deref() != Some("CARGO-ALLOW-SPEC-0010") {
-        return Err("plan linked_spec mismatch".to_string());
-    }
-    if plan.linked_adr.as_deref() != Some("CARGO-ALLOW-ADR-0002") {
-        return Err("plan linked_adr mismatch".to_string());
-    }
-    if plan.linked_support_tier.as_deref() != Some("CARGO-ALLOW-SUPPORT-0001") {
-        return Err("plan linked_support_tier mismatch".to_string());
-    }
+    require_link(
+        ownership_adr.linked_proposal.as_deref(),
+        "CARGO-ALLOW-PROP-0010",
+        "ownership ADR linked_proposal",
+    )?;
+    require_link(
+        ownership_adr.linked_spec.as_deref(),
+        "CARGO-ALLOW-SPEC-0011",
+        "ownership ADR linked_spec",
+    )?;
+    require_link(
+        package_adr.linked_proposal.as_deref(),
+        "CARGO-ALLOW-PROP-0010",
+        "package ADR linked_proposal",
+    )?;
+    require_link(
+        package_adr.linked_spec.as_deref(),
+        "CARGO-ALLOW-SPEC-0011",
+        "package ADR linked_spec",
+    )?;
+    require_link(
+        historical_spec.linked_proposal.as_deref(),
+        "CARGO-ALLOW-PROP-0010",
+        "historical spec linked_proposal",
+    )?;
+    require_link(
+        historical_spec.superseded_by.as_deref(),
+        "CARGO-ALLOW-SPEC-0011",
+        "historical spec superseded_by",
+    )?;
+    require_link(
+        current_spec.linked_proposal.as_deref(),
+        "CARGO-ALLOW-PROP-0010",
+        "current spec linked_proposal",
+    )?;
+    require_link(
+        current_spec.linked_adr.as_deref(),
+        "CARGO-ALLOW-ADR-0002",
+        "current spec linked_adr",
+    )?;
+    require_link(
+        plan.linked_proposal.as_deref(),
+        "CARGO-ALLOW-PROP-0010",
+        "plan linked_proposal",
+    )?;
+    require_link(
+        plan.linked_spec.as_deref(),
+        "CARGO-ALLOW-SPEC-0011",
+        "plan linked_spec",
+    )?;
+    require_link(
+        plan.linked_adr.as_deref(),
+        "CARGO-ALLOW-ADR-0002",
+        "plan linked_adr",
+    )?;
+    require_link(
+        plan.linked_support_tier.as_deref(),
+        "CARGO-ALLOW-SUPPORT-0001",
+        "plan linked_support_tier",
+    )?;
+    require_link(
+        support.linked_proposal.as_deref(),
+        "CARGO-ALLOW-PROP-0010",
+        "support linked_proposal",
+    )?;
+    require_link(
+        support.linked_spec.as_deref(),
+        "CARGO-ALLOW-SPEC-0011",
+        "support linked_spec",
+    )?;
 
     validate_doc_artifact_links(&ledger)
         .map_err(|err| format!("artifact graph links should resolve: {err}"))?;
@@ -84,17 +122,45 @@ fn spec_design_artifact_links() -> Result<(), String> {
     let fixture_readme = root.join("tests/fixtures/three-product-design/README.md");
     let fixture_text = std::fs::read_to_string(&fixture_readme)
         .map_err(|err| format!("fixture readme readable: {err}"))?;
-    if !fixture_text.contains("CARGO-ALLOW-PROP-0010") {
-        return Err("fixture missing proposal id".to_string());
-    }
-    if !fixture_text.contains("#2612") {
-        return Err("fixture missing topology owner".to_string());
+    for needle in [
+        "CARGO-ALLOW-PROP-0010",
+        "CARGO-ALLOW-ADR-0003",
+        "CARGO-ALLOW-SPEC-0011",
+        "#2612",
+        "#2501",
+        "effortless-repo-protocol",
+    ] {
+        if !fixture_text.contains(needle) {
+            return Err(format!("fixture missing generation-2 marker {needle}"));
+        }
     }
     if !prop.path.ends_with("three-product-design.md") {
         return Err("proposal path mismatch".to_string());
     }
 
     Ok(())
+}
+
+fn artifact<'a>(
+    ledger: &'a allow_policy::spec_system::DocArtifactLedger,
+    id: &str,
+) -> Result<&'a allow_policy::spec_system::DocArtifact, String> {
+    ledger
+        .artifact
+        .iter()
+        .find(|entry| entry.id == id)
+        .ok_or_else(|| format!("artifact ledger missing {id}"))
+}
+
+fn require_link(observed: Option<&str>, expected: &str, label: &str) -> Result<(), String> {
+    if observed == Some(expected) {
+        Ok(())
+    } else {
+        Err(format!(
+            "{label} mismatch: expected {expected}, got {}",
+            observed.unwrap_or("<missing>")
+        ))
+    }
 }
 
 fn repo_root() -> PathBuf {
