@@ -43,7 +43,9 @@ pub fn render_human_with_context(
     out.push_str(&format!("cargo-allow {command}\n\n"));
     out.push_str(&format!("Findings scanned: {}\n", findings.len()));
     out.push_str(&format!(
-        "Inventory: source_tree/source_syntax via {}{}\n",
+        "Inventory: {}/{} via {}{}\n",
+        context.inventory.scope,
+        context.inventory.scanner,
         context.inventory.source,
         inventory_files_suffix(context)
     ));
@@ -364,7 +366,9 @@ pub fn render_markdown_with_context(
     ));
     out.push_str(&format!("Findings scanned: `{}`\n\n", findings.len()));
     out.push_str(&format!(
-        "Inventory: `source_tree` / `source_syntax` via `{}`{}\n\n",
+        "Inventory: `{}` / `{}` via `{}`{}\n\n",
+        json_escape(context.inventory.scope),
+        json_escape(context.inventory.scanner),
         json_escape(context.inventory.source),
         inventory_files_markdown_suffix(context)
     ));
