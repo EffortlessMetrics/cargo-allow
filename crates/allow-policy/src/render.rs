@@ -1,7 +1,9 @@
 use allow_core::AllowConfig;
 
 use crate::render_entry::render_allow_entry;
-use crate::render_sections::{render_lanes, render_policy_header, render_requirements, render_workspace};
+use crate::render_sections::{
+    render_lanes, render_policy_header, render_requirements, render_workspace,
+};
 
 pub fn render_policy(cfg: &AllowConfig) -> String {
     let mut out = String::new();
