@@ -270,7 +270,8 @@ jobs:
 
               let ledger = parse_doc_artifact_ledger(include_str!(
                   "../../../../.allow/artifacts/doc-artifacts.toml"
-              ))?;
+              ))
+              .map_err(|error| error.to_string())?;
               for id in [
                   "CARGO-ALLOW-PROP-0010",
                   "CARGO-ALLOW-ADR-0002",
@@ -283,8 +284,9 @@ jobs:
                       return Err(format!("ledger missing {id}"));
                   }
               }
-              validate_doc_artifact_links(&ledger)?;
-              validate_doc_artifact_files(repo_root(), &ledger, &test_roots())?;
+              validate_doc_artifact_links(&ledger).map_err(|error| error.to_string())?;
+              validate_doc_artifact_files(repo_root(), &ledger, &test_roots())
+                  .map_err(|error| error.to_string())?;
               Ok(())
           }
 
