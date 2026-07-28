@@ -28,10 +28,11 @@ pub(crate) struct ProposeArgs {
     /// Overwrite an existing output policy file.
     #[arg(long)]
     pub(super) force: bool,
-    /// Summary output format. Policy output remains TOML.
+    /// Summary output format. JSON requires --summary-output so it cannot be
+    /// mixed with policy or warning text on stderr. Policy output remains TOML.
     #[arg(long, value_enum, default_value_t = HumanJsonFormat::Human)]
     pub(super) summary_format: HumanJsonFormat,
-    /// Write proposal summary to a file instead of stderr.
+    /// Write proposal summary to a file. Required with --summary-format json.
     #[arg(long)]
     pub(super) summary_output: Option<PathBuf>,
     /// Maximum number of new findings to propose as baseline_debt entries.

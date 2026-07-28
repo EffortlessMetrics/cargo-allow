@@ -8,6 +8,7 @@ use std::env;
 use crate::{
     EvidenceValidationMode, HumanJsonFormat, MutationLock, SourceTreeReportContext,
     emit_stderr_text, load_world_with_evidence_mode, portable_relative_under_root,
+    require_json_summary_output,
 };
 
 #[path = "propose_args.rs"]
@@ -29,6 +30,7 @@ use allow_core::{Finding, SimpleDate};
 use propose_baseline::BASELINE_DEBT_DEFAULT_DAYS;
 
 pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
+    require_json_summary_output(args.summary_format, args.summary_output.as_deref())?;
     let cwd = env::current_dir()
         .map_err(|error| CargoAllowError::new(format!("failed to read cwd: {error}")))?;
     let write_target = args.write.as_deref().map(|path| {

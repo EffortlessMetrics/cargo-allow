@@ -74,6 +74,22 @@ pub(crate) fn emit_stderr_text(output: Option<&Path>, contents: &str) -> CargoAl
     Ok(())
 }
 
+/// Keep machine-readable summaries out of a mixed stderr stream. Commands
+/// such as `add` and `migrate` may also emit human policy or warning text, so
+/// a JSON summary without an explicit file target cannot be consumed safely.
+pub(crate) fn require_json_summary_output(
+    format: HumanJsonFormat,
+    output: Option<&Path>,
+) -> CargoAllowResult<()> {
+    if format == HumanJsonFormat::Json && output.is_none() {
+        return Err(allow_core::CargoAllowError::with_kind(
+            allow_core::CargoAllowErrorKind::Usage,
+            "--summary-format json requires --summary-output <path> to keep machine-readable output separate",
+        ));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod io_tests {
     use super::*;
@@ -101,6 +117,19 @@ mod io_tests {
 
         assert!(result.is_ok());
         assert_eq!(fs::read_to_string(&output)?, "summary\n");
+        Ok(())
+    }
+
+    #[test]
+    fn json_summary_requires_an_explicit_output_path() -> Result<(), Box<dyn std::error::Error>> {
+        let error = require_json_summary_output(HumanJsonFormat::Json, None)
+            .expect_err("JSON summaries must not share a human stderr stream");
+        assert_eq!(
+            error.to_string(),
+            "--summary-format json requires --summary-output <path> to keep machine-readable output separate"
+        );
+        require_json_summary_output(HumanJsonFormat::Json, Some(Path::new("summary.json")))?;
+        require_json_summary_output(HumanJsonFormat::Human, None)?;
         Ok(())
     }
 

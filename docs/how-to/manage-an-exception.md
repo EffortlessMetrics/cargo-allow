@@ -58,7 +58,10 @@ Preview is the default: omit `--write`/`--update` to inspect the candidate
 entry or summary first.
 
 ```bash
-cargo-allow propose --kind panic --summary-format json
+cargo-allow propose \
+  --kind panic \
+  --summary-format json \
+  --summary-output target/cargo-allow/propose-summary.json
 ```
 
 ### Receipt one finding (source candidate / current `main`)

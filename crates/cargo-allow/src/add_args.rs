@@ -94,10 +94,11 @@ pub(crate) struct AddArgs {
         conflicts_with_all = ["write", "force", "path", "line", "glob", "family", "callee"]
     )]
     pub(super) from_plan: Option<PathBuf>,
-    /// Summary output format. Policy output remains TOML.
+    /// Summary output format. JSON requires --summary-output so it cannot be
+    /// mixed with policy or warning text on stderr. Policy output remains TOML.
     #[arg(long, value_enum, default_value_t = HumanJsonFormat::Human)]
     pub(super) summary_format: HumanJsonFormat,
-    /// Write add summary to a file instead of stderr.
+    /// Write add summary to a file. Required with --summary-format json.
     #[arg(long)]
     pub(super) summary_output: Option<PathBuf>,
 }

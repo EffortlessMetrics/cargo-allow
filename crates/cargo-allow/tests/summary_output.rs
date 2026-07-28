@@ -14,6 +14,50 @@ fn summary_artifact_commands_are_quiet_when_outputs_are_files() {
     assert_quiet_migrate_summary_output();
 }
 
+#[test]
+fn json_summary_without_file_is_rejected_before_command_work() {
+    let cases = [
+        vec!["propose", "--summary-format", "json"],
+        vec![
+            "add",
+            "--kind",
+            "panic",
+            "--owner",
+            "core",
+            "--reason",
+            "fixture",
+            "--summary-format",
+            "json",
+        ],
+        vec![
+            "migrate",
+            "--from",
+            "legacy.toml",
+            "--summary-format",
+            "json",
+        ],
+    ];
+
+    for args in cases {
+        let result = cargo_allow_command()
+            .args(args)
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow: {err}")));
+        assert!(!result.status.success(), "JSON without output must fail");
+        assert!(
+            String::from_utf8_lossy(&result.stderr).contains(
+                "--summary-format json requires --summary-output <path> to keep machine-readable output separate"
+            ),
+            "unexpected stderr: {}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert!(
+            result.stdout.is_empty(),
+            "rejected machine-readable commands must not emit stdout"
+        );
+    }
+}
+
 fn assert_quiet_add_summary_output() {
     let root = temp_root("summary-add-output");
     write_source_fixture(&root);
