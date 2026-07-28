@@ -146,6 +146,43 @@ fn list_wide_resolves_to_the_complete_human_projection() {
 }
 
 #[test]
+fn list_columns_preserve_concise_default_and_explicit_selection() {
+    let default_args = match CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "list"]))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse list: {err}")))
+        .command
+    {
+        Some(CargoAllowCommand::List(args)) => args,
+        _ => std::panic::panic_any("expected list command"),
+    };
+    assert_eq!(
+        super::list_columns(&default_args)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("default columns: {err}"))),
+        allow_report::ListColumn::DEFAULT
+    );
+
+    let explicit_args = match CargoAllowCli::try_parse_from(argv(vec![
+        "cargo-allow",
+        "list",
+        "--columns",
+        "id,status",
+    ]))
+    .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse columns: {err}")))
+    .command
+    {
+        Some(CargoAllowCommand::List(args)) => args,
+        _ => std::panic::panic_any("expected list command"),
+    };
+    assert_eq!(
+        super::list_columns(&explicit_args)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("explicit columns: {err}"))),
+        vec![
+            allow_report::ListColumn::Id,
+            allow_report::ListColumn::Status
+        ]
+    );
+}
+
+#[test]
 fn render_list_rows_with_columns_projects_subset() {
     // #2595: the adapter threads the column selection through to the
     // allow-report renderer. Exercises the same path cmd_list uses.
