@@ -28,6 +28,17 @@ pub(crate) use crate::world::{load_world, load_world_for_path, load_world_with_e
 pub(crate) use allow_inventory::resolve_source_tree_root;
 pub(crate) use allow_report::policy_baseline_debt_entries;
 
+pub(crate) fn emit_scan_status(command: &str, format: OutputFormat, output: Option<&Path>) {
+    let quiet = std::env::var_os("CARGO_ALLOW_QUIET").is_some();
+    if should_emit_scan_status(format, output, quiet) {
+        eprintln!("cargo-allow {command}: scanning...");
+    }
+}
+
+fn should_emit_scan_status(format: OutputFormat, output: Option<&Path>, quiet: bool) -> bool {
+    format == OutputFormat::Human && output.is_none() && !quiet
+}
+
 pub(crate) fn emit_text(output: Option<&Path>, contents: &str) -> CargoAllowResult<()> {
     if let Some(path) = output {
         write_file(path, contents)?;
@@ -73,6 +84,24 @@ mod io_tests {
 
         assert!(result.is_ok());
         assert_eq!(fs::read_to_string(&output)?, "summary\n");
+        Ok(())
+    }
+
+    #[test]
+    fn scan_status_is_limited_to_human_terminal_output() -> Result<(), String> {
+        let output = Path::new("target/report.txt");
+        if !should_emit_scan_status(OutputFormat::Human, None, false) {
+            return Err("human terminal output should emit scan status".to_string());
+        }
+        if should_emit_scan_status(OutputFormat::Human, Some(output), false) {
+            return Err("file-backed output should stay free of scan status".to_string());
+        }
+        if should_emit_scan_status(OutputFormat::Json, None, false) {
+            return Err("JSON output should stay free of scan status".to_string());
+        }
+        if should_emit_scan_status(OutputFormat::Human, None, true) {
+            return Err("quiet output should stay free of scan status".to_string());
+        }
         Ok(())
     }
 

@@ -27,6 +27,8 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
         });
     }
 
+    crate::emit_scan_status("audit", args.format, args.output.as_deref());
+
     let (root, cfg, findings, inventory_facts, _federation) = if args.compat {
         load_compat_world(
             args.root.root.as_deref(),
