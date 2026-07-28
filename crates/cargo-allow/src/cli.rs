@@ -16,8 +16,13 @@ use crate::{
     propagate_version = true
 )]
 pub(crate) struct CargoAllowCli {
-    /// Accept cargo-style color preference (accepted for compatibility;
-    /// output is currently plain text — see #2516).
+    /// Control terminal styling of human output.
+    ///
+    /// `auto` styles only an interactive terminal. `always` forces styling
+    /// on stdout; `never` disables it. Machine formats (JSON, SARIF,
+    /// receipts) and `--output` files are never styled. Precedence:
+    /// explicit flag > NO_COLOR > CLICOLOR_FORCE > CARGO_TERM_COLOR >
+    /// terminal capability.
     #[arg(long, value_enum, default_value_t = ColorChoice::Auto, global = true)]
     pub(crate) color: ColorChoice,
     /// Suppress non-essential output (claim boundary, matched inventory,
@@ -73,13 +78,44 @@ pub(crate) enum CargoAllowCommand {
     Completions(completions::CompletionsArgs),
 }
 
+/// Resolve the process output style from the flag, the environment, and
+/// terminal capability (#2572).
+///
+/// This is the only place the colour environment is read. `IsTerminal` comes
+/// from std, so no dependency is needed for capability detection.
+fn resolve_output_style(choice: ColorChoice) -> allow_report::Style {
+    use std::io::IsTerminal;
+
+    let no_color = env::var("NO_COLOR").ok();
+    let clicolor_force = env::var("CLICOLOR_FORCE").ok();
+    let cargo_term_color = env::var("CARGO_TERM_COLOR").ok();
+
+    let (style, _reason) = allow_report::resolve_style(
+        match choice {
+            ColorChoice::Auto => allow_report::ColorChoice::Auto,
+            ColorChoice::Always => allow_report::ColorChoice::Always,
+            ColorChoice::Never => allow_report::ColorChoice::Never,
+        },
+        allow_report::StyleEnv {
+            no_color: no_color.as_deref(),
+            clicolor_force: clicolor_force.as_deref(),
+            cargo_term_color: cargo_term_color.as_deref(),
+            stdout_is_terminal: std::io::stdout().is_terminal(),
+        },
+    );
+    style
+}
+
 pub(crate) fn run() -> CargoAllowResult<()> {
     // Preserve OS-native argv all the way into clap. `std::env::args()` panics
     // when any argument is not valid UTF-8, which rejected otherwise supported
     // Unix repository roots before staged delegation could pass the path to
     // `Command::arg` as an `OsStr` (#2883).
     let cli = CargoAllowCli::parse_from(normalized_args(env::args_os()));
-    let _color = cli.color; // Accepted for cargo compatibility; not yet honored (see #2516).
+    // One shared style decision for the whole process (#2572). Renderers do
+    // not read the environment themselves; `print_report` applies this only to
+    // human output going to stdout.
+    crate::reporting::set_output_style(resolve_output_style(cli.color));
     if cli.quiet {
         // Report renderers check this env var to suppress non-essential output
         // (claim boundary, matched inventory, advisory outcomes). #2785.

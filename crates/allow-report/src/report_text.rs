@@ -54,7 +54,14 @@ pub fn render_human_with_context(
     for status in STATUS_COUNT_ORDER {
         let count = summary.count(status);
         if count > 0 {
-            out.push_str(&format!("  {:24} {}\n", status.as_str(), count));
+            // Pad before styling: escape sequences have no display width, so
+            // colouring first would break column alignment.
+            let label = format!("{:24}", status.as_str());
+            out.push_str(&format!(
+                "  {} {}\n",
+                style_status(context.style, status, &label),
+                count
+            ));
         }
     }
     if let Some(baseline_debt) = policy_baseline_debt_note(&summary, context) {
@@ -102,7 +109,7 @@ pub fn render_human_with_context(
         render_source_inventory_human(findings, outcomes, &mut out);
         render_audit_summary_human(&summary, outcomes, context, &mut out);
     }
-    render_non_rust_human(findings, outcomes, &mut out);
+    render_non_rust_human(findings, outcomes, context.style, &mut out);
     if command != "audit" {
         let signals = ReviewSignals::from_summary(&summary, context);
         append_remediation_roadmap_human(&summary, signals, &mut out);
@@ -119,10 +126,13 @@ pub fn render_human_with_context(
         .filter(|o| !quiet || blocks_check(o.status))
         .collect::<Vec<_>>();
     for outcome in non_matched.iter().take(HUMAN_NON_MATCHED_OUTCOME_LIMIT) {
+        // The message is repository-derived (paths, symbols, reasons). It is
+        // sanitized and never wrapped in escapes, so it cannot inject terminal
+        // control sequences; only the tool-authored status word is styled.
         out.push_str(&format!(
             "{}: {}\n",
-            outcome.status.as_str(),
-            outcome.message
+            style_status(context.style, outcome.status, outcome.status.as_str()),
+            crate::style::sanitize_terminal_text(&outcome.message)
         ));
     }
     append_human_omitted_outcome_note(&mut out, non_matched.len());
@@ -132,17 +142,37 @@ pub fn render_human_with_context(
         out.push('\n');
     }
     if failed {
-        match check_failure_reason(&summary) {
-            Some(reason) => out.push_str(&format!("Result: failed ({reason})\n")),
-            None => out.push_str("Result: failed\n"),
-        }
-    } else {
+        let label = match check_failure_reason(&summary) {
+            Some(reason) => format!("failed ({reason})"),
+            None => "failed".to_string(),
+        };
         out.push_str(&format!(
             "Result: {}\n",
-            crate::contracts::passed_result_label(context.enforcement)
+            context.style.blocking(&context.style.strong(&label))
+        ));
+    } else {
+        let label = crate::contracts::passed_result_label(context.enforcement);
+        out.push_str(&format!(
+            "Result: {}\n",
+            context.style.ok(&context.style.strong(&label))
         ));
     }
     out
+}
+
+/// Map a match status to the shared style vocabulary.
+///
+/// Colour is supplemental: the caller passes the exact text to render, and
+/// this only decides which escape wraps it. With styling off the text is
+/// returned unchanged, so plain and styled output carry identical words.
+fn style_status(style: crate::style::Style, status: MatchStatus, text: &str) -> String {
+    if status == MatchStatus::Matched {
+        style.ok(text)
+    } else if blocks_check(status) {
+        style.blocking(text)
+    } else {
+        style.advisory(text)
+    }
 }
 
 /// Statuses that can fail a check, as opposed to advisory ones like

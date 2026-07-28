@@ -91,6 +91,7 @@ mod sarif;
 #[cfg(test)]
 mod sarif_tests;
 mod source_inventory;
+mod style;
 mod summary;
 mod text;
 mod why;
@@ -194,6 +195,9 @@ pub use report_text::{
     render_human, render_human_with_context, render_markdown, render_markdown_with_context,
 };
 pub use sarif::{render_sarif, render_sarif_with_context};
+pub use style::{
+    ColorChoice, Style, StyleEnv, StyleReason, resolve as resolve_style, sanitize_terminal_text,
+};
 pub use summary::{
     Summary, matched_occurrence_counts, matched_policy_missing_evidence_entries,
     occurrence_headroom_entries, occurrence_headroom_for_entry, policy_baseline_debt_entries,

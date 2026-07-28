@@ -1,6 +1,7 @@
 use allow_core::{Finding, FindingKind, MatchOutcome, MatchStatus, normalize_path};
 use std::collections::BTreeMap;
 
+use crate::style::Style;
 use crate::text::markdown_cell;
 
 const HUMAN_FILE_ROW_LIMIT: usize = 20;
@@ -56,6 +57,7 @@ impl FilePosture {
 pub(crate) fn render_non_rust_human(
     findings: &[Finding],
     outcomes: &[MatchOutcome],
+    style: Style,
     out: &mut String,
 ) {
     let posture = FilePosture::from_report(findings, outcomes);
@@ -65,14 +67,27 @@ pub(crate) fn render_non_rust_human(
     out.push('\n');
     out.push_str("Non-Rust file inventory:\n");
     out.push_str(&format!("  files scanned              {}\n", posture.total));
-    out.push_str(&format!(
-        "  matched                    {}\n",
-        posture.matched
-    ));
-    out.push_str(&format!("  new                        {}\n", posture.new));
-    out.push_str(&format!(
-        "  generated                  {}\n",
-        posture.generated
+    // `files scanned` stays neutral; the posture words use the shared
+    // vocabulary so an operator scanning for red sees every blocking count.
+    //
+    // A zero count is never styled. Rendering `new 0` in red would signal a
+    // problem that does not exist — colour has to track the value, not just
+    // the label it sits next to.
+    let posture_row = |label: &str, count: usize, paint: fn(Style, &str) -> String| {
+        let padded = format!("{label:26}");
+        let word = if count > 0 {
+            paint(style, &padded)
+        } else {
+            padded
+        };
+        format!("  {word} {count}\n")
+    };
+    out.push_str(&posture_row("matched", posture.matched, Style::ok));
+    out.push_str(&posture_row("new", posture.new, Style::blocking));
+    out.push_str(&posture_row(
+        "generated",
+        posture.generated,
+        Style::advisory,
     ));
     if !posture.by_family.is_empty() {
         out.push_str("  by family:\n");
@@ -91,9 +106,23 @@ pub(crate) fn render_non_rust_human(
         out.push_str("  files:\n");
         let row_count = rows.len();
         for row in rows.into_iter().take(HUMAN_FILE_ROW_LIMIT) {
+            // Same vocabulary as the summary counts, so `matched` does not
+            // appear styled on one line and plain on the next. Padded before
+            // styling so escapes do not disturb column alignment, and the
+            // repository-derived family and path are sanitized, never styled.
+            let status = format!("{:12}", row.status);
+            let status = if row.status == "matched" {
+                style.ok(&status)
+            } else if row.status == "new" {
+                style.blocking(&status)
+            } else {
+                style.advisory(&status)
+            };
             out.push_str(&format!(
-                "    {:12} {:24} {}\n",
-                row.status, row.family, row.path
+                "    {} {:24} {}\n",
+                status,
+                crate::style::sanitize_terminal_text(&row.family),
+                crate::style::sanitize_terminal_text(&row.path)
             ));
         }
         append_human_omitted_file_note(out, row_count);
@@ -220,7 +249,7 @@ mod tests {
         ];
         let mut out = String::new();
 
-        render_non_rust_human(&findings, &outcomes, &mut out);
+        render_non_rust_human(&findings, &outcomes, Style::PLAIN, &mut out);
 
         assert!(out.contains("Non-Rust file inventory:"));
         assert!(out.contains("  files scanned              2"));
@@ -240,7 +269,7 @@ mod tests {
         let outcomes = vec![outcome(MatchStatus::New, Some(0))];
         let mut out = String::from("prefix");
 
-        render_non_rust_human(&findings, &outcomes, &mut out);
+        render_non_rust_human(&findings, &outcomes, Style::PLAIN, &mut out);
 
         assert_eq!(out, "prefix");
     }
