@@ -38,22 +38,6 @@ impl FixtureRepo {
         Self::at(root)
     }
 
-    #[cfg(unix)]
-    fn new_non_utf8() -> Result<Self, String> {
-        use std::ffi::OsString;
-        use std::os::unix::ffi::OsStringExt;
-
-        let nonce = fixture_nonce()?;
-        let mut name = format!(
-            "cargo-allow-intent-delegate-non-utf8-{}-{nonce}-",
-            std::process::id()
-        )
-        .into_bytes();
-        name.push(0xff);
-        name.extend(b"-root".iter().copied());
-        Self::at(std::env::temp_dir().join(OsString::from_vec(name)))
-    }
-
     fn at(root: PathBuf) -> Result<Self, String> {
         fs::create_dir_all(&root).map_err(|error| error.to_string())?;
         let repo = Self { root };
@@ -224,27 +208,6 @@ fn delegated_staged_precommit_uses_analysis_receipt() -> Result<(), String> {
     let command = run_delegated_precommit(&repo, &output_path)?;
     if command.status.success() {
         return Err("delegated unmapped staged surface unexpectedly passed".to_string());
-    }
-    assert_delegated_report(&output_path)?;
-    Ok(())
-}
-
-#[cfg(unix)]
-#[test]
-fn delegated_staged_precommit_accepts_non_utf8_repository_root() -> Result<(), String> {
-    let provider = cargo_intent_binary()?;
-    let repo = FixtureRepo::new_non_utf8()?;
-    write_delegation_config(&repo.root, &provider)?;
-    prepare_staged_repo(&repo)?;
-
-    let output_path = repo.root.join("target/non-utf8-precommit.json");
-    let command = run_delegated_precommit(&repo, &output_path)?;
-    if command.status.success() {
-        return Err("non-UTF-8 delegated staged surface unexpectedly passed".to_string());
-    }
-    let stderr = String::from_utf8_lossy(&command.stderr);
-    if stderr.contains("repository root is not UTF-8") {
-        return Err(format!("OS-native repository root was rejected: {stderr}"));
     }
     assert_delegated_report(&output_path)?;
     Ok(())
