@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  SARIF: LocationDrift outcomes now have a matching rule definition. Previously,
+  LocationDrift results emitted `ruleId: cargo-allow/location_drift` but the
+  status was missing from SARIF_STATUSES, so the rule was never registered in
+  tool.driver.rules — a SARIF spec violation that caused GitHub code scanning
+  to drop the result. Also: init next-steps now includes vocabulary, and
+  --color help text accurately states which commands honor the flag.

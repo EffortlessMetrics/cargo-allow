@@ -150,6 +150,7 @@ const SARIF_STATUSES: &[MatchStatus] = &[
     MatchStatus::New,
     MatchStatus::Expired,
     MatchStatus::ReviewDue,
+    MatchStatus::LocationDrift,
     MatchStatus::Stale,
     MatchStatus::Ambiguous,
     MatchStatus::InvalidSelector,
