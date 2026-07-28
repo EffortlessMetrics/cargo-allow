@@ -240,6 +240,27 @@ cargo-allow check --mode no-new
 Generated baseline entries are intentionally uncomfortable. Review them, narrow
 them, add evidence, or remove them.
 
+To receipt one new finding after that, the supported route is plan-then-apply.
+Source candidate only (current `main`), not the Published `0.1.11` surface:
+
+```bash
+cargo run -p cargo-allow -- why \
+  --kind panic --path src/lib.rs --line 42 \
+  --plan target/cargo-allow/add-plan.json
+
+cargo run -p cargo-allow -- add \
+  --from-plan target/cargo-allow/add-plan.json \
+  --update \
+  --owner core --reason "<why this is acceptable>" \
+  --evidence doc:docs/design.md
+```
+
+`why --plan` is read-only; `add --from-plan --update` re-verifies the plan
+against the live tree before one atomic write and refuses a stale plan. Then
+recheck that finding with `why`, and prove the repository with
+`check --mode no-new`. See
+[Manage an exception](docs/how-to/manage-an-exception.md).
+
 ## CI
 
 For pull requests:

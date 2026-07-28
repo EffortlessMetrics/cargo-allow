@@ -62,8 +62,37 @@ Success looks like:
   lifecycle, selector, and evidence.
 - new source-tree findings fail until they are fixed or deliberately receipted.
 
+## Receipt One New Finding
+
+Once `check --mode no-new` is failing on a finding you have decided to accept,
+the supported route is plan-then-apply. Source candidate only (current
+`main`); these plan flags are not in the Published `0.1.11` surface.
+
+```bash
+cargo run -p cargo-allow -- why \
+  --kind panic --path src/lib.rs --line 42 \
+  --plan target/cargo-allow/add-plan.json
+
+cargo run -p cargo-allow -- add \
+  --from-plan target/cargo-allow/add-plan.json \
+  --update \
+  --owner core \
+  --reason "<why this exception is acceptable>" \
+  --evidence doc:docs/design.md
+
+cargo run -p cargo-allow -- why --kind panic --path src/lib.rs --line 42
+cargo run -p cargo-allow -- check --mode no-new
+```
+
+`why --plan` is read-only. `add --from-plan --update` re-verifies the plan
+against the live tree before one atomic write, and refuses if anything moved.
+The third command is a targeted recheck of that one finding; the fourth is the
+repository proof. A passing targeted recheck does not mean the repository
+check passes.
+
 Next:
 
+- [Manage an exception](how-to/manage-an-exception.md)
 - [Adopt no-new-debt](how-to/adopt-no-new-debt.md)
 - [Source exception ledger](source-exception-ledger.md)
 

@@ -189,7 +189,7 @@ issue-first lifecycle in [Manage an exception](how-to/manage-an-exception.md):
 | --- | --- | --- |
 | create a strict starter policy | `init` | writes `policy/allow.toml` (use only when chosen in step 4) |
 | generate a reviewed baseline candidate | `propose` | omit `--write` to preview; `--write <path>` to persist |
-| receipt one deliberate finding | `add` | omit `--write`/`--update` to preview; `--write <new-path>` persists a proposed full policy; `--update` atomically replaces the live `policy/allow.toml` in place (recommended for adding one receipt) |
+| receipt one deliberate finding | `why --plan` then `add --from-plan --update` | see the plan-then-apply route below; `--write <new-path>` emits a candidate policy file for inspection and is not the live-ledger apply path |
 | refresh drift for one selected ID | `refresh --allow-id <id>` | `--dry-run` preview; `--write` apply |
 | remove selected stale entries | `prune` | `--dry-run` preview; `--write` apply |
 | repair the source instead of policy | edit code, then rerun `check` | no policy mutation |
@@ -207,6 +207,47 @@ Published diagnosis (`why` is included in 0.1.11):
 ```bash
 cargo-allow why --kind panic --path src/lib.rs --line 1
 ```
+
+### Receipt one finding: source-candidate plan-then-apply
+
+Source candidate only (current `main`). The plan flags below are not part of
+the Published `0.1.11` surface; do not copy them into a Published install
+path.
+
+```bash
+cargo run -p cargo-allow -- why \
+  --kind panic --path src/lib.rs --line 1 \
+  --plan target/cargo-allow/add-plan.json
+
+cargo run -p cargo-allow -- add \
+  --from-plan target/cargo-allow/add-plan.json \
+  --update \
+  --owner core \
+  --reason "bounded fixture exception" \
+  --evidence doc:docs/design.md \
+  --summary-format json \
+  --summary-output target/cargo-allow/add-application.json
+
+cargo run -p cargo-allow -- why --kind panic --path src/lib.rs --line 1
+
+cargo run -p cargo-allow -- check --mode no-new \
+  --format markdown \
+  --receipt target/cargo-allow/check.receipt.json \
+  --output target/cargo-allow/check.md
+```
+
+The boundary between those four commands is the point:
+
+- `why --plan` is read-only and `New`-only; it writes a plan, not policy.
+- `add --from-plan --update` revalidates every plan binding against the live
+  tree, then performs one atomic ledger write. If the tree moved since the
+  plan was written it refuses and prints the exact regeneration command.
+- the third command is a **targeted recheck** proving that one finding now
+  reports `status: matched`. It is not a repository proof.
+- the final `check --mode no-new` is the CI-grade repository proof.
+
+Full lifecycle detail, including the expert `add --update` shortcut, is in
+[Manage an exception](how-to/manage-an-exception.md).
 
 ## Terminology (first use)
 
@@ -290,3 +331,7 @@ and `crates/cargo-allow/tests/first_hour_adoption.rs` (consumable by #2278):
 | `check_no_new_fail` | Failing no-new after new debt |
 | `list_explain_worklist` | Published diagnosis commands |
 | `why_published` | Published diagnosis with `cargo-allow why` |
+| `receipt_plan` | Source-candidate `why --plan` (read-only plan artifact) |
+| `receipt_apply` | Source-candidate `add --from-plan --update` (atomic write) |
+| `receipt_targeted_recheck` | Source-candidate recheck of the one finding |
+| `receipt_full_check` | Source-candidate full `check --mode no-new` proof |
