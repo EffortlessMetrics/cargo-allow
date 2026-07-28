@@ -1,0 +1,17 @@
+kind: Added
+body: >-
+  New `SUPPORT.md` and machine-readable `docs/support-matrix.toml` record what
+  the repository proves about versions, Rust version, platforms, install
+  channels, and artifact schemas (#2478). Every row carries the evidence
+  behind it — the CI job, workflow, or file — and platforms with no executed
+  evidence (macOS) are listed as `not_proven` rather than omitted, so absence
+  is visible instead of implied. `crates/cargo-allow/tests/support_matrix.rs`
+  fails closed when a row drifts: the MSRV must match `Cargo.toml`, the
+  published version must match the command-registry snapshot, the candidate
+  version must match the workspace and stay marked unpublished, the schema
+  list must equal `allow_report::ARTIFACT_CONTRACTS`, and any platform claimed
+  as proven must name a runner that actually appears in a workflow. Support
+  *policy* questions (release window, security response target, backport
+  rules, platform commitment, MSRV bump policy) are recorded as explicitly
+  undecided and guarded against silent removal, rather than given plausible
+  defaults the project has not agreed to.
