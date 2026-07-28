@@ -1,0 +1,55 @@
+name: Diagnose bounded intent runner
+
+on:
+  push:
+    branches:
+      - agent/2883-bounded-intent-delegation
+
+permissions:
+  contents: write
+
+concurrency:
+  group: agent-2883-diagnose
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: agent/2883-bounded-intent-delegation
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+        with:
+          components: rustfmt, clippy
+      - name: Capture compiler and Clippy diagnostics
+        shell: bash
+        run: |
+          set +e
+          mkdir -p target/agent-2883-diagnostics
+          cargo check --workspace --all-targets --locked \
+            >target/agent-2883-diagnostics/check.txt 2>&1
+          echo "$?" >target/agent-2883-diagnostics/check.exit
+          cargo clippy --workspace --all-targets --locked -- -D warnings \
+            >target/agent-2883-diagnostics/clippy.txt 2>&1
+          echo "$?" >target/agent-2883-diagnostics/clippy.exit
+          cargo test -p cargo-allow --bins --locked \
+            >target/agent-2883-diagnostics/bin-tests.txt 2>&1
+          echo "$?" >target/agent-2883-diagnostics/bin-tests.exit
+          exit 0
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: agent-2883-diagnostics
+          path: target/agent-2883-diagnostics/
+          if-no-files-found: error
+      - name: Remove one-shot workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name EffortlessSteven
+          git config user.email git@effortlesssteven.com
+          git rm .github/workflows/agent-2883-diagnose.yml
+          git commit -m "ci(intent): remove one-shot diagnostics"
+          git push origin HEAD:agent/2883-bounded-intent-delegation
