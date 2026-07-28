@@ -70,6 +70,53 @@ fn cmd_diff_with_explicit_head_rejects_missing_explicit_config_path_with_exact_e
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
 }
 
+#[test]
+fn cmd_diff_writes_receipt_for_clean_in_process_run() {
+    let root = diff_fixture_dir();
+    init_git_repo_with_policy(&root);
+    let receipt = root.join("target/cargo-allow/diff.receipt.json");
+
+    cmd_diff(&DiffArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(PathBuf::from("policy/allow.toml")),
+        kind: None,
+        include_untracked: false,
+        format: OutputFormat::Human,
+        output: None,
+        receipt: Some(receipt.clone()),
+        base: Some("HEAD".to_string()),
+        head: None,
+        require_change_note: false,
+        revisions_dir: std::path::PathBuf::from(".allow/revisions"),
+        write_change_note_template: None,
+    })
+    .unwrap_or_else(|err| std::panic::panic_any(format!("clean diff should succeed: {err}")));
+
+    let receipt_text = fs::read_to_string(&receipt)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read diff receipt: {err}")));
+    let receipt_value: serde_json::Value = serde_json::from_str(&receipt_text)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("parse diff receipt: {err}")));
+    assert_eq!(
+        receipt_value
+            .get("command")
+            .and_then(serde_json::Value::as_str),
+        Some("diff"),
+        "in-process diff receipt command"
+    );
+    assert_eq!(
+        receipt_value
+            .get("status")
+            .and_then(serde_json::Value::as_str),
+        Some("passed"),
+        "in-process clean diff receipt status"
+    );
+
+    fs::remove_dir_all(&root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
 static NEXT_DIFF_FIXTURE: AtomicUsize = AtomicUsize::new(0);
 
 fn diff_fixture_dir() -> PathBuf {
