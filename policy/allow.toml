@@ -10451,3 +10451,47 @@ glob = "docs/support-matrix.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0498"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/adr/CARGO-ALLOW-ADR-0003-package-identity-and-versioning.md"
+owner = "repo-infra"
+classification = "source_truth_adr"
+reason = "Records package identity, independent version-line, publication, and direct-support authority for the landed three-product monorepo."
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0010-three-product-design.md", "spec:docs/specs/CARGO-ALLOW-SPEC-0011-three-product-convergence.md"]
+created = "2026-07-28"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/adr/CARGO-ALLOW-ADR-0003-package-identity-and-versioning.md"
+target_fingerprint = "md"
+glob = "docs/adr/CARGO-ALLOW-ADR-0003-package-identity-and-versioning.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0499"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/specs/CARGO-ALLOW-SPEC-0011-three-product-convergence.md"
+owner = "repo-infra"
+classification = "source_truth_spec"
+reason = "Records the current convergence, compatibility-cutover, deletion, exact-candidate, and release requirements for the landed three-product monorepo."
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0010-three-product-design.md", "adr:docs/adr/CARGO-ALLOW-ADR-0003-package-identity-and-versioning.md"]
+created = "2026-07-28"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/specs/CARGO-ALLOW-SPEC-0011-three-product-convergence.md"
+target_fingerprint = "md"
+glob = "docs/specs/CARGO-ALLOW-SPEC-0011-three-product-convergence.md"
+
+[allow.last_seen]
+line = 1
+column = 1
