@@ -17,24 +17,86 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@stable
-      - name: Build the exact cargo-intent provider used by CI
-        run: cargo build -p cargo-intent --locked
-      - name: Run changed delegation integration target with retained output
-        id: contract
+      - name: Build exact delegated binaries
+        run: cargo build -p cargo-allow -p cargo-intent --locked
+      - name: Reproduce non-UTF-8 repository invocation with byte-preserving argv
         shell: bash
         run: |
-          set +e
+          set -euo pipefail
           mkdir -p target/diagnostic-2883
-          cargo test -p cargo-allow --test intent_staged_precommit_delegate --locked -- --nocapture \
-            > target/diagnostic-2883/contract.log 2>&1
-          code=$?
-          echo "exit_code=${code}" >> "${GITHUB_OUTPUT}"
-          exit 0
+          python3 - <<'PY' > target/diagnostic-2883/contract.log 2>&1
+          import os
+          import shutil
+          import subprocess
+          import time
+          from pathlib import Path
+
+          root = os.fsencode("/tmp/cargo-allow-nonutf8-") + str(os.getpid()).encode() + b"-" + str(time.time_ns()).encode() + b"-\xff-root"
+          shutil.rmtree(root, ignore_errors=True)
+          os.makedirs(root)
+
+          def checked(argv):
+              result = subprocess.run(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+              print("command", [os.fsdecode(arg) if isinstance(arg, bytes) else arg for arg in argv])
+              print("status", result.returncode)
+              print("stdout", result.stdout.decode("utf-8", "backslashreplace"))
+              print("stderr", result.stderr.decode("utf-8", "backslashreplace"))
+              if result.returncode != 0:
+                  raise SystemExit(result.returncode)
+
+          checked([b"git", b"-C", root, b"init", b"-q"])
+          checked([b"git", b"-C", root, b"config", b"user.name", b"Cargo Allow"])
+          checked([b"git", b"-C", root, b"config", b"user.email", b"cargo-allow@example.invalid"])
+          with open(root + b"/README.md", "wb") as handle:
+              handle.write(b"base\n")
+          checked([b"git", b"-C", root, b"add", b"--all"])
+          checked([b"git", b"-C", root, b"commit", b"-qm", b"base"])
+          with open(root + b"/candidate.txt", "wb") as handle:
+              handle.write(b"staged bytes\n")
+          checked([b"git", b"-C", root, b"add", b"--", b"candidate.txt"])
+
+          provider = os.fsencode(str(Path("target/debug/cargo-intent").resolve()))
+          config_dir = root + b"/.allow/compatibility"
+          os.makedirs(config_dir)
+          config = (
+              'schema_id = "cargo-allow.intent-delegation.v1"\n'
+              f'executable = {os.fsdecode(provider)!r}\n'
+              'delegate_staged_precommit = true\n'
+              'timeout_secs = 30\n'
+          )
+          with open(config_dir + b"/intent-delegation.toml", "w", encoding="utf-8") as handle:
+              handle.write(config)
+
+          cargo_allow = os.fsencode(str(Path("target/debug/cargo-allow").resolve()))
+          output = root + b"/target/non-utf8-precommit.json"
+          result = subprocess.run(
+              [
+                  cargo_allow,
+                  b"check",
+                  b"--root",
+                  root,
+                  b"--profile",
+                  b"spec-system",
+                  b"--phase",
+                  b"precommit",
+                  b"--staged",
+                  b"--format",
+                  b"json",
+                  b"--output",
+                  output,
+              ],
+              stdout=subprocess.PIPE,
+              stderr=subprocess.PIPE,
+          )
+          print("cargo_allow_status", result.returncode)
+          print("cargo_allow_stdout", result.stdout.decode("utf-8", "backslashreplace"))
+          print("cargo_allow_stderr", result.stderr.decode("utf-8", "backslashreplace"))
+          print("output_exists", os.path.isfile(output))
+          if os.path.isfile(output):
+              print("output", open(output, "rb").read().decode("utf-8", "backslashreplace"))
+          PY
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: diagnostic-2883-contract-log
           path: target/diagnostic-2883/contract.log
           if-no-files-found: error
-      - name: Preserve contract result
-        shell: bash
-        run: exit "${{ steps.contract.outputs.exit_code }}"
