@@ -54,20 +54,71 @@ temporary debt. Use `add` for one deliberate entry after the issue decision is
 accepted. Keep the policy change, source/evidence repair, tests, and issue or
 PR context atomic.
 
-Preview is the default for both commands: omit `--write` to inspect the
-candidate entry or summary first. Apply only with an explicit `--write` path
-after review:
+Preview is the default: omit `--write`/`--update` to inspect the candidate
+entry or summary first.
 
 ```bash
 cargo-allow propose --kind panic --summary-format json
-cargo-allow add --kind panic --path src/lib.rs --line 42 \
-  --owner core --reason "bounded fixture exception" \
-  --evidence doc:docs/design.md
-cargo-allow add --kind panic --path src/lib.rs --line 42 \
-  --owner core --reason "bounded fixture exception" \
-  --evidence doc:docs/design.md \
-  --write policy/allow.toml
 ```
+
+### Receipt one finding (source candidate / current `main`)
+
+The supported route for an existing ledger is plan-then-apply. `why --plan`
+writes a versioned, read-only plan for one `New` finding; `add --from-plan
+--update` re-verifies every binding in that plan against the live tree before
+one atomic write:
+
+```bash
+cargo-allow why \
+  --kind panic --path src/lib.rs --line 42 \
+  --plan target/cargo-allow/add-plan.json
+
+cargo-allow add \
+  --from-plan target/cargo-allow/add-plan.json \
+  --update \
+  --owner core \
+  --reason "bounded fixture exception" \
+  --evidence doc:docs/design.md \
+  --summary-format json \
+  --summary-output target/cargo-allow/add-application.json
+
+cargo-allow why --kind panic --path src/lib.rs --line 42
+
+cargo-allow check --mode no-new \
+  --format markdown \
+  --receipt target/cargo-allow/check.receipt.json \
+  --output target/cargo-allow/check.md
+```
+
+Why this route rather than a single mutating command:
+
+- `why --plan` is read-only and `New`-only. It does not touch policy.
+- `add --from-plan --update` re-scans and revalidates repository, inventory,
+  policy, source, finding, and selector identity. If anything moved between
+  the two commands it refuses and names the regeneration command rather than
+  writing against a stale plan:
+
+  ```text
+  error: add --from-plan rejected: source inventory changed since the plan was
+  generated (policy unchanged); regenerate with cargo-allow why --plan …
+  ```
+
+- the third command is a **targeted recheck**: it proves the selected finding
+  now reports `status: matched` with its new `allow_id`. It is not a
+  repository proof.
+- the final full `check` is the CI-grade repository proof. A passing targeted
+  recheck does not imply a passing check.
+
+`--evidence` must resolve. A `doc:` reference to a missing file is rejected
+before any write.
+
+Two variants exist and are deliberately not the tutorial path:
+
+- `add --update` with `--kind/--path/--line` is an expert shortcut that skips
+  the plan artifact;
+- `add --write <new-path>` emits a **candidate policy file** for inspection.
+  It is not the way to mutate a live ledger — do not point it at
+  `policy/allow.toml`.
 
 Every mutation should leave a mutation receipt when the repository workflow
 requires one. Commands that offer `--dry-run` (for example `refresh` and

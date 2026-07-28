@@ -93,3 +93,36 @@ channel = "published"
 argv_head = "why"
 exit_class = "success"
 output_id = "Published diagnosis"
+
+# Source-candidate plan-then-apply route (#2456). These four steps are the
+# supported way to receipt one finding against an existing ledger. They are
+# candidate-channel because `--plan` / `--from-plan` / `--update` are not part
+# of the Published 0.1.11 surface.
+
+[[step]]
+id = "receipt_plan"
+channel = "candidate"
+argv_head = "why"
+exit_class = "success"
+output_id = "is read-only and `New`-only"
+
+[[step]]
+id = "receipt_apply"
+channel = "candidate"
+argv_head = "add"
+exit_class = "success"
+output_id = "one atomic ledger write"
+
+[[step]]
+id = "receipt_targeted_recheck"
+channel = "candidate"
+argv_head = "why"
+exit_class = "success"
+output_id = "targeted recheck"
+
+[[step]]
+id = "receipt_full_check"
+channel = "candidate"
+argv_head = "check"
+exit_class = "success"
+output_id = "CI-grade repository proof"
