@@ -1,6 +1,5 @@
 use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult, Finding, FindingKind};
 use allow_inventory::{InventoryOptions, InventorySource, inventory, resolve_source_tree_root};
-use std::env;
 use std::path::{Path, PathBuf};
 
 #[path = "compat_paths.rs"]
@@ -9,7 +8,7 @@ mod compat_paths;
 mod compat_scan;
 
 use crate::{
-    FamilyFilter, InventoryFacts, KindFilter, is_clippy_compat_kind,
+    FamilyFilter, InventoryFacts, KindFilter, current_dir, is_clippy_compat_kind,
     is_dependency_surface_compat_kind, is_executable_compat_kind, is_network_compat_kind,
     is_no_panic_allowlist_compat_kind, is_panic_compat_kind, is_process_compat_kind,
     is_unsafe_compat_kind, is_workflow_compat_kind, parse_kind_filter,
@@ -55,8 +54,7 @@ pub(crate) fn load_compat_world(
             "--include-untracked has no effect for --compat --kind {compat_kind}: this compat surface scans a fixed source (git-tracked files, .gitattributes, or policy config), so untracked files are never inventoried; re-run without --include-untracked"
         )));
     }
-    let cwd =
-        env::current_dir().map_err(|e| CargoAllowError::new(format!("failed to read cwd: {e}")))?;
+    let cwd = current_dir()?;
     let root = resolve_source_tree_root(explicit_root, cwd)?;
     if is_no_panic_allowlist_compat_kind(compat_kind) {
         let policy_path = compat_policy_path(config, &root, "policy/no-panic-allowlist.toml");
