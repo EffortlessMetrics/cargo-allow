@@ -17,13 +17,13 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@stable
-      - name: Run cargo-allow contract tests with retained output
+      - name: Run changed delegation integration target with retained output
         id: contract
         shell: bash
         run: |
           set +e
           mkdir -p target/diagnostic-2883
-          cargo test -p cargo-allow --tests --locked -- --nocapture \
+          cargo test -p cargo-allow --test intent_staged_precommit_delegate --locked -- --nocapture \
             > target/diagnostic-2883/contract.log 2>&1
           code=$?
           echo "exit_code=${code}" >> "${GITHUB_OUTPUT}"
