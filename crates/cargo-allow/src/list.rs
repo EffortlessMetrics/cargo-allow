@@ -68,7 +68,7 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
                 .map(allow_report::ListColumn::parse_csv)
                 .transpose()
                 .map_err(allow_core::CargoAllowError::new)?;
-            let columns = columns.unwrap_or_else(|| allow_report::ListColumn::ALL.to_vec());
+            let columns = columns.unwrap_or_else(|| allow_report::ListColumn::DEFAULT.to_vec());
             render_list_rows_with_columns(&rows, &filters, context, &columns)
         }
         HumanJsonFormat::Json => render_list_rows_json(&rows, &filters, context),

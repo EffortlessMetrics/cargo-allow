@@ -1,0 +1,6 @@
+kind: Added
+body: >-
+  UX: `cargo-allow list` now defaults to a concise 6-column projection
+  (id, status, kind, scope, owner, reason) instead of the full 17-column TSV
+  (#2787). The most commonly needed columns are shown by default; operators who
+  want the full output can pass `--columns all`.
