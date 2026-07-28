@@ -68,11 +68,17 @@ fn spec_design_artifact_links() -> Result<(), String> {
         "CARGO-ALLOW-PROP-0010",
         "historical spec linked_proposal",
     )?;
-    require_link(
-        historical_spec.superseded_by.as_deref(),
-        "CARGO-ALLOW-SPEC-0011",
-        "historical spec superseded_by",
-    )?;
+    if historical_spec.status != allow_policy::spec_system::ArtifactStatus::Superseded {
+        return Err(format!(
+            "historical spec should be Superseded, got {:?}",
+            historical_spec.status
+        ));
+    }
+    let historical_text = std::fs::read_to_string(root.join(&historical_spec.path))
+        .map_err(|err| format!("historical spec readable: {err}"))?;
+    if !historical_text.contains("superseded_by: CARGO-ALLOW-SPEC-0011") {
+        return Err("historical spec source is missing its exact successor".to_string());
+    }
     require_link(
         current_spec.linked_proposal.as_deref(),
         "CARGO-ALLOW-PROP-0010",
