@@ -33,7 +33,7 @@
 - `"command": "check"`
 - `"status": "passed"`
 - `"new": 0`
-- `Result: passed/advisory`
+- `Result: passed (enforcing)`
 
 ### check (failing after new debt)
 
