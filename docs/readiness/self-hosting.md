@@ -3803,8 +3803,8 @@ The new tests prove that `config_from_legacy_table` maps each supported legacy
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-legacy-dispatch.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-legacy-dispatch.repo-exposure.json --out target/ripr/reports/after-legacy-dispatch.gap-decision-ledger.json --out-md target/ripr/reports/after-legacy-dispatch.gap-decision-ledger.md
+rtk cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-legacy-dispatch.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-legacy-dispatch.repo-exposure.json --out target/ripr/reports/after-legacy-dispatch.gap-decision-ledger.json --out-md target/ripr/reports/after-legacy-dispatch.gap-decision-ledger.md
 ```
 
 Observed:
@@ -3854,8 +3854,8 @@ The new tests prove that `finding_location`:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-messages.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-messages.repo-exposure.json --out target/ripr/reports/after-messages.gap-decision-ledger.json --out-md target/ripr/reports/after-messages.gap-decision-ledger.md
+rtk cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-messages.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-messages.repo-exposure.json --out target/ripr/reports/after-messages.gap-decision-ledger.json --out-md target/ripr/reports/after-messages.gap-decision-ledger.md
 ```
 
 Observed:
@@ -3908,8 +3908,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-render-helpers.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-render-helpers.repo-exposure.json --out target/ripr/reports/after-render-helpers.gap-decision-ledger.json --out-md target/ripr/reports/after-render-helpers.gap-decision-ledger.md
+rtk cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-render-helpers.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-render-helpers.repo-exposure.json --out target/ripr/reports/after-render-helpers.gap-decision-ledger.json --out-md target/ripr/reports/after-render-helpers.gap-decision-ledger.md
 ```
 
 Observed:
@@ -3965,8 +3965,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-toml-model.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-toml-model.repo-exposure.json --out target/ripr/reports/after-toml-model.gap-decision-ledger.json --out-md target/ripr/reports/after-toml-model.gap-decision-ledger.md
+rtk cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-toml-model.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-toml-model.repo-exposure.json --out target/ripr/reports/after-toml-model.gap-decision-ledger.json --out-md target/ripr/reports/after-toml-model.gap-decision-ledger.md
 ```
 
 Observed:
@@ -4023,8 +4023,8 @@ messages for:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-artifact-sample-schema.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-artifact-sample-schema.repo-exposure.json --out target/ripr/reports/after-artifact-sample-schema.gap-decision-ledger.json --out-md target/ripr/reports/after-artifact-sample-schema.gap-decision-ledger.md
+rtk cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-artifact-sample-schema.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-artifact-sample-schema.repo-exposure.json --out target/ripr/reports/after-artifact-sample-schema.gap-decision-ledger.json --out-md target/ripr/reports/after-artifact-sample-schema.gap-decision-ledger.md
 ```
 
 Observed:
@@ -4082,8 +4082,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-explain-steps.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-explain-steps.repo-exposure.json --out target/ripr/reports/after-explain-steps.gap-decision-ledger.json --out-md target/ripr/reports/after-explain-steps.gap-decision-ledger.md
+rtk cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-explain-steps.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-explain-steps.repo-exposure.json --out target/ripr/reports/after-explain-steps.gap-decision-ledger.json --out-md target/ripr/reports/after-explain-steps.gap-decision-ledger.md
 ```
 
 Observed:
@@ -4139,8 +4139,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-migrate-render.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-migrate-render.repo-exposure.json --out target/ripr/reports/after-migrate-render.gap-decision-ledger.json --out-md target/ripr/reports/after-migrate-render.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-migrate-render.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-migrate-render.repo-exposure.json --out target/ripr/reports/after-migrate-render.gap-decision-ledger.json --out-md target/ripr/reports/after-migrate-render.gap-decision-ledger.md
 ```
 
 Observed:
@@ -4193,8 +4193,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-prune-stale.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-prune-stale.repo-exposure.json --out target/ripr/reports/after-prune-stale.gap-decision-ledger.json --out-md target/ripr/reports/after-prune-stale.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-prune-stale.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-prune-stale.repo-exposure.json --out target/ripr/reports/after-prune-stale.gap-decision-ledger.json --out-md target/ripr/reports/after-prune-stale.gap-decision-ledger.md
 ```
 
 Observed:
@@ -4250,8 +4250,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-policy-config.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-policy-config.repo-exposure.json --out target/ripr/reports/after-policy-config.gap-decision-ledger.json --out-md target/ripr/reports/after-policy-config.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-policy-config.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-policy-config.repo-exposure.json --out target/ripr/reports/after-policy-config.gap-decision-ledger.json --out-md target/ripr/reports/after-policy-config.gap-decision-ledger.md
 ```
 
 Observed:
@@ -4312,8 +4312,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-migrate-load.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-migrate-load.repo-exposure.json --out target/ripr/reports/after-migrate-load.gap-decision-ledger.json --out-md target/ripr/reports/after-migrate-load.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-migrate-load.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-migrate-load.repo-exposure.json --out target/ripr/reports/after-migrate-load.gap-decision-ledger.json --out-md target/ripr/reports/after-migrate-load.gap-decision-ledger.md
 ```
 
 Observed:
@@ -4371,8 +4371,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-policy-change.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-policy-change.repo-exposure.json --out target/ripr/reports/after-policy-change.gap-decision-ledger.json --out-md target/ripr/reports/after-policy-change.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-policy-change.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-policy-change.repo-exposure.json --out target/ripr/reports/after-policy-change.gap-decision-ledger.json --out-md target/ripr/reports/after-policy-change.gap-decision-ledger.md
 ```
 
 Observed:
@@ -4430,8 +4430,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-policy-selector.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-policy-selector.repo-exposure.json --out target/ripr/reports/after-policy-selector.gap-decision-ledger.json --out-md target/ripr/reports/after-policy-selector.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-policy-selector.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-policy-selector.repo-exposure.json --out target/ripr/reports/after-policy-selector.gap-decision-ledger.json --out-md target/ripr/reports/after-policy-selector.gap-decision-ledger.md
 ```
 
 Observed:
@@ -4485,8 +4485,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-diff-policy-detail.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-diff-policy-detail.repo-exposure.json --out target/ripr/reports/after-diff-policy-detail.gap-decision-ledger.json --out-md target/ripr/reports/after-diff-policy-detail.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-diff-policy-detail.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-diff-policy-detail.repo-exposure.json --out target/ripr/reports/after-diff-policy-detail.gap-decision-ledger.json --out-md target/ripr/reports/after-diff-policy-detail.gap-decision-ledger.md
 ```
 
 Observed:
@@ -4540,8 +4540,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-reporting.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-reporting.repo-exposure.json --out target/ripr/reports/after-reporting.gap-decision-ledger.json --out-md target/ripr/reports/after-reporting.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-reporting.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-reporting.repo-exposure.json --out target/ripr/reports/after-reporting.gap-decision-ledger.json --out-md target/ripr/reports/after-reporting.gap-decision-ledger.md
 ```
 
 Observed:
@@ -4599,8 +4599,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-scope-validation.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-scope-validation.repo-exposure.json --out target/ripr/reports/after-scope-validation.gap-decision-ledger.json --out-md target/ripr/reports/after-scope-validation.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-scope-validation.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-scope-validation.repo-exposure.json --out target/ripr/reports/after-scope-validation.gap-decision-ledger.json --out-md target/ripr/reports/after-scope-validation.gap-decision-ledger.md
 ```
 
 Observed:
@@ -4658,8 +4658,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-worklist-items.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-worklist-items.repo-exposure.json --out target/ripr/reports/after-worklist-items.gap-decision-ledger.json --out-md target/ripr/reports/after-worklist-items.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-worklist-items.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-worklist-items.repo-exposure.json --out target/ripr/reports/after-worklist-items.gap-decision-ledger.json --out-md target/ripr/reports/after-worklist-items.gap-decision-ledger.md
 ```
 
 Observed:
@@ -4717,8 +4717,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-render-entry.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-render-entry.repo-exposure.json --out target/ripr/reports/after-render-entry.gap-decision-ledger.json --out-md target/ripr/reports/after-render-entry.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-render-entry.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-render-entry.repo-exposure.json --out target/ripr/reports/after-render-entry.gap-decision-ledger.json --out-md target/ripr/reports/after-render-entry.gap-decision-ledger.md
 ```
 
 Observed:
@@ -4770,8 +4770,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-worklist-human.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-worklist-human.repo-exposure.json --out target/ripr/reports/after-worklist-human.gap-decision-ledger.json --out-md target/ripr/reports/after-worklist-human.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-worklist-human.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-worklist-human.repo-exposure.json --out target/ripr/reports/after-worklist-human.gap-decision-ledger.json --out-md target/ripr/reports/after-worklist-human.gap-decision-ledger.md
 ```
 
 Observed:
@@ -4825,8 +4825,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-line-findings.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-line-findings.repo-exposure.json --out target/ripr/reports/after-line-findings.gap-decision-ledger.json --out-md target/ripr/reports/after-line-findings.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-line-findings.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-line-findings.repo-exposure.json --out target/ripr/reports/after-line-findings.gap-decision-ledger.json --out-md target/ripr/reports/after-line-findings.gap-decision-ledger.md
 ```
 
 Observed:
@@ -4881,8 +4881,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-classification.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-classification.repo-exposure.json --out target/ripr/reports/after-classification.gap-decision-ledger.json --out-md target/ripr/reports/after-classification.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-classification.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-classification.repo-exposure.json --out target/ripr/reports/after-classification.gap-decision-ledger.json --out-md target/ripr/reports/after-classification.gap-decision-ledger.md
 ```
 
 Observed:
@@ -4937,8 +4937,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-line-lint.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-line-lint.repo-exposure.json --out target/ripr/reports/after-line-lint.gap-decision-ledger.json --out-md target/ripr/reports/after-line-lint.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-line-lint.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-line-lint.repo-exposure.json --out target/ripr/reports/after-line-lint.gap-decision-ledger.json --out-md target/ripr/reports/after-line-lint.gap-decision-ledger.md
 ```
 
 Observed:
@@ -4992,8 +4992,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-selector.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-selector.repo-exposure.json --out target/ripr/reports/after-selector.gap-decision-ledger.json --out-md target/ripr/reports/after-selector.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-selector.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-selector.repo-exposure.json --out target/ripr/reports/after-selector.gap-decision-ledger.json --out-md target/ripr/reports/after-selector.gap-decision-ledger.md
 ```
 
 Observed:
@@ -5050,8 +5050,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-worklist-queue.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-worklist-queue.repo-exposure.json --out target/ripr/reports/after-worklist-queue.gap-decision-ledger.json --out-md target/ripr/reports/after-worklist-queue.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-worklist-queue.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-worklist-queue.repo-exposure.json --out target/ripr/reports/after-worklist-queue.gap-decision-ledger.json --out-md target/ripr/reports/after-worklist-queue.gap-decision-ledger.md
 ```
 
 Observed:
@@ -5107,8 +5107,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-toml-requirements.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-toml-requirements.repo-exposure.json --out target/ripr/reports/after-toml-requirements.gap-decision-ledger.json --out-md target/ripr/reports/after-toml-requirements.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-toml-requirements.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-toml-requirements.repo-exposure.json --out target/ripr/reports/after-toml-requirements.gap-decision-ledger.json --out-md target/ripr/reports/after-toml-requirements.gap-decision-ledger.md
 ```
 
 Observed:
@@ -5162,8 +5162,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-artifact-sample-schema-patterns.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-artifact-sample-schema-patterns.repo-exposure.json --out target/ripr/reports/after-artifact-sample-schema-patterns.gap-decision-ledger.json --out-md target/ripr/reports/after-artifact-sample-schema-patterns.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-artifact-sample-schema-patterns.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-artifact-sample-schema-patterns.repo-exposure.json --out target/ripr/reports/after-artifact-sample-schema-patterns.gap-decision-ledger.json --out-md target/ripr/reports/after-artifact-sample-schema-patterns.gap-decision-ledger.md
 ```
 
 Observed:
@@ -5216,8 +5216,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-policy-lib.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-policy-lib.repo-exposure.json --out target/ripr/reports/after-policy-lib.gap-decision-ledger.json --out-md target/ripr/reports/after-policy-lib.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-policy-lib.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-policy-lib.repo-exposure.json --out target/ripr/reports/after-policy-lib.gap-decision-ledger.json --out-md target/ripr/reports/after-policy-lib.gap-decision-ledger.md
 ```
 
 Observed:
@@ -5272,8 +5272,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-io.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-io.repo-exposure.json --out target/ripr/reports/after-io.gap-decision-ledger.json --out-md target/ripr/reports/after-io.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-io.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-io.repo-exposure.json --out target/ripr/reports/after-io.gap-decision-ledger.json --out-md target/ripr/reports/after-io.gap-decision-ledger.md
 ```
 
 Observed:
@@ -5332,8 +5332,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-toml-entry.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-toml-entry.repo-exposure.json --out target/ripr/reports/after-toml-entry.gap-decision-ledger.json --out-md target/ripr/reports/after-toml-entry.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-toml-entry.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-toml-entry.repo-exposure.json --out target/ripr/reports/after-toml-entry.gap-decision-ledger.json --out-md target/ripr/reports/after-toml-entry.gap-decision-ledger.md
 ```
 
 Observed:
@@ -5389,8 +5389,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-file-finding.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-file-finding.repo-exposure.json --out target/ripr/reports/after-file-finding.gap-decision-ledger.json --out-md target/ripr/reports/after-file-finding.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-file-finding.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-file-finding.repo-exposure.json --out target/ripr/reports/after-file-finding.gap-decision-ledger.json --out-md target/ripr/reports/after-file-finding.gap-decision-ledger.md
 ```
 
 Observed:
@@ -5447,8 +5447,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-diff-finding.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-diff-finding.repo-exposure.json --out target/ripr/reports/after-diff-finding.gap-decision-ledger.json --out-md target/ripr/reports/after-diff-finding.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-diff-finding.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-diff-finding.repo-exposure.json --out target/ripr/reports/after-diff-finding.gap-decision-ledger.json --out-md target/ripr/reports/after-diff-finding.gap-decision-ledger.md
 ```
 
 Observed:
@@ -5505,8 +5505,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-selector-validation.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-selector-validation.repo-exposure.json --out target/ripr/reports/after-selector-validation.gap-decision-ledger.json --out-md target/ripr/reports/after-selector-validation.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-selector-validation.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-selector-validation.repo-exposure.json --out target/ripr/reports/after-selector-validation.gap-decision-ledger.json --out-md target/ripr/reports/after-selector-validation.gap-decision-ledger.md
 ```
 
 Observed:
@@ -5566,8 +5566,8 @@ The new tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-safety-comments.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-safety-comments.repo-exposure.json --out target/ripr/reports/after-safety-comments.gap-decision-ledger.json --out-md target/ripr/reports/after-safety-comments.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-safety-comments.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-safety-comments.repo-exposure.json --out target/ripr/reports/after-safety-comments.gap-decision-ledger.json --out-md target/ripr/reports/after-safety-comments.gap-decision-ledger.md
 ```
 
 Observed:
@@ -5623,8 +5623,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-toml-last-seen-committed.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-toml-last-seen-committed.repo-exposure.json --out target/ripr/reports/after-toml-last-seen-committed.gap-decision-ledger.json --out-md target/ripr/reports/after-toml-last-seen-committed.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-toml-last-seen-committed.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-toml-last-seen-committed.repo-exposure.json --out target/ripr/reports/after-toml-last-seen-committed.gap-decision-ledger.json --out-md target/ripr/reports/after-toml-last-seen-committed.gap-decision-ledger.md
 ```
 
 Observed:
@@ -5677,8 +5677,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-diff-finding-detail.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-diff-finding-detail.repo-exposure.json --out target/ripr/reports/after-diff-finding-detail.gap-decision-ledger.json --out-md target/ripr/reports/after-diff-finding-detail.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-diff-finding-detail.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-diff-finding-detail.repo-exposure.json --out target/ripr/reports/after-diff-finding-detail.gap-decision-ledger.json --out-md target/ripr/reports/after-diff-finding-detail.gap-decision-ledger.md
 ```
 
 Observed:
@@ -5735,8 +5735,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-evidence-repair.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-evidence-repair.repo-exposure.json --out target/ripr/reports/after-evidence-repair.gap-decision-ledger.json --out-md target/ripr/reports/after-evidence-repair.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-evidence-repair.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-evidence-repair.repo-exposure.json --out target/ripr/reports/after-evidence-repair.gap-decision-ledger.json --out-md target/ripr/reports/after-evidence-repair.gap-decision-ledger.md
 ```
 
 Observed:
@@ -5793,8 +5793,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-list-render.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-list-render.repo-exposure.json --out target/ripr/reports/after-list-render.gap-decision-ledger.json --out-md target/ripr/reports/after-list-render.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-list-render.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-list-render.repo-exposure.json --out target/ripr/reports/after-list-render.gap-decision-ledger.json --out-md target/ripr/reports/after-list-render.gap-decision-ledger.md
 ```
 
 Observed:
@@ -5849,8 +5849,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-compat-scan.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-compat-scan.repo-exposure.json --out target/ripr/reports/after-compat-scan.gap-decision-ledger.json --out-md target/ripr/reports/after-compat-scan.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-compat-scan.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-compat-scan.repo-exposure.json --out target/ripr/reports/after-compat-scan.gap-decision-ledger.json --out-md target/ripr/reports/after-compat-scan.gap-decision-ledger.md
 ```
 
 Observed:
@@ -5903,8 +5903,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-inventory-root.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-inventory-root.repo-exposure.json --out target/ripr/reports/after-inventory-root.gap-decision-ledger.json --out-md target/ripr/reports/after-inventory-root.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-inventory-root.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-inventory-root.repo-exposure.json --out target/ripr/reports/after-inventory-root.gap-decision-ledger.json --out-md target/ripr/reports/after-inventory-root.gap-decision-ledger.md
 ```
 
 Observed:
@@ -5959,8 +5959,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-line-index.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-line-index.repo-exposure.json --out target/ripr/reports/after-line-index.gap-decision-ledger.json --out-md target/ripr/reports/after-line-index.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-line-index.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-line-index.repo-exposure.json --out target/ripr/reports/after-line-index.gap-decision-ledger.json --out-md target/ripr/reports/after-line-index.gap-decision-ledger.md
 ```
 
 Observed:
@@ -6017,8 +6017,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-line-unsafe.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-line-unsafe.repo-exposure.json --out target/ripr/reports/after-line-unsafe.gap-decision-ledger.json --out-md target/ripr/reports/after-line-unsafe.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-line-unsafe.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-line-unsafe.repo-exposure.json --out target/ripr/reports/after-line-unsafe.gap-decision-ledger.json --out-md target/ripr/reports/after-line-unsafe.gap-decision-ledger.md
 ```
 
 Observed:
@@ -6073,8 +6073,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-text-validation.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-text-validation.repo-exposure.json --out target/ripr/reports/after-text-validation.gap-decision-ledger.json --out-md target/ripr/reports/after-text-validation.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-text-validation.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-text-validation.repo-exposure.json --out target/ripr/reports/after-text-validation.gap-decision-ledger.json --out-md target/ripr/reports/after-text-validation.gap-decision-ledger.md
 ```
 
 Observed:
@@ -6128,8 +6128,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-policy-git.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-policy-git.repo-exposure.json --out target/ripr/reports/after-policy-git.gap-decision-ledger.json --out-md target/ripr/reports/after-policy-git.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-policy-git.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-policy-git.repo-exposure.json --out target/ripr/reports/after-policy-git.gap-decision-ledger.json --out-md target/ripr/reports/after-policy-git.gap-decision-ledger.md
 ```
 
 Observed:
@@ -6184,8 +6184,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-line-panic.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-line-panic.repo-exposure.json --out target/ripr/reports/after-line-panic.gap-decision-ledger.json --out-md target/ripr/reports/after-line-panic.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-line-panic.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-line-panic.repo-exposure.json --out target/ripr/reports/after-line-panic.gap-decision-ledger.json --out-md target/ripr/reports/after-line-panic.gap-decision-ledger.md
 ```
 
 Observed:
@@ -6246,8 +6246,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-cmd /c "ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-worklist-scoring.repo-exposure.json"
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-worklist-scoring.repo-exposure.json --out target/ripr/reports/after-worklist-scoring.gap-decision-ledger.json --out-md target/ripr/reports/after-worklist-scoring.gap-decision-ledger.md
+rtk cmd /c "rtk ripr check --root . --mode instant --format repo-exposure-json > target\ripr\reports\after-worklist-scoring.repo-exposure.json"
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-worklist-scoring.repo-exposure.json --out target/ripr/reports/after-worklist-scoring.gap-decision-ledger.json --out-md target/ripr/reports/after-worklist-scoring.gap-decision-ledger.md
 ```
 
 Observed:
@@ -6305,8 +6305,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-evidence-inventory.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-evidence-inventory.repo-exposure.json --out target/ripr/reports/after-evidence-inventory.gap-decision-ledger.json --out-md target/ripr/reports/after-evidence-inventory.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-evidence-inventory.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-evidence-inventory.repo-exposure.json --out target/ripr/reports/after-evidence-inventory.gap-decision-ledger.json --out-md target/ripr/reports/after-evidence-inventory.gap-decision-ledger.md
 ```
 
 Observed:
@@ -6360,8 +6360,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-entries-validation.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-entries-validation.repo-exposure.json --out target/ripr/reports/after-entries-validation.gap-decision-ledger.json --out-md target/ripr/reports/after-entries-validation.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-entries-validation.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-entries-validation.repo-exposure.json --out target/ripr/reports/after-entries-validation.gap-decision-ledger.json --out-md target/ripr/reports/after-entries-validation.gap-decision-ledger.md
 ```
 
 Observed:
@@ -6416,8 +6416,8 @@ The new and tightened tests prove that:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-init.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-init.repo-exposure.json --out target/ripr/reports/after-init.gap-decision-ledger.json --out-md target/ripr/reports/after-init.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-init.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-init.repo-exposure.json --out target/ripr/reports/after-init.gap-decision-ledger.json --out-md target/ripr/reports/after-init.gap-decision-ledger.md
 ```
 
 Observed:
@@ -6477,8 +6477,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-revision.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-revision.repo-exposure.json --out target/ripr/reports/after-revision.gap-decision-ledger.json --out-md target/ripr/reports/after-revision.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-revision.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-revision.repo-exposure.json --out target/ripr/reports/after-revision.gap-decision-ledger.json --out-md target/ripr/reports/after-revision.gap-decision-ledger.md
 ```
 
 Observed:
@@ -6531,8 +6531,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-companion.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-companion.repo-exposure.json --out target/ripr/reports/after-companion.gap-decision-ledger.json --out-md target/ripr/reports/after-companion.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-companion.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-companion.repo-exposure.json --out target/ripr/reports/after-companion.gap-decision-ledger.json --out-md target/ripr/reports/after-companion.gap-decision-ledger.md
 ```
 
 Observed:
@@ -6586,8 +6586,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-validation.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-validation.repo-exposure.json --out target/ripr/reports/after-validation.gap-decision-ledger.json --out-md target/ripr/reports/after-validation.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-validation.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-validation.repo-exposure.json --out target/ripr/reports/after-validation.gap-decision-ledger.json --out-md target/ripr/reports/after-validation.gap-decision-ledger.md
 ```
 
 Observed:
@@ -6640,8 +6640,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-toml-workspace.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-toml-workspace.repo-exposure.json --out target/ripr/reports/after-toml-workspace.gap-decision-ledger.json --out-md target/ripr/reports/after-toml-workspace.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-toml-workspace.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-toml-workspace.repo-exposure.json --out target/ripr/reports/after-toml-workspace.gap-decision-ledger.json --out-md target/ripr/reports/after-toml-workspace.gap-decision-ledger.md
 ```
 
 Observed:
@@ -6696,8 +6696,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-policy-entry-scope.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-policy-entry-scope.repo-exposure.json --out target/ripr/reports/after-policy-entry-scope.gap-decision-ledger.json --out-md target/ripr/reports/after-policy-entry-scope.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-policy-entry-scope.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-policy-entry-scope.repo-exposure.json --out target/ripr/reports/after-policy-entry-scope.gap-decision-ledger.json --out-md target/ripr/reports/after-policy-entry-scope.gap-decision-ledger.md
 ```
 
 Observed:
@@ -6751,8 +6751,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-policy-entry-identity.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-policy-entry-identity.repo-exposure.json --out target/ripr/reports/after-policy-entry-identity.gap-decision-ledger.json --out-md target/ripr/reports/after-policy-entry-identity.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-policy-entry-identity.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-policy-entry-identity.repo-exposure.json --out target/ripr/reports/after-policy-entry-identity.gap-decision-ledger.json --out-md target/ripr/reports/after-policy-entry-identity.gap-decision-ledger.md
 ```
 
 Observed:
@@ -6805,8 +6805,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-add-entry.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-add-entry.repo-exposure.json --out target/ripr/reports/after-add-entry.gap-decision-ledger.json --out-md target/ripr/reports/after-add-entry.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-add-entry.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-add-entry.repo-exposure.json --out target/ripr/reports/after-add-entry.gap-decision-ledger.json --out-md target/ripr/reports/after-add-entry.gap-decision-ledger.md
 ```
 
 Observed:
@@ -6866,8 +6866,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-explain-common.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-explain-common.repo-exposure.json --out target/ripr/reports/after-explain-common.gap-decision-ledger.json --out-md target/ripr/reports/after-explain-common.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-explain-common.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-explain-common.repo-exposure.json --out target/ripr/reports/after-explain-common.gap-decision-ledger.json --out-md target/ripr/reports/after-explain-common.gap-decision-ledger.md
 ```
 
 Observed:
@@ -6920,8 +6920,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-audit-remediation.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-audit-remediation.repo-exposure.json --out target/ripr/reports/after-audit-remediation.gap-decision-ledger.json --out-md target/ripr/reports/after-audit-remediation.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-audit-remediation.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-audit-remediation.repo-exposure.json --out target/ripr/reports/after-audit-remediation.gap-decision-ledger.json --out-md target/ripr/reports/after-audit-remediation.gap-decision-ledger.md
 ```
 
 Observed:
@@ -6971,8 +6971,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-worklist-summary.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-worklist-summary.repo-exposure.json --out target/ripr/reports/after-worklist-summary.gap-decision-ledger.json --out-md target/ripr/reports/after-worklist-summary.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-worklist-summary.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-worklist-summary.repo-exposure.json --out target/ripr/reports/after-worklist-summary.gap-decision-ledger.json --out-md target/ripr/reports/after-worklist-summary.gap-decision-ledger.md
 ```
 
 Observed:
@@ -7025,8 +7025,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-propose-args.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-propose-args.repo-exposure.json --out target/ripr/reports/after-propose-args.gap-decision-ledger.json --out-md target/ripr/reports/after-propose-args.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-propose-args.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-propose-args.repo-exposure.json --out target/ripr/reports/after-propose-args.gap-decision-ledger.json --out-md target/ripr/reports/after-propose-args.gap-decision-ledger.md
 ```
 
 Observed:
@@ -7077,8 +7077,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-worklist-item-kind.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-worklist-item-kind.repo-exposure.json --out target/ripr/reports/after-worklist-item-kind.gap-decision-ledger.json --out-md target/ripr/reports/after-worklist-item-kind.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-worklist-item-kind.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-worklist-item-kind.repo-exposure.json --out target/ripr/reports/after-worklist-item-kind.gap-decision-ledger.json --out-md target/ripr/reports/after-worklist-item-kind.gap-decision-ledger.md
 ```
 
 Observed:
@@ -7131,8 +7131,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-evidence-validation.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-evidence-validation.repo-exposure.json --out target/ripr/reports/after-evidence-validation.gap-decision-ledger.json --out-md target/ripr/reports/after-evidence-validation.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-evidence-validation.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-evidence-validation.repo-exposure.json --out target/ripr/reports/after-evidence-validation.gap-decision-ledger.json --out-md target/ripr/reports/after-evidence-validation.gap-decision-ledger.md
 ```
 
 Observed:
@@ -7183,8 +7183,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-line-context.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-line-context.repo-exposure.json --out target/ripr/reports/after-line-context.gap-decision-ledger.json --out-md target/ripr/reports/after-line-context.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-line-context.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-line-context.repo-exposure.json --out target/ripr/reports/after-line-context.gap-decision-ledger.json --out-md target/ripr/reports/after-line-context.gap-decision-ledger.md
 ```
 
 Observed:
@@ -7235,8 +7235,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-line-scan.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-line-scan.repo-exposure.json --out target/ripr/reports/after-line-scan.gap-decision-ledger.json --out-md target/ripr/reports/after-line-scan.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-line-scan.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-line-scan.repo-exposure.json --out target/ripr/reports/after-line-scan.gap-decision-ledger.json --out-md target/ripr/reports/after-line-scan.gap-decision-ledger.md
 ```
 
 Observed:
@@ -7287,8 +7287,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-artifact-contract-support.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-artifact-contract-support.repo-exposure.json --out target/ripr/reports/after-artifact-contract-support.gap-decision-ledger.json --out-md target/ripr/reports/after-artifact-contract-support.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-artifact-contract-support.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-artifact-contract-support.repo-exposure.json --out target/ripr/reports/after-artifact-contract-support.gap-decision-ledger.json --out-md target/ripr/reports/after-artifact-contract-support.gap-decision-ledger.md
 ```
 
 Observed:
@@ -7339,8 +7339,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-list-rows.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-list-rows.repo-exposure.json --out target/ripr/reports/after-list-rows.gap-decision-ledger.json --out-md target/ripr/reports/after-list-rows.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-list-rows.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-list-rows.repo-exposure.json --out target/ripr/reports/after-list-rows.gap-decision-ledger.json --out-md target/ripr/reports/after-list-rows.gap-decision-ledger.md
 ```
 
 Observed:
@@ -7391,8 +7391,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-worklist-advisories.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-worklist-advisories.repo-exposure.json --out target/ripr/reports/after-worklist-advisories.gap-decision-ledger.json --out-md target/ripr/reports/after-worklist-advisories.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-worklist-advisories.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-worklist-advisories.repo-exposure.json --out target/ripr/reports/after-worklist-advisories.gap-decision-ledger.json --out-md target/ripr/reports/after-worklist-advisories.gap-decision-ledger.md
 ```
 
 Observed:
@@ -7441,8 +7441,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-kind-filter.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-kind-filter.repo-exposure.json --out target/ripr/reports/after-kind-filter.gap-decision-ledger.json --out-md target/ripr/reports/after-kind-filter.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-kind-filter.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-kind-filter.repo-exposure.json --out target/ripr/reports/after-kind-filter.gap-decision-ledger.json --out-md target/ripr/reports/after-kind-filter.gap-decision-ledger.md
 ```
 
 Observed:
@@ -7493,8 +7493,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-finding.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-finding.repo-exposure.json --out target/ripr/reports/after-finding.gap-decision-ledger.json --out-md target/ripr/reports/after-finding.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-finding.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-finding.repo-exposure.json --out target/ripr/reports/after-finding.gap-decision-ledger.json --out-md target/ripr/reports/after-finding.gap-decision-ledger.md
 ```
 
 Observed:
@@ -7543,8 +7543,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-evidence-tests.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-evidence-tests.repo-exposure.json --out target/ripr/reports/after-evidence-tests.gap-decision-ledger.json --out-md target/ripr/reports/after-evidence-tests.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-evidence-tests.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-evidence-tests.repo-exposure.json --out target/ripr/reports/after-evidence-tests.gap-decision-ledger.json --out-md target/ripr/reports/after-evidence-tests.gap-decision-ledger.md
 ```
 
 Observed:
@@ -7594,8 +7594,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-worklist-args.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-worklist-args.repo-exposure.json --out target/ripr/reports/after-worklist-args.gap-decision-ledger.json --out-md target/ripr/reports/after-worklist-args.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-worklist-args.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-worklist-args.repo-exposure.json --out target/ripr/reports/after-worklist-args.gap-decision-ledger.json --out-md target/ripr/reports/after-worklist-args.gap-decision-ledger.md
 ```
 
 Observed:
@@ -7644,8 +7644,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-error.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-error.repo-exposure.json --out target/ripr/reports/after-error.gap-decision-ledger.json --out-md target/ripr/reports/after-error.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-error.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-error.repo-exposure.json --out target/ripr/reports/after-error.gap-decision-ledger.json --out-md target/ripr/reports/after-error.gap-decision-ledger.md
 ```
 
 Observed:
@@ -7693,8 +7693,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-prune-render.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-prune-render.repo-exposure.json --out target/ripr/reports/after-prune-render.gap-decision-ledger.json --out-md target/ripr/reports/after-prune-render.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-prune-render.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-prune-render.repo-exposure.json --out target/ripr/reports/after-prune-render.gap-decision-ledger.json --out-md target/ripr/reports/after-prune-render.gap-decision-ledger.md
 ```
 
 Observed:
@@ -7742,8 +7742,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-diff-human.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-diff-human.repo-exposure.json --out target/ripr/reports/after-diff-human.gap-decision-ledger.json --out-md target/ripr/reports/after-diff-human.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-diff-human.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-diff-human.repo-exposure.json --out target/ripr/reports/after-diff-human.gap-decision-ledger.json --out-md target/ripr/reports/after-diff-human.gap-decision-ledger.md
 ```
 
 Observed:
@@ -7792,8 +7792,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-options.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-options.repo-exposure.json --out target/ripr/reports/after-options.gap-decision-ledger.json --out-md target/ripr/reports/after-options.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-options.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-options.repo-exposure.json --out target/ripr/reports/after-options.gap-decision-ledger.json --out-md target/ripr/reports/after-options.gap-decision-ledger.md
 ```
 
 Observed:
@@ -7839,8 +7839,8 @@ After committing the focused test change and regenerating repo exposure and the
 gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-source-tree-path.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-source-tree-path.repo-exposure.json --out target/ripr/reports/after-source-tree-path.gap-decision-ledger.json --out-md target/ripr/reports/after-source-tree-path.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-source-tree-path.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-source-tree-path.repo-exposure.json --out target/ripr/reports/after-source-tree-path.gap-decision-ledger.json --out-md target/ripr/reports/after-source-tree-path.gap-decision-ledger.md
 ```
 
 Observed:
@@ -7890,8 +7890,8 @@ move the ledger; `cargo test -p allow-diff policy_entry_evidence::tests` passes.
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-policy-entry-evidence-retry.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/after-policy-entry-evidence-retry.repo-exposure.json --out target/ripr/reports/after-policy-entry-evidence-retry.gap-decision-ledger.json --out-md target/ripr/reports/after-policy-entry-evidence-retry.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/after-policy-entry-evidence-retry.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/after-policy-entry-evidence-retry.repo-exposure.json --out target/ripr/reports/after-policy-entry-evidence-retry.gap-decision-ledger.json --out-md target/ripr/reports/after-policy-entry-evidence-retry.gap-decision-ledger.md
 ```
 
 Observed:
@@ -7952,8 +7952,8 @@ Batch provider filing for the other unnumbered tail anchors:
 After regenerating repo exposure and the gap decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/session.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/session.repo-exposure.json --out target/ripr/reports/session.gap-decision-ledger.json --out-md target/ripr/reports/session.gap-decision-ledger.md
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/session.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/session.repo-exposure.json --out target/ripr/reports/session.gap-decision-ledger.json --out-md target/ripr/reports/session.gap-decision-ledger.md
 ```
 
 Observed:
@@ -7981,8 +7981,8 @@ All six remaining `predicate_boundary` anchors are provider-tracked.
 Installed provider:
 
 ```bash
-cargo install ripr --version 0.10.0 --locked --force
-ripr --version
+rtk cargo install ripr --version 0.10.0 --locked --force
+rtk ripr --version
 ```
 
 Result:
@@ -7995,9 +7995,9 @@ After regenerating full repo exposure (`RIPR_REPO_EXPOSURE_SEAM_LIMIT=0`) and th
 decision ledger:
 
 ```bash
-ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/v0.10.0-full.repo-exposure.json
-ripr reports gap-ledger --repo-exposure target/ripr/reports/v0.10.0-full.repo-exposure.json --out target/ripr/reports/v0.10.0-full.gap-decision-ledger.json --out-md target/ripr/reports/v0.10.0-full.gap-decision-ledger.md
-ripr check --root . --mode ready --format repo-badge-plus-json --gap-ledger target/ripr/reports/v0.10.0-full.gap-decision-ledger.json
+rtk ripr check --root . --mode instant --format repo-exposure-json > target/ripr/reports/v0.10.0-full.repo-exposure.json
+rtk ripr reports gap-ledger --repo-exposure target/ripr/reports/v0.10.0-full.repo-exposure.json --out target/ripr/reports/v0.10.0-full.gap-decision-ledger.json --out-md target/ripr/reports/v0.10.0-full.gap-decision-ledger.md
+rtk ripr check --root . --mode ready --format repo-badge-plus-json --gap-ledger target/ripr/reports/v0.10.0-full.gap-decision-ledger.json
 ```
 
 Observed:
@@ -8067,13 +8067,13 @@ unsafe-review 0.1.0
 Initial repo-scoped commands:
 
 ```bash
-unsafe-review doctor --root .
-unsafe-review repo --root . --format json --out target/unsafe-review/reports/repo.json
-unsafe-review badges --root . --out target/unsafe-review/reports/badges.json
-unsafe-review policy report --root . --format json --out target/unsafe-review/reports/policy-report.json
-unsafe-review receipt validate --root .
-unsafe-review receipt audit --root . --format json --out target/unsafe-review/reports/receipt-audit.json
-unsafe-review check --root . --base origin/main --format json --out target/unsafe-review/reports/check.json
+rtk unsafe-review doctor --root .
+rtk unsafe-review repo --root . --format json --out target/unsafe-review/reports/repo.json
+rtk unsafe-review badges --root . --out target/unsafe-review/reports/badges.json
+rtk unsafe-review policy report --root . --format json --out target/unsafe-review/reports/policy-report.json
+rtk unsafe-review receipt validate --root .
+rtk unsafe-review receipt audit --root . --format json --out target/unsafe-review/reports/receipt-audit.json
+rtk unsafe-review check --root . --base origin/main --format json --out target/unsafe-review/reports/check.json
 ```
 
 Observed repo scope (`target/unsafe-review/reports/repo.json`):
@@ -8186,8 +8186,8 @@ is authorized.
 Re-check local readiness:
 
 ```bash
-cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
-cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json
+rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
+rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json
 ```
 
 Re-check provider-tracked blockers (external evidence; not cargo-allow scan):
