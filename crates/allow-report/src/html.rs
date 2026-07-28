@@ -50,9 +50,7 @@ pub fn render_html_with_context(
         if failed {
             "failed"
         } else {
-            context
-                .enforcement
-                .unwrap_or("advisory")
+            context.enforcement.unwrap_or("advisory")
         }
     ));
     out.push_str(&format!(
