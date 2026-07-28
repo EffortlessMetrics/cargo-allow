@@ -10405,3 +10405,26 @@ glob = "scripts/test-check-msrv-consistency.sh"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0494"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "crates/cargo-allow/tests/quiet_output.rs"
+owner = "core/test"
+classification = "reviewed_exception"
+reason = "Shared tests/support module is compiled separately into each test binary; this one calls 4 of its helpers, so the rest would fail -D warnings as dead code. Scoped to the module declaration in a test file."
+evidence = ["test:quiet_drops_matched_inventory_listing_and_claim_boundary"]
+created = "2026-07-28"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "attribute"
+lint = "dead_code"
+symbol = "#[expect( dead_code, reason = \"policy:allow-0494 shared test support module; this binary uses a subset\" )]"
+target_fingerprint = "policy:allow-0494"
+normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
+
+[allow.last_seen]
+line = 3
+column = 1

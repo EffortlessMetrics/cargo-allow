@@ -109,9 +109,14 @@ pub fn render_human_with_context(
         append_evidence_repair_queues_human(&summary, signals, &mut out);
     }
     out.push('\n');
+    // `--quiet` drops advisory outcomes but never the blocking ones: those are
+    // the reason the run failed, and hiding them would leave an operator
+    // staring at a bare non-zero exit (#2785).
+    let quiet = crate::contracts::is_quiet();
     let non_matched = outcomes
         .iter()
         .filter(|o| o.status != MatchStatus::Matched)
+        .filter(|o| !quiet || blocks_check(o.status))
         .collect::<Vec<_>>();
     for outcome in non_matched.iter().take(HUMAN_NON_MATCHED_OUTCOME_LIMIT) {
         out.push_str(&format!(
@@ -137,21 +142,34 @@ pub fn render_human_with_context(
     out
 }
 
+/// Statuses that can fail a check, as opposed to advisory ones like
+/// `location_drift`, `stale`, and `review_due`.
+///
+/// Single source of truth for two callers that must agree: the failure reason
+/// appended to `Result: failed (...)`, and the `--quiet` outcome filter. If
+/// they drifted, `--quiet` could suppress the one line explaining a non-zero
+/// exit.
+const BLOCKING_STATUSES: [MatchStatus; 7] = [
+    MatchStatus::New,
+    MatchStatus::Expired,
+    MatchStatus::Ambiguous,
+    MatchStatus::InvalidSelector,
+    MatchStatus::MissingRequiredField,
+    MatchStatus::EvidenceMissing,
+    MatchStatus::BaselineDebt,
+];
+
+fn blocks_check(status: MatchStatus) -> bool {
+    BLOCKING_STATUSES.contains(&status)
+}
+
 /// Build a human-readable reason for why a check failed, based on blocking
 /// status counts from the summary. Returns None if no blocking statuses are
 /// present (the failure may come from evidence links, federation divergence,
 /// inventory parse errors, or other out-of-band conditions).
 fn check_failure_reason(summary: &Summary) -> Option<String> {
     let mut parts: Vec<(String, usize)> = Vec::new();
-    for status in [
-        MatchStatus::New,
-        MatchStatus::Expired,
-        MatchStatus::Ambiguous,
-        MatchStatus::InvalidSelector,
-        MatchStatus::MissingRequiredField,
-        MatchStatus::EvidenceMissing,
-        MatchStatus::BaselineDebt,
-    ] {
+    for status in BLOCKING_STATUSES {
         let count = summary.count(status);
         if count > 0 {
             parts.push((status.as_str().replace('_', " "), count));

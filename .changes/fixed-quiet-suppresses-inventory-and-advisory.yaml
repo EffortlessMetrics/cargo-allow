@@ -1,0 +1,14 @@
+kind: Fixed
+body: >-
+  `--quiet`/`-q` now suppresses what it advertises. It promised to drop the
+  claim boundary, the matched inventory listing, and non-matched advisory
+  outcomes, but only the claim boundary was actually suppressed: a `check` on
+  this repository went from 63 lines to 61. The per-file matched inventory
+  listing and the advisory outcomes now drop too, taking the same run to 35
+  lines. Counts, the remediation roadmap, and the result line are unchanged.
+  Blocking outcomes (`new`, `expired`, `ambiguous`, `invalid_selector`,
+  `missing_required_field`, `evidence_missing`, `baseline_debt`) are never
+  suppressed — they are the reason a run failed, and hiding them would leave a
+  bare non-zero exit with no explanation. The flag shipped without a test,
+  which is why the gap went unnoticed; `crates/cargo-allow/tests/quiet_output.rs`
+  now pins both halves of the contract (#2785).
