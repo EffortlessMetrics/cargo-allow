@@ -7476,48 +7476,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-0282"
-kind = "panic"
-family = "expect"
-path = "crates/allow-policy/src/entries_validation.rs"
-owner = "core/policy"
-classification = "reviewed_fixture"
-reason = "Aggregated validation join_errors expects exactly one error in the single-error fast path."
-evidence = ["test:aggregated_validation"]
-created = "2026-06-22"
-review_after = "2026-09-22"
-
-[allow.selector]
-ast_kind = "method_call"
-container = "validate_allow_entries_with_link_scope_validation"
-callee = "expect"
-
-[allow.last_seen]
-line = 86
-column = 39
-
-[[allow]]
-id = "allow-0283"
-kind = "panic"
-family = "expect"
-path = "crates/allow-policy/src/validation.rs"
-owner = "core/policy"
-classification = "reviewed_fixture"
-reason = "Top-level validation join_errors expects exactly one error in the single-error fast path."
-evidence = ["test:aggregated_validation"]
-created = "2026-06-22"
-review_after = "2026-09-22"
-
-[allow.selector]
-ast_kind = "method_call"
-container = "join_errors"
-callee = "expect"
-
-[allow.last_seen]
-line = 62
-column = 39
-
-[[allow]]
 id = "allow-0284"
 kind = "panic"
 family = "unwrap"
