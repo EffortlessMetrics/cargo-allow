@@ -44,11 +44,14 @@ for file in "${cargo_toml}" "${ci_workflow}" "${release_workflow}"; do
   [[ -f "${file}" ]] || fail "${file} not found"
 done
 
+# Tolerant of TOML spacing variants (`rust-version="1.95"`, extra spaces,
+# tabs, trailing comments) so a reformat cannot turn the guard into a
+# confusing "not found" failure.
 msrv="$(awk '
   /^\[workspace\.package\]/ { in_section = 1; next }
   /^\[/ { if (in_section) exit }
-  in_section && /^rust-version = / {
-    gsub(/rust-version = "/, "")
+  in_section && /^[[:space:]]*rust-version[[:space:]]*=[[:space:]]*"/ {
+    gsub(/^[[:space:]]*rust-version[[:space:]]*=[[:space:]]*"/, "")
     gsub(/".*/, "")
     print
     exit
@@ -56,6 +59,10 @@ msrv="$(awk '
 ' "${cargo_toml}")"
 
 [[ -n "${msrv}" ]] || fail "no rust-version found under [workspace.package] in ${cargo_toml}"
+
+# The MSRV is interpolated into an ERE below, where `.` would match any
+# character (`1.95` would accept `1x95`). Escape it to a literal.
+msrv_ere="${msrv//./\\.}"
 
 printf 'MSRV source of truth: %s rust-version = %s\n' "${cargo_toml}" "${msrv}"
 
@@ -78,7 +85,7 @@ fi
 printf 'ok %s uses cache key msrv-%s\n' "${ci_workflow}" "${msrv}"
 
 # 3. Attested release manifest MSRV field.
-if ! grep -qE "MSRV: \"?${msrv}\"?[[:space:]]*$" "${release_workflow}"; then
+if ! grep -qE "MSRV:[[:space:]]*\"?${msrv_ere}\"?[[:space:]]*$" "${release_workflow}"; then
   actual="$(grep -oE 'MSRV: "?[^"[:space:]]+"?' "${release_workflow}" | head -n 1 || true)"
   fail "$(printf '%s sets %s but the MSRV is %s.\n%s' \
     "${release_workflow}" "${actual:-no MSRV value}" "${msrv}" \
