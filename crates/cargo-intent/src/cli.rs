@@ -114,7 +114,8 @@ fn validate_change_status_args(args: &StatusArgs, format: OutputFormat) -> Resul
         Some(PhaseArg::Precommit) => {}
         None => return Err("change status requires --phase precommit".to_string()),
     }
-    // Receipt mode is one exact JSON contract; never silently emit a human frame instead.
+    // Analysis receipts are one exact JSON contract.
+    // A human frame is never a compatible fallback.
     if args.analysis_receipt && format != OutputFormat::Json {
         return Err(
             "--analysis-receipt requires --format json; refusing to emit a different output contract"
