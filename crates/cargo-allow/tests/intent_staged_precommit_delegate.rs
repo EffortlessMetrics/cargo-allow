@@ -30,14 +30,31 @@ struct FixtureRepo {
 
 impl FixtureRepo {
     fn new(label: &str) -> Result<Self, String> {
-        let nonce = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_err(|error| error.to_string())?
-            .as_nanos();
+        let nonce = fixture_nonce()?;
         let root = std::env::temp_dir().join(format!(
             "cargo-allow-intent-delegate-{label}-{}-{nonce}",
             std::process::id()
         ));
+        Self::at(root)
+    }
+
+    #[cfg(unix)]
+    fn new_non_utf8() -> Result<Self, String> {
+        use std::ffi::OsString;
+        use std::os::unix::ffi::OsStringExt;
+
+        let nonce = fixture_nonce()?;
+        let mut name = format!(
+            "cargo-allow-intent-delegate-non-utf8-{}-{nonce}-",
+            std::process::id()
+        )
+        .into_bytes();
+        name.push(0xff);
+        name.extend(b"-root".iter().copied());
+        Self::at(std::env::temp_dir().join(OsString::from_vec(name)))
+    }
+
+    fn at(root: PathBuf) -> Result<Self, String> {
         fs::create_dir_all(&root).map_err(|error| error.to_string())?;
         let repo = Self { root };
         repo.git(&["init", "-q"])?;
@@ -77,6 +94,13 @@ impl Drop for FixtureRepo {
     fn drop(&mut self) {
         let _ = fs::remove_dir_all(&self.root);
     }
+}
+
+fn fixture_nonce() -> Result<u128, String> {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|error| error.to_string())
+        .map(|duration| duration.as_nanos())
 }
 
 fn cargo_intent_binary() -> Result<PathBuf, String> {
@@ -153,21 +177,74 @@ fn assert_delegated_report(output_path: &Path) -> Result<Vec<u8>, String> {
     Ok(bytes)
 }
 
-#[test]
-fn delegated_staged_precommit_uses_analysis_receipt() -> Result<(), String> {
-    let provider = cargo_intent_binary()?;
-    let repo = FixtureRepo::new("delegated")?;
-    write_delegation_config(&repo.root, &provider)?;
+fn prepare_staged_repo(repo: &FixtureRepo) -> Result<(), String> {
     repo.write("README.md", "base\n")?;
     repo.git(&["add", "--all"])?;
     repo.git(&["commit", "-qm", "base"])?;
     repo.write("candidate.txt", "staged bytes\n")?;
     repo.git(&["add", "--", "candidate.txt"])?;
+    Ok(())
+}
+
+#[test]
+fn cargo_intent_rejects_analysis_receipt_without_json() -> Result<(), String> {
+    let provider = cargo_intent_binary()?;
+    let repo = FixtureRepo::new("receipt-format")?;
+    let output = Command::new(provider)
+        .arg("--root")
+        .arg(&repo.root)
+        .arg("--format")
+        .arg("human")
+        .arg("change")
+        .arg("status")
+        .arg("--staged")
+        .arg("--phase")
+        .arg("precommit")
+        .arg("--analysis-receipt")
+        .output()
+        .map_err(|error| error.to_string())?;
+    if output.status.success() {
+        return Err("non-JSON analysis receipt unexpectedly succeeded".to_string());
+    }
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    if !stderr.contains("--analysis-receipt requires --format json") {
+        return Err(format!("unexpected usage diagnostic: {stderr}"));
+    }
+    Ok(())
+}
+
+#[test]
+fn delegated_staged_precommit_uses_analysis_receipt() -> Result<(), String> {
+    let provider = cargo_intent_binary()?;
+    let repo = FixtureRepo::new("delegated")?;
+    write_delegation_config(&repo.root, &provider)?;
+    prepare_staged_repo(&repo)?;
 
     let output_path = repo.root.join("target/precommit.json");
     let command = run_delegated_precommit(&repo, &output_path)?;
     if command.status.success() {
         return Err("delegated unmapped staged surface unexpectedly passed".to_string());
+    }
+    assert_delegated_report(&output_path)?;
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn delegated_staged_precommit_accepts_non_utf8_repository_root() -> Result<(), String> {
+    let provider = cargo_intent_binary()?;
+    let repo = FixtureRepo::new_non_utf8()?;
+    write_delegation_config(&repo.root, &provider)?;
+    prepare_staged_repo(&repo)?;
+
+    let output_path = repo.root.join("target/non-utf8-precommit.json");
+    let command = run_delegated_precommit(&repo, &output_path)?;
+    if command.status.success() {
+        return Err("non-UTF-8 delegated staged surface unexpectedly passed".to_string());
+    }
+    let stderr = String::from_utf8_lossy(&command.stderr);
+    if stderr.contains("repository root is not UTF-8") {
+        return Err(format!("OS-native repository root was rejected: {stderr}"));
     }
     assert_delegated_report(&output_path)?;
     Ok(())
