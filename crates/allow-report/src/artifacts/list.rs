@@ -23,8 +23,7 @@ pub enum ListColumn {
 }
 
 impl ListColumn {
-    /// All columns in canonical order. This is the default projection used
-    /// when `--columns` is not supplied.
+    /// All columns in canonical order. Used when `--columns all` is supplied.
     pub const ALL: &'static [ListColumn] = &[
         ListColumn::Id,
         ListColumn::Status,
@@ -42,6 +41,17 @@ impl ListColumn {
         ListColumn::BroadScope,
         ListColumn::ReviewAfter,
         ListColumn::Expires,
+        ListColumn::Reason,
+    ];
+
+    /// Concise default projection: the most commonly needed columns for
+    /// everyday policy review (#2787). Use `--columns all` for the full set.
+    pub const DEFAULT: &'static [ListColumn] = &[
+        ListColumn::Id,
+        ListColumn::Status,
+        ListColumn::Kind,
+        ListColumn::Scope,
+        ListColumn::Owner,
         ListColumn::Reason,
     ];
 
@@ -105,6 +115,10 @@ impl ListColumn {
     /// listing the valid names on unknown input, empty input, or duplicate
     /// selections (#2595).
     pub fn parse_csv(input: &str) -> Result<Vec<ListColumn>, String> {
+        // Special case: --columns all restores the full 17-column projection (#2787).
+        if input.trim().eq_ignore_ascii_case("all") {
+            return Ok(ListColumn::ALL.to_vec());
+        }
         let mut seen = Vec::new();
         for raw in input.split(',') {
             let name = raw.trim();
