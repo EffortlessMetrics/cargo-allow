@@ -16,6 +16,7 @@ use std::fs;
 use std::io::Read;
 use std::path::Path;
 use std::process::{Command, ExitStatus, Stdio};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
@@ -25,6 +26,7 @@ pub const CHANGE_STATUS_PAYLOAD_SCHEMA: &str = "cargo-intent.change-status.v1";
 const PROVIDER_STDOUT_LIMIT: usize = 1024 * 1024;
 const PROVIDER_STDERR_LIMIT: usize = 64 * 1024;
 const PROVIDER_READ_CHUNK: usize = 8 * 1024;
+const PROVIDER_READER_SETTLE_TIMEOUT: Duration = Duration::from_secs(1);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IntentDelegateFailureClass {
@@ -32,10 +34,31 @@ pub enum IntentDelegateFailureClass {
     WrongProduct,
     WrongProtocol,
     MalformedOutput,
+    ProviderOutputTooLarge,
+    ProviderDiagnosticTooLarge,
+    ReaderSettleTimeout,
     Timeout,
     StaleSource,
     IdentityMismatch,
     InstrumentFailure,
+}
+
+impl IntentDelegateFailureClass {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::ProviderAbsent => "provider_absent",
+            Self::WrongProduct => "wrong_product",
+            Self::WrongProtocol => "wrong_protocol",
+            Self::MalformedOutput => "malformed_provider_output",
+            Self::ProviderOutputTooLarge => "provider_output_too_large",
+            Self::ProviderDiagnosticTooLarge => "provider_diagnostic_too_large",
+            Self::ReaderSettleTimeout => "reader_settle_timeout",
+            Self::Timeout => "provider_timeout",
+            Self::StaleSource => "stale_source",
+            Self::IdentityMismatch => "identity_mismatch",
+            Self::InstrumentFailure => "provider_instrument_failure",
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -55,7 +78,7 @@ impl IntentDelegateFailure {
 
 impl std::fmt::Display for IntentDelegateFailure {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}: {}", self.class, self.detail)
+        write!(f, "{}: {}", self.class.as_str(), self.detail)
     }
 }
 
@@ -243,6 +266,15 @@ struct BoundedRead {
     exceeded: bool,
 }
 
+struct ReaderTask {
+    receiver: Receiver<Result<BoundedRead, IntentDelegateFailure>>,
+    // Dropping a JoinHandle detaches the thread. Settlement is driven by the
+    // bounded receiver below; an inherited provider pipe can never force an
+    // unbounded join in the parent.
+    _handle: JoinHandle<()>,
+    stream: &'static str,
+}
+
 fn run_with_timeout(
     command: &mut Command,
     timeout: Duration,
@@ -318,22 +350,27 @@ fn run_with_timeout(
     }
 }
 
-fn spawn_bounded_reader<R>(
-    reader: R,
-    limit: usize,
-    stream: &'static str,
-) -> JoinHandle<Result<BoundedRead, IntentDelegateFailure>>
+fn spawn_bounded_reader<R>(reader: R, limit: usize, stream: &'static str) -> ReaderTask
 where
     R: Read + Send + 'static,
 {
-    std::thread::spawn(move || {
-        read_bounded(reader, limit).map_err(|err| {
+    let (sender, receiver) = mpsc::sync_channel(1);
+    let handle = std::thread::spawn(move || {
+        let result = read_bounded(reader, limit).map_err(|err| {
             IntentDelegateFailure::new(
                 IntentDelegateFailureClass::InstrumentFailure,
                 format!("failed draining cargo-intent provider {stream}: {err}"),
             )
-        })
-    })
+        });
+        // A disconnected receiver means the parent already made a bounded
+        // cleanup decision. No secondary error path can improve that result.
+        let _ = sender.send(result);
+    });
+    ReaderTask {
+        receiver,
+        _handle: handle,
+        stream,
+    }
 }
 
 fn read_bounded(mut reader: impl Read, limit: usize) -> std::io::Result<BoundedRead> {
@@ -355,38 +392,55 @@ fn read_bounded(mut reader: impl Read, limit: usize) -> std::io::Result<BoundedR
 }
 
 fn settle_readers(
-    stdout_reader: JoinHandle<Result<BoundedRead, IntentDelegateFailure>>,
-    stderr_reader: JoinHandle<Result<BoundedRead, IntentDelegateFailure>>,
+    stdout_reader: ReaderTask,
+    stderr_reader: ReaderTask,
 ) -> Result<(BoundedRead, BoundedRead), IntentDelegateFailure> {
-    let stdout = join_reader(stdout_reader, "stdout");
-    let stderr = join_reader(stderr_reader, "stderr");
+    let deadline = Instant::now() + PROVIDER_READER_SETTLE_TIMEOUT;
+    let stdout = receive_reader(stdout_reader, deadline);
+    let stderr = receive_reader(stderr_reader, deadline);
     match (stdout, stderr) {
         (Ok(stdout), Ok(stderr)) => Ok((stdout, stderr)),
         (Err(stdout_error), Ok(_)) => Err(stdout_error),
         (Ok(_), Err(stderr_error)) => Err(stderr_error),
         (Err(stdout_error), Err(stderr_error)) => Err(IntentDelegateFailure::new(
-            IntentDelegateFailureClass::InstrumentFailure,
+            if stdout_error.class == IntentDelegateFailureClass::ReaderSettleTimeout
+                || stderr_error.class == IntentDelegateFailureClass::ReaderSettleTimeout
+            {
+                IntentDelegateFailureClass::ReaderSettleTimeout
+            } else {
+                IntentDelegateFailureClass::InstrumentFailure
+            },
             format!("{stdout_error}; {stderr_error}"),
         )),
     }
 }
 
-fn join_reader(
-    reader: JoinHandle<Result<BoundedRead, IntentDelegateFailure>>,
-    stream: &'static str,
+fn receive_reader(
+    task: ReaderTask,
+    deadline: Instant,
 ) -> Result<BoundedRead, IntentDelegateFailure> {
-    reader.join().map_err(|_| {
-        IntentDelegateFailure::new(
+    let remaining = deadline.saturating_duration_since(Instant::now());
+    match task.receiver.recv_timeout(remaining) {
+        Ok(result) => result,
+        Err(RecvTimeoutError::Timeout) => Err(IntentDelegateFailure::new(
+            IntentDelegateFailureClass::ReaderSettleTimeout,
+            format!(
+                "cargo-intent provider {} reader did not settle within {}ms; a descendant may still hold the pipe open",
+                task.stream,
+                PROVIDER_READER_SETTLE_TIMEOUT.as_millis()
+            ),
+        )),
+        Err(RecvTimeoutError::Disconnected) => Err(IntentDelegateFailure::new(
             IntentDelegateFailureClass::InstrumentFailure,
-            format!("cargo-intent provider {stream} reader panicked"),
-        )
-    })?
+            format!(
+                "cargo-intent provider {} reader ended without a result",
+                task.stream
+            ),
+        )),
+    }
 }
 
-fn settle_reader_summary(
-    stdout_reader: JoinHandle<Result<BoundedRead, IntentDelegateFailure>>,
-    stderr_reader: JoinHandle<Result<BoundedRead, IntentDelegateFailure>>,
-) -> String {
+fn settle_reader_summary(stdout_reader: ReaderTask, stderr_reader: ReaderTask) -> String {
     match settle_readers(stdout_reader, stderr_reader) {
         Ok((stdout, stderr)) => format!(
             "stdout_bytes={}; stdout_exceeded={}; stderr_bytes={}; stderr_exceeded={}",
@@ -419,18 +473,14 @@ fn validate_provider_output(
 ) -> Result<AnalysisReceiptEnvelopeV1, IntentDelegateFailure> {
     if output.stdout_exceeded {
         return Err(IntentDelegateFailure::new(
-            IntentDelegateFailureClass::MalformedOutput,
-            format!(
-                "provider_output_too_large: cargo-intent stdout exceeded {PROVIDER_STDOUT_LIMIT} bytes"
-            ),
+            IntentDelegateFailureClass::ProviderOutputTooLarge,
+            format!("cargo-intent stdout exceeded {PROVIDER_STDOUT_LIMIT} bytes"),
         ));
     }
     if output.stderr_exceeded {
         return Err(IntentDelegateFailure::new(
-            IntentDelegateFailureClass::InstrumentFailure,
-            format!(
-                "provider_diagnostic_too_large: cargo-intent stderr exceeded {PROVIDER_STDERR_LIMIT} bytes"
-            ),
+            IntentDelegateFailureClass::ProviderDiagnosticTooLarge,
+            format!("cargo-intent stderr exceeded {PROVIDER_STDERR_LIMIT} bytes"),
         ));
     }
     if output.stdout.is_empty() {
@@ -597,9 +647,11 @@ fn delegate_error_kind(class: IntentDelegateFailureClass) -> CargoAllowErrorKind
         IntentDelegateFailureClass::WrongProduct
         | IntentDelegateFailureClass::WrongProtocol
         | IntentDelegateFailureClass::MalformedOutput => CargoAllowErrorKind::InvalidConfig,
-        IntentDelegateFailureClass::Timeout | IntentDelegateFailureClass::InstrumentFailure => {
-            CargoAllowErrorKind::Internal
-        }
+        IntentDelegateFailureClass::ProviderOutputTooLarge
+        | IntentDelegateFailureClass::ProviderDiagnosticTooLarge
+        | IntentDelegateFailureClass::ReaderSettleTimeout
+        | IntentDelegateFailureClass::Timeout
+        | IntentDelegateFailureClass::InstrumentFailure => CargoAllowErrorKind::Internal,
         IntentDelegateFailureClass::StaleSource => CargoAllowErrorKind::Inventory,
         IntentDelegateFailureClass::IdentityMismatch => CargoAllowErrorKind::InvalidConfig,
     }
@@ -728,21 +780,21 @@ mod tests {
     }
 
     #[test]
-    fn rejects_provider_stdout_over_budget() -> Result<(), String> {
+    fn rejects_provider_stdout_over_budget_with_typed_class() -> Result<(), String> {
         let mut output = sample_output(b"{}".to_vec(), Vec::new())?;
         output.stdout_exceeded = true;
         let failure = match validate_provider_output(&output) {
             Err(failure) => failure,
             Ok(_) => return Err("oversized stdout should fail validation".to_string()),
         };
-        if !failure.detail.contains("provider_output_too_large") {
+        if failure.class != IntentDelegateFailureClass::ProviderOutputTooLarge {
             return Err(format!("unexpected failure: {failure}"));
         }
         Ok(())
     }
 
     #[test]
-    fn rejects_provider_stderr_over_budget() -> Result<(), String> {
+    fn rejects_provider_stderr_over_budget_with_typed_class() -> Result<(), String> {
         let envelope = sample_envelope(INTENT_PROVIDER_ID, CHANGE_STATUS_PAYLOAD_SCHEMA);
         let json = serde_json::to_vec(&envelope).map_err(|err| err.to_string())?;
         let mut output = sample_output(json, Vec::new())?;
@@ -751,7 +803,7 @@ mod tests {
             Err(failure) => failure,
             Ok(_) => return Err("oversized stderr should fail validation".to_string()),
         };
-        if !failure.detail.contains("provider_diagnostic_too_large") {
+        if failure.class != IntentDelegateFailureClass::ProviderDiagnosticTooLarge {
             return Err(format!("unexpected failure: {failure}"));
         }
         Ok(())
@@ -809,7 +861,7 @@ mod tests {
     }
 
     #[test]
-    fn run_with_timeout_drains_large_stdout_and_stderr() -> Result<(), String> {
+    fn run_with_timeout_drains_large_stdout_and_stderr_concurrently() -> Result<(), String> {
         let mut command = helper_command("large")?;
         let output = run_with_timeout(&mut command, Duration::from_secs(10))
             .map_err(|failure| failure.to_string())?;
@@ -828,6 +880,31 @@ mod tests {
         };
         if failure.class != IntentDelegateFailureClass::Timeout {
             return Err(format!("expected Timeout, got {failure}"));
+        }
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn run_with_timeout_bounds_inherited_pipe_settlement() -> Result<(), String> {
+        let mut command = helper_command("inherited-pipe")?;
+        let started = Instant::now();
+        let failure = match run_with_timeout(&mut command, Duration::from_secs(10)) {
+            Err(failure) => failure,
+            Ok(output) => {
+                return Err(format!(
+                    "provider with inherited descendant pipe unexpectedly settled: {output:?}"
+                ));
+            }
+        };
+        if failure.class != IntentDelegateFailureClass::ReaderSettleTimeout {
+            return Err(format!("expected ReaderSettleTimeout, got {failure}"));
+        }
+        if started.elapsed() > Duration::from_secs(3) {
+            return Err(format!(
+                "reader settlement exceeded bounded allowance: {:?}",
+                started.elapsed()
+            ));
         }
         Ok(())
     }
@@ -851,11 +928,34 @@ mod tests {
             std::thread::sleep(Duration::from_secs(30));
             return Ok(());
         }
-        let stdout_bytes = PROVIDER_STDOUT_LIMIT + (128 * 1024);
-        let stderr_bytes = PROVIDER_STDERR_LIMIT + (128 * 1024);
-        write_repeated(std::io::stdout().lock(), b'x', stdout_bytes)?;
-        write_repeated(std::io::stderr().lock(), b'y', stderr_bytes)?;
-        std::process::exit(0);
+        #[cfg(unix)]
+        if mode == "inherited-pipe" {
+            Command::new("sh")
+                .args(["-c", "sleep 2"])
+                .spawn()
+                .map_err(|err| format!("spawn inherited-pipe descendant: {err}"))?;
+            return Ok(());
+        }
+        if mode == "large" {
+            let stdout_bytes = PROVIDER_STDOUT_LIMIT + (128 * 1024);
+            let stderr_bytes = PROVIDER_STDERR_LIMIT + (128 * 1024);
+            let stdout_writer = std::thread::spawn(move || {
+                write_repeated(std::io::stdout().lock(), b'x', stdout_bytes)
+            });
+            let stderr_writer = std::thread::spawn(move || {
+                write_repeated(std::io::stderr().lock(), b'y', stderr_bytes)
+            });
+            join_writer(stdout_writer, "stdout")?;
+            join_writer(stderr_writer, "stderr")?;
+            std::process::exit(0);
+        }
+        Err(format!("unsupported provider helper mode {mode}"))
+    }
+
+    fn join_writer(writer: JoinHandle<Result<(), String>>, stream: &str) -> Result<(), String> {
+        writer
+            .join()
+            .map_err(|_| format!("{stream} helper writer panicked"))?
     }
 
     fn write_repeated(
