@@ -1,65 +1,153 @@
-# Fresh-agent disposition snapshot for three-product design package.
-# This is a test/reference artifact, not a second authority ledger.
-# Canonical registry: .allow/artifacts/doc-artifacts.toml
+# Fresh-agent reconstruction snapshot for the generation-2 three-product package.
+# This is a parsed test fixture, not a second architecture/package/move ledger.
 
-schema_version = "1.0"
+schema_version = "2.0"
 design_package_proposal = "CARGO-ALLOW-PROP-0010"
-design_package_adr = "CARGO-ALLOW-ADR-0002"
-design_package_spec = "CARGO-ALLOW-SPEC-0010"
+ownership_adr = "CARGO-ALLOW-ADR-0002"
+package_identity_adr = "CARGO-ALLOW-ADR-0003"
+historical_spec = "CARGO-ALLOW-SPEC-0010"
+current_spec = "CARGO-ALLOW-SPEC-0011"
 design_package_plan = "CARGO-ALLOW-PLAN-0010"
 crate_topology_owner_issue = 2612
+package_topology_owner_issue = 2604
+move_ledger_owner_issue = 2598
+shim_owner_issue = 2607
+parity_owner_issue = 2606
+release_controller_issue = 2371
+repository_extraction_authorized = false
+
+[[product]]
+id = "cargo-allow"
+status = "SupportedSourceCandidate"
+current_version = "0.2.0"
+published_version = "0.1.11"
+claim = "source-exception ledger"
+release_blocked = true
+
+[[product]]
+id = "cargo-intent"
+status = "LandedExperimental"
+current_version = "0.2.0-workspace-transitional"
+target_version = "0.1.0"
+claim = "durable authored intent and obligation compiler"
+release_blocked = true
+
+[[product]]
+id = "cargo-proof"
+status = "LandedExperimental"
+current_version = "0.2.0-workspace-transitional"
+target_version = "0.1.0"
+claim = "exact-snapshot evidence orchestration"
+release_blocked = true
+
+[[shared]]
+logical_id = "repo-protocol"
+workspace_path = "crates/repo-protocol"
+current_package = "repo-protocol"
+target_package = "effortless-repo-protocol"
+lib_name = "repo_protocol"
+status = "LandedTransitional"
+
+[[shared]]
+logical_id = "repo-snapshot"
+workspace_path = "crates/repo-snapshot"
+current_package = "repo-snapshot"
+target_package = "effortless-repo-snapshot"
+lib_name = "repo_snapshot"
+status = "LandedTransitional"
+
+[[shared]]
+logical_id = "repo-edit"
+workspace_path = "crates/repo-edit"
+current_package = "repo-edit"
+target_package = "effortless-repo-edit"
+lib_name = "repo_edit"
+status = "LandedTransitional"
+
+[[shared]]
+logical_id = "rust-source-index"
+workspace_path = "crates/rust-source-index"
+current_package = "rust-source-index"
+target_package = "effortless-rust-source-index"
+lib_name = "rust_source_index"
+status = "LandedTransitional"
 
 [[entry]]
 artifact = "CARGO-ALLOW-PROP-0001"
 disposition = "CurrentSupporting"
-note = "Spec-system profile mechanics; product vision superseded by PROP-0010"
+note = "Spec-system profile mechanics remain; permanent cargo-allow product ownership is superseded."
 
 [[entry]]
 artifact = "CARGO-ALLOW-SPEC-0001"
 disposition = "CurrentSupporting"
-note = "Structural profile contract"
+note = "Historical structural profile contract."
 
 [[entry]]
 artifact = "CARGO-ALLOW-PROP-0010"
 disposition = "CurrentCanonical"
-note = "Three-product design authority"
+note = "Landed three-product state and convergence proposal."
 
 [[entry]]
 artifact = "CARGO-ALLOW-ADR-0002"
 disposition = "CurrentCanonical"
-note = "Ownership and dependency direction"
+note = "Semantic ownership, dependency direction and side-effect boundaries."
+
+[[entry]]
+artifact = "CARGO-ALLOW-ADR-0003"
+disposition = "CurrentCanonical"
+note = "Logical/package/library identity, independent versions and publication posture."
 
 [[entry]]
 artifact = "CARGO-ALLOW-SPEC-0010"
+disposition = "HistoricalOnly"
+note = "Generation-1 crate-creation and boundary record; exact successor is SPEC-0011."
+
+[[entry]]
+artifact = "CARGO-ALLOW-SPEC-0011"
 disposition = "CurrentCanonical"
-note = "Atomic product-boundary requirements"
+note = "Generation-2 convergence, cutover, package and release requirements."
 
 [[entry]]
 artifact = "plans/spec-system/implementation-plan.md"
 disposition = "HistoricalOnly"
-note = "Pre-three-product sequencing"
+note = "Pre-three-product embedded-profile implementation sequence."
 
 [[entry]]
 artifact = "allow-policy::spec_system"
-disposition = "GeneratedOrDerived"
-note = "Transitional source location"
+disposition = "CompatibilityOnly"
+note = "Transitional current/historical implementation; delete current semantic authority after cargo-intent parity."
 
 [[entry]]
 artifact = "cargo-allow::spec_system"
-disposition = "GeneratedOrDerived"
-note = "Transitional; delegate or delete per #2601/#2568"
+disposition = "BlockedOnParity"
+note = "Compatibility projection and old application paths remain deletion targets under #2601/#2568."
 
 [[entry]]
 artifact = "#2550"
 disposition = "CurrentCanonical"
-note = "Three-product authority law encoded in retained artifacts"
+note = "Three-product authority decision encoded in retained artifacts."
 
 [[entry]]
 artifact = "#2612"
-disposition = "CurrentCanonical"
-note = "Crate names, counts, stage gates"
+disposition = "CurrentSupporting"
+note = "Ratified logical crate topology; generation-2 manifests own current checked projection."
 
 [[entry]]
 artifact = "#2598"
 disposition = "CurrentSupporting"
-note = "Move/deletion ledger — next implementation after Wave 0"
+note = "Current source disposition, reachability and exact deletion output."
+
+[[entry]]
+artifact = "#2604"
+disposition = "CurrentSupporting"
+note = "Package names, versions, publication, candidate, release order and CI posture."
+
+[[entry]]
+artifact = "#2606"
+disposition = "CurrentSupporting"
+note = "Parity and cutover receipt meaning."
+
+[[entry]]
+artifact = "#2607"
+disposition = "CurrentSupporting"
+note = "Bounded temporary compatibility and expiry."
