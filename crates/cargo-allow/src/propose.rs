@@ -1,6 +1,6 @@
 use allow_core::{CargoAllowError, CargoAllowResult, FindingKind, MatchStatus};
 use allow_match::{CheckMode, evaluate};
-use allow_policy::render_policy;
+use allow_policy::{render_policy, validate_policy};
 use allow_report::MutationReceipt;
 use repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 use std::env;
@@ -85,6 +85,8 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
             proposed_entries += 1;
         }
     }
+    // Validate the complete policy before writing, matching add/prune/refresh (#2832 audit).
+    validate_policy(&proposed)?;
     let rendered = render_policy(&proposed);
     let original_allow_count = cfg.allow.len();
     let changed_allow_ids = proposed
