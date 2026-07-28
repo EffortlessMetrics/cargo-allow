@@ -102,6 +102,50 @@ fn clap_parses_list_columns_arg() {
 }
 
 #[test]
+fn clap_parses_list_wide_arg() {
+    let parsed = CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "list", "--wide"]))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse --wide: {err}")));
+
+    assert!(matches!(
+        parsed.command,
+        Some(CargoAllowCommand::List(ListArgs { wide: true, .. }))
+    ));
+}
+
+#[test]
+fn clap_rejects_list_wide_with_columns() {
+    let err = CargoAllowCli::try_parse_from(argv(vec![
+        "cargo-allow",
+        "list",
+        "--wide",
+        "--columns",
+        "id,status",
+    ]))
+    .expect_err("--wide and --columns should be mutually exclusive");
+
+    let message = err.to_string();
+    assert!(
+        message.contains("cannot be used with") || message.contains("conflict"),
+        "unexpected conflict diagnostic: {message}"
+    );
+}
+
+#[test]
+fn list_wide_resolves_to_the_complete_human_projection() {
+    let parsed = CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "list", "--wide"]))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse --wide: {err}")));
+    let args = match parsed.command {
+        Some(CargoAllowCommand::List(args)) => args,
+        _ => std::panic::panic_any("expected list command"),
+    };
+
+    let columns = super::list_columns(&args);
+    let columns = columns
+        .unwrap_or_else(|err| std::panic::panic_any(format!("--wide should resolve: {err}")));
+    assert_eq!(columns, allow_report::ListColumn::ALL);
+}
+
+#[test]
 fn render_list_rows_with_columns_projects_subset() {
     // #2595: the adapter threads the column selection through to the
     // allow-report renderer. Exercises the same path cmd_list uses.

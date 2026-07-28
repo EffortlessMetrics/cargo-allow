@@ -62,19 +62,25 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
     };
     let text = match args.format {
         HumanJsonFormat::Human => {
-            let columns = args
-                .columns
-                .as_deref()
-                .map(allow_report::ListColumn::parse_csv)
-                .transpose()
-                .map_err(allow_core::CargoAllowError::new)?;
-            let columns = columns.unwrap_or_else(|| allow_report::ListColumn::DEFAULT.to_vec());
+            let columns = list_columns(args)?;
             render_list_rows_with_columns(&rows, &filters, context, &columns)
         }
         HumanJsonFormat::Json => render_list_rows_json(&rows, &filters, context),
     };
     emit_text(args.output.as_deref(), &text)?;
     Ok(())
+}
+
+fn list_columns(args: &ListArgs) -> CargoAllowResult<Vec<allow_report::ListColumn>> {
+    if args.wide {
+        return Ok(allow_report::ListColumn::ALL.to_vec());
+    }
+    args.columns
+        .as_deref()
+        .map(allow_report::ListColumn::parse_csv)
+        .transpose()
+        .map_err(allow_core::CargoAllowError::new)
+        .map(|columns| columns.unwrap_or_else(|| allow_report::ListColumn::DEFAULT.to_vec()))
 }
 
 #[cfg(test)]
