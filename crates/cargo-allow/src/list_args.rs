@@ -92,9 +92,14 @@ pub(crate) struct ListArgs {
     /// --format json. Available columns: id, status, matches, kind, family,
     /// owner, classification, scope, source_package, evidence_count,
     /// broken_evidence_references, weak_evidence_references,
-    /// selector_precision, broad_scope, review_after, expires, reason.
-    #[arg(long, value_name = "COLS")]
+    /// selector_precision, broad_scope, review_after, expires, reason. Use
+    /// `--columns all` or `--wide` for the complete human projection.
+    #[arg(long, value_name = "COLS", conflicts_with = "wide")]
     pub(super) columns: Option<String>,
+    /// Show the complete human projection instead of the concise default.
+    /// Equivalent to `--columns all`; JSON is always complete.
+    #[arg(long, conflicts_with = "columns")]
+    pub(super) wide: bool,
     /// Write list output to a file instead of stdout.
     #[arg(long)]
     pub(super) output: Option<PathBuf>,
