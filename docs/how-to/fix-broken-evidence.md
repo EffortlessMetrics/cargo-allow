@@ -16,6 +16,12 @@ cargo-allow list --weak-evidence
 cargo-allow worklist --weak-evidence --format json
 ```
 
+When `[requirements] evidence_required = true`, an entry must include at
+least one recognized typed reference such as `test:...`, `doc:...`, or
+`issue:...`. A non-empty free-form note does not satisfy that gate. Generated
+`baseline_debt` entries remain eligible for their explicitly marked migration
+placeholder evidence until they are reviewed.
+
 ## Repair
 
 For each item, choose one action:

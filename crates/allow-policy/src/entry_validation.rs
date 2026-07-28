@@ -138,11 +138,24 @@ pub(crate) fn validate_allow_entry_evidence_and_limit(
             entry.id,
         )));
     }
-    if requirements.evidence_required && entry.evidence.is_empty() {
-        return Err(CargoAllowError::new(format!(
-            "{} missing evidence",
-            entry.id
-        )));
+    if requirements.evidence_required {
+        if entry.evidence.is_empty() {
+            return Err(CargoAllowError::new(format!(
+                "{} missing evidence",
+                entry.id
+            )));
+        }
+        if entry.classification != "baseline_debt"
+            && !entry
+                .evidence
+                .iter()
+                .any(|evidence| evidence_is_typed(evidence))
+        {
+            return Err(CargoAllowError::new(format!(
+                "{} evidence_required entries require at least one typed evidence reference",
+                entry.id
+            )));
+        }
     }
     if let Some(limit) = entry.occurrence_limit {
         if limit == 0 {

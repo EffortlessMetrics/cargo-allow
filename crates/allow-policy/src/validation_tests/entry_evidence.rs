@@ -27,6 +27,63 @@ fn rejects_missing_general_evidence_when_required() {
 }
 
 #[test]
+fn rejects_untyped_general_evidence_when_required() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+
+                [requirements]
+                evidence_required = true
+
+                [[allow]]
+                id = "allow-panic"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                evidence = ["manual review note"]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+    );
+
+    assert!(err.contains(
+        "allow-panic evidence_required entries require at least one typed evidence reference"
+    ));
+}
+
+#[test]
+fn accepts_typed_general_evidence_when_required() {
+    let cfg = parse_policy(
+        r#"
+                policy = "cargo-allow"
+
+                [requirements]
+                evidence_required = true
+
+                [[allow]]
+                id = "allow-panic"
+                kind = "panic"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                evidence = ["test:panic_path_is_covered"]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "method_call"
+                callee = "unwrap"
+            "#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("typed evidence should parse: {err}")));
+
+    assert_eq!(cfg.allow[0].id, "allow-panic");
+}
+
+#[test]
 fn keeps_unsafe_evidence_requirement_specific() {
     let err = parse_err(
         r#"
