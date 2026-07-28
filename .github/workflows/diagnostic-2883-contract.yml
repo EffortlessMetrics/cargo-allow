@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - diagnostic/2883-contract-log
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
