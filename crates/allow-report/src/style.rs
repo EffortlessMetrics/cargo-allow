@@ -108,18 +108,26 @@ pub struct StyleEnv<'a> {
 ///
 /// ```text
 /// explicit --color always|never
-///   > NO_COLOR
-///   > CLICOLOR_FORCE
-///   > CARGO_TERM_COLOR
+///   > NO_COLOR                 (disables)
+///   > CLICOLOR_FORCE           (enables)
+///   > CARGO_TERM_COLOR=never   (disables only; never enables)
 ///   > terminal capability
 ///   > plain
 /// ```
 ///
-/// `NO_COLOR` deliberately outranks `CLICOLOR_FORCE`. The clicolor convention
-/// puts force first; this tool does not, because a user who exported
-/// `NO_COLOR` has stated a preference and should not be overridden by an
-/// environment variable they may not know is set. An explicit `--color always`
-/// still wins over both, since that is a direct instruction for this run.
+/// Two deliberate deviations, both in the conservative direction:
+///
+/// `NO_COLOR` outranks `CLICOLOR_FORCE`. The clicolor convention puts force
+/// first; this tool does not, because a user who exported `NO_COLOR` has
+/// stated a preference and should not be overridden by a variable they may
+/// not know is set.
+///
+/// `CARGO_TERM_COLOR` can only *disable*. It is cargo's variable, and CI
+/// tooling sets `CARGO_TERM_COLOR=always` so that **cargo's** build logs are
+/// coloured — it is not a statement about this tool's report output. Honouring
+/// it to enable styling put ANSI into a non-TTY CI stream and broke consumers
+/// grepping for a literal result line, so another tool's variable may turn our
+/// styling off but only `--color` or a real terminal may turn it on.
 ///
 /// An unrecognised value for any variable is ignored and falls through to the
 /// next rule; it never silently changes output.
@@ -144,11 +152,10 @@ pub fn resolve(choice: ColorChoice, env: StyleEnv<'_>) -> (Style, StyleReason) {
         return (Style::ANSI, StyleReason::ClicolorForceEnv);
     }
 
-    match env.cargo_term_color {
-        Some("never") => return (Style::PLAIN, StyleReason::CargoTermColorEnv),
-        Some("always") => return (Style::ANSI, StyleReason::CargoTermColorEnv),
-        // "auto" and any unrecognised value fall through to capability.
-        _ => {}
+    // Disable-only: see the precedence note above. `always` deliberately does
+    // not force styling on, because CI sets it for cargo, not for us.
+    if env.cargo_term_color == Some("never") {
+        return (Style::PLAIN, StyleReason::CargoTermColorEnv);
     }
 
     if env.stdout_is_terminal {
@@ -158,38 +165,45 @@ pub fn resolve(choice: ColorChoice, env: StyleEnv<'_>) -> (Style, StyleReason) {
     }
 }
 
-/// Strip terminal control characters from repository-controlled text.
+/// Make repository-controlled text safe to print on one report line.
 ///
-/// Paths, reasons, symbols, and scanner messages are derived from files in the
-/// scanned repository. Echoing them verbatim would let a crafted source file
-/// emit escape sequences into an operator's terminal — recoloring output,
-/// moving the cursor, or hiding text — regardless of whether `--color` is on.
+/// Paths, families, reasons, symbols, and scanner messages are derived from
+/// files in the scanned repository. Two distinct hazards, both handled here:
 ///
-/// Tab and newline are preserved because the human layout uses them. Every
-/// other C0 control, plus DEL and the C1 range, is replaced with U+FFFD so the
-/// text stays visible and its length stays honest.
+/// 1. **Terminal control.** Echoing an escape sequence verbatim would let a
+///    crafted source file recolour output, move the cursor, or hide text,
+///    regardless of whether `--color` is on. Those characters become U+FFFD.
+///
+/// 2. **Line forging.** A newline would let repository text start what looks
+///    like a fresh tool-authored line — a fake `new: unreceipted …` entry in a
+///    report someone reads to make a governance decision. Every value passed
+///    through here is a scalar that belongs on one line, so `\n`, `\r`, and
+///    `\t` are rendered as visible two-character escapes rather than acted on.
+///
+/// The text stays legible and its line count stays honest.
 pub fn sanitize_terminal_text(text: &str) -> String {
-    if !text.chars().any(is_terminal_control) {
+    if !text.chars().any(needs_sanitizing) {
         return text.to_string();
     }
-    text.chars()
-        .map(|character| {
-            if is_terminal_control(character) {
-                '\u{fffd}'
-            } else {
-                character
-            }
-        })
-        .collect()
+    let mut out = String::with_capacity(text.len());
+    for character in text.chars() {
+        match character {
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            other if is_terminal_control(other) => out.push('\u{fffd}'),
+            other => out.push(other),
+        }
+    }
+    out
+}
+
+fn needs_sanitizing(character: char) -> bool {
+    matches!(character, '\n' | '\r' | '\t') || is_terminal_control(character)
 }
 
 fn is_terminal_control(character: char) -> bool {
-    match character {
-        '\t' | '\n' => false,
-        '\u{0}'..='\u{1f}' | '\u{7f}' => true,
-        '\u{80}'..='\u{9f}' => true,
-        _ => false,
-    }
+    matches!(character, '\u{0}'..='\u{1f}' | '\u{7f}' | '\u{80}'..='\u{9f}')
 }
 
 #[cfg(test)]
@@ -267,18 +281,34 @@ mod tests {
     }
 
     #[test]
-    fn cargo_term_color_is_honoured_below_the_other_variables() {
-        for (value, expected) in [("never", Style::PLAIN), ("always", Style::ANSI)] {
-            let set = StyleEnv {
-                cargo_term_color: Some(value),
-                stdout_is_terminal: value == "never",
-                ..env()
-            };
-            assert_eq!(
-                resolve(ColorChoice::Auto, set),
-                (expected, StyleReason::CargoTermColorEnv)
-            );
-        }
+    fn cargo_term_color_never_disables_styling() {
+        let set = StyleEnv {
+            cargo_term_color: Some("never"),
+            stdout_is_terminal: true,
+            ..env()
+        };
+        assert_eq!(
+            resolve(ColorChoice::Auto, set),
+            (Style::PLAIN, StyleReason::CargoTermColorEnv)
+        );
+    }
+
+    /// The regression this rule exists for: CI tooling (Swatinem/rust-cache)
+    /// exports `CARGO_TERM_COLOR=always` so cargo's own logs are coloured.
+    /// Treating that as permission to style our report put ANSI into a
+    /// non-TTY CI stream and broke a consumer grepping for a literal result
+    /// line. It must not enable styling.
+    #[test]
+    fn cargo_term_color_always_does_not_enable_styling_on_a_pipe() {
+        let ci = StyleEnv {
+            cargo_term_color: Some("always"),
+            stdout_is_terminal: false,
+            ..env()
+        };
+        assert_eq!(
+            resolve(ColorChoice::Auto, ci),
+            (Style::PLAIN, StyleReason::NotATerminal)
+        );
     }
 
     /// An unrecognised value must not silently change output; it falls through.
@@ -336,8 +366,7 @@ mod tests {
     }
 
     #[test]
-    fn sanitize_preserves_layout_whitespace_and_ordinary_text() {
-        assert_eq!(sanitize_terminal_text("a\tb\nc"), "a\tb\nc");
+    fn sanitize_leaves_ordinary_text_untouched() {
         assert_eq!(
             sanitize_terminal_text("crates/foo/src/lib.rs"),
             "crates/foo/src/lib.rs"
@@ -345,9 +374,30 @@ mod tests {
         assert_eq!(sanitize_terminal_text("réason — ok"), "réason — ok");
     }
 
+    /// Repository text must not be able to start a line that looks like the
+    /// tool wrote it. A path containing a newline could otherwise forge a
+    /// `new: unreceipted …` entry in a report someone acts on.
     #[test]
-    fn sanitize_strips_carriage_return_and_c1_controls() {
-        assert!(!sanitize_terminal_text("a\rb").contains('\r'));
+    fn sanitize_prevents_repository_text_from_forging_a_report_line() {
+        let forged = "docs/a.md\nnew: unreceipted panic at evil.rs:1:1";
+        let cleaned = sanitize_terminal_text(forged);
+        assert!(!cleaned.contains('\n'), "no real newline may survive");
+        assert_eq!(cleaned.lines().count(), 1, "must stay one line");
+        assert!(
+            cleaned.contains("\\n"),
+            "the newline is shown, not acted on"
+        );
+        assert!(cleaned.contains("evil.rs"), "text stays visible");
+    }
+
+    #[test]
+    fn sanitize_escapes_tab_and_carriage_return_visibly() {
+        assert_eq!(sanitize_terminal_text("a\tb"), "a\\tb");
+        assert_eq!(sanitize_terminal_text("a\rb"), "a\\rb");
+    }
+
+    #[test]
+    fn sanitize_strips_c1_and_delete_controls() {
         assert!(!sanitize_terminal_text("a\u{9b}b").contains('\u{9b}'));
         assert!(!sanitize_terminal_text("a\u{7f}b").contains('\u{7f}'));
     }

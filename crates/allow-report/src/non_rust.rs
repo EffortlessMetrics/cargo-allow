@@ -111,9 +111,14 @@ pub(crate) fn render_non_rust_human(
             // styling so escapes do not disturb column alignment, and the
             // repository-derived family and path are sanitized, never styled.
             let status = format!("{:12}", row.status);
-            let status = if row.status == "matched" {
+            // Shared classification, not a hand-rolled `== "new"`: `expired`,
+            // `ambiguous`, `invalid_selector`, `missing_required_field`,
+            // `evidence_missing`, and `baseline_debt` block a check too, and
+            // must not render as merely advisory here while the summary
+            // counts show them red.
+            let status = if row.status == MatchStatus::Matched.as_str() {
                 style.ok(&status)
-            } else if row.status == "new" {
+            } else if crate::report_text::blocks_check_str(row.status) {
                 style.blocking(&status)
             } else {
                 style.advisory(&status)

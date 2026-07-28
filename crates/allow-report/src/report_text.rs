@@ -192,8 +192,21 @@ const BLOCKING_STATUSES: [MatchStatus; 7] = [
     MatchStatus::BaselineDebt,
 ];
 
-fn blocks_check(status: MatchStatus) -> bool {
+pub(crate) fn blocks_check(status: MatchStatus) -> bool {
     BLOCKING_STATUSES.contains(&status)
+}
+
+/// Classify a status rendered as a string.
+///
+/// The non-Rust file rows carry `status` as `&'static str` (including the
+/// synthetic `"unmatched"`, which is not a `MatchStatus`). Routing them back
+/// through the same `BLOCKING_STATUSES` decision keeps one vocabulary: a
+/// blocking file finding is red in the rows exactly as in the summary counts.
+pub(crate) fn blocks_check_str(status: &str) -> bool {
+    MatchStatus::ALL
+        .iter()
+        .find(|candidate| candidate.as_str() == status)
+        .is_some_and(|candidate| blocks_check(*candidate))
 }
 
 /// Build a human-readable reason for why a check failed, based on blocking

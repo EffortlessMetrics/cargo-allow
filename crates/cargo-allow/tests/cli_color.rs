@@ -151,17 +151,30 @@ fn environment_precedence_matches_the_documented_law() {
     ));
     assert!(!has_ansi(&both), "NO_COLOR must outrank CLICOLOR_FORCE");
 
-    // CARGO_TERM_COLOR is honoured below both.
+    // CARGO_TERM_COLOR can only disable. CI tooling exports
+    // `CARGO_TERM_COLOR=always` for cargo's own logs; treating that as
+    // permission to style our report put ANSI into a non-TTY CI stream and
+    // broke a consumer grepping for a literal result line.
     let cargo_always = stdout_of(&run(&root, &[("CARGO_TERM_COLOR", "always")], &check));
     let cargo_never = stdout_of(&run(
         &root,
         &[("CARGO_TERM_COLOR", "never"), ("CLICOLOR_FORCE", "0")],
         &check,
     ));
-    assert!(has_ansi(&cargo_always), "CARGO_TERM_COLOR=always styles");
+    assert!(
+        !has_ansi(&cargo_always),
+        "CARGO_TERM_COLOR=always must not enable styling on a pipe"
+    );
     assert!(
         !has_ansi(&cargo_never),
         "CARGO_TERM_COLOR=never stays plain"
+    );
+
+    // The exact regression: a consumer grepping the literal result line must
+    // keep working under the environment CI actually runs with.
+    assert!(
+        cargo_always.contains("Result: passed (enforcing)"),
+        "the literal result line must survive CI's CARGO_TERM_COLOR=always"
     );
 
     // An unrecognised value must not silently change output.
@@ -327,9 +340,16 @@ fn strip_ansi(text: &str) -> String {
             out.push(character);
             continue;
         }
-        // Skip `[` … `m`; anything else is left for the caller to notice.
-        if chars.next() != Some('[') {
+        // Skip `[` … `m`. Anything else is left intact for the caller to
+        // notice — including the character we had to consume to find out,
+        // which must not be swallowed or a lone ESC would eat the byte after
+        // it and weaken the injection assertion.
+        let next = chars.next();
+        if next != Some('[') {
             out.push(character);
+            if let Some(consumed) = next {
+                out.push(consumed);
+            }
             continue;
         }
         for inner in chars.by_ref() {

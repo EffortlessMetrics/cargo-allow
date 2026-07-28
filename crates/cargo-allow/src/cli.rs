@@ -20,9 +20,12 @@ pub(crate) struct CargoAllowCli {
     ///
     /// `auto` styles only an interactive terminal. `always` forces styling
     /// on stdout; `never` disables it. Machine formats (JSON, SARIF,
-    /// receipts) and `--output` files are never styled. Precedence:
-    /// explicit flag > NO_COLOR > CLICOLOR_FORCE > CARGO_TERM_COLOR >
-    /// terminal capability.
+    /// receipts) and `--output` files are never styled.
+    ///
+    /// Precedence: explicit flag > NO_COLOR > CLICOLOR_FORCE >
+    /// CARGO_TERM_COLOR=never > terminal capability. CARGO_TERM_COLOR can
+    /// only disable styling, never enable it: CI sets it for cargo's own
+    /// logs, not for this tool's reports.
     #[arg(long, value_enum, default_value_t = ColorChoice::Auto, global = true)]
     pub(crate) color: ColorChoice,
     /// Suppress non-essential output (claim boundary, matched inventory,
