@@ -93,7 +93,12 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
 }
 
 fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
-    crate::emit_scan_status("check", args.format, args.output.as_deref());
+    crate::emit_scan_status(
+        "check",
+        args.format,
+        args.output.as_deref(),
+        args.receipt.as_deref(),
+    );
 
     // Validate --output and --receipt paths are within the resolved source-tree
     // root (#1791). The root must be resolved from --root + cwd, not from the

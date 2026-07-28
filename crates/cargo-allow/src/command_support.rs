@@ -28,15 +28,25 @@ pub(crate) use crate::world::{load_world, load_world_for_path, load_world_with_e
 pub(crate) use allow_inventory::resolve_source_tree_root;
 pub(crate) use allow_report::policy_baseline_debt_entries;
 
-pub(crate) fn emit_scan_status(command: &str, format: OutputFormat, output: Option<&Path>) {
+pub(crate) fn emit_scan_status(
+    command: &str,
+    format: OutputFormat,
+    output: Option<&Path>,
+    receipt: Option<&Path>,
+) {
     let quiet = std::env::var_os("CARGO_ALLOW_QUIET").is_some();
-    if should_emit_scan_status(format, output, quiet) {
+    if should_emit_scan_status(format, output, receipt, quiet) {
         eprintln!("cargo-allow {command}: scanning...");
     }
 }
 
-fn should_emit_scan_status(format: OutputFormat, output: Option<&Path>, quiet: bool) -> bool {
-    format == OutputFormat::Human && output.is_none() && !quiet
+fn should_emit_scan_status(
+    format: OutputFormat,
+    output: Option<&Path>,
+    receipt: Option<&Path>,
+    quiet: bool,
+) -> bool {
+    format == OutputFormat::Human && output.is_none() && receipt.is_none() && !quiet
 }
 
 pub(crate) fn emit_text(output: Option<&Path>, contents: &str) -> CargoAllowResult<()> {
@@ -90,16 +100,19 @@ mod io_tests {
     #[test]
     fn scan_status_is_limited_to_human_terminal_output() -> Result<(), String> {
         let output = Path::new("target/report.txt");
-        if !should_emit_scan_status(OutputFormat::Human, None, false) {
+        if !should_emit_scan_status(OutputFormat::Human, None, None, false) {
             return Err("human terminal output should emit scan status".to_string());
         }
-        if should_emit_scan_status(OutputFormat::Human, Some(output), false) {
+        if should_emit_scan_status(OutputFormat::Human, Some(output), None, false) {
             return Err("file-backed output should stay free of scan status".to_string());
         }
-        if should_emit_scan_status(OutputFormat::Json, None, false) {
+        if should_emit_scan_status(OutputFormat::Human, None, Some(output), false) {
+            return Err("receipt-backed output should stay free of scan status".to_string());
+        }
+        if should_emit_scan_status(OutputFormat::Json, None, None, false) {
             return Err("JSON output should stay free of scan status".to_string());
         }
-        if should_emit_scan_status(OutputFormat::Human, None, true) {
+        if should_emit_scan_status(OutputFormat::Human, None, None, true) {
             return Err("quiet output should stay free of scan status".to_string());
         }
         Ok(())
