@@ -127,7 +127,7 @@ impl EvalState {
         if status_consumes_entry(status) {
             self.used_entries.insert(entry_index);
             self.entry_occurrences
-                .insert(entry_index, current_count + 1);
+                .insert(entry_index, current_count.saturating_add(1));
         } else {
             self.non_live_matched_entries.insert(entry_index);
         }
