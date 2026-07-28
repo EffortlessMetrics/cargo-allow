@@ -1,0 +1,9 @@
+kind: Added
+body: >-
+  New `cargo-allow completions <shell>` subcommand generating completion
+  scripts for bash, zsh, fish, powershell, and elvish (#2786). Scripts are
+  generated from the same clap command graph the binary parses with, so
+  completions cannot drift from the real subcommands and flags. Writes to
+  stdout, or to a file with `--output`. An unsupported shell is rejected with
+  a non-zero exit and no partial script, so a bad argument cannot produce
+  something a user would then `source`.

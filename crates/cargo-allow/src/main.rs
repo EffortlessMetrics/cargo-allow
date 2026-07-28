@@ -8,6 +8,7 @@ mod cli_types;
 mod command_support;
 mod companion;
 mod compat;
+mod completions;
 mod diff;
 #[cfg(test)]
 mod diff_json_test_support;

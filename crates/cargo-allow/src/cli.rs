@@ -3,8 +3,8 @@ use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use std::env;
 
 use crate::{
-    add, audit, check, diff, doctor, explain, init, list, migrate, precommit_tool, propose, prune,
-    refresh, vocabulary, why, worklist,
+    add, audit, check, completions, diff, doctor, explain, init, list, migrate, precommit_tool,
+    propose, prune, refresh, vocabulary, why, worklist,
 };
 
 #[derive(Debug, Parser)]
@@ -68,6 +68,8 @@ pub(crate) enum CargoAllowCommand {
     Vocabulary(vocabulary::VocabularyArgs),
     /// Inspect the selected cargo-allow tool identity and capabilities.
     Tool(precommit_tool::ToolArgs),
+    /// Generate a shell completion script.
+    Completions(completions::CompletionsArgs),
 }
 
 pub(crate) fn run() -> CargoAllowResult<()> {
@@ -106,6 +108,7 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::Doctor(args) => doctor::cmd_doctor(&args),
         CargoAllowCommand::Vocabulary(args) => vocabulary::cmd_vocabulary(&args),
         CargoAllowCommand::Tool(args) => precommit_tool::cmd_tool(&args),
+        CargoAllowCommand::Completions(args) => completions::cmd_completions(&args),
     }
 }
 
