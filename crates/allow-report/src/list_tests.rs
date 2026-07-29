@@ -140,7 +140,7 @@ fn list_json_renderer_records_filters_context_and_rows() {
 }
 
 #[test]
-fn list_json_omits_unavailable_row_metadata() {
+fn list_json_omits_unavailable_row_metadata() -> Result<(), String> {
     let rows = [ListRow {
         id: "allow-minimal",
         status: "matched",
@@ -166,8 +166,12 @@ fn list_json_omits_unavailable_row_metadata() {
         ListFilters::default(),
         InventoryContext::source_syntax("git_tracked", None, None),
     );
-    let artifact: serde_json::Value = serde_json::from_str(&json).expect("list JSON should parse");
-    let row = &artifact["allow_entries"][0];
+    let artifact: serde_json::Value = serde_json::from_str(&json).map_err(|err| err.to_string())?;
+    let row = artifact
+        .get("allow_entries")
+        .and_then(serde_json::Value::as_array)
+        .and_then(|entries| entries.first())
+        .ok_or_else(|| "list JSON should contain one allow entry".to_string())?;
 
     for field in ["family", "source_package", "review_after", "expires"] {
         assert!(
@@ -175,8 +179,15 @@ fn list_json_omits_unavailable_row_metadata() {
             "unavailable {field} should be omitted"
         );
     }
-    assert_eq!(row["id"], "allow-minimal");
-    assert_eq!(row["reason"], "validated invariant");
+    assert_eq!(
+        row.get("id").and_then(serde_json::Value::as_str),
+        Some("allow-minimal")
+    );
+    assert_eq!(
+        row.get("reason").and_then(serde_json::Value::as_str),
+        Some("validated invariant")
+    );
+    Ok(())
 }
 
 #[test]
