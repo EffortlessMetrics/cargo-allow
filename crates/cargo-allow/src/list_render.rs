@@ -19,31 +19,61 @@ pub(super) fn render_list_rows_with_context(
 
 /// Render the list human-format TSV with a column subset (#2595).
 /// `columns` is the resolved projection for an explicit human view.
+#[cfg(test)]
 pub(super) fn render_list_rows_with_columns(
     rows: &[ListRow],
     filters: &ListFilters<'_>,
     context: ListContext<'_>,
     columns: &[allow_report::ListColumn],
 ) -> String {
-    allow_report::render_list_human_columns(
-        &report_list_rows(rows, filters),
-        context.inventory,
+    render_list_rows_with_columns_styled(
+        rows,
+        filters,
+        context,
         columns,
+        allow_report::Style::PLAIN,
     )
 }
 
+pub(super) fn render_list_rows_with_columns_styled(
+    rows: &[ListRow],
+    filters: &ListFilters<'_>,
+    context: ListContext<'_>,
+    columns: &[allow_report::ListColumn],
+    style: allow_report::Style,
+) -> String {
+    allow_report::render_list_human_columns_styled(
+        &report_list_rows(rows, filters),
+        context.inventory,
+        columns,
+        style,
+    )
+}
+
+#[cfg(test)]
 pub(super) fn render_list_rows_concise(
     rows: &[ListRow],
     filters: &ListFilters<'_>,
     context: ListContext<'_>,
     columns: &[allow_report::ListColumn],
 ) -> String {
+    render_list_rows_concise_styled(rows, filters, context, columns, allow_report::Style::PLAIN)
+}
+
+pub(super) fn render_list_rows_concise_styled(
+    rows: &[ListRow],
+    filters: &ListFilters<'_>,
+    context: ListContext<'_>,
+    columns: &[allow_report::ListColumn],
+    style: allow_report::Style,
+) -> String {
     let report_rows = report_list_rows(rows, filters);
-    allow_report::render_list_human_concise(
+    allow_report::render_list_human_concise_styled(
         &report_rows,
         context.inventory,
         report_list_filters(filters, context),
         columns,
+        style,
     )
 }
 

@@ -22,7 +22,11 @@ use list_args::list_filters;
 use list_render::render_list_rows;
 #[cfg(test)]
 use list_render::render_list_rows_with_context;
-use list_render::{render_list_rows_concise, render_list_rows_json, render_list_rows_with_columns};
+#[cfg(test)]
+use list_render::{render_list_rows_concise, render_list_rows_with_columns};
+use list_render::{
+    render_list_rows_concise_styled, render_list_rows_json, render_list_rows_with_columns_styled,
+};
 #[cfg(test)]
 use list_rows::list_rows;
 use list_rows::list_rows_with_source_tree_files;
@@ -60,13 +64,18 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
         inventory: source_context.inventory(),
         kind_arg: args.kind.as_deref(),
     };
+    let style = if matches!(args.format, HumanJsonFormat::Human) && args.output.is_none() {
+        crate::reporting::output_style()
+    } else {
+        allow_report::Style::PLAIN
+    };
     let text = match args.format {
         HumanJsonFormat::Human => {
             let columns = list_columns(args)?;
             if args.wide || args.columns.is_some() {
-                render_list_rows_with_columns(&rows, &filters, context, &columns)
+                render_list_rows_with_columns_styled(&rows, &filters, context, &columns, style)
             } else {
-                render_list_rows_concise(&rows, &filters, context, &columns)
+                render_list_rows_concise_styled(&rows, &filters, context, &columns, style)
             }
         }
         HumanJsonFormat::Json => render_list_rows_json(&rows, &filters, context),

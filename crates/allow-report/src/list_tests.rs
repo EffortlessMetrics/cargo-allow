@@ -303,6 +303,51 @@ fn list_concise_summary_and_empty_states_are_explicit() {
 }
 
 #[test]
+fn list_status_style_is_shared_by_cards_and_wide_rows() {
+    let rows = [ListRow {
+        id: "allow-style",
+        status: "review_due",
+        matches: 1,
+        kind: "panic",
+        family: Some("unwrap"),
+        owner: "parser",
+        classification: "reviewed_exception",
+        scope: "src/lib.rs",
+        source_package: None,
+        evidence_count: 1,
+        broken_evidence_references: 0,
+        weak_evidence_references: 0,
+        selector_precision: 1,
+        broad_scope: false,
+        review_after: Some("2026-10-01"),
+        expires: None,
+        reason: "review this entry",
+    }];
+    let inventory = InventoryContext::unknown_source_syntax();
+
+    let concise = render_list_human_concise_styled(
+        &rows,
+        inventory,
+        ListFilters::default(),
+        ListColumn::DEFAULT,
+        Style::ANSI,
+    );
+    assert!(concise.contains("\u{1b}[33mreview_due\u{1b}[0m"));
+
+    let wide = render_list_human_columns_styled(&rows, inventory, ListColumn::ALL, Style::ANSI);
+    assert!(wide.contains("\u{1b}[33mreview_due\u{1b}[0m"));
+
+    let plain = render_list_human_concise_styled(
+        &rows,
+        inventory,
+        ListFilters::default(),
+        ListColumn::DEFAULT,
+        Style::PLAIN,
+    );
+    assert!(!plain.contains('\u{1b}'));
+}
+
+#[test]
 fn render_list_human_sanitizes_repository_control_characters() {
     let rows = vec![ListRow {
         id: "allow-\n001",
