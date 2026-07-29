@@ -152,7 +152,10 @@ fn update_policy(root: &Path) -> io::Result<()> {
         ADR_PATH,
         "source_truth_adr",
         "Records package, physical-path, independent-version, publication, support and package-survival authority for the three-product monorepo.",
-        &["doc:docs/proposals/CARGO-ALLOW-PROP-0010-three-product-design.md", "spec:docs/specs/CARGO-ALLOW-SPEC-0011-three-product-convergence.md"],
+        &[
+            "doc:docs/proposals/CARGO-ALLOW-PROP-0010-three-product-design.md",
+            "spec:docs/specs/CARGO-ALLOW-SPEC-0011-three-product-convergence.md",
+        ],
     )?;
     append_receipt(
         &mut text,
@@ -160,7 +163,10 @@ fn update_policy(root: &Path) -> io::Result<()> {
         SPEC_PATH,
         "source_truth_spec",
         "Records current topology, semantic ownership, compatibility, package-survival, exact-candidate and release requirements for the three-product monorepo.",
-        &["doc:docs/proposals/CARGO-ALLOW-PROP-0010-three-product-design.md", "adr:docs/adr/CARGO-ALLOW-ADR-0003-package-identity-and-versioning.md"],
+        &[
+            "doc:docs/proposals/CARGO-ALLOW-PROP-0010-three-product-design.md",
+            "adr:docs/adr/CARGO-ALLOW-ADR-0003-package-identity-and-versioning.md",
+        ],
     )?;
     fs::write(path, text)
 }
