@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <em>Source-tree exception ledger for Rust repositories.</em>
+  <em>Source-tree exception ledger and policy scanner for Rust repositories.</em>
 </p>
 
 <!-- cargo-allow badges report repository automation state and package metadata.
@@ -30,7 +30,7 @@ it does not prove release readiness for unreleased commits. -->
 
 No invisible source exceptions.
 
-`cargo-allow` is a source-tree exception ledger for Rust repositories. It scans
+`cargo-allow` is a source-tree exception ledger and policy scanner for Rust repositories. It scans
 repository files without executing project code, then checks syntax-visible
 exceptions against `policy/allow.toml`.
 

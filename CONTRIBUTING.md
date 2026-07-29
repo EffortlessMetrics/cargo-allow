@@ -49,7 +49,7 @@ merging a PR that changes user-visible behavior. See
 
 ```bash
 changie new        # create a fragment for your change
-changie batch v0.2.1  # merge fragments into CHANGELOG.md on release
+changie batch v0.2.0  # merge fragments into CHANGELOG.md on release
 changie merge      # archive fragments after batching
 ```
 
