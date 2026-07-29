@@ -22,7 +22,7 @@ test-contract:
 
 test:
     cargo test --workspace --locked
-    cargo test --doc --workspace --locked
+    cargo test --doc --workspace
 
 doc:
     RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
