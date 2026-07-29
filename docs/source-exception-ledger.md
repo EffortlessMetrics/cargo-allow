@@ -447,8 +447,9 @@ repository values are ellipsized in this concise view; `--wide` or explicit
 `--columns` retains the complete human projection. JSON remains complete and
 unchanged. With `--color always` (or supported terminal auto-detection), fixed
 status markers in human cards and wide/explicit status columns are styled;
-JSON and `--output` files remain ANSI-free. Other human commands remain plain
-until their renderers are migrated.
+the `explain` human status projection follows the same palette. JSON and
+`--output` files remain ANSI-free. Other human commands remain plain until
+their renderers are migrated.
 The full row includes current status, match count, kind, family, owner,
 classification, scope, scanner-provided source package context,
 evidence-reference count, broken local evidence-reference count, weak

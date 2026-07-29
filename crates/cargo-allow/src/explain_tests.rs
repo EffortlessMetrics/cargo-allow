@@ -389,6 +389,7 @@ fn explain_entry_text_reports_local_evidence_outside_source_tree_inventory_as_mi
         &entry,
         &[finding],
         Some(&source_tree_files),
+        allow_report::Style::PLAIN,
     );
 
     assert!(text.contains("missing: doc:docs/untracked.md (status=local_file_missing"));

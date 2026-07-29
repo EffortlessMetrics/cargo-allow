@@ -204,16 +204,7 @@ fn push_concise_cards(out: &mut String, rows: &[ListRow<'_>], style: Style) {
 }
 
 fn style_status(style: Style, status: &str) -> String {
-    match status {
-        "matched" | "healthy" => style.ok(status),
-        "new"
-        | "expired"
-        | "location_drift"
-        | "invalid_selector"
-        | "missing_required_field"
-        | "evidence_missing" => style.blocking(status),
-        _ => style.advisory(status),
-    }
+    style.status(status, status)
 }
 
 fn push_concise_summary(out: &mut String, rows: &[ListRow<'_>], style: Style) {
