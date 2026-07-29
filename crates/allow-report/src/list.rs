@@ -79,10 +79,12 @@ fn render_list_human_columns_internal(
     }
     if concise {
         push_concise_summary(&mut out, rows);
-    }
-    push_header(&mut out, columns);
-    for row in rows {
-        push_row(&mut out, row, columns, concise);
+        push_concise_cards(&mut out, rows);
+    } else {
+        push_header(&mut out, columns);
+        for row in rows {
+            push_row(&mut out, row, columns);
+        }
     }
     if rows.is_empty() {
         if !concise {
@@ -113,18 +115,61 @@ fn push_header(out: &mut String, columns: &[ListColumn]) {
     out.push('\n');
 }
 
-fn push_row(out: &mut String, row: &ListRow<'_>, columns: &[ListColumn], concise: bool) {
+fn push_row(out: &mut String, row: &ListRow<'_>, columns: &[ListColumn]) {
     for (index, column) in columns.iter().enumerate() {
         if index > 0 {
             out.push('\t');
         }
-        if concise {
-            out.push_str(&column.concise_value(row));
-        } else {
-            out.push_str(&column.value(row));
-        }
+        out.push_str(&column.value(row));
     }
     out.push('\n');
+}
+
+fn push_concise_cards(out: &mut String, rows: &[ListRow<'_>]) {
+    if rows.is_empty() {
+        return;
+    }
+    out.push_str("entries:\n");
+    for row in rows {
+        out.push_str("- [");
+        out.push_str(row.status);
+        out.push_str("] ");
+        out.push_str(&ListColumn::Id.concise_value(row));
+        out.push('\n');
+        out.push_str("  kind: ");
+        out.push_str(&ListColumn::Kind.concise_value(row));
+        if row.family.is_some() {
+            out.push('.');
+            out.push_str(&ListColumn::Family.concise_value(row));
+        }
+        out.push('\n');
+        out.push_str("  scope: ");
+        out.push_str(&ListColumn::Scope.concise_value(row));
+        out.push('\n');
+        out.push_str("  owner: ");
+        out.push_str(&ListColumn::Owner.concise_value(row));
+        out.push('\n');
+        out.push_str(&format!(
+            "  matches: {}; evidence: {}",
+            row.matches, row.evidence_count
+        ));
+        if row.broken_evidence_references > 0 || row.weak_evidence_references > 0 {
+            out.push_str(" (");
+            let mut evidence_details = Vec::new();
+            if row.broken_evidence_references > 0 {
+                evidence_details.push(format!("broken: {}", row.broken_evidence_references));
+            }
+            if row.weak_evidence_references > 0 {
+                evidence_details.push(format!("weak: {}", row.weak_evidence_references));
+            }
+            out.push_str(&evidence_details.join("; "));
+            out.push(')');
+        }
+        out.push('\n');
+        out.push_str("  reason: ");
+        out.push_str(&ListColumn::Reason.concise_value(row));
+        out.push('\n');
+    }
 }
 
 fn push_concise_summary(out: &mut String, rows: &[ListRow<'_>]) {

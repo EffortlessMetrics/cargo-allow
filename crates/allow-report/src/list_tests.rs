@@ -278,6 +278,11 @@ fn list_concise_summary_and_empty_states_are_explicit() {
     assert!(text.contains("review_due: 1"));
     assert!(text.contains("broken evidence: 1"));
     assert!(text.contains("weak evidence: 2"));
+    assert!(text.contains("entries:\n- [review_due] allow-0001\n"));
+    assert!(text.contains("  kind: panic.unwrap\n"));
+    assert!(text.contains("  matches: 2; evidence: 1 (broken: 1; weak: 2)\n"));
+    assert!(text.contains("  reason: this reason is intentionally long"));
+    assert!(!text.contains("id\tstatus\tkind\tscope\towner\treason"));
     assert!(text.contains('…'));
     assert!(!text.contains(long_reason));
 
