@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use allow_core::read_text_file_capped;
 use serde::Deserialize;
@@ -49,12 +49,18 @@ pub fn discover_config(start: impl AsRef<Path>) -> DiscoverConfigResult {
     };
     let mut skipped = Vec::new();
     loop {
+        if let Some(candidate) = discover_cargo_metadata_config(&dir, &mut skipped) {
+            return DiscoverConfigResult {
+                selected: Some(candidate),
+                skipped,
+            };
+        }
         for rel in DISCOVERY_REL_PATHS {
             let candidate = dir.join(rel);
             if !candidate.exists() {
                 continue;
             }
-            match classify_candidate(&candidate, rel) {
+            match classify_candidate(&candidate, rel == NATIVE_LEDGER_REL_PATH) {
                 CandidateClass::Accept => {
                     return DiscoverConfigResult {
                         selected: Some(candidate),
@@ -77,12 +83,115 @@ pub fn discover_config(start: impl AsRef<Path>) -> DiscoverConfigResult {
     }
 }
 
+#[derive(Debug, Default, Deserialize)]
+struct CargoManifestProbe {
+    package: Option<CargoPackageProbe>,
+    workspace: Option<CargoWorkspaceProbe>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct CargoPackageProbe {
+    metadata: Option<CargoMetadataProbe>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct CargoWorkspaceProbe {
+    metadata: Option<CargoMetadataProbe>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct CargoMetadataProbe {
+    #[serde(rename = "cargo-allow")]
+    cargo_allow: Option<CargoAllowMetadataProbe>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct CargoAllowMetadataProbe {
+    config: Option<String>,
+}
+
+fn discover_cargo_metadata_config(
+    dir: &Path,
+    skipped: &mut Vec<SkippedPolicyCandidate>,
+) -> Option<PathBuf> {
+    let manifest_path = dir.join("Cargo.toml");
+    if !manifest_path.exists() {
+        return None;
+    }
+    let text = match read_text_file_capped(&manifest_path) {
+        Ok(text) => text,
+        Err(err) => {
+            skipped.push(SkippedPolicyCandidate {
+                path: manifest_path,
+                reason: format!("cargo-allow metadata could not be read: {err}"),
+            });
+            return None;
+        }
+    };
+    let manifest = match toml::from_str::<CargoManifestProbe>(&text) {
+        Ok(manifest) => manifest,
+        Err(err) => {
+            skipped.push(SkippedPolicyCandidate {
+                path: manifest_path,
+                reason: format!("cargo-allow metadata could not be parsed: {err}"),
+            });
+            return None;
+        }
+    };
+    let config = manifest
+        .package
+        .and_then(|package| package.metadata)
+        .and_then(|metadata| metadata.cargo_allow)
+        .and_then(|metadata| metadata.config)
+        .or_else(|| {
+            manifest
+                .workspace
+                .and_then(|workspace| workspace.metadata)
+                .and_then(|metadata| metadata.cargo_allow)
+                .and_then(|metadata| metadata.config)
+        });
+    let config = config?;
+    let config_path = Path::new(&config);
+    if config.is_empty()
+        || config_path.is_absolute()
+        || config_path
+            .components()
+            .any(|component| component == Component::ParentDir)
+    {
+        skipped.push(SkippedPolicyCandidate {
+            path: manifest_path,
+            reason: format!(
+                "cargo-allow metadata config `{config}` must be a non-empty relative path without `..`"
+            ),
+        });
+        return None;
+    }
+    let candidate = dir.join(config_path);
+    if !candidate.exists() {
+        skipped.push(SkippedPolicyCandidate {
+            path: candidate,
+            reason: "cargo-allow metadata config path does not exist".to_string(),
+        });
+        return None;
+    }
+    match classify_candidate(&candidate, true) {
+        CandidateClass::Accept => Some(candidate),
+        CandidateClass::Skip(reason) => {
+            skipped.push(SkippedPolicyCandidate {
+                path: candidate,
+                reason: format!("cargo-allow metadata config {reason}"),
+            });
+            None
+        }
+    }
+}
+
 enum CandidateClass {
     Accept,
     Skip(String),
 }
 
-fn classify_candidate(path: &Path, rel: &str) -> CandidateClass {
+fn classify_candidate(path: &Path, native: bool) -> CandidateClass {
     let text = match read_text_file_capped(path) {
         Ok(text) => text,
         Err(err) => {
@@ -107,7 +216,7 @@ fn classify_candidate(path: &Path, rel: &str) -> CandidateClass {
             "not cargo-allow dialect (unsupported schema_version `{version}`)"
         ));
     }
-    if rel == NATIVE_LEDGER_REL_PATH {
+    if native {
         return match header.policy.as_deref() {
             None | Some("cargo-allow") => CandidateClass::Accept,
             Some(policy) => CandidateClass::Skip(format!(

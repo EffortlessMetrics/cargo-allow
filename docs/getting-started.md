@@ -152,6 +152,16 @@ approval just to pass CI.
 `check --mode no-new` with no policy fails closed and tells you to `init` or
 pass `--config`.
 
+When `--config` is omitted, discovery starts at the requested source-tree root
+and walks upward. At each directory it checks `Cargo.toml` source text first:
+`[package.metadata.cargo-allow] config = "..."` wins over
+`[workspace.metadata.cargo-allow] config = "..."` in the same manifest. The
+metadata path must be a non-empty relative path without `..`. If no metadata
+path is selected, cargo-allow retains its conventional order:
+`policy/cargo-allow.toml`, `policy/allow.toml`, `.cargo/allow.toml`, then
+`allow.toml`. This reads committed manifest text; it does not invoke Cargo
+metadata or infer workspace membership.
+
 ## 5. Run the no-new check
 
 ```bash
