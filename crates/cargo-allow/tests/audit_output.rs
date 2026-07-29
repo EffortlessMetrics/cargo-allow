@@ -4,7 +4,6 @@ mod support;
 use std::fs;
 
 use json_assertions::{assert_json_str, assert_json_u64};
-use serde_json::Value;
 use support::{
     assert_saved_json_artifact, assert_status, assert_stderr_empty, assert_stdout_empty,
     cargo_allow_command, remove_temp_root, temp_root,
@@ -264,7 +263,7 @@ fn audit_scans_rust_when_package_manifest_is_not_utf8() {
     );
     assert_eq!(
         report.pointer("/findings/0/source_package"),
-        Some(&Value::Null),
+        None,
         "invalid manifest text should not provide package context"
     );
 
@@ -324,7 +323,7 @@ fn audit_scans_rust_when_package_manifest_is_invalid_toml() {
     );
     assert_eq!(
         report.pointer("/findings/0/source_package"),
-        Some(&Value::Null),
+        None,
         "invalid manifest TOML should not provide package context"
     );
 
@@ -394,7 +393,7 @@ fn audit_scans_invalid_rust_without_package_manifest() {
     );
     assert_eq!(
         report.pointer("/findings/0/source_package"),
-        Some(&Value::Null),
+        None,
         "source package should remain absent without Cargo.toml"
     );
 
