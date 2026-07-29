@@ -11,6 +11,7 @@ second architecture, package, move, shim, or parity authority.
 
 | Question | Current answer |
 | --- | --- |
+| Why three products and this convergence direction? | `CARGO-ALLOW-PROP-0010` |
 | Product ownership | `CARGO-ALLOW-ADR-0002` |
 | Package/path/version identity | `CARGO-ALLOW-ADR-0003` |
 | Current convergence requirements | `CARGO-ALLOW-SPEC-0011` |
