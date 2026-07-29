@@ -16,6 +16,59 @@ use support::{
 };
 
 #[test]
+fn diff_human_statuses_style_only_terminal_labels() {
+    let root = temp_root("diff-color");
+    write_diff_fixture(
+        &root,
+        policy_with_scope("path = \"src/lib.rs\""),
+        policy_with_scope("glob = \"src/**\""),
+    );
+
+    let run = |color: &str, output: Option<&std::path::Path>| {
+        let mut command = cargo_allow_command();
+        command
+            .current_dir(&root)
+            .arg("diff")
+            .arg("--root")
+            .arg(&root)
+            .arg("--base")
+            .arg("HEAD")
+            .arg("--format")
+            .arg("human")
+            .arg("--color")
+            .arg(color);
+        if let Some(output) = output {
+            command.arg("--output").arg(output);
+        }
+        command
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run colored diff: {err}")))
+    };
+
+    let plain = run("never", None);
+    assert_status("plain diff", &plain, false);
+    assert!(!String::from_utf8_lossy(&plain.stdout).contains('\u{1b}'));
+
+    let styled = run("always", None);
+    assert_status("styled diff", &styled, false);
+    let styled_text = String::from_utf8_lossy(&styled.stdout);
+    assert!(styled_text.contains('\u{1b}'));
+    assert!(
+        !styled_text.contains("allow-unwrap\u{1b}"),
+        "allow IDs must remain plain"
+    );
+
+    let output = root.join("diff.txt");
+    let written = run("always", Some(&output));
+    assert_status("written diff", &written, false);
+    let written_text = fs::read_to_string(&output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read written diff: {err}")));
+    assert!(!written_text.contains('\u{1b}'));
+
+    remove_temp_root(root);
+}
+
+#[test]
 fn diff_json_with_output_file_does_not_emit_human_posture_to_stderr() {
     let root = temp_root("diff-output");
     write_diff_fixture(

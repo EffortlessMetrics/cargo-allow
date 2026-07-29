@@ -1,7 +1,11 @@
 pub use crate::diff_human::{
-    render_diff_finding_changes_human, render_diff_policy_changes_human,
-    render_diff_posture_summary_human, render_diff_posture_summary_human_with_evidence_health,
+    render_diff_finding_changes_human, render_diff_finding_changes_human_styled,
+    render_diff_policy_changes_human, render_diff_policy_changes_human_styled,
+    render_diff_posture_summary_human, render_diff_posture_summary_human_styled,
+    render_diff_posture_summary_human_with_evidence_health,
     render_diff_posture_summary_human_with_evidence_health_counts,
+    render_diff_posture_summary_human_with_evidence_health_counts_styled,
+    render_diff_posture_summary_human_with_evidence_health_styled,
 };
 pub use crate::diff_json::render_diff_json_with_posture;
 pub use crate::diff_markdown::{
