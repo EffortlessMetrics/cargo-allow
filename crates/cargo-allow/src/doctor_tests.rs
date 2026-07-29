@@ -137,7 +137,7 @@ fn render_doctor_json_records_setup_context() {
         value.pointer("/config/valid").and_then(Value::as_bool),
         Some(true)
     );
-    assert_eq!(value.pointer("/config/diagnostic"), Some(&Value::Null));
+    assert!(value.pointer("/config/diagnostic").is_none());
     assert_eq!(
         value
             .pointer("/config/broken_evidence_links")
