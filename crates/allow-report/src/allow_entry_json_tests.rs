@@ -2,10 +2,11 @@ use super::*;
 use allow_core::{
     AllowEntry, Finding, FindingKind, LastSeen, Lifecycle, Selector, Span, StructuralIdentity,
 };
+use serde_json::Value;
 use std::path::PathBuf;
 
 #[test]
-fn policy_and_finding_json_helpers_render_current_contract() {
+fn policy_and_finding_json_helpers_render_current_contract() -> Result<(), String> {
     let entry = AllowEntry {
         id: "allow-json".to_string(),
         kind: FindingKind::Panic,
@@ -69,4 +70,31 @@ fn policy_and_finding_json_helpers_render_current_contract() {
     assert!(finding_json.contains("\"path\": \"crates/parser/src/lib.rs\""));
     assert!(finding_json.contains("\"source_package\": \"parser\""));
     assert!(finding_json.contains("\"container\": \"parse\""));
+
+    let mut sparse_entry = entry.clone();
+    sparse_entry.family = None;
+    sparse_entry.path = None;
+    sparse_entry.glob = Some("src/**/*.rs".to_string());
+    sparse_entry.occurrence_limit = None;
+    sparse_entry.lifecycle = Lifecycle::empty();
+    sparse_entry.last_seen = None;
+    let sparse_value: Value =
+        serde_json::from_str(&render_allow_entry_json(&sparse_entry, "  "))
+            .map_err(|error| format!("sparse allow entry should render valid JSON: {error}"))?;
+    for field in ["family", "created", "review_after", "expires"] {
+        if sparse_value.get(field).is_some() {
+            return Err(format!("sparse allow entry should omit {field}"));
+        }
+    }
+    if sparse_value.get("lifecycle") != Some(&Value::Object(Default::default())) {
+        return Err("sparse allow entry should retain an empty lifecycle object".to_string());
+    }
+    if sparse_value.get("path") != Some(&Value::Null)
+        || sparse_value.get("occurrence_limit") != Some(&Value::Null)
+        || sparse_value.get("last_seen") != Some(&Value::Null)
+    {
+        return Err("relationship and matching-state nulls should remain present".to_string());
+    }
+
+    Ok(())
 }

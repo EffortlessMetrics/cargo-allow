@@ -290,8 +290,7 @@ fn explain_json_renderer_records_context_and_current_status() {
     "occurrence_limit": null,
     "lifecycle": {{
       "created": "2026-05-27",
-      "review_after": "2026-11-01",
-      "expires": null
+      "review_after": "2026-11-01"
     }},
     "selector": {{
       "ast_kind": "unsafe_block",

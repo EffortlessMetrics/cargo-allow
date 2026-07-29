@@ -3,6 +3,7 @@ use crate::MutationReceipt;
 use allow_core::{
     AllowEntry, Finding, FindingKind, LastSeen, Lifecycle, Selector, Span, StructuralIdentity,
 };
+use serde_json::Value;
 use std::path::PathBuf;
 
 fn sample_mutation_receipt() -> MutationReceipt<'static> {
@@ -24,7 +25,7 @@ fn sample_mutation_receipt() -> MutationReceipt<'static> {
 }
 
 #[test]
-fn add_json_renderer_records_entry_and_selected_finding() {
+fn add_json_renderer_records_entry_and_selected_finding() -> Result<(), String> {
     let entry = AllowEntry {
         id: "allow-add-json".to_string(),
         kind: FindingKind::Panic,
@@ -228,4 +229,39 @@ fn add_json_renderer_records_entry_and_selected_finding() {
     assert!(text.contains("output: policy/allow.proposed.toml"));
     assert!(text.contains("requires human review"));
     assert!(text.contains("Claim boundary: scanned source-tree/source syntax only"));
+
+    let mut sparse_entry = entry.clone();
+    sparse_entry.family = None;
+    sparse_entry.path = None;
+    sparse_entry.glob = Some("src/**/*.rs".to_string());
+    sparse_entry.lifecycle = Lifecycle::empty();
+    sparse_entry.last_seen = None;
+    let sparse_json = render_add_json(AddReport::new(
+        InventoryContext::source_syntax("git_tracked", Some("H:/Code/Rust/cargo-allow"), Some(52)),
+        &sparse_entry,
+        &finding,
+        None,
+        false,
+        sample_mutation_receipt(),
+    ));
+    let sparse_value: Value = serde_json::from_str(&sparse_json)
+        .map_err(|error| format!("sparse add report should render valid JSON: {error}"))?;
+    let sparse_allow_entry = sparse_value
+        .get("allow_entry")
+        .ok_or_else(|| "sparse add report should include allow_entry".to_string())?;
+    for field in ["family", "review_after", "expires"] {
+        if sparse_allow_entry.get(field).is_some() {
+            return Err(format!("sparse add report should omit {field}"));
+        }
+    }
+    if sparse_allow_entry.get("path") != Some(&Value::Null)
+        || sparse_allow_entry.get("last_seen") != Some(&Value::Null)
+        || sparse_allow_entry.get("glob").and_then(Value::as_str) != Some("src/**/*.rs")
+    {
+        return Err(
+            "add report should retain nullable and selector relationship fields".to_string(),
+        );
+    }
+
+    Ok(())
 }

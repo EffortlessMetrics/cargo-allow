@@ -85,14 +85,11 @@ fn add_schema_locks_selected_finding_and_review_contract() {
         &[
             "id",
             "kind",
-            "family",
             "path",
             "glob",
             "owner",
             "classification",
             "reason",
-            "review_after",
-            "expires",
             "evidence_count",
             "selector",
             "last_seen",
@@ -104,6 +101,26 @@ fn add_schema_locks_selected_finding_and_review_contract() {
         "/properties/allow_entry/properties/kind/enum",
         &governed_kind_enum(),
     );
+    for (name, pointer) in [
+        (
+            "add allow_entry family",
+            "/properties/allow_entry/properties/family/type",
+        ),
+        (
+            "add allow_entry review_after",
+            "/properties/allow_entry/properties/review_after/type",
+        ),
+        (
+            "add allow_entry expires",
+            "/properties/allow_entry/properties/expires/type",
+        ),
+    ] {
+        assert_eq!(
+            schema.pointer(pointer).and_then(Value::as_str),
+            Some("string"),
+            "{name} should use a scalar string type"
+        );
+    }
     assert_eq!(
         schema
             .pointer("/properties/allow_entry/properties/evidence_count/type")

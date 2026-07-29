@@ -1,3 +1,4 @@
+use crate::allow_entry_json::push_optional_string_field;
 use crate::contracts::ADD_ARTIFACT;
 use crate::json::{bool_json, option_json, push_json_fixed_artifact_preamble};
 use crate::mutation_receipt::render_mutation_receipt_json;
@@ -76,51 +77,48 @@ pub fn render_add_json(report: AddReport<'_>) -> String {
     ));
     out.push_str("    \"human_review_required\": true\n");
     out.push_str("  },\n");
-    out.push_str("  \"allow_entry\": {\n");
-    out.push_str(&format!("    \"id\": \"{}\",\n", json_escape(&entry.id)));
-    out.push_str(&format!("    \"kind\": \"{}\",\n", entry.kind));
+    let mut entry_fields = vec![
+        format!("    \"id\": \"{}\"", json_escape(&entry.id)),
+        format!("    \"kind\": \"{}\"", entry.kind),
+    ];
+    push_optional_string_field(&mut entry_fields, "    ", "family", entry.family.as_deref());
+    entry_fields.extend([
+        format!("    \"path\": {}", option_json(path.as_deref())),
+        format!("    \"glob\": {}", option_json(entry.glob.as_deref())),
+        format!("    \"owner\": \"{}\"", json_escape(&entry.owner)),
+        format!(
+            "    \"classification\": \"{}\"",
+            json_escape(&entry.classification)
+        ),
+        format!("    \"reason\": \"{}\"", json_escape(&entry.reason)),
+    ]);
+    push_optional_string_field(
+        &mut entry_fields,
+        "    ",
+        "review_after",
+        entry.lifecycle.review_after.as_deref(),
+    );
+    push_optional_string_field(
+        &mut entry_fields,
+        "    ",
+        "expires",
+        entry.lifecycle.expires.as_deref(),
+    );
+    entry_fields.extend([
+        format!("    \"evidence_count\": {}", entry.evidence.len()),
+        format!(
+            "    \"selector\": {}",
+            render_selector_json(&entry.selector, "    ")
+        ),
+        format!(
+            "    \"last_seen\": {}",
+            render_last_seen_json(entry.last_seen.as_ref(), "    ")
+        ),
+    ]);
     out.push_str(&format!(
-        "    \"family\": {},\n",
-        option_json(entry.family.as_deref())
+        "  \"allow_entry\": {{\n{}\n  }},\n",
+        entry_fields.join(",\n")
     ));
-    out.push_str(&format!(
-        "    \"path\": {},\n",
-        option_json(path.as_deref())
-    ));
-    out.push_str(&format!(
-        "    \"glob\": {},\n",
-        option_json(entry.glob.as_deref())
-    ));
-    out.push_str(&format!(
-        "    \"owner\": \"{}\",\n",
-        json_escape(&entry.owner)
-    ));
-    out.push_str(&format!(
-        "    \"classification\": \"{}\",\n",
-        json_escape(&entry.classification)
-    ));
-    out.push_str(&format!(
-        "    \"reason\": \"{}\",\n",
-        json_escape(&entry.reason)
-    ));
-    out.push_str(&format!(
-        "    \"review_after\": {},\n",
-        option_json(entry.lifecycle.review_after.as_deref())
-    ));
-    out.push_str(&format!(
-        "    \"expires\": {},\n",
-        option_json(entry.lifecycle.expires.as_deref())
-    ));
-    out.push_str(&format!(
-        "    \"evidence_count\": {},\n",
-        entry.evidence.len()
-    ));
-    out.push_str("    \"selector\": ");
-    out.push_str(&render_selector_json(&entry.selector, "    "));
-    out.push_str(",\n");
-    out.push_str("    \"last_seen\": ");
-    out.push_str(&render_last_seen_json(entry.last_seen.as_ref(), "    "));
-    out.push_str("\n  },\n");
     out.push_str("  \"selected_finding\": ");
     out.push_str(&render_explain_finding_json(
         selected_finding,
