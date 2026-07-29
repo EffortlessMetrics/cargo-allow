@@ -6,11 +6,7 @@ owner: repo-infra
 created: 2026-07-22
 updated: 2026-07-29
 linked_proposal: CARGO-ALLOW-PROP-0010
-linked_specs:
-  - CARGO-ALLOW-SPEC-0010
-  - CARGO-ALLOW-SPEC-0011
-related_adrs:
-  - CARGO-ALLOW-ADR-0003
+linked_spec: CARGO-ALLOW-SPEC-0011
 supersedes: none
 superseded_by: none
 support_tier_impact: advisory
