@@ -40,6 +40,78 @@ fn sarif_report_emits_non_matched_results_with_locations() {
 }
 
 #[test]
+fn sarif_results_include_dedup_fingerprints_and_invocation_metadata() {
+    let mut identity = StructuralIdentity::new("rust", "method_call");
+    identity.normalized_snippet_hash = Some("fnv1a64:snippet".to_string());
+    let findings = vec![Finding {
+        kind: FindingKind::Panic,
+        family: Some("unwrap".to_string()),
+        path: PathBuf::from("crates/parser/src/lib.rs"),
+        span: Some(Span { line: 4, column: 9 }),
+        identity,
+        message: "unwrap call".to_string(),
+        ledger: None,
+    }];
+    let outcomes = vec![MatchOutcome {
+        status: MatchStatus::New,
+        allow_id: None,
+        candidate_ids: Vec::new(),
+        finding_index: Some(0),
+        message: "unreceipted unwrap".to_string(),
+        score: 0,
+    }];
+    let mut context = context("git_tracked");
+    context.started_at = Some("2026-07-28T23:00:00Z");
+
+    let sarif = render_sarif_with_context("check", &findings, &outcomes, true, context);
+    let value: serde_json::Value = serde_json::from_str(&sarif)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("SARIF should be valid JSON: {err}")));
+    let run = |path: &str| {
+        value.pointer(path).unwrap_or_else(|| {
+            std::panic::panic_any(format!("SARIF test path should exist: {path}"))
+        })
+    };
+    assert_eq!(
+        run("/runs/0/automationDetails/id").as_str(),
+        Some("cargo-allow/check")
+    );
+    assert_eq!(
+        run("/runs/0/invocations/0/executionSuccessful").as_bool(),
+        Some(false)
+    );
+    assert_eq!(
+        run("/runs/0/invocations/0/startTimeUtc").as_str(),
+        Some("2026-07-28T23:00:00Z")
+    );
+    assert!(
+        run("/runs/0/invocations/0/endTimeUtc")
+            .as_str()
+            .is_some_and(|value| value.ends_with('Z'))
+    );
+    assert!(
+        run("/runs/0/tool/driver/rules")
+            .as_array()
+            .is_some_and(|rules| {
+                rules.iter().any(|rule| {
+                    rule.get("id").and_then(serde_json::Value::as_str)
+                        == Some("cargo-allow/location_drift")
+                })
+            })
+    );
+
+    assert!(
+        run("/runs/0/results/0/partialFingerprints/primaryLocationLineHash")
+            .as_str()
+            .is_some_and(|value| value.starts_with("sha256:v1:"))
+    );
+    assert!(
+        run("/runs/0/results/0/partialFingerprints/stableResultHash")
+            .as_str()
+            .is_some_and(|value| value.starts_with("sha256:v1:"))
+    );
+}
+
+#[test]
 fn sarif_result_properties_include_source_package_context() {
     let mut identity = StructuralIdentity::new("rust", "method_call");
     identity.crate_name = Some("parser".to_string());

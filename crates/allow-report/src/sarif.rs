@@ -1,4 +1,7 @@
-use allow_core::{Finding, MatchOutcome, MatchStatus, json_escape, normalize_path};
+use allow_core::{
+    Finding, MatchOutcome, MatchStatus, finding_identity_key, json_escape, normalize_path,
+    sha256_v1_bytes,
+};
 
 use crate::evidence_repair::{
     evidence_repair_queues_from_context, push_evidence_repair_queue_json_fields,
@@ -58,6 +61,28 @@ pub fn render_sarif_with_context(
     out.push_str("\n          ]\n");
     out.push_str("        }\n");
     out.push_str("      },\n");
+    let end_time_utc = sarif_now_utc();
+    let start_time_utc = context.started_at.unwrap_or(end_time_utc.as_str());
+    out.push_str(&format!(
+        "      \"automationDetails\": {{\"id\": \"cargo-allow/{}\"}},\n",
+        json_escape(command)
+    ));
+    out.push_str("      \"invocations\": [\n");
+    out.push_str("        {\n");
+    out.push_str(&format!(
+        "          \"executionSuccessful\": {},\n",
+        bool_json(!failed)
+    ));
+    out.push_str(&format!(
+        "          \"startTimeUtc\": \"{}\",\n",
+        json_escape(start_time_utc)
+    ));
+    out.push_str(&format!(
+        "          \"endTimeUtc\": \"{}\"\n",
+        json_escape(&end_time_utc)
+    ));
+    out.push_str("        }\n");
+    out.push_str("      ],\n");
     out.push_str("      \"properties\": {\n");
     out.push_str(&format!(
         "        \"command\": \"{}\",\n",
@@ -207,6 +232,16 @@ fn render_sarif_result(outcome: &MatchOutcome, finding: Option<&Finding>) -> Str
     out.push_str("          }");
     if let Some(finding) = finding {
         out.push_str(",\n");
+        out.push_str("          \"partialFingerprints\": {\n");
+        out.push_str(&format!(
+            "            \"primaryLocationLineHash\": \"{}\",\n",
+            sarif_location_fingerprint(finding)
+        ));
+        out.push_str(&format!(
+            "            \"stableResultHash\": \"{}\"\n",
+            sha256_v1_bytes(finding_identity_key(finding).as_bytes())
+        ));
+        out.push_str("          },\n");
         out.push_str("          \"locations\": [\n");
         out.push_str(&render_sarif_location(finding));
         out.push_str("\n          ]\n");
@@ -216,6 +251,39 @@ fn render_sarif_result(outcome: &MatchOutcome, finding: Option<&Finding>) -> Str
         out.push_str("        }");
     }
     out
+}
+
+fn sarif_location_fingerprint(finding: &Finding) -> String {
+    let line = finding.span.as_ref().map(|span| span.line).unwrap_or(0);
+    let normalized_snippet_hash = finding
+        .identity
+        .normalized_snippet_hash
+        .as_deref()
+        .unwrap_or_default();
+    let material = format!(
+        "{}|{}|{}",
+        normalize_path(&finding.path),
+        line,
+        normalized_snippet_hash
+    );
+    sha256_v1_bytes(material.as_bytes())
+}
+
+fn sarif_now_utc() -> String {
+    let seconds = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .unwrap_or(0);
+    let days = (seconds / 86_400) as i64;
+    let time_of_day = seconds % 86_400;
+    let date = allow_core::SimpleDate::from_days_since_unix_epoch(days);
+    let hour = time_of_day / 3_600;
+    let minute = (time_of_day % 3_600) / 60;
+    let second = time_of_day % 60;
+    format!(
+        "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
+        date.year, date.month, date.day, hour, minute, second
+    )
 }
 
 fn render_sarif_location(finding: &Finding) -> String {

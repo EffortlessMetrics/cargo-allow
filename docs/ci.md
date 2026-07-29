@@ -123,6 +123,13 @@ properties may include advisory policy/evidence-health counts such as
 synthetic code-scanning results. When repair work exists, SARIF run properties
 may also include an `evidence_repair_queues` array with the matching
 `cargo-allow worklist ... --format json` commands.
+Finding-backed SARIF results also include `partialFingerprints` derived from
+the normalized snippet, normalized path, source line, and structural finding
+identity so code-scanning consumers can deduplicate stable findings while still
+detecting movement. Each run includes a stable `automationDetails.id` for the
+command and an `invocations` record with execution status and UTC start/end
+timestamps. These fingerprints identify scanner observations; they do not
+prove that an unsafe construct or policy exception is correct.
 
 For cargo-allow's own repository, CI also emits opt-in spec-system profile
 artifacts:
