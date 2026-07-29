@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  Docs: release docs now correctly say "twelve crates" instead of "ten". The
+  Trusted Publishing table was missing `repo-protocol` and `repo-edit`, which
+  would cause the next tag release to fail with an OIDC error for those two
+  crates. Also fixed the local-verify snippet and ci.md.
