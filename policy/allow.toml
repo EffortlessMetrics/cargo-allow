@@ -10451,3 +10451,25 @@ glob = "docs/support-matrix.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0498"
+kind = "non_rust_file"
+family = "configuration"
+path = ".pre-commit-hooks.yaml"
+owner = "core/devex"
+classification = "adoption_hook"
+reason = "Publishes the pre-commit framework entry point for the blocking cargo-allow no-new source-tree check."
+evidence = ["issue:2835", "test:precommit_hook_contract_has_no_new_debt_gate", "doc:docs/how-to/adopt-cargo-allow.md"]
+created = "2026-07-28"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".pre-commit-hooks.yaml"
+target_fingerprint = "yaml"
+glob = ".pre-commit-hooks.yaml"
+
+[allow.last_seen]
+line = 1
+column = 1

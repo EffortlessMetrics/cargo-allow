@@ -17,6 +17,7 @@ const RELEASE_WORKFLOW: &str = include_str!("../../../.github/workflows/release.
 const SUPPORT_DOC: &str = include_str!("../../../SUPPORT.md");
 const PUBLISHED_REGISTRY: &str =
     include_str!("../../../docs/dogfood/fixtures/getting-started/published-command-registry.toml");
+const PRE_COMMIT_HOOK: &str = include_str!("../../../.pre-commit-hooks.yaml");
 
 /// Read a `key = "value"` string from the matrix.
 ///
@@ -72,6 +73,25 @@ fn published_version_matches_the_command_registry_snapshot() {
         registry_version,
         "support matrix published_version must match the published command registry"
     );
+}
+
+/// The pre-commit definition must keep the adoption hook aligned with the
+/// blocking source-tree command it delegates to. This is a text-level contract
+/// check; it does not execute pre-commit or an installed cargo-allow binary.
+#[test]
+fn precommit_hook_contract_has_no_new_debt_gate() -> Result<(), String> {
+    for (field, value) in [
+        ("hook id", "id: cargo-allow"),
+        ("entry", "entry: cargo-allow check --mode no-new"),
+        ("language", "language: system"),
+        ("filename forwarding", "pass_filenames: false"),
+        ("execution policy", "always_run: true"),
+    ] {
+        if !PRE_COMMIT_HOOK.contains(value) {
+            return Err(format!("pre-commit hook is missing {field}: {value}"));
+        }
+    }
+    Ok(())
 }
 
 /// The candidate version must be the workspace version, and must still be
