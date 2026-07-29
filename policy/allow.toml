@@ -7993,7 +7993,7 @@ review_after = "2026-10-29"
 [allow.selector]
 ast_kind = "tracked_file"
 symbol = ".changes/v0.2.0"
-target_fingerprint = "v0.2.0"
+target_fingerprint = "0"
 glob = ".changes/v0.2.0"
 
 [allow.last_seen]
