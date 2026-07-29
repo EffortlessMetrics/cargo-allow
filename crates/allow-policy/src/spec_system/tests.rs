@@ -1036,7 +1036,7 @@ fn direct_error_discriminators_match_support_tier_parse_messages() {
     assert_eq!(
         err,
         CargoAllowError::new(
-            "support-tier claims table with Surface, Tier, Claim, Proof command or Proof or evidence, and Notes columns not found"
+            "support-tier claims table with Surface, Tier, Claim, Proof command or Proof or evidence, and Notes or Limitations columns not found"
         )
     );
 

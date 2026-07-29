@@ -413,6 +413,18 @@ fn validate_artifact_lifecycle(root: &Path) -> Result<(), String> {
     let ledger_path = root.join(".allow/artifacts/doc-artifacts.toml");
     let ledger = load_doc_artifacts(&ledger_path)
         .map_err(|error| format!("load document artifact ledger: {error}"))?;
+    let package_adr = ledger
+        .artifact
+        .iter()
+        .find(|artifact| artifact.id == "CARGO-ALLOW-ADR-0003")
+        .ok_or_else(|| "artifact ledger is missing ADR-0003".to_string())?;
+    if package_adr.status != ArtifactStatus::Accepted
+        || package_adr.created != "2026-07-29"
+        || package_adr.linked_proposal.as_deref() != Some("CARGO-ALLOW-PROP-0010")
+        || package_adr.linked_spec.as_deref() != Some("CARGO-ALLOW-SPEC-0011")
+    {
+        return Err(format!("unexpected package ADR lifecycle: {package_adr:?}"));
+    }
     let historical = ledger
         .artifact
         .iter()
@@ -431,6 +443,7 @@ fn validate_artifact_lifecycle(root: &Path) -> Result<(), String> {
         .find(|artifact| artifact.id == "CARGO-ALLOW-SPEC-0011")
         .ok_or_else(|| "artifact ledger is missing SPEC-0011".to_string())?;
     if current.status != ArtifactStatus::Accepted
+        || current.created != "2026-07-29"
         || current.linked_proposal.as_deref() != Some("CARGO-ALLOW-PROP-0010")
         || current.linked_adr.as_deref() != Some("CARGO-ALLOW-ADR-0002")
     {

@@ -91,7 +91,7 @@ pub fn parse_support_tier_claims(input: &str) -> CargoAllowResult<Vec<SupportTie
     }
 
     Err(CargoAllowError::new(
-        "support-tier claims table with Surface, Tier, Claim, Proof command or Proof or evidence, and Notes columns not found",
+        "support-tier claims table with Surface, Tier, Claim, Proof command or Proof or evidence, and Notes or Limitations columns not found",
     ))
 }
 
