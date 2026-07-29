@@ -33,6 +33,38 @@ by pre-commit and scans the repository's tracked source tree, so it has the
 same scope as `cargo-allow check --mode no-new` in CI. Run it manually with
 `pre-commit run cargo-allow --all-files`.
 
+## Optional reusable GitHub Action
+
+For hosted Linux CI, cargo-allow also provides a read-only composite Action.
+Pin an exact published version; moving channels such as `latest` are rejected.
+The current source-install route installs that exact version with Cargo and
+verifies the installed binary before running one closed capability (`check`,
+`diff`, `audit`, or `doctor`). It does not mutate the ledger, push GitHub
+state, or accept arbitrary shell commands.
+
+```yaml
+jobs:
+  cargo-allow:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: EffortlessMetrics/cargo-allow@<immutable-action-commit>
+        with:
+          version: '0.1.11'
+          command: check
+          mode: no-new
+          upload-artifacts: 'true'
+```
+
+Use an immutable Action commit or a reviewed release reference in a consumer
+workflow. The Action uploads its bounded JSON report and, for `check`/`diff`,
+receipt under `target/cargo-allow-action`; an analysis failure remains a failed
+step even when diagnostics are uploaded. The source-install Action currently
+supports Linux runners only. Prebuilt installation and a moving supported
+Action tag require separate release/provenance evidence. For `diff`, use a
+full-history checkout (`fetch-depth: 0`) and pass an exact `base` revision; the
+Action does not fetch or infer a revision on the consumer's behalf.
+
 ## Step 1: Bootstrap a policy (first hour)
 
 From your repository root:
