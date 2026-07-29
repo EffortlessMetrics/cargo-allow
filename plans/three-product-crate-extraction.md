@@ -29,6 +29,11 @@ This is no longer a crate-creation plan. The remaining work is to make semantic
 ownership, current and target package identity, dependency direction,
 compatibility, retirement, CI, packaging and release evidence agree.
 
+The historical generation-1 plan called its first stage `Wave 0`, and issue
+#2598 owned the initial source-move and deletion denominator. These markers are
+retained only for the strict compatibility test and are removed by #2967 when
+that test consumes the generation-2 contract semantically.
+
 ## Current starting state
 
 | Area | Starting posture |
