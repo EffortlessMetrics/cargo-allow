@@ -242,6 +242,8 @@ impl PackageManifest {
         text: &str,
         source_paths: &[PathBuf],
     ) -> Result<Option<Self>, CargoAllowError> {
+        // Strip UTF-8 BOM if present (#2003).
+        let text = text.strip_prefix('\u{feff}').unwrap_or(text);
         let table = toml::from_str::<toml::Table>(text)
             .map_err(|error| CargoAllowError::new(format!("invalid Cargo manifest: {error}")))?;
         let Some(package) = table.get("package").and_then(toml::Value::as_table) else {

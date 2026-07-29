@@ -49,6 +49,9 @@ pub fn source_package_contexts_from_sources(
 }
 
 pub(crate) fn source_package_name(manifest: &str) -> Option<String> {
+    // Strip UTF-8 BOM if present — the toml crate treats \u{FEFF} as part
+    // of the first key, making the manifest unparseable (#2003).
+    let manifest = manifest.strip_prefix('\u{feff}').unwrap_or(manifest);
     toml::from_str::<toml::Table>(manifest)
         .ok()?
         .get("package")?
