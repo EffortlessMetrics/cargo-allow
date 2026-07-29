@@ -257,6 +257,11 @@ fn load_world_without_policy(
         let parsed = parse_kind_filter(kind)?;
         findings.retain(|f| parsed.matches_finding(f));
     }
+    // evidence_validation is intentionally unused here: this is the no-policy
+    // fallback path where cfg = AllowConfig::empty(), so there are zero allow
+    // entries to validate evidence against. The parameter exists for API
+    // symmetry with load_world_with_evidence_mode and will be wired in if
+    // a future caller needs evidence validation without a full policy (#2831).
     let _ = evidence_validation;
     Ok((
         root.to_path_buf(),
