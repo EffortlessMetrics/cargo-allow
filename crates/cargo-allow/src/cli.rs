@@ -252,5 +252,6 @@ impl CargoAllowCommand {
         "doctor",
         "vocabulary",
         "tool",
+        "completions",
     ];
 }

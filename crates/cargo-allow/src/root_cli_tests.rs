@@ -17,6 +17,13 @@ mod tests {
     }
 
     #[test]
+    fn normalized_args_accepts_cargo_completions_subcommand() {
+        let normalized = normalized_args(argv(vec!["cargo-allow", "allow", "completions", "bash"]));
+        let expected = argv(vec!["cargo-allow", "completions", "bash"]);
+        assert_eq!(normalized, expected);
+    }
+
+    #[test]
     fn normalized_args_accepts_root_flag_before_cargo_subcommand_prefix() {
         let normalized = normalized_args(argv(vec![
             "cargo-allow",
@@ -73,6 +80,18 @@ mod tests {
     }
 
     #[test]
+    fn shim_registry_covers_every_clap_subcommand() {
+        let command = CargoAllowCli::command();
+        for subcommand in command.get_subcommands() {
+            assert!(
+                CargoAllowCommand::SUBCOMMANDS.contains(&subcommand.get_name()),
+                "cargo-plugin shim registry is missing `{}`",
+                subcommand.get_name()
+            );
+        }
+    }
+
+    #[test]
     fn clap_parses_color_before_cargo_subcommand_prefix() {
         let parsed = CargoAllowCli::try_parse_from(normalized_args(argv(vec![
             "cargo-allow",
@@ -124,8 +143,22 @@ mod tests {
         // `--version` and asserting the parse produces a `DisplayVersion`
         // error rather than an `UnknownArgument` error.
         for name in [
-            "init", "audit", "check", "diff", "list", "explain", "why", "add", "propose",
-            "worklist", "migrate", "refresh", "prune", "doctor", "tool",
+            "init",
+            "audit",
+            "check",
+            "diff",
+            "list",
+            "explain",
+            "why",
+            "add",
+            "propose",
+            "worklist",
+            "migrate",
+            "refresh",
+            "prune",
+            "doctor",
+            "tool",
+            "completions",
         ] {
             let parsed =
                 CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", name, "--version"]));
