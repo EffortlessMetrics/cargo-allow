@@ -1,0 +1,9 @@
+kind: Fixed
+body: >-
+  Perf: extend_unique_findings now uses a HashSet for O(1) identity-key lookups
+  instead of O(n×m) linear scans (#2677). Previously each additional finding
+  triggered an iter().any() scan over all accumulated findings, with a fresh
+  String allocation on both sides of every comparison. Now builds one HashSet
+  of identity keys for the accumulated set and does O(1) insert+check per
+  additional finding. Dedup semantics are preserved (first finding with a
+  given identity wins).
