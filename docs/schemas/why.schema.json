@@ -468,7 +468,6 @@
       "required": [
         "id",
         "kind",
-        "family",
         "path",
         "glob",
         "selector_glob",
@@ -490,10 +489,8 @@
           ]
         },
         "family": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string",
+          "description": "Policy family for the nearby candidate; omitted when unavailable."
         },
         "path": {
           "type": [

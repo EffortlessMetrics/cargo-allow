@@ -26,7 +26,10 @@ cargo-allow why --kind panic --path src/lib.rs --line 42 \
 ```
 
 JSON emits `cargo-allow.why.v1` with the same finding, outcome, candidate
-entries, and next-step fields for agents and CI evidence.
+entries, and next-step fields for agents and CI evidence. Candidate `family` is
+omitted when the nearby policy entry has no family; selector relationship
+fields such as `path`, `glob`, and `selector_glob` remain `null` when that
+relationship is unavailable.
 
 ## Claim Boundary
 
