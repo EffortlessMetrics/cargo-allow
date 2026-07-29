@@ -425,7 +425,7 @@ fn json_report_omits_unavailable_finding_metadata_and_keeps_navigation_nulls() -
     let finding = Finding {
         kind: FindingKind::Panic,
         family: None,
-        path: PathBuf::from("src\\lib.rs"),
+        path: PathBuf::from("src/lib.rs"),
         span: None,
         identity: StructuralIdentity::new("rust", "macro_call"),
         message: "panic macro".to_string(),
