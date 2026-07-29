@@ -210,7 +210,7 @@ pub use summary::{
     policy_missing_evidence_entries,
 };
 pub use why::render_why_json;
-pub use worklist::{render_worklist_human, render_worklist_json};
+pub use worklist::{render_worklist_human, render_worklist_human_styled, render_worklist_json};
 
 pub(crate) use non_rust::{FilePosture, non_rust_file_rows};
 pub(crate) use source_inventory::{

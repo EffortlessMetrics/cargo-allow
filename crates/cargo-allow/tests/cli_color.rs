@@ -216,6 +216,55 @@ fn explain_human_statuses_use_shared_style_but_files_stay_plain() {
     let _ = fs::remove_dir_all(&root);
 }
 
+#[test]
+fn worklist_human_statuses_use_shared_style_but_files_stay_plain() {
+    let root = fixture("worklist");
+    let plain_result = run(&root, &[], &["worklist", "--color", "never"]);
+    let styled_result = run(&root, &[], &["worklist", "--color", "always"]);
+
+    assert!(
+        plain_result.status.success(),
+        "plain worklist should succeed"
+    );
+    assert!(
+        styled_result.status.success(),
+        "styled worklist should succeed"
+    );
+    assert!(!has_ansi(&stdout_of(&plain_result)));
+    assert!(has_ansi(&stdout_of(&styled_result)));
+
+    let json_result = run(
+        &root,
+        &[],
+        &["worklist", "--color", "always", "--format", "json"],
+    );
+    assert!(json_result.status.success(), "JSON worklist should succeed");
+    assert!(
+        !has_ansi(&stdout_of(&json_result)),
+        "JSON worklist must stay plain"
+    );
+
+    fs::create_dir_all(root.join("target/cargo-allow"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create worklist output dir: {err}")));
+    let written = run(
+        &root,
+        &[],
+        &[
+            "worklist",
+            "--color",
+            "always",
+            "--output",
+            "target/cargo-allow/worklist.txt",
+        ],
+    );
+    assert!(written.status.success(), "written worklist should succeed");
+    let text = fs::read_to_string(root.join("target/cargo-allow/worklist.txt"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read worklist output: {err}")));
+    assert!(!has_ansi(&text), "written worklist output must stay plain");
+
+    let _ = fs::remove_dir_all(&root);
+}
+
 /// The documented precedence, asserted end to end rather than only in the
 /// unit test of the resolver.
 #[test]
