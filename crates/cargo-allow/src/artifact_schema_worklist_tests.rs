@@ -216,7 +216,6 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
             "allow_id",
             "finding_index",
             "path",
-            "source_package",
             "message",
             "suggested_actions",
             "proof_commands",
@@ -278,17 +277,18 @@ fn worklist_schema_locks_filters_summary_and_work_items_contract() {
         "/$defs/work_item/properties/kind/enum",
         WORK_ITEM_KINDS,
     );
-    assert_nullable_string_enum_equals(
+    assert_enum_equals(
         "worklist",
         &schema,
         "/$defs/work_item/properties/exception_kind/enum",
         &governed_kind_enum(),
     );
-    assert_schema_type_equals(
-        "worklist item source_package",
-        &schema,
-        "/$defs/work_item/properties/source_package/type",
-        &["string", "null"],
+    assert_eq!(
+        schema
+            .pointer("/$defs/work_item/properties/source_package/type")
+            .and_then(Value::as_str),
+        Some("string"),
+        "worklist item source_package should be a string when present"
     );
     assert_eq!(
         schema

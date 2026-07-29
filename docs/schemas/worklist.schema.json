@@ -411,7 +411,6 @@
         "allow_id",
         "finding_index",
         "path",
-        "source_package",
         "message",
         "suggested_actions",
         "proof_commands"
@@ -444,69 +443,44 @@
           "description": "Stable queue item kind emitted by cargo-allow worklist."
         },
         "exception_kind": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": "string",
           "enum": [
             "panic",
             "unsafe",
             "lint_exception",
             "non_rust_file",
             "generated_code",
-            "policy_exception",
-            null
+            "policy_exception"
           ],
-          "description": "Governed source exception surface behind the work item, when known."
+          "description": "Governed source exception surface behind the work item; omitted when unavailable."
         },
         "family": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "More specific scanner or policy family behind the work item, when known."
+          "type": "string",
+          "description": "More specific scanner or policy family behind the work item; omitted when unavailable."
         },
         "owner": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "Policy owner for the related allow entry, when the work item is tied to policy."
+          "type": "string",
+          "description": "Policy owner for the related allow entry; omitted when unavailable."
         },
         "classification": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "Policy classification for the related allow entry, when available."
+          "type": "string",
+          "description": "Policy classification for the related allow entry; omitted when unavailable."
         },
         "reason": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "Policy reason for the related allow entry, when available."
+          "type": "string",
+          "description": "Policy reason for the related allow entry; omitted when unavailable."
         },
         "created": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "Policy creation date for the related allow entry, when available."
+          "type": "string",
+          "description": "Policy creation date for the related allow entry; omitted when unavailable."
         },
         "review_after": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "Policy review-after date for the related allow entry, when available."
+          "type": "string",
+          "description": "Policy review-after date for the related allow entry; omitted when unavailable."
         },
         "expires": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "Policy expiry date for the related allow entry, when available."
+          "type": "string",
+          "description": "Policy expiry date for the related allow entry; omitted when unavailable."
         },
         "evidence_count": {
           "type": [
@@ -585,11 +559,8 @@
           "description": "Structured evidence diagnostic for broken_evidence_link and weak_evidence_reference work items. Absent for work items that are not tied to a specific evidence reference."
         },
         "source_package": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "Explicit source-tree package context when provided by a scanner; not Cargo metadata or build proof."
+          "type": "string",
+          "description": "Explicit source-tree package context when provided by a scanner; omitted when unavailable and not Cargo metadata or build proof."
         },
         "message": {
           "type": "string",
