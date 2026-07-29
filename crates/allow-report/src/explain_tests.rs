@@ -6,6 +6,26 @@ use allow_core::{
 use std::path::PathBuf;
 
 #[test]
+fn explain_finding_json_omits_unavailable_metadata() {
+    let finding = Finding {
+        kind: FindingKind::Panic,
+        family: None,
+        path: PathBuf::from("src/lib.rs"),
+        span: None,
+        identity: StructuralIdentity::new("rust", "panic_macro"),
+        message: "panic macro".to_string(),
+        ledger: None,
+    };
+
+    let json = render_explain_finding_json(&finding, "unmatched", "");
+
+    assert!(!json.contains("\"family\":"));
+    assert!(!json.contains("\"source_package\":"));
+    assert!(json.contains("\"line\": null"));
+    assert!(json.contains("\"column\": null"));
+}
+
+#[test]
 fn explain_projects_expired_matched_entry_lifecycle_status() {
     let entry = AllowEntry {
         id: "allow-explain-expired".to_string(),
