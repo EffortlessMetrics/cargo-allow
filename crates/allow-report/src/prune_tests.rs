@@ -18,6 +18,7 @@ fn prune_json_renderer_records_mode_context_and_candidates() {
             explicit_dry_run: true,
             write_requested: false,
             written_path: None,
+            total_entries: 0,
         },
         InventoryContext::source_syntax("git_tracked", Some("H:/Code/Rust/cargo-allow"), Some(49)),
         &MutationReceipt {
@@ -95,6 +96,7 @@ fn prune_human_renderer_records_mode_and_candidates() {
             explicit_dry_run: true,
             write_requested: false,
             written_path: None,
+            total_entries: 0,
         },
     );
 
@@ -115,6 +117,7 @@ fn prune_human_renderer_records_inventory_context() {
             explicit_dry_run: false,
             write_requested: false,
             written_path: None,
+            total_entries: 0,
         },
         InventoryContext::source_syntax("git_tracked", Some("H:/Code/Rust/cargo-allow"), Some(49)),
     );

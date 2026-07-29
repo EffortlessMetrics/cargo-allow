@@ -22,6 +22,7 @@ fn render_prune_stale_preview_is_dry_run_first() {
         true,
         false,
         None,
+        5,
         test_prune_context(),
     );
 
@@ -57,6 +58,7 @@ fn render_prune_stale_json_records_context_and_candidates() {
         true,
         false,
         None,
+        5,
         PruneContext {
             inventory: allow_report::InventoryContext::source_syntax(
                 "git_tracked",
@@ -141,17 +143,18 @@ fn render_prune_stale_result_reports_written_policy() {
         false,
         true,
         Some(Path::new("policy/allow.toml")),
+        3,
         test_prune_context(),
     );
 
     assert!(text.contains("mode: write"));
-    assert!(text.contains("Removed stale entries from `policy/allow.toml`"));
+    assert!(text.contains("Removed 1 stale entry from `policy/allow.toml`. 2 entries remain."));
     assert!(!text.contains("No files were changed"));
 }
 
 #[test]
 fn render_prune_stale_result_reports_write_mode_with_no_candidates() {
-    let text = render_prune_stale_result(&[], &[], false, true, None, test_prune_context());
+    let text = render_prune_stale_result(&[], &[], false, true, None, 0, test_prune_context());
 
     assert!(text.contains("mode: write"));
     assert!(text.contains("No stale allow entries found."));

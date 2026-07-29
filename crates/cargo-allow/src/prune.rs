@@ -166,6 +166,7 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             args.dry_run,
             args.write,
             written_path.as_deref(),
+            cfg.allow.len(),
             context,
         ),
         HumanJsonFormat::Json => render_prune_stale_json(
@@ -173,6 +174,7 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             args.dry_run,
             args.write,
             written_path.as_deref(),
+            cfg.allow.len(),
             context,
         ),
     };
@@ -188,6 +190,7 @@ pub(crate) fn sample_prune_json_for_contract_test() -> String {
         true,
         false,
         None,
+        0,
         PruneContext {
             inventory: allow_report::InventoryContext::source_syntax(
                 "git_tracked",

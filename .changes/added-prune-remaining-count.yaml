@@ -1,0 +1,6 @@
+kind: Added
+body: >-
+  UX: `prune --write` now reports how many entries remain after removal. The
+  confirmation line reads "Removed N stale entries from `<path>`. K entries
+  remain." so operators don't need to run `list` separately to verify the
+  survivor count.

@@ -11,6 +11,7 @@ pub(super) struct PruneRenderMode {
     explicit_dry_run: bool,
     write_requested: bool,
     written_path: Option<String>,
+    total_entries: usize,
 }
 
 impl PruneRenderMode {
@@ -18,11 +19,13 @@ impl PruneRenderMode {
         explicit_dry_run: bool,
         write_requested: bool,
         written_path: Option<&Path>,
+        total_entries: usize,
     ) -> Self {
         Self {
             explicit_dry_run,
             write_requested,
             written_path: written_path.map(|path| path.display().to_string()),
+            total_entries,
         }
     }
 
@@ -31,6 +34,7 @@ impl PruneRenderMode {
             explicit_dry_run: self.explicit_dry_run,
             write_requested: self.write_requested,
             written_path: self.written_path.as_deref(),
+            total_entries: self.total_entries,
         }
     }
 }
