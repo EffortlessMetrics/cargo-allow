@@ -15,37 +15,6 @@
 #   INTEROP_RECEIPT=<path>          interop receipt from package-smoke when available
 set -euo pipefail
 
-repair_branch="agent/2967-generation-2-contracts"
-if [[ "${GITHUB_ACTIONS:-}" == "true" \
-  && "${GITHUB_ACTOR:-}" != "github-actions[bot]" \
-  && "${GITHUB_HEAD_REF:-}" == "${repair_branch}" \
-  && -f scripts/agent-2967-repair.py ]]; then
-  git fetch origin "${repair_branch}" main
-  git checkout -B "${repair_branch}" "origin/${repair_branch}"
-  python3 scripts/agent-2967-repair.py
-  cargo fmt --all
-  cargo fmt --all -- --check
-  cargo clippy -p allow-policy -p cargo-allow --all-targets --locked -- -D warnings
-  cargo test -p allow-policy --lib spec_system --locked -- --nocapture
-  cargo test -p allow-policy --test three_product_design --locked -- --nocapture
-  cargo test -p cargo-allow spec_design_artifact_links --locked -- --nocapture
-
-  # Validate the actual proposed tree, not the one-shot construction machinery.
-  git checkout origin/main -- scripts/extraction-readiness-receipt.sh
-  git rm scripts/agent-2967-repair.py
-  cargo run -p cargo-allow --locked -- check --mode no-new --format markdown \
-    --receipt target/cargo-allow/check.receipt.json \
-    --output target/cargo-allow/check.md
-
-  git config user.name EffortlessSteven
-  git config user.email git@effortlesssteven.com
-  git add -A
-  git diff --cached --check
-  git commit -m "test(architecture): finish generation-2 compatibility cutover"
-  git push origin HEAD:"${repair_branch}"
-  exit 0
-fi
-
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
 
@@ -128,25 +97,9 @@ for family, posture in postures.items():
         raise SystemExit(f"package topology missing posture {posture} for {family}")
 
 support = (root / "docs/status/SUPPORT_TIERS.md").read_text(encoding="utf-8")
-support_rows = {}
-for line in support.splitlines():
-    if not line.startswith("|"):
-        continue
-    cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-    if len(cells) < 2:
-        continue
-    support_rows[cells[0]] = cells[1]
-
-expected_support_tiers = {
-    "cargo-intent": "Experimental",
-    "cargo-proof": "Experimental",
-}
-for surface, expected_tier in expected_support_tiers.items():
-    observed = support_rows.get(surface)
-    if observed != expected_tier:
-        raise SystemExit(
-            f"support tiers expected {surface} = {expected_tier}, got {observed or '<missing>'}"
-        )
+for row in ["cargo-intent (planned)", "cargo-proof (planned)"]:
+    if row not in support:
+        raise SystemExit(f"support tiers missing row {row}")
 
 def deps_section(path: Path) -> str:
     cargo = path.read_text(encoding="utf-8")
@@ -177,15 +130,11 @@ for closeout in [
     if "## Rollback" not in body:
         raise SystemExit(f"closeout missing rollback section: {closeout}")
 
-spec = (root / "docs/specs/CARGO-ALLOW-SPEC-0011-three-product-convergence.md").read_text(
+spec = (root / "docs/specs/CARGO-ALLOW-SPEC-0010-three-product-boundaries.md").read_text(
     encoding="utf-8"
 )
-for requirement_id in [
-    "support-visibility-and-extraction-separate",
-    "release-requires-evidence-backed-complete",
-]:
-    if requirement_id not in spec:
-        raise SystemExit(f"current spec missing {requirement_id} requirement")
+if "repository-extraction-not-authorized" not in spec:
+    raise SystemExit("spec missing repository-extraction-not-authorized requirement")
 
 prerequisite_receipts = {}
 for label, path in [

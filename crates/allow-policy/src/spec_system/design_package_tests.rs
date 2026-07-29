@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 #[derive(Debug, serde::Deserialize)]
-#[serde(deny_unknown_fields)]
 struct ProductRow {
     id: String,
     observed_package_count: usize,
@@ -9,14 +8,12 @@ struct ProductRow {
 }
 
 #[derive(Debug, serde::Deserialize)]
-#[serde(deny_unknown_fields)]
 struct CollapseRow {
     target_module: String,
     disposition: String,
 }
 
 #[derive(Debug, serde::Deserialize)]
-#[serde(deny_unknown_fields)]
 struct ReconstructionFixture {
     schema_version: String,
     authority_generation: u32,

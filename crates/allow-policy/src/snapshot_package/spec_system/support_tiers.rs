@@ -168,7 +168,8 @@ fn claims_columns(cells: &[String]) -> CargoAllowResult<Option<ClaimsColumns>> {
     let claim = column_index(&normalized, "claim");
     let proof_command = column_index(&normalized, "proof command")
         .or_else(|| column_index(&normalized, "proof or evidence"));
-    let notes = column_index(&normalized, "notes");
+    let notes =
+        column_index(&normalized, "notes").or_else(|| column_index(&normalized, "limitations"));
 
     let has_claim_marker = surface.is_some() || claim.is_some() || proof_command.is_some();
     if !has_claim_marker {

@@ -521,7 +521,7 @@ fn validate_current_spec(root: &Path) -> Result<(), String> {
         "docs/specs/CARGO-ALLOW-SPEC-0011-three-product-convergence.md",
     )?;
     for requirement in [
-        "identity-distinguishes-logical-package-lib",
+        "identity-distinguishes-logical-path-alias-package-lib",
         "support-visibility-and-extraction-separate",
         "release-requires-evidence-backed-complete",
     ] {
