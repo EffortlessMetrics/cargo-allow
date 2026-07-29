@@ -29,12 +29,14 @@ if [[ "${GITHUB_ACTIONS:-}" == "true" \
   cargo test -p allow-policy --lib spec_system --locked -- --nocapture
   cargo test -p allow-policy --test three_product_design --locked -- --nocapture
   cargo test -p cargo-allow spec_design_artifact_links --locked -- --nocapture
+
+  # Validate the actual proposed tree, not the one-shot construction machinery.
+  git checkout origin/main -- scripts/extraction-readiness-receipt.sh
+  git rm scripts/agent-2967-repair.py
   cargo run -p cargo-allow --locked -- check --mode no-new --format markdown \
     --receipt target/cargo-allow/check.receipt.json \
     --output target/cargo-allow/check.md
 
-  git checkout origin/main -- scripts/extraction-readiness-receipt.sh
-  git rm scripts/agent-2967-repair.py
   git config user.name EffortlessSteven
   git config user.email git@effortlesssteven.com
   git add -A
