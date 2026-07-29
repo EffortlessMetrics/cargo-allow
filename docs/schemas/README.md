@@ -148,6 +148,12 @@ List row metadata fields `family`, `source_package`, `review_after`, and
 `expires` follow omit-when-unavailable semantics: current renderers omit them
 when no value exists rather than emitting JSON `null`. The `filters` object is
 different by design: its nullable fields use `null` to represent no filter.
+Worklist policy metadata follows the same omission law: unavailable
+`exception_kind`, `family`, `owner`, `classification`, `reason`, `created`,
+`review_after`, `expires`, and `source_package` fields are omitted. Worklist
+relationship fields such as `evidence_count`, `finding_index`, and `path`,
+along with nullable filter fields, retain `null` when the relationship or
+filter is not applicable.
 Worklist artifacts follow the same rule: current renderers emit all known
 filter keys, while the nested `filters` schema keeps those keys optional.
 Non-empty worklist artifacts may also include `summary.item_kinds`, an optional

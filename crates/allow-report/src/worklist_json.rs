@@ -67,120 +67,82 @@ pub fn render_worklist_json(
 }
 
 fn render_work_item_json(item: &WorklistItem<'_>) -> String {
-    let mut out = String::new();
-    out.push_str("    {\n");
-    out.push_str(&format!("      \"id\": \"{}\",\n", json_escape(item.id)));
-    out.push_str(&format!(
-        "      \"kind\": \"{}\",\n",
-        json_escape(item.kind)
-    ));
-    out.push_str(&format!(
-        "      \"exception_kind\": {},\n",
-        option_json(item.exception_kind)
-    ));
-    out.push_str(&format!(
-        "      \"family\": {},\n",
-        option_json(item.family)
-    ));
-    out.push_str(&format!("      \"owner\": {},\n", option_json(item.owner)));
-    out.push_str(&format!(
-        "      \"classification\": {},\n",
-        option_json(item.classification)
-    ));
-    out.push_str(&format!(
-        "      \"reason\": {},\n",
-        option_json(item.reason)
-    ));
-    out.push_str(&format!(
-        "      \"created\": {},\n",
-        option_json(item.created)
-    ));
-    out.push_str(&format!(
-        "      \"review_after\": {},\n",
-        option_json(item.review_after)
-    ));
-    out.push_str(&format!(
-        "      \"expires\": {},\n",
-        option_json(item.expires)
-    ));
-    out.push_str(&format!(
-        "      \"evidence_count\": {},\n",
+    let mut fields = vec![
+        format!("      \"id\": \"{}\"", json_escape(item.id)),
+        format!("      \"kind\": \"{}\"", json_escape(item.kind)),
+    ];
+    push_optional_json_string(&mut fields, "exception_kind", item.exception_kind);
+    push_optional_json_string(&mut fields, "family", item.family);
+    push_optional_json_string(&mut fields, "owner", item.owner);
+    push_optional_json_string(&mut fields, "classification", item.classification);
+    push_optional_json_string(&mut fields, "reason", item.reason);
+    push_optional_json_string(&mut fields, "created", item.created);
+    push_optional_json_string(&mut fields, "review_after", item.review_after);
+    push_optional_json_string(&mut fields, "expires", item.expires);
+    fields.push(format!(
+        "      \"evidence_count\": {}",
         item.evidence_count
             .map(|count| count.to_string())
             .unwrap_or_else(|| "null".to_string())
     ));
     if let Some(selector_precision) = item.selector_precision {
-        out.push_str(&format!(
-            "      \"selector_precision\": {selector_precision},\n"
+        fields.push(format!(
+            "      \"selector_precision\": {selector_precision}"
         ));
     }
-    out.push_str(&format!(
-        "      \"risk\": \"{}\",\n",
-        json_escape(item.risk)
-    ));
-    out.push_str(&format!(
-        "      \"difficulty\": \"{}\",\n",
-        json_escape(item.difficulty)
-    ));
-    out.push_str(&format!(
-        "      \"status\": \"{}\",\n",
-        json_escape(item.status)
-    ));
-    out.push_str(&format!(
-        "      \"allow_id\": {},\n",
-        option_json(item.allow_id)
-    ));
-    out.push_str(&format!(
-        "      \"candidate_ids\": {},\n",
-        json_string_array(item.candidate_ids)
-    ));
-    out.push_str(&format!(
-        "      \"finding_index\": {},\n",
-        item.finding_index
-            .map(|index| index.to_string())
-            .unwrap_or_else(|| "null".to_string())
-    ));
-    out.push_str(&format!("      \"path\": {},\n", option_json(item.path)));
+    fields.extend([
+        format!("      \"risk\": \"{}\"", json_escape(item.risk)),
+        format!("      \"difficulty\": \"{}\"", json_escape(item.difficulty)),
+        format!("      \"status\": \"{}\"", json_escape(item.status)),
+        format!("      \"allow_id\": {}", option_json(item.allow_id)),
+        format!(
+            "      \"candidate_ids\": {}",
+            json_string_array(item.candidate_ids)
+        ),
+        format!(
+            "      \"finding_index\": {}",
+            item.finding_index
+                .map(|index| index.to_string())
+                .unwrap_or_else(|| "null".to_string())
+        ),
+        format!("      \"path\": {}", option_json(item.path)),
+    ]);
     if let Some(line) = item.line {
-        out.push_str(&format!("      \"line\": {line},\n"));
+        fields.push(format!("      \"line\": {line}"));
     }
     if let Some(column) = item.column {
-        out.push_str(&format!("      \"column\": {column},\n"));
+        fields.push(format!("      \"column\": {column}"));
     }
     if let Some(reference) = item.evidence_reference.as_ref() {
-        out.push_str("      \"evidence_reference\": ");
-        out.push_str(&render_worklist_evidence_reference_json(reference));
-        out.push_str(",\n");
+        fields.push(format!(
+            "      \"evidence_reference\": {}",
+            render_worklist_evidence_reference_json(reference)
+        ));
     }
-    out.push_str(&format!(
-        "      \"source_package\": {},\n",
-        option_json(item.source_package)
-    ));
-    out.push_str(&format!(
-        "      \"message\": \"{}\",\n",
-        json_escape(item.message)
-    ));
-    out.push_str(&format!(
-        "      \"suggested_actions\": {},\n",
-        json_string_array(item.suggested_actions)
-    ));
-    out.push_str(&format!(
-        "      \"proof_commands\": {},\n",
-        json_string_array(item.proof_commands)
-    ));
-    out.push_str(&format!(
-        "      \"ledger_id\": {},\n",
-        option_json(item.ledger_id)
-    ));
-    out.push_str(&format!(
-        "      \"ledger_path\": {},\n",
-        option_json(item.ledger_path)
-    ));
-    out.push_str(&format!("      \"lane\": {},\n", option_json(item.lane)));
-    out.push_str(&format!("      \"mode\": {},\n", option_json(item.mode)));
-    out.push_str(&format!("      \"role\": {}\n", option_json(item.role)));
-    out.push_str("    }");
-    out
+    push_optional_json_string(&mut fields, "source_package", item.source_package);
+    fields.extend([
+        format!("      \"message\": \"{}\"", json_escape(item.message)),
+        format!(
+            "      \"suggested_actions\": {}",
+            json_string_array(item.suggested_actions)
+        ),
+        format!(
+            "      \"proof_commands\": {}",
+            json_string_array(item.proof_commands)
+        ),
+        format!("      \"ledger_id\": {}", option_json(item.ledger_id)),
+        format!("      \"ledger_path\": {}", option_json(item.ledger_path)),
+        format!("      \"lane\": {}", option_json(item.lane)),
+        format!("      \"mode\": {}", option_json(item.mode)),
+        format!("      \"role\": {}", option_json(item.role)),
+    ]);
+    format!("    {{\n{}\n    }}", fields.join(",\n"))
+}
+
+fn push_optional_json_string(fields: &mut Vec<String>, key: &str, value: Option<&str>) {
+    if let Some(value) = value {
+        fields.push(format!("      \"{key}\": \"{}\"", json_escape(value)));
+    }
 }
 
 fn render_worklist_evidence_reference_json(reference: &crate::EvidenceReference<'_>) -> String {
@@ -387,7 +349,7 @@ mod tests {
     }
 
     #[test]
-    fn render_work_item_json_uses_nulls_and_omits_absent_optional_objects() {
+    fn render_work_item_json_omits_absent_policy_metadata_and_keeps_relationship_nulls() {
         let suggested_actions = Vec::new();
         let proof_commands = Vec::new();
         let item = WorklistItem {
@@ -417,23 +379,27 @@ mod tests {
         let json = render_work_item_json(&item);
 
         for expected in [
-            "\"exception_kind\": null",
-            "\"family\": null",
-            "\"owner\": null",
-            "\"classification\": null",
-            "\"reason\": null",
-            "\"created\": null",
-            "\"review_after\": null",
-            "\"expires\": null",
             "\"evidence_count\": null",
             "\"allow_id\": null",
             "\"finding_index\": null",
             "\"path\": null",
-            "\"source_package\": null",
             "\"suggested_actions\": []",
             "\"proof_commands\": []",
         ] {
             assert!(json.contains(expected), "{expected}");
+        }
+        for omitted in [
+            "exception_kind",
+            "family",
+            "owner",
+            "classification",
+            "reason",
+            "created",
+            "review_after",
+            "expires",
+            "source_package",
+        ] {
+            assert!(!json.contains(&format!("\"{omitted}\":")), "{omitted}");
         }
         assert!(!json.contains("\"selector_precision\""));
         assert!(!json.contains("\"evidence_reference\""));
