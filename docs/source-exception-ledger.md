@@ -489,6 +489,10 @@ evidence repair before wider scans.
 When no policy config is found, doctor JSON may include
 `config.suggested_init_command` with the root-aware standalone initialization
 command for the diagnosed source tree.
+Absent optional `config` metadata is omitted rather than emitted as JSON null;
+`config.found` remains the required discriminator, and `config.valid` and
+`config.diagnostic` appear only when a policy was evaluated. Federation fields
+retain their existing contract in this slice.
 `--format json` emits the same setup diagnostics as `cargo-allow.doctor.v1` so
 CI or agent runners can verify which source tree, policy contract, policy owner,
 policy state, and inventory mode a command would use before running wider policy

@@ -594,6 +594,11 @@ When no policy config is found, doctor JSON may include
 `config.suggested_init_command` with the standalone `cargo-allow init --root`
 command for the diagnosed source tree. This field is additive and is omitted
 when a config is found.
+Doctor config metadata follows omit-when-absent semantics: `config.found` is
+always present, while absent path, policy metadata, validity, and diagnostics
+are omitted instead of represented as JSON `null`. Evidence counters retain
+their existing behavior: present, including zero, when a policy model loads;
+omitted when no policy model is available.
 
 Black-box integration tests also parse saved JSON artifacts written by the
 `cargo-allow` binary itself, including `--output` report-style artifacts,

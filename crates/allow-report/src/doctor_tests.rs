@@ -43,7 +43,6 @@ fn doctor_json_renderer_records_root_config_and_inventory() {
     assert!(json.contains("\"owner\": \"core/policy\""));
     assert!(json.contains("\"status\": \"active\""));
     assert!(json.contains("\"valid\": true"));
-    assert!(json.contains("\"diagnostic\": null"));
     assert!(json.contains("\"broken_evidence_links\": 0"));
     assert!(json.contains("\"weak_evidence_references\": 0"));
     assert!(json.contains("\"scanner\": \"source_syntax\""));
@@ -78,7 +77,6 @@ fn doctor_json_renderer_records_root_config_and_inventory() {
     "owner": "core/policy",
     "status": "active",
     "valid": true,
-    "diagnostic": null,
     "broken_evidence_links": 0,
     "weak_evidence_references": 0
   }},
@@ -173,9 +171,11 @@ fn doctor_json_renderer_suggests_init_when_config_is_missing() {
     });
 
     assert!(json.contains("\"found\": false"));
-    assert!(json.contains("\"path\": null"));
-    assert!(json.contains("\"valid\": null"));
-    assert!(json.contains("\"diagnostic\": null"));
+    let value = serde_json::from_str::<serde_json::Value>(&json)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("doctor JSON should parse: {err}")));
+    assert!(value.pointer("/config/path").is_none());
+    assert!(value.pointer("/config/valid").is_none());
+    assert!(value.pointer("/config/diagnostic").is_none());
     assert!(json.contains(
         "\"suggested_init_command\": \"cargo-allow init --root \\\"H:/Code/Rust/cargo-allow\\\"\""
     ));

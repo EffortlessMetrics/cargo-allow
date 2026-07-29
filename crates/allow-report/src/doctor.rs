@@ -179,73 +179,61 @@ pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
     ));
     out.push_str("  },\n");
     out.push_str("  \"config\": {\n");
-    out.push_str(&format!(
-        "    \"found\": {},\n",
+    let mut config_fields = vec![format!(
+        "    \"found\": {}",
         bool_json(facts.config_path.is_some())
-    ));
-    out.push_str(&format!(
-        "    \"path\": {},\n",
-        option_json(facts.config_path)
-    ));
-    out.push_str(&format!(
-        "    \"schema_version\": {},\n",
-        option_json(facts.config_schema_version)
-    ));
-    out.push_str(&format!(
-        "    \"policy\": {},\n",
-        option_json(facts.config_policy)
-    ));
-    out.push_str(&format!(
-        "    \"owner\": {},\n",
-        option_json(facts.config_owner)
-    ));
-    out.push_str(&format!(
-        "    \"status\": {},\n",
-        option_json(facts.config_status)
-    ));
-    out.push_str(&format!(
-        "    \"valid\": {},\n",
-        option_bool_json(facts.config_valid)
-    ));
-    out.push_str(&format!(
-        "    \"diagnostic\": {}",
-        option_json(facts.config_diagnostic)
-    ));
+    )];
+    push_optional_string_field(&mut config_fields, "path", facts.config_path);
+    push_optional_string_field(
+        &mut config_fields,
+        "schema_version",
+        facts.config_schema_version,
+    );
+    push_optional_string_field(&mut config_fields, "policy", facts.config_policy);
+    push_optional_string_field(&mut config_fields, "owner", facts.config_owner);
+    push_optional_string_field(&mut config_fields, "status", facts.config_status);
+    if let Some(valid) = facts.config_valid {
+        config_fields.push(format!("    \"valid\": {}", bool_json(valid)));
+    }
+    push_optional_string_field(&mut config_fields, "diagnostic", facts.config_diagnostic);
     if facts.config_path.is_none() {
-        out.push_str(&format!(
-            ",\n    \"suggested_init_command\": \"{}\"",
+        config_fields.push(format!(
+            "    \"suggested_init_command\": \"{}\"",
             json_escape(&suggested_init_command(facts.source_tree_root))
         ));
     }
     if let Some(count) = facts.broken_evidence_links {
-        out.push_str(&format!(",\n    \"broken_evidence_links\": {count}"));
+        config_fields.push(format!("    \"broken_evidence_links\": {count}"));
     }
     if let Some(count) = facts.weak_evidence_references {
-        out.push_str(&format!(",\n    \"weak_evidence_references\": {count}"));
+        config_fields.push(format!("    \"weak_evidence_references\": {count}"));
     }
     if facts.deleted_tracked_files > 0 {
-        out.push_str(&format!(
-            ",\n    \"deleted_tracked_files\": {}",
+        config_fields.push(format!(
+            "    \"deleted_tracked_files\": {}",
             facts.deleted_tracked_files
         ));
     }
     if let Some(git_error) = facts.git_inventory_error {
-        out.push_str(&format!(
-            ",\n    \"git_inventory_error\": \"{}\"",
+        config_fields.push(format!(
+            "    \"git_inventory_error\": \"{}\"",
             json_escape(git_error)
         ));
     }
     if facts.skipped_paths > 0 {
-        out.push_str(&format!(
-            ",\n    \"skipped_paths\": {}",
-            facts.skipped_paths
-        ));
+        config_fields.push(format!("    \"skipped_paths\": {}", facts.skipped_paths));
     }
     if facts.submodule_paths > 0 {
-        out.push_str(&format!(
-            ",\n    \"submodule_paths\": {}",
+        config_fields.push(format!(
+            "    \"submodule_paths\": {}",
             facts.submodule_paths
         ));
+    }
+    for (index, field) in config_fields.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str(field);
     }
     out.push_str("\n  },\n");
     append_federation_doctor_json(facts, &mut out);
@@ -425,6 +413,12 @@ fn option_bool_json(value: Option<bool>) -> &'static str {
         Some(true) => "true",
         Some(false) => "false",
         None => "null",
+    }
+}
+
+fn push_optional_string_field(fields: &mut Vec<String>, name: &str, value: Option<&str>) {
+    if let Some(value) = value {
+        fields.push(format!("    \"{name}\": \"{}\"", json_escape(value)));
     }
 }
 

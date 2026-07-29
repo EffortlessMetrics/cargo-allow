@@ -67,10 +67,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "found",
-        "path",
-        "valid",
-        "diagnostic"
+        "found"
       ],
       "properties": {
         "found": {
@@ -78,51 +75,45 @@
         },
         "path": {
           "type": [
-            "string",
-            "null"
-          ]
+            "string"
+          ],
+          "description": "Discovered policy path; omitted when no policy config was found."
         },
         "schema_version": {
           "type": [
-            "string",
-            "null"
+            "string"
           ],
-          "description": "Policy schema version loaded from the config when the policy parses successfully; null when no config is found or parsing fails before a policy model is available."
+          "description": "Policy schema version loaded from the config; omitted when unavailable."
         },
         "policy": {
           "type": [
-            "string",
-            "null"
+            "string"
           ],
-          "description": "Policy name loaded from the config when the policy parses successfully; null when no config is found or parsing fails before a policy model is available."
+          "description": "Policy name loaded from the config; omitted when unavailable."
         },
         "owner": {
           "type": [
-            "string",
-            "null"
+            "string"
           ],
-          "description": "Top-level policy owner loaded from the config when available; null when unset, no config is found, or parsing fails before a policy model is available."
+          "description": "Top-level policy owner loaded from the config; omitted when unset or unavailable."
         },
         "status": {
           "type": [
-            "string",
-            "null"
+            "string"
           ],
-          "description": "Top-level policy status loaded from the config when available; null when unset, no config is found, or parsing fails before a policy model is available."
+          "description": "Top-level policy status loaded from the config; omitted when unset or unavailable."
         },
         "valid": {
           "type": [
-            "boolean",
-            "null"
+            "boolean"
           ],
-          "description": "Whether the discovered policy parsed, passed policy validation, and had locally referenced evidence files present. Null when no config file was found."
+          "description": "Whether the discovered policy parsed, passed policy validation, and had locally referenced evidence files present; omitted when no config file was found."
         },
         "diagnostic": {
           "type": [
-            "string",
-            "null"
+            "string"
           ],
-          "description": "Validation diagnostic when config.valid is false; null when config is valid or no config was found."
+          "description": "Validation diagnostic when config.valid is false; omitted when config is valid or unavailable."
         },
         "suggested_init_command": {
           "type": "string",
