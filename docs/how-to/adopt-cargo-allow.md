@@ -10,6 +10,29 @@ no-new-debt enforcement path — the same path cargo-allow dogfoods on itself.
 - `cargo-allow` installed: `cargo install --git https://github.com/EffortlessMetrics/cargo-allow`
 - A git repository (cargo-allow scans git-tracked files)
 
+## Optional pre-commit integration
+
+cargo-allow also ships a pre-commit framework hook for the same blocking
+no-new check used in CI. The hook deliberately uses `language: system`: install
+the `cargo-allow` binary in the environment that runs pre-commit, then pin the
+repository revision in the consumer's `.pre-commit-config.yaml`.
+
+For the current unreleased candidate, use the source revision temporarily:
+
+```yaml
+repos:
+  - repo: https://github.com/EffortlessMetrics/cargo-allow
+    rev: main
+    hooks:
+      - id: cargo-allow
+```
+
+Replace `main` with the first release tag that contains this hook before
+adopting it as a stable consumer contract. The hook ignores filenames passed
+by pre-commit and scans the repository's tracked source tree, so it has the
+same scope as `cargo-allow check --mode no-new` in CI. Run it manually with
+`pre-commit run cargo-allow --all-files`.
+
 ## Step 1: Bootstrap a policy (first hour)
 
 From your repository root:
