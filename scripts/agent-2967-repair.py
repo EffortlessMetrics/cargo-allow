@@ -113,6 +113,13 @@ for parser_path in [
         f"support limitations alias in {parser_path}",
     )
 
+replace_once(
+    Path("crates/allow-policy/tests/three_product_design.rs"),
+    '        "identity-distinguishes-logical-package-lib",\n',
+    '        "identity-distinguishes-logical-path-alias-package-lib",\n',
+    "exact SPEC-0011 identity requirement",
+)
+
 replacement = r'''#[derive(serde::Deserialize)]
 struct ThreeProductCollapseRow {
     target_module: String,
