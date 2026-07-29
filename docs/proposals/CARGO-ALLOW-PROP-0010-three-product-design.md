@@ -4,10 +4,13 @@ kind: proposal
 status: accepted
 owner: repo-infra
 created: 2026-07-22
+updated: 2026-07-29
 linked_specs:
   - CARGO-ALLOW-SPEC-0010
+  - CARGO-ALLOW-SPEC-0011
 linked_adrs:
   - CARGO-ALLOW-ADR-0002
+  - CARGO-ALLOW-ADR-0003
 supersedes_product_vision_from:
   - CARGO-ALLOW-PROP-0001
 support_tier_impact: advisory
@@ -20,7 +23,7 @@ policy_impact:
 
 ## Summary
 
-The repository hosts three independently understandable products inside one
+The repository contains three independently understandable products inside one
 monorepo:
 
 ```text
@@ -29,192 +32,354 @@ cargo-intent  = durable authored intent and obligation compiler
 cargo-proof   = exact-snapshot evidence orchestration
 ```
 
-This proposal ratifies the product split decided in #2550, encodes the concrete
-crate topology owned by #2612, and becomes the current authority for builders,
-reviewers, tools, and future agents. It supersedes the product-vision portions
-of [CARGO-ALLOW-PROP-0001](CARGO-ALLOW-PROP-0001-spec-system-profile.md) that
-implied the spec-system lives as a permanent cargo-allow-owned product surface.
-PROP-0001 remains authoritative for the opt-in `spec-system` governance profile
-mechanics.
+The extraction scaffold now exists. The remaining work is convergence rather
+than crate creation: select one semantic owner for every concept, remove reverse
+dependencies and duplicate evaluators, collapse package boundaries that did not
+earn independent compatibility, apply final package identities and versions,
+and qualify each product from its own exact package closure.
 
-## Problem
-
-cargo-allow's source-exception ledger, repository-intent compiler, and proof
-orchestration currently share implementation namespaces, transitional modules,
-and release posture. That coupling makes it easy to mistake:
-
-- a source-exception finding for an intent obligation;
-- an inferred candidate for an authored decision;
-- a predictive grip receipt for execution proof;
-- a convenience CLI wrapper for a durable authority.
-
-Issue discussion (#2544, #2550, #2612, and descendants) now settles the product
-boundaries, but the retained repository artifacts still describe a single
-cargo-allow-owned spec-system. A fresh builder should not need issue archaeology
-to discover product ownership, dependency law, extraction sequencing, or claim
-boundaries.
-
-## Users And Surfaces
-
-- Maintainers: need one retained package that names three products, their crate
-  families, and what each product may not own.
-- Reviewers: need explicit claim boundaries before crate moves land.
-- Agent operators: need repository-native authority that survives chat loss.
-- Product surfaces: `cargo-allow`, future `cargo-intent`, future `cargo-proof`.
-- Repo surfaces: proposal, ADR, spec, plan, support tiers, artifact ledger, and
-  the fresh-agent reconstruction fixture under `tests/fixtures/three-product-design/`.
-
-## User Value
-
-The three-product split keeps each product independently releasable while
-preserving one documented operator journey:
+This proposal distinguishes three facts that earlier retained authority blurred:
 
 ```text
-cargo intent change status --staged --phase precommit
-cargo proof plan --phase precommit
-cargo proof run --phase precommit
+ObservedTopologyV1
+  the 27 packages that exist on the selected current source
+
+ExtractionScaffoldHistory
+  the maximum package graph used to expose and test candidate seams
+
+RatifiedConvergenceTopologyV1
+  the 22 package boundaries that should survive convergence
 ```
 
-Operators gain durable intent compilation and exact-snapshot proof without
-coupling the source-exception ledger to experimental intent or proof crates.
+Current existence is not permanent package ratification.
 
-## Proposed Shape
+## Product authorities
 
-### Product definitions
-
-| Product | Definition | Primary authority |
+| Product | Owns | Does not own |
 | --- | --- | --- |
-| cargo-allow | Direct source-tree exception ledger | `policy/allow.toml`, scanner identity, matching, lifecycle, mutation receipts |
-| cargo-intent | Durable authored intent and obligation compiler | proposals, specs, ADRs, initiatives, requirements, change contracts, slices, phase obligations |
-| cargo-proof | Exact-snapshot evidence orchestration | proof plans, provider execution, receipt validation, currentness, contradictions, phase gates |
+| cargo-allow | source selection and sensor capability, source-exception findings, `policy/allow.toml`, matching, lifecycle, no-new/diff posture, ledger mutation, cargo-allow reports and process-provider projection | durable repository intent, the private intent graph, proof execution, cross-provider currentness or phase gates |
+| cargo-intent | authored proposals/specs/ADRs/requirements/transactions, source-role and dialect resolution, the private compiled intent graph, phase obligations, bounded domain queries and later semantic edit settlement | source-exception ledger policy, proof-provider execution or final merge policy |
+| cargo-proof | proof planning, registered provider execution or captured-result ingestion, exact snapshot/config/tool currentness, receipt composition, contradictions and phase-gate evidence | authored product direction, cargo-allow matching semantics or provider-private analyzer meaning |
 
-### Crate topology
+The products may participate in one operator journey without becoming one
+semantic authority, one support tier or one release unit.
 
-Crate names and crate count are owned exclusively by #2612. This proposal
-references that topology; it does not reopen names or counts.
+## Current implementation state
+
+| Surface | Current status | Exact boundary |
+| --- | --- | --- |
+| cargo-allow published channel | `SupportedPublished` | `0.1.11`; registry and documentation evidence apply only to that release |
+| cargo-allow source candidate | `SupportedSourceCandidate` | workspace source is versioned `0.2.0`; no tag or publication is authorized |
+| cargo-intent | `LandedExperimental` | identity and staged-precommit change-status vertical exist; canonical graph/compiler cutover is incomplete |
+| cargo-proof | `LandedExperimental` | protocol, planning, dry-run, provider contracts and captured-report adapters exist; real product composition remains incomplete |
+| shared substrate | `LandedTransitional` | all four logical crates exist; package identity, independent versions and dependency neutrality are incomplete |
+| legacy intent compatibility | `CompatibilityOnly` / `BlockedOnParity` | one bounded process route exists; embedded current semantic authority remains to be removed |
+| physical repository extraction | `NotStarted` | not authorized by crate existence, package smoke or integrated dogfood |
+
+A crate, binary, fixture or local package smoke does not by itself promote
+support, complete an authority move or justify a permanent package boundary.
+
+## Observed and target package topology
+
+The selected current source contains 27 Cargo packages:
 
 ```text
-cargo-allow — existing ten crates, narrowed to source exceptions
-shared — repo-protocol, repo-snapshot, repo-edit, rust-source-index
-cargo-intent — intent-model, intent-protocol, intent-engine, intent-edit, cargo-intent
-cargo-proof — proof-protocol, proof-provider-api, proof-engine,
-              proof-adapter-command, proof-adapter-cargo-allow,
-              proof-adapter-ripr, proof-adapter-hawk, cargo-proof
+cargo-allow family   10
+shared substrate      4
+cargo-intent family   5
+cargo-proof scaffold  8
 ```
 
-### Sequencing corrections
+The retained target contains 22 packages:
 
-These decisions override any earlier implicit ordering:
+```text
+cargo-allow family   10
+shared substrate      4
+cargo-intent family   5
+cargo-proof family    3
+```
 
-| Decision | Rule |
+The five proof packages scheduled for package-to-module collapse are:
+
+```text
+proof-provider-api
+  → proof_engine::provider
+
+proof-adapter-command
+  → cargo_proof::providers::command
+
+proof-adapter-cargo-allow
+  → cargo_proof::providers::cargo_allow
+
+proof-adapter-ripr
+  → cargo_proof::providers::ripr
+
+proof-adapter-hawk
+  → cargo_proof::providers::hawk
+```
+
+Their provider, process and conformance semantics survive. Their independent
+Cargo package identities do not survive unless later evidence establishes an
+external consumer, independent compatibility contract, materially different
+toolchain/dependency boundary or measured build/distribution benefit.
+
+## Retained package families
+
+```text
+cargo-allow
+  allow-core, allow-policy, allow-inventory, allow-files, allow-rust,
+  allow-match, allow-report, allow-diff, allow-policy-legacy, cargo-allow
+
+shared substrate
+  repo-protocol, repo-snapshot, repo-edit, rust-source-index
+
+cargo-intent
+  intent-model, intent-protocol, intent-engine, intent-edit, cargo-intent
+
+cargo-proof
+  proof-protocol, proof-engine, cargo-proof
+```
+
+`policy/product-crates.toml`, its generation-2 successor and the checked package
+topology own the machine-readable current and target rows. This summary is a
+human projection, not another package manifest.
+
+## Semantic ownership inside the target
+
+### Generation-2 repository governance
+
+Repository-wide architecture/package/move/shim/parity authority is intent, not
+cargo-allow policy:
+
+```text
+intent-model
+  pure authored identity, package, move, shim, parity and cutover DTOs
+
+intent-engine
+  exact current/target reconciliation, Cargo-closure validation,
+  transition expiry and deletion eligibility
+
+cargo-intent / repository CI
+  validation operation and deterministic typed receipt
+
+allow-policy
+  policy/allow.toml source-exception semantics
+  historical/current compatibility adapters only during migration
+```
+
+Cargo-allow release workflows may consume a bounded typed validation receipt.
+Cargo-allow packages do not depend on intent libraries.
+
+### Intent model, protocol and engine
+
+```text
+intent-model
+  durable authored contracts and local validation
+
+intent-protocol
+  bounded query, view, obligation, diagnostic, edit-plan and settlement DTOs
+
+intent-engine
+  private graph, source/authority compilation, graph comparison,
+  phase policy and bounded query implementation
+
+intent-edit
+  explicit semantic authoring, repo-edit translation, recompile and settlement
+```
+
+The graph is disposable private IR. Public consumers do not traverse it.
+
+### Proof protocol, engine and application
+
+```text
+proof-protocol
+  wire DTOs, canonical serialization and local structural validation
+
+proof-engine
+  provider-neutral planning, execution policy, currentness/cache reuse,
+  capability satisfaction, contradiction, aggregation and phase-gate semantics
+
+cargo-proof
+  CLI/application plus deterministic feature-gated built-in provider registry
+```
+
+Provider-specific payloads remain namespaced. Process success is never sufficient
+to claim an obligation is satisfied.
+
+## Shared package identities and physical paths
+
+Logical ID, workspace path, dependency alias, Cargo package and Rust library are
+separate checked identities. The approved migration is:
+
+| Logical ID | Current path | Target path | Cargo package | Rust library |
+| --- | --- | --- | --- | --- |
+| `repo-protocol` | `crates/repo-protocol` | `crates/effortless-repo-protocol` | `effortless-repo-protocol` | `repo_protocol` |
+| `repo-snapshot` | `crates/repo-snapshot` | `crates/effortless-repo-snapshot` | `effortless-repo-snapshot` | `repo_snapshot` |
+| `repo-edit` | `crates/repo-edit` | `crates/effortless-repo-edit` | `effortless-repo-edit` | `repo_edit` |
+| `rust-source-index` | `crates/rust-source-index` | `crates/effortless-rust-source-index` | `effortless-rust-source-index` | `rust_source_index` |
+
+`logical_id` is stable. `workspace_path` is exact current physical identity and
+may change only through a reviewed migration generation. Concise dependency
+aliases and Rust import names may remain unchanged.
+
+## Version and publication posture
+
+Before first publication of newly extracted packages:
+
+```text
+cargo-allow family      0.2.0 release train
+shared substrate        explicit 0.1.0 experimental/transitive lines
+cargo-intent family     explicit 0.1.0 experimental lines
+cargo-proof family      explicit 0.1.0 experimental lines
+```
+
+Equal experimental versions are a development cohort, not a lockstep
+compatibility promise. The five proof packages scheduled for deletion receive
+no final version, publication row or compatibility placeholder.
+
+Registry visibility, direct-library support, product support and physical
+repository extraction remain separate decisions. The external `effortless`
+suite bootstrap is a functional installer/updater/doctor and does not enter a
+product dependency closure.
+
+## Dependency direction
+
+In the following, `A → B` means **A depends on B**:
+
+```text
+shared substrate
+  → no allow, intent or proof product-domain crate
+
+intent-engine
+  → intent-model + intent-protocol + neutral snapshot/index substrate
+  → no intent-edit, proof engine or cargo-allow private implementation
+
+intent-edit
+  → intent-engine + intent-protocol + repo-edit
+
+proof-engine
+  → proof-protocol + intent-protocol + neutral repository substrate
+  → no intent-engine, cargo-proof provider module or cargo-allow private crate
+
+cargo-proof provider modules
+  → proof-engine public provider/execution surface
+  → exact public/process contract of the selected provider
+
+cargo-allow compatibility
+  → installed cargo-intent process protocol
+  → no intent/proof library dependency and no semantic fallback
+```
+
+The compatibility path is one-way process delegation from cargo-allow to the
+installed cargo-intent product; no reverse library dependency or embedded
+semantic fallback is part of the target.
+
+Temporary reverse edges require an exact move/shim row, parity case, expiry and
+deletion condition. They are visible non-final state, not evidence that the
+architecture is clean.
+
+## Convergence sequence
+
+```text
+A  rebuild retained generation-2 authority from current main
+B  integrate parsed reconstruction and compatibility contracts
+C  select strict generation-2 identities and current/target Cargo closures
+D  converge one canonical intent model/compiler/evaluator and remove fallback
+E  make selected shared packages product-neutral
+F  converge proof semantics and providers into the retained three-package family
+G  delete the five obsolete proof packages; observed topology becomes 22
+H  physically move/rename shared packages and split survivor version lines
+I  qualify the exact cargo-allow package/install/journey candidate
+J  close mutation, scanner, release-evidence, provenance and registry trust
+K  exact refreeze, explicit maintainer authorization and publication
+```
+
+Every dependent writer starts from merged `main`. A lane continues through
+implementation, focused proof, review, valid repairs, complete hosted CI, thread
+resolution, merge and merged-main verification. Opening a PR, reaching “ready
+for review” or obtaining one green job is not completion.
+
+## Release boundaries
+
+### cargo-allow 0.2.x
+
+The architecture gate requires truthful V2 authority, one canonical intent
+evaluator with no embedded fallback, observed topology converged to 22, a clean
+selected shared closure, final survivor identities, and the exact cargo-allow
+candidate/release-trust train.
+
+Full cargo-proof product qualification is not a cargo-allow release prerequisite
+unless the selected cargo-allow support matrix explicitly includes that
+integrated claim.
+
+### cargo-intent 0.1.x
+
+Cargo-intent remains experimental until its own selected compiler/query/product
+surface, independent package candidate and support evidence are qualified.
+Cargo-allow requires only the minimum canonical intent cutover and installed
+compatibility route needed to eliminate duplicate current authority.
+
+### cargo-proof 0.1.x
+
+Package-topology convergence removes obsolete package identities before
+cargo-allow 0.2. The full isolated three-package cargo-proof candidate, provider
+feature matrix and support/publication evidence remain an independent later gate.
+
+## Repository extraction
+
+For the strict generation-1 compatibility contract and the current retained
+position alike, repository extraction is **not authorized**.
+
+Physical repository extraction becomes eligible only after independent
+package/CI/support closures, public-boundary external dogfood, shim and
+private-path deletion, simplification review and a later explicit authorization
+naming the repositories and exact source state to move.
+
+## Machine-source law
+
+| Concern | Canonical source |
 | --- | --- |
-| Rust subject extraction | Move `rust-source-index` before full `intent-engine` migration |
-| Repository editing | Defer `repo-edit` until after read-only cargo-intent vertical and compatibility cutover (#2601) |
-| Shared-crate publication | `publish = false` until a published product must depend on it; #2604 must add to publish/package order first |
-| Intent migration compatibility | Never introduce `cargo-allow → intent` library dependency; parity window then one-way process delegation |
+| retained semantic decision | this proposal, ADR-0002, ADR-0003 and SPEC-0011 |
+| current/target logical topology and roles | generation-2 architecture authority under #2921/#2942 |
+| exact Cargo closure and transition diagnostics | intent-engine validation under #2922 |
+| selected current enforcement and typed receipt | #2923 via cargo-intent/repository CI |
+| current source disposition and deletion output | `policy/product-move-ledger.toml` / #2598 |
+| temporary compatibility | `policy/extraction-shims.toml` / #2607 |
+| parity and cutover evidence | `policy/extraction-parity.toml` / #2606 |
+| package/version/publication/candidate posture | `policy/product-package-topology.toml` / #2604 |
+| release authorization | #2371, #2501 and #2502 |
 
-### Compatibility
+Human diagrams and tables are generated or contract-checked projections. A new
+package, package-to-module collapse, path move, package rename, version-source
+change or authority move updates every affected machine authority in one
+reviewed migration.
 
-Legacy `cargo-allow spec ...` commands delegate one-way to an installed
-`cargo-intent` process (#2601). There is no retained cargo-allow evaluator and
-no library dependency on intent-engine.
+## Success criteria
 
-### Repository extraction
+- A fresh builder can distinguish observed 27 from target 22 and identify every
+  collapse destination.
+- One concept has one semantic owner.
+- Shared substrate has no production dependency on product ontology.
+- One intent compiler and phase evaluator remain after cutover.
+- Proof protocol is data-oriented and proof engine is the sole evidence-semantic
+  evaluator.
+- Cargo-allow packages and runs with sibling product source trees absent.
+- Each product is qualified from its exact selected package bytes rather than
+  the ambient workspace.
+- Repository extraction, if later chosen, requires no semantic redesign.
 
-Physical repository extraction is **not authorized** by this package. The
-monorepo remains the implementation home until Issue #2558 dogfood, Issue #2605
-exact-candidate interop, and Issue #2559 extraction-readiness evidence all pass.
-Those gates are necessary but do not replace a later explicit
-repository-extraction authorization.
+## Non-goals
 
-## Authority Disposition Map
+- Changing package names, paths, versions or Cargo.lock in this authority PR.
+- Moving semantic implementation or deleting packages in this authority PR.
+- Promoting cargo-intent or cargo-proof because their scaffolds exist.
+- Exposing a public raw intent graph.
+- Tagging, publishing or authorizing physical repository extraction.
 
-Explicit classification of existing authority. Do not treat this table as a
-second ledger; the artifact registry remains
-`.allow/artifacts/doc-artifacts.toml`.
+## Claim boundary
 
-| Artifact / issue | Disposition | Notes |
-| --- | --- | --- |
-| CARGO-ALLOW-PROP-0001 | CurrentSupporting | Profile mechanics, artifact graph, worklist/doctor remain valid |
-| CARGO-ALLOW-PROP-0001 product vision | SupersededWithReplacement | Product ownership replaced by CARGO-ALLOW-PROP-0010 |
-| CARGO-ALLOW-SPEC-0001 | CurrentSupporting | Structural profile contract; product commands migrate to cargo-intent |
-| CARGO-ALLOW-SPEC-0009 | CurrentSupporting | Runtime-promotion invariant remains bounded self-hosted control-plane law |
-| CARGO-ALLOW-ADR-0001 | CurrentSupporting | Federation precedence remains valid for ledger composition |
-| plans/spec-system/implementation-plan.md | HistoricalOnly | Pre-three-product sequencing; see plans/three-product-crate-extraction.md |
-| allow-policy::spec_system | GeneratedOrDerived | Transitional source location for intent semantics; not cargo-allow ownership |
-| cargo-allow spec_system* modules | GeneratedOrDerived | Transitional; delete or delegate after #2601/#2568 parity |
-| #2550 | CurrentCanonical | Three-product authority law (encoded here) |
-| #2612 | CurrentCanonical | Crate names, counts, stage gates (referenced, not duplicated) |
-| #2598 | CurrentSupporting | Move/deletion ledger implementation owner; not started in this PR |
-| Chat / issue comments | HistoricalOnly | Provenance only after this package lands |
-
-## Alternatives Considered
-
-| Alternative | Reason not chosen |
-| --- | --- |
-| Keep spec-system inside cargo-allow permanently | Couples ledger release stability to experimental intent/proof schemas |
-| One universal `common` crate | Becomes a second ontology and violates #2612 non-crate list |
-| Immediate repository split | Public/process boundaries unproven; extraction deferred per #2559 |
-| Library embedding for compatibility | Violates one-way process delegation and cargo-allow independence law |
-| One release/version for all products | Independent support tiers and semver required per product |
-
-## Success Criteria
-
-- One retained proposal, ADR, spec, and plan define three products without
-  duplicate authority.
-- Disposition map classifies prior artifacts without silently rewriting history.
-- Sequencing corrections are explicit and match #2612 stage gates.
-- Fresh-agent reconstruction fixture answers the #2544 review questions from
-  repository sources alone.
-- `cargo-allow check --profile spec-system --mode audit` validates the new
-  artifact graph.
-
-## Specs To Create
-
-- [CARGO-ALLOW-SPEC-0010](../specs/CARGO-ALLOW-SPEC-0010-three-product-boundaries.md)
-
-## Support-Tier Impact
-
-Adds advisory rows for cargo-intent and cargo-proof experimental posture.
-Updates spec-system row to note three-product authority without claiming shipped
-intent/proof products.
-
-## Policy Impact
-
-- `.allow/artifacts/doc-artifacts.toml` — register new proposal, ADR, spec, plan.
-- `docs/status/SUPPORT_TIERS.md` — product claim boundaries.
-
-## Required Evidence
-
-- `cargo test -p allow-policy spec_system_design_package`
-- `cargo test -p cargo-allow spec_design_artifact_links`
-- `cargo run -p cargo-allow -- check --profile spec-system --mode audit`
-
-## Non-Goals
-
-- Moving Rust modules or creating crates (#2598 and later issues).
-- Beginning #2598 move-ledger implementation on this branch.
-- Physical repository extraction.
-- Making cargo-intent or cargo-proof prerequisites for cargo-allow.
-- Preserving duplicate embedded spec-system evaluators.
-
-## Claim Boundary
-
-This proposal records the three-product architecture, disposition of prior
-authority, sequencing corrections, and monorepo extraction posture. It does
-not move code, prove semantic parity, certify independent product releases, or
-authorize repository extraction.
-
-## Risks
-
-| Risk | Mitigation |
-| --- | --- |
-| Silent dual authority during migration | #2598 move ledger, #2606 parity receipts, #2607 shim bounds |
-| Convenience CLI erases product claims | Separate binaries, support tiers, and one-way delegation only |
-| Shared protocols become ontology dump | #2612 forbidden edges and small envelope-only repo-protocol |
-
-## Rollback Or Withdrawal
-
-Withdraw by superseding CARGO-ALLOW-PROP-0010, removing linked ADR/spec/plan
-ledger entries, and restoring PROP-0001 as the sole product-vision artifact.
-Default cargo-allow source-exception behavior is unaffected.
+This proposal records the current three-product state, observed and target
+package topology, final semantic owners, package-identity direction, independent
+release boundaries and convergence order. It does not prove current code
+compliance, perform a migration, qualify a product candidate, authorize
+cargo-allow 0.2 or authorize repository extraction.

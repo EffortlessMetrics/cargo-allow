@@ -1,9 +1,11 @@
 ---
 id: CARGO-ALLOW-SPEC-0010
 kind: spec
-status: accepted
+status: superseded
 owner: repo-infra
 created: 2026-07-22
+superseded_on: 2026-07-29
+superseded_by: CARGO-ALLOW-SPEC-0011
 linked_proposal: CARGO-ALLOW-PROP-0010
 linked_adrs:
   - CARGO-ALLOW-ADR-0002
@@ -15,17 +17,29 @@ policy_impact:
 
 # Spec: Three-Product Boundary Requirements
 
-## Summary
+## Historical status
 
-Normative atomic requirements for separating cargo-allow, cargo-intent, and
-cargo-proof inside one monorepo. Crate names and counts are referenced from
-Issue #2612 only; this spec owns product-boundary law.
+This is the accepted generation-1 product-boundary and crate-extraction record.
+The maximum 27-package scaffold subsequently landed and a simplification review
+ratified a 22-package target. CARGO-ALLOW-SPEC-0011 now owns current convergence,
+package survival, semantic cutover, exact-candidate and release behavior.
 
-## Behavior Contract
+The original requirements are retained below for provenance. They do not
+silently remain current sequencing authority.
 
-The repository must satisfy the following requirements.
+## Exact supersession map
 
-### Authority and products
+| Generation-1 requirement | Generation-2 replacement |
+| --- | --- |
+| `crate-topology-owned-by-2612` | `CARGO-ALLOW-SPEC-0011#observed-and-target-topologies-distinct` and the checked generation-2 authority |
+| `rust-source-index-before-intent-engine` | `CARGO-ALLOW-SPEC-0011#shared-substrate-dependency-neutral` and `#intent-engine-single-read-only-compiler` |
+| `repo-edit-deferred` | `CARGO-ALLOW-SPEC-0011#repo-edit-neutral-selected-closure` and the ADR-0002 read-only/mutation boundary |
+| `shared-publish-false-until-2604` | `CARGO-ALLOW-SPEC-0011#package-topology-single-authority` and ADR-0003 publication posture |
+
+The remaining generation-1 requirements are supporting historical statements
+only where they do not conflict with CARGO-ALLOW-SPEC-0011.
+
+## Original behavior contract
 
 ```toml cargo-allow-requirements
 schema_version = "1.0"
@@ -48,13 +62,8 @@ claim_class = "governance_structure"
 id = "repository-extraction-not-authorized"
 generation = 1
 status = "accepted"
-statement = "Physical repository extraction is not authorized by the three-product design package; monorepo implementation continues until Issue #2558 dogfood, Issue #2605 exact-candidate interop, and Issue #2559 extraction-readiness evidence all pass, after which a separate explicit authorization is still required."
+statement = "Physical repository extraction is not authorized by the three-product design package; monorepo implementation continues until independent package, dogfood, compatibility, support and rollback evidence passes, after which a separate explicit authorization is still required."
 claim_class = "governance_structure"
-```
-
-### Dependency law
-
-```toml cargo-allow-requirements
 
 [[requirement]]
 id = "cargo-allow-no-intent-proof-lib-dep"
@@ -67,7 +76,7 @@ claim_class = "dependency_law"
 id = "intent-no-proof-dep"
 generation = 1
 status = "accepted"
-statement = "cargo-intent must not depend on cargo-proof crates; intent-protocol is proof-engine's only cargo-intent dependency, while proof-engine may also depend on its proof and shared-substrate crates."
+statement = "cargo-intent must not depend on cargo-proof crates; intent-protocol is proof-engine's only cargo-intent dependency."
 claim_class = "dependency_law"
 
 [[requirement]]
@@ -76,11 +85,6 @@ generation = 1
 status = "accepted"
 statement = "shared protocol crates contain transport identities and envelopes only; they must not accumulate product-domain ontologies."
 claim_class = "dependency_law"
-```
-
-### Sequencing
-
-```toml cargo-allow-requirements
 
 [[requirement]]
 id = "rust-source-index-before-intent-engine"
@@ -93,20 +97,15 @@ claim_class = "extraction_sequence"
 id = "repo-edit-deferred"
 generation = 1
 status = "accepted"
-statement = "repo-edit extraction is deferred until after the read-only cargo-intent vertical and compatibility cutover (#2601)."
+statement = "repo-edit extraction is deferred until after the first read-only cargo-intent vertical."
 claim_class = "extraction_sequence"
 
 [[requirement]]
 id = "shared-publish-false-until-2604"
 generation = 1
 status = "accepted"
-statement = "shared crates remain publish=false until #2604 adds them to reviewed publish/package order and a published product requires the dependency."
+statement = "shared crates remain unpublished until package topology adds them to a reviewed product closure and publish order."
 claim_class = "extraction_sequence"
-```
-
-### Compatibility and deletion
-
-```toml cargo-allow-requirements
 
 [[requirement]]
 id = "one-way-process-delegation"
@@ -119,106 +118,44 @@ claim_class = "compatibility"
 id = "no-duplicate-semantic-authority"
 generation = 1
 status = "accepted"
-statement = "No unbounded transition may leave duplicate semantic implementations of intent or proof authority; #2598 records deletion conditions."
+statement = "No unbounded transition may leave duplicate semantic implementations of intent or proof authority; the move ledger records deletion conditions."
 claim_class = "compatibility"
 ```
 
-The system must not:
+## Historical rejected states
+
+The system was not permitted to:
 
 - treat transitional `spec_system` modules as proof that cargo-allow owns intent;
-- introduce cargo-allow → intent-engine library dependencies;
-- add convenience crates from the #2612 explicit non-crate list without a
-  reviewed topology change;
+- introduce cargo-allow to intent-engine library dependencies;
 - infer product separation from matching CLI output alone;
-- authorize repository extraction before #2558, #2605, and #2559 all pass or
-  without a separate explicit authorization after those gates.
+- authorize repository extraction solely because an integrated smoke passed; or
+- leave duplicate semantic authority without an exact deletion denominator.
 
-## Inputs
+Those principles remain current where CARGO-ALLOW-SPEC-0011 does not define a
+more exact contract.
 
-| Input | Required | Notes |
-| --- | --- | --- |
-| CARGO-ALLOW-PROP-0010 | Yes | Product definitions and disposition map |
-| CARGO-ALLOW-ADR-0002 | Yes | Ownership and dependency direction |
-| #2612 topology | Yes | Crate names, counts, stage gates |
-| plans/three-product-crate-extraction.md | Yes | Wave sequencing and PR boundaries |
+## Current successor inputs
 
-## Outputs
+Generation-2 builders consume:
 
-| Output | Required | Notes |
-| --- | --- | --- |
-| Registered artifact graph | Yes | `.allow/artifacts/doc-artifacts.toml` |
-| Support-tier rows | Yes | `docs/status/SUPPORT_TIERS.md` |
-| Reconstruction fixture | Yes | `tests/fixtures/three-product-design/` |
+- CARGO-ALLOW-PROP-0010;
+- CARGO-ALLOW-ADR-0002 and ADR-0003;
+- CARGO-ALLOW-SPEC-0011;
+- the generation-2 architecture and package authorities;
+- `policy/product-move-ledger.toml`;
+- `policy/extraction-shims.toml`; and
+- `policy/extraction-parity.toml`.
 
-## Accepted States
+## Non-goals
 
-- Three products named with independent claim boundaries in retained artifacts.
-- Sequencing corrections recorded and consistent with #2612 stages.
-- Artifact ledger links proposal → ADR → spec → plan.
-- Fresh-agent fixture answers #2544 reconstruction questions.
+This historical specification does not override CARGO-ALLOW-SPEC-0011, prove
+current code compliance, authorize package publication or cargo-allow 0.2, or
+authorize physical repository extraction.
 
-## Rejected States
+## Claim boundary
 
-- cargo-allow library dependency on intent or proof crates.
-- Undocumented crate additions outside #2612 topology.
-- repo-edit before read-only cargo-intent vertical and #2601 cutover.
-- Physical repository extraction claimed as authorized.
-- Silent rewrite of CARGO-ALLOW-PROP-0001 without supersession link.
-
-## Artifact Links
-
-- Linked proposal: [CARGO-ALLOW-PROP-0010](../proposals/CARGO-ALLOW-PROP-0010-three-product-design.md)
-- Linked ADR: [CARGO-ALLOW-ADR-0002](../adr/CARGO-ALLOW-ADR-0002-three-product-ownership.md)
-- Linked implementation plan: [plans/three-product-crate-extraction.md](../../plans/three-product-crate-extraction.md)
-- Linked support-tier surface: [CARGO-ALLOW-SUPPORT-0001](../status/SUPPORT_TIERS.md)
-- Controlling issues: #2544, #2550, #2612, #2598, #2580, #2604, #2606, #2607
-
-## Support-Tier Impact
-
-Defines advisory experimental posture for cargo-intent and cargo-proof until
-independent exact-candidate proof exists. Does not promote any product to
-stable.
-
-## Policy Impact
-
-Registers spec in doc-artifacts.toml. Future #2580 manifest must encode
-forbidden edges from this spec.
-
-## Required Evidence
-
-```bash
-cargo test -p allow-policy spec_system_design_package --locked -- --nocapture
-cargo test -p cargo-allow spec_design_artifact_links --locked -- --nocapture
-cargo run -p cargo-allow -- check --profile spec-system --mode audit
-```
-
-## Acceptance Examples
-
-### Example: Accepted
-
-A documentation PR registers PROP-0010, ADR-0002, SPEC-0010, and PLAN-0010,
-updates support tiers, and passes spec-system audit without moving Rust code.
-
-### Example: Rejected
-
-A PR creates `intent-source` as a convenience crate without updating the crate
-topology owner (#2612) and architecture manifest (#2580) — violates
-`crate-topology-owned-by-2612`.
-
-## Non-Goals
-
-- Implementing crate skeletons or module moves.
-- Defining every future cargo-intent or cargo-proof command.
-- Machine-enforcing dependency law (owned by #2580 implementation).
-- Proving semantic parity (owned by #2606).
-
-## Claim Boundary
-
-This spec defines normative three-product boundary requirements and sequencing
-law for repository-native authority. It does not prove code compliance, execute
-proof commands, or certify product releases.
-
-## Rollback Or Compatibility
-
-Revert by superseding CARGO-ALLOW-SPEC-0010 and removing ledger links. Prior
-PROP-0001/SPEC-0001 profile contracts remain for structural spec-system checks.
+This file preserves the generation-1 product-boundary and extraction requirements
+and records their exact successor. Current topology, convergence, cutover,
+package and release claims come from CARGO-ALLOW-SPEC-0011 and its checked
+machine authorities.
