@@ -196,6 +196,58 @@ fn render_list_human_columns_selects_subset_and_preserves_order() {
 }
 
 #[test]
+fn list_concise_summary_and_empty_states_are_explicit() {
+    let long_reason = "this reason is intentionally long so the concise list view must bound repository-controlled free text without changing the wide projection";
+    let rows = [ListRow {
+        id: "allow-0001",
+        status: "review_due",
+        matches: 2,
+        kind: "panic",
+        family: Some("unwrap"),
+        owner: "parser",
+        classification: "reviewed_exception",
+        scope: "src/lib.rs",
+        source_package: Some("allow-core"),
+        evidence_count: 1,
+        broken_evidence_references: 1,
+        weak_evidence_references: 2,
+        selector_precision: 7,
+        broad_scope: false,
+        review_after: Some("2026-10-01"),
+        expires: None,
+        reason: long_reason,
+    }];
+    let filters = ListFilters {
+        owner: Some("parser"),
+        ..ListFilters::default()
+    };
+    let inventory = InventoryContext::source_syntax("git_tracked", None, Some(4));
+
+    let text = render_list_human_concise(&rows, inventory, filters, ListColumn::DEFAULT);
+    assert!(text.contains("summary: 1 allow entries shown"));
+    assert!(text.contains("review_due: 1"));
+    assert!(text.contains("broken evidence: 1"));
+    assert!(text.contains("weak evidence: 2"));
+    assert!(text.contains('…'));
+    assert!(!text.contains(long_reason));
+
+    let filtered_empty = render_list_human_concise(&[], inventory, filters, ListColumn::DEFAULT);
+    assert!(filtered_empty.contains("(no allow entries matched filters)"));
+
+    let ledger_empty =
+        render_list_human_concise(&[], inventory, ListFilters::default(), ListColumn::DEFAULT);
+    assert!(ledger_empty.contains("(no allow entries are configured)"));
+
+    let inventory_empty = render_list_human_concise(
+        &[],
+        inventory.with_empty_git_tracked(true),
+        ListFilters::default(),
+        ListColumn::DEFAULT,
+    );
+    assert!(inventory_empty.contains("(no tracked source files were found; inventory is empty)"));
+}
+
+#[test]
 fn render_list_human_sanitizes_repository_control_characters() {
     let rows = vec![ListRow {
         id: "allow-\n001",
@@ -234,6 +286,42 @@ fn render_list_human_sanitizes_repository_control_characters() {
     assert!(!text.contains("parser\tteam"));
     assert!(!text.contains('\u{1b}'));
     assert!(!text.contains('\u{7f}'));
+}
+
+#[test]
+fn list_terminal_safety_is_preserved_in_concise_view() {
+    let rows = [ListRow {
+        id: "allow-\n001",
+        status: "matched",
+        matches: 1,
+        kind: "panic",
+        family: Some("unwrap"),
+        owner: "parser\tteam",
+        classification: "approved",
+        scope: "src/\u{1b}[31mevil.rs",
+        source_package: None,
+        evidence_count: 0,
+        broken_evidence_references: 0,
+        weak_evidence_references: 0,
+        selector_precision: 1,
+        broad_scope: false,
+        review_after: None,
+        expires: None,
+        reason: "line one\r\nline two\u{7f}",
+    }];
+    let text = render_list_human_concise(
+        &rows,
+        InventoryContext::unknown_source_syntax(),
+        ListFilters::default(),
+        ListColumn::DEFAULT,
+    );
+
+    assert!(!text.contains("allow-\n001"));
+    assert!(!text.contains("parser\tteam"));
+    assert!(!text.contains('\u{1b}'));
+    assert!(!text.contains('\u{7f}'));
+    assert!(text.contains("allow-\\n001"));
+    assert!(text.contains("parser\\tteam"));
 }
 
 #[test]

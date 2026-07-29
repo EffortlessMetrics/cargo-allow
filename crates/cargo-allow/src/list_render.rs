@@ -18,8 +18,7 @@ pub(super) fn render_list_rows_with_context(
 }
 
 /// Render the list human-format TSV with a column subset (#2595).
-/// `columns` is the resolved projection (defaults to `ListColumn::ALL`
-/// upstream when `--columns` is not supplied).
+/// `columns` is the resolved projection for an explicit human view.
 pub(super) fn render_list_rows_with_columns(
     rows: &[ListRow],
     filters: &ListFilters<'_>,
@@ -29,6 +28,21 @@ pub(super) fn render_list_rows_with_columns(
     allow_report::render_list_human_columns(
         &report_list_rows(rows, filters),
         context.inventory,
+        columns,
+    )
+}
+
+pub(super) fn render_list_rows_concise(
+    rows: &[ListRow],
+    filters: &ListFilters<'_>,
+    context: ListContext<'_>,
+    columns: &[allow_report::ListColumn],
+) -> String {
+    let report_rows = report_list_rows(rows, filters);
+    allow_report::render_list_human_concise(
+        &report_rows,
+        context.inventory,
+        report_list_filters(filters, context),
         columns,
     )
 }

@@ -23,7 +23,7 @@ pub(super) struct ListRow {
     pub(super) reason: String,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub(super) struct ListFilters<'a> {
     pub(super) kind: Option<KindFilter>,
     pub(super) family: Option<&'a str>,

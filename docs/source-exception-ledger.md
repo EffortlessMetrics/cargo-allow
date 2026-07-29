@@ -428,8 +428,14 @@ unsafe functions, unsafe impls, unsafe traits, unsafe extern blocks, direct
 also treated as repository text; cargo-allow does not evaluate whether the cfg
 condition is active.
 
-`cargo-allow list` shows allow entries with current status, match count, kind,
-family, owner, classification, scope, scanner-provided source package context,
+`cargo-allow list` defaults to a concise human projection of allow entries with
+bounded ID, status, kind, scope, owner, and reason cells. It begins with a
+deterministic count/status/evidence summary and distinguishes an empty ledger,
+an empty filtered view, and an empty tracked-source inventory. Long repository
+values are ellipsized in this concise view; `--wide` or explicit `--columns`
+retains the complete human projection. JSON remains complete and unchanged.
+The full row includes current status, match count, kind, family, owner,
+classification, scope, scanner-provided source package context,
 evidence-reference count, broken local evidence-reference count, weak
 evidence-reference count, selector precision, broad-scope status, lifecycle
 dates, and reason. Broken and weak reference counts include typed local-file
