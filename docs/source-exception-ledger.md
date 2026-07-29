@@ -106,6 +106,10 @@ Diff mode reports top-level policy `status` changes with the synthetic
 is policy weakening, changing `advisory` or an unset status to `active` is a
 policy improvement, and other status transitions require review.
 
+> **Note:** `status` is an informational label tracked by `diff` for posture
+> review. It does **not** affect `check --mode no-new` enforcement — a policy
+> marked `status = "advisory"` still fails the no-new gate on new findings.
+
 Diff mode also compares policy-level `[requirements]` booleans. Loosening a
 requirement is policy weakening, tightening one is a policy improvement, and the
 reported policy-change `allow_id` uses a synthetic stable path such as
