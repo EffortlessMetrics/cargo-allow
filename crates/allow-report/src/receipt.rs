@@ -4,7 +4,8 @@ use crate::contracts::{CLAIM_BOUNDARY, RECEIPT_ARTIFACT, SCANNER_LIMITATIONS};
 use crate::evidence_repair::evidence_repair_queues_from_context;
 use crate::source_inventory::render_source_inventory_value;
 use crate::{
-    ARTIFACT_STATUS_ERROR, RECEIPT_COMMAND_CHECK, ReportContext, STATUS_COUNT_ORDER, Summary,
+    ARTIFACT_STATUS_ERROR, RECEIPT_COMMAND_CHECK, RECEIPT_COMMANDS, ReportContext,
+    STATUS_COUNT_ORDER, Summary,
 };
 use allow_core::{Finding, MatchOutcome};
 use serde_json::{Map, Value};
@@ -52,9 +53,9 @@ fn render_receipt_json(
     failed: bool,
     context: ReportContext<'_>,
 ) -> String {
-    assert_eq!(
-        command, RECEIPT_COMMAND_CHECK,
-        "receipt artifacts support only the check command"
+    assert!(
+        RECEIPT_COMMANDS.contains(&command),
+        "receipt artifacts support only registered receipt commands"
     );
     let summary = Summary::from_outcomes(outcomes);
     render_receipt_value(ReceiptRenderInput {

@@ -105,6 +105,15 @@ fn schema_index_artifact_table_matches_registered_producers() {
                     contract.name
                 );
             }
+        } else if contract.schema_id == allow_report::RECEIPT_SCHEMA_ID {
+            for command in allow_report::RECEIPT_COMMANDS {
+                let producer = format!("`cargo-allow {command}");
+                assert!(
+                    row.contains(&producer),
+                    "{} schema index row should document receipt producer command {producer}`",
+                    contract.name
+                );
+            }
         } else if let Some(command) = contract.fixed_command {
             let producer = format!("`cargo-allow {command}");
             assert!(

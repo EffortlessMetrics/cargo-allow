@@ -63,6 +63,8 @@ pub const REPORT_COMMANDS: &[&str] = &[
     REPORT_COMMAND_DIFF,
 ];
 pub const RECEIPT_COMMAND_CHECK: &str = "check";
+pub const RECEIPT_COMMAND_DIFF: &str = "diff";
+pub const RECEIPT_COMMANDS: &[&str] = &[RECEIPT_COMMAND_CHECK, RECEIPT_COMMAND_DIFF];
 
 pub const INVENTORY_SCOPE_SOURCE_TREE: &str = "source_tree";
 pub const INVENTORY_SCANNER_SOURCE_SYNTAX: &str = "source_syntax";
@@ -163,7 +165,7 @@ pub(crate) const RECEIPT_ARTIFACT: ArtifactContract = ArtifactContract {
     schema_id: RECEIPT_SCHEMA_ID,
     schema_version: RECEIPT_SCHEMA_VERSION,
     inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
-    fixed_command: Some(RECEIPT_COMMAND_CHECK),
+    fixed_command: None,
 };
 
 pub(crate) const REPORT_ARTIFACT: ArtifactContract = ArtifactContract {

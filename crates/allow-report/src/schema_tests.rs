@@ -146,10 +146,12 @@ fn schemas_reference_current_contract_ids() {
             "report schema should include report command `{command}`"
         );
     }
-    assert!(
-        receipt_schema.contains(&format!("\"{RECEIPT_COMMAND_CHECK}\"")),
-        "receipt schema should include check command"
-    );
+    for command in RECEIPT_COMMANDS {
+        assert!(
+            receipt_schema.contains(&format!("\"{command}\"")),
+            "receipt schema should include command `{command}`"
+        );
+    }
     assert!(report_schema.contains("\"files_scanned\""));
     assert!(receipt_schema.contains("\"files_scanned\""));
     assert!(list_schema.contains("\"files_scanned\""));

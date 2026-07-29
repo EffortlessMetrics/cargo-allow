@@ -27,8 +27,9 @@ use diff_render::{
 
 use crate::{
     EvidenceReportSummary, EvidenceValidationMode, InventoryFacts, OutputFormat,
-    SourceTreeReportContext, current_dir, emit_text, git_relative_config_path,
-    load_world_with_evidence_mode, parse_kind_filter, policy_baseline_debt_entries, report_config,
+    SourceTreeReportContext, assert_path_within_root, current_dir, emit_text,
+    git_relative_config_path, load_world_with_evidence_mode, parse_kind_filter,
+    policy_baseline_debt_entries, report_config, write_file,
 };
 
 struct CurrentWorld {
@@ -64,6 +65,9 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         .map(|world| world.root.clone())
         .map(Ok)
         .unwrap_or_else(|| resolve_diff_root(args.root.root.as_deref()))?;
+    if let Some(receipt) = &args.receipt {
+        assert_path_within_root(&root, receipt)?;
+    }
     let policy_path = git_relative_config_path_for_diff(
         &root,
         args.config.as_deref(),
@@ -186,6 +190,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     let source_context = SourceTreeReportContext::new(&root, report_inventory_facts);
     let mut report_context = source_context.report(Some(policy_baseline_debt_entries(&report_cfg)));
     evidence.apply_to(&mut report_context);
+    let receipt_context = report_context;
     let ledger = DiffLedgerContext::new(
         &base_cfg,
         &head_cfg_for_diff,
@@ -295,6 +300,16 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         }
     }
     emit_text(args.output.as_deref(), &text)?;
+    if let Some(path) = &args.receipt {
+        let receipt = allow_report::render_receipt_with_context_and_inventory(
+            "diff",
+            &findings_for_report,
+            &projected_outcomes,
+            failed,
+            receipt_context,
+        );
+        write_file(path, &receipt)?;
+    }
     if failed {
         process::exit(1);
     }

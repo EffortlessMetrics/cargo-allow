@@ -19,19 +19,24 @@ fn receipt_schema_locks_top_level_status_vocabulary() {
 }
 
 #[test]
-fn receipt_schema_locks_check_command_producer() {
+fn receipt_schema_locks_registered_command_producers() {
     let schema = parse_schema(
         "receipt",
         include_str!("../../../docs/schemas/receipt.schema.json"),
     );
 
-    assert_eq!(
-        schema
-            .pointer("/properties/command/const")
-            .and_then(Value::as_str),
-        Some("check"),
-        "receipt command producer"
-    );
+    let command_enum = schema
+        .pointer("/properties/command/enum")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("receipt command enum should be present"));
+    for command in allow_report::RECEIPT_COMMANDS {
+        assert!(
+            command_enum
+                .iter()
+                .any(|value| value.as_str() == Some(command)),
+            "receipt command producer should include `{command}`"
+        );
+    }
 }
 
 #[test]

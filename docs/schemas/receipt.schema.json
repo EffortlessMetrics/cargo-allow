@@ -28,8 +28,8 @@
       "const": "cargo-allow"
     },
     "command": {
-      "const": "check",
-      "description": "Receipts are emitted by cargo-allow check."
+      "enum": ["check", "diff"],
+      "description": "Receipts are emitted by cargo-allow check or diff."
     },
     "status": {
       "enum": ["passed", "failed", "error"]
@@ -220,7 +220,7 @@
     },
     "evidence_repair_queues": {
       "type": "array",
-      "description": "Optional evidence-health repair queues emitted when check receipts include broken local evidence links, missing evidence, or weak evidence references.",
+      "description": "Optional evidence-health repair queues emitted when check or diff receipts include broken local evidence links, missing evidence, or weak evidence references.",
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -277,7 +277,7 @@
     },
     "source_inventory": {
       "$ref": "#/$defs/source_inventory",
-      "description": "Optional source exception inventory grouped by governed exception kind and kind.family for check receipts that include scanned findings."
+      "description": "Optional source exception inventory grouped by governed exception kind and kind.family for check or diff receipts that include scanned findings."
     }
   },
   "$defs": {

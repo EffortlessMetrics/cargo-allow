@@ -94,6 +94,10 @@ fn render_diff_pr_summary_markdown_with_evidence_health_counts_inner(
     let mut out = String::new();
     out.push_str("## PR Summary\n\n");
     out.push_str(&format!("**Net posture:** `{}`\n\n", posture.as_str()));
+    out.push_str(&format!(
+        "**Reviewer action:** {}\n\n",
+        posture.reviewer_action()
+    ));
     out.push_str("| Signal | Count |\n|---|---:|\n");
     out.push_str(&format!(
         "| Current check failures | {} |\n",
@@ -255,10 +259,6 @@ fn render_diff_pr_summary_markdown_with_evidence_health_counts_inner(
         summary.policy_improvements
     ));
     append_movement_summary_markdown(&mut out, ledger_movement);
-    out.push_str(&format!(
-        "\n**Reviewer action:** {}\n\n",
-        posture.reviewer_action()
-    ));
     let evidence_repair_queues = evidence_repair_queues_from_counts(
         broken_evidence_links,
         missing_evidence,
