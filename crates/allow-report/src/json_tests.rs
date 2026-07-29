@@ -3,6 +3,7 @@ use allow_core::{
     AllowConfig, AllowEntry, Finding, FindingKind, Lifecycle, MatchOutcome, MatchStatus, Selector,
     Span, StructuralIdentity,
 };
+use serde_json::Value;
 use std::path::PathBuf;
 
 #[test]
@@ -416,6 +417,37 @@ fn json_report_exposes_source_package_context_on_findings() {
 
     assert!(json.contains("\"source_package\": \"parser\""));
     assert!(json.contains("\"path\": \"crates/parser/src/lib.rs\""));
+}
+
+#[test]
+fn json_report_omits_unavailable_finding_metadata_and_keeps_navigation_nulls() -> Result<(), String>
+{
+    let finding = Finding {
+        kind: FindingKind::Panic,
+        family: None,
+        path: PathBuf::from("src/lib.rs"),
+        span: None,
+        identity: StructuralIdentity::new("rust", "macro_call"),
+        message: "panic macro".to_string(),
+        ledger: None,
+    };
+    let value: Value = serde_json::from_str(&render_json("audit", &[finding], &[], false))
+        .map_err(|error| format!("sparse report should render valid JSON: {error}"))?;
+    let row = value
+        .pointer("/findings/0")
+        .ok_or_else(|| "sparse report should include a finding row".to_string())?;
+    for field in ["family", "source_package"] {
+        if row.get(field).is_some() {
+            return Err(format!("sparse report should omit {field}"));
+        }
+    }
+    if row.get("line") != Some(&Value::Null) || row.get("container") != Some(&Value::Null) {
+        return Err(
+            "unavailable navigation and identity fields should remain nullable".to_string(),
+        );
+    }
+
+    Ok(())
 }
 
 #[test]
