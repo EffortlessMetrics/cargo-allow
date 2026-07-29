@@ -53,24 +53,30 @@ impl ScanCache {
     ) -> CargoAllowResult<(Vec<Finding>, bool, bool)> {
         let abs = root.join(rel);
 
-        // Read metadata for cache key
-        let metadata = match std::fs::metadata(&abs) {
-            Ok(m) => m,
-            Err(_) => {
-                // Can't read metadata — skip
-                return Ok((Vec::new(), false, true));
+        // Cold-cache fast path: if the cache is empty (first invocation),
+        // skip the metadata() syscall entirely and go straight to read+parse.
+        // The metadata is only needed to key the cache; on a cold cache there
+        // is nothing to compare against, so the stat is pure overhead (#2839).
+        if !self.entries.is_empty() {
+            // Read metadata for cache key
+            let metadata = match std::fs::metadata(&abs) {
+                Ok(m) => m,
+                Err(_) => {
+                    // Can't read metadata — skip
+                    return Ok((Vec::new(), false, true));
+                }
+            };
+
+            let mtime = metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH);
+            let size = metadata.len();
+
+            // Check cache
+            if let Some(entry) = self.entries.get(rel)
+                && entry.mtime == mtime
+                && entry.size == size
+            {
+                return Ok((entry.findings.clone(), entry.has_parse_error, false));
             }
-        };
-
-        let mtime = metadata.modified().unwrap_or(SystemTime::UNIX_EPOCH);
-        let size = metadata.len();
-
-        // Check cache
-        if let Some(entry) = self.entries.get(rel)
-            && entry.mtime == mtime
-            && entry.size == size
-        {
-            return Ok((entry.findings.clone(), entry.has_parse_error, false));
         }
 
         // Cache miss — read and parse the file
@@ -80,6 +86,15 @@ impl ScanCache {
         };
         let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
         let scan = scan_rust_source_with_completeness(rel, text);
+
+        // Get metadata for cache key AFTER parsing (avoids redundant stat
+        // on cold cache; on warm cache we already have it from above).
+        let metadata = std::fs::metadata(&abs).ok();
+        let mtime = metadata
+            .as_ref()
+            .and_then(|m| m.modified().ok())
+            .unwrap_or(SystemTime::UNIX_EPOCH);
+        let size = metadata.map(|m| m.len()).unwrap_or(0);
 
         // Store in cache
         self.entries.insert(

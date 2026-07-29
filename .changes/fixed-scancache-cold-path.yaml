@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Perf: ScanCache now skips the metadata() syscall on cold cache (first
+  invocation). The metadata is only needed to key the cache for comparison;
+  on a cold cache there is nothing to compare against, so the stat was pure
+  overhead on every file. Also documented the intentionally unused
+  evidence_validation parameter in world.rs's no-policy fallback path.
