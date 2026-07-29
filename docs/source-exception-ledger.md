@@ -452,7 +452,9 @@ the `explain` human status projection follows the same palette. JSON and
 same palette. Diff human posture, movement, and policy/finding status labels
 follow the same palette; repository-controlled paths, IDs, messages, and
 changed-file lists remain plain. Other human commands remain plain until their
-renderers are migrated.
+renderers are migrated. The `why` human status line follows the same palette;
+its finding details, candidate IDs, mismatch reasons, and proof commands remain
+plain.
 The full row includes current status, match count, kind, family, owner,
 classification, scope, scanner-provided source package context,
 evidence-reference count, broken local evidence-reference count, weak

@@ -217,6 +217,101 @@ fn explain_human_statuses_use_shared_style_but_files_stay_plain() {
 }
 
 #[test]
+fn why_human_statuses_use_shared_style_but_files_stay_plain() {
+    let root = fixture("why");
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn fail(value: Option<u8>) -> u8 {\n    value.unwrap()\n}\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write why source: {err}")));
+
+    let plain_result = run(
+        &root,
+        &[],
+        &[
+            "why",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "2",
+            "--color",
+            "never",
+        ],
+    );
+    let styled_result = run(
+        &root,
+        &[],
+        &[
+            "why",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "2",
+            "--color",
+            "always",
+        ],
+    );
+    assert!(plain_result.status.success(), "plain why should succeed");
+    assert!(styled_result.status.success(), "styled why should succeed");
+    assert!(!has_ansi(&stdout_of(&plain_result)));
+    assert!(has_ansi(&stdout_of(&styled_result)));
+
+    let json_result = run(
+        &root,
+        &[],
+        &[
+            "why",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "2",
+            "--color",
+            "always",
+            "--format",
+            "json",
+        ],
+    );
+    assert!(json_result.status.success(), "JSON why should succeed");
+    assert!(
+        !has_ansi(&stdout_of(&json_result)),
+        "JSON why must stay plain"
+    );
+
+    fs::create_dir_all(root.join("target/cargo-allow"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create why output dir: {err}")));
+    let output_path = root.join("target/cargo-allow/why.txt");
+    let written = run(
+        &root,
+        &[],
+        &[
+            "why",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "2",
+            "--color",
+            "always",
+            "--output",
+            "target/cargo-allow/why.txt",
+        ],
+    );
+    assert!(written.status.success(), "written why should succeed");
+    let text = fs::read_to_string(output_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read why output: {err}")));
+    assert!(!has_ansi(&text), "written why output must stay plain");
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn worklist_human_statuses_use_shared_style_but_files_stay_plain() {
     let root = fixture("worklist");
     let plain_result = run(&root, &[], &["worklist", "--color", "never"]);
