@@ -208,70 +208,57 @@ fn list_row_command(row: &ListRow<'_>) -> &'static str {
 }
 
 fn render_list_row_json(row: &ListRow<'_>) -> String {
-    let mut out = String::new();
-    out.push_str("    {\n");
-    out.push_str(&format!("      \"id\": \"{}\",\n", json_escape(row.id)));
-    out.push_str(&format!(
-        "      \"status\": \"{}\",\n",
-        json_escape(row.status)
-    ));
-    out.push_str(&format!("      \"matches\": {},\n", row.matches));
-    out.push_str(&format!("      \"kind\": \"{}\",\n", json_escape(row.kind)));
-    out.push_str(&format!("      \"family\": {},\n", option_json(row.family)));
-    out.push_str(&format!(
-        "      \"owner\": \"{}\",\n",
-        json_escape(row.owner)
-    ));
-    out.push_str(&format!(
-        "      \"classification\": \"{}\",\n",
-        json_escape(row.classification)
-    ));
-    out.push_str(&format!(
-        "      \"scope\": \"{}\",\n",
-        json_escape(row.scope)
-    ));
-    out.push_str(&format!(
-        "      \"source_package\": {},\n",
-        option_json(row.source_package)
-    ));
-    out.push_str(&format!(
-        "      \"evidence_count\": {},\n",
-        row.evidence_count
-    ));
+    let mut fields = vec![
+        format!("      \"id\": \"{}\"", json_escape(row.id)),
+        format!("      \"status\": \"{}\"", json_escape(row.status)),
+        format!("      \"matches\": {}", row.matches),
+        format!("      \"kind\": \"{}\"", json_escape(row.kind)),
+    ];
+    if let Some(family) = row.family {
+        fields.push(format!("      \"family\": \"{}\"", json_escape(family)));
+    }
+    fields.extend([
+        format!("      \"owner\": \"{}\"", json_escape(row.owner)),
+        format!(
+            "      \"classification\": \"{}\"",
+            json_escape(row.classification)
+        ),
+        format!("      \"scope\": \"{}\"", json_escape(row.scope)),
+    ]);
+    if let Some(source_package) = row.source_package {
+        fields.push(format!(
+            "      \"source_package\": \"{}\"",
+            json_escape(source_package)
+        ));
+    }
+    fields.push(format!("      \"evidence_count\": {}", row.evidence_count));
     if row.broken_evidence_references > 0 {
-        out.push_str(&format!(
-            "      \"broken_evidence_references\": {},\n",
+        fields.push(format!(
+            "      \"broken_evidence_references\": {}",
             row.broken_evidence_references
         ));
     }
     if row.weak_evidence_references > 0 {
-        out.push_str(&format!(
-            "      \"weak_evidence_references\": {},\n",
+        fields.push(format!(
+            "      \"weak_evidence_references\": {}",
             row.weak_evidence_references
         ));
     }
-    out.push_str(&format!(
-        "      \"selector_precision\": {},\n",
-        row.selector_precision
-    ));
-    out.push_str(&format!(
-        "      \"broad_scope\": {},\n",
-        bool_json(row.broad_scope)
-    ));
-    out.push_str(&format!(
-        "      \"review_after\": {},\n",
-        option_json(row.review_after)
-    ));
-    out.push_str(&format!(
-        "      \"expires\": {},\n",
-        option_json(row.expires)
-    ));
-    out.push_str(&format!(
-        "      \"reason\": \"{}\"\n",
-        json_escape(row.reason)
-    ));
-    out.push_str("    }");
-    out
+    fields.extend([
+        format!("      \"selector_precision\": {}", row.selector_precision),
+        format!("      \"broad_scope\": {}", bool_json(row.broad_scope)),
+    ]);
+    if let Some(review_after) = row.review_after {
+        fields.push(format!(
+            "      \"review_after\": \"{}\"",
+            json_escape(review_after)
+        ));
+    }
+    if let Some(expires) = row.expires {
+        fields.push(format!("      \"expires\": \"{}\"", json_escape(expires)));
+    }
+    fields.push(format!("      \"reason\": \"{}\"", json_escape(row.reason)));
+    format!("    {{\n{}\n    }}", fields.join(",\n"))
 }
 
 fn render_list_filters_json(filters: ListFilters<'_>, indent: &str) -> String {

@@ -322,16 +322,12 @@
         "status",
         "matches",
         "kind",
-        "family",
         "owner",
         "classification",
         "scope",
-        "source_package",
         "evidence_count",
         "selector_precision",
         "broad_scope",
-        "review_after",
-        "expires",
         "reason"
       ],
       "properties": {
@@ -370,10 +366,8 @@
           ]
         },
         "family": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string",
+          "description": "Scanner-provided policy family; omitted when unavailable."
         },
         "owner": {
           "type": "string"
@@ -385,11 +379,8 @@
           "type": "string"
         },
         "source_package": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "Scanner-provided source package context; not Cargo metadata or build proof."
+          "type": "string",
+          "description": "Scanner-provided source package context; omitted when unavailable and not Cargo metadata or build proof."
         },
         "evidence_count": {
           "type": "integer",
@@ -415,16 +406,12 @@
           "description": "Whether this allow entry uses wildcard source-tree scope in path, glob, or selector glob."
         },
         "review_after": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string",
+          "description": "Review deadline; omitted when unavailable."
         },
         "expires": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string",
+          "description": "Expiration deadline; omitted when unavailable."
         },
         "reason": {
           "type": "string"
