@@ -154,7 +154,7 @@ family = "documentation"
 path = "docs/specs/CARGO-ALLOW-SPEC-0010-three-product-boundaries.md"
 owner = "repo-infra"
 classification = "source_truth_spec"
-reason = "Records normative three-product boundary contract and acceptance evidence for the extraction lane."
+reason = "Retains the historical generation-1 three-product boundary contract and its accepted provenance."
 evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0010-three-product-design.md", "doc:docs/adr/CARGO-ALLOW-ADR-0002-three-product-ownership.md", "doc:docs/templates/spec.md"]
 created = "2026-07-22"
 review_after = "2026-11-01"
@@ -175,7 +175,7 @@ family = "documentation"
 path = "plans/three-product-crate-extraction.md"
 owner = "repo-infra"
 classification = "source_truth_implementation_plan"
-reason = "Sequences Wave 0 and Wave 1 PR-sized extraction work after the three-product design package."
+reason = "Sequences the current generation-2 convergence, retirement, packaging and release work."
 evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0010-three-product-design.md", "doc:docs/specs/CARGO-ALLOW-SPEC-0010-three-product-boundaries.md", "doc:.allow/artifacts/doc-artifacts.toml"]
 created = "2026-07-22"
 review_after = "2026-11-01"
@@ -10513,6 +10513,52 @@ ast_kind = "tracked_file"
 symbol = "action.yml"
 target_fingerprint = "yml"
 glob = "action.yml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+[[allow]]
+id = "allow-0500"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/adr/CARGO-ALLOW-ADR-0003-package-identity-and-versioning.md"
+owner = "repo-infra"
+classification = "source_truth_adr"
+reason = "Records package, physical-path, independent-version, publication, support and package-survival authority for the three-product monorepo."
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0010-three-product-design.md", "spec:docs/specs/CARGO-ALLOW-SPEC-0011-three-product-convergence.md"]
+created = "2026-07-29"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/adr/CARGO-ALLOW-ADR-0003-package-identity-and-versioning.md"
+target_fingerprint = "md"
+glob = "docs/adr/CARGO-ALLOW-ADR-0003-package-identity-and-versioning.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+[[allow]]
+id = "allow-0501"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/specs/CARGO-ALLOW-SPEC-0011-three-product-convergence.md"
+owner = "repo-infra"
+classification = "source_truth_spec"
+reason = "Records current topology, semantic ownership, compatibility, package-survival, exact-candidate and release requirements for the three-product monorepo."
+evidence = ["doc:docs/proposals/CARGO-ALLOW-PROP-0010-three-product-design.md", "adr:docs/adr/CARGO-ALLOW-ADR-0003-package-identity-and-versioning.md"]
+created = "2026-07-29"
+review_after = "2026-11-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/specs/CARGO-ALLOW-SPEC-0011-three-product-convergence.md"
+target_fingerprint = "md"
+glob = "docs/specs/CARGO-ALLOW-SPEC-0011-three-product-convergence.md"
 
 [allow.last_seen]
 line = 1
