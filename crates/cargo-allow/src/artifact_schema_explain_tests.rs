@@ -177,6 +177,30 @@ fn explain_schema_locks_entry_status_and_next_steps_contract() {
         "/$defs/allow_entry/properties/kind/enum",
         &governed_kind_enum(),
     );
+    for (name, pointer) in [
+        (
+            "explain allow_entry family",
+            "/$defs/allow_entry/properties/family/type",
+        ),
+        (
+            "explain lifecycle created",
+            "/$defs/lifecycle/properties/created/type",
+        ),
+        (
+            "explain lifecycle review_after",
+            "/$defs/lifecycle/properties/review_after/type",
+        ),
+        (
+            "explain lifecycle expires",
+            "/$defs/lifecycle/properties/expires/type",
+        ),
+    ] {
+        assert_eq!(
+            schema.pointer(pointer).and_then(Value::as_str),
+            Some("string"),
+            "{name} should use a scalar string type"
+        );
+    }
     assert_eq!(
         schema
             .pointer("/properties/current_findings/items/$ref")

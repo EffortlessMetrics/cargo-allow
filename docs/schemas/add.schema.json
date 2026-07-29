@@ -91,14 +91,11 @@
       "required": [
         "id",
         "kind",
-        "family",
         "path",
         "glob",
         "owner",
         "classification",
         "reason",
-        "review_after",
-        "expires",
         "evidence_count",
         "selector",
         "last_seen"
@@ -118,10 +115,8 @@
           ]
         },
         "family": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string",
+          "description": "Policy family; omitted when unavailable."
         },
         "path": {
           "type": [
@@ -145,16 +140,12 @@
           "type": "string"
         },
         "review_after": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string",
+          "description": "Review date; omitted when unavailable."
         },
         "expires": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string",
+          "description": "Expiry date; omitted when unavailable."
         },
         "evidence_count": {
           "type": "integer",

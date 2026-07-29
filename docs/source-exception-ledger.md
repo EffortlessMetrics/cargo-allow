@@ -363,7 +363,10 @@ an output policy without `--force`.
 `--summary-format json --summary-output <path>` writes the add summary as
 `cargo-allow.add.v1`, including source-tree inventory context, selected finding
 details, generated allow-entry metadata, and the human-review-required boundary
-for the proposed receipt.
+for the proposed receipt. Unavailable policy metadata (`family`, `review_after`,
+and `expires`) is omitted from the JSON allow-entry projection; selector
+relationships such as `path` and `glob`, and matching-state fields such as
+`last_seen`, remain nullable when the policy shape does not provide them.
 
 Counted legacy baselines should also carry an `occurrence_limit`:
 
@@ -410,6 +413,9 @@ analysis, build output, control-flow analysis, or data-flow analysis.
 `cargo-allow.explain.v1`, including source-tree inventory context, scanner
 limitations, evidence/link diagnostics, current findings, match outcomes, and the
 same suggested actions/proof commands shown in the human view.
+Unavailable policy metadata (`family` and lifecycle dates) is omitted from the
+allow-entry object; selector relationships and matching-state fields retain their
+nullable representation.
 
 `cargo-allow why --kind <kind> --path <path> --line <line>` is the inverse of
 `explain`: given a finding location, it shows why that finding is unreceipted

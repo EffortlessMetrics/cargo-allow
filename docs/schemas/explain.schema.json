@@ -228,7 +228,6 @@
       "required": [
         "id",
         "kind",
-        "family",
         "scope",
         "path",
         "glob",
@@ -257,10 +256,8 @@
           ]
         },
         "family": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string",
+          "description": "Policy family; omitted when unavailable."
         },
         "scope": {
           "type": "string"
@@ -328,29 +325,18 @@
     "lifecycle": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "created",
-        "review_after",
-        "expires"
-      ],
       "properties": {
         "created": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string",
+          "description": "Creation date; omitted when unavailable."
         },
         "review_after": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string",
+          "description": "Review date; omitted when unavailable."
         },
         "expires": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string",
+          "description": "Expiry date; omitted when unavailable."
         }
       }
     },
