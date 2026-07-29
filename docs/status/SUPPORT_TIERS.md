@@ -48,7 +48,7 @@ or retirement direction.
 
 ## Current product claims
 
-| Surface | Tier | Claim | Proof or evidence | Limitations |
+| Surface | Tier | Claim | Proof command | Limitations |
 | --- | --- | --- | --- | --- |
 | cargo-allow published source-exception ledger | Stable | Published `cargo-allow 0.1.11` scans selected source-tree/source-syntax surfaces and checks findings against `policy/allow.toml` without executing project code. | `cargo install cargo-allow --version 0.1.11 --locked` then `cargo-allow check --mode no-new` | Applies to the published 0.1.11 command/schema/support channel, not unreleased main. |
 | cargo-allow 0.2 source candidate | Stabilizing | Current main contains the operated source-exception ledger and is being qualified for an exact evidence-backed 0.2 release. | `cargo run -p cargo-allow -- check --mode no-new`, V2 gates #2921–#2923 and exact candidate #2886 | Workspace version `0.2.0` is not a tag or authorization. Architecture, package and release-trust blockers remain. |
