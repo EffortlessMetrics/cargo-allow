@@ -225,3 +225,84 @@ fn discover_config_skips_unsafe_metadata_path_and_falls_back() -> io::Result<()>
     assert!(result.skipped[0].reason.contains("without `..`"));
     Ok(())
 }
+
+#[test]
+fn discover_config_falls_back_when_metadata_config_is_missing() -> io::Result<()> {
+    let root = TempRoot::new("metadata-missing")?;
+    let conventional = root.path().join("policy/allow.toml");
+    write_policy(
+        &conventional,
+        "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\n",
+    )?;
+    write_policy(
+        &root.path().join("Cargo.toml"),
+        "[workspace.metadata.cargo-allow]\nconfig = \"missing.toml\"\n",
+    )?;
+
+    let result = discover_config(root.path());
+    assert_eq!(result.selected, Some(conventional.canonicalize()?));
+    assert_eq!(result.skipped.len(), 1);
+    assert!(result.skipped[0].reason.contains("does not exist"));
+    Ok(())
+}
+
+#[test]
+fn discover_config_falls_back_when_metadata_config_is_foreign() -> io::Result<()> {
+    let root = TempRoot::new("metadata-foreign")?;
+    let conventional = root.path().join("policy/allow.toml");
+    write_policy(
+        &conventional,
+        "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\n",
+    )?;
+    write_policy(
+        &root.path().join("config/foreign.toml"),
+        "schema_version = \"0.1\"\npolicy = \"other-policy\"\n",
+    )?;
+    write_policy(
+        &root.path().join("Cargo.toml"),
+        "[workspace.metadata.cargo-allow]\nconfig = \"config/foreign.toml\"\n",
+    )?;
+
+    let result = discover_config(root.path());
+    assert_eq!(result.selected, Some(conventional.canonicalize()?));
+    assert_eq!(result.skipped.len(), 1);
+    assert!(result.skipped[0].reason.contains("metadata config"));
+    Ok(())
+}
+
+#[test]
+fn discover_config_rejects_empty_metadata_config() -> io::Result<()> {
+    let root = TempRoot::new("metadata-empty")?;
+    let conventional = root.path().join("policy/allow.toml");
+    write_policy(
+        &conventional,
+        "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\n",
+    )?;
+    write_policy(
+        &root.path().join("Cargo.toml"),
+        "[workspace.metadata.cargo-allow]\nconfig = \"\"\n",
+    )?;
+
+    let result = discover_config(root.path());
+    assert_eq!(result.selected, Some(conventional.canonicalize()?));
+    assert_eq!(result.skipped.len(), 1);
+    assert!(result.skipped[0].reason.contains("non-empty"));
+    Ok(())
+}
+
+#[test]
+fn discover_config_falls_back_on_malformed_manifest() -> io::Result<()> {
+    let root = TempRoot::new("metadata-malformed")?;
+    let conventional = root.path().join("policy/allow.toml");
+    write_policy(
+        &conventional,
+        "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\n",
+    )?;
+    write_policy(&root.path().join("Cargo.toml"), "[workspace\n")?;
+
+    let result = discover_config(root.path());
+    assert_eq!(result.selected, Some(conventional.canonicalize()?));
+    assert_eq!(result.skipped.len(), 1);
+    assert!(result.skipped[0].reason.contains("could not be parsed"));
+    Ok(())
+}
