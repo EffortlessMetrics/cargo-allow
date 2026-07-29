@@ -45,27 +45,6 @@ fn update_artifact_ledger(root: &Path) -> io::Result<()> {
     text = replace_once(
         text,
         r#"[[artifact]]
-id = "CARGO-ALLOW-SUPPORT-0001"
-kind = "support_tier"
-path = "docs/status/SUPPORT_TIERS.md"
-status = "active"
-owner = "repo-infra"
-created = "2026-06-12"
-linked_proposal = "CARGO-ALLOW-PROP-0001"
-linked_spec = "CARGO-ALLOW-SPEC-0001""#,
-        r#"[[artifact]]
-id = "CARGO-ALLOW-SUPPORT-0001"
-kind = "support_tier"
-path = "docs/status/SUPPORT_TIERS.md"
-status = "active"
-owner = "repo-infra"
-created = "2026-06-12"
-linked_proposal = "CARGO-ALLOW-PROP-0010"
-linked_spec = "CARGO-ALLOW-SPEC-0011""#,
-    )?;
-    text = replace_once(
-        text,
-        r#"[[artifact]]
 id = "CARGO-ALLOW-ADR-0002"
 kind = "adr"
 path = "docs/adr/CARGO-ALLOW-ADR-0002-three-product-ownership.md"
@@ -82,7 +61,7 @@ status = "accepted"
 owner = "repo-infra"
 created = "2026-07-22"
 linked_proposal = "CARGO-ALLOW-PROP-0010"
-linked_spec = "CARGO-ALLOW-SPEC-0011"
+linked_spec = "CARGO-ALLOW-SPEC-0010"
 
 [[artifact]]
 id = "CARGO-ALLOW-ADR-0003"
@@ -109,12 +88,11 @@ linked_adr = "CARGO-ALLOW-ADR-0002""#,
 id = "CARGO-ALLOW-SPEC-0010"
 kind = "spec"
 path = "docs/specs/CARGO-ALLOW-SPEC-0010-three-product-boundaries.md"
-status = "superseded"
+status = "accepted"
 owner = "repo-infra"
 created = "2026-07-22"
 linked_proposal = "CARGO-ALLOW-PROP-0010"
 linked_adr = "CARGO-ALLOW-ADR-0002"
-superseded_by = "CARGO-ALLOW-SPEC-0011"
 
 [[artifact]]
 id = "CARGO-ALLOW-SPEC-0011"
@@ -126,17 +104,7 @@ created = "2026-07-29"
 linked_proposal = "CARGO-ALLOW-PROP-0010"
 linked_adr = "CARGO-ALLOW-ADR-0002""#,
     )?;
-
-    let marker = "id = \"CARGO-ALLOW-PLAN-0010\"";
-    let split = text
-        .find(marker)
-        .ok_or_else(|| io::Error::other("PLAN-0010 artifact row is missing"))?;
-    let (head, tail) = text.split_at(split);
-    let tail = tail.replace(
-        "linked_spec = \"CARGO-ALLOW-SPEC-0010\"",
-        "linked_spec = \"CARGO-ALLOW-SPEC-0011\"",
-    );
-    fs::write(path, format!("{head}{tail}"))
+    fs::write(path, text)
 }
 
 fn update_policy(root: &Path) -> io::Result<()> {
