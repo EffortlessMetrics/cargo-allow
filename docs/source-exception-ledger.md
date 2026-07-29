@@ -621,6 +621,9 @@ findings, including count changes for repeated matching finding keys; it still
 does not claim macro expansion, macro token-tree expression parsing, type
 information, build awareness, proof adequacy, control-flow analysis, or
 data-flow analysis.
+JSON finding rows omit unavailable scanner metadata such as `family` and
+`source_package`; navigation and identity-shape fields such as `line` and
+`container` retain nullable values when those observations are unavailable.
 
 When `--head <rev>` is supplied, diff treats the compared git trees as the
 posture source. The rendered current report, evidence-health summary, policy

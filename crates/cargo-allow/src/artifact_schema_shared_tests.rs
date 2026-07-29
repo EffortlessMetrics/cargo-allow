@@ -199,7 +199,7 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
     assert_required_fields(
         "common finding",
         finding,
-        &["kind", "family", "path", "line", "container", "ast_kind"],
+        &["kind", "path", "line", "container", "ast_kind"],
     );
     assert_enum_equals(
         "common finding kind",
@@ -207,14 +207,26 @@ fn common_schema_fragments_mirror_source_tree_contracts() {
         "/$defs/finding/properties/kind/enum",
         &governed_kind_enum(),
     );
-    for field in ["family", "container", "source_package"] {
-        assert_schema_type_equals(
-            &format!("common finding {field}"),
-            &schema,
-            &format!("/$defs/finding/properties/{field}/type"),
-            &["string", "null"],
-        );
-    }
+    assert_eq!(
+        schema
+            .pointer("/$defs/finding/properties/family/type")
+            .and_then(Value::as_str),
+        Some("string"),
+        "common finding family should be omitted when unavailable"
+    );
+    assert_schema_type_equals(
+        "common finding container",
+        &schema,
+        "/$defs/finding/properties/container/type",
+        &["string", "null"],
+    );
+    assert_eq!(
+        schema
+            .pointer("/$defs/finding/properties/source_package/type")
+            .and_then(Value::as_str),
+        Some("string"),
+        "common finding source_package should be omitted when unavailable"
+    );
     assert_schema_type_equals(
         "common finding line",
         &schema,

@@ -708,7 +708,6 @@
       "additionalProperties": false,
       "required": [
         "kind",
-        "family",
         "path",
         "line",
         "container",
@@ -726,7 +725,8 @@
           ]
         },
         "family": {
-          "type": ["string", "null"]
+          "type": "string",
+          "description": "Scanner-provided finding family; omitted when unavailable."
         },
         "path": {
           "type": "string",
@@ -740,8 +740,8 @@
           "type": ["string", "null"]
         },
         "source_package": {
-          "type": ["string", "null"],
-          "description": "Optional source-derived package context from scanned repository files; not Cargo metadata or build proof."
+          "type": "string",
+          "description": "Scanner-provided source package context; omitted when unavailable and not Cargo metadata or build proof."
         },
         "ast_kind": {
           "type": "string",

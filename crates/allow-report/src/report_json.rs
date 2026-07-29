@@ -1,3 +1,4 @@
+use crate::allow_entry_json::push_optional_string_field;
 use crate::audit_remediation::audit_remediation_items;
 use crate::contracts::REPORT_ARTIFACT;
 use crate::evidence_repair::{evidence_repair_queues, push_evidence_repair_queue_json_fields};
@@ -106,38 +107,40 @@ fn render_json_report(
             out.push_str(",\n");
         }
         out.push_str("    {");
-        out.push_str(&format!(
-            "\"kind\": \"{}\", ",
+        let mut finding_fields = vec![format!(
+            "\"kind\": \"{}\"",
             json_escape(finding.kind.as_str())
-        ));
-        out.push_str(&format!(
-            "\"family\": {}, ",
-            option_json(finding.family.as_deref())
-        ));
-        out.push_str(&format!(
-            "\"path\": \"{}\", ",
-            json_escape(&normalize_path(&finding.path))
-        ));
-        out.push_str(&format!(
-            "\"line\": {}, ",
-            finding
-                .span
-                .as_ref()
-                .map(|s| s.line.to_string())
-                .unwrap_or_else(|| "null".to_string())
-        ));
-        out.push_str(&format!(
-            "\"container\": {}, ",
-            option_json(finding.identity.container.as_deref())
-        ));
-        out.push_str(&format!(
-            "\"source_package\": {}, ",
-            option_json(finding.identity.crate_name.as_deref())
-        ));
-        out.push_str(&format!(
+        )];
+        push_optional_string_field(&mut finding_fields, "", "family", finding.family.as_deref());
+        finding_fields.extend([
+            format!(
+                "\"path\": \"{}\"",
+                json_escape(&normalize_path(&finding.path))
+            ),
+            format!(
+                "\"line\": {}",
+                finding
+                    .span
+                    .as_ref()
+                    .map(|s| s.line.to_string())
+                    .unwrap_or_else(|| "null".to_string())
+            ),
+            format!(
+                "\"container\": {}",
+                option_json(finding.identity.container.as_deref())
+            ),
+        ]);
+        push_optional_string_field(
+            &mut finding_fields,
+            "",
+            "source_package",
+            finding.identity.crate_name.as_deref(),
+        );
+        finding_fields.push(format!(
             "\"ast_kind\": \"{}\"",
             json_escape(&finding.identity.ast_kind)
         ));
+        out.push_str(&finding_fields.join(", "));
         out.push('}');
     }
     match diff {
