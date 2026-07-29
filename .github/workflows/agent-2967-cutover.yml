@@ -1,0 +1,1192 @@
+name: Apply generation-2 contract cutover
+
+on:
+  push:
+    branches:
+      - agent/2967-generation-2-contracts
+
+permissions:
+  contents: write
+
+concurrency:
+  group: agent-2967-contract-cutover
+  cancel-in-progress: false
+
+jobs:
+  cutover:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: agent/2967-generation-2-contracts
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Recover bounded compatibility work from the superseded branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin agent/2882-generation-2-architecture-v2
+          source_ref=origin/agent/2882-generation-2-architecture-v2
+          for path in \
+            crates/intent-model/src/spec_system/support_tiers.rs \
+            crates/allow-policy/src/snapshot_package/spec_system/support_tiers.rs \
+            crates/cargo-allow/src/spec_design_artifact_links_tests.rs \
+            crates/cargo-allow/src/spec_system.rs \
+            scripts/extraction-readiness-receipt.sh
+          do
+            git show "${source_ref}:${path}" > "${path}"
+          done
+      - name: Compile the strict generation-2 reconstruction contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected one match, found {count}")
+              return text.replace(old, new, 1)
+
+          fixture = r'''# Fresh-agent reconstruction snapshot for the generation-2 three-product package.
+          # This parsed fixture is a contract-checked projection, not a second authority ledger.
+
+          schema_version = "2.0"
+          authority_generation = 2
+          design_package_proposal = "CARGO-ALLOW-PROP-0010"
+          ownership_adr = "CARGO-ALLOW-ADR-0002"
+          package_identity_adr = "CARGO-ALLOW-ADR-0003"
+          historical_spec = "CARGO-ALLOW-SPEC-0010"
+          current_spec = "CARGO-ALLOW-SPEC-0011"
+          design_package_plan = "CARGO-ALLOW-PLAN-0010"
+          crate_topology_owner_issue = 2612
+          package_topology_owner_issue = 2604
+          move_ledger_owner_issue = 2598
+          shim_owner_issue = 2607
+          parity_owner_issue = 2606
+          release_controller_issue = 2371
+          observed_package_count = 27
+          target_package_count = 22
+          observed_shared_package_count = 4
+          target_shared_package_count = 4
+          governance_model_owner = "intent-model"
+          governance_validation_owner = "intent-engine"
+          governance_receipt_owner = "cargo-intent/repository-ci"
+          proof_protocol_role = "data-contracts"
+          proof_engine_role = "semantic-evaluation"
+          repository_extraction_authorized = false
+          release_authorized = false
+          cargo_proof_qualification_blocks_cargo_allow_release = false
+
+          [[product]]
+          id = "cargo-allow"
+          status = "SupportedSourceCandidate"
+          current_version = "0.2.0"
+          target_version = "0.2.0"
+          published_version = "0.1.11"
+          claim = "source-exception ledger"
+          observed_package_count = 10
+          target_package_count = 10
+          release_blocked = true
+
+          [[product]]
+          id = "cargo-intent"
+          status = "LandedExperimental"
+          current_version = "0.2.0-workspace-transitional"
+          target_version = "0.1.0"
+          claim = "durable authored intent and obligation compiler"
+          observed_package_count = 5
+          target_package_count = 5
+          release_blocked = true
+
+          [[product]]
+          id = "cargo-proof"
+          status = "LandedExperimental"
+          current_version = "0.2.0-workspace-transitional"
+          target_version = "0.1.0"
+          claim = "exact-snapshot evidence orchestration"
+          observed_package_count = 8
+          target_package_count = 3
+          release_blocked = true
+
+          [[shared]]
+          logical_id = "repo-protocol"
+          current_workspace_path = "crates/repo-protocol"
+          target_workspace_path = "crates/effortless-repo-protocol"
+          current_package = "repo-protocol"
+          target_package = "effortless-repo-protocol"
+          lib_name = "repo_protocol"
+          status = "LandedTransitional"
+          target_disposition = "RetainPackage"
+
+          [[shared]]
+          logical_id = "repo-snapshot"
+          current_workspace_path = "crates/repo-snapshot"
+          target_workspace_path = "crates/effortless-repo-snapshot"
+          current_package = "repo-snapshot"
+          target_package = "effortless-repo-snapshot"
+          lib_name = "repo_snapshot"
+          status = "LandedTransitional"
+          target_disposition = "RetainPackage"
+
+          [[shared]]
+          logical_id = "repo-edit"
+          current_workspace_path = "crates/repo-edit"
+          target_workspace_path = "crates/effortless-repo-edit"
+          current_package = "repo-edit"
+          target_package = "effortless-repo-edit"
+          lib_name = "repo_edit"
+          status = "LandedTransitional"
+          target_disposition = "RetainPackage"
+
+          [[shared]]
+          logical_id = "rust-source-index"
+          current_workspace_path = "crates/rust-source-index"
+          target_workspace_path = "crates/effortless-rust-source-index"
+          current_package = "rust-source-index"
+          target_package = "effortless-rust-source-index"
+          lib_name = "rust_source_index"
+          status = "LandedTransitional"
+          target_disposition = "RetainPackage"
+
+          [[collapse]]
+          logical_id = "proof-provider-api"
+          current_workspace_path = "crates/proof-provider-api"
+          current_package = "proof-provider-api"
+          target_container = "proof-engine"
+          target_module = "proof_engine::provider"
+          disposition = "CollapseIntoPackage"
+
+          [[collapse]]
+          logical_id = "proof-adapter-command"
+          current_workspace_path = "crates/proof-adapter-command"
+          current_package = "proof-adapter-command"
+          target_container = "cargo-proof"
+          target_module = "cargo_proof::providers::command"
+          disposition = "CollapseIntoPackage"
+
+          [[collapse]]
+          logical_id = "proof-adapter-cargo-allow"
+          current_workspace_path = "crates/proof-adapter-cargo-allow"
+          current_package = "proof-adapter-cargo-allow"
+          target_container = "cargo-proof"
+          target_module = "cargo_proof::providers::cargo_allow"
+          disposition = "CollapseIntoPackage"
+
+          [[collapse]]
+          logical_id = "proof-adapter-ripr"
+          current_workspace_path = "crates/proof-adapter-ripr"
+          current_package = "proof-adapter-ripr"
+          target_container = "cargo-proof"
+          target_module = "cargo_proof::providers::ripr"
+          disposition = "CollapseIntoPackage"
+
+          [[collapse]]
+          logical_id = "proof-adapter-hawk"
+          current_workspace_path = "crates/proof-adapter-hawk"
+          current_package = "proof-adapter-hawk"
+          target_container = "cargo-proof"
+          target_module = "cargo_proof::providers::hawk"
+          disposition = "CollapseIntoPackage"
+
+          [[entry]]
+          artifact = "CARGO-ALLOW-PROP-0001"
+          disposition = "CurrentSupporting"
+          note = "Spec-system profile mechanics remain; permanent cargo-allow product ownership is superseded."
+
+          [[entry]]
+          artifact = "CARGO-ALLOW-SPEC-0001"
+          disposition = "CurrentSupporting"
+          note = "Historical structural profile contract."
+
+          [[entry]]
+          artifact = "CARGO-ALLOW-PROP-0010"
+          disposition = "CurrentCanonical"
+          note = "Generation-2 three-product convergence proposal."
+
+          [[entry]]
+          artifact = "CARGO-ALLOW-ADR-0002"
+          disposition = "CurrentCanonical"
+          note = "Semantic ownership, dependency direction and side-effect boundaries."
+
+          [[entry]]
+          artifact = "CARGO-ALLOW-ADR-0003"
+          disposition = "CurrentCanonical"
+          note = "Logical, path, package, library, version and survival identity."
+
+          [[entry]]
+          artifact = "CARGO-ALLOW-SPEC-0010"
+          disposition = "HistoricalOnly"
+          note = "Generation-1 crate-creation record; exact successor is SPEC-0011."
+
+          [[entry]]
+          artifact = "CARGO-ALLOW-SPEC-0011"
+          disposition = "CurrentCanonical"
+          note = "Generation-2 convergence, cutover, package and release requirements."
+
+          [[entry]]
+          artifact = "plans/spec-system/implementation-plan.md"
+          disposition = "HistoricalOnly"
+          note = "Pre-three-product embedded-profile implementation sequence."
+
+          [[entry]]
+          artifact = "allow-policy::spec_system"
+          disposition = "CompatibilityOnly"
+          note = "Temporary historical/current compatibility; delete current semantics after parity."
+
+          [[entry]]
+          artifact = "cargo-allow::spec_system"
+          disposition = "BlockedOnParity"
+          note = "Compatibility projection and old application paths remain deletion targets."
+
+          [[entry]]
+          artifact = "#2550"
+          disposition = "CurrentCanonical"
+          note = "Three-product semantic authority decision."
+
+          [[entry]]
+          artifact = "#2612"
+          disposition = "CurrentSupporting"
+          note = "Observed extraction topology provenance; V2 owns current and target projection."
+
+          [[entry]]
+          artifact = "#2598"
+          disposition = "CurrentSupporting"
+          note = "Current source disposition, reachability and deletion output."
+
+          [[entry]]
+          artifact = "#2604"
+          disposition = "CurrentSupporting"
+          note = "Package names, versions, publication, candidate, release order and CI posture."
+
+          [[entry]]
+          artifact = "#2606"
+          disposition = "CurrentSupporting"
+          note = "Parity and cutover receipt meaning."
+
+          [[entry]]
+          artifact = "#2607"
+          disposition = "CurrentSupporting"
+          note = "Bounded temporary compatibility and expiry."
+          '''
+          fixture = "\n".join(line[10:] if line.startswith("          ") else line for line in fixture.splitlines()) + "\n"
+          Path("tests/fixtures/three-product-design/disposition-map.toml").write_text(fixture, encoding="utf-8")
+
+          readme = r'''# Three-Product Generation-2 Reconstruction Fixture
+
+          This fixture proves that a fresh builder can reconstruct the current and
+          target cargo-allow, cargo-intent, cargo-proof and shared-substrate contract
+          from retained repository authority rather than issue archaeology.
+
+          `disposition-map.toml` is a parsed, contract-checked projection. It is not a
+          second architecture, package, move, shim or parity authority.
+
+          ## Authority entry points
+
+          | Question | Current answer |
+          | --- | --- |
+          | Product ownership | `CARGO-ALLOW-ADR-0002` |
+          | Package/path/version identity | `CARGO-ALLOW-ADR-0003` |
+          | Current convergence requirements | `CARGO-ALLOW-SPEC-0011` |
+          | Historical generation-1 requirements | `CARGO-ALLOW-SPEC-0010` |
+          | Merge-before-dependent-branch train | `CARGO-ALLOW-PLAN-0010` |
+          | Logical topology provenance | Issue `#2612` |
+          | Package topology | Issue `#2604` |
+          | Move/deletion denominator | Issue `#2598` |
+          | Shim and parity meaning | Issues `#2607` and `#2606` |
+          | Exact release authorization | Issues `#2371`, `#2501` and `#2502` |
+
+          ## Contract reconstructed
+
+          ```text
+          observed source packages = 27
+          retained target packages = 22
+
+          cargo-allow   10 → 10
+          shared         4 → 4
+          cargo-intent   5 → 5
+          cargo-proof    8 → 3
+          ```
+
+          The five removed package identities become modules under `proof-engine` or
+          `cargo-proof`. The four shared logical IDs retain concise Rust imports while
+          moving to `crates/effortless-*` paths and `effortless-*` Cargo package names.
+
+          ```text
+          effortless-repo-protocol
+          effortless-repo-snapshot
+          effortless-repo-edit
+          effortless-rust-source-index
+          ```
+
+          Generation-2 governance is authored in `intent-model`, reconciled in
+          `intent-engine`, and exposed through cargo-intent/repository-CI receipts.
+          `proof-protocol` owns data contracts; `proof-engine` owns semantic currentness,
+          cache, contradiction and gate evaluation.
+
+          Repository extraction and cargo-allow `0.2.x` release remain unauthorized.
+          A complete cargo-proof candidate is independent of cargo-allow release
+          qualification. The exact candidate refreeze remains Issue `#2501`.
+
+          ## Validation
+
+          ```bash
+          cargo test -p allow-policy --test three_product_design --locked -- --nocapture
+          cargo test -p cargo-allow spec_design_artifact_links --locked -- --nocapture
+          cargo test -p allow-policy support_tier --locked -- --nocapture
+          cargo run -p cargo-allow --locked -- check --mode no-new
+          ```
+
+          The fixture proves reconstructability only. It does not prove implementation
+          convergence, package publication, release readiness or repository extraction.
+          '''
+          readme = "\n".join(line[10:] if line.startswith("          ") else line for line in readme.splitlines()) + "\n"
+          Path("tests/fixtures/three-product-design/README.md").write_text(readme, encoding="utf-8")
+
+          support_path = Path("docs/status/SUPPORT_TIERS.md")
+          support = support_path.read_text(encoding="utf-8")
+          marker = "<!--\nGeneration-1 parser compatibility table."
+          start = support.find(marker)
+          if start < 0:
+              raise SystemExit("support tiers missing generation-1 compatibility block")
+          end = support.find("-->", start)
+          if end < 0:
+              raise SystemExit("support tiers compatibility block is unterminated")
+          support = support[:start] + support[end + 3:]
+          support = support.replace("\n\n\n## Tier vocabulary", "\n\n## Tier vocabulary", 1)
+          support_path.write_text(support, encoding="utf-8")
+
+          ledger_path = Path(".allow/artifacts/doc-artifacts.toml")
+          ledger = ledger_path.read_text(encoding="utf-8")
+          ledger = replace_once(
+              ledger,
+              '''id = "CARGO-ALLOW-SUPPORT-0001"
+          kind = "support_tier"
+          path = "docs/status/SUPPORT_TIERS.md"
+          status = "active"
+          owner = "repo-infra"
+          created = "2026-06-12"
+          linked_proposal = "CARGO-ALLOW-PROP-0001"
+          linked_spec = "CARGO-ALLOW-SPEC-0001"'''.replace("          ", ""),
+              '''id = "CARGO-ALLOW-SUPPORT-0001"
+          kind = "support_tier"
+          path = "docs/status/SUPPORT_TIERS.md"
+          status = "active"
+          owner = "repo-infra"
+          created = "2026-06-12"
+          linked_proposal = "CARGO-ALLOW-PROP-0010"
+          linked_spec = "CARGO-ALLOW-SPEC-0011"'''.replace("          ", ""),
+              "support artifact lifecycle",
+          )
+          ledger = replace_once(
+              ledger,
+              '''id = "CARGO-ALLOW-ADR-0002"
+          kind = "adr"
+          path = "docs/adr/CARGO-ALLOW-ADR-0002-three-product-ownership.md"
+          status = "accepted"
+          owner = "repo-infra"
+          created = "2026-07-22"
+          linked_proposal = "CARGO-ALLOW-PROP-0010"
+          linked_spec = "CARGO-ALLOW-SPEC-0010"'''.replace("          ", ""),
+              '''id = "CARGO-ALLOW-ADR-0002"
+          kind = "adr"
+          path = "docs/adr/CARGO-ALLOW-ADR-0002-three-product-ownership.md"
+          status = "accepted"
+          owner = "repo-infra"
+          created = "2026-07-22"
+          linked_proposal = "CARGO-ALLOW-PROP-0010"
+          linked_spec = "CARGO-ALLOW-SPEC-0011"'''.replace("          ", ""),
+              "ownership ADR lifecycle",
+          )
+          ledger = replace_once(
+              ledger,
+              '''id = "CARGO-ALLOW-SPEC-0010"
+          kind = "spec"
+          path = "docs/specs/CARGO-ALLOW-SPEC-0010-three-product-boundaries.md"
+          status = "accepted"
+          owner = "repo-infra"
+          created = "2026-07-22"
+          linked_proposal = "CARGO-ALLOW-PROP-0010"
+          linked_adr = "CARGO-ALLOW-ADR-0002"'''.replace("          ", ""),
+              '''id = "CARGO-ALLOW-SPEC-0010"
+          kind = "spec"
+          path = "docs/specs/CARGO-ALLOW-SPEC-0010-three-product-boundaries.md"
+          status = "superseded"
+          owner = "repo-infra"
+          created = "2026-07-22"
+          linked_proposal = "CARGO-ALLOW-PROP-0010"
+          linked_adr = "CARGO-ALLOW-ADR-0002"
+          superseded_by = "CARGO-ALLOW-SPEC-0011"'''.replace("          ", ""),
+              "historical spec lifecycle",
+          )
+          ledger = replace_once(
+              ledger,
+              '''id = "CARGO-ALLOW-PLAN-0010"
+          kind = "implementation_plan"
+          path = "plans/three-product-crate-extraction.md"
+          status = "active"
+          owner = "repo-infra"
+          created = "2026-07-22"
+          linked_proposal = "CARGO-ALLOW-PROP-0010"
+          linked_spec = "CARGO-ALLOW-SPEC-0010"'''.replace("          ", ""),
+              '''id = "CARGO-ALLOW-PLAN-0010"
+          kind = "implementation_plan"
+          path = "plans/three-product-crate-extraction.md"
+          status = "active"
+          owner = "repo-infra"
+          created = "2026-07-22"
+          linked_proposal = "CARGO-ALLOW-PROP-0010"
+          linked_spec = "CARGO-ALLOW-SPEC-0011"'''.replace("          ", ""),
+              "active plan lifecycle",
+          )
+          ledger_path.write_text(ledger, encoding="utf-8")
+
+          for parser_path in [
+              Path("crates/intent-model/src/spec_system/support_tiers.rs"),
+              Path("crates/allow-policy/src/snapshot_package/spec_system/support_tiers.rs"),
+          ]:
+              parser = parser_path.read_text(encoding="utf-8")
+              parser = parser.replace(
+                  "Proof command or Proof or evidence, and Notes columns not found",
+                  "Proof command and Limitations columns not found",
+              )
+              parser = parser.replace(
+                  'let proof_command = column_index(&normalized, "proof command")\n        .or_else(|| column_index(&normalized, "proof or evidence"));',
+                  'let proof_command = column_index(&normalized, "proof command");',
+              )
+              parser = parser.replace(
+                  'let notes = column_index(&normalized, "notes");',
+                  'let notes = column_index(&normalized, "limitations")\n        .or_else(|| column_index(&normalized, "notes"));',
+              )
+              parser = parser.replace(
+                  '("Proof command or Proof or evidence", proof_command),',
+                  '("Proof command", proof_command),',
+              )
+              parser = parser.replace(
+                  'cell(cells, columns.proof_command, "proof command or evidence")?',
+                  'cell(cells, columns.proof_command, "proof command")?',
+              )
+              parser = parser.replace(
+                  '| Surface | Tier | Claim | Proof or evidence | Limitations |',
+                  '| Surface | Tier | Claim | Proof command | Limitations |',
+              )
+              parser = parser.replace(
+                  'fn retains_proof_command_header_compatibility()',
+                  'fn parses_selected_proof_command_header()',
+              )
+              parser_path.write_text(parser, encoding="utf-8")
+
+          spec_system_path = Path("crates/cargo-allow/src/spec_system.rs")
+          spec_system = spec_system_path.read_text(encoding="utf-8")
+          spec_system = spec_system.replace(
+              "add a support-tier table with Surface, Tier, Claim, Proof command or Proof or evidence, and Notes columns",
+              "add a support-tier table with Surface, Tier, Claim, Proof command, and Limitations columns",
+          )
+          spec_system_path.write_text(spec_system, encoding="utf-8")
+          PY
+      - name: Write strict architecture tests without prose coupling
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > crates/allow-policy/src/spec_system/design_package_tests.rs <<'RS'
+          use std::path::PathBuf;
+
+          #[derive(Debug, serde::Deserialize)]
+          struct ProductRow {
+              id: String,
+              observed_package_count: usize,
+              target_package_count: usize,
+          }
+
+          #[derive(Debug, serde::Deserialize)]
+          struct CollapseRow {
+              target_module: String,
+              disposition: String,
+          }
+
+          #[derive(Debug, serde::Deserialize)]
+          struct ReconstructionFixture {
+              schema_version: String,
+              authority_generation: u32,
+              observed_package_count: usize,
+              target_package_count: usize,
+              observed_shared_package_count: usize,
+              target_shared_package_count: usize,
+              repository_extraction_authorized: bool,
+              release_authorized: bool,
+              product: Vec<ProductRow>,
+              collapse: Vec<CollapseRow>,
+          }
+
+          #[test]
+          fn three_product_fixture_has_exact_generation_two_denominators() -> Result<(), String> {
+              let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                  .join("../..")
+                  .join("tests/fixtures/three-product-design/disposition-map.toml");
+              let text = std::fs::read_to_string(&path)
+                  .map_err(|error| format!("reconstruction fixture should be readable: {error}"))?;
+              let fixture = toml::from_str::<ReconstructionFixture>(&text)
+                  .map_err(|error| format!("reconstruction fixture should parse: {error}"))?;
+
+              if fixture.schema_version != "2.0" || fixture.authority_generation != 2 {
+                  return Err("reconstruction fixture is not generation 2".to_string());
+              }
+              if fixture.repository_extraction_authorized || fixture.release_authorized {
+                  return Err("reconstruction fixture must not authorize extraction or release".to_string());
+              }
+              let observed = fixture
+                  .product
+                  .iter()
+                  .map(|row| row.observed_package_count)
+                  .sum::<usize>()
+                  + fixture.observed_shared_package_count;
+              let target = fixture
+                  .product
+                  .iter()
+                  .map(|row| row.target_package_count)
+                  .sum::<usize>()
+                  + fixture.target_shared_package_count;
+              if observed != fixture.observed_package_count || observed != 27 {
+                  return Err(format!("unexpected observed package denominator {observed}"));
+              }
+              if target != fixture.target_package_count || target != 22 {
+                  return Err(format!("unexpected target package denominator {target}"));
+              }
+              let mut product_ids = fixture
+                  .product
+                  .iter()
+                  .map(|row| row.id.as_str())
+                  .collect::<Vec<_>>();
+              product_ids.sort_unstable();
+              if product_ids != ["cargo-allow", "cargo-intent", "cargo-proof"] {
+                  return Err(format!("unexpected product rows {product_ids:?}"));
+              }
+              if fixture.collapse.len() != 5
+                  || fixture.collapse.iter().any(|row| {
+                      row.target_module.trim().is_empty()
+                          || row.disposition != "CollapseIntoPackage"
+                  })
+              {
+                  return Err("fixture must contain five complete package collapses".to_string());
+              }
+              Ok(())
+          }
+          RS
+
+          cat > crates/allow-policy/tests/three_product_design.rs <<'RS'
+          use allow_policy::spec_system::{
+              ArtifactStatus, SpecSystemRoots, SupportTierLevel, load_doc_artifacts,
+              validate_doc_artifact_files, validate_doc_artifact_links, validate_support_tier_claims,
+          };
+          use serde::Deserialize;
+          use std::collections::{BTreeMap, BTreeSet};
+          use std::path::{Path, PathBuf};
+
+          #[derive(Debug, Deserialize)]
+          #[serde(deny_unknown_fields)]
+          struct ReconstructionFixture {
+              schema_version: String,
+              authority_generation: u32,
+              design_package_proposal: String,
+              ownership_adr: String,
+              package_identity_adr: String,
+              historical_spec: String,
+              current_spec: String,
+              design_package_plan: String,
+              crate_topology_owner_issue: u32,
+              package_topology_owner_issue: u32,
+              move_ledger_owner_issue: u32,
+              shim_owner_issue: u32,
+              parity_owner_issue: u32,
+              release_controller_issue: u32,
+              observed_package_count: usize,
+              target_package_count: usize,
+              observed_shared_package_count: usize,
+              target_shared_package_count: usize,
+              governance_model_owner: String,
+              governance_validation_owner: String,
+              governance_receipt_owner: String,
+              proof_protocol_role: String,
+              proof_engine_role: String,
+              repository_extraction_authorized: bool,
+              release_authorized: bool,
+              cargo_proof_qualification_blocks_cargo_allow_release: bool,
+              product: Vec<ProductRow>,
+              shared: Vec<SharedRow>,
+              collapse: Vec<CollapseRow>,
+              entry: Vec<DispositionEntry>,
+          }
+
+          #[derive(Debug, Deserialize)]
+          #[serde(deny_unknown_fields)]
+          struct ProductRow {
+              id: String,
+              status: String,
+              current_version: String,
+              target_version: String,
+              #[serde(default)]
+              published_version: Option<String>,
+              claim: String,
+              observed_package_count: usize,
+              target_package_count: usize,
+              release_blocked: bool,
+          }
+
+          #[derive(Debug, Deserialize)]
+          #[serde(deny_unknown_fields)]
+          struct SharedRow {
+              logical_id: String,
+              current_workspace_path: String,
+              target_workspace_path: String,
+              current_package: String,
+              target_package: String,
+              lib_name: String,
+              status: String,
+              target_disposition: String,
+          }
+
+          #[derive(Debug, Deserialize)]
+          #[serde(deny_unknown_fields)]
+          struct CollapseRow {
+              logical_id: String,
+              current_workspace_path: String,
+              current_package: String,
+              target_container: String,
+              target_module: String,
+              disposition: String,
+          }
+
+          #[derive(Debug, Deserialize)]
+          #[serde(deny_unknown_fields)]
+          struct DispositionEntry {
+              artifact: String,
+              disposition: String,
+              note: String,
+          }
+
+          fn workspace_root() -> Result<PathBuf, String> {
+              PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                  .parent()
+                  .and_then(Path::parent)
+                  .map(Path::to_path_buf)
+                  .ok_or_else(|| "allow-policy manifest should have a workspace root".to_string())
+          }
+
+          fn read(root: &Path, relative: &str) -> Result<String, String> {
+              let path = root.join(relative);
+              std::fs::read_to_string(&path)
+                  .map_err(|error| format!("read generation-2 artifact {}: {error}", path.display()))
+          }
+
+          #[test]
+          fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
+          ) -> Result<(), String> {
+              let root = workspace_root()?;
+              let fixture_text = read(
+                  &root,
+                  "tests/fixtures/three-product-design/disposition-map.toml",
+              )?;
+              let fixture = toml::from_str::<ReconstructionFixture>(&fixture_text)
+                  .map_err(|error| format!("parse generation-2 reconstruction fixture: {error}"))?;
+
+              if fixture.schema_version != "2.0" || fixture.authority_generation != 2 {
+                  return Err("fixture does not select exact generation 2".to_string());
+              }
+              if fixture.repository_extraction_authorized || fixture.release_authorized {
+                  return Err("fixture must not authorize repository extraction or release".to_string());
+              }
+              if fixture.cargo_proof_qualification_blocks_cargo_allow_release {
+                  return Err("cargo-proof qualification must remain independent of cargo-allow release".to_string());
+              }
+
+              let authorities = [
+                  (&fixture.design_package_proposal, "CARGO-ALLOW-PROP-0010"),
+                  (&fixture.ownership_adr, "CARGO-ALLOW-ADR-0002"),
+                  (&fixture.package_identity_adr, "CARGO-ALLOW-ADR-0003"),
+                  (&fixture.historical_spec, "CARGO-ALLOW-SPEC-0010"),
+                  (&fixture.current_spec, "CARGO-ALLOW-SPEC-0011"),
+                  (&fixture.design_package_plan, "CARGO-ALLOW-PLAN-0010"),
+              ];
+              for (observed, expected) in authorities {
+                  if observed != expected {
+                      return Err(format!("expected authority {expected}, got {observed}"));
+                  }
+              }
+              let issue_owners = [
+                  (fixture.crate_topology_owner_issue, 2612_u32),
+                  (fixture.package_topology_owner_issue, 2604_u32),
+                  (fixture.move_ledger_owner_issue, 2598_u32),
+                  (fixture.shim_owner_issue, 2607_u32),
+                  (fixture.parity_owner_issue, 2606_u32),
+                  (fixture.release_controller_issue, 2371_u32),
+              ];
+              for (observed, expected) in issue_owners {
+                  if observed != expected {
+                      return Err(format!("expected controlling issue #{expected}, got #{observed}"));
+                  }
+              }
+              if fixture.governance_model_owner != "intent-model"
+                  || fixture.governance_validation_owner != "intent-engine"
+                  || fixture.governance_receipt_owner != "cargo-intent/repository-ci"
+                  || fixture.proof_protocol_role != "data-contracts"
+                  || fixture.proof_engine_role != "semantic-evaluation"
+              {
+                  return Err("generation-2 semantic ownership fields do not match".to_string());
+              }
+
+              let expected_products = [
+                  (
+                      "cargo-allow",
+                      "SupportedSourceCandidate",
+                      "0.2.0",
+                      "0.2.0",
+                      Some("0.1.11"),
+                      "source-exception ledger",
+                      10_usize,
+                      10_usize,
+                  ),
+                  (
+                      "cargo-intent",
+                      "LandedExperimental",
+                      "0.2.0-workspace-transitional",
+                      "0.1.0",
+                      None,
+                      "durable authored intent and obligation compiler",
+                      5_usize,
+                      5_usize,
+                  ),
+                  (
+                      "cargo-proof",
+                      "LandedExperimental",
+                      "0.2.0-workspace-transitional",
+                      "0.1.0",
+                      None,
+                      "exact-snapshot evidence orchestration",
+                      8_usize,
+                      3_usize,
+                  ),
+              ];
+              if fixture.product.len() != expected_products.len() {
+                  return Err(format!("unexpected product row count {}", fixture.product.len()));
+              }
+              let mut seen_products = BTreeSet::new();
+              for (id, status, current, target, published, claim, observed_count, target_count) in
+                  expected_products
+              {
+                  let row = fixture
+                      .product
+                      .iter()
+                      .find(|row| row.id == id)
+                      .ok_or_else(|| format!("fixture is missing product {id}"))?;
+                  if !seen_products.insert(row.id.as_str()) {
+                      return Err(format!("duplicate product {}", row.id));
+                  }
+                  if row.status != status
+                      || row.current_version != current
+                      || row.target_version != target
+                      || row.published_version.as_deref() != published
+                      || row.claim != claim
+                      || row.observed_package_count != observed_count
+                      || row.target_package_count != target_count
+                      || !row.release_blocked
+                  {
+                      return Err(format!("unexpected product row {id}: {row:?}"));
+                  }
+              }
+              let observed_total = fixture
+                  .product
+                  .iter()
+                  .map(|row| row.observed_package_count)
+                  .sum::<usize>()
+                  + fixture.observed_shared_package_count;
+              let target_total = fixture
+                  .product
+                  .iter()
+                  .map(|row| row.target_package_count)
+                  .sum::<usize>()
+                  + fixture.target_shared_package_count;
+              if observed_total != 27 || observed_total != fixture.observed_package_count {
+                  return Err(format!("unexpected observed topology denominator {observed_total}"));
+              }
+              if target_total != 22 || target_total != fixture.target_package_count {
+                  return Err(format!("unexpected target topology denominator {target_total}"));
+              }
+
+              let expected_shared = [
+                  (
+                      "repo-protocol",
+                      "crates/repo-protocol",
+                      "crates/effortless-repo-protocol",
+                      "repo-protocol",
+                      "effortless-repo-protocol",
+                      "repo_protocol",
+                  ),
+                  (
+                      "repo-snapshot",
+                      "crates/repo-snapshot",
+                      "crates/effortless-repo-snapshot",
+                      "repo-snapshot",
+                      "effortless-repo-snapshot",
+                      "repo_snapshot",
+                  ),
+                  (
+                      "repo-edit",
+                      "crates/repo-edit",
+                      "crates/effortless-repo-edit",
+                      "repo-edit",
+                      "effortless-repo-edit",
+                      "repo_edit",
+                  ),
+                  (
+                      "rust-source-index",
+                      "crates/rust-source-index",
+                      "crates/effortless-rust-source-index",
+                      "rust-source-index",
+                      "effortless-rust-source-index",
+                      "rust_source_index",
+                  ),
+              ];
+              if fixture.shared.len() != expected_shared.len() {
+                  return Err(format!("unexpected shared row count {}", fixture.shared.len()));
+              }
+              let mut seen_shared = BTreeSet::new();
+              for (logical, current_path, target_path, current_package, target_package, lib_name) in
+                  expected_shared
+              {
+                  let row = fixture
+                      .shared
+                      .iter()
+                      .find(|row| row.logical_id == logical)
+                      .ok_or_else(|| format!("fixture is missing shared logical ID {logical}"))?;
+                  if !seen_shared.insert(row.logical_id.as_str()) {
+                      return Err(format!("duplicate shared logical ID {}", row.logical_id));
+                  }
+                  if row.current_workspace_path != current_path
+                      || row.target_workspace_path != target_path
+                      || row.current_package != current_package
+                      || row.target_package != target_package
+                      || row.lib_name != lib_name
+                      || row.status != "LandedTransitional"
+                      || row.target_disposition != "RetainPackage"
+                      || row.logical_id == row.target_package
+                  {
+                      return Err(format!("unexpected shared row {logical}: {row:?}"));
+                  }
+              }
+
+              let expected_collapses = BTreeMap::from([
+                  (
+                      "proof-provider-api",
+                      ("proof-engine", "proof_engine::provider"),
+                  ),
+                  (
+                      "proof-adapter-command",
+                      ("cargo-proof", "cargo_proof::providers::command"),
+                  ),
+                  (
+                      "proof-adapter-cargo-allow",
+                      ("cargo-proof", "cargo_proof::providers::cargo_allow"),
+                  ),
+                  (
+                      "proof-adapter-ripr",
+                      ("cargo-proof", "cargo_proof::providers::ripr"),
+                  ),
+                  (
+                      "proof-adapter-hawk",
+                      ("cargo-proof", "cargo_proof::providers::hawk"),
+                  ),
+              ]);
+              if fixture.collapse.len() != expected_collapses.len() {
+                  return Err(format!("unexpected collapse row count {}", fixture.collapse.len()));
+              }
+              let mut seen_collapses = BTreeSet::new();
+              for row in &fixture.collapse {
+                  if !seen_collapses.insert(row.logical_id.as_str()) {
+                      return Err(format!("duplicate collapse logical ID {}", row.logical_id));
+                  }
+                  let Some((container, module)) = expected_collapses.get(row.logical_id.as_str())
+                  else {
+                      return Err(format!("unexpected collapsed package {}", row.logical_id));
+                  };
+                  if row.current_package != row.logical_id
+                      || row.current_workspace_path != format!("crates/{}", row.logical_id)
+                      || row.target_container != *container
+                      || row.target_module != *module
+                      || row.target_module.trim().is_empty()
+                      || row.disposition != "CollapseIntoPackage"
+                  {
+                      return Err(format!("unexpected collapse row {}: {row:?}", row.logical_id));
+                  }
+              }
+
+              let expected_dispositions = [
+                  ("CARGO-ALLOW-PROP-0001", "CurrentSupporting"),
+                  ("CARGO-ALLOW-SPEC-0001", "CurrentSupporting"),
+                  ("CARGO-ALLOW-PROP-0010", "CurrentCanonical"),
+                  ("CARGO-ALLOW-ADR-0002", "CurrentCanonical"),
+                  ("CARGO-ALLOW-ADR-0003", "CurrentCanonical"),
+                  ("CARGO-ALLOW-SPEC-0010", "HistoricalOnly"),
+                  ("CARGO-ALLOW-SPEC-0011", "CurrentCanonical"),
+                  ("plans/spec-system/implementation-plan.md", "HistoricalOnly"),
+                  ("allow-policy::spec_system", "CompatibilityOnly"),
+                  ("cargo-allow::spec_system", "BlockedOnParity"),
+                  ("#2550", "CurrentCanonical"),
+                  ("#2612", "CurrentSupporting"),
+                  ("#2598", "CurrentSupporting"),
+                  ("#2604", "CurrentSupporting"),
+                  ("#2606", "CurrentSupporting"),
+                  ("#2607", "CurrentSupporting"),
+              ];
+              if fixture.entry.len() != expected_dispositions.len() {
+                  return Err(format!("unexpected disposition row count {}", fixture.entry.len()));
+              }
+              let mut seen_entries = BTreeSet::new();
+              for (artifact, disposition) in expected_dispositions {
+                  let row = fixture
+                      .entry
+                      .iter()
+                      .find(|row| row.artifact == artifact)
+                      .ok_or_else(|| format!("fixture is missing disposition {artifact}"))?;
+                  if !seen_entries.insert(row.artifact.as_str()) {
+                      return Err(format!("duplicate disposition {}", row.artifact));
+                  }
+                  if row.disposition != disposition || row.note.trim().is_empty() {
+                      return Err(format!("unexpected disposition {artifact}: {row:?}"));
+                  }
+              }
+
+              let ledger_path = root.join(".allow/artifacts/doc-artifacts.toml");
+              let ledger = load_doc_artifacts(&ledger_path)
+                  .map_err(|error| format!("load document artifact ledger: {error}"))?;
+              let historical = ledger
+                  .artifact
+                  .iter()
+                  .find(|artifact| artifact.id == "CARGO-ALLOW-SPEC-0010")
+                  .ok_or_else(|| "artifact ledger is missing SPEC-0010".to_string())?;
+              if historical.status != ArtifactStatus::Superseded
+                  || historical.superseded_by.as_deref() != Some("CARGO-ALLOW-SPEC-0011")
+              {
+                  return Err(format!("unexpected historical spec lifecycle: {historical:?}"));
+              }
+              let current = ledger
+                  .artifact
+                  .iter()
+                  .find(|artifact| artifact.id == "CARGO-ALLOW-SPEC-0011")
+                  .ok_or_else(|| "artifact ledger is missing SPEC-0011".to_string())?;
+              if current.status != ArtifactStatus::Accepted
+                  || current.linked_proposal.as_deref() != Some("CARGO-ALLOW-PROP-0010")
+                  || current.linked_adr.as_deref() != Some("CARGO-ALLOW-ADR-0002")
+              {
+                  return Err(format!("unexpected current spec lifecycle: {current:?}"));
+              }
+              validate_doc_artifact_links(&ledger)
+                  .map_err(|error| format!("validate document artifact links: {error}"))?;
+              validate_doc_artifact_files(&root, &ledger, &test_roots())
+                  .map_err(|error| format!("validate document artifact files: {error}"))?;
+
+              let historical_text = read(
+                  &root,
+                  "docs/specs/CARGO-ALLOW-SPEC-0010-three-product-boundaries.md",
+              )?;
+              if !historical_text.contains("superseded_by: CARGO-ALLOW-SPEC-0011") {
+                  return Err("historical spec source does not name its exact successor".to_string());
+              }
+              let current_text = read(
+                  &root,
+                  "docs/specs/CARGO-ALLOW-SPEC-0011-three-product-convergence.md",
+              )?;
+              for requirement in [
+                  "identity-distinguishes-logical-package-lib",
+                  "support-visibility-and-extraction-separate",
+                  "release-requires-evidence-backed-complete",
+              ] {
+                  if !current_text.contains(requirement) {
+                      return Err(format!("current spec is missing requirement {requirement}"));
+                  }
+              }
+
+              let support_text = read(&root, "docs/status/SUPPORT_TIERS.md")?;
+              if support_text.contains("cargo-intent (planned)")
+                  || support_text.contains("cargo-proof (planned)")
+                  || support_text.contains("Generation-1 parser compatibility table")
+                  || support_text.contains("Proof or evidence")
+              {
+                  return Err("support tiers retain a competing generation-1 table/schema".to_string());
+              }
+              if support_text
+                  .matches("| Surface | Tier | Claim | Proof command | Limitations |")
+                  .count()
+                  != 1
+              {
+                  return Err("support tiers must contain exactly one current claims table".to_string());
+              }
+              let support_rows = validate_support_tier_claims(&support_text)
+                  .map_err(|error| format!("validate generation-2 support tiers: {error}"))?;
+              let expected_tiers = BTreeMap::from([
+                  ("cargo-allow published source-exception ledger", SupportTierLevel::Stable),
+                  ("cargo-allow 0.2 source candidate", SupportTierLevel::Stabilizing),
+                  ("cargo-intent", SupportTierLevel::Experimental),
+                  ("cargo-proof", SupportTierLevel::Experimental),
+                  ("Historical spec-system artifacts", SupportTierLevel::Compatibility),
+                  ("target 22-package topology", SupportTierLevel::Advisory),
+                  ("physical repository extraction", SupportTierLevel::NotIncluded),
+              ]);
+              for (surface, tier) in expected_tiers {
+                  let row = support_rows
+                      .iter()
+                      .find(|row| row.surface == surface)
+                      .ok_or_else(|| format!("support tiers are missing {surface}"))?;
+                  if row.tier != tier {
+                      return Err(format!("support tier {surface} expected {tier:?}, got {:?}", row.tier));
+                  }
+              }
+              let compatibility = support_rows
+                  .iter()
+                  .find(|row| row.surface == "Historical spec-system artifacts")
+                  .ok_or_else(|| "missing historical compatibility support row".to_string())?;
+              let compatibility_text = format!("{} {}", compatibility.claim, compatibility.notes);
+              if !compatibility_text.contains("Cargo-intent owns current intent authority")
+                  || !compatibility_text.contains("fails explicitly")
+                  || !compatibility_text.contains("retire")
+              {
+                  return Err("historical compatibility row lacks owner/failure/retirement law".to_string());
+              }
+
+              Ok(())
+          }
+
+          fn test_roots() -> SpecSystemRoots {
+              SpecSystemRoots {
+                  proposals: "docs/proposals".to_string(),
+                  specs: "docs/specs".to_string(),
+                  adrs: "docs/adr".to_string(),
+                  plans: "plans".to_string(),
+                  goals: Some(".allow/goals".to_string()),
+                  support_tiers: "docs/status/SUPPORT_TIERS.md".to_string(),
+                  artifact_ledger: ".allow/artifacts/doc-artifacts.toml".to_string(),
+              }
+          }
+          RS
+      - name: Replace the legacy phrase-based unit contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("crates/allow-policy/src/spec_system/tests.rs")
+          text = path.read_text(encoding="utf-8")
+          marker = "#[derive(serde::Deserialize)]\nstruct ThreeProductDispositionEntry"
+          start = text.find(marker)
+          if start < 0:
+              raise SystemExit("legacy three-product test marker not found")
+          replacement = r'''#[derive(serde::Deserialize)]
+          struct ThreeProductCollapseRow {
+              target_module: String,
+              disposition: String,
+          }
+
+          #[derive(serde::Deserialize)]
+          struct ThreeProductDispositionMap {
+              schema_version: String,
+              authority_generation: u32,
+              design_package_proposal: String,
+              ownership_adr: String,
+              package_identity_adr: String,
+              historical_spec: String,
+              current_spec: String,
+              design_package_plan: String,
+              observed_package_count: usize,
+              target_package_count: usize,
+              repository_extraction_authorized: bool,
+              release_authorized: bool,
+              collapse: Vec<ThreeProductCollapseRow>,
+          }
+
+          #[test]
+          fn spec_system_design_package() -> Result<(), String> {
+              let root = repo_root();
+              let disposition_map = root.join("tests/fixtures/three-product-design/disposition-map.toml");
+              let disposition_text = std::fs::read_to_string(&disposition_map)
+                  .map_err(|error| format!("disposition map should be readable: {error}"))?;
+              let disposition = toml::from_str::<ThreeProductDispositionMap>(&disposition_text)
+                  .map_err(|error| format!("disposition map should parse as TOML: {error}"))?;
+
+              if disposition.schema_version != "2.0"
+                  || disposition.authority_generation != 2
+                  || disposition.design_package_proposal != "CARGO-ALLOW-PROP-0010"
+                  || disposition.ownership_adr != "CARGO-ALLOW-ADR-0002"
+                  || disposition.package_identity_adr != "CARGO-ALLOW-ADR-0003"
+                  || disposition.historical_spec != "CARGO-ALLOW-SPEC-0010"
+                  || disposition.current_spec != "CARGO-ALLOW-SPEC-0011"
+                  || disposition.design_package_plan != "CARGO-ALLOW-PLAN-0010"
+                  || disposition.observed_package_count != 27
+                  || disposition.target_package_count != 22
+                  || disposition.repository_extraction_authorized
+                  || disposition.release_authorized
+              {
+                  return Err("generation-2 disposition authority fields do not match".to_string());
+              }
+              if disposition.collapse.len() != 5
+                  || disposition.collapse.iter().any(|row| {
+                      row.target_module.trim().is_empty()
+                          || row.disposition != "CollapseIntoPackage"
+                  })
+              {
+                  return Err("generation-2 collapse projection is incomplete".to_string());
+              }
+
+              let ledger = parse_doc_artifact_ledger(include_str!(
+                  "../../../../.allow/artifacts/doc-artifacts.toml"
+              ))
+              .map_err(|error| error.to_string())?;
+              for id in [
+                  "CARGO-ALLOW-PROP-0010",
+                  "CARGO-ALLOW-ADR-0002",
+                  "CARGO-ALLOW-ADR-0003",
+                  "CARGO-ALLOW-SPEC-0010",
+                  "CARGO-ALLOW-SPEC-0011",
+                  "CARGO-ALLOW-PLAN-0010",
+              ] {
+                  if !ledger.artifact.iter().any(|artifact| artifact.id == id) {
+                      return Err(format!("artifact ledger missing {id}"));
+                  }
+              }
+              validate_doc_artifact_links(&ledger).map_err(|error| error.to_string())?;
+              validate_doc_artifact_files(repo_root(), &ledger, &test_roots())
+                  .map_err(|error| error.to_string())?;
+              Ok(())
+          }
+          '''
+          replacement = "\n".join(line[10:] if line.startswith("          ") else line for line in replacement.splitlines()) + "\n"
+          path.write_text(text[:start] + replacement, encoding="utf-8")
+          PY
+      - name: Focused contract proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo fmt --all
+          cargo fmt --all -- --check
+          cargo clippy -p allow-policy -p cargo-allow --all-targets --locked -- -D warnings
+          cargo test -p allow-policy --test three_product_design --locked -- --nocapture
+          cargo test -p cargo-allow spec_design_artifact_links --locked -- --nocapture
+          cargo test -p allow-policy support_tier --locked -- --nocapture
+          bash scripts/extraction-readiness-receipt.sh
+          cargo run -p cargo-allow --locked -- check --mode no-new --format markdown \
+            --receipt target/cargo-allow/check.receipt.json \
+            --output target/cargo-allow/check.md
+      - name: Commit the contract cutover and remove this one-shot workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name EffortlessSteven
+          git config user.email git@effortlesssteven.com
+          git rm .github/workflows/agent-2967-cutover.yml
+          git add -A
+          git diff --cached --check
+          git commit -m "test(architecture): integrate generation-2 reconstruction contracts"
+          git push origin HEAD:agent/2967-generation-2-contracts
