@@ -100,6 +100,12 @@ Artifact-specific fields such as `diff`, `summary`, `allow_entries`,
 `work_items`, `stale_entries`, `allow_entry`, and evidence diagnostics are
 covered by their individual schema files. Consumers should branch on
 `schema_id`, not on command-line spelling or filenames.
+
+The cargo-allow contract suite also validates the checked-in producer samples
+against every governed schema with the Rust `jsonschema` validator. This proves
+the sample/rendering fixtures conform to the published shapes; it does not
+claim that every runtime branch or arbitrary consumer payload has been
+exhaustively exercised.
 The `cargo-allow.add-finding-plan.v1` artifact binds an operator-reviewed add
 plan to repository, inventory, policy, finding, and source-file identities. Its
 `proof_plans` carry authoritative program plus ordered argv; consumers must not
