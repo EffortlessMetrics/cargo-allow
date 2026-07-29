@@ -1467,7 +1467,6 @@
       "required": [
         "id",
         "kind",
-        "family",
         "owner",
         "classification",
         "scope",
@@ -1488,10 +1487,8 @@
           ]
         },
         "family": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string",
+          "description": "Policy family; omitted when unavailable."
         },
         "owner": {
           "type": "string"

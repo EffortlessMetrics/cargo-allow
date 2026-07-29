@@ -79,6 +79,51 @@ fn prune_json_renderer_records_mode_context_and_candidates() {
 }
 
 #[test]
+fn prune_json_renderer_omits_unavailable_family() -> Result<(), String> {
+    let candidates = vec![PruneCandidate {
+        id: "allow-stale",
+        kind: "non_rust_file",
+        family: None,
+        owner: "release",
+        classification: "release_marker",
+        scope: ".changes/v0.2.0",
+        reason: "retained release marker",
+    }];
+    let json = render_prune_json(
+        &candidates,
+        PruneModeContext {
+            explicit_dry_run: true,
+            write_requested: false,
+            written_path: None,
+            total_entries: 1,
+        },
+        InventoryContext::source_syntax("git_tracked", Some("H:/Code/Rust/cargo-allow"), Some(49)),
+        &MutationReceipt {
+            operation: "prune",
+            tool_version: "0.1.10",
+            repo_root: None,
+            config_source: None,
+            ledger_ids: Vec::new(),
+            changed_allow_ids: Vec::new(),
+            before_fingerprints: Vec::new(),
+            after_fingerprints: Vec::new(),
+            result: "stdout",
+            next_commands: Vec::new(),
+        },
+    );
+    let value: serde_json::Value = serde_json::from_str(&json)
+        .map_err(|error| format!("sparse prune report should render valid JSON: {error}"))?;
+    let stale_entry = value
+        .pointer("/stale_entries/0")
+        .ok_or_else(|| "sparse prune report should include a stale entry".to_string())?;
+    if stale_entry.get("family").is_some() {
+        return Err("sparse prune report should omit family".to_string());
+    }
+
+    Ok(())
+}
+
+#[test]
 fn prune_human_renderer_records_mode_and_candidates() {
     let candidates = vec![PruneCandidate {
         id: "allow|stale",

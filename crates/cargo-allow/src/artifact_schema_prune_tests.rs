@@ -94,15 +94,7 @@ fn prune_schema_locks_stale_cleanup_artifact_contract() {
     assert_required_fields(
         "prune stale entry",
         stale_entry,
-        &[
-            "id",
-            "kind",
-            "family",
-            "owner",
-            "classification",
-            "scope",
-            "reason",
-        ],
+        &["id", "kind", "owner", "classification", "scope", "reason"],
     );
     assert_enum_equals(
         "prune stale entry kind",
