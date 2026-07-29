@@ -738,7 +738,6 @@ dependencies = [
  "allow-inventory",
  "repo-protocol",
  "serde",
- "serde_json",
  "sha2",
  "toml",
 ]
