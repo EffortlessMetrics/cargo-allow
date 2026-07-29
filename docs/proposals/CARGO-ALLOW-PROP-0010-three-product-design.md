@@ -327,10 +327,13 @@ feature matrix and support/publication evidence remain an independent later gate
 
 ## Repository extraction
 
-Physical repository extraction is not authorized. It becomes eligible only
-after independent package/CI/support closures, public-boundary external dogfood,
-shim and private-path deletion, simplification review and a later explicit
-authorization naming the repositories and exact source state to move.
+For the strict generation-1 compatibility contract and the current retained
+position alike, repository extraction is **not authorized**.
+
+Physical repository extraction becomes eligible only after independent
+package/CI/support closures, public-boundary external dogfood, shim and
+private-path deletion, simplification review and a later explicit authorization
+naming the repositories and exact source state to move.
 
 ## Machine-source law
 
