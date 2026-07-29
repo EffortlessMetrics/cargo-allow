@@ -457,6 +457,102 @@ fn match_strength_priority_orders_correctly() {
 }
 
 #[test]
+fn match_strength_priority_values_are_pinned() {
+    // Characterization test: pin exact priority values so future tuning is
+    // intentional and visible (#2679, acceptance criterion #3 from #1777).
+    assert_eq!(MatchStrength::ScopedFamily.as_priority(), 100);
+    assert_eq!(MatchStrength::Structural.as_priority(), 200);
+    assert_eq!(MatchStrength::ExactOccurrence.as_priority(), 300);
+}
+
+#[test]
+fn classify_match_tier_assignment_is_characterized() {
+    // Characterization of tier assignment rules (#2679):
+    // - snippet hash match → ExactOccurrence
+    // - structural selector fields (no hash) → Structural
+    // - kind+family+path only → ScopedFamily
+
+    // ExactOccurrence: entry with matching normalized_snippet_hash
+    let finding = finding_with_hash("fnv1a64:abc123");
+    let entry = entry_with_hash("fnv1a64:abc123");
+    assert_eq!(
+        classify_match(&entry, &finding),
+        Some(MatchStrength::ExactOccurrence)
+    );
+
+    // Structural: entry with ast_kind+container but NO hash in selector.
+    // When selector.normalized_snippet_hash is None, the hash gate is skipped
+    // and the match falls through to the Structural tier.
+    let mut structural_entry = entry_with_hash("fnv1a64:abc");
+    structural_entry.selector.normalized_snippet_hash = None;
+    let structural_finding = finding_with_hash("fnv1a64:abc");
+    assert_eq!(
+        classify_match(&structural_entry, &structural_finding),
+        Some(MatchStrength::Structural)
+    );
+
+    // ScopedFamily: entry with kind+family+path but no selector fields.
+    // Use NonRustFile (doesn't require_source_selector_identity) so an empty
+    // selector doesn't fail the structural-identity gate.
+    let scoped_entry = AllowEntry {
+        id: "allow-scoped".to_string(),
+        kind: FindingKind::NonRustFile,
+        family: None,
+        path: Some(PathBuf::from("docs/readme.md")),
+        glob: None,
+        owner: "test".to_string(),
+        classification: "reviewed".to_string(),
+        reason: "test".to_string(),
+        evidence: Vec::new(),
+        links: Vec::new(),
+        occurrence_limit: None,
+        lifecycle: Lifecycle {
+            created: Some("2026-01-01".to_string()),
+            review_after: Some("2027-01-01".to_string()),
+            expires: None,
+        },
+        selector: Selector::default(),
+        last_seen: None,
+    };
+    let scoped_finding = Finding {
+        kind: FindingKind::NonRustFile,
+        family: None,
+        path: PathBuf::from("docs/readme.md"),
+        span: None,
+        identity: StructuralIdentity::new("file", "tracked_file"),
+        message: "non-rust".to_string(),
+        ledger: None,
+    };
+    assert_eq!(
+        classify_match(&scoped_entry, &scoped_finding),
+        Some(MatchStrength::ScopedFamily)
+    );
+}
+
+#[test]
+fn classify_match_hard_gates_return_none() {
+    // Each hard gate (kind/family/path) downgrades to None.
+
+    // Kind mismatch: finding is Unsafe, entry is Panic
+    let finding = finding_with_hash("fnv1a64:abc");
+    let mut wrong_kind = entry_with_hash("fnv1a64:abc");
+    wrong_kind.kind = FindingKind::Panic;
+    wrong_kind.family = Some("unwrap".to_string());
+    wrong_kind.selector.ast_kind = Some("method_call".to_string());
+    assert_eq!(classify_match(&wrong_kind, &finding), None);
+
+    // Family mismatch: finding has "unsafe_fn", entry has "expect"
+    let mut wrong_family = entry_with_hash("fnv1a64:abc");
+    wrong_family.family = Some("expect".to_string());
+    assert_eq!(classify_match(&wrong_family, &finding), None);
+
+    // Path mismatch: finding is at src/lib.rs, entry at src/other.rs
+    let mut wrong_path = entry_with_hash("fnv1a64:abc");
+    wrong_path.path = Some(PathBuf::from("src/other.rs"));
+    assert_eq!(classify_match(&wrong_path, &finding), None);
+}
+
+#[test]
 fn explain_match_failure_reports_kind_family_path_and_selector_gates() {
     let finding = finding_with_hash("fnv1a64:actual");
     let mut entry = entry_with_hash("fnv1a64:expected");
