@@ -66,42 +66,46 @@ fn sarif_results_include_dedup_fingerprints_and_invocation_metadata() {
     let sarif = render_sarif_with_context("check", &findings, &outcomes, true, context);
     let value: serde_json::Value = serde_json::from_str(&sarif)
         .unwrap_or_else(|err| std::panic::panic_any(format!("SARIF should be valid JSON: {err}")));
-    let run = &value["runs"][0];
+    let run = |path: &str| {
+        value.pointer(path).unwrap_or_else(|| {
+            std::panic::panic_any(format!("SARIF test path should exist: {path}"))
+        })
+    };
     assert_eq!(
-        run["automationDetails"]["id"].as_str(),
+        run("/runs/0/automationDetails/id").as_str(),
         Some("cargo-allow/check")
     );
     assert_eq!(
-        run["invocations"][0]["executionSuccessful"].as_bool(),
+        run("/runs/0/invocations/0/executionSuccessful").as_bool(),
         Some(false)
     );
     assert_eq!(
-        run["invocations"][0]["startTimeUtc"].as_str(),
+        run("/runs/0/invocations/0/startTimeUtc").as_str(),
         Some("2026-07-28T23:00:00Z")
     );
     assert!(
-        run["invocations"][0]["endTimeUtc"]
+        run("/runs/0/invocations/0/endTimeUtc")
             .as_str()
             .is_some_and(|value| value.ends_with('Z'))
     );
     assert!(
-        run["tool"]["driver"]["rules"]
+        run("/runs/0/tool/driver/rules")
             .as_array()
             .is_some_and(|rules| {
-                rules
-                    .iter()
-                    .any(|rule| rule["id"].as_str() == Some("cargo-allow/location_drift"))
+                rules.iter().any(|rule| {
+                    rule.get("id").and_then(serde_json::Value::as_str)
+                        == Some("cargo-allow/location_drift")
+                })
             })
     );
 
-    let result = &run["results"][0];
     assert!(
-        result["partialFingerprints"]["primaryLocationLineHash"]
+        run("/runs/0/results/0/partialFingerprints/primaryLocationLineHash")
             .as_str()
             .is_some_and(|value| value.starts_with("sha256:v1:"))
     );
     assert!(
-        result["partialFingerprints"]["stableResultHash"]
+        run("/runs/0/results/0/partialFingerprints/stableResultHash")
             .as_str()
             .is_some_and(|value| value.starts_with("sha256:v1:"))
     );
