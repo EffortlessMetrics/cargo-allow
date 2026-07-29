@@ -96,6 +96,10 @@ text = text.replace(
     '"support-tier claims table with Surface, Tier, Claim, Proof command, and Notes columns not found"',
     '"support-tier claims table with Surface, Tier, Claim, Proof command or Proof or evidence, and Notes columns not found"',
 )
+text = text.replace(
+    "missing required column Proof command",
+    "missing required column Proof command or Proof or evidence",
+)
 path.write_text(text, encoding="utf-8")
 
 replacement = r'''#[derive(serde::Deserialize)]
