@@ -6,6 +6,7 @@ use allow_core::{
 use std::path::PathBuf;
 
 mod evaluation;
+mod invalid_date_contract;
 mod lint;
 mod mode;
 mod parity;
