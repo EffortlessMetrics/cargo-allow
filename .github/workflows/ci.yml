@@ -273,3 +273,34 @@ jobs:
         with:
           arguments: --workspace
           command: check
+
+  finalize-generation-2-authority:
+    if: github.head_ref == 'agent/2966-generation-2-authority' && github.actor != 'github-actions[bot]'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: agent/2966-generation-2-authority
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Generate and validate retained authority integration
+        run: |
+          cargo build -p cargo-allow --locked
+          cargo run -p cargo-allow --locked -- check --mode no-new \
+            --format markdown \
+            --receipt target/cargo-allow/finalize.receipt.json \
+            --output target/cargo-allow/finalize.md
+      - name: Commit generated authority and remove one-shot machinery
+        run: |
+          set -euo pipefail
+          git config user.name EffortlessSteven
+          git config user.email git@effortlesssteven.com
+          git fetch origin main
+          git checkout origin/main -- .github/workflows/ci.yml
+          git rm crates/cargo-allow/build.rs
+          git add .allow/artifacts/doc-artifacts.toml policy/allow.toml .github/workflows/ci.yml
+          git diff --cached --check
+          git commit -m "docs(architecture): register generation-2 authority"
+          git push origin HEAD:agent/2966-generation-2-authority
