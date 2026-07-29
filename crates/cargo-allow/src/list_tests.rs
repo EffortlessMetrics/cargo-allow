@@ -846,11 +846,9 @@ fn render_list_rows_json_projects_rows_filters_and_dash_lifecycle_fields() {
             .and_then(Value::as_str),
         Some("allow-core")
     );
-    assert_eq!(
-        value
-            .pointer("/allow_entries/0/review_after")
-            .unwrap_or_else(|| std::panic::panic_any("review_after field should exist")),
-        &Value::Null
+    assert!(
+        value.pointer("/allow_entries/0/review_after").is_none(),
+        "unavailable review_after should be omitted"
     );
     assert_eq!(
         value
