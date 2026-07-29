@@ -360,7 +360,14 @@ fn worklist_status_style_is_fixed_label_only() {
         path: Some("src/lib.rs"),
         line: Some(4),
         column: Some(5),
-        evidence_reference: None,
+        evidence_reference: Some(EvidenceReference {
+            raw: "doc:docs/missing.md",
+            prefix: Some("doc"),
+            target: Some("docs/missing.md"),
+            status: "local_file_missing",
+            category: "missing",
+            message: "local evidence file is missing",
+        }),
         source_package: Some("parser"),
         message: "repository message",
         suggested_actions: &suggested_actions,
@@ -378,6 +385,7 @@ fn worklist_status_style_is_fixed_label_only() {
         render_worklist_human_styled(&items, WorklistFilters::default(), inventory, Style::ANSI);
     assert!(styled.contains("  status: \u{1b}[33mstale\u{1b}[0m"));
     assert!(styled.contains("\u{1b}[31mhigh\u{1b}[0m"));
+    assert!(styled.contains("evidence reference: \u{1b}[33mmissing\u{1b}[0m:"));
     assert!(!styled.contains("message: \u{1b}"));
 
     let plain =
