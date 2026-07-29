@@ -5,9 +5,7 @@ status: accepted
 owner: repo-infra
 created: 2026-07-29
 linked_proposal: CARGO-ALLOW-PROP-0010
-linked_adrs:
-  - CARGO-ALLOW-ADR-0002
-  - CARGO-ALLOW-ADR-0003
+linked_adr: CARGO-ALLOW-ADR-0002
 supersedes_requirement_ids:
   - CARGO-ALLOW-SPEC-0010#crate-topology-owned-by-2612
   - CARGO-ALLOW-SPEC-0010#rust-source-index-before-intent-engine
@@ -246,16 +244,16 @@ D1  #2936 canonical intent obligation input
 D2  #2943 proof protocol/engine semantic boundary
 D3  #2937 provider API and command-provider absorption
 D4  #2938 built-in provider absorption
-D5  #2939 delete five packages; observed topology becomes 22
+D5  #2939 retire five packages; observed topology becomes 22
 E   #2885 move/rename shared survivors and split independent versions
 F   #2886 exact cargo-allow package/install/journey candidate
 G   mutation, scanner, release-evidence, provenance, registry and support closeout
 H   #2501 exact refreeze → explicit authorization → #2502 publication
 ```
 
-#2941 may land independently when its allow-report/legacy projection proof is
-clean. #2968 independently qualifies cargo-proof after topology convergence and
-does not block cargo-allow core by default.
+Issue `#2941` may land independently when its allow-report/legacy projection
+proof is clean. Issue `#2968` independently qualifies cargo-proof after topology
+convergence and does not block cargo-allow core by default.
 
 Each dependent branch starts from merged `main`. Opening a PR or obtaining one
 green job is not completion.
