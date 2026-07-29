@@ -9,7 +9,7 @@ fn readme_preserves_source_tree_boundary() {
     let readme = normalize_lf(include_str!("../../../README.md"));
 
     for required_text in [
-        "`cargo-allow` is a source-tree exception ledger for Rust repositories.",
+        "`cargo-allow` is a source-tree exception ledger and policy scanner for Rust repositories.",
         "`cargo-allow` scans repository files directly.",
         "the primary UX is the standalone `cargo-allow` binary",
         "does **not** require a successful build",
