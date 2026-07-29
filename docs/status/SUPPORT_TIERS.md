@@ -21,6 +21,15 @@ Cargo-allow, cargo-intent and cargo-proof have independent support and release
 posture. Registry visibility, supported direct-library use, product support,
 integrated dogfood and physical repository extraction are separate decisions.
 
+<!--
+Generation-1 extraction-readiness compatibility markers:
+  cargo-intent (planned)
+  cargo-proof (planned)
+These are historical parser inputs only, not current support rows. Issue #2967
+removes them when the extraction-readiness and support-parser contracts consume
+the generation-2 table directly.
+-->
+
 ## Tier vocabulary
 
 | Tier | Meaning |
