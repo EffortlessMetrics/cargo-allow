@@ -157,6 +157,11 @@ filter is not applicable.
 Explain, add, and why current-finding metadata `family` and `source_package`
 follow the same omission law; navigation fields such as `line` and `column`
 retain `null` when no source span is available.
+Report finding rows omit unavailable `family` and `source_package` metadata;
+prune stale-entry rows omit unavailable `family` metadata. Report navigation
+and identity fields such as `line` and `container` retain nullable values when
+those observations are unavailable, while prune identity, ownership, scope,
+and reason fields remain required.
 Worklist artifacts follow the same rule: current renderers emit all known
 filter keys, while the nested `filters` schema keeps those keys optional.
 Non-empty worklist artifacts may also include `summary.item_kinds`, an optional
