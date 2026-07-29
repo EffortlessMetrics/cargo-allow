@@ -22,12 +22,21 @@ posture. Registry visibility, supported direct-library use, product support,
 integrated dogfood and physical repository extraction are separate decisions.
 
 <!--
-Generation-1 extraction-readiness compatibility markers:
-  cargo-intent (planned)
-  cargo-proof (planned)
-These are historical parser inputs only, not current support rows. Issue #2967
-removes them when the extraction-readiness and support-parser contracts consume
-the generation-2 table directly.
+Generation-1 parser compatibility table. This hidden table is historical input
+only; the visible generation-2 table below is the retained human authority.
+Issue #2967 updates the parser and tests to consume the visible table directly,
+then deletes this block.
+
+| Surface | Tier | Claim | Proof command | Notes |
+| --- | --- | --- | --- | --- |
+| Source exception ledger | Stable | `cargo-allow check --mode no-new` reports whether scanned source-tree findings are matched by `policy/allow.toml` without executing project code. | `cargo-allow check --mode no-new` | Historical generation-1 row. |
+| PR posture | Stabilizing | `cargo-allow diff --base <base>` reports source-exception posture changes for a pull request. | `cargo-allow diff --base origin/main --format markdown` | Historical generation-1 row. |
+| Worklist routing | Stabilizing | `cargo-allow worklist --format json` emits bounded source-exception repair items for humans and agents. | `cargo-allow worklist --format json` | Historical generation-1 row. |
+| Spec-system profile | Advisory | Historical structural profile and cutover evidence. | `scripts/spec-system-cutover-receipt.sh` | Historical generation-1 row. |
+| cargo-intent (planned) | Advisory | Historical pre-landing cargo-intent projection. | `docs/proposals/CARGO-ALLOW-PROP-0010-three-product-design.md` | Not a current support claim. |
+| cargo-proof (planned) | Advisory | Historical pre-landing cargo-proof projection. | `docs/proposals/CARGO-ALLOW-PROP-0010-three-product-design.md` | Not a current support claim. |
+| Migration compat lanes | Advisory | Historical compatibility-lane projection. | `cargo-allow check --compat --kind non-rust` | Historical generation-1 row. |
+| Self-hosting readiness | Advisory | Historical readiness projection. | `docs/readiness/self-hosting.md` | Historical generation-1 row. |
 -->
 
 ## Tier vocabulary
