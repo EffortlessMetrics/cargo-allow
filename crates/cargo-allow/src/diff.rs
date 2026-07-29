@@ -20,9 +20,10 @@ pub(crate) use diff_render::DiffLedgerContext;
 #[cfg(test)]
 pub(crate) use diff_render::render_diff_json_with_posture;
 use diff_render::{
-    append_diff_posture_summary, append_finding_posture_changes, append_policy_changes,
-    insert_markdown_pr_summary, render_diff_json_report, render_diff_pr_summary_markdown,
-    render_finding_posture_changes_human, render_policy_changes_human,
+    append_diff_posture_summary_styled, append_finding_posture_changes_styled,
+    append_policy_changes_styled, insert_markdown_pr_summary, render_diff_json_report,
+    render_diff_pr_summary_markdown, render_finding_posture_changes_human,
+    render_policy_changes_human,
 };
 
 use crate::{
@@ -244,16 +245,34 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         );
         insert_markdown_pr_summary(&mut text, &summary);
     }
-    append_diff_posture_summary(
+    let style = if args.format == OutputFormat::Human && args.output.is_none() {
+        crate::reporting::output_style()
+    } else {
+        allow_report::Style::PLAIN
+    };
+    append_diff_posture_summary_styled(
         &mut text,
         args.format,
         current_failures,
         evidence,
         &projected_outcomes,
         &ledger,
+        style,
     );
-    append_finding_posture_changes(&mut text, args.format, &finding_changes, &head_cfg_for_diff);
-    append_policy_changes(&mut text, args.format, &policy_changes, &head_cfg_for_diff);
+    append_finding_posture_changes_styled(
+        &mut text,
+        args.format,
+        &finding_changes,
+        &head_cfg_for_diff,
+        style,
+    );
+    append_policy_changes_styled(
+        &mut text,
+        args.format,
+        &policy_changes,
+        &head_cfg_for_diff,
+        style,
+    );
     match allow_diff::changed_files(&root, &base, args.head.as_deref()) {
         Ok(changed) => {
             if args.format == OutputFormat::Human {
