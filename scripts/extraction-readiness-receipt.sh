@@ -97,9 +97,25 @@ for family, posture in postures.items():
         raise SystemExit(f"package topology missing posture {posture} for {family}")
 
 support = (root / "docs/status/SUPPORT_TIERS.md").read_text(encoding="utf-8")
-for row in ["cargo-intent (planned)", "cargo-proof (planned)"]:
-    if row not in support:
-        raise SystemExit(f"support tiers missing row {row}")
+support_rows = {}
+for line in support.splitlines():
+    if not line.startswith("|"):
+        continue
+    cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+    if len(cells) < 2:
+        continue
+    support_rows[cells[0]] = cells[1]
+
+expected_support_tiers = {
+    "cargo-intent": "Experimental",
+    "cargo-proof": "Experimental",
+}
+for surface, expected_tier in expected_support_tiers.items():
+    observed = support_rows.get(surface)
+    if observed != expected_tier:
+        raise SystemExit(
+            f"support tiers expected {surface} = {expected_tier}, got {observed or '<missing>'}"
+        )
 
 def deps_section(path: Path) -> str:
     cargo = path.read_text(encoding="utf-8")
@@ -130,11 +146,15 @@ for closeout in [
     if "## Rollback" not in body:
         raise SystemExit(f"closeout missing rollback section: {closeout}")
 
-spec = (root / "docs/specs/CARGO-ALLOW-SPEC-0010-three-product-boundaries.md").read_text(
+spec = (root / "docs/specs/CARGO-ALLOW-SPEC-0011-three-product-convergence.md").read_text(
     encoding="utf-8"
 )
-if "repository-extraction-not-authorized" not in spec:
-    raise SystemExit("spec missing repository-extraction-not-authorized requirement")
+for requirement_id in [
+    "support-visibility-and-extraction-separate",
+    "release-requires-evidence-backed-complete",
+]:
+    if requirement_id not in spec:
+        raise SystemExit(f"current spec missing {requirement_id} requirement")
 
 prerequisite_receipts = {}
 for label, path in [

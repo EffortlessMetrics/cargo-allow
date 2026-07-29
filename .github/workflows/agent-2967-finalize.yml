@@ -1,0 +1,53 @@
+name: Finalize generation-2 contract metadata
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: agent-2967-finalize
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]' && github.head_ref == 'agent/2967-generation-2-contracts'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: agent/2967-generation-2-contracts
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Apply metadata and diagnostic corrections
+        run: python3 scripts/agent-2967-finalize.py
+      - name: Remove one-shot construction machinery
+        run: |
+          git rm .github/workflows/agent-2967-finalize.yml
+          git rm scripts/agent-2967-finalize.py
+      - name: Focused final-tree proof
+        run: |
+          set -euo pipefail
+          cargo fmt --all
+          cargo fmt --all -- --check
+          cargo clippy -p allow-policy -p cargo-allow --all-targets --locked -- -D warnings
+          cargo test -p allow-policy --lib spec_system --locked -- --nocapture
+          cargo test -p allow-policy --test three_product_design --locked -- --nocapture
+          cargo test -p cargo-allow spec_design_artifact_links --locked -- --nocapture
+          bash scripts/extraction-readiness-receipt.sh
+          cargo run -p cargo-allow --locked -- check --mode no-new --format markdown \
+            --receipt target/cargo-allow/check.receipt.json \
+            --output target/cargo-allow/check.md
+      - name: Commit final reviewable bytes
+        run: |
+          set -euo pipefail
+          git config user.name EffortlessSteven
+          git config user.email git@effortlesssteven.com
+          git add -A
+          git diff --cached --check
+          git commit -m "fix(architecture): align generation-2 lifecycle metadata"
+          git push origin HEAD:agent/2967-generation-2-contracts
