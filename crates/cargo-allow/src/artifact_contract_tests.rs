@@ -1,6 +1,9 @@
+use crate::artifact_contract_samples::{command_artifact_samples, core_artifact_samples};
 use crate::artifact_contract_support::{assert_inventory_contract, parse_json_artifact};
+use crate::artifact_schema_support::schema_contracts;
 use crate::diff;
 use serde_json::Value;
+use std::collections::BTreeSet;
 
 #[test]
 fn core_json_artifact_renderers_emit_parseable_v1_contracts() {
@@ -111,4 +114,49 @@ fn receipt_result_classes_preserve_status_and_error_diagnostic() {
         error.get("diagnostic").and_then(Value::as_str),
         Some("invalid policy field: \"mode\"")
     );
+}
+
+#[test]
+fn rendered_artifact_samples_validate_against_json_schemas() -> Result<(), String> {
+    let mut samples = command_artifact_samples();
+    samples.extend(core_artifact_samples());
+    let schemas = schema_contracts();
+    let mut validated_schema_names = BTreeSet::new();
+
+    for sample in samples {
+        let contract = schemas
+            .iter()
+            .find(|contract| contract.name == sample.schema_name)
+            .ok_or_else(|| {
+                format!(
+                    "sample {} references unknown schema {}",
+                    sample.name, sample.schema_name
+                )
+            })?;
+        let schema = serde_json::from_str(contract.schema)
+            .map_err(|error| format!("{} schema JSON: {error}", sample.schema_name))?;
+        let instance = serde_json::from_str(&sample.json)
+            .map_err(|error| format!("{} sample JSON: {error}", sample.name))?;
+        let validator = jsonschema::validator_for(&schema)
+            .map_err(|error| format!("{} schema compilation: {error}", sample.schema_name))?;
+        validator.validate(&instance).map_err(|error| {
+            format!(
+                "{} sample does not validate against {}: {error}",
+                sample.name, sample.schema_name
+            )
+        })?;
+        validated_schema_names.insert(contract.name);
+    }
+
+    let expected_schema_names = schemas
+        .iter()
+        .map(|contract| contract.name)
+        .collect::<BTreeSet<_>>();
+    if validated_schema_names != expected_schema_names {
+        return Err(format!(
+            "producer samples do not cover every schema: expected {expected_schema_names:?}, got {validated_schema_names:?}"
+        ));
+    }
+
+    Ok(())
 }
