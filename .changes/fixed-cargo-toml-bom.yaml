@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Scanner: Cargo.toml manifests are now BOM-stripped before TOML parsing, matching
+  the policy TOML reader (#2003). A Windows-edited Cargo.toml saved with a UTF-8
+  BOM would silently fail to parse in package.rs (silent: no crate_name
+  attribution) and produce a ManifestMalformed diagnostic in inventory.rs.
+  Both loaders now strip the BOM before handing to toml::from_str.
