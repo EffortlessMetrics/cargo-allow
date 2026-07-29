@@ -3,6 +3,8 @@ pub struct PruneModeContext<'a> {
     pub explicit_dry_run: bool,
     pub write_requested: bool,
     pub written_path: Option<&'a str>,
+    /// Total entries in the policy before pruning. Used for the "K remaining" line.
+    pub total_entries: usize,
 }
 
 #[derive(Debug, Clone, Copy)]

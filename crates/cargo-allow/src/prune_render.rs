@@ -7,9 +7,15 @@ pub(super) fn render_prune_stale_result(
     explicit_dry_run: bool,
     write_requested: bool,
     written_path: Option<&Path>,
+    total_entries: usize,
     context: PruneContext<'_>,
 ) -> String {
-    let mode = PruneRenderMode::new(explicit_dry_run, write_requested, written_path);
+    let mode = PruneRenderMode::new(
+        explicit_dry_run,
+        write_requested,
+        written_path,
+        total_entries,
+    );
     let report_candidates = report_prune_candidates(candidates);
     let text = allow_report::render_prune_human_with_context(
         &report_candidates,
@@ -24,9 +30,15 @@ pub(super) fn render_prune_stale_json(
     explicit_dry_run: bool,
     write_requested: bool,
     written_path: Option<&Path>,
+    total_entries: usize,
     context: PruneContext<'_>,
 ) -> String {
-    let mode = PruneRenderMode::new(explicit_dry_run, write_requested, written_path);
+    let mode = PruneRenderMode::new(
+        explicit_dry_run,
+        write_requested,
+        written_path,
+        total_entries,
+    );
     let report_candidates = report_prune_candidates(candidates);
     allow_report::render_prune_json(
         &report_candidates,

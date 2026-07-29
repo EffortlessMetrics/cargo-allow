@@ -58,9 +58,14 @@ pub fn render_prune_human_with_context(
         ));
     }
     if let Some(path) = mode.written_path {
+        let remaining = mode.total_entries.saturating_sub(candidates.len());
         out.push_str(&format!(
-            "\nRemoved stale entries from `{}`.\n",
-            markdown_cell(path)
+            "\nRemoved {} stale entr{} from `{}`. {} entr{} remain.\n",
+            candidates.len(),
+            if candidates.len() == 1 { "y" } else { "ies" },
+            markdown_cell(path),
+            remaining,
+            if remaining == 1 { "y" } else { "ies" },
         ));
     } else {
         out.push_str(
