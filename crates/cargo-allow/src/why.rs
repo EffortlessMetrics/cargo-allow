@@ -194,7 +194,7 @@ pub(crate) fn sample_why_json_for_contract_test() -> String {
     let entry = AllowEntry {
         id: "allow-near-miss".to_string(),
         kind: FindingKind::Panic,
-        family: Some("unwrap".to_string()),
+        family: None,
         path: Some(PathBuf::from("src/lib.rs")),
         glob: None,
         owner: "core".to_string(),

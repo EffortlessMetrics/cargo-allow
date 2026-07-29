@@ -40,6 +40,10 @@ changie batch v0.2.1
 changie merge
 ```
 
+Versioned release markers such as `.changes/v0.2.0` may remain as empty
+tracked files after batching. They are release metadata, not change fragments,
+and are retained with an owned `cargo-allow` policy receipt.
+
 ### 3. Pre-commit hook (optional)
 
 ```bash
