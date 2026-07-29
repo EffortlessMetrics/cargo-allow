@@ -2,12 +2,21 @@ use crate::evidence_reference_human::evidence_reference_human_status;
 use crate::worklist_summary::{
     worklist_difficulty_count, worklist_kind_counts, worklist_risk_count,
 };
-use crate::{CLAIM_BOUNDARY_TEXT, InventoryContext, WorklistFilters, WorklistItem};
+use crate::{CLAIM_BOUNDARY_TEXT, InventoryContext, Style, WorklistFilters, WorklistItem};
 
 pub fn render_worklist_human(
     items: &[WorklistItem<'_>],
     filters: WorklistFilters<'_>,
     inventory: InventoryContext<'_>,
+) -> String {
+    render_worklist_human_styled(items, filters, inventory, Style::PLAIN)
+}
+
+pub fn render_worklist_human_styled(
+    items: &[WorklistItem<'_>],
+    filters: WorklistFilters<'_>,
+    inventory: InventoryContext<'_>,
+    style: Style,
 ) -> String {
     let mut out = String::new();
     out.push_str("cargo-allow worklist\n\n");
@@ -25,15 +34,18 @@ pub fn render_worklist_human(
     out.push_str(&format!("Work items: {}\n", items.len()));
     out.push_str("Risk:\n");
     out.push_str(&format!(
-        "  high      {}\n",
+        "  {}      {}\n",
+        style_risk(style, "high"),
         worklist_risk_count(items, "high")
     ));
     out.push_str(&format!(
-        "  medium    {}\n",
+        "  {}    {}\n",
+        style_risk(style, "medium"),
         worklist_risk_count(items, "medium")
     ));
     out.push_str(&format!(
-        "  low       {}\n",
+        "  {}       {}\n",
+        style_risk(style, "low"),
         worklist_risk_count(items, "low")
     ));
     out.push_str("Difficulty:\n");
@@ -105,7 +117,7 @@ pub fn render_worklist_human(
             let status = evidence_reference_human_status(reference);
             out.push_str(&format!(
                 "  evidence reference: {}: {} (status={}, prefix={}, target={})\n",
-                status.label,
+                style.status(status.label, status.label),
                 reference.raw,
                 reference.status,
                 reference.prefix.unwrap_or("-"),
@@ -120,7 +132,10 @@ pub fn render_worklist_human(
             }
             out.push('\n');
         }
-        out.push_str(&format!("  status: {}\n", item.status));
+        out.push_str(&format!(
+            "  status: {}\n",
+            style.status(item.status, item.status)
+        ));
         out.push_str(&format!("  message: {}\n", item.message));
         for action in item.suggested_actions.iter().take(2) {
             out.push_str(&format!("  action: {action}\n"));
@@ -139,6 +154,14 @@ pub fn render_worklist_human(
     out.push_str(CLAIM_BOUNDARY_TEXT);
     out.push('\n');
     out
+}
+
+fn style_risk(style: Style, risk: &str) -> String {
+    match risk {
+        "high" => style.blocking(risk),
+        "low" => style.ok(risk),
+        _ => style.advisory(risk),
+    }
 }
 
 fn worklist_filters_human(filters: WorklistFilters<'_>) -> String {

@@ -48,7 +48,11 @@ use worklist_items::work_items_from_outcomes;
 #[cfg(test)]
 pub(crate) use worklist_priority::{DIFFICULTY_LEVELS, RISK_LEVELS};
 use worklist_queue::{filter_work_items, renumber_work_items, sort_work_items};
-use worklist_render::{render_worklist_human_with_context, render_worklist_json_with_context};
+#[cfg(test)]
+use worklist_render::render_worklist_human_with_context;
+use worklist_render::{
+    render_worklist_human_with_context_styled, render_worklist_json_with_context,
+};
 pub(crate) use worklist_scoring::work_item_kind;
 #[cfg(test)]
 use worklist_types::WorkItemLedger;
@@ -107,9 +111,14 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         inventory: source_context.inventory(),
         filters,
     };
+    let style = if matches!(args.format, HumanJsonFormat::Human) && args.output.is_none() {
+        crate::reporting::output_style()
+    } else {
+        allow_report::Style::PLAIN
+    };
     let text = match args.format {
         HumanJsonFormat::Json => render_worklist_json_with_context(&items, context),
-        HumanJsonFormat::Human => render_worklist_human_with_context(&items, context),
+        HumanJsonFormat::Human => render_worklist_human_with_context_styled(&items, context, style),
     };
     emit_text(args.output.as_deref(), &text)?;
     Ok(())
