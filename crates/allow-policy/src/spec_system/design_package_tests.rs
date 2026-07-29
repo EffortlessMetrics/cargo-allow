@@ -60,7 +60,9 @@ fn three_product_fixture_has_exact_generation_two_denominators() -> Result<(), S
         .sum::<usize>()
         + fixture.target_shared_package_count;
     if observed != fixture.observed_package_count || observed != 27 {
-        return Err(format!("unexpected observed package denominator {observed}"));
+        return Err(format!(
+            "unexpected observed package denominator {observed}"
+        ));
     }
     if target != fixture.target_package_count || target != 22 {
         return Err(format!("unexpected target package denominator {target}"));

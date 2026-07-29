@@ -103,8 +103,8 @@ fn read(root: &Path, relative: &str) -> Result<String, String> {
 }
 
 #[test]
-fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
-) -> Result<(), String> {
+fn three_product_generation_two_reconstructs_exact_current_and_target_authority()
+-> Result<(), String> {
     let root = workspace_root()?;
     let fixture_text = read(
         &root,
@@ -120,7 +120,9 @@ fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
         return Err("fixture must not authorize repository extraction or release".to_string());
     }
     if fixture.cargo_proof_qualification_blocks_cargo_allow_release {
-        return Err("cargo-proof qualification must remain independent of cargo-allow release".to_string());
+        return Err(
+            "cargo-proof qualification must remain independent of cargo-allow release".to_string(),
+        );
     }
 
     let authorities = [
@@ -147,7 +149,9 @@ fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
     ];
     for (observed, expected) in issue_owners {
         if observed != expected {
-            return Err(format!("expected controlling issue #{expected}, got #{observed}"));
+            return Err(format!(
+                "expected controlling issue #{expected}, got #{observed}"
+            ));
         }
     }
     if fixture.governance_model_owner != "intent-model"
@@ -192,7 +196,10 @@ fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
         ),
     ];
     if fixture.product.len() != expected_products.len() {
-        return Err(format!("unexpected product row count {}", fixture.product.len()));
+        return Err(format!(
+            "unexpected product row count {}",
+            fixture.product.len()
+        ));
     }
     let mut seen_products = BTreeSet::new();
     for (id, status, current, target, published, claim, observed_count, target_count) in
@@ -232,10 +239,14 @@ fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
         .sum::<usize>()
         + fixture.target_shared_package_count;
     if observed_total != 27 || observed_total != fixture.observed_package_count {
-        return Err(format!("unexpected observed topology denominator {observed_total}"));
+        return Err(format!(
+            "unexpected observed topology denominator {observed_total}"
+        ));
     }
     if target_total != 22 || target_total != fixture.target_package_count {
-        return Err(format!("unexpected target topology denominator {target_total}"));
+        return Err(format!(
+            "unexpected target topology denominator {target_total}"
+        ));
     }
 
     let expected_shared = [
@@ -273,7 +284,10 @@ fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
         ),
     ];
     if fixture.shared.len() != expected_shared.len() {
-        return Err(format!("unexpected shared row count {}", fixture.shared.len()));
+        return Err(format!(
+            "unexpected shared row count {}",
+            fixture.shared.len()
+        ));
     }
     let mut seen_shared = BTreeSet::new();
     for (logical, current_path, target_path, current_package, target_package, lib_name) in
@@ -323,7 +337,10 @@ fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
         ),
     ]);
     if fixture.collapse.len() != expected_collapses.len() {
-        return Err(format!("unexpected collapse row count {}", fixture.collapse.len()));
+        return Err(format!(
+            "unexpected collapse row count {}",
+            fixture.collapse.len()
+        ));
     }
     let mut seen_collapses = BTreeSet::new();
     for row in &fixture.collapse {
@@ -340,7 +357,10 @@ fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
             || row.target_module.trim().is_empty()
             || row.disposition != "CollapseIntoPackage"
         {
-            return Err(format!("unexpected collapse row {}: {row:?}", row.logical_id));
+            return Err(format!(
+                "unexpected collapse row {}: {row:?}",
+                row.logical_id
+            ));
         }
     }
 
@@ -363,7 +383,10 @@ fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
         ("#2607", "CurrentSupporting"),
     ];
     if fixture.entry.len() != expected_dispositions.len() {
-        return Err(format!("unexpected disposition row count {}", fixture.entry.len()));
+        return Err(format!(
+            "unexpected disposition row count {}",
+            fixture.entry.len()
+        ));
     }
     let mut seen_entries = BTreeSet::new();
     for (artifact, disposition) in expected_dispositions {
@@ -398,7 +421,9 @@ fn validate_artifact_lifecycle(root: &Path) -> Result<(), String> {
     if historical.status != ArtifactStatus::Superseded
         || historical.superseded_by.as_deref() != Some("CARGO-ALLOW-SPEC-0011")
     {
-        return Err(format!("unexpected historical spec lifecycle: {historical:?}"));
+        return Err(format!(
+            "unexpected historical spec lifecycle: {historical:?}"
+        ));
     }
     let current = ledger
         .artifact
