@@ -169,7 +169,9 @@ pub use ledger_posture::{
     NetPosture, POSTURE_DELTA_FIELD_NAMES, PostureDelta, PresenceMovement,
     finding_change_label_for, parse_finding_change_label,
 };
-pub use list::{render_list_human, render_list_human_columns, render_list_json};
+pub use list::{
+    render_list_human, render_list_human_columns, render_list_human_concise, render_list_json,
+};
 pub use migrate::{render_migrate_human, render_migrate_json};
 pub use migrate_closeout::{
     MigrateCloseoutInput, MigrateLegacySource, migrate_closeout_from_input,

@@ -34,6 +34,18 @@ pub fn render_list_human(rows: &[ListRow<'_>], inventory: InventoryContext<'_>) 
     render_list_human_columns(rows, inventory, ListColumn::ALL)
 }
 
+/// Render the concise CLI human view with bounded repository-controlled cells
+/// and a status/evidence summary. The complete human projection remains
+/// available through [`render_list_human_columns`] and `--wide`.
+pub fn render_list_human_concise(
+    rows: &[ListRow<'_>],
+    inventory: InventoryContext<'_>,
+    filters: ListFilters<'_>,
+    columns: &[ListColumn],
+) -> String {
+    render_list_human_columns_internal(rows, inventory, columns, true, filters)
+}
+
 /// Render the list human-format TSV with a column subset (#2595).
 ///
 /// `columns` controls both the header row and the per-row cell projection.
@@ -43,6 +55,16 @@ pub fn render_list_human_columns(
     rows: &[ListRow<'_>],
     inventory: InventoryContext<'_>,
     columns: &[ListColumn],
+) -> String {
+    render_list_human_columns_internal(rows, inventory, columns, false, ListFilters::default())
+}
+
+fn render_list_human_columns_internal(
+    rows: &[ListRow<'_>],
+    inventory: InventoryContext<'_>,
+    columns: &[ListColumn],
+    concise: bool,
+    filters: ListFilters<'_>,
 ) -> String {
     let mut out = String::new();
     out.push_str(&format!(
@@ -55,12 +77,23 @@ pub fn render_list_human_columns(
     if let Some(root) = inventory.root {
         out.push_str(&format!("source_tree_root: {root}\n"));
     }
+    if concise {
+        push_concise_summary(&mut out, rows);
+    }
     push_header(&mut out, columns);
     for row in rows {
-        push_row(&mut out, row, columns);
+        push_row(&mut out, row, columns, concise);
     }
     if rows.is_empty() {
-        out.push_str("(no allow entries matched filters)\n");
+        if !concise {
+            out.push_str("(no allow entries matched filters)\n");
+        } else if inventory.empty_git_tracked {
+            out.push_str("(no tracked source files were found; inventory is empty)\n");
+        } else if filters.has_active_filter() {
+            out.push_str("(no allow entries matched filters)\n");
+        } else {
+            out.push_str("(no allow entries are configured)\n");
+        }
     }
     append_list_next_steps(&mut out, rows);
     if !crate::contracts::is_quiet() {
@@ -80,12 +113,62 @@ fn push_header(out: &mut String, columns: &[ListColumn]) {
     out.push('\n');
 }
 
-fn push_row(out: &mut String, row: &ListRow<'_>, columns: &[ListColumn]) {
+fn push_row(out: &mut String, row: &ListRow<'_>, columns: &[ListColumn], concise: bool) {
     for (index, column) in columns.iter().enumerate() {
         if index > 0 {
             out.push('\t');
         }
-        out.push_str(&column.value(row));
+        if concise {
+            out.push_str(&column.concise_value(row));
+        } else {
+            out.push_str(&column.value(row));
+        }
+    }
+    out.push('\n');
+}
+
+fn push_concise_summary(out: &mut String, rows: &[ListRow<'_>]) {
+    const STATUS_ORDER: &[&str] = &[
+        "matched",
+        "new",
+        "stale",
+        "expired",
+        "review_due",
+        "location_drift",
+        "ambiguous",
+        "invalid_selector",
+        "missing_required_field",
+        "evidence_missing",
+        "baseline_debt",
+    ];
+
+    let mut details = Vec::new();
+    for status in STATUS_ORDER {
+        let count = rows.iter().filter(|row| row.status == *status).count();
+        if count > 0 {
+            details.push(format!("{status}: {count}"));
+        }
+    }
+    let broken = rows
+        .iter()
+        .map(|row| row.broken_evidence_references)
+        .sum::<usize>();
+    if broken > 0 {
+        details.push(format!("broken evidence: {broken}"));
+    }
+    let weak = rows
+        .iter()
+        .map(|row| row.weak_evidence_references)
+        .sum::<usize>();
+    if weak > 0 {
+        details.push(format!("weak evidence: {weak}"));
+    }
+
+    out.push_str(&format!("summary: {} allow entries shown", rows.len()));
+    if !details.is_empty() {
+        out.push_str(" (");
+        out.push_str(&details.join("; "));
+        out.push(')');
     }
     out.push('\n');
 }

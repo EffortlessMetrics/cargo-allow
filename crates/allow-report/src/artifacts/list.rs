@@ -109,6 +109,31 @@ impl ListColumn {
         }
     }
 
+    /// The bounded cell projection used by the CLI's concise human view.
+    /// Explicit `--columns` and `--wide` retain the complete cell values.
+    pub fn concise_value(self, row: &ListRow<'_>) -> String {
+        let value = self.value(row);
+        truncate_with_ellipsis(value.as_ref(), self.concise_width())
+    }
+
+    fn concise_width(self) -> usize {
+        match self {
+            ListColumn::Id => 36,
+            ListColumn::Status => 20,
+            ListColumn::Matches
+            | ListColumn::EvidenceCount
+            | ListColumn::BrokenEvidenceReferences
+            | ListColumn::WeakEvidenceReferences
+            | ListColumn::SelectorPrecision
+            | ListColumn::BroadScope => 16,
+            ListColumn::Kind | ListColumn::Family => 20,
+            ListColumn::Owner | ListColumn::Classification | ListColumn::SourcePackage => 24,
+            ListColumn::Scope => 48,
+            ListColumn::ReviewAfter | ListColumn::Expires => 20,
+            ListColumn::Reason => 72,
+        }
+    }
+
     /// Parse a comma-separated column selection (e.g. `"id,status,reason"`)
     /// into ordered variants. Trims whitespace around each name and matches
     /// case-insensitively (`ID` and `id` are equivalent). Returns an error
@@ -170,6 +195,17 @@ impl ListColumn {
     }
 }
 
+fn truncate_with_ellipsis(value: &str, max_chars: usize) -> String {
+    if value.chars().count() <= max_chars {
+        return value.to_string();
+    }
+    let prefix = value
+        .chars()
+        .take(max_chars.saturating_sub(1))
+        .collect::<String>();
+    format!("{prefix}…")
+}
+
 fn sanitized<'a>(value: &'a str) -> std::borrow::Cow<'a, str> {
     std::borrow::Cow::Owned(crate::style::sanitize_terminal_text(value))
 }
@@ -197,6 +233,28 @@ pub struct ListFilters<'a> {
     pub missing_evidence: bool,
     pub broken_evidence: bool,
     pub weak_evidence: bool,
+}
+
+impl ListFilters<'_> {
+    pub fn has_active_filter(self) -> bool {
+        self.kind.is_some()
+            || self.family.is_some()
+            || self.owner.is_some()
+            || self.classification.is_some()
+            || self.path.is_some()
+            || self.source_package.is_some()
+            || self.allow_id.is_some()
+            || self.status.is_some()
+            || self.expired
+            || self.review_due
+            || self.stale
+            || self.location_drift
+            || self.baseline_debt
+            || self.broad_scope
+            || self.missing_evidence
+            || self.broken_evidence
+            || self.weak_evidence
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

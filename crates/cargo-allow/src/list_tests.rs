@@ -275,6 +275,43 @@ fn render_list_rows_with_context_still_emits_full_row() {
 }
 
 #[test]
+fn list_view_parity_preserves_filtered_rows_and_order() {
+    let rows = vec![
+        list_row("allow-keep", FindingKind::Panic, "parser", "approved"),
+        list_row("allow-skip", FindingKind::Unsafe, "runtime", "approved"),
+    ];
+    let filters = ListFilters {
+        kind: Some(
+            parse_kind_filter("panic")
+                .unwrap_or_else(|err| std::panic::panic_any(format!("kind filter: {err}"))),
+        ),
+        ..ListFilters::default()
+    };
+    let context = ListContext {
+        inventory: allow_report::InventoryContext::unknown_source_syntax(),
+        kind_arg: Some("panic"),
+    };
+
+    let concise =
+        render_list_rows_concise(&rows, &filters, context, allow_report::ListColumn::DEFAULT);
+    let wide =
+        render_list_rows_with_columns(&rows, &filters, context, allow_report::ListColumn::ALL);
+    let json = render_list_rows_json(&rows, &filters, context);
+    let value = serde_json::from_str::<Value>(&json)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("list JSON should parse: {err}")));
+
+    for text in [&concise, &wide] {
+        assert!(text.contains("allow-keep"));
+        assert!(!text.contains("allow-skip"));
+    }
+    assert_eq!(
+        value.pointer("/allow_entries/0/id").and_then(Value::as_str),
+        Some("allow-keep")
+    );
+    assert!(value.pointer("/allow_entries/1").is_none());
+}
+
+#[test]
 fn clap_rejects_list_status_combined_with_status_shortcuts() {
     for shortcut in ["--expired", "--review-due", "--stale", "--location-drift"] {
         let err = CargoAllowCli::try_parse_from(argv(vec![

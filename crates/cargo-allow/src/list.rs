@@ -22,7 +22,7 @@ use list_args::list_filters;
 use list_render::render_list_rows;
 #[cfg(test)]
 use list_render::render_list_rows_with_context;
-use list_render::{render_list_rows_json, render_list_rows_with_columns};
+use list_render::{render_list_rows_concise, render_list_rows_json, render_list_rows_with_columns};
 #[cfg(test)]
 use list_rows::list_rows;
 use list_rows::list_rows_with_source_tree_files;
@@ -63,7 +63,11 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
     let text = match args.format {
         HumanJsonFormat::Human => {
             let columns = list_columns(args)?;
-            render_list_rows_with_columns(&rows, &filters, context, &columns)
+            if args.wide || args.columns.is_some() {
+                render_list_rows_with_columns(&rows, &filters, context, &columns)
+            } else {
+                render_list_rows_concise(&rows, &filters, context, &columns)
+            }
         }
         HumanJsonFormat::Json => render_list_rows_json(&rows, &filters, context),
     };
