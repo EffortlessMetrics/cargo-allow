@@ -102,6 +102,12 @@ fn same_finding_identity_compares_finding_identity_keys() {
         "tracked_file",
     );
 
-    assert!(same_finding_identity(&left, &matching));
-    assert!(!same_finding_identity(&left, &distinct));
+    assert_eq!(
+        allow_core::finding_identity_key(&left),
+        allow_core::finding_identity_key(&matching)
+    );
+    assert_ne!(
+        allow_core::finding_identity_key(&left),
+        allow_core::finding_identity_key(&distinct)
+    );
 }

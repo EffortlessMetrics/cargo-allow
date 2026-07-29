@@ -50,18 +50,24 @@ fn has_allow_family(cfg: &AllowConfig, kind: FindingKind, family: &str) -> bool 
 }
 
 pub(crate) fn extend_unique_findings(findings: &mut Vec<Finding>, additional: Vec<Finding>) {
+    if findings.is_empty() {
+        findings.extend(additional);
+        return;
+    }
+    // Build a HashSet of identity keys for the accumulated set to avoid
+    // O(n×m) per-comparison scans (#2677). First finding with a given
+    // identity wins (same rule as the previous linear search).
+    use std::collections::HashSet;
+    let mut seen: HashSet<String> = findings
+        .iter()
+        .map(allow_core::finding_identity_key)
+        .collect();
     for finding in additional {
-        if !findings
-            .iter()
-            .any(|existing| same_finding_identity(existing, &finding))
-        {
+        let key = allow_core::finding_identity_key(&finding);
+        if seen.insert(key) {
             findings.push(finding);
         }
     }
-}
-
-fn same_finding_identity(left: &Finding, right: &Finding) -> bool {
-    allow_core::finding_identity_key(left) == allow_core::finding_identity_key(right)
 }
 
 #[cfg(test)]
