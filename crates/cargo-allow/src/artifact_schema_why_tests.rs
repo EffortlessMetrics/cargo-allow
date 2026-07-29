@@ -68,7 +68,6 @@ fn why_schema_locks_finding_outcome_and_candidates_contract() {
         &[
             "id",
             "kind",
-            "family",
             "path",
             "glob",
             "selector_glob",

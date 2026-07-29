@@ -59,14 +59,24 @@ fn render_proof_plan_json(plan: &crate::WhyProofPlan<'_>) -> String {
 }
 
 fn render_candidate_entry_json(candidate: &crate::WhyCandidateEntry<'_>) -> String {
-    format!(
-        "    {{\n      \"id\": \"{}\",\n      \"kind\": \"{}\",\n      \"family\": {},\n      \"path\": {},\n      \"glob\": {},\n      \"selector_glob\": {},\n      \"mismatch_reasons\": {}\n    }}",
-        json_escape(candidate.id),
-        json_escape(candidate.kind),
-        option_json(candidate.family),
-        option_json(candidate.path),
-        option_json(candidate.glob),
-        option_json(candidate.selector_glob),
-        json_string_array(candidate.mismatch_reasons)
-    )
+    let mut fields = vec![
+        format!("      \"id\": \"{}\"", json_escape(candidate.id)),
+        format!("      \"kind\": \"{}\"", json_escape(candidate.kind)),
+    ];
+    if let Some(family) = candidate.family {
+        fields.push(format!("      \"family\": \"{}\"", json_escape(family)));
+    }
+    fields.extend([
+        format!("      \"path\": {}", option_json(candidate.path)),
+        format!("      \"glob\": {}", option_json(candidate.glob)),
+        format!(
+            "      \"selector_glob\": {}",
+            option_json(candidate.selector_glob)
+        ),
+        format!(
+            "      \"mismatch_reasons\": {}",
+            json_string_array(candidate.mismatch_reasons)
+        ),
+    ]);
+    format!("    {{\n{}\n    }}", fields.join(",\n"))
 }

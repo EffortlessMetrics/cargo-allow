@@ -126,3 +126,68 @@ fn render_why_json_emits_schema_id_and_candidates() {
         Some("src/lib.rs")
     );
 }
+
+#[test]
+fn render_why_json_omits_unavailable_candidate_family() -> Result<(), String> {
+    let finding = Finding {
+        kind: FindingKind::Panic,
+        family: Some("unwrap".to_string()),
+        path: PathBuf::from("src/lib.rs"),
+        span: Some(Span {
+            line: 10,
+            column: 1,
+        }),
+        identity: StructuralIdentity::new("rust", "method_call"),
+        message: "unwrap call".to_string(),
+        ledger: None,
+    };
+    let outcome = MatchOutcome {
+        status: MatchStatus::New,
+        allow_id: None,
+        candidate_ids: Vec::new(),
+        finding_index: Some(0),
+        message: "unreceipted panic.unwrap at src/lib.rs:10:1".to_string(),
+        score: 0,
+    };
+    let reasons = vec!["family unavailable".to_string()];
+    let candidates = [WhyCandidateEntry {
+        id: "allow-near-miss",
+        kind: "panic",
+        family: None,
+        path: None,
+        glob: None,
+        selector_glob: None,
+        mismatch_reasons: &reasons,
+    }];
+    let actions = ["Receipt this occurrence with cargo-allow add.".to_string()];
+    let proofs = ["cargo-allow add --kind panic".to_string()];
+    let add_args = ["add".to_string(), "--kind".to_string(), "panic".to_string()];
+    let plans = [WhyProofPlan {
+        program: "cargo-allow",
+        args: &add_args,
+    }];
+    let json = render_why_json(WhyReport {
+        inventory: InventoryContext::source_syntax("git_tracked", Some("H:/repo"), Some(12)),
+        finding: &finding,
+        outcome: &outcome,
+        candidate_entries: &candidates,
+        suggested_actions: &actions,
+        proof_commands: &proofs,
+        proof_plans: &plans,
+    });
+    let value: serde_json::Value = serde_json::from_str(&json)
+        .map_err(|err| format!("why JSON should deserialize: {err}\n{json}"))?;
+    let candidate = value
+        .pointer("/candidate_entries/0")
+        .ok_or_else(|| "candidate entry should be present".to_string())?;
+    if candidate.get("family").is_some() {
+        return Err("unavailable candidate family should be omitted".to_string());
+    }
+    if candidate.get("path") != Some(&serde_json::Value::Null)
+        || candidate.get("glob") != Some(&serde_json::Value::Null)
+        || candidate.get("selector_glob") != Some(&serde_json::Value::Null)
+    {
+        return Err("candidate selector relationship fields should remain null".to_string());
+    }
+    Ok(())
+}
