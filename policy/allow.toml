@@ -10495,3 +10495,25 @@ glob = ".pre-commit-hooks.yaml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0499"
+kind = "non_rust_file"
+family = "configuration"
+path = "action.yml"
+owner = "core/devex"
+classification = "adoption_action"
+reason = "Publishes the version-pinned read-only GitHub Action for closed cargo-allow capabilities."
+evidence = ["issue:2835", "test:action_contract_has_closed_pinned_read_only_surface", "doc:docs/how-to/adopt-cargo-allow.md"]
+created = "2026-07-29"
+review_after = "2026-10-27"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "action.yml"
+target_fingerprint = "yml"
+glob = "action.yml"
+
+[allow.last_seen]
+line = 1
+column = 1

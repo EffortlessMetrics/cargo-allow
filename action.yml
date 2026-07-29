@@ -1,0 +1,201 @@
+name: cargo-allow
+description: Run a version-pinned, read-only cargo-allow check against a repository.
+author: EffortlessMetrics
+
+inputs:
+  version:
+    description: Exact published cargo-allow version to install; mutable channels are rejected.
+    required: true
+  install-route:
+    description: Installation route. Only the verified source route is supported in this slice.
+    required: false
+    default: source
+  command:
+    description: Closed cargo-allow capability to run.
+    required: false
+    default: check
+  mode:
+    description: Check mode when command is check.
+    required: false
+    default: no-new
+  config:
+    description: Repository-relative policy configuration path.
+    required: false
+    default: policy/allow.toml
+  root:
+    description: Source-tree root passed to cargo-allow.
+    required: false
+    default: .
+  base:
+    description: Exact base revision required by the diff capability.
+    required: false
+    default: ''
+  head:
+    description: Optional exact head revision for the diff capability.
+    required: false
+    default: ''
+  upload-artifacts:
+    description: Upload the bounded report and receipt directory even when analysis fails.
+    required: false
+    default: 'true'
+  artifact-name:
+    description: Name for the uploaded cargo-allow artifact.
+    required: false
+    default: cargo-allow-report
+
+outputs:
+  installed-version:
+    description: Version string reported by the installed cargo-allow binary.
+    value: ${{ steps.install.outputs.installed-version }}
+  exit-code:
+    description: Direct cargo-allow process exit code; semantic result remains in the receipt/report.
+    value: ${{ steps.evaluate.outputs.exit-code }}
+  report-path:
+    description: Absolute workspace JSON report path when the capability emits a report.
+    value: ${{ steps.evaluate.outputs.report-path }}
+  receipt-path:
+    description: Absolute workspace receipt path when the capability emits a receipt.
+    value: ${{ steps.evaluate.outputs.receipt-path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up the supported source-install toolchain
+      uses: dtolnay/rust-toolchain@f133eefe930d61f0d9371efd474daf0125ed3dd1 # 1.95.0
+      with:
+        toolchain: 1.95.0
+
+    - id: install
+      name: Install and verify cargo-allow
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        INSTALL_ROUTE: ${{ inputs.install-route }}
+      run: |
+        set -euo pipefail
+
+        if [[ "${RUNNER_OS}" != "Linux" ]]; then
+          echo "::error::The source-install action currently supports Linux runners only."
+          exit 1
+        fi
+        if [[ "${INSTALL_ROUTE}" != "source" ]]; then
+          echo "::error::Unsupported install-route '${INSTALL_ROUTE}'; only source is supported."
+          exit 1
+        fi
+        if [[ ! "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+          echo "::error::version must be an exact semantic version, not latest or a moving channel."
+          exit 1
+        fi
+
+        install_root="${RUNNER_TEMP}/cargo-allow-${GITHUB_RUN_ID}"
+        cargo install cargo-allow --version "${VERSION}" --locked --root "${install_root}"
+        binary="${install_root}/bin/cargo-allow"
+        reported_version="$("${binary}" --version)"
+        if [[ "${reported_version}" != *" ${VERSION}"* ]]; then
+          echo "::error::Installed binary reported '${reported_version}', expected cargo-allow ${VERSION}."
+          exit 1
+        fi
+
+        {
+          echo "binary=${binary}"
+          echo "installed-version=${reported_version}"
+        } >> "${GITHUB_OUTPUT}"
+
+    - id: evaluate
+      if: steps.install.outcome == 'success'
+      name: Run the closed cargo-allow capability
+      continue-on-error: true
+      shell: bash
+      env:
+        BINARY: ${{ steps.install.outputs.binary }}
+        COMMAND: ${{ inputs.command }}
+        MODE: ${{ inputs.mode }}
+        CONFIG: ${{ inputs.config }}
+        ROOT: ${{ inputs.root }}
+        BASE: ${{ inputs.base }}
+        HEAD: ${{ inputs.head }}
+      run: |
+        set -u
+        artifact_dir="${GITHUB_WORKSPACE}/target/cargo-allow-action"
+        report_path="${artifact_dir}/${COMMAND}.json"
+        receipt_path="${artifact_dir}/${COMMAND}.receipt.json"
+        mkdir -p "${artifact_dir}"
+        rm -f "${report_path}" "${receipt_path}"
+
+        args=()
+        case "${COMMAND}" in
+          check)
+            case "${MODE}" in
+              no-new|audit|strict|release) ;;
+              *) echo "::error::Unsupported check mode '${MODE}'."; exit 64 ;;
+            esac
+            args=(check --root "${ROOT}" --mode "${MODE}" --format json --output "${report_path}" --receipt "${receipt_path}")
+            [[ -n "${CONFIG}" ]] && args+=(--config "${CONFIG}")
+            ;;
+          diff)
+            if [[ -z "${BASE}" ]]; then
+              echo "::error::The diff capability requires an exact base revision."
+              exit 64
+            fi
+            args=(diff --root "${ROOT}" --base "${BASE}" --format json --output "${report_path}" --receipt "${receipt_path}")
+            [[ -n "${HEAD}" ]] && args+=(--head "${HEAD}")
+            [[ -n "${CONFIG}" ]] && args+=(--config "${CONFIG}")
+            ;;
+          audit)
+            args=(audit --root "${ROOT}" --format json --output "${report_path}")
+            [[ -n "${CONFIG}" ]] && args+=(--config "${CONFIG}")
+            ;;
+          doctor)
+            args=(doctor --root "${ROOT}" --format json --output "${report_path}")
+            [[ -n "${CONFIG}" ]] && args+=(--config "${CONFIG}")
+            ;;
+          *)
+            echo "::error::Unsupported command '${COMMAND}'; allowed values are check, diff, audit, and doctor."
+            exit 64
+            ;;
+        esac
+
+        "${BINARY}" "${args[@]}"
+        exit_code=$?
+        printf 'exit-code=%s\n' "${exit_code}" >> "${GITHUB_OUTPUT}"
+        printf 'report-path=%s\n' "${report_path}" >> "${GITHUB_OUTPUT}"
+        if [[ "${COMMAND}" == "check" || "${COMMAND}" == "diff" ]]; then
+          printf 'receipt-path=%s\n' "${receipt_path}" >> "${GITHUB_OUTPUT}"
+        else
+          printf 'receipt-path=\n' >> "${GITHUB_OUTPUT}"
+        fi
+        if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+          {
+            echo "## cargo-allow"
+            echo
+            echo "- version: \`${{ steps.install.outputs.installed-version }}\`"
+            echo "- command: \`${COMMAND}\`"
+            echo "- exit code: \`${exit_code}\`"
+            echo "- report: \`${report_path}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
+        fi
+        exit 0
+
+    - name: Upload cargo-allow artifacts
+      if: always() && inputs.upload-artifacts == 'true'
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: target/cargo-allow-action
+        if-no-files-found: warn
+
+    - name: Preserve cargo-allow result status
+      if: always()
+      shell: bash
+      env:
+        INSTALL_OUTCOME: ${{ steps.install.outcome }}
+        EVALUATE_OUTCOME: ${{ steps.evaluate.outcome }}
+        EXIT_CODE: ${{ steps.evaluate.outputs.exit-code }}
+      run: |
+        set -euo pipefail
+        if [[ "${INSTALL_OUTCOME}" != "success" || "${EVALUATE_OUTCOME}" != "success" ]]; then
+          exit 1
+        fi
+        if [[ -n "${EXIT_CODE}" && "${EXIT_CODE}" != "0" ]]; then
+          exit "${EXIT_CODE}"
+        fi
