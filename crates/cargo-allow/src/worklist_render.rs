@@ -12,15 +12,25 @@ pub(super) fn render_worklist_json_with_context(
     )
 }
 
+#[cfg(test)]
 pub(super) fn render_worklist_human_with_context(
     items: &[WorkItem],
     context: WorklistContext<'_>,
 ) -> String {
+    render_worklist_human_with_context_styled(items, context, allow_report::Style::PLAIN)
+}
+
+pub(super) fn render_worklist_human_with_context_styled(
+    items: &[WorkItem],
+    context: WorklistContext<'_>,
+    style: allow_report::Style,
+) -> String {
     let report_items = report_worklist_items(items);
-    allow_report::render_worklist_human(
+    allow_report::render_worklist_human_styled(
         &report_items,
         report_worklist_filters(context.filters),
         context.inventory,
+        style,
     )
 }
 

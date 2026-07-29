@@ -1,4 +1,5 @@
 use super::*;
+use crate::worklist_human::render_worklist_human_styled;
 
 #[test]
 fn worklist_json_renderer_records_filters_summary_and_items() {
@@ -331,4 +332,55 @@ fn worklist_human_renderer_shows_ledger_inspection_proof_commands() {
         !text.contains("  proof: cargo-allow worklist --format json"),
         "human output should still avoid dumping every long-tail proof command"
     );
+}
+
+#[test]
+fn worklist_status_style_is_fixed_label_only() {
+    let suggested_actions = vec!["review stale allow".to_string()];
+    let proof_commands = vec!["cargo-allow explain allow-stale".to_string()];
+    let items = vec![WorklistItem {
+        id: "work-stale-0001",
+        kind: "stale_allow",
+        exception_kind: Some("panic"),
+        family: Some("unwrap"),
+        owner: Some("parser"),
+        classification: Some("reviewed_exception"),
+        reason: Some("review this entry"),
+        created: None,
+        review_after: None,
+        expires: None,
+        evidence_count: None,
+        selector_precision: Some(80),
+        risk: "high",
+        difficulty: "small",
+        status: "stale",
+        allow_id: Some("allow-stale"),
+        candidate_ids: &[],
+        finding_index: None,
+        path: Some("src/lib.rs"),
+        line: Some(4),
+        column: Some(5),
+        evidence_reference: None,
+        source_package: Some("parser"),
+        message: "repository message",
+        suggested_actions: &suggested_actions,
+        proof_commands: &proof_commands,
+        ledger_id: None,
+        ledger_path: None,
+        lane: None,
+        mode: None,
+        role: None,
+    }];
+    let inventory =
+        InventoryContext::source_syntax("git_tracked", Some("H:/Code/Rust/cargo-allow"), Some(47));
+
+    let styled =
+        render_worklist_human_styled(&items, WorklistFilters::default(), inventory, Style::ANSI);
+    assert!(styled.contains("  status: \u{1b}[33mstale\u{1b}[0m"));
+    assert!(styled.contains("\u{1b}[31mhigh\u{1b}[0m"));
+    assert!(!styled.contains("message: \u{1b}"));
+
+    let plain =
+        render_worklist_human_styled(&items, WorklistFilters::default(), inventory, Style::PLAIN);
+    assert!(!plain.contains('\u{1b}'));
 }
