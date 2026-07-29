@@ -102,6 +102,17 @@ text = text.replace(
 )
 path.write_text(text, encoding="utf-8")
 
+for parser_path in [
+    Path("crates/intent-model/src/spec_system/support_tiers.rs"),
+    Path("crates/allow-policy/src/snapshot_package/spec_system/support_tiers.rs"),
+]:
+    replace_once(
+        parser_path,
+        '    let notes = column_index(&normalized, "notes");\n',
+        '    let notes = column_index(&normalized, "notes")\n        .or_else(|| column_index(&normalized, "limitations"));\n',
+        f"support limitations alias in {parser_path}",
+    )
+
 replacement = r'''#[derive(serde::Deserialize)]
 struct ThreeProductCollapseRow {
     target_module: String,
