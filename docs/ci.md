@@ -169,7 +169,7 @@ For adoption details, see
 
 Tag pushes matching `v*` trigger the [Release
 workflow](../.github/workflows/release.yml). The workflow runs preflight checks,
-publishes the ten workspace crates to crates.io in dependency order, and creates
+publishes the twelve workspace crates to crates.io in dependency order, and creates
 a GitHub Release from `docs/release/github/vX.Y.Z.md` when that file exists.
 
 See [Release on Tag](release/README.md) for Trusted Publishing setup, manual

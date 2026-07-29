@@ -91,7 +91,7 @@ Complete these checks before the first tag-triggered automated release:
 
 | Prerequisite | Verification |
 | --- | --- |
-| Trusted Publishing on all ten crates | Each crate in [Publish order](#publish-order) has crates.io **Settings → Trusted Publishing** with owner `EffortlessMetrics`, repo `cargo-allow`, workflow `release.yml` |
+| Trusted Publishing on all twelve crates | Each crate in [Publish order](#publish-order) has crates.io **Settings → Trusted Publishing** with owner `EffortlessMetrics`, repo `cargo-allow`, workflow `release.yml` |
 | Prior manual publish per crate | `0.1.0`–`0.1.9` manual publishes satisfy crates.io's first-publish requirement |
 | Workflow dry-run green on `main` | **Actions → Release → Run workflow**; preflight passes and publish runs `cargo publish --dry-run` only ([Manual dry-run](#manual-dry-run)) |
 | Token fallback documented | `CARGO_REGISTRY_TOKEN` secret exists only when OIDC is not yet configured for every crate ([Token fallback](#token-fallback-migration-only)) |
@@ -120,7 +120,7 @@ is verified and a recent workflow_dispatch dry-run is green.
    - **publish** — runs [release version preflight](../../scripts/release-version-preflight.sh)
      (tag/workspace alignment, internal dependency versions, CHANGELOG section,
      and release-record files; release-record checks skip on workflow_dispatch),
-     then publishes the ten workspace crates to crates.io in dependency order
+     then publishes the twelve workspace crates to crates.io in dependency order
      (dry-run before each upload).
    - **install-smoke** *(tag pushes only)* — after `cargo-allow` is published,
      runs [release install smoke](../../scripts/release-install-smoke.sh):
@@ -167,7 +167,8 @@ Before tagging, confirm packaging and dry-run publish for the full workspace:
 ```bash
 cargo package --workspace --locked
 for crate in allow-core allow-policy allow-inventory allow-files allow-rust \
-  allow-match allow-report allow-policy-legacy allow-diff cargo-allow; do
+  allow-match allow-report allow-policy-legacy allow-diff repo-protocol repo-edit \
+  cargo-allow; do
   cargo publish --dry-run -p "${crate}" --locked
 done
 ```
@@ -209,9 +210,11 @@ Configure Trusted Publishing on **each** published crate:
 | 7 | `allow-report` | Settings → Trusted Publishing |
 | 8 | `allow-policy-legacy` | Settings → Trusted Publishing |
 | 9 | `allow-diff` | Settings → Trusted Publishing |
-| 10 | `cargo-allow` | Settings → Trusted Publishing |
+| 10 | `repo-protocol` | Settings → Trusted Publishing |
+| 11 | `repo-edit` | Settings → Trusted Publishing |
+| 12 | `cargo-allow` | Settings → Trusted Publishing |
 
-All ten rows use the same GitHub binding: owner `EffortlessMetrics`, repository
+All twelve rows use the same GitHub binding: owner `EffortlessMetrics`, repository
 `cargo-allow`, workflow filename `release.yml`. Leave **Environment** blank
 unless the workflow is later scoped to a GitHub `release` environment.
 
@@ -220,7 +223,7 @@ unless the workflow is later scoped to a GitHub `release` environment.
 If Trusted Publishing is not yet configured for every crate, add a repository
 secret named `CARGO_REGISTRY_TOKEN`. The publish job uses it when OIDC exchange
 is unavailable. Remove the secret after Trusted Publishing is verified for all
-ten crates.
+twelve crates.
 
 Do not commit API tokens to the repository.
 
