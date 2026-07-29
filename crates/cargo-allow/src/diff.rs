@@ -345,7 +345,8 @@ fn resolve_diff_root(explicit_root: Option<&Path>) -> CargoAllowResult<PathBuf> 
 }
 
 /// Auto-detect the merge-base of HEAD and its upstream branch (@{u}).
-/// Returns None if no upstream is configured or git is unavailable.
+/// Returns Ok(None) if no upstream is configured (detached HEAD, no @{u}).
+/// Returns Err if git cannot be spawned (e.g. not on PATH).
 fn auto_detect_merge_base(root: &Path) -> CargoAllowResult<Option<String>> {
     let output = std::process::Command::new("git")
         .arg("-C")
