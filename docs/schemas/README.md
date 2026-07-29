@@ -144,6 +144,10 @@ non-zero so older `cargo-allow.list.v1` artifacts remain valid while current
 renderers expose the per-entry evidence repair signal. The list filter object
 also includes optional `broken_evidence` and `weak_evidence` booleans for saved
 filtered evidence-health views.
+List row metadata fields `family`, `source_package`, `review_after`, and
+`expires` follow omit-when-unavailable semantics: current renderers omit them
+when no value exists rather than emitting JSON `null`. The `filters` object is
+different by design: its nullable fields use `null` to represent no filter.
 Worklist artifacts follow the same rule: current renderers emit all known
 filter keys, while the nested `filters` schema keeps those keys optional.
 Non-empty worklist artifacts may also include `summary.item_kinds`, an optional

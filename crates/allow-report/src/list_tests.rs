@@ -58,7 +58,7 @@ fn list_json_renderer_records_filters_context_and_rows() {
     assert!(json.contains("\"selector_precision\": 42"));
     assert!(json.contains("\"broad_scope\": true"));
     assert!(json.contains("\"review_after\": \"2026-07-01\""));
-    assert!(json.contains("\"expires\": null"));
+    assert!(!json.contains("\"expires\": null"));
     let expected = format!(
         r#"{{
   "schema_version": 1,
@@ -113,7 +113,6 @@ fn list_json_renderer_records_filters_context_and_rows() {
       "selector_precision": 42,
       "broad_scope": true,
       "review_after": "2026-07-01",
-      "expires": null,
       "reason": "generated baseline"
     }}
   ]
@@ -138,6 +137,46 @@ fn list_json_renderer_records_filters_context_and_rows() {
             "allow-json\tbaseline_debt\t1\tpanic\tunwrap\tparser\tbaseline_debt\tcrates/parser/src/lib.rs\tparser\t2\t1\t1\t42\ttrue\t2026-07-01\t-\tgenerated baseline"
         ));
     assert!(text.contains(CLAIM_BOUNDARY_TEXT));
+}
+
+#[test]
+fn list_json_omits_unavailable_row_metadata() {
+    let rows = [ListRow {
+        id: "allow-minimal",
+        status: "matched",
+        matches: 1,
+        kind: "panic",
+        family: None,
+        owner: "parser",
+        classification: "reviewed_exception",
+        scope: "src/lib.rs",
+        source_package: None,
+        evidence_count: 0,
+        broken_evidence_references: 0,
+        weak_evidence_references: 0,
+        selector_precision: 7,
+        broad_scope: false,
+        review_after: None,
+        expires: None,
+        reason: "validated invariant",
+    }];
+
+    let json = render_list_json(
+        &rows,
+        ListFilters::default(),
+        InventoryContext::source_syntax("git_tracked", None, None),
+    );
+    let artifact: serde_json::Value = serde_json::from_str(&json).expect("list JSON should parse");
+    let row = &artifact["allow_entries"][0];
+
+    for field in ["family", "source_package", "review_after", "expires"] {
+        assert!(
+            row.get(field).is_none(),
+            "unavailable {field} should be omitted"
+        );
+    }
+    assert_eq!(row["id"], "allow-minimal");
+    assert_eq!(row["reason"], "validated invariant");
 }
 
 #[test]
