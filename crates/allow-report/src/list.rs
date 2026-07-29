@@ -1,6 +1,6 @@
 use crate::contracts::LIST_ARTIFACT;
 use crate::json::{bool_json, option_json, push_json_fixed_artifact_preamble};
-use crate::{CLAIM_BOUNDARY_TEXT, InventoryContext, ListColumn, ListFilters, ListRow};
+use crate::{CLAIM_BOUNDARY_TEXT, InventoryContext, ListColumn, ListFilters, ListRow, Style};
 use allow_core::json_escape;
 
 pub fn render_list_json(
@@ -31,7 +31,7 @@ pub fn render_list_json(
 }
 
 pub fn render_list_human(rows: &[ListRow<'_>], inventory: InventoryContext<'_>) -> String {
-    render_list_human_columns(rows, inventory, ListColumn::ALL)
+    render_list_human_columns_styled(rows, inventory, ListColumn::ALL, Style::PLAIN)
 }
 
 /// Render the concise CLI human view with bounded repository-controlled cells
@@ -43,7 +43,17 @@ pub fn render_list_human_concise(
     filters: ListFilters<'_>,
     columns: &[ListColumn],
 ) -> String {
-    render_list_human_columns_internal(rows, inventory, columns, true, filters)
+    render_list_human_concise_styled(rows, inventory, filters, columns, Style::PLAIN)
+}
+
+pub fn render_list_human_concise_styled(
+    rows: &[ListRow<'_>],
+    inventory: InventoryContext<'_>,
+    filters: ListFilters<'_>,
+    columns: &[ListColumn],
+    style: Style,
+) -> String {
+    render_list_human_columns_internal(rows, inventory, columns, true, filters, style)
 }
 
 /// Render the list human-format TSV with a column subset (#2595).
@@ -56,7 +66,23 @@ pub fn render_list_human_columns(
     inventory: InventoryContext<'_>,
     columns: &[ListColumn],
 ) -> String {
-    render_list_human_columns_internal(rows, inventory, columns, false, ListFilters::default())
+    render_list_human_columns_styled(rows, inventory, columns, Style::PLAIN)
+}
+
+pub fn render_list_human_columns_styled(
+    rows: &[ListRow<'_>],
+    inventory: InventoryContext<'_>,
+    columns: &[ListColumn],
+    style: Style,
+) -> String {
+    render_list_human_columns_internal(
+        rows,
+        inventory,
+        columns,
+        false,
+        ListFilters::default(),
+        style,
+    )
 }
 
 fn render_list_human_columns_internal(
@@ -65,6 +91,7 @@ fn render_list_human_columns_internal(
     columns: &[ListColumn],
     concise: bool,
     filters: ListFilters<'_>,
+    style: Style,
 ) -> String {
     let mut out = String::new();
     out.push_str(&format!(
@@ -78,12 +105,12 @@ fn render_list_human_columns_internal(
         out.push_str(&format!("source_tree_root: {root}\n"));
     }
     if concise {
-        push_concise_summary(&mut out, rows);
-        push_concise_cards(&mut out, rows);
+        push_concise_summary(&mut out, rows, style);
+        push_concise_cards(&mut out, rows, style);
     } else {
         push_header(&mut out, columns);
         for row in rows {
-            push_row(&mut out, row, columns);
+            push_row(&mut out, row, columns, style);
         }
     }
     if rows.is_empty() {
@@ -115,24 +142,28 @@ fn push_header(out: &mut String, columns: &[ListColumn]) {
     out.push('\n');
 }
 
-fn push_row(out: &mut String, row: &ListRow<'_>, columns: &[ListColumn]) {
+fn push_row(out: &mut String, row: &ListRow<'_>, columns: &[ListColumn], style: Style) {
     for (index, column) in columns.iter().enumerate() {
         if index > 0 {
             out.push('\t');
         }
-        out.push_str(&column.value(row));
+        if *column == ListColumn::Status {
+            out.push_str(&style_status(style, row.status));
+        } else {
+            out.push_str(&column.value(row));
+        }
     }
     out.push('\n');
 }
 
-fn push_concise_cards(out: &mut String, rows: &[ListRow<'_>]) {
+fn push_concise_cards(out: &mut String, rows: &[ListRow<'_>], style: Style) {
     if rows.is_empty() {
         return;
     }
     out.push_str("entries:\n");
     for row in rows {
         out.push_str("- [");
-        out.push_str(row.status);
+        out.push_str(&style_status(style, row.status));
         out.push_str("] ");
         out.push_str(&ListColumn::Id.concise_value(row));
         out.push('\n');
@@ -172,7 +203,20 @@ fn push_concise_cards(out: &mut String, rows: &[ListRow<'_>]) {
     }
 }
 
-fn push_concise_summary(out: &mut String, rows: &[ListRow<'_>]) {
+fn style_status(style: Style, status: &str) -> String {
+    match status {
+        "matched" | "healthy" => style.ok(status),
+        "new"
+        | "expired"
+        | "location_drift"
+        | "invalid_selector"
+        | "missing_required_field"
+        | "evidence_missing" => style.blocking(status),
+        _ => style.advisory(status),
+    }
+}
+
+fn push_concise_summary(out: &mut String, rows: &[ListRow<'_>], style: Style) {
     const STATUS_ORDER: &[&str] = &[
         "matched",
         "new",
@@ -191,7 +235,7 @@ fn push_concise_summary(out: &mut String, rows: &[ListRow<'_>]) {
     for status in STATUS_ORDER {
         let count = rows.iter().filter(|row| row.status == *status).count();
         if count > 0 {
-            details.push(format!("{status}: {count}"));
+            details.push(format!("{}: {count}", style_status(style, status)));
         }
     }
     let broken = rows

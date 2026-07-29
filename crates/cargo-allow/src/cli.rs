@@ -22,9 +22,9 @@ pub(crate) struct CargoAllowCli {
     /// on stdout; `never` disables it. Machine formats (JSON, SARIF,
     /// receipts) and `--output` files are never styled.
     ///
-    /// Currently honored by `check` and `audit` human reports. Other commands
-    /// (list, explain, worklist, diff, etc.) emit plain text regardless of
-    /// this flag — see #2572 for the planned expansion.
+    /// Currently honored by `check`, `audit`, and `list` human reports. Other
+    /// commands (explain, worklist, diff, etc.) emit plain text regardless of
+    /// this flag — see #2572 for the remaining expansion.
     ///
     /// Precedence: explicit flag > NO_COLOR > CLICOLOR_FORCE >
     /// CARGO_TERM_COLOR=never > terminal capability. CARGO_TERM_COLOR can
