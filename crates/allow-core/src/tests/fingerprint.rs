@@ -152,3 +152,66 @@ fn allow_entry_fingerprint_still_distinguishes_different_globs() {
         allow_entry_content_fingerprint(&broad)
     );
 }
+
+#[test]
+fn fingerprint_is_sensitive_to_last_seen() {
+    let first = sample_allow_entry();
+    let mut changed = first.clone();
+    changed.last_seen = Some(LastSeen {
+        line: 99,
+        column: 1,
+    });
+
+    assert_ne!(
+        allow_entry_content_fingerprint(&first),
+        allow_entry_content_fingerprint(&changed)
+    );
+}
+
+#[test]
+fn fingerprint_is_sensitive_to_family() {
+    let first = sample_allow_entry();
+    let mut changed = first.clone();
+    changed.family = Some("expect".to_string());
+
+    assert_ne!(
+        allow_entry_content_fingerprint(&first),
+        allow_entry_content_fingerprint(&changed)
+    );
+}
+
+#[test]
+fn fingerprint_is_sensitive_to_occurrence_limit() {
+    let first = sample_allow_entry();
+    let mut changed = first.clone();
+    changed.occurrence_limit = Some(42);
+
+    assert_ne!(
+        allow_entry_content_fingerprint(&first),
+        allow_entry_content_fingerprint(&changed)
+    );
+}
+
+#[test]
+fn fingerprint_is_sensitive_to_selector_fields() {
+    let first = sample_allow_entry();
+    let mut changed = first.clone();
+    changed.selector.callee = Some("expect".to_string());
+
+    assert_ne!(
+        allow_entry_content_fingerprint(&first),
+        allow_entry_content_fingerprint(&changed)
+    );
+}
+
+#[test]
+fn fingerprint_is_sensitive_to_entry_id() {
+    let first = sample_allow_entry();
+    let mut changed = first.clone();
+    changed.id = "allow-different".to_string();
+
+    assert_ne!(
+        allow_entry_content_fingerprint(&first),
+        allow_entry_content_fingerprint(&changed)
+    );
+}
