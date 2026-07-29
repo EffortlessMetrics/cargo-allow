@@ -12,12 +12,13 @@ use allow_diff::selector_precision_score;
 use std::collections::BTreeSet;
 use std::path::Path;
 
-pub(super) fn render_explain_entry(
+pub(super) fn render_explain_entry_styled(
     root: &Path,
     entry: &AllowEntry,
     findings: &[Finding],
     outcomes: &[MatchOutcome],
     evidence_source_tree_files: Option<&BTreeSet<String>>,
+    style: allow_report::Style,
 ) -> String {
     render_explain_report(
         root,
@@ -26,7 +27,7 @@ pub(super) fn render_explain_entry(
         outcomes,
         evidence_source_tree_files,
         ExplainContext::default(),
-        allow_report::render_explain_human,
+        |report| allow_report::render_explain_human_styled(report, style),
     )
 }
 

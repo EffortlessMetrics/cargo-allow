@@ -20,7 +20,7 @@ mod explain_steps;
 #[path = "explain_types.rs"]
 mod explain_types;
 pub(crate) use explain_args::ExplainArgs;
-use explain_render::{render_explain_entry, render_explain_entry_json};
+use explain_render::{render_explain_entry_json, render_explain_entry_styled};
 pub(super) use explain_types::ExplainContext;
 
 pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
@@ -60,6 +60,11 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
     };
     let evidence_source_tree_files =
         current_evidence_source_tree_files(&root, args.include_untracked);
+    let style = if matches!(args.format, HumanJsonFormat::Human) && args.output.is_none() {
+        crate::reporting::output_style()
+    } else {
+        allow_report::Style::PLAIN
+    };
     let text = match args.format {
         HumanJsonFormat::Human => explain_entry_text_with_source_tree_files(
             &root,
@@ -67,6 +72,7 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
             entry,
             &findings,
             evidence_source_tree_files.as_ref(),
+            style,
         ),
         HumanJsonFormat::Json => explain_entry_json_with_source_tree_files(
             &root,
@@ -88,7 +94,14 @@ fn explain_entry_text(
     entry: &AllowEntry,
     findings: &[Finding],
 ) -> String {
-    explain_entry_text_with_source_tree_files(root, cfg, entry, findings, None)
+    explain_entry_text_with_source_tree_files(
+        root,
+        cfg,
+        entry,
+        findings,
+        None,
+        allow_report::Style::PLAIN,
+    )
 }
 
 fn explain_entry_text_with_source_tree_files(
@@ -97,14 +110,16 @@ fn explain_entry_text_with_source_tree_files(
     entry: &AllowEntry,
     findings: &[Finding],
     evidence_source_tree_files: Option<&std::collections::BTreeSet<String>>,
+    style: allow_report::Style,
 ) -> String {
     let (matching_findings, outcomes) = explain_entry_state(cfg, entry, findings);
-    render_explain_entry(
+    render_explain_entry_styled(
         root,
         entry,
         &matching_findings,
         &outcomes,
         evidence_source_tree_files,
+        style,
     )
 }
 

@@ -159,6 +159,63 @@ fn list_human_statuses_use_shared_style_but_files_stay_plain() {
     let _ = fs::remove_dir_all(&root);
 }
 
+#[test]
+fn explain_human_statuses_use_shared_style_but_files_stay_plain() {
+    let root = fixture("explain");
+    let plain_result = run(&root, &[], &["explain", "allow-0001", "--color", "never"]);
+    let styled_result = run(&root, &[], &["explain", "allow-0001", "--color", "always"]);
+
+    assert!(
+        plain_result.status.success(),
+        "plain explain should succeed"
+    );
+    assert!(
+        styled_result.status.success(),
+        "styled explain should succeed"
+    );
+    assert!(!has_ansi(&stdout_of(&plain_result)));
+    assert!(has_ansi(&stdout_of(&styled_result)));
+
+    let json_result = run(
+        &root,
+        &[],
+        &[
+            "explain",
+            "allow-0001",
+            "--color",
+            "always",
+            "--format",
+            "json",
+        ],
+    );
+    assert!(json_result.status.success(), "JSON explain should succeed");
+    assert!(
+        !has_ansi(&stdout_of(&json_result)),
+        "JSON explain must stay plain"
+    );
+
+    fs::create_dir_all(root.join("target/cargo-allow"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create explain output dir: {err}")));
+    let written = run(
+        &root,
+        &[],
+        &[
+            "explain",
+            "allow-0001",
+            "--color",
+            "always",
+            "--output",
+            "target/cargo-allow/explain.txt",
+        ],
+    );
+    assert!(written.status.success(), "written explain should succeed");
+    let text = fs::read_to_string(root.join("target/cargo-allow/explain.txt"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read explain output: {err}")));
+    assert!(!has_ansi(&text), "written explain output must stay plain");
+
+    let _ = fs::remove_dir_all(&root);
+}
+
 /// The documented precedence, asserted end to end rather than only in the
 /// unit test of the resolver.
 #[test]

@@ -69,6 +69,26 @@ impl Style {
     pub fn strong(self, text: &str) -> String {
         self.paint("1", text)
     }
+
+    /// Style a fixed status label using the shared semantic palette.
+    ///
+    /// The caller supplies tool-authored text; repository-controlled values
+    /// must remain outside this helper so they cannot receive terminal escapes.
+    pub fn status(self, status: &str, text: &str) -> String {
+        match status {
+            "matched" | "healthy" | "complete" | "pass" | "passed" => self.ok(text),
+            "new"
+            | "expired"
+            | "ambiguous"
+            | "invalid_selector"
+            | "missing_required_field"
+            | "evidence_missing"
+            | "baseline_debt"
+            | "blocking"
+            | "failed" => self.blocking(text),
+            _ => self.advisory(text),
+        }
+    }
 }
 
 /// What the user asked for on the command line.

@@ -168,13 +168,7 @@ pub fn render_human_with_context(
 /// this only decides which escape wraps it. With styling off the text is
 /// returned unchanged, so plain and styled output carry identical words.
 fn style_status(style: crate::style::Style, status: MatchStatus, text: &str) -> String {
-    if status == MatchStatus::Matched {
-        style.ok(text)
-    } else if blocks_check(status) {
-        style.blocking(text)
-    } else {
-        style.advisory(text)
-    }
+    style.status(status.as_str(), text)
 }
 
 /// Statuses that can fail a check, as opposed to advisory ones like

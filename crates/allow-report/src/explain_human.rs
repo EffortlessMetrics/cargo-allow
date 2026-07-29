@@ -1,9 +1,13 @@
 use crate::evidence_reference_human::evidence_reference_human_status;
 use crate::explain_common::{explain_report_status, finding_location_text};
-use crate::{CLAIM_BOUNDARY_TEXT, EvidenceReference, ExplainReport};
+use crate::{CLAIM_BOUNDARY_TEXT, EvidenceReference, ExplainReport, Style};
 use allow_core::{AllowEntry, MatchOutcome, MatchStatus};
 
 pub fn render_explain_human(report: ExplainReport<'_>) -> String {
+    render_explain_human_styled(report, Style::PLAIN)
+}
+
+pub fn render_explain_human_styled(report: ExplainReport<'_>, style: Style) -> String {
     let entry = report.entry;
     let mut out = String::new();
     out.push_str(&format!("{}\n", entry.id));
@@ -28,7 +32,10 @@ pub fn render_explain_human(report: ExplainReport<'_>) -> String {
     if !report.evidence_references.is_empty() {
         out.push_str("\nevidence diagnostics:\n");
         for reference in report.evidence_references {
-            out.push_str(&format!("- {}\n", evidence_reference_summary(reference)));
+            out.push_str(&format!(
+                "- {}\n",
+                evidence_reference_summary_styled(reference, style)
+            ));
             out.push_str(&format!("  message: {}\n", reference.message));
         }
     }
@@ -38,7 +45,10 @@ pub fn render_explain_human(report: ExplainReport<'_>) -> String {
     if !report.link_references.is_empty() {
         out.push_str("\nlink diagnostics:\n");
         for reference in report.link_references {
-            out.push_str(&format!("- {}\n", evidence_reference_summary(reference)));
+            out.push_str(&format!(
+                "- {}\n",
+                evidence_reference_summary_styled(reference, style)
+            ));
             out.push_str(&format!("  message: {}\n", reference.message));
         }
     }
@@ -66,9 +76,10 @@ pub fn render_explain_human(report: ExplainReport<'_>) -> String {
         report.selector_precision
     ));
     out.push_str(&format!("broad_scope: {}\n\n", report.broad_scope));
+    let current_status = explain_report_status(report.entry, report.match_outcomes);
     out.push_str(&format!(
         "current_status: {}\n",
-        explain_report_status(report.entry, report.match_outcomes).as_str()
+        style.status(current_status.as_str(), current_status.as_str())
     ));
     out.push_str(&format!(
         "current_matches: {}\n",
@@ -76,7 +87,7 @@ pub fn render_explain_human(report: ExplainReport<'_>) -> String {
     ));
     out.push_str(&format!(
         "match_outcomes: {}\n",
-        outcome_summary(report.match_outcomes)
+        outcome_summary_styled(report.match_outcomes, style)
     ));
     if !report.current_findings.is_empty() {
         out.push_str("\ncurrent findings:\n");
@@ -92,7 +103,8 @@ pub fn render_explain_human(report: ExplainReport<'_>) -> String {
                 .map(|package| format!(", source_package={package}"))
                 .unwrap_or_default();
             out.push_str(&format!(
-                "- {status}: {} ({}{})\n",
+                "- {}: {} ({}{})\n",
+                style.status(status, status),
                 finding_location_text(finding),
                 finding.identity.ast_kind,
                 package
@@ -115,7 +127,7 @@ pub fn render_explain_human(report: ExplainReport<'_>) -> String {
         for outcome in attention.iter().take(20) {
             out.push_str(&format!(
                 "- {}: {}\n",
-                outcome.status.as_str(),
+                style.status(outcome.status.as_str(), outcome.status.as_str()),
                 outcome.message
             ));
         }
@@ -164,11 +176,16 @@ fn list_or_none(values: &[String]) -> String {
     }
 }
 
+#[cfg(test)]
 fn evidence_reference_summary(reference: &EvidenceReference<'_>) -> String {
+    evidence_reference_summary_styled(reference, Style::PLAIN)
+}
+
+fn evidence_reference_summary_styled(reference: &EvidenceReference<'_>, style: Style) -> String {
     let status = evidence_reference_human_status(reference);
     format!(
         "{}: {} (status={}, prefix={}, target={})",
-        status.label,
+        style.status(status.label, status.label),
         reference.raw,
         reference.status,
         reference.prefix.unwrap_or("-"),
@@ -219,7 +236,12 @@ fn selector_summary(entry: &AllowEntry) -> String {
     }
 }
 
+#[cfg(test)]
 fn outcome_summary(outcomes: &[MatchOutcome]) -> String {
+    outcome_summary_styled(outcomes, Style::PLAIN)
+}
+
+fn outcome_summary_styled(outcomes: &[MatchOutcome], style: Style) -> String {
     let parts = [
         MatchStatus::Matched,
         MatchStatus::New,
@@ -238,7 +260,7 @@ fn outcome_summary(outcomes: &[MatchOutcome]) -> String {
             .iter()
             .filter(|outcome| outcome.status == status)
             .count();
-        (count > 0).then(|| format!("{}={count}", status.as_str()))
+        (count > 0).then(|| format!("{}={count}", style.status(status.as_str(), status.as_str())))
     })
     .collect::<Vec<_>>();
     if parts.is_empty() {
@@ -364,6 +386,31 @@ mod tests {
     #[test]
     fn outcome_summary_boundary_discriminator() {
         assert_eq!(outcome_summary(&[]), "none");
+    }
+
+    #[test]
+    fn explain_status_style_is_fixed_label_only() {
+        let entry = allow_entry(FindingKind::Unsafe, Some("unsafe_block"));
+        let outcomes = vec![outcome(MatchStatus::New)];
+        let report = ExplainReport {
+            inventory: crate::InventoryContext::default(),
+            entry: &entry,
+            selector_precision: 0,
+            broad_scope: false,
+            current_findings: &[],
+            match_outcomes: &outcomes,
+            evidence_references: &[],
+            link_references: &[],
+            suggested_actions: &[],
+            proof_commands: &[],
+        };
+
+        let styled = render_explain_human_styled(report, Style::ANSI);
+        assert!(styled.contains("match_outcomes: \u{1b}[31mnew\u{1b}[0m=1"));
+        assert!(!styled.contains("reason: \u{1b}"));
+
+        let plain = render_explain_human(report);
+        assert!(!plain.contains('\u{1b}'));
     }
 
     fn allow_entry(kind: FindingKind, family: Option<&str>) -> AllowEntry {

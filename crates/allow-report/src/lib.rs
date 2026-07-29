@@ -159,7 +159,10 @@ pub use diff::{
 };
 pub use doctor::{render_doctor_human, render_doctor_json};
 pub(crate) use explain::finding_location_text;
-pub use explain::{render_explain_finding_json, render_explain_human, render_explain_json};
+pub use explain::{
+    render_explain_finding_json, render_explain_human, render_explain_human_styled,
+    render_explain_json,
+};
 pub use html::{render_html, render_html_with_context};
 pub use json::{
     render_claim_boundary_json, render_inventory_json, render_scanner_limitations_json,
