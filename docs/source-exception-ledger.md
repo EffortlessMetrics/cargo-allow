@@ -478,7 +478,9 @@ stale entries from the selected policy file after revalidating the rendered poli
 `--format json` emits the stale cleanup preview or write result as
 `cargo-allow.prune.v1`, including source-tree inventory context, scanner
 limitations, mode flags, written path when write mode changed the policy, and
-the stale entries selected for removal.
+the stale entries selected for removal. Stale-entry rows omit unavailable policy
+`family` metadata rather than emitting `null`; identity, ownership, scope, and
+reason fields remain unchanged.
 
 `cargo-allow doctor` validates local setup without executing repository code.
 It reports source-tree root discovery, whether a policy config was found,

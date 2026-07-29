@@ -1,3 +1,4 @@
+use crate::allow_entry_json::push_optional_string_field;
 use crate::contracts::PRUNE_ARTIFACT;
 use crate::json::{bool_json, option_json, push_json_fixed_artifact_preamble};
 use crate::text::markdown_cell;
@@ -125,14 +126,32 @@ pub fn render_prune_json(
 }
 
 fn render_prune_candidate_json(candidate: &PruneCandidate<'_>, indent: &str) -> String {
-    format!(
-        "{indent}  {{\n{indent}    \"id\": \"{}\",\n{indent}    \"kind\": \"{}\",\n{indent}    \"family\": {},\n{indent}    \"owner\": \"{}\",\n{indent}    \"classification\": \"{}\",\n{indent}    \"scope\": \"{}\",\n{indent}    \"reason\": \"{}\"\n{indent}  }}",
-        json_escape(candidate.id),
-        json_escape(candidate.kind),
-        option_json(candidate.family),
-        json_escape(candidate.owner),
-        json_escape(candidate.classification),
-        json_escape(candidate.scope),
-        json_escape(candidate.reason)
-    )
+    let field_indent = format!("{indent}  ");
+    let mut fields = vec![
+        format!("{field_indent}\"id\": \"{}\"", json_escape(candidate.id)),
+        format!(
+            "{field_indent}\"kind\": \"{}\"",
+            json_escape(candidate.kind)
+        ),
+    ];
+    push_optional_string_field(&mut fields, &field_indent, "family", candidate.family);
+    fields.extend([
+        format!(
+            "{field_indent}\"owner\": \"{}\"",
+            json_escape(candidate.owner)
+        ),
+        format!(
+            "{field_indent}\"classification\": \"{}\"",
+            json_escape(candidate.classification)
+        ),
+        format!(
+            "{field_indent}\"scope\": \"{}\"",
+            json_escape(candidate.scope)
+        ),
+        format!(
+            "{field_indent}\"reason\": \"{}\"",
+            json_escape(candidate.reason)
+        ),
+    ]);
+    format!("{indent}  {{\n{}\n{indent}  }}", fields.join(",\n"))
 }
