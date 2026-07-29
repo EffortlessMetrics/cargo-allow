@@ -270,6 +270,10 @@ cargo-allow compatibility
   → no intent/proof library dependency and no semantic fallback
 ```
 
+The compatibility path is one-way process delegation from cargo-allow to the
+installed cargo-intent product; no reverse library dependency or embedded
+semantic fallback is part of the target.
+
 Temporary reverse edges require an exact move/shim row, parity case, expiry and
 deletion condition. They are visible non-final state, not evidence that the
 architecture is clean.
