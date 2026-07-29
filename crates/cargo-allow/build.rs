@@ -22,6 +22,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         .parent()
         .and_then(Path::parent)
         .ok_or_else(|| io::Error::other("cargo-allow manifest has no workspace root"))?;
+    if !root.join(".git").exists()
+        || !root.join(".allow/artifacts/doc-artifacts.toml").is_file()
+        || !root.join("policy/allow.toml").is_file()
+    {
+        return Ok(());
+    }
 
     update_artifact_ledger(root)?;
     update_policy(root)?;
@@ -213,9 +219,9 @@ fn retain_generated_files(root: &Path) -> io::Result<()> {
 
 fn replace_once(text: String, old: &str, new: &str) -> io::Result<String> {
     if !text.contains(old) {
+        let block = old.lines().nth(1).map_or("unknown", |line| line);
         return Err(io::Error::other(format!(
-            "expected authority block is missing: {}",
-            old.lines().nth(1).unwrap_or("unknown")
+            "expected authority block is missing: {block}"
         )));
     }
     Ok(text.replacen(old, new, 1))
