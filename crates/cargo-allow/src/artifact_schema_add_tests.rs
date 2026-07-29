@@ -131,15 +131,7 @@ fn add_schema_locks_selected_finding_and_review_contract() {
         "add selected finding",
         selected_finding,
         &[
-            "status",
-            "kind",
-            "family",
-            "path",
-            "line",
-            "column",
-            "source_package",
-            "identity",
-            "message",
+            "status", "kind", "path", "line", "column", "identity", "message",
         ],
     );
     assert_enum_equals(
@@ -190,11 +182,12 @@ fn add_schema_locks_selected_finding_and_review_contract() {
             "column_hint",
         ],
     );
-    assert_schema_type_equals(
-        "add selected finding source_package",
-        &schema,
-        "/$defs/finding/properties/source_package/type",
-        &["string", "null"],
+    assert_eq!(
+        schema
+            .pointer("/$defs/finding/properties/source_package/type")
+            .and_then(Value::as_str),
+        Some("string"),
+        "add selected finding source_package should be a string when present"
     );
 }
 

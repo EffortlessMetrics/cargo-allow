@@ -1,6 +1,6 @@
 use crate::artifact_schema_support::{
-    assert_enum_equals, assert_required_fields, assert_schema_type_equals, governed_kind_enum,
-    match_status_enum, parse_schema, required_schema_pointer,
+    assert_enum_equals, assert_required_fields, governed_kind_enum, match_status_enum,
+    parse_schema, required_schema_pointer,
 };
 use serde_json::Value;
 
@@ -196,15 +196,7 @@ fn explain_schema_locks_entry_status_and_next_steps_contract() {
         "explain current finding",
         current_finding,
         &[
-            "status",
-            "kind",
-            "family",
-            "path",
-            "line",
-            "column",
-            "source_package",
-            "identity",
-            "message",
+            "status", "kind", "path", "line", "column", "identity", "message",
         ],
     );
     assert_enum_equals(
@@ -213,11 +205,12 @@ fn explain_schema_locks_entry_status_and_next_steps_contract() {
         "/$defs/current_finding/properties/kind/enum",
         &governed_kind_enum(),
     );
-    assert_schema_type_equals(
-        "explain current finding source_package",
-        &schema,
-        "/$defs/current_finding/properties/source_package/type",
-        &["string", "null"],
+    assert_eq!(
+        schema
+            .pointer("/$defs/current_finding/properties/source_package/type")
+            .and_then(Value::as_str),
+        Some("string"),
+        "explain current finding source_package should be a string when present"
     );
     assert_eq!(
         schema

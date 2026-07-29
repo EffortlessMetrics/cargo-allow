@@ -455,11 +455,9 @@
       "required": [
         "status",
         "kind",
-        "family",
         "path",
         "line",
         "column",
-        "source_package",
         "identity",
         "message"
       ],
@@ -478,10 +476,8 @@
           ]
         },
         "family": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string",
+          "description": "Scanner-provided finding family; omitted when unavailable."
         },
         "path": {
           "type": "string"
@@ -503,11 +499,8 @@
           "description": "One-based source character column for review/navigation when available."
         },
         "source_package": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "Scanner-provided source package context; not Cargo metadata or build proof."
+          "type": "string",
+          "description": "Scanner-provided source package context; omitted when unavailable and not Cargo metadata or build proof."
         },
         "identity": {
           "$ref": "#/$defs/structural_identity"

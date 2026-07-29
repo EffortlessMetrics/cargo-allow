@@ -154,6 +154,9 @@ Worklist policy metadata follows the same omission law: unavailable
 relationship fields such as `evidence_count`, `finding_index`, and `path`,
 along with nullable filter fields, retain `null` when the relationship or
 filter is not applicable.
+Explain, add, and why current-finding metadata `family` and `source_package`
+follow the same omission law; navigation fields such as `line` and `column`
+retain `null` when no source span is available.
 Worklist artifacts follow the same rule: current renderers emit all known
 filter keys, while the nested `filters` schema keeps those keys optional.
 Non-empty worklist artifacts may also include `summary.item_kinds`, an optional

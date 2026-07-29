@@ -1,9 +1,61 @@
 use super::*;
 use allow_core::{
-    AllowEntry, Finding, FindingKind, LastSeen, Lifecycle, MatchOutcome, MatchStatus, Selector,
-    Span, StructuralIdentity,
+    AllowEntry, Finding, FindingKind, LastSeen, LedgerProvenance, Lifecycle, MatchOutcome,
+    MatchStatus, Selector, Span, StructuralIdentity,
 };
 use std::path::PathBuf;
+
+#[test]
+fn explain_finding_json_omits_unavailable_metadata() {
+    let finding = Finding {
+        kind: FindingKind::Panic,
+        family: None,
+        path: PathBuf::from("src/lib.rs"),
+        span: None,
+        identity: StructuralIdentity::new("rust", "panic_macro"),
+        message: "panic macro".to_string(),
+        ledger: None,
+    };
+
+    let json = render_explain_finding_json(&finding, "unmatched", "");
+
+    assert!(!json.contains("\"family\":"));
+    assert!(!json.contains("\"source_package\":"));
+    assert!(json.contains("\"line\": null"));
+    assert!(json.contains("\"column\": null"));
+}
+
+#[test]
+fn explain_finding_json_preserves_ledger_provenance() {
+    let finding = Finding {
+        kind: FindingKind::Unsafe,
+        family: Some("unsafe_block".to_string()),
+        path: PathBuf::from("src/lib.rs"),
+        span: None,
+        identity: StructuralIdentity::new("rust", "unsafe_block"),
+        message: "unsafe block".to_string(),
+        ledger: Some(LedgerProvenance {
+            ledger_id: "source-policy".to_string(),
+            ledger_path: "policy/allow.toml".to_string(),
+            lane: "source-exception".to_string(),
+            mode: "blocking".to_string(),
+            role: "canonical".to_string(),
+        }),
+    };
+
+    let json = render_explain_finding_json(&finding, "matched", "");
+
+    for expected in [
+        "\"family\": \"unsafe_block\"",
+        "\"ledger_id\": \"source-policy\"",
+        "\"ledger_path\": \"policy/allow.toml\"",
+        "\"lane\": \"source-exception\"",
+        "\"mode\": \"blocking\"",
+        "\"role\": \"canonical\"",
+    ] {
+        assert!(json.contains(expected), "{expected}");
+    }
+}
 
 #[test]
 fn explain_projects_expired_matched_entry_lifecycle_status() {
