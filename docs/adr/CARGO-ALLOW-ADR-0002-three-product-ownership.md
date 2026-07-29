@@ -42,6 +42,10 @@ direction. ADR-0003 owns package, path, version, publication and support identit
 Adopt three semantic products with a small neutral substrate and a 22-package
 retained target.
 
+Issue #2612 remains the historical authority for the maximum named extraction
+scaffold. Generation 2 preserves that provenance while deciding which package
+boundaries survive convergence.
+
 ## Product ownership
 
 ### cargo-allow
