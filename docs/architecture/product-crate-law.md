@@ -1,41 +1,183 @@
 # Product Crate Law
 
-Human projection of `policy/product-crates.toml` (#2580). The manifest is the
-canonical machine source for product/crate ownership and forbidden cross-product
-dependency law during extraction.
+Human entry point for the checked three-product architecture. Machine manifests
+remain authoritative; this page explains which source answers which question and
+how the observed extraction scaffold differs from the retained target.
 
-## Authority
+## Authority map
 
-| Artifact | Role |
+| Concern | Canonical authority |
 | --- | --- |
-| `policy/product-crates.toml` | Canonical architecture manifest |
-| `policy/product-move-ledger.toml` | Move/deletion inventory (#2598) |
-| `policy/product-package-topology.toml` | Package/release family classification (#2604) |
-| `docs/adr/CARGO-ALLOW-ADR-0002-three-product-ownership.md` | Product ownership ADR |
+| Product ownership and dependency direction | `docs/adr/CARGO-ALLOW-ADR-0002-three-product-ownership.md` |
+| Package, path and independent version law | `docs/adr/CARGO-ALLOW-ADR-0003-package-identity-and-versioning.md` |
+| Current convergence requirements | `docs/specs/CARGO-ALLOW-SPEC-0011-three-product-convergence.md` |
+| Current and target logical/package identities | generation-2 authority under #2921/#2942 |
+| Exact observed/target Cargo closures | intent-engine validation under #2922 |
+| Selected current enforcement and receipt | #2923 through cargo-intent/repository CI |
+| Source disposition and retirement output | `policy/product-move-ledger.toml` / #2598 |
+| Temporary compatibility | `policy/extraction-shims.toml` / #2607 |
+| Parity and cutover evidence | `policy/extraction-parity.toml` / #2606 |
+| Package/version/publication/candidate/CI posture | `policy/product-package-topology.toml` / #2604 |
 
-## Current workspace ownership
+Human tables and diagrams are generated or contract-checked projections. They do
+not become competing ownership or package manifests.
 
-Products, shared crates, and planned crates are declared in the manifest. The
-validator loads declared workspace dependency edges from each member `Cargo.toml`
-without invoking `cargo metadata`, then checks direct edges against product
-`forbid_product_dependencies`, `forbidden_crate_dependency`, and shared
-`allowed_domain_dependencies`.
+## Observed and target topology
 
-PR3 cross-checks the architecture manifest against the linked move ledger and
-package topology so all three denominators agree on crate inventory and product
-family classification.
+The selected current source contains the full 27-package extraction scaffold:
 
-## Validation
+```text
+cargo-allow family   10
+shared substrate      4
+cargo-intent family   5
+cargo-proof scaffold  8
+```
 
-```bash
-cargo test -p allow-policy product_crates --locked
-cargo test -p cargo-allow product_crate_architecture --locked
+The retained target contains 22 packages:
+
+```text
+cargo-allow family   10
+shared substrate      4
+cargo-intent family   5
+cargo-proof family    3
+```
+
+The following package boundaries collapse into modules:
+
+| Current package | Target module |
+| --- | --- |
+| `proof-provider-api` | `proof_engine::provider` |
+| `proof-adapter-command` | `cargo_proof::providers::command` |
+| `proof-adapter-cargo-allow` | `cargo_proof::providers::cargo_allow` |
+| `proof-adapter-ripr` | `cargo_proof::providers::ripr` |
+| `proof-adapter-hawk` | `cargo_proof::providers::hawk` |
+
+“Landed” means the observed package and selected walking-skeleton surface exist.
+It does not establish final authority, dependency neutrality, support,
+publication or permanent package survival.
+
+## Identity law
+
+Generation 1 overloaded one string for several identities. Generation 2 keeps
+these separate:
+
+```text
+logical_id
+current_workspace_path
+target_workspace_path
+workspace_dependency_aliases
+current_cargo_package_name
+target_cargo_package_name
+rust_library_name
+current_container
+target_container_or_module
+target_disposition
+package_version and version_source
+publication/direct-use/candidate/CI posture
+```
+
+The shared migration is:
+
+| Logical ID | Current path | Target path | Cargo package | Rust library |
+| --- | --- | --- | --- | --- |
+| `repo-protocol` | `crates/repo-protocol` | `crates/effortless-repo-protocol` | `effortless-repo-protocol` | `repo_protocol` |
+| `repo-snapshot` | `crates/repo-snapshot` | `crates/effortless-repo-snapshot` | `effortless-repo-snapshot` | `repo_snapshot` |
+| `repo-edit` | `crates/repo-edit` | `crates/effortless-repo-edit` | `effortless-repo-edit` | `repo_edit` |
+| `rust-source-index` | `crates/rust-source-index` | `crates/effortless-rust-source-index` | `effortless-rust-source-index` | `rust_source_index` |
+
+`logical_id` is stable. A workspace path is checked current physical identity and
+changes only through a reviewed migration generation.
+
+## Semantic owner law
+
+```text
+cargo-allow family
+  source-exception ledger semantics
+
+intent-model
+  durable authored intent and generation-2 governance DTOs
+
+intent-engine
+  private intent graph, phase policy, domain queries,
+  current/target authority and Cargo-closure reconciliation
+
+cargo-intent / repository CI
+  validation operation and typed receipt
+
+proof-protocol
+  wire DTOs and local structural validation
+
+proof-engine
+  planning, execution policy, currentness/cache reuse,
+  capability, contradiction, aggregation and phase-gate semantics
+
+cargo-proof
+  application and selected built-in provider modules
+```
+
+`allow-policy` must not become permanent three-product governance ontology merely
+because generation-1 validators currently live there.
+
+## Dependency law
+
+The final architecture requires:
+
+```text
+shared substrate
+  no production dependency on allow, intent or proof product ontology
+
+cargo-allow
+  no intent/proof library dependency
+  compatibility through installed cargo-intent only
+
+intent-engine
+  one read-only compiler/query implementation
+  no intent-edit, proof execution or cargo-allow private dependency
+
+intent-edit
+  intent-engine + repo-edit
+
+proof-protocol
+  no cache, registry, provider execution or phase policy
+
+proof-engine
+  canonical intent-protocol obligations
+  no private intent graph or cargo-proof provider-module dependency
+
+cargo-proof provider modules
+  proof-engine public provider surface only
+```
+
+Temporary reverse edges are visible non-final state. They require exact move,
+shim, parity, expiry and retirement records; they are not suppressed to make a
+report green.
+
+## Package and release closure
+
+The cargo-allow `0.2.x` candidate is not the ambient workspace. It is the exact
+package/version/feature closure selected by generation-2 package topology,
+combining cargo-allow `0.2.x` packages with selected product-neutral
+`effortless-* 0.1.x` transitive packages.
+
+Cargo-intent and cargo-proof remain independently experimental. Their full
+product maturity does not block cargo-allow unless the selected support matrix
+explicitly includes that compatibility or integration claim.
+
+## Validation progression
+
+```text
+#2966  retained normative authority
+#2967  parsed reconstruction and compatibility contracts
+#2921  strict current/target identities
+#2922  exact observed/target closures
+#2923  current V2 enforcement
+#2939  observed topology converges from 27 to 22
+#2885  survivor package/path/version migration
 ```
 
 ## Claim boundary
 
-PR3 (#2580): full workspace crate family inventory plus denominator cross-checks
-against #2598 move-ledger target crates and #2604 package topology families.
-Builds on PR2 workspace `Cargo.toml` dependency-law diagnostics. Does not invoke
-`cargo metadata`, enforce no-new blocking, transitional shim registry coupling,
-or independent binary-closure proofs yet.
+This page explains current and target architecture authority. It does not make
+generation-1 manifests V2, apply package collapse, rename packages, prove
+dependency neutrality, authorize cargo-allow `0.2.x`, promote sibling products
+or authorize physical repository extraction.
