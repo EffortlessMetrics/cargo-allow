@@ -111,6 +111,26 @@ fn refresh_fixture(label: &str) -> std::path::PathBuf {
     root
 }
 
+fn prune_fixture(label: &str) -> std::path::PathBuf {
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-color-{label}-prune-{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create prune policy: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create prune source: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        "schema_version = 1\n\n[workspace]\nignored = []\ngenerated = []\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write prune policy: {err}")));
+    fs::write(root.join("src/lib.rs"), "pub fn ok() -> u32 {\n    1\n}\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write prune source: {err}")));
+    root
+}
+
 /// auto on a non-TTY is plain; never is plain; always styles.
 #[test]
 fn the_three_choices_have_observable_behaviour() {
@@ -508,6 +528,81 @@ fn refresh_human_lifecycle_status_uses_shared_style_but_artifacts_stay_plain() {
     let text = fs::read_to_string(root.join("target/cargo-allow/refresh.txt"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("read refresh output: {err}")));
     assert!(!has_ansi(&text), "written refresh output must stay plain");
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn prune_human_stale_status_uses_shared_style_but_artifacts_stay_plain() {
+    let root = prune_fixture("prune");
+    let args = [
+        "prune",
+        "--config",
+        "policy/allow.toml",
+        "--stale",
+        "--dry-run",
+        "--include-untracked",
+    ];
+    let mut plain_args = args.to_vec();
+    plain_args.extend(["--color", "never"]);
+    let mut styled_args = args.to_vec();
+    styled_args.extend(["--color", "always"]);
+
+    let plain_result = run(&root, &[], &plain_args);
+    let styled_result = run(&root, &[], &styled_args);
+    assert!(plain_result.status.success(), "plain prune should succeed");
+    assert!(
+        styled_result.status.success(),
+        "styled prune should succeed"
+    );
+    assert!(!has_ansi(&stdout_of(&plain_result)));
+    assert!(has_ansi(&stdout_of(&styled_result)));
+    assert!(stdout_of(&styled_result).contains("\u{1b}[33mstale\u{1b}[0m entries: 0"));
+
+    let json_result = run(
+        &root,
+        &[],
+        &[
+            "prune",
+            "--config",
+            "policy/allow.toml",
+            "--stale",
+            "--dry-run",
+            "--include-untracked",
+            "--color",
+            "always",
+            "--format",
+            "json",
+        ],
+    );
+    assert!(json_result.status.success(), "JSON prune should succeed");
+    assert!(
+        !has_ansi(&stdout_of(&json_result)),
+        "JSON prune must stay plain"
+    );
+
+    fs::create_dir_all(root.join("target/cargo-allow"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create prune output dir: {err}")));
+    let written = run(
+        &root,
+        &[],
+        &[
+            "prune",
+            "--config",
+            "policy/allow.toml",
+            "--stale",
+            "--dry-run",
+            "--include-untracked",
+            "--color",
+            "always",
+            "--output",
+            "target/cargo-allow/prune.txt",
+        ],
+    );
+    assert!(written.status.success(), "written prune should succeed");
+    let text = fs::read_to_string(root.join("target/cargo-allow/prune.txt"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read prune output: {err}")));
+    assert!(!has_ansi(&text), "written prune output must stay plain");
 
     let _ = fs::remove_dir_all(&root);
 }

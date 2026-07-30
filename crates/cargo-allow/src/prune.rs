@@ -22,7 +22,11 @@ mod prune_stale;
 #[path = "prune_types.rs"]
 mod prune_types;
 pub(crate) use prune_args::PruneArgs;
-use prune_render::{render_prune_stale_json, render_prune_stale_result};
+#[cfg(test)]
+use prune_render::render_prune_stale_result;
+use prune_render::{
+    PruneRenderOptions, render_prune_stale_json, render_prune_stale_result_with_options,
+};
 use prune_stale::{
     config_without_prune_candidates, prune_stale_candidates,
     removed_toml_blocks as stale_removed_toml_blocks,
@@ -160,15 +164,25 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
         mutation_receipt,
     };
     let text = match args.format {
-        HumanJsonFormat::Human => render_prune_stale_result(
-            &candidates,
-            &removed_toml_blocks,
-            args.dry_run,
-            args.write,
-            written_path.as_deref(),
-            cfg.allow.len(),
-            context,
-        ),
+        HumanJsonFormat::Human => {
+            let style = if args.output.is_none() {
+                crate::reporting::output_style()
+            } else {
+                allow_report::Style::PLAIN
+            };
+            render_prune_stale_result_with_options(
+                &candidates,
+                &removed_toml_blocks,
+                PruneRenderOptions {
+                    explicit_dry_run: args.dry_run,
+                    write_requested: args.write,
+                    written_path: written_path.as_deref(),
+                    total_entries: cfg.allow.len(),
+                    style,
+                },
+                context,
+            )
+        }
         HumanJsonFormat::Json => render_prune_stale_json(
             &candidates,
             args.dry_run,

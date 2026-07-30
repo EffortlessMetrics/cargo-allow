@@ -461,7 +461,8 @@ The `propose` human summary styles its generated `baseline_debt` classification
 marker; generated policy TOML, finding-derived values, and summary files remain
 plain. The `refresh` human report styles its fixed `lifecycle: preserved` marker;
 drift messages, paths, IDs, finding locations, and refresh artifacts remain
-plain.
+plain. The `prune --stale` human report styles its fixed `stale` marker;
+policy rows, paths, TOML previews, JSON, and `--output` files remain plain.
 The full row includes current status, match count, kind, family, owner,
 classification, scope, scanner-provided source package context,
 evidence-reference count, broken local evidence-reference count, weak
