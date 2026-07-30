@@ -206,6 +206,44 @@ fn list_human_statuses_use_shared_style_but_files_stay_plain() {
     let _ = fs::remove_dir_all(&root);
 }
 
+/// Captured stdout is a non-TTY boundary: concise cards stay readable while
+/// `--wide` remains the complete human projection.
+#[test]
+fn list_non_tty_binary_preserves_concise_and_wide_boundaries() {
+    let root = fixture("list-layout");
+
+    let concise = run(&root, &[], &["list", "--color", "never"]);
+    assert!(concise.status.success(), "concise list should succeed");
+    let concise_text = stdout_of(&concise);
+    assert!(concise_text.contains("entries:\n- ["));
+    assert!(concise_text.contains("\n  kind: "));
+    assert!(concise_text.contains("\n  scope: "));
+    assert!(concise_text.contains("\n  reason: "));
+    assert!(
+        !concise_text.lines().any(|line| line.contains('\t')),
+        "concise cards must not regress to tabular rows"
+    );
+
+    let wide = run(&root, &[], &["list", "--wide", "--color", "never"]);
+    assert!(wide.status.success(), "wide list should succeed");
+    let wide_text = stdout_of(&wide);
+    assert!(wide_text.contains("id\tstatus\tmatches\tkind"));
+    assert!(
+        wide_text.lines().any(|line| line.contains('\t')),
+        "wide list should retain its complete tabular projection"
+    );
+
+    let json = run(
+        &root,
+        &[],
+        &["list", "--color", "always", "--format", "json"],
+    );
+    assert!(json.status.success(), "JSON list should succeed");
+    assert!(!has_ansi(&stdout_of(&json)), "JSON list must stay plain");
+
+    let _ = fs::remove_dir_all(&root);
+}
+
 #[test]
 fn explain_human_statuses_use_shared_style_but_files_stay_plain() {
     let root = fixture("explain");
