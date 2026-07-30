@@ -160,7 +160,9 @@ metadata path must be a non-empty relative path without `..`. If no metadata
 path is selected, cargo-allow retains its conventional order:
 `policy/cargo-allow.toml`, `policy/allow.toml`, `.cargo/allow.toml`, then
 `allow.toml`. This reads committed manifest text; it does not invoke Cargo
-metadata or infer workspace membership.
+metadata or infer workspace membership. The complete source-exception,
+spec-system profile, and federation precedence contract is in
+[Configuration Discovery](source-exception-ledger.md#configuration-discovery).
 
 ## 5. Run the no-new check
 
