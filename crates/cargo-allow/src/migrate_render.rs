@@ -1,13 +1,16 @@
 use super::MigrateContext;
 use allow_core::{AllowConfig, FindingKind};
-use allow_report::{MigrateCloseoutInput, MigrateLegacySource, policy_missing_evidence_entries};
+use allow_report::{
+    MigrateCloseoutInput, MigrateLegacySource, Style, policy_missing_evidence_entries,
+};
 use std::path::{Path, PathBuf};
 
-pub(super) fn render_migrate_summary(
+pub(super) fn render_migrate_summary_styled(
     cfg: &AllowConfig,
     context: &MigrateContext,
     output: &Path,
     force: bool,
+    style: Style,
 ) -> String {
     let output = output.display().to_string();
     let legacy_sources = migrate_legacy_sources(context);
@@ -17,7 +20,7 @@ pub(super) fn render_migrate_summary(
         missing_evidence_entries: policy_missing_evidence_entries(cfg),
         legacy_sources: &legacy_sources,
     };
-    allow_report::render_migrate_human(report, closeout_input)
+    allow_report::render_migrate_human_styled(report, closeout_input, style)
 }
 
 pub(super) fn render_migrate_summary_json(
