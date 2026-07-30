@@ -117,7 +117,12 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     };
     let text = match args.format {
         HumanJsonFormat::Human => {
-            let mut rendered = allow_report::render_doctor_human(report);
+            let style = if args.output.is_none() {
+                crate::reporting::output_style()
+            } else {
+                allow_report::Style::PLAIN
+            };
+            let mut rendered = allow_report::render_doctor_human_styled(report, style);
             rendered.push_str(&intent_provider_doctor_section(&root));
             rendered
         }

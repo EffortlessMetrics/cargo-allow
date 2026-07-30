@@ -312,6 +312,52 @@ fn why_human_statuses_use_shared_style_but_files_stay_plain() {
 }
 
 #[test]
+fn doctor_human_statuses_use_shared_style_but_files_stay_plain() {
+    let root = fixture("doctor");
+    let plain_result = run(&root, &[], &["doctor", "--color", "never"]);
+    let styled_result = run(&root, &[], &["doctor", "--color", "always"]);
+
+    assert!(plain_result.status.success(), "plain doctor should succeed");
+    assert!(
+        styled_result.status.success(),
+        "styled doctor should succeed"
+    );
+    assert!(!has_ansi(&stdout_of(&plain_result)));
+    assert!(has_ansi(&stdout_of(&styled_result)));
+
+    let json_result = run(
+        &root,
+        &[],
+        &["doctor", "--color", "always", "--format", "json"],
+    );
+    assert!(json_result.status.success(), "JSON doctor should succeed");
+    assert!(
+        !has_ansi(&stdout_of(&json_result)),
+        "JSON doctor must stay plain"
+    );
+
+    fs::create_dir_all(root.join("target/cargo-allow"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create doctor output dir: {err}")));
+    let written = run(
+        &root,
+        &[],
+        &[
+            "doctor",
+            "--color",
+            "always",
+            "--output",
+            "target/cargo-allow/doctor.txt",
+        ],
+    );
+    assert!(written.status.success(), "written doctor should succeed");
+    let text = fs::read_to_string(root.join("target/cargo-allow/doctor.txt"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read doctor output: {err}")));
+    assert!(!has_ansi(&text), "written doctor output must stay plain");
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn worklist_human_statuses_use_shared_style_but_files_stay_plain() {
     let root = fixture("worklist");
     let plain_result = run(&root, &[], &["worklist", "--color", "never"]);

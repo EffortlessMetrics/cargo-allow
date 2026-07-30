@@ -161,7 +161,7 @@ pub use diff::{
     render_diff_pr_summary_markdown_with_evidence_health,
     render_diff_pr_summary_markdown_with_evidence_health_counts,
 };
-pub use doctor::{render_doctor_human, render_doctor_json};
+pub use doctor::{render_doctor_human, render_doctor_human_styled, render_doctor_json};
 pub(crate) use explain::finding_location_text;
 pub use explain::{
     render_explain_finding_json, render_explain_human, render_explain_human_styled,
