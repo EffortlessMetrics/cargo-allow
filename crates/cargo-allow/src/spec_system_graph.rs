@@ -241,3 +241,121 @@ pub(super) fn import_graph_summary_from_graph(graph: &ImportGraph) -> SpecSystem
             .collect(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use allow_policy::import_roots::{
+        ImportConfidence, ImportDiagnostic, ImportEdge, ImportEdgeKind, ImportNode, ImportNodeRole,
+        ImportProvenance,
+    };
+
+    fn diagnostic(kind: ImportDiagnosticKind, root_ids: &[&str]) -> ImportDiagnostic {
+        ImportDiagnostic {
+            kind,
+            message: format!("{} diagnostic", kind.as_str()),
+            root_ids: root_ids.iter().map(|id| (*id).to_string()).collect(),
+        }
+    }
+
+    fn check(condition: bool, message: &str) -> Result<(), String> {
+        condition.then_some(()).ok_or_else(|| message.to_string())
+    }
+
+    #[test]
+    fn import_graph_diagnostic_actions_cover_all_kinds() -> Result<(), String> {
+        let kinds = [
+            ImportDiagnosticKind::MissingRoot,
+            ImportDiagnosticKind::BrokenEdge,
+            ImportDiagnosticKind::DuplicateRootId,
+            ImportDiagnosticKind::DuplicateRootPath,
+            ImportDiagnosticKind::UnknownRole,
+            ImportDiagnosticKind::InvalidRootPath,
+        ];
+        for kind in kinds {
+            check(
+                !import_graph_suggested_actions(kind).is_empty(),
+                kind.as_str(),
+            )?;
+        }
+
+        let graph = ImportGraph {
+            nodes: Vec::new(),
+            edges: Vec::new(),
+            diagnostics: vec![
+                diagnostic(ImportDiagnosticKind::MissingRoot, &["missing"]),
+                diagnostic(ImportDiagnosticKind::BrokenEdge, &["broken"]),
+                diagnostic(ImportDiagnosticKind::DuplicateRootId, &["duplicate"]),
+                diagnostic(ImportDiagnosticKind::UnknownRole, &["role"]),
+                diagnostic(ImportDiagnosticKind::InvalidRootPath, &["path"]),
+            ],
+        };
+        let findings = import_graph_findings(&graph);
+        check(findings.len() == 4, "missing roots stay advisory-only")?;
+        let work_items = work_items_from_import_graph(&graph);
+        check(work_items.len() == 4, "unexpected import work-item count")?;
+        check(
+            work_items
+                .iter()
+                .all(|item| item.lane.as_deref() == Some("import")),
+            "import work items must retain their lane",
+        )
+    }
+
+    #[test]
+    fn import_graph_summary_projects_nodes_edges_and_diagnostics() -> Result<(), String> {
+        let graph = ImportGraph {
+            nodes: vec![ImportNode {
+                id: "owned-specs".to_string(),
+                path: "docs/specs".to_string(),
+                role: ImportNodeRole::Owned,
+                ecosystem: "generic".to_string(),
+                provenance: ImportProvenance::Configured,
+                confidence: ImportConfidence::High,
+            }],
+            edges: vec![ImportEdge {
+                source_id: "owned-specs".to_string(),
+                target_id: "foreign-plan".to_string(),
+                kind: ImportEdgeKind::References,
+                provenance: ImportProvenance::Configured,
+            }],
+            diagnostics: vec![diagnostic(
+                ImportDiagnosticKind::BrokenEdge,
+                &["foreign-plan"],
+            )],
+        };
+        let summary = import_graph_summary_from_graph(&graph);
+        check(summary.node_count == 1, "node count was not projected")?;
+        check(summary.edge_count == 1, "edge count was not projected")?;
+        check(
+            summary.diagnostic_count == 1,
+            "diagnostic count was not projected",
+        )?;
+        let node = summary
+            .nodes
+            .first()
+            .ok_or_else(|| "projected node was missing".to_string())?;
+        let edge = summary
+            .edges
+            .first()
+            .ok_or_else(|| "projected edge was missing".to_string())?;
+        let diagnostic = summary
+            .diagnostics
+            .first()
+            .ok_or_else(|| "projected diagnostic was missing".to_string())?;
+        check(node.role == "owned", "node role was not projected")?;
+        check(edge.kind == "references", "edge kind was not projected")?;
+        check(
+            diagnostic.kind == "broken_edge",
+            "diagnostic kind was not projected",
+        )
+    }
+
+    #[test]
+    fn missing_federation_config_does_not_create_findings() -> Result<(), String> {
+        check(
+            federation_config_findings(Path::new("target/absent-spec-system-root")).is_empty(),
+            "missing federation config should remain non-fatal",
+        )
+    }
+}
