@@ -721,6 +721,93 @@ fn add_human_review_status_uses_shared_style_but_policy_and_summaries_stay_plain
 }
 
 #[test]
+fn migrate_human_posture_uses_shared_style_but_policy_and_summaries_stay_plain() {
+    let root = fixture("migrate");
+    fs::write(
+        root.join("policy/legacy.toml"),
+        "schema_version = 1\npolicy = \"no-panic-baseline\"\n\n[[entry]]\npath = \"src/lib.rs\"\nfamily = \"unwrap\"\nselector_kind = \"method-call\"\nselector_callee = \"unwrap\"\nsnippet = \"value.unwrap()\"\ncount = 1\nowner = \"parser\"\nreason = \"legacy baseline\"\nevidence = [\"test:parser\"]\ncreated = \"2026-07-01\"\nreview_after = \"2026-09-01\"\nexpires = \"2026-10-01\"\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write migration source: {err}")));
+
+    let args = [
+        "migrate",
+        "--from",
+        "policy/legacy.toml",
+        "--out",
+        "policy/migrated.toml",
+    ];
+    let mut plain_args = args.to_vec();
+    plain_args.extend(["--color", "never"]);
+    let plain_result = run(&root, &[], &plain_args);
+    assert!(
+        plain_result.status.success(),
+        "plain migrate should succeed: {}",
+        stderr_of(&plain_result)
+    );
+
+    let styled_result = run(
+        &root,
+        &[],
+        &[
+            "migrate",
+            "--from",
+            "policy/legacy.toml",
+            "--out",
+            "policy/migrated-styled.toml",
+            "--color",
+            "always",
+        ],
+    );
+    assert!(
+        styled_result.status.success(),
+        "styled migrate should succeed"
+    );
+    assert!(!has_ansi(&stderr_of(&plain_result)));
+    assert!(stderr_of(&styled_result).contains("migration posture: \u{1b}[31mblocked\u{1b}[0m"));
+    assert!(!has_ansi(
+        &fs::read_to_string(root.join("policy/migrated.toml")).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("read plain migration output: {err}"))
+        },)
+    ));
+    assert!(!has_ansi(
+        &fs::read_to_string(root.join("policy/migrated-styled.toml")).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("read styled migration output: {err}"))
+        },)
+    ));
+
+    fs::create_dir_all(root.join("target/cargo-allow"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create migration output dir: {err}")));
+    let written = run(
+        &root,
+        &[],
+        &[
+            "migrate",
+            "--from",
+            "policy/legacy.toml",
+            "--out",
+            "policy/migrated-file.toml",
+            "--color",
+            "always",
+            "--summary-output",
+            "target/cargo-allow/migrate-summary.txt",
+        ],
+    );
+    assert!(written.status.success(), "written migrate should succeed");
+    assert!(
+        written.stderr.is_empty(),
+        "written migrate should stay quiet"
+    );
+    let summary = fs::read_to_string(root.join("target/cargo-allow/migrate-summary.txt"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read migration summary: {err}")));
+    assert!(
+        !has_ansi(&summary),
+        "written migration summary must stay plain"
+    );
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn worklist_human_statuses_use_shared_style_but_files_stay_plain() {
     let root = fixture("worklist");
     let plain_result = run(&root, &[], &["worklist", "--color", "never"]);

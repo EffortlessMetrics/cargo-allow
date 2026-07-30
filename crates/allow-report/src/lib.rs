@@ -180,7 +180,7 @@ pub use list::{
     render_list_human, render_list_human_columns, render_list_human_columns_styled,
     render_list_human_concise, render_list_human_concise_styled, render_list_json,
 };
-pub use migrate::{render_migrate_human, render_migrate_json};
+pub use migrate::{render_migrate_human, render_migrate_human_styled, render_migrate_json};
 pub use migrate_closeout::{
     MigrateCloseoutInput, MigrateLegacySource, migrate_closeout_from_input,
 };

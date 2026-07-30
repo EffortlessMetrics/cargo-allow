@@ -128,6 +128,24 @@ fn migrate_json_renderer_records_io_summary_and_notes() {
     assert!(text.contains("legacy_retirement.ready: false"));
     assert!(text.contains("migration notes"));
     assert!(text.contains(CLAIM_BOUNDARY_TEXT));
+
+    let styled =
+        render_migrate_human_styled(report, sample_closeout_input(report, 0, &[]), Style::ANSI);
+    assert!(styled.contains("migration posture: \u{1b}[31mblocked\u{1b}[0m"));
+    assert_eq!(styled.matches('\u{1b}').count(), 2);
+
+    let mut ready_report = report;
+    ready_report.baseline_debt = 0;
+    ready_report.broken_evidence_links = None;
+    ready_report.unsafe_broken_evidence_links = None;
+    ready_report.weak_evidence_references = None;
+    ready_report.unsafe_weak_evidence_references = None;
+    let ready = render_migrate_human_styled(
+        ready_report,
+        sample_closeout_input(ready_report, 0, &[]),
+        Style::ANSI,
+    );
+    assert!(ready.contains("migration posture: \u{1b}[32mready\u{1b}[0m"));
 }
 
 fn sample_closeout_input<'a>(
