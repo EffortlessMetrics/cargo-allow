@@ -12,7 +12,7 @@ use allow_policy::spec_system::{
     ResolvedProfileConfig, SpecSystemConfig, SpecSystemGeneration, SpecSystemMode,
     SpecSystemRequirements, SpecSystemRoots, SupportTierLevel, load_doc_artifacts,
     parse_spec_system_config_at, parse_support_tier_claims, profile_config_conflict_message,
-    resolve_profile_config, validate_active_goal_manifest_text_at, validate_doc_artifact_files,
+    validate_active_goal_manifest_text_at, validate_doc_artifact_files,
     validate_doc_artifact_links, validate_support_tier_claims,
 };
 use std::fs;

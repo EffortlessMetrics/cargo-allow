@@ -1,4 +1,13 @@
-use super::*;
+use super::{
+    DEFAULT_PROFILE_CONFIG, LoadedSpecSystemConfig, PROFILE_NAME, SpecSystemFinding,
+    default_spec_system_config,
+};
+use crate::root_relative_path;
+use allow_core::read_text_file_capped;
+use allow_policy::spec_system::{
+    ProfileConfigProvenance, parse_spec_system_config_at, resolve_profile_config,
+};
+use std::path::Path;
 
 pub(super) fn load_spec_system_config(
     root: &Path,
@@ -16,26 +25,15 @@ pub(super) fn load_spec_system_config(
         _ => config_path_text.clone(),
     };
 
-    if provenance == ProfileConfigProvenance::BuiltInDefault {
+    if provenance == ProfileConfigProvenance::BuiltInDefault || !config_path.exists() {
+        let source = if provenance == ProfileConfigProvenance::BuiltInDefault {
+            source
+        } else {
+            "default spec-system roots".to_string()
+        };
         return LoadedSpecSystemConfig {
             cfg: default_spec_system_config(),
             source,
-            provenance,
-            path: config_path_text,
-            found: false,
-            valid: None,
-            diagnostic: Some(format!(
-                "spec-system profile config {} does not exist",
-                config_path.display()
-            )),
-            resolved,
-        };
-    }
-
-    if !config_path.exists() {
-        return LoadedSpecSystemConfig {
-            cfg: default_spec_system_config(),
-            source: "default spec-system roots".to_string(),
             provenance,
             path: config_path_text,
             found: false,
