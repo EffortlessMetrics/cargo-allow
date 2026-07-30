@@ -724,15 +724,14 @@ fn add_human_review_status_uses_shared_style_but_policy_and_summaries_stay_plain
 fn migrate_human_posture_uses_shared_style_but_policy_and_summaries_stay_plain() {
     let root = fixture("migrate");
     fs::write(
-        root.join("policy/legacy.toml"),
-        "schema_version = 1\npolicy = \"no-panic-baseline\"\n\n[[entry]]\npath = \"src/lib.rs\"\nfamily = \"unwrap\"\nselector_kind = \"method-call\"\nselector_callee = \"unwrap\"\nsnippet = \"value.unwrap()\"\ncount = 1\nowner = \"parser\"\nreason = \"legacy baseline\"\nevidence = [\"test:parser\"]\ncreated = \"2026-07-01\"\nreview_after = \"2026-09-01\"\nexpires = \"2026-10-01\"\n",
+        root.join("policy/no-panic-allowlist.toml"),
+        include_str!("../../../tests/fixtures/migration/no-panic-allowlist.toml"),
     )
     .unwrap_or_else(|err| std::panic::panic_any(format!("write migration source: {err}")));
-
     let args = [
         "migrate",
-        "--from",
-        "policy/legacy.toml",
+        "--repo-policy",
+        "policy",
         "--out",
         "policy/migrated.toml",
     ];
@@ -750,8 +749,8 @@ fn migrate_human_posture_uses_shared_style_but_policy_and_summaries_stay_plain()
         &[],
         &[
             "migrate",
-            "--from",
-            "policy/legacy.toml",
+            "--repo-policy",
+            "policy",
             "--out",
             "policy/migrated-styled.toml",
             "--color",
@@ -763,7 +762,7 @@ fn migrate_human_posture_uses_shared_style_but_policy_and_summaries_stay_plain()
         "styled migrate should succeed"
     );
     assert!(!has_ansi(&stderr_of(&plain_result)));
-    assert!(stderr_of(&styled_result).contains("migration posture: \u{1b}[31mblocked\u{1b}[0m"));
+    assert!(stderr_of(&styled_result).contains("migration posture: \u{1b}[32mready\u{1b}[0m"));
     assert!(!has_ansi(
         &fs::read_to_string(root.join("policy/migrated.toml")).unwrap_or_else(|err| {
             std::panic::panic_any(format!("read plain migration output: {err}"))
@@ -782,8 +781,8 @@ fn migrate_human_posture_uses_shared_style_but_policy_and_summaries_stay_plain()
         &[],
         &[
             "migrate",
-            "--from",
-            "policy/legacy.toml",
+            "--repo-policy",
+            "policy",
             "--out",
             "policy/migrated-file.toml",
             "--color",
@@ -794,8 +793,8 @@ fn migrate_human_posture_uses_shared_style_but_policy_and_summaries_stay_plain()
     );
     assert!(written.status.success(), "written migrate should succeed");
     assert!(
-        written.stderr.is_empty(),
-        "written migrate should stay quiet"
+        !has_ansi(&stderr_of(&written)),
+        "migration warnings must stay plain"
     );
     let summary = fs::read_to_string(root.join("target/cargo-allow/migrate-summary.txt"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("read migration summary: {err}")));
