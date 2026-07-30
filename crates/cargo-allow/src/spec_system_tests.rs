@@ -442,8 +442,10 @@ fn spec_system_check_mode_override_reaches_report_mode() -> std::io::Result<()> 
     };
 
     let build = |mode: Option<SpecSystemMode>| {
-        build_spec_system_report("check", &root_args, None, false, false, mode)
-            .unwrap_or_else(|err| std::panic::panic_any(format!("report builds: {err}")))
+        super::spec_system_report::build_spec_system_report(
+            "check", &root_args, None, false, false, mode,
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("report builds: {err}")))
     };
 
     // `--mode blocking` forces blocking even though the bootstrap config is
