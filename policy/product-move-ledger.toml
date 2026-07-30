@@ -426,7 +426,7 @@ deletion_output = "Old allow-policy-only test ownership becomes deletable."
 [[entry]]
 id = "MOVE-CARGO-INTENT-APP-SPEC-SYSTEM"
 source_kind = "RustModule"
-current_paths = ["crates/cargo-allow/src/spec_system.rs", "crates/cargo-allow/src/spec_system_render.rs", "crates/cargo-allow/src/spec_system_bootstrap.rs", "crates/cargo-allow/src/spec_system_config.rs", "crates/cargo-allow/src/spec_system_readiness.rs", "crates/cargo-allow/src/spec_system_graph.rs"]
+current_paths = ["crates/cargo-allow/src/spec_system.rs", "crates/cargo-allow/src/spec_system_render.rs", "crates/cargo-allow/src/spec_system_bootstrap.rs", "crates/cargo-allow/src/spec_system_config.rs", "crates/cargo-allow/src/spec_system_readiness.rs", "crates/cargo-allow/src/spec_system_graph.rs", "crates/cargo-allow/src/spec_system_report.rs"]
 current_refs = []
 current_identity = "Legacy spec-system command orchestration, private result DTOs, rendering preparation, and bootstrap"
 current_product = "cargo-allow"
