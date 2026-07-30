@@ -232,3 +232,59 @@ pub(super) fn build_spec_system_report(
         import_graph: import_graph_summary,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn malformed_support_tiers_create_a_work_item() -> Result<(), String> {
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|error| error.to_string())?
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "cargo-allow-report-builder-{}-{stamp}",
+            std::process::id()
+        ));
+        fs::create_dir_all(root.join(".allow/profiles")).map_err(|error| error.to_string())?;
+        fs::create_dir_all(root.join("docs/status")).map_err(|error| error.to_string())?;
+        fs::write(
+            root.join(".allow/profiles/spec-system.toml"),
+            "schema_version = \"1.0\"\nprofile = \"spec-system\"\nmode = \"advisory\"\n\n[roots]\nproposals = \"docs/proposals\"\nspecs = \"docs/specs\"\nadrs = \"docs/adr\"\nplans = \"plans\"\nsupport_tiers = \"docs/status/SUPPORT_TIERS.md\"\nartifact_ledger = \"policy/doc-artifacts.toml\"\n\n[requirements]\nsupport_tiers_required = true\n",
+        )
+        .map_err(|error| error.to_string())?;
+        fs::write(
+            root.join("docs/status/SUPPORT_TIERS.md"),
+            "not a support-tier table",
+        )
+        .map_err(|error| error.to_string())?;
+
+        let report = build_spec_system_report(
+            "test",
+            &RootArgs { root: Some(root) },
+            None,
+            true,
+            false,
+            None,
+        )
+        .map_err(|error| error.to_string())?;
+        if !report
+            .findings
+            .iter()
+            .any(|finding| finding.kind == "support_tier")
+        {
+            return Err("malformed support tiers should create a finding".to_string());
+        }
+        if !report
+            .work_items
+            .iter()
+            .any(|item| item.kind == "missing_support_tier")
+        {
+            return Err("malformed support tiers should create a work item".to_string());
+        }
+        Ok(())
+    }
+}
