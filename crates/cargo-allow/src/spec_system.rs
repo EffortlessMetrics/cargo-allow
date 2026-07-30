@@ -1,12 +1,6 @@
 use allow_core::{CargoAllowError, CargoAllowResult, read_text_file_capped};
 use allow_inventory::resolve_source_tree_root;
-use allow_policy::federation::{
-    FederationLoadOutcome, evaluate_spec_system_ledger, load_federation_config,
-};
-use allow_policy::import_roots::{
-    ImportDiagnosticKind, ImportGraph, discover_import_graph, resolve_spec_system_import_roots,
-    validate_import_roots_config,
-};
+use allow_policy::federation::{FederationLoadOutcome, load_federation_config};
 use allow_policy::spec_system::{
     ArtifactKind, ArtifactStatus, DocArtifact, DocArtifactLedger, ProfileConfigProvenance,
     ResolvedProfileConfig, SpecSystemConfig, SpecSystemGeneration, SpecSystemMode,
@@ -42,6 +36,14 @@ use spec_system_config::{load_spec_system_config, profile_config_findings};
 mod spec_system_readiness;
 use spec_system_readiness::{
     active_goal_manifest_source_path, collect_spec_system_readiness, validate_active_goal_file,
+};
+
+#[path = "spec_system_graph.rs"]
+mod spec_system_graph;
+use spec_system_graph::{
+    SpecSystemFederationSummary, SpecSystemImportGraphSummary, discover_spec_system_import_graph,
+    federation_config_findings, import_graph_findings, import_graph_summary_from_graph,
+    spec_system_federation_summary, work_items_from_import_graph,
 };
 
 const PROFILE_NAME: &str = "spec-system";
@@ -262,59 +264,6 @@ struct SpecSystemReport {
     readiness: Option<SpecSystemReadiness>,
     federation: Option<SpecSystemFederationSummary>,
     import_graph: Option<SpecSystemImportGraphSummary>,
-}
-
-#[derive(Debug, Clone)]
-struct SpecSystemFederationSummary {
-    federation_version: String,
-    precedence_applied: String,
-    ledger_contributors: Vec<SpecSystemLedgerContributor>,
-}
-
-#[derive(Debug, Clone)]
-struct SpecSystemLedgerContributor {
-    id: String,
-    path: String,
-    role: String,
-    dialect: String,
-    mode: String,
-    priority: u32,
-    lanes: Vec<String>,
-}
-
-#[derive(Debug, Clone)]
-struct SpecSystemImportGraphSummary {
-    node_count: usize,
-    edge_count: usize,
-    diagnostic_count: usize,
-    nodes: Vec<SpecSystemImportNode>,
-    edges: Vec<SpecSystemImportEdge>,
-    diagnostics: Vec<SpecSystemImportDiagnostic>,
-}
-
-#[derive(Debug, Clone)]
-struct SpecSystemImportNode {
-    id: String,
-    path: String,
-    role: String,
-    ecosystem: String,
-    provenance: String,
-    confidence: String,
-}
-
-#[derive(Debug, Clone)]
-struct SpecSystemImportEdge {
-    source_id: String,
-    target_id: String,
-    kind: String,
-    provenance: String,
-}
-
-#[derive(Debug, Clone)]
-struct SpecSystemImportDiagnostic {
-    kind: String,
-    message: String,
-    root_ids: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -604,36 +553,13 @@ fn build_spec_system_report(
     if include_work_items {
         work_items.extend(work_items_from_config_findings(&findings));
     }
-    let import_config = resolve_spec_system_import_roots(cfg.import_roots.as_ref());
-    let validated_import_roots = validate_import_roots_config(import_config);
-    let import_graph = discover_import_graph(&root, &validated_import_roots);
+    let import_graph = discover_spec_system_import_graph(&root, cfg.import_roots.as_ref());
     findings.extend(import_graph_findings(&import_graph));
     if include_work_items {
         work_items.extend(work_items_from_import_graph(&import_graph));
     }
     let import_graph_summary = Some(import_graph_summary_from_graph(&import_graph));
-    let federation = evaluate_spec_system_ledger(&root).map(|evaluation| {
-        if let Some(provenance) = &evaluation.active_provenance {
-            apply_work_item_ledger_provenance(&mut work_items, provenance);
-        }
-        SpecSystemFederationSummary {
-            federation_version: evaluation.federation_version.to_string(),
-            precedence_applied: evaluation.precedence_applied.as_str().to_string(),
-            ledger_contributors: evaluation
-                .ledger_contributors
-                .iter()
-                .map(|contributor| SpecSystemLedgerContributor {
-                    id: contributor.id.clone(),
-                    path: contributor.path.clone(),
-                    role: contributor.role.as_str().to_string(),
-                    dialect: contributor.dialect.clone(),
-                    mode: contributor.mode.as_str().to_string(),
-                    priority: contributor.priority,
-                    lanes: contributor.lanes.clone(),
-                })
-                .collect(),
-        }
-    });
+    let federation = spec_system_federation_summary(&root, &mut work_items);
     let readiness = if include_readiness {
         Some(collect_spec_system_readiness(&root, &loaded_config))
     } else {
@@ -655,146 +581,6 @@ fn build_spec_system_report(
         federation,
         import_graph: import_graph_summary,
     })
-}
-
-fn federation_config_findings(root: &Path) -> Vec<SpecSystemFinding> {
-    let Ok(loaded) = load_federation_config(root) else {
-        return Vec::new();
-    };
-    let FederationLoadOutcome::Parsed(validated) = loaded.outcome else {
-        return Vec::new();
-    };
-    validated
-        .diagnostics
-        .into_iter()
-        .filter(|diagnostic| {
-            !matches!(
-                diagnostic.kind,
-                allow_policy::federation::FederationDiagnosticKind::DialectSkipped
-            )
-        })
-        .map(|diagnostic| {
-            SpecSystemFinding::new(
-                "federation_config",
-                format!("{}: {}", diagnostic.kind.as_str(), diagnostic.message),
-            )
-        })
-        .collect()
-}
-
-fn import_graph_findings(graph: &ImportGraph) -> Vec<SpecSystemFinding> {
-    graph
-        .diagnostics
-        .iter()
-        .filter(|diagnostic| diagnostic.kind != ImportDiagnosticKind::MissingRoot)
-        .map(|diagnostic| {
-            SpecSystemFinding::new(
-                "import_graph",
-                format!("{}: {}", diagnostic.kind.as_str(), diagnostic.message),
-            )
-        })
-        .collect()
-}
-
-fn work_items_from_import_graph(graph: &ImportGraph) -> Vec<SpecSystemWorkItem> {
-    graph
-        .diagnostics
-        .iter()
-        .filter(|diagnostic| diagnostic.kind != ImportDiagnosticKind::MissingRoot)
-        .map(|diagnostic| {
-            let kind = match diagnostic.kind {
-                ImportDiagnosticKind::MissingRoot => "missing_import_root",
-                ImportDiagnosticKind::BrokenEdge => "broken_import",
-                ImportDiagnosticKind::DuplicateRootId
-                | ImportDiagnosticKind::DuplicateRootPath
-                | ImportDiagnosticKind::UnknownRole
-                | ImportDiagnosticKind::InvalidRootPath => "broken_import",
-            };
-            let path = diagnostic
-                .root_ids
-                .first()
-                .cloned()
-                .or_else(|| Some(DEFAULT_OWNED_IMPORTS_ROOT.to_string()));
-            SpecSystemWorkItem {
-                kind,
-                artifact_id: None,
-                path,
-                owner: Some("repo-infra".to_string()),
-                status: Some(diagnostic.kind.as_str().to_string()),
-                message: diagnostic.message.clone(),
-                suggested_actions: import_graph_suggested_actions(diagnostic.kind),
-                proof_commands: spec_system_proof_commands(),
-                ledger_id: None,
-                ledger_path: None,
-                lane: Some("import".to_string()),
-                mode: Some("advisory".to_string()),
-                role: Some("imported".to_string()),
-            }
-        })
-        .collect()
-}
-
-fn import_graph_suggested_actions(kind: ImportDiagnosticKind) -> Vec<String> {
-    match kind {
-        ImportDiagnosticKind::MissingRoot => vec![
-            "create the configured import root directory".to_string(),
-            "or remove the unused import root entry from the spec-system profile config"
-                .to_string(),
-        ],
-        ImportDiagnosticKind::BrokenEdge => vec![
-            "fix the broken import reference in the foreign file".to_string(),
-            "or promote the import node into the owned artifact ledger".to_string(),
-        ],
-        ImportDiagnosticKind::DuplicateRootId | ImportDiagnosticKind::DuplicateRootPath => vec![
-            "deduplicate import root ids and paths in the spec-system profile config".to_string(),
-        ],
-        ImportDiagnosticKind::UnknownRole => {
-            vec!["use an import root role of owned, imported, legacy, or generated".to_string()]
-        }
-        ImportDiagnosticKind::InvalidRootPath => vec![
-            "use a source-tree-relative path for the import root (no .., absolute, or drive paths)"
-                .to_string(),
-        ],
-    }
-}
-
-fn import_graph_summary_from_graph(graph: &ImportGraph) -> SpecSystemImportGraphSummary {
-    SpecSystemImportGraphSummary {
-        node_count: graph.nodes.len(),
-        edge_count: graph.edges.len(),
-        diagnostic_count: graph.diagnostics.len(),
-        nodes: graph
-            .nodes
-            .iter()
-            .map(|node| SpecSystemImportNode {
-                id: node.id.clone(),
-                path: node.path.clone(),
-                role: node.role.as_str().to_string(),
-                ecosystem: node.ecosystem.clone(),
-                provenance: node.provenance.as_str().to_string(),
-                confidence: node.confidence.as_str().to_string(),
-            })
-            .collect(),
-        edges: graph
-            .edges
-            .iter()
-            .map(|edge| SpecSystemImportEdge {
-                source_id: edge.source_id.clone(),
-                target_id: edge.target_id.clone(),
-                kind: edge.kind.as_str().to_string(),
-                provenance: edge.provenance.as_str().to_string(),
-            })
-            .collect(),
-        diagnostics: graph
-            .diagnostics
-            .iter()
-            .map(|diagnostic| SpecSystemImportDiagnostic {
-                kind: diagnostic.kind.as_str().to_string(),
-                message: diagnostic.message.clone(),
-                root_ids: diagnostic.root_ids.clone(),
-            })
-            .collect(),
-    }
 }
 
 fn default_spec_system_config() -> SpecSystemConfig {
