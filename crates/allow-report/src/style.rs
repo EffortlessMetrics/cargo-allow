@@ -76,7 +76,9 @@ impl Style {
     /// must remain outside this helper so they cannot receive terminal escapes.
     pub fn status(self, status: &str, text: &str) -> String {
         match status {
-            "matched" | "healthy" | "complete" | "pass" | "passed" | "valid" => self.ok(text),
+            "matched" | "healthy" | "complete" | "pass" | "passed" | "valid" | "preserved" => {
+                self.ok(text)
+            }
             "new"
             | "expired"
             | "ambiguous"

@@ -1,5 +1,5 @@
 use super::*;
-use crate::{InventoryContext, RefreshModeContext, RefreshReport};
+use crate::{InventoryContext, RefreshModeContext, RefreshReport, Style};
 use allow_core::{
     AllowEntry, Finding, FindingKind, LastSeen, Lifecycle, Selector, Span, StructuralIdentity,
 };
@@ -142,4 +142,31 @@ fn refresh_human_mentions_lifecycle_preservation() {
 
     assert!(text.contains("lifecycle: preserved"));
     assert!(text.contains("fixture-refresh-drift"));
+}
+
+#[test]
+fn refresh_human_styles_only_the_fixed_lifecycle_marker() {
+    let text = render_refresh_human_styled(
+        RefreshReport::new(
+            InventoryContext::source_syntax("unknown", None, None),
+            &sample_entry(),
+            &sample_finding(),
+            Some(LastSeen {
+                line: 14,
+                column: 8,
+            }),
+            "allow-drift last_seen changed from 14:8 to 22:4",
+            RefreshModeContext {
+                explicit_dry_run: false,
+                write_requested: false,
+                written_path: None,
+            },
+            sample_mutation_receipt(),
+        ),
+        Style::ANSI,
+    );
+
+    assert!(text.contains("lifecycle: \u{1b}[32mpreserved\u{1b}[0m"));
+    assert!(text.contains("drift: allow-drift last_seen changed from 14:8 to 22:4"));
+    assert_eq!(text.matches('\u{1b}').count(), 2);
 }

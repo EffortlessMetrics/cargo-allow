@@ -199,7 +199,7 @@ pub use receipt::{
     render_error_receipt, render_receipt, render_receipt_with_context,
     render_receipt_with_context_and_inventory,
 };
-pub use refresh::{render_refresh_human, render_refresh_json};
+pub use refresh::{render_refresh_human, render_refresh_human_styled, render_refresh_json};
 pub use report_json::{render_json, render_json_with_context, render_json_with_context_and_diff};
 pub use report_text::{
     render_human, render_human_with_context, render_markdown, render_markdown_with_context,

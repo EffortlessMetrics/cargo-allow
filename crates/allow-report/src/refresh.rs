@@ -1,3 +1,4 @@
+use crate::Style;
 use crate::contracts::REFRESH_ARTIFACT;
 use crate::json::{bool_json, option_json, push_json_fixed_artifact_preamble};
 use crate::{
@@ -7,6 +8,10 @@ use crate::{
 use allow_core::json_escape;
 
 pub fn render_refresh_human(report: RefreshReport<'_>) -> String {
+    render_refresh_human_styled(report, Style::PLAIN)
+}
+
+pub fn render_refresh_human_styled(report: RefreshReport<'_>, style: Style) -> String {
     let mut out = String::new();
     out.push_str("cargo-allow refresh\n\n");
     out.push_str(&format!(
@@ -45,7 +50,9 @@ pub fn render_refresh_human(report: RefreshReport<'_>) -> String {
             current.line, current.column
         ));
     }
-    out.push_str("lifecycle: preserved (expires and review_after unchanged)\n");
+    out.push_str("lifecycle: ");
+    out.push_str(&style.status("preserved", "preserved"));
+    out.push_str(" (expires and review_after unchanged)\n");
     if let Some(path) = report.mode.written_path {
         out.push_str(&format!("\nUpdated policy at `{path}`.\n"));
     } else {

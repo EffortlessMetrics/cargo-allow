@@ -88,6 +88,29 @@ fn fixture(label: &str) -> std::path::PathBuf {
     root
 }
 
+fn refresh_fixture(label: &str) -> std::path::PathBuf {
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-color-{label}-refresh-{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create refresh policy: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create refresh source: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        include_str!("../../../tests/fixtures/refresh/advisory-drift/policy/allow.toml"),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write refresh policy: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        include_str!("../../../tests/fixtures/refresh/advisory-drift/src/lib.rs"),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write refresh source: {err}")));
+    root
+}
+
 /// auto on a non-TTY is plain; never is plain; always styles.
 #[test]
 fn the_three_choices_have_observable_behaviour() {
@@ -403,6 +426,88 @@ fn propose_human_summary_status_uses_shared_style_but_policy_stays_plain() {
     let summary = fs::read_to_string(root.join("target/cargo-allow/propose.json"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("read propose summary: {err}")));
     assert!(!has_ansi(&summary), "JSON propose summary must stay plain");
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn refresh_human_lifecycle_status_uses_shared_style_but_artifacts_stay_plain() {
+    let root = refresh_fixture("refresh");
+    let args = [
+        "refresh",
+        "--config",
+        "policy/allow.toml",
+        "--allow-id",
+        "allow-0250",
+        "--dry-run",
+        "--include-untracked",
+    ];
+    let mut plain_args = args.to_vec();
+    plain_args.extend(["--color", "never"]);
+    let mut styled_args = args.to_vec();
+    styled_args.extend(["--color", "always"]);
+
+    let plain_result = run(&root, &[], &plain_args);
+    let styled_result = run(&root, &[], &styled_args);
+    assert!(
+        plain_result.status.success(),
+        "plain refresh should succeed"
+    );
+    assert!(
+        styled_result.status.success(),
+        "styled refresh should succeed"
+    );
+    assert!(!has_ansi(&stdout_of(&plain_result)));
+    assert!(has_ansi(&stdout_of(&styled_result)));
+    assert!(stdout_of(&styled_result).contains("lifecycle: \u{1b}[32mpreserved\u{1b}[0m"));
+    assert!(stdout_of(&styled_result).contains("drift: allow-0250 last_seen changed"));
+
+    let json_result = run(
+        &root,
+        &[],
+        &[
+            "refresh",
+            "--config",
+            "policy/allow.toml",
+            "--allow-id",
+            "allow-0250",
+            "--dry-run",
+            "--include-untracked",
+            "--color",
+            "always",
+            "--format",
+            "json",
+        ],
+    );
+    assert!(json_result.status.success(), "JSON refresh should succeed");
+    assert!(
+        !has_ansi(&stdout_of(&json_result)),
+        "JSON refresh must stay plain"
+    );
+
+    fs::create_dir_all(root.join("target/cargo-allow"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create refresh output dir: {err}")));
+    let written = run(
+        &root,
+        &[],
+        &[
+            "refresh",
+            "--config",
+            "policy/allow.toml",
+            "--allow-id",
+            "allow-0250",
+            "--dry-run",
+            "--include-untracked",
+            "--color",
+            "always",
+            "--output",
+            "target/cargo-allow/refresh.txt",
+        ],
+    );
+    assert!(written.status.success(), "written refresh should succeed");
+    let text = fs::read_to_string(root.join("target/cargo-allow/refresh.txt"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read refresh output: {err}")));
+    assert!(!has_ansi(&text), "written refresh output must stay plain");
 
     let _ = fs::remove_dir_all(&root);
 }
