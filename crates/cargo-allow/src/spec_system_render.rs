@@ -83,28 +83,7 @@ pub(super) fn render_spec_system_explain_markdown(report: &SpecSystemReport) -> 
         "# cargo-allow explain {} --profile spec-system\n\n",
         artifact.id
     ));
-    text.push_str(&format!(
-        "**Result:** {}\n\n",
-        spec_system_mode_name(&report.mode)
-    ));
-    text.push_str(&format!(
-        "Mode: `{}`\n\n",
-        spec_system_mode_name(&report.mode)
-    ));
-    text.push_str(&format!(
-        "Status: `{}`\n\n",
-        spec_system_report_status(report)
-    ));
-    text.push_str("Profile: `spec-system`\n\n");
-    text.push_str(&format!(
-        "Source tree root: `{}`\n\n",
-        report.root.display()
-    ));
-    text.push_str(&format!("Config: `{}`\n\n", report.config_source));
-    text.push_str(&format!(
-        "Config provenance: `{}`\n\n",
-        report.config_provenance
-    ));
+    push_spec_system_report_preamble(&mut text, report);
 
     text.push_str("## Artifact\n\n");
     text.push_str("| Field | Value |\n|---|---|\n");
@@ -207,28 +186,7 @@ pub(super) fn render_spec_system_markdown(report: &SpecSystemReport) -> String {
         "# cargo-allow {} --profile spec-system\n\n",
         report.command
     ));
-    text.push_str(&format!(
-        "**Result:** {}\n\n",
-        spec_system_mode_name(&report.mode)
-    ));
-    text.push_str(&format!(
-        "Mode: `{}`\n\n",
-        spec_system_mode_name(&report.mode)
-    ));
-    text.push_str(&format!(
-        "Status: `{}`\n\n",
-        spec_system_report_status(report)
-    ));
-    text.push_str("Profile: `spec-system`\n\n");
-    text.push_str(&format!(
-        "Source tree root: `{}`\n\n",
-        report.root.display()
-    ));
-    text.push_str(&format!("Config: `{}`\n\n", report.config_source));
-    text.push_str(&format!(
-        "Config provenance: `{}`\n\n",
-        report.config_provenance
-    ));
+    push_spec_system_report_preamble(&mut text, report);
     if let Some(readiness) = &report.readiness {
         text.push_str("## Setup Readiness\n\n");
         text.push_str(&format!("Mode: `{}`\n\n", readiness.mode));
@@ -337,6 +295,31 @@ pub(super) fn render_spec_system_markdown(report: &SpecSystemReport) -> String {
     }
     text.push_str("> Claim boundary: structural source-tree graph validation only; cargo-allow did not execute proof commands, run tests, invoke Cargo, rustc, Clippy, build scripts, proc macros, external proof tools, network calls, or GitHub APIs.\n");
     text
+}
+
+fn push_spec_system_report_preamble(text: &mut String, report: &SpecSystemReport) {
+    text.push_str(&format!(
+        "**Result:** {}\n\n",
+        spec_system_mode_name(&report.mode)
+    ));
+    text.push_str(&format!(
+        "Mode: `{}`\n\n",
+        spec_system_mode_name(&report.mode)
+    ));
+    text.push_str(&format!(
+        "Status: `{}`\n\n",
+        spec_system_report_status(report)
+    ));
+    text.push_str("Profile: `spec-system`\n\n");
+    text.push_str(&format!(
+        "Source tree root: `{}`\n\n",
+        report.root.display()
+    ));
+    text.push_str(&format!("Config: `{}`\n\n", report.config_source));
+    text.push_str(&format!(
+        "Config provenance: `{}`\n\n",
+        report.config_provenance
+    ));
 }
 
 pub(super) fn render_spec_system_json(report: &SpecSystemReport) -> String {
@@ -640,12 +623,18 @@ pub(super) fn render_spec_system_json(report: &SpecSystemReport) -> String {
             "      \"id\": \"{}\",\n",
             json_escape(&artifact.id)
         ));
-        text.push_str(&format!("      \"kind\": \"{}\",\n", artifact.kind));
+        text.push_str(&format!(
+            "      \"kind\": \"{}\",\n",
+            json_escape(artifact.kind)
+        ));
         text.push_str(&format!(
             "      \"path\": \"{}\",\n",
             json_escape(&artifact.path)
         ));
-        text.push_str(&format!("      \"status\": \"{}\",\n", artifact.status));
+        text.push_str(&format!(
+            "      \"status\": \"{}\",\n",
+            json_escape(artifact.status)
+        ));
         text.push_str(&format!(
             "      \"owner\": \"{}\",\n",
             json_escape(&artifact.owner)
@@ -668,10 +657,13 @@ pub(super) fn render_spec_system_json(report: &SpecSystemReport) -> String {
             "\"source_id\": \"{}\", ",
             json_escape(&link.source_id)
         ));
-        text.push_str(&format!("\"field\": \"{}\", ", link.field));
+        text.push_str(&format!("\"field\": \"{}\", ", json_escape(link.field)));
         text.push_str(&format!("\"target\": \"{}\"", json_escape(&link.target)));
         if let Some(target_kind) = link.target_kind {
-            text.push_str(&format!(", \"target_kind\": \"{}\"", target_kind));
+            text.push_str(&format!(
+                ", \"target_kind\": \"{}\"",
+                json_escape(target_kind)
+            ));
         }
         text.push('}');
         if index + 1 != report.links.len() {
@@ -818,4 +810,71 @@ fn render_spec_system_sarif(report: &SpecSystemReport) -> String {
     text.push_str("  ]\n");
     text.push_str("}\n");
     text
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_report() -> SpecSystemReport {
+        SpecSystemReport {
+            command: "check".to_string(),
+            root: PathBuf::from("."),
+            config_source: "built-in".to_string(),
+            config_provenance: "default".to_string(),
+            mode: SpecSystemMode::Advisory,
+            artifacts: vec![SpecSystemArtifact {
+                id: "artifact-1".to_string(),
+                kind: "spec",
+                path: "docs/spec.md".to_string(),
+                status: "accepted",
+                owner: "team".to_string(),
+                created: "2026-01-01".to_string(),
+            }],
+            links: vec![],
+            support_tier_rows: 0,
+            findings: vec![SpecSystemFinding::new(
+                "example",
+                "finding message".to_string(),
+            )],
+            work_items: vec![],
+            readiness: None,
+            federation: None,
+            import_graph: None,
+        }
+    }
+
+    #[test]
+    fn render_report_dispatches_sarif_findings() {
+        let rendered = render_spec_system_report(&test_report(), OutputFormat::Sarif);
+
+        assert!(rendered.contains("\"version\": \"2.1.0\""));
+        assert!(rendered.contains("\"ruleId\": \"example\""));
+    }
+
+    #[test]
+    fn render_json_escapes_dynamic_artifact_and_link_values() -> Result<(), String> {
+        let mut report = test_report();
+        let artifact = report
+            .artifacts
+            .first_mut()
+            .ok_or_else(|| "test report has no artifact".to_string())?;
+        artifact.id = "artifact-\"quoted\"".to_string();
+        artifact.path = "docs/quoted\\path.md".to_string();
+        let artifact_id = artifact.id.clone();
+        report.links.push(SpecSystemLink {
+            source_id: artifact_id,
+            field: "depends_on",
+            target: "target-\"quoted\"".to_string(),
+            target_kind: Some("spec"),
+        });
+
+        let value: serde_json::Value = serde_json::from_str(&render_spec_system_json(&report))
+            .map_err(|error| error.to_string())?;
+
+        assert_eq!(value["artifacts"][0]["id"], "artifact-\"quoted\"");
+        assert_eq!(value["artifacts"][0]["path"], "docs/quoted\\path.md");
+        assert_eq!(value["links"][0]["target"], "target-\"quoted\"");
+        Ok(())
+    }
 }
