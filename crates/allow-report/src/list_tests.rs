@@ -303,6 +303,104 @@ fn list_concise_summary_and_empty_states_are_explicit() {
 }
 
 #[test]
+fn list_concise_layout_bounds_unicode_ids_paths_and_reasons() {
+    let long_id = "識別子".repeat(20);
+    let long_scope = "路径/模块/".repeat(16);
+    let long_reason = "理由🙂".repeat(40);
+    let rows = [ListRow {
+        id: &long_id,
+        status: "matched",
+        matches: 1,
+        kind: "panic",
+        family: Some("unwrap"),
+        owner: "runtime",
+        classification: "reviewed_exception",
+        scope: &long_scope,
+        source_package: Some("cargo-allow"),
+        evidence_count: 1,
+        broken_evidence_references: 0,
+        weak_evidence_references: 0,
+        selector_precision: 1,
+        broad_scope: false,
+        review_after: None,
+        expires: None,
+        reason: &long_reason,
+    }];
+
+    let text = render_list_human_concise(
+        &rows,
+        InventoryContext::source_syntax("git_tracked", None, Some(1)),
+        ListFilters::default(),
+        ListColumn::DEFAULT,
+    );
+
+    let expected_id = format!("{}…", long_id.chars().take(35).collect::<String>());
+    let expected_scope = format!("{}…", long_scope.chars().take(47).collect::<String>());
+    let expected_reason = format!("{}…", long_reason.chars().take(71).collect::<String>());
+    assert!(text.contains(&format!("- [matched] {expected_id}\n")));
+    assert!(text.contains(&format!("  scope: {expected_scope}\n")));
+    assert!(text.contains(&format!("  reason: {expected_reason}\n")));
+    assert!(!text.contains(&long_id));
+    assert!(!text.contains(&long_scope));
+    assert!(!text.contains(&long_reason));
+
+    for line in text.lines().filter(|line| {
+        line.starts_with("- [")
+            || line.starts_with("  kind:")
+            || line.starts_with("  scope:")
+            || line.starts_with("  owner:")
+            || line.starts_with("  matches:")
+            || line.starts_with("  reason:")
+    }) {
+        assert!(
+            line.chars().count() <= 82,
+            "concise card line exceeded the bounded layout: {line}"
+        );
+    }
+}
+
+#[test]
+fn list_concise_rendering_is_deterministic_without_terminal_width_input() {
+    let rows = [ListRow {
+        id: "allow-width",
+        status: "review_due",
+        matches: 2,
+        kind: "unsafe",
+        family: Some("raw-pointer"),
+        owner: "runtime",
+        classification: "reviewed_exception",
+        scope: "crates/runtime/src/lib.rs",
+        source_package: Some("allow-core"),
+        evidence_count: 2,
+        broken_evidence_references: 0,
+        weak_evidence_references: 1,
+        selector_precision: 3,
+        broad_scope: false,
+        review_after: Some("2026-10-01"),
+        expires: None,
+        reason: "review the safety contract",
+    }];
+    let inventory = InventoryContext::source_syntax("git_tracked", None, Some(3));
+
+    let first = render_list_human_concise(
+        &rows,
+        inventory,
+        ListFilters::default(),
+        ListColumn::DEFAULT,
+    );
+    let second = render_list_human_concise(
+        &rows,
+        inventory,
+        ListFilters::default(),
+        ListColumn::DEFAULT,
+    );
+
+    assert_eq!(first, second);
+    assert!(first.contains("- [review_due] allow-width\n"));
+    assert!(first.contains("weak evidence: 1"));
+}
+
+#[test]
 fn list_status_style_is_shared_by_cards_and_wide_rows() {
     let rows = [ListRow {
         id: "allow-style",
