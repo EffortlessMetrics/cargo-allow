@@ -18,6 +18,75 @@ Top-level policy header values such as `schema_version`, `policy`, `owner`, and
 `status` are exact ledger tokens. They must not include leading or trailing
 whitespace.
 
+## Configuration Discovery
+
+Cargo-allow has three related configuration surfaces. They are intentionally
+separate today; profile resolution and federation do not share one unified
+resolver yet. This distinction matters when a repository contains more than
+one `.allow/` or `policy/` file.
+
+### Source-exception policy
+
+Commands that operate on the source-exception ledger (`check`, `audit`, `list`,
+`diff`, and related commands) use this order:
+
+1. An explicit `--config` path.
+2. A valid `.allow/config.toml` federation registry that names a canonical
+   ledger for the `source-exception` lane.
+3. Source-text discovery from the requested source-tree root upward. At each
+   directory, cargo-allow checks a local `Cargo.toml` first, then the
+   conventional paths below.
+
+For `Cargo.toml` source text, `[package.metadata.cargo-allow].config` takes
+precedence over `[workspace.metadata.cargo-allow].config` in the same manifest.
+The selected metadata value must be a non-empty, existing relative path without
+`..`; an unusable metadata candidate falls through to conventional discovery.
+Cargo-allow reads the manifest text directly. It does not invoke the Cargo
+`metadata` command or infer workspace membership.
+
+The conventional source-exception order is:
+
+```text
+policy/cargo-allow.toml
+policy/allow.toml
+.cargo/allow.toml
+allow.toml
+```
+
+The native `policy/cargo-allow.toml` path may omit the `policy = "cargo-allow"`
+header. A foreign dialect at another conventional path is skipped with a
+diagnostic instead of being parsed or merged.
+
+### Spec-system profile
+
+`--profile spec-system` has its own resolver. Unless an explicit profile config
+is supplied, it checks these paths in order:
+
+```text
+.allow/profiles/spec-system.toml
+.allow/config.toml
+policy/spec-system.toml
+```
+
+If none exists, the command uses built-in advisory roots and reports that the
+profile config was not found. When an owned `.allow/` profile and the legacy
+`policy/spec-system.toml` both exist, the owned path wins and the conflict is
+reported for cleanup.
+
+### Federation registry
+
+Federation currently reads the fixed `.allow/config.toml` path. When that file
+parses and validates, its canonical ledger registered for the
+`source-exception` lane takes precedence over source-text policy discovery.
+The same path is also a profile fallback, but the profile and federation
+parsers remain separate consumers with separate contracts; cargo-allow does not
+silently merge their fields.
+
+This is the current compatibility boundary for issue [#2828](https://github.com/EffortlessMetrics/cargo-allow/issues/2828).
+The Cargo manifest metadata path is implemented, while unifying profile and
+federation resolution remains planned work and should not be inferred from the
+presence of shared `.allow/` paths.
+
 ## Entry Contract
 
 Each retained exception should have:
