@@ -40,11 +40,12 @@ pub fn render_migrate_human_styled(
     out.push_str(&format!("output: {}\n", report.output_path));
     out.push_str(&format!("force: {}\n", report.force));
     out.push_str("migration posture: ");
-    if closeout.legacy_retirement.ready {
-        out.push_str(&style.status("complete", "ready"));
+    let (posture_status, posture_label) = if closeout.legacy_retirement.ready {
+        ("complete", "ready")
     } else {
-        out.push_str(&style.status("baseline_debt", "blocked"));
-    }
+        ("baseline_debt", "blocked")
+    };
+    out.push_str(&style.status(posture_status, posture_label));
     out.push('\n');
     out.push_str(&format!("allow_entries: {}\n", report.allow_entries));
     out.push_str(&format!("baseline_debt: {}\n", report.baseline_debt));
