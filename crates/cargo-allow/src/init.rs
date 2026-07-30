@@ -52,7 +52,15 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
         } else {
             "create"
         };
-        print!("{}", dry_run_announcement(action, &display, args.strict));
+        print!(
+            "{}",
+            dry_run_announcement_styled(
+                action,
+                &display,
+                args.strict,
+                crate::reporting::output_style(),
+            )
+        );
         return Ok(());
     }
     let _mutation_lock = MutationLock::acquire(root.join(".cargo-allow-init.lock"))?;
@@ -79,7 +87,10 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
     // an existing file, "created" for a new file.
     let action = if path_existed { "overwrote" } else { "created" };
     let display = created_path_display(&root, &path);
-    print!("{}", post_write_announcement(action, &display));
+    print!(
+        "{}",
+        post_write_announcement_styled(action, &display, crate::reporting::output_style())
+    );
     Ok(())
 }
 
@@ -137,9 +148,17 @@ fn starter_policy_preview(strict: bool) -> String {
 /// create} line, the starter policy shape preview, and the next-steps
 /// guidance. Returns the exact bytes to print so the dry-run path stays
 /// testable without capturing stdout (#2596).
-fn dry_run_announcement(action: &str, display: &str, strict: bool) -> String {
+fn dry_run_announcement_styled(
+    action: &str,
+    display: &str,
+    strict: bool,
+    style: allow_report::Style,
+) -> String {
     let mut out = String::new();
-    out.push_str(&format!("would {action} {display}\n"));
+    out.push_str(&format!(
+        "would {} {display}\n",
+        style_init_action(style, action)
+    ));
     out.push('\n');
     out.push_str("starter policy shape:\n");
     out.push_str(&starter_policy_preview(strict));
@@ -151,12 +170,24 @@ fn dry_run_announcement(action: &str, display: &str, strict: bool) -> String {
 /// Render the post-write announcement: the {created} line and the next-steps
 /// guidance. Kept as a helper so the dry-run and write paths emit identical
 /// next-steps text.
-fn post_write_announcement(action: &str, display: &str) -> String {
+fn post_write_announcement_styled(
+    action: &str,
+    display: &str,
+    style: allow_report::Style,
+) -> String {
     let mut out = String::new();
-    out.push_str(&format!("{action} {display}\n"));
+    out.push_str(&format!("{} {display}\n", style_init_action(style, action)));
     out.push('\n');
     out.push_str(&next_steps_block());
     out
+}
+
+fn style_init_action(style: allow_report::Style, action: &str) -> String {
+    match action {
+        "created" | "overwrote" => style.ok(action),
+        "create" | "keep" | "overwrite" => style.advisory(action),
+        _ => style.advisory(action),
+    }
 }
 
 pub(crate) fn next_steps_block() -> String {

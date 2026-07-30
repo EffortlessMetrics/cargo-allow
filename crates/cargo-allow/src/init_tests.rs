@@ -293,7 +293,12 @@ fn cmd_init_dry_run_does_not_write_default_policy() {
 fn dry_run_announcement_includes_preview_and_next_steps() {
     // #2596: dry-run should preview the starter policy shape and show the
     // next-steps guidance, not just the would-create line.
-    let out = super::dry_run_announcement("create", "policy/allow.toml", false);
+    let out = super::dry_run_announcement_styled(
+        "create",
+        "policy/allow.toml",
+        false,
+        allow_report::Style::PLAIN,
+    );
 
     assert!(
         out.starts_with("would create policy/allow.toml\n"),
@@ -323,7 +328,12 @@ fn dry_run_announcement_includes_preview_and_next_steps() {
 
 #[test]
 fn dry_run_announcement_strict_preview_promotes_mode_and_stale_failure() {
-    let out = super::dry_run_announcement("create", "policy/allow.toml", true);
+    let out = super::dry_run_announcement_styled(
+        "create",
+        "policy/allow.toml",
+        true,
+        allow_report::Style::PLAIN,
+    );
 
     assert!(
         out.contains("default_mode       = strict"),
@@ -337,8 +347,18 @@ fn dry_run_announcement_strict_preview_promotes_mode_and_stale_failure() {
 
 #[test]
 fn dry_run_announcement_keep_and_overwrite_use_action_word() {
-    let keep = super::dry_run_announcement("keep", "policy/allow.toml", false);
-    let overwrite = super::dry_run_announcement("overwrite", "policy/allow.toml", false);
+    let keep = super::dry_run_announcement_styled(
+        "keep",
+        "policy/allow.toml",
+        false,
+        allow_report::Style::PLAIN,
+    );
+    let overwrite = super::dry_run_announcement_styled(
+        "overwrite",
+        "policy/allow.toml",
+        false,
+        allow_report::Style::PLAIN,
+    );
 
     assert!(
         keep.starts_with("would keep policy/allow.toml\n"),
@@ -354,8 +374,17 @@ fn dry_run_announcement_keep_and_overwrite_use_action_word() {
 fn post_write_announcement_shares_next_steps_with_dry_run() {
     // The non-dry-run path should emit identical next-steps text so the two
     // paths don't drift.
-    let created = super::post_write_announcement("created", "policy/allow.toml");
-    let dry = super::dry_run_announcement("create", "policy/allow.toml", false);
+    let created = super::post_write_announcement_styled(
+        "created",
+        "policy/allow.toml",
+        allow_report::Style::PLAIN,
+    );
+    let dry = super::dry_run_announcement_styled(
+        "create",
+        "policy/allow.toml",
+        false,
+        allow_report::Style::PLAIN,
+    );
 
     assert!(created.starts_with("created policy/allow.toml\n"));
     let created_steps = created.split("next steps:\n").nth(1).unwrap_or("");
@@ -364,6 +393,26 @@ fn post_write_announcement_shares_next_steps_with_dry_run() {
         created_steps, dry_steps,
         "next-steps text must match between dry-run and write paths"
     );
+}
+
+#[test]
+fn init_human_summary_styles_fixed_action_markers_only() {
+    let dry = super::dry_run_announcement_styled(
+        "create",
+        "policy/allow.toml",
+        false,
+        allow_report::Style::ANSI,
+    );
+    assert!(dry.contains("would \u{1b}[33mcreate\u{1b}[0m policy/allow.toml"));
+    assert!(!dry.contains("policy/allow.toml\u{1b}"));
+
+    let written = super::post_write_announcement_styled(
+        "created",
+        "policy/allow.toml",
+        allow_report::Style::ANSI,
+    );
+    assert!(written.starts_with("\u{1b}[32mcreated\u{1b}[0m policy/allow.toml\n"));
+    assert!(!written.contains("policy/allow.toml\u{1b}"));
 }
 
 #[test]
