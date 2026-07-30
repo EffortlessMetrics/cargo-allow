@@ -377,7 +377,14 @@ pub(crate) fn cmd_tool(args: &ToolArgs) -> CargoAllowResult<()> {
                     )
                 })?
             }
-            ToolIdentityFormat::Human => render_human_identity(&identity),
+            ToolIdentityFormat::Human => {
+                let style = if identity_args.output.is_none() {
+                    crate::reporting::output_style()
+                } else {
+                    allow_report::Style::PLAIN
+                };
+                render_human_identity_styled(&identity, style)
+            }
         },
     };
     match &args.command {
@@ -387,15 +394,22 @@ pub(crate) fn cmd_tool(args: &ToolArgs) -> CargoAllowResult<()> {
     }
 }
 
-fn render_human_identity(identity: &CargoAllowToolIdentityV1) -> String {
+fn render_human_identity_styled(
+    identity: &CargoAllowToolIdentityV1,
+    style: allow_report::Style,
+) -> String {
     let source = identity.build_source_commit.as_deref().unwrap_or("unknown");
     let compiler = identity.compiler_identity.as_deref().unwrap_or("unknown");
+    let channel = match identity.channel {
+        ToolChannel::PublishedRelease => style.ok("PublishedRelease"),
+        ToolChannel::SourcePreview => style.advisory("SourcePreview"),
+    };
     format!(
-        "cargo-allow tool identity\n\
+        "{}\n\
 schema: {}\n\
 version: {}\n\
 digest: {}\n\
-channel: {:?}\n\
+channel: {channel}\n\
 target: {}\n\
 source: {}\n\
 compiler: {}\n\
@@ -405,10 +419,10 @@ schema_generations: {}\n\
 result_generations: {}\n\
 receipt_generations: {}\n\
 staged_git: {}",
+        style.strong("cargo-allow tool identity"),
         identity.schema_id,
         identity.reported_version,
         identity.executable_digest,
-        identity.channel,
         identity.target,
         source,
         compiler,
@@ -425,6 +439,19 @@ staged_git: {}",
 mod tests {
     use super::*;
     use std::error::Error;
+
+    #[test]
+    fn human_tool_identity_styles_fixed_channel_only() {
+        let identity = identity_for_bytes(b"tool identity style fixture");
+        let styled = render_human_identity_styled(&identity, allow_report::Style::ANSI);
+
+        assert!(styled.starts_with("\u{1b}[1mcargo-allow tool identity\u{1b}[0m\n"));
+        assert!(styled.contains("channel: \u{1b}[33mSourcePreview\u{1b}[0m\n"));
+        assert!(!styled.contains(&format!("{}\u{1b}", identity.executable_digest)));
+
+        let plain = render_human_identity_styled(&identity, allow_report::Style::PLAIN);
+        assert!(!plain.contains('\u{1b}'));
+    }
 
     fn selected_path(name: &str) -> PathBuf {
         std::env::temp_dir().join(format!("cargo-allow-tool-{name}-{}", std::process::id()))
