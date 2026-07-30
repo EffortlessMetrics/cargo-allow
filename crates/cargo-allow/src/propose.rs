@@ -21,7 +21,9 @@ mod propose_render;
 mod propose_types;
 pub(crate) use propose_args::ProposeArgs;
 use propose_baseline::{default_baseline_expiry, entry_from_finding};
-use propose_render::{render_propose_summary, render_propose_summary_json};
+#[cfg(test)]
+use propose_render::render_propose_summary;
+use propose_render::{render_propose_summary_json, render_propose_summary_styled};
 pub(super) use propose_types::ProposeContext;
 
 #[cfg(test)]
@@ -167,7 +169,18 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
     };
     let summary = match args.summary_format {
         HumanJsonFormat::Human => {
-            render_propose_summary(counts, expires.as_str(), args.write.as_deref(), context)
+            let style = if args.summary_output.is_none() {
+                crate::reporting::output_style()
+            } else {
+                allow_report::Style::PLAIN
+            };
+            render_propose_summary_styled(
+                counts,
+                expires.as_str(),
+                args.write.as_deref(),
+                context,
+                style,
+            )
         }
         HumanJsonFormat::Json => render_propose_summary_json(
             counts,

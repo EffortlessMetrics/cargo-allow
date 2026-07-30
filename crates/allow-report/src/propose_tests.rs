@@ -19,6 +19,7 @@ fn propose_json_renderer_records_options_summary_and_defaults() {
         mutation_receipt: sample_mutation_receipt(),
     };
     let json = render_propose_json(report.clone());
+    let styled = render_propose_human_styled(report.clone(), Style::ANSI);
 
     assert!(json.contains("\"schema_id\": \"cargo-allow.propose.v1\""));
     assert!(json.contains("\"command\": \"propose\""));
@@ -47,6 +48,11 @@ fn propose_json_renderer_records_options_summary_and_defaults() {
     ));
     assert!(json.contains("\"owner\": \"unowned\""));
     assert!(json.contains("\"classification\": \"baseline_debt\""));
+    assert!(styled.contains("classification: \u{1b}[31mbaseline_debt\u{1b}[0m"));
+    assert!(
+        !styled.contains("target/cargo-allow/proposed.toml\u{1b}"),
+        "repository-controlled output paths must stay unstyled"
+    );
     let _expected = format!(
         r#"{{
   "schema_version": 1,

@@ -358,6 +358,56 @@ fn doctor_human_statuses_use_shared_style_but_files_stay_plain() {
 }
 
 #[test]
+fn propose_human_summary_status_uses_shared_style_but_policy_stays_plain() {
+    let root = fixture("propose");
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn fail(value: Option<u8>) -> u8 {\n    value.unwrap()\n}\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write propose source: {err}")));
+
+    let args = ["propose", "--max", "1"];
+    let mut plain_args = args.to_vec();
+    plain_args.extend(["--color", "never"]);
+    let mut styled_args = args.to_vec();
+    styled_args.extend(["--color", "always"]);
+    let plain = run(&root, &[], &plain_args);
+    let styled = run(&root, &[], &styled_args);
+    assert!(plain.status.success(), "plain propose should succeed");
+    assert!(styled.status.success(), "styled propose should succeed");
+    assert!(!has_ansi(&String::from_utf8_lossy(&plain.stderr)));
+    assert!(has_ansi(&String::from_utf8_lossy(&styled.stderr)));
+    assert!(
+        !has_ansi(&String::from_utf8_lossy(&styled.stdout)),
+        "generated policy TOML must stay plain"
+    );
+
+    fs::create_dir_all(root.join("target/cargo-allow"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create propose output dir: {err}")));
+    let json = run(
+        &root,
+        &[],
+        &[
+            "propose",
+            "--max",
+            "1",
+            "--color",
+            "always",
+            "--summary-format",
+            "json",
+            "--summary-output",
+            "target/cargo-allow/propose.json",
+        ],
+    );
+    assert!(json.status.success(), "JSON propose should succeed");
+    let summary = fs::read_to_string(root.join("target/cargo-allow/propose.json"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read propose summary: {err}")));
+    assert!(!has_ansi(&summary), "JSON propose summary must stay plain");
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn worklist_human_statuses_use_shared_style_but_files_stay_plain() {
     let root = fixture("worklist");
     let plain_result = run(&root, &[], &["worklist", "--color", "never"]);

@@ -457,6 +457,9 @@ its finding details, candidate IDs, mismatch reasons, and proof commands remain
 plain. The `doctor` human config and federation status labels follow the same
 palette; roots, paths, diagnostics, ledger metadata, and inventory messages
 remain plain.
+The `propose` human summary styles its generated `baseline_debt` classification
+marker; generated policy TOML, finding-derived values, and summary files remain
+plain.
 The full row includes current status, match count, kind, family, owner,
 classification, scope, scanner-provided source package context,
 evidence-reference count, broken local evidence-reference count, weak

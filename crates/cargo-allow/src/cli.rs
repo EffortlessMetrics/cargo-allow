@@ -23,8 +23,9 @@ pub(crate) struct CargoAllowCli {
     /// receipts) and `--output` files are never styled.
     ///
     /// Currently honored by `check`, `audit`, `list`, `explain`, `diff`, `why`,
-    /// `doctor`, and `worklist` human reports. Other commands emit plain text
-    /// regardless of this flag — see #2572 for the remaining expansion.
+    /// `doctor`, `propose`, and `worklist` human reports. Other commands emit
+    /// plain text regardless of this flag — see #2572 for the remaining
+    /// expansion.
     ///
     /// Precedence: explicit flag > NO_COLOR > CLICOLOR_FORCE >
     /// CARGO_TERM_COLOR=never > terminal capability. CARGO_TERM_COLOR can
