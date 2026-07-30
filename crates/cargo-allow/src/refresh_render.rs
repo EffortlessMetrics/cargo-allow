@@ -1,11 +1,11 @@
 use allow_report::{
-    RefreshModeContext, RefreshReport, render_refresh_human,
+    RefreshModeContext, RefreshReport, Style, render_refresh_human_styled,
     render_refresh_json as render_refresh_artifact_json,
 };
 
 use super::RefreshRenderInput;
 
-pub(super) fn render_refresh_result(input: RefreshRenderInput<'_>) -> String {
+pub(super) fn render_refresh_result_styled(input: RefreshRenderInput<'_>, style: Style) -> String {
     let mode = RefreshModeContext {
         explicit_dry_run: input.dry_run,
         write_requested: input.write_requested,
@@ -20,7 +20,7 @@ pub(super) fn render_refresh_result(input: RefreshRenderInput<'_>) -> String {
         mode,
         input.mutation_receipt,
     );
-    render_refresh_human(report)
+    render_refresh_human_styled(report, style)
 }
 
 pub(super) fn render_refresh_json(input: RefreshRenderInput<'_>) -> String {
