@@ -31,18 +31,27 @@ pub(crate) struct VocabularyArgs {
 
 pub(crate) fn cmd_vocabulary(args: &VocabularyArgs) -> CargoAllowResult<()> {
     let text = match args.format {
-        VocabularyFormat::Human => render_vocabulary_human(),
+        VocabularyFormat::Human => {
+            let style = if args.output.is_none() {
+                crate::reporting::output_style()
+            } else {
+                allow_report::Style::PLAIN
+            };
+            render_vocabulary_human_styled(style)
+        }
         VocabularyFormat::Json => render_vocabulary_json(),
     };
     emit_text(args.output.as_deref(), &text)?;
     Ok(())
 }
 
-fn render_vocabulary_human() -> String {
+fn render_vocabulary_human_styled(style: allow_report::Style) -> String {
     let mut out = String::new();
-    out.push_str("cargo-allow vocabulary\n\n");
+    out.push_str(&style.strong("cargo-allow vocabulary"));
+    out.push_str("\n\n");
 
-    out.push_str("Finding kinds (--kind for check, audit, diff, why, add):\n");
+    out.push_str(&style.strong("Finding kinds (--kind for check, audit, diff, why, add):"));
+    out.push('\n');
     for group in KIND_GROUPS {
         out.push_str(&format!("  {}", group.canonical));
         let extra: Vec<&str> = group
@@ -58,7 +67,8 @@ fn render_vocabulary_human() -> String {
     }
     out.push('\n');
 
-    out.push_str("Evidence prefixes (--evidence for add):\n");
+    out.push_str(&style.strong("Evidence prefixes (--evidence for add):"));
+    out.push('\n');
     let local_file: Vec<String> = local_file_evidence_prefixes().map(String::from).collect();
     let traceability: Vec<String> = traceability_evidence_prefixes().map(String::from).collect();
     out.push_str(&format!(
@@ -75,9 +85,13 @@ fn render_vocabulary_human() -> String {
         recognized.join(", ")
     ));
 
-    out.push_str("Match statuses (--status for list, worklist):\n");
+    out.push_str(&style.strong("Match statuses (--status for list, worklist):"));
+    out.push('\n');
     for status in MatchStatus::ALL {
-        out.push_str(&format!("  {}\n", status.as_str()));
+        out.push_str(&format!(
+            "  {}\n",
+            style.status(status.as_str(), status.as_str())
+        ));
     }
 
     out

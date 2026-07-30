@@ -24,8 +24,8 @@ pub(crate) struct CargoAllowCli {
     ///
     /// Currently honored by `init`, `check`, `audit`, `list`, `explain`, `diff`,
     /// `why`, `doctor`, `propose`, `worklist`, `refresh`, `prune`, `add`,
-    /// `migrate`, and `tool` human reports. Completion scripts and other
-    /// machine-oriented output remain plain.
+    /// `migrate`, `tool`, and `vocabulary` human reports. Completion scripts
+    /// and other machine-oriented output remain plain.
     ///
     /// Precedence: explicit flag > NO_COLOR > CLICOLOR_FORCE >
     /// CARGO_TERM_COLOR=never > terminal capability. CARGO_TERM_COLOR can
