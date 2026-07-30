@@ -463,6 +463,9 @@ plain. The `refresh` human report styles its fixed `lifecycle: preserved` marker
 drift messages, paths, IDs, finding locations, and refresh artifacts remain
 plain. The `prune --stale` human report styles its fixed `stale` marker;
 policy rows, paths, TOML previews, JSON, and `--output` files remain plain.
+The `add` human summary styles its fixed `human review` warning, and broad-add
+summaries style their fixed `broad baseline` marker; generated policy TOML,
+finding-derived values, JSON, and summary files remain plain.
 The full row includes current status, match count, kind, family, owner,
 classification, scope, scanner-provided source package context,
 evidence-reference count, broken local evidence-reference count, weak

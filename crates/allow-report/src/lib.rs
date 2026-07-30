@@ -105,7 +105,7 @@ mod worklist_summary;
 #[cfg(test)]
 mod worklist_summary_tests;
 
-pub use add::{render_add_human, render_add_json};
+pub use add::{render_add_human, render_add_human_styled, render_add_json};
 pub use add_finding_plan::render_add_finding_plan_json;
 pub use add_plan_application::render_add_plan_application_json;
 pub use advisory_class::{ADVISORY_DENY_FIELD_NAMES, AdvisoryClass, advisory_count_for_deny_field};

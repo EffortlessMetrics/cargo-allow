@@ -23,7 +23,7 @@ pub(crate) struct CargoAllowCli {
     /// receipts) and `--output` files are never styled.
     ///
     /// Currently honored by `check`, `audit`, `list`, `explain`, `diff`, `why`,
-    /// `doctor`, `propose`, `worklist`, `refresh`, and `prune` human reports. Other commands emit
+    /// `doctor`, `propose`, `worklist`, `refresh`, `prune`, and `add` human reports. Other commands emit
     /// plain text regardless of this flag — see #2572 for the remaining
     /// expansion.
     ///

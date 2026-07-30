@@ -1,5 +1,5 @@
 use allow_core::{AllowEntry, Finding};
-use allow_report::MutationReceipt;
+use allow_report::{MutationReceipt, Style};
 
 use super::AddContext;
 
@@ -33,21 +33,35 @@ pub(super) fn add_mutation_receipt<'a, 'b>(
     }
 }
 
+#[cfg(test)]
 pub(super) fn render_add_summary(
     entry: &AllowEntry,
     finding: &Finding,
     policy_output: Option<&str>,
     context: AddContext<'_>,
 ) -> String {
+    render_add_summary_styled(entry, finding, policy_output, context, Style::PLAIN)
+}
+
+pub(super) fn render_add_summary_styled(
+    entry: &AllowEntry,
+    finding: &Finding,
+    policy_output: Option<&str>,
+    context: AddContext<'_>,
+    style: Style,
+) -> String {
     let mutation_receipt = add_mutation_receipt(entry, &context, policy_output);
-    allow_report::render_add_human(allow_report::AddReport::new(
-        context.inventory,
-        entry,
-        finding,
-        policy_output,
-        false,
-        mutation_receipt,
-    ))
+    allow_report::render_add_human_styled(
+        allow_report::AddReport::new(
+            context.inventory,
+            entry,
+            finding,
+            policy_output,
+            false,
+            mutation_receipt,
+        ),
+        style,
+    )
 }
 
 pub(super) fn render_add_summary_json(

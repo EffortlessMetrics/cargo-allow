@@ -36,6 +36,10 @@ fn stdout_of(result: &Output) -> String {
     String::from_utf8_lossy(&result.stdout).into_owned()
 }
 
+fn stderr_of(result: &Output) -> String {
+    String::from_utf8_lossy(&result.stderr).into_owned()
+}
+
 fn has_ansi(text: &str) -> bool {
     text.contains(ESC)
 }
@@ -603,6 +607,115 @@ fn prune_human_stale_status_uses_shared_style_but_artifacts_stay_plain() {
     let text = fs::read_to_string(root.join("target/cargo-allow/prune.txt"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("read prune output: {err}")));
     assert!(!has_ansi(&text), "written prune output must stay plain");
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn add_human_review_status_uses_shared_style_but_policy_and_summaries_stay_plain() {
+    let root = fixture("add");
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn fail(value: Option<u8>) -> u8 {\n    value.unwrap()\n}\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write add source: {err}")));
+
+    let args = [
+        "add",
+        "--config",
+        "policy/allow.toml",
+        "--kind",
+        "panic",
+        "--path",
+        "src/lib.rs",
+        "--line",
+        "2",
+        "--owner",
+        "test",
+        "--reason",
+        "fixture add review",
+        "--evidence",
+        "test:add-review",
+    ];
+    let mut plain_args = args.to_vec();
+    plain_args.extend(["--color", "never"]);
+    let mut styled_args = args.to_vec();
+    styled_args.extend(["--color", "always"]);
+    let plain_result = run(&root, &[], &plain_args);
+    let styled_result = run(&root, &[], &styled_args);
+    assert!(plain_result.status.success(), "plain add should succeed");
+    assert!(styled_result.status.success(), "styled add should succeed");
+    assert!(!has_ansi(&stderr_of(&plain_result)));
+    assert!(has_ansi(&stderr_of(&styled_result)));
+    assert!(stderr_of(&styled_result).contains("human \u{1b}[33mreview\u{1b}[0m before merge"));
+    assert!(
+        !has_ansi(&stdout_of(&styled_result)),
+        "generated TOML must stay plain"
+    );
+
+    fs::create_dir_all(root.join("target/cargo-allow"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create add output dir: {err}")));
+    let written = run(
+        &root,
+        &[],
+        &[
+            "add",
+            "--config",
+            "policy/allow.toml",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "2",
+            "--owner",
+            "test",
+            "--reason",
+            "fixture add review",
+            "--evidence",
+            "test:add-review",
+            "--color",
+            "always",
+            "--summary-output",
+            "target/cargo-allow/add-summary.txt",
+        ],
+    );
+    assert!(written.status.success(), "written add should succeed");
+    let text = fs::read_to_string(root.join("target/cargo-allow/add-summary.txt"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read add output: {err}")));
+    assert!(!has_ansi(&text), "written add summary must stay plain");
+
+    let json = run(
+        &root,
+        &[],
+        &[
+            "add",
+            "--config",
+            "policy/allow.toml",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "2",
+            "--owner",
+            "test",
+            "--reason",
+            "fixture add review",
+            "--evidence",
+            "test:add-review",
+            "--color",
+            "always",
+            "--summary-format",
+            "json",
+            "--summary-output",
+            "target/cargo-allow/add-summary.json",
+        ],
+    );
+    assert!(json.status.success(), "JSON add should succeed");
+    let json_text = fs::read_to_string(root.join("target/cargo-allow/add-summary.json"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read add JSON: {err}")));
+    assert!(!has_ansi(&json_text), "JSON add summary must stay plain");
 
     let _ = fs::remove_dir_all(&root);
 }
