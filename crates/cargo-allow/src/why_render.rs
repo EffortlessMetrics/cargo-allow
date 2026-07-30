@@ -133,10 +133,20 @@ fn check_no_new_plan() -> ProofPlan {
     ])
 }
 
+#[cfg(test)]
 pub(super) fn render_why_text(
     finding: &Finding,
     outcome: &MatchOutcome,
     candidates: &[WhyCandidate<'_>],
+) -> String {
+    render_why_text_styled(finding, outcome, candidates, allow_report::Style::PLAIN)
+}
+
+pub(super) fn render_why_text_styled(
+    finding: &Finding,
+    outcome: &MatchOutcome,
+    candidates: &[WhyCandidate<'_>],
+    style: allow_report::Style,
 ) -> String {
     let next = why_next_steps(finding, outcome, candidates);
     let proof_commands = next.proof_commands();
@@ -166,7 +176,10 @@ pub(super) fn render_why_text(
     out.push('\n');
 
     out.push_str("## Current posture\n\n");
-    out.push_str(&format!("- status: {}\n", outcome.status.as_str()));
+    out.push_str(&format!(
+        "- status: {}\n",
+        style.status(outcome.status.as_str(), outcome.status.as_str())
+    ));
     match &outcome.allow_id {
         Some(id) => out.push_str(&format!("- allow_id: {id}\n")),
         None => out.push_str("- allow_id: <none>\n"),

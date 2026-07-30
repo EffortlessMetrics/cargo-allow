@@ -22,8 +22,8 @@ pub(crate) struct CargoAllowCli {
     /// on stdout; `never` disables it. Machine formats (JSON, SARIF,
     /// receipts) and `--output` files are never styled.
     ///
-    /// Currently honored by `check`, `audit`, `list`, `explain`, `diff`, and
-    /// `worklist` human reports. Other commands (why, doctor, etc.) emit plain
+    /// Currently honored by `check`, `audit`, `list`, `explain`, `diff`, `why`,
+    /// and `worklist` human reports. Other commands (doctor, etc.) emit plain
     /// text regardless of this flag — see #2572 for the remaining expansion.
     ///
     /// Precedence: explicit flag > NO_COLOR > CLICOLOR_FORCE >
