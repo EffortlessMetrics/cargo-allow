@@ -454,7 +454,9 @@ follow the same palette; repository-controlled paths, IDs, messages, and
 changed-file lists remain plain. Other human commands remain plain until their
 renderers are migrated. The `why` human status line follows the same palette;
 its finding details, candidate IDs, mismatch reasons, and proof commands remain
-plain.
+plain. The `doctor` human config and federation status labels follow the same
+palette; roots, paths, diagnostics, ledger metadata, and inventory messages
+remain plain.
 The full row includes current status, match count, kind, family, owner,
 classification, scope, scanner-provided source package context,
 evidence-reference count, broken local evidence-reference count, weak
