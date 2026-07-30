@@ -1,3 +1,4 @@
+use crate::Style;
 use crate::allow_entry_json::push_optional_string_field;
 use crate::contracts::PRUNE_ARTIFACT;
 use crate::json::{bool_json, option_json, push_json_fixed_artifact_preamble};
@@ -15,6 +16,15 @@ pub fn render_prune_human_with_context(
     candidates: &[PruneCandidate<'_>],
     mode: PruneModeContext<'_>,
     inventory: InventoryContext<'_>,
+) -> String {
+    render_prune_human_with_context_styled(candidates, mode, inventory, Style::PLAIN)
+}
+
+pub fn render_prune_human_with_context_styled(
+    candidates: &[PruneCandidate<'_>],
+    mode: PruneModeContext<'_>,
+    inventory: InventoryContext<'_>,
+    style: Style,
 ) -> String {
     let mut out = String::new();
     out.push_str("cargo-allow prune\n\n");
@@ -36,9 +46,12 @@ pub fn render_prune_human_with_context(
     if mode.explicit_dry_run {
         out.push_str("requested: --dry-run\n");
     }
-    out.push_str(&format!("stale entries: {}\n\n", candidates.len()));
+    out.push_str(&style.status("stale", "stale"));
+    out.push_str(&format!(" entries: {}\n\n", candidates.len()));
     if candidates.is_empty() {
-        out.push_str("No stale allow entries found.\n");
+        out.push_str("No ");
+        out.push_str(&style.status("stale", "stale"));
+        out.push_str(" allow entries found.\n");
         out.push('\n');
         out.push_str(CLAIM_BOUNDARY_TEXT);
         out.push('\n');
@@ -60,9 +73,10 @@ pub fn render_prune_human_with_context(
     }
     if let Some(path) = mode.written_path {
         let remaining = mode.total_entries.saturating_sub(candidates.len());
+        out.push_str(&format!("\nRemoved {} ", candidates.len()));
+        out.push_str(&style.status("stale", "stale"));
         out.push_str(&format!(
-            "\nRemoved {} stale entr{} from `{}`. {} entr{} remain.\n",
-            candidates.len(),
+            " entr{} from `{}`. {} entr{} remain.\n",
             if candidates.len() == 1 { "y" } else { "ies" },
             markdown_cell(path),
             remaining,
