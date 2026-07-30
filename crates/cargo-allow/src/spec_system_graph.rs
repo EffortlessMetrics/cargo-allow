@@ -87,15 +87,15 @@ pub(super) fn spec_system_federation_summary(
             precedence_applied: evaluation.precedence_applied.as_str().to_string(),
             ledger_contributors: evaluation
                 .ledger_contributors
-                .iter()
+                .into_iter()
                 .map(|contributor| SpecSystemLedgerContributor {
-                    id: contributor.id.clone(),
-                    path: contributor.path.clone(),
+                    id: contributor.id,
+                    path: contributor.path,
                     role: contributor.role.as_str().to_string(),
-                    dialect: contributor.dialect.clone(),
+                    dialect: contributor.dialect,
                     mode: contributor.mode.as_str().to_string(),
                     priority: contributor.priority,
-                    lanes: contributor.lanes.clone(),
+                    lanes: contributor.lanes,
                 })
                 .collect(),
         }
