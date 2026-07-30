@@ -21,7 +21,9 @@ use add_entry::{
     AddBroadRequest, AddEntryRequest, allow_entry_broad, allow_entry_from_finding,
     count_in_scope_findings, ensure_addable_outcome, next_allow_id,
 };
-use add_render::{add_mutation_receipt, render_add_summary, render_add_summary_json};
+#[cfg(test)]
+use add_render::render_add_summary;
+use add_render::{add_mutation_receipt, render_add_summary_json, render_add_summary_styled};
 pub(super) use add_types::AddContext;
 
 use crate::{
@@ -161,7 +163,12 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         broad.occurrence_limit = Some(count);
         let summary = match args.summary_format {
             HumanJsonFormat::Human => {
-                render_add_summary_broad_human(&broad, policy_output.as_deref())
+                let style = if args.summary_output.is_none() {
+                    crate::reporting::output_style()
+                } else {
+                    allow_report::Style::PLAIN
+                };
+                render_add_summary_broad_human(&broad, policy_output.as_deref(), style)
             }
             HumanJsonFormat::Json => render_add_summary_broad_json(
                 &broad,
@@ -205,7 +212,12 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         });
         let summary = match args.summary_format {
             HumanJsonFormat::Human => {
-                render_add_summary(&entry, finding, policy_output.as_deref(), context)
+                let style = if args.summary_output.is_none() {
+                    crate::reporting::output_style()
+                } else {
+                    allow_report::Style::PLAIN
+                };
+                render_add_summary_styled(&entry, finding, policy_output.as_deref(), context, style)
             }
             HumanJsonFormat::Json => render_add_summary_json(
                 &entry,
@@ -296,10 +308,15 @@ fn require_add_evidence_for_kind(kind: FindingKind, evidence: &[String]) -> Carg
     )))
 }
 
-fn render_add_summary_broad_human(entry: &AllowEntry, policy_output: Option<&str>) -> String {
+fn render_add_summary_broad_human(
+    entry: &AllowEntry,
+    policy_output: Option<&str>,
+    style: allow_report::Style,
+) -> String {
     let target = policy_output.unwrap_or("stdout");
     format!(
-        "added broad baseline {} (kind={}, scope={}, occurrence_limit={}); policy written to {}\n",
+        "added {} {} (kind={}, scope={}, occurrence_limit={}); policy written to {}\n",
+        style.status("baseline_debt", "broad baseline"),
         entry.id,
         entry.kind,
         entry.path_or_glob(),

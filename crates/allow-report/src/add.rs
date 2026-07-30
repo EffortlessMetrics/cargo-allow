@@ -1,3 +1,4 @@
+use crate::Style;
 use crate::allow_entry_json::push_optional_string_field;
 use crate::contracts::ADD_ARTIFACT;
 use crate::json::{bool_json, option_json, push_json_fixed_artifact_preamble};
@@ -9,6 +10,10 @@ use crate::{
 use allow_core::{json_escape, normalize_path};
 
 pub fn render_add_human(report: AddReport<'_>) -> String {
+    render_add_human_styled(report, Style::PLAIN)
+}
+
+pub fn render_add_human_styled(report: AddReport<'_>, style: Style) -> String {
     let entry = report.entry;
     let selected_finding = report.selected_finding;
     let mut out = String::new();
@@ -40,7 +45,9 @@ pub fn render_add_human(report: AddReport<'_>) -> String {
     } else {
         out.push_str("output: stdout\n");
     }
-    out.push_str("claim boundary: generated policy entry requires human review before merge.\n");
+    out.push_str("claim boundary: generated policy entry requires human ");
+    out.push_str(&style.status("review_due", "review"));
+    out.push_str(" before merge.\n");
     out.push_str(CLAIM_BOUNDARY_TEXT);
     out.push('\n');
     out

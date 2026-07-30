@@ -89,7 +89,7 @@ impl Style {
             | "blocking"
             | "failed"
             | "invalid" => self.blocking(text),
-            "stale" => self.advisory(text),
+            "review_due" | "stale" => self.advisory(text),
             _ => self.advisory(text),
         }
     }
