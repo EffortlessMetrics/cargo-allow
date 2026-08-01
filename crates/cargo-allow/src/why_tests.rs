@@ -160,6 +160,31 @@ fn render_why_json_deserializes_and_asserts_semantic_paths() {
 }
 
 #[test]
+fn render_why_json_defaults_missing_inventory_completeness_for_test_helper() {
+    let finding = sample_finding_at("src/lib.rs", 10);
+    let outcome = MatchOutcome {
+        status: MatchStatus::New,
+        allow_id: None,
+        candidate_ids: Vec::new(),
+        finding_index: Some(0),
+        message: "unreceipted panic.unwrap at src/lib.rs:10:1".to_string(),
+        score: 0,
+    };
+    let value = parse_why_json(&render_why_json(
+        allow_report::InventoryContext::source_syntax("git_tracked", Some("H:/repo"), Some(3)),
+        &finding,
+        &outcome,
+        &[],
+    ));
+    assert_eq!(
+        value
+            .pointer("/evaluation/result_class")
+            .and_then(Value::as_str),
+        Some("exact_scoped")
+    );
+}
+
+#[test]
 fn proof_plans_preserve_argument_identity_for_hostile_paths() {
     let fixtures = [
         "src/ordinary.rs",

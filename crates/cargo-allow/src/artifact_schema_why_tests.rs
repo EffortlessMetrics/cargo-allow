@@ -2,7 +2,7 @@ use crate::artifact_schema_support::{
     assert_enum_equals, assert_required_fields, match_status_enum, parse_schema,
     required_schema_pointer,
 };
-use serde_json::Value;
+use serde_json::{Value, json};
 
 #[test]
 fn why_schema_locks_finding_outcome_and_candidates_contract() {
@@ -104,4 +104,56 @@ fn why_schema_locks_finding_outcome_and_candidates_contract() {
     );
     let proof_plan = required_schema_pointer("why", &schema, "/$defs/proof_plan");
     assert_required_fields("why proof_plan", proof_plan, &["program", "args"]);
+}
+
+#[test]
+fn result_class_schema_binds_to_its_evidence_tuple() -> Result<(), String> {
+    let cases = [
+        (
+            "why",
+            include_str!("../../../docs/schemas/why.schema.json"),
+            crate::why::sample_why_json_for_contract_test(),
+        ),
+        (
+            "add-finding-plan",
+            include_str!("../../../docs/schemas/add-finding-plan.schema.json"),
+            crate::why::sample_add_finding_plan_json_for_contract_test(),
+        ),
+    ];
+
+    for (name, schema_text, sample_text) in cases {
+        let schema = parse_schema(name, schema_text);
+        let validator = jsonschema::validator_for(&schema)
+            .map_err(|error| format!("{name} schema compilation: {error}"))?;
+        let mut contradictory: Value = serde_json::from_str(&sample_text)
+            .map_err(|error| format!("{name} sample JSON: {error}"))?;
+        let evaluation = contradictory
+            .get_mut("evaluation")
+            .and_then(Value::as_object_mut)
+            .ok_or_else(|| format!("{name} sample should contain evaluation"))?;
+        evaluation.insert("result_class".to_string(), json!("exact_scoped"));
+        evaluation.insert("scope".to_string(), json!("full_fallback"));
+        evaluation.insert("locality".to_string(), json!("global_dependency"));
+        evaluation.insert("reasons".to_string(), json!(["requires fallback"]));
+        if validator.validate(&contradictory).is_ok() {
+            return Err(format!(
+                "{name} schema must reject exact_scoped with full fallback evidence"
+            ));
+        }
+
+        let mut incomplete: Value = serde_json::from_str(&sample_text)
+            .map_err(|error| format!("{name} sample JSON: {error}"))?;
+        incomplete
+            .get_mut("inventory")
+            .and_then(Value::as_object_mut)
+            .ok_or_else(|| format!("{name} sample should contain inventory"))?
+            .insert("completeness".to_string(), json!("partial"));
+        if validator.validate(&incomplete).is_ok() {
+            return Err(format!(
+                "{name} schema must reject exact result classes with partial inventory"
+            ));
+        }
+    }
+
+    Ok(())
 }

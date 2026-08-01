@@ -95,6 +95,70 @@
       }
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "required": ["evaluation"],
+        "properties": {
+          "evaluation": {
+            "required": ["result_class"],
+            "properties": {
+              "result_class": { "const": "exact_scoped" }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": ["inventory", "evaluation"],
+        "properties": {
+          "inventory": {
+            "required": ["completeness"],
+            "properties": {
+              "completeness": { "enum": ["complete", "scoped"] }
+            }
+          },
+          "evaluation": {
+            "properties": {
+              "scope": { "const": "scoped" },
+              "locality": { "const": "proven" },
+              "reasons": { "maxItems": 0 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["evaluation"],
+        "properties": {
+          "evaluation": {
+            "required": ["result_class"],
+            "properties": {
+              "result_class": { "const": "exact_after_full_fallback" }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": ["inventory", "evaluation"],
+        "properties": {
+          "inventory": {
+            "required": ["completeness"],
+            "properties": {
+              "completeness": { "enum": ["complete", "scoped"] }
+            }
+          },
+          "evaluation": {
+            "properties": {
+              "scope": { "const": "full_fallback" },
+              "locality": { "const": "global_dependency" },
+              "reasons": { "minItems": 1 }
+            }
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "proof_plan": {
       "type": "object",
