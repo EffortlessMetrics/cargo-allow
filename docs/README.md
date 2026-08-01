@@ -131,6 +131,8 @@ governance profile model around it.
 ## Reference
 
 - [How-to guides](how-to/README.md): task guide index.
+- [Install shell completions](how-to/install-shell-completions.md): generate
+  version-matched completion scripts from the installed binary.
 - [Error codes and exit codes](error-codes.md): stable `E000*` registry and
   process exit mapping (`0` / `1` / `2`).
 - [CI](ci.md): GitHub Actions examples for PR posture diffs, mainline checks,

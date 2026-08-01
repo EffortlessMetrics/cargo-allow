@@ -194,6 +194,7 @@ Most users start from the surface they already own.
 | Auditor | Run `cargo-allow list`, `cargo-allow explain <id>`, and `cargo-allow why --kind <kind> --path <path> --line <line>` on Published `0.1.11`. | [Explain an allow](docs/how-to/explain-an-allow.md), [Explain why a finding](docs/how-to/explain-why-a-finding.md) |
 | Migrator | Run `cargo-allow migrate --repo-policy <dir>`. | [Migration](docs/how-to/migrate-from-xtask.md) |
 | Agent operator | Run `cargo-allow worklist --format json`. | [Agent worklists](docs/how-to/feed-agent-worklists.md) |
+| Shell user | Generate completions from the installed binary. | [Install shell completions](docs/how-to/install-shell-completions.md) |
 
 ## First Run
 
