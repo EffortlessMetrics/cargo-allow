@@ -356,8 +356,18 @@ fn why_human_statuses_use_shared_style_but_files_stay_plain() {
             "always",
         ],
     );
-    assert!(plain_result.status.success(), "plain why should succeed");
-    assert!(styled_result.status.success(), "styled why should succeed");
+    assert!(
+        plain_result.status.success(),
+        "plain why should succeed: stdout=`{}` stderr=`{}`",
+        stdout_of(&plain_result),
+        stderr_of(&plain_result)
+    );
+    assert!(
+        styled_result.status.success(),
+        "styled why should succeed: stdout=`{}` stderr=`{}`",
+        stdout_of(&styled_result),
+        stderr_of(&styled_result)
+    );
     assert!(!has_ansi(&stdout_of(&plain_result)));
     assert!(has_ansi(&stdout_of(&styled_result)));
 
