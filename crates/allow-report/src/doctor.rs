@@ -266,10 +266,12 @@ fn append_federation_doctor_json(facts: DoctorReport<'_>, out: &mut String) {
         "    \"path\": {},\n",
         option_json(facts.federation_config_path)
     ));
-    out.push_str(&format!(
-        "    \"provenance\": {},\n",
-        option_json(federation_config_provenance(facts))
-    ));
+    if let Some(provenance) = federation_config_provenance(facts) {
+        out.push_str(&format!(
+            "    \"provenance\": \"{}\",\n",
+            json_escape(provenance)
+        ));
+    }
     out.push_str(&format!(
         "    \"valid\": {}",
         option_bool_json(facts.federation_config_valid)

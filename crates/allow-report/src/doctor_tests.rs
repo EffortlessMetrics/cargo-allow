@@ -83,7 +83,6 @@ fn doctor_json_renderer_records_root_config_and_inventory() {
   "federation": {{
     "found": false,
     "path": null,
-    "provenance": null,
     "valid": null
   }},
   "evidence_repair_queues": [
