@@ -1,6 +1,6 @@
 - id: cargo-allow
-  name: cargo-allow no-new source exception check
-  description: Reject new source-tree exception findings against policy/allow.toml.
+  name: cargo-allow worktree no-new source exception check
+  description: Reject new source-tree exception findings in the tracked worktree; this is not an exact staged-index check.
   entry: cargo-allow check --mode no-new
   language: system
   pass_filenames: false
