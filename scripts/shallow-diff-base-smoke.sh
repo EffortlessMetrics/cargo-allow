@@ -113,12 +113,16 @@ echo "shallow_negative=pass" >>"${receipt}"
 
 log "deepening shallow clone to include base ${parent_sha}"
 # Prefer unshallow when the remote has more history; otherwise fetch the SHA.
-if ! git -C "${shallow_repo}" fetch --unshallow origin 2>/dev/null; then
-  git -C "${shallow_repo}" fetch --depth=50 origin HEAD 2>/dev/null || true
+if ! git -C "${shallow_repo}" fetch --unshallow origin; then
+  log "unshallow fetch unavailable; trying a bounded depth fetch"
+  git -C "${shallow_repo}" fetch --depth=50 origin HEAD \
+    || fail "could not deepen shallow clone for base ${parent_sha}"
 fi
 # Ensure the exact parent object exists: fetch from the full repo by SHA.
-git -C "${ROOT}" bundle create "${work_dir}/with-parent.bundle" "${parent_sha}" HEAD
-git -C "${shallow_repo}" fetch "${work_dir}/with-parent.bundle" "${parent_sha}" "${head_sha}"
+git -C "${ROOT}" bundle create "${work_dir}/with-parent.bundle" "${parent_sha}" HEAD \
+  || fail "could not create a bundle containing base ${parent_sha}"
+git -C "${shallow_repo}" fetch "${work_dir}/with-parent.bundle" "${parent_sha}" "${head_sha}" \
+  || fail "could not fetch base ${parent_sha} from the local bundle"
 git -C "${shallow_repo}" cat-file -e "${parent_sha}^{commit}" \
   || fail "deepened clone still missing base ${parent_sha}"
 echo "deepened_has_base=1" >>"${receipt}"
