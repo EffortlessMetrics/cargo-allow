@@ -334,9 +334,9 @@ fn list_concise_layout_bounds_unicode_ids_paths_and_reasons() {
         ListColumn::DEFAULT,
     );
 
-    let expected_id = format!("{}…", long_id.chars().take(35).collect::<String>());
-    let expected_scope = format!("{}…", long_scope.chars().take(47).collect::<String>());
-    let expected_reason = format!("{}…", long_reason.chars().take(71).collect::<String>());
+    let expected_id = crate::artifacts::truncate_with_ellipsis(&long_id, 36);
+    let expected_scope = crate::artifacts::truncate_with_ellipsis(&long_scope, 48);
+    let expected_reason = crate::artifacts::truncate_with_ellipsis(&long_reason, 72);
     assert!(text.contains(&format!("- [matched] {expected_id}\n")));
     assert!(text.contains(&format!("  scope: {expected_scope}\n")));
     assert!(text.contains(&format!("  reason: {expected_reason}\n")));
@@ -451,6 +451,54 @@ fn list_concise_width_bounds_card_lines_without_changing_rows() {
             "explicit list width exceeded: {line}"
         );
     }
+}
+
+#[test]
+fn list_concise_width_uses_terminal_display_width_and_keeps_graphemes() {
+    let wide_id = "界".repeat(40);
+    let combining_reason = "e\u{301}".repeat(40);
+    let rows = [ListRow {
+        id: &wide_id,
+        status: "matched",
+        matches: 1,
+        kind: "panic",
+        family: Some("unwrap"),
+        owner: "runtime",
+        classification: "reviewed_exception",
+        scope: "src/lib.rs",
+        source_package: None,
+        evidence_count: 1,
+        broken_evidence_references: 0,
+        weak_evidence_references: 0,
+        selector_precision: 1,
+        broad_scope: false,
+        review_after: None,
+        expires: None,
+        reason: &combining_reason,
+    }];
+    let width = 40;
+    let text = render_list_human_concise_styled_with_width(
+        &rows,
+        InventoryContext::unknown_source_syntax(),
+        ListFilters::default(),
+        ListColumn::DEFAULT,
+        Style::PLAIN,
+        Some(width),
+    );
+
+    for line in text.lines().filter(|line| {
+        line.starts_with("- [")
+            || line.starts_with("  kind:")
+            || line.starts_with("  scope:")
+            || line.starts_with("  owner:")
+            || line.starts_with("  reason:")
+    }) {
+        assert!(
+            unicode_width::UnicodeWidthStr::width(line) <= width,
+            "display width exceeded: {line}"
+        );
+    }
+    assert!(text.contains("e\u{301}"));
 }
 
 #[test]

@@ -252,6 +252,10 @@ fn list_non_tty_binary_preserves_concise_and_wide_boundaries() {
         stdout_of(&repeated_width),
         "captured output must stay deterministic when terminal size is unavailable"
     );
+    assert!(
+        stdout_of(&explicit_width).contains("reason: fixture policy file for colou…"),
+        "explicit width should visibly constrain the long fixture reason"
+    );
 
     let _ = fs::remove_dir_all(&root);
 }

@@ -228,10 +228,11 @@ fn push_card_field(
     out.push_str(&prefix);
     let safe_value = crate::style::sanitize_terminal_text(value);
     let rendered = match width {
-        Some(width) => {
-            truncate_with_ellipsis(&safe_value, width.saturating_sub(prefix.chars().count()))
-        }
-        None if label == "kind" => truncate_with_ellipsis(&safe_value, 20),
+        Some(width) => crate::artifacts::truncate_with_ellipsis(
+            &safe_value,
+            width.saturating_sub(prefix.chars().count()),
+        ),
+        None if label == "kind" => crate::artifacts::truncate_with_ellipsis(&safe_value, 20),
         None if label == "scope" => ListColumn::Scope.concise_value(row),
         None if label == "owner" => ListColumn::Owner.concise_value(row),
         None if label == "reason" => ListColumn::Reason.concise_value(row),
@@ -246,17 +247,6 @@ fn card_value(column: ListColumn, row: &ListRow<'_>, width: Option<usize>) -> St
         Some(width) => column.concise_value_with_width(row, width),
         None => column.concise_value(row),
     }
-}
-
-fn truncate_with_ellipsis(value: &str, max_chars: usize) -> String {
-    if value.chars().count() <= max_chars {
-        return value.to_string();
-    }
-    if max_chars == 0 {
-        return String::new();
-    }
-    let prefix = value.chars().take(max_chars - 1).collect::<String>();
-    format!("{prefix}…")
 }
 
 fn style_status(style: Style, status: &str) -> String {

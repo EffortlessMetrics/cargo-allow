@@ -77,6 +77,8 @@ clap_complete = "4.6.8"
 terminal_size = "0.4.4"
 tree-sitter = "0.26.11"
 tree-sitter-rust = "0.24.2"
+unicode-segmentation = "1.13.3"
+unicode-width = "0.2.2"
 
 [profile.release]
 lto = "thin"
