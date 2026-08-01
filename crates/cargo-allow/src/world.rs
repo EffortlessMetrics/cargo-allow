@@ -257,6 +257,21 @@ pub(crate) fn normalize_to_repo_relative(root: &Path, path: &Path) -> PathBuf {
             .strip_prefix(&root_stripped)
             .map(Path::to_path_buf)
             .unwrap_or_else(|_| {
+                // Windows may spell the same temporary directory once with
+                // an 8.3 short name and once with its long name. Canonicalize
+                // both existing paths before falling back to string matching
+                // so inventory membership does not depend on that spelling.
+                if let (Ok(canonical_root), Ok(canonical_path)) =
+                    (root_stripped.canonicalize(), path_stripped.canonicalize())
+                {
+                    let canonical_root =
+                        crate::policy_config::strip_verbatim_prefix(&canonical_root);
+                    let canonical_path =
+                        crate::policy_config::strip_verbatim_prefix(&canonical_path);
+                    if let Ok(relative) = canonical_path.strip_prefix(&canonical_root) {
+                        return relative.to_path_buf();
+                    }
+                }
                 // If strip_prefix still fails (e.g. path is under root but
                 // canonicalization differs), try a string-based comparison.
                 let path_str = path_stripped.to_string_lossy();
