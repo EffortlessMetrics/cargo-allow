@@ -71,3 +71,11 @@ fn is_workflow_path_accepts_github_workflow_yaml_paths() {
     assert!(!is_workflow_path(Path::new(".github/workflows/ci.txt")));
     assert!(!is_workflow_path(Path::new("docs/workflows/ci.yml")));
 }
+
+#[test]
+fn missing_revision_source_reports_inventory_error() {
+    let err = missing_revision_source(Path::new("src/lib.rs"));
+
+    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::Inventory);
+    assert!(err.to_string().contains("src/lib.rs"));
+}

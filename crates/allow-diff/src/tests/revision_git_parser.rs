@@ -2,6 +2,7 @@ use super::*;
 use allow_core::{CargoAllowError, CargoAllowErrorKind};
 use std::collections::BTreeMap;
 use std::fs;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -31,6 +32,111 @@ fn git_cat_file_batch_parser_rejects_missing_and_truncated_blob_records() {
             .unwrap_or_else(|| std::panic::panic_any("malformed batch output should fail"));
         assert_eq!(err.kind(), CargoAllowErrorKind::Inventory);
     }
+}
+
+#[test]
+fn git_cat_file_batch_parser_rejects_malformed_headers_and_sizes() {
+    let oid = "d".repeat(40);
+    let oversized = format!("{oid} blob 999999999999999999999999999999999999\n");
+    let cases = [
+        b"header without newline".to_vec(),
+        b"\n".to_vec(),
+        format!("{oid}\n").into_bytes(),
+        format!("{oid} blob\n").into_bytes(),
+        format!("{oid} blob 0 extra\n\n").into_bytes(),
+        format!("not-an-oid blob 0\n\n").into_bytes(),
+        format!("{oid} tree 0\n\n").into_bytes(),
+        format!("{oid} blob not-a-size\n\n").into_bytes(),
+        format!("{oid} blob {}\n", usize::MAX).into_bytes(),
+        oversized.into_bytes(),
+        {
+            let mut bytes = vec![b'a'; 40];
+            bytes.extend_from_slice(b" blob ");
+            bytes.push(0xff);
+            bytes.push(b'\n');
+            bytes
+        },
+    ];
+
+    for output in cases {
+        let err = revision_git::parse_git_cat_file_batch_for_test(&output)
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("malformed batch output should fail"));
+        assert_eq!(err.kind(), CargoAllowErrorKind::Inventory);
+    }
+}
+
+#[test]
+fn git_cat_file_batch_reports_git_failure() {
+    let path = PathBuf::from("src/lib.rs");
+    let tree = vec![revision_git::GitTreeFile {
+        mode: "100644".to_string(),
+        object_oid: "e".repeat(40),
+        path: path.clone(),
+        raw_path: b"src/lib.rs".to_vec(),
+    }];
+    let err = revision_git::read_files_at_revision(
+        Path::new("target/cargo-allow-missing-git-root"),
+        &tree,
+        &[path],
+    )
+    .err()
+    .unwrap_or_else(|| std::panic::panic_any("missing Git root should fail"));
+
+    assert_eq!(err.kind(), CargoAllowErrorKind::Inventory);
+}
+
+#[test]
+fn git_cat_file_batch_lifecycle_helpers_remain_typed() {
+    assert_eq!(
+        revision_git::batch_git_error_for_test().kind(),
+        CargoAllowErrorKind::Inventory
+    );
+    revision_git::terminate_batch_child_for_test()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("terminate child: {err}")));
+    let err = revision_git::missing_batch_pipe_for_test()
+        .err()
+        .unwrap_or_else(|| std::panic::panic_any("missing batch pipe should fail"));
+    assert_eq!(err.kind(), CargoAllowErrorKind::Inventory);
+}
+
+struct FailingWriter {
+    fail_write: bool,
+    fail_flush: bool,
+}
+
+impl Write for FailingWriter {
+    fn write(&mut self, _buf: &[u8]) -> io::Result<usize> {
+        if self.fail_write {
+            Err(io::Error::other("write failed"))
+        } else {
+            Ok(_buf.len())
+        }
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        if self.fail_flush {
+            Err(io::Error::other("flush failed"))
+        } else {
+            Ok(())
+        }
+    }
+}
+
+#[test]
+fn git_cat_file_batch_input_reports_write_and_flush_failures() {
+    let oids = vec!["f".repeat(40)];
+    let mut write_failure = FailingWriter {
+        fail_write: true,
+        fail_flush: false,
+    };
+    assert!(revision_git::write_batch_oids_for_test(&mut write_failure, &oids).is_err());
+
+    let mut flush_failure = FailingWriter {
+        fail_write: false,
+        fail_flush: true,
+    };
+    assert!(revision_git::write_batch_oids_for_test(&mut flush_failure, &oids).is_err());
 }
 
 #[test]

@@ -6,6 +6,9 @@ use std::io::{BufWriter, Read, Write};
 use std::path::{Component, Path, PathBuf};
 use std::process::{Child, Command, Output, Stdio};
 
+#[cfg(test)]
+use std::process::ChildStdout;
+
 #[cfg(unix)]
 use std::ffi::OsStr;
 #[cfg(unix)]
@@ -523,116 +526,39 @@ fn read_blobs_by_oid(
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|source| {
-            git_error(
-                CargoAllowErrorKind::Inventory,
-                "git_invocation_failed",
-                "git cat-file --batch could not start",
-            )
-            .with_cause(&source)
+            batch_git_error("git cat-file --batch could not start").with_cause(&source)
         })?;
-    let Some(mut stdout) = child.stdout.take() else {
-        terminate_batch_child(&mut child);
-        return Err(git_error(
-            CargoAllowErrorKind::Inventory,
-            "git_invocation_failed",
-            "git cat-file --batch did not expose stdout",
-        ));
-    };
-    let Some(mut stderr) = child.stderr.take() else {
-        terminate_batch_child(&mut child);
-        return Err(git_error(
-            CargoAllowErrorKind::Inventory,
-            "git_invocation_failed",
-            "git cat-file --batch did not expose stderr",
-        ));
-    };
-    let Some(stdin) = child.stdin.take() else {
-        terminate_batch_child(&mut child);
-        return Err(git_error(
-            CargoAllowErrorKind::Inventory,
-            "git_invocation_failed",
-            "git cat-file --batch did not expose stdin",
-        ));
-    };
+    let stdout = require_batch_pipe(child.stdout.take(), &mut child, "stdout")?;
+    let stdin = require_batch_pipe(child.stdin.take(), &mut child, "stdin")?;
     let stdout_reader = std::thread::spawn(move || {
         let mut bytes = Vec::new();
+        let mut stdout = stdout;
         stdout.read_to_end(&mut bytes).map(|_| bytes)
     });
-    let stderr_reader = std::thread::spawn(move || {
-        let mut bytes = Vec::new();
-        stderr.read_to_end(&mut bytes).map(|_| bytes)
-    });
     let mut stdin = BufWriter::new(stdin);
-    let mut input_error = None;
-    for oid in blob_oids {
-        if let Err(source) = writeln!(stdin, "{oid}") {
-            input_error = Some(source);
-            break;
-        }
-    }
-    if input_error.is_none()
-        && let Err(source) = stdin.flush()
-    {
-        input_error = Some(source);
-    }
+    let input_error = write_batch_oids(&mut stdin, blob_oids).err();
     drop(stdin);
-    let status = child.wait().map_err(|source| {
-        git_error(
-            CargoAllowErrorKind::Inventory,
-            "git_invocation_failed",
-            "git cat-file --batch could not finish",
-        )
-        .with_cause(&source)
+    let output = child.wait_with_output().map_err(|source| {
+        batch_git_error("git cat-file --batch could not finish").with_cause(&source)
     })?;
     let stdout = stdout_reader
         .join()
-        .map_err(|_| {
-            git_error(
-                CargoAllowErrorKind::Inventory,
-                "git_invocation_failed",
-                "git cat-file --batch stdout reader panicked",
-            )
-        })?
+        .map_err(|_| batch_git_error("git cat-file --batch stdout reader panicked"))?
         .map_err(|source| {
-            git_error(
-                CargoAllowErrorKind::Inventory,
-                "git_invocation_failed",
-                "git cat-file --batch stdout could not be read",
-            )
-            .with_cause(&source)
-        })?;
-    let stderr = stderr_reader
-        .join()
-        .map_err(|_| {
-            git_error(
-                CargoAllowErrorKind::Inventory,
-                "git_invocation_failed",
-                "git cat-file --batch stderr reader panicked",
-            )
-        })?
-        .map_err(|source| {
-            git_error(
-                CargoAllowErrorKind::Inventory,
-                "git_invocation_failed",
-                "git cat-file --batch stderr could not be read",
-            )
-            .with_cause(&source)
+            batch_git_error("git cat-file --batch stdout could not be read").with_cause(&source)
         })?;
     let output = Output {
-        status,
+        status: output.status,
         stdout,
-        stderr,
+        stderr: output.stderr,
     };
     if !output.status.success() {
         return Err(git_status_error("git cat-file --batch", &output));
     }
     if let Some(source) = input_error {
-        return Err(git_error(
-            CargoAllowErrorKind::Inventory,
-            "git_invocation_failed",
-            "git cat-file --batch input could not be written",
-        )
-        .with_cause(&source));
+        return Err(
+            batch_git_error("git cat-file --batch input could not be written").with_cause(&source),
+        );
     }
     parse_git_cat_file_batch(&output.stdout)
 }
@@ -640,6 +566,60 @@ fn read_blobs_by_oid(
 fn terminate_batch_child(child: &mut Child) {
     let _ = child.kill();
     let _ = child.wait();
+}
+
+fn require_batch_pipe<T>(pipe: Option<T>, child: &mut Child, name: &str) -> CargoAllowResult<T> {
+    pipe.ok_or_else(|| {
+        terminate_batch_child(child);
+        batch_git_error(format!("git cat-file --batch did not expose {name}"))
+    })
+}
+
+fn write_batch_oids<W: Write>(writer: &mut W, blob_oids: &[String]) -> Result<(), std::io::Error> {
+    for oid in blob_oids {
+        writeln!(writer, "{oid}")?;
+    }
+    writer.flush()
+}
+
+fn batch_git_error(message: impl Into<String>) -> CargoAllowError {
+    git_error(
+        CargoAllowErrorKind::Inventory,
+        "git_invocation_failed",
+        message,
+    )
+}
+
+#[cfg(test)]
+pub(crate) fn batch_git_error_for_test() -> CargoAllowError {
+    batch_git_error("test batch error")
+}
+
+#[cfg(test)]
+pub(crate) fn terminate_batch_child_for_test() -> CargoAllowResult<()> {
+    let mut child = Command::new("git")
+        .arg("--version")
+        .spawn()
+        .map_err(|source| batch_git_error("test child could not start").with_cause(&source))?;
+    terminate_batch_child(&mut child);
+    Ok(())
+}
+
+#[cfg(test)]
+pub(crate) fn missing_batch_pipe_for_test() -> CargoAllowResult<()> {
+    let mut child = Command::new("git")
+        .arg("--version")
+        .spawn()
+        .map_err(|source| batch_git_error("test child could not start").with_cause(&source))?;
+    require_batch_pipe::<ChildStdout>(None, &mut child, "stdout").map(|_| ())
+}
+
+#[cfg(test)]
+pub(crate) fn write_batch_oids_for_test<W: Write>(
+    writer: &mut W,
+    blob_oids: &[String],
+) -> Result<(), std::io::Error> {
+    write_batch_oids(writer, blob_oids)
 }
 
 fn map_blob_texts_by_path(
@@ -665,13 +645,7 @@ fn parse_git_cat_file_batch(stdout: &[u8]) -> CargoAllowResult<BTreeMap<String, 
     let mut blobs = BTreeMap::new();
     let mut cursor = 0;
     while cursor < stdout.len() {
-        let Some(remaining) = stdout.get(cursor..) else {
-            return Err(git_error(
-                CargoAllowErrorKind::Inventory,
-                "git_output_malformed",
-                "git cat-file --batch returned an invalid cursor",
-            ));
-        };
+        let remaining = stdout.get(cursor..).unwrap_or_default();
         let Some(header_end) = remaining.iter().position(|byte| *byte == b'\n') else {
             return Err(git_error(
                 CargoAllowErrorKind::Inventory,
@@ -680,13 +654,7 @@ fn parse_git_cat_file_batch(stdout: &[u8]) -> CargoAllowResult<BTreeMap<String, 
             ));
         };
         let header_end = cursor + header_end;
-        let Some(header_bytes) = stdout.get(cursor..header_end) else {
-            return Err(git_error(
-                CargoAllowErrorKind::Inventory,
-                "git_output_malformed",
-                "git cat-file --batch returned an invalid header range",
-            ));
-        };
+        let header_bytes = stdout.get(cursor..header_end).unwrap_or_default();
         let header = std::str::from_utf8(header_bytes).map_err(|source| {
             git_error(
                 CargoAllowErrorKind::Inventory,
@@ -747,13 +715,7 @@ fn parse_git_cat_file_batch(stdout: &[u8]) -> CargoAllowResult<BTreeMap<String, 
                 "git cat-file --batch returned a truncated blob",
             ));
         }
-        let Some(body) = stdout.get(body_start..body_end) else {
-            return Err(git_error(
-                CargoAllowErrorKind::Inventory,
-                "git_output_malformed",
-                "git cat-file --batch returned an invalid blob range",
-            ));
-        };
+        let body = stdout.get(body_start..body_end).unwrap_or_default();
         blobs.insert(
             oid.to_ascii_lowercase(),
             String::from_utf8_lossy(body).into_owned(),
