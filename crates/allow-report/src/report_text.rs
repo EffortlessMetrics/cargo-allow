@@ -122,9 +122,15 @@ pub fn render_human_with_context(
     // the reason the run failed, and hiding them would leave an operator
     // staring at a bare non-zero exit (#2785).
     let quiet = crate::contracts::is_quiet();
+    // `audit` already printed every review-queue status under "Audit review
+    // queue:". Repeating them verbatim here doubled the length of the report
+    // and made the tail look like a second, different set of problems. Keep
+    // only the statuses the queue does not carry (`invalid_selector`) so
+    // nothing is dropped (#3021).
     let non_matched = outcomes
         .iter()
         .filter(|o| o.status != MatchStatus::Matched)
+        .filter(|o| command != "audit" || !AUDIT_REVIEW_QUEUE_STATUSES.contains(&o.status))
         .filter(|o| !quiet || blocks_check(o.status))
         .collect::<Vec<_>>();
     for outcome in non_matched.iter().take(HUMAN_NON_MATCHED_OUTCOME_LIMIT) {
@@ -680,6 +686,25 @@ fn append_remediation_roadmap_human(summary: &Summary, signals: ReviewSignals, o
             "  To diagnose and receipt a new finding: cargo-allow why --kind <kind> --path <path> --line <line>\n",
         );
     }
+    if let Some(hint) = unreceipted_ledger_bootstrap_hint(summary) {
+        out.push_str(&format!("  {hint}\n"));
+    }
+}
+
+/// A freshly created ledger fails `check --mode no-new` on the first run
+/// against any tree that already carries exceptions, because every finding is
+/// `new` and nothing is `matched`. The roadmap used to offer only the
+/// one-finding `why`/`add` loop, which is the wrong tool for a repository with
+/// existing debt. Point at the documented bulk bootstrap path instead (#3021).
+fn unreceipted_ledger_bootstrap_hint(summary: &Summary) -> Option<&'static str> {
+    let new = summary.count(MatchStatus::New);
+    if new == 0 || summary.count(MatchStatus::Matched) > 0 {
+        return None;
+    }
+    Some(
+        "No allow entry matched any finding yet. To baseline an existing tree in one step: \
+         cargo-allow propose (preview), then cargo-allow propose --write policy/allow.toml",
+    )
 }
 
 fn append_remediation_roadmap_markdown(
@@ -698,6 +723,9 @@ fn append_remediation_roadmap_markdown(
     }
     if summary.count(MatchStatus::New) > 0 {
         out.push_str("\nTo diagnose and receipt a new finding: `cargo-allow why --kind <kind> --path <path> --line <line>`\n");
+    }
+    if let Some(hint) = unreceipted_ledger_bootstrap_hint(summary) {
+        out.push_str(&format!("\n{hint}\n"));
     }
 }
 
@@ -951,6 +979,83 @@ mod tests {
             audit_recommended_next_step(&summary, review_signals(0, 0, 0, 0, 0, 0, 1), false),
             "\nRecommended next step: review the queue below before tightening policy.\n"
         );
+    }
+
+    #[test]
+    fn audit_human_lists_each_review_item_once() {
+        let outcomes = review_outcomes();
+        let human = render_human_with_context(
+            "audit",
+            &[],
+            &outcomes,
+            false,
+            ReportContext::source_syntax("git_tracked", None, None, Some(0)),
+        );
+
+        // Every review-queue status is reported under the queue heading and
+        // must not be repeated in the trailing non-matched listing (#3021).
+        for message in [
+            "new source exception",
+            "expired policy entry",
+            "policy entry review is due",
+            "stale policy entry",
+            "ambiguous policy selector",
+            "missing owner field",
+            "missing evidence reference",
+        ] {
+            assert_eq!(
+                human.matches(message).count(),
+                1,
+                "audit repeated {message:?}:\n{human}"
+            );
+        }
+        assert!(human.contains("Audit review queue:"));
+        // `invalid_selector` is not a review-queue status, so the trailing
+        // listing stays its only home. Dropping it would lose information.
+        assert!(human.contains("invalid_selector: invalid selector"));
+    }
+
+    #[test]
+    fn check_human_still_lists_non_matched_outcomes() {
+        let outcomes = review_outcomes();
+        let human = render_human_with_context(
+            "check",
+            &[],
+            &outcomes,
+            true,
+            ReportContext::source_syntax("git_tracked", None, None, Some(0)),
+        );
+
+        // The audit-only de-duplication must not silence `check`, which has no
+        // review-queue section to fall back on.
+        assert!(human.contains("new: new source exception"));
+        assert!(human.contains("expired: expired policy entry"));
+        assert!(!human.contains("Audit review queue:"));
+    }
+
+    #[test]
+    fn bootstrap_hint_routes_an_unreceipted_ledger_to_propose() {
+        let unreceipted = Summary::from_outcomes(&audit_queue_outcomes(3));
+        let hint = unreceipted_ledger_bootstrap_hint(&unreceipted);
+        assert!(
+            hint.is_some_and(|text| text.contains("cargo-allow propose")),
+            "a ledger matching nothing should offer the baseline path: {hint:?}"
+        );
+        assert!(
+            hint.is_some_and(|text| text.contains("--write policy/allow.toml")),
+            "the baseline path should name the write step: {hint:?}"
+        );
+
+        // Once anything matches, the ledger is in use and the operator wants
+        // the per-finding loop, not a bulk baseline.
+        let mut partly_receipted = audit_queue_outcomes(3);
+        partly_receipted.push(outcome(MatchStatus::Matched, "receipted exception"));
+        assert!(
+            unreceipted_ledger_bootstrap_hint(&Summary::from_outcomes(&partly_receipted)).is_none()
+        );
+
+        // A clean tree has nothing to baseline.
+        assert!(unreceipted_ledger_bootstrap_hint(&Summary::from_outcomes(&[])).is_none());
     }
 
     #[test]

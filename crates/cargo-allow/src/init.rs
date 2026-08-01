@@ -193,7 +193,8 @@ fn style_init_action(style: allow_report::Style, action: &str) -> String {
 pub(crate) fn next_steps_block() -> String {
     "next steps:\n  \
      cargo-allow audit                  # inventory current exceptions\n  \
-     cargo-allow check --mode no-new    # enforce no-new-debt\n  \
+     cargo-allow propose                # preview baseline_debt for exceptions this tree already carries\n  \
+     cargo-allow check --mode no-new    # enforce no-new-debt (after the tree is receipted or baselined)\n  \
      cargo-allow vocabulary             # list finding kinds, evidence prefixes, statuses\n  \
      cargo-allow why --kind <kind> --path <path> --line <line>  # diagnose a finding\n  \
      cargo-allow add --update           # receipt a reviewed exception\n  \

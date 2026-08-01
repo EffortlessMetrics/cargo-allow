@@ -324,6 +324,13 @@ fn dry_run_announcement_includes_preview_and_next_steps() {
         out.contains("cargo-allow check --mode no-new"),
         "dry-run next steps should mention the CI gate command: {out}"
     );
+    // `init` alone leaves an empty ledger, so the very next `check --mode
+    // no-new` fails on any tree that already carries exceptions. Offer the
+    // documented bulk bootstrap path alongside the gate (#3021).
+    assert!(
+        out.contains("cargo-allow propose"),
+        "next steps should offer the baseline path for a tree with existing debt: {out}"
+    );
 }
 
 #[test]
