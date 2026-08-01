@@ -111,6 +111,40 @@ fn scan_rust_files_ignores_workspace_manifest_without_package_name() {
 }
 
 #[test]
+fn scan_rust_files_preserves_input_order_after_parallel_scan() {
+    let root = temp_root("parallel-order");
+    fs::create_dir_all(&root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create root: {err}")));
+    fs::write(
+        root.join("first.rs"),
+        "fn first(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write first: {err}")));
+    fs::write(
+        root.join("second.rs"),
+        "fn second(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write second: {err}")));
+
+    let result = scan_rust_files(
+        &root,
+        &[PathBuf::from("first.rs"), PathBuf::from("second.rs")],
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("scan files: {err}")));
+
+    let paths = result
+        .findings
+        .iter()
+        .map(|finding| finding.path.clone())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        paths,
+        vec![PathBuf::from("first.rs"), PathBuf::from("second.rs")]
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn scan_rust_files_ignores_invalid_manifest_source_text() {
     let root = temp_root("invalid-manifest");
     fs::create_dir_all(root.join("src"))
