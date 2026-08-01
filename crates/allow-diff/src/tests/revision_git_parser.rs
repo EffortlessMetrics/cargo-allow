@@ -44,7 +44,7 @@ fn git_cat_file_batch_parser_rejects_malformed_headers_and_sizes() {
         format!("{oid}\n").into_bytes(),
         format!("{oid} blob\n").into_bytes(),
         format!("{oid} blob 0 extra\n\n").into_bytes(),
-        format!("not-an-oid blob 0\n\n").into_bytes(),
+        b"not-an-oid blob 0\n\n".to_vec(),
         format!("{oid} tree 0\n\n").into_bytes(),
         format!("{oid} blob not-a-size\n\n").into_bytes(),
         format!("{oid} blob {}\n", usize::MAX).into_bytes(),
