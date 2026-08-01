@@ -1,5 +1,6 @@
 use allow_core::{AllowEntry, Finding, MatchOutcome, MatchStatus, normalize_path};
 use allow_match::finding_location;
+use allow_report::EvaluationContext;
 
 use super::why_shell::{ProofPlan, render_proof_command};
 
@@ -142,11 +143,32 @@ pub(super) fn render_why_text(
     render_why_text_styled(finding, outcome, candidates, allow_report::Style::PLAIN)
 }
 
+#[cfg(test)]
 pub(super) fn render_why_text_styled(
     finding: &Finding,
     outcome: &MatchOutcome,
     candidates: &[WhyCandidate<'_>],
     style: allow_report::Style,
+) -> String {
+    render_why_text_styled_with_evaluation(
+        finding,
+        outcome,
+        candidates,
+        style,
+        EvaluationContext {
+            scope: "scoped",
+            locality: "proven",
+            reasons: &[],
+        },
+    )
+}
+
+pub(super) fn render_why_text_styled_with_evaluation(
+    finding: &Finding,
+    outcome: &MatchOutcome,
+    candidates: &[WhyCandidate<'_>],
+    style: allow_report::Style,
+    evaluation: EvaluationContext<'_>,
 ) -> String {
     let next = why_next_steps(finding, outcome, candidates);
     let proof_commands = next.proof_commands();
@@ -174,6 +196,19 @@ pub(super) fn render_why_text_styled(
         out.push_str(&format!("- identity.normalized_snippet_hash: {hash}\n"));
     }
     out.push('\n');
+
+    out.push_str("## Evaluation scope\n\n");
+    out.push_str(&format!("- scope: {}\n", evaluation.scope));
+    out.push_str(&format!("- locality: {}\n", evaluation.locality));
+    if evaluation.reasons.is_empty() {
+        out.push_str("- locality reasons: none\n\n");
+    } else {
+        out.push_str("- locality reasons:\n");
+        for reason in evaluation.reasons {
+            out.push_str(&format!("  - {reason}\n"));
+        }
+        out.push('\n');
+    }
 
     out.push_str("## Current posture\n\n");
     out.push_str(&format!(
@@ -313,8 +348,29 @@ and are not executed by cargo-allow.\n",
     out
 }
 
+#[cfg(test)]
 pub(super) fn render_why_json(
     inventory: allow_report::InventoryContext<'_>,
+    finding: &Finding,
+    outcome: &MatchOutcome,
+    candidates: &[WhyCandidate<'_>],
+) -> String {
+    render_why_json_with_evaluation(
+        inventory,
+        EvaluationContext {
+            scope: "scoped",
+            locality: "proven",
+            reasons: &[],
+        },
+        finding,
+        outcome,
+        candidates,
+    )
+}
+
+pub(super) fn render_why_json_with_evaluation(
+    inventory: allow_report::InventoryContext<'_>,
+    evaluation: EvaluationContext<'_>,
     finding: &Finding,
     outcome: &MatchOutcome,
     candidates: &[WhyCandidate<'_>],
@@ -348,6 +404,7 @@ pub(super) fn render_why_json(
         .collect::<Vec<_>>();
     allow_report::render_why_json(allow_report::WhyReport {
         inventory,
+        evaluation,
         finding,
         outcome,
         candidate_entries: &candidate_entries,

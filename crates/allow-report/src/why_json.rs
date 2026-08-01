@@ -10,6 +10,13 @@ pub fn render_why_json(report: WhyReport<'_>) -> String {
     let mut out = String::new();
     out.push_str("{\n");
     push_json_fixed_artifact_preamble(&mut out, WHY_ARTIFACT, report.inventory);
+    out.push_str("  \"evaluation\": {\n");
+    out.push_str(&format!(
+        "    \"scope\": \"{}\",\n    \"locality\": \"{}\",\n    \"reasons\": {}\n  }},\n",
+        json_escape(report.evaluation.scope),
+        json_escape(report.evaluation.locality),
+        json_string_array(report.evaluation.reasons),
+    ));
     out.push_str("  \"finding\": ");
     // Trim leading indent spaces from explain finding helper which expects indent prefix.
     let finding_json =

@@ -8,12 +8,14 @@
 mod classification;
 mod evaluation;
 mod lifecycle;
+mod locality;
 mod location_drift;
 mod messages;
 mod mode;
 mod scoring;
 
 pub use evaluation::{MatchEvaluation, OccurrenceAccounting, evaluate, evaluate_detailed};
+pub use locality::scoped_locality_reasons;
 pub use messages::finding_location;
 pub use mode::CheckMode;
 pub use scoring::{MatchStrength, classify_match, explain_match_failure, score_match};

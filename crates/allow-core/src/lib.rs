@@ -7,6 +7,7 @@
 
 mod actionable_diagnostic;
 mod capped_read;
+mod companion_family;
 mod date;
 mod error;
 mod finding;
@@ -28,6 +29,7 @@ pub use capped_read::{
     CappedReadError, SOURCE_FILE_READ_MAX_BYTES, read_file_capped, read_file_capped_with_limit,
     read_text_file_capped, read_text_file_capped_with_limit,
 };
+pub use companion_family::{REPOSITORY_WIDE_FAMILIES, is_repository_wide_family};
 pub use date::SimpleDate;
 pub use error::{
     CargoAllowDiagnostic, CargoAllowDiagnosticSeverity, CargoAllowError, CargoAllowErrorKind,

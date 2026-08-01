@@ -2,6 +2,14 @@ use allow_core::{Finding, MatchOutcome};
 
 use crate::InventoryContext;
 
+/// Scope evidence carried by `why` and its optional add-finding plan.
+#[derive(Debug, Clone, Copy)]
+pub struct EvaluationContext<'a> {
+    pub scope: &'a str,
+    pub locality: &'a str,
+    pub reasons: &'a [String],
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct WhyCandidateEntry<'a> {
     pub id: &'a str,
@@ -23,6 +31,7 @@ pub struct WhyProofPlan<'a> {
 #[derive(Debug, Clone, Copy)]
 pub struct WhyReport<'a> {
     pub inventory: InventoryContext<'a>,
+    pub evaluation: EvaluationContext<'a>,
     pub finding: &'a Finding,
     pub outcome: &'a MatchOutcome,
     pub candidate_entries: &'a [WhyCandidateEntry<'a>],

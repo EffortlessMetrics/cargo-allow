@@ -95,6 +95,18 @@ callee = "expect"
 
     let report = assert_saved_json_artifact(&why_output, "why", "cargo-allow.why.v1", "why");
 
+    assert_eq!(
+        report.pointer("/evaluation/scope").and_then(Value::as_str),
+        Some("scoped"),
+        "path-scoped policy should keep the narrow why evaluation"
+    );
+    assert_eq!(
+        report
+            .pointer("/evaluation/locality")
+            .and_then(Value::as_str),
+        Some("proven")
+    );
+
     // The finding should be "new" (unreceipted) since the near-miss entry
     // has callee=expect but the finding is unwrap.
     assert_eq!(
@@ -153,6 +165,246 @@ callee = "expect"
             .and_then(Value::as_str),
         Some("cargo-allow"),
         "first proof plan should use cargo-allow"
+    );
+
+    let subdir_output = root.join("target/cargo-allow/why-subdir.json");
+    let mut from_subdir = cargo_allow_command();
+    from_subdir.current_dir(root.join("src"));
+    let subdir_why = from_subdir
+        .args([
+            "why", "--kind", "panic", "--path", "lib.rs", "--line", "1", "--format", "json",
+            "--output",
+        ])
+        .arg(&subdir_output)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run why from subdirectory: {err}")));
+    assert_status("why from subdirectory", &subdir_why, true);
+    let subdir_report = assert_saved_json_artifact(
+        &subdir_output,
+        "why from subdirectory",
+        "cargo-allow.why.v1",
+        "why",
+    );
+    assert_eq!(
+        subdir_report
+            .pointer("/finding/path")
+            .and_then(Value::as_str),
+        Some("src/lib.rs")
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
+fn why_diagnostic_falls_back_for_broad_policy_scope() {
+    let root = temp_root("e2e-why-fallback");
+    fs::create_dir_all(root.join("src/nested"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::write(
+        root.join("src/nested/lib.rs"),
+        "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+stale_entries_fail = false
+allow_bare_allow_attributes = false
+lint_policy_id_required = false
+
+[requirements.unsafe]
+evidence_required = true
+safety_comment_required = false
+
+[[allow]]
+id = "allow-broad-unwrap"
+kind = "panic"
+family = "unwrap"
+glob = "src/**/*.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Broad fixture entry"
+evidence = ["test:broad"]
+created = "2026-01-01"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "method_call"
+callee = "unwrap"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "."]);
+    git(&root, &["commit", "-m", "fixture with broad scope"]);
+
+    let why_output = root.join("target/cargo-allow/why.json");
+    let why = cargo_allow_command()
+        .args(["why", "--root"])
+        .arg(&root)
+        .args([
+            "--kind",
+            "panic",
+            "--path",
+            "src/nested/lib.rs",
+            "--line",
+            "1",
+            "--format",
+            "json",
+            "--output",
+        ])
+        .arg(&why_output)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run why fallback: {err}")));
+    assert_status("why fallback", &why, true);
+
+    let report =
+        assert_saved_json_artifact(&why_output, "why fallback", "cargo-allow.why.v1", "why");
+    assert_eq!(
+        report.pointer("/evaluation/scope").and_then(Value::as_str),
+        Some("full_fallback")
+    );
+    assert_eq!(
+        report
+            .pointer("/evaluation/locality")
+            .and_then(Value::as_str),
+        Some("global_dependency")
+    );
+    assert!(
+        report
+            .pointer("/evaluation/reasons/0")
+            .and_then(Value::as_str)
+            .is_some_and(|reason| reason.contains("broad path scope")),
+        "fallback should explain the broad policy dependency"
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
+fn why_diagnostic_explains_inventory_exclusion_and_accepts_include_untracked() {
+    let root = temp_root("e2e-why-untracked");
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::write(
+        root.join("src/untracked.rs"),
+        "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+stale_entries_fail = false
+allow_bare_allow_attributes = false
+lint_policy_id_required = false
+
+[requirements.unsafe]
+evidence_required = true
+safety_comment_required = false
+
+[[allow]]
+id = "allow-untracked-unwrap"
+kind = "panic"
+family = "unwrap"
+path = "src/untracked.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Untracked fixture entry"
+evidence = ["test:untracked"]
+created = "2026-01-01"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "method_call"
+callee = "unwrap"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "policy/allow.toml"]);
+    git(&root, &["commit", "-m", "fixture with untracked source"]);
+
+    let missing = cargo_allow_command()
+        .args([
+            "why",
+            "--root",
+            root.to_str().unwrap_or(""),
+            "--kind",
+            "panic",
+            "--path",
+            "src/untracked.rs",
+            "--line",
+            "1",
+        ])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run why without untracked: {err}")));
+    assert_status("why without untracked", &missing, false);
+    let missing_stderr = String::from_utf8_lossy(&missing.stderr);
+    assert!(
+        missing_stderr.contains("not present in the source inventory"),
+        "missing inventory diagnostic should explain the exclusion: {missing_stderr}"
+    );
+
+    let why_output = root.join("target/cargo-allow/why-untracked.json");
+    let included = cargo_allow_command()
+        .args([
+            "why",
+            "--root",
+            root.to_str().unwrap_or(""),
+            "--include-untracked",
+            "--kind",
+            "panic",
+            "--path",
+            "src/untracked.rs",
+            "--line",
+            "1",
+            "--format",
+            "json",
+            "--output",
+        ])
+        .arg(&why_output)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run why with untracked: {err}")));
+    assert_status("why with untracked", &included, true);
+    let report = assert_saved_json_artifact(
+        &why_output,
+        "why with untracked",
+        "cargo-allow.why.v1",
+        "why",
+    );
+    assert_eq!(
+        report.pointer("/evaluation/scope").and_then(Value::as_str),
+        Some("scoped")
     );
 
     remove_temp_root(root);

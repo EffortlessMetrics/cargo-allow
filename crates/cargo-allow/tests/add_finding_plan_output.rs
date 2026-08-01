@@ -67,6 +67,16 @@ fn why_writes_a_new_only_bound_plan_without_overwriting_it() {
         Some("new")
     );
     assert_eq!(
+        plan.pointer("/evaluation/scope")
+            .and_then(serde_json::Value::as_str),
+        Some("scoped")
+    );
+    assert_eq!(
+        plan.pointer("/evaluation/locality")
+            .and_then(serde_json::Value::as_str),
+        Some("proven")
+    );
+    assert_eq!(
         plan.pointer("/proof_plans/0/args/0")
             .and_then(serde_json::Value::as_str),
         Some("add")

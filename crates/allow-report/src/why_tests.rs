@@ -65,6 +65,11 @@ fn render_why_json_emits_schema_id_and_candidates() {
     }];
     let report = WhyReport {
         inventory: InventoryContext::source_syntax("git_tracked", Some("H:/repo"), Some(12)),
+        evaluation: EvaluationContext {
+            scope: "scoped",
+            locality: "proven",
+            reasons: &[],
+        },
         finding: &finding,
         outcome: &outcome,
         candidate_entries: &candidates,
@@ -168,6 +173,11 @@ fn render_why_json_omits_unavailable_candidate_family() -> Result<(), String> {
     }];
     let json = render_why_json(WhyReport {
         inventory: InventoryContext::source_syntax("git_tracked", Some("H:/repo"), Some(12)),
+        evaluation: EvaluationContext {
+            scope: "full_fallback",
+            locality: "global_dependency",
+            reasons: &reasons,
+        },
         finding: &finding,
         outcome: &outcome,
         candidate_entries: &candidates,
