@@ -152,6 +152,13 @@
             "null"
           ]
         },
+        "provenance": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Configuration source vocabulary. fixed_allow_config identifies the fixed .allow/config.toml federation path; unknown preserves provenance uncertainty for externally constructed report inputs."
+        },
         "valid": {
           "type": [
             "boolean",
