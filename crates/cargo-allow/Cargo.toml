@@ -25,6 +25,7 @@ repo-protocol.workspace = true
 repo-edit.workspace = true
 clap.workspace = true
 clap_complete.workspace = true
+terminal_size.workspace = true
 toml.workspace = true
 serde.workspace = true
 serde_json.workspace = true

@@ -1,5 +1,6 @@
 use allow_core::CargoAllowResult;
 use clap::Parser;
+use std::io::IsTerminal;
 use std::path::PathBuf;
 
 use crate::{
@@ -113,6 +114,41 @@ pub(crate) struct ListArgs {
 }
 
 const MIN_LIST_WIDTH: usize = 40;
+
+/// Resolve the concise-card width without making captured or redirected output
+/// dependent on the host terminal. An explicit width always wins; automatic
+/// sizing is limited to a human stdout terminal and falls back to the stable
+/// renderer width when the OS cannot report a size.
+pub(super) fn concise_width(args: &ListArgs) -> Option<usize> {
+    let stdout_is_terminal = std::io::stdout().is_terminal();
+    let detected_width = stdout_is_terminal
+        .then(terminal_size::terminal_size)
+        .flatten()
+        .and_then(|(terminal_size::Width(width), _)| terminal_width(usize::from(width)));
+    concise_width_for_terminal(args, stdout_is_terminal, detected_width)
+}
+
+pub(super) fn concise_width_for_terminal(
+    args: &ListArgs,
+    stdout_is_terminal: bool,
+    detected_width: Option<usize>,
+) -> Option<usize> {
+    if args.width.is_some()
+        || args.wide
+        || args.columns.is_some()
+        || args.output.is_some()
+        || !matches!(args.format, HumanJsonFormat::Human)
+        || !stdout_is_terminal
+    {
+        return args.width;
+    }
+
+    detected_width
+}
+
+pub(super) fn terminal_width(width: usize) -> Option<usize> {
+    (width >= MIN_LIST_WIDTH).then_some(width)
+}
 
 fn parse_list_width(value: &str) -> Result<usize, String> {
     let width = value

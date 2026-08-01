@@ -77,7 +77,12 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
                 render_list_rows_with_columns_styled(&rows, &filters, context, &columns, style)
             } else {
                 render_list_rows_concise_styled_with_width(
-                    &rows, &filters, context, &columns, style, args.width,
+                    &rows,
+                    &filters,
+                    context,
+                    &columns,
+                    style,
+                    list_args::concise_width(args),
                 )
             }
         }

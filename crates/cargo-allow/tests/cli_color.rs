@@ -206,8 +206,8 @@ fn list_human_statuses_use_shared_style_but_files_stay_plain() {
     let _ = fs::remove_dir_all(&root);
 }
 
-/// Captured stdout is a non-TTY boundary: concise cards stay readable while
-/// `--wide` remains the complete human projection.
+/// Captured stdout is a non-TTY boundary: concise cards stay readable and
+/// deterministic while `--wide` remains the complete human projection.
 #[test]
 fn list_non_tty_binary_preserves_concise_and_wide_boundaries() {
     let root = fixture("list-layout");
@@ -240,6 +240,22 @@ fn list_non_tty_binary_preserves_concise_and_wide_boundaries() {
     );
     assert!(json.status.success(), "JSON list should succeed");
     assert!(!has_ansi(&stdout_of(&json)), "JSON list must stay plain");
+
+    let explicit_width = run(&root, &[], &["list", "--width", "40", "--color", "never"]);
+    assert!(
+        explicit_width.status.success(),
+        "explicit width should remain available on captured stdout"
+    );
+    let repeated_width = run(&root, &[], &["list", "--width", "40", "--color", "never"]);
+    assert_eq!(
+        stdout_of(&explicit_width),
+        stdout_of(&repeated_width),
+        "captured output must stay deterministic when terminal size is unavailable"
+    );
+    assert!(
+        stdout_of(&explicit_width).contains("reason: fixture policy file for colou…"),
+        "explicit width should visibly constrain the long fixture reason"
+    );
 
     let _ = fs::remove_dir_all(&root);
 }
