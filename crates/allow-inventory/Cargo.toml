@@ -13,3 +13,4 @@ categories.workspace = true
 
 [dependencies]
 allow-core.workspace = true
+rayon.workspace = true

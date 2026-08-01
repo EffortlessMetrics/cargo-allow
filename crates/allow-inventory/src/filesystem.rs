@@ -1,4 +1,5 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
+use rayon::prelude::*;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -34,27 +35,44 @@ pub(crate) fn existing_regular_files(
     let mut existing = Vec::with_capacity(files.len());
     let mut deleted_tracked = Vec::new();
     let mut submodule_paths = Vec::new();
-    for path in files {
-        match fs::metadata(root.join(&path)) {
+    let classified = files
+        .into_par_iter()
+        .filter_map(|path| match fs::metadata(root.join(&path)) {
             Ok(metadata) => {
                 if metadata.file_type().is_file() {
-                    existing.push(path);
+                    Some(PathDisposition::Existing(path))
                 } else if metadata.file_type().is_dir() {
                     // A git-tracked path that is a directory on disk is a
                     // checked-out submodule gitlink (#1846).
-                    submodule_paths.push(path);
+                    Some(PathDisposition::Submodule(path))
+                } else {
+                    None
                 }
             }
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
-                deleted_tracked.push(path);
+                Some(PathDisposition::Deleted(path))
             }
             Err(_) => {
                 // Other stat errors: treat as not-a-file (excluded), reserved
                 // for a separate inaccessible-file diagnostic.
+                None
             }
+        })
+        .collect::<Vec<_>>();
+    for disposition in classified {
+        match disposition {
+            PathDisposition::Existing(path) => existing.push(path),
+            PathDisposition::Deleted(path) => deleted_tracked.push(path),
+            PathDisposition::Submodule(path) => submodule_paths.push(path),
         }
     }
     (existing, deleted_tracked, submodule_paths)
+}
+
+enum PathDisposition {
+    Existing(PathBuf),
+    Deleted(PathBuf),
+    Submodule(PathBuf),
 }
 
 pub(crate) fn recursive_files(root: &Path) -> CargoAllowResult<(Vec<PathBuf>, Vec<PathBuf>)> {
