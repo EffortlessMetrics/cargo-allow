@@ -44,7 +44,12 @@ fn why_schema_locks_finding_outcome_and_candidates_contract() {
             .pointer("/$defs/evaluation/properties/result_class/enum")
             .and_then(Value::as_array)
             .map(|values| values.iter().filter_map(Value::as_str).collect::<Vec<_>>()),
-        Some(vec!["exact_scoped", "exact_after_full_fallback"]),
+        Some(vec![
+            "exact_scoped",
+            "exact_after_full_fallback",
+            "target_scanner_partial",
+            "full_fallback_unavailable",
+        ]),
         "why result classes must remain bounded and stable"
     );
 
@@ -125,6 +130,55 @@ fn result_class_schema_binds_to_its_evidence_tuple() -> Result<(), String> {
         let schema = parse_schema(name, schema_text);
         let validator = jsonschema::validator_for(&schema)
             .map_err(|error| format!("{name} schema compilation: {error}"))?;
+        let mut partial: Value = serde_json::from_str(&sample_text)
+            .map_err(|error| format!("{name} sample JSON: {error}"))?;
+        partial
+            .get_mut("evaluation")
+            .and_then(Value::as_object_mut)
+            .ok_or_else(|| format!("{name} sample should contain evaluation"))?
+            .extend([
+                ("result_class".to_string(), json!("target_scanner_partial")),
+                ("scope".to_string(), json!("scoped")),
+                ("locality".to_string(), json!("proven")),
+                ("reasons".to_string(), json!([])),
+            ]);
+        partial
+            .get_mut("inventory")
+            .and_then(Value::as_object_mut)
+            .ok_or_else(|| format!("{name} sample should contain inventory"))?
+            .insert("completeness".to_string(), json!("partial"));
+        if validator.validate(&partial).is_err() {
+            return Err(format!(
+                "{name} schema should accept target_scanner_partial"
+            ));
+        }
+
+        let mut unavailable: Value = serde_json::from_str(&sample_text)
+            .map_err(|error| format!("{name} sample JSON: {error}"))?;
+        unavailable
+            .get_mut("evaluation")
+            .and_then(Value::as_object_mut)
+            .ok_or_else(|| format!("{name} sample should contain evaluation"))?
+            .extend([
+                (
+                    "result_class".to_string(),
+                    json!("full_fallback_unavailable"),
+                ),
+                ("scope".to_string(), json!("full_fallback")),
+                ("locality".to_string(), json!("global_dependency")),
+                ("reasons".to_string(), json!(["scanner incomplete"])),
+            ]);
+        unavailable
+            .get_mut("inventory")
+            .and_then(Value::as_object_mut)
+            .ok_or_else(|| format!("{name} sample should contain inventory"))?
+            .insert("completeness".to_string(), json!("fallback"));
+        if validator.validate(&unavailable).is_err() {
+            return Err(format!(
+                "{name} schema should accept full_fallback_unavailable"
+            ));
+        }
+
         let mut contradictory: Value = serde_json::from_str(&sample_text)
             .map_err(|error| format!("{name} sample JSON: {error}"))?;
         let evaluation = contradictory

@@ -14,7 +14,8 @@ kinds appear near the same line. The human view shows:
 
 - the selected finding and structural identity
 - current match posture (`new`, matched, ambiguous, …)
-- evaluation result class (`exact_scoped` or `exact_after_full_fallback`)
+- evaluation result class (`exact_scoped`, `exact_after_full_fallback`,
+  `target_scanner_partial`, or `full_fallback_unavailable`)
 - nearby same-kind allow entries with per-gate selector mismatch reasons
 - suggested actions, proof commands, and claim boundary
 
@@ -31,9 +32,10 @@ entries, and next-step fields for agents and CI evidence. Candidate `family` is
 omitted when the nearby policy entry has no family; selector relationship
 fields such as `path`, `glob`, and `selector_glob` remain `null` when that
 relationship is unavailable. The additive `evaluation.result_class` field
-identifies whether the result came from the proven one-file path or an exact
-full-world fallback. Older `why.v1` artifacts without this optional field
-remain valid.
+identifies whether the result came from a proven one-file path, an exact
+full-world fallback, a partial target scan, or an unavailable complete
+fallback. Add-finding plans are emitted only for the two exact classes. Older
+`why.v1` artifacts without this optional field remain valid.
 
 ## Claim Boundary
 

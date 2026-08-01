@@ -214,6 +214,30 @@ fn render_why_json_omits_unavailable_candidate_family() -> Result<(), String> {
     {
         return Err("candidate selector relationship fields should remain null".to_string());
     }
+    let partial_json = render_why_json(WhyReport {
+        inventory: InventoryContext::source_syntax("git_tracked", Some("H:/repo"), Some(12))
+            .with_completeness("partial"),
+        evaluation: EvaluationContext {
+            scope: "scoped",
+            locality: "proven",
+            reasons: &[],
+        },
+        finding: &finding,
+        outcome: &outcome,
+        candidate_entries: &candidates,
+        suggested_actions: &actions,
+        proof_commands: &proofs,
+        proof_plans: &plans,
+    });
+    let partial_value: serde_json::Value = serde_json::from_str(&partial_json)
+        .map_err(|err| format!("partial why JSON should deserialize: {err}\n{partial_json}"))?;
+    if partial_value
+        .pointer("/evaluation/result_class")
+        .and_then(serde_json::Value::as_str)
+        != Some("target_scanner_partial")
+    {
+        return Err("partial scoped evaluation should expose its stable result class".to_string());
+    }
     Ok(())
 }
 
@@ -231,21 +255,33 @@ fn evaluation_result_class_is_optional_for_legacy_context_pairs() {
 }
 
 #[test]
-fn evaluation_result_class_is_omitted_when_inventory_is_not_complete() {
-    let evaluation = EvaluationContext {
+fn evaluation_result_class_names_incomplete_scoped_and_fallback_paths() {
+    let scoped_evaluation = EvaluationContext {
         scope: "scoped",
         locality: "proven",
         reasons: &[],
     };
+    assert_eq!(
+        scoped_evaluation.result_class(
+            InventoryContext::source_syntax("git_tracked", None, None).with_completeness("partial"),
+        ),
+        Some("target_scanner_partial")
+    );
 
+    let reasons = vec!["repository-wide policy scope".to_string()];
+    let fallback_evaluation = EvaluationContext {
+        scope: "full_fallback",
+        locality: "global_dependency",
+        reasons: &reasons,
+    };
     for completeness in ["partial", "fallback"] {
         assert_eq!(
-            evaluation.result_class(
+            fallback_evaluation.result_class(
                 InventoryContext::source_syntax("git_tracked", None, None)
                     .with_completeness(completeness),
             ),
-            None,
-            "exact result classes must not claim incomplete inventory: {completeness}",
+            Some("full_fallback_unavailable"),
+            "full fallback must remain explicitly unavailable: {completeness}",
         );
     }
 }

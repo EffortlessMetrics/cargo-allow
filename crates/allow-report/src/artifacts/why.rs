@@ -14,13 +14,22 @@ impl EvaluationContext<'_> {
     /// Derive the stable result class without changing the public struct
     /// shape used by downstream Rust consumers.
     pub fn result_class(self, inventory: InventoryContext<'_>) -> Option<&'static str> {
-        let complete_inventory = matches!(inventory.completeness, Some("complete" | "scoped"));
-        if !complete_inventory {
-            return None;
-        }
-        match (self.scope, self.locality) {
-            ("scoped", "proven") => Some("exact_scoped"),
-            ("full_fallback", "global_dependency") => Some("exact_after_full_fallback"),
+        match inventory.completeness {
+            Some("complete" | "scoped") => match (self.scope, self.locality) {
+                ("scoped", "proven") => Some("exact_scoped"),
+                ("full_fallback", "global_dependency") => Some("exact_after_full_fallback"),
+                _ => None,
+            },
+            Some("partial") => match (self.scope, self.locality) {
+                ("scoped", "proven") => Some("target_scanner_partial"),
+                ("full_fallback", "global_dependency") => Some("full_fallback_unavailable"),
+                _ => None,
+            },
+            Some("fallback")
+                if (self.scope, self.locality) == ("full_fallback", "global_dependency") =>
+            {
+                Some("full_fallback_unavailable")
+            }
             _ => None,
         }
     }

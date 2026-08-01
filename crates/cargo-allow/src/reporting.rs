@@ -349,6 +349,21 @@ mod tests {
     }
 
     #[test]
+    fn source_context_promotes_scanner_omissions_to_partial_inventory() {
+        let root = temp_root("scanner-partial");
+        let facts =
+            InventoryFacts::scanned(InventorySource::GitTracked, 3).with_rust_files_skipped(1);
+        let context = SourceTreeReportContext::new(&root, facts);
+
+        assert_eq!(context.inventory_completeness(), "partial");
+        assert_eq!(context.inventory().completeness, Some("partial"));
+        assert_eq!(context.report(None).inventory.completeness, Some("partial"));
+
+        fs::remove_dir_all(&root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture: {err}")));
+    }
+
+    #[test]
     fn print_report_dispatches_all_formats_and_writes_outputs() {
         let root = temp_root("print-report");
         let cases = [
