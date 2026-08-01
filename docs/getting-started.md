@@ -305,6 +305,8 @@ creates a real allow ID, run the first-hour test fixture
 (`crates/cargo-allow/tests/first_hour_adoption.rs`) or follow
 [Manage an exception](how-to/manage-an-exception.md) against your own tree.
 
+Always use forward slashes in `path` and `glob` values, even on Windows.
+
 ```toml
 [[allow]]
 id = "allow-0042"
