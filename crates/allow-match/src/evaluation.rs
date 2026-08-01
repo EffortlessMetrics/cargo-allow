@@ -275,7 +275,9 @@ pub fn evaluate_detailed(
     // records only one last_seen anchor. When any matched occurrence still
     // sits at the anchor, the other occurrences are ordinary matches, not
     // drift — otherwise every scan flags a drift that refresh can never
-    // settle, oscillating between the occurrences forever.
+    // settle, oscillating between the occurrences forever. This is an honest
+    // entry-level limitation, not proof that every occurrence stayed put;
+    // exact multi-occurrence anchors remain tracked by #2508.
     for (entry_index, outcome_indices) in &state.drift_outcomes {
         if !state.anchored_entries.contains(entry_index) {
             continue;

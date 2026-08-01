@@ -106,7 +106,10 @@ Each retained exception should have:
 - `created`: when the entry was introduced.
 - `review_after` or `expires`: lifecycle pressure.
 - `[allow.selector]`: structural selector.
-- `[allow.last_seen]`: review hint only.
+- `[allow.last_seen]`: review hint only. It is one entry-level observation;
+  for entries covering multiple findings, an anchored occurrence can suppress
+  sibling location-drift advisories to avoid refresh oscillation. It does not
+  establish exact per-occurrence movement; see [#2508](https://github.com/EffortlessMetrics/cargo-allow/issues/2508).
 
 `owner = "unowned"` is reserved for generated `classification = "baseline_debt"`
 entries. Reviewed retained exceptions must use a concrete owner so accountability
