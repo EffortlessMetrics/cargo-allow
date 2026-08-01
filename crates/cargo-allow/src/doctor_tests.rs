@@ -777,6 +777,12 @@ fn doctor_reports_configured_federation_ledgers() {
         value.pointer("/federation/valid").and_then(Value::as_bool),
         Some(true)
     );
+    assert_eq!(
+        value
+            .pointer("/federation/provenance")
+            .and_then(Value::as_str),
+        Some("fixed_allow_config")
+    );
     let ledgers = value
         .pointer("/federation/configured_ledgers")
         .and_then(Value::as_array);

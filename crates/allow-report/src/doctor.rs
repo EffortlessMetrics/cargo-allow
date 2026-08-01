@@ -124,6 +124,9 @@ fn append_federation_doctor_human(facts: DoctorReport<'_>, out: &mut String, sty
     if let Some(path) = facts.federation_config_path {
         out.push_str(&format!("federation config: {path}\n"));
     }
+    if let Some(provenance) = federation_config_provenance(facts) {
+        out.push_str(&format!("federation config provenance: {provenance}\n"));
+    }
     out.push_str(&format!(
         "federation config status: {}\n",
         style.status(
@@ -264,6 +267,10 @@ fn append_federation_doctor_json(facts: DoctorReport<'_>, out: &mut String) {
         option_json(facts.federation_config_path)
     ));
     out.push_str(&format!(
+        "    \"provenance\": {},\n",
+        option_json(federation_config_provenance(facts))
+    ));
+    out.push_str(&format!(
         "    \"valid\": {}",
         option_bool_json(facts.federation_config_valid)
     ));
@@ -368,6 +375,16 @@ fn append_federation_doctor_json(facts: DoctorReport<'_>, out: &mut String) {
         out.push_str("\n    ]");
     }
     out.push_str("\n  }");
+}
+
+fn federation_config_provenance(facts: DoctorReport<'_>) -> Option<&'static str> {
+    if !facts.federation_config_found {
+        return None;
+    }
+    match facts.federation_config_path {
+        Some(".allow/config.toml") => Some("fixed_allow_config"),
+        Some(_) | None => Some("unknown"),
+    }
 }
 
 fn federation_status_label(valid: Option<bool>) -> &'static str {

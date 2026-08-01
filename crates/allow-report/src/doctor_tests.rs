@@ -83,6 +83,7 @@ fn doctor_json_renderer_records_root_config_and_inventory() {
   "federation": {{
     "found": false,
     "path": null,
+    "provenance": null,
     "valid": null
   }},
   "evidence_repair_queues": [
@@ -262,6 +263,7 @@ fn doctor_human_renderer_styles_fixed_status_labels_only() {
 
     assert!(text.contains("config status: \u{1b}[31minvalid\u{1b}[0m: policy schema_version"));
     assert!(text.contains("federation config status: \u{1b}[31minvalid\u{1b}[0m"));
+    assert!(text.contains("federation config provenance: unknown"));
     assert!(
         !text.contains("policy schema_version must not be empty\u{1b}"),
         "repository-controlled diagnostics must stay unstyled"
@@ -430,4 +432,5 @@ fn doctor_json_renderer_records_configured_federation_ledgers() {
     assert!(json.contains("\"configured_ledgers\""));
     assert!(json.contains("\"id\": \"source-policy\""));
     assert!(json.contains("\"dialect\": \"cargo-allow\""));
+    assert!(json.contains("\"provenance\": \"fixed_allow_config\""));
 }
