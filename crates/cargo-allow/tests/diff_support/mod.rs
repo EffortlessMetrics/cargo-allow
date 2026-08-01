@@ -2,6 +2,7 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
+use allow_core::SimpleDate;
 use serde_json::Value;
 
 use crate::support::{
@@ -70,6 +71,7 @@ pub fn write_diff_fixture(root: &Path, base_policy: String, head_policy: String)
 }
 
 pub fn policy_with_evidence(evidence: Option<&str>) -> String {
+    let review_after = SimpleDate::today_utc_approx().add_days(30);
     let evidence = evidence
         .map(|evidence| format!("evidence = [\"{evidence}\"]\n"))
         .unwrap_or_default();
@@ -88,7 +90,7 @@ owner = "core"
 classification = "reviewed_exception"
 reason = "fixture"
 {evidence}created = "2026-05-29"
-review_after = "2026-08-01"
+review_after = "{review_after}"
 
 [allow.selector]
 ast_kind = "method_call"
