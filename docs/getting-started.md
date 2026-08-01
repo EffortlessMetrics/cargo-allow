@@ -119,7 +119,7 @@ exception exists outside the syntax-visible surface cargo-allow scanned.
 
 ```text
 Choose ONE bootstrap path:
-- init: small/strict repository (starter ledger, usually empty allows)
+- init: small/strict repository (starter ledger, no generated debt)
 - propose: existing repository with retained debt (preview, then reviewed write)
 ```
 
@@ -132,6 +132,14 @@ cargo-allow init --root .
 Creates `policy/allow.toml` with workspace defaults and no generated debt.
 Useful when the tree is clean or you want to receipt findings one-by-one with
 `add` later.
+
+Both bootstrap paths seed one entry: the ledger's receipt for itself. The
+policy file is a tracked non-Rust file, so once it is committed it appears in
+its own inventory; without that receipt the first `check --mode no-new` after
+adoption would fail on `policy/allow.toml` rather than on your code. It is
+recorded as `classification = "source_exception_policy"` with a `review_after`
+date, not as `baseline_debt` — the ledger is a governance record, not retained
+debt. It is not generated debt and does not expire.
 
 ### `propose` — existing debt (preview, then write)
 

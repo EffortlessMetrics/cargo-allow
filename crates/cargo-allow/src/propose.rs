@@ -1,6 +1,9 @@
 use allow_core::{CargoAllowError, CargoAllowResult, FindingKind, MatchStatus};
 use allow_match::{CheckMode, evaluate};
-use allow_policy::{generated_entry_rejection, render_policy, validate_policy};
+use allow_policy::{
+    generated_entry_rejection, ledger_self_receipt, receipts_ledger_at, render_policy,
+    validate_policy,
+};
 use allow_report::MutationReceipt;
 use repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 use std::env;
@@ -99,6 +102,38 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
             }
             proposed.allow.push(entry);
             proposed_entries += 1;
+        }
+    }
+    // A ledger that is about to be written into the source tree must receipt
+    // itself, or the first `check --mode no-new` after the adopter commits it
+    // fails on `policy/allow.toml` rather than on their code (#3032). Only when
+    // the operator is persisting a policy, and never over an existing receipt.
+    if let Some(write_path) = &args.write {
+        let ledger_rel = portable_relative_under_root(
+            &root,
+            write_target.as_ref().unwrap_or(&root.join(write_path)),
+        )?;
+        let ledger_rel = ledger_rel
+            .to_string_lossy()
+            .replace(std::path::MAIN_SEPARATOR, "/");
+        if !proposed
+            .allow
+            .iter()
+            .any(|entry| receipts_ledger_at(entry, &ledger_rel))
+        {
+            // `unowned` is only legal on `baseline_debt`, and the ledger's own
+            // receipt is deliberately not debt, so fall back to the same
+            // concrete owner the starter policy uses.
+            let owner = proposed
+                .owner
+                .clone()
+                .filter(|owner| owner.trim() != "unowned" && !owner.trim().is_empty())
+                .unwrap_or_else(|| "core/policy".into());
+            proposed.allow.push(ledger_self_receipt(
+                &format!("allow-{:04}", proposed.allow.len() + 1),
+                &ledger_rel,
+                &owner,
+            ));
         }
     }
     // Validate the complete policy before writing, matching add/prune/refresh (#2832 audit).

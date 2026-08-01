@@ -73,7 +73,7 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
             path.display()
         )));
     }
-    let policy_contents = starter_policy(args.strict);
+    let policy_contents = starter_policy(args.strict, &policy_rel_display(&args.config));
     apply_single_target(SingleTargetApplyRequest {
         repository_root: &root,
         target: &args.config,
@@ -128,6 +128,14 @@ fn created_path_display(root: &Path, path: &Path) -> String {
 /// check before committing to the write: the default gate mode, the source
 /// inventory, ownership, and the requirement posture. Strict mode promotes
 /// `default_mode` to `strict` and turns stale entries into failures.
+/// Repo-relative, forward-slashed form of the policy path, for the ledger's
+/// own receipt. `--config` is already relative to the source-tree root; this
+/// only normalizes separators so a Windows invocation writes the same glob a
+/// POSIX one does (#3032).
+fn policy_rel_display(config: &Path) -> String {
+    config.to_string_lossy().replace('\\', "/")
+}
+
 fn starter_policy_preview(strict: bool) -> String {
     let (default_mode, stale_fail) = if strict {
         ("strict", "true")

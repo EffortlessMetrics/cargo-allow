@@ -22,6 +22,7 @@ pub mod extraction_shims;
 pub mod federation;
 pub mod import_roots;
 mod lane_validation;
+mod ledger_self_receipt;
 mod lifecycle;
 mod policy_header;
 pub mod product_crates;
@@ -63,6 +64,10 @@ pub use evidence_diagnostics::{
 pub use evidence_reference::{
     canonical_evidence_prefixes, local_file_evidence_prefixes, recognized_evidence_prefixes,
     traceability_evidence_prefixes,
+};
+pub use ledger_self_receipt::{
+    LEDGER_SELF_RECEIPT_CLASSIFICATION, LEDGER_SELF_RECEIPT_REVIEW_DAYS, ledger_self_receipt,
+    receipts_ledger_at,
 };
 pub use lifecycle::BASELINE_DEBT_MAX_DAYS;
 pub use render::render_policy;

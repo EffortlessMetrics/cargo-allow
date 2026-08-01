@@ -2,7 +2,7 @@ use super::{parse_policy, starter_policy};
 
 #[test]
 fn starter_policy_defaults_to_no_new_mode() {
-    let policy = starter_policy(false);
+    let policy = starter_policy(false, "policy/allow.toml");
     assert!(policy.contains("owner = \"core/policy\""));
     assert!(policy.contains("default_mode = \"no-new\""));
     assert!(policy.contains("stale_entries_fail = false"));
@@ -17,7 +17,7 @@ fn starter_policy_defaults_to_no_new_mode() {
 
 #[test]
 fn strict_starter_policy_enables_strict_defaults() {
-    let policy = starter_policy(true);
+    let policy = starter_policy(true, "policy/allow.toml");
     assert!(policy.contains("default_mode = \"strict\""));
     assert!(policy.contains("stale_entries_fail = true"));
 

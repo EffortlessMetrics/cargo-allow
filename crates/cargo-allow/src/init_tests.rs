@@ -117,7 +117,7 @@ fn init_non_force_create_new_only_fails_closed_on_late_target() {
         std::panic::panic_any(format!("simulate external target creation: {err}"))
     });
 
-    let contents = starter_policy(false);
+    let contents = starter_policy(false, "policy/allow.toml");
     let response = apply_single_target(SingleTargetApplyRequest {
         repository_root: &root,
         target: &policy_rel,
