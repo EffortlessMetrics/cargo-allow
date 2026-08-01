@@ -26,12 +26,14 @@ impl LedgerRole {
     }
 
     pub fn parse(value: &str) -> CargoAllowResult<Self> {
-        match value.trim() {
+        let trimmed = value.trim();
+        let normalized = trimmed.to_ascii_lowercase();
+        match normalized.as_str() {
             "canonical" => Ok(Self::Canonical),
             "mirror" => Ok(Self::Mirror),
             "imported" => Ok(Self::Imported),
-            other => Err(CargoAllowError::new(format!(
-                "unsupported ledger role `{other}`"
+            _ => Err(CargoAllowError::new(format!(
+                "unsupported ledger role `{trimmed}`; valid values: canonical, mirror, imported"
             ))),
         }
     }

@@ -37,55 +37,56 @@ impl FamilyFilter {
 }
 
 pub(crate) fn parse_kind_filter(kind: &str) -> CargoAllowResult<KindFilter> {
-    if is_panic_compat_kind(kind) {
+    let normalized = kind.trim().to_ascii_lowercase();
+    if is_panic_compat_kind(&normalized) {
         return Ok(KindFilter {
             kind: FindingKind::Panic,
             family: FamilyFilter::Any,
         });
     }
-    if is_no_panic_allowlist_compat_kind(kind) {
+    if is_no_panic_allowlist_compat_kind(&normalized) {
         return Ok(KindFilter {
             kind: FindingKind::Panic,
             family: FamilyFilter::Any,
         });
     }
-    if is_clippy_compat_kind(kind) {
+    if is_clippy_compat_kind(&normalized) {
         return Ok(KindFilter {
             kind: FindingKind::LintException,
             family: FamilyFilter::Any,
         });
     }
-    if is_unsafe_compat_kind(kind) {
+    if is_unsafe_compat_kind(&normalized) {
         return Ok(KindFilter {
             kind: FindingKind::Unsafe,
             family: FamilyFilter::Any,
         });
     }
-    if is_executable_compat_kind(kind) {
+    if is_executable_compat_kind(&normalized) {
         return Ok(KindFilter {
             kind: FindingKind::PolicyException,
             family: FamilyFilter::Exact("executable_file"),
         });
     }
-    if is_workflow_compat_kind(kind) {
+    if is_workflow_compat_kind(&normalized) {
         return Ok(KindFilter {
             kind: FindingKind::PolicyException,
             family: FamilyFilter::Workflow,
         });
     }
-    if is_dependency_surface_compat_kind(kind) {
+    if is_dependency_surface_compat_kind(&normalized) {
         return Ok(KindFilter {
             kind: FindingKind::PolicyException,
             family: FamilyFilter::Exact("dependency_surface"),
         });
     }
-    if is_process_compat_kind(kind) {
+    if is_process_compat_kind(&normalized) {
         return Ok(KindFilter {
             kind: FindingKind::PolicyException,
             family: FamilyFilter::Exact("process_spawn"),
         });
     }
-    if is_network_compat_kind(kind) {
+    if is_network_compat_kind(&normalized) {
         return Ok(KindFilter {
             kind: FindingKind::PolicyException,
             family: FamilyFilter::Exact("network_destination"),
