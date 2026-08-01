@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn human_vocabulary_lists_all_kind_groups() {
-    let text = render_vocabulary_human();
+    let text = render_vocabulary_human_styled(allow_report::Style::PLAIN);
 
     assert!(text.contains("panic"));
     assert!(text.contains("unsafe"));
@@ -18,7 +18,7 @@ fn human_vocabulary_lists_all_kind_groups() {
 
 #[test]
 fn human_vocabulary_lists_kind_aliases() {
-    let text = render_vocabulary_human();
+    let text = render_vocabulary_human_styled(allow_report::Style::PLAIN);
 
     assert!(
         text.contains("clippy"),
@@ -30,7 +30,7 @@ fn human_vocabulary_lists_kind_aliases() {
 
 #[test]
 fn human_vocabulary_lists_evidence_prefix_categories() {
-    let text = render_vocabulary_human();
+    let text = render_vocabulary_human_styled(allow_report::Style::PLAIN);
 
     assert!(text.contains("Local-file"));
     assert!(text.contains("Traceability"));
@@ -42,7 +42,7 @@ fn human_vocabulary_lists_evidence_prefix_categories() {
 
 #[test]
 fn human_vocabulary_lists_all_statuses() {
-    let text = render_vocabulary_human();
+    let text = render_vocabulary_human_styled(allow_report::Style::PLAIN);
 
     for status in MatchStatus::ALL {
         assert!(
@@ -51,6 +51,17 @@ fn human_vocabulary_lists_all_statuses() {
             status.as_str()
         );
     }
+}
+
+#[test]
+fn human_vocabulary_styles_fixed_headings_and_statuses_only() {
+    let text = render_vocabulary_human_styled(allow_report::Style::ANSI);
+
+    assert!(text.starts_with("\u{1b}[1mcargo-allow vocabulary\u{1b}[0m\n"));
+    assert!(text.contains("  \u{1b}[31mnew\u{1b}[0m\n"));
+    assert!(text.contains("  \u{1b}[32mmatched\u{1b}[0m\n"));
+    assert!(!text.contains("panic\u{1b}"));
+    assert!(!text.contains("doc:\u{1b}"));
 }
 
 #[test]

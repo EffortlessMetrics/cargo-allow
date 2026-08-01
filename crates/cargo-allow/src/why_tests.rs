@@ -76,6 +76,21 @@ fn render_why_lists_mismatch_reasons_for_new_findings() {
     assert!(text.contains("callee mismatch"));
     assert!(text.contains("cargo-allow"));
     assert!(text.contains("Claim boundary"));
+
+    let styled = render_why_text_styled(
+        &finding,
+        &outcome,
+        &[WhyCandidate {
+            entry: &entry,
+            reasons: explain_match_failure(&entry, &finding),
+        }],
+        allow_report::Style::ANSI,
+    );
+    assert!(styled.contains("- status: \u{1b}[31mnew\u{1b}[0m"));
+    assert!(
+        !styled.contains("unreceipted panic.unwrap at src/lib.rs:10:1\u{1b}"),
+        "repository-controlled messages must stay unstyled"
+    );
 }
 
 #[test]

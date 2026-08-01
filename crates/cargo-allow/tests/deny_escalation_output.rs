@@ -3,6 +3,7 @@ mod support;
 
 use std::fs;
 
+use allow_core::SimpleDate;
 use json_assertions::{assert_json_str, assert_json_u64};
 use support::{
     assert_saved_json_artifact, assert_status, assert_stderr_empty, assert_stdout_empty,
@@ -170,6 +171,10 @@ fn advisory_only_check_fails_when_denied_occurrence_headroom_is_positive() {
 }
 
 fn write_counted_headroom_fixture(root: &std::path::Path) {
+    let today = SimpleDate::today_utc_approx();
+    let created = today;
+    let review_after = today.add_days(30);
+    let expires = today.add_days(90);
     std::fs::create_dir_all(root.join("crates/alpha"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("create alpha dir: {err}")));
     std::fs::write(
@@ -181,7 +186,8 @@ fn write_counted_headroom_fixture(root: &std::path::Path) {
         .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
     std::fs::write(
         root.join("policy/allow.toml"),
-        r#"policy = "cargo-allow"
+        format!(
+            r#"policy = "cargo-allow"
 
 [[allow]]
 id = "allow-manifest"
@@ -193,20 +199,22 @@ classification = "baseline_debt"
 reason = "fixture counted baseline headroom"
 occurrence_limit = 2
 evidence = ["test:deny_escalation_output"]
-created = "2026-06-01"
-review_after = "2026-08-01"
-expires = "2026-09-28"
+created = "{created}"
+review_after = "{review_after}"
+expires = "{expires}"
 
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
 glob = "crates/*/Cargo.toml"
-"#,
+"#
+        ),
     )
     .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
 }
 
 fn write_policy_missing_evidence_fixture(root: &std::path::Path) {
+    let review_after = SimpleDate::today_utc_approx().add_days(30);
     fs::create_dir_all(root.join("policy"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
     fs::create_dir_all(root.join("docs"))
@@ -215,7 +223,8 @@ fn write_policy_missing_evidence_fixture(root: &std::path::Path) {
         .unwrap_or_else(|err| std::panic::panic_any(format!("write doc fixture: {err}")));
     fs::write(
         root.join("policy/allow.toml"),
-        r#"policy = "cargo-allow"
+        format!(
+            r#"policy = "cargo-allow"
 
 [[allow]]
 id = "allow-policy"
@@ -227,7 +236,7 @@ classification = "fixture"
 reason = "fixture policy file"
 evidence = ["test:deny_escalation_output"]
 created = "2026-06-01"
-review_after = "2026-08-01"
+review_after = "{review_after}"
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -244,14 +253,15 @@ owner = "core"
 classification = "fixture"
 reason = "fixture policy documentation"
 created = "2026-06-01"
-review_after = "2026-08-01"
+review_after = "{review_after}"
 
 [allow.selector]
 ast_kind = "tracked_file"
 symbol = "docs/policy.md"
 target_fingerprint = "md"
 glob = "docs/policy.md"
-"#,
+"#
+        ),
     )
     .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
 }

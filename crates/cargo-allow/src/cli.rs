@@ -5,7 +5,7 @@ use std::ffi::OsStr;
 
 use crate::{
     add, audit, check, completions, diff, doctor, explain, init, list, migrate, precommit_tool,
-    propose, prune, refresh, vocabulary, why, worklist,
+    propose, prune, reference, refresh, vocabulary, why, worklist,
 };
 
 #[derive(Debug, Parser)]
@@ -22,9 +22,10 @@ pub(crate) struct CargoAllowCli {
     /// on stdout; `never` disables it. Machine formats (JSON, SARIF,
     /// receipts) and `--output` files are never styled.
     ///
-    /// Currently honored by `check`, `audit`, `list`, `explain`, and `worklist`
-    /// human reports. Other commands (diff, why, doctor, etc.) emit plain text
-    /// regardless of this flag — see #2572 for the remaining expansion.
+    /// Currently honored by `init`, `check`, `audit`, `list`, `explain`, `diff`,
+    /// `why`, `doctor`, `propose`, `worklist`, `refresh`, `prune`, `add`,
+    /// `migrate`, `tool`, and `vocabulary` human reports. Completion scripts
+    /// and other machine-oriented output remain plain.
     ///
     /// Precedence: explicit flag > NO_COLOR > CLICOLOR_FORCE >
     /// CARGO_TERM_COLOR=never > terminal capability. CARGO_TERM_COLOR can
@@ -83,6 +84,8 @@ pub(crate) enum CargoAllowCommand {
     Tool(precommit_tool::ToolArgs),
     /// Generate a shell completion script.
     Completions(completions::CompletionsArgs),
+    /// Generate a deterministic Markdown or JSON command reference.
+    Reference(reference::ReferenceArgs),
 }
 
 /// Resolve the process output style from the flag, the environment, and
@@ -157,6 +160,7 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::Vocabulary(args) => vocabulary::cmd_vocabulary(&args),
         CargoAllowCommand::Tool(args) => precommit_tool::cmd_tool(&args),
         CargoAllowCommand::Completions(args) => completions::cmd_completions(&args),
+        CargoAllowCommand::Reference(args) => reference::cmd_reference(&args),
     }
 }
 
@@ -253,5 +257,6 @@ impl CargoAllowCommand {
         "vocabulary",
         "tool",
         "completions",
+        "reference",
     ];
 }

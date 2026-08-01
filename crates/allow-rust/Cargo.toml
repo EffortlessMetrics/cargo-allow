@@ -13,6 +13,7 @@ categories.workspace = true
 
 [dependencies]
 allow-core.workspace = true
+rayon.workspace = true
 toml.workspace = true
 tree-sitter.workspace = true
 tree-sitter-rust.workspace = true

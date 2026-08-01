@@ -10563,3 +10563,47 @@ glob = "docs/specs/CARGO-ALLOW-SPEC-0011-three-product-convergence.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0502"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/how-to/install-shell-completions.md"
+owner = "core/docs"
+classification = "operator_guide"
+reason = "Publishes version-matched installation, regeneration, and removal guidance for the shipped shell completion command."
+evidence = ["issue:2479", "doc:docs/how-to/README.md", "doc:README.md"]
+created = "2026-08-01"
+review_after = "2026-10-30"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/how-to/install-shell-completions.md"
+target_fingerprint = "md"
+glob = "docs/how-to/install-shell-completions.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0503"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/glossary.md"
+owner = "core/docs"
+classification = "product_documentation"
+reason = "Defines the recurring cargo-allow policy, selector, identity, lifecycle, and migration vocabulary for first-hour adopters and reviewers."
+evidence = ["issue:1991", "doc:docs/README.md", "doc:docs/claim-boundaries.md"]
+created = "2026-08-01"
+review_after = "2026-10-30"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/glossary.md"
+target_fingerprint = "md"
+glob = "docs/glossary.md"
+
+[allow.last_seen]
+line = 1
+column = 1

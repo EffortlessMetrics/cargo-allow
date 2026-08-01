@@ -33,6 +33,7 @@ pub(super) fn render_diff_pr_summary_markdown(
     )
 }
 
+#[cfg(test)]
 pub(super) fn append_diff_posture_summary(
     text: &mut String,
     format: OutputFormat,
@@ -40,6 +41,26 @@ pub(super) fn append_diff_posture_summary(
     evidence: EvidenceReportSummary,
     outcomes: &[MatchOutcome],
     ledger: &DiffLedgerContext<'_>,
+) {
+    append_diff_posture_summary_styled(
+        text,
+        format,
+        current_failures,
+        evidence,
+        outcomes,
+        ledger,
+        allow_report::Style::PLAIN,
+    );
+}
+
+pub(super) fn append_diff_posture_summary_styled(
+    text: &mut String,
+    format: OutputFormat,
+    current_failures: usize,
+    evidence: EvidenceReportSummary,
+    outcomes: &[MatchOutcome],
+    ledger: &DiffLedgerContext<'_>,
+    style: allow_report::Style,
 ) {
     if format != OutputFormat::Human {
         return;
@@ -49,30 +70,50 @@ pub(super) fn append_diff_posture_summary(
     let finding_rows = finding_change_rows(&finding_bundles);
     let policy_rows = policy_change_rows(&policy_bundles);
     text.push_str(
-        &allow_report::render_diff_posture_summary_human_with_evidence_health_counts(
+        &allow_report::render_diff_posture_summary_human_with_evidence_health_counts_styled(
             current_failures.max(current_no_new_failures(outcomes)),
-            evidence.broken_evidence_links,
-            evidence.policy_missing_evidence_entries,
-            evidence.weak_evidence_references,
+            (
+                evidence.broken_evidence_links,
+                evidence.policy_missing_evidence_entries,
+                evidence.weak_evidence_references,
+            ),
             &finding_rows,
             &policy_rows,
             ledger.ledger_movement_summary(),
+            style,
         ),
     );
 }
 
+#[cfg(test)]
 pub(super) fn append_finding_posture_changes(
     text: &mut String,
     format: OutputFormat,
     changes: &[allow_diff::FindingPostureChange],
     head_cfg: &AllowConfig,
 ) {
+    append_finding_posture_changes_styled(
+        text,
+        format,
+        changes,
+        head_cfg,
+        allow_report::Style::PLAIN,
+    );
+}
+
+pub(super) fn append_finding_posture_changes_styled(
+    text: &mut String,
+    format: OutputFormat,
+    changes: &[allow_diff::FindingPostureChange],
+    head_cfg: &AllowConfig,
+    style: allow_report::Style,
+) {
     let bundles = finding_row_bundles(changes, head_cfg);
     let rows = finding_change_rows(&bundles);
     match format {
-        OutputFormat::Human => {
-            text.push_str(&allow_report::render_diff_finding_changes_human(&rows))
-        }
+        OutputFormat::Human => text.push_str(
+            &allow_report::render_diff_finding_changes_human_styled(&rows, style),
+        ),
         OutputFormat::Markdown => {
             text.push_str(&allow_report::render_diff_finding_changes_markdown(&rows));
         }
@@ -149,18 +190,29 @@ pub(crate) fn render_diff_json_report(
     )
 }
 
+#[cfg(test)]
 pub(super) fn append_policy_changes(
     text: &mut String,
     format: OutputFormat,
     changes: &[allow_diff::PolicyChange],
     head_cfg: &AllowConfig,
 ) {
+    append_policy_changes_styled(text, format, changes, head_cfg, allow_report::Style::PLAIN);
+}
+
+pub(super) fn append_policy_changes_styled(
+    text: &mut String,
+    format: OutputFormat,
+    changes: &[allow_diff::PolicyChange],
+    head_cfg: &AllowConfig,
+    style: allow_report::Style,
+) {
     let bundles = policy_row_bundles(changes, head_cfg);
     let rows = policy_change_rows(&bundles);
     match format {
-        OutputFormat::Human => {
-            text.push_str(&allow_report::render_diff_policy_changes_human(&rows))
-        }
+        OutputFormat::Human => text.push_str(
+            &allow_report::render_diff_policy_changes_human_styled(&rows, style),
+        ),
         OutputFormat::Markdown => {
             text.push_str(&allow_report::render_diff_policy_changes_markdown(&rows));
         }

@@ -36,30 +36,59 @@ pub fn append_movement_summary_json(out: &mut String, summary: DiffLedgerMovemen
 }
 
 pub fn append_movement_summary_human(out: &mut String, summary: DiffLedgerMovementSummary) {
+    append_movement_summary_human_styled(out, summary, crate::Style::PLAIN);
+}
+
+pub fn append_movement_summary_human_styled(
+    out: &mut String,
+    summary: DiffLedgerMovementSummary,
+    style: crate::Style,
+) {
     out.push_str("  movement:\n");
     out.push_str(&format!(
-        "    introduced: {}\n",
+        "    {}: {}\n",
+        style_diff_status(style, "introduced"),
         summary.movement.introduced
     ));
-    out.push_str(&format!("    retained: {}\n", summary.movement.retained));
-    out.push_str(&format!("    removed: {}\n", summary.movement.removed));
+    out.push_str(&format!(
+        "    {}: {}\n",
+        style_diff_status(style, "retained"),
+        summary.movement.retained
+    ));
+    out.push_str(&format!(
+        "    {}: {}\n",
+        style_diff_status(style, "removed"),
+        summary.movement.removed
+    ));
     out.push_str("  posture_delta:\n");
     out.push_str(&format!(
-        "    improved: {}\n",
+        "    {}: {}\n",
+        style_diff_status(style, "improved"),
         summary.posture_delta.improved
     ));
     out.push_str(&format!(
-        "    worsened: {}\n",
+        "    {}: {}\n",
+        style_diff_status(style, "worsened"),
         summary.posture_delta.worsened
     ));
     out.push_str(&format!(
-        "    review_required: {}\n",
+        "    {}: {}\n",
+        style_diff_status(style, "review_required"),
         summary.posture_delta.review_required
     ));
     out.push_str(&format!(
-        "    unchanged: {}\n",
+        "    {}: {}\n",
+        style_diff_status(style, "unchanged"),
         summary.posture_delta.unchanged
     ));
+}
+
+fn style_diff_status(style: crate::Style, status: &str) -> String {
+    match status {
+        "introduced" | "worsened" => style.blocking(status),
+        "removed" | "improved" => style.ok(status),
+        _ => style.advisory(status),
+    }
 }
 
 pub fn append_movement_summary_markdown(out: &mut String, summary: DiffLedgerMovementSummary) {

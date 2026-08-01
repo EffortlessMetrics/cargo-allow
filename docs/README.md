@@ -9,6 +9,8 @@ governance profile model around it.
   no-new governance, spec-system, CI, cross-repo adoption, or friction filing.
 - [Getting started](getting-started.md): first-run tutorial for doctor, audit,
   init/propose, and no-new checks.
+- [Glossary](glossary.md): definitions for recurring policy, selector, identity,
+  lifecycle, and migration terms.
 - [Changelog](../CHANGELOG.md): curated user-facing release ledger.
 - [Contributing](../CONTRIBUTING.md): local development, product boundaries,
   and pull request expectations.
@@ -131,6 +133,8 @@ governance profile model around it.
 ## Reference
 
 - [How-to guides](how-to/README.md): task guide index.
+- [Install shell completions](how-to/install-shell-completions.md): generate
+  version-matched completion scripts from the installed binary.
 - [Error codes and exit codes](error-codes.md): stable `E000*` registry and
   process exit mapping (`0` / `1` / `2`).
 - [CI](ci.md): GitHub Actions examples for PR posture diffs, mainline checks,

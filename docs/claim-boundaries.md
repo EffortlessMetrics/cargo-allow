@@ -3,6 +3,10 @@
 cargo-allow reports source-exception governance facts. Its wording must stay
 inside what the implementation actually proves.
 
+See the [cargo-allow glossary](glossary.md) for the definitions of structural
+identity, durable identity, selector precision, lanes, and related policy terms
+used below.
+
 ## Current Valid Claims
 
 For current source-syntax scans, a passing `cargo-allow check --mode no-new`
@@ -35,6 +39,11 @@ All exceptions are proven safe.
 ```
 
 ## Source Syntax Only
+
+The no-build claim is about the target repository, not cargo-allow's own
+installation. Building the cargo-allow binary may compile native dependencies,
+including tree-sitter through a C toolchain. Once installed, the scanner does
+not compile or execute the target repository.
 
 The current scanner reads source-tree files and source text. It does not require
 a successful build and does not execute repository code. Individual source,

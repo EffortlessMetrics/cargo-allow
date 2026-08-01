@@ -1,3 +1,6 @@
+use unicode_segmentation::UnicodeSegmentation;
+use unicode_width::UnicodeWidthStr;
+
 /// One TSV column in the `list` human-format output. Order of the variants
 /// is the canonical column order emitted by `render_list_human` when no
 /// `--columns` selection is made (#2595).
@@ -112,8 +115,17 @@ impl ListColumn {
     /// The bounded cell projection used by the CLI's concise human view.
     /// Explicit `--columns` and `--wide` retain the complete cell values.
     pub fn concise_value(self, row: &ListRow<'_>) -> String {
+        self.concise_value_with_width(row, self.concise_width())
+    }
+
+    /// Render a concise cell within a caller-provided display-width budget.
+    ///
+    /// The list card renderer uses this when an operator explicitly supplies
+    /// a terminal width. The normal concise limits remain the ceiling so a
+    /// wider terminal does not make repository text unbounded.
+    pub fn concise_value_with_width(self, row: &ListRow<'_>, max_width: usize) -> String {
         let value = self.value(row);
-        truncate_with_ellipsis(value.as_ref(), self.concise_width())
+        truncate_with_ellipsis(value.as_ref(), max_width.min(self.concise_width()))
     }
 
     fn concise_width(self) -> usize {
@@ -195,14 +207,24 @@ impl ListColumn {
     }
 }
 
-fn truncate_with_ellipsis(value: &str, max_chars: usize) -> String {
-    if value.chars().count() <= max_chars {
+pub(crate) fn truncate_with_ellipsis(value: &str, max_width: usize) -> String {
+    if value.width() <= max_width {
         return value.to_string();
     }
-    let prefix = value
-        .chars()
-        .take(max_chars.saturating_sub(1))
-        .collect::<String>();
+    if max_width == 0 {
+        return String::new();
+    }
+    let prefix_width = max_width.saturating_sub("…".width());
+    let mut prefix = String::new();
+    let mut width = 0;
+    for grapheme in value.graphemes(true) {
+        let grapheme_width = grapheme.width();
+        if width + grapheme_width > prefix_width {
+            break;
+        }
+        prefix.push_str(grapheme);
+        width += grapheme_width;
+    }
     format!("{prefix}…")
 }
 

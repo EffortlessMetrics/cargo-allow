@@ -303,6 +303,212 @@ fn list_concise_summary_and_empty_states_are_explicit() {
 }
 
 #[test]
+fn list_concise_layout_bounds_unicode_ids_paths_and_reasons() {
+    let long_id = "識別子".repeat(20);
+    let long_scope = "路径/模块/".repeat(16);
+    let long_reason = "理由🙂".repeat(40);
+    let rows = [ListRow {
+        id: &long_id,
+        status: "matched",
+        matches: 1,
+        kind: "panic",
+        family: Some("unwrap"),
+        owner: "runtime",
+        classification: "reviewed_exception",
+        scope: &long_scope,
+        source_package: Some("cargo-allow"),
+        evidence_count: 1,
+        broken_evidence_references: 0,
+        weak_evidence_references: 0,
+        selector_precision: 1,
+        broad_scope: false,
+        review_after: None,
+        expires: None,
+        reason: &long_reason,
+    }];
+
+    let text = render_list_human_concise(
+        &rows,
+        InventoryContext::source_syntax("git_tracked", None, Some(1)),
+        ListFilters::default(),
+        ListColumn::DEFAULT,
+    );
+
+    let expected_id = crate::artifacts::truncate_with_ellipsis(&long_id, 36);
+    let expected_scope = crate::artifacts::truncate_with_ellipsis(&long_scope, 48);
+    let expected_reason = crate::artifacts::truncate_with_ellipsis(&long_reason, 72);
+    assert!(text.contains(&format!("- [matched] {expected_id}\n")));
+    assert!(text.contains(&format!("  scope: {expected_scope}\n")));
+    assert!(text.contains(&format!("  reason: {expected_reason}\n")));
+    assert!(!text.contains(&long_id));
+    assert!(!text.contains(&long_scope));
+    assert!(!text.contains(&long_reason));
+
+    for line in text.lines().filter(|line| {
+        line.starts_with("- [")
+            || line.starts_with("  kind:")
+            || line.starts_with("  scope:")
+            || line.starts_with("  owner:")
+            || line.starts_with("  matches:")
+            || line.starts_with("  reason:")
+    }) {
+        assert!(
+            line.chars().count() <= 82,
+            "concise card line exceeded the bounded layout: {line}"
+        );
+    }
+}
+
+#[test]
+fn list_concise_rendering_is_deterministic_without_terminal_width_input() {
+    let rows = [ListRow {
+        id: "allow-width",
+        status: "review_due",
+        matches: 2,
+        kind: "unsafe",
+        family: Some("raw-pointer"),
+        owner: "runtime",
+        classification: "reviewed_exception",
+        scope: "crates/runtime/src/lib.rs",
+        source_package: Some("allow-core"),
+        evidence_count: 2,
+        broken_evidence_references: 0,
+        weak_evidence_references: 1,
+        selector_precision: 3,
+        broad_scope: false,
+        review_after: Some("2026-10-01"),
+        expires: None,
+        reason: "review the safety contract",
+    }];
+    let inventory = InventoryContext::source_syntax("git_tracked", None, Some(3));
+
+    let first = render_list_human_concise(
+        &rows,
+        inventory,
+        ListFilters::default(),
+        ListColumn::DEFAULT,
+    );
+    let second = render_list_human_concise(
+        &rows,
+        inventory,
+        ListFilters::default(),
+        ListColumn::DEFAULT,
+    );
+
+    assert_eq!(first, second);
+    assert!(first.contains("- [review_due] allow-width\n"));
+    assert!(first.contains("weak evidence: 1"));
+}
+
+#[test]
+fn list_concise_width_bounds_card_lines_without_changing_rows() {
+    let long_id = "allow-width-".to_string() + &"x".repeat(80);
+    let long_scope = "crates/".to_string() + &"module/".repeat(20);
+    let long_reason = "reason ".repeat(40);
+    let rows = [ListRow {
+        id: &long_id,
+        status: "matched",
+        matches: 1,
+        kind: "panic",
+        family: Some("unwrap"),
+        owner: "runtime-owner-with-a-long-name",
+        classification: "reviewed_exception",
+        scope: &long_scope,
+        source_package: Some("allow-core"),
+        evidence_count: 1,
+        broken_evidence_references: 0,
+        weak_evidence_references: 0,
+        selector_precision: 1,
+        broad_scope: false,
+        review_after: None,
+        expires: None,
+        reason: &long_reason,
+    }];
+    let width = 40;
+    let text = render_list_human_concise_styled_with_width(
+        &rows,
+        InventoryContext::unknown_source_syntax(),
+        ListFilters::default(),
+        ListColumn::DEFAULT,
+        Style::PLAIN,
+        Some(width),
+    );
+
+    assert!(text.contains("summary: 1 allow entries shown (matched: 1)"));
+    assert!(text.contains("- [matched] "));
+    assert!(text.contains("  kind: panic.unwrap"));
+    assert!(text.contains('…'));
+    for line in text.lines().filter(|line| {
+        line.starts_with("- [")
+            || line.starts_with("  kind:")
+            || line.starts_with("  scope:")
+            || line.starts_with("  owner:")
+            || line.starts_with("  matches:")
+            || line.starts_with("  reason:")
+    }) {
+        assert!(
+            line.chars().count() <= width,
+            "explicit list width exceeded: {line}"
+        );
+    }
+}
+
+#[test]
+fn list_concise_width_uses_terminal_display_width_and_keeps_graphemes() {
+    let wide_id = "界".repeat(40);
+    let combining_reason = "e\u{301}".repeat(40);
+    let rows = [ListRow {
+        id: &wide_id,
+        status: "matched",
+        matches: 1,
+        kind: "panic",
+        family: Some("unwrap"),
+        owner: "runtime",
+        classification: "reviewed_exception",
+        scope: "src/lib.rs",
+        source_package: None,
+        evidence_count: 1,
+        broken_evidence_references: 0,
+        weak_evidence_references: 0,
+        selector_precision: 1,
+        broad_scope: false,
+        review_after: None,
+        expires: None,
+        reason: &combining_reason,
+    }];
+    let width = 40;
+    let text = render_list_human_concise_styled_with_width(
+        &rows,
+        InventoryContext::unknown_source_syntax(),
+        ListFilters::default(),
+        ListColumn::DEFAULT,
+        Style::PLAIN,
+        Some(width),
+    );
+
+    for line in text.lines().filter(|line| {
+        line.starts_with("- [")
+            || line.starts_with("  kind:")
+            || line.starts_with("  scope:")
+            || line.starts_with("  owner:")
+            || line.starts_with("  reason:")
+    }) {
+        assert!(
+            unicode_width::UnicodeWidthStr::width(line) <= width,
+            "display width exceeded: {line}"
+        );
+    }
+    assert!(text.contains("e\u{301}"));
+}
+
+#[test]
+fn list_concise_width_handles_empty_and_single_cell_budgets() {
+    assert_eq!(crate::artifacts::truncate_with_ellipsis("界", 0), "");
+    assert_eq!(crate::artifacts::truncate_with_ellipsis("界", 1), "…");
+    assert_eq!(crate::artifacts::truncate_with_ellipsis("a", 1), "a");
+}
+
+#[test]
 fn list_status_style_is_shared_by_cards_and_wide_rows() {
     let rows = [ListRow {
         id: "allow-style",

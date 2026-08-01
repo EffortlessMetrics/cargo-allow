@@ -6,7 +6,9 @@ use crate::migrate_closeout::{
     migrate_closeout_from_input,
 };
 use crate::migrate_closeout_queues::migrate_follow_up_queues_for_legacy;
-use crate::{CLAIM_BOUNDARY_TEXT, MigrateReport, MutationReceipt, render_mutation_receipt_json};
+use crate::{
+    CLAIM_BOUNDARY_TEXT, MigrateReport, MutationReceipt, Style, render_mutation_receipt_json,
+};
 use allow_core::json_escape;
 
 const BROKEN_EVIDENCE_LINK_COMMAND: &str =
@@ -22,12 +24,29 @@ pub fn render_migrate_human(
     report: MigrateReport<'_>,
     closeout_input: MigrateCloseoutInput<'_>,
 ) -> String {
+    render_migrate_human_styled(report, closeout_input, Style::PLAIN)
+}
+
+pub fn render_migrate_human_styled(
+    report: MigrateReport<'_>,
+    closeout_input: MigrateCloseoutInput<'_>,
+    style: Style,
+) -> String {
+    let closeout = migrate_closeout_from_input(closeout_input);
     let mut out = String::new();
     out.push_str("cargo-allow migrate summary\n");
     out.push_str(&format!("input_kind: {}\n", report.input_kind));
     out.push_str(&format!("input: {}\n", report.input_path));
     out.push_str(&format!("output: {}\n", report.output_path));
     out.push_str(&format!("force: {}\n", report.force));
+    out.push_str("migration posture: ");
+    let (posture_status, posture_label) = if closeout.legacy_retirement.ready {
+        ("complete", "ready")
+    } else {
+        ("baseline_debt", "blocked")
+    };
+    out.push_str(&style.status(posture_status, posture_label));
+    out.push('\n');
     out.push_str(&format!("allow_entries: {}\n", report.allow_entries));
     out.push_str(&format!("baseline_debt: {}\n", report.baseline_debt));
     out.push_str(&format!("unsafe_entries: {}\n", report.unsafe_entries));
@@ -69,7 +88,6 @@ pub fn render_migrate_human(
         &closeout_input.legacy_compat_kind_ids(),
     );
     append_migrate_evidence_repair_queues_human(report, &mut out);
-    let closeout = migrate_closeout_from_input(closeout_input);
     append_migrate_closeout_human(&closeout, &mut out);
     out.push_str(&format!(
         "inventory: {}/{} via {}{}\n",

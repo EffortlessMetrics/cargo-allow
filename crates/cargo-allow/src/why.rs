@@ -18,7 +18,9 @@ mod why_render;
 mod why_shell;
 
 pub(crate) use why_args::WhyArgs;
-use why_render::{WhyCandidate, render_why_json, render_why_text};
+#[cfg(test)]
+use why_render::render_why_text;
+use why_render::{WhyCandidate, render_why_json, render_why_text_styled};
 
 const MAX_CANDIDATES: usize = 8;
 
@@ -80,8 +82,13 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
         })?;
         crate::write_file_no_overwrite(plan_path, &plan, false)?;
     }
+    let style = if matches!(args.format, HumanJsonFormat::Human) && args.output.is_none() {
+        crate::reporting::output_style()
+    } else {
+        allow_report::Style::PLAIN
+    };
     let text = match args.format {
-        HumanJsonFormat::Human => render_why_text(finding, &outcome, &candidates),
+        HumanJsonFormat::Human => render_why_text_styled(finding, &outcome, &candidates, style),
         HumanJsonFormat::Json => {
             render_why_json(source_context.inventory(), finding, &outcome, &candidates)
         }

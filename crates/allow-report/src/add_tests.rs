@@ -230,6 +230,24 @@ fn add_json_renderer_records_entry_and_selected_finding() -> Result<(), String> 
     assert!(text.contains("requires human review"));
     assert!(text.contains("Claim boundary: scanned source-tree/source syntax only"));
 
+    let styled = render_add_human_styled(
+        AddReport::new(
+            InventoryContext::source_syntax(
+                "git_tracked",
+                Some("H:/Code/Rust/cargo-allow"),
+                Some(52),
+            ),
+            &entry,
+            &finding,
+            Some("policy/allow.proposed.toml"),
+            false,
+            sample_mutation_receipt(),
+        ),
+        Style::ANSI,
+    );
+    assert!(styled.contains("requires human \u{1b}[33mreview\u{1b}[0m before merge"));
+    assert_eq!(styled.matches('\u{1b}').count(), 2);
+
     let mut sparse_entry = entry.clone();
     sparse_entry.family = None;
     sparse_entry.path = None;

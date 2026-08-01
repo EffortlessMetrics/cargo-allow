@@ -36,6 +36,10 @@ fn stdout_of(result: &Output) -> String {
     String::from_utf8_lossy(&result.stdout).into_owned()
 }
 
+fn stderr_of(result: &Output) -> String {
+    String::from_utf8_lossy(&result.stderr).into_owned()
+}
+
 fn has_ansi(text: &str) -> bool {
     text.contains(ESC)
 }
@@ -85,6 +89,49 @@ fn fixture(label: &str) -> std::path::PathBuf {
     assert!(receipt.status.success(), "receipting policy should succeed");
     git(&root, &["add", "."]);
 
+    root
+}
+
+fn refresh_fixture(label: &str) -> std::path::PathBuf {
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-color-{label}-refresh-{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create refresh policy: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create refresh source: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        include_str!("../../../tests/fixtures/refresh/advisory-drift/policy/allow.toml"),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write refresh policy: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        include_str!("../../../tests/fixtures/refresh/advisory-drift/src/lib.rs"),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write refresh source: {err}")));
+    root
+}
+
+fn prune_fixture(label: &str) -> std::path::PathBuf {
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-color-{label}-prune-{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create prune policy: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create prune source: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        "schema_version = 1\n\n[workspace]\nignored = []\ngenerated = []\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write prune policy: {err}")));
+    fs::write(root.join("src/lib.rs"), "pub fn ok() -> u32 {\n    1\n}\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write prune source: {err}")));
     root
 }
 
@@ -159,6 +206,60 @@ fn list_human_statuses_use_shared_style_but_files_stay_plain() {
     let _ = fs::remove_dir_all(&root);
 }
 
+/// Captured stdout is a non-TTY boundary: concise cards stay readable and
+/// deterministic while `--wide` remains the complete human projection.
+#[test]
+fn list_non_tty_binary_preserves_concise_and_wide_boundaries() {
+    let root = fixture("list-layout");
+
+    let concise = run(&root, &[], &["list", "--color", "never"]);
+    assert!(concise.status.success(), "concise list should succeed");
+    let concise_text = stdout_of(&concise);
+    assert!(concise_text.contains("entries:\n- ["));
+    assert!(concise_text.contains("\n  kind: "));
+    assert!(concise_text.contains("\n  scope: "));
+    assert!(concise_text.contains("\n  reason: "));
+    assert!(
+        !concise_text.lines().any(|line| line.contains('\t')),
+        "concise cards must not regress to tabular rows"
+    );
+
+    let wide = run(&root, &[], &["list", "--wide", "--color", "never"]);
+    assert!(wide.status.success(), "wide list should succeed");
+    let wide_text = stdout_of(&wide);
+    assert!(wide_text.contains("id\tstatus\tmatches\tkind"));
+    assert!(
+        wide_text.lines().any(|line| line.contains('\t')),
+        "wide list should retain its complete tabular projection"
+    );
+
+    let json = run(
+        &root,
+        &[],
+        &["list", "--color", "always", "--format", "json"],
+    );
+    assert!(json.status.success(), "JSON list should succeed");
+    assert!(!has_ansi(&stdout_of(&json)), "JSON list must stay plain");
+
+    let explicit_width = run(&root, &[], &["list", "--width", "40", "--color", "never"]);
+    assert!(
+        explicit_width.status.success(),
+        "explicit width should remain available on captured stdout"
+    );
+    let repeated_width = run(&root, &[], &["list", "--width", "40", "--color", "never"]);
+    assert_eq!(
+        stdout_of(&explicit_width),
+        stdout_of(&repeated_width),
+        "captured output must stay deterministic when terminal size is unavailable"
+    );
+    assert!(
+        stdout_of(&explicit_width).contains("reason: fixture policy file for colou…"),
+        "explicit width should visibly constrain the long fixture reason"
+    );
+
+    let _ = fs::remove_dir_all(&root);
+}
+
 #[test]
 fn explain_human_statuses_use_shared_style_but_files_stay_plain() {
     let root = fixture("explain");
@@ -212,6 +313,463 @@ fn explain_human_statuses_use_shared_style_but_files_stay_plain() {
     let text = fs::read_to_string(root.join("target/cargo-allow/explain.txt"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("read explain output: {err}")));
     assert!(!has_ansi(&text), "written explain output must stay plain");
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn why_human_statuses_use_shared_style_but_files_stay_plain() {
+    let root = fixture("why");
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn fail(value: Option<u8>) -> u8 {\n    value.unwrap()\n}\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write why source: {err}")));
+
+    let plain_result = run(
+        &root,
+        &[],
+        &[
+            "why",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "2",
+            "--color",
+            "never",
+        ],
+    );
+    let styled_result = run(
+        &root,
+        &[],
+        &[
+            "why",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "2",
+            "--color",
+            "always",
+        ],
+    );
+    assert!(plain_result.status.success(), "plain why should succeed");
+    assert!(styled_result.status.success(), "styled why should succeed");
+    assert!(!has_ansi(&stdout_of(&plain_result)));
+    assert!(has_ansi(&stdout_of(&styled_result)));
+
+    let json_result = run(
+        &root,
+        &[],
+        &[
+            "why",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "2",
+            "--color",
+            "always",
+            "--format",
+            "json",
+        ],
+    );
+    assert!(json_result.status.success(), "JSON why should succeed");
+    assert!(
+        !has_ansi(&stdout_of(&json_result)),
+        "JSON why must stay plain"
+    );
+
+    fs::create_dir_all(root.join("target/cargo-allow"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create why output dir: {err}")));
+    let output_path = root.join("target/cargo-allow/why.txt");
+    let written = run(
+        &root,
+        &[],
+        &[
+            "why",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "2",
+            "--color",
+            "always",
+            "--output",
+            "target/cargo-allow/why.txt",
+        ],
+    );
+    assert!(written.status.success(), "written why should succeed");
+    let text = fs::read_to_string(output_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read why output: {err}")));
+    assert!(!has_ansi(&text), "written why output must stay plain");
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn doctor_human_statuses_use_shared_style_but_files_stay_plain() {
+    let root = fixture("doctor");
+    let plain_result = run(&root, &[], &["doctor", "--color", "never"]);
+    let styled_result = run(&root, &[], &["doctor", "--color", "always"]);
+
+    assert!(plain_result.status.success(), "plain doctor should succeed");
+    assert!(
+        styled_result.status.success(),
+        "styled doctor should succeed"
+    );
+    assert!(!has_ansi(&stdout_of(&plain_result)));
+    assert!(has_ansi(&stdout_of(&styled_result)));
+
+    let json_result = run(
+        &root,
+        &[],
+        &["doctor", "--color", "always", "--format", "json"],
+    );
+    assert!(json_result.status.success(), "JSON doctor should succeed");
+    assert!(
+        !has_ansi(&stdout_of(&json_result)),
+        "JSON doctor must stay plain"
+    );
+
+    fs::create_dir_all(root.join("target/cargo-allow"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create doctor output dir: {err}")));
+    let written = run(
+        &root,
+        &[],
+        &[
+            "doctor",
+            "--color",
+            "always",
+            "--output",
+            "target/cargo-allow/doctor.txt",
+        ],
+    );
+    assert!(written.status.success(), "written doctor should succeed");
+    let text = fs::read_to_string(root.join("target/cargo-allow/doctor.txt"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read doctor output: {err}")));
+    assert!(!has_ansi(&text), "written doctor output must stay plain");
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn propose_human_summary_status_uses_shared_style_but_policy_stays_plain() {
+    let root = fixture("propose");
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn fail(value: Option<u8>) -> u8 {\n    value.unwrap()\n}\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write propose source: {err}")));
+
+    let args = ["propose", "--max", "1"];
+    let mut plain_args = args.to_vec();
+    plain_args.extend(["--color", "never"]);
+    let mut styled_args = args.to_vec();
+    styled_args.extend(["--color", "always"]);
+    let plain = run(&root, &[], &plain_args);
+    let styled = run(&root, &[], &styled_args);
+    assert!(plain.status.success(), "plain propose should succeed");
+    assert!(styled.status.success(), "styled propose should succeed");
+    assert!(!has_ansi(&String::from_utf8_lossy(&plain.stderr)));
+    assert!(has_ansi(&String::from_utf8_lossy(&styled.stderr)));
+    assert!(
+        !has_ansi(&String::from_utf8_lossy(&styled.stdout)),
+        "generated policy TOML must stay plain"
+    );
+
+    fs::create_dir_all(root.join("target/cargo-allow"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create propose output dir: {err}")));
+    let json = run(
+        &root,
+        &[],
+        &[
+            "propose",
+            "--max",
+            "1",
+            "--color",
+            "always",
+            "--summary-format",
+            "json",
+            "--summary-output",
+            "target/cargo-allow/propose.json",
+        ],
+    );
+    assert!(json.status.success(), "JSON propose should succeed");
+    let summary = fs::read_to_string(root.join("target/cargo-allow/propose.json"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read propose summary: {err}")));
+    assert!(!has_ansi(&summary), "JSON propose summary must stay plain");
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn refresh_human_lifecycle_status_uses_shared_style_but_artifacts_stay_plain() {
+    let root = refresh_fixture("refresh");
+    let args = [
+        "refresh",
+        "--config",
+        "policy/allow.toml",
+        "--allow-id",
+        "allow-0250",
+        "--dry-run",
+        "--include-untracked",
+    ];
+    let mut plain_args = args.to_vec();
+    plain_args.extend(["--color", "never"]);
+    let mut styled_args = args.to_vec();
+    styled_args.extend(["--color", "always"]);
+
+    let plain_result = run(&root, &[], &plain_args);
+    let styled_result = run(&root, &[], &styled_args);
+    assert!(
+        plain_result.status.success(),
+        "plain refresh should succeed"
+    );
+    assert!(
+        styled_result.status.success(),
+        "styled refresh should succeed"
+    );
+    assert!(!has_ansi(&stdout_of(&plain_result)));
+    assert!(has_ansi(&stdout_of(&styled_result)));
+    assert!(stdout_of(&styled_result).contains("lifecycle: \u{1b}[32mpreserved\u{1b}[0m"));
+    assert!(stdout_of(&styled_result).contains("drift: allow-0250 last_seen changed"));
+
+    let json_result = run(
+        &root,
+        &[],
+        &[
+            "refresh",
+            "--config",
+            "policy/allow.toml",
+            "--allow-id",
+            "allow-0250",
+            "--dry-run",
+            "--include-untracked",
+            "--color",
+            "always",
+            "--format",
+            "json",
+        ],
+    );
+    assert!(json_result.status.success(), "JSON refresh should succeed");
+    assert!(
+        !has_ansi(&stdout_of(&json_result)),
+        "JSON refresh must stay plain"
+    );
+
+    fs::create_dir_all(root.join("target/cargo-allow"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create refresh output dir: {err}")));
+    let written = run(
+        &root,
+        &[],
+        &[
+            "refresh",
+            "--config",
+            "policy/allow.toml",
+            "--allow-id",
+            "allow-0250",
+            "--dry-run",
+            "--include-untracked",
+            "--color",
+            "always",
+            "--output",
+            "target/cargo-allow/refresh.txt",
+        ],
+    );
+    assert!(written.status.success(), "written refresh should succeed");
+    let text = fs::read_to_string(root.join("target/cargo-allow/refresh.txt"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read refresh output: {err}")));
+    assert!(!has_ansi(&text), "written refresh output must stay plain");
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn prune_human_stale_status_uses_shared_style_but_artifacts_stay_plain() {
+    let root = prune_fixture("prune");
+    let args = [
+        "prune",
+        "--config",
+        "policy/allow.toml",
+        "--stale",
+        "--dry-run",
+        "--include-untracked",
+    ];
+    let mut plain_args = args.to_vec();
+    plain_args.extend(["--color", "never"]);
+    let mut styled_args = args.to_vec();
+    styled_args.extend(["--color", "always"]);
+
+    let plain_result = run(&root, &[], &plain_args);
+    let styled_result = run(&root, &[], &styled_args);
+    assert!(plain_result.status.success(), "plain prune should succeed");
+    assert!(
+        styled_result.status.success(),
+        "styled prune should succeed"
+    );
+    assert!(!has_ansi(&stdout_of(&plain_result)));
+    assert!(has_ansi(&stdout_of(&styled_result)));
+    assert!(stdout_of(&styled_result).contains("\u{1b}[33mstale\u{1b}[0m entries: 0"));
+
+    let json_result = run(
+        &root,
+        &[],
+        &[
+            "prune",
+            "--config",
+            "policy/allow.toml",
+            "--stale",
+            "--dry-run",
+            "--include-untracked",
+            "--color",
+            "always",
+            "--format",
+            "json",
+        ],
+    );
+    assert!(json_result.status.success(), "JSON prune should succeed");
+    assert!(
+        !has_ansi(&stdout_of(&json_result)),
+        "JSON prune must stay plain"
+    );
+
+    fs::create_dir_all(root.join("target/cargo-allow"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create prune output dir: {err}")));
+    let written = run(
+        &root,
+        &[],
+        &[
+            "prune",
+            "--config",
+            "policy/allow.toml",
+            "--stale",
+            "--dry-run",
+            "--include-untracked",
+            "--color",
+            "always",
+            "--output",
+            "target/cargo-allow/prune.txt",
+        ],
+    );
+    assert!(written.status.success(), "written prune should succeed");
+    let text = fs::read_to_string(root.join("target/cargo-allow/prune.txt"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read prune output: {err}")));
+    assert!(!has_ansi(&text), "written prune output must stay plain");
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn add_human_review_status_uses_shared_style_but_policy_and_summaries_stay_plain() {
+    let root = fixture("add");
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn fail(value: Option<u8>) -> u8 {\n    value.unwrap()\n}\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write add source: {err}")));
+
+    let args = [
+        "add",
+        "--config",
+        "policy/allow.toml",
+        "--kind",
+        "panic",
+        "--path",
+        "src/lib.rs",
+        "--line",
+        "2",
+        "--owner",
+        "test",
+        "--reason",
+        "fixture add review",
+        "--evidence",
+        "test:add-review",
+    ];
+    let mut plain_args = args.to_vec();
+    plain_args.extend(["--color", "never"]);
+    let mut styled_args = args.to_vec();
+    styled_args.extend(["--color", "always"]);
+    let plain_result = run(&root, &[], &plain_args);
+    let styled_result = run(&root, &[], &styled_args);
+    assert!(plain_result.status.success(), "plain add should succeed");
+    assert!(styled_result.status.success(), "styled add should succeed");
+    assert!(!has_ansi(&stderr_of(&plain_result)));
+    assert!(has_ansi(&stderr_of(&styled_result)));
+    assert!(stderr_of(&styled_result).contains("human \u{1b}[33mreview\u{1b}[0m before merge"));
+    assert!(
+        !has_ansi(&stdout_of(&styled_result)),
+        "generated TOML must stay plain"
+    );
+
+    fs::create_dir_all(root.join("target/cargo-allow"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create add output dir: {err}")));
+    let written = run(
+        &root,
+        &[],
+        &[
+            "add",
+            "--config",
+            "policy/allow.toml",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "2",
+            "--owner",
+            "test",
+            "--reason",
+            "fixture add review",
+            "--evidence",
+            "test:add-review",
+            "--color",
+            "always",
+            "--summary-output",
+            "target/cargo-allow/add-summary.txt",
+        ],
+    );
+    assert!(written.status.success(), "written add should succeed");
+    let text = fs::read_to_string(root.join("target/cargo-allow/add-summary.txt"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read add output: {err}")));
+    assert!(!has_ansi(&text), "written add summary must stay plain");
+
+    let json = run(
+        &root,
+        &[],
+        &[
+            "add",
+            "--config",
+            "policy/allow.toml",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "2",
+            "--owner",
+            "test",
+            "--reason",
+            "fixture add review",
+            "--evidence",
+            "test:add-review",
+            "--color",
+            "always",
+            "--summary-format",
+            "json",
+            "--summary-output",
+            "target/cargo-allow/add-summary.json",
+        ],
+    );
+    assert!(json.status.success(), "JSON add should succeed");
+    let json_text = fs::read_to_string(root.join("target/cargo-allow/add-summary.json"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read add JSON: {err}")));
+    assert!(!has_ansi(&json_text), "JSON add summary must stay plain");
 
     let _ = fs::remove_dir_all(&root);
 }

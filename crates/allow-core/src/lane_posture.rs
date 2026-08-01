@@ -30,12 +30,14 @@ impl FromStr for LaneEnforcementMode {
     type Err = CargoAllowError;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match value.trim() {
+        let trimmed = value.trim();
+        let normalized = trimmed.to_ascii_lowercase();
+        match normalized.as_str() {
             "advisory" => Ok(Self::Advisory),
             "shadow" => Ok(Self::Shadow),
             "blocking" => Ok(Self::Blocking),
-            other => Err(CargoAllowError::new(format!(
-                "unsupported lane enforcement mode `{other}`"
+            _ => Err(CargoAllowError::new(format!(
+                "unsupported lane enforcement mode `{trimmed}`; valid values: advisory, shadow, blocking"
             ))),
         }
     }

@@ -155,6 +155,35 @@ fn prune_human_renderer_records_mode_and_candidates() {
 }
 
 #[test]
+fn prune_human_styles_only_the_fixed_stale_marker() {
+    let candidates = vec![PruneCandidate {
+        id: "allow|stale",
+        kind: "panic",
+        family: Some("unwrap"),
+        owner: "parser",
+        classification: "baseline_debt",
+        scope: "crates/parser/src/lib.rs",
+        reason: "old | baseline entry",
+    }];
+
+    let text = render_prune_human_with_context_styled(
+        &candidates,
+        PruneModeContext {
+            explicit_dry_run: true,
+            write_requested: false,
+            written_path: None,
+            total_entries: 1,
+        },
+        InventoryContext::unknown_source_syntax(),
+        Style::ANSI,
+    );
+
+    assert!(text.contains("\u{1b}[33mstale\u{1b}[0m entries: 1"));
+    assert!(text.contains("allow\\|stale"));
+    assert_eq!(text.matches('\u{1b}').count(), 2);
+}
+
+#[test]
 fn prune_human_renderer_records_inventory_context() {
     let text = render_prune_human_with_context(
         &[],

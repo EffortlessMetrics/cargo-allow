@@ -1,5 +1,6 @@
 use allow_core::CargoAllowResult;
 use clap::Parser;
+use std::io::IsTerminal;
 use std::path::PathBuf;
 
 use crate::{
@@ -100,12 +101,65 @@ pub(crate) struct ListArgs {
     /// Equivalent to `--columns all`; JSON is always complete.
     #[arg(long, conflicts_with = "columns")]
     pub(super) wide: bool,
+    /// Bound concise card lines to this display width. The default layout is
+    /// deterministic when no width is supplied (including non-TTY output).
+    #[arg(long, value_parser = parse_list_width, conflicts_with_all = ["wide", "columns"])]
+    pub(super) width: Option<usize>,
     /// Write list output to a file instead of stdout.
     #[arg(long)]
     pub(super) output: Option<PathBuf>,
     /// Include untracked files when determining current match status.
     #[arg(long)]
     pub(super) include_untracked: bool,
+}
+
+const MIN_LIST_WIDTH: usize = 40;
+
+/// Resolve the concise-card width without making captured or redirected output
+/// dependent on the host terminal. An explicit width always wins; automatic
+/// sizing is limited to a human stdout terminal and falls back to the stable
+/// renderer width when the OS cannot report a size.
+pub(super) fn concise_width(args: &ListArgs) -> Option<usize> {
+    let stdout_is_terminal = std::io::stdout().is_terminal();
+    let detected_width = stdout_is_terminal
+        .then(terminal_size::terminal_size)
+        .flatten()
+        .and_then(|(terminal_size::Width(width), _)| terminal_width(usize::from(width)));
+    concise_width_for_terminal(args, stdout_is_terminal, detected_width)
+}
+
+pub(super) fn concise_width_for_terminal(
+    args: &ListArgs,
+    stdout_is_terminal: bool,
+    detected_width: Option<usize>,
+) -> Option<usize> {
+    if args.width.is_some()
+        || args.wide
+        || args.columns.is_some()
+        || args.output.is_some()
+        || !matches!(args.format, HumanJsonFormat::Human)
+        || !stdout_is_terminal
+    {
+        return args.width;
+    }
+
+    detected_width
+}
+
+pub(super) fn terminal_width(width: usize) -> Option<usize> {
+    (width >= MIN_LIST_WIDTH).then_some(width)
+}
+
+fn parse_list_width(value: &str) -> Result<usize, String> {
+    let width = value
+        .parse::<usize>()
+        .map_err(|_| format!("list width must be a positive integer, got {value}"))?;
+    if width < MIN_LIST_WIDTH {
+        return Err(format!(
+            "list width must be at least {MIN_LIST_WIDTH} columns, got {width}"
+        ));
+    }
+    Ok(width)
 }
 
 pub(super) fn list_filters(args: &ListArgs) -> CargoAllowResult<ListFilters<'_>> {

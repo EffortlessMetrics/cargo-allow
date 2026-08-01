@@ -286,6 +286,24 @@ fn diff_posture_human_summary_reports_reviewer_action() {
     ));
     assert!(text.contains("new_source_findings: 1"));
     assert!(text.contains("policy_failures: 1"));
+
+    let styled =
+        render_diff_posture_summary_human_styled(0, &finding_changes, &policy_changes, Style::ANSI);
+    assert!(styled.contains("net_posture: \u{1b}[31mworse\u{1b}[0m"));
+
+    let finding_styled = render_diff_finding_changes_human_styled(&finding_changes, Style::ANSI);
+    assert!(finding_styled.contains("\u{1b}[31mnew\u{1b}[0m"));
+
+    let policy_styled = render_diff_policy_changes_human_styled(&policy_changes, Style::ANSI);
+    assert!(policy_styled.contains("\u{1b}[31mfail\u{1b}[0m"));
+    assert!(
+        !policy_styled.contains("allow-0001\u{1b}"),
+        "repository-controlled IDs must stay unstyled"
+    );
+    assert!(
+        !policy_styled.contains("scope broadened\u{1b}"),
+        "repository-controlled messages must stay unstyled"
+    );
 }
 
 #[test]

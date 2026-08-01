@@ -128,6 +128,10 @@ It does not require network access or GitHub APIs for its own scan.
 `Cargo.toml` and `Cargo.lock` are files in the scanned source tree, not required
 build metadata.
 
+That no-build claim applies to the target repository. cargo-allow's own build
+may compile native dependencies such as tree-sitter, so installing from source
+or crates.io can require a C toolchain.
+
 It does not require:
 
 - Cargo metadata
@@ -194,8 +198,14 @@ Most users start from the surface they already own.
 | Auditor | Run `cargo-allow list`, `cargo-allow explain <id>`, and `cargo-allow why --kind <kind> --path <path> --line <line>` on Published `0.1.11`. | [Explain an allow](docs/how-to/explain-an-allow.md), [Explain why a finding](docs/how-to/explain-why-a-finding.md) |
 | Migrator | Run `cargo-allow migrate --repo-policy <dir>`. | [Migration](docs/how-to/migrate-from-xtask.md) |
 | Agent operator | Run `cargo-allow worklist --format json`. | [Agent worklists](docs/how-to/feed-agent-worklists.md) |
+| Shell user | Generate completions from the installed binary. | [Install shell completions](docs/how-to/install-shell-completions.md) |
 
 ## First Run
+
+Building or installing cargo-allow itself requires Rust 1.95 or newer and a
+C toolchain (GCC/Clang on Unix-like systems or MSVC on Windows). The
+tree-sitter parser dependency compiles native code. This is a prerequisite for
+the cargo-allow binary, not for the repository that cargo-allow scans.
 
 Install:
 

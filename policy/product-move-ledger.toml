@@ -426,7 +426,7 @@ deletion_output = "Old allow-policy-only test ownership becomes deletable."
 [[entry]]
 id = "MOVE-CARGO-INTENT-APP-SPEC-SYSTEM"
 source_kind = "RustModule"
-current_paths = ["crates/cargo-allow/src/spec_system.rs"]
+current_paths = ["crates/cargo-allow/src/spec_system.rs", "crates/cargo-allow/src/spec_system_render.rs", "crates/cargo-allow/src/spec_system_bootstrap.rs", "crates/cargo-allow/src/spec_system_config.rs", "crates/cargo-allow/src/spec_system_readiness.rs", "crates/cargo-allow/src/spec_system_graph.rs", "crates/cargo-allow/src/spec_system_report.rs", "crates/cargo-allow/src/spec_system_commands.rs"]
 current_refs = []
 current_identity = "Legacy spec-system command orchestration, private result DTOs, rendering preparation, and bootstrap"
 current_product = "cargo-allow"
@@ -664,7 +664,7 @@ deletion_output = "Legacy command aliases remain projection-only or are removed 
 [[entry]]
 id = "MOVE-CARGO-ALLOW-SPEC-TESTS"
 source_kind = "TestFixture"
-current_paths = ["crates/cargo-allow/src/spec_system_profile_tests.rs", "crates/cargo-allow/src/spec_system_worklist_tests.rs", "crates/cargo-allow/src/artifact_schema_spec_system_tests.rs", "crates/cargo-allow/src/init_tests.rs", "crates/cargo-allow/src/doctor_tests.rs", "crates/cargo-allow/src/explain_tests.rs"]
+current_paths = ["crates/cargo-allow/src/spec_system_profile_tests.rs", "crates/cargo-allow/src/spec_system_worklist_tests.rs", "crates/cargo-allow/src/artifact_schema_spec_system_tests.rs", "crates/cargo-allow/src/init_tests.rs", "crates/cargo-allow/src/doctor_tests.rs", "crates/cargo-allow/src/explain_tests.rs", "crates/cargo-allow/src/spec_system_tests.rs"]
 current_refs = []
 current_identity = "Legacy profile CLI, schema, bootstrap, doctor, explain, and worklist fixtures"
 current_product = "cargo-allow"

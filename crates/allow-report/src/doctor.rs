@@ -4,10 +4,14 @@ use crate::evidence_repair::{
     evidence_repair_queues_from_counts, push_evidence_repair_queue_json_fields,
 };
 use crate::json::{bool_json, option_json, push_json_fixed_artifact_preamble};
-use crate::{CLAIM_BOUNDARY_TEXT, DoctorReport, InventoryContext};
+use crate::{CLAIM_BOUNDARY_TEXT, DoctorReport, InventoryContext, Style};
 use allow_core::json_escape;
 
 pub fn render_doctor_human(facts: DoctorReport<'_>) -> String {
+    render_doctor_human_styled(facts, Style::PLAIN)
+}
+
+pub fn render_doctor_human_styled(facts: DoctorReport<'_>, style: Style) -> String {
     let mut out = String::new();
     out.push_str(&format!("source tree root: {}\n", facts.source_tree_root));
     out.push_str(&format!("root discovery: {}\n", facts.root_discovery));
@@ -27,8 +31,12 @@ pub fn render_doctor_human(facts: DoctorReport<'_>) -> String {
                 out.push_str(&format!("policy status: {status}\n"));
             }
             out.push_str(&format!(
-                "config status: {}\n",
-                config_status_text(facts.config_valid, facts.config_diagnostic)
+                "config status: {}{}\n",
+                style.status(
+                    config_status_label(facts.config_valid),
+                    config_status_label(facts.config_valid)
+                ),
+                config_status_diagnostic_suffix(facts.config_valid, facts.config_diagnostic)
             ));
             if facts.config_valid == Some(false) {
                 out.push_str(
@@ -103,12 +111,12 @@ pub fn render_doctor_human(facts: DoctorReport<'_>) -> String {
             facts.submodule_paths
         ));
     }
-    append_federation_doctor_human(facts, &mut out);
+    append_federation_doctor_human(facts, &mut out, style);
     out.push_str(CLAIM_BOUNDARY_TEXT);
     out
 }
 
-fn append_federation_doctor_human(facts: DoctorReport<'_>, out: &mut String) {
+fn append_federation_doctor_human(facts: DoctorReport<'_>, out: &mut String, style: Style) {
     if !facts.federation_config_found {
         out.push_str("federation config: not found\n");
         return;
@@ -118,7 +126,10 @@ fn append_federation_doctor_human(facts: DoctorReport<'_>, out: &mut String) {
     }
     out.push_str(&format!(
         "federation config status: {}\n",
-        federation_status_text(facts.federation_config_valid)
+        style.status(
+            federation_status_label(facts.federation_config_valid),
+            federation_status_label(facts.federation_config_valid),
+        )
     ));
     if let Some(ledgers) = facts.configured_ledgers {
         out.push_str(&format!("configured ledgers: {}\n", ledgers.len()));
@@ -359,11 +370,11 @@ fn append_federation_doctor_json(facts: DoctorReport<'_>, out: &mut String) {
     out.push_str("\n  }");
 }
 
-fn federation_status_text(valid: Option<bool>) -> String {
+fn federation_status_label(valid: Option<bool>) -> &'static str {
     match valid {
-        Some(true) => "valid".to_string(),
-        Some(false) => "invalid".to_string(),
-        None => "not checked".to_string(),
+        Some(true) => "valid",
+        Some(false) => "invalid",
+        None => "not checked",
     }
 }
 
@@ -399,12 +410,18 @@ fn doctor_inventory_suffix(facts: DoctorReport<'_>) -> String {
     suffix
 }
 
-fn config_status_text(valid: Option<bool>, diagnostic: Option<&str>) -> String {
+fn config_status_label(valid: Option<bool>) -> &'static str {
+    match valid {
+        Some(true) => "valid",
+        Some(false) => "invalid",
+        None => "not checked",
+    }
+}
+
+fn config_status_diagnostic_suffix(valid: Option<bool>, diagnostic: Option<&str>) -> String {
     match (valid, diagnostic) {
-        (Some(true), _) => "valid".to_string(),
-        (Some(false), Some(diagnostic)) => format!("invalid: {diagnostic}"),
-        (Some(false), None) => "invalid".to_string(),
-        (None, _) => "not checked".to_string(),
+        (Some(false), Some(diagnostic)) => format!(": {diagnostic}"),
+        _ => String::new(),
     }
 }
 

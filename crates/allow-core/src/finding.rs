@@ -57,7 +57,9 @@ impl FromStr for FindingKind {
     type Err = CargoAllowError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.trim() {
+        let trimmed = s.trim();
+        let normalized = trimmed.to_ascii_lowercase();
+        match normalized.as_str() {
             "panic" | "panic_family" | "panic-family" | "indexing" => Ok(Self::Panic),
             "unsafe" => Ok(Self::Unsafe),
             "lint_exception" | "lint-exception" | "clippy" | "allow_attribute"
@@ -69,8 +71,8 @@ impl FromStr for FindingKind {
             }
             "generated_code" | "generated-code" | "generated" => Ok(Self::GeneratedCode),
             "policy_exception" | "policy-exception" | "policy" => Ok(Self::PolicyException),
-            other => Err(CargoAllowError::new(format!(
-                "unsupported finding kind `{other}`"
+            _ => Err(CargoAllowError::new(format!(
+                "unsupported finding kind `{trimmed}`; valid values: panic, unsafe, lint_exception, non_rust_file, generated_code, policy_exception"
             ))),
         }
     }

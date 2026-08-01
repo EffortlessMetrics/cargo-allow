@@ -59,6 +59,36 @@ fn render_broad_add_summary_json_escapes_string_fields() {
 }
 
 #[test]
+fn render_broad_add_summary_human_styles_fixed_baseline_marker() {
+    let mut entry = allow_entry_broad(AddBroadRequest {
+        id: "allow-broad".to_string(),
+        kind: FindingKind::Panic,
+        family: Some("unwrap".to_string()),
+        callee: Some("unwrap".to_string()),
+        glob: "src/**/*.rs".to_string(),
+        owner: "owner".to_string(),
+        classification: "baseline_debt".to_string(),
+        reason: "reason".to_string(),
+        evidence: vec!["test:broad".to_string()],
+        review_after: "2026-11-01".to_string(),
+        expires: None,
+    });
+    entry.occurrence_limit = Some(2);
+
+    let styled = render_add_summary_broad_human(
+        &entry,
+        Some("policy/allow.toml"),
+        allow_report::Style::ANSI,
+    );
+
+    assert_eq!(
+        styled,
+        "added \u{1b}[31mbroad baseline\u{1b}[0m allow-broad (kind=panic, scope=src/**/*.rs, occurrence_limit=2); policy written to policy/allow.toml\n"
+    );
+    assert_eq!(styled.matches('\u{1b}').count(), 2);
+}
+
+#[test]
 fn render_add_summary_json_records_entry_and_selected_finding() {
     let mut finding = test_finding_at_line(
         FindingKind::Panic,

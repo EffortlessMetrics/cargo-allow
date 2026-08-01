@@ -105,7 +105,7 @@ mod worklist_summary;
 #[cfg(test)]
 mod worklist_summary_tests;
 
-pub use add::{render_add_human, render_add_json};
+pub use add::{render_add_human, render_add_human_styled, render_add_json};
 pub use add_finding_plan::render_add_finding_plan_json;
 pub use add_plan_application::render_add_plan_application_json;
 pub use advisory_class::{ADVISORY_DENY_FIELD_NAMES, AdvisoryClass, advisory_count_for_deny_field};
@@ -149,15 +149,19 @@ pub use contracts::{
 };
 pub use diff::{
     DiffNetPosture, diff_net_posture, diff_posture_summary, insert_markdown_pr_summary,
-    render_diff_finding_changes_human, render_diff_finding_changes_markdown,
-    render_diff_json_with_posture, render_diff_policy_changes_human,
+    render_diff_finding_changes_human, render_diff_finding_changes_human_styled,
+    render_diff_finding_changes_markdown, render_diff_json_with_posture,
+    render_diff_policy_changes_human, render_diff_policy_changes_human_styled,
     render_diff_policy_changes_markdown, render_diff_posture_summary_human,
+    render_diff_posture_summary_human_styled,
     render_diff_posture_summary_human_with_evidence_health,
-    render_diff_posture_summary_human_with_evidence_health_counts, render_diff_pr_summary_markdown,
+    render_diff_posture_summary_human_with_evidence_health_counts,
+    render_diff_posture_summary_human_with_evidence_health_counts_styled,
+    render_diff_posture_summary_human_with_evidence_health_styled, render_diff_pr_summary_markdown,
     render_diff_pr_summary_markdown_with_evidence_health,
     render_diff_pr_summary_markdown_with_evidence_health_counts,
 };
-pub use doctor::{render_doctor_human, render_doctor_json};
+pub use doctor::{render_doctor_human, render_doctor_human_styled, render_doctor_json};
 pub(crate) use explain::finding_location_text;
 pub use explain::{
     render_explain_finding_json, render_explain_human, render_explain_human_styled,
@@ -174,9 +178,10 @@ pub use ledger_posture::{
 };
 pub use list::{
     render_list_human, render_list_human_columns, render_list_human_columns_styled,
-    render_list_human_concise, render_list_human_concise_styled, render_list_json,
+    render_list_human_concise, render_list_human_concise_styled,
+    render_list_human_concise_styled_with_width, render_list_json,
 };
-pub use migrate::{render_migrate_human, render_migrate_json};
+pub use migrate::{render_migrate_human, render_migrate_human_styled, render_migrate_json};
 pub use migrate_closeout::{
     MigrateCloseoutInput, MigrateLegacySource, migrate_closeout_from_input,
 };
@@ -185,8 +190,11 @@ pub use mutation_receipt::{
     MutationReceipt, render_mutation_receipt_json,
 };
 pub use path_text::source_tree_path_text;
-pub use propose::{render_propose_human, render_propose_json};
-pub use prune::{render_prune_human, render_prune_human_with_context, render_prune_json};
+pub use propose::{render_propose_human, render_propose_human_styled, render_propose_json};
+pub use prune::{
+    render_prune_human, render_prune_human_with_context, render_prune_human_with_context_styled,
+    render_prune_json,
+};
 pub use read_model::{
     LedgerReadState, ledger_project_outcomes, ledger_read_state, ledger_read_state_for_outcomes,
     ledger_read_statuses,
@@ -195,7 +203,7 @@ pub use receipt::{
     render_error_receipt, render_receipt, render_receipt_with_context,
     render_receipt_with_context_and_inventory,
 };
-pub use refresh::{render_refresh_human, render_refresh_json};
+pub use refresh::{render_refresh_human, render_refresh_human_styled, render_refresh_json};
 pub use report_json::{render_json, render_json_with_context, render_json_with_context_and_diff};
 pub use report_text::{
     render_human, render_human_with_context, render_markdown, render_markdown_with_context,

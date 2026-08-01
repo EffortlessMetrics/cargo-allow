@@ -22,7 +22,7 @@ mod migrate_render;
 mod migrate_types;
 pub(crate) use migrate_args::MigrateArgs;
 use migrate_load::{load_repo_policy_migration_config, load_single_file_migration_config};
-use migrate_render::{render_migrate_summary, render_migrate_summary_json};
+use migrate_render::{render_migrate_summary_json, render_migrate_summary_styled};
 use migrate_types::MigrateContext;
 
 #[cfg(test)]
@@ -130,12 +130,20 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
         }
     }
     let summary = match args.summary_format {
-        HumanJsonFormat::Human => render_migrate_summary(
-            &cfg,
-            &migration.context,
-            &args.out,
-            args.force || args.update,
-        ),
+        HumanJsonFormat::Human => {
+            let style = if args.summary_output.is_none() {
+                crate::reporting::output_style()
+            } else {
+                allow_report::Style::PLAIN
+            };
+            render_migrate_summary_styled(
+                &cfg,
+                &migration.context,
+                &args.out,
+                args.force || args.update,
+                style,
+            )
+        }
         HumanJsonFormat::Json => render_migrate_summary_json(
             &cfg,
             &migration.context,

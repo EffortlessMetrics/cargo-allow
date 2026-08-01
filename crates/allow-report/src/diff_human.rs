@@ -1,5 +1,5 @@
 use crate::diff_finding_detail::structural_identity_summary;
-use crate::diff_movement::append_movement_summary_human;
+use crate::diff_movement::{append_movement_summary_human, append_movement_summary_human_styled};
 use crate::diff_policy_detail::policy_change_detail;
 use crate::diff_posture::{
     diff_evidence_delta_summary, diff_net_posture, diff_posture_summary,
@@ -7,7 +7,7 @@ use crate::diff_posture::{
 };
 use crate::evidence_repair::evidence_repair_queues_from_counts;
 use crate::ledger_posture::{FINDING_CHANGE_LABELS, coverage_movement_from_canonical_fields};
-use crate::{DiffFindingChange, DiffLedgerMovementSummary, DiffPolicyChange};
+use crate::{DiffFindingChange, DiffLedgerMovementSummary, DiffPolicyChange, Style};
 use allow_core::PresenceMovement;
 
 const DIFF_HUMAN_CHANGE_LIMIT: usize = 120;
@@ -17,12 +17,27 @@ pub fn render_diff_posture_summary_human(
     finding_changes: &[DiffFindingChange<'_>],
     policy_changes: &[DiffPolicyChange<'_>],
 ) -> String {
-    render_diff_posture_summary_human_with_evidence_health(
+    render_diff_posture_summary_human_styled(
         current_failures,
-        0,
-        0,
         finding_changes,
         policy_changes,
+        Style::PLAIN,
+    )
+}
+
+pub fn render_diff_posture_summary_human_styled(
+    current_failures: usize,
+    finding_changes: &[DiffFindingChange<'_>],
+    policy_changes: &[DiffPolicyChange<'_>],
+    style: Style,
+) -> String {
+    render_diff_posture_summary_human_with_evidence_health_counts_styled(
+        current_failures,
+        (0, 0, 0),
+        finding_changes,
+        policy_changes,
+        empty_ledger_movement_summary(),
+        style,
     )
 }
 
@@ -35,14 +50,39 @@ pub fn render_diff_posture_summary_human_with_evidence_health_counts(
     policy_changes: &[DiffPolicyChange<'_>],
     ledger_movement: DiffLedgerMovementSummary,
 ) -> String {
-    render_diff_posture_summary_human_with_evidence_health_counts_inner(
+    render_diff_posture_summary_human_with_evidence_health_counts_styled(
         current_failures,
-        broken_evidence_links,
-        missing_evidence,
-        weak_evidence_references,
+        (
+            broken_evidence_links,
+            missing_evidence,
+            weak_evidence_references,
+        ),
         finding_changes,
         policy_changes,
         ledger_movement,
+        Style::PLAIN,
+    )
+}
+
+pub fn render_diff_posture_summary_human_with_evidence_health_counts_styled(
+    current_failures: usize,
+    (broken_evidence_links, missing_evidence, weak_evidence_references): (usize, usize, usize),
+    finding_changes: &[DiffFindingChange<'_>],
+    policy_changes: &[DiffPolicyChange<'_>],
+    ledger_movement: DiffLedgerMovementSummary,
+    style: Style,
+) -> String {
+    render_diff_posture_summary_human_with_evidence_health_counts_inner(
+        current_failures,
+        (
+            broken_evidence_links,
+            missing_evidence,
+            weak_evidence_references,
+        ),
+        finding_changes,
+        policy_changes,
+        ledger_movement,
+        style,
     )
 }
 
@@ -53,11 +93,9 @@ pub fn render_diff_posture_summary_human_with_evidence_health(
     finding_changes: &[DiffFindingChange<'_>],
     policy_changes: &[DiffPolicyChange<'_>],
 ) -> String {
-    render_diff_posture_summary_human_with_evidence_health_counts_inner(
+    render_diff_posture_summary_human_with_evidence_health_counts_styled(
         current_failures,
-        broken_evidence_links,
-        0,
-        weak_evidence_references,
+        (broken_evidence_links, 0, weak_evidence_references),
         finding_changes,
         policy_changes,
         DiffLedgerMovementSummary {
@@ -73,28 +111,69 @@ pub fn render_diff_posture_summary_human_with_evidence_health(
                 unchanged: 0,
             },
         },
+        Style::PLAIN,
     )
+}
+
+pub fn render_diff_posture_summary_human_with_evidence_health_styled(
+    current_failures: usize,
+    broken_evidence_links: usize,
+    weak_evidence_references: usize,
+    finding_changes: &[DiffFindingChange<'_>],
+    policy_changes: &[DiffPolicyChange<'_>],
+    style: Style,
+) -> String {
+    render_diff_posture_summary_human_with_evidence_health_counts_styled(
+        current_failures,
+        (broken_evidence_links, 0, weak_evidence_references),
+        finding_changes,
+        policy_changes,
+        empty_ledger_movement_summary(),
+        style,
+    )
+}
+
+fn empty_ledger_movement_summary() -> DiffLedgerMovementSummary {
+    DiffLedgerMovementSummary {
+        movement: crate::DiffMovementCounts {
+            introduced: 0,
+            retained: 0,
+            removed: 0,
+        },
+        posture_delta: crate::DiffPostureDeltaCounts {
+            improved: 0,
+            worsened: 0,
+            review_required: 0,
+            unchanged: 0,
+        },
+    }
 }
 
 fn render_diff_posture_summary_human_with_evidence_health_counts_inner(
     current_failures: usize,
-    broken_evidence_links: usize,
-    missing_evidence: usize,
-    weak_evidence_references: usize,
+    (broken_evidence_links, missing_evidence, weak_evidence_references): (usize, usize, usize),
     finding_changes: &[DiffFindingChange<'_>],
     policy_changes: &[DiffPolicyChange<'_>],
     ledger_movement: DiffLedgerMovementSummary,
+    style: Style,
 ) -> String {
     let summary = diff_posture_summary(current_failures, finding_changes, policy_changes);
     let posture = diff_net_posture(summary);
     let mut out = String::new();
     out.push_str("\nDiff posture summary:\n");
-    out.push_str(&format!("  net_posture: {}\n", posture.as_str()));
+    out.push_str(&format!(
+        "  net_posture: {}\n",
+        style_diff_status(style, posture.as_str())
+    ));
     out.push_str(&format!(
         "  reviewer_action: {}\n",
         posture.reviewer_action()
     ));
-    append_movement_summary_human(&mut out, ledger_movement);
+    if style.is_enabled() {
+        append_movement_summary_human_styled(&mut out, ledger_movement, style);
+    } else {
+        append_movement_summary_human(&mut out, ledger_movement);
+    }
     out.push_str(&format!(
         "  current_check_failures: {}\n",
         summary.current_failures
@@ -264,6 +343,13 @@ fn render_diff_posture_summary_human_with_evidence_health_counts_inner(
 }
 
 pub fn render_diff_finding_changes_human(changes: &[DiffFindingChange<'_>]) -> String {
+    render_diff_finding_changes_human_styled(changes, Style::PLAIN)
+}
+
+pub fn render_diff_finding_changes_human_styled(
+    changes: &[DiffFindingChange<'_>],
+    style: Style,
+) -> String {
     let mut out = String::new();
     out.push_str("\nFinding posture changes:\n");
     if changes.is_empty() {
@@ -275,6 +361,7 @@ pub fn render_diff_finding_changes_human(changes: &[DiffFindingChange<'_>]) -> S
         "Finding attention",
         changes,
         PresenceMovement::Introduced.finding_change_label(),
+        style,
     );
     append_finding_receipt_commands_human(&mut out, changes);
     append_finding_changes_human_section(
@@ -282,6 +369,7 @@ pub fn render_diff_finding_changes_human(changes: &[DiffFindingChange<'_>]) -> S
         "Finding improvements",
         changes,
         PresenceMovement::Removed.finding_change_label(),
+        style,
     );
     if changes
         .iter()
@@ -297,7 +385,7 @@ pub fn render_diff_finding_changes_human(changes: &[DiffFindingChange<'_>]) -> S
             .filter(|change| !FINDING_CHANGE_LABELS.contains(&change.change))
             .take(DIFF_HUMAN_CHANGE_LIMIT)
         {
-            append_finding_change_human_row(&mut out, change);
+            append_finding_change_human_row(&mut out, change, style);
         }
         if other_count > DIFF_HUMAN_CHANGE_LIMIT {
             out.push_str(&format!(
@@ -314,6 +402,7 @@ fn append_finding_changes_human_section(
     heading: &str,
     changes: &[DiffFindingChange<'_>],
     change_kind: &str,
+    style: Style,
 ) {
     if !changes.iter().any(|change| change.change == change_kind) {
         return;
@@ -328,7 +417,7 @@ fn append_finding_changes_human_section(
         .filter(|change| change.change == change_kind)
         .take(DIFF_HUMAN_CHANGE_LIMIT)
     {
-        append_finding_change_human_row(out, change);
+        append_finding_change_human_row(out, change, style);
     }
     if matching_count > DIFF_HUMAN_CHANGE_LIMIT {
         out.push_str(&format!(
@@ -364,7 +453,7 @@ fn append_finding_receipt_commands_human(out: &mut String, changes: &[DiffFindin
     }
 }
 
-fn append_finding_change_human_row(out: &mut String, change: &DiffFindingChange<'_>) {
+fn append_finding_change_human_row(out: &mut String, change: &DiffFindingChange<'_>, style: Style) {
     let source_package = change
         .source_package
         .map(|package| format!(" source_package={package}"))
@@ -380,10 +469,10 @@ fn append_finding_change_human_row(out: &mut String, change: &DiffFindingChange<
     );
     out.push_str(&format!(
         "    {} movement={} posture_delta={} coverage_movement={} changed_in_diff={} {}{} at {}{}{}\n",
-        change.change,
-        change.movement,
-        change.posture_delta,
-        coverage_movement,
+        style_diff_status(style, change.change),
+        style_diff_status(style, change.movement),
+        style_diff_status(style, change.posture_delta),
+        style_diff_status(style, coverage_movement),
         change.changed_in_diff,
         change.kind,
         change
@@ -406,15 +495,34 @@ fn finding_location(change: &DiffFindingChange<'_>) -> String {
 }
 
 pub fn render_diff_policy_changes_human(changes: &[DiffPolicyChange<'_>]) -> String {
+    render_diff_policy_changes_human_styled(changes, Style::PLAIN)
+}
+
+pub fn render_diff_policy_changes_human_styled(
+    changes: &[DiffPolicyChange<'_>],
+    style: Style,
+) -> String {
     let mut out = String::new();
     out.push_str("\nPolicy posture changes:\n");
     if changes.is_empty() {
         out.push_str("  none\n");
         return out;
     }
-    append_policy_changes_human_section(&mut out, "Policy failures", changes, "fail");
-    append_policy_changes_human_section(&mut out, "Policy review required", changes, "review");
-    append_policy_changes_human_section(&mut out, "Policy improvements", changes, "improvement");
+    append_policy_changes_human_section(&mut out, "Policy failures", changes, "fail", style);
+    append_policy_changes_human_section(
+        &mut out,
+        "Policy review required",
+        changes,
+        "review",
+        style,
+    );
+    append_policy_changes_human_section(
+        &mut out,
+        "Policy improvements",
+        changes,
+        "improvement",
+        style,
+    );
     let known_severities = ["fail", "review", "improvement"];
     if changes
         .iter()
@@ -425,7 +533,7 @@ pub fn render_diff_policy_changes_human(changes: &[DiffPolicyChange<'_>]) -> Str
             .iter()
             .filter(|change| !known_severities.contains(&change.severity))
         {
-            append_policy_change_human_row(&mut out, change);
+            append_policy_change_human_row(&mut out, change, style);
         }
     }
     out
@@ -436,6 +544,7 @@ fn append_policy_changes_human_section(
     heading: &str,
     changes: &[DiffPolicyChange<'_>],
     severity: &str,
+    style: Style,
 ) {
     if !changes.iter().any(|change| change.severity == severity) {
         return;
@@ -443,12 +552,12 @@ fn append_policy_changes_human_section(
     out.push_str(&format!("  {heading}:\n"));
     for change in changes {
         if change.severity == severity {
-            append_policy_change_human_row(out, change);
+            append_policy_change_human_row(out, change, style);
         }
     }
 }
 
-fn append_policy_change_human_row(out: &mut String, change: &DiffPolicyChange<'_>) {
+fn append_policy_change_human_row(out: &mut String, change: &DiffPolicyChange<'_>, style: Style) {
     let coverage_movement = row_coverage_movement(
         change.movement,
         change.posture_delta,
@@ -456,10 +565,10 @@ fn append_policy_change_human_row(out: &mut String, change: &DiffPolicyChange<'_
     );
     out.push_str(&format!(
         "    {} movement={} posture_delta={} coverage_movement={} changed_in_diff={} {} {} {}: {}\n",
-        change.severity,
-        change.movement,
-        change.posture_delta,
-        coverage_movement,
+        style_diff_status(style, change.severity),
+        style_diff_status(style, change.movement),
+        style_diff_status(style, change.posture_delta),
+        style_diff_status(style, coverage_movement),
         change.changed_in_diff,
         change.allow_id,
         change.kind,
@@ -471,6 +580,14 @@ fn append_policy_change_human_row(out: &mut String, change: &DiffPolicyChange<'_
     ));
     if let Some(detail) = policy_change_detail(change) {
         out.push_str(&format!("      detail: {detail}\n"));
+    }
+}
+
+fn style_diff_status(style: Style, status: &str) -> String {
+    match status {
+        "new" | "introduced" | "fail" | "worsened" | "worse" => style.blocking(status),
+        "removed" | "resolved" | "improvement" | "improved" => style.ok(status),
+        _ => style.advisory(status),
     }
 }
 

@@ -15,6 +15,9 @@ at [`docs/dogfood/fixtures/getting-started/step-inventory.toml`](dogfood/fixture
 Expected-output markers are validated against the just-built binary in that
 same test (they are not hand-copied from stale receipts).
 
+The recurring policy and selector terms in this guide are defined in the
+[cargo-allow glossary](glossary.md).
+
 ## 0. Choose a product channel
 
 | Channel | How you invoke cargo-allow | Commands this guide treats as ordinary |
@@ -160,9 +163,14 @@ metadata path must be a non-empty relative path without `..`. If no metadata
 path is selected, cargo-allow retains its conventional order:
 `policy/cargo-allow.toml`, `policy/allow.toml`, `.cargo/allow.toml`, then
 `allow.toml`. This reads committed manifest text; it does not invoke Cargo
-metadata or infer workspace membership.
+metadata or infer workspace membership. The complete source-exception,
+spec-system profile, and federation precedence contract is in
+[Configuration Discovery](source-exception-ledger.md#configuration-discovery).
 
 ## 5. Run the no-new check
+
+Prerequisite: `policy/allow.toml` must exist from step 4's `init` or
+`propose --write` path, unless you pass an explicit `--config` path.
 
 ```bash
 cargo-allow check --mode no-new
@@ -259,6 +267,22 @@ The boundary between those four commands is the point:
 Full lifecycle detail, including the expert `add --update` shortcut, is in
 [Manage an exception](how-to/manage-an-exception.md).
 
+## 7. Reset / uninstall
+
+To undo a cargo-allow adoption, restore or delete `policy/allow.toml` with
+Git, revert any adoption-specific CI changes, and remove generated
+`target/cargo-allow/` reports if they are no longer needed. Remove optional
+`.allow/` profile files only when cargo-allow installed them and nothing
+else uses them.
+
+To remove the installed binary from your machine:
+
+`cargo uninstall cargo-allow`
+
+The binary uninstall does not change repository policy or CI files. For the
+ownership map and a safe order of operations, see [Rollback cargo-allow
+adoption](how-to/rollback-cargo-allow-adoption.md).
+
 ## Terminology (first use)
 
 - **`baseline_debt`**: generated adoption classification; a review queue, not
@@ -274,7 +298,8 @@ Full lifecycle detail, including the expert `add --update` shortcut, is in
 - **occurrence headroom**: how many matching findings a receipt may still cover;
   prefer narrowing or source repair over silently widening.
 
-More detail: [source-exception-ledger.md](source-exception-ledger.md).
+More detail: [source-exception-ledger.md](source-exception-ledger.md) and the
+[cargo-allow glossary](glossary.md).
 
 ## Policy entry shape
 
@@ -283,6 +308,8 @@ below is not a runnable path in this repository. For a live bootstrap that
 creates a real allow ID, run the first-hour test fixture
 (`crates/cargo-allow/tests/first_hour_adoption.rs`) or follow
 [Manage an exception](how-to/manage-an-exception.md) against your own tree.
+
+Always use forward slashes in `path` and `glob` values, even on Windows.
 
 ```toml
 [[allow]]
