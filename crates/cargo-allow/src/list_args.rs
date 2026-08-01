@@ -131,7 +131,7 @@ pub(super) fn concise_width(args: &ListArgs) -> Option<usize> {
     }
 
     terminal_size::terminal_size()
-        .and_then(|(terminal_size::Width(width), _)| terminal_width(width.into()))
+        .and_then(|(terminal_size::Width(width), _)| terminal_width(usize::from(width)))
 }
 
 pub(super) fn terminal_width(width: usize) -> Option<usize> {
