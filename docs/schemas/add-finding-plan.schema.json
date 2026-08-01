@@ -24,13 +24,77 @@
     "required_fields": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
     "proof_plans": { "type": "array", "items": { "$ref": "#/$defs/proof_plan" } }
   },
+  "allOf": [
+    {
+      "if": {
+        "required": ["evaluation"],
+        "properties": {
+          "evaluation": {
+            "required": ["result_class"],
+            "properties": {
+              "result_class": { "const": "exact_scoped" }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": ["inventory", "evaluation"],
+        "properties": {
+          "inventory": {
+            "required": ["completeness"],
+            "properties": {
+              "completeness": { "enum": ["complete", "scoped"] }
+            }
+          },
+          "evaluation": {
+            "properties": {
+              "scope": { "const": "scoped" },
+              "locality": { "const": "proven" },
+              "reasons": { "maxItems": 0 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["evaluation"],
+        "properties": {
+          "evaluation": {
+            "required": ["result_class"],
+            "properties": {
+              "result_class": { "const": "exact_after_full_fallback" }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": ["inventory", "evaluation"],
+        "properties": {
+          "inventory": {
+            "required": ["completeness"],
+            "properties": {
+              "completeness": { "enum": ["complete", "scoped"] }
+            }
+          },
+          "evaluation": {
+            "properties": {
+              "scope": { "const": "full_fallback" },
+              "locality": { "const": "global_dependency" },
+              "reasons": { "minItems": 1 }
+            }
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "claim_boundary_flag": { "type": "string", "enum": ["source_tree_inventory", "source_syntax_only", "cargo_metadata_not_invoked", "cargo_commands_not_invoked", "rustc_not_invoked", "clippy_not_invoked", "build_scripts_not_executed", "proc_macros_not_executed", "macro_expansion_not_analyzed", "macro_token_tree_contents_not_analyzed", "type_information_not_analyzed", "mir_not_analyzed", "build_output_not_analyzed", "control_flow_not_analyzed", "data_flow_not_analyzed", "external_evidence_tools_not_invoked", "repository_code_not_executed", "source_text_in_identity_fields", "policy_not_mutated", "proof_commands_not_executed", "new_at_plan_creation_only", "targeted_recheck_not_executed", "full_repository_check_not_executed"] },
     "scanner_limitation": { "type": "string", "enum": ["cargo_metadata_not_invoked", "cargo_commands_not_invoked", "rustc_not_invoked", "clippy_not_invoked", "build_scripts_not_executed", "proc_macros_not_executed", "macro_expansion_not_analyzed", "macro_token_tree_contents_not_analyzed", "type_information_not_analyzed", "mir_not_analyzed", "build_output_not_analyzed", "control_flow_not_analyzed", "data_flow_not_analyzed", "external_evidence_tools_not_invoked", "repository_code_not_executed"] },
     "sha256_v1": { "type": "string", "pattern": "^sha256:v1:[0-9a-f]{64}$" },
     "repository": { "type": "object", "additionalProperties": false, "required": ["identity", "root"], "properties": { "identity": { "$ref": "#/$defs/sha256_v1" }, "root": { "type": "string", "minLength": 1 } } },
     "inventory": { "type": "object", "additionalProperties": false, "required": ["scope", "scanner", "source"], "properties": { "scope": { "const": "source_tree" }, "scanner": { "const": "source_syntax" }, "source": { "enum": ["git_tracked", "git_index_staged_candidate", "filesystem_fallback", "filesystem_include_untracked", "unknown"] }, "root": { "type": "string", "minLength": 1 }, "files_scanned": { "type": "integer", "minimum": 0 }, "empty_git_tracked": { "type": "boolean" }, "completeness": { "enum": ["complete", "scoped", "fallback", "partial"] } } },
-    "evaluation": { "type": "object", "additionalProperties": false, "required": ["scope", "locality", "reasons"], "properties": { "scope": { "enum": ["scoped", "full_fallback"] }, "locality": { "enum": ["proven", "global_dependency"] }, "reasons": { "type": "array", "items": { "type": "string", "minLength": 1 } } }, "allOf": [{ "if": { "properties": { "scope": { "const": "scoped" } } }, "then": { "properties": { "locality": { "const": "proven" }, "reasons": { "maxItems": 0 } } } }, { "if": { "properties": { "scope": { "const": "full_fallback" } } }, "then": { "properties": { "locality": { "const": "global_dependency" }, "reasons": { "minItems": 1 } } } }] },
+    "evaluation": { "type": "object", "additionalProperties": false, "required": ["scope", "locality", "reasons"], "properties": { "result_class": { "enum": ["exact_scoped", "exact_after_full_fallback"] }, "scope": { "enum": ["scoped", "full_fallback"] }, "locality": { "enum": ["proven", "global_dependency"] }, "reasons": { "type": "array", "items": { "type": "string", "minLength": 1 } } }, "allOf": [{ "if": { "properties": { "scope": { "const": "scoped" } } }, "then": { "properties": { "locality": { "const": "proven" }, "reasons": { "maxItems": 0 } } } }, { "if": { "properties": { "scope": { "const": "full_fallback" } } }, "then": { "properties": { "locality": { "const": "global_dependency" }, "reasons": { "minItems": 1 } } } }] },
     "policy": { "type": "object", "additionalProperties": false, "required": ["path", "digest"], "properties": { "path": { "type": "string", "minLength": 1 }, "digest": { "$ref": "#/$defs/sha256_v1" } } },
     "finding": { "type": "object", "additionalProperties": false, "required": ["kind", "family", "path", "line", "column", "identity", "digest", "source_file_digest", "selector"], "properties": { "kind": { "enum": ["panic", "unsafe", "lint_exception", "non_rust_file", "generated_code", "policy_exception"] }, "family": { "type": ["string", "null"] }, "path": { "type": "string", "minLength": 1 }, "line": { "type": ["integer", "null"], "minimum": 1 }, "column": { "type": ["integer", "null"], "minimum": 1 }, "identity": { "$ref": "#/$defs/identity" }, "digest": { "$ref": "#/$defs/sha256_v1" }, "source_file_digest": { "$ref": "#/$defs/sha256_v1" }, "selector": { "$ref": "#/$defs/selector" } } },
     "identity": { "type": "object", "additionalProperties": false, "required": ["language", "crate_name", "module", "container", "ast_kind", "symbol", "callee", "macro_name", "lint", "receiver_fingerprint", "target_fingerprint", "normalized_snippet_hash", "line_hint", "column_hint"], "properties": { "language": { "type": "string" }, "crate_name": { "type": ["string", "null"] }, "module": { "type": ["string", "null"] }, "container": { "type": ["string", "null"] }, "ast_kind": { "type": ["string", "null"] }, "symbol": { "type": ["string", "null"] }, "callee": { "type": ["string", "null"] }, "macro_name": { "type": ["string", "null"] }, "lint": { "type": ["string", "null"] }, "receiver_fingerprint": { "type": ["string", "null"] }, "target_fingerprint": { "type": ["string", "null"] }, "normalized_snippet_hash": { "type": ["string", "null"] }, "line_hint": { "type": ["integer", "null"], "minimum": 1 }, "column_hint": { "type": ["integer", "null"], "minimum": 1 } } },

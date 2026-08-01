@@ -11,6 +11,12 @@ pub fn render_why_json(report: WhyReport<'_>) -> String {
     out.push_str("{\n");
     push_json_fixed_artifact_preamble(&mut out, WHY_ARTIFACT, report.inventory);
     out.push_str("  \"evaluation\": {\n");
+    if let Some(result_class) = report.evaluation.result_class(report.inventory) {
+        out.push_str(&format!(
+            "    \"result_class\": \"{}\",\n",
+            json_escape(result_class)
+        ));
+    }
     out.push_str(&format!(
         "    \"scope\": \"{}\",\n    \"locality\": \"{}\",\n    \"reasons\": {}\n  }},\n",
         json_escape(report.evaluation.scope),

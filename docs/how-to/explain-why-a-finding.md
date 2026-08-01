@@ -14,6 +14,7 @@ kinds appear near the same line. The human view shows:
 
 - the selected finding and structural identity
 - current match posture (`new`, matched, ambiguous, …)
+- evaluation result class (`exact_scoped` or `exact_after_full_fallback`)
 - nearby same-kind allow entries with per-gate selector mismatch reasons
 - suggested actions, proof commands, and claim boundary
 
@@ -29,7 +30,10 @@ JSON emits `cargo-allow.why.v1` with the same finding, outcome, candidate
 entries, and next-step fields for agents and CI evidence. Candidate `family` is
 omitted when the nearby policy entry has no family; selector relationship
 fields such as `path`, `glob`, and `selector_glob` remain `null` when that
-relationship is unavailable.
+relationship is unavailable. The additive `evaluation.result_class` field
+identifies whether the result came from the proven one-file path or an exact
+full-world fallback. Older `why.v1` artifacts without this optional field
+remain valid.
 
 ## Claim Boundary
 

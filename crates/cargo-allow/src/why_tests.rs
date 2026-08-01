@@ -75,6 +75,7 @@ fn render_why_lists_mismatch_reasons_for_new_findings() {
     assert!(text.contains("### `allow-near-miss`"));
     assert!(text.contains("callee mismatch"));
     assert!(text.contains("cargo-allow"));
+    assert!(text.contains("result_class: exact_scoped"));
     assert!(text.contains("Claim boundary"));
 
     let styled = render_why_text_styled(
@@ -142,6 +143,12 @@ fn render_why_json_deserializes_and_asserts_semantic_paths() {
     );
     assert_eq!(
         value
+            .pointer("/evaluation/result_class")
+            .and_then(Value::as_str),
+        Some("exact_scoped")
+    );
+    assert_eq!(
+        value
             .pointer("/next/proof_plans/0/program")
             .and_then(Value::as_str),
         Some("cargo-allow")
@@ -149,6 +156,31 @@ fn render_why_json_deserializes_and_asserts_semantic_paths() {
     assert_eq!(
         path_arg_from_plan(&value, 0),
         Some("src/lib.rs".to_string())
+    );
+}
+
+#[test]
+fn render_why_json_defaults_missing_inventory_completeness_for_test_helper() {
+    let finding = sample_finding_at("src/lib.rs", 10);
+    let outcome = MatchOutcome {
+        status: MatchStatus::New,
+        allow_id: None,
+        candidate_ids: Vec::new(),
+        finding_index: Some(0),
+        message: "unreceipted panic.unwrap at src/lib.rs:10:1".to_string(),
+        score: 0,
+    };
+    let value = parse_why_json(&render_why_json(
+        allow_report::InventoryContext::source_syntax("git_tracked", Some("H:/repo"), Some(3)),
+        &finding,
+        &outcome,
+        &[],
+    ));
+    assert_eq!(
+        value
+            .pointer("/evaluation/result_class")
+            .and_then(Value::as_str),
+        Some("exact_scoped")
     );
 }
 

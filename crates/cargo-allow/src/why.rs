@@ -137,6 +137,7 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
     };
     let text = match args.format {
         HumanJsonFormat::Human => render_why_text_styled_with_evaluation(
+            source_context.inventory(),
             finding,
             &outcome,
             &candidates,
