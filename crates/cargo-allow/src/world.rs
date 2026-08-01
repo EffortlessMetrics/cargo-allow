@@ -220,16 +220,7 @@ pub(crate) fn scoped_locality_reasons(
     let mut reasons = allow_match::scoped_locality_reasons(cfg, finding);
 
     if let Some(family) = finding.family.as_deref()
-        && matches!(
-            family,
-            "generated_code"
-                | "executable_file"
-                | "github_workflow"
-                | "workflow_external_action"
-                | "dependency_surface"
-                | "process_spawn"
-                | "network_destination"
-        )
+        && allow_core::is_repository_wide_family(family)
     {
         reasons.push(format!(
             "companion finding family `{family}` is derived from repository-wide context"
