@@ -35,6 +35,7 @@ struct CliReference {
     name: String,
     version: &'static str,
     about: Option<String>,
+    usage: String,
     arguments: Vec<ArgumentReference>,
     commands: Vec<CommandReference>,
 }
@@ -65,6 +66,7 @@ struct ArgumentReference {
 #[derive(Debug, Serialize)]
 struct PossibleValueReference {
     name: String,
+    aliases: Vec<String>,
     help: Option<String>,
 }
 
@@ -78,12 +80,15 @@ pub(crate) fn cmd_reference(args: &ReferenceArgs) -> CargoAllowResult<()> {
 }
 
 fn build_reference() -> CliReference {
-    let command = CargoAllowCli::command();
+    let mut command = CargoAllowCli::command();
+    command.build();
     let name = command.get_name().to_string();
     let about = command.get_about().map(ToString::to_string);
+    let usage = command_usage(&command, &name);
     let arguments = collect_arguments(&command);
     let commands = command
         .get_subcommands()
+        .filter(|subcommand| !subcommand.is_hide_set())
         .map(|subcommand| collect_command(subcommand, &name))
         .collect();
 
@@ -92,6 +97,7 @@ fn build_reference() -> CliReference {
         name,
         version: env!("CARGO_PKG_VERSION"),
         about,
+        usage,
         arguments,
         commands,
     }
@@ -107,16 +113,11 @@ fn collect_command(command: &Command, parent_path: &str) -> CommandReference {
         .map(str::to_owned)
         .collect();
     let about = command.get_about().map(ToString::to_string);
-    let mut command_for_usage = command.clone();
-    let usage = command_for_usage.render_usage().to_string();
-    let usage = usage
-        .strip_prefix("Usage:")
-        .and_then(|usage| usage.trim().strip_prefix(&name))
-        .map(|suffix| format!("Usage: {path}{suffix}"))
-        .unwrap_or(usage);
+    let usage = command_usage(command, &path);
     let arguments = collect_arguments(command);
     let commands = command
         .get_subcommands()
+        .filter(|subcommand| !subcommand.is_hide_set())
         .map(|subcommand| collect_command(subcommand, &path))
         .collect();
 
@@ -131,9 +132,15 @@ fn collect_command(command: &Command, parent_path: &str) -> CommandReference {
     }
 }
 
+fn command_usage(command: &Command, path: &str) -> String {
+    let mut command_for_usage = command.clone().bin_name(path);
+    command_for_usage.render_usage().to_string()
+}
+
 fn collect_arguments(command: &Command) -> Vec<ArgumentReference> {
     command
         .get_arguments()
+        .filter(|argument| !argument.is_hide_set())
         .map(|argument| ArgumentReference {
             id: argument.get_id().to_string(),
             short: argument.get_short().map(|short| short.to_string()),
@@ -154,8 +161,14 @@ fn collect_arguments(command: &Command) -> Vec<ArgumentReference> {
             possible_values: argument
                 .get_possible_values()
                 .into_iter()
+                .filter(|value| !value.is_hide_set())
                 .map(|value| PossibleValueReference {
                     name: value.get_name().to_string(),
+                    aliases: value
+                        .get_name_and_aliases()
+                        .skip(1)
+                        .map(str::to_owned)
+                        .collect(),
                     help: value.get_help().map(ToString::to_string),
                 })
                 .collect(),
@@ -180,7 +193,7 @@ fn render_markdown(reference: &CliReference) -> String {
         &mut out,
         &reference.name,
         reference.about.as_deref(),
-        &format!("{} [OPTIONS] [COMMAND]", reference.name),
+        &reference.usage,
         &reference.arguments,
     );
     for command in &reference.commands {
@@ -229,7 +242,10 @@ fn render_command_markdown(
             argument
                 .possible_values
                 .iter()
-                .map(|value| value.name.as_str())
+                .flat_map(|value| {
+                    std::iter::once(value.name.as_str())
+                        .chain(value.aliases.iter().map(String::as_str))
+                })
                 .collect::<Vec<_>>()
                 .join(", ")
         };
@@ -239,8 +255,8 @@ fn render_command_markdown(
             "| `{}` | {} | {} | {} | {} |\n",
             markdown_text(&names),
             if argument.required { "yes" } else { "no" },
-            markdown_cell(&values),
-            markdown_cell(&default),
+            markdown_values(&values),
+            markdown_values(&default),
             markdown_cell(help),
         ));
     }
@@ -257,11 +273,25 @@ fn argument_names(argument: &ArgumentReference) -> String {
 }
 
 fn markdown_text(value: &str) -> String {
-    value.replace('|', "\\|").replace('\n', " ")
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('|', "\\|")
+        .replace(['\r', '\n'], " ")
 }
 
 fn markdown_cell(value: &str) -> String {
     markdown_text(value).trim().to_string()
+}
+
+fn markdown_values(value: &str) -> String {
+    value
+        .split(", ")
+        .filter(|item| !item.is_empty())
+        .map(|item| format!("`{}`", markdown_text(item)))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 #[cfg(test)]
@@ -272,13 +302,43 @@ mod tests {
 
     #[test]
     fn reference_covers_every_clap_subcommand_and_argument() {
-        let command = CargoAllowCli::command();
+        let mut command = CargoAllowCli::command();
+        command.build();
         let reference = build_reference();
         assert_eq!(reference.name, command.get_name());
-        assert_eq!(reference.commands.len(), command.get_subcommands().count());
-        for subcommand in command.get_subcommands() {
-            let documented = reference
-                .commands
+        assert_command_reference(&command, &reference.arguments, &reference.commands);
+    }
+
+    fn assert_command_reference(
+        command: &Command,
+        arguments: &[ArgumentReference],
+        commands: &[CommandReference],
+    ) {
+        let expected_arguments = command
+            .get_arguments()
+            .filter(|argument| !argument.is_hide_set())
+            .count();
+        assert_eq!(
+            arguments.len(),
+            expected_arguments,
+            "argument count drift for `{}`",
+            command.get_name()
+        );
+        let expected_commands = command
+            .get_subcommands()
+            .filter(|subcommand| !subcommand.is_hide_set())
+            .count();
+        assert_eq!(
+            commands.len(),
+            expected_commands,
+            "subcommand count drift for `{}`",
+            command.get_name()
+        );
+        for subcommand in command
+            .get_subcommands()
+            .filter(|subcommand| !subcommand.is_hide_set())
+        {
+            let documented = commands
                 .iter()
                 .find(|candidate| candidate.name == subcommand.get_name())
                 .unwrap_or_else(|| {
@@ -287,8 +347,7 @@ mod tests {
                         subcommand.get_name()
                     ))
                 });
-            let expected_arguments = subcommand.get_arguments().count();
-            assert_eq!(documented.arguments.len(), expected_arguments);
+            assert_command_reference(subcommand, &documented.arguments, &documented.commands);
         }
     }
 
@@ -320,5 +379,6 @@ mod tests {
         assert!(!markdown.contains(env!("CARGO_MANIFEST_DIR")));
         assert!(markdown.contains("--color"));
         assert!(markdown.contains("--format"));
+        assert!(!markdown.contains('\r'));
     }
 }

@@ -118,6 +118,13 @@ cargo-allow reference > cargo-allow-command-reference.md
 cargo-allow reference --format json > cargo-allow-command-reference.json
 ```
 
+From a source checkout, use the same installed-binary path through Cargo:
+
+```bash
+cargo run -p cargo-allow -- reference > cargo-allow-command-reference.md
+cargo run -p cargo-allow -- reference --format json > cargo-allow-command-reference.json
+```
+
 These references are generated from the exact Clap graph of the binary. They
 describe command grammar, options, defaults, and value choices; support
 channels, mutation posture, and release packaging remain separate contracts
