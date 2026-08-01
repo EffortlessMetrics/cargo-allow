@@ -666,6 +666,7 @@ glob = "policy/allow.toml"
 }
 
 fn policy_with_missing_evidence() -> &'static str {
+    // Keep reviewed entries matched so this fixture remains date-stable.
     r#"policy = "cargo-allow"
 
 [[allow]]
@@ -677,7 +678,7 @@ owner = "core"
 classification = "fixture"
 reason = "fixture policy file"
 evidence = ["test:check_success_reports_policy_missing_evidence_counts"]
-review_after = "2026-08-01"
+review_after = "2099-01-01"
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -693,7 +694,7 @@ path = "docs/policy.md"
 owner = "core"
 classification = "fixture"
 reason = "fixture policy documentation"
-review_after = "2026-08-01"
+review_after = "2099-01-01"
 
 [allow.selector]
 ast_kind = "tracked_file"
