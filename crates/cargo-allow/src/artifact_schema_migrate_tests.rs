@@ -93,6 +93,7 @@ fn migrate_schema_locks_policy_migration_summary_contract() {
             "allow_entries",
             "baseline_debt",
             "unsafe_entries",
+            "lint_exception_entries",
             "entries_with_evidence",
         ],
     );

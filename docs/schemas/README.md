@@ -187,9 +187,9 @@ values, and exact `cargo-allow worklist ... --format json` commands. These
 queues point generated baseline debt at the existing baseline-debt and weak
 unsafe-evidence worklist routes; they do not convert generated debt into
 approval.
-`migrate` summary artifacts may include `summary.lint_exception_entries`,
-`summary.evidence_entries`, `summary.entries_with_links`,
-`summary.link_entries`,
+`migrate` summary artifacts always include `summary.lint_exception_entries`.
+The schema requires this renderer-emitted count. They may also include
+`summary.evidence_entries`, `summary.entries_with_links`, `summary.link_entries`,
 `summary.broken_evidence_links`, `summary.unsafe_broken_evidence_links`,
 `summary.weak_evidence_references`, and
 `summary.unsafe_weak_evidence_references` as optional migration-health counts.

@@ -90,6 +90,7 @@
         "allow_entries",
         "baseline_debt",
         "unsafe_entries",
+        "lint_exception_entries",
         "entries_with_evidence"
       ],
       "properties": {
