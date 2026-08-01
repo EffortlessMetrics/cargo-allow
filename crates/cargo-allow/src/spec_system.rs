@@ -881,7 +881,10 @@ fn support_tier_level_name(tier: SupportTierLevel) -> &'static str {
     match tier {
         SupportTierLevel::Stable => "stable",
         SupportTierLevel::Stabilizing => "stabilizing",
+        SupportTierLevel::Experimental => "experimental",
+        SupportTierLevel::Compatibility => "compatibility",
         SupportTierLevel::Advisory => "advisory",
+        SupportTierLevel::NotIncluded => "not included",
     }
 }
 
