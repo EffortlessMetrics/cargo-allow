@@ -159,6 +159,7 @@ mod tests {
             "doctor",
             "tool",
             "completions",
+            "reference",
         ] {
             let parsed =
                 CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", name, "--version"]));

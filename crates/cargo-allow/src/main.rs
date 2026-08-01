@@ -32,6 +32,7 @@ mod policy_config;
 pub mod precommit_tool;
 mod propose;
 mod prune;
+mod reference;
 mod refresh;
 mod reporting;
 mod selector;

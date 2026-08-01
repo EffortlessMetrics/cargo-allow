@@ -5,7 +5,7 @@ use std::ffi::OsStr;
 
 use crate::{
     add, audit, check, completions, diff, doctor, explain, init, list, migrate, precommit_tool,
-    propose, prune, refresh, vocabulary, why, worklist,
+    propose, prune, reference, refresh, vocabulary, why, worklist,
 };
 
 #[derive(Debug, Parser)]
@@ -84,6 +84,8 @@ pub(crate) enum CargoAllowCommand {
     Tool(precommit_tool::ToolArgs),
     /// Generate a shell completion script.
     Completions(completions::CompletionsArgs),
+    /// Generate a deterministic Markdown or JSON command reference.
+    Reference(reference::ReferenceArgs),
 }
 
 /// Resolve the process output style from the flag, the environment, and
@@ -158,6 +160,7 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::Vocabulary(args) => vocabulary::cmd_vocabulary(&args),
         CargoAllowCommand::Tool(args) => precommit_tool::cmd_tool(&args),
         CargoAllowCommand::Completions(args) => completions::cmd_completions(&args),
+        CargoAllowCommand::Reference(args) => reference::cmd_reference(&args),
     }
 }
 
@@ -254,5 +257,6 @@ impl CargoAllowCommand {
         "vocabulary",
         "tool",
         "completions",
+        "reference",
     ];
 }
