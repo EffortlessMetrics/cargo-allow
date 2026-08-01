@@ -17,15 +17,15 @@ fn glob_question_mark_matches_one_unicode_character() {
 #[test]
 fn finding_kind_accepts_hyphenated_cli_aliases() {
     assert_eq!(
-        FindingKind::from_str("non-rust"),
+        FindingKind::from_str(" NON-RUST "),
         Ok(FindingKind::NonRustFile)
     );
     assert_eq!(
-        FindingKind::from_str("lint-exception"),
+        FindingKind::from_str(" LINT-EXCEPTION "),
         Ok(FindingKind::LintException)
     );
     assert_eq!(
-        FindingKind::from_str("generated-code"),
+        FindingKind::from_str(" GENERATED-CODE "),
         Ok(FindingKind::GeneratedCode)
     );
 }
@@ -229,6 +229,9 @@ fn finding_kind_display_and_parser_cover_policy_aliases_and_errors() {
         .unwrap_err()
         .to_string();
     assert!(error.contains("unsupported finding kind `unknown-kind`"));
+    assert!(error.contains(
+        "valid values: panic, unsafe, lint_exception, non_rust_file, generated_code, policy_exception"
+    ));
 }
 
 #[cfg(test)]

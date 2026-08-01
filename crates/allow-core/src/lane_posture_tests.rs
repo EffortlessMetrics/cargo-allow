@@ -9,9 +9,18 @@ use std::str::FromStr;
 #[test]
 fn lane_enforcement_mode_parses_supported_values() {
     assert_eq!(
-        LaneEnforcementMode::from_str("shadow").ok(),
+        LaneEnforcementMode::from_str("  ShAdOw  ").ok(),
         Some(LaneEnforcementMode::Shadow)
     );
+}
+
+#[test]
+fn lane_enforcement_mode_error_lists_valid_values() {
+    let error = LaneEnforcementMode::from_str("enforce")
+        .expect_err("unknown lane enforcement mode should fail")
+        .to_string();
+    assert!(error.contains("unsupported lane enforcement mode `enforce`"));
+    assert!(error.contains("valid values: advisory, shadow, blocking"));
 }
 
 #[test]

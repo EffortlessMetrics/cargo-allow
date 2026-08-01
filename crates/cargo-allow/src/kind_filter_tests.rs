@@ -15,3 +15,15 @@ fn parse_kind_filter_arg_call_presence_observer() {
         )
     );
 }
+
+#[test]
+fn parse_kind_filter_arg_accepts_case_insensitive_aliases() {
+    assert_eq!(
+        parse_kind_filter_arg(" PANIC-FAMILY "),
+        Ok(" PANIC-FAMILY ".to_string())
+    );
+    assert_eq!(
+        parse_kind_filter_arg("WORKFLOW"),
+        Ok("WORKFLOW".to_string())
+    );
+}
