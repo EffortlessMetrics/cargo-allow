@@ -1,3 +1,4 @@
+use crate::EvaluationResultClass;
 use crate::WhyReport;
 use crate::contracts::WHY_ARTIFACT;
 use crate::explain_json::render_explain_finding_json;
@@ -7,8 +8,10 @@ use crate::json::{
 use allow_core::json_escape;
 
 pub fn render_why_json(report: WhyReport<'_>) -> String {
-    let result_class = report.evaluation.result_class(report.inventory);
-    render_why_json_with_result_class(report, result_class)
+    let result_class = report
+        .evaluation
+        .result_class_kind_with_scanner_completeness(report.inventory, None);
+    render_why_json_with_result_class(report, result_class, None)
 }
 
 /// Render a `why` artifact with caller-supplied scanner evidence. This keeps
@@ -16,7 +19,8 @@ pub fn render_why_json(report: WhyReport<'_>) -> String {
 /// a partial repository inventory from a partial target scan.
 pub fn render_why_json_with_result_class(
     report: WhyReport<'_>,
-    result_class: Option<&str>,
+    result_class: Option<EvaluationResultClass>,
+    scanner_completeness: Option<&str>,
 ) -> String {
     let mut out = String::new();
     out.push_str("{\n");
@@ -25,7 +29,13 @@ pub fn render_why_json_with_result_class(
     if let Some(result_class) = result_class {
         out.push_str(&format!(
             "    \"result_class\": \"{}\",\n",
-            json_escape(result_class)
+            result_class.as_str()
+        ));
+    }
+    if let Some(scanner_completeness) = scanner_completeness {
+        out.push_str(&format!(
+            "    \"scanner_completeness\": \"{}\",\n",
+            json_escape(scanner_completeness)
         ));
     }
     out.push_str(&format!(

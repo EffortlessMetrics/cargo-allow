@@ -420,7 +420,7 @@ pub(super) fn render_why_json_with_evaluation_and_scanner_completeness(
         })
         .collect::<Vec<_>>();
     let result_class =
-        evaluation.result_class_with_scanner_completeness(inventory, scanner_completeness);
+        evaluation.result_class_kind_with_scanner_completeness(inventory, scanner_completeness);
     allow_report::render_why_json_with_result_class(
         allow_report::WhyReport {
             inventory,
@@ -433,5 +433,6 @@ pub(super) fn render_why_json_with_evaluation_and_scanner_completeness(
             proof_plans: &proof_plans,
         },
         result_class,
+        scanner_completeness,
     )
 }

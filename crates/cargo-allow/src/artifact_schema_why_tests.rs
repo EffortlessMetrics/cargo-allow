@@ -141,6 +141,7 @@ fn result_class_schema_binds_to_its_evidence_tuple() -> Result<(), String> {
                 ("scope".to_string(), json!("scoped")),
                 ("locality".to_string(), json!("proven")),
                 ("reasons".to_string(), json!([])),
+                ("scanner_completeness".to_string(), json!("partial")),
             ]);
         partial
             .get_mut("inventory")
@@ -150,6 +151,41 @@ fn result_class_schema_binds_to_its_evidence_tuple() -> Result<(), String> {
         if validator.validate(&partial).is_err() {
             return Err(format!(
                 "{name} schema should accept target_scanner_partial"
+            ));
+        }
+
+        let mut scoped_partial: Value = serde_json::from_str(&sample_text)
+            .map_err(|error| format!("{name} sample JSON: {error}"))?;
+        scoped_partial
+            .get_mut("evaluation")
+            .and_then(Value::as_object_mut)
+            .ok_or_else(|| format!("{name} sample should contain evaluation"))?
+            .extend([
+                ("result_class".to_string(), json!("exact_scoped")),
+                ("scope".to_string(), json!("scoped")),
+                ("locality".to_string(), json!("proven")),
+                ("reasons".to_string(), json!([])),
+                ("scanner_completeness".to_string(), json!("complete")),
+            ]);
+        scoped_partial
+            .get_mut("inventory")
+            .and_then(Value::as_object_mut)
+            .ok_or_else(|| format!("{name} sample should contain inventory"))?
+            .insert("completeness".to_string(), json!("partial"));
+        if validator.validate(&scoped_partial).is_err() {
+            return Err(format!(
+                "{name} schema should accept exact_scoped with complete target scanner evidence"
+            ));
+        }
+
+        scoped_partial
+            .get_mut("evaluation")
+            .and_then(Value::as_object_mut)
+            .ok_or_else(|| format!("{name} sample should contain evaluation"))?
+            .remove("scanner_completeness");
+        if validator.validate(&scoped_partial).is_ok() {
+            return Err(format!(
+                "{name} schema must require scanner evidence for exact_scoped partial inventory"
             ));
         }
 
@@ -167,6 +203,7 @@ fn result_class_schema_binds_to_its_evidence_tuple() -> Result<(), String> {
                 ("scope".to_string(), json!("full_fallback")),
                 ("locality".to_string(), json!("global_dependency")),
                 ("reasons".to_string(), json!(["scanner incomplete"])),
+                ("scanner_completeness".to_string(), json!("partial")),
             ]);
         unavailable
             .get_mut("inventory")

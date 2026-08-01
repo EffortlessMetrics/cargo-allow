@@ -303,4 +303,10 @@ fn scoped_result_class_uses_target_scanner_evidence_over_repository_inventory() 
         evaluation.result_class_with_scanner_completeness(inventory, Some("partial")),
         Some("target_scanner_partial")
     );
+    let complete_inventory =
+        InventoryContext::source_syntax("git_tracked", None, None).with_completeness("complete");
+    assert_eq!(
+        evaluation.result_class_with_scanner_completeness(complete_inventory, Some("partial")),
+        Some("target_scanner_partial")
+    );
 }

@@ -99,7 +99,8 @@ pub(super) fn render_add_finding_plan(input: AddFindingPlanInput<'_>) -> CargoAl
     Ok(
         allow_report::render_add_finding_plan_json_with_result_class(
             &plan,
-            evaluation.result_class_with_scanner_completeness(inventory, scanner_completeness),
+            evaluation.result_class_kind_with_scanner_completeness(inventory, scanner_completeness),
+            scanner_completeness,
         ),
     )
 }
