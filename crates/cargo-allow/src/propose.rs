@@ -1,6 +1,9 @@
 use allow_core::{CargoAllowError, CargoAllowResult, FindingKind, MatchStatus};
 use allow_match::{CheckMode, evaluate};
-use allow_policy::{generated_entry_rejection, render_policy, validate_policy};
+use allow_policy::{
+    generated_entry_rejection, ledger_self_receipt, receipts_ledger_at, render_policy,
+    validate_policy,
+};
 use allow_report::MutationReceipt;
 use repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 use std::env;
@@ -70,6 +73,19 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
     let mut unreceiptable_new_findings = 0;
     let mut unreceiptable_reason: Option<&'static str> = None;
     let expires = args.expires.clone().unwrap_or_else(default_baseline_expiry);
+    // The ledger about to be written gets a durable receipt below, so it must
+    // never also be proposed as expiring debt (#3032).
+    let ledger_rel = match (&args.write, &write_target) {
+        (Some(write_path), target) => {
+            let absolute = target.clone().unwrap_or_else(|| root.join(write_path));
+            Some(
+                portable_relative_under_root(&root, &absolute)?
+                    .to_string_lossy()
+                    .replace(std::path::MAIN_SEPARATOR, "/"),
+            )
+        }
+        _ => None,
+    };
     for (n, outcome) in outcomes
         .iter()
         .filter(|o| o.status == MatchStatus::New)
@@ -83,6 +99,15 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         }
         if let Some(finding) = outcome.finding_index.and_then(|idx| findings.get(idx)) {
             let entry = entry_from_finding(finding, start + n, &expires);
+            // An already-tracked ledger shows up as its own finding. Leave it
+            // to the durable self-receipt below instead of stamping expiring
+            // `baseline_debt` on the file that records the policy (#3032).
+            if ledger_rel
+                .as_deref()
+                .is_some_and(|ledger| receipts_ledger_at(&entry, ledger))
+            {
+                continue;
+            }
             // Never propose an entry this policy's own requirements forbid.
             // Doing so made `validate_policy` below fail on a generated id the
             // operator cannot find in their file, so `init` followed by
@@ -99,6 +124,36 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
             }
             proposed.allow.push(entry);
             proposed_entries += 1;
+        }
+    }
+    // A ledger that is about to be written into the source tree must receipt
+    // itself, or the first `check --mode no-new` after the adopter commits it
+    // fails on `policy/allow.toml` rather than on their code (#3032). Only when
+    // the operator is persisting a policy, and never over an existing receipt.
+    if let Some(ledger_rel) = &ledger_rel {
+        // Look at the operator's own entries, not `proposed`: when the ledger
+        // is already tracked and unreceipted, the loop above will have just
+        // generated expiring `baseline_debt` for it, and treating that as an
+        // existing receipt would leave the exact wrong lifecycle on the file.
+        // Those generated entries were dropped, so re-check the source config.
+        if !cfg
+            .allow
+            .iter()
+            .any(|entry| receipts_ledger_at(entry, ledger_rel))
+        {
+            // `unowned` is only legal on `baseline_debt`, and the ledger's own
+            // receipt is deliberately not debt, so fall back to the same
+            // concrete owner the starter policy uses.
+            let owner = proposed
+                .owner
+                .clone()
+                .filter(|owner| owner.trim() != "unowned" && !owner.trim().is_empty())
+                .unwrap_or_else(|| "core/policy".into());
+            proposed.allow.push(ledger_self_receipt(
+                &format!("allow-{:04}", proposed.allow.len() + 1),
+                ledger_rel,
+                &owner,
+            ));
         }
     }
     // Validate the complete policy before writing, matching add/prune/refresh (#2832 audit).

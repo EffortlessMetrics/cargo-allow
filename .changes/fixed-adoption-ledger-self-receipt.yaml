@@ -1,0 +1,14 @@
+kind: Fixed
+body: >-
+  Adoption: the ledger cargo-allow writes now receipts itself, so committing it
+  no longer turns the gate red. Under `inventory = git-tracked` the policy file
+  joins its own non-Rust inventory the moment it is committed, and nothing
+  receipted it - so an adopter's first `check --mode no-new` after following the
+  documented bootstrap failed on `policy/allow.toml` rather than on their code.
+  The only receipt the tool would generate was `baseline_debt` with an expiry,
+  which is both the wrong classification for a governance record and a renewal
+  treadmill. `init` and `propose --write` now seed the entry cargo-allow's own
+  ledger has carried since `allow-0077`: `classification =
+  "source_exception_policy"` with `review_after` rather than `expires`, scoped
+  to whatever path was written (including a custom `--config` location). An
+  existing receipt for that path is never overwritten.

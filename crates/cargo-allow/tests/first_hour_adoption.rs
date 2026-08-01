@@ -539,6 +539,122 @@ fn first_hour_init_bootstrap_passes_no_new_without_propose() {
     drop_root(root);
 }
 
+/// The generated ledger is itself a tracked file, so it lands in its own
+/// inventory as a `non_rust_file` finding. Nothing receipted it, so an
+/// adopter's first gate run failed on `policy/allow.toml` rather than on their
+/// code — under `git-tracked` inventory the moment they committed it, and
+/// immediately under the filesystem fallback exercised here (#3032).
+#[test]
+fn the_written_ledger_receipts_itself_and_keeps_the_gate_green() {
+    let root = temp_root("ledger-self-receipt");
+    write_source(&root, "pub fn boom() -> u8 { None::<u8>.unwrap() }\n");
+
+    run(
+        cargo_allow()
+            .arg("propose")
+            .arg("--root")
+            .arg(&root)
+            .arg("--write")
+            .arg(root.join("policy/allow.toml"))
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run propose: {err}"))),
+        "propose --write",
+    );
+
+    let policy = fs::read_to_string(root.join("policy/allow.toml")).unwrap_or_default();
+    assert!(
+        policy.contains("source_exception_policy"),
+        "the written ledger should receipt itself durably: {policy}"
+    );
+    assert!(
+        policy.contains("policy/allow.toml"),
+        "the self-receipt should scope to the ledger path: {policy}"
+    );
+
+    let check = run(
+        cargo_allow()
+            .arg("check")
+            .arg("--root")
+            .arg(&root)
+            .arg("--mode")
+            .arg("no-new")
+            .arg("--format")
+            .arg("json")
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run check: {err}"))),
+        "check after writing the ledger",
+    );
+    let check_json: serde_json::Value = serde_json::from_slice(&check.stdout)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("check json: {err}")));
+    assert_eq!(
+        check_json.get("status").and_then(serde_json::Value::as_str),
+        Some("passed"),
+        "the written ledger must not fail the gate: {check_json}"
+    );
+    assert_eq!(
+        check_json
+            .pointer("/summary/new")
+            .and_then(serde_json::Value::as_u64),
+        Some(0),
+        "the ledger itself must not remain an unreceipted finding: {check_json}"
+    );
+
+    drop_root(root);
+}
+
+/// An already-tracked ledger with no receipt shows up as its own finding, so
+/// `propose --write --force` would generate expiring `baseline_debt` for it and
+/// then treat that generated entry as an existing receipt — leaving exactly the
+/// wrong lifecycle on the file that records the policy (#3032).
+#[test]
+fn force_rewriting_an_unreceipted_ledger_gives_it_the_durable_receipt() {
+    let root = temp_root("ledger-force-rewrite");
+    write_source(&root, "pub fn boom() -> u8 { None::<u8>.unwrap() }\n");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    // A ledger that already exists and does not receipt itself.
+    fs::write(
+        root.join("policy/allow.toml"),
+        "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\nowner = \"core/policy\"\n\
+         status = \"active\"\n\n[workspace]\nroot = \".\"\ndefault_mode = \"no-new\"\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write legacy ledger: {err}")));
+
+    run(
+        cargo_allow()
+            .arg("propose")
+            .arg("--root")
+            .arg(&root)
+            .arg("--write")
+            .arg(root.join("policy/allow.toml"))
+            .arg("--force")
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run propose --force: {err}"))),
+        "propose --write --force",
+    );
+
+    let policy = fs::read_to_string(root.join("policy/allow.toml")).unwrap_or_default();
+    let ledger_entry = policy
+        .split("[[allow]]")
+        .find(|block| block.contains("policy/allow.toml"))
+        .unwrap_or_default()
+        .to_string();
+    assert!(
+        ledger_entry.contains("source_exception_policy"),
+        "the rewritten ledger must carry the durable receipt: {ledger_entry}"
+    );
+    assert!(
+        !ledger_entry.contains("baseline_debt"),
+        "the ledger must not be receipted as expiring debt: {ledger_entry}"
+    );
+    assert!(
+        ledger_entry.contains("review_after") && !ledger_entry.contains("expires"),
+        "the ledger receipt must not expire: {ledger_entry}"
+    );
+
+    drop_root(root);
+}
+
 /// `init` writes `allow_bare_allow_attributes = false`, so `propose` used to
 /// generate a `lint_exception`/`allow_attribute` entry that the very same
 /// policy rejected — aborting the whole preview with a conflict naming an id
