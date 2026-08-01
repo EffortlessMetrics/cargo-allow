@@ -128,10 +128,8 @@ cargo run -p cargo-allow -- reference --format man > cargo-allow.1
 ```
 
 These references are generated from the exact Clap graph of the binary. They
-describe command grammar, options, defaults, and value choices; support
-channels, mutation posture, and release packaging remain separate contracts
-under issue #2479. Regenerate after every binary upgrade.
-
-Release-archive packaging and support-channel metadata remain separate
-follow-up work under issue #2479. Regenerate the manpage after every binary
-upgrade when installing it on a Unix-like system.
+describe command grammar, options, defaults, value choices, and the
+product-level support versions/channels embedded from `docs/support-matrix.toml`.
+Mutation posture and release-archive packaging remain separate contracts under
+issue #2479. Regenerate every reference after a binary upgrade; regenerate the
+manpage after every upgrade when installing it on a Unix-like system.
