@@ -254,7 +254,13 @@ pub(crate) fn normalize_to_repo_relative(root: &Path, path: &Path) -> PathBuf {
     // prefix types don't match, so it silently fails. Strip the verbatim
     // prefix from root first, then compare lexically (#2505).
     let root_stripped = crate::policy_config::strip_verbatim_prefix(root);
-    let path_stripped = crate::policy_config::strip_verbatim_prefix(path);
+    let joined_path;
+    let path_stripped = if path.is_absolute() {
+        crate::policy_config::strip_verbatim_prefix(path)
+    } else {
+        joined_path = root.join(path);
+        crate::policy_config::strip_verbatim_prefix(&joined_path)
+    };
     if path_stripped.is_absolute() {
         path_stripped
             .strip_prefix(&root_stripped)

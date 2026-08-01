@@ -179,6 +179,7 @@ pub(crate) fn sample_add_finding_plan_json_for_contract_test() -> String {
         ledger: None,
     };
     let digest = "sha256:v1:0000000000000000000000000000000000000000000000000000000000000000";
+    let reasons = vec!["fixture fallback reason".to_string()];
     let plan = AddFindingPlanV1 {
         tool_version: env!("CARGO_PKG_VERSION").to_string(),
         repository: AddFindingPlanRepository {
@@ -194,7 +195,7 @@ pub(crate) fn sample_add_finding_plan_json_for_contract_test() -> String {
         evaluation: EvaluationContext {
             scope: "full_fallback",
             locality: "global_dependency",
-            reasons: &[],
+            reasons: &reasons,
         },
         inventory_basis_identity: digest.to_string(),
         policy: AddFindingPlanPolicy {
