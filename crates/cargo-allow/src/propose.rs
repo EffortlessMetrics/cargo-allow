@@ -34,6 +34,23 @@ use allow_core::{Finding, SimpleDate};
 #[cfg(test)]
 use propose_baseline::BASELINE_DEBT_DEFAULT_DAYS;
 
+/// First `allow-NNNN` id not already taken by `entries`.
+///
+/// Generated entry ids come from the position of a finding in the `new` set,
+/// not from how many entries were actually kept, so any skipped finding leaves
+/// a hole and `entries.len() + 1` can land on an id already in use. Allocating
+/// above the highest existing number is correct whatever the loop skipped
+/// (#3035).
+fn next_allow_id(entries: &[allow_core::AllowEntry]) -> String {
+    let highest = entries
+        .iter()
+        .filter_map(|entry| entry.id.strip_prefix("allow-"))
+        .filter_map(|number| number.parse::<usize>().ok())
+        .max()
+        .unwrap_or(0);
+    format!("allow-{:04}", highest + 1)
+}
+
 pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
     require_json_summary_output(args.summary_format, args.summary_output.as_deref())?;
     let cwd = env::current_dir()
@@ -150,7 +167,7 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
                 .filter(|owner| owner.trim() != "unowned" && !owner.trim().is_empty())
                 .unwrap_or_else(|| "core/policy".into());
             proposed.allow.push(ledger_self_receipt(
-                &format!("allow-{:04}", proposed.allow.len() + 1),
+                &next_allow_id(&proposed.allow),
                 ledger_rel,
                 &owner,
             ));
