@@ -113,6 +113,43 @@ fn clap_parses_list_wide_arg() {
 }
 
 #[test]
+fn clap_parses_list_width_arg() {
+    let parsed = CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "list", "--width", "60"]))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse --width: {err}")));
+
+    assert!(matches!(
+        parsed.command,
+        Some(CargoAllowCommand::List(ListArgs {
+            width: Some(60),
+            wide: false,
+            columns: None,
+            ..
+        }))
+    ));
+}
+
+#[test]
+fn clap_rejects_list_width_below_minimum_and_with_full_views() {
+    let narrow = CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "list", "--width", "39"]))
+        .expect_err("width below the minimum should fail");
+    assert!(
+        narrow.to_string().contains("at least 40"),
+        "unexpected narrow-width diagnostic: {narrow}"
+    );
+
+    for view in [vec!["--wide"], vec!["--columns", "id,status"]] {
+        let mut args = vec!["cargo-allow", "list", "--width", "60"];
+        args.extend(view);
+        let err = CargoAllowCli::try_parse_from(argv(args))
+            .expect_err("explicit width should be limited to concise cards");
+        assert!(
+            err.to_string().contains("cannot be used with") || err.to_string().contains("conflict"),
+            "unexpected width/view conflict diagnostic: {err}"
+        );
+    }
+}
+
+#[test]
 fn clap_rejects_list_wide_with_columns() {
     let err = CargoAllowCli::try_parse_from(argv(vec![
         "cargo-allow",

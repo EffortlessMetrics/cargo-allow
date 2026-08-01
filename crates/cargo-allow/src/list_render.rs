@@ -57,23 +57,32 @@ pub(super) fn render_list_rows_concise(
     context: ListContext<'_>,
     columns: &[allow_report::ListColumn],
 ) -> String {
-    render_list_rows_concise_styled(rows, filters, context, columns, allow_report::Style::PLAIN)
+    render_list_rows_concise_styled_with_width(
+        rows,
+        filters,
+        context,
+        columns,
+        allow_report::Style::PLAIN,
+        None,
+    )
 }
 
-pub(super) fn render_list_rows_concise_styled(
+pub(super) fn render_list_rows_concise_styled_with_width(
     rows: &[ListRow],
     filters: &ListFilters<'_>,
     context: ListContext<'_>,
     columns: &[allow_report::ListColumn],
     style: allow_report::Style,
+    width: Option<usize>,
 ) -> String {
     let report_rows = report_list_rows(rows, filters);
-    allow_report::render_list_human_concise_styled(
+    allow_report::render_list_human_concise_styled_with_width(
         &report_rows,
         context.inventory,
         report_list_filters(filters, context),
         columns,
         style,
+        width,
     )
 }
 

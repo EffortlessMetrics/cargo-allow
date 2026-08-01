@@ -53,7 +53,22 @@ pub fn render_list_human_concise_styled(
     columns: &[ListColumn],
     style: Style,
 ) -> String {
-    render_list_human_columns_internal(rows, inventory, columns, true, filters, style)
+    render_list_human_concise_styled_with_width(rows, inventory, filters, columns, style, None)
+}
+
+/// Render concise cards with an optional explicit display-width budget.
+///
+/// A supplied width only changes truncation; filtering, ordering, status
+/// counts, and complete wide/JSON projections remain independent of it.
+pub fn render_list_human_concise_styled_with_width(
+    rows: &[ListRow<'_>],
+    inventory: InventoryContext<'_>,
+    filters: ListFilters<'_>,
+    columns: &[ListColumn],
+    style: Style,
+    width: Option<usize>,
+) -> String {
+    render_list_human_columns_internal(rows, inventory, columns, true, filters, style, width)
 }
 
 /// Render the list human-format TSV with a column subset (#2595).
@@ -82,6 +97,7 @@ pub fn render_list_human_columns_styled(
         false,
         ListFilters::default(),
         style,
+        None,
     )
 }
 
@@ -92,6 +108,7 @@ fn render_list_human_columns_internal(
     concise: bool,
     filters: ListFilters<'_>,
     style: Style,
+    width: Option<usize>,
 ) -> String {
     let mut out = String::new();
     out.push_str(&format!(
@@ -106,7 +123,7 @@ fn render_list_human_columns_internal(
     }
     if concise {
         push_concise_summary(&mut out, rows, style);
-        push_concise_cards(&mut out, rows, style);
+        push_concise_cards(&mut out, rows, style, width);
     } else {
         push_header(&mut out, columns);
         for row in rows {
@@ -156,7 +173,7 @@ fn push_row(out: &mut String, row: &ListRow<'_>, columns: &[ListColumn], style: 
     out.push('\n');
 }
 
-fn push_concise_cards(out: &mut String, rows: &[ListRow<'_>], style: Style) {
+fn push_concise_cards(out: &mut String, rows: &[ListRow<'_>], style: Style, width: Option<usize>) {
     if rows.is_empty() {
         return;
     }
@@ -165,27 +182,22 @@ fn push_concise_cards(out: &mut String, rows: &[ListRow<'_>], style: Style) {
         out.push_str("- [");
         out.push_str(&style_status(style, row.status));
         out.push_str("] ");
-        out.push_str(&ListColumn::Id.concise_value(row));
-        out.push('\n');
-        out.push_str("  kind: ");
-        out.push_str(&ListColumn::Kind.concise_value(row));
-        if row.family.is_some() {
-            out.push('.');
-            out.push_str(&ListColumn::Family.concise_value(row));
-        }
-        out.push('\n');
-        out.push_str("  scope: ");
-        out.push_str(&ListColumn::Scope.concise_value(row));
-        out.push('\n');
-        out.push_str("  owner: ");
-        out.push_str(&ListColumn::Owner.concise_value(row));
-        out.push('\n');
-        out.push_str(&format!(
-            "  matches: {}; evidence: {}",
-            row.matches, row.evidence_count
+        out.push_str(&card_value(
+            ListColumn::Id,
+            row,
+            width.map(|value| value.saturating_sub(5 + row.status.chars().count())),
         ));
+        out.push('\n');
+        let kind = match row.family {
+            Some(family) => format!("{}.{}", row.kind, family),
+            None => row.kind.to_string(),
+        };
+        push_card_field(out, "kind", &kind, row, width);
+        push_card_field(out, "scope", row.scope, row, width);
+        push_card_field(out, "owner", row.owner, row, width);
+        let mut evidence = format!("matches: {}; evidence: {}", row.matches, row.evidence_count);
         if row.broken_evidence_references > 0 || row.weak_evidence_references > 0 {
-            out.push_str(" (");
+            evidence.push_str(" (");
             let mut evidence_details = Vec::new();
             if row.broken_evidence_references > 0 {
                 evidence_details.push(format!("broken: {}", row.broken_evidence_references));
@@ -193,14 +205,58 @@ fn push_concise_cards(out: &mut String, rows: &[ListRow<'_>], style: Style) {
             if row.weak_evidence_references > 0 {
                 evidence_details.push(format!("weak: {}", row.weak_evidence_references));
             }
-            out.push_str(&evidence_details.join("; "));
-            out.push(')');
+            evidence.push_str(&evidence_details.join("; "));
+            evidence.push(')');
         }
-        out.push('\n');
-        out.push_str("  reason: ");
-        out.push_str(&ListColumn::Reason.concise_value(row));
-        out.push('\n');
+        push_card_field(out, "", &evidence, row, width);
+        push_card_field(out, "reason", row.reason, row, width);
     }
+}
+
+fn push_card_field(
+    out: &mut String,
+    label: &str,
+    value: &str,
+    row: &ListRow<'_>,
+    width: Option<usize>,
+) {
+    let prefix = if label.is_empty() {
+        "  ".to_string()
+    } else {
+        format!("  {label}: ")
+    };
+    out.push_str(&prefix);
+    let safe_value = crate::style::sanitize_terminal_text(value);
+    let rendered = match width {
+        Some(width) => {
+            truncate_with_ellipsis(&safe_value, width.saturating_sub(prefix.chars().count()))
+        }
+        None if label == "kind" => truncate_with_ellipsis(&safe_value, 20),
+        None if label == "scope" => ListColumn::Scope.concise_value(row),
+        None if label == "owner" => ListColumn::Owner.concise_value(row),
+        None if label == "reason" => ListColumn::Reason.concise_value(row),
+        None => safe_value,
+    };
+    out.push_str(&rendered);
+    out.push('\n');
+}
+
+fn card_value(column: ListColumn, row: &ListRow<'_>, width: Option<usize>) -> String {
+    match width {
+        Some(width) => column.concise_value_with_width(row, width),
+        None => column.concise_value(row),
+    }
+}
+
+fn truncate_with_ellipsis(value: &str, max_chars: usize) -> String {
+    if value.chars().count() <= max_chars {
+        return value.to_string();
+    }
+    if max_chars == 0 {
+        return String::new();
+    }
+    let prefix = value.chars().take(max_chars - 1).collect::<String>();
+    format!("{prefix}…")
 }
 
 fn style_status(style: Style, status: &str) -> String {

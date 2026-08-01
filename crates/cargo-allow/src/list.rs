@@ -25,7 +25,8 @@ use list_render::render_list_rows_with_context;
 #[cfg(test)]
 use list_render::{render_list_rows_concise, render_list_rows_with_columns};
 use list_render::{
-    render_list_rows_concise_styled, render_list_rows_json, render_list_rows_with_columns_styled,
+    render_list_rows_concise_styled_with_width, render_list_rows_json,
+    render_list_rows_with_columns_styled,
 };
 #[cfg(test)]
 use list_rows::list_rows;
@@ -75,7 +76,9 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
             if args.wide || args.columns.is_some() {
                 render_list_rows_with_columns_styled(&rows, &filters, context, &columns, style)
             } else {
-                render_list_rows_concise_styled(&rows, &filters, context, &columns, style)
+                render_list_rows_concise_styled_with_width(
+                    &rows, &filters, context, &columns, style, args.width,
+                )
             }
         }
         HumanJsonFormat::Json => render_list_rows_json(&rows, &filters, context),

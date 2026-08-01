@@ -100,12 +100,30 @@ pub(crate) struct ListArgs {
     /// Equivalent to `--columns all`; JSON is always complete.
     #[arg(long, conflicts_with = "columns")]
     pub(super) wide: bool,
+    /// Bound concise card lines to this display width. The default layout is
+    /// deterministic when no width is supplied (including non-TTY output).
+    #[arg(long, value_parser = parse_list_width, conflicts_with_all = ["wide", "columns"])]
+    pub(super) width: Option<usize>,
     /// Write list output to a file instead of stdout.
     #[arg(long)]
     pub(super) output: Option<PathBuf>,
     /// Include untracked files when determining current match status.
     #[arg(long)]
     pub(super) include_untracked: bool,
+}
+
+const MIN_LIST_WIDTH: usize = 40;
+
+fn parse_list_width(value: &str) -> Result<usize, String> {
+    let width = value
+        .parse::<usize>()
+        .map_err(|_| format!("list width must be a positive integer, got {value}"))?;
+    if width < MIN_LIST_WIDTH {
+        return Err(format!(
+            "list width must be at least {MIN_LIST_WIDTH} columns, got {width}"
+        ));
+    }
+    Ok(width)
 }
 
 pub(super) fn list_filters(args: &ListArgs) -> CargoAllowResult<ListFilters<'_>> {

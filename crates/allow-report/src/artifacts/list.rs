@@ -112,8 +112,17 @@ impl ListColumn {
     /// The bounded cell projection used by the CLI's concise human view.
     /// Explicit `--columns` and `--wide` retain the complete cell values.
     pub fn concise_value(self, row: &ListRow<'_>) -> String {
+        self.concise_value_with_width(row, self.concise_width())
+    }
+
+    /// Render a concise cell within a caller-provided character budget.
+    ///
+    /// The list card renderer uses this when an operator explicitly supplies
+    /// a terminal width. The normal concise limits remain the ceiling so a
+    /// wider terminal does not make repository text unbounded.
+    pub fn concise_value_with_width(self, row: &ListRow<'_>, max_chars: usize) -> String {
         let value = self.value(row);
-        truncate_with_ellipsis(value.as_ref(), self.concise_width())
+        truncate_with_ellipsis(value.as_ref(), max_chars.min(self.concise_width()))
     }
 
     fn concise_width(self) -> usize {
