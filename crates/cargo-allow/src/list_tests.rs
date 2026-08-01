@@ -150,6 +150,13 @@ fn clap_rejects_list_width_below_minimum_and_with_full_views() {
 }
 
 #[test]
+fn automatic_terminal_width_uses_only_usable_sizes() {
+    assert_eq!(super::list_args::terminal_width(39), None);
+    assert_eq!(super::list_args::terminal_width(40), Some(40));
+    assert_eq!(super::list_args::terminal_width(120), Some(120));
+}
+
+#[test]
 fn clap_rejects_list_wide_with_columns() {
     let err = CargoAllowCli::try_parse_from(argv(vec![
         "cargo-allow",

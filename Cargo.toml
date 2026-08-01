@@ -74,6 +74,7 @@ sha2 = "0.11.0"
 toml = "1.1.2"
 clap = { version = "4.6.1", features = ["derive"] }
 clap_complete = "4.6.8"
+terminal_size = "0.4.4"
 tree-sitter = "0.26.11"
 tree-sitter-rust = "0.24.2"
 
