@@ -4,7 +4,7 @@
   "title": "cargo-allow add-finding-plan v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "schema_id", "tool", "tool_version", "command", "claim_boundary", "scanner_limitations", "repository", "inventory", "evaluation", "inventory_basis_identity", "policy", "finding", "outcome", "candidates", "required_fields", "proof_plans"],
+  "required": ["schema_version", "schema_id", "tool", "tool_version", "command", "claim_boundary", "scanner_limitations", "repository", "inventory", "inventory_basis_identity", "policy", "finding", "outcome", "candidates", "required_fields", "proof_plans"],
   "properties": {
     "schema_version": { "const": 1 },
     "schema_id": { "const": "cargo-allow.add-finding-plan.v1" },

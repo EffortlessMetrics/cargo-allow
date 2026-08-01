@@ -5,8 +5,9 @@ use allow_core::{
 use allow_match::{CheckMode, evaluate, explain_match_failure, score_match};
 
 use crate::{
-    HumanJsonFormat, SourceTreeReportContext, emit_text, load_world, load_world_for_path,
-    parse_kind_filter,
+    EvidenceValidationMode, HumanJsonFormat, SourceTreeReportContext, current_dir, emit_text,
+    load_world_for_path, load_world_with_evidence_mode, parse_kind_filter,
+    resolve_source_tree_root,
 };
 
 #[path = "why_args.rs"]
@@ -46,16 +47,27 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
         )));
     }
     let parsed_kind = parse_kind_filter(&args.kind)?;
+    let cwd = current_dir()?;
+    let source_root = resolve_source_tree_root(args.root.root.as_deref(), cwd.clone())?;
+    let target_path = if args.path.is_absolute() {
+        args.path.clone()
+    } else if args.root.root.is_some() {
+        source_root.join(&args.path)
+    } else {
+        cwd.join(&args.path)
+    };
     let scoped_world = load_world_for_path(
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
         Some(args.kind.as_str()),
         args.include_untracked,
-        &args.path,
+        &target_path,
     )?;
+    let target_repo_path = crate::world::normalize_to_repo_relative(&scoped_world.0, &target_path);
     let scoped_finding =
-        crate::add::select_add_finding(&scoped_world.2, parsed_kind, &args.path, args.line)?.1;
+        crate::add::select_add_finding(&scoped_world.2, parsed_kind, &target_repo_path, args.line)?
+            .1;
     let locality_reasons =
         crate::world::scoped_locality_reasons(&scoped_world.1, scoped_finding, &scoped_world.4);
     let evaluation = if locality_reasons.is_empty() {
@@ -74,16 +86,17 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
     let (root, cfg, findings, inventory_facts, _federation) = if locality_reasons.is_empty() {
         scoped_world
     } else {
-        load_world(
+        load_world_with_evidence_mode(
             args.root.root.as_deref(),
             args.config.as_deref(),
             true,
             Some(args.kind.as_str()),
             args.include_untracked,
+            EvidenceValidationMode::ReportOnly,
         )?
     };
     let (finding_index, finding) =
-        crate::add::select_add_finding(&findings, parsed_kind, &args.path, args.line)?;
+        crate::add::select_add_finding(&findings, parsed_kind, &target_repo_path, args.line)?;
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
     let outcome = outcomes
         .into_iter()

@@ -25,6 +25,20 @@ fn why_schema_locks_finding_outcome_and_candidates_contract() {
             "next",
         ],
     );
+    assert!(
+        !schema
+            .pointer("/required")
+            .and_then(Value::as_array)
+            .is_some_and(|required| required.iter().any(|field| field == "evaluation")),
+        "why v1 keeps the additive evaluation metadata optional for old artifacts"
+    );
+    assert_eq!(
+        schema
+            .pointer("/properties/evaluation/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/evaluation"),
+        "why should expose optional evaluation metadata"
+    );
 
     assert_eq!(
         schema

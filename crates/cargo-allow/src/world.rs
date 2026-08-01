@@ -154,7 +154,7 @@ pub(crate) fn load_world_for_path(
             return load_world_without_policy(
                 &root,
                 kind_filter,
-                false,
+                include_untracked,
                 EvidenceValidationMode::ReportOnly,
                 empty_federation_evaluation(PrecedenceTier::DiscoveryFallback),
             );
@@ -176,12 +176,7 @@ pub(crate) fn load_world_for_path(
         .first()
         .cloned()
         .ok_or_else(|| CargoAllowError::new("target source path was not prepared for scanning"))?;
-    if !inventory
-        .files
-        .iter()
-        .map(|path| normalize_to_repo_relative(&root, path))
-        .any(|path| path == target)
-    {
+    if !inventory.files.iter().any(|path| path == &target) {
         return Err(CargoAllowError::new(format!(
             "target {} is not present in the source inventory; use --include-untracked if it is intentionally untracked",
             target_path.display()
@@ -224,8 +219,8 @@ pub(crate) fn scoped_locality_reasons(
 ) -> Vec<String> {
     let mut reasons = allow_match::scoped_locality_reasons(cfg, finding);
 
-    if finding.family.as_deref().is_some_and(|family| {
-        matches!(
+    if let Some(family) = finding.family.as_deref()
+        && matches!(
             family,
             "generated_code"
                 | "executable_file"
@@ -235,10 +230,9 @@ pub(crate) fn scoped_locality_reasons(
                 | "process_spawn"
                 | "network_destination"
         )
-    }) {
+    {
         reasons.push(format!(
-            "companion finding family `{}` is derived from repository-wide context",
-            finding.family.as_deref().unwrap_or("<unknown>")
+            "companion finding family `{family}` is derived from repository-wide context"
         ));
     }
 
@@ -253,7 +247,7 @@ pub(crate) fn scoped_locality_reasons(
 
 /// Normalize an arbitrary path (absolute or repo-relative) to a repo-relative
 /// PathBuf suitable for the scanner's file list.
-fn normalize_to_repo_relative(root: &Path, path: &Path) -> PathBuf {
+pub(crate) fn normalize_to_repo_relative(root: &Path, path: &Path) -> PathBuf {
     // On Windows, resolve_source_tree_root returns a canonicalized path with
     // the \\?\ verbatim prefix, but the user-supplied --path is typically
     // non-verbatim. strip_prefix compares Component-by-Component and the
