@@ -97,6 +97,8 @@ fn propose_summary_reports_generated_baseline_boundary() {
             proposed_entries: 3,
             unsafe_proposed_entries: 1,
             truncated_new_findings: 0,
+            unreceiptable_new_findings: 0,
+            unreceiptable_reason: None,
         },
         "2026-08-01",
         Some(Path::new("policy/allow.proposed.toml")),

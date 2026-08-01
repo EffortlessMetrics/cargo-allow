@@ -16,6 +16,8 @@ fn propose_json_renderer_records_options_summary_and_defaults() {
         baseline_debt_entries_proposed: 2,
         unsafe_baseline_debt_entries_proposed: 1,
         truncated_new_findings: 0,
+        unreceiptable_new_findings: 0,
+        unreceiptable_reason: None,
         mutation_receipt: sample_mutation_receipt(),
     };
     let json = render_propose_json(report.clone());
@@ -78,7 +80,9 @@ fn propose_json_renderer_records_options_summary_and_defaults() {
     "findings_scanned": 54,
     "baseline_debt_entries_proposed": 2,
     "unsafe_baseline_debt_entries_proposed": 1,
-    "truncated_new_findings": 0
+    "truncated_new_findings": 0,
+    "unreceiptable_new_findings": 0,
+    "unreceiptable_reason": null
   }},
   "follow_up_queues": [
     {{
@@ -165,6 +169,8 @@ fn propose_renderer_omits_follow_up_queues_when_nothing_proposed() {
         baseline_debt_entries_proposed: 0,
         unsafe_baseline_debt_entries_proposed: 0,
         truncated_new_findings: 0,
+        unreceiptable_new_findings: 0,
+        unreceiptable_reason: None,
         mutation_receipt: sample_mutation_receipt(),
     };
     report.mutation_receipt.result = "stdout";
@@ -181,6 +187,100 @@ fn propose_renderer_omits_follow_up_queues_when_nothing_proposed() {
     assert!(json.contains("\"changed_allow_ids\": []"));
     assert!(json.contains("\"after_fingerprints\": []"));
     assert!(!text.contains("follow_up_queues:"));
+}
+
+#[test]
+fn propose_renderer_reports_findings_the_policy_forbids_receipting() {
+    let report = ProposeReport {
+        inventory: InventoryContext::source_syntax("git_tracked", None, Some(12)),
+        kind: None,
+        expires: "2026-08-02",
+        policy_output: None,
+        force: false,
+        findings_scanned: 12,
+        baseline_debt_entries_proposed: 2,
+        unsafe_baseline_debt_entries_proposed: 0,
+        truncated_new_findings: 0,
+        unreceiptable_new_findings: 3,
+        unreceiptable_reason: Some(
+            "requirements.allow_bare_allow_attributes = false forbids receipting bare #[allow(...)] attributes",
+        ),
+        mutation_receipt: sample_mutation_receipt(),
+    };
+
+    let text = render_propose_human(report.clone());
+    let json = render_propose_json(report);
+
+    // The count, the requirement that caused it, and both repair routes.
+    assert!(
+        text.contains("not receiptable: 3 new findings not proposed"),
+        "human output should pluralize and count the skips: {text}"
+    );
+    assert!(text.contains("allow_bare_allow_attributes"), "{text}");
+    assert!(text.contains("set that requirement to true"), "{text}");
+    assert!(text.contains("repair the source"), "{text}");
+    // Skipping is a refusal to write a receipt, not a suppressed finding: the
+    // report must say the findings are still unreceipted (#3023).
+    assert!(
+        text.contains("check --mode no-new still reports them as new"),
+        "the skip must not read as if the findings went away: {text}"
+    );
+
+    assert!(json.contains("\"unreceiptable_new_findings\": 3"), "{json}");
+    assert!(
+        json.contains("\"unreceiptable_reason\": \"requirements.allow_bare_allow_attributes"),
+        "{json}"
+    );
+}
+
+#[test]
+fn propose_renderer_stays_silent_when_nothing_was_forbidden() {
+    let report = ProposeReport {
+        inventory: InventoryContext::source_syntax("git_tracked", None, Some(12)),
+        kind: None,
+        expires: "2026-08-02",
+        policy_output: None,
+        force: false,
+        findings_scanned: 12,
+        baseline_debt_entries_proposed: 2,
+        unsafe_baseline_debt_entries_proposed: 0,
+        truncated_new_findings: 0,
+        unreceiptable_new_findings: 0,
+        unreceiptable_reason: None,
+        mutation_receipt: sample_mutation_receipt(),
+    };
+
+    let text = render_propose_human(report.clone());
+    let json = render_propose_json(report);
+
+    assert!(!text.contains("not receiptable:"), "{text}");
+    assert!(json.contains("\"unreceiptable_new_findings\": 0"), "{json}");
+    assert!(json.contains("\"unreceiptable_reason\": null"), "{json}");
+}
+
+/// One skipped finding must read as singular.
+#[test]
+fn propose_renderer_uses_singular_wording_for_one_forbidden_finding() {
+    let report = ProposeReport {
+        inventory: InventoryContext::source_syntax("git_tracked", None, Some(12)),
+        kind: None,
+        expires: "2026-08-02",
+        policy_output: None,
+        force: false,
+        findings_scanned: 12,
+        baseline_debt_entries_proposed: 1,
+        unsafe_baseline_debt_entries_proposed: 0,
+        truncated_new_findings: 0,
+        unreceiptable_new_findings: 1,
+        unreceiptable_reason: Some("requirements.allow_bare_allow_attributes = false"),
+        mutation_receipt: sample_mutation_receipt(),
+    };
+
+    let text = render_propose_human(report);
+    assert!(
+        text.contains("not receiptable: 1 new finding not proposed"),
+        "{text}"
+    );
 }
 
 fn sample_mutation_receipt() -> MutationReceipt<'static> {

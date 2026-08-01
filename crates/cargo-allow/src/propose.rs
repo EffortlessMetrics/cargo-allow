@@ -1,6 +1,6 @@
 use allow_core::{CargoAllowError, CargoAllowResult, FindingKind, MatchStatus};
 use allow_match::{CheckMode, evaluate};
-use allow_policy::{render_policy, validate_policy};
+use allow_policy::{generated_entry_rejection, render_policy, validate_policy};
 use allow_report::MutationReceipt;
 use repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 use std::env;
@@ -67,6 +67,8 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
     let start = proposed.allow.len() + 1;
     let mut proposed_entries = 0;
     let mut unsafe_proposed_entries = 0;
+    let mut unreceiptable_new_findings = 0;
+    let mut unreceiptable_reason: Option<&'static str> = None;
     let expires = args.expires.clone().unwrap_or_else(default_baseline_expiry);
     for (n, outcome) in outcomes
         .iter()
@@ -80,12 +82,22 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
             break;
         }
         if let Some(finding) = outcome.finding_index.and_then(|idx| findings.get(idx)) {
+            let entry = entry_from_finding(finding, start + n, &expires);
+            // Never propose an entry this policy's own requirements forbid.
+            // Doing so made `validate_policy` below fail on a generated id the
+            // operator cannot find in their file, so `init` followed by
+            // `propose` could not produce a baseline for any tree containing a
+            // bare `#[allow(...)]` (#3023). The finding is not suppressed: it
+            // stays `new` in `check`, and the summary reports the skip.
+            if let Some(reason) = generated_entry_rejection(&proposed.requirements, &entry) {
+                unreceiptable_new_findings += 1;
+                unreceiptable_reason.get_or_insert(reason);
+                continue;
+            }
             if finding.kind == FindingKind::Unsafe {
                 unsafe_proposed_entries += 1;
             }
-            proposed
-                .allow
-                .push(entry_from_finding(finding, start + n, &expires));
+            proposed.allow.push(entry);
             proposed_entries += 1;
         }
     }
@@ -160,12 +172,18 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         kind_filter: args.kind.as_deref(),
         mutation_receipt,
     };
-    let truncated_new_findings = new_findings_total.saturating_sub(proposed_entries);
+    // Skipped-because-forbidden findings are not truncation: `--max 0` will
+    // never propose them, so they must not be folded into that count (#3023).
+    let truncated_new_findings = new_findings_total
+        .saturating_sub(proposed_entries)
+        .saturating_sub(unreceiptable_new_findings);
     let counts = propose_render::ProposeCounts {
         findings_scanned: findings.len(),
         proposed_entries,
         unsafe_proposed_entries,
         truncated_new_findings,
+        unreceiptable_new_findings,
+        unreceiptable_reason,
     };
     let summary = match args.summary_format {
         HumanJsonFormat::Human => {
@@ -204,6 +222,8 @@ pub(crate) fn sample_propose_json_for_contract_test() -> String {
             proposed_entries: 3,
             unsafe_proposed_entries: 1,
             truncated_new_findings: 0,
+            unreceiptable_new_findings: 0,
+            unreceiptable_reason: None,
         },
         "2026-08-01",
         Some(Path::new("policy/allow.proposed.toml")),

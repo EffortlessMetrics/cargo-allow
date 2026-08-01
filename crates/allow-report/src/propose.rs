@@ -43,6 +43,26 @@ pub fn render_propose_human_styled(report: ProposeReport<'_>, style: Style) -> S
             }
         ));
     }
+    if report.unreceiptable_new_findings > 0 {
+        let plural = if report.unreceiptable_new_findings == 1 {
+            ""
+        } else {
+            "s"
+        };
+        out.push_str(&format!(
+            "not receiptable: {} new finding{plural} not proposed; {}\n",
+            report.unreceiptable_new_findings,
+            report
+                .unreceiptable_reason
+                .unwrap_or("policy requirements forbid the generated entry"),
+        ));
+        out.push_str(
+            "  next: set that requirement to true to baseline them, or repair the source so the findings disappear\n",
+        );
+        out.push_str(
+            "  note: these remain unreceipted; cargo-allow check --mode no-new still reports them as new\n",
+        );
+    }
     out.push_str("owner: unowned\n");
     out.push_str("classification: ");
     out.push_str(&style.status("baseline_debt", "baseline_debt"));
@@ -93,8 +113,16 @@ pub fn render_propose_json(report: ProposeReport<'_>) -> String {
         report.unsafe_baseline_debt_entries_proposed
     ));
     out.push_str(&format!(
-        "    \"truncated_new_findings\": {}\n",
+        "    \"truncated_new_findings\": {},\n",
         report.truncated_new_findings
+    ));
+    out.push_str(&format!(
+        "    \"unreceiptable_new_findings\": {},\n",
+        report.unreceiptable_new_findings
+    ));
+    out.push_str(&format!(
+        "    \"unreceiptable_reason\": {}\n",
+        option_json(report.unreceiptable_reason)
     ));
     out.push_str("  },\n");
     append_propose_follow_up_queues_json(&report, &mut out);

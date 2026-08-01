@@ -18,6 +18,26 @@ pub(crate) fn entry_receipts_bare_allow(entry: &AllowEntry) -> bool {
     entry.kind == FindingKind::LintException && entry.family.as_deref() == Some("allow_attribute")
 }
 
+/// Why `requirements` forbid persisting `entry`, or `None` when the entry is
+/// legal to write.
+///
+/// Generators (`propose`) must consult this before adding a candidate entry.
+/// Producing an entry the same policy rejects turns a preview into a hard
+/// validation error naming an id the operator cannot find in their file, which
+/// is what made `init` followed by `propose` unusable on any tree containing a
+/// bare `#[allow(...)]` (#3023).
+pub fn generated_entry_rejection(
+    requirements: &allow_core::Requirements,
+    entry: &AllowEntry,
+) -> Option<&'static str> {
+    if !requirements.allow_bare_allow_attributes && entry_receipts_bare_allow(entry) {
+        return Some(
+            "requirements.allow_bare_allow_attributes = false forbids receipting bare #[allow(...)] attributes",
+        );
+    }
+    None
+}
+
 /// Detect the bare-allow configuration conflict and return a single,
 /// actionable diagnostic listing every offending entry id and the next safe
 /// action. Returns `Ok(())` when the config is internally consistent.
@@ -83,6 +103,36 @@ mod tests {
         cfg.requirements.allow_bare_allow_attributes = allow_bare;
         cfg.allow = entries;
         cfg
+    }
+
+    #[test]
+    fn generated_entry_rejection_matches_the_conflict_validator() {
+        let forbidding = config_with(Vec::new(), false).requirements;
+        let permitting = config_with(Vec::new(), true).requirements;
+        let bare = bare_allow_entry("allow-0001");
+
+        // A generator asking "may I write this?" must get the same answer the
+        // validator would give after the fact, or `propose` emits a policy it
+        // then rejects (#3023).
+        let rejection = generated_entry_rejection(&forbidding, &bare);
+        assert!(
+            rejection.is_some_and(|reason| reason.contains("allow_bare_allow_attributes")),
+            "a bare-allow entry must be refused while the requirement is false: {rejection:?}"
+        );
+        assert!(detect_bare_allow_conflict(&config_with(vec![bare.clone()], false)).is_err());
+
+        assert!(generated_entry_rejection(&permitting, &bare).is_none());
+        assert!(detect_bare_allow_conflict(&config_with(vec![bare], true)).is_ok());
+    }
+
+    #[test]
+    fn generated_entry_rejection_permits_unrelated_entries() {
+        let forbidding = config_with(Vec::new(), false).requirements;
+        let mut unsafe_entry = bare_allow_entry("allow-0002");
+        unsafe_entry.kind = FindingKind::Unsafe;
+        unsafe_entry.family = Some("unsafe_block".to_string());
+
+        assert!(generated_entry_rejection(&forbidding, &unsafe_entry).is_none());
     }
 
     #[test]
