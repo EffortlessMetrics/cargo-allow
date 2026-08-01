@@ -602,6 +602,57 @@ fn the_written_ledger_receipts_itself_and_keeps_the_gate_green() {
     drop_root(root);
 }
 
+/// Generated ids come from a finding's position in the `new` set, not from how
+/// many entries were kept, so a skipped finding leaves a hole. Allocating the
+/// self-receipt at `len() + 1` then collided with an id already in use and
+/// `propose --write` aborted with `duplicate allow id` — on the common case of
+/// a tree containing a bare `#[allow(...)]` (#3035).
+///
+/// Neither existing test caught it: one skips a finding but writes no ledger,
+/// the other writes a ledger but skips nothing. This covers the intersection.
+#[test]
+fn writing_a_ledger_while_skipping_a_finding_allocates_a_free_id() {
+    let root = temp_root("ledger-id-collision");
+    write_source(
+        &root,
+        "#[allow(dead_code)]\nfn helper() {}\npub fn a() -> u8 { None::<u8>.unwrap() }\n\
+         pub fn b(v: &[u8]) -> u8 { v[0] }\npub unsafe fn c() {}\n",
+    );
+
+    run(
+        cargo_allow()
+            .arg("propose")
+            .arg("--root")
+            .arg(&root)
+            .arg("--write")
+            .arg(root.join("policy/allow.toml"))
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run propose: {err}"))),
+        "propose --write with a skipped finding",
+    );
+
+    let policy = fs::read_to_string(root.join("policy/allow.toml")).unwrap_or_default();
+    let ids: Vec<&str> = policy
+        .lines()
+        .filter_map(|line| line.trim().strip_prefix("id = "))
+        .map(|id| id.trim_matches('"'))
+        .collect();
+    let mut unique = ids.clone();
+    unique.sort_unstable();
+    unique.dedup();
+    assert_eq!(
+        ids.len(),
+        unique.len(),
+        "propose emitted duplicate allow ids: {ids:?}"
+    );
+    assert!(
+        policy.contains("source_exception_policy"),
+        "the ledger self-receipt should still be present: {policy}"
+    );
+
+    drop_root(root);
+}
+
 /// An already-tracked ledger with no receipt shows up as its own finding, so
 /// `propose --write --force` would generate expiring `baseline_debt` for it and
 /// then treat that generated entry as an existing receipt — leaving exactly the
