@@ -267,6 +267,38 @@ fn doctor_human_renderer_styles_fixed_status_labels_only() {
         !text.contains("policy schema_version must not be empty\u{1b}"),
         "repository-controlled diagnostics must stay unstyled"
     );
+
+    let fixed_text = render_doctor_human_styled(
+        DoctorReport {
+            source_tree_root: "H:/repo",
+            root_discovery: "nearest_git_root",
+            config_path: Some("policy/allow.toml"),
+            config_schema_version: Some("0.1"),
+            config_policy: Some("cargo-allow"),
+            config_owner: Some("core/policy"),
+            config_status: Some("active"),
+            config_valid: Some(true),
+            config_diagnostic: None,
+            broken_evidence_links: Some(0),
+            weak_evidence_references: Some(0),
+            inventory_source: "git_tracked",
+            inventory_completeness: "scoped",
+            files_scanned: 7,
+            empty_git_tracked: false,
+            deleted_tracked_files: 0,
+            git_inventory_error: None,
+            skipped_paths: 0,
+            submodule_paths: 0,
+            federation_config_path: Some(".allow/config.toml"),
+            federation_config_found: true,
+            federation_config_valid: Some(true),
+            configured_ledgers: None,
+            federation_diagnostics: None,
+            federation_divergences: None,
+        },
+        Style::ANSI,
+    );
+    assert!(fixed_text.contains("federation config provenance: fixed_allow_config"));
 }
 
 #[test]
