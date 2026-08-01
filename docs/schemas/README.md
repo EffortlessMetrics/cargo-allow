@@ -78,6 +78,24 @@ The `*.v1` schema IDs are the current machine-readable contract names. They are
 intended for CI, review automation, and agent routing that need stable artifact
 identity and source-tree claim-boundary fields.
 
+## Add summary error behavior
+
+`cargo-allow.add.v1` is a success artifact. `cargo-allow add --summary-format
+json --summary-output <path>` writes that artifact only after finding selection,
+policy validation, evidence validation, and the requested policy mutation or
+candidate write have succeeded.
+
+If `add` fails at any earlier step, it exits non-zero and does not create or
+replace the requested `--summary-output` file. JSON mode does not emit an error
+envelope on stdout or stderr; consumers should use the process exit status and
+the CLI error text for failure handling. If the output path already contained
+an artifact from an earlier run, a failed invocation leaves that file untouched.
+
+This is intentionally different from `cargo-allow.receipt.v1`, whose check and
+diff receipt contract includes an explicit `status = "error"` path. Do not
+parse a missing or pre-existing add summary as evidence that the current `add`
+invocation succeeded; pair the artifact with its process result.
+
 Consumers may rely on these common root fields across all current cargo-allow
 JSON artifacts:
 
