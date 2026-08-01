@@ -151,6 +151,8 @@ pub(super) fn render_why_text_styled(
     style: allow_report::Style,
 ) -> String {
     render_why_text_styled_with_evaluation(
+        allow_report::InventoryContext::source_syntax("git_tracked", None, None)
+            .with_completeness("complete"),
         finding,
         outcome,
         candidates,
@@ -164,6 +166,7 @@ pub(super) fn render_why_text_styled(
 }
 
 pub(super) fn render_why_text_styled_with_evaluation(
+    inventory: allow_report::InventoryContext<'_>,
     finding: &Finding,
     outcome: &MatchOutcome,
     candidates: &[WhyCandidate<'_>],
@@ -198,6 +201,9 @@ pub(super) fn render_why_text_styled_with_evaluation(
     out.push('\n');
 
     out.push_str("## Evaluation scope\n\n");
+    if let Some(result_class) = evaluation.result_class(inventory) {
+        out.push_str(&format!("- result_class: {result_class}\n"));
+    }
     out.push_str(&format!("- scope: {}\n", evaluation.scope));
     out.push_str(&format!("- locality: {}\n", evaluation.locality));
     if evaluation.reasons.is_empty() {
@@ -355,6 +361,11 @@ pub(super) fn render_why_json(
     outcome: &MatchOutcome,
     candidates: &[WhyCandidate<'_>],
 ) -> String {
+    let inventory = if inventory.completeness.is_some() {
+        inventory
+    } else {
+        inventory.with_completeness("complete")
+    };
     render_why_json_with_evaluation(
         inventory,
         EvaluationContext {

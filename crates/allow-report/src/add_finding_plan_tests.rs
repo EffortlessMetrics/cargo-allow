@@ -13,7 +13,8 @@ fn add_finding_plan_json_preserves_bound_identity_and_structured_argv() {
             identity: digest.to_string(),
             root: "H:/repo".to_string(),
         },
-        inventory: InventoryContext::source_syntax("git_tracked", Some("H:/repo"), Some(12)),
+        inventory: InventoryContext::source_syntax("git_tracked", Some("H:/repo"), Some(12))
+            .with_completeness("complete"),
         evaluation: EvaluationContext {
             scope: "scoped",
             locality: "proven",
@@ -72,6 +73,12 @@ fn add_finding_plan_json_preserves_bound_identity_and_structured_argv() {
     assert_eq!(
         value.pointer("/command").and_then(Value::as_str),
         Some("why")
+    );
+    assert_eq!(
+        value
+            .pointer("/evaluation/result_class")
+            .and_then(Value::as_str),
+        Some("exact_scoped")
     );
     assert_eq!(
         value.pointer("/tool_version").and_then(Value::as_str),

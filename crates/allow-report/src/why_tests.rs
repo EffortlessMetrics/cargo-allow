@@ -64,7 +64,8 @@ fn render_why_json_emits_schema_id_and_candidates() {
         args: &add_args,
     }];
     let report = WhyReport {
-        inventory: InventoryContext::source_syntax("git_tracked", Some("H:/repo"), Some(12)),
+        inventory: InventoryContext::source_syntax("git_tracked", Some("H:/repo"), Some(12))
+            .with_completeness("complete"),
         evaluation: EvaluationContext {
             scope: "scoped",
             locality: "proven",
@@ -111,6 +112,12 @@ fn render_why_json_emits_schema_id_and_candidates() {
             .pointer("/outcome/status")
             .and_then(serde_json::Value::as_str),
         Some("new")
+    );
+    assert_eq!(
+        value
+            .pointer("/evaluation/result_class")
+            .and_then(serde_json::Value::as_str),
+        Some("exact_scoped")
     );
     assert_eq!(
         value
@@ -172,7 +179,8 @@ fn render_why_json_omits_unavailable_candidate_family() -> Result<(), String> {
         args: &add_args,
     }];
     let json = render_why_json(WhyReport {
-        inventory: InventoryContext::source_syntax("git_tracked", Some("H:/repo"), Some(12)),
+        inventory: InventoryContext::source_syntax("git_tracked", Some("H:/repo"), Some(12))
+            .with_completeness("complete"),
         evaluation: EvaluationContext {
             scope: "full_fallback",
             locality: "global_dependency",
@@ -187,6 +195,13 @@ fn render_why_json_omits_unavailable_candidate_family() -> Result<(), String> {
     });
     let value: serde_json::Value = serde_json::from_str(&json)
         .map_err(|err| format!("why JSON should deserialize: {err}\n{json}"))?;
+    if value
+        .pointer("/evaluation/result_class")
+        .and_then(serde_json::Value::as_str)
+        != Some("exact_after_full_fallback")
+    {
+        return Err("full fallback should expose its stable result class".to_string());
+    }
     let candidate = value
         .pointer("/candidate_entries/0")
         .ok_or_else(|| "candidate entry should be present".to_string())?;
@@ -200,4 +215,37 @@ fn render_why_json_omits_unavailable_candidate_family() -> Result<(), String> {
         return Err("candidate selector relationship fields should remain null".to_string());
     }
     Ok(())
+}
+
+#[test]
+fn evaluation_result_class_is_optional_for_legacy_context_pairs() {
+    let legacy = EvaluationContext {
+        scope: "legacy",
+        locality: "unknown",
+        reasons: &[],
+    };
+    assert_eq!(
+        legacy.result_class(InventoryContext::source_syntax("git_tracked", None, None)),
+        None
+    );
+}
+
+#[test]
+fn evaluation_result_class_is_omitted_when_inventory_is_not_complete() {
+    let evaluation = EvaluationContext {
+        scope: "scoped",
+        locality: "proven",
+        reasons: &[],
+    };
+
+    for completeness in ["partial", "fallback"] {
+        assert_eq!(
+            evaluation.result_class(
+                InventoryContext::source_syntax("git_tracked", None, None)
+                    .with_completeness(completeness),
+            ),
+            None,
+            "exact result classes must not claim incomplete inventory: {completeness}",
+        );
+    }
 }

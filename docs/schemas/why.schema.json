@@ -216,6 +216,7 @@
       "additionalProperties": false,
       "required": ["scope", "locality", "reasons"],
       "properties": {
+        "result_class": { "enum": ["exact_scoped", "exact_after_full_fallback"] },
         "scope": { "enum": ["scoped", "full_fallback"] },
         "locality": { "enum": ["proven", "global_dependency"] },
         "reasons": {

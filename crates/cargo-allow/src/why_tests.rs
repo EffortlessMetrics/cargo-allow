@@ -75,6 +75,7 @@ fn render_why_lists_mismatch_reasons_for_new_findings() {
     assert!(text.contains("### `allow-near-miss`"));
     assert!(text.contains("callee mismatch"));
     assert!(text.contains("cargo-allow"));
+    assert!(text.contains("result_class: exact_scoped"));
     assert!(text.contains("Claim boundary"));
 
     let styled = render_why_text_styled(
@@ -139,6 +140,12 @@ fn render_why_json_deserializes_and_asserts_semantic_paths() {
     assert_eq!(
         value.pointer("/outcome/status").and_then(Value::as_str),
         Some("new")
+    );
+    assert_eq!(
+        value
+            .pointer("/evaluation/result_class")
+            .and_then(Value::as_str),
+        Some("exact_scoped")
     );
     assert_eq!(
         value

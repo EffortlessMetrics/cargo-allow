@@ -39,6 +39,14 @@ fn why_schema_locks_finding_outcome_and_candidates_contract() {
         Some("#/$defs/evaluation"),
         "why should expose optional evaluation metadata"
     );
+    assert_eq!(
+        schema
+            .pointer("/$defs/evaluation/properties/result_class/enum")
+            .and_then(Value::as_array)
+            .map(|values| values.iter().filter_map(Value::as_str).collect::<Vec<_>>()),
+        Some(vec!["exact_scoped", "exact_after_full_fallback"]),
+        "why result classes must remain bounded and stable"
+    );
 
     assert_eq!(
         schema
