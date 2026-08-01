@@ -134,7 +134,10 @@ broad mutation until its selection is understood.
 Use the read model to distinguish the repair route:
 
 - location drift: inspect `explain`, then run `refresh --allow-id <id> --dry-run`;
-  after review, use `--write` for that selected ID;
+  after review, use `--write` for that selected ID. For a glob or counted
+  entry, treat `last_seen` as an entry-level review anchor: one occurrence at
+  the anchor may suppress sibling drift advisories, so this signal does not
+  prove exact per-occurrence movement. See [#2508](https://github.com/EffortlessMetrics/cargo-allow/issues/2508).
 - missing, broken, or weak evidence: repair the source reference or evidence
   first, then rerun `check` and the relevant read model;
 - review due: review the exception before refreshing dates;

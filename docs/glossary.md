@@ -24,7 +24,13 @@ entries are surfaced by ledger maintenance commands and policy checks.
 
 `stale` means a policy entry no longer matches a current finding. `location
 drift` means a matched finding's last-seen line or column moved. Location drift
-is a review hint; line and column are not durable identity.
+is a review hint; line and column are not durable identity. For an entry that
+covers multiple findings through a glob or `occurrence_limit`, `last_seen` is
+one entry-level anchor rather than a per-occurrence identity. If any matched
+occurrence remains at that anchor, cargo-allow suppresses sibling drift to
+avoid refresh oscillation; that does not prove every sibling stayed in place.
+See [#2508](https://github.com/EffortlessMetrics/cargo-allow/issues/2508) for
+the open per-occurrence anchor decision.
 
 ### occurrence limit and occurrence headroom
 
