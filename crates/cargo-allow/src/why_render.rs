@@ -150,7 +150,7 @@ pub(super) fn render_why_text_styled(
     candidates: &[WhyCandidate<'_>],
     style: allow_report::Style,
 ) -> String {
-    render_why_text_styled_with_evaluation(
+    render_why_text_styled_with_evaluation_and_scanner_completeness(
         allow_report::InventoryContext::source_syntax("git_tracked", None, None)
             .with_completeness("complete"),
         finding,
@@ -162,16 +162,18 @@ pub(super) fn render_why_text_styled(
             locality: "proven",
             reasons: &[],
         },
+        None,
     )
 }
 
-pub(super) fn render_why_text_styled_with_evaluation(
+pub(super) fn render_why_text_styled_with_evaluation_and_scanner_completeness(
     inventory: allow_report::InventoryContext<'_>,
     finding: &Finding,
     outcome: &MatchOutcome,
     candidates: &[WhyCandidate<'_>],
     style: allow_report::Style,
     evaluation: EvaluationContext<'_>,
+    scanner_completeness: Option<&str>,
 ) -> String {
     let next = why_next_steps(finding, outcome, candidates);
     let proof_commands = next.proof_commands();
@@ -201,7 +203,9 @@ pub(super) fn render_why_text_styled_with_evaluation(
     out.push('\n');
 
     out.push_str("## Evaluation scope\n\n");
-    if let Some(result_class) = evaluation.result_class(inventory) {
+    if let Some(result_class) =
+        evaluation.result_class_with_scanner_completeness(inventory, scanner_completeness)
+    {
         out.push_str(&format!("- result_class: {result_class}\n"));
     }
     out.push_str(&format!("- scope: {}\n", evaluation.scope));
@@ -366,7 +370,7 @@ pub(super) fn render_why_json(
     } else {
         inventory.with_completeness("complete")
     };
-    render_why_json_with_evaluation(
+    render_why_json_with_evaluation_and_scanner_completeness(
         inventory,
         EvaluationContext {
             scope: "scoped",
@@ -376,15 +380,17 @@ pub(super) fn render_why_json(
         finding,
         outcome,
         candidates,
+        None,
     )
 }
 
-pub(super) fn render_why_json_with_evaluation(
+pub(super) fn render_why_json_with_evaluation_and_scanner_completeness(
     inventory: allow_report::InventoryContext<'_>,
     evaluation: EvaluationContext<'_>,
     finding: &Finding,
     outcome: &MatchOutcome,
     candidates: &[WhyCandidate<'_>],
+    scanner_completeness: Option<&str>,
 ) -> String {
     let next = why_next_steps(finding, outcome, candidates);
     let proof_commands = next.proof_commands();
@@ -413,14 +419,19 @@ pub(super) fn render_why_json_with_evaluation(
             args: plan.args.as_slice(),
         })
         .collect::<Vec<_>>();
-    allow_report::render_why_json(allow_report::WhyReport {
-        inventory,
-        evaluation,
-        finding,
-        outcome,
-        candidate_entries: &candidate_entries,
-        suggested_actions: &next.suggested_actions,
-        proof_commands: &proof_commands,
-        proof_plans: &proof_plans,
-    })
+    let result_class =
+        evaluation.result_class_with_scanner_completeness(inventory, scanner_completeness);
+    allow_report::render_why_json_with_result_class(
+        allow_report::WhyReport {
+            inventory,
+            evaluation,
+            finding,
+            outcome,
+            candidate_entries: &candidate_entries,
+            suggested_actions: &next.suggested_actions,
+            proof_commands: &proof_commands,
+            proof_plans: &proof_plans,
+        },
+        result_class,
+    )
 }

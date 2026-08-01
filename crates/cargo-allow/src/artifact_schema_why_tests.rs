@@ -198,13 +198,26 @@ fn result_class_schema_binds_to_its_evidence_tuple() -> Result<(), String> {
         let mut incomplete: Value = serde_json::from_str(&sample_text)
             .map_err(|error| format!("{name} sample JSON: {error}"))?;
         incomplete
+            .get_mut("evaluation")
+            .and_then(Value::as_object_mut)
+            .ok_or_else(|| format!("{name} sample should contain evaluation"))?
+            .extend([
+                (
+                    "result_class".to_string(),
+                    json!("exact_after_full_fallback"),
+                ),
+                ("scope".to_string(), json!("full_fallback")),
+                ("locality".to_string(), json!("global_dependency")),
+                ("reasons".to_string(), json!(["scanner incomplete"])),
+            ]);
+        incomplete
             .get_mut("inventory")
             .and_then(Value::as_object_mut)
             .ok_or_else(|| format!("{name} sample should contain inventory"))?
             .insert("completeness".to_string(), json!("partial"));
         if validator.validate(&incomplete).is_ok() {
             return Err(format!(
-                "{name} schema must reject exact result classes with partial inventory"
+                "{name} schema must reject exact full-fallback classes with partial inventory"
             ));
         }
     }

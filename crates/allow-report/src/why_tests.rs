@@ -285,3 +285,22 @@ fn evaluation_result_class_names_incomplete_scoped_and_fallback_paths() {
         );
     }
 }
+
+#[test]
+fn scoped_result_class_uses_target_scanner_evidence_over_repository_inventory() {
+    let evaluation = EvaluationContext {
+        scope: "scoped",
+        locality: "proven",
+        reasons: &[],
+    };
+    let inventory =
+        InventoryContext::source_syntax("git_tracked", None, None).with_completeness("partial");
+    assert_eq!(
+        evaluation.result_class_with_scanner_completeness(inventory, Some("complete")),
+        Some("exact_scoped")
+    );
+    assert_eq!(
+        evaluation.result_class_with_scanner_completeness(inventory, Some("partial")),
+        Some("target_scanner_partial")
+    );
+}

@@ -14,18 +14,39 @@ impl EvaluationContext<'_> {
     /// Derive the stable result class without changing the public struct
     /// shape used by downstream Rust consumers.
     pub fn result_class(self, inventory: InventoryContext<'_>) -> Option<&'static str> {
+        self.result_class_with_scanner_completeness(inventory, None)
+    }
+
+    /// Derive the result class when the caller has independent evidence about
+    /// the scanner used for the evaluation. A scoped `why` run inventories the
+    /// repository but scans only the target file, so repository inventory
+    /// partiality must not be confused with a target-scanner omission.
+    pub fn result_class_with_scanner_completeness(
+        self,
+        inventory: InventoryContext<'_>,
+        scanner_completeness: Option<&str>,
+    ) -> Option<&'static str> {
+        let scanner_completeness = scanner_completeness.or(inventory.completeness);
         match inventory.completeness {
-            Some("complete" | "scoped") => match (self.scope, self.locality) {
-                ("scoped", "proven") => Some("exact_scoped"),
-                ("full_fallback", "global_dependency") => Some("exact_after_full_fallback"),
-                _ => None,
-            },
-            Some("partial") => match (self.scope, self.locality) {
-                ("scoped", "proven") => Some("target_scanner_partial"),
-                ("full_fallback", "global_dependency") => Some("full_fallback_unavailable"),
-                _ => None,
-            },
-            Some("fallback")
+            Some("complete" | "scoped" | "partial")
+                if (self.scope, self.locality) == ("scoped", "proven") =>
+            {
+                match scanner_completeness {
+                    Some("complete" | "scoped") => Some("exact_scoped"),
+                    Some("partial") => Some("target_scanner_partial"),
+                    _ => None,
+                }
+            }
+            Some("complete" | "scoped")
+                if (self.scope, self.locality) == ("full_fallback", "global_dependency") =>
+            {
+                match scanner_completeness {
+                    Some("complete" | "scoped") => Some("exact_after_full_fallback"),
+                    Some("partial") => Some("full_fallback_unavailable"),
+                    _ => None,
+                }
+            }
+            Some("partial" | "fallback")
                 if (self.scope, self.locality) == ("full_fallback", "global_dependency") =>
             {
                 Some("full_fallback_unavailable")

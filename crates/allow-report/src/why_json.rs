@@ -7,11 +7,22 @@ use crate::json::{
 use allow_core::json_escape;
 
 pub fn render_why_json(report: WhyReport<'_>) -> String {
+    let result_class = report.evaluation.result_class(report.inventory);
+    render_why_json_with_result_class(report, result_class)
+}
+
+/// Render a `why` artifact with caller-supplied scanner evidence. This keeps
+/// the public report shape stable while allowing scoped callers to distinguish
+/// a partial repository inventory from a partial target scan.
+pub fn render_why_json_with_result_class(
+    report: WhyReport<'_>,
+    result_class: Option<&str>,
+) -> String {
     let mut out = String::new();
     out.push_str("{\n");
     push_json_fixed_artifact_preamble(&mut out, WHY_ARTIFACT, report.inventory);
     out.push_str("  \"evaluation\": {\n");
-    if let Some(result_class) = report.evaluation.result_class(report.inventory) {
+    if let Some(result_class) = result_class {
         out.push_str(&format!(
             "    \"result_class\": \"{}\",\n",
             json_escape(result_class)

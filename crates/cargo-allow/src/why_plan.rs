@@ -19,6 +19,7 @@ pub(super) struct AddFindingPlanInput<'a> {
     pub include_untracked: bool,
     pub source_context: &'a SourceTreeReportContext,
     pub evaluation: EvaluationContext<'a>,
+    pub scanner_completeness: Option<&'a str>,
     pub finding: &'a Finding,
     pub outcome: &'a MatchOutcome,
     pub candidates: &'a [WhyCandidate<'a>],
@@ -32,6 +33,7 @@ pub(super) fn render_add_finding_plan(input: AddFindingPlanInput<'_>) -> CargoAl
         include_untracked,
         source_context,
         evaluation,
+        scanner_completeness,
         finding,
         outcome,
         candidates,
@@ -43,7 +45,7 @@ pub(super) fn render_add_finding_plan(input: AddFindingPlanInput<'_>) -> CargoAl
         )));
     }
     let inventory = source_context.inventory();
-    ensure_exact_plan_evaluation(evaluation, inventory)?;
+    ensure_exact_plan_evaluation(evaluation, inventory, scanner_completeness)?;
 
     let bindings = compute_plan_finding_bindings(root, config, cfg, include_untracked, finding)?;
     let root_text = source_context.source_tree_root().to_string();
@@ -94,15 +96,21 @@ pub(super) fn render_add_finding_plan(input: AddFindingPlanInput<'_>) -> CargoAl
             include_untracked,
         ),
     };
-    Ok(allow_report::render_add_finding_plan_json(&plan))
+    Ok(
+        allow_report::render_add_finding_plan_json_with_result_class(
+            &plan,
+            evaluation.result_class_with_scanner_completeness(inventory, scanner_completeness),
+        ),
+    )
 }
 
 fn ensure_exact_plan_evaluation(
     evaluation: EvaluationContext<'_>,
     inventory: allow_report::InventoryContext<'_>,
+    scanner_completeness: Option<&str>,
 ) -> CargoAllowResult<()> {
     if matches!(
-        evaluation.result_class(inventory),
+        evaluation.result_class_with_scanner_completeness(inventory, scanner_completeness),
         Some("exact_scoped" | "exact_after_full_fallback")
     ) {
         Ok(())
@@ -290,8 +298,24 @@ mod tests {
                 evaluation,
                 InventoryContext::source_syntax("git_tracked", Some("H:/repo"), Some(3))
                     .with_completeness(completeness),
+                None,
             );
             assert_eq!(result.is_ok(), expected_ok, "completeness={completeness}");
         }
+
+        let result = ensure_exact_plan_evaluation(
+            EvaluationContext {
+                scope: "scoped",
+                locality: "proven",
+                reasons: &[],
+            },
+            InventoryContext::source_syntax("git_tracked", Some("H:/repo"), Some(3))
+                .with_completeness("partial"),
+            Some("complete"),
+        );
+        assert!(
+            result.is_ok(),
+            "a complete target scan may produce a scoped plan despite unrelated inventory partiality"
+        );
     }
 }

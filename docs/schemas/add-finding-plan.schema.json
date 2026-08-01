@@ -43,7 +43,7 @@
           "inventory": {
             "required": ["completeness"],
             "properties": {
-              "completeness": { "enum": ["complete", "scoped"] }
+              "completeness": { "enum": ["complete", "scoped", "partial"] }
             }
           },
           "evaluation": {
