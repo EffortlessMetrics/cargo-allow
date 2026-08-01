@@ -78,6 +78,8 @@ reported for cleanup.
 Federation currently reads the fixed `.allow/config.toml` path. When that file
 parses and validates, its canonical ledger registered for the
 `source-exception` lane takes precedence over source-text policy discovery.
+Doctor reports identify this source vocabulary as `fixed_allow_config` in both
+human and JSON output when the fixed path is present.
 The same path is also a profile fallback, but the profile and federation
 parsers remain separate consumers with separate contracts; cargo-allow does not
 silently merge their fields.
