@@ -11,6 +11,29 @@ readme = "README.md"
 keywords.workspace = true
 categories = ["command-line-utilities", "development-tools"]
 
+[package.metadata.cargo-allow.reference]
+# Package-facing projection of docs/support-matrix.toml. The reference tests
+# require these values to stay exactly synchronized with the repository source.
+schema = "cargo-allow.support-matrix.v1"
+published_version = "0.1.11"
+candidate_version = "0.2.0"
+
+[[package.metadata.cargo-allow.reference.channel]]
+name = "crates.io"
+available = true
+command = "cargo install cargo-allow --version 0.1.11 --locked"
+evidence = "release.yml publishes via Trusted Publishing; scripts/release-install-smoke.sh verifies the published crate installs"
+
+[[package.metadata.cargo-allow.reference.channel]]
+name = "prebuilt-binary-archive"
+available = false
+evidence = "release.yml attaches a ReleaseManifestV1 and its attestation, not binary archives"
+
+[[package.metadata.cargo-allow.reference.channel]]
+name = "cargo-binstall"
+available = false
+evidence = "no binstall metadata exists in Cargo.toml"
+
 [dependencies]
 allow-core.workspace = true
 allow-policy.workspace = true

@@ -84,7 +84,7 @@ pub(crate) enum CargoAllowCommand {
     Tool(precommit_tool::ToolArgs),
     /// Generate a shell completion script.
     Completions(completions::CompletionsArgs),
-    /// Generate a deterministic Markdown or JSON command reference.
+    /// Generate a deterministic command reference with checked support metadata.
     Reference(reference::ReferenceArgs),
 }
 
