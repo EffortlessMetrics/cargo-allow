@@ -6,6 +6,33 @@ use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[test]
+fn git_cat_file_batch_parser_preserves_blob_bytes_and_boundaries() {
+    let first = "a".repeat(40);
+    let second = "b".repeat(40);
+    let output = format!("{first} blob 17\nfirst line\nsecond\n{second} blob 0\n\n");
+
+    let blobs = revision_git::parse_git_cat_file_batch_for_test(output.as_bytes())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("batch parse: {err}")));
+
+    assert_eq!(
+        blobs.get(&first).map(String::as_str),
+        Some("first line\nsecond")
+    );
+    assert_eq!(blobs.get(&second).map(String::as_str), Some(""));
+}
+
+#[test]
+fn git_cat_file_batch_parser_rejects_missing_and_truncated_blob_records() {
+    let oid = "c".repeat(40);
+    for output in [format!("{oid} missing\n"), format!("{oid} blob 4\nno\n")] {
+        let err = revision_git::parse_git_cat_file_batch_for_test(output.as_bytes())
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("malformed batch output should fail"));
+        assert_eq!(err.kind(), CargoAllowErrorKind::Inventory);
+    }
+}
+
+#[test]
 fn git_tree_revision_parser_skips_symlinks_and_preserves_newlines() {
     // #1826: symlinks (mode 120000) and gitlinks/submodules (mode 160000)
     // are excluded because their blob content is a target path or commit

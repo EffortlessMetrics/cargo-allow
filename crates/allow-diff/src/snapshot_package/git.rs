@@ -1,9 +1,10 @@
 //! Git subprocess helpers for repository snapshot reads (#2583-D).
 
 use allow_core::{CargoAllowDiagnostic, CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
+use std::io::{Read, Write};
 use std::path::{Component, Path, PathBuf};
-use std::process::{Command, Output};
+use std::process::{Command, Output, Stdio};
 
 #[cfg(unix)]
 use std::ffi::OsStr;
@@ -99,6 +100,37 @@ pub(crate) fn git_tree_files_at_revision(
         return Err(git_status_error("git ls-tree", &output));
     }
     parse_git_ls_tree_file_entries_z_checked(&output.stdout)
+}
+
+/// Read selected regular files from an already parsed revision tree.
+///
+/// The tree entries already bind each path to its blob object id. Reusing that
+/// identity lets revision-wide scanners resolve the commit and tree once, then
+/// stream all selected blobs through one `git cat-file --batch` process.
+pub(crate) fn read_files_at_revision(
+    root: &Path,
+    tree_files: &[GitTreeFile],
+    paths: &[PathBuf],
+) -> CargoAllowResult<BTreeMap<PathBuf, String>> {
+    let entries = tree_files
+        .iter()
+        .map(|entry| (entry.path.clone(), entry))
+        .collect::<BTreeMap<_, _>>();
+    let mut requested_oids = BTreeSet::new();
+    let mut path_oids = BTreeMap::new();
+    for path in paths {
+        if let Some(entry) = entries.get(path)
+            && entry.mode.starts_with("100")
+        {
+            requested_oids.insert(entry.object_oid.clone());
+            path_oids.insert(path.clone(), entry.object_oid.clone());
+        }
+    }
+    let blobs = read_blobs_by_oid(root, &requested_oids.into_iter().collect::<Vec<_>>())?;
+    Ok(path_oids
+        .into_iter()
+        .filter_map(|(path, oid)| blobs.get(&oid).cloned().map(|text| (path, text)))
+        .collect())
 }
 
 pub fn read_file_at_revision(
@@ -478,6 +510,228 @@ fn read_blob_by_oid(root: &Path, blob_oid: &str) -> CargoAllowResult<String> {
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
+fn read_blobs_by_oid(
+    root: &Path,
+    blob_oids: &[String],
+) -> CargoAllowResult<BTreeMap<String, String>> {
+    if blob_oids.is_empty() {
+        return Ok(BTreeMap::new());
+    }
+    let mut child = git_command(root)
+        .arg("cat-file")
+        .arg("--batch")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|source| {
+            git_error(
+                CargoAllowErrorKind::Inventory,
+                "git_invocation_failed",
+                "git cat-file --batch could not start",
+            )
+            .with_cause(&source)
+        })?;
+    let mut stdout = child.stdout.take().ok_or_else(|| {
+        git_error(
+            CargoAllowErrorKind::Inventory,
+            "git_invocation_failed",
+            "git cat-file --batch did not expose stdout",
+        )
+    })?;
+    let mut stderr = child.stderr.take().ok_or_else(|| {
+        git_error(
+            CargoAllowErrorKind::Inventory,
+            "git_invocation_failed",
+            "git cat-file --batch did not expose stderr",
+        )
+    })?;
+    let stdout_reader = std::thread::spawn(move || {
+        let mut bytes = Vec::new();
+        stdout.read_to_end(&mut bytes).map(|_| bytes)
+    });
+    let stderr_reader = std::thread::spawn(move || {
+        let mut bytes = Vec::new();
+        stderr.read_to_end(&mut bytes).map(|_| bytes)
+    });
+    let mut stdin = child.stdin.take().ok_or_else(|| {
+        git_error(
+            CargoAllowErrorKind::Inventory,
+            "git_invocation_failed",
+            "git cat-file --batch did not expose stdin",
+        )
+    })?;
+    let mut input_error = None;
+    for oid in blob_oids {
+        if let Err(source) = writeln!(stdin, "{oid}") {
+            input_error = Some(source);
+            break;
+        }
+    }
+    drop(stdin);
+    let status = child.wait().map_err(|source| {
+        git_error(
+            CargoAllowErrorKind::Inventory,
+            "git_invocation_failed",
+            "git cat-file --batch could not finish",
+        )
+        .with_cause(&source)
+    })?;
+    let stdout = stdout_reader
+        .join()
+        .map_err(|_| {
+            git_error(
+                CargoAllowErrorKind::Inventory,
+                "git_invocation_failed",
+                "git cat-file --batch stdout reader panicked",
+            )
+        })?
+        .map_err(|source| {
+            git_error(
+                CargoAllowErrorKind::Inventory,
+                "git_invocation_failed",
+                "git cat-file --batch stdout could not be read",
+            )
+            .with_cause(&source)
+        })?;
+    let stderr = stderr_reader
+        .join()
+        .map_err(|_| {
+            git_error(
+                CargoAllowErrorKind::Inventory,
+                "git_invocation_failed",
+                "git cat-file --batch stderr reader panicked",
+            )
+        })?
+        .map_err(|source| {
+            git_error(
+                CargoAllowErrorKind::Inventory,
+                "git_invocation_failed",
+                "git cat-file --batch stderr could not be read",
+            )
+            .with_cause(&source)
+        })?;
+    if let Some(source) = input_error {
+        return Err(git_error(
+            CargoAllowErrorKind::Inventory,
+            "git_invocation_failed",
+            "git cat-file --batch input could not be written",
+        )
+        .with_cause(&source));
+    }
+    let output = Output {
+        status,
+        stdout,
+        stderr,
+    };
+    if !output.status.success() {
+        return Err(git_status_error("git cat-file --batch", &output));
+    }
+    parse_git_cat_file_batch(&output.stdout)
+}
+
+fn parse_git_cat_file_batch(stdout: &[u8]) -> CargoAllowResult<BTreeMap<String, String>> {
+    let mut blobs = BTreeMap::new();
+    let mut cursor = 0;
+    while cursor < stdout.len() {
+        let Some(remaining) = stdout.get(cursor..) else {
+            return Err(git_error(
+                CargoAllowErrorKind::Inventory,
+                "git_output_malformed",
+                "git cat-file --batch returned an invalid cursor",
+            ));
+        };
+        let Some(header_end) = remaining.iter().position(|byte| *byte == b'\n') else {
+            return Err(git_error(
+                CargoAllowErrorKind::Inventory,
+                "git_output_malformed",
+                "git cat-file --batch returned a header without a newline",
+            ));
+        };
+        let header_end = cursor + header_end;
+        let Some(header_bytes) = stdout.get(cursor..header_end) else {
+            return Err(git_error(
+                CargoAllowErrorKind::Inventory,
+                "git_output_malformed",
+                "git cat-file --batch returned an invalid header range",
+            ));
+        };
+        let header = std::str::from_utf8(header_bytes).map_err(|source| {
+            git_error(
+                CargoAllowErrorKind::Inventory,
+                "git_output_malformed",
+                "git cat-file --batch returned a non-UTF-8 header",
+            )
+            .with_cause(&source)
+        })?;
+        let mut fields = header.split_ascii_whitespace();
+        let Some(oid) = fields.next() else {
+            return Err(git_error(
+                CargoAllowErrorKind::Inventory,
+                "git_output_malformed",
+                "git cat-file --batch returned an empty header",
+            ));
+        };
+        let Some(kind) = fields.next() else {
+            return Err(git_error(
+                CargoAllowErrorKind::Inventory,
+                "git_output_malformed",
+                "git cat-file --batch returned an incomplete header",
+            ));
+        };
+        let Some(size) = fields.next() else {
+            return Err(git_error(
+                CargoAllowErrorKind::Inventory,
+                "git_output_malformed",
+                "git cat-file --batch returned a header without a blob size",
+            ));
+        };
+        if fields.next().is_some() || !is_full_oid(oid) || kind != "blob" {
+            return Err(git_error(
+                CargoAllowErrorKind::Inventory,
+                "git_output_malformed",
+                "git cat-file --batch returned an unexpected blob header",
+            ));
+        }
+        let size = size.parse::<usize>().map_err(|source| {
+            git_error(
+                CargoAllowErrorKind::Inventory,
+                "git_output_malformed",
+                "git cat-file --batch returned an invalid blob size",
+            )
+            .with_cause(&source)
+        })?;
+        let body_start = header_end + 1;
+        let body_end = body_start.checked_add(size).ok_or_else(|| {
+            git_error(
+                CargoAllowErrorKind::Inventory,
+                "git_output_malformed",
+                "git cat-file --batch blob size overflowed",
+            )
+        })?;
+        if stdout.get(body_end) != Some(&b'\n') {
+            return Err(git_error(
+                CargoAllowErrorKind::Inventory,
+                "git_output_malformed",
+                "git cat-file --batch returned a truncated blob",
+            ));
+        }
+        let Some(body) = stdout.get(body_start..body_end) else {
+            return Err(git_error(
+                CargoAllowErrorKind::Inventory,
+                "git_output_malformed",
+                "git cat-file --batch returned an invalid blob range",
+            ));
+        };
+        blobs.insert(
+            oid.to_ascii_lowercase(),
+            String::from_utf8_lossy(body).into_owned(),
+        );
+        cursor = body_end + 1;
+    }
+    Ok(blobs)
+}
+
 fn append_literal_path_arg(cmd: &mut Command, path_bytes: &[u8]) -> CargoAllowResult<()> {
     #[cfg(unix)]
     {
@@ -716,6 +970,13 @@ pub(crate) fn parse_git_tree_record_outcome_for_test(
 #[cfg(test)]
 pub(crate) fn source_tree_path_bytes_for_test(path: &Path) -> CargoAllowResult<Vec<u8>> {
     source_tree_path_bytes(path)
+}
+
+#[cfg(test)]
+pub(crate) fn parse_git_cat_file_batch_for_test(
+    stdout: &[u8],
+) -> CargoAllowResult<BTreeMap<String, String>> {
+    parse_git_cat_file_batch(stdout)
 }
 
 fn parse_git_tree_record_any(record: &[u8]) -> TreeRecordParse {

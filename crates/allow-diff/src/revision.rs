@@ -2,9 +2,10 @@ use allow_core::{
     AllowConfig, CargoAllowResult, Finding, FindingKind, normalize_path,
     source_tree_path_is_ignored,
 };
+use std::collections::BTreeSet;
 use std::path::Path;
 
-use crate::revision_git::{git_tree_files_at_revision, read_file_at_revision};
+use crate::revision_git::{git_tree_files_at_revision, read_files_at_revision};
 
 pub fn findings_at_revision(
     root: impl AsRef<Path>,
@@ -12,19 +13,39 @@ pub fn findings_at_revision(
     cfg: &AllowConfig,
 ) -> CargoAllowResult<Vec<Finding>> {
     let root = root.as_ref();
-    let mut tree_files = git_tree_files_at_revision(root, revision)?;
+    let all_tree_files = git_tree_files_at_revision(root, revision)?;
+    let mut tree_files = all_tree_files.clone();
     tree_files.retain(|entry| !source_tree_path_is_ignored(&entry.path, &cfg.workspace.ignored));
     let files = tree_files
         .iter()
         .map(|entry| entry.path.clone())
         .collect::<Vec<_>>();
+    let mut source_paths = files
+        .iter()
+        .filter(|path| {
+            path.file_name().and_then(|name| name.to_str()) == Some("Cargo.toml")
+                || path.extension().and_then(|ext| ext.to_str()) == Some("rs")
+        })
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    if has_generated_code_receipt(cfg) {
+        source_paths.insert(".gitattributes".into());
+    }
+    if has_policy_family(cfg, &["github_workflow", "workflow_external_action"]) {
+        source_paths.extend(files.iter().filter(|path| is_workflow_path(path)).cloned());
+    }
+    let source_texts = read_files_at_revision(
+        root,
+        &all_tree_files,
+        &source_paths.into_iter().collect::<Vec<_>>(),
+    )?;
     let mut manifests = Vec::new();
     for rel in files
         .iter()
         .filter(|path| path.file_name().and_then(|name| name.to_str()) == Some("Cargo.toml"))
     {
-        if let Some(text) = read_file_at_revision(root, revision, rel)? {
-            manifests.push((rel.clone(), text));
+        if let Some(text) = source_texts.get(rel) {
+            manifests.push((rel.clone(), text.clone()));
         }
     }
     let packages = allow_rust::source_package_contexts_from_sources(manifests);
@@ -33,8 +54,8 @@ pub fn findings_at_revision(
         .iter()
         .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some("rs"))
     {
-        if let Some(text) = read_file_at_revision(root, revision, rel)? {
-            let mut rust_findings = allow_rust::scan_rust_source(rel, &text);
+        if let Some(text) = source_texts.get(rel) {
+            let mut rust_findings = allow_rust::scan_rust_source(rel, text);
             allow_rust::apply_source_package_context(rel, &packages, &mut rust_findings);
             findings.extend(rust_findings);
         }
@@ -46,15 +67,15 @@ pub fn findings_at_revision(
         },
     ));
     if has_generated_code_receipt(cfg)
-        && let Some(text) = read_file_at_revision(root, revision, ".gitattributes")?
+        && let Some(text) = source_texts.get(Path::new(".gitattributes"))
     {
-        findings.extend(allow_policy_legacy::generated_findings_from_gitattributes_text(&text));
+        findings.extend(allow_policy_legacy::generated_findings_from_gitattributes_text(text));
     }
     if has_policy_family(cfg, &["github_workflow", "workflow_external_action"]) {
         let mut workflow_sources = Vec::new();
         for rel in files.iter().filter(|path| is_workflow_path(path)) {
-            if let Some(text) = read_file_at_revision(root, revision, rel)? {
-                workflow_sources.push((rel.clone(), text));
+            if let Some(text) = source_texts.get(rel) {
+                workflow_sources.push((rel.clone(), text.clone()));
             }
         }
         findings.extend(allow_policy_legacy::workflow_findings_from_sources(
