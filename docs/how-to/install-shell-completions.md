@@ -111,5 +111,17 @@ binary that produced it; do not copy a completion script from a different
 version and treat it as version-matched.
 
 This guide covers the currently shipped completion command. Generated
-manpages and a checked Markdown/JSON command reference remain separate
-follow-up work under issue #2479.
+command references are available from the same installed binary:
+
+```bash
+cargo-allow reference > cargo-allow-command-reference.md
+cargo-allow reference --format json > cargo-allow-command-reference.json
+```
+
+These references are generated from the exact Clap graph of the binary. They
+describe command grammar, options, defaults, and value choices; support
+channels, mutation posture, and release packaging remain separate contracts
+under issue #2479. Regenerate after every binary upgrade.
+
+Generated manpages and release-archive packaging remain separate follow-up
+work under issue #2479.
