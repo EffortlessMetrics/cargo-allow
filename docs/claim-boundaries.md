@@ -3,6 +3,10 @@
 cargo-allow reports source-exception governance facts. Its wording must stay
 inside what the implementation actually proves.
 
+See the [cargo-allow glossary](glossary.md) for the definitions of structural
+identity, durable identity, selector precision, lanes, and related policy terms
+used below.
+
 ## Current Valid Claims
 
 For current source-syntax scans, a passing `cargo-allow check --mode no-new`

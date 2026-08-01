@@ -9,6 +9,8 @@ governance profile model around it.
   no-new governance, spec-system, CI, cross-repo adoption, or friction filing.
 - [Getting started](getting-started.md): first-run tutorial for doctor, audit,
   init/propose, and no-new checks.
+- [Glossary](glossary.md): definitions for recurring policy, selector, identity,
+  lifecycle, and migration terms.
 - [Changelog](../CHANGELOG.md): curated user-facing release ledger.
 - [Contributing](../CONTRIBUTING.md): local development, product boundaries,
   and pull request expectations.
