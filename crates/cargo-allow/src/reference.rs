@@ -43,7 +43,7 @@ struct CliReference {
     commands: Vec<CommandReference>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, PartialEq, Eq, Serialize)]
 struct SupportReference {
     source: &'static str,
     schema: String,
@@ -52,7 +52,7 @@ struct SupportReference {
     channels: Vec<ChannelReference>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, PartialEq, Eq, Serialize)]
 struct ChannelReference {
     name: String,
     available: bool,
@@ -100,8 +100,11 @@ pub(crate) fn cmd_reference(args: &ReferenceArgs) -> CargoAllowResult<()> {
     emit_text(args.output.as_deref(), &rendered)
 }
 
+#[cfg(test)]
 const SUPPORT_MATRIX: &str = include_str!("../../../docs/support-matrix.toml");
+const PACKAGE_MANIFEST: &str = include_str!("../Cargo.toml");
 const SUPPORT_MATRIX_SOURCE: &str = "docs/support-matrix.toml";
+const PACKAGE_SUPPORT_SOURCE: &str = "crates/cargo-allow/Cargo.toml package metadata";
 
 fn build_reference() -> CargoAllowResult<CliReference> {
     let mut command = CargoAllowCli::command();
@@ -120,7 +123,7 @@ fn build_reference() -> CargoAllowResult<CliReference> {
         schema: "cargo-allow.cli-reference.v1",
         name,
         version: env!("CARGO_PKG_VERSION"),
-        support: parse_support_reference(SUPPORT_MATRIX)?,
+        support: parse_packaged_support_reference(PACKAGE_MANIFEST)?,
         about,
         usage,
         arguments,
@@ -128,32 +131,55 @@ fn build_reference() -> CargoAllowResult<CliReference> {
     })
 }
 
+#[cfg(test)]
 fn parse_support_reference(source: &str) -> CargoAllowResult<SupportReference> {
-    let document: toml::Table = toml::from_str(source).map_err(|error| {
-        CargoAllowError::new(format!("failed to parse {SUPPORT_MATRIX_SOURCE}: {error}"))
-    })?;
-    let schema = required_string(&document, "schema_id", "support matrix")?;
+    let document = parse_toml(source, SUPPORT_MATRIX_SOURCE)?;
     let tool = required_table(&document, "tool", "support matrix")?;
+    parse_support_table(&document, tool, &document, SUPPORT_MATRIX_SOURCE)
+}
+
+fn parse_packaged_support_reference(source: &str) -> CargoAllowResult<SupportReference> {
+    let document = parse_toml(source, PACKAGE_SUPPORT_SOURCE)?;
+    let package = required_table(&document, "package", PACKAGE_SUPPORT_SOURCE)?;
+    let metadata = required_table(package, "metadata", PACKAGE_SUPPORT_SOURCE)?;
+    let cargo_allow = required_table(metadata, "cargo-allow", PACKAGE_SUPPORT_SOURCE)?;
+    let reference = required_table(cargo_allow, "reference", PACKAGE_SUPPORT_SOURCE)?;
+    parse_support_table(reference, reference, reference, SUPPORT_MATRIX_SOURCE)
+}
+
+fn parse_toml(source: &str, source_name: &str) -> CargoAllowResult<toml::Table> {
+    toml::from_str(source)
+        .map_err(|error| CargoAllowError::new(format!("failed to parse {source_name}: {error}")))
+}
+
+fn parse_support_table(
+    table: &toml::Table,
+    tool: &toml::Table,
+    channels: &toml::Table,
+    source_name: &str,
+) -> CargoAllowResult<SupportReference> {
+    let schema = required_string(table, "schema_id", "support matrix")
+        .or_else(|_| required_string(table, "schema", "packaged support metadata"))?;
     let published_version = required_string(tool, "published_version", "support matrix tool")?;
     let candidate_version = required_string(tool, "candidate_version", "support matrix tool")?;
-    let channel_values = document
+    let channel_values = channels
         .get("channel")
         .and_then(toml::Value::as_array)
         .ok_or_else(|| {
             CargoAllowError::new(format!(
-                "{SUPPORT_MATRIX_SOURCE} must define at least one [[channel]] row"
+                "{source_name} must define at least one [[channel]] row"
             ))
         })?;
     if channel_values.is_empty() {
         return Err(CargoAllowError::new(format!(
-            "{SUPPORT_MATRIX_SOURCE} must define at least one [[channel]] row"
+            "{source_name} must define at least one [[channel]] row"
         )));
     }
     let mut channels = Vec::with_capacity(channel_values.len());
     for (index, value) in channel_values.iter().enumerate() {
         let context = format!("support matrix channel {index}");
         let channel = value.as_table().ok_or_else(|| {
-            CargoAllowError::new(format!("{SUPPORT_MATRIX_SOURCE} {context} must be a table"))
+            CargoAllowError::new(format!("{source_name} {context} must be a table"))
         })?;
         channels.push(ChannelReference {
             name: required_string(channel, "name", &context)?,
@@ -162,7 +188,7 @@ fn parse_support_reference(source: &str) -> CargoAllowResult<SupportReference> {
                 .and_then(toml::Value::as_bool)
                 .ok_or_else(|| {
                     CargoAllowError::new(format!(
-                        "{SUPPORT_MATRIX_SOURCE} {context} is missing boolean `available`"
+                        "{source_name} {context} is missing boolean `available`"
                     ))
                 })?,
             command: channel
@@ -540,7 +566,11 @@ mod tests {
 
     #[test]
     fn support_reference_tracks_checked_matrix() -> Result<(), String> {
-        let support = parse_support_reference(SUPPORT_MATRIX).map_err(|error| error.to_string())?;
+        let support = parse_packaged_support_reference(PACKAGE_MANIFEST)
+            .map_err(|error| error.to_string())?;
+        let repository_support =
+            parse_support_reference(SUPPORT_MATRIX).map_err(|error| error.to_string())?;
+        assert_eq!(support, repository_support);
         assert_eq!(support.source, SUPPORT_MATRIX_SOURCE);
         assert_eq!(support.schema, "cargo-allow.support-matrix.v1");
         assert_eq!(support.published_version, "0.1.11");
