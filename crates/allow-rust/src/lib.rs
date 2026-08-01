@@ -9,6 +9,7 @@
 //! MIR.
 
 use allow_core::{CargoAllowResult, Finding, read_text_file_capped};
+use rayon::prelude::*;
 use std::path::{Path, PathBuf};
 
 mod finding_builder;
@@ -54,37 +55,51 @@ pub fn scan_rust_files(
     let root = root.as_ref();
     let mut out = Vec::new();
     let packages = source_package_contexts(root, files)?;
-    let mut files_considered = 0usize;
+    let rust_files = files
+        .iter()
+        .filter(|rel| rel.extension().and_then(|e| e.to_str()) == Some("rs"))
+        .collect::<Vec<_>>();
+    let files_considered = rust_files.len();
     let mut files_skipped = 0usize;
     let mut files_with_parse_errors = 0usize;
-    for rel in files {
-        if rel.extension().and_then(|e| e.to_str()) != Some("rs") {
-            continue;
-        }
-        files_considered += 1;
-        let path = root.join(rel);
-        // Read each file independently — a single unreadable, non-UTF8, or
-        // oversized file must NOT abort the entire workspace scan (#1882,
-        // #1916). Skip the file and continue scanning the rest.
-        let text = match read_text_file_capped(&path) {
-            Ok(text) => text,
-            Err(e) => {
-                eprintln!("warning: skipping {} (read error: {e})", path.display());
-                files_skipped += 1;
-                continue;
+    let scanned = rust_files
+        .par_iter()
+        .map(|rel| {
+            let path = root.join(rel);
+            // Read each file independently — a single unreadable, non-UTF8,
+            // or oversized file must NOT abort the entire workspace scan
+            // (#1882, #1916). Keep the outcome indexed so aggregation below
+            // can preserve input order and warning order.
+            let outcome = match read_text_file_capped(&path) {
+                Ok(text) => {
+                    // Strip leading UTF-8 BOM so crate-level #![...] attributes
+                    // are detected on BOM-prefixed files (common on
+                    // Windows-edited sources) (#1881).
+                    let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
+                    FileScanOutcome::Scanned(scan_rust_source_with_completeness(rel, text))
+                }
+                Err(error) => FileScanOutcome::Skipped(error.to_string()),
+            };
+            ((*rel).clone(), outcome)
+        })
+        .collect::<Vec<_>>();
+
+    for (rel, outcome) in scanned {
+        let path = root.join(&rel);
+        match outcome {
+            FileScanOutcome::Scanned(scan) => {
+                if scan.has_parse_error {
+                    files_with_parse_errors += 1;
+                }
+                let mut findings = scan.findings;
+                apply_source_package_context(&rel, &packages, &mut findings);
+                out.extend(findings);
             }
-        };
-        // Strip leading UTF-8 BOM so crate-level #![...] attributes are
-        // detected on BOM-prefixed files (common on Windows-edited sources)
-        // (#1881).
-        let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
-        let scan = scan_rust_source_with_completeness(rel, text);
-        if scan.has_parse_error {
-            files_with_parse_errors += 1;
+            FileScanOutcome::Skipped(error) => {
+                eprintln!("warning: skipping {} (read error: {error})", path.display());
+                files_skipped += 1;
+            }
         }
-        let mut findings = scan.findings;
-        apply_source_package_context(rel, &packages, &mut findings);
-        out.extend(findings);
     }
     Ok(RustScanResult {
         findings: out,
@@ -92,6 +107,11 @@ pub fn scan_rust_files(
         files_skipped,
         files_with_parse_errors,
     })
+}
+
+enum FileScanOutcome {
+    Scanned(RustSourceScan),
+    Skipped(String),
 }
 
 /// Scan outcome for a single Rust source file, including parse completeness.
