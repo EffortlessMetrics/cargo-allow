@@ -15,6 +15,9 @@ at [`docs/dogfood/fixtures/getting-started/step-inventory.toml`](dogfood/fixture
 Expected-output markers are validated against the just-built binary in that
 same test (they are not hand-copied from stale receipts).
 
+The recurring policy and selector terms in this guide are defined in the
+[cargo-allow glossary](glossary.md).
+
 ## 0. Choose a product channel
 
 | Channel | How you invoke cargo-allow | Commands this guide treats as ordinary |
@@ -295,7 +298,8 @@ adoption](how-to/rollback-cargo-allow-adoption.md).
 - **occurrence headroom**: how many matching findings a receipt may still cover;
   prefer narrowing or source repair over silently widening.
 
-More detail: [source-exception-ledger.md](source-exception-ledger.md).
+More detail: [source-exception-ledger.md](source-exception-ledger.md) and the
+[cargo-allow glossary](glossary.md).
 
 ## Policy entry shape
 
