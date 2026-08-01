@@ -7,6 +7,8 @@ no-new-debt enforcement path — the same path cargo-allow dogfoods on itself.
 ## Prerequisites
 
 - Rust toolchain (MSRV 1.95+)
+- C toolchain (GCC/Clang on Unix-like systems or MSVC on Windows) to compile
+  cargo-allow's tree-sitter parser dependency
 - `cargo-allow` installed: `cargo install --git https://github.com/EffortlessMetrics/cargo-allow`
 - A git repository (cargo-allow scans git-tracked files)
 
