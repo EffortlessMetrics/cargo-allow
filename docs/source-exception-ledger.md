@@ -516,6 +516,8 @@ repository values are ellipsized in this concise view; `--wide` or explicit
 `--columns` retains the complete human projection. JSON remains complete and
 unchanged. With `--color always` (or supported terminal auto-detection), fixed
 status markers in human cards and wide/explicit status columns are styled;
+--width <columns> can explicitly tighten concise card lines for a narrow
+terminal; without it, human output keeps the deterministic non-TTY layout.
 the `explain` human status projection follows the same palette. JSON and
 `--output` files remain ANSI-free. Worklist human risk/status labels follow the
 same palette. Diff human posture, movement, and policy/finding status labels
