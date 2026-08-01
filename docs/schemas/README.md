@@ -188,7 +188,7 @@ queues point generated baseline debt at the existing baseline-debt and weak
 unsafe-evidence worklist routes; they do not convert generated debt into
 approval.
 `migrate` summary artifacts always include `summary.lint_exception_entries`.
-The schema requires this renderer-emitted count. They may also include
+The schema requires this renderer-emitted count. Those artifacts may also include
 `summary.evidence_entries`, `summary.entries_with_links`, `summary.link_entries`,
 `summary.broken_evidence_links`, `summary.unsafe_broken_evidence_links`,
 `summary.weak_evidence_references`, and
