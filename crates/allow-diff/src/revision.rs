@@ -1,6 +1,6 @@
 use allow_core::{
-    AllowConfig, CargoAllowResult, Finding, FindingKind, normalize_path,
-    source_tree_path_is_ignored,
+    AllowConfig, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding, FindingKind,
+    normalize_path, source_tree_path_is_ignored,
 };
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -44,9 +44,10 @@ pub fn findings_at_revision(
         .iter()
         .filter(|path| path.file_name().and_then(|name| name.to_str()) == Some("Cargo.toml"))
     {
-        if let Some(text) = source_texts.get(rel) {
-            manifests.push((rel.clone(), text.clone()));
-        }
+        let text = source_texts
+            .get(rel)
+            .ok_or_else(|| missing_revision_source(rel))?;
+        manifests.push((rel.clone(), text.clone()));
     }
     let packages = allow_rust::source_package_contexts_from_sources(manifests);
     let mut findings = Vec::new();
@@ -54,11 +55,12 @@ pub fn findings_at_revision(
         .iter()
         .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some("rs"))
     {
-        if let Some(text) = source_texts.get(rel) {
-            let mut rust_findings = allow_rust::scan_rust_source(rel, text);
-            allow_rust::apply_source_package_context(rel, &packages, &mut rust_findings);
-            findings.extend(rust_findings);
-        }
+        let text = source_texts
+            .get(rel)
+            .ok_or_else(|| missing_revision_source(rel))?;
+        let mut rust_findings = allow_rust::scan_rust_source(rel, text);
+        allow_rust::apply_source_package_context(rel, &packages, &mut rust_findings);
+        findings.extend(rust_findings);
     }
     findings.extend(allow_files::scan_files_with_options(
         &files,
@@ -74,9 +76,10 @@ pub fn findings_at_revision(
     if has_policy_family(cfg, &["github_workflow", "workflow_external_action"]) {
         let mut workflow_sources = Vec::new();
         for rel in files.iter().filter(|path| is_workflow_path(path)) {
-            if let Some(text) = source_texts.get(rel) {
-                workflow_sources.push((rel.clone(), text.clone()));
-            }
+            let text = source_texts
+                .get(rel)
+                .ok_or_else(|| missing_revision_source(rel))?;
+            workflow_sources.push((rel.clone(), text.clone()));
         }
         findings.extend(allow_policy_legacy::workflow_findings_from_sources(
             workflow_sources,
@@ -102,6 +105,16 @@ pub fn findings_at_revision(
         &files, cfg,
     ));
     Ok(findings)
+}
+
+fn missing_revision_source(path: &Path) -> CargoAllowError {
+    CargoAllowError::with_kind(
+        CargoAllowErrorKind::Inventory,
+        format!(
+            "revision source `{}` was selected but its blob was not loaded",
+            path.display()
+        ),
+    )
 }
 
 fn has_generated_code_receipt(cfg: &AllowConfig) -> bool {

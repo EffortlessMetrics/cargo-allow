@@ -1,5 +1,6 @@
 use super::*;
 use allow_core::{CargoAllowError, CargoAllowErrorKind};
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -30,6 +31,19 @@ fn git_cat_file_batch_parser_rejects_missing_and_truncated_blob_records() {
             .unwrap_or_else(|| std::panic::panic_any("malformed batch output should fail"));
         assert_eq!(err.kind(), CargoAllowErrorKind::Inventory);
     }
+}
+
+#[test]
+fn git_cat_file_batch_mapping_rejects_missing_requested_blob() {
+    let path = PathBuf::from("src/lib.rs");
+    let mut paths = BTreeMap::new();
+    paths.insert(path.clone(), "A".repeat(40));
+    let err = revision_git::map_blob_texts_by_path_for_test(paths, BTreeMap::new())
+        .err()
+        .unwrap_or_else(|| std::panic::panic_any("missing blob mapping should fail"));
+
+    assert_eq!(err.kind(), CargoAllowErrorKind::Inventory);
+    assert!(err.to_string().contains("did not return blob"));
 }
 
 #[test]
