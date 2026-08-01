@@ -15,6 +15,7 @@ const CARGO_TOML: &str = include_str!("../../../Cargo.toml");
 const CI_WORKFLOW: &str = include_str!("../../../.github/workflows/ci.yml");
 const RELEASE_WORKFLOW: &str = include_str!("../../../.github/workflows/release.yml");
 const SUPPORT_DOC: &str = include_str!("../../../SUPPORT.md");
+const ADOPTION_GUIDE: &str = include_str!("../../../docs/how-to/adopt-cargo-allow.md");
 const PUBLISHED_REGISTRY: &str =
     include_str!("../../../docs/dogfood/fixtures/getting-started/published-command-registry.toml");
 const PRE_COMMIT_HOOK: &str = include_str!("../../../.pre-commit-hooks.yaml");
@@ -76,20 +77,81 @@ fn published_version_matches_the_command_registry_snapshot() {
 }
 
 /// The pre-commit definition must keep the adoption hook aligned with the
-/// blocking source-tree command it delegates to. This is a text-level contract
-/// check; it does not execute pre-commit or an installed cargo-allow binary.
+/// blocking source-tree command it delegates to and must not overclaim an
+/// exact staged-index subject. This is a text-level contract check; it does not
+/// execute pre-commit or an installed cargo-allow binary.
 #[test]
 fn precommit_hook_contract_has_no_new_debt_gate() -> Result<(), String> {
+    validate_precommit_hook_contract(PRE_COMMIT_HOOK, ADOPTION_GUIDE)
+}
+
+fn validate_precommit_hook_contract(
+    pre_commit_hook: &str,
+    adoption_guide: &str,
+) -> Result<(), String> {
+    let hook = normalize_contract_text(pre_commit_hook);
+    let guide = normalize_contract_text(adoption_guide);
     for (field, value) in [
         ("hook id", "id: cargo-allow"),
+        (
+            "worktree name",
+            "name: cargo-allow worktree no-new source exception check",
+        ),
+        (
+            "worktree description",
+            "tracked worktree; this is not an exact staged-index check",
+        ),
         ("entry", "entry: cargo-allow check --mode no-new"),
         ("language", "language: system"),
         ("filename forwarding", "pass_filenames: false"),
         ("execution policy", "always_run: true"),
     ] {
-        if !PRE_COMMIT_HOOK.contains(value) {
+        if !hook.contains(value) {
             return Err(format!("pre-commit hook is missing {field}: {value}"));
         }
+    }
+    if hook.contains("--staged") {
+        return Err(
+            "source-exception pre-commit hook must not claim staged-index evaluation".into(),
+        );
+    }
+    for required in [
+        "source subject is the current tracked **worktree**, not the exact Git index candidate",
+        "CI remains the authoritative merge backstop",
+        "do not add `--staged` to this entry",
+    ] {
+        if !guide.contains(required) {
+            return Err(format!(
+                "adoption guide is missing subject-boundary text: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn normalize_contract_text(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+#[test]
+fn precommit_hook_contract_rejects_staged_source_exception_claim() -> Result<(), String> {
+    let hook = format!("{PRE_COMMIT_HOOK}\nentry: cargo-allow check --mode no-new --staged");
+    let error = validate_precommit_hook_contract(&hook, ADOPTION_GUIDE)
+        .err()
+        .ok_or_else(|| "staged source-exception claim was accepted".to_string())?;
+    if !error.contains("must not claim staged-index") {
+        return Err(format!("unexpected staged-claim error: {error}"));
+    }
+    Ok(())
+}
+
+#[test]
+fn precommit_hook_contract_rejects_missing_subject_boundary() -> Result<(), String> {
+    let error = validate_precommit_hook_contract(PRE_COMMIT_HOOK, "")
+        .err()
+        .ok_or_else(|| "missing adoption subject boundary was accepted".to_string())?;
+    if !error.contains("subject-boundary") {
+        return Err(format!("unexpected subject-boundary error: {error}"));
     }
     Ok(())
 }

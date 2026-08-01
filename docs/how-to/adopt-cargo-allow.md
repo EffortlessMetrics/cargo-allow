@@ -12,10 +12,17 @@ no-new-debt enforcement path — the same path cargo-allow dogfoods on itself.
 
 ## Optional pre-commit integration
 
-cargo-allow also ships a pre-commit framework hook for the same blocking
-no-new check used in CI. The hook deliberately uses `language: system`: install
-the `cargo-allow` binary in the environment that runs pre-commit, then pin the
+cargo-allow also ships a pre-commit framework hook for a local, blocking
+no-new check. The hook deliberately uses `language: system`: install the
+`cargo-allow` binary in the environment that runs pre-commit, then pin the
 repository revision in the consumer's `.pre-commit-config.yaml`.
+
+The hook's source subject is the current tracked **worktree**, not the exact
+Git index candidate. It can inspect unstaged bytes, so treat it as fast local
+feedback rather than proof of the bytes a commit will contain. CI remains the
+authoritative merge backstop. The hook does not claim exact staged-index source
+exception enforcement yet; do not add `--staged` to this entry, because the
+currently supported staged profile is a separate intent-system contract.
 
 For the current unreleased candidate, use the source revision temporarily:
 
@@ -29,9 +36,18 @@ repos:
 
 Replace `main` with the first release tag that contains this hook before
 adopting it as a stable consumer contract. The hook ignores filenames passed
-by pre-commit and scans the repository's tracked source tree, so it has the
-same scope as `cargo-allow check --mode no-new` in CI. Run it manually with
-`pre-commit run cargo-allow --all-files`.
+by pre-commit and scans the repository's tracked worktree, so it has the same
+source-tree scope as `cargo-allow check --mode no-new` in CI while retaining a
+different source subject. Run it manually with `pre-commit run cargo-allow
+--all-files`.
+
+If pre-commit is not part of the repository workflow, the equivalent local
+command is:
+
+```bash
+# Subject: current tracked worktree, not the exact staged index.
+cargo-allow check --mode no-new
+```
 
 ## Optional reusable GitHub Action
 
