@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  UX: `audit` human output no longer prints the review queue twice. Every
+  review-queue status (`new`, `expired`, `review_due`, `stale`, `ambiguous`,
+  `missing_required_field`, `evidence_gaps`, `baseline_debt`, `location_drift`)
+  was listed once under "Audit review queue:" and then repeated verbatim in the
+  trailing non-matched listing, which doubled the report length and made the
+  tail read as a second, different set of problems. `invalid_selector` is not a
+  review-queue status and keeps the trailing listing as its only home, so
+  nothing is dropped. `check` and `diff` are unchanged.

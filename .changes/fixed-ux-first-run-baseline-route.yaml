@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  UX: the first run after `init` now routes to a bootstrap path instead of a
+  dead end. `init` next-steps list `cargo-allow propose` alongside the CI gate,
+  and the `check` remediation roadmap adds a baseline route when no allow entry
+  matched any finding. Previously `init` offered only `check --mode no-new`,
+  which fails immediately on any tree that already carries exceptions, and the
+  roadmap answered with the one-finding `why`/`add` loop - the wrong tool for a
+  repository with existing debt. The hint disappears as soon as anything is
+  receipted.
