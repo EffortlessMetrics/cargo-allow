@@ -157,18 +157,23 @@ fn git_tracked_inventory_skips_deleted_worktree_files() {
 fn existing_regular_files_call_presence_observer() -> Result<(), Box<dyn std::error::Error>> {
     let root = temp_root("existing-regular-files");
     write_file(root.join("kept.txt"), "kept");
+    write_file(root.join("also-kept.txt"), "also kept");
     fs::create_dir_all(root.join("directory"))?;
 
     let (existing, deleted_tracked, submodule_paths) = existing_regular_files(
         &root,
         vec![
             PathBuf::from("kept.txt"),
-            PathBuf::from("directory"),
             PathBuf::from("missing.txt"),
+            PathBuf::from("also-kept.txt"),
+            PathBuf::from("directory"),
         ],
     );
 
-    assert_eq!(existing, vec![PathBuf::from("kept.txt")]);
+    assert_eq!(
+        existing,
+        vec![PathBuf::from("kept.txt"), PathBuf::from("also-kept.txt")]
+    );
     // A missing file is recorded as deleted-tracked, not silently dropped (#2048).
     assert_eq!(deleted_tracked, vec![PathBuf::from("missing.txt")]);
     // A tracked path that is a directory is a submodule candidate (#1846).
