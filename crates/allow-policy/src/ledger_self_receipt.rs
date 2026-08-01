@@ -76,10 +76,20 @@ pub fn ledger_self_receipt(id: &str, policy_rel_path: &str, owner: &str) -> Allo
     }
 }
 
+/// Canonical repo-relative shape for a receipt path: forward slashes, no `.`
+/// segments, no empty segments.
+///
+/// `--config policy/./allow.toml` writes to `policy/allow.toml`, and entry
+/// validation rejects a stored path containing current-directory segments — so
+/// carrying the operator's spelling through would emit a ledger that no
+/// cargo-allow command can parse. Normalizing here keeps every caller honest
+/// rather than relying on each one to pre-canonicalize.
 fn normalize(path: &str) -> String {
-    // Separators first: a Windows-style `.\policy\allow.toml` only reveals its
-    // leading `./` once the backslashes are forward slashes.
-    path.replace('\\', "/").trim_start_matches("./").to_string()
+    path.replace('\\', "/")
+        .split('/')
+        .filter(|segment| !segment.is_empty() && *segment != ".")
+        .collect::<Vec<_>>()
+        .join("/")
 }
 
 fn file_fingerprint(path: &str) -> Option<String> {
@@ -123,6 +133,33 @@ mod tests {
             entry.path.as_deref(),
             Some(std::path::Path::new("config/allow.toml"))
         );
+    }
+
+    #[test]
+    fn self_receipt_drops_current_directory_segments() {
+        // Entry validation rejects a stored path containing `.` segments, so
+        // carrying the operator's spelling through would emit a ledger no
+        // cargo-allow command can parse.
+        for spelling in [
+            "policy/./allow.toml",
+            "./policy/allow.toml",
+            "policy//allow.toml",
+            ".\\policy\\.\\allow.toml",
+        ] {
+            let entry = ledger_self_receipt("allow-0001", spelling, "core/policy");
+            assert_eq!(
+                entry.selector.glob.as_deref(),
+                Some("policy/allow.toml"),
+                "{spelling} should normalize to the canonical repo-relative path"
+            );
+            assert!(
+                !entry
+                    .path
+                    .as_deref()
+                    .is_some_and(|path| path.to_string_lossy().contains("/./")),
+                "{spelling} left a current-directory segment in the stored path"
+            );
+        }
     }
 
     #[test]

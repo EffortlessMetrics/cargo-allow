@@ -73,7 +73,11 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
             path.display()
         )));
     }
-    let policy_contents = starter_policy(args.strict, &policy_rel_display(&args.config));
+    // Derive the receipt path from the validated write target, not the raw
+    // `--config` spelling: an absolute in-root path would otherwise be stored
+    // verbatim, and the tracked-file inventory reports the repo-relative path,
+    // so the self-receipt would never match its own ledger (#3032).
+    let policy_contents = starter_policy(args.strict, &policy_rel_display(&root, &path)?);
     apply_single_target(SingleTargetApplyRequest {
         repository_root: &root,
         target: &args.config,
@@ -128,14 +132,6 @@ fn created_path_display(root: &Path, path: &Path) -> String {
 /// check before committing to the write: the default gate mode, the source
 /// inventory, ownership, and the requirement posture. Strict mode promotes
 /// `default_mode` to `strict` and turns stale entries into failures.
-/// Repo-relative, forward-slashed form of the policy path, for the ledger's
-/// own receipt. `--config` is already relative to the source-tree root; this
-/// only normalizes separators so a Windows invocation writes the same glob a
-/// POSIX one does (#3032).
-fn policy_rel_display(config: &Path) -> String {
-    config.to_string_lossy().replace('\\', "/")
-}
-
 fn starter_policy_preview(strict: bool) -> String {
     let (default_mode, stale_fail) = if strict {
         ("strict", "true")
@@ -150,6 +146,19 @@ fn starter_policy_preview(strict: bool) -> String {
          stale_entries_fail = {stale_fail}\n  \
          evidence_required  = false (unsafe: true)"
     )
+}
+
+/// Repo-relative, forward-slashed form of the resolved policy path, for the
+/// ledger's own receipt.
+///
+/// `--config` may be relative, absolute-in-root, or carry `.` segments, while
+/// the tracked-file inventory always reports the canonical repo-relative path.
+/// Resolving against the root here keeps the receipt's scope matching the
+/// finding it exists to cover (#3032).
+fn policy_rel_display(root: &Path, resolved: &Path) -> CargoAllowResult<String> {
+    Ok(crate::portable_relative_under_root(root, resolved)?
+        .to_string_lossy()
+        .replace('\\', "/"))
 }
 
 /// Render the full `init --dry-run` announcement: the would-{keep,overwrite,
