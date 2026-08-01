@@ -264,6 +264,22 @@ The boundary between those four commands is the point:
 Full lifecycle detail, including the expert `add --update` shortcut, is in
 [Manage an exception](how-to/manage-an-exception.md).
 
+## 7. Reset / uninstall
+
+To undo a cargo-allow adoption, restore or delete `policy/allow.toml` with
+Git, revert any adoption-specific CI changes, and remove generated
+`target/cargo-allow/` reports if they are no longer needed. Remove optional
+`.allow/` profile files only when cargo-allow installed them and nothing
+else uses them.
+
+To remove the installed binary from your machine:
+
+`cargo uninstall cargo-allow`
+
+The binary uninstall does not change repository policy or CI files. For the
+ownership map and a safe order of operations, see [Rollback cargo-allow
+adoption](how-to/rollback-cargo-allow-adoption.md).
+
 ## Terminology (first use)
 
 - **`baseline_debt`**: generated adoption classification; a review queue, not
