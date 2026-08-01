@@ -613,6 +613,7 @@ fn cmd_add_validate_policy_rejects_unsupported_schema_version() {
     let root = add_fixture_dir();
     write_add_fixture_with_unsupported_schema_version(&root);
     let output = root.join("policy/allow.added.toml");
+    let summary = root.join("target/add-error-summary.json");
 
     let err = cmd_add(&AddArgs {
         root: RootArgs {
@@ -637,8 +638,8 @@ fn cmd_add_validate_policy_rejects_unsupported_schema_version() {
         force: false,
         update: false,
         from_plan: None,
-        summary_format: HumanJsonFormat::Human,
-        summary_output: None,
+        summary_format: HumanJsonFormat::Json,
+        summary_output: Some(summary.clone()),
     })
     .expect_err("add should fail closed when validate_policy rejects schema_version");
 
@@ -649,6 +650,10 @@ fn cmd_add_validate_policy_rejects_unsupported_schema_version() {
     assert!(
         !output.exists(),
         "add should not write policy output when validate_policy fails"
+    );
+    assert!(
+        !summary.exists(),
+        "failed add should not write a success JSON summary"
     );
     fs::remove_dir_all(root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
