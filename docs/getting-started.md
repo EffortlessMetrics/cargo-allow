@@ -166,6 +166,9 @@ spec-system profile, and federation precedence contract is in
 
 ## 5. Run the no-new check
 
+Prerequisite: `policy/allow.toml` must exist from step 4's `init` or
+`propose --write` path, unless you pass an explicit `--config` path.
+
 ```bash
 cargo-allow check --mode no-new
 ```
