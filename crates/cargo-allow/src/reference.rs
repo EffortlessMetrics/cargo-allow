@@ -27,6 +27,8 @@ pub(crate) enum ReferenceFormat {
     #[value(alias = "md")]
     Markdown,
     Json,
+    #[value(name = "man", alias = "manpage")]
+    Man,
 }
 
 #[derive(Debug, Serialize)]
@@ -75,6 +77,7 @@ pub(crate) fn cmd_reference(args: &ReferenceArgs) -> CargoAllowResult<()> {
     let rendered = match args.format {
         ReferenceFormat::Markdown => render_markdown(&reference),
         ReferenceFormat::Json => render_json(&reference)?,
+        ReferenceFormat::Man => render_manpage(&reference),
     };
     emit_text(args.output.as_deref(), &rendered)
 }
@@ -180,6 +183,89 @@ fn render_json(reference: &CliReference) -> CargoAllowResult<String> {
     serde_json::to_string_pretty(reference)
         .map(|json| format!("{json}\n"))
         .map_err(|err| CargoAllowError::new(format!("failed to render CLI reference JSON: {err}")))
+}
+
+fn render_manpage(reference: &CliReference) -> String {
+    let mut out = String::new();
+    out.push_str(&format!(
+        ".TH CARGO-ALLOW 1 \"\" \"cargo-allow {}\" \"User Commands\"\n",
+        roff_text(reference.version)
+    ));
+    out.push_str(".SH NAME\n");
+    out.push_str("cargo-allow \\- source-tree exception ledger and policy scanner\n");
+    out.push_str(".SH SYNOPSIS\n");
+    out.push_str(&format!(".B {}\n", roff_text(&reference.usage)));
+    out.push_str(".SH DESCRIPTION\n");
+    out.push_str(&format!(
+        "{}\n",
+        roff_text(reference.about.as_deref().unwrap_or(""))
+    ));
+    render_man_arguments(&mut out, &reference.arguments);
+    out.push_str(".SH COMMANDS\n");
+    for command in &reference.commands {
+        render_man_command(&mut out, command);
+    }
+    out
+}
+
+fn render_man_arguments(out: &mut String, arguments: &[ArgumentReference]) {
+    if arguments.is_empty() {
+        return;
+    }
+    out.push_str(".SH OPTIONS\n");
+    for argument in arguments {
+        out.push_str(".TP\n");
+        out.push_str(&format!(".B {}\n", roff_text(&argument_names(argument))));
+        let mut details = argument.help.clone().unwrap_or_default();
+        let values = if argument.possible_values.is_empty() {
+            argument.value_names.join(", ")
+        } else {
+            argument
+                .possible_values
+                .iter()
+                .flat_map(|value| {
+                    std::iter::once(value.name.as_str())
+                        .chain(value.aliases.iter().map(String::as_str))
+                })
+                .collect::<Vec<_>>()
+                .join(", ")
+        };
+        if !values.is_empty() {
+            details.push_str(" Values: ");
+            details.push_str(&values);
+        }
+        if !argument.default_values.is_empty() {
+            details.push_str(" Default: ");
+            details.push_str(&argument.default_values.join(", "));
+        }
+        out.push_str(&format!("{}\n", roff_text(&details)));
+    }
+}
+
+fn render_man_command(out: &mut String, command: &CommandReference) {
+    out.push_str(".TP\n");
+    out.push_str(&format!(".B {}\n", roff_text(&command.path)));
+    let mut details = command.about.clone().unwrap_or_default();
+    if !details.is_empty() {
+        details.push(' ');
+    }
+    details.push_str(&command.usage);
+    out.push_str(&format!("{}\n", roff_text(&details)));
+    for child in &command.commands {
+        render_man_command(out, child);
+    }
+}
+
+fn roff_text(value: &str) -> String {
+    let escaped = value
+        .replace('\\', "\\\\")
+        .replace('-', "\\-")
+        .replace(['\r', '\n'], " ");
+    if escaped.starts_with('.') || escaped.starts_with('\'') {
+        format!("\\&{escaped}")
+    } else {
+        escaped
+    }
 }
 
 fn render_markdown(reference: &CliReference) -> String {
@@ -380,5 +466,20 @@ mod tests {
         assert!(markdown.contains("--color"));
         assert!(markdown.contains("--format"));
         assert!(!markdown.contains('\r'));
+    }
+
+    #[test]
+    fn manpage_is_deterministic_and_covers_root_options_and_commands() {
+        let reference = build_reference();
+        let first = render_manpage(&reference);
+        let second = render_manpage(&reference);
+        assert_eq!(first, second);
+        assert!(first.starts_with(".TH CARGO-ALLOW 1"));
+        assert!(first.contains(".SH OPTIONS"));
+        assert!(first.contains(".SH COMMANDS"));
+        assert!(first.contains("cargo\\-allow check"));
+        assert!(first.contains("\\-\\-color"));
+        assert!(!first.contains(env!("CARGO_MANIFEST_DIR")));
+        assert!(!first.contains('\r'));
     }
 }
