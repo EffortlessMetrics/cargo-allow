@@ -502,6 +502,13 @@ fn list_concise_width_uses_terminal_display_width_and_keeps_graphemes() {
 }
 
 #[test]
+fn list_concise_width_handles_empty_and_single_cell_budgets() {
+    assert_eq!(crate::artifacts::truncate_with_ellipsis("界", 0), "");
+    assert_eq!(crate::artifacts::truncate_with_ellipsis("界", 1), "…");
+    assert_eq!(crate::artifacts::truncate_with_ellipsis("a", 1), "a");
+}
+
+#[test]
 fn list_status_style_is_shared_by_cards_and_wide_rows() {
     let rows = [ListRow {
         id: "allow-style",

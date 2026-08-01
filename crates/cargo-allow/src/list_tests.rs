@@ -176,6 +176,7 @@ fn concise_width_respects_terminal_capability_and_explicit_width() {
         super::list_args::concise_width_for_terminal(&args, false, Some(100)),
         None
     );
+    assert_eq!(super::list_args::concise_width(&args), None);
 
     let explicit =
         CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "list", "--width", "60"]))
@@ -188,6 +189,7 @@ fn concise_width_respects_terminal_capability_and_explicit_width() {
         super::list_args::concise_width_for_terminal(&explicit, false, None),
         Some(60)
     );
+    assert_eq!(super::list_args::concise_width(&explicit), Some(60));
 }
 
 #[test]
