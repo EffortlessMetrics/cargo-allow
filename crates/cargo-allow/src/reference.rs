@@ -193,8 +193,14 @@ fn parse_support_table(
                 })?,
             command: channel
                 .get("command")
-                .and_then(toml::Value::as_str)
-                .map(str::to_owned),
+                .map(|value| {
+                    value.as_str().map(str::to_owned).ok_or_else(|| {
+                        CargoAllowError::new(format!(
+                            "{source_name} {context} has a non-string `command`"
+                        ))
+                    })
+                })
+                .transpose()?,
             evidence: required_string(channel, "evidence", &context)?,
         });
     }
@@ -332,8 +338,9 @@ fn render_manpage(reference: &CliReference) -> String {
 fn render_man_support(out: &mut String, support: &SupportReference) {
     out.push_str(".SH SUPPORT\n");
     out.push_str(&format!(
-        "Support matrix: {}\nPublished version: {}\nCandidate version: {}\n",
+        "Support source: {}\nSupport schema: {}\nPublished version: {}\nCandidate version: {}\n",
         roff_text(support.source),
+        roff_text(&support.schema),
         roff_text(&support.published_version),
         roff_text(&support.candidate_version)
     ));
@@ -348,6 +355,9 @@ fn render_man_support(out: &mut String, support: &SupportReference) {
             },
             roff_text(&channel.evidence)
         ));
+        if let Some(command) = &channel.command {
+            out.push_str(&format!("Command: {}\n", roff_text(command)));
+        }
     }
 }
 
@@ -604,6 +614,26 @@ available = true
         Ok(())
     }
 
+    #[test]
+    fn support_reference_rejects_non_string_channel_command() -> Result<(), String> {
+        let error = parse_support_reference(
+            r#"
+schema_id = "cargo-allow.support-matrix.v1"
+[tool]
+published_version = "0.1.11"
+candidate_version = "0.2.0"
+[[channel]]
+name = "test"
+available = true
+command = 42
+evidence = "test"
+"#,
+        )
+        .expect_err("non-string command must be rejected");
+        assert!(error.to_string().contains("non-string `command`"));
+        Ok(())
+    }
+
     fn assert_command_reference(
         command: &Command,
         arguments: &[ArgumentReference],
@@ -695,6 +725,8 @@ available = true
         assert!(first.contains("\\-\\-color"));
         assert!(first.contains(".SH SUPPORT"));
         assert!(first.contains("docs/support\\-matrix.toml"));
+        assert!(first.contains("Support schema: cargo\\-allow.support\\-matrix.v1"));
+        assert!(first.contains("Command: cargo install cargo\\-allow"));
         assert!(!first.contains(env!("CARGO_MANIFEST_DIR")));
         assert!(!first.contains('\r'));
         Ok(())
