@@ -34,6 +34,11 @@ pub fn render_add_finding_plan_json(plan: &AddFindingPlanV1<'_>) -> String {
         "scanner_limitations": scanner_limitations_for_schema_id(ADD_FINDING_PLAN_ARTIFACT.schema_id),
         "repository": { "identity": plan.repository.identity, "root": plan.repository.root },
         "inventory": Value::Object(inventory_json),
+        "evaluation": {
+            "scope": plan.evaluation.scope,
+            "locality": plan.evaluation.locality,
+            "reasons": plan.evaluation.reasons,
+        },
         "inventory_basis_identity": plan.inventory_basis_identity,
         "policy": { "path": plan.policy.path, "digest": plan.policy.digest },
         "finding": {

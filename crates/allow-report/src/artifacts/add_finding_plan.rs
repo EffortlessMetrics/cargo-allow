@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use serde_json::Value;
 
-use crate::InventoryContext;
+use crate::{EvaluationContext, InventoryContext};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AddFindingPlanRepository {
@@ -53,6 +53,7 @@ pub struct AddFindingPlanV1<'a> {
     pub tool_version: String,
     pub repository: AddFindingPlanRepository,
     pub inventory: InventoryContext<'a>,
+    pub evaluation: EvaluationContext<'a>,
     pub inventory_basis_identity: String,
     pub policy: AddFindingPlanPolicy,
     pub finding: AddFindingPlanFinding,

@@ -12,6 +12,7 @@
     "claim_boundary",
     "scanner_limitations",
     "inventory",
+    "evaluation",
     "finding",
     "outcome",
     "candidate_entries",
@@ -44,6 +45,9 @@
     },
     "inventory": {
       "$ref": "#/$defs/inventory"
+    },
+    "evaluation": {
+      "$ref": "#/$defs/evaluation"
     },
     "finding": {
       "$ref": "#/$defs/current_finding"
@@ -205,6 +209,19 @@
             "partial"
           ],
           "description": "Authoritative inventory coverage classification for this artifact."
+        }
+      }
+    },
+    "evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "locality", "reasons"],
+      "properties": {
+        "scope": { "enum": ["scoped", "full_fallback"] },
+        "locality": { "enum": ["proven", "global_dependency"] },
+        "reasons": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
         }
       }
     },

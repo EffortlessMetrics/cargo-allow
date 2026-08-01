@@ -1,5 +1,5 @@
-use allow_core::{AllowConfig, CargoAllowResult, Finding};
-use allow_inventory::{InventoryOptions, InventorySource, inventory, resolve_source_tree_root};
+use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult, Finding};
+use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
 use allow_policy::federation::{
     FederationEvaluation, PrecedenceTier, evaluate_source_exception_policy,
 };
@@ -128,15 +128,16 @@ pub(crate) fn load_world_with_evidence_mode(
 /// of the entire source tree. Used by `why` (advisory, read-only) so a
 /// one-finding question does not parse every file in the repository.
 ///
-/// Correctness caveat: the `evaluate` call downstream sees only this file's
-/// findings, so `occurrence_limit` counting and cross-file drift re-anchoring
-/// reflect a partial view. This is acceptable for `why` (advisory) but NOT for
-/// `add` (which mutates the ledger).
+/// The matching layer decides whether this scoped finding can be evaluated
+/// locally. Inventory is still collected for the target so the result never
+/// conflates an untracked/ignored file with a missing finding. This remains
+/// advisory and must not be reused by mutating commands.
 pub(crate) fn load_world_for_path(
     explicit_root: Option<&Path>,
     config: Option<&Path>,
     require_config: bool,
     kind_filter: Option<&str>,
+    include_untracked: bool,
     target_path: &Path,
 ) -> CargoAllowResult<(
     PathBuf,
@@ -161,8 +162,31 @@ pub(crate) fn load_world_for_path(
         Err(err) => return Err(err),
     };
     let cfg = load_policy_at_path(policy_path, EvidenceValidationMode::ReportOnly)?;
+    let inventory = inventory(
+        &root,
+        &InventoryOptions {
+            ignored: cfg.workspace.ignored.clone(),
+            generated: cfg.workspace.generated.clone(),
+            include_untracked,
+        },
+    )?;
     // Normalize the target path to repo-relative for the scan.
     let files = vec![normalize_to_repo_relative(&root, target_path)];
+    let target = files
+        .first()
+        .cloned()
+        .ok_or_else(|| CargoAllowError::new("target source path was not prepared for scanning"))?;
+    if !inventory
+        .files
+        .iter()
+        .map(|path| normalize_to_repo_relative(&root, path))
+        .any(|path| path == target)
+    {
+        return Err(CargoAllowError::new(format!(
+            "target {} is not present in the source inventory; use --include-untracked if it is intentionally untracked",
+            target_path.display()
+        )));
+    }
     let mut findings = Vec::new();
     let rust_scan = allow_rust::scan_rust_files(&root, &files)?;
     findings.extend(rust_scan.findings);
@@ -183,11 +207,48 @@ pub(crate) fn load_world_for_path(
             finding.ledger = Some(provenance.clone());
         }
     }
-    // The fast path doesn't run inventory(), so we can't claim a specific
-    // inventory source. Use source_only with FilesystemFallback to avoid
-    // asserting git-tracking for a file we haven't checked (#2506).
-    let inventory_facts = InventoryFacts::source_only(InventorySource::FilesystemFallback);
+    let inventory_facts = InventoryFacts::scanned_inventory(&inventory)
+        .with_rust_files_skipped(rust_scan.files_skipped)
+        .with_rust_files_with_parse_errors(rust_scan.files_with_parse_errors);
     Ok((root, cfg, findings, inventory_facts, federation))
+}
+
+/// Explain why the target finding cannot safely use the one-file evaluator.
+/// Policy locality comes from the matching layer; companion and federation
+/// sources are world concerns and are kept here so `why` does not grow an
+/// ad-hoc list of global semantics.
+pub(crate) fn scoped_locality_reasons(
+    cfg: &AllowConfig,
+    finding: &Finding,
+    federation: &FederationEvaluation,
+) -> Vec<String> {
+    let mut reasons = allow_match::scoped_locality_reasons(cfg, finding);
+
+    if finding.family.as_deref().is_some_and(|family| {
+        matches!(
+            family,
+            "generated_code"
+                | "executable_file"
+                | "github_workflow"
+                | "workflow_external_action"
+                | "dependency_surface"
+                | "process_spawn"
+                | "network_destination"
+        )
+    }) {
+        reasons.push(format!(
+            "companion finding family `{}` is derived from repository-wide context",
+            finding.family.as_deref().unwrap_or("<unknown>")
+        ));
+    }
+
+    if !federation.divergences.is_empty() && finding.ledger.is_some() {
+        reasons.push("federation mirror divergences affect the active finding context".to_string());
+    }
+
+    reasons.sort();
+    reasons.dedup();
+    reasons
 }
 
 /// Normalize an arbitrary path (absolute or repo-relative) to a repo-relative

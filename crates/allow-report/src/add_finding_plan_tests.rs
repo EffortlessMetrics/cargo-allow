@@ -14,6 +14,11 @@ fn add_finding_plan_json_preserves_bound_identity_and_structured_argv() {
             root: "H:/repo".to_string(),
         },
         inventory: InventoryContext::source_syntax("git_tracked", Some("H:/repo"), Some(12)),
+        evaluation: EvaluationContext {
+            scope: "scoped",
+            locality: "proven",
+            reasons: &[],
+        },
         inventory_basis_identity: digest.to_string(),
         policy: AddFindingPlanPolicy {
             path: "policy/allow.toml".to_string(),

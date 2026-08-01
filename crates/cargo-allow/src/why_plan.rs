@@ -5,7 +5,7 @@ use allow_core::{
 };
 use allow_report::{
     AddFindingPlanCandidate, AddFindingPlanFinding, AddFindingPlanOutcome, AddFindingPlanPolicy,
-    AddFindingPlanProofPlan, AddFindingPlanRepository, AddFindingPlanV1,
+    AddFindingPlanProofPlan, AddFindingPlanRepository, AddFindingPlanV1, EvaluationContext,
 };
 
 use super::why_render::{WhyCandidate, why_next_steps};
@@ -18,6 +18,7 @@ pub(super) struct AddFindingPlanInput<'a> {
     pub cfg: &'a AllowConfig,
     pub include_untracked: bool,
     pub source_context: &'a SourceTreeReportContext,
+    pub evaluation: EvaluationContext<'a>,
     pub finding: &'a Finding,
     pub outcome: &'a MatchOutcome,
     pub candidates: &'a [WhyCandidate<'a>],
@@ -30,6 +31,7 @@ pub(super) fn render_add_finding_plan(input: AddFindingPlanInput<'_>) -> CargoAl
         cfg,
         include_untracked,
         source_context,
+        evaluation,
         finding,
         outcome,
         candidates,
@@ -39,6 +41,11 @@ pub(super) fn render_add_finding_plan(input: AddFindingPlanInput<'_>) -> CargoAl
             "cannot produce an add-finding plan for status `{}`; use ordinary `why --format json` or `explain` for diagnosis",
             outcome.status.as_str()
         )));
+    }
+    if evaluation.scope == "scoped" && evaluation.locality != "proven" {
+        return Err(CargoAllowError::new(
+            "cannot produce an add-finding plan from an unproven scoped evaluation; re-run why with full fallback",
+        ));
     }
 
     let bindings = compute_plan_finding_bindings(root, config, cfg, include_untracked, finding)?;
@@ -52,6 +59,7 @@ pub(super) fn render_add_finding_plan(input: AddFindingPlanInput<'_>) -> CargoAl
             root: root_text.clone(),
         },
         inventory,
+        evaluation,
         inventory_basis_identity: bindings.inventory_basis_identity,
         policy: AddFindingPlanPolicy {
             path: bindings.policy_path.clone(),
@@ -183,6 +191,11 @@ pub(crate) fn sample_add_finding_plan_json_for_contract_test() -> String {
             Some(3),
         )
         .with_completeness("complete"),
+        evaluation: EvaluationContext {
+            scope: "full_fallback",
+            locality: "global_dependency",
+            reasons: &[],
+        },
         inventory_basis_identity: digest.to_string(),
         policy: AddFindingPlanPolicy {
             path: "policy/allow.toml".to_string(),

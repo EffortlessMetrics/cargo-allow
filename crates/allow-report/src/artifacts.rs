@@ -45,5 +45,5 @@ pub use release_manifest::{
     ReleaseManifestV1, generate_release_manifest, render_release_manifest_json,
     validate_release_manifest,
 };
-pub use why::{WhyCandidateEntry, WhyProofPlan, WhyReport};
+pub use why::{EvaluationContext, WhyCandidateEntry, WhyProofPlan, WhyReport};
 pub use worklist::{WorklistFilters, WorklistItem};
