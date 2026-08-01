@@ -1,0 +1,14 @@
+kind: Fixed
+body: >-
+  UX: `propose` no longer aborts on findings the policy forbids receipting.
+  Because `init` writes `allow_bare_allow_attributes = false`, `propose`
+  generated a `lint_exception`/`allow_attribute` entry that its own
+  `validate_policy` call then rejected - failing the whole preview with a
+  configuration conflict naming a generated id the operator could not find in
+  their policy file. The two documented bootstrap paths were therefore unusable
+  in sequence on any tree containing a bare `#[allow(...)]`. `propose` now skips
+  such findings, still baselines everything else, and reports the skip with the
+  requirement that caused it and both repair routes. The findings are not
+  suppressed: `check --mode no-new` still reports them as new. The propose
+  summary and `cargo-allow.propose.v1` gain `unreceiptable_new_findings` and
+  `unreceiptable_reason`, kept distinct from `--max` truncation.

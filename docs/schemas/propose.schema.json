@@ -95,6 +95,18 @@
           "type": "integer",
           "minimum": 0,
           "description": "Number of new findings not proposed because the --max limit was reached. Non-zero means the proposal is incomplete; rerun with --max 0 to see all."
+        },
+        "unreceiptable_new_findings": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of new findings deliberately not proposed because the policy's own requirements forbid receipting them. These findings are not suppressed: check --mode no-new still reports them as new. Raising --max will not propose them."
+        },
+        "unreceiptable_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Which requirement forbade the skipped entries, or null when unreceiptable_new_findings is 0."
         }
       }
     },

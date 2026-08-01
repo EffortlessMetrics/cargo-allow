@@ -8,6 +8,8 @@ pub(super) struct ProposeCounts {
     pub(super) proposed_entries: usize,
     pub(super) unsafe_proposed_entries: usize,
     pub(super) truncated_new_findings: usize,
+    pub(super) unreceiptable_new_findings: usize,
+    pub(super) unreceiptable_reason: Option<&'static str>,
 }
 
 #[cfg(test)]
@@ -39,6 +41,8 @@ pub(super) fn render_propose_summary_styled(
             baseline_debt_entries_proposed: counts.proposed_entries,
             unsafe_baseline_debt_entries_proposed: counts.unsafe_proposed_entries,
             truncated_new_findings: counts.truncated_new_findings,
+            unreceiptable_new_findings: counts.unreceiptable_new_findings,
+            unreceiptable_reason: counts.unreceiptable_reason,
             mutation_receipt: context.mutation_receipt,
         },
         style,
@@ -63,6 +67,8 @@ pub(super) fn render_propose_summary_json(
         baseline_debt_entries_proposed: counts.proposed_entries,
         unsafe_baseline_debt_entries_proposed: counts.unsafe_proposed_entries,
         truncated_new_findings: counts.truncated_new_findings,
+        unreceiptable_new_findings: counts.unreceiptable_new_findings,
+        unreceiptable_reason: counts.unreceiptable_reason,
         mutation_receipt: context.mutation_receipt,
     })
 }

@@ -539,6 +539,88 @@ fn first_hour_init_bootstrap_passes_no_new_without_propose() {
     drop_root(root);
 }
 
+/// `init` writes `allow_bare_allow_attributes = false`, so `propose` used to
+/// generate a `lint_exception`/`allow_attribute` entry that the very same
+/// policy rejected — aborting the whole preview with a conflict naming an id
+/// the operator could not find in their file. The two documented bootstrap
+/// paths were unusable in sequence on any tree containing a bare
+/// `#[allow(...)]` (#3023).
+#[test]
+fn init_then_propose_skips_findings_the_policy_forbids_receipting() {
+    let root = temp_root("init-then-propose");
+    write_source(
+        &root,
+        "#[allow(dead_code)]\nfn helper() {}\npub fn boom() -> u8 { None::<u8>.unwrap() }\n",
+    );
+
+    run(
+        cargo_allow()
+            .arg("init")
+            .arg("--root")
+            .arg(&root)
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run init: {err}"))),
+        "init",
+    );
+    let policy = root.join("policy/allow.toml");
+
+    let propose = run(
+        cargo_allow()
+            .arg("propose")
+            .arg("--root")
+            .arg(&root)
+            .arg("--config")
+            .arg(&policy)
+            .arg("--summary-format")
+            .arg("json")
+            .arg("--summary-output")
+            .arg(root.join("propose.json"))
+            .output()
+            .unwrap_or_else(|err| std::panic::panic_any(format!("run propose: {err}"))),
+        "propose after init",
+    );
+    let _ = propose;
+
+    let summary: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.join("propose.json")).unwrap_or_default())
+            .unwrap_or_else(|err| std::panic::panic_any(format!("propose json: {err}")));
+
+    // The bare `#[allow(dead_code)]` is reported as skipped, with the reason,
+    // rather than aborting the run.
+    assert_eq!(
+        summary
+            .pointer("/summary/unreceiptable_new_findings")
+            .and_then(serde_json::Value::as_u64),
+        Some(1),
+        "propose should report the forbidden finding as skipped: {summary}"
+    );
+    let reason = summary
+        .pointer("/summary/unreceiptable_reason")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_default();
+    assert!(
+        reason.contains("allow_bare_allow_attributes"),
+        "the skip must name the requirement that caused it: {reason}"
+    );
+    // Skipping is not truncation, and the rest of the tree is still baselined.
+    assert_eq!(
+        summary
+            .pointer("/summary/truncated_new_findings")
+            .and_then(serde_json::Value::as_u64),
+        Some(0),
+        "a forbidden finding is not a --max truncation: {summary}"
+    );
+    assert!(
+        summary
+            .pointer("/summary/baseline_debt_entries_proposed")
+            .and_then(serde_json::Value::as_u64)
+            .is_some_and(|proposed| proposed >= 1),
+        "the panic finding should still be baselined: {summary}"
+    );
+
+    drop_root(root);
+}
+
 #[test]
 fn first_hour_adoption_path_doctor_audit_propose_check_list_explain_worklist() {
     let root = temp_root("full-adoption");
