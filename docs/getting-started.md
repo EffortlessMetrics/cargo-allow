@@ -364,8 +364,8 @@ container = "slice_checked_text_range"
 
 Local-file evidence such as `doc:`, `spec:`, `adr:`, `ripr:`,
 `unsafe-review:`, and `coverage:` can be checked for presence. Traceability
-references such as `test:`, `issue:`, `pr:`, and `legacy-policy:` are reported
-without running tools or contacting services.
+references such as `test:`, `cargo:`, `issue:`, `pr:`, and `legacy-policy:` are
+reported without running tools or contacting services.
 
 ## Next workflows
 
