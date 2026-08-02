@@ -1,7 +1,7 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use tree_sitter::{Node, Parser, Tree};
 
-use crate::text::source_column;
+use crate::text::{SourceLineIndex, source_column};
 
 pub struct RustSyntaxTree {
     pub(crate) tree: Tree,
@@ -16,6 +16,14 @@ pub struct RustSyntaxContainer {
     pub start_column: u32,
     pub end_line: u32,
     pub end_column: u32,
+}
+
+struct ContainerState<'a> {
+    module_path: &'a mut Vec<String>,
+    impl_path: &'a mut Vec<String>,
+    trait_path: &'a mut Vec<String>,
+    extern_path: &'a mut Vec<String>,
+    containers: &'a mut Vec<RustSyntaxContainer>,
 }
 
 impl RustSyntaxContainer {
@@ -47,15 +55,15 @@ impl RustSyntaxTree {
         let mut impl_path = Vec::new();
         let mut trait_path = Vec::new();
         let mut extern_path = Vec::new();
-        collect_containers(
-            self.tree.root_node(),
-            source,
-            &mut module_path,
-            &mut impl_path,
-            &mut trait_path,
-            &mut extern_path,
-            &mut containers,
-        );
+        let line_index = SourceLineIndex::new(source);
+        let mut state = ContainerState {
+            module_path: &mut module_path,
+            impl_path: &mut impl_path,
+            trait_path: &mut trait_path,
+            extern_path: &mut extern_path,
+            containers: &mut containers,
+        };
+        collect_containers(self.tree.root_node(), source, &line_index, &mut state);
         containers
     }
 }
@@ -129,45 +137,26 @@ fn named_node_count(node: Node<'_>) -> usize {
 fn collect_containers(
     node: Node<'_>,
     source: &str,
-    module_path: &mut Vec<String>,
-    impl_path: &mut Vec<String>,
-    trait_path: &mut Vec<String>,
-    extern_path: &mut Vec<String>,
-    containers: &mut Vec<RustSyntaxContainer>,
+    line_index: &SourceLineIndex,
+    state: &mut ContainerState<'_>,
 ) {
     if node.kind() == "mod_item"
         && let Some(name) = node
             .child_by_field_name("name")
             .and_then(|name| node_text(source, name))
     {
-        module_path.push(name.to_string());
-        visit_child_containers(
-            node,
-            source,
-            module_path,
-            impl_path,
-            trait_path,
-            extern_path,
-            containers,
-        );
-        module_path.pop();
+        state.module_path.push(name.to_string());
+        visit_child_containers(node, source, line_index, state);
+        state.module_path.pop();
         return;
     }
 
     if node.kind() == "impl_item"
         && let Some(name) = impl_container_name(node, source)
     {
-        impl_path.push(name);
-        visit_child_containers(
-            node,
-            source,
-            module_path,
-            impl_path,
-            trait_path,
-            extern_path,
-            containers,
-        );
-        impl_path.pop();
+        state.impl_path.push(name);
+        visit_child_containers(node, source, line_index, state);
+        state.impl_path.pop();
         return;
     }
 
@@ -177,34 +166,18 @@ fn collect_containers(
             .and_then(|name| node_text(source, name))
             .map(normalize_scope_text)
     {
-        trait_path.push(name);
-        visit_child_containers(
-            node,
-            source,
-            module_path,
-            impl_path,
-            trait_path,
-            extern_path,
-            containers,
-        );
-        trait_path.pop();
+        state.trait_path.push(name);
+        visit_child_containers(node, source, line_index, state);
+        state.trait_path.pop();
         return;
     }
 
     if node.kind() == "foreign_mod_item"
         && let Some(name) = extern_container_name(node, source)
     {
-        extern_path.push(name);
-        visit_child_containers(
-            node,
-            source,
-            module_path,
-            impl_path,
-            trait_path,
-            extern_path,
-            containers,
-        );
-        extern_path.pop();
+        state.extern_path.push(name);
+        visit_child_containers(node, source, line_index, state);
+        state.extern_path.pop();
         return;
     }
 
@@ -213,59 +186,40 @@ fn collect_containers(
             .child_by_field_name("name")
             .and_then(|name| node_text(source, name))
     {
-        let (kind, name) = if let Some(impl_name) = impl_path.last() {
+        let (kind, name) = if let Some(impl_name) = state.impl_path.last() {
             ("method", format!("{impl_name}::{name}"))
-        } else if let Some(trait_name) = trait_path.last() {
+        } else if let Some(trait_name) = state.trait_path.last() {
             ("method", format!("{trait_name}::{name}"))
-        } else if let Some(extern_name) = extern_path.last() {
+        } else if let Some(extern_name) = state.extern_path.last() {
             ("function", format!("{extern_name}::{name}"))
         } else {
             ("function", name.to_string())
         };
         let start = node.start_position();
         let end = node.end_position();
-        containers.push(RustSyntaxContainer {
+        state.containers.push(RustSyntaxContainer {
             kind: kind.to_string(),
             name,
-            module_path: module_path.clone(),
+            module_path: state.module_path.clone(),
             start_line: start.row as u32 + 1,
-            start_column: source_column(source, start.row, start.column),
+            start_column: source_column(line_index, source, start.row, start.column),
             end_line: end.row as u32 + 1,
-            end_column: source_column(source, end.row, end.column),
+            end_column: source_column(line_index, source, end.row, end.column),
         });
     }
 
-    visit_child_containers(
-        node,
-        source,
-        module_path,
-        impl_path,
-        trait_path,
-        extern_path,
-        containers,
-    );
+    visit_child_containers(node, source, line_index, state);
 }
 
 fn visit_child_containers(
     node: Node<'_>,
     source: &str,
-    module_path: &mut Vec<String>,
-    impl_path: &mut Vec<String>,
-    trait_path: &mut Vec<String>,
-    extern_path: &mut Vec<String>,
-    containers: &mut Vec<RustSyntaxContainer>,
+    line_index: &SourceLineIndex,
+    state: &mut ContainerState<'_>,
 ) {
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        collect_containers(
-            child,
-            source,
-            module_path,
-            impl_path,
-            trait_path,
-            extern_path,
-            containers,
-        );
+        collect_containers(child, source, line_index, state);
     }
 }
 

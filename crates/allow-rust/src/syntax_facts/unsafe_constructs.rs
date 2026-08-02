@@ -3,14 +3,15 @@ use tree_sitter::Node;
 
 use crate::syntax_kinds::{RustSyntaxFacts, UnsafeSyntaxConstruct, UnsafeSyntaxKind};
 use crate::syntax_tree::{extern_container_name, impl_container_name, node_text};
-use crate::text::source_column;
+use crate::text::{SourceLineIndex, source_column};
 
 pub(super) fn record_node_unsafe_construct(
     node: Node<'_>,
     source: &str,
+    line_index: &SourceLineIndex,
     facts: &mut RustSyntaxFacts,
 ) {
-    let Some((line, construct)) = unsafe_syntax_construct(node, source) else {
+    let Some((line, construct)) = unsafe_syntax_construct(node, source, line_index) else {
         return;
     };
 
@@ -24,7 +25,11 @@ pub(super) fn record_node_unsafe_construct(
     }
 }
 
-fn unsafe_syntax_construct(node: Node<'_>, source: &str) -> Option<(u32, UnsafeSyntaxConstruct)> {
+fn unsafe_syntax_construct(
+    node: Node<'_>,
+    source: &str,
+    line_index: &SourceLineIndex,
+) -> Option<(u32, UnsafeSyntaxConstruct)> {
     match node.kind() {
         "function_item" | "function_signature_item" => unsafe_modifier_construct(
             node,
@@ -32,6 +37,7 @@ fn unsafe_syntax_construct(node: Node<'_>, source: &str) -> Option<(u32, UnsafeS
             UnsafeSyntaxKind::Fn,
             item_name(node, source),
             source,
+            line_index,
         ),
         "impl_item" => unsafe_modifier_construct(
             node,
@@ -39,6 +45,7 @@ fn unsafe_syntax_construct(node: Node<'_>, source: &str) -> Option<(u32, UnsafeS
             UnsafeSyntaxKind::Impl,
             impl_container_name(node, source),
             source,
+            line_index,
         ),
         "trait_item" => unsafe_modifier_construct(
             node,
@@ -46,6 +53,7 @@ fn unsafe_syntax_construct(node: Node<'_>, source: &str) -> Option<(u32, UnsafeS
             UnsafeSyntaxKind::Trait,
             item_name(node, source),
             source,
+            line_index,
         ),
         "foreign_mod_item" => unsafe_modifier_construct(
             node,
@@ -53,6 +61,7 @@ fn unsafe_syntax_construct(node: Node<'_>, source: &str) -> Option<(u32, UnsafeS
             UnsafeSyntaxKind::ExternBlock,
             extern_block_symbol(node, source),
             source,
+            line_index,
         ),
         // const unsafe / static unsafe items (#1794)
         "const_item" | "static_item" => unsafe_modifier_construct(
@@ -61,6 +70,7 @@ fn unsafe_syntax_construct(node: Node<'_>, source: &str) -> Option<(u32, UnsafeS
             UnsafeSyntaxKind::Const,
             item_name(node, source),
             source,
+            line_index,
         )
         .or_else(|| {
             unsafe_modifier_construct(
@@ -69,10 +79,12 @@ fn unsafe_syntax_construct(node: Node<'_>, source: &str) -> Option<(u32, UnsafeS
                 UnsafeSyntaxKind::Static,
                 item_name(node, source),
                 source,
+                line_index,
             )
         }),
-        "unsafe_block" => unsafe_child_point(node)
-            .map(|point| located_construct(source, point, UnsafeSyntaxKind::Block, None)),
+        "unsafe_block" => unsafe_child_point(node).map(|point| {
+            located_construct(line_index, source, point, UnsafeSyntaxKind::Block, None)
+        }),
         _ => None,
     }
 }
@@ -83,13 +95,14 @@ fn unsafe_modifier_construct(
     kind: UnsafeSyntaxKind,
     symbol: Option<String>,
     source: &str,
+    line_index: &SourceLineIndex,
 ) -> Option<(u32, UnsafeSyntaxConstruct)> {
     let mut unsafe_point = None;
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
         if child.kind() == keyword_kind {
             return unsafe_point
-                .map(|point| located_construct(source, point, kind, symbol.clone()));
+                .map(|point| located_construct(line_index, source, point, kind, symbol.clone()));
         }
         if unsafe_point.is_none() {
             unsafe_point = unsafe_child_point(child);
@@ -142,6 +155,7 @@ fn collect_foreign_item_names(node: Node<'_>, source: &str, item_names: &mut Vec
 }
 
 fn located_construct(
+    line_index: &SourceLineIndex,
     source: &str,
     point: tree_sitter::Point,
     kind: UnsafeSyntaxKind,
@@ -151,7 +165,7 @@ fn located_construct(
         point.row as u32 + 1,
         UnsafeSyntaxConstruct {
             kind,
-            column: source_column(source, point.row, point.column),
+            column: source_column(line_index, source, point.row, point.column),
             symbol,
         },
     )

@@ -3,9 +3,14 @@ use tree_sitter::Node;
 
 use crate::syntax_kinds::{LintAttribute, LintAttributeKind, RustSyntaxFacts, UnsafeAttribute};
 use crate::syntax_tree::node_text;
-use crate::text::{detect_attr, source_column};
+use crate::text::{SourceLineIndex, detect_attr, source_column};
 
-pub(super) fn record_node_attributes(node: Node<'_>, source: &str, facts: &mut RustSyntaxFacts) {
+pub(super) fn record_node_attributes(
+    node: Node<'_>,
+    source: &str,
+    line_index: &SourceLineIndex,
+    facts: &mut RustSyntaxFacts,
+) {
     if !matches!(node.kind(), "attribute_item" | "inner_attribute_item") {
         return;
     }
@@ -31,7 +36,7 @@ pub(super) fn record_node_attributes(node: Node<'_>, source: &str, facts: &mut R
             .push(LintAttribute {
                 kind,
                 text: attr_text,
-                column: source_column(source, start.row, start.column + offset),
+                column: source_column(line_index, source, start.row, start.column + offset),
             });
     }
     let unsafe_attribute_offsets = unsafe_attribute_offsets(text);
@@ -39,7 +44,7 @@ pub(super) fn record_node_attributes(node: Node<'_>, source: &str, facts: &mut R
         let attributes = facts.unsafe_attributes.entry(line).or_default();
         for offset in unsafe_attribute_offsets {
             attributes.push(UnsafeAttribute {
-                column: source_column(source, start.row, start.column + offset),
+                column: source_column(line_index, source, start.row, start.column + offset),
                 symbol: unsafe_attribute_symbol(text, offset),
             });
         }

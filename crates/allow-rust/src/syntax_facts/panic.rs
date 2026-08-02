@@ -6,17 +6,18 @@ use crate::syntax_kinds::{
     PanicMacroInvocation, PanicMacroKind, PanicMethodCall, PanicMethodKind, RustSyntaxFacts,
 };
 use crate::syntax_tree::node_text;
-use crate::text::source_column;
+use crate::text::{SourceLineIndex, source_column};
 
 pub(super) fn record_node_panic_constructs(
     node: Node<'_>,
     source: &str,
+    line_index: &SourceLineIndex,
     facts: &mut RustSyntaxFacts,
 ) {
-    if let Some((line, invocation)) = panic_macro_invocation(node, source) {
+    if let Some((line, invocation)) = panic_macro_invocation(node, source, line_index) {
         facts.panic_macros.entry(line).or_default().push(invocation);
     }
-    if let Some((line, method_call)) = panic_method_call(node, source) {
+    if let Some((line, method_call)) = panic_method_call(node, source, line_index) {
         facts
             .panic_methods
             .entry(line)
@@ -25,7 +26,11 @@ pub(super) fn record_node_panic_constructs(
     }
 }
 
-fn panic_macro_invocation(node: Node<'_>, source: &str) -> Option<(u32, PanicMacroInvocation)> {
+fn panic_macro_invocation(
+    node: Node<'_>,
+    source: &str,
+    line_index: &SourceLineIndex,
+) -> Option<(u32, PanicMacroInvocation)> {
     if node.kind() != "macro_invocation" {
         return None;
     }
@@ -39,13 +44,17 @@ fn panic_macro_invocation(node: Node<'_>, source: &str) -> Option<(u32, PanicMac
         start.row as u32 + 1,
         PanicMacroInvocation {
             kind,
-            column: source_column(source, start.row, start.column + base_offset),
+            column: source_column(line_index, source, start.row, start.column + base_offset),
             macro_path: normalize_snippet(macro_text),
         },
     ))
 }
 
-fn panic_method_call(node: Node<'_>, source: &str) -> Option<(u32, PanicMethodCall)> {
+fn panic_method_call(
+    node: Node<'_>,
+    source: &str,
+    line_index: &SourceLineIndex,
+) -> Option<(u32, PanicMethodCall)> {
     if node.kind() != "call_expression" {
         return None;
     }
@@ -64,7 +73,7 @@ fn panic_method_call(node: Node<'_>, source: &str) -> Option<(u32, PanicMethodCa
                 s.row as u32 + 1,
                 PanicMethodCall {
                     kind,
-                    column: source_column(source, s.row, s.column),
+                    column: source_column(line_index, source, s.row, s.column),
                     receiver_fingerprint,
                 },
             ))
@@ -94,7 +103,7 @@ fn panic_method_call(node: Node<'_>, source: &str) -> Option<(u32, PanicMethodCa
                 s.row as u32 + 1,
                 PanicMethodCall {
                     kind,
-                    column: source_column(source, s.row, s.column),
+                    column: source_column(line_index, source, s.row, s.column),
                     receiver_fingerprint: None,
                 },
             ))
