@@ -674,6 +674,11 @@ always present, while absent path, policy metadata, validity, and diagnostics
 are omitted instead of represented as JSON `null`. Evidence counters retain
 their existing behavior: present, including zero, when a policy model loads;
 omitted when no policy model is available.
+Doctor JSON always includes `file_families.configured` and
+`file_families.conflicts`. Configured rows identify each validated custom rule
+and report the number of selected inventory files it classified. Conflict rows
+preserve the path and all equally specific candidate rule IDs and family codes;
+they are classification diagnostics, not policy approval or file exclusion.
 
 Black-box integration tests also parse saved JSON artifacts written by the
 `cargo-allow` binary itself, including `--output` report-style artifacts,

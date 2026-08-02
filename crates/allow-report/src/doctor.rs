@@ -111,9 +111,43 @@ pub fn render_doctor_human_styled(facts: DoctorReport<'_>, style: Style) -> Stri
             facts.submodule_paths
         ));
     }
+    append_file_family_doctor_human(facts, &mut out);
     append_federation_doctor_human(facts, &mut out, style);
     out.push_str(CLAIM_BOUNDARY_TEXT);
     out
+}
+
+fn append_file_family_doctor_human(facts: DoctorReport<'_>, out: &mut String) {
+    if facts.file_family_rules.is_empty() {
+        out.push_str("custom file families: none configured\n");
+    } else {
+        out.push_str(&format!(
+            "custom file families: {} configured\n",
+            facts.file_family_rules.len()
+        ));
+        for rule in facts.file_family_rules {
+            out.push_str(&format!(
+                "  - {} family={} glob={} matched files={}\n",
+                rule.id, rule.family, rule.glob, rule.matched_files
+            ));
+        }
+    }
+    if facts.file_family_conflicts.is_empty() {
+        out.push_str("custom file family conflicts: none\n");
+    } else {
+        out.push_str(&format!(
+            "custom file family conflicts: {}\n",
+            facts.file_family_conflicts.len()
+        ));
+        for conflict in facts.file_family_conflicts {
+            out.push_str(&format!(
+                "  - {} rules={} families={}\n",
+                conflict.path,
+                conflict.rule_ids.join(","),
+                conflict.families.join(",")
+            ));
+        }
+    }
 }
 
 fn append_federation_doctor_human(facts: DoctorReport<'_>, out: &mut String, style: Style) {
@@ -250,10 +284,53 @@ pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
         out.push_str(field);
     }
     out.push_str("\n  },\n");
+    append_file_family_doctor_json(facts, &mut out);
+    out.push_str(",\n");
     append_federation_doctor_json(facts, &mut out);
     append_doctor_evidence_repair_queues_json(facts, &mut out);
     out.push_str("\n}\n");
     out
+}
+
+fn append_file_family_doctor_json(facts: DoctorReport<'_>, out: &mut String) {
+    out.push_str("  \"file_families\": {\n    \"configured\": [\n");
+    for (index, rule) in facts.file_family_rules.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str(&format!(
+            "      {{\n        \"id\": \"{}\",\n        \"family\": \"{}\",\n        \"glob\": \"{}\",\n        \"matched_files\": {}\n      }}",
+            json_escape(rule.id),
+            json_escape(rule.family),
+            json_escape(rule.glob),
+            rule.matched_files
+        ));
+    }
+    out.push_str("\n    ],\n    \"conflicts\": [\n");
+    for (index, conflict) in facts.file_family_conflicts.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str(&format!(
+            "      {{\n        \"path\": \"{}\",\n        \"rule_ids\": [",
+            json_escape(conflict.path)
+        ));
+        for (id_index, id) in conflict.rule_ids.iter().enumerate() {
+            if id_index > 0 {
+                out.push_str(", ");
+            }
+            out.push_str(&format!("\"{}\"", json_escape(id)));
+        }
+        out.push_str("],\n        \"families\": [");
+        for (family_index, family) in conflict.families.iter().enumerate() {
+            if family_index > 0 {
+                out.push_str(", ");
+            }
+            out.push_str(&format!("\"{}\"", json_escape(family)));
+        }
+        out.push_str("]\n      }");
+    }
+    out.push_str("\n    ]\n  }");
 }
 
 fn append_federation_doctor_json(facts: DoctorReport<'_>, out: &mut String) {

@@ -1,7 +1,9 @@
-use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
+use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult, normalize_path};
+use allow_files::{FileFamilyClassification, FileScanOptions, classify_file_family_with_options};
 use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
 use allow_policy::load_policy_with_reportable_evidence;
 use std::collections::BTreeSet;
+use std::collections::HashMap;
 use std::path::Path;
 
 #[path = "doctor_args.rs"]
@@ -19,6 +21,27 @@ use crate::{
     intent_provider::{IntentProviderRequest, discover_intent_provider},
     spec_system,
 };
+
+#[derive(Debug, Default)]
+struct DoctorFileFamilyFacts {
+    rules: Vec<DoctorFileFamilyRule>,
+    conflicts: Vec<DoctorFileFamilyConflict>,
+}
+
+#[derive(Debug)]
+struct DoctorFileFamilyRule {
+    id: String,
+    family: String,
+    glob: String,
+    matched_files: usize,
+}
+
+#[derive(Debug)]
+struct DoctorFileFamilyConflict {
+    path: String,
+    rule_ids: Vec<String>,
+    families: Vec<String>,
+}
 
 pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     if matches!(args.profile, Some(ProfileArg::SpecSystem)) {
@@ -55,6 +78,26 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         config_status(&root, policy.as_ref(), evidence_source_tree_files.as_ref());
     let (broken_evidence_links, weak_evidence_references) =
         doctor_evidence_health(&root, policy.as_ref(), evidence_source_tree_files.as_ref());
+    let file_family_facts = doctor_file_family_facts(&inventory.files, policy.as_ref());
+    let file_family_rules = file_family_facts
+        .rules
+        .iter()
+        .map(|rule| allow_report::FileFamilyRuleSummary {
+            id: rule.id.as_str(),
+            family: rule.family.as_str(),
+            glob: rule.glob.as_str(),
+            matched_files: rule.matched_files,
+        })
+        .collect::<Vec<_>>();
+    let file_family_conflicts = file_family_facts
+        .conflicts
+        .iter()
+        .map(|conflict| allow_report::FileFamilyConflictSummary {
+            path: conflict.path.as_str(),
+            rule_ids: conflict.rule_ids.as_slice(),
+            families: conflict.families.as_slice(),
+        })
+        .collect::<Vec<_>>();
     let config_schema_version = policy
         .as_ref()
         .and_then(|result| result.as_ref().ok())
@@ -114,6 +157,8 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         } else {
             Some(federation_divergences.as_slice())
         },
+        file_family_rules: file_family_rules.as_slice(),
+        file_family_conflicts: file_family_conflicts.as_slice(),
     };
     let text = match args.format {
         HumanJsonFormat::Human => {
@@ -166,6 +211,58 @@ fn intent_provider_doctor_section(root: &Path) -> String {
 
 fn load_doctor_policy(config: Option<&Path>) -> Option<CargoAllowResult<AllowConfig>> {
     config.map(load_policy_with_reportable_evidence)
+}
+
+fn doctor_file_family_facts(
+    files: &[std::path::PathBuf],
+    policy: Option<&CargoAllowResult<AllowConfig>>,
+) -> DoctorFileFamilyFacts {
+    let Some(Ok(cfg)) = policy else {
+        return DoctorFileFamilyFacts::default();
+    };
+    let options = FileScanOptions {
+        generated: cfg.workspace.generated.clone(),
+        file_families: cfg.workspace.file_families.clone(),
+    };
+    let mut matched_files = cfg
+        .workspace
+        .file_families
+        .iter()
+        .map(|rule| (rule.id.clone(), 0usize))
+        .collect::<HashMap<_, _>>();
+    let mut conflicts = Vec::new();
+    for path in files {
+        match classify_file_family_with_options(path, &options) {
+            Some(FileFamilyClassification::Custom { rule_id, .. }) => {
+                if let Some(count) = matched_files.get_mut(&rule_id) {
+                    *count += 1;
+                }
+            }
+            Some(FileFamilyClassification::Ambiguous { rule_ids, families }) => {
+                conflicts.push(DoctorFileFamilyConflict {
+                    path: normalize_path(path),
+                    rule_ids,
+                    families,
+                })
+            }
+            Some(FileFamilyClassification::Generated)
+            | Some(FileFamilyClassification::BuiltIn(_))
+            | None => {}
+        }
+    }
+    conflicts.sort_by(|left, right| left.path.cmp(&right.path));
+    let rules = cfg
+        .workspace
+        .file_families
+        .iter()
+        .map(|rule| DoctorFileFamilyRule {
+            id: rule.id.clone(),
+            family: rule.family.clone(),
+            glob: rule.glob.clone(),
+            matched_files: matched_files.get(&rule.id).copied().unwrap_or(0),
+        })
+        .collect();
+    DoctorFileFamilyFacts { rules, conflicts }
 }
 
 fn config_status(
@@ -289,6 +386,8 @@ pub(crate) fn sample_doctor_json_for_contract_test() -> String {
         configured_ledgers: None,
         federation_diagnostics: None,
         federation_divergences: None,
+        file_family_rules: &[],
+        file_family_conflicts: &[],
     })
 }
 
