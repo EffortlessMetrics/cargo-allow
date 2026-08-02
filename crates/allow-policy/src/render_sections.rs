@@ -44,9 +44,23 @@ pub(crate) fn render_workspace(out: &mut String, workspace: &WorkspaceConfig) {
         render_array(&workspace.ignored)
     ));
     out.push_str(&format!(
-        "generated = [{}]\n\n",
+        "generated = [{}]\n",
         render_array(&workspace.generated)
     ));
+    for rule in &workspace.file_families {
+        out.push_str(&format!(
+            "\n[[workspace.file_family]]\n\
+id = \"{}\"\n\
+family = \"{}\"\n\
+glob = \"{}\"\n\
+reason = \"{}\"\n",
+            escape_toml(&rule.id),
+            escape_toml(&rule.family),
+            escape_toml(&rule.glob),
+            escape_toml(&rule.reason),
+        ));
+    }
+    out.push('\n');
 }
 
 pub(crate) fn render_requirements(out: &mut String, requirements: &Requirements) {

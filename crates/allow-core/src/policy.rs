@@ -183,12 +183,46 @@ impl Default for Requirements {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FileFamilyRule {
+    /// Stable identifier for the repository-owned classification rule.
+    pub id: String,
+    /// Canonical family code emitted by the future classifier.
+    pub family: String,
+    /// Source-tree-relative bounded glob matched by the rule.
+    pub glob: String,
+    /// Human rationale for retaining the repository-owned rule.
+    pub reason: String,
+}
+
+/// Built-in non-Rust family codes that repository rules must not redefine.
+///
+/// Custom family classification is intentionally separate from the built-in
+/// scanner until the classifier child (#2691) lands. Keeping the protected
+/// vocabulary in the shared contract prevents the schema and scanner from
+/// silently disagreeing about reserved names.
+pub const BUILTIN_FILE_FAMILY_CODES: &[&str] = &[
+    "generated_code",
+    "ci_declarative",
+    "editor_extension",
+    "package_metadata",
+    "test_fixture",
+    "release_script",
+    "documentation",
+    "shell_script",
+    "python_tool",
+    "javascript_tool",
+    "configuration",
+    "unknown_non_rust",
+];
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WorkspaceConfig {
     pub root: String,
     pub inventory: String,
     pub ignored: Vec<String>,
     pub generated: Vec<String>,
     pub default_mode: String,
+    pub file_families: Vec<FileFamilyRule>,
 }
 
 impl Default for WorkspaceConfig {
@@ -199,6 +233,7 @@ impl Default for WorkspaceConfig {
             ignored: vec![".git/**".to_string(), "target/**".to_string()],
             generated: vec!["target/**".to_string(), "vendor/**".to_string()],
             default_mode: "no-new".to_string(),
+            file_families: Vec::new(),
         }
     }
 }

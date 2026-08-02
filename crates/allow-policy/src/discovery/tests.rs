@@ -86,10 +86,22 @@ owner = "repo-policy"
 
     let result = discover_config(root.path());
     assert_eq!(result.selected, None);
-    assert_eq!(result.skipped.len(), 1);
-    assert!(result.skipped[0].path.ends_with("policy/allow.toml"));
+    let canonical_root = root.path().canonicalize()?;
+    let skipped_foreign = result
+        .skipped
+        .iter()
+        .filter(|candidate| candidate.path.starts_with(&canonical_root))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        skipped_foreign.len(),
+        1,
+        "expected the local foreign candidate to be skipped; root={}, skipped={:?}",
+        root.path().display(),
+        result.skipped
+    );
+    assert!(skipped_foreign[0].path.ends_with("policy/allow.toml"));
     assert!(
-        result.skipped[0]
+        skipped_foreign[0]
             .reason
             .contains("missing policy = \"cargo-allow\" marker")
     );

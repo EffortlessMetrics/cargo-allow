@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowResult, WorkspaceConfig};
+use allow_core::{CargoAllowResult, FileFamilyRule, WorkspaceConfig};
 use serde::Deserialize;
 
 use crate::toml_de::string_or_vec;
@@ -13,6 +13,17 @@ pub(crate) struct WorkspaceToml {
     ignored: Vec<String>,
     #[serde(default, deserialize_with = "string_or_vec")]
     generated: Vec<String>,
+    #[serde(default, rename = "file_family")]
+    file_families: Vec<FileFamilyRuleToml>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct FileFamilyRuleToml {
+    id: String,
+    family: String,
+    glob: String,
+    reason: String,
 }
 
 impl WorkspaceToml {
@@ -35,6 +46,16 @@ impl WorkspaceToml {
                 self.generated
             },
             default_mode: self.default_mode.unwrap_or(default.default_mode),
+            file_families: self
+                .file_families
+                .into_iter()
+                .map(|rule| FileFamilyRule {
+                    id: rule.id,
+                    family: rule.family,
+                    glob: rule.glob,
+                    reason: rule.reason,
+                })
+                .collect(),
         })
     }
 }

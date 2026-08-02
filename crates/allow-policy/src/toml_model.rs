@@ -133,6 +133,12 @@ default_mode = "audit"
 ignored = [".git/**"]
 generated = ["target/**"]
 
+[[workspace.file_family]]
+id = "model-artifact"
+family = "ml_model"
+glob = "models/**/*.onnx"
+reason = "Govern versioned model artifacts."
+
 [requirements]
 owner_required = true
 reason_required = true
@@ -166,6 +172,14 @@ container = "load"
         assert_eq!(cfg.workspace.default_mode, "audit");
         assert_eq!(cfg.workspace.ignored, vec![".git/**"]);
         assert_eq!(cfg.workspace.generated, vec!["target/**"]);
+        assert_eq!(cfg.workspace.file_families.len(), 1);
+        assert_eq!(cfg.workspace.file_families[0].id, "model-artifact");
+        assert_eq!(cfg.workspace.file_families[0].family, "ml_model");
+        assert_eq!(cfg.workspace.file_families[0].glob, "models/**/*.onnx");
+        assert_eq!(
+            cfg.workspace.file_families[0].reason,
+            "Govern versioned model artifacts."
+        );
         assert!(cfg.requirements.owner_required);
         assert!(cfg.requirements.reason_required);
         assert!(cfg.requirements.evidence_required);
@@ -369,6 +383,28 @@ defult_mode = "no-new"
 "#,
         )
         .expect_err("unknown workspace field should be rejected");
+
+        assert!(
+            err.to_string().contains("unknown field"),
+            "error should mention unknown field: {err}"
+        );
+    }
+
+    #[test]
+    fn parse_policy_toml_rejects_unknown_file_family_field_typo() {
+        let err = parse_policy_toml_at(
+            None,
+            r#"
+policy = "cargo-allow"
+
+[[workspace.file_family]]
+id = "model-artifact"
+family = "ml_model"
+glob = "models/**/*.onnx"
+reasn = "typo"
+"#,
+        )
+        .expect_err("unknown file-family field should be rejected");
 
         assert!(
             err.to_string().contains("unknown field"),

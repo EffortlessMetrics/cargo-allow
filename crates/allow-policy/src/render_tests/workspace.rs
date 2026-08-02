@@ -1,4 +1,4 @@
-use allow_core::AllowConfig;
+use allow_core::{AllowConfig, FileFamilyRule};
 
 use crate::render_sections::{render_policy_header, render_requirements, render_workspace};
 use crate::{parse_policy, render_policy};
@@ -43,6 +43,38 @@ inventory = \"git-tracked\"\n\
 default_mode = \"no-new\"\n\
 ignored = [\"target/**\", \"vendor/\\\"old\\\"/**\"]\n\
 generated = [\"generated/**\", \"snapshots\\\\tmp/**\"]\n\n"
+    );
+}
+
+#[test]
+fn render_workspace_emits_custom_file_family_rules() {
+    let mut cfg = AllowConfig::empty();
+    cfg.workspace.file_families.push(FileFamilyRule {
+        id: "model-artifact".to_string(),
+        family: "ml_model".to_string(),
+        glob: "models/**/*.onnx".to_string(),
+        reason: "Govern model artifacts with a stable family.".to_string(),
+    });
+
+    let rendered = render_policy(&cfg);
+    for expected in [
+        "[[workspace.file_family]]",
+        "id = \"model-artifact\"",
+        "family = \"ml_model\"",
+        "glob = \"models/**/*.onnx\"",
+        "reason = \"Govern model artifacts with a stable family.\"",
+    ] {
+        assert!(
+            rendered.contains(expected),
+            "missing `{expected}`:\n{rendered}"
+        );
+    }
+
+    let reparsed = parse_policy(&rendered)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("rendered policy parses: {err}")));
+    assert_eq!(
+        reparsed.workspace.file_families,
+        cfg.workspace.file_families
     );
 }
 
