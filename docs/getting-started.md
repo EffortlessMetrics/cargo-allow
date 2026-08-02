@@ -98,6 +98,35 @@ panic-family, indexing/slicing, lint suppressions, non-Rust tracked files,
 stale/expired policy rows, broad selectors, `baseline_debt`, and evidence-health
 issues) without failing the process for unreceipted findings alone.
 
+### Expected audit output
+
+The full report contains additional inventory and claim-boundary fields. These
+stable JSON excerpts show the markers to look for when checking the first run:
+
+Clean audit:
+
+```json
+{
+  "command": "audit",
+  "status": "passed",
+  "summary": { "findings": 0, "new": 0 }
+}
+```
+
+Audit with one unreceipted finding:
+
+```json
+{
+  "command": "audit",
+  "status": "passed",
+  "summary": { "new": 1 }
+}
+```
+
+An advisory audit can pass while reporting findings. Choose a bootstrap path
+only after reviewing what the audit found; do not treat `status: "passed"` as
+approval of an unreceipted exception.
+
 ### Choose a report format
 
 `audit`, `check`, and `diff` support these report formats:
