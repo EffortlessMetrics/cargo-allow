@@ -77,6 +77,27 @@ Post-publication registry install remains
 [scripts/release-install-smoke.sh](../../scripts/release-install-smoke.sh)
 (Stage B). The next 0.1.x cut stays on Rust 1.85; do not raise MSRV here.
 
+## Linux binary archive contract
+
+The first prebuilt distribution lane is Linux-only and target-specific. Build
+the exact archive envelope with:
+
+```bash
+bash scripts/package-release-binary.sh --version 0.2.0
+bash scripts/verify-release-binary.sh \
+  target/cargo-allow/release-assets/cargo-allow-v0.2.0-x86_64-unknown-linux-gnu.tar.gz
+```
+
+The packager emits the executable and archive checksum sidecars plus bounded
+package/install receipts. The verifier extracts outside the source checkout,
+rejects unexpected or unsafe archive entries, checks the executable version,
+and runs the first-hour command surface from a clean temporary repository.
+These scripts prove packaging and clean-install behavior only. They do not
+claim GitHub attestation or release publication; the tag-triggered workflow
+must perform those checks before attachment. Windows/macOS archives,
+universal Linux compatibility, and source-build fallback replacement remain
+separate lanes (#2464, #2474, #2476).
+
 This smoke runs in hosted CI on Linux as the `package-smoke` job in
 [ci.yml](../../.github/workflows/ci.yml) (on every PR and push to `main`),
 producing `package-candidate-smoke-receipt`,

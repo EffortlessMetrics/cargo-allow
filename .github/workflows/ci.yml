@@ -52,6 +52,8 @@ jobs:
           key: package-smoke
       - name: Package candidate smoke (Stage A)
         run: bash scripts/package-candidate-smoke.sh
+      - name: Linux release binary packaging contract (#2464)
+        run: bash scripts/test-release-binary.sh
       - name: Exact candidate package set (#2372)
         run: |
           mkdir -p target/exact-candidate-package-set/packages
