@@ -117,10 +117,7 @@ fn line_start(source: &str, line_index: usize) -> usize {
 }
 
 fn line_number_at(source: &str, offset: usize) -> usize {
-    let prefix = match source.get(..offset.min(source.len())) {
-        Some(prefix) => prefix,
-        None => source,
-    };
+    let prefix = source.get(..offset.min(source.len())).unwrap_or(source);
     prefix
         .bytes()
         .filter(|byte| *byte == b'\n')
@@ -180,6 +177,18 @@ destination = "api.github.com"
                 .message()
                 .contains(&format!("{}:4", Path::new("workflow.toml").display()))
         );
+    }
+
+    #[test]
+    fn anchors_indexed_allow_error_to_the_indexed_allow_header() {
+        let source = "policy = \"network-allowlist\"\n[[allow]]\ndestination = \"crates.io\"\n[[allow]]\nowner = \"ci\"\n";
+        let error = at_legacy_source(
+            CargoAllowError::new("allow entry 1 missing destination"),
+            Path::new("network.toml"),
+            source,
+        );
+
+        assert_eq!(error.location().map(|location| location.line), Some(4));
     }
 
     #[test]
