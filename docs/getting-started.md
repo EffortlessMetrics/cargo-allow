@@ -98,6 +98,28 @@ panic-family, indexing/slicing, lint suppressions, non-Rust tracked files,
 stale/expired policy rows, broad selectors, `baseline_debt`, and evidence-health
 issues) without failing the process for unreceipted findings alone.
 
+### Choose a report format
+
+`audit`, `check`, and `diff` support these report formats:
+
+| Format | Use it for |
+| --- | --- |
+| `human` (default) | Readable terminal output. |
+| `markdown` or `md` | Reviewer summaries and checked-in or uploaded reports. |
+| `json` | Scripts, automation, and versioned receipts. |
+| `html` | A static report for maintainers or auditors. |
+| `sarif` | Code-scanning integrations; it contains source-tree outcomes, not build or proof-tool results. |
+
+Write a non-terminal report to a file with `--output`:
+
+```bash
+cargo-allow audit --format html --output target/cargo-allow/audit.html
+cargo-allow check --mode no-new --format sarif --output target/cargo-allow/check.sarif
+```
+
+Use the full `markdown` spelling in shared documentation; `md` is a supported
+CLI alias for interactive use.
+
 ### Branch A — clean / zero findings
 
 When the audit summary shows no findings (JSON markers including
