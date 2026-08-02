@@ -23,6 +23,38 @@ fn with_kind_sets_structured_kind() {
 }
 
 #[test]
+fn message_prefix_preserves_structured_error_metadata() -> Result<(), String> {
+    let error = CargoAllowError::with_kind(CargoAllowErrorKind::InvalidPolicy, "missing owner")
+        .with_toml_span(
+            Some(Path::new("legacy/policy.toml")),
+            "policy = \"unsafe-allowlist\"\nowner = [",
+            Some(46..47),
+        )
+        .with_diagnostic(super::CargoAllowDiagnostic::error(
+            "E0003_INVALID_POLICY",
+            "policy_validation",
+            Some("allow-1"),
+            Some("owner"),
+            "allow-1 missing owner",
+        ));
+
+    let prefixed = error.with_message_prefix("legacy file `policy.toml`: ");
+
+    assert_eq!(
+        prefixed.message(),
+        "legacy file `policy.toml`: missing owner"
+    );
+    assert_eq!(prefixed.kind(), CargoAllowErrorKind::InvalidPolicy);
+    let location = prefixed
+        .location()
+        .ok_or_else(|| "message prefix should preserve location".to_string())?;
+    assert_eq!(location.path.as_deref(), Some("legacy/policy.toml"));
+    assert_eq!(location.line, 2);
+    assert_eq!(prefixed.diagnostics().len(), 1);
+    Ok(())
+}
+
+#[test]
 fn kind_renders_as_stable_lowercase_str() {
     assert_eq!(CargoAllowErrorKind::Usage.as_str(), "usage");
     assert_eq!(

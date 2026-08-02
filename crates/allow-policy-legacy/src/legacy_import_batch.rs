@@ -192,11 +192,11 @@ fn load_lane_config(
     } else {
         load_legacy_or_canonical(path)
     };
-    // #1868: attach the legacy filename to parse errors so the operator knows
-    // which file the error came from without grep across the policy directory.
+    // #1868: attach the legacy filename without discarding structured error
+    // metadata such as a TOML source location.
     result.map_err(|err| {
-        CargoAllowError::new(format!(
-            "legacy file `{legacy_label}` (policy key `{}`): {err}",
+        err.with_message_prefix(format!(
+            "legacy file `{legacy_label}` (policy key `{}`): ",
             descriptor.legacy_policy_key
         ))
     })
@@ -313,6 +313,31 @@ mod tests {
                     .contains("Parser validates optional value before unwrap.")),
             "lint exception reason should survive batch import"
         );
+    }
+
+    #[test]
+    fn batch_import_preserves_toml_location_when_adding_file_context() -> Result<(), String> {
+        let dir = fixture_dir();
+        let path = dir.join("no-panic-allowlist.toml");
+        fs::write(&path, "policy = [\n")
+            .map_err(|err| format!("write malformed legacy fixture: {err}"))?;
+
+        let error = import_legacy_policy_dir(&dir, None)
+            .expect_err("malformed legacy TOML should fail with context");
+        let location = error
+            .location()
+            .ok_or_else(|| "batch context should preserve TOML location".to_string())?;
+        let expected_path = path.display().to_string();
+
+        assert_eq!(location.path.as_deref(), Some(expected_path.as_str()));
+        assert_eq!(location.line, 1);
+        assert!(
+            error
+                .to_string()
+                .contains("legacy file `no-panic-allowlist.toml`"),
+            "file context should remain visible: {error}"
+        );
+        Ok(())
     }
 
     #[test]

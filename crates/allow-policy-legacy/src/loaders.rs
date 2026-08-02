@@ -1,4 +1,4 @@
-use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
+use allow_core::{AllowConfig, CargoAllowResult};
 use allow_policy::parse_policy;
 use std::path::Path;
 
@@ -27,7 +27,8 @@ pub fn load_legacy_or_canonical(path: impl AsRef<Path>) -> CargoAllowResult<Allo
     {
         return Ok(config);
     }
-    // #1868: attach filename context to parse errors.
+    // #1868: attach filename context without discarding the structured error
+    // kind, source location, diagnostics, or causes from the parser.
     parse_policy(&text)
-        .map_err(|err| CargoAllowError::new(format!("legacy file `{path_label}`: {err}")))
+        .map_err(|err| err.with_message_prefix(format!("legacy file `{path_label}`: ")))
 }

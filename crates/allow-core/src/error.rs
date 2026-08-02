@@ -231,6 +231,23 @@ impl CargoAllowError {
         self
     }
 
+    /// Prefix the human-readable message without discarding structured error
+    /// metadata such as the kind, source location, diagnostics, or causes.
+    ///
+    /// Context layers should use this instead of rebuilding an error from its
+    /// rendered string. Rebuilding loses information that machine consumers
+    /// and editor integrations rely on.
+    pub fn with_message_prefix(mut self, prefix: impl AsRef<str>) -> Self {
+        let prefix = prefix.as_ref();
+        if !prefix.is_empty() {
+            let mut message = String::with_capacity(prefix.len() + self.message.len());
+            message.push_str(prefix);
+            message.push_str(&self.message);
+            self.message = message;
+        }
+        self
+    }
+
     /// Rendered cause messages in attachment order (outermost first).
     pub fn causes(&self) -> &[String] {
         &self.causes
