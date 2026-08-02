@@ -189,13 +189,6 @@ pub fn write_file_create_new_atomic_with_permissions(
             tmp.display()
         )));
     }
-    if let Err(error) = file.sync_all() {
-        let _ = fs::remove_file(&tmp);
-        return Err(CargoAllowError::new(format!(
-            "failed to sync {}: {error}",
-            tmp.display()
-        )));
-    }
     if let Some(permissions) = permissions
         && let Err(error) = fs::set_permissions(&tmp, permissions)
     {
@@ -205,10 +198,17 @@ pub fn write_file_create_new_atomic_with_permissions(
             tmp.display()
         )));
     }
+    if let Err(error) = file.sync_all() {
+        let _ = fs::remove_file(&tmp);
+        return Err(CargoAllowError::new(format!(
+            "failed to sync {}: {error}",
+            tmp.display()
+        )));
+    }
     if let Err(error) = fs::hard_link(&tmp, path) {
         let _ = fs::remove_file(&tmp);
         return Err(CargoAllowError::new(format!(
-            "failed to install {} without overwrite: {error}",
+            "failed to install {} without overwrite: {error}; create-only installation requires hard-link support on this filesystem",
             path.display()
         )));
     }

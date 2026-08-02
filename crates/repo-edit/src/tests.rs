@@ -11,6 +11,9 @@ use crate::{
     write_file_no_overwrite,
 };
 
+#[cfg(unix)]
+use crate::write_file_create_new_atomic_with_permissions;
+
 #[test]
 fn alias_convergent_paths_acquire_the_same_lock() {
     let root = TempRoot::new("alias-lock")
@@ -157,6 +160,26 @@ fn write_file_create_new_atomic_never_replaces_existing_path()
 
     assert!(err.to_string().contains("refusing to overwrite"));
     assert_eq!(fs::read_to_string(&output)?, "first\n");
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn write_file_create_new_atomic_applies_requested_permissions()
+-> Result<(), Box<dyn std::error::Error>> {
+    use std::os::unix::fs::PermissionsExt;
+
+    let root = TempRoot::new("atomic-create-only-mode")?;
+    let output = root.path().join("hooks/pre-commit");
+
+    write_file_create_new_atomic_with_permissions(
+        &output,
+        "#!/bin/sh\nexit 0\n",
+        Some(fs::Permissions::from_mode(0o755)),
+    )?;
+
+    let mode = fs::metadata(&output)?.permissions().mode() & 0o777;
+    assert_eq!(mode, 0o755);
     Ok(())
 }
 

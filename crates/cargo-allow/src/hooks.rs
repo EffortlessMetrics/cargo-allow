@@ -100,6 +100,7 @@ pub(crate) enum HookPlanFormat {
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 struct LocalHookPlanV1 {
     schema: String,
     stage: String,
@@ -294,7 +295,12 @@ fn cmd_apply(args: &HookApplyArgs) -> CargoAllowResult<()> {
         applied: true,
         rollback: "remove only the exact managed block/file identity; automatic removal is a follow-up",
     };
-    write_receipt(&receipt_path, &receipt)?;
+    write_receipt(&receipt_path, &receipt).map_err(|error| {
+        CargoAllowError::new(format!(
+            "created managed hook {} but failed to write the apply receipt: {error}",
+            hook_path.display()
+        ))
+    })?;
     Ok(())
 }
 
@@ -440,7 +446,11 @@ fn managed_block(plan: &LocalHookPlanV1) -> String {
     format!(
         "{MANAGED_BEGIN}{}\nexec {}\n{MANAGED_END}",
         plan.plan_identity,
-        plan.argv.join(" ")
+        plan.argv
+            .iter()
+            .map(|word| format!("'{}'", word.replace('\'', "'\\''")))
+            .collect::<Vec<_>>()
+            .join(" ")
     )
 }
 
@@ -632,6 +642,72 @@ mod tests {
         unsupported.plan_identity = plan_identity(&unsupported);
         if validate_plan(&unsupported).is_ok() {
             return Err("unsupported source subject was accepted".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn apply_requires_explicit_acceptance_before_reading_the_plan() -> Result<(), String> {
+        let args = HookApplyArgs {
+            plan: PathBuf::from("does-not-exist.json"),
+            accept: false,
+            receipt: None,
+        };
+        let error = cmd_apply(&args)
+            .err()
+            .ok_or_else(|| "apply ran without --accept".to_string())?;
+        if !error.to_string().contains("--accept") {
+            return Err("apply did not name the --accept gate".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn validate_plan_rejects_unsupported_schema() -> Result<(), String> {
+        let mut plan = build_plan(HookStage::PreCommit);
+        plan.schema = "cargo-allow.local-hook-plan.v99".to_string();
+        plan.plan_identity = plan_identity(&plan);
+        if validate_plan(&plan).is_ok() {
+            return Err("unsupported schema was accepted".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn plan_parser_rejects_unknown_fields() -> Result<(), String> {
+        let plan = build_plan(HookStage::PreCommit);
+        let mut value = serde_json::to_value(plan).map_err(|error| error.to_string())?;
+        value
+            .as_object_mut()
+            .ok_or_else(|| "serialized plan was not an object".to_string())?
+            .insert("unexpected".to_string(), serde_json::json!(true));
+        if serde_json::from_value::<LocalHookPlanV1>(value).is_ok() {
+            return Err("plan parser accepted an unknown field".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn managed_block_shell_quotes_each_argument() -> Result<(), String> {
+        let mut plan = build_plan(HookStage::PreCommit);
+        plan.argv = vec![
+            "cargo allow".to_string(),
+            "check".to_string(),
+            "--mode".to_string(),
+            "no-new; touch compromised".to_string(),
+            "quote'word".to_string(),
+        ];
+        let block = managed_block(&plan);
+        for expected in [
+            "'cargo allow'",
+            "'check'",
+            "'--mode'",
+            "'no-new; touch compromised'",
+            "'quote'\\''word'",
+        ] {
+            if !block.contains(expected) {
+                return Err(format!("managed block did not quote `{expected}`"));
+            }
         }
         Ok(())
     }
