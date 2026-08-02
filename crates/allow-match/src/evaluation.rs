@@ -41,6 +41,7 @@ struct EvalState {
     outcomes: Vec<MatchOutcome>,
     used_entries: BTreeSet<usize>,
     non_live_matched_entries: BTreeSet<usize>,
+    non_live_match_messages: BTreeMap<usize, String>,
     entry_occurrences: BTreeMap<usize, u32>,
     observed_occurrences: BTreeMap<usize, u32>,
     drift_outcomes: BTreeMap<usize, Vec<usize>>,
@@ -130,6 +131,9 @@ impl EvalState {
                 .insert(entry_index, current_count.saturating_add(1));
         } else {
             self.non_live_matched_entries.insert(entry_index);
+            self.non_live_match_messages
+                .entry(entry_index)
+                .or_insert_with(|| message.clone());
         }
 
         if status == MatchStatus::LocationDrift {
@@ -233,11 +237,34 @@ pub fn evaluate_detailed(
                     else {
                         continue;
                     };
-                    let candidate_ids = many
+                    let candidate_ids: Vec<String> = many
                         .iter()
                         .filter_map(|(idx, _)| cfg.allow.get(*idx).map(|entry| entry.id.clone()))
                         .collect();
-                    state.evaluate_selected_candidate(cfg, &ctx, entry_index, score, candidate_ids);
+                    let fallback =
+                        fallback_candidate(cfg, finding, many, entry_index, score, today, mode);
+                    state.evaluate_selected_candidate(
+                        cfg,
+                        &ctx,
+                        entry_index,
+                        score,
+                        candidate_ids.clone(),
+                    );
+                    if let Some((fallback_index, fallback_score)) = fallback {
+                        // MatchOutcome has one finding-level row, so project
+                        // coverage through the weaker live candidate while
+                        // retaining the stronger non-live entry in
+                        // `non_live_matched_entries` for its independent stale
+                        // maintenance projection.
+                        let _ = state.outcomes.pop();
+                        state.evaluate_selected_candidate(
+                            cfg,
+                            &ctx,
+                            fallback_index,
+                            fallback_score,
+                            candidate_ids,
+                        );
+                    }
                 } else {
                     // Genuine tie — report Ambiguous with candidate IDs.
                     // Mark ALL tied candidates as used so they are NOT
@@ -307,6 +334,17 @@ pub fn evaluate_detailed(
             unused_entry_status(entry, today)
         };
         let message = match status {
+            MatchStatus::Stale if state.non_live_matched_entries.contains(&entry_index) => {
+                let detail = state
+                    .non_live_match_messages
+                    .get(&entry_index)
+                    .map(String::as_str)
+                    .unwrap_or("the matched finding is not currently authorizing");
+                format!(
+                    "{} is stale: a matched finding is not currently authorizing ({detail})",
+                    entry.id
+                )
+            }
             MatchStatus::Expired => format!(
                 "{} is expired on {}",
                 entry.id,
@@ -373,4 +411,56 @@ fn status_consumes_entry(status: MatchStatus) -> bool {
             | MatchStatus::ReviewDue
             | MatchStatus::BaselineDebt
     )
+}
+
+/// Find a strictly weaker live candidate when the unique strongest candidate
+/// cannot currently authorize coverage because its lifecycle or evidence is
+/// unhealthy. The stronger entry is still evaluated first so its maintenance
+/// posture remains visible through the unused-entry projection.
+///
+/// This is intentionally narrower than a general candidate-health model: only
+/// expired and evidence-missing winners may use this compatibility fallback.
+/// Invalid selectors and other policy failures remain fail-closed.
+fn fallback_candidate(
+    cfg: &AllowConfig,
+    finding: &Finding,
+    candidates: &[(usize, u32)],
+    winner_index: usize,
+    winner_score: u32,
+    today: SimpleDate,
+    mode: CheckMode,
+) -> Option<(usize, u32)> {
+    let winner = cfg.allow.get(winner_index)?;
+    let (winner_status, _) = classify_matched(winner, finding, winner_score, today, cfg, mode);
+    if !matches!(
+        winner_status,
+        MatchStatus::Expired | MatchStatus::EvidenceMissing
+    ) {
+        return None;
+    }
+
+    let mut live = candidates
+        .iter()
+        .filter(|(entry_index, score)| *entry_index != winner_index && *score < winner_score)
+        .filter_map(|(entry_index, score)| {
+            let entry = cfg.allow.get(*entry_index)?;
+            let (status, _) = classify_matched(entry, finding, *score, today, cfg, mode);
+            if matches!(
+                status,
+                MatchStatus::Matched | MatchStatus::LocationDrift | MatchStatus::ReviewDue
+            ) {
+                Some((*entry_index, *score))
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let max_score = live.iter().map(|(_, score)| *score).max()?;
+    live.retain(|(_, score)| *score == max_score);
+    if live.len() == 1 {
+        live.into_iter().next()
+    } else {
+        None
+    }
 }

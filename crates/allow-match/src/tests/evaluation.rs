@@ -314,6 +314,75 @@ fn expired_entry_reports_expired_even_when_structure_matches() {
 }
 
 #[test]
+fn live_broad_entry_covers_finding_when_precise_entry_is_expired() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut precise = entry_with_hash("fnv1a64:actual");
+    precise.id = "allow-precise-expired".to_string();
+    precise.lifecycle.expires = Some("2020-01-01".to_string());
+
+    let mut broad = precise.clone();
+    broad.id = "allow-broad-live".to_string();
+    broad.selector.normalized_snippet_hash = None;
+    broad.lifecycle.expires = Some("2999-12-31".to_string());
+
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(precise);
+    cfg.allow.push(broad);
+
+    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+
+    assert!(outcomes.iter().any(|outcome| {
+        outcome.status == MatchStatus::Matched
+            && outcome.allow_id.as_deref() == Some("allow-broad-live")
+            && outcome.finding_index == Some(0)
+    }));
+    assert!(!outcomes.iter().any(|outcome| {
+        outcome.status == MatchStatus::Expired && outcome.finding_index == Some(0)
+    }));
+    assert!(outcomes.iter().any(|outcome| {
+        outcome.status == MatchStatus::Stale
+            && outcome.allow_id.as_deref() == Some("allow-precise-expired")
+            && outcome.finding_index.is_none()
+            && outcome.message.contains("expired on 2020-01-01")
+    }));
+}
+
+#[test]
+fn live_broad_entry_covers_finding_when_precise_entry_lacks_evidence() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut precise = entry_with_hash("fnv1a64:actual");
+    precise.id = "allow-precise-unproven".to_string();
+    precise.evidence.clear();
+
+    let mut broad = precise.clone();
+    broad.id = "allow-broad-live".to_string();
+    broad.selector.normalized_snippet_hash = None;
+    broad.evidence.push("test:broad-fallback".to_string());
+
+    let mut cfg = AllowConfig::empty();
+    cfg.requirements.unsafe_evidence_required = true;
+    cfg.allow.push(precise);
+    cfg.allow.push(broad);
+
+    let outcomes = evaluate(&cfg, &[finding], CheckMode::NoNew);
+
+    assert!(outcomes.iter().any(|outcome| {
+        outcome.status == MatchStatus::Matched
+            && outcome.allow_id.as_deref() == Some("allow-broad-live")
+            && outcome.finding_index == Some(0)
+    }));
+    assert!(!outcomes.iter().any(|outcome| {
+        outcome.status == MatchStatus::EvidenceMissing && outcome.finding_index == Some(0)
+    }));
+    assert!(outcomes.iter().any(|outcome| {
+        outcome.status == MatchStatus::Stale
+            && outcome.allow_id.as_deref() == Some("allow-precise-unproven")
+            && outcome.finding_index.is_none()
+            && outcome.message.contains("has no evidence")
+    }));
+}
+
+#[test]
 fn never_expiring_entry_can_match() {
     let finding = finding_with_hash("fnv1a64:actual");
     let mut entry = entry_with_hash("fnv1a64:actual");
