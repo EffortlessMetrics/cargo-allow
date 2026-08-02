@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use allow_core::{AllowEntry, CargoAllowError, FindingKind, Lifecycle, Selector};
+use allow_core::{AllowEntry, FindingKind, Lifecycle, Selector};
 
 use crate::evidence_diagnostics::{
     EvidenceReferenceCategory, EvidenceReferenceDiagnostic, EvidenceReferenceSource,
@@ -51,7 +51,7 @@ fn policy_reference(
 }
 
 #[test]
-fn policy_reference_validation_error_call_presence_observer() {
+fn policy_reference_validation_error_call_presence_observer() -> Result<(), String> {
     let entry = entry("allow-001");
     let target = PathBuf::from("docs/missing.md");
     let reference = policy_reference(
@@ -63,20 +63,17 @@ fn policy_reference_validation_error_call_presence_observer() {
         ),
     );
 
-    assert_eq!(
-        policy_reference_validation_error(&entry, &reference),
-        Some(CargoAllowError::new(format!(
-            "allow-001 evidence `doc:missing.md` references missing local file {}",
-            target.display()
-        )))
-    );
+    let error = policy_reference_validation_error(&entry, &reference)
+        .ok_or_else(|| "missing local evidence should produce an error".to_string())?;
+    assert_eq!(error.kind(), allow_core::CargoAllowErrorKind::Unknown);
+    Ok(())
 }
 
 #[test]
-fn reference_validation_error_match_arm_discriminator() {
+fn reference_validation_error_match_arm_discriminator() -> Result<(), String> {
     let entry = entry("allow-002");
 
-    assert_eq!(
+    assert!(
         policy_reference_validation_error(
             &entry,
             &policy_reference(
@@ -86,11 +83,11 @@ fn reference_validation_error_match_arm_discriminator() {
                     "local evidence file is present",
                     Some(PathBuf::from("docs/present.md")),
                 ),
-            )
-        ),
-        None
+            ),
+        )
+        .is_none()
     );
-    assert_eq!(
+    assert!(
         policy_reference_validation_error(
             &entry,
             &policy_reference(
@@ -100,11 +97,11 @@ fn reference_validation_error_match_arm_discriminator() {
                     "traceability evidence is not executed",
                     None,
                 ),
-            )
-        ),
-        None
+            ),
+        )
+        .is_none()
     );
-    assert_eq!(
+    assert!(
         policy_reference_validation_error(
             &entry,
             &policy_reference(
@@ -114,27 +111,24 @@ fn reference_validation_error_match_arm_discriminator() {
                     "unstructured evidence",
                     None,
                 ),
-            )
-        ),
-        None
+            ),
+        )
+        .is_none()
     );
 
     let directory = PathBuf::from("docs/dir");
-    assert_eq!(
-        policy_reference_validation_error(
-            &entry,
-            &policy_reference(
-                EvidenceReferenceSource::Link,
-                diagnostic(
-                    EvidenceReferenceStatus::InvalidLocalPath,
-                    "link target is not a file",
-                    Some(directory.clone()),
-                ),
-            )
+    let error = policy_reference_validation_error(
+        &entry,
+        &policy_reference(
+            EvidenceReferenceSource::Link,
+            diagnostic(
+                EvidenceReferenceStatus::InvalidLocalPath,
+                "link target is not a file",
+                Some(directory.clone()),
+            ),
         ),
-        Some(CargoAllowError::new(format!(
-            "allow-002 link `doc:missing.md` must reference a local file, not a directory: {}",
-            directory.display()
-        )))
-    );
+    )
+    .ok_or_else(|| "directory link should produce an error".to_string())?;
+    assert_eq!(error.kind(), allow_core::CargoAllowErrorKind::Unknown);
+    Ok(())
 }

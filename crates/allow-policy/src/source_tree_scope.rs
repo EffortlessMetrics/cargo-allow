@@ -181,7 +181,7 @@ mod tests {
             Path::new("src/lib.rs"),
             Path::new(r"src\lib.rs"),
         ] {
-            assert_eq!(validate_path_scope("allow-path", path), Ok(()));
+            assert!(validate_path_scope("allow-path", path).is_ok());
         }
     }
 
@@ -242,7 +242,7 @@ mod tests {
     #[test]
     fn validate_glob_accepts_supported_relative_glob_tokens() {
         for glob in ["src/*.rs", "src/?.rs", "src/**/*.rs", r"docs\*.md"] {
-            assert_eq!(validate_glob("glob", glob), Ok(()), "{glob}");
+            assert!(validate_glob("glob", glob).is_ok(), "{glob}");
         }
     }
 
@@ -325,7 +325,7 @@ mod tests {
 
     #[test]
     fn direct_syntax_helpers_report_exact_error_discriminators() {
-        assert_eq!(validate_exact_path_syntax("path", "src/lib.rs"), Ok(()));
+        assert!(validate_exact_path_syntax("path", "src/lib.rs").is_ok());
         assert_eq!(
             err_text(validate_exact_path_syntax("path", "src/*.rs")),
             "path path uses wildcard token `*`; use `glob` for source-tree patterns"
@@ -335,10 +335,7 @@ mod tests {
             "path path uses wildcard token `?`; use `glob` for source-tree patterns"
         );
 
-        assert_eq!(
-            validate_supported_glob_syntax("glob", "src/**/*.rs"),
-            Ok(())
-        );
+        assert!(validate_supported_glob_syntax("glob", "src/**/*.rs").is_ok());
         assert_eq!(
             err_text(validate_supported_glob_syntax("glob", "**")),
             "glob covers the entire source tree; use a narrower path or glob scope"

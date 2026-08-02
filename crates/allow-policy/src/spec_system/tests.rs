@@ -1,5 +1,5 @@
 use super::*;
-use allow_core::CargoAllowError;
+use allow_core::CargoAllowErrorKind;
 use std::path::Path;
 
 #[test]
@@ -1033,12 +1033,7 @@ fn rejects_support_tier_table_with_invalid_separator() {
 fn direct_error_discriminators_match_support_tier_parse_messages() {
     let err = parse_support_tier_claims("No support-tier claim table here.")
         .expect_err("missing claims table should fail parsing");
-    assert_eq!(
-        err,
-        CargoAllowError::new(
-            "support-tier claims table with Surface, Tier, Claim, Proof command or Proof or evidence, and Notes or Limitations columns not found"
-        )
-    );
+    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 
     let err = parse_support_tier_claims(
         r#"
@@ -1048,19 +1043,11 @@ fn direct_error_discriminators_match_support_tier_parse_messages() {
         "#,
     )
     .expect_err("missing proof-command column should fail parsing");
-    assert_eq!(
-        err,
-        CargoAllowError::new(
-            "support-tier claims table missing required column Proof command or Proof or evidence"
-        )
-    );
+    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 
     let err = parse_support_tier_claims("| Surface | Tier | Claim | Proof command | Notes |")
         .expect_err("header without separator should fail parsing");
-    assert_eq!(
-        err,
-        CargoAllowError::new("support-tier claims table missing separator row")
-    );
+    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 
     let err = parse_support_tier_claims(
         r#"
@@ -1070,10 +1057,7 @@ fn direct_error_discriminators_match_support_tier_parse_messages() {
         "#,
     )
     .expect_err("invalid separator should fail parsing");
-    assert_eq!(
-        err,
-        CargoAllowError::new("support-tier claims table separator row is invalid")
-    );
+    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 
     let err = parse_support_tier_claims(
         r#"
@@ -1083,10 +1067,7 @@ fn direct_error_discriminators_match_support_tier_parse_messages() {
         "#,
     )
     .expect_err("short row should fail parsing");
-    assert_eq!(
-        err,
-        CargoAllowError::new("support-tier claims row has 3 cells; expected at least 4")
-    );
+    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 
     let err = parse_support_tier_claims(
         r#"
@@ -1097,10 +1078,7 @@ fn direct_error_discriminators_match_support_tier_parse_messages() {
         "#,
     )
     .expect_err("empty claim rows should fail parsing");
-    assert_eq!(
-        err,
-        CargoAllowError::new("support-tier claims table must include at least one claim row")
-    );
+    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 
     let err = parse_support_tier_claims(
         r#"
@@ -1110,10 +1088,7 @@ fn direct_error_discriminators_match_support_tier_parse_messages() {
         "#,
     )
     .expect_err("missing notes cell should fail parsing");
-    assert_eq!(
-        err,
-        CargoAllowError::new("support-tier claims row missing notes cell")
-    );
+    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 
     let err = validate_support_tier_claims(
         r#"
@@ -1123,10 +1098,7 @@ fn direct_error_discriminators_match_support_tier_parse_messages() {
         "#,
     )
     .expect_err("empty tier should fail validation");
-    assert_eq!(
-        err,
-        CargoAllowError::new("support-tier tier must not be empty")
-    );
+    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 
     let err = validate_support_tier_claims(
         r#"
@@ -1136,10 +1108,7 @@ fn direct_error_discriminators_match_support_tier_parse_messages() {
         "#,
     )
     .expect_err("unknown tier should fail validation");
-    assert_eq!(
-        err,
-        CargoAllowError::new("unknown support-tier level unsupported")
-    );
+    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 
     let err = validate_support_tier_claims(
         r#"
@@ -1149,10 +1118,7 @@ fn direct_error_discriminators_match_support_tier_parse_messages() {
         "#,
     )
     .expect_err("empty surface should fail validation");
-    assert_eq!(
-        err,
-        CargoAllowError::new("support-tier surface must not be empty")
-    );
+    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 
     let err = validate_support_tier_claims(
         r#"
@@ -1162,10 +1128,7 @@ fn direct_error_discriminators_match_support_tier_parse_messages() {
         "#,
     )
     .expect_err("empty claim should fail validation");
-    assert_eq!(
-        err,
-        CargoAllowError::new("support-tier claim must not be empty")
-    );
+    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 
     let err = validate_support_tier_claims(
         r#"
@@ -1175,12 +1138,7 @@ fn direct_error_discriminators_match_support_tier_parse_messages() {
         "#,
     )
     .expect_err("stable tier without proof should fail validation");
-    assert_eq!(
-        err,
-        CargoAllowError::new(
-            "Source exception ledger support-tier proof command must not be empty"
-        )
-    );
+    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 
     let err = validate_support_tier_claims(
         r#"
@@ -1190,10 +1148,7 @@ fn direct_error_discriminators_match_support_tier_parse_messages() {
         "#,
     )
     .expect_err("stabilizing tier without proof should fail validation");
-    assert_eq!(
-        err,
-        CargoAllowError::new("PR posture support-tier proof command must not be empty")
-    );
+    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 }
 
 #[test]

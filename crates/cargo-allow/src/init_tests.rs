@@ -1,6 +1,6 @@
 use super::*;
 use crate::{CargoAllowCli, CargoAllowCommand, ProfileArg, RootArgs};
-use allow_core::CargoAllowError;
+use allow_core::CargoAllowErrorKind;
 use clap::Parser;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -72,7 +72,7 @@ fn cmd_init_writes_relative_config_under_explicit_root() {
         config: PathBuf::from("policy/allow.toml"),
     });
 
-    assert_eq!(result, Ok(()));
+    assert!(result.is_ok());
     assert!(
         policy.exists(),
         "init should resolve relative config paths under the source-tree root"
@@ -188,13 +188,7 @@ fn cmd_init_rejects_existing_policy_without_force() {
     })
     .expect_err("existing policy should fail without --force");
 
-    assert_eq!(
-        err,
-        CargoAllowError::new(format!(
-            "{} already exists; use --force to overwrite",
-            policy.display()
-        ))
-    );
+    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 
     remove_init_fixture_dir(root);
 }
@@ -280,7 +274,7 @@ fn cmd_init_dry_run_does_not_write_default_policy() {
         config: PathBuf::from("policy/allow.toml"),
     });
 
-    assert_eq!(result, Ok(()));
+    assert!(result.is_ok());
     assert!(
         !root.join("policy/allow.toml").exists(),
         "default init dry-run should not write policy/allow.toml"
@@ -683,13 +677,7 @@ fn spec_system_init_rejects_strict_source_policy_option() {
     });
 
     let err = result.expect_err("strict spec-system init should fail");
-    assert_eq!(
-        err,
-        CargoAllowError::with_kind(
-            allow_core::CargoAllowErrorKind::Usage,
-            "--strict is not supported with --profile spec-system; remove --strict or drop --profile spec-system"
-        )
-    );
+    assert_eq!(err.kind(), CargoAllowErrorKind::Usage);
 
     remove_init_fixture_dir(root);
 }

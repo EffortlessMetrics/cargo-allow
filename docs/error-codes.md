@@ -4,6 +4,10 @@
 structured `kind()` and human-readable message. Downstream tooling should
 branch on the code or kind, not on rendered message text.
 
+`CargoAllowError` intentionally does not implement `PartialEq` or `Eq`.
+Human-readable messages are operator-facing and may gain context; consumers
+should compare `kind()`, `code()`, and structured fields instead.
+
 ## Process exit codes
 
 The `cargo-allow` binary maps failures to process exit codes as follows:

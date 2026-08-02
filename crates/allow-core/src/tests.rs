@@ -16,18 +16,18 @@ fn glob_question_mark_matches_one_unicode_character() {
 
 #[test]
 fn finding_kind_accepts_hyphenated_cli_aliases() {
-    assert_eq!(
+    assert!(matches!(
         FindingKind::from_str(" NON-RUST "),
         Ok(FindingKind::NonRustFile)
-    );
-    assert_eq!(
+    ));
+    assert!(matches!(
         FindingKind::from_str(" LINT-EXCEPTION "),
         Ok(FindingKind::LintException)
-    );
-    assert_eq!(
+    ));
+    assert!(matches!(
         FindingKind::from_str(" GENERATED-CODE "),
         Ok(FindingKind::GeneratedCode)
-    );
+    ));
 }
 
 #[test]
@@ -65,7 +65,7 @@ fn allow_config_empty_sets_document_defaults() {
 fn allow_config_empty_validate_passes() {
     // The documented-empty config must validate: programmatic core consumers
     // building `AllowConfig::empty()` get a valid baseline.
-    assert_eq!(AllowConfig::empty().validate(), Ok(()));
+    assert!(AllowConfig::empty().validate().is_ok());
 }
 
 #[test]
@@ -165,7 +165,10 @@ fn validate_aggregates_multiple_errors() {
 fn workspace_mode_round_trips_and_rejects_unknown() {
     for mode in WorkspaceMode::ALL {
         let s = mode.as_str();
-        assert_eq!(WorkspaceMode::from_str(s), Ok(*mode), "{s}");
+        assert!(
+            matches!(WorkspaceMode::from_str(s), Ok(parsed) if parsed == *mode),
+            "{s}"
+        );
     }
     // The default is `no-new`.
     assert_eq!(WorkspaceMode::default(), WorkspaceMode::NoNew);
@@ -217,14 +220,14 @@ fn match_status_strings_and_failure_modes_cover_all_statuses() {
 #[test]
 fn finding_kind_display_and_parser_cover_policy_aliases_and_errors() {
     assert_eq!(FindingKind::PolicyException.to_string(), "policy_exception");
-    assert_eq!(
+    assert!(matches!(
         FindingKind::from_str(" policy-exception "),
         Ok(FindingKind::PolicyException)
-    );
-    assert_eq!(
+    ));
+    assert!(matches!(
         FindingKind::from_str("generated"),
         Ok(FindingKind::GeneratedCode)
-    );
+    ));
     let error = FindingKind::from_str("unknown-kind")
         .unwrap_err()
         .to_string();

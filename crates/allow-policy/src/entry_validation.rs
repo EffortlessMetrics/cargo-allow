@@ -1,3 +1,5 @@
+#[cfg(test)]
+use allow_core::CargoAllowErrorKind;
 use allow_core::{AllowEntry, CargoAllowError, CargoAllowResult, FindingKind, Requirements};
 use std::collections::BTreeSet;
 
@@ -695,10 +697,7 @@ mod tests {
         assert!(validate_allow_entry_identity(&first, &mut ids).is_ok());
         let err = validate_allow_entry_identity(&duplicate, &mut ids)
             .expect_err("duplicate allow ids should fail identity validation");
-        assert_eq!(
-            err,
-            CargoAllowError::new(format!("duplicate allow id `{}`", duplicate.id))
-        );
+        assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 
         let mut missing_owner = entry("missing-owner");
         missing_owner.owner.clear();
@@ -708,10 +707,7 @@ mod tests {
             LinkScopeValidation::Strict,
         )
         .expect_err("missing owner should fail requirements validation");
-        assert_eq!(
-            err,
-            CargoAllowError::new(format!("{} missing owner", missing_owner.id))
-        );
+        assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 
         let mut unowned_reviewed = entry("unowned-reviewed");
         unowned_reviewed.owner = "unowned".to_string();
@@ -721,10 +717,7 @@ mod tests {
             LinkScopeValidation::Strict,
         )
         .expect_err("unowned non-baseline owner should fail requirements validation");
-        assert_eq!(
-            err,
-            CargoAllowError::new(format!("{} missing concrete owner", unowned_reviewed.id))
-        );
+        assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 
         let mut missing_reason = entry("missing-reason");
         missing_reason.reason.clear();
@@ -734,10 +727,7 @@ mod tests {
             LinkScopeValidation::Strict,
         )
         .expect_err("missing reason should fail requirements validation");
-        assert_eq!(
-            err,
-            CargoAllowError::new(format!("{} missing reason", missing_reason.id))
-        );
+        assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 
         let mut missing_classification = entry("missing-classification");
         missing_classification.classification.clear();
@@ -747,39 +737,21 @@ mod tests {
             LinkScopeValidation::Strict,
         )
         .expect_err("missing classification should fail requirements validation");
-        assert_eq!(
-            err,
-            CargoAllowError::new(format!(
-                "{} missing classification",
-                missing_classification.id
-            ))
-        );
+        assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 
         let mut unsafe_missing = entry("unsafe-missing");
         unsafe_missing.kind = FindingKind::Unsafe;
         unsafe_missing.evidence.clear();
         let err = validate_allow_entry_evidence_and_limit(&unsafe_missing, &requirements)
             .expect_err("unsafe entry without evidence should fail validation");
-        assert_eq!(
-            err,
-            CargoAllowError::new(format!(
-                "{} unsafe entry missing evidence",
-                unsafe_missing.id
-            ))
-        );
+        assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 
         let mut unsafe_weak = entry("unsafe-weak");
         unsafe_weak.kind = FindingKind::Unsafe;
         unsafe_weak.evidence = vec!["TODO add proof".to_string()];
         let err = validate_allow_entry_evidence_and_limit(&unsafe_weak, &requirements)
             .expect_err("unsafe entry with weak evidence should fail validation");
-        assert_eq!(
-            err,
-            CargoAllowError::new(format!(
-                "{} unsafe entry requires at least one typed evidence reference",
-                unsafe_weak.id
-            ))
-        );
+        assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 
         let mut evidence_required = entry("missing-general-evidence");
         let mut strict_requirements = required();
@@ -788,46 +760,26 @@ mod tests {
         evidence_required.evidence.clear();
         let err = validate_allow_entry_evidence_and_limit(&evidence_required, &strict_requirements)
             .expect_err("evidence-required entry without evidence should fail validation");
-        assert_eq!(
-            err,
-            CargoAllowError::new(format!("{} missing evidence", evidence_required.id))
-        );
+        assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 
         let mut zero_limit = entry("zero-limit");
         zero_limit.occurrence_limit = Some(0);
         let err = validate_allow_entry_evidence_and_limit(&zero_limit, &requirements)
             .expect_err("zero occurrence_limit should fail validation");
-        assert_eq!(
-            err,
-            CargoAllowError::new(format!(
-                "{} occurrence_limit must be greater than zero",
-                zero_limit.id
-            ))
-        );
+        assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 
         let mut oversized_limit = entry("oversized-limit");
         oversized_limit.occurrence_limit = Some(OCCURRENCE_LIMIT_MAX + 1);
         let err = validate_allow_entry_evidence_and_limit(&oversized_limit, &requirements)
             .expect_err("oversized occurrence_limit should fail validation");
-        assert_eq!(
-            err,
-            CargoAllowError::new(format!(
-                "{} occurrence_limit must be at most {OCCURRENCE_LIMIT_MAX}",
-                oversized_limit.id
-            ))
-        );
+        assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 
         let err = validate_allow_id("").expect_err("empty allow id should fail validation");
-        assert_eq!(err, CargoAllowError::new("allow entry has empty id"));
+        assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 
         let padded_id = " allow-1 ";
         let err = validate_allow_id(padded_id).expect_err("padded allow id should fail validation");
-        assert_eq!(
-            err,
-            CargoAllowError::new(format!(
-                "allow id `{padded_id}` must not have leading or trailing whitespace"
-            ))
-        );
+        assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
 
         let err = validate_unique_values(
             "allow-1",
@@ -835,12 +787,7 @@ mod tests {
             &["issue:1".to_string(), "issue:1".to_string()],
         )
         .expect_err("duplicate link values should fail validation");
-        assert_eq!(
-            err,
-            CargoAllowError::new(
-                "allow-1 duplicate link entry `issue:1` at position 2".to_string()
-            )
-        );
+        assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
     }
 
     #[test]

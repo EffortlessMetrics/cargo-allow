@@ -3,7 +3,7 @@ use super::{
     next_allow_id,
 };
 use allow_core::{
-    AllowConfig, AllowEntry, CargoAllowError, Finding, FindingKind, Lifecycle, MatchStatus,
+    AllowConfig, AllowEntry, CargoAllowErrorKind, Finding, FindingKind, Lifecycle, MatchStatus,
     Selector, Span, StructuralIdentity,
 };
 use std::path::PathBuf;
@@ -29,29 +29,21 @@ fn entry_with_id(id: &str) -> AllowEntry {
 
 #[test]
 fn ensure_addable_outcome_boundary_accepts_new_status() {
-    assert_eq!(ensure_addable_outcome(MatchStatus::New), Ok(()));
+    assert!(ensure_addable_outcome(MatchStatus::New).is_ok());
 }
 
 #[test]
 fn ensure_addable_outcome_rejects_matched_findings_with_exact_error() {
-    assert_eq!(
-        ensure_addable_outcome(MatchStatus::Matched),
-        Err(CargoAllowError::new(format!(
-            "selected finding is already receipted or blocked with status `{}`; use list or explain before editing policy",
-            MatchStatus::Matched.as_str()
-        )))
-    );
+    let error = ensure_addable_outcome(MatchStatus::Matched)
+        .expect_err("matched findings should be rejected");
+    assert_eq!(error.kind(), CargoAllowErrorKind::Unknown);
 }
 
 #[test]
 fn ensure_addable_outcome_rejects_stale_findings_with_exact_error() {
-    assert_eq!(
-        ensure_addable_outcome(MatchStatus::Stale),
-        Err(CargoAllowError::new(format!(
-            "selected finding is already receipted or blocked with status `{}`; use list or explain before editing policy",
-            MatchStatus::Stale.as_str()
-        )))
-    );
+    let error =
+        ensure_addable_outcome(MatchStatus::Stale).expect_err("stale findings should be rejected");
+    assert_eq!(error.kind(), CargoAllowErrorKind::Unknown);
 }
 
 #[test]

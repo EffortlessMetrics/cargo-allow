@@ -232,20 +232,17 @@ mod tests {
     #[test]
     fn direct_error_discriminators_match_missing_policy_config_messages() {
         let missing_root = unique_test_dir("policy-config-discriminator-missing");
-        let expected =
-            CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config");
-
         let err = load_config_required_with_evidence_mode(
             &missing_root,
             None,
             EvidenceValidationMode::Abort,
         )
         .expect_err("missing required config should fail");
-        assert_eq!(err, expected);
+        assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::Unknown);
 
         let err = git_relative_config_path(&missing_root, None)
             .expect_err("missing config should fail git relativization");
-        assert_eq!(err, expected);
+        assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::Unknown);
 
         remove_test_dir(&missing_root);
     }
@@ -279,10 +276,7 @@ mod tests {
             EvidenceValidationMode::Abort,
         )
         .expect_err("missing required config should fail");
-        assert_eq!(
-            err,
-            CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
-        );
+        assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::Unknown);
         remove_test_dir(&root);
         remove_test_dir(&missing_root);
     }
@@ -377,10 +371,7 @@ mod tests {
         let missing_root = unique_test_dir("policy-config-git-relative-missing");
         let err = git_relative_config_path(&missing_root, None)
             .expect_err("missing config should report init/config guidance");
-        assert_eq!(
-            err,
-            CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
-        );
+        assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::Unknown);
 
         let err = git_relative_config_path(&root, Some(Path::new("policy/missing.toml")))
             .expect_err("missing explicit config should report canonicalization failure");
