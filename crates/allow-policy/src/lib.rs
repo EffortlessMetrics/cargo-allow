@@ -103,10 +103,14 @@ pub fn find_config(start: impl AsRef<Path>) -> Option<PathBuf> {
     discover_config(start).selected
 }
 
+fn read_policy_text(path: &Path) -> CargoAllowResult<String> {
+    read_text_file_capped(path)
+        .map_err(|e| CargoAllowError::new(format!("failed to read {}: {e}", path.display())))
+}
+
 pub fn load_policy(path: impl AsRef<Path>) -> CargoAllowResult<AllowConfig> {
     let path = path.as_ref();
-    let text = read_text_file_capped(path)
-        .map_err(|e| CargoAllowError::new(format!("failed to read {}: {e}", path.display())))?;
+    let text = read_policy_text(path)?;
     parse_policy_at(path, &text)
 }
 
@@ -114,8 +118,7 @@ pub fn load_policy_with_reportable_evidence(
     path: impl AsRef<Path>,
 ) -> CargoAllowResult<AllowConfig> {
     let path = path.as_ref();
-    let text = read_text_file_capped(path)
-        .map_err(|e| CargoAllowError::new(format!("failed to read {}: {e}", path.display())))?;
+    let text = read_policy_text(path)?;
     parse_policy_with_reportable_evidence_at(path, &text)
 }
 
