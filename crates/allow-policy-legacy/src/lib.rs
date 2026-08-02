@@ -76,6 +76,7 @@ mod parser_unsafe_entries;
 mod parser_workflow_entries;
 mod parsers;
 mod semantic_selector_fields;
+mod source_context;
 mod types;
 mod types_dependency_entries;
 mod types_executable_entries;
