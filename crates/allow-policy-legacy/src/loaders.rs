@@ -32,3 +32,33 @@ pub fn load_legacy_or_canonical(path: impl AsRef<Path>) -> CargoAllowResult<Allo
     parse_policy(&text)
         .map_err(|err| err.with_message_prefix(format!("legacy file `{path_label}`: ")))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::load_legacy_or_canonical;
+    use std::fs;
+
+    #[test]
+    fn canonical_parse_errors_keep_filename_context() -> Result<(), String> {
+        let dir = crate::test_support::fixture_dir();
+        let path = dir.join("canonical-policy.toml");
+        fs::write(
+            &path,
+            "policy = \"cargo-allow\"\n[[allow]]\nid = \"broken\"\nkind = \"not-a-finding\"\n",
+        )
+        .map_err(|err| format!("write malformed canonical fixture: {err}"))?;
+
+        let error = match load_legacy_or_canonical(&path) {
+            Ok(_) => return Err("malformed canonical TOML unexpectedly loaded".to_string()),
+            Err(error) => error,
+        };
+
+        assert!(
+            error
+                .to_string()
+                .contains("legacy file `canonical-policy.toml`"),
+            "filename context should remain visible: {error}"
+        );
+        Ok(())
+    }
+}
