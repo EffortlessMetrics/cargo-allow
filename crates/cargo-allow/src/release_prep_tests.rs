@@ -49,6 +49,67 @@ fn release_workflow_exists_and_lists_publish_order() {
 }
 
 #[test]
+fn release_workflow_gates_linux_binary_attachment_on_identity_and_attestation() {
+    let root = workspace_root();
+    let workflow = read_workspace_file(&root, RELEASE_WORKFLOW);
+
+    for required in [
+        "Build tagged Linux release binary",
+        "Package tagged Linux executable archive",
+        "Verify tagged Linux executable archive",
+        "Attest tagged Linux executable archive",
+        "Verify tagged Linux executable attestation",
+        "BINARY_PACKAGE_RECEIPT:",
+        "BINARY_INSTALL_RECEIPT:",
+        "ATTESTATION_VERIFIED=true",
+        "gh attestation verify",
+        "release-binary.receipt.json",
+        "release-binary-install.receipt.json",
+        "cargo-allow-${{ github.ref_name }}-x86_64-unknown-linux-gnu.tar.gz",
+    ] {
+        assert!(
+            workflow.contains(required),
+            "{RELEASE_WORKFLOW} should contain {required}"
+        );
+    }
+    assert!(
+        !workflow.contains("VERSION: \"${GITHUB_REF_NAME#v}\""),
+        "{RELEASE_WORKFLOW} should derive the tag-stripped version in the shell"
+    );
+    assert!(
+        workflow.contains("needs: [install-smoke, publish]"),
+        "{RELEASE_WORKFLOW} should directly depend on publish for auth_source"
+    );
+
+    let package = workflow
+        .find("Package tagged Linux executable archive")
+        .unwrap_or(usize::MAX);
+    let verify = workflow
+        .find("Verify tagged Linux executable archive")
+        .unwrap_or(usize::MAX);
+    let attest = workflow
+        .find("Attest tagged Linux executable archive")
+        .unwrap_or(usize::MAX);
+    let verify_attestation = workflow
+        .find("Verify tagged Linux executable attestation")
+        .unwrap_or(usize::MAX);
+    let manifest = workflow
+        .find("Generate release manifest")
+        .unwrap_or(usize::MAX);
+    let attachment = workflow
+        .find("Attach release manifest to GitHub Release")
+        .unwrap_or(usize::MAX);
+    assert!(
+        package < verify
+            && verify < attest
+            && attest < verify_attestation
+            && verify_attestation < manifest
+            && manifest < attachment,
+        "Linux binary attachment must follow package, clean-install, attestation, and manifest gates"
+    );
+}
+
+#[test]
 fn release_publish_order_matches_internal_dependency_graph() {
     let root = workspace_root();
     let workspace_manifest = read_workspace_file(&root, "Cargo.toml");

@@ -2,7 +2,10 @@
 # Verify and clean-install-test a cargo-allow Linux release archive (#2464).
 # This is consumer-shaped and does not verify GitHub attestations.
 # Release evidence callers should provide RELEASE_TAG, RELEASE_COMMIT, and
-# RELEASE_TREE so the receipt can be reconciled with the tagged source.
+# RELEASE_TREE so the receipt can be reconciled with the tagged source. A
+# caller may set ATTESTATION_VERIFIED=true only after an external attestation
+# verifier has succeeded; this script records that handoff but does not verify
+# GitHub attestations itself.
 set -euo pipefail
 
 archive=""
@@ -11,8 +14,14 @@ receipt=""
 release_tag="${RELEASE_TAG:-}"
 release_commit="${RELEASE_COMMIT:-}"
 release_tree="${RELEASE_TREE:-}"
+attestation_verified="${ATTESTATION_VERIFIED:-false}"
 log() { printf 'verify-release-binary: %s\n' "$*"; }
 fail() { printf 'verify-release-binary: error: %s\n' "$*" >&2; exit 1; }
+
+case "${attestation_verified}" in
+  true|false) ;;
+  *) fail "ATTESTATION_VERIFIED must be true or false" ;;
+esac
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -126,15 +135,17 @@ executable_sha256="${actual_executable_sha256}"
 if [[ -z "${receipt}" ]]; then receipt="${archive%.tar.gz}.receipt.json"; fi
 mkdir -p "$(dirname "${receipt}")"
 python3 - "${receipt}" "${version}" "${archive_name}" "${archive_sha256}" \
-  "${executable_sha256}" "${release_tag}" "${release_commit}" "${release_tree}" <<'PY'
+  "${executable_sha256}" "${release_tag}" "${release_commit}" "${release_tree}" \
+  "${attestation_verified}" <<'PY'
 import json
 import pathlib
 import sys
 
 (
     receipt, version, archive_name, archive_sha256, executable_sha256,
-    release_tag, release_commit, release_tree,
+    release_tag, release_commit, release_tree, attestation_verified,
 ) = sys.argv[1:]
+attestation_verified = attestation_verified == "true"
 payload = {
     "schema_id": "cargo-allow.release-binary-install.v1",
     "schema_version": 1,
@@ -153,8 +164,14 @@ payload = {
         "cargo-allow init --root .", "cargo-allow check --mode no-new",
         "cargo-allow --help",
     ],
-    "attestation_verified": False,
-    "claim_boundary": "The archive checksum, envelope, executable version, and clean-repository command surface passed; GitHub attestation and publication are not claimed.",
+    "attestation_verified": attestation_verified,
+    "claim_boundary": (
+        "The archive checksum, envelope, executable version, and clean-repository "
+        "command surface passed; the caller also verified the GitHub attestation."
+        if attestation_verified else
+        "The archive checksum, envelope, executable version, and clean-repository "
+        "command surface passed; GitHub attestation and publication are not claimed."
+    ),
 }
 pathlib.Path(receipt).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 PY
