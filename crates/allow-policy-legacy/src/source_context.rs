@@ -198,4 +198,46 @@ destination = "api.github.com"
                 .contains(&format!("{}:2", Path::new("network.toml").display()))
         );
     }
+
+    #[test]
+    fn preserves_existing_location_without_rewriting_context() -> Result<(), String> {
+        let source = "policy = \"network-allowlist\"\n";
+        let located = CargoAllowError::new("already located").with_toml_span(
+            Some(Path::new("network.toml")),
+            source,
+            Some(0..0),
+        );
+        let enriched = at_legacy_source(located, Path::new("network.toml"), source);
+
+        assert_eq!(enriched.message(), "already located");
+        assert_eq!(enriched.location().map(|location| location.line), Some(1));
+        Ok(())
+    }
+
+    #[test]
+    fn falls_back_to_first_meaningful_line_when_no_entry_header_exists() {
+        let source = "# comment\nowner = \"repo\"\n";
+        let error = at_legacy_source(
+            CargoAllowError::new("legacy document is incomplete"),
+            Path::new("legacy.toml"),
+            source,
+        );
+
+        assert_eq!(error.location().map(|location| location.line), Some(2));
+    }
+
+    #[test]
+    fn handles_empty_source_and_unquoted_assignments_without_panicking() {
+        let error = at_legacy_source(
+            CargoAllowError::new("empty legacy document"),
+            Path::new("empty.toml"),
+            "",
+        );
+
+        assert_eq!(error.location().map(|location| location.line), Some(1));
+        assert_eq!(assignment_string_value("id = 42", "id"), None);
+        assert_eq!(assignment_string_value("id = \"unterminated", "id"), None);
+        assert_eq!(entry_index("entry x missing path"), None);
+        assert_eq!(line_number_at("source", usize::MAX), 1);
+    }
 }
