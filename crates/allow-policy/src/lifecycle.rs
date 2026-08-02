@@ -77,8 +77,8 @@ pub(crate) fn validate_lifecycle(entry: &AllowEntry) -> CargoAllowResult<()> {
                 entry.id
             ))
         })?;
-        let days = start.days_until(expires);
-        if !(0..=BASELINE_DEBT_MAX_DAYS).contains(&days) {
+        let latest_allowed_expiry = start.add_days(BASELINE_DEBT_MAX_DAYS);
+        if expires > latest_allowed_expiry {
             return Err(CargoAllowError::new(format!(
                 "{} baseline_debt expires must be within {BASELINE_DEBT_MAX_DAYS} days",
                 entry.id
