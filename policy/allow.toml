@@ -70,6 +70,72 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-0507"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/package-release-binary.sh"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Linux release archive packager for the exact target-specific executable envelope; attestation and publication remain workflow controls."
+evidence = ["issue:2464", "doc:docs/release/README.md", "workflow:.github/workflows/ci.yml"]
+created = "2026-08-02"
+review_after = "2027-02-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/package-release-binary.sh"
+target_fingerprint = "sh"
+glob = "scripts/package-release-binary.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0508"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/verify-release-binary.sh"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Consumer-shaped verifier for the Linux release archive envelope, checksum sidecars, safe paths, executable identity, and clean-repository command journey."
+evidence = ["issue:2464", "doc:docs/release/README.md", "workflow:.github/workflows/ci.yml"]
+created = "2026-08-02"
+review_after = "2027-02-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/verify-release-binary.sh"
+target_fingerprint = "sh"
+glob = "scripts/verify-release-binary.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0509"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/test-release-binary.sh"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Fixture characterization for Linux release archive packaging and verifier negative controls; hosted CI supplies the Ubuntu execution proof."
+evidence = ["issue:2464", "doc:docs/release/README.md", "workflow:.github/workflows/ci.yml"]
+created = "2026-08-02"
+review_after = "2027-02-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-release-binary.sh"
+target_fingerprint = "sh"
+glob = "scripts/test-release-binary.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9013"
 kind = "non_rust_file"
 family = "configuration"
