@@ -6,7 +6,10 @@ use std::time::Duration;
 
 use crate::atomic_write::sibling_tmp_path;
 use crate::mutation_lock::{MutationLock, lock_path};
-use crate::{assert_path_within_root, canonicalize_lexically, write_file, write_file_no_overwrite};
+use crate::{
+    assert_path_within_root, canonicalize_lexically, write_file, write_file_create_new_atomic,
+    write_file_no_overwrite,
+};
 
 #[test]
 fn alias_convergent_paths_acquire_the_same_lock() {
@@ -139,6 +142,21 @@ fn write_file_no_overwrite_rejects_existing_path_without_force()
 
     assert!(err.to_string().contains("already exists"));
     assert_eq!(fs::read_to_string(&output)?, "original");
+    Ok(())
+}
+
+#[test]
+fn write_file_create_new_atomic_never_replaces_existing_path()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = TempRoot::new("atomic-create-only")?;
+    let output = root.path().join("hooks/pre-commit");
+
+    write_file_create_new_atomic(&output, "first\n")?;
+    let err = write_file_create_new_atomic(&output, "replacement\n")
+        .expect_err("atomic create-only write should reject an existing target");
+
+    assert!(err.to_string().contains("refusing to overwrite"));
+    assert_eq!(fs::read_to_string(&output)?, "first\n");
     Ok(())
 }
 

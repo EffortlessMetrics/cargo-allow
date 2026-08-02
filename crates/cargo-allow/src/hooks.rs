@@ -1,7 +1,15 @@
-use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_core::{CargoAllowError, CargoAllowResult, sha256_v1_bytes};
 use clap::{Parser, Subcommand, ValueEnum};
-use serde::Serialize;
-use std::path::PathBuf;
+use repo_edit::{
+    assert_path_within_root, write_file, write_file_create_new_atomic_with_permissions,
+};
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::Command;
+
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 
 use crate::emit_text;
 
@@ -23,6 +31,10 @@ pub(crate) struct HooksArgs {
 pub(crate) enum HooksCommand {
     /// Preview the checked worktree-advisory hook plan.
     Plan(HookPlanArgs),
+    /// Report the managed Git-hook disposition without changing the repository.
+    Status(HookStatusArgs),
+    /// Apply a plan only when the Git hook is absent or already managed.
+    Apply(HookApplyArgs),
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -36,6 +48,32 @@ pub(crate) struct HookPlanArgs {
     /// Write the plan to a file instead of stdout.
     #[arg(long)]
     pub(crate) output: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Parser)]
+pub(crate) struct HookStatusArgs {
+    /// Hook stage to inspect.
+    #[arg(long, value_enum, default_value_t = HookStage::PreCommit)]
+    pub(crate) stage: HookStage,
+    /// Output format.
+    #[arg(long, value_enum, default_value_t = HookPlanFormat::Human)]
+    pub(crate) format: HookPlanFormat,
+    /// Write the status to a file instead of stdout.
+    #[arg(long)]
+    pub(crate) output: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Parser)]
+pub(crate) struct HookApplyArgs {
+    /// Read the exact JSON plan emitted by `hooks plan`.
+    #[arg(long)]
+    pub(crate) plan: PathBuf,
+    /// Explicitly accept creating the managed hook when it is absent.
+    #[arg(long)]
+    pub(crate) accept: bool,
+    /// Write the apply receipt to this path.
+    #[arg(long)]
+    pub(crate) receipt: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -61,39 +99,66 @@ pub(crate) enum HookPlanFormat {
     Json,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
 struct LocalHookPlanV1 {
-    schema: &'static str,
-    stage: &'static str,
-    framework: &'static str,
-    source_subject: &'static str,
-    argv: Vec<&'static str>,
+    schema: String,
+    stage: String,
+    framework: String,
+    source_subject: String,
+    argv: Vec<String>,
     pass_filenames: bool,
     always_run: bool,
-    binary_resolution: &'static str,
+    binary_resolution: String,
     network_access: bool,
     repository_mutation: bool,
-    ci_backstop: &'static str,
-    claim_boundary: &'static str,
-    installation: &'static str,
+    ci_backstop: String,
+    claim_boundary: String,
+    installation: String,
+    #[serde(default)]
+    plan_identity: String,
 }
 
 fn build_plan(stage: HookStage) -> LocalHookPlanV1 {
-    LocalHookPlanV1 {
-        schema: PLAN_SCHEMA,
-        stage: stage.as_str(),
-        framework: "pre-commit",
-        source_subject: "tracked_worktree",
-        argv: COMMAND.to_vec(),
+    let mut plan = LocalHookPlanV1 {
+        schema: PLAN_SCHEMA.to_string(),
+        stage: stage.as_str().to_string(),
+        framework: "pre-commit".to_string(),
+        source_subject: "tracked_worktree".to_string(),
+        argv: COMMAND.iter().map(|value| (*value).to_string()).collect(),
         pass_filenames: false,
         always_run: true,
-        binary_resolution: "ambient_path_installed_cargo_allow",
+        binary_resolution: "ambient_path_installed_cargo_allow".to_string(),
         network_access: false,
         repository_mutation: false,
-        ci_backstop: "CI remains the authoritative merge backstop; --no-verify is not approval.",
-        claim_boundary: "Advisory no-new feedback over tracked worktree bytes; not exact staged-index or pushed-tree evidence.",
-        installation: "preview_only_no_files_written_no_existing_hook_overwritten",
-    }
+        ci_backstop: "CI remains the authoritative merge backstop; --no-verify is not approval."
+            .to_string(),
+        claim_boundary: "Advisory no-new feedback over tracked worktree bytes; not exact staged-index or pushed-tree evidence."
+            .to_string(),
+        installation: "preview_only_no_files_written_no_existing_hook_overwritten".to_string(),
+        plan_identity: String::new(),
+    };
+    plan.plan_identity = plan_identity(&plan);
+    plan
+}
+
+fn plan_identity(plan: &LocalHookPlanV1) -> String {
+    let canonical = format!(
+        "{PLAN_SCHEMA}\nschema={}\nstage={}\nframework={}\nsubject={}\nargv={}\npass_filenames={}\nalways_run={}\nbinary={}\nnetwork={}\nmutation={}\nci={}\nclaim={}\ninstallation={}",
+        plan.schema,
+        plan.stage,
+        plan.framework,
+        plan.source_subject,
+        plan.argv.join("\0"),
+        plan.pass_filenames,
+        plan.always_run,
+        plan.binary_resolution,
+        plan.network_access,
+        plan.repository_mutation,
+        plan.ci_backstop,
+        plan.claim_boundary,
+        plan.installation,
+    );
+    sha256_v1_bytes(canonical.as_bytes())
 }
 
 pub(crate) fn cmd_hooks(args: &HooksArgs) -> CargoAllowResult<()> {
@@ -108,7 +173,316 @@ pub(crate) fn cmd_hooks(args: &HooksArgs) -> CargoAllowResult<()> {
             };
             emit_text(plan_args.output.as_deref(), &rendered)
         }
+        HooksCommand::Status(status_args) => cmd_status(status_args),
+        HooksCommand::Apply(apply_args) => cmd_apply(apply_args),
     }
+}
+
+#[derive(Debug, Serialize)]
+struct HookStatusV1 {
+    schema: &'static str,
+    stage: String,
+    plan_identity: String,
+    hook_path: String,
+    disposition: &'static str,
+    repository_mutation: bool,
+    claim_boundary: String,
+}
+
+#[derive(Debug, Serialize)]
+struct HookApplyReceiptV1 {
+    schema: &'static str,
+    stage: String,
+    plan_identity: String,
+    hook_path: String,
+    disposition: &'static str,
+    operation: &'static str,
+    applied: bool,
+    rollback: &'static str,
+}
+
+const HOOK_STATUS_SCHEMA: &str = "cargo-allow.local-hook-status.v1";
+const HOOK_APPLY_RECEIPT_SCHEMA: &str = "cargo-allow.local-hook-apply-receipt.v1";
+const MANAGED_BEGIN: &str = "# BEGIN cargo-allow managed hook: ";
+const MANAGED_END: &str = "# END cargo-allow managed hook";
+
+fn cmd_status(args: &HookStatusArgs) -> CargoAllowResult<()> {
+    let root = source_tree_root()?;
+    let plan = build_plan(args.stage);
+    let hook_path = hook_path(&root, args.stage)?;
+    let disposition = hook_disposition(&hook_path, &plan)?;
+    let status = HookStatusV1 {
+        schema: HOOK_STATUS_SCHEMA,
+        stage: plan.stage.clone(),
+        plan_identity: plan.plan_identity.clone(),
+        hook_path: portable_path(&root, &hook_path),
+        disposition,
+        repository_mutation: false,
+        claim_boundary: "Read-only status of the exact managed Git-hook identity; it does not prove hook execution or exact staged-index evidence.".to_string(),
+    };
+    let rendered = match args.format {
+        HookPlanFormat::Human => render_status(&status),
+        HookPlanFormat::Json => serde_json::to_string_pretty(&status).map_err(|error| {
+            CargoAllowError::new(format!("failed to render hook status: {error}"))
+        })?,
+    };
+    crate::emit_text(args.output.as_deref(), &rendered)
+}
+
+fn cmd_apply(args: &HookApplyArgs) -> CargoAllowResult<()> {
+    if !args.accept {
+        return Err(CargoAllowError::new(
+            "hook apply is preview-safe by default; pass --accept to create the managed hook",
+        ));
+    }
+    let root = source_tree_root()?;
+    let plan = read_plan(&args.plan)?;
+    validate_plan(&plan)?;
+    let hook_path = hook_path(&root, stage_from_str(&plan.stage)?)?;
+    let receipt_path = args.receipt.clone().unwrap_or_else(|| {
+        root.join("target/cargo-allow/hooks")
+            .join(format!("{}.apply.receipt.json", plan.stage))
+    });
+    assert_path_within_root(&root, &receipt_path)?;
+
+    let disposition = hook_disposition(&hook_path, &plan)?;
+    if disposition == "AlreadyPresent" {
+        write_receipt(
+            &receipt_path,
+            &HookApplyReceiptV1 {
+                schema: HOOK_APPLY_RECEIPT_SCHEMA,
+                stage: plan.stage.clone(),
+                plan_identity: plan.plan_identity.clone(),
+                hook_path: portable_path(&root, &hook_path),
+                disposition,
+                operation: "none",
+                applied: false,
+                rollback: "no mutation; managed block already matches this plan",
+            },
+        )?;
+        return Ok(());
+    }
+    if disposition != "Missing" {
+        write_receipt(
+            &receipt_path,
+            &HookApplyReceiptV1 {
+                schema: HOOK_APPLY_RECEIPT_SCHEMA,
+                stage: plan.stage.clone(),
+                plan_identity: plan.plan_identity.clone(),
+                hook_path: portable_path(&root, &hook_path),
+                disposition,
+                operation: "none",
+                applied: false,
+                rollback: "no mutation; manual merge is required and arbitrary hooks are never overwritten",
+            },
+        )?;
+        return Err(CargoAllowError::new(format!(
+            "existing hook has disposition {disposition}; no files were changed, see receipt {}",
+            receipt_path.display()
+        )));
+    }
+
+    let contents = render_managed_hook(&plan);
+    write_file_create_new_atomic_with_permissions(&hook_path, &contents, hook_permissions())?;
+    let receipt = HookApplyReceiptV1 {
+        schema: HOOK_APPLY_RECEIPT_SCHEMA,
+        stage: plan.stage.clone(),
+        plan_identity: plan.plan_identity.clone(),
+        hook_path: portable_path(&root, &hook_path),
+        disposition: "Missing",
+        operation: "create",
+        applied: true,
+        rollback: "remove only the exact managed block/file identity; automatic removal is a follow-up",
+    };
+    write_receipt(&receipt_path, &receipt)?;
+    Ok(())
+}
+
+fn hook_permissions() -> Option<fs::Permissions> {
+    #[cfg(unix)]
+    {
+        Some(fs::Permissions::from_mode(0o755))
+    }
+    #[cfg(not(unix))]
+    {
+        None
+    }
+}
+
+fn source_tree_root() -> CargoAllowResult<PathBuf> {
+    let current = std::env::current_dir().map_err(|error| {
+        CargoAllowError::new(format!("failed to read current directory: {error}"))
+    })?;
+    allow_inventory::discover_source_tree_root(current)
+}
+
+fn read_plan(path: &Path) -> CargoAllowResult<LocalHookPlanV1> {
+    let bytes = fs::read_to_string(path).map_err(|error| {
+        CargoAllowError::new(format!(
+            "failed to read hook plan {}: {error}",
+            path.display()
+        ))
+    })?;
+    serde_json::from_str(&bytes).map_err(|error| {
+        CargoAllowError::new(format!(
+            "failed to parse hook plan {}: {error}",
+            path.display()
+        ))
+    })
+}
+
+fn validate_plan(plan: &LocalHookPlanV1) -> CargoAllowResult<()> {
+    if plan.schema != PLAN_SCHEMA {
+        return Err(CargoAllowError::new(format!(
+            "unsupported hook plan schema `{}`; expected `{PLAN_SCHEMA}`",
+            plan.schema
+        )));
+    }
+    if plan.plan_identity.is_empty() || plan.plan_identity != plan_identity(plan) {
+        return Err(CargoAllowError::new(
+            "hook plan identity is missing or stale; regenerate it with `cargo-allow hooks plan --format json`",
+        ));
+    }
+    let stage = stage_from_str(&plan.stage)?;
+    if *plan != build_plan(stage) {
+        return Err(CargoAllowError::new(
+            "hook plan is stale or outside the supported offline tracked-worktree contract; regenerate it from this cargo-allow binary",
+        ));
+    }
+    Ok(())
+}
+
+fn stage_from_str(stage: &str) -> CargoAllowResult<HookStage> {
+    match stage {
+        "pre-commit" => Ok(HookStage::PreCommit),
+        "pre-push" => Ok(HookStage::PrePush),
+        other => Err(CargoAllowError::new(format!(
+            "unsupported hook stage `{other}`"
+        ))),
+    }
+}
+
+fn hook_path(root: &Path, stage: HookStage) -> CargoAllowResult<PathBuf> {
+    let hooks_dir = git_path(root, "hooks")?;
+    let git_common_dir = git_path(root, "--git-common-dir")?;
+    let git_common_dir = if git_common_dir.is_absolute() {
+        git_common_dir
+    } else {
+        root.join(git_common_dir)
+    };
+    let git_common_dir = git_common_dir.canonicalize().map_err(|error| {
+        CargoAllowError::new(format!(
+            "failed to canonicalize Git common directory {}: {error}",
+            git_common_dir.display()
+        ))
+    })?;
+    let hooks_dir = if hooks_dir.is_absolute() {
+        hooks_dir
+    } else {
+        root.join(hooks_dir)
+    };
+    assert_path_within_root(&git_common_dir, &hooks_dir)?;
+    Ok(hooks_dir.join(stage.as_str()))
+}
+
+fn git_path(root: &Path, argument: &str) -> CargoAllowResult<PathBuf> {
+    let git_args = match argument {
+        "--git-common-dir" => vec!["rev-parse", "--git-common-dir"],
+        "hooks" => vec!["rev-parse", "--git-path", "hooks"],
+        other => {
+            return Err(CargoAllowError::new(format!(
+                "unsupported Git hook path query `{other}`"
+            )));
+        }
+    };
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(git_args)
+        .output()
+        .map_err(|error| {
+            CargoAllowError::new(format!("failed to invoke git for hook path: {error}"))
+        })?;
+    if !output.status.success() {
+        return Err(CargoAllowError::new(format!(
+            "git could not resolve hook path: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        )));
+    }
+    let value = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if value.is_empty() {
+        return Err(CargoAllowError::new("git returned an empty hook path"));
+    }
+    Ok(PathBuf::from(value))
+}
+
+fn hook_disposition(path: &Path, plan: &LocalHookPlanV1) -> CargoAllowResult<&'static str> {
+    let contents = match fs::read_to_string(path) {
+        Ok(contents) => contents,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok("Missing"),
+        Err(error) => {
+            return Err(CargoAllowError::new(format!(
+                "failed to inspect existing hook {}: {error}",
+                path.display()
+            )));
+        }
+    };
+    if normalize_hook_text(&contents).contains(&normalize_hook_text(&managed_block(plan))) {
+        return Ok("AlreadyPresent");
+    }
+    if contents.contains(MANAGED_BEGIN) || contents.contains(MANAGED_END) {
+        return Ok("Conflict");
+    }
+    Ok("ManualMerge")
+}
+
+fn managed_block(plan: &LocalHookPlanV1) -> String {
+    format!(
+        "{MANAGED_BEGIN}{}\nexec {}\n{MANAGED_END}",
+        plan.plan_identity,
+        plan.argv.join(" ")
+    )
+}
+
+fn render_managed_hook(plan: &LocalHookPlanV1) -> String {
+    format!(
+        "#!/bin/sh\n# cargo-allow managed hook; source subject: tracked_worktree\n{}\n",
+        managed_block(plan)
+    )
+}
+
+fn normalize_hook_text(text: &str) -> String {
+    text.replace("\r\n", "\n")
+}
+
+fn portable_path(root: &Path, path: &Path) -> String {
+    path.strip_prefix(root)
+        .map(|relative| relative.to_string_lossy().replace('\\', "/"))
+        .unwrap_or_else(|_| path.to_string_lossy().replace('\\', "/"))
+}
+
+fn write_receipt(path: &Path, receipt: &HookApplyReceiptV1) -> CargoAllowResult<()> {
+    let rendered = serde_json::to_string_pretty(receipt)
+        .map_err(|error| CargoAllowError::new(format!("failed to render hook receipt: {error}")))?;
+    write_file(path, &format!("{rendered}\n"))
+}
+
+fn render_status(status: &HookStatusV1) -> String {
+    format!(
+        "Local hook status\n\
+stage: {}\n\
+hook: {}\n\
+disposition: {}\n\
+plan identity: {}\n\
+repository mutation: {}\n\
+claim boundary: {}",
+        status.stage,
+        status.hook_path,
+        status.disposition,
+        status.plan_identity,
+        status.repository_mutation,
+        status.claim_boundary,
+    )
 }
 
 fn render_human(plan: &LocalHookPlanV1) -> String {
@@ -243,5 +617,72 @@ mod tests {
             return Err("JSON hook plan output did not preserve its contract".to_string());
         }
         Ok(())
+    }
+
+    #[test]
+    fn apply_rejects_stale_or_unsupported_plan_identity() -> Result<(), String> {
+        let mut stale = build_plan(HookStage::PreCommit);
+        stale.plan_identity = "stale-plan".to_string();
+        if validate_plan(&stale).is_ok() {
+            return Err("stale plan identity was accepted".to_string());
+        }
+
+        let mut unsupported = build_plan(HookStage::PreCommit);
+        unsupported.source_subject = "exact_staged_index".to_string();
+        unsupported.plan_identity = plan_identity(&unsupported);
+        if validate_plan(&unsupported).is_ok() {
+            return Err("unsupported source subject was accepted".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn hook_disposition_is_fail_closed_for_existing_files() -> Result<(), String> {
+        let root = HookFixture::new("disposition")?;
+        let path = root.path.join("pre-commit");
+        let plan = build_plan(HookStage::PreCommit);
+
+        if hook_disposition(&path, &plan).map_err(|error| error.to_string())? != "Missing" {
+            return Err("missing hook did not report Missing".to_string());
+        }
+        fs::write(&path, "#!/bin/sh\ncustom-hook\n").map_err(|error| error.to_string())?;
+        if hook_disposition(&path, &plan).map_err(|error| error.to_string())? != "ManualMerge" {
+            return Err("unmanaged hook did not require ManualMerge".to_string());
+        }
+        fs::write(&path, render_managed_hook(&plan)).map_err(|error| error.to_string())?;
+        if hook_disposition(&path, &plan).map_err(|error| error.to_string())? != "AlreadyPresent" {
+            return Err("matching managed hook was not recognized".to_string());
+        }
+        fs::write(
+            &path,
+            format!("{MANAGED_BEGIN}other-plan\nexec cargo-allow check\n{MANAGED_END}\n"),
+        )
+        .map_err(|error| error.to_string())?;
+        if hook_disposition(&path, &plan).map_err(|error| error.to_string())? != "Conflict" {
+            return Err("mismatched managed marker did not report Conflict".to_string());
+        }
+        Ok(())
+    }
+
+    struct HookFixture {
+        path: PathBuf,
+    }
+
+    impl HookFixture {
+        fn new(label: &str) -> Result<Self, String> {
+            let path = std::env::temp_dir()
+                .join(format!("cargo-allow-hooks-{label}-{}", std::process::id()));
+            if path.exists() {
+                fs::remove_dir_all(&path).map_err(|error| error.to_string())?;
+            }
+            fs::create_dir_all(&path).map_err(|error| error.to_string())?;
+            Ok(Self { path })
+        }
+    }
+
+    impl Drop for HookFixture {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.path);
+        }
     }
 }
