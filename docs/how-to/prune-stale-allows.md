@@ -21,6 +21,15 @@ cargo-allow prune \
 Review the candidate list before writing. Do not prune entries that are
 ambiguous or poorly understood.
 
+## Artifact Scope
+
+The `cargo-allow.prune.v1` JSON artifact is a cleanup candidate list, not a
+full projection of each policy entry. Each `stale_entries` item includes the
+entry identity, kind, optional family, owner, classification, effective scope,
+and reason. It intentionally omits source `path`, `glob`, and `selector`
+details; use `list` or `explain` when you need that source context before
+approving removal.
+
 ## Write
 
 When the preview is correct:

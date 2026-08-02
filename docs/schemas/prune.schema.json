@@ -186,6 +186,7 @@
     },
     "stale_entry": {
       "type": "object",
+      "description": "A scope-level cleanup candidate. This is intentionally not a full allow-entry projection: source path, glob, and selector details remain available through list or explain artifacts.",
       "additionalProperties": false,
       "required": [
         "id",
@@ -220,7 +221,8 @@
           "type": "string"
         },
         "scope": {
-          "type": "string"
+          "type": "string",
+          "description": "Effective policy scope for the stale candidate. The prune artifact does not include path, glob, or selector fields."
         },
         "reason": {
           "type": "string"
