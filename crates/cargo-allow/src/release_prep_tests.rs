@@ -291,6 +291,7 @@ fn release_manifest_validate_produces_complete_with_all_checksums() {
         msrv: "1.95",
         platforms_proven: &["linux"],
         crate_checksums: &checksums,
+        binary_assets: &[],
         generated_at: "2026-07-20T00:00:00Z",
     });
     let (result, gaps) = allow_report::validate_release_manifest(&manifest);

@@ -22,6 +22,21 @@ macro-expansion, or proof-level coverage.
 | Spec-system graph report | `cargo-allow.spec-system.v1` | `cargo-allow check --profile spec-system --format json`, `cargo-allow audit --profile spec-system --format json`, `cargo-allow worklist --profile spec-system --format json`, `cargo-allow doctor --profile spec-system --format json`, `cargo-allow explain <artifact-id> --profile spec-system --format json` |
 | Agent worklist | `cargo-allow.worklist.v1` | `cargo-allow worklist --format json` |
 
+## Release-control contract
+
+| Artifact | Schema ID | Producer |
+|---|---|---|
+| Release identity and verified executable assets | `cargo-allow.release-manifest.v1` | release workflow / typed `allow-report` model |
+
+`ReleaseManifestV1` is a release-control artifact rather than a source-tree
+scan result. Its `binary_assets` collection may be empty for crates.io-only
+releases. When populated, each asset is bound to the manifest's
+tag, commit, tree, version, proven platform, executable digest, archive digest,
+candidate/install evidence digests, and attestation subject. The Rust validator
+rejects duplicate or non-canonical assets, unsupported targets, identity
+conflicts, unsafe filenames, malformed digests, and attestation/archive digest
+mismatches. See [release-manifest.schema.json](release-manifest.schema.json).
+
 ## Self-description contract (not a governed artifact)
 
 | Self-description | Schema ID | Producer |
@@ -73,6 +88,7 @@ or repository. It is intentionally not included in the Rust producer's
 - [worklist.schema.json](worklist.schema.json)
 - [tool-identity.schema.json](tool-identity.schema.json) self-description contract (not a governed artifact)
 - [operator-latency.schema.json](operator-latency.schema.json) supporting hosted performance receipt (not a governed artifact)
+- [release-manifest.schema.json](release-manifest.schema.json) release-control contract (not a governed source-tree artifact)
 - [common.v1.json](common.v1.json) shared source-tree fragments used as the
   tested vocabulary source for future schema consolidation. Artifact schemas
   remain self-contained for consumer portability. The shared catalog includes

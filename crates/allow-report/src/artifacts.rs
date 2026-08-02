@@ -40,9 +40,10 @@ pub use propose::ProposeReport;
 pub use prune::{PruneCandidate, PruneModeContext};
 pub use refresh::{RefreshModeContext, RefreshReport};
 pub use release_manifest::{
-    ManifestCrate, ManifestGap, ManifestGenerations, ManifestInput, ManifestResult, PUBLISH_ORDER,
-    RELEASE_MANIFEST_CLAIM_BOUNDARY, RELEASE_MANIFEST_SCHEMA_ID, RELEASE_MANIFEST_SCHEMA_VERSION,
-    ReleaseManifestV1, generate_release_manifest, render_release_manifest_json,
+    ManifestBinaryAsset, ManifestCrate, ManifestGap, ManifestGenerations, ManifestInput,
+    ManifestResult, PUBLISH_ORDER, RELEASE_BINARY_TARGETS, RELEASE_MANIFEST_CLAIM_BOUNDARY,
+    RELEASE_MANIFEST_SCHEMA_ID, RELEASE_MANIFEST_SCHEMA_VERSION, ReleaseManifestV1,
+    generate_release_manifest, render_release_manifest_json, render_release_manifest_summary,
     validate_release_manifest,
 };
 pub use why::{
