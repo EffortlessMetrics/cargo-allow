@@ -148,6 +148,65 @@ jobs:
             target/shallow-diff-base-smoke/shallow-diff-base-smoke.receipt.txt
             target/shallow-diff-base-smoke/artifacts/
 
+  # Hosted characterization for #2468: bind the supported operator loop to a
+  # release binary, verify each command's semantic artifact, and retain the
+  # receipt/artifacts for review. This is a conservative catastrophic ceiling,
+  # not a universal latency target or hardware claim.
+  operator-latency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          key: operator-latency
+      - name: Operator latency harness contract (#2468)
+        run: bash scripts/test-perf-budget-smoke.sh
+      - name: Build release cargo-allow binary
+        run: cargo build -p cargo-allow --bin cargo-allow --release --locked
+      - name: Operator latency smoke (#2468)
+        env:
+          PROFILE: release
+          CARGO_ALLOW_BIN: ${{ github.workspace }}/target/release/cargo-allow
+          HARD_CEILING_MS: "60000"
+        run: bash scripts/perf-budget-smoke.sh
+      - name: Validate operator latency receipt contract
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          receipt_path = Path("target/perf-budget/operator-latency.receipt.json")
+          schema_path = Path("docs/schemas/operator-latency.schema.json")
+          assert receipt_path.is_file(), f"missing receipt: {receipt_path}; see the harness step output"
+          receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+          schema = json.loads(schema_path.read_text(encoding="utf-8"))
+          assert schema["$id"].endswith("operator-latency.v1.schema.json")
+          assert receipt["schema_id"] == "cargo-allow.operator-latency.v1"
+          assert receipt["result"] == "pass"
+          assert receipt["binary"]["profile"] == "release"
+          assert len(receipt["samples"]) == 6
+          assert all(sample["status"] == "passed" for sample in receipt["samples"])
+          ceiling = receipt["budget"]["ceiling_ms"]
+          assert all(
+              isinstance(sample["elapsed_ms"], int) and sample["elapsed_ms"] <= ceiling
+              for sample in receipt["samples"]
+          )
+          print(f"validated {len(receipt['samples'])} operator-latency samples")
+          PY
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: operator-latency-receipt
+          path: |
+            target/perf-budget/operator-latency.receipt.json
+            target/perf-budget/artifacts/
+          if-no-files-found: warn
+
   test:
     runs-on: ubuntu-latest
     steps:

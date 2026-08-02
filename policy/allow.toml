@@ -10607,3 +10607,47 @@ glob = "docs/glossary.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0504"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/operator-latency.schema.json"
+owner = "core/ci"
+classification = "performance_contract_schema"
+reason = "Defines the versioned supporting receipt contract for hosted operator-latency characterization; it is intentionally outside the governed cargo-allow command-artifact registry."
+evidence = ["issue:2468", "doc:docs/performance-budgets.md", "workflow:.github/workflows/ci.yml"]
+created = "2026-08-02"
+review_after = "2027-02-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/operator-latency.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/operator-latency.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0505"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/test-perf-budget-smoke.sh"
+owner = "core/ci"
+classification = "ci_characterization_script"
+reason = "Cheap local characterization for the operator-latency receipt/schema wiring; hosted CI supplies the actual binary execution proof."
+evidence = ["issue:2468", "doc:docs/performance-budgets.md", "workflow:.github/workflows/ci.yml"]
+created = "2026-08-02"
+review_after = "2027-02-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-perf-budget-smoke.sh"
+target_fingerprint = "sh"
+glob = "scripts/test-perf-budget-smoke.sh"
+
+[allow.last_seen]
+line = 1
+column = 1

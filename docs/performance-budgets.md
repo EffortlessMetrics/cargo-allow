@@ -6,27 +6,45 @@ that it does not materially slow ordinary repository work. These budgets make
 
 ## Measurement methodology
 
-`scripts/perf-budget-smoke.sh` measures wall-clock elapsed time for the
-critical operator-loop commands against the cargo-allow repository itself
-(~1000 tracked files, ~320 policy entries). It runs against a debug build
-locally and a release build in CI.
+`scripts/perf-budget-smoke.sh` measures end-to-end wall-clock elapsed time for
+the critical operator-loop commands against the cargo-allow repository itself.
+It runs against a debug build locally and a release build in the hosted Linux
+`operator-latency` CI job.
 
-The receipt (`target/perf-budget/perf-budget.receipt.txt`) records each
-command's elapsed milliseconds, the host, and a timestamp so measurements
-can be tracked over time.
+The receipt (`target/perf-budget/operator-latency.receipt.json`) records the
+tested binary digest and profile, host/toolchain, repository fixture counts,
+ordered argv, per-sample elapsed milliseconds, artifact digests, and semantic
+result checks. The receipt follows
+[`cargo-allow.operator-latency.v1`](schemas/operator-latency.schema.json), a
+supporting harness contract rather than a governed cargo-allow command
+artifact. The generated command artifacts are uploaded with the receipt in
+CI.
+
+Run the local smoke with the default debug profile, or select release to match
+the hosted profile:
+
+```bash
+bash scripts/perf-budget-smoke.sh
+PROFILE=release bash scripts/perf-budget-smoke.sh
+```
+
+Each measured command must remain at or below the conservative 60,000 ms
+catastrophic-regression ceiling. Advisory product targets below are tracked
+separately and are not asserted by this harness.
 
 ## Initial baseline (2026-07-18, Windows debug build)
 
 These are the first measured numbers — the starting point, not the target.
-CI (Linux, release build) will be significantly faster.
+The hosted receipt is the comparable Linux release observation; it is not a
+universal hardware baseline.
 
 | Command | Debug (Windows) | Notes |
 | --- | ---: | --- |
 | `audit` (full scan) | ~22,600 ms | Full tree-sitter parse + classify + evaluate |
 | `check --mode no-new` | ~17,500 ms | Same scan, no-new gate |
 | `why` (single-file fast path) | ~240 ms | One-file scan (#2425) |
-| `diff --base HEAD~1` | TBD | Requires two revisions |
-| `audit` (warm repeat) | TBD | After filesystem cache warm |
+| `diff --base HEAD~1` | receipt | Requires two revisions; see hosted artifact |
+| `audit` (warm repeat) | receipt | After process/filesystem cache warm |
 
 ## Budget targets (0.2.0)
 
