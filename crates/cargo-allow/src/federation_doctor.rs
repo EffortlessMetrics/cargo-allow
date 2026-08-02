@@ -91,13 +91,17 @@ impl FederationDoctorFacts {
     }
 
     pub fn enrich_runtime_divergences(&mut self, root: &Path) -> CargoAllowResult<()> {
-        if self.valid != Some(true) {
-            return Ok(());
-        }
         let loaded = load_federation_config(root)?;
         let Some(validated) = loaded.validated() else {
             return Ok(());
         };
+        if validated
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.is_blocking())
+        {
+            return Ok(());
+        }
         let divergences = detect_mirror_divergences(root, &validated.config)?;
         self.divergence_facts = divergences
             .into_iter()

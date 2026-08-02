@@ -801,6 +801,13 @@ fn mirror_divergence_projects_across_check_worklist_and_doctor() {
         Some("mirror_divergence"),
         "doctor should report the runtime divergence kind"
     );
+    assert_eq!(
+        doctor
+            .pointer("/federation/diagnostics/0/kind")
+            .and_then(Value::as_str),
+        Some("dialect_skipped"),
+        "doctor should retain the advisory federation diagnostic"
+    );
     let ledger_ids = doctor
         .pointer("/federation/divergences/0/ledger_ids")
         .and_then(Value::as_array)
@@ -873,6 +880,19 @@ fn create_mirror_divergence_fixture() -> PathBuf {
         root.join(".allow/config.toml"),
     )
     .unwrap_or_else(|err| std::panic::panic_any(format!("copy federation config: {err}")));
+    fs::OpenOptions::new()
+        .append(true)
+        .open(root.join(".allow/config.toml"))
+        .and_then(|mut file| {
+            use std::io::Write;
+            writeln!(
+                file,
+                "\n[[ledgers]]\nid = \"foreign-import\"\npath = \"legacy/policy.toml\"\ndialect = \"foreign-ledger\"\nrole = \"imported\"\npriority = 20"
+            )
+        })
+        .unwrap_or_else(|err| {
+            std::panic::panic_any(format!("append advisory federation diagnostic: {err}"))
+        });
 
     git(&root, &["init"]);
     git(

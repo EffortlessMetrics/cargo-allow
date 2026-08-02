@@ -30,7 +30,7 @@ pub fn validate_federation_config(config: FederationConfig) -> ValidatedFederati
 }
 
 impl FederationDiagnostic {
-    fn is_blocking(&self) -> bool {
+    pub fn is_blocking(&self) -> bool {
         !matches!(self.kind, FederationDiagnosticKind::DialectSkipped)
     }
 }
