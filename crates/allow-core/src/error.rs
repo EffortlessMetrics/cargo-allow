@@ -240,10 +240,7 @@ impl CargoAllowError {
     pub fn with_message_prefix(mut self, prefix: impl AsRef<str>) -> Self {
         let prefix = prefix.as_ref();
         if !prefix.is_empty() {
-            let mut message = String::with_capacity(prefix.len() + self.message.len());
-            message.push_str(prefix);
-            message.push_str(&self.message);
-            self.message = message;
+            self.message.insert_str(0, prefix);
         }
         self
     }
