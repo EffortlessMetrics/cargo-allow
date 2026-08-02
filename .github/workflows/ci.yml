@@ -255,6 +255,11 @@ jobs:
           key: coverage
       - name: Generate coverage report
         run: |
+          coverage_temp="$RUNNER_TEMP/cargo-allow-coverage"
+          mkdir -p "$coverage_temp"
+          export TMPDIR="$coverage_temp"
+          export TMP="$coverage_temp"
+          export TEMP="$coverage_temp"
           cargo install cargo-tarpaulin
           cargo tarpaulin --workspace --locked --out xml --output-dir target/cargo-allow -- --test-threads 1
       - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
