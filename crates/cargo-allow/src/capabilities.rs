@@ -518,6 +518,18 @@ fn validate_catalog() -> CargoAllowResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+
+    fn output_path(label: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "cargo-allow-capabilities-{label}-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_else(|error| std::panic::panic_any(error.to_string()))
+                .as_nanos()
+        ))
+    }
 
     #[test]
     fn sensor_capability_catalog_is_unique_and_matches_scanner_owned_families() {
@@ -564,5 +576,82 @@ mod tests {
                 .filter(|capability| capability.analysis_class == "not_included")
                 .all(|capability| capability.kind.is_none() && capability.family.is_none())
         );
+    }
+
+    #[test]
+    fn capability_classes_have_stable_machine_labels() {
+        assert_eq!(
+            CapabilityClass::SupportedSyntax.as_str(),
+            "supported_syntax"
+        );
+        assert_eq!(
+            CapabilityClass::SupportedPresence.as_str(),
+            "supported_presence"
+        );
+        assert_eq!(
+            CapabilityClass::CompatibilityAdapter.as_str(),
+            "compatibility_adapter"
+        );
+        assert_eq!(CapabilityClass::PolicyDerived.as_str(), "policy_derived");
+        assert_eq!(CapabilityClass::NotIncluded.as_str(), "not_included");
+    }
+
+    #[test]
+    fn capabilities_command_renders_and_filters_each_projection() -> Result<(), String> {
+        let human_path = output_path("human");
+        cmd_capabilities(&CapabilitiesArgs {
+            format: CapabilityFormat::Human,
+            class: None,
+            kind: None,
+            family: None,
+            output: Some(human_path.clone()),
+        })
+        .map_err(|error| error.to_string())?;
+        let human = fs::read_to_string(&human_path).map_err(|error| error.to_string())?;
+        fs::remove_file(&human_path).map_err(|error| error.to_string())?;
+        if !human.contains("cargo-allow sensor capabilities")
+            || !human.contains("rust.panic.unwrap")
+            || !human.contains("excluded.workflow.rich_semantics")
+        {
+            return Err("human capability output omitted expected rows".to_string());
+        }
+
+        let excluded_path = output_path("excluded");
+        cmd_capabilities(&CapabilitiesArgs {
+            format: CapabilityFormat::Json,
+            class: Some(CapabilityClass::NotIncluded),
+            kind: None,
+            family: None,
+            output: Some(excluded_path.clone()),
+        })
+        .map_err(|error| error.to_string())?;
+        let excluded = fs::read_to_string(&excluded_path).map_err(|error| error.to_string())?;
+        fs::remove_file(&excluded_path).map_err(|error| error.to_string())?;
+        let excluded_json: serde_json::Value =
+            serde_json::from_str(&excluded).map_err(|error| error.to_string())?;
+        if excluded_json["capabilities"].as_array().map_or(0, Vec::len) != 5 {
+            return Err("not-included filter returned an unexpected row count".to_string());
+        }
+
+        let finding_path = output_path("finding");
+        cmd_capabilities(&CapabilitiesArgs {
+            format: CapabilityFormat::Json,
+            class: Some(CapabilityClass::SupportedSyntax),
+            kind: Some("panic".to_string()),
+            family: Some("unwrap".to_string()),
+            output: Some(finding_path.clone()),
+        })
+        .map_err(|error| error.to_string())?;
+        let finding = fs::read_to_string(&finding_path).map_err(|error| error.to_string())?;
+        fs::remove_file(&finding_path).map_err(|error| error.to_string())?;
+        let finding_json: serde_json::Value =
+            serde_json::from_str(&finding).map_err(|error| error.to_string())?;
+        let rows = finding_json["capabilities"]
+            .as_array()
+            .ok_or_else(|| "filtered capability output was not an array".to_string())?;
+        if rows.len() != 1 || rows[0]["sensor_id"] != "rust.panic.unwrap" {
+            return Err("kind/family filter returned an unexpected row".to_string());
+        }
+        Ok(())
     }
 }
