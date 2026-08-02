@@ -5,11 +5,16 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
 work="$(mktemp -d "${TMPDIR:-/tmp}/cargo-allow-release-test.XXXXXX")"
-cleanup() { rm -rf "${work:-}"; }
-trap cleanup EXIT
-
 receipt_path="${RECEIPT_PATH:-${ROOT}/target/release-binary-contract/release-binary-test.receipt.json}"
 mkdir -p "$(dirname "${receipt_path}")"
+package_fixture_paths=()
+cleanup() {
+  rm -rf "${work:-}"
+  for path in "${package_fixture_paths[@]}"; do
+    rm -f "${path}"
+  done
+}
+trap cleanup EXIT
 
 fixture_bin="${work}/fixture-cargo-allow"
 cat >"${fixture_bin}" <<'EOF'
@@ -45,12 +50,73 @@ bash scripts/verify-release-binary.sh --version 9.9.9 "${archive}" >/dev/null
 rm -f "${receipt_path}"
 bash scripts/verify-release-binary.sh --version 9.9.9 --receipt "${receipt_path}" "${archive}" >/dev/null
 
+manifest_output="${work}/release-manifest-v1.json"
 expect_failure() {
   if "$@" >/dev/null 2>&1; then
     printf 'expected failure did not occur: %s\n' "$*" >&2
     exit 1
   fi
 }
+
+VERSION=9.9.9 REPOSITORY=EffortlessMetrics/cargo-allow TAG=v9.9.9 \
+  COMMIT=fixture-commit TREE=fixture-tree AUTH_SOURCE=oidc MSRV=1.95 \
+  PLATFORMS=linux WORKFLOW_RUN_ID=123 RUST_TOOLCHAIN=stable RUNNER=ubuntu-latest \
+  BINARY_PACKAGE_RECEIPT="${output}/release-binary.receipt.json" \
+  BINARY_INSTALL_RECEIPT="${receipt_path}" OUTPUT="${manifest_output}" \
+  bash scripts/generate-release-manifest.sh >/dev/null
+python3 - "${manifest_output}" <<'PY'
+import json
+import sys
+
+manifest = json.loads(open(sys.argv[1], encoding="utf-8").read())
+assert manifest["result"] == "Incomplete"
+asset = manifest["binary_assets"][0]
+assert asset["target_triple"] == "x86_64-unknown-linux-gnu"
+assert asset["archive_name"] == "cargo-allow-v9.9.9-x86_64-unknown-linux-gnu.tar.gz"
+assert asset["attestation_subject_sha256"] == asset["archive_sha256"]
+assert asset["candidate_receipt_digest"].startswith("sha256:")
+assert asset["installed_smoke_receipt_digest"].startswith("sha256:")
+PY
+
+mkdir -p target/package
+for crate in allow-core allow-policy allow-inventory allow-files allow-rust \
+  allow-match allow-policy-legacy allow-report allow-diff cargo-allow; do
+  package_path="target/package/${crate}-9.9.9.crate"
+  if [[ ! -e "${package_path}" ]]; then
+    : >"${package_path}"
+    package_fixture_paths+=("${package_path}")
+  fi
+done
+python3 - "${receipt_path}" <<'PY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+receipt = json.loads(path.read_text(encoding="utf-8"))
+receipt["attestation_verified"] = True
+path.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+PY
+VERSION=9.9.9 REPOSITORY=EffortlessMetrics/cargo-allow TAG=v9.9.9 \
+  COMMIT=fixture-commit TREE=fixture-tree AUTH_SOURCE=oidc MSRV=1.95 \
+  PLATFORMS=linux WORKFLOW_RUN_ID=123 RUST_TOOLCHAIN=stable RUNNER=ubuntu-latest \
+  BINARY_PACKAGE_RECEIPT="${output}/release-binary.receipt.json" \
+  BINARY_INSTALL_RECEIPT="${receipt_path}" OUTPUT="${work}/complete-manifest.json" \
+  bash scripts/generate-release-manifest.sh >/dev/null
+python3 - "${work}/complete-manifest.json" <<'PY'
+import json
+import sys
+
+manifest = json.loads(open(sys.argv[1], encoding="utf-8").read())
+assert manifest["result"] == "Complete"
+assert len(manifest["binary_assets"]) == 1
+PY
+
+expect_failure env VERSION=9.9.9 REPOSITORY=EffortlessMetrics/cargo-allow \
+  TAG=v9.9.9 COMMIT=fixture-commit TREE=fixture-tree AUTH_SOURCE=oidc MSRV=1.95 \
+  BINARY_PACKAGE_RECEIPT="${output}/release-binary.receipt.json" \
+  OUTPUT="${work}/missing-install-manifest.json" \
+  bash scripts/generate-release-manifest.sh
 
 cp "${archive}.sha256" "${work}/missing.sha256"
 rm "${archive}.sha256"
