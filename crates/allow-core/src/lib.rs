@@ -50,9 +50,9 @@ pub use lane_posture::{
 pub use ledger_posture::{LedgerPosture, NetPosture, PostureDelta, PresenceMovement};
 pub use ledger_provenance::LedgerProvenance;
 pub use policy::{
-    AllowConfig, AllowEntry, LastSeen, Lifecycle, MatchOutcome, MatchStatus, POLICY_NAME,
-    Requirements, SUPPORTED_SCHEMA_VERSION, SUPPORTED_SCHEMA_VERSION_ALIAS, Selector,
-    WorkspaceConfig, WorkspaceMode,
+    AllowConfig, AllowEntry, BUILTIN_FILE_FAMILY_CODES, FileFamilyRule, LastSeen, Lifecycle,
+    MatchOutcome, MatchStatus, POLICY_NAME, Requirements, SUPPORTED_SCHEMA_VERSION,
+    SUPPORTED_SCHEMA_VERSION_ALIAS, Selector, WorkspaceConfig, WorkspaceMode,
 };
 pub use source_tree_path::{
     GLOB_MATCH_MAX_STEPS, allow_entry_broad_scope, glob_matches, glob_matches_str, normalize_path,

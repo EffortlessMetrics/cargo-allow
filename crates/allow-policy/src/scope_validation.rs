@@ -1,5 +1,6 @@
 use allow_core::{
-    AllowEntry, CargoAllowError, CargoAllowResult, WorkspaceConfig, WorkspaceMode, normalize_path,
+    AllowEntry, BUILTIN_FILE_FAMILY_CODES, CargoAllowError, CargoAllowResult, FileFamilyRule,
+    WorkspaceConfig, WorkspaceMode, normalize_path,
 };
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -33,6 +34,69 @@ pub(crate) fn validate_workspace(workspace: &WorkspaceConfig) -> CargoAllowResul
     }
     validate_unique_workspace_globs("source-tree ignored glob", &workspace.ignored)?;
     validate_unique_workspace_globs("source-tree generated glob", &workspace.generated)?;
+    validate_file_family_rules(&workspace.file_families)?;
+    Ok(())
+}
+
+fn validate_file_family_rules(rules: &[FileFamilyRule]) -> CargoAllowResult<()> {
+    let mut ids = BTreeSet::new();
+    let mut definitions = BTreeSet::new();
+    for (index, rule) in rules.iter().enumerate() {
+        let label = format!("workspace file_family[{}]", index + 1);
+        validate_identifier(&format!("{label} id"), &rule.id)?;
+        validate_family_code(&label, &rule.family)?;
+        validate_required_text(&format!("{label} reason"), &rule.reason)?;
+        validate_glob(&format!("{label} glob"), &rule.glob)?;
+
+        if !ids.insert(rule.id.clone()) {
+            return Err(CargoAllowError::new(format!(
+                "duplicate workspace file_family id `{}`",
+                rule.id
+            )));
+        }
+        let definition = (rule.family.clone(), normalize_source_tree_scope(&rule.glob));
+        if !definitions.insert(definition) {
+            return Err(CargoAllowError::new(format!(
+                "duplicate workspace file_family definition `{}` / `{}`",
+                rule.family,
+                normalize_source_tree_scope(&rule.glob)
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn validate_identifier(label: &str, value: &str) -> CargoAllowResult<()> {
+    validate_required_text(label, value)?;
+    let mut chars = value.chars();
+    let valid = chars.next().is_some_and(|ch| ch.is_ascii_lowercase())
+        && chars.all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit() || ch == '-' || ch == '_');
+    if !valid {
+        return Err(CargoAllowError::new(format!(
+            "{label} must start with a lowercase ASCII letter and contain only lowercase ASCII letters, digits, `-`, or `_`"
+        )));
+    }
+    Ok(())
+}
+
+fn validate_family_code(label: &str, family: &str) -> CargoAllowResult<()> {
+    validate_required_text(&format!("{label} family"), family)?;
+    let valid = family.split('.').all(|segment| {
+        let mut chars = segment.chars();
+        chars.next().is_some_and(|ch| ch.is_ascii_lowercase())
+            && chars
+                .all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit() || matches!(ch, '-' | '_'))
+    });
+    if !valid {
+        return Err(CargoAllowError::new(format!(
+            "{label} family must start with a lowercase ASCII letter and contain only lowercase ASCII letters, digits, `.`, `-`, or `_`"
+        )));
+    }
+    if BUILTIN_FILE_FAMILY_CODES.contains(&family) {
+        return Err(CargoAllowError::new(format!(
+            "{label} family `{family}` is reserved for the built-in file classifier"
+        )));
+    }
     Ok(())
 }
 
@@ -151,6 +215,7 @@ mod tests {
             ignored: vec!["target/**".to_string(), ".git/**".to_string()],
             generated: vec!["vendor/**".to_string(), "target/generated/**".to_string()],
             default_mode: "no-new".to_string(),
+            file_families: Vec::new(),
         };
 
         assert!(validate_workspace(&workspace).is_ok());
@@ -183,6 +248,92 @@ mod tests {
             err_text(validate_workspace(&workspace)),
             "unsupported workspace default_mode `permissive`"
         );
+    }
+
+    #[test]
+    fn validate_workspace_accepts_safe_custom_file_family_rules() {
+        let workspace = WorkspaceConfig {
+            file_families: vec![FileFamilyRule {
+                id: "model-artifact".to_string(),
+                family: "ml_model".to_string(),
+                glob: "models/**/*.onnx".to_string(),
+                reason: "Govern versioned model artifacts.".to_string(),
+            }],
+            ..WorkspaceConfig::default()
+        };
+
+        assert!(validate_workspace(&workspace).is_ok());
+    }
+
+    #[test]
+    fn validate_workspace_rejects_invalid_custom_file_family_identity() {
+        let invalid_id = WorkspaceConfig {
+            file_families: vec![FileFamilyRule {
+                id: "Model Artifact".to_string(),
+                family: "ml_model".to_string(),
+                glob: "models/**/*.onnx".to_string(),
+                reason: "Govern versioned model artifacts.".to_string(),
+            }],
+            ..WorkspaceConfig::default()
+        };
+        assert!(
+            err_text(validate_workspace(&invalid_id)).contains("id must start with a lowercase")
+        );
+
+        let invalid_family = WorkspaceConfig {
+            file_families: vec![FileFamilyRule {
+                id: "model-artifact".to_string(),
+                family: "ml..model".to_string(),
+                glob: "models/**/*.onnx".to_string(),
+                reason: "Govern versioned model artifacts.".to_string(),
+            }],
+            ..WorkspaceConfig::default()
+        };
+        assert!(err_text(validate_workspace(&invalid_family)).contains("family must start"));
+    }
+
+    #[test]
+    fn validate_workspace_rejects_reserved_duplicate_and_unsafe_file_family_rules() {
+        let reserved = WorkspaceConfig {
+            file_families: vec![FileFamilyRule {
+                id: "docs".to_string(),
+                family: "documentation".to_string(),
+                glob: "custom/**/*.md".to_string(),
+                reason: "Reserved family test.".to_string(),
+            }],
+            ..WorkspaceConfig::default()
+        };
+        assert!(err_text(validate_workspace(&reserved)).contains("reserved"));
+
+        let duplicate = WorkspaceConfig {
+            file_families: vec![
+                FileFamilyRule {
+                    id: "model-a".to_string(),
+                    family: "ml_model".to_string(),
+                    glob: "models/**/*.onnx".to_string(),
+                    reason: "First rule.".to_string(),
+                },
+                FileFamilyRule {
+                    id: "model-a".to_string(),
+                    family: "ml_model".to_string(),
+                    glob: "models/**/*.onnx".to_string(),
+                    reason: "Duplicate rule.".to_string(),
+                },
+            ],
+            ..WorkspaceConfig::default()
+        };
+        assert!(err_text(validate_workspace(&duplicate)).contains("duplicate"));
+
+        let unsafe_glob = WorkspaceConfig {
+            file_families: vec![FileFamilyRule {
+                id: "outside".to_string(),
+                family: "external_artifact".to_string(),
+                glob: "../**/*.onnx".to_string(),
+                reason: "Unsafe path test.".to_string(),
+            }],
+            ..WorkspaceConfig::default()
+        };
+        assert!(err_text(validate_workspace(&unsafe_glob)).contains("parent directory"));
     }
 
     #[test]

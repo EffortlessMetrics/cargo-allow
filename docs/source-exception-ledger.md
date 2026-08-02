@@ -797,6 +797,24 @@ invocation.
 `workspace.inventory` and `workspace.default_mode` are exact policy tokens and
 must not include leading or trailing whitespace.
 
+Repositories may declare custom file-presence families with repeated
+`[[workspace.file_family]]` tables:
+
+```toml
+[[workspace.file_family]]
+id = "model-artifact"
+family = "ml_model"
+glob = "models/**/*.onnx"
+reason = "Govern versioned model artifacts."
+```
+
+The schema requires a stable lowercase rule ID, a lowercase canonical family
+code, a source-tree-relative bounded glob, and a non-empty rationale. Built-in
+family codes are reserved, duplicate definitions are rejected, and these rules
+never ignore files or approve ledger entries. This configuration contract is
+stored and rendered now; classifier application and reclassification movement
+remain the follow-up seams in #2691 and #2692.
+
 Optional `[lanes.<kind>]` tables declare per-kind enforcement posture without
 splitting the ledger. Supported `mode` values are `advisory`, `shadow`, and
 `blocking`. Unconfigured kinds default to `blocking`. Shadow and advisory lanes
