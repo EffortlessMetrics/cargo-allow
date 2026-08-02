@@ -41,10 +41,16 @@ fi
 
 sidecar="${archive}.sha256"
 [[ -f "${sidecar}" ]] || fail "missing archive checksum sidecar: ${sidecar}"
-(
-  cd "$(dirname "${archive}")"
-  sha256sum --check "$(basename "${sidecar}")" >/dev/null
-) || fail "archive checksum sidecar does not match"
+mapfile -t sidecar_lines <"${sidecar}"
+[[ "${#sidecar_lines[@]}" -eq 1 ]] || fail "archive checksum sidecar must contain one record"
+read -r expected_archive_sha256 sidecar_name sidecar_extra <<<"${sidecar_lines[0]}"
+[[ -z "${sidecar_extra:-}" && "${sidecar_name}" == "${archive_name}" ]] \
+  || fail "archive checksum sidecar must name ${archive_name} exactly"
+[[ "${expected_archive_sha256}" =~ ^[0-9a-f]{64}$ ]] \
+  || fail "archive checksum sidecar has no valid digest"
+actual_archive_sha256="$(sha256sum "${archive}" | awk '{print $1}')"
+[[ "${actual_archive_sha256}" == "${expected_archive_sha256}" ]] \
+  || fail "archive checksum sidecar does not match"
 executable_sidecar="${archive}.executable.sha256"
 [[ -f "${executable_sidecar}" ]] || fail "missing executable checksum sidecar: ${executable_sidecar}"
 
@@ -58,6 +64,7 @@ expected_entries=(
   "${archive_root}/README.md"
   "${archive_root}/VERIFICATION.md"
 )
+declare -A entry_counts=()
 entry_count=0
 while IFS= read -r entry; do
   [[ -n "${entry}" ]] || continue
@@ -68,20 +75,25 @@ while IFS= read -r entry; do
     if [[ "${entry}" == "${expected}" ]]; then allowed=true; break; fi
   done
   [[ "${allowed}" == true ]] || fail "archive contains an unexpected entry: ${entry}"
+  entry_counts["${entry}"]=$(( ${entry_counts["${entry}"]:-0} + 1 ))
   entry_count=$((entry_count + 1))
 done <<<"${entries}"
 [[ "${entry_count}" -eq "${#expected_entries[@]}" ]] \
   || fail "archive must contain exactly ${#expected_entries[@]} entries, found ${entry_count}"
+for expected in "${expected_entries[@]}"; do
+  [[ "${entry_counts[${expected}]:-0}" -eq 1 ]] \
+    || fail "archive must contain exactly one ${expected} entry"
+done
 
 work="$(mktemp -d "${TMPDIR:-/tmp}/cargo-allow-release-verify.XXXXXX")"
-cleanup() { rm -rf "${work}"; }
+cleanup() { rm -rf "${work:-}"; }
 trap cleanup EXIT
 tar -xzf "${archive}" -C "${work}" --no-same-owner --no-same-permissions
 bin="${work}/${archive_root}/cargo-allow"
 [[ -x "${bin}" ]] || fail "extracted cargo-allow is not executable"
 
 reported_version="$("${bin}" --version)" || fail "extracted executable could not run --version"
-[[ "${reported_version}" == "cargo-allow ${version}"* ]] \
+[[ "${reported_version}" == "cargo-allow ${version}" ]] \
   || fail "executable reported ${reported_version}, expected cargo-allow ${version}"
 expected_executable_sha256="$(awk '$2 == "cargo-allow" { print $1; exit }' "${executable_sidecar}")"
 [[ "${expected_executable_sha256}" =~ ^[0-9a-f]{64}$ ]] \

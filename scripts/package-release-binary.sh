@@ -30,10 +30,10 @@ done
 
 read_workspace_version() {
   awk '
-    /^\[workspace\.package\]/ { in_ws = 1; next }
-    /^\[/ { if (in_ws) exit }
-    in_ws && /^version = / {
-      gsub(/^version = "/, "", $0)
+    /^[[:space:]]*\[workspace\.package\]/ { in_ws = 1; next }
+    /^[[:space:]]*\[/ { if (in_ws) exit }
+    in_ws && /^[[:space:]]*version[[:space:]]*=/ {
+      gsub(/^[[:space:]]*version[[:space:]]*=[[:space:]]*"/, "", $0)
       gsub(/".*/, "", $0)
       print $0
       exit
@@ -55,9 +55,12 @@ if [[ -z "${CARGO_ALLOW_BIN:-}" ]]; then
   cargo build -p cargo-allow --bin cargo-allow --release --locked --target "${target}"
 fi
 [[ -f "${bin}" && -x "${bin}" ]] || fail "expected executable at ${bin}"
+reported_version="$("${bin}" --version)" || fail "executable could not run --version"
+[[ "${reported_version}" == "cargo-allow ${version}" ]] \
+  || fail "executable reported ${reported_version}, expected cargo-allow ${version}"
 
 stage="$(mktemp -d "${TMPDIR:-/tmp}/cargo-allow-release.XXXXXX")"
-cleanup() { rm -rf "${stage}"; }
+cleanup() { rm -rf "${stage:-}"; }
 trap cleanup EXIT
 archive_tree="${stage}/${archive_root}"
 mkdir -p "${archive_tree}"
@@ -91,6 +94,9 @@ After extraction, check the executable identity:
 This archive does not claim universal Linux, musl, or CPU compatibility.
 EOF
 chmod 0755 "${archive_tree}/cargo-allow"
+chmod 0755 "${archive_tree}"
+chmod 0644 "${archive_tree}/LICENSE-APACHE" "${archive_tree}/LICENSE-MIT" \
+  "${archive_tree}/README.md" "${archive_tree}/VERIFICATION.md"
 
 archive_path="${output_dir}/${archive_name}"
 archive_sha_path="${archive_path}.sha256"
