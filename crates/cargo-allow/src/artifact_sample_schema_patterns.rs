@@ -5,6 +5,9 @@ pub(crate) fn sample_string_matches_supported_pattern(value: &str, pattern: &str
     match pattern {
         "^cargo-allow " => value.starts_with("cargo-allow "),
         "^sha256:v1:[0-9a-f]{64}$" => sample_string_matches_sha256_v1(value),
+        "^unexpected:.+$" => value.strip_prefix("unexpected:").is_some_and(|status| {
+            !status.is_empty() && !status.contains('\n') && !status.contains('\r')
+        }),
         "^work-[a-z0-9-]+-[0-9]{4}$" => sample_string_matches_work_item_id(value),
         _ => std::panic::panic_any(format!("unsupported schema pattern {pattern:?}")),
     }
@@ -39,6 +42,7 @@ pub(crate) fn supported_schema_patterns() -> BTreeSet<String> {
     [
         "^cargo-allow ",
         "^sha256:v1:[0-9a-f]{64}$",
+        "^unexpected:.+$",
         "^work-[a-z0-9-]+-[0-9]{4}$",
     ]
     .into_iter()
