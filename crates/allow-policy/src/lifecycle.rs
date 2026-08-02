@@ -40,7 +40,7 @@ pub(crate) fn validate_lifecycle(entry: &AllowEntry) -> CargoAllowResult<()> {
     let expires = parse_expires(&entry.id, entry.lifecycle.expires.as_deref())?;
 
     if let (Some(created), Some(review_after)) = (created, review_after)
-        && created.days_until(review_after) < 0
+        && created > review_after
     {
         return Err(CargoAllowError::new(format!(
             "{} review_after must not be before created",
@@ -48,7 +48,7 @@ pub(crate) fn validate_lifecycle(entry: &AllowEntry) -> CargoAllowResult<()> {
         )));
     }
     if let (Some(created), Some(expires)) = (created, expires)
-        && created.days_until(expires) < 0
+        && created > expires
     {
         return Err(CargoAllowError::new(format!(
             "{} expires must not be before created",
@@ -56,7 +56,7 @@ pub(crate) fn validate_lifecycle(entry: &AllowEntry) -> CargoAllowResult<()> {
         )));
     }
     if let (Some(review_after), Some(expires)) = (review_after, expires)
-        && review_after.days_until(expires) < 0
+        && review_after > expires
     {
         return Err(CargoAllowError::new(format!(
             "{} review_after must not be after expires",
