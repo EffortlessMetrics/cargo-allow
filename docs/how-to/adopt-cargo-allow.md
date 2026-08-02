@@ -56,6 +56,22 @@ command is:
 cargo-allow check --mode no-new
 ```
 
+Before adopting either checked stage, preview the machine-readable hook
+contract from the installed binary:
+
+```bash
+cargo-allow hooks plan --stage pre-commit
+cargo-allow hooks plan --stage pre-push --format json
+```
+
+The plan is read-only and reports the exact `cargo-allow check --mode no-new`
+argv, the `tracked_worktree` subject, and the current ambient-PATH binary
+resolution. It is a worktree advisory: it does not prove exact staged-index or
+pushed-tree bytes, install or overwrite a hook, write a receipt, contact the
+network, or mutate policy. CI remains the enforcing merge backstop. Safe
+installation, rollback, pinned binary selection, and exact-index enforcement
+are separate capabilities and are not implied by this preview.
+
 ## Optional reusable GitHub Action
 
 For hosted Linux CI, cargo-allow also provides a read-only composite Action.
