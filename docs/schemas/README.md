@@ -34,6 +34,19 @@ self-description but is **not** a governed artifact: it omits
 treat it as a build-provenance and compatibility-checking envelope, not as a
 source-tree scan result.
 
+## Supporting harness receipts (not governed artifacts)
+
+| Receipt | Schema ID | Producer |
+|---|---|---|
+| Operator latency | `cargo-allow.operator-latency.v1` | `scripts/perf-budget-smoke.sh` |
+
+The operator-latency receipt binds end-to-end wall-clock observations to the
+tested binary, host, repository fixture, ordered command arguments, output
+digests, and semantic artifact checks. It is a hosted performance-regression
+signal, not a source-tree scan artifact and not a promise about every machine
+or repository. It is intentionally not included in the Rust producer's
+`ARTIFACT_CONTRACTS` or the source-tree support matrix.
+
 ## Files
 
 - [doctor.schema.json](doctor.schema.json)
@@ -59,6 +72,7 @@ source-tree scan result.
 - [spec-system.schema.json](spec-system.schema.json)
 - [worklist.schema.json](worklist.schema.json)
 - [tool-identity.schema.json](tool-identity.schema.json) self-description contract (not a governed artifact)
+- [operator-latency.schema.json](operator-latency.schema.json) supporting hosted performance receipt (not a governed artifact)
 - [common.v1.json](common.v1.json) shared source-tree fragments used as the
   tested vocabulary source for future schema consolidation. Artifact schemas
   remain self-contained for consumer portability. The shared catalog includes

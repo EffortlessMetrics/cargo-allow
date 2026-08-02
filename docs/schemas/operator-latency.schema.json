@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/operator-latency.v1.schema.json",
+  "title": "cargo-allow operator latency receipt v1",
+  "description": "Supporting harness receipt for the hosted operator-latency smoke. This is not a source-tree cargo-allow command artifact or a universal hardware-performance claim.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "schema_id",
+    "tool",
+    "command",
+    "result",
+    "binary",
+    "host",
+    "repository",
+    "sample_policy",
+    "budget",
+    "samples",
+    "claim_boundary",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "schema_id": { "const": "cargo-allow.operator-latency.v1" },
+    "tool": { "const": "cargo-allow" },
+    "command": { "const": "operator-latency" },
+    "result": { "enum": ["pass", "failed"] },
+    "binary": { "$ref": "#/$defs/binary" },
+    "host": { "$ref": "#/$defs/host" },
+    "repository": { "$ref": "#/$defs/repository" },
+    "sample_policy": { "$ref": "#/$defs/sample_policy" },
+    "budget": { "$ref": "#/$defs/budget" },
+    "samples": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/sample" }
+    },
+    "claim_boundary": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "failure": { "$ref": "#/$defs/failure" }
+  },
+  "$defs": {
+    "binary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "profile"],
+      "properties": {
+        "path": { "type": "string" },
+        "sha256": { "type": "string" },
+        "profile": { "enum": ["debug", "release"] }
+      }
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os", "release", "machine", "rustc"],
+      "properties": {
+        "os": { "type": "string" },
+        "release": { "type": "string" },
+        "machine": { "type": "string" },
+        "rustc": { "type": "string" }
+      }
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "tracked_files", "policy_entries"],
+      "properties": {
+        "commit": { "type": "string" },
+        "tracked_files": { "type": "integer", "minimum": 0 },
+        "policy_entries": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "sample_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cold_process_samples", "warm_process_samples", "targeted_samples"],
+      "properties": {
+        "cold_process_samples": { "type": "integer", "minimum": 0 },
+        "warm_process_samples": { "type": "integer", "minimum": 0 },
+        "targeted_samples": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "ceiling_ms", "disposition"],
+      "properties": {
+        "name": { "const": "operator_loop_hard_ceiling" },
+        "kind": { "const": "catastrophic_regression" },
+        "ceiling_ms": { "type": "integer", "minimum": 0 },
+        "disposition": { "enum": ["passed", "failed"] }
+      }
+    },
+    "sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "phase", "argv", "elapsed_ms", "status", "artifact", "semantic_artifact"],
+      "properties": {
+        "name": { "type": "string" },
+        "phase": { "enum": ["cold", "warm", "targeted"] },
+        "argv": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "elapsed_ms": { "type": ["integer", "null"], "minimum": 0 },
+        "status": { "enum": ["passed", "skipped"] },
+        "artifact": { "$ref": "#/$defs/digest" },
+        "semantic_artifact": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "digest": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string" },
+        "sha256": { "type": "string" }
+      }
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "message"],
+      "properties": {
+        "kind": { "const": "instrument_failure" },
+        "message": { "type": "string" }
+      }
+    }
+  }
+}
