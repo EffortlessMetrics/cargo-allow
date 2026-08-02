@@ -869,6 +869,26 @@ fn doctor_skips_divergence_when_federation_has_blocking_diagnostics() {
     remove_temp_root(root);
 }
 
+#[test]
+fn doctor_without_federation_config_has_no_runtime_divergences() {
+    let root = create_fixture("doctor-without-federation", false);
+    let (doctor_path, doctor_result) = run_report(&root, "missing-federation-doctor", &["doctor"]);
+    assert_status("missing federation doctor", &doctor_result, true);
+    assert_quiet("missing federation doctor", &doctor_result);
+    let doctor = assert_saved_json_artifact(
+        &doctor_path,
+        "missing federation doctor",
+        "cargo-allow.doctor.v1",
+        "doctor",
+    );
+    assert!(
+        doctor.pointer("/federation/divergences").is_none(),
+        "doctor without federation config must not project runtime divergence"
+    );
+
+    remove_temp_root(root);
+}
+
 fn create_fixture(label: &str, include_expired: bool) -> PathBuf {
     let root = temp_root(label);
     fs::create_dir_all(root.join("src"))
