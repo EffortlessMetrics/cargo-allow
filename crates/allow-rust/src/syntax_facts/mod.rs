@@ -1,5 +1,6 @@
 use crate::syntax_kinds::RustSyntaxFacts;
 use crate::syntax_tree::parse_rust_syntax;
+use crate::text::SourceLineIndex;
 
 mod attributes;
 mod collector;
@@ -24,8 +25,9 @@ pub(crate) fn syntax_facts_with_outcome(source: &str) -> SyntaxFactsOutcome {
     };
 
     let has_parse_error = tree.has_error();
+    let line_index = SourceLineIndex::new(source);
     let mut facts = RustSyntaxFacts::default();
-    collector::collect_syntax_facts(tree.tree.root_node(), source, &mut facts);
+    collector::collect_syntax_facts(tree.tree.root_node(), source, &line_index, &mut facts);
     scopes::collect_line_scopes(tree.tree.root_node(), source, &mut facts.scopes);
     SyntaxFactsOutcome {
         facts,

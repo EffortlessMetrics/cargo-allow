@@ -142,41 +142,51 @@ pub(crate) fn column(line: &str, needle: &str) -> u32 {
         .unwrap_or(1)
 }
 
-pub(crate) fn source_column(source: &str, row: usize, byte_column: usize) -> u32 {
-    // Fast path: find the start of the requested line by counting newlines
-    // in the byte slice. This avoids the Lines iterator overhead which re-checks
-    // for \r\n on every yield. Still O(row) per call, but with lower constant
-    // factor. A full O(1) fix would require pre-computing line-start offsets
-    // once per file scan — see #2666 for the batch approach.
-    let bytes = source.as_bytes();
-    let mut current_row = 0;
-    let mut line_start = 0;
-    for (i, &byte) in bytes.iter().enumerate() {
-        if current_row == row {
-            break;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct SourceLineIndex {
+    line_starts: Vec<usize>,
+}
+
+impl SourceLineIndex {
+    pub(crate) fn new(source: &str) -> Self {
+        let mut line_starts = vec![0];
+        for (index, byte) in source.bytes().enumerate() {
+            if byte == b'\n' {
+                line_starts.push(index + 1);
+            }
         }
-        if byte == b'\n' {
-            current_row += 1;
-            line_start = i + 1;
+        Self { line_starts }
+    }
+
+    pub(crate) fn source_column(&self, source: &str, row: usize, byte_column: usize) -> u32 {
+        let Some(&line_start) = self.line_starts.get(row) else {
+            return 1;
+        };
+        let raw_line_end = self
+            .line_starts
+            .get(row + 1)
+            .copied()
+            .unwrap_or(source.len());
+        let bytes = source.as_bytes();
+        let mut line_end = raw_line_end;
+        if line_end > line_start && bytes.get(line_end - 1) == Some(&b'\n') {
+            line_end -= 1;
         }
+        if line_end > line_start && bytes.get(line_end - 1) == Some(&b'\r') {
+            line_end -= 1;
+        }
+        let line = source.get(line_start..line_end).unwrap_or("");
+        byte_column_to_char_column(line, byte_column)
     }
-    if current_row < row {
-        return 1;
-    }
-    // Find the line text from line_start to the next newline or end.
-    let line_end = bytes
-        .get(line_start..)
-        .and_then(|slice| slice.iter().position(|&b| b == b'\n'))
-        .map(|pos| line_start + pos)
-        .unwrap_or(bytes.len());
-    // Handle \r\n: strip trailing \r if present.
-    let line_end = if line_end > line_start && bytes.get(line_end - 1) == Some(&b'\r') {
-        line_end - 1
-    } else {
-        line_end
-    };
-    let line = source.get(line_start..line_end).unwrap_or("");
-    byte_column_to_char_column(line, byte_column)
+}
+
+pub(crate) fn source_column(
+    line_index: &SourceLineIndex,
+    source: &str,
+    row: usize,
+    byte_column: usize,
+) -> u32 {
+    line_index.source_column(source, row, byte_column)
 }
 
 pub(crate) fn byte_column_to_char_column(line: &str, byte_column: usize) -> u32 {
@@ -184,4 +194,20 @@ pub(crate) fn byte_column_to_char_column(line: &str, byte_column: usize) -> u32 
         .take_while(|(idx, _)| *idx < byte_column)
         .count() as u32
         + 1
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn source_line_index_preserves_unicode_crlf_and_missing_rows() {
+        let source = "zero\n  café\r\nthird\n";
+        let index = SourceLineIndex::new(source);
+
+        assert_eq!(index.source_column(source, 0, 0), 1);
+        assert_eq!(index.source_column(source, 1, 5), 6);
+        assert_eq!(index.source_column(source, 2, 2), 3);
+        assert_eq!(index.source_column(source, 4, 0), 1);
+    }
 }

@@ -4,9 +4,14 @@ use tree_sitter::{Node, Point};
 use crate::syntax_facts::fingerprint::{index_target_fingerprint, structural_receiver_fingerprint};
 use crate::syntax_kinds::{IndexExpression, RustSyntaxFacts};
 use crate::syntax_tree::node_text;
-use crate::text::source_column;
+use crate::text::{SourceLineIndex, source_column};
 
-pub(super) fn record_index_expression(node: Node<'_>, source: &str, facts: &mut RustSyntaxFacts) {
+pub(super) fn record_index_expression(
+    node: Node<'_>,
+    source: &str,
+    line_index: &SourceLineIndex,
+    facts: &mut RustSyntaxFacts,
+) {
     if node.kind() != "index_expression" {
         return;
     }
@@ -26,7 +31,7 @@ pub(super) fn record_index_expression(node: Node<'_>, source: &str, facts: &mut 
         }
     });
     let line = bracket_point.row as u32 + 1;
-    let column = source_column(source, bracket_point.row, bracket_point.column);
+    let column = source_column(line_index, source, bracket_point.row, bracket_point.column);
     let receiver_node = node
         .child_by_field_name("value")
         .or_else(|| direct_index_receiver_node(node));
