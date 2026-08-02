@@ -5,7 +5,8 @@ structured `kind()` and human-readable message. Downstream tooling should
 branch on the code or kind, not on rendered message text.
 
 `CargoAllowError` intentionally does not implement `PartialEq` or `Eq`.
-Human-readable messages are operator-facing and may gain context; consumers
+Human-readable messages are operator-facing; the current rendering remains
+available for existing callers but is not a durable machine contract. Consumers
 should compare `kind()`, `code()`, and structured fields instead.
 
 ## Process exit codes
@@ -50,8 +51,8 @@ can be assigned a more specific kind.
 
 When a parser has source text and a TOML byte span, `CargoAllowError::location()`
 returns an optional `CargoAllowErrorLocation` with the source path and one-based
-line and character column. The human-readable message remains stable for
-existing callers; machine consumers should use `code()`, `kind()`, and
+line and character column. The human-readable message remains operator-facing
+for existing callers; machine consumers should use `code()`, `kind()`, and
 `location()` instead of parsing `Display` output. Errors created without a
 source span continue to return `None`.
 
