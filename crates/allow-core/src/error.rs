@@ -342,16 +342,6 @@ impl std::error::Error for CargoAllowError {
     }
 }
 
-/// `PartialEq` compares kind + message only (not the cause chain), so tests
-/// that `assert_eq!` on constructed errors are not sensitive to cause text.
-impl PartialEq for CargoAllowError {
-    fn eq(&self, other: &Self) -> bool {
-        self.kind == other.kind && self.message == other.message
-    }
-}
-
-impl Eq for CargoAllowError {}
-
 /// Auto-convert `io::Error` so `?` works at IO call sites without manual
 /// `map_err`. The kind is [`CargoAllowErrorKind::Unknown`]; callers that want
 /// a specific kind (e.g. `Inventory`) should use `with_kind` explicitly.

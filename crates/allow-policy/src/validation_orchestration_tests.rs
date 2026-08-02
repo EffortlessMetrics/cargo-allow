@@ -46,7 +46,7 @@ fn valid_policy() -> AllowConfig {
 fn validate_policy_returns_ok_for_valid_policy() {
     let cfg = valid_policy();
 
-    assert_eq!(validate_policy(&cfg), Ok(()));
+    assert!(validate_policy(&cfg).is_ok());
 }
 
 #[test]
@@ -84,7 +84,7 @@ fn validate_policy_with_reportable_evidence_accepts_invalid_local_links() {
     entry.links = vec!["doc:docs/../safety.md".to_string()];
     cfg.allow = vec![entry];
 
-    assert_eq!(validate_policy_with_reportable_evidence(&cfg), Ok(()));
+    assert!(validate_policy_with_reportable_evidence(&cfg).is_ok());
 }
 
 #[test]

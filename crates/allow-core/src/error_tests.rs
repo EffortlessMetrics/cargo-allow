@@ -219,18 +219,6 @@ fn from_io_error_exposes_source_without_duplicate_display_cause() {
 }
 
 #[test]
-fn partialeq_compares_kind_and_message_not_causes() {
-    let a = CargoAllowError::with_kind(CargoAllowErrorKind::Scan, "read error");
-    let b = CargoAllowError::with_kind(CargoAllowErrorKind::Scan, "read error");
-    // Same kind + message -> equal even if causes differ.
-    let a_with_cause = a.with_cause(&std::io::Error::other("boom"));
-    assert_eq!(a_with_cause, b);
-    // Different kind -> not equal.
-    let c = CargoAllowError::with_kind(CargoAllowErrorKind::Unknown, "read error");
-    assert_ne!(b, c);
-}
-
-#[test]
 fn from_io_error_preserves_kind_and_message() {
     let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "no such file");
     let err: CargoAllowError = io_err.into();

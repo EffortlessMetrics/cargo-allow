@@ -40,7 +40,7 @@ pub(crate) fn validate_lifecycle(entry: &AllowEntry) -> CargoAllowResult<()> {
     let expires = parse_expires(&entry.id, entry.lifecycle.expires.as_deref())?;
 
     if let (Some(created), Some(review_after)) = (created, review_after)
-        && created.days_until(review_after) < 0
+        && created > review_after
     {
         return Err(CargoAllowError::new(format!(
             "{} review_after must not be before created",
@@ -48,7 +48,7 @@ pub(crate) fn validate_lifecycle(entry: &AllowEntry) -> CargoAllowResult<()> {
         )));
     }
     if let (Some(created), Some(expires)) = (created, expires)
-        && created.days_until(expires) < 0
+        && created > expires
     {
         return Err(CargoAllowError::new(format!(
             "{} expires must not be before created",
@@ -56,7 +56,7 @@ pub(crate) fn validate_lifecycle(entry: &AllowEntry) -> CargoAllowResult<()> {
         )));
     }
     if let (Some(review_after), Some(expires)) = (review_after, expires)
-        && review_after.days_until(expires) < 0
+        && review_after > expires
     {
         return Err(CargoAllowError::new(format!(
             "{} review_after must not be after expires",
@@ -77,8 +77,8 @@ pub(crate) fn validate_lifecycle(entry: &AllowEntry) -> CargoAllowResult<()> {
                 entry.id
             ))
         })?;
-        let days = start.days_until(expires);
-        if !(0..=BASELINE_DEBT_MAX_DAYS).contains(&days) {
+        let latest_allowed_expiry = start.add_days(BASELINE_DEBT_MAX_DAYS);
+        if expires > latest_allowed_expiry {
             return Err(CargoAllowError::new(format!(
                 "{} baseline_debt expires must be within {BASELINE_DEBT_MAX_DAYS} days",
                 entry.id

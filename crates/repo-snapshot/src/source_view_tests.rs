@@ -50,10 +50,10 @@ fn staged_view_reads_indexed_bytes_and_inventory() -> Result<(), String> {
         view.inventory().source,
         InventorySource::GitIndexStagedCandidate
     );
-    assert_eq!(
-        view.read_text(Path::new("value.txt")),
-        Ok("staged\n".to_string())
-    );
+    let staged_text = view
+        .read_text(Path::new("value.txt"))
+        .map_err(|error| error.to_string())?;
+    assert_eq!(staged_text, "staged\n");
     assert!(view.source_identity().is_some());
     let _ = fs::remove_dir_all(root);
     Ok(())

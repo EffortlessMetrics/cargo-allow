@@ -42,7 +42,7 @@ fn validate_allow_entries_returns_ok_for_valid_entry_batch() {
 
     let result = validate_allow_entries(&entries, &requirements);
 
-    assert_eq!(result, Ok(()));
+    assert!(result.is_ok());
 }
 
 #[test]
@@ -83,7 +83,7 @@ fn validate_allow_entries_with_reportable_evidence_accepts_invalid_local_links()
 
     let result = validate_allow_entries_with_reportable_evidence(&[entry], &requirements);
 
-    assert_eq!(result, Ok(()));
+    assert!(result.is_ok());
 }
 
 #[test]

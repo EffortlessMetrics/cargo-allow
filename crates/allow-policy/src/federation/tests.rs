@@ -50,14 +50,19 @@ fn parse_federation_config_reads_ledgers_table() {
 }
 
 #[test]
-fn ledger_role_parse_is_case_insensitive_and_actionable() {
-    assert_eq!(LedgerRole::parse(" CANONICAL "), Ok(LedgerRole::Canonical));
-    assert_eq!(LedgerRole::parse("Mirror"), Ok(LedgerRole::Mirror));
+fn ledger_role_parse_is_case_insensitive_and_actionable() -> Result<(), String> {
+    let canonical = LedgerRole::parse(" CANONICAL ")
+        .map_err(|err| format!("canonical ledger role should parse: {err}"))?;
+    let mirror = LedgerRole::parse("Mirror")
+        .map_err(|err| format!("mirror ledger role should parse: {err}"))?;
+    assert_eq!(canonical, LedgerRole::Canonical);
+    assert_eq!(mirror, LedgerRole::Mirror);
     let error = LedgerRole::parse("aggregate")
         .expect_err("unknown ledger role should fail")
         .to_string();
     assert!(error.contains("unsupported ledger role `aggregate`"));
     assert!(error.contains("valid values: canonical, mirror, imported"));
+    Ok(())
 }
 
 #[test]

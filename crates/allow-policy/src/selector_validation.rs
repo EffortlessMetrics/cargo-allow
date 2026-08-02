@@ -76,7 +76,7 @@ mod tests {
         let mut source = entry("source", FindingKind::Panic);
         source.selector.ast_kind = Some("method_call".to_string());
         source.selector.callee = Some("unwrap".to_string());
-        assert_eq!(validate_selector(&source), Ok(()));
+        assert!(validate_selector(&source).is_ok());
 
         source.selector.normalized_snippet_hash = Some("   ".to_string());
         let blank = validate_selector(&source)
@@ -103,7 +103,7 @@ mod tests {
         let mut non_source = entry("non-source", FindingKind::NonRustFile);
         non_source.selector.glob = Some("docs/**".to_string());
 
-        assert_eq!(validate_selector(&non_source), Ok(()));
+        assert!(validate_selector(&non_source).is_ok());
     }
 
     #[test]
@@ -146,11 +146,8 @@ mod tests {
             column: 5,
         });
 
-        assert_eq!(validate_source_hints(&hinted), Ok(()));
-        assert_eq!(
-            validate_source_hints(&entry("empty", FindingKind::NonRustFile)),
-            Ok(())
-        );
+        assert!(validate_source_hints(&hinted).is_ok());
+        assert!(validate_source_hints(&entry("empty", FindingKind::NonRustFile)).is_ok());
     }
 
     fn entry(id: &str, kind: FindingKind) -> AllowEntry {

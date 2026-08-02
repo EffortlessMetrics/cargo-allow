@@ -153,14 +153,14 @@ mod tests {
             default_mode: "no-new".to_string(),
         };
 
-        assert_eq!(validate_workspace(&workspace), Ok(()));
+        assert!(validate_workspace(&workspace).is_ok());
 
         for default_mode in ["audit", "strict", "release"] {
             let workspace = WorkspaceConfig {
                 default_mode: default_mode.to_string(),
                 ..workspace.clone()
             };
-            assert_eq!(validate_workspace(&workspace), Ok(()), "{default_mode}");
+            assert!(validate_workspace(&workspace).is_ok(), "{default_mode}");
         }
     }
 
@@ -188,17 +188,17 @@ mod tests {
     #[test]
     fn validate_allow_entry_scope_accepts_path_glob_and_selector_glob_forms() {
         let path_entry = entry("path-entry");
-        assert_eq!(validate_allow_entry_scope(&path_entry), Ok(()));
+        assert!(validate_allow_entry_scope(&path_entry).is_ok());
 
         let mut matching_path_selector = entry("path-selector");
         matching_path_selector.selector.glob = Some(r"docs\policy.md".to_string());
-        assert_eq!(validate_allow_entry_scope(&matching_path_selector), Ok(()));
+        assert!(validate_allow_entry_scope(&matching_path_selector).is_ok());
 
         let mut glob_entry = entry("glob-entry");
         glob_entry.path = None;
         glob_entry.glob = Some(r"docs\**".to_string());
         glob_entry.selector.glob = Some("docs/**".to_string());
-        assert_eq!(validate_allow_entry_scope(&glob_entry), Ok(()));
+        assert!(validate_allow_entry_scope(&glob_entry).is_ok());
     }
 
     #[test]
@@ -262,13 +262,13 @@ mod tests {
 
         let mut normalized_match = entry("normalized-match");
         normalized_match.selector.glob = Some(r"docs\policy.md".to_string());
-        assert_eq!(validate_scope_consistency(&normalized_match), Ok(()));
+        assert!(validate_scope_consistency(&normalized_match).is_ok());
     }
 
     #[test]
     fn validate_unique_workspace_globs_accepts_unique_and_reports_normalized_duplicates() {
         let unique = vec!["target/**".to_string(), "vendor/**".to_string()];
-        assert_eq!(validate_unique_workspace_globs("ignored", &unique), Ok(()));
+        assert!(validate_unique_workspace_globs("ignored", &unique).is_ok());
 
         let duplicate = vec!["vendor/**".to_string(), r"vendor\**".to_string()];
         assert_eq!(

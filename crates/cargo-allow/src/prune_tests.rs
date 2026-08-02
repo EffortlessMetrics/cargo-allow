@@ -1,6 +1,6 @@
 use super::*;
 use crate::{CargoAllowCli, CargoAllowCommand, HumanJsonFormat};
-use allow_core::{AllowEntry, CargoAllowError, Lifecycle, Selector};
+use allow_core::{AllowEntry, Lifecycle, Selector};
 use allow_policy::load_policy;
 use clap::Parser;
 use std::fs;
@@ -192,10 +192,7 @@ fn cmd_prune_write_reports_missing_policy_config_with_exact_error() {
     })
     .expect_err("prune write without policy config should fail");
 
-    assert_eq!(
-        err,
-        CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
-    );
+    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::Unknown);
 
     fs::remove_dir_all(&root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));

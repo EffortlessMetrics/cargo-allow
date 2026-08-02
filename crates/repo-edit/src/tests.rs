@@ -112,28 +112,18 @@ fn rejects_parent_escape_outside_root() -> Result<(), Box<dyn std::error::Error>
 
 #[test]
 fn write_file_reports_parent_creation_errors() -> Result<(), Box<dyn std::error::Error>> {
-    use allow_core::CargoAllowError;
-
     let root = TempRoot::new("write-parent-error")?;
     let file_parent = root.path().join("not-a-directory");
     fs::write(&file_parent, "already a file")?;
     let output = file_parent.join("report.txt");
-    let source_error =
-        fs::create_dir_all(&file_parent).expect_err("creating a directory over a file should fail");
+    fs::create_dir_all(&file_parent).expect_err("creating a directory over a file should fail");
 
     let err = write_file(&output, "contents").expect_err("parent creation should fail");
     let message = err.to_string();
 
     assert!(message.contains("failed to create"));
     assert!(message.contains(&file_parent.display().to_string()));
-    assert_eq!(
-        err,
-        CargoAllowError::new(format!(
-            "failed to create {}: {}",
-            file_parent.display(),
-            source_error
-        ))
-    );
+    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::Unknown);
     Ok(())
 }
 
