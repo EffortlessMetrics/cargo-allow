@@ -146,6 +146,32 @@ claim boundary: {}",
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+
+    fn output_path(format: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "cargo-allow-hook-plan-{format}-{}",
+            std::process::id()
+        ))
+    }
+
+    fn render_to_file(stage: HookStage, format: HookPlanFormat) -> Result<String, String> {
+        let path = output_path(match format {
+            HookPlanFormat::Human => "human",
+            HookPlanFormat::Json => "json",
+        });
+        let args = HooksArgs {
+            command: HooksCommand::Plan(HookPlanArgs {
+                stage,
+                format,
+                output: Some(path.clone()),
+            }),
+        };
+        let result = cmd_hooks(&args).map_err(|error| error.to_string());
+        let contents = fs::read_to_string(&path).map_err(|error| error.to_string());
+        let _ = fs::remove_file(&path);
+        result.and(contents)
+    }
 
     #[test]
     fn plan_json_is_subject_honest_and_non_mutating() -> Result<(), String> {
@@ -195,6 +221,26 @@ mod tests {
             if !human.contains(text) {
                 return Err(format!("human hook plan omitted `{text}`"));
             }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn command_emits_human_and_json_plans_to_requested_files() -> Result<(), String> {
+        let human = render_to_file(HookStage::PrePush, HookPlanFormat::Human)?;
+        if !human.starts_with("Local hook plan (preview only)")
+            || !human.contains("stage: pre-push")
+        {
+            return Err("human hook plan output did not preserve the selected stage".to_string());
+        }
+
+        let json = render_to_file(HookStage::PreCommit, HookPlanFormat::Json)?;
+        let value: serde_json::Value =
+            serde_json::from_str(&json).map_err(|error| error.to_string())?;
+        if value.get("stage").and_then(serde_json::Value::as_str) != Some("pre-commit")
+            || value.get("schema").and_then(serde_json::Value::as_str) != Some(PLAN_SCHEMA)
+        {
+            return Err("JSON hook plan output did not preserve its contract".to_string());
         }
         Ok(())
     }
