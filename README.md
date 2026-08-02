@@ -234,18 +234,24 @@ Inventory current exceptions:
 cargo-allow audit
 ```
 
+Choose **one** bootstrap path:
+
 Start strict, for a small repo:
 
 ```bash
 cargo-allow init --root .
 ```
 
-Adopt no-new-debt, for an existing repo:
+For an existing repo with retained findings, adopt no-new-debt instead:
 
 ```bash
 cargo-allow propose --write policy/allow.toml
 cargo-allow check --mode no-new
 ```
+
+These are alternative starting points. `init` creates a strict starter
+ledger; `propose --write` generates a reviewed baseline candidate for an
+existing tree and writes to the same default policy path.
 
 Generated baseline entries are intentionally uncomfortable. Review them, narrow
 them, add evidence, or remove them.
@@ -295,6 +301,13 @@ cargo-allow check \
 Upload `target/cargo-allow/` as a CI artifact, especially on failure.
 
 ## Example Review Signal
+
+**Illustrative only** — `allow-0042`, `crates/parser/src/span.rs`, and the
+evidence path below are placeholder values, not a runnable fixture in this
+repository. For a live first-hour journey, follow
+[Getting started](docs/getting-started.md) or
+[Manage an exception](docs/how-to/manage-an-exception.md) against your own
+tree.
 
 ```text
 REVIEW REQUIRED allow-0042
