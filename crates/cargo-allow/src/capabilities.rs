@@ -526,8 +526,7 @@ mod tests {
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_else(|error| std::panic::panic_any(error.to_string()))
-                .as_nanos()
+                .map_or(0, |duration| duration.as_nanos())
         ))
     }
 
@@ -629,7 +628,12 @@ mod tests {
         fs::remove_file(&excluded_path).map_err(|error| error.to_string())?;
         let excluded_json: serde_json::Value =
             serde_json::from_str(&excluded).map_err(|error| error.to_string())?;
-        if excluded_json["capabilities"].as_array().map_or(0, Vec::len) != 5 {
+        if excluded_json
+            .get("capabilities")
+            .and_then(serde_json::Value::as_array)
+            .map_or(0, Vec::len)
+            != 5
+        {
             return Err("not-included filter returned an unexpected row count".to_string());
         }
 
@@ -646,10 +650,17 @@ mod tests {
         fs::remove_file(&finding_path).map_err(|error| error.to_string())?;
         let finding_json: serde_json::Value =
             serde_json::from_str(&finding).map_err(|error| error.to_string())?;
-        let rows = finding_json["capabilities"]
-            .as_array()
+        let rows = finding_json
+            .get("capabilities")
+            .and_then(serde_json::Value::as_array)
             .ok_or_else(|| "filtered capability output was not an array".to_string())?;
-        if rows.len() != 1 || rows[0]["sensor_id"] != "rust.panic.unwrap" {
+        if rows.len() != 1
+            || rows
+                .first()
+                .and_then(|row| row.get("sensor_id"))
+                .and_then(serde_json::Value::as_str)
+                != Some("rust.panic.unwrap")
+        {
             return Err("kind/family filter returned an unexpected row".to_string());
         }
         Ok(())
