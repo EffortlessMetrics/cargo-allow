@@ -6,7 +6,13 @@ use std::time::Duration;
 
 use crate::atomic_write::sibling_tmp_path;
 use crate::mutation_lock::{MutationLock, lock_path};
-use crate::{assert_path_within_root, canonicalize_lexically, write_file, write_file_no_overwrite};
+use crate::{
+    assert_path_within_root, canonicalize_lexically, write_file, write_file_create_new_atomic,
+    write_file_no_overwrite,
+};
+
+#[cfg(unix)]
+use crate::write_file_create_new_atomic_with_permissions;
 
 #[test]
 fn alias_convergent_paths_acquire_the_same_lock() {
@@ -139,6 +145,80 @@ fn write_file_no_overwrite_rejects_existing_path_without_force()
 
     assert!(err.to_string().contains("already exists"));
     assert_eq!(fs::read_to_string(&output)?, "original");
+    Ok(())
+}
+
+#[test]
+fn write_file_create_new_atomic_never_replaces_existing_path()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = TempRoot::new("atomic-create-only")?;
+    let output = root.path().join("hooks/pre-commit");
+
+    write_file_create_new_atomic(&output, "first\n")?;
+    let err = write_file_create_new_atomic(&output, "replacement\n")
+        .expect_err("atomic create-only write should reject an existing target");
+
+    assert!(err.to_string().contains("refusing to overwrite"));
+    assert_eq!(fs::read_to_string(&output)?, "first\n");
+    Ok(())
+}
+
+#[test]
+fn write_file_create_new_atomic_reports_parent_creation_failure()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = TempRoot::new("atomic-create-parent-error")?;
+    let parent = root.path().join("not-a-directory");
+    fs::write(&parent, "already a file")?;
+    let output = parent.join("pre-commit");
+
+    let error = write_file_create_new_atomic(&output, "hook\n")
+        .expect_err("atomic create should reject a file as the parent directory");
+    if !error
+        .to_string()
+        .contains("failed to create parent directory")
+    {
+        return Err("parent creation error omitted its operation".into());
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn write_file_create_new_atomic_applies_requested_permissions()
+-> Result<(), Box<dyn std::error::Error>> {
+    use std::os::unix::fs::PermissionsExt;
+
+    let root = TempRoot::new("atomic-create-only-mode")?;
+    let output = root.path().join("hooks/pre-commit");
+
+    write_file_create_new_atomic_with_permissions(
+        &output,
+        "#!/bin/sh\nexit 0\n",
+        Some(fs::Permissions::from_mode(0o755)),
+    )?;
+
+    let mode = fs::metadata(&output)?.permissions().mode() & 0o777;
+    assert_eq!(mode, 0o755);
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn write_file_create_new_atomic_reports_hard_link_install_failure()
+-> Result<(), Box<dyn std::error::Error>> {
+    use std::os::unix::fs::symlink;
+
+    let root = TempRoot::new("atomic-create-hard-link-error")?;
+    let output = root.path().join("hooks/pre-commit");
+    let missing_target = root.path().join("missing-target");
+    fs::create_dir_all(output.parent().ok_or("hook output has no parent")?)?;
+    symlink(&missing_target, &output)?;
+
+    let error = write_file_create_new_atomic(&output, "hook\n")
+        .expect_err("dangling target should prevent hard-link installation");
+    if !error.to_string().contains("hard-link support") {
+        return Err("hard-link failure did not name the filesystem requirement".into());
+    }
     Ok(())
 }
 

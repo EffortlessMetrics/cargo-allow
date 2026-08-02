@@ -19,7 +19,10 @@ pub use apply_receipt::{
     APPLY_RECEIPT_CLAIM_BOUNDARY, APPLY_RECEIPT_SCHEMA_ID, APPLY_RECEIPT_SCHEMA_VERSION,
     ApplyOperation, ApplyReceiptV1, AtomicityClass, TargetOutcome, render_apply_receipt_json,
 };
-pub use atomic_write::{write_file, write_file_no_overwrite};
+pub use atomic_write::{
+    write_file, write_file_create_new_atomic, write_file_create_new_atomic_with_permissions,
+    write_file_no_overwrite,
+};
 pub use containment::assert_path_within_root;
 pub use containment::strip_verbatim_prefix;
 pub use digest::sha256_v1_bytes;

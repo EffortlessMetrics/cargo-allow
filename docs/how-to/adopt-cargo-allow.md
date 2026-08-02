@@ -72,6 +72,26 @@ network, or mutate policy. CI remains the enforcing merge backstop. Safe
 installation, rollback, pinned binary selection, and exact-index enforcement
 are separate capabilities and are not implied by this preview.
 
+For a repository that deliberately uses a direct Git hook, the checked JSON
+plan can be inspected and applied with an explicit acceptance step:
+
+```bash
+cargo-allow hooks plan --stage pre-commit --format json \
+  --output target/cargo-allow/pre-commit-hook-plan.json
+cargo-allow hooks status --stage pre-commit
+cargo-allow hooks apply --plan target/cargo-allow/pre-commit-hook-plan.json --accept
+```
+
+`hooks status` is read-only. `hooks apply` resolves the repository's Git hooks
+directory, validates the plan schema and identity, and atomically creates the
+selected hook only when it is absent. It never overwrites an existing hook:
+unmanaged or mismatched managed content is reported as `ManualMerge` or
+`Conflict` and recorded in the apply receipt. The generated wrapper invokes
+the exact offline `cargo-allow check --mode no-new` command over the tracked
+worktree; it does not claim exact staged-index evidence or install a binary.
+Removal, managed-block composition, and automatic rollback remain separate
+follow-up capabilities.
+
 ## Optional reusable GitHub Action
 
 For hosted Linux CI, cargo-allow also provides a read-only composite Action.

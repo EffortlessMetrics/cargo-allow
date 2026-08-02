@@ -140,6 +140,76 @@ pub fn write_file_no_overwrite(
     sync_parent_directory(path)
 }
 
+/// Atomically create `contents` at `path`, failing if the destination already
+/// exists. The sibling temporary file is flushed and synced before an atomic
+/// hard-link install, so an interrupted write cannot expose partial hook or
+/// configuration contents.
+pub fn write_file_create_new_atomic(
+    path: impl AsRef<Path>,
+    contents: &str,
+) -> CargoAllowResult<()> {
+    write_file_create_new_atomic_with_permissions(path, contents, None)
+}
+
+/// Atomic create-only write with optional destination permissions applied to
+/// the temporary file before it is installed.
+pub fn write_file_create_new_atomic_with_permissions(
+    path: impl AsRef<Path>,
+    contents: &str,
+    permissions: Option<std::fs::Permissions>,
+) -> CargoAllowResult<()> {
+    let path = path.as_ref();
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|error| {
+            CargoAllowError::new(format!(
+                "failed to create parent directory {}: {error}",
+                parent.display()
+            ))
+        })?;
+    }
+    if fs::metadata(path).is_ok() {
+        return Err(CargoAllowError::new(format!(
+            "{} already exists; refusing to overwrite",
+            path.display()
+        )));
+    }
+
+    let (tmp, mut file) = create_unique_temp(path)?;
+    let prepare_result: CargoAllowResult<()> = (|| {
+        file.write_all(contents.as_bytes()).map_err(|error| {
+            CargoAllowError::new(format!("failed to write {}: {error}", tmp.display()))
+        })?;
+        file.flush().map_err(|error| {
+            CargoAllowError::new(format!("failed to flush {}: {error}", tmp.display()))
+        })?;
+        if let Some(permissions) = permissions {
+            fs::set_permissions(&tmp, permissions).map_err(|error| {
+                CargoAllowError::new(format!(
+                    "failed to set permissions for {}: {error}",
+                    tmp.display()
+                ))
+            })?;
+        }
+        file.sync_all().map_err(|error| {
+            CargoAllowError::new(format!("failed to sync {}: {error}", tmp.display()))
+        })?;
+        Ok(())
+    })();
+    if let Err(error) = prepare_result {
+        let _ = fs::remove_file(&tmp);
+        return Err(error);
+    }
+    if let Err(error) = fs::hard_link(&tmp, path) {
+        let _ = fs::remove_file(&tmp);
+        return Err(CargoAllowError::new(format!(
+            "failed to install {} without overwrite: {error}; create-only installation requires hard-link support on this filesystem",
+            path.display()
+        )));
+    }
+    let _ = fs::remove_file(&tmp);
+    sync_parent_directory(path)
+}
+
 fn create_unique_temp(path: &Path) -> CargoAllowResult<(PathBuf, std::fs::File)> {
     let base_name = path
         .file_name()
