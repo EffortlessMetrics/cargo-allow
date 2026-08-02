@@ -15,6 +15,7 @@ const CARGO_TOML: &str = include_str!("../../../Cargo.toml");
 const CI_WORKFLOW: &str = include_str!("../../../.github/workflows/ci.yml");
 const RELEASE_WORKFLOW: &str = include_str!("../../../.github/workflows/release.yml");
 const SUPPORT_DOC: &str = include_str!("../../../SUPPORT.md");
+const GETTING_STARTED: &str = include_str!("../../../docs/getting-started.md");
 const ADOPTION_GUIDE: &str = include_str!("../../../docs/how-to/adopt-cargo-allow.md");
 const PUBLISHED_REGISTRY: &str =
     include_str!("../../../docs/dogfood/fixtures/getting-started/published-command-registry.toml");
@@ -74,6 +75,20 @@ fn published_version_matches_the_command_registry_snapshot() {
         registry_version,
         "support matrix published_version must match the published command registry"
     );
+}
+
+/// Keep the first-hour evidence vocabulary aligned with the parser's canonical
+/// prefixes. This is a text-level documentation contract; it does not prove
+/// that an evidence target exists or that an external tool was executed.
+#[test]
+fn getting_started_documents_all_canonical_evidence_prefixes() {
+    let guide = normalize_contract_text(GETTING_STARTED);
+    for prefix in allow_policy::canonical_evidence_prefixes() {
+        assert!(
+            guide.contains(&format!("`{prefix}:`")),
+            "getting-started is missing canonical evidence prefix `{prefix}:`"
+        );
+    }
 }
 
 /// The pre-commit definition must keep the adoption hook aligned with the
