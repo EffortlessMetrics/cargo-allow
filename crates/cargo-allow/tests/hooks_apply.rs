@@ -499,6 +499,76 @@ fn hooks_remove_refuses_receipt_for_a_different_hook_path() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn hooks_remove_refuses_malformed_and_stale_apply_receipts() -> TestResult {
+    let fixture = Fixture::new("remove-invalid-receipt")?;
+    init_git(&fixture.path)?;
+    fs::create_dir_all(fixture.path.join("target"))?;
+    let malformed = fixture.path.join("target/malformed-receipt.json");
+    let malformed_arg = path_arg(&malformed);
+    fs::write(&malformed, "not-json")?;
+    let output = run(
+        &fixture.path,
+        &["hooks", "remove", "--receipt", &malformed_arg, "--accept"],
+    )?;
+    require(
+        !output.status.success() && String::from_utf8_lossy(&output.stderr).contains("parse"),
+        "malformed apply receipt was accepted",
+    )?;
+
+    let plan = fixture.path.join("target/hook-plan.json");
+    let apply_receipt = fixture.path.join("target/hook-receipt.json");
+    let stale_receipt = fixture.path.join("target/stale-receipt.json");
+    let plan_arg = path_arg(&plan);
+    let apply_receipt_arg = path_arg(&apply_receipt);
+    let stale_receipt_arg = path_arg(&stale_receipt);
+    run_success(
+        &fixture.path,
+        &["hooks", "plan", "--format", "json", "--output", &plan_arg],
+    )?;
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "apply",
+            "--plan",
+            &plan_arg,
+            "--accept",
+            "--receipt",
+            &apply_receipt_arg,
+        ],
+    )?;
+    let mut receipt: Value = serde_json::from_slice(&fs::read(&apply_receipt)?)?;
+    receipt
+        .as_object_mut()
+        .ok_or("apply receipt was not a JSON object")?
+        .insert(
+            "plan_identity".to_string(),
+            Value::String("stale-plan".to_string()),
+        );
+    fs::write(&stale_receipt, serde_json::to_vec_pretty(&receipt)?)?;
+    let output = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "remove",
+            "--receipt",
+            &stale_receipt_arg,
+            "--accept",
+        ],
+    )?;
+    require(
+        !output.status.success()
+            && String::from_utf8_lossy(&output.stderr).contains("exact successful"),
+        "stale apply receipt was accepted",
+    )?;
+    require(
+        fixture.path.join(".git/hooks/pre-commit").is_file(),
+        "stale apply receipt removed the managed hook",
+    )?;
+    Ok(())
+}
+
 #[cfg(unix)]
 #[test]
 fn hooks_remove_refuses_symbolic_link_even_when_target_bytes_match() -> TestResult {
