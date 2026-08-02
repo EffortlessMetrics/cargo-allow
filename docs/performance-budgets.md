@@ -24,11 +24,11 @@ Run the local smoke with the default debug profile, or select release to match
 the hosted profile:
 
 ```bash
-scripts/perf-budget-smoke.sh
-PROFILE=release scripts/perf-budget-smoke.sh
+bash scripts/perf-budget-smoke.sh
+PROFILE=release bash scripts/perf-budget-smoke.sh
 ```
 
-Each measured command must remain below the conservative 60,000 ms
+Each measured command must remain at or below the conservative 60,000 ms
 catastrophic-regression ceiling. Advisory product targets below are tracked
 separately and are not asserted by this harness.
 

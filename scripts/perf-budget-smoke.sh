@@ -45,8 +45,27 @@ sha256_file() {
   elif command -v shasum >/dev/null 2>&1; then
     shasum -a 256 "$1" | cut -d ' ' -f 1
   else
-    fail "no SHA-256 utility is available"
+    printf 'operator-latency: no SHA-256 utility is available\n' >&2
+    return 1
   fi
+}
+
+now_ms() {
+  local value
+  if value="$(date +%s%N 2>/dev/null)" && [[ "${value}" =~ ^[0-9]+$ ]]; then
+    printf '%s' "$(( value / 1000000 ))"
+  else
+    python3 -c 'import time; print(time.time_ns() // 1_000_000)'
+  fi
+}
+
+encode_argv() {
+  python3 - "$@" <<'PY'
+import json
+import sys
+
+print(json.dumps(sys.argv[1:], separators=(",", ":")))
+PY
 }
 
 relative_path() {
@@ -71,15 +90,6 @@ from pathlib import Path
 
 receipt_path, metrics_path, profile, ceiling, result, failure = sys.argv[1:]
 
-argv_by_name = {
-    "first_audit": ["cargo-allow", "audit", "--format", "json", "--output", "artifacts/first-audit.json"],
-    "warm_check": ["cargo-allow", "check", "--mode", "no-new", "--format", "markdown", "--receipt", "artifacts/warm-check.receipt.json", "--output", "artifacts/warm-check.md"],
-    "why_fast_path": ["cargo-allow", "why", "--kind", "non_rust_file", "--path", "scripts/release-install-smoke.sh", "--line", "1", "--format", "json", "--output", "artifacts/why-fast-path.json"],
-    "worklist": ["cargo-allow", "worklist", "--format", "json", "--output", "artifacts/worklist.json"],
-    "diff_base": ["cargo-allow", "diff", "--base", "HEAD~1", "--format", "markdown", "--output", "artifacts/diff-base.md"],
-    "warm_audit": ["cargo-allow", "audit", "--format", "json", "--output", "artifacts/warm-audit.json"],
-}
-
 def version(command):
     try:
         return subprocess.check_output(command, text=True, stderr=subprocess.DEVNULL).strip()
@@ -93,13 +103,19 @@ def records():
     rows = []
     for line in path.read_text(encoding="utf-8").splitlines():
         fields = line.split("\t")
-        if len(fields) != 8 or fields[1] not in argv_by_name:
+        if len(fields) != 9:
             continue
-        phase, name, elapsed, artifact, digest, semantic, semantic_digest, status = fields
+        phase, name, elapsed, artifact, digest, semantic, semantic_digest, status, argv_json = fields
+        try:
+            argv = json.loads(argv_json)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(argv, list) or not all(isinstance(arg, str) for arg in argv):
+            continue
         rows.append({
             "name": name,
             "phase": phase,
-            "argv": argv_by_name[name],
+            "argv": argv,
             "elapsed_ms": int(elapsed) if elapsed else None,
             "status": status,
             "artifact": {"path": artifact, "sha256": digest} if artifact else None,
@@ -118,7 +134,7 @@ payload = {
     "result": result,
     "binary": {
         "path": os.environ.get("PERF_BINARY_REL", "unknown"),
-        "sha256": os.environ.get("PERF_BINARY_SHA256", "unknown"),
+        "sha256": os.environ.get("PERF_BINARY_SHA256"),
         "profile": profile,
     },
     "host": {
@@ -176,6 +192,8 @@ trap finish EXIT
 [[ "${hard_ceiling_ms}" =~ ^[0-9]+$ ]] || \
   fail "HARD_CEILING_MS must be a non-negative integer"
 command -v python3 >/dev/null 2>&1 || fail "python3 is required to write the JSON receipt"
+command -v sha256sum >/dev/null 2>&1 || command -v shasum >/dev/null 2>&1 || \
+  fail "no SHA-256 utility is available"
 
 binary="${CARGO_ALLOW_BIN:-}"
 if [[ -z "${binary}" ]]; then
@@ -192,15 +210,19 @@ if [[ ! -x "${binary}" && -x "${binary}.exe" ]]; then
 fi
 [[ -x "${binary}" ]] || fail "cargo-allow binary is not executable: ${binary}"
 
-export PERF_BINARY_REL="$(relative_path "${binary}")"
-export PERF_BINARY_SHA256="$(sha256_file "${binary}")"
-export PERF_TRACKED_FILES="$(git ls-files | wc -l | tr -d '[:space:]')"
-export PERF_POLICY_ENTRIES="$(grep -c '^\[\[allow\]\]' policy/allow.toml || true)"
+PERF_BINARY_REL="$(relative_path "${binary}")"
+PERF_BINARY_SHA256="$(sha256_file "${binary}")"
+PERF_TRACKED_FILES="$(git ls-files | wc -l | tr -d '[:space:]')"
+PERF_POLICY_ENTRIES="$(grep -c '^\[\[allow\]\]' policy/allow.toml 2>/dev/null || printf '0')"
+export PERF_BINARY_REL PERF_BINARY_SHA256 PERF_TRACKED_FILES PERF_POLICY_ENTRIES
 
 record_skipped() {
   local phase="$1" name="$2"
-  printf '%s\t%s\t\t\t\t\t\tskipped\n' \
-    "${phase}" "${name}" >>"${metrics}"
+  shift 2
+  local argv_json
+  argv_json="$(encode_argv "$@")"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "${phase}" "${name}" "" "" "" "" "" "skipped" "${argv_json}" >>"${metrics}"
 }
 
 measure() {
@@ -210,18 +232,19 @@ measure() {
   local semantic="${output_dir}/${semantic_rel}"
   local stdout_path="${run_dir}/${name}.stdout"
   local stderr_path="${run_dir}/${name}.stderr"
-  local start end elapsed digest semantic_digest
+  local start end elapsed digest semantic_digest argv_json
 
   rm -f "${artifact}" "${semantic}"
   mkdir -p "$(dirname "${artifact}")" "$(dirname "${semantic}")"
-  start="$(date +%s%N)"
+  argv_json="$(encode_argv "$@")"
+  start="$(now_ms)"
   if ! "${binary}" "$@" >"${stdout_path}" 2>"${stderr_path}"; then
     cat "${stdout_path}" >&2
     cat "${stderr_path}" >&2
     fail "${name} command failed"
   fi
-  end="$(date +%s%N)"
-  elapsed=$(( (end - start) / 1000000 ))
+  end="$(now_ms)"
+  elapsed=$(( end - start ))
   [[ -s "${artifact}" ]] || fail "${name} did not produce ${artifact_rel}"
   [[ -s "${semantic}" ]] || fail "${name} did not produce ${semantic_rel}"
   grep -Fq "${marker}" "${semantic}" || \
@@ -231,9 +254,9 @@ measure() {
   fi
   digest="$(sha256_file "${artifact}")"
   semantic_digest="$(sha256_file "${semantic}")"
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\tpassed\n' \
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
     "${phase}" "${name}" "${elapsed}" "${artifact_rel}" "${digest}" \
-    "${semantic_rel}" "${semantic_digest}" >>"${metrics}"
+    "${semantic_rel}" "${semantic_digest}" "passed" "${argv_json}" >>"${metrics}"
   log "${name}: ${elapsed}ms"
 }
 
@@ -272,7 +295,8 @@ if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
     diff --base HEAD~1 --format markdown --output "${artifact_dir}/diff-base.md"
 else
   log "skipping diff: HEAD~1 is unavailable"
-  record_skipped "targeted" "diff_base"
+  record_skipped "targeted" "diff_base" \
+    diff --base HEAD~1 --format markdown --output "${artifact_dir}/diff-base.md"
 fi
 
 log "measuring warm audit"

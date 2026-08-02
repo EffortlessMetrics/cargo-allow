@@ -54,7 +54,10 @@
       "required": ["path", "sha256", "profile"],
       "properties": {
         "path": { "type": "string" },
-        "sha256": { "type": "string" },
+        "sha256": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{64}$"
+        },
         "profile": { "enum": ["debug", "release"] }
       }
     },
@@ -116,7 +119,23 @@
         "status": { "enum": ["passed", "skipped"] },
         "artifact": { "$ref": "#/$defs/digest" },
         "semantic_artifact": { "$ref": "#/$defs/digest" }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": { "const": "passed" }
+            }
+          },
+          "then": {
+            "properties": {
+              "elapsed_ms": { "type": "integer", "minimum": 0 },
+              "artifact": { "type": "object" },
+              "semantic_artifact": { "type": "object" }
+            }
+          }
+        }
+      ]
     },
     "digest": {
       "type": ["object", "null"],
@@ -124,7 +143,10 @@
       "required": ["path", "sha256"],
       "properties": {
         "path": { "type": "string" },
-        "sha256": { "type": "string" }
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
       }
     },
     "failure": {

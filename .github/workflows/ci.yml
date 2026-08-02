@@ -182,6 +182,7 @@ jobs:
 
           receipt_path = Path("target/perf-budget/operator-latency.receipt.json")
           schema_path = Path("docs/schemas/operator-latency.schema.json")
+          assert receipt_path.is_file(), f"missing receipt: {receipt_path}; see the harness step output"
           receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
           schema = json.loads(schema_path.read_text(encoding="utf-8"))
           assert schema["$id"].endswith("operator-latency.v1.schema.json")
@@ -190,7 +191,11 @@ jobs:
           assert receipt["binary"]["profile"] == "release"
           assert len(receipt["samples"]) == 6
           assert all(sample["status"] == "passed" for sample in receipt["samples"])
-          assert all(sample["elapsed_ms"] <= receipt["budget"]["ceiling_ms"] for sample in receipt["samples"])
+          ceiling = receipt["budget"]["ceiling_ms"]
+          assert all(
+              isinstance(sample["elapsed_ms"], int) and sample["elapsed_ms"] <= ceiling
+              for sample in receipt["samples"]
+          )
           print(f"validated {len(receipt['samples'])} operator-latency samples")
           PY
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
