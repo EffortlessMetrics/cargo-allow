@@ -21,7 +21,12 @@
     "policy_before_digest": { "$ref": "#/$defs/sha256_v1" },
     "policy_after_digest": { "$ref": "#/$defs/sha256_v1" },
     "added_allow_id": { "type": "string", "minLength": 1 },
-    "targeted_recheck": { "const": "not_executed" },
+    "targeted_recheck": {
+      "anyOf": [
+        { "enum": ["matched", "still_new", "no_outcome", "not_executed"] },
+        { "type": "string", "pattern": "^unexpected:.+$" }
+      ]
+    },
     "full_check_argv": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
   },
   "$defs": {

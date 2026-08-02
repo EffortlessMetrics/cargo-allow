@@ -196,6 +196,31 @@ fn schema_index_documents_api_contract_change_rules() {
 }
 
 #[test]
+fn schema_index_documents_targeted_recheck_vocabulary() {
+    let index = normalize_lf(include_str!("../../../docs/schemas/README.md"));
+
+    for value in ["matched", "still_new", "no_outcome", "unexpected:<status>"] {
+        assert!(
+            index.contains(value),
+            "schema index should document targeted_recheck value {value}"
+        );
+    }
+    assert!(
+        index.contains("renderer-only receipt may report `not_executed`"),
+        "schema index should distinguish renderer-only receipts from post-write rechecks"
+    );
+    assert!(
+        index.contains("the targeted check is never a")
+            && index.contains("substitute for that full check"),
+        "schema index should preserve the full-check claim boundary"
+    );
+    assert!(
+        !index.contains("targeted_recheck` is always `not_executed`"),
+        "schema index must not claim that every targeted recheck is unexecuted"
+    );
+}
+
+#[test]
 fn schema_index_documents_evidence_prefix_vocabulary() {
     let index = normalize_lf(include_str!("../../../docs/schemas/README.md"));
     assert!(
