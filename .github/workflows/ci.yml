@@ -52,6 +52,17 @@ jobs:
           key: package-smoke
       - name: Package candidate smoke (Stage A)
         run: bash scripts/package-candidate-smoke.sh
+      - name: Linux release binary packaging contract (#2464)
+        run: |
+          mkdir -p target/release-binary-contract
+          RECEIPT_PATH=target/release-binary-contract/release-binary-test.receipt.json \
+            bash scripts/test-release-binary.sh
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: release-binary-contract-receipt
+          path: target/release-binary-contract/
+          if-no-files-found: warn
       - name: Exact candidate package set (#2372)
         run: |
           mkdir -p target/exact-candidate-package-set/packages
