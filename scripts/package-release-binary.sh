@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Build the reviewed Linux release archive envelope for cargo-allow (#2464).
 # This script packages bytes; it does not attest or publish them.
+# Release evidence callers should provide RELEASE_TAG, RELEASE_COMMIT, and
+# RELEASE_TREE so the receipt can be reconciled with the tagged source.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -8,6 +10,9 @@ cd "${ROOT}"
 
 target="x86_64-unknown-linux-gnu"
 version="${VERSION:-}"
+release_tag="${RELEASE_TAG:-}"
+release_commit="${RELEASE_COMMIT:-}"
+release_tree="${RELEASE_TREE:-}"
 output_dir="${OUTPUT_DIR:-${ROOT}/target/cargo-allow/release-assets}"
 
 log() { printf 'package-release-binary: %s\n' "$*"; }
@@ -113,12 +118,16 @@ printf '%s  %s\n' "${archive_sha256}" "${archive_name}" >"${archive_sha_path}"
 printf '%s  %s\n' "${executable_sha256}" "cargo-allow" >"${executable_sha_path}"
 
 python3 - "${receipt_path}" "${version}" "${target}" "${archive_name}" \
-  "${archive_sha256}" "${executable_sha256}" <<'PY'
+  "${archive_sha256}" "${executable_sha256}" "${release_tag}" "${release_commit}" \
+  "${release_tree}" <<'PY'
 import json
 import pathlib
 import sys
 
-receipt, version, target, archive_name, archive_sha256, executable_sha256 = sys.argv[1:]
+(
+    receipt, version, target, archive_name, archive_sha256, executable_sha256,
+    release_tag, release_commit, release_tree,
+) = sys.argv[1:]
 payload = {
     "schema_id": "cargo-allow.release-binary-package.v1",
     "schema_version": 1,
@@ -130,6 +139,9 @@ payload = {
     "archive_sha256": f"sha256:{archive_sha256}",
     "executable_name": "cargo-allow",
     "executable_sha256": f"sha256:{executable_sha256}",
+    "tag": release_tag,
+    "commit": release_commit,
+    "tree": release_tree,
     "claim_boundary": "Bytes were built and packaged for one exact Linux target; attestation, clean-install proof, and publication are not claimed.",
 }
 pathlib.Path(receipt).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
