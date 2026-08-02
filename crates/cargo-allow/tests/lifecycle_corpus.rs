@@ -829,6 +829,46 @@ fn mirror_divergence_projects_across_check_worklist_and_doctor() {
     remove_temp_root(root);
 }
 
+#[test]
+fn doctor_skips_divergence_when_federation_has_blocking_diagnostics() {
+    let root = create_mirror_divergence_fixture();
+    let config_path = root.join(".allow/config.toml");
+    let mut config = fs::read_to_string(&config_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read federation config: {err}")));
+    config.push_str(
+        "\n[[ledgers]]\nid = \"foreign-canonical\"\npath = \"legacy/canonical.toml\"\ndialect = \"foreign-ledger\"\nrole = \"canonical\"\npriority = 25\n",
+    );
+    fs::write(&config_path, config)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write federation config: {err}")));
+
+    let (doctor_path, doctor_result) = run_report(&root, "blocking-mirror-doctor", &["doctor"]);
+    assert_status("blocking federation doctor", &doctor_result, true);
+    assert_quiet("blocking federation doctor", &doctor_result);
+    let doctor = assert_saved_json_artifact(
+        &doctor_path,
+        "blocking federation doctor",
+        "cargo-allow.doctor.v1",
+        "doctor",
+    );
+    assert!(
+        doctor.pointer("/federation/divergences").is_none(),
+        "doctor must not project runtime divergence from a blocking federation config"
+    );
+    assert!(
+        doctor
+            .pointer("/federation/diagnostics")
+            .and_then(Value::as_array)
+            .is_some_and(|diagnostics| {
+                diagnostics.iter().any(|diagnostic| {
+                    diagnostic.pointer("/kind").and_then(Value::as_str) == Some("dialect_conflict")
+                })
+            }),
+        "doctor should retain the blocking federation diagnostic"
+    );
+
+    remove_temp_root(root);
+}
+
 fn create_fixture(label: &str, include_expired: bool) -> PathBuf {
     let root = temp_root(label);
     fs::create_dir_all(root.join("src"))
