@@ -455,9 +455,20 @@ fn render_human(catalog: &CapabilityCatalog) -> String {
 }
 
 fn validate_catalog() -> CargoAllowResult<()> {
+    let mut expected = allow_rust::SOURCE_FINDING_FAMILIES.to_vec();
+    expected.extend_from_slice(allow_files::FILE_FINDING_FAMILIES);
+    expected.extend_from_slice(allow_policy_legacy::POLICY_FINDING_FAMILIES);
+    expected.sort_unstable();
+    validate_catalog_entries(CAPABILITIES, &expected)
+}
+
+fn validate_catalog_entries(
+    capabilities: &[SensorCapability],
+    expected: &[(&str, &str)],
+) -> CargoAllowResult<()> {
     let mut seen_ids = std::collections::BTreeSet::new();
     let mut seen_families = std::collections::BTreeSet::new();
-    for capability in CAPABILITIES {
+    for capability in capabilities {
         if !seen_ids.insert(capability.sensor_id) {
             return Err(CargoAllowError::new(format!(
                 "duplicate sensor capability id `{}`",
@@ -502,10 +513,6 @@ fn validate_catalog() -> CargoAllowResult<()> {
             }
         }
     }
-    let mut expected = allow_rust::SOURCE_FINDING_FAMILIES.to_vec();
-    expected.extend_from_slice(allow_files::FILE_FINDING_FAMILIES);
-    expected.extend_from_slice(allow_policy_legacy::POLICY_FINDING_FAMILIES);
-    expected.sort_unstable();
     let actual = seen_families.into_iter().collect::<Vec<_>>();
     if actual != expected {
         return Err(CargoAllowError::new(format!(
@@ -519,6 +526,11 @@ fn validate_catalog() -> CargoAllowResult<()> {
 mod tests {
     use super::*;
     use std::fs;
+
+    const TEST_LIMITATIONS: &[&str] = &["test_limit"];
+    const TEST_CLAIMS: &[&str] = &["test_claim"];
+    const TEST_FIXTURES: &[&str] = &["test_fixture"];
+    const TEST_DOCS: &[&str] = &["test_doc"];
 
     fn output_path(label: &str) -> PathBuf {
         std::env::temp_dir().join(format!(
@@ -663,6 +675,131 @@ mod tests {
         {
             return Err("kind/family filter returned an unexpected row".to_string());
         }
+        Ok(())
+    }
+
+    fn test_capability(
+        sensor_id: &'static str,
+        owner: &'static str,
+        kind: Option<&'static str>,
+        family: Option<&'static str>,
+        analysis_class: &'static str,
+    ) -> SensorCapability {
+        SensorCapability {
+            sensor_id,
+            generation: 1,
+            owner,
+            kind,
+            family,
+            input: "test input",
+            selection: "test selection",
+            analysis_class,
+            precision: "test precision",
+            completeness: "test completeness",
+            platform: "test platform",
+            profile: "test profile",
+            limitations: TEST_LIMITATIONS,
+            claims_supported: TEST_CLAIMS,
+            claims_excluded: TEST_CLAIMS,
+            fixtures: TEST_FIXTURES,
+            docs: TEST_DOCS,
+            support_tier: "test",
+        }
+    }
+
+    fn expect_validation_error(
+        capabilities: &[SensorCapability],
+        expected: &[(&str, &str)],
+        expected_message: &str,
+    ) -> Result<(), String> {
+        match validate_catalog_entries(capabilities, expected) {
+            Ok(()) => Err(format!(
+                "expected validation error containing `{expected_message}`"
+            )),
+            Err(error) if error.to_string().contains(expected_message) => Ok(()),
+            Err(error) => Err(format!(
+                "validation error `{error}` did not contain `{expected_message}`"
+            )),
+        }
+    }
+
+    #[test]
+    fn catalog_validation_rejects_malformed_rows_and_drift() -> Result<(), String> {
+        let duplicate_id = [
+            test_capability(
+                "duplicate",
+                "owner",
+                Some("panic"),
+                Some("unwrap"),
+                "supported_syntax",
+            ),
+            test_capability(
+                "duplicate",
+                "owner",
+                Some("panic"),
+                Some("expect"),
+                "supported_syntax",
+            ),
+        ];
+        expect_validation_error(&duplicate_id, &[], "duplicate sensor capability id")?;
+
+        let duplicate_family = [
+            test_capability(
+                "first",
+                "owner",
+                Some("panic"),
+                Some("unwrap"),
+                "supported_syntax",
+            ),
+            test_capability(
+                "second",
+                "owner",
+                Some("panic"),
+                Some("unwrap"),
+                "supported_syntax",
+            ),
+        ];
+        expect_validation_error(&duplicate_family, &[], "duplicate finding capability")?;
+
+        let not_included_with_family = [test_capability(
+            "excluded",
+            "owner",
+            Some("panic"),
+            None,
+            "not_included",
+        )];
+        expect_validation_error(
+            &not_included_with_family,
+            &[],
+            "must not claim a finding family",
+        )?;
+
+        let missing_family = [test_capability(
+            "missing",
+            "owner",
+            Some("panic"),
+            None,
+            "supported_syntax",
+        )];
+        expect_validation_error(&missing_family, &[], "missing kind/family")?;
+
+        let empty_owner = [test_capability(
+            "empty",
+            "",
+            Some("panic"),
+            Some("unwrap"),
+            "supported_syntax",
+        )];
+        expect_validation_error(&empty_owner, &[("panic", "unwrap")], "empty required field")?;
+
+        let drifted = [test_capability(
+            "drift",
+            "owner",
+            Some("panic"),
+            Some("unwrap"),
+            "supported_syntax",
+        )];
+        expect_validation_error(&drifted, &[], "family drift")?;
         Ok(())
     }
 }
