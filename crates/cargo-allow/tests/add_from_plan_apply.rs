@@ -68,7 +68,7 @@ fn is_sha256_v1(value: Option<&str>) -> bool {
 }
 
 #[test]
-fn add_from_plan_applies_a_verified_plan_and_binds_a_receipt() {
+fn add_from_plan_applies_a_verified_plan_and_binds_a_receipt() -> Result<(), String> {
     let root = init_fixture("add-from-plan-apply");
     let plan_path = generate_plan(&root);
     let policy_path = root.join("policy/allow.toml");
@@ -110,6 +110,15 @@ fn add_from_plan_applies_a_verified_plan_and_binds_a_receipt() {
         "cargo-allow.add-plan-application.v1",
         "add",
     );
+    let schema: Value = serde_json::from_str(include_str!(
+        "../../../docs/schemas/add-plan-application.schema.json"
+    ))
+    .map_err(|error| format!("add-plan-application schema should parse: {error}"))?;
+    let validator = jsonschema::validator_for(&schema)
+        .map_err(|error| format!("add-plan-application schema should compile: {error}"))?;
+    validator
+        .validate(&receipt)
+        .map_err(|error| format!("runtime-produced add-plan-application receipt should validate against its published schema: {error}"))?;
     for pointer in [
         "/plan_digest",
         "/finding_digest",
@@ -178,6 +187,7 @@ fn add_from_plan_applies_a_verified_plan_and_binds_a_receipt() {
     );
 
     remove_temp_root(root);
+    Ok(())
 }
 
 #[test]
