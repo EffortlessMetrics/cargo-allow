@@ -25,8 +25,11 @@ feedback rather than proof of the bytes a commit will contain. CI remains the
 authoritative merge backstop. The hook does not claim exact staged-index source
 exception enforcement yet; do not add `--staged` to this entry, because the
 currently supported staged profile is a separate intent-system contract.
-The published template is registered only for the `pre-commit` stage; it is not
-a pre-push template or a claim about commit/tree-byte evaluation.
+The published template is registered for both the `pre-commit` and `pre-push`
+stages. In either stage it remains a worktree advisory check, not a claim about
+the exact staged index or pushed commit/tree bytes. Use the pre-push stage for a
+last local reminder before sending commits, while keeping CI as the enforcing
+merge backstop.
 
 For the current unreleased candidate, use the source revision temporarily:
 

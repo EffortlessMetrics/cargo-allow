@@ -120,7 +120,7 @@ fn validate_precommit_hook_contract(
         ("language", "language: system"),
         ("filename forwarding", "pass_filenames: false"),
         ("execution policy", "always_run: true"),
-        ("stage scope", "stages: [pre-commit]"),
+        ("stage scope", "stages: [pre-commit, pre-push]"),
     ] {
         if !hook.contains(value) {
             return Err(format!("pre-commit hook is missing {field}: {value}"));
@@ -135,7 +135,7 @@ fn validate_precommit_hook_contract(
         "source subject is the current tracked **worktree**, not the exact Git index candidate",
         "CI remains the authoritative merge backstop",
         "do not add `--staged` to this entry",
-        "The published template is registered only for the `pre-commit` stage",
+        "The published template is registered for both the `pre-commit` and `pre-push` stages",
     ] {
         if !guide.contains(required) {
             return Err(format!(
