@@ -186,7 +186,7 @@ impl Default for Requirements {
 pub struct FileFamilyRule {
     /// Stable identifier for the repository-owned classification rule.
     pub id: String,
-    /// Canonical family code emitted by the future classifier.
+    /// Canonical family code emitted by the file-surface classifier.
     pub family: String,
     /// Source-tree-relative bounded glob matched by the rule.
     pub glob: String,
@@ -197,9 +197,9 @@ pub struct FileFamilyRule {
 /// Built-in non-Rust family codes that repository rules must not redefine.
 ///
 /// Custom family classification is intentionally separate from the built-in
-/// scanner until the classifier child (#2691) lands. Keeping the protected
-/// vocabulary in the shared contract prevents the schema and scanner from
-/// silently disagreeing about reserved names.
+/// family vocabulary. Keeping the protected names in the shared contract
+/// prevents the schema and scanner from silently disagreeing about reserved
+/// names.
 pub const BUILTIN_FILE_FAMILY_CODES: &[&str] = &[
     "generated_code",
     "ci_declarative",

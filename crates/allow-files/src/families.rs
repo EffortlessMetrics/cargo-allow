@@ -1,34 +1,134 @@
-use allow_core::normalize_path;
+use allow_core::{FileFamilyRule, glob_matches, normalize_path};
+use std::collections::BTreeSet;
 use std::path::Path;
 
 use crate::path_rules::{lower_extension, lower_file_name};
 
-pub(crate) fn file_family(path: &Path, generated: bool) -> String {
+#[derive(Debug, Clone, PartialEq, Eq)]
+/// The deterministic result of applying built-in and repository-defined rules
+/// to one source-tree path.
+pub enum FileFamilyClassification {
+    Generated,
+    BuiltIn(String),
+    Custom {
+        rule_id: String,
+        family: String,
+    },
+    Ambiguous {
+        rule_ids: Vec<String>,
+        families: Vec<String>,
+    },
+}
+
+impl FileFamilyClassification {
+    pub fn family(&self) -> &str {
+        match self {
+            Self::Generated => "generated_code",
+            Self::BuiltIn(family) | Self::Custom { family, .. } => family,
+            Self::Ambiguous { .. } => "ambiguous_file_family",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+struct RuleSpecificity {
+    exact: bool,
+    literal_segments: usize,
+    literal_chars: usize,
+    wildcard_segments: usize,
+    wildcard_chars: usize,
+}
+
+pub(crate) fn file_family(
+    path: &Path,
+    generated: bool,
+    rules: &[FileFamilyRule],
+) -> FileFamilyClassification {
     let text = normalize_path(path);
     let extension = lower_extension(path);
     let file_name = lower_file_name(path);
     if generated {
-        return "generated_code".to_string();
+        return FileFamilyClassification::Generated;
     }
+
+    let mut matches = rules
+        .iter()
+        .filter(|rule| glob_matches(&rule.glob, path))
+        .map(|rule| (rule, rule_specificity(&rule.glob)))
+        .collect::<Vec<_>>();
+    if let Some(strongest) = matches.iter().map(|(_, specificity)| *specificity).max() {
+        matches.retain(|(_, specificity)| *specificity == strongest);
+        let families = matches
+            .iter()
+            .map(|(rule, _)| rule.family.clone())
+            .collect::<BTreeSet<_>>();
+        if families.len() > 1 {
+            let rule_ids = matches
+                .iter()
+                .map(|(rule, _)| rule.id.clone())
+                .collect::<BTreeSet<_>>()
+                .into_iter()
+                .collect();
+            return FileFamilyClassification::Ambiguous {
+                rule_ids,
+                families: families.into_iter().collect(),
+            };
+        }
+        if let Some((rule, _)) = matches.iter().min_by_key(|(rule, _)| rule.id.as_str()) {
+            return FileFamilyClassification::Custom {
+                rule_id: rule.id.clone(),
+                family: rule.family.clone(),
+            };
+        }
+    }
+
     if text.starts_with(".github/workflows/") {
-        return "ci_declarative".to_string();
+        return FileFamilyClassification::BuiltIn("ci_declarative".to_string());
     }
     if is_editor_extension(&text, &file_name) {
-        return "editor_extension".to_string();
+        return FileFamilyClassification::BuiltIn("editor_extension".to_string());
     }
     if is_package_metadata(&file_name) {
-        return "package_metadata".to_string();
+        return FileFamilyClassification::BuiltIn("package_metadata".to_string());
     }
     if is_test_fixture(&text) {
-        return "test_fixture".to_string();
+        return FileFamilyClassification::BuiltIn("test_fixture".to_string());
     }
     if is_release_script(&text, &file_name) {
-        return "release_script".to_string();
+        return FileFamilyClassification::BuiltIn("release_script".to_string());
     }
     if is_documentation(&text, extension.as_deref()) {
-        return "documentation".to_string();
+        return FileFamilyClassification::BuiltIn("documentation".to_string());
     }
-    classify_by_extension(extension.as_deref(), &file_name).to_string()
+    FileFamilyClassification::BuiltIn(
+        classify_by_extension(extension.as_deref(), &file_name).to_string(),
+    )
+}
+
+fn rule_specificity(glob: &str) -> RuleSpecificity {
+    let normalized = glob.replace('\\', "/");
+    let segments = normalized.split('/').filter(|segment| !segment.is_empty());
+    let mut literal_segments = 0;
+    let mut literal_chars = 0;
+    let mut wildcard_segments = 0;
+    let mut wildcard_chars = 0;
+    for segment in segments {
+        let wildcard_count = segment.chars().filter(|ch| matches!(ch, '*' | '?')).count();
+        if wildcard_count == 0 {
+            literal_segments += 1;
+        } else {
+            wildcard_segments += 1;
+            wildcard_chars += wildcard_count;
+        }
+        literal_chars += segment.chars().count().saturating_sub(wildcard_count);
+    }
+    RuleSpecificity {
+        exact: wildcard_chars == 0,
+        literal_segments,
+        literal_chars,
+        wildcard_segments,
+        wildcard_chars,
+    }
 }
 
 fn is_documentation(path: &str, extension: Option<&str>) -> bool {
@@ -135,40 +235,99 @@ mod tests {
     #[test]
     fn file_family_applies_classifier_precedence() {
         assert_eq!(
-            file_family(Path::new(".github/workflows/ci.yml"), true),
-            "generated_code"
+            file_family(Path::new(".github/workflows/ci.yml"), true, &[]),
+            FileFamilyClassification::Generated
         );
         assert_eq!(
-            file_family(Path::new(".github/workflows/ci.yml"), false),
-            "ci_declarative"
+            file_family(Path::new(".github/workflows/ci.yml"), false, &[]),
+            FileFamilyClassification::BuiltIn("ci_declarative".to_string())
         );
         assert_eq!(
-            file_family(Path::new(".vscode/extensions.json"), false),
-            "editor_extension"
+            file_family(Path::new(".vscode/extensions.json"), false, &[]),
+            FileFamilyClassification::BuiltIn("editor_extension".to_string())
         );
         assert_eq!(
-            file_family(Path::new("fixtures/package.json"), false),
-            "package_metadata"
+            file_family(Path::new("fixtures/package.json"), false, &[]),
+            FileFamilyClassification::BuiltIn("package_metadata".to_string())
         );
         assert_eq!(
-            file_family(Path::new("crates/parser/fixtures/input.txt"), false),
-            "test_fixture"
+            file_family(Path::new("crates/parser/fixtures/input.txt"), false, &[]),
+            FileFamilyClassification::BuiltIn("test_fixture".to_string())
         );
         assert_eq!(
-            file_family(Path::new("scripts/release.sh"), false),
-            "release_script"
+            file_family(Path::new("scripts/release.sh"), false, &[]),
+            FileFamilyClassification::BuiltIn("release_script".to_string())
         );
         assert_eq!(
-            file_family(Path::new("docs/design.yaml"), false),
-            "documentation"
+            file_family(Path::new("docs/design.yaml"), false, &[]),
+            FileFamilyClassification::BuiltIn("documentation".to_string())
         );
         assert_eq!(
-            file_family(Path::new("tools/audit.py"), false),
-            "python_tool"
+            file_family(Path::new("tools/audit.py"), false, &[]),
+            FileFamilyClassification::BuiltIn("python_tool".to_string())
         );
         assert_eq!(
-            file_family(Path::new("assets/logo.bin"), false),
-            "unknown_non_rust"
+            file_family(Path::new("assets/logo.bin"), false, &[]),
+            FileFamilyClassification::BuiltIn("unknown_non_rust".to_string())
+        );
+    }
+
+    #[test]
+    fn custom_file_family_uses_specificity_not_rule_order() {
+        let broad = FileFamilyRule {
+            id: "model-files".to_string(),
+            family: "ml_model".to_string(),
+            glob: "models/**/*.onnx".to_string(),
+            reason: "Model files are governed.".to_string(),
+        };
+        let exact = FileFamilyRule {
+            id: "release-model".to_string(),
+            family: "release_model".to_string(),
+            glob: "models/release/model.onnx".to_string(),
+            reason: "Release model is separately governed.".to_string(),
+        };
+        let first = file_family(
+            Path::new("models/release/model.onnx"),
+            false,
+            &[broad.clone(), exact.clone()],
+        );
+        let reversed = file_family(
+            Path::new("models/release/model.onnx"),
+            false,
+            &[exact, broad],
+        );
+        assert_eq!(first, reversed);
+        assert_eq!(
+            first,
+            FileFamilyClassification::Custom {
+                rule_id: "release-model".to_string(),
+                family: "release_model".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn equal_strongest_custom_families_are_explicitly_ambiguous() {
+        let rules = vec![
+            FileFamilyRule {
+                id: "model".to_string(),
+                family: "ml_model".to_string(),
+                glob: "models/*.onnx".to_string(),
+                reason: "Model files are governed.".to_string(),
+            },
+            FileFamilyRule {
+                id: "artifact".to_string(),
+                family: "artifact".to_string(),
+                glob: "models/*.onnx".to_string(),
+                reason: "Artifacts are governed.".to_string(),
+            },
+        ];
+        assert_eq!(
+            file_family(Path::new("models/current.onnx"), false, &rules),
+            FileFamilyClassification::Ambiguous {
+                rule_ids: vec!["artifact".to_string(), "model".to_string()],
+                families: vec!["artifact".to_string(), "ml_model".to_string()],
+            }
         );
     }
 

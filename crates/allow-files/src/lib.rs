@@ -11,9 +11,13 @@ mod options;
 mod path_rules;
 mod scanner;
 
+pub use families::FileFamilyClassification;
 pub use options::FileScanOptions;
 pub use path_rules::is_rust_source;
-pub use scanner::{classify_path, classify_path_with_options, scan_files, scan_files_with_options};
+pub use scanner::{
+    classify_file_family, classify_file_family_with_options, classify_path,
+    classify_path_with_options, scan_files, scan_files_with_options,
+};
 
 #[cfg(test)]
 mod tests;
