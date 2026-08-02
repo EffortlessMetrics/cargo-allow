@@ -1,5 +1,5 @@
 use super::*;
-use allow_core::{FindingKind, Span};
+use allow_core::{FileFamilyRule, FindingKind, Span};
 use std::path::{Path, PathBuf};
 
 #[test]
@@ -170,6 +170,7 @@ fn classifies_non_rust_governance_families() {
 fn generated_globs_override_file_family() {
     let options = FileScanOptions {
         generated: vec!["schemas/**".to_string()],
+        ..FileScanOptions::default()
     };
     let generated = classify_path_with_options(Path::new("schemas/api.yaml"), &options)
         .unwrap_or_else(|| {
@@ -185,9 +186,62 @@ fn generated_globs_override_file_family() {
 }
 
 #[test]
+fn custom_file_family_options_override_built_in_classification() {
+    let options = FileScanOptions {
+        file_families: vec![FileFamilyRule {
+            id: "release-manifest".to_string(),
+            family: "release_metadata".to_string(),
+            glob: "models/release/*.json".to_string(),
+            reason: "Release metadata is governed separately.".to_string(),
+        }],
+        ..FileScanOptions::default()
+    };
+
+    let finding = classify_path_with_options(Path::new("models/release/manifest.json"), &options)
+        .unwrap_or_else(|| std::panic::panic_any("expected custom file-family finding"));
+
+    assert_eq!(finding.kind, FindingKind::NonRustFile);
+    assert_eq!(finding.family.as_deref(), Some("release_metadata"));
+    assert!(finding.message.contains("rule release-manifest"));
+}
+
+#[test]
+fn ambiguous_custom_file_family_options_remain_visible_in_findings() {
+    let options = FileScanOptions {
+        file_families: vec![
+            FileFamilyRule {
+                id: "model".to_string(),
+                family: "ml_model".to_string(),
+                glob: "models/*.json".to_string(),
+                reason: "Models are governed.".to_string(),
+            },
+            FileFamilyRule {
+                id: "artifact".to_string(),
+                family: "artifact".to_string(),
+                glob: "models/*.json".to_string(),
+                reason: "Artifacts are governed.".to_string(),
+            },
+        ],
+        ..FileScanOptions::default()
+    };
+
+    let finding = classify_path_with_options(Path::new("models/current.json"), &options)
+        .unwrap_or_else(|| std::panic::panic_any("expected ambiguous file-family finding"));
+
+    assert_eq!(finding.family.as_deref(), Some("ambiguous_file_family"));
+    assert!(
+        finding
+            .message
+            .contains("conflicting rules artifact, model")
+    );
+    assert!(finding.message.contains("artifact, ml_model"));
+}
+
+#[test]
 fn scan_files_with_options_marks_globbed_files_as_generated() {
     let options = FileScanOptions {
         generated: vec!["schemas/**".to_string()],
+        ..FileScanOptions::default()
     };
     let files = vec![
         PathBuf::from("schemas/api.yaml"),
@@ -207,6 +261,7 @@ fn scan_files_with_options_marks_globbed_files_as_generated() {
 fn configured_generated_globs_match_nested_files_and_windows_separators() {
     let options = FileScanOptions {
         generated: vec![r"vendor\**\*.json".to_string()],
+        ..FileScanOptions::default()
     };
 
     let finding = classify_path_with_options(Path::new(r"vendor\api\schema.json"), &options)

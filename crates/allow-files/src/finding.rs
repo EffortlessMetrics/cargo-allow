@@ -3,7 +3,12 @@ use std::path::Path;
 
 use crate::path_rules::lower_extension;
 
-pub(crate) fn build_file_finding(path: &Path, family: String, generated: bool) -> Finding {
+pub(crate) fn build_file_finding(
+    path: &Path,
+    family: String,
+    generated: bool,
+    note: Option<&str>,
+) -> Finding {
     let mut identity = StructuralIdentity::new("file", "tracked_file");
     identity.symbol = Some(normalize_path(path));
     identity.target_fingerprint = file_fingerprint(path);
@@ -17,7 +22,10 @@ pub(crate) fn build_file_finding(path: &Path, family: String, generated: bool) -
         path: path.to_path_buf(),
         span: Some(Span { line: 1, column: 1 }),
         identity,
-        message: format!("tracked non-Rust file classified as {family}"),
+        message: match note {
+            Some(note) => format!("tracked non-Rust file classified as {family} ({note})"),
+            None => format!("tracked non-Rust file classified as {family}"),
+        },
         ledger: None,
     }
 }
@@ -39,6 +47,7 @@ mod tests {
             Path::new(r"docs\Guide.MD"),
             "documentation".to_string(),
             false,
+            None,
         );
 
         assert_eq!(finding.kind, FindingKind::NonRustFile);
@@ -58,6 +67,7 @@ mod tests {
             Path::new("target/generated/bindings.rs"),
             "generated_code".to_string(),
             true,
+            None,
         );
 
         assert_eq!(generated.kind, FindingKind::GeneratedCode);
