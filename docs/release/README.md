@@ -92,9 +92,14 @@ The packager emits the executable and archive checksum sidecars plus bounded
 package/install receipts. The verifier extracts outside the source checkout,
 rejects unexpected or unsafe archive entries, checks the executable version,
 and runs the first-hour command surface from a clean temporary repository.
-These scripts prove packaging and clean-install behavior only. They do not
-claim GitHub attestation or release publication; the tag-triggered workflow
-must perform those checks before attachment. Windows/macOS archives,
+These scripts prove packaging and clean-install behavior only. On an exact
+version tag, the release workflow builds the tagged Linux binary, passes the
+tag/commit/tree identity into both receipts, attests the exact archive, verifies
+that attestation with `gh attestation verify`, and only then regenerates the
+manifest and attaches the archive, sidecars, receipts, and manifest together.
+The `ATTESTATION_VERIFIED=true` receipt flag is reserved for that verified
+workflow handoff; the verifier does not claim an attestation on its own.
+Windows/macOS archives,
 universal Linux compatibility, and source-build fallback replacement remain
 separate lanes (#2464, #2474, #2476).
 

@@ -205,7 +205,7 @@ jobs:
           path: target/cargo-allow/release-install-smoke.receipt.json
 
   github-release:
-    needs: install-smoke
+    needs: [install-smoke, publish]
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
@@ -216,9 +216,49 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Package crates for manifest checksums
         run: cargo package --workspace --locked
+      - name: Build tagged Linux release binary
+        run: cargo build -p cargo-allow --bin cargo-allow --release --locked --target x86_64-unknown-linux-gnu
+      - name: Package tagged Linux executable archive
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_COMMIT: ${{ github.sha }}
+          CARGO_ALLOW_BIN: target/x86_64-unknown-linux-gnu/release/cargo-allow
+          OUTPUT_DIR: target/cargo-allow/release-assets
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          export RELEASE_TREE="$(git rev-parse "${GITHUB_SHA}^{tree}")"
+          bash scripts/package-release-binary.sh --version "${version}" --target x86_64-unknown-linux-gnu --output-dir "${OUTPUT_DIR}"
+      - name: Verify tagged Linux executable archive
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_COMMIT: ${{ github.sha }}
+          OUTPUT_DIR: target/cargo-allow/release-assets
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          export RELEASE_TREE="$(git rev-parse "${GITHUB_SHA}^{tree}")"
+          archive="${OUTPUT_DIR}/cargo-allow-v${version}-x86_64-unknown-linux-gnu.tar.gz"
+          bash scripts/verify-release-binary.sh --version "${version}" --receipt "${OUTPUT_DIR}/release-binary-install.receipt.json" "${archive}"
+      - name: Attest tagged Linux executable archive
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-path: target/cargo-allow/release-assets/cargo-allow-${{ github.ref_name }}-x86_64-unknown-linux-gnu.tar.gz
+      - name: Verify tagged Linux executable attestation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_COMMIT: ${{ github.sha }}
+          OUTPUT_DIR: target/cargo-allow/release-assets
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          export RELEASE_TREE="$(git rev-parse "${GITHUB_SHA}^{tree}")"
+          archive="${OUTPUT_DIR}/cargo-allow-v${version}-x86_64-unknown-linux-gnu.tar.gz"
+          gh attestation verify "${archive}" --repo "${GITHUB_REPOSITORY}"
+          ATTESTATION_VERIFIED=true bash scripts/verify-release-binary.sh --version "${version}" --receipt "${OUTPUT_DIR}/release-binary-install.receipt.json" "${archive}"
       - name: Generate release manifest
         env:
-          VERSION: "${GITHUB_REF_NAME#v}"
           REPOSITORY: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
           COMMIT: ${{ github.sha }}
@@ -229,7 +269,15 @@ jobs:
           # `rust-version` (scripts/check-msrv-consistency.sh enforces this).
           MSRV: "1.95"
           PLATFORMS: "linux"
-        run: bash scripts/generate-release-manifest.sh
+          BINARY_PACKAGE_RECEIPT: target/cargo-allow/release-assets/release-binary.receipt.json
+          BINARY_INSTALL_RECEIPT: target/cargo-allow/release-assets/release-binary-install.receipt.json
+          RUST_TOOLCHAIN: stable
+          RUNNER: ubuntu-latest
+        run: |
+          set -euo pipefail
+          export VERSION="${GITHUB_REF_NAME#v}"
+          export TREE="$(git rev-parse "${GITHUB_SHA}^{tree}")"
+          bash scripts/generate-release-manifest.sh
       - name: Attest release manifest
         uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
         with:
@@ -269,6 +317,11 @@ jobs:
           files: |
             target/cargo-allow/release-manifest-v1.json
             target/cargo-allow/release-manifest-v1.sha256
+            target/cargo-allow/release-assets/cargo-allow-${{ github.ref_name }}-x86_64-unknown-linux-gnu.tar.gz
+            target/cargo-allow/release-assets/cargo-allow-${{ github.ref_name }}-x86_64-unknown-linux-gnu.tar.gz.sha256
+            target/cargo-allow/release-assets/cargo-allow-${{ github.ref_name }}-x86_64-unknown-linux-gnu.tar.gz.executable.sha256
+            target/cargo-allow/release-assets/release-binary.receipt.json
+            target/cargo-allow/release-assets/release-binary-install.receipt.json
       - name: Publish release after manifest attached
         uses: softprops/action-gh-release@42dc69e1aa15d09112580998cf2ef0119e2e91ae # v2.4.2
         with:

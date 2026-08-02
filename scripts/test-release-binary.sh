@@ -109,16 +109,9 @@ for crate in allow-core allow-policy allow-inventory allow-files allow-rust \
     package_fixture_paths+=("${package_path}")
   fi
 done
-python3 - "${receipt_path}" <<'PY'
-import json
-import pathlib
-import sys
-
-path = pathlib.Path(sys.argv[1])
-receipt = json.loads(path.read_text(encoding="utf-8"))
-receipt["attestation_verified"] = True
-path.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
-PY
+ATTESTATION_VERIFIED=true RELEASE_TAG=v9.9.9 RELEASE_COMMIT=fixture-commit \
+  RELEASE_TREE=fixture-tree \
+  bash scripts/verify-release-binary.sh --version 9.9.9 --receipt "${receipt_path}" "${archive}" >/dev/null
 VERSION=9.9.9 REPOSITORY=EffortlessMetrics/cargo-allow TAG=v9.9.9 \
   COMMIT=fixture-commit TREE=fixture-tree AUTH_SOURCE=oidc MSRV=1.95 \
   PLATFORMS=linux WORKFLOW_RUN_ID=123 RUST_TOOLCHAIN=stable RUNNER=ubuntu-latest \
