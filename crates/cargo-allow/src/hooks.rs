@@ -733,6 +733,23 @@ mod tests {
     }
 
     #[test]
+    fn hook_helpers_report_invalid_inputs_without_running_git() -> Result<(), String> {
+        if stage_from_str("unsupported").is_ok() {
+            return Err("unsupported hook stage was accepted".to_string());
+        }
+        if git_path(Path::new("."), "unsupported-query").is_ok() {
+            return Err("unsupported Git path query was accepted".to_string());
+        }
+        let fixture = HookFixture::new("invalid-plan")?;
+        let path = fixture.path.join("plan.json");
+        fs::write(&path, "not json").map_err(|error| error.to_string())?;
+        if read_plan(&path).is_ok() {
+            return Err("malformed plan was accepted".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
     fn hook_disposition_is_fail_closed_for_existing_files() -> Result<(), String> {
         let root = HookFixture::new("disposition")?;
         let path = root.path.join("pre-commit");

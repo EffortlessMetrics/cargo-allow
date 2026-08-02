@@ -202,6 +202,26 @@ fn write_file_create_new_atomic_applies_requested_permissions()
     Ok(())
 }
 
+#[cfg(unix)]
+#[test]
+fn write_file_create_new_atomic_reports_hard_link_install_failure()
+-> Result<(), Box<dyn std::error::Error>> {
+    use std::os::unix::fs::symlink;
+
+    let root = TempRoot::new("atomic-create-hard-link-error")?;
+    let output = root.path().join("hooks/pre-commit");
+    let missing_target = root.path().join("missing-target");
+    fs::create_dir_all(output.parent().ok_or("hook output has no parent")?)?;
+    symlink(&missing_target, &output)?;
+
+    let error = write_file_create_new_atomic(&output, "hook\n")
+        .expect_err("dangling target should prevent hard-link installation");
+    if !error.to_string().contains("hard-link support") {
+        return Err("hard-link failure did not name the filesystem requirement".into());
+    }
+    Ok(())
+}
+
 #[test]
 fn write_file_no_overwrite_replaces_existing_path_with_force()
 -> Result<(), Box<dyn std::error::Error>> {
