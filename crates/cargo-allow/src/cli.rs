@@ -4,8 +4,8 @@ use std::env;
 use std::ffi::OsStr;
 
 use crate::{
-    add, audit, check, completions, diff, doctor, explain, init, list, migrate, precommit_tool,
-    propose, prune, reference, refresh, vocabulary, why, worklist,
+    add, audit, check, completions, diff, doctor, explain, hooks, init, list, migrate,
+    precommit_tool, propose, prune, reference, refresh, vocabulary, why, worklist,
 };
 
 #[derive(Debug, Parser)]
@@ -86,6 +86,8 @@ pub(crate) enum CargoAllowCommand {
     Completions(completions::CompletionsArgs),
     /// Generate a deterministic command reference with checked support metadata.
     Reference(reference::ReferenceArgs),
+    /// Preview checked local hook plans without changing the repository.
+    Hooks(hooks::HooksArgs),
 }
 
 /// Resolve the process output style from the flag, the environment, and
@@ -161,6 +163,7 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::Tool(args) => precommit_tool::cmd_tool(&args),
         CargoAllowCommand::Completions(args) => completions::cmd_completions(&args),
         CargoAllowCommand::Reference(args) => reference::cmd_reference(&args),
+        CargoAllowCommand::Hooks(args) => hooks::cmd_hooks(&args),
     }
 }
 
@@ -258,5 +261,6 @@ impl CargoAllowCommand {
         "tool",
         "completions",
         "reference",
+        "hooks",
     ];
 }

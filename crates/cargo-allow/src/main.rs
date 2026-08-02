@@ -20,6 +20,7 @@ mod exit_code;
 mod explain;
 mod federation_doctor;
 mod federation_report;
+mod hooks;
 mod init;
 mod intent_delegate;
 mod intent_provider;
