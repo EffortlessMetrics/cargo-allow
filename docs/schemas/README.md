@@ -168,10 +168,13 @@ The `cargo-allow.add-plan-application.v1` artifact is the receipt emitted after
 it. Unlike the plan, this receipt records a mutation that already happened: it
 binds `plan_digest`, `finding_digest`, `repository_identity`, the
 `policy_before_digest`/`policy_after_digest` pair, `added_allow_id`, and the
-`target_ledger` it replaced. It does not claim `policy_not_mutated`, and it is
-honest that no recheck ran — `targeted_recheck` is always `not_executed` and
+`target_ledger` it replaced. It does not claim `policy_not_mutated`. The
+`targeted_recheck` field records the bounded post-write finding check: it may be
+`matched`, `still_new`, `no_outcome`, or `unexpected:<status>` when that check
+runs, while a renderer-only receipt may report `not_executed`.
 `full_check_argv` carries the authoritative program-plus-argv the operator must
-run to confirm the full-repository posture.
+run to confirm the full-repository posture; the targeted check is never a
+substitute for that full check.
 Source location fields such as `span.line`, `span.column`, `line_hint`, and
 `column_hint` are review and navigation hints. They are one-based source
 positions; when cargo-allow can derive a column from source text, the column is
