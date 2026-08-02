@@ -367,8 +367,8 @@ fn published_registry_fixture_is_internally_consistent() {
         );
     }
     assert!(
-        registry.candidate_only_subcommands.is_empty(),
-        "0.1.11 has no candidate-only first-run subcommands at the release freeze"
+        registry.candidate_only_subcommands.contains("capabilities"),
+        "current source-candidate capability inspection must stay labeled"
     );
 }
 
