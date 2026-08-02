@@ -55,6 +55,16 @@ fn message_prefix_preserves_structured_error_metadata() -> Result<(), String> {
 }
 
 #[test]
+fn empty_message_prefix_leaves_error_unchanged() {
+    let error = CargoAllowError::with_kind(CargoAllowErrorKind::Usage, "missing argument");
+
+    let unchanged = error.with_message_prefix("");
+
+    assert_eq!(unchanged.message(), "missing argument");
+    assert_eq!(unchanged.kind(), CargoAllowErrorKind::Usage);
+}
+
+#[test]
 fn kind_renders_as_stable_lowercase_str() {
     assert_eq!(CargoAllowErrorKind::Usage.as_str(), "usage");
     assert_eq!(
