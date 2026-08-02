@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/release-manifest.schema.json",
+  "title": "cargo-allow ReleaseManifestV1",
+  "description": "Release identity and verified executable-asset contract. This is a release-control artifact, not a source-tree scan result.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "tool_version",
+    "repository",
+    "tag",
+    "commit",
+    "tree",
+    "version",
+    "crates",
+    "auth_source",
+    "msrv",
+    "platforms_proven",
+    "binary_assets",
+    "generations",
+    "limitations",
+    "claim_boundary",
+    "result",
+    "generated_at"
+  ],
+  "properties": {
+    "schema_id": { "const": "cargo-allow.release-manifest.v1" },
+    "schema_version": { "const": 1 },
+    "tool_version": { "type": "string", "minLength": 1 },
+    "repository": { "type": "string", "minLength": 1 },
+    "tag": { "type": "string", "pattern": "^v[^/]+$" },
+    "commit": { "$ref": "#/$defs/identity" },
+    "tree": { "$ref": "#/$defs/identity" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "source_candidate_digest": { "$ref": "#/$defs/digest" },
+    "crates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "version"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "version": { "type": "string", "minLength": 1 },
+          "crate_checksum": { "$ref": "#/$defs/digest" },
+          "registry_checksum": { "$ref": "#/$defs/digest" }
+        }
+      }
+    },
+    "auth_source": { "const": "oidc" },
+    "workflow_run_id": { "type": "integer", "minimum": 1 },
+    "msrv": { "type": "string", "minLength": 1 },
+    "platforms_proven": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["linux", "windows", "macos"] },
+      "uniqueItems": true
+    },
+    "binary_assets": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/binary_asset" }
+    },
+    "generations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["release_manifest", "add_finding_plan", "mutation_receipt"],
+      "properties": {
+        "release_manifest": { "const": 1 },
+        "add_finding_plan": { "type": "integer", "minimum": 1 },
+        "mutation_receipt": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "limitations": { "type": "array", "items": { "type": "string" } },
+    "claim_boundary": { "type": "string", "minLength": 1 },
+    "result": { "enum": ["Complete", "Incomplete"] },
+    "generated_at": { "type": "string", "minLength": 1 }
+  },
+  "$defs": {
+    "identity": { "type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9._-]+$" },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "binary_asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "platform",
+        "target_triple",
+        "version",
+        "tag",
+        "commit",
+        "tree",
+        "executable_version",
+        "archive_name",
+        "archive_format",
+        "archive_sha256",
+        "executable_name",
+        "executable_sha256",
+        "rust_toolchain",
+        "runner",
+        "candidate_receipt_digest",
+        "installed_smoke_receipt_digest",
+        "attestation_subject_sha256",
+        "limitations"
+      ],
+      "properties": {
+        "platform": { "type": "string", "enum": ["linux", "windows", "macos"] },
+        "target_triple": {
+          "type": "string",
+          "enum": [
+            "x86_64-unknown-linux-gnu",
+            "x86_64-pc-windows-msvc",
+            "aarch64-apple-darwin",
+            "x86_64-apple-darwin"
+          ]
+        },
+        "version": { "type": "string", "minLength": 1 },
+        "tag": { "type": "string", "minLength": 1 },
+        "commit": { "$ref": "#/$defs/identity" },
+        "tree": { "$ref": "#/$defs/identity" },
+        "executable_version": { "type": "string", "minLength": 1 },
+        "archive_name": {
+          "type": "string",
+          "pattern": "^cargo-allow-v[^/\\\\]+\\.(tar\\.gz|zip)$"
+        },
+        "archive_format": { "enum": ["tar.gz", "zip"] },
+        "archive_sha256": { "$ref": "#/$defs/digest" },
+        "executable_name": { "enum": ["cargo-allow", "cargo-allow.exe"] },
+        "executable_sha256": { "$ref": "#/$defs/digest" },
+        "rust_toolchain": { "type": "string", "minLength": 1 },
+        "runner": { "type": "string", "minLength": 1 },
+        "candidate_receipt_digest": { "$ref": "#/$defs/digest" },
+        "installed_smoke_receipt_digest": { "$ref": "#/$defs/digest" },
+        "attestation_subject_sha256": { "$ref": "#/$defs/digest" },
+        "limitations": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

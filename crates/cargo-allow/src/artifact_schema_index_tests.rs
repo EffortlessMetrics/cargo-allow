@@ -33,7 +33,9 @@ fn schema_contract_registry_covers_every_documented_artifact_schema() {
         })
         // These are self-description/supporting contracts, not governed
         // source-tree artifacts (no claim_boundary/scanner_limitations/inventory).
-        .filter(|name| name != "tool-identity" && name != "operator-latency")
+        .filter(|name| {
+            name != "tool-identity" && name != "operator-latency" && name != "release-manifest"
+        })
         .collect::<BTreeSet<_>>();
     let registered = schema_contracts()
         .into_iter()

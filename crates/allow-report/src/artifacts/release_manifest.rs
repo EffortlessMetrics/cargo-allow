@@ -1,11 +1,24 @@
 use crate::CLAIM_BOUNDARY_TEXT;
 
+use std::collections::HashSet;
+
 /// Schema constants for the release manifest artifact.
 pub const RELEASE_MANIFEST_SCHEMA_VERSION: u32 = 1;
 pub const RELEASE_MANIFEST_SCHEMA_ID: &str = "cargo-allow.release-manifest.v1";
 
 /// The claim boundary text included in every release manifest.
 pub const RELEASE_MANIFEST_CLAIM_BOUNDARY: &str = CLAIM_BOUNDARY_TEXT;
+
+/// Target triples for which the release capability matrix has a defined
+/// platform identity. A release may still omit any of these targets when it
+/// has no matching proof; this list only prevents malformed or invented
+/// target identities from entering the manifest contract.
+pub const RELEASE_BINARY_TARGETS: &[(&str, &str, &str)] = &[
+    ("x86_64-unknown-linux-gnu", "linux", "tar.gz"),
+    ("x86_64-pc-windows-msvc", "windows", "zip"),
+    ("aarch64-apple-darwin", "macos", "tar.gz"),
+    ("x86_64-apple-darwin", "macos", "tar.gz"),
+];
 
 /// The canonical crate publish order — single source of truth for both
 /// the release workflow and the manifest generator.
@@ -98,6 +111,11 @@ pub struct ReleaseManifestV1 {
     /// Platforms proven by smoke: e.g. `["linux"]`.
     pub platforms_proven: Vec<String>,
 
+    /// Verified executable archives bound to this exact release identity.
+    /// Empty is compatible with source/crates-only releases; an asset may not
+    /// be treated as proven unless its platform is listed above.
+    pub binary_assets: Vec<ManifestBinaryAsset>,
+
     // -- Schema/tool generations --
     /// Schema generations in effect at release time.
     pub generations: ManifestGenerations,
@@ -135,6 +153,52 @@ pub struct ManifestCrate {
     pub registry_checksum: Option<String>,
 }
 
+/// One verified executable archive attached to a release.
+///
+/// The executable and archive digests are intentionally separate from crate
+/// checksums. Receipt digests identify the evidence inputs that justified the
+/// asset, while `attestation_subject_sha256` must equal the archive digest so
+/// a future workflow cannot attest one byte sequence and attach another.
+#[derive(Debug, Clone, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
+pub struct ManifestBinaryAsset {
+    /// Capability-matrix platform name, such as `linux`.
+    pub platform: String,
+    /// Rust target triple, such as `x86_64-unknown-linux-gnu`.
+    pub target_triple: String,
+    /// Release version reported by the executable and asset producer.
+    pub version: String,
+    /// Tag identity used to build the asset.
+    pub tag: String,
+    /// Commit identity used to build the asset.
+    pub commit: String,
+    /// Tree identity used to build the asset.
+    pub tree: String,
+    /// Executable version reported by the clean-install smoke.
+    pub executable_version: String,
+    /// Release-relative asset filename, never an absolute or traversing path.
+    pub archive_name: String,
+    /// Archive format, currently `tar.gz` or `zip`.
+    pub archive_format: String,
+    /// SHA-256 digest of the complete archive bytes.
+    pub archive_sha256: String,
+    /// Executable filename inside the archive.
+    pub executable_name: String,
+    /// SHA-256 digest of the executable bytes.
+    pub executable_sha256: String,
+    /// Rust toolchain used for the build.
+    pub rust_toolchain: String,
+    /// Hosted runner identity used for the build.
+    pub runner: String,
+    /// SHA-256 digest of the exact candidate receipt.
+    pub candidate_receipt_digest: String,
+    /// SHA-256 digest of the exact installed-smoke receipt.
+    pub installed_smoke_receipt_digest: String,
+    /// Attestation subject digest; must equal `archive_sha256`.
+    pub attestation_subject_sha256: String,
+    /// Known limitations for this asset and target.
+    pub limitations: Vec<String>,
+}
+
 /// Schema/tool generation snapshot at release time.
 #[derive(Debug, Clone, Eq, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct ManifestGenerations {
@@ -151,6 +215,47 @@ pub fn render_release_manifest_json(
     manifest: &ReleaseManifestV1,
 ) -> Result<String, serde_json::Error> {
     serde_json::to_string_pretty(manifest)
+}
+
+/// Render the release identity and binary-asset projection from the same
+/// typed model used for JSON validation. This is a concise operator summary,
+/// not a second release authority.
+pub fn render_release_manifest_summary(manifest: &ReleaseManifestV1) -> String {
+    let mut summary = format!(
+        "# cargo-allow {}\n\n- Result: `{:?}`\n- Tag: `{}`\n- Commit: `{}`\n- Tree: `{}`\n",
+        manifest.version, manifest.result, manifest.tag, manifest.commit, manifest.tree
+    );
+    summary.push_str("\n## Binary assets\n\n");
+    if manifest.binary_assets.is_empty() {
+        summary.push_str("No executable archives are bound to this release.\n");
+    } else {
+        summary.push_str("| Target | Archive | Archive SHA-256 | Executable SHA-256 |\n");
+        summary.push_str("|---|---|---|---|\n");
+        for asset in &manifest.binary_assets {
+            summary.push_str(&format!(
+                "| `{}` | `{}` | `{}` | `{}` |\n",
+                asset.target_triple,
+                asset.archive_name,
+                asset.archive_sha256,
+                asset.executable_sha256
+            ));
+            summary.push_str(&format!(
+                "\n### `{}`\n\n- Toolchain: `{}`\n- Runner: `{}`\n- Candidate receipt: `{}`\n- Installed-smoke receipt: `{}`\n- Attestation subject: `{}`\n- Limitations: {}\n",
+                asset.target_triple,
+                asset.rust_toolchain,
+                asset.runner,
+                asset.candidate_receipt_digest,
+                asset.installed_smoke_receipt_digest,
+                asset.attestation_subject_sha256,
+                if asset.limitations.is_empty() {
+                    "none".to_string()
+                } else {
+                    asset.limitations.join("; ")
+                }
+            ));
+        }
+    }
+    summary
 }
 
 /// Validate a manifest and return its result class plus any gaps (#2497).
@@ -226,12 +331,193 @@ pub fn validate_release_manifest(
         }
     }
 
+    validate_binary_assets(manifest, &mut gaps);
+
     let result = if gaps.is_empty() {
         ManifestResult::Complete
     } else {
         ManifestResult::Incomplete
     };
     (result, gaps)
+}
+
+fn validate_binary_assets(manifest: &ReleaseManifestV1, gaps: &mut Vec<ManifestGap>) {
+    let mut canonical = manifest.binary_assets.clone();
+    canonical.sort_by(|left, right| {
+        left.target_triple
+            .cmp(&right.target_triple)
+            .then_with(|| left.archive_name.cmp(&right.archive_name))
+    });
+    if canonical != manifest.binary_assets {
+        gaps.push(ManifestGap {
+            field: "binary_assets",
+            detail: "assets must be ordered by target_triple then archive_name".to_string(),
+        });
+    }
+
+    let mut targets = HashSet::new();
+    let mut archives = HashSet::new();
+    for asset in &manifest.binary_assets {
+        let target_key = asset.target_triple.clone();
+        if !targets.insert(target_key.clone()) {
+            gaps.push(ManifestGap {
+                field: "binary_assets",
+                detail: format!("duplicate target_triple {target_key}"),
+            });
+        }
+        let archive_key = asset.archive_name.clone();
+        if !archives.insert(archive_key.clone()) {
+            gaps.push(ManifestGap {
+                field: "binary_assets",
+                detail: format!("duplicate archive_name {archive_key}"),
+            });
+        }
+
+        let Some((expected_platform, expected_format)) = RELEASE_BINARY_TARGETS
+            .iter()
+            .find(|(target, _, _)| *target == asset.target_triple)
+            .map(|(_, platform, format)| (*platform, *format))
+        else {
+            gaps.push(ManifestGap {
+                field: "binary_assets.target_triple",
+                detail: format!(
+                    "unsupported or malformed target triple {}",
+                    asset.target_triple
+                ),
+            });
+            continue;
+        };
+
+        if asset.platform != expected_platform {
+            gaps.push(ManifestGap {
+                field: "binary_assets.platform",
+                detail: format!(
+                    "{} belongs to platform {}, got {}",
+                    asset.target_triple, expected_platform, asset.platform
+                ),
+            });
+        }
+        if !manifest
+            .platforms_proven
+            .iter()
+            .any(|platform| platform == &asset.platform)
+        {
+            gaps.push(ManifestGap {
+                field: "binary_assets.platform",
+                detail: format!(
+                    "asset platform {} is not present in platforms_proven",
+                    asset.platform
+                ),
+            });
+        }
+        if asset.archive_format != expected_format {
+            gaps.push(ManifestGap {
+                field: "binary_assets.archive_format",
+                detail: format!(
+                    "{} requires {}, got {}",
+                    asset.target_triple, expected_format, asset.archive_format
+                ),
+            });
+        }
+
+        for (field, actual, expected) in [
+            ("version", &asset.version, &manifest.version),
+            ("tag", &asset.tag, &manifest.tag),
+            ("commit", &asset.commit, &manifest.commit),
+            ("tree", &asset.tree, &manifest.tree),
+            (
+                "executable_version",
+                &asset.executable_version,
+                &manifest.version,
+            ),
+        ] {
+            if actual != expected {
+                gaps.push(ManifestGap {
+                    field: "binary_assets.identity",
+                    detail: format!(
+                        "{field} for {} disagrees with manifest identity",
+                        asset.target_triple
+                    ),
+                });
+            }
+        }
+
+        let expected_suffix = format!(".{}", asset.archive_format);
+        let expected_name = format!(
+            "cargo-allow-v{}-{}.{}",
+            manifest.version, asset.target_triple, asset.archive_format
+        );
+        if asset.archive_name != expected_name || !asset.archive_name.ends_with(&expected_suffix) {
+            gaps.push(ManifestGap {
+                field: "binary_assets.archive_name",
+                detail: format!(
+                    "expected stable release asset name {}, got {}",
+                    expected_name, asset.archive_name
+                ),
+            });
+        }
+        if asset.archive_name.is_empty()
+            || asset.archive_name.contains('/')
+            || asset.archive_name.contains('\\')
+            || asset.archive_name.contains("..")
+        {
+            gaps.push(ManifestGap {
+                field: "binary_assets.archive_name",
+                detail: format!(
+                    "archive name is not a bounded release filename: {}",
+                    asset.archive_name
+                ),
+            });
+        }
+        if asset.executable_name != "cargo-allow" && asset.executable_name != "cargo-allow.exe" {
+            gaps.push(ManifestGap {
+                field: "binary_assets.executable_name",
+                detail: format!("unexpected executable name {}", asset.executable_name),
+            });
+        }
+        for (field, digest) in [
+            ("archive_sha256", &asset.archive_sha256),
+            ("executable_sha256", &asset.executable_sha256),
+            ("candidate_receipt_digest", &asset.candidate_receipt_digest),
+            (
+                "installed_smoke_receipt_digest",
+                &asset.installed_smoke_receipt_digest,
+            ),
+            (
+                "attestation_subject_sha256",
+                &asset.attestation_subject_sha256,
+            ),
+        ] {
+            if !is_sha256_digest(digest) {
+                gaps.push(ManifestGap {
+                    field: "binary_assets.digest",
+                    detail: format!("{field} must be sha256:<64 lowercase hex characters>"),
+                });
+            }
+        }
+        if asset.attestation_subject_sha256 != asset.archive_sha256 {
+            gaps.push(ManifestGap {
+                field: "binary_assets.attestation_subject_sha256",
+                detail: "attestation subject must equal archive_sha256".to_string(),
+            });
+        }
+        if asset.rust_toolchain.trim().is_empty() || asset.runner.trim().is_empty() {
+            gaps.push(ManifestGap {
+                field: "binary_assets.provenance",
+                detail: "rust_toolchain and runner are required".to_string(),
+            });
+        }
+    }
+}
+
+fn is_sha256_digest(value: &str) -> bool {
+    let Some(hex) = value.strip_prefix("sha256:") else {
+        return false;
+    };
+    hex.len() == 64
+        && hex
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
 }
 
 /// Inputs for generating a manifest from release workflow context.
@@ -246,6 +532,7 @@ pub struct ManifestInput<'a> {
     pub msrv: &'a str,
     pub platforms_proven: &'a [&'a str],
     pub crate_checksums: &'a [Option<String>],
+    pub binary_assets: &'a [ManifestBinaryAsset],
     /// ISO 8601 timestamp string (caller-provided to avoid a chrono dependency).
     pub generated_at: &'a str,
 }
@@ -265,6 +552,13 @@ pub fn generate_release_manifest(input: &ManifestInput) -> ReleaseManifestV1 {
         })
         .collect();
 
+    let mut binary_assets = input.binary_assets.to_vec();
+    binary_assets.sort_by(|left, right| {
+        left.target_triple
+            .cmp(&right.target_triple)
+            .then_with(|| left.archive_name.cmp(&right.archive_name))
+    });
+
     let mut manifest = ReleaseManifestV1 {
         schema_id: RELEASE_MANIFEST_SCHEMA_ID.to_string(),
         schema_version: RELEASE_MANIFEST_SCHEMA_VERSION,
@@ -280,6 +574,7 @@ pub fn generate_release_manifest(input: &ManifestInput) -> ReleaseManifestV1 {
         workflow_run_id: input.workflow_run_id,
         msrv: input.msrv.to_string(),
         platforms_proven: input.platforms_proven.iter().map(|s| s.to_string()).collect(),
+        binary_assets,
         generations: ManifestGenerations {
             release_manifest: 1,
             add_finding_plan: 1,
@@ -335,6 +630,7 @@ mod tests {
             workflow_run_id: Some(12345),
             msrv: "1.95".to_string(),
             platforms_proven: vec!["linux".to_string()],
+            binary_assets: Vec::new(),
             generations: ManifestGenerations {
                 release_manifest: 1,
                 add_finding_plan: 1,
@@ -395,6 +691,7 @@ mod tests {
             workflow_run_id: None,
             msrv: "1.95".to_string(),
             platforms_proven: vec![],
+            binary_assets: Vec::new(),
             generations: ManifestGenerations {
                 release_manifest: 1,
                 add_finding_plan: 1,
@@ -435,6 +732,7 @@ mod tests {
             msrv: "1.95",
             platforms_proven: &["linux"],
             crate_checksums: &checksums,
+            binary_assets: &[],
             generated_at: "2026-07-20T12:00:00Z",
         });
         let (result, gaps) = validate_release_manifest(&manifest);
@@ -469,6 +767,7 @@ mod tests {
             msrv: "1.95",
             platforms_proven: &["linux"],
             crate_checksums: &checksums,
+            binary_assets: &[],
             generated_at: "2026-07-20T12:00:00Z",
         });
         let (result, gaps) = validate_release_manifest(&manifest);
@@ -493,10 +792,148 @@ mod tests {
             msrv: "1.95",
             platforms_proven: &["linux"],
             crate_checksums: &checksums,
+            binary_assets: &[],
             generated_at: "2026-07-20T12:00:00Z",
         });
         let (result, gaps) = validate_release_manifest(&manifest);
         assert_eq!(result, ManifestResult::Incomplete);
         assert!(gaps.iter().any(|g| g.field == "auth_source"));
+    }
+
+    fn digest(byte: char) -> String {
+        format!("sha256:{}", byte.to_string().repeat(64))
+    }
+
+    fn linux_asset() -> ManifestBinaryAsset {
+        ManifestBinaryAsset {
+            platform: "linux".to_string(),
+            target_triple: "x86_64-unknown-linux-gnu".to_string(),
+            version: "0.2.0".to_string(),
+            tag: "v0.2.0".to_string(),
+            commit: "abc123".to_string(),
+            tree: "def456".to_string(),
+            executable_version: "0.2.0".to_string(),
+            archive_name: "cargo-allow-v0.2.0-x86_64-unknown-linux-gnu.tar.gz".to_string(),
+            archive_format: "tar.gz".to_string(),
+            archive_sha256: digest('a'),
+            executable_name: "cargo-allow".to_string(),
+            executable_sha256: digest('b'),
+            rust_toolchain: "1.95.0".to_string(),
+            runner: "ubuntu-24.04".to_string(),
+            candidate_receipt_digest: digest('c'),
+            installed_smoke_receipt_digest: digest('d'),
+            attestation_subject_sha256: digest('a'),
+            limitations: vec!["target-specific Linux proof only".to_string()],
+        }
+    }
+
+    fn manifest_input<'a>(assets: &'a [ManifestBinaryAsset]) -> ManifestInput<'a> {
+        let checksums = Box::leak(
+            PUBLISH_ORDER
+                .iter()
+                .map(|_| Some("sha256:abc123".to_string()))
+                .collect::<Vec<_>>()
+                .into_boxed_slice(),
+        );
+        ManifestInput {
+            version: "0.2.0",
+            repository: "EffortlessMetrics/cargo-allow",
+            tag: "v0.2.0",
+            commit: "abc123",
+            tree: "def456",
+            auth_source: "oidc",
+            workflow_run_id: Some(12345),
+            msrv: "1.95",
+            platforms_proven: &["linux"],
+            crate_checksums: checksums,
+            binary_assets: assets,
+            generated_at: "2026-07-20T12:00:00Z",
+        }
+    }
+
+    #[test]
+    fn binary_asset_contract_accepts_identity_bound_linux_asset() {
+        let assets = vec![linux_asset()];
+        let manifest = generate_release_manifest(&manifest_input(&assets));
+        let (result, gaps) = validate_release_manifest(&manifest);
+        assert_eq!(result, ManifestResult::Complete);
+        assert!(gaps.is_empty(), "gaps: {gaps:?}");
+    }
+
+    #[test]
+    fn binary_asset_generation_orders_by_target_then_archive() {
+        let linux = linux_asset();
+        let mut windows = linux.clone();
+        windows.platform = "windows".to_string();
+        windows.target_triple = "x86_64-pc-windows-msvc".to_string();
+        windows.archive_name = "cargo-allow-v0.2.0-x86_64-pc-windows-msvc.zip".to_string();
+        windows.archive_format = "zip".to_string();
+        windows.executable_name = "cargo-allow.exe".to_string();
+        let assets = vec![windows, linux];
+        let manifest = generate_release_manifest(&ManifestInput {
+            platforms_proven: &["linux", "windows"],
+            ..manifest_input(&assets)
+        });
+        assert_eq!(
+            manifest.binary_assets[0].target_triple,
+            "x86_64-pc-windows-msvc"
+        );
+        assert_eq!(
+            manifest.binary_assets[1].target_triple,
+            "x86_64-unknown-linux-gnu"
+        );
+        let (result, gaps) = validate_release_manifest(&manifest);
+        assert_eq!(result, ManifestResult::Complete);
+        assert!(gaps.is_empty(), "gaps: {gaps:?}");
+    }
+
+    #[test]
+    fn binary_asset_validation_rejects_identity_and_attestation_conflicts() {
+        let mut asset = linux_asset();
+        asset.commit = "other-commit".to_string();
+        asset.attestation_subject_sha256 = digest('e');
+        let assets = vec![asset];
+        let manifest = generate_release_manifest(&manifest_input(&assets));
+        let (result, gaps) = validate_release_manifest(&manifest);
+        assert_eq!(result, ManifestResult::Incomplete);
+        assert!(gaps.iter().any(|gap| gap.field == "binary_assets.identity"));
+        assert!(
+            gaps.iter()
+                .any(|gap| gap.field == "binary_assets.attestation_subject_sha256")
+        );
+    }
+
+    #[test]
+    fn binary_asset_validation_rejects_duplicate_and_unclaimed_targets() {
+        let first = linux_asset();
+        let mut second = first.clone();
+        second.archive_name.push_str(".duplicate");
+        let assets = vec![first, second];
+        let mut manifest = generate_release_manifest(&manifest_input(&assets));
+        manifest.platforms_proven.clear();
+        let (result, gaps) = validate_release_manifest(&manifest);
+        assert_eq!(result, ManifestResult::Incomplete);
+        assert!(
+            gaps.iter()
+                .any(|gap| gap.detail.contains("duplicate target"))
+        );
+        assert!(
+            gaps.iter()
+                .any(|gap| gap.detail.contains("not present in platforms_proven"))
+        );
+    }
+
+    #[test]
+    fn binary_asset_summary_projects_the_typed_identity() {
+        let assets = vec![linux_asset()];
+        let manifest = generate_release_manifest(&manifest_input(&assets));
+        let summary = render_release_manifest_summary(&manifest);
+        assert!(summary.contains("x86_64-unknown-linux-gnu"));
+        assert!(summary.contains("cargo-allow-v0.2.0-x86_64-unknown-linux-gnu.tar.gz"));
+        assert!(summary.contains(&digest('a')));
+        assert!(summary.contains(&digest('b')));
+        assert!(summary.contains("1.95.0"));
+        assert!(summary.contains(&digest('c')));
+        assert!(summary.contains("target-specific Linux proof only"));
     }
 }
