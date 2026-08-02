@@ -216,6 +216,7 @@ measure() {
   mkdir -p "$(dirname "${artifact}")" "$(dirname "${semantic}")"
   start="$(date +%s%N)"
   if ! "${binary}" "$@" >"${stdout_path}" 2>"${stderr_path}"; then
+    cat "${stdout_path}" >&2
     cat "${stderr_path}" >&2
     fail "${name} command failed"
   fi
