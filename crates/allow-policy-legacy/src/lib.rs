@@ -94,6 +94,17 @@ pub use findings::{
     network_findings_from_config, process_findings_from_config, workflow_findings_from_files,
     workflow_findings_from_sources,
 };
+
+/// Policy-derived and compatibility findings emitted by the legacy adapters.
+/// These projections do not execute the referenced behavior.
+pub const POLICY_FINDING_FAMILIES: &[(&str, &str)] = &[
+    ("policy_exception", "github_workflow"),
+    ("policy_exception", "workflow_external_action"),
+    ("policy_exception", "dependency_surface"),
+    ("policy_exception", "process_spawn"),
+    ("policy_exception", "network_destination"),
+    ("policy_exception", "executable_file"),
+];
 pub use legacy_import_batch::{LegacyImportBatch, LegacyImportFamily, import_legacy_policy_dir};
 pub use legacy_sources::{
     LegacyPolicySource, legacy_compat_kind, legacy_policy_source_for_path,

@@ -45,8 +45,11 @@ first_run_subcommands = [
   "prune",
 ]
 
-# No candidate-only first-run subcommands at the 0.1.11 freeze.
-candidate_only_subcommands = []
+# Current source-candidate first-run surfaces that were not present at the
+# 0.1.11 freeze. They must remain explicitly labeled in getting-started.md.
+candidate_only_subcommands = [
+  "capabilities",
+]
 
 # Root/shared flags taught on the Published path (docs may use these).
 # Not a full clap inventory; only the first-run contract surface.

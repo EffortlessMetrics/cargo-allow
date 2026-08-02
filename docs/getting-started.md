@@ -87,6 +87,28 @@ JSON identity (stable for scripts and the first-hour test):
 limitations, and local evidence-health diagnostics. It does not build the
 project.
 
+## 2a. Inspect scanner capabilities
+
+Before choosing a policy or interpreting a finding, inspect the capability
+matrix that the current source-candidate binary carries:
+
+```bash
+cargo run -p cargo-allow -- capabilities
+cargo run -p cargo-allow -- capabilities --format json
+cargo run -p cargo-allow -- capabilities --class not-included
+```
+
+This is a current source-candidate command; the published `0.1.11` binary
+predates this matrix and does not expose it yet.
+
+The JSON form is `cargo-allow.sensor-capabilities.v1` and lists the owning
+module, selected input, analysis class, completeness model, limitations,
+supported claims, excluded claims, fixtures, and documentation anchors for
+each built-in finding family. `not_included` rows are explicit exclusions, not
+clean-scan results. This command describes source-tree observations; it does
+not add compilation, type, macro-expansion, MIR, runtime, or test-adequacy
+analysis.
+
 ## 3. Audit current exceptions
 
 ```bash

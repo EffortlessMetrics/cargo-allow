@@ -4,8 +4,8 @@ use std::env;
 use std::ffi::OsStr;
 
 use crate::{
-    add, audit, check, completions, diff, doctor, explain, hooks, init, list, migrate,
-    precommit_tool, propose, prune, reference, refresh, vocabulary, why, worklist,
+    add, audit, capabilities, check, completions, diff, doctor, explain, hooks, init, list,
+    migrate, precommit_tool, propose, prune, reference, refresh, vocabulary, why, worklist,
 };
 
 #[derive(Debug, Parser)]
@@ -56,6 +56,8 @@ pub(crate) enum CargoAllowCommand {
     Audit(audit::ReportArgs),
     /// CI gate for the exception ledger.
     Check(check::CheckArgs),
+    /// Show the source-tree sensor capability and claim matrix.
+    Capabilities(capabilities::CapabilitiesArgs),
     /// PR-oriented report with git changed files.
     Diff(diff::DiffArgs),
     /// List allow entries.
@@ -148,6 +150,7 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::Init(args) => init::cmd_init(&args),
         CargoAllowCommand::Audit(args) => audit::cmd_audit(&args),
         CargoAllowCommand::Check(args) => check::cmd_check(&args),
+        CargoAllowCommand::Capabilities(args) => capabilities::cmd_capabilities(&args),
         CargoAllowCommand::Diff(args) => diff::cmd_diff(&args),
         CargoAllowCommand::List(args) => list::cmd_list(&args),
         CargoAllowCommand::Explain(args) => explain::cmd_explain(&args),
@@ -246,6 +249,7 @@ impl CargoAllowCommand {
         "init",
         "audit",
         "check",
+        "capabilities",
         "diff",
         "list",
         "explain",

@@ -2,6 +2,7 @@ use std::process;
 
 mod add;
 mod audit;
+mod capabilities;
 mod check;
 mod cli;
 mod cli_types;

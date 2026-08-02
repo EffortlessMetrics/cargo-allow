@@ -48,6 +48,34 @@ pub use test_subjects::{
     resolve_rust_test_selector,
 };
 
+/// Finding families emitted by the source-syntax scanner.
+///
+/// Adding a new public family requires adding its capability row in the
+/// cargo-allow catalog in the same change.
+pub const SOURCE_FINDING_FAMILIES: &[(&str, &str)] = &[
+    ("panic", "unwrap"),
+    ("panic", "expect"),
+    ("panic", "panic_macro"),
+    ("panic", "todo"),
+    ("panic", "unimplemented"),
+    ("panic", "unreachable"),
+    ("panic", "indexing"),
+    ("panic", "string_slice"),
+    ("unsafe", "unsafe_fn"),
+    ("unsafe", "unsafe_impl"),
+    ("unsafe", "unsafe_trait"),
+    ("unsafe", "unsafe_extern_block"),
+    ("unsafe", "unsafe_block"),
+    ("unsafe", "unsafe_const"),
+    ("unsafe", "unsafe_static"),
+    ("unsafe", "unsafe_attr"),
+    ("lint_exception", "allow_attribute"),
+    ("lint_exception", "expect_attribute"),
+    ("lint_exception", "deny_attribute"),
+    ("lint_exception", "forbid_attribute"),
+    ("lint_exception", "warn_attribute"),
+];
+
 pub fn scan_rust_files(
     root: impl AsRef<Path>,
     files: &[PathBuf],
