@@ -1,5 +1,16 @@
-use allow_core::CargoAllowError;
+use allow_core::{CargoAllowError, CargoAllowResult};
 use std::path::Path;
+
+use crate::io::read_policy;
+
+pub(crate) fn with_legacy_source<T>(
+    path: impl AsRef<Path>,
+    load: impl FnOnce(&Path, &str) -> CargoAllowResult<T>,
+) -> CargoAllowResult<T> {
+    let path = path.as_ref();
+    let source = read_policy(path)?;
+    load(path, &source).map_err(|error| at_legacy_source(error, path, &source))
+}
 
 /// Attach the legacy document and the best available TOML line to a semantic
 /// parser or converter error.
@@ -245,6 +256,7 @@ destination = "api.github.com"
 
         assert_eq!(error.location().map(|location| location.line), Some(1));
         assert_eq!(assignment_string_value("id = 42", "id"), None);
+        assert_eq!(assignment_string_value("id 42", "id"), None);
         assert_eq!(assignment_string_value("id = \"unterminated", "id"), None);
         assert_eq!(entry_index("entry x missing path"), None);
         assert_eq!(line_number_at("source", usize::MAX), 1);

@@ -40,7 +40,14 @@ pub fn load_legacy_or_canonical(path: impl AsRef<Path>) -> CargoAllowResult<Allo
 
 #[cfg(test)]
 mod tests {
-    use super::load_legacy_or_canonical;
+    use super::{
+        load_clippy_exceptions_compat_config, load_dependency_surface_compat_config,
+        load_executable_compat_config, load_generated_compat_config, load_legacy_or_canonical,
+        load_network_compat_config, load_no_panic_allowlist_compat_config,
+        load_no_panic_baseline_compat_config, load_non_rust_compat_config,
+        load_process_compat_config, load_unsafe_allowlist_compat_config,
+        load_workflow_compat_config,
+    };
     use std::fs;
 
     #[test]
@@ -99,6 +106,48 @@ mod tests {
                 .message()
                 .contains("net-missing-auth missing auth_required")
         );
+        Ok(())
+    }
+
+    #[test]
+    fn compatibility_loaders_add_source_context_to_policy_mismatch_errors() -> Result<(), String> {
+        let dir = crate::test_support::fixture_dir();
+        let path = dir.join("wrong-legacy-policy.toml");
+        fs::write(&path, "policy = \"wrong-policy\"\n")
+            .map_err(|err| format!("write mismatched legacy fixture: {err}"))?;
+
+        let results = [
+            ("executable", load_executable_compat_config(&path)),
+            ("non-rust", load_non_rust_compat_config(&path, &[])),
+            ("generated", load_generated_compat_config(&path)),
+            (
+                "no-panic-baseline",
+                load_no_panic_baseline_compat_config(&path),
+            ),
+            (
+                "no-panic-allowlist",
+                load_no_panic_allowlist_compat_config(&path),
+            ),
+            ("process", load_process_compat_config(&path)),
+            ("network", load_network_compat_config(&path)),
+            ("clippy", load_clippy_exceptions_compat_config(&path)),
+            ("unsafe", load_unsafe_allowlist_compat_config(&path)),
+            ("workflow", load_workflow_compat_config(&path)),
+            (
+                "dependency-surface",
+                load_dependency_surface_compat_config(&path),
+            ),
+        ];
+
+        for (name, result) in results {
+            let error = match result {
+                Ok(_) => return Err(format!("{name} mismatch unexpectedly loaded")),
+                Err(error) => error,
+            };
+            if !error.message().contains("legacy source") {
+                return Err(format!("{name} mismatch lost source context: {error}"));
+            }
+        }
         Ok(())
     }
 }
