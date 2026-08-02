@@ -1,5 +1,5 @@
 use allow_core::{AllowConfig, CargoAllowResult};
-use allow_policy::parse_policy;
+use allow_policy::parse_policy_at;
 use std::path::Path;
 
 use crate::io::{legacy_table_at, read_policy};
@@ -21,16 +21,19 @@ pub fn load_legacy_or_canonical(path: impl AsRef<Path>) -> CargoAllowResult<Allo
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("legacy-policy");
-    let text = read_policy(path)?;
-    if let Some(table) = legacy_table_at(Some(path), &text)?
-        && let Some(config) = config_from_legacy_table(&table)?
-    {
-        return Ok(config);
-    }
+    let result = (|| -> CargoAllowResult<AllowConfig> {
+        let text = read_policy(path)?;
+        if let Some(table) = legacy_table_at(Some(path), &text)?
+            && let Some(config) = config_from_legacy_table(&table)?
+        {
+            return Ok(config);
+        }
+        parse_policy_at(path, &text)
+    })();
+
     // #1868: attach filename context without discarding the structured error
-    // kind, source location, diagnostics, or causes from the parser.
-    parse_policy(&text)
-        .map_err(|err| err.with_message_prefix(format!("legacy file `{path_label}`: ")))
+    // kind, source location, diagnostics, or causes from any load path.
+    result.map_err(|err| err.with_message_prefix(format!("legacy file `{path_label}`: ")))
 }
 
 #[cfg(test)]
@@ -42,17 +45,19 @@ mod tests {
     fn canonical_parse_errors_keep_filename_context() -> Result<(), String> {
         let dir = crate::test_support::fixture_dir();
         let path = dir.join("canonical-policy.toml");
-        fs::write(
-            &path,
-            "policy = \"cargo-allow\"\n[[allow]]\nid = \"broken\"\nkind = \"not-a-finding\"\n",
-        )
-        .map_err(|err| format!("write malformed canonical fixture: {err}"))?;
+        fs::write(&path, "policy = \"cargo-allow\"\nunknown_field = true\n")
+            .map_err(|err| format!("write malformed canonical fixture: {err}"))?;
 
         let error = match load_legacy_or_canonical(&path) {
             Ok(_) => return Err("malformed canonical TOML unexpectedly loaded".to_string()),
             Err(error) => error,
         };
+        let expected_path = path.display().to_string();
+        let location = error
+            .location()
+            .ok_or_else(|| "canonical parse error should have a location".to_string())?;
 
+        assert_eq!(location.path.as_deref(), Some(expected_path.as_str()));
         assert!(
             error
                 .to_string()

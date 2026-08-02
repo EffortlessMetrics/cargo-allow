@@ -181,10 +181,6 @@ fn load_lane_config(
     path: &Path,
     non_rust_findings: Option<&[Finding]>,
 ) -> CargoAllowResult<AllowConfig> {
-    let legacy_label = path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("legacy-policy");
     let result = if descriptor.legacy_filename == "non-rust-allowlist.toml"
         && let Some(findings) = non_rust_findings
     {
@@ -192,13 +188,10 @@ fn load_lane_config(
     } else {
         load_legacy_or_canonical(path)
     };
-    // #1868: attach the legacy filename without discarding structured error
-    // metadata such as a TOML source location.
+    // #1868: add the policy key without duplicating the filename context that
+    // the direct loader already attached.
     result.map_err(|err| {
-        err.with_message_prefix(format!(
-            "legacy file `{legacy_label}` (policy key `{}`): ",
-            descriptor.legacy_policy_key
-        ))
+        err.with_message_prefix(format!("policy key `{}`: ", descriptor.legacy_policy_key))
     })
 }
 

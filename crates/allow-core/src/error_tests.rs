@@ -22,13 +22,14 @@ fn with_kind_sets_structured_kind() {
     assert_eq!(err.message(), "missing owner");
 }
 
-#[test]
-fn message_prefix_preserves_structured_error_metadata() -> Result<(), String> {
-    let error = CargoAllowError::with_kind(CargoAllowErrorKind::InvalidPolicy, "missing owner")
+fn structured_error() -> CargoAllowError {
+    let cause = std::io::Error::other("underlying parse failure");
+
+    CargoAllowError::with_kind(CargoAllowErrorKind::InvalidPolicy, "missing owner")
         .with_toml_span(
             Some(Path::new("legacy/policy.toml")),
             "policy = \"unsafe-allowlist\"\nowner = [",
-            Some(46..47),
+            Some(36..37),
         )
         .with_diagnostic(super::CargoAllowDiagnostic::error(
             "E0003_INVALID_POLICY",
@@ -36,9 +37,13 @@ fn message_prefix_preserves_structured_error_metadata() -> Result<(), String> {
             Some("allow-1"),
             Some("owner"),
             "allow-1 missing owner",
-        ));
+        ))
+        .with_cause(&cause)
+}
 
-    let prefixed = error.with_message_prefix("legacy file `policy.toml`: ");
+#[test]
+fn message_prefix_preserves_structured_error_metadata() -> Result<(), String> {
+    let prefixed = structured_error().with_message_prefix("legacy file `policy.toml`: ");
 
     assert_eq!(
         prefixed.message(),
@@ -50,18 +55,39 @@ fn message_prefix_preserves_structured_error_metadata() -> Result<(), String> {
         .ok_or_else(|| "message prefix should preserve location".to_string())?;
     assert_eq!(location.path.as_deref(), Some("legacy/policy.toml"));
     assert_eq!(location.line, 2);
+    assert_eq!(location.column, 9);
     assert_eq!(prefixed.diagnostics().len(), 1);
+    let diagnostic = prefixed
+        .diagnostics()
+        .first()
+        .ok_or_else(|| "message prefix should preserve diagnostics".to_string())?;
+    assert_eq!(diagnostic.code, "E0003_INVALID_POLICY");
+    assert_eq!(diagnostic.field.as_deref(), Some("owner"));
+    assert_eq!(diagnostic.message, "allow-1 missing owner");
+    assert_eq!(
+        prefixed.causes(),
+        &[String::from("underlying parse failure")]
+    );
     Ok(())
 }
 
 #[test]
-fn empty_message_prefix_leaves_error_unchanged() {
-    let error = CargoAllowError::with_kind(CargoAllowErrorKind::Usage, "missing argument");
+fn empty_message_prefix_leaves_error_unchanged() -> Result<(), String> {
+    let unchanged = structured_error().with_message_prefix("");
 
-    let unchanged = error.with_message_prefix("");
-
-    assert_eq!(unchanged.message(), "missing argument");
-    assert_eq!(unchanged.kind(), CargoAllowErrorKind::Usage);
+    assert_eq!(unchanged.message(), "missing owner");
+    assert_eq!(unchanged.kind(), CargoAllowErrorKind::InvalidPolicy);
+    let location = unchanged
+        .location()
+        .ok_or_else(|| "empty prefix should preserve location".to_string())?;
+    assert_eq!(location.path.as_deref(), Some("legacy/policy.toml"));
+    assert_eq!(location.column, 9);
+    assert_eq!(unchanged.diagnostics().len(), 1);
+    assert_eq!(
+        unchanged.causes(),
+        &[String::from("underlying parse failure")]
+    );
+    Ok(())
 }
 
 #[test]
