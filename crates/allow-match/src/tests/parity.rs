@@ -34,6 +34,12 @@ fn weaker_neighbor(strong: &AllowEntry) -> AllowEntry {
     neighbor
 }
 
+fn non_live_weaker_neighbor(strong: &AllowEntry) -> AllowEntry {
+    let mut neighbor = weaker_neighbor(strong);
+    neighbor.lifecycle.expires = Some("2020-01-01".to_string());
+    neighbor
+}
+
 /// The strong entry's observable outcome, projected out of a full evaluation so
 /// the two call shapes can be compared directly.
 #[derive(Debug, PartialEq, Eq)]
@@ -179,13 +185,24 @@ fn baseline_debt_strict_and_release_have_parity() {
 fn expired_case_has_parity_and_stays_non_live() {
     let mut entry = strong_entry();
     entry.lifecycle.expires = Some("2020-01-01".to_string());
-    let view = assert_parity(
-        "expired",
-        entry,
+    let mut single = AllowConfig::empty();
+    single.allow.push(entry.clone());
+    let mut paired = AllowConfig::empty();
+    paired.allow.push(entry.clone());
+    paired.allow.push(non_live_weaker_neighbor(&entry));
+
+    let single_view = strong_view(&evaluate_detailed(
+        &single,
         &[strong_finding()],
-        |_| {},
         CheckMode::NoNew,
-    );
+    ));
+    let paired_view = strong_view(&evaluate_detailed(
+        &paired,
+        &[strong_finding()],
+        CheckMode::NoNew,
+    ));
+    assert_eq!(single_view, paired_view);
+    let view = single_view;
     assert_eq!(view.winner_statuses, vec![MatchStatus::Expired]);
     // Expired is non-live: it must still emit the stale projection even with a
     // weaker neighbor present (the core #2336 regression).
@@ -282,13 +299,24 @@ fn expired_unique_strongest_does_not_consume_live_occurrence_headroom() {
     entry.lifecycle.expires = Some("2020-01-01".to_string());
     entry.occurrence_limit = Some(1);
     let finding = strong_finding();
-    let view = assert_parity(
-        "expired_limited_two_findings",
-        entry,
-        &[finding.clone(), finding],
-        |_| {},
+    let mut single = AllowConfig::empty();
+    single.allow.push(entry.clone());
+    let mut paired = AllowConfig::empty();
+    paired.allow.push(entry.clone());
+    paired.allow.push(non_live_weaker_neighbor(&entry));
+
+    let single_view = strong_view(&evaluate_detailed(
+        &single,
+        &[finding.clone(), finding.clone()],
         CheckMode::NoNew,
-    );
+    ));
+    let paired_view = strong_view(&evaluate_detailed(
+        &paired,
+        &[finding.clone(), finding],
+        CheckMode::NoNew,
+    ));
+    assert_eq!(single_view, paired_view);
+    let view = single_view;
     // Both findings classify as Expired; neither becomes an occurrence-exceeded
     // New outcome, because a non-live status consumes no live headroom.
     assert_eq!(

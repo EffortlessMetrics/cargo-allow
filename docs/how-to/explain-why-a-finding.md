@@ -40,6 +40,13 @@ inventory and scanner completeness are disclosed separately. Add-finding plans
 are emitted only for the two exact classes. Older `why.v1` artifacts without
 this optional field remain valid.
 
+When a finding has a unique stronger candidate that is expired or missing
+required evidence, matching may use a strictly weaker live candidate for
+finding coverage. The stronger entry is still reported as stale maintenance
+debt with the lifecycle or evidence reason; this does not renew, delete, or
+approve that entry. Invalid selectors and equal-strength ambiguity remain
+fail-closed, so a fallback cannot turn malformed policy into coverage.
+
 ## Claim Boundary
 
 `why` reports source-tree / source-syntax matching posture only. It does not
