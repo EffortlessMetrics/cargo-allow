@@ -74,6 +74,23 @@ fn hooks_apply_creates_and_reports_a_managed_hook() -> TestResult {
         status.get("disposition").and_then(Value::as_str) == Some("AlreadyPresent"),
         "status did not recognize the managed hook",
     )?;
+
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "apply",
+            "--plan",
+            &plan_arg,
+            "--accept",
+            "--receipt",
+            &receipt_arg,
+        ],
+    )?;
+    require(
+        fs::read_to_string(&receipt)?.contains("\"operation\": \"none\""),
+        "reapplying a matching managed hook did not record a no-op",
+    )?;
     Ok(())
 }
 
@@ -128,6 +145,33 @@ fn hooks_apply_preserves_unmanaged_hook_and_records_manual_merge() -> TestResult
     require(
         fs::read_to_string(&receipt)?.contains("ManualMerge"),
         "manual-merge receipt was not retained",
+    )?;
+
+    fs::write(
+        &hook,
+        "#!/bin/sh\n# BEGIN cargo-allow managed hook: another-plan\n# END cargo-allow managed hook\n",
+    )?;
+    let conflict_receipt = fixture.path.join("target/conflict-receipt.json");
+    let conflict_receipt_arg = path_arg(&conflict_receipt);
+    let output = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "apply",
+            "--plan",
+            &plan_arg,
+            "--accept",
+            "--receipt",
+            &conflict_receipt_arg,
+        ],
+    )?;
+    require(
+        !output.status.success() && String::from_utf8_lossy(&output.stderr).contains("Conflict"),
+        "mismatched managed hook did not report Conflict",
+    )?;
+    require(
+        fs::read_to_string(&conflict_receipt)?.contains("Conflict"),
+        "conflict receipt was not retained",
     )?;
     Ok(())
 }

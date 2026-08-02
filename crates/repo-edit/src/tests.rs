@@ -163,6 +163,25 @@ fn write_file_create_new_atomic_never_replaces_existing_path()
     Ok(())
 }
 
+#[test]
+fn write_file_create_new_atomic_reports_parent_creation_failure()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = TempRoot::new("atomic-create-parent-error")?;
+    let parent = root.path().join("not-a-directory");
+    fs::write(&parent, "already a file")?;
+    let output = parent.join("pre-commit");
+
+    let error = write_file_create_new_atomic(&output, "hook\n")
+        .expect_err("atomic create should reject a file as the parent directory");
+    if !error
+        .to_string()
+        .contains("failed to create parent directory")
+    {
+        return Err("parent creation error omitted its operation".into());
+    }
+    Ok(())
+}
+
 #[cfg(unix)]
 #[test]
 fn write_file_create_new_atomic_applies_requested_permissions()

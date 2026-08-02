@@ -713,6 +713,26 @@ mod tests {
     }
 
     #[test]
+    fn human_status_names_the_non_execution_claim_boundary() -> Result<(), String> {
+        let status = HookStatusV1 {
+            schema: HOOK_STATUS_SCHEMA,
+            stage: "pre-commit".to_string(),
+            plan_identity: "test-plan".to_string(),
+            hook_path: ".git/hooks/pre-commit".to_string(),
+            disposition: "Missing",
+            repository_mutation: false,
+            claim_boundary: "status is read-only".to_string(),
+        };
+        let rendered = render_status(&status);
+        for expected in ["pre-commit", "Missing", "status is read-only"] {
+            if !rendered.contains(expected) {
+                return Err(format!("human status omitted `{expected}`"));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
     fn hook_disposition_is_fail_closed_for_existing_files() -> Result<(), String> {
         let root = HookFixture::new("disposition")?;
         let path = root.path.join("pre-commit");
