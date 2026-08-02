@@ -924,6 +924,74 @@ mod tests {
     }
 
     #[test]
+    fn binary_asset_validation_rejects_unsupported_target_and_noncanonical_order() {
+        let mut unsupported = linux_asset();
+        unsupported.target_triple = "riscv64-unknown-linux-gnu".to_string();
+        let manifest = generate_release_manifest(&manifest_input(&[unsupported]));
+        let (result, gaps) = validate_release_manifest(&manifest);
+        assert_eq!(result, ManifestResult::Incomplete);
+        assert!(
+            gaps.iter()
+                .any(|gap| gap.detail.contains("unsupported or malformed target"))
+        );
+
+        let linux = linux_asset();
+        let mut windows = linux.clone();
+        windows.platform = "windows".to_string();
+        windows.target_triple = "x86_64-pc-windows-msvc".to_string();
+        windows.archive_name = "cargo-allow-v0.2.0-x86_64-pc-windows-msvc.zip".to_string();
+        windows.archive_format = "zip".to_string();
+        windows.executable_name = "cargo-allow.exe".to_string();
+        let mut manifest = generate_release_manifest(&ManifestInput {
+            platforms_proven: &["linux", "windows"],
+            binary_assets: &[linux.clone(), windows.clone()],
+            ..manifest_input(&[])
+        });
+        manifest.binary_assets = vec![linux, windows];
+        let (result, gaps) = validate_release_manifest(&manifest);
+        assert_eq!(result, ManifestResult::Incomplete);
+        assert!(
+            gaps.iter()
+                .any(|gap| gap.detail.contains("ordered by target_triple"))
+        );
+    }
+
+    #[test]
+    fn binary_asset_validation_rejects_metadata_and_digest_conflicts() {
+        let mut asset = linux_asset();
+        asset.platform = "windows".to_string();
+        asset.archive_format = "zip".to_string();
+        asset.version = "0.3.0".to_string();
+        asset.tag = "v0.3.0".to_string();
+        asset.commit = "other-commit".to_string();
+        asset.tree = "other-tree".to_string();
+        asset.executable_version = "0.3.0".to_string();
+        asset.archive_name = "../escape.zip".to_string();
+        asset.executable_name = "not-cargo-allow".to_string();
+        asset.archive_sha256 = "bad".to_string();
+        asset.executable_sha256 = "bad".to_string();
+        asset.candidate_receipt_digest = "bad".to_string();
+        asset.installed_smoke_receipt_digest = "bad".to_string();
+        asset.attestation_subject_sha256 = "bad".to_string();
+        asset.rust_toolchain.clear();
+        asset.runner.clear();
+        let manifest = generate_release_manifest(&manifest_input(&[asset]));
+        let (result, gaps) = validate_release_manifest(&manifest);
+        assert_eq!(result, ManifestResult::Incomplete);
+        for field in [
+            "binary_assets.platform",
+            "binary_assets.archive_format",
+            "binary_assets.identity",
+            "binary_assets.archive_name",
+            "binary_assets.executable_name",
+            "binary_assets.digest",
+            "binary_assets.provenance",
+        ] {
+            assert!(gaps.iter().any(|gap| gap.field == field), "missing {field}");
+        }
+    }
+
+    #[test]
     fn binary_asset_summary_projects_the_typed_identity() {
         let assets = vec![linux_asset()];
         let manifest = generate_release_manifest(&manifest_input(&assets));
@@ -935,5 +1003,12 @@ mod tests {
         assert!(summary.contains("1.95.0"));
         assert!(summary.contains(&digest('c')));
         assert!(summary.contains("target-specific Linux proof only"));
+    }
+
+    #[test]
+    fn binary_asset_summary_handles_source_only_release() {
+        let manifest = generate_release_manifest(&manifest_input(&[]));
+        let summary = render_release_manifest_summary(&manifest);
+        assert!(summary.contains("No executable archives are bound"));
     }
 }
