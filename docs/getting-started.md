@@ -206,6 +206,19 @@ Persist a reviewed candidate:
 cargo-allow propose --write policy/allow.toml
 ```
 
+For automation, write the machine-readable summary separately from the policy
+candidate:
+
+```bash
+cargo-allow propose \
+  --summary-format json \
+  --summary-output target/cargo-allow/propose.json
+```
+
+Omitting `--write` keeps the policy candidate in preview mode. The summary
+output is a report for routing and review; it does not write or approve the
+policy.
+
 Generated entries use `classification = "baseline_debt"`. Treat that as a queue
 for review, narrowing, evidence, or removal. Do not convert generated debt into
 approval just to pass CI.
@@ -348,8 +361,10 @@ adoption](how-to/rollback-cargo-allow-adoption.md).
   approval.
 - **selector / structural identity**: how a ledger row matches a syntax-visible
   finding (AST kind, path, fingerprints) rather than a fragile line-only guess.
-- **`review_after` / `expires`**: live lifecycle thresholds; due or expired rows
-  surface in `list` / `worklist` / check summaries.
+- **`review_after` / `expires`**: live lifecycle thresholds. Once the current
+  date reaches `review_after`, the entry is `review_due`; after an `expires`
+  date passes, it is `expired`. These statuses surface in `list` / `worklist` /
+  check summaries; they do not auto-extend or mutate the policy.
 - **stale vs location drift**: unused or unmatched receipts versus matched
   findings whose `last_seen` location moved.
 - **evidence reference**: `doc:`, `test:`, `issue:`, … pointers checked for

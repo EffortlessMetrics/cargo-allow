@@ -203,6 +203,10 @@ fn getting_started_documents_checked_step_inventory() {
         "how-to/manage-an-exception.md",
         "do not manufacture baseline debt",
         "Choose ONE bootstrap path",
+        "--summary-format json",
+        "--summary-output target/cargo-allow/propose.json",
+        "date reaches `review_after`",
+        "date passes, it is `expired`",
     ] {
         assert!(
             guide.contains(required),
