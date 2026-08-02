@@ -89,8 +89,21 @@ unmanaged or mismatched managed content is reported as `ManualMerge` or
 `Conflict` and recorded in the apply receipt. The generated wrapper invokes
 the exact offline `cargo-allow check --mode no-new` command over the tracked
 worktree; it does not claim exact staged-index evidence or install a binary.
-Removal, managed-block composition, and automatic rollback remain separate
-follow-up capabilities.
+To remove a hook created by that exact apply, retain its receipt and run:
+
+```bash
+cargo-allow hooks remove \
+  --receipt target/cargo-allow/hooks/pre-commit.apply.receipt.json \
+  --accept
+```
+
+Removal is fail-closed: it recomputes the current stage, plan identity, Git
+common hook path, and complete managed-file bytes from the receipt and refuses
+changed, composed, unmanaged, or symbolic-link content. It writes a separate
+`cargo-allow.local-hook-remove-receipt.v1`; the receipt records the exact
+recreate route through `hooks plan` and `hooks apply`. Existing hook
+composition, partial managed-block removal, and exact staged-index enforcement
+remain separate follow-up capabilities.
 
 ## Optional reusable GitHub Action
 

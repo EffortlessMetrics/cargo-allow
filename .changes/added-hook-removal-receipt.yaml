@@ -1,0 +1,7 @@
+kind: Added
+body: >-
+  Adoption: a successful direct Git-hook apply can now be removed with an
+  explicit `hooks remove --receipt ... --accept` command. Removal is bound to
+  the current plan identity, Git common hook path, and complete managed-file
+  bytes, refuses changed or symbolic-link content, and emits a separate
+  `cargo-allow.local-hook-remove-receipt.v1` with the recreate rollback route.

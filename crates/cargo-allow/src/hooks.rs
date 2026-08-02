@@ -35,6 +35,8 @@ pub(crate) enum HooksCommand {
     Status(HookStatusArgs),
     /// Apply a plan only when the Git hook is absent or already managed.
     Apply(HookApplyArgs),
+    /// Remove only the exact managed hook created by an apply receipt.
+    Remove(HookRemoveArgs),
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -74,6 +76,19 @@ pub(crate) struct HookApplyArgs {
     /// Write the apply receipt to this path.
     #[arg(long)]
     pub(crate) receipt: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Parser)]
+pub(crate) struct HookRemoveArgs {
+    /// Read the exact apply receipt for the managed hook to remove.
+    #[arg(long)]
+    pub(crate) receipt: PathBuf,
+    /// Explicitly accept removing the exact managed hook file.
+    #[arg(long)]
+    pub(crate) accept: bool,
+    /// Write the removal receipt to this path.
+    #[arg(long)]
+    pub(crate) result_receipt: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -176,6 +191,7 @@ pub(crate) fn cmd_hooks(args: &HooksArgs) -> CargoAllowResult<()> {
         }
         HooksCommand::Status(status_args) => cmd_status(status_args),
         HooksCommand::Apply(apply_args) => cmd_apply(apply_args),
+        HooksCommand::Remove(remove_args) => cmd_remove(remove_args),
     }
 }
 
@@ -202,8 +218,34 @@ struct HookApplyReceiptV1 {
     rollback: &'static str,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ReadHookApplyReceiptV1 {
+    schema: String,
+    stage: String,
+    plan_identity: String,
+    hook_path: String,
+    disposition: String,
+    operation: String,
+    applied: bool,
+    rollback: String,
+}
+
+#[derive(Debug, Serialize)]
+struct HookRemoveReceiptV1 {
+    schema: &'static str,
+    stage: String,
+    plan_identity: String,
+    hook_path: String,
+    disposition: &'static str,
+    operation: &'static str,
+    removed: bool,
+    rollback: &'static str,
+}
+
 const HOOK_STATUS_SCHEMA: &str = "cargo-allow.local-hook-status.v1";
 const HOOK_APPLY_RECEIPT_SCHEMA: &str = "cargo-allow.local-hook-apply-receipt.v1";
+const HOOK_REMOVE_RECEIPT_SCHEMA: &str = "cargo-allow.local-hook-remove-receipt.v1";
 const MANAGED_BEGIN: &str = "# BEGIN cargo-allow managed hook: ";
 const MANAGED_END: &str = "# END cargo-allow managed hook";
 
@@ -248,7 +290,7 @@ fn cmd_apply(args: &HookApplyArgs) -> CargoAllowResult<()> {
 
     let disposition = hook_disposition(&hook_path, &plan)?;
     if disposition == "AlreadyPresent" {
-        write_receipt(
+        write_json_receipt(
             &receipt_path,
             &HookApplyReceiptV1 {
                 schema: HOOK_APPLY_RECEIPT_SCHEMA,
@@ -264,7 +306,7 @@ fn cmd_apply(args: &HookApplyArgs) -> CargoAllowResult<()> {
         return Ok(());
     }
     if disposition != "Missing" {
-        write_receipt(
+        write_json_receipt(
             &receipt_path,
             &HookApplyReceiptV1 {
                 schema: HOOK_APPLY_RECEIPT_SCHEMA,
@@ -293,14 +335,152 @@ fn cmd_apply(args: &HookApplyArgs) -> CargoAllowResult<()> {
         disposition: "Missing",
         operation: "create",
         applied: true,
-        rollback: "remove only the exact managed block/file identity; automatic removal is a follow-up",
+        rollback: "run `cargo-allow hooks remove --receipt <this receipt> --accept`; removal refuses changed identity",
     };
-    write_receipt(&receipt_path, &receipt).map_err(|error| {
+    write_json_receipt(&receipt_path, &receipt).map_err(|error| {
         CargoAllowError::new(format!(
             "created managed hook {} but failed to write the apply receipt: {error}",
             hook_path.display()
         ))
     })?;
+    Ok(())
+}
+
+fn cmd_remove(args: &HookRemoveArgs) -> CargoAllowResult<()> {
+    if !args.accept {
+        return Err(CargoAllowError::new(
+            "hook remove is preview-safe by default; pass --accept to remove the exact managed hook",
+        ));
+    }
+
+    let root = source_tree_root()?;
+    let receipt = read_apply_receipt(&args.receipt)?;
+    let stage = stage_from_str(&receipt.stage)?;
+    let plan = build_plan(stage);
+    validate_apply_receipt(&receipt, &plan)?;
+    let hook_path = hook_path(&root, stage)?;
+    let expected_hook_path = portable_path(&root, &hook_path);
+    if receipt.hook_path != expected_hook_path {
+        return Err(CargoAllowError::new(format!(
+            "apply receipt targets `{}`, but the current managed hook is `{expected_hook_path}`",
+            receipt.hook_path
+        )));
+    }
+
+    let result_receipt = args.result_receipt.clone().unwrap_or_else(|| {
+        root.join("target/cargo-allow/hooks")
+            .join(format!("{}.remove.receipt.json", plan.stage))
+    });
+    assert_path_within_root(&root, &result_receipt)?;
+
+    let metadata = match fs::symlink_metadata(&hook_path) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            let receipt = HookRemoveReceiptV1 {
+                schema: HOOK_REMOVE_RECEIPT_SCHEMA,
+                stage: plan.stage,
+                plan_identity: plan.plan_identity,
+                hook_path: expected_hook_path,
+                disposition: "Missing",
+                operation: "none",
+                removed: false,
+                rollback: "no mutation; re-run hooks apply with a matching plan if the hook should be restored",
+            };
+            write_json_receipt(&result_receipt, &receipt)?;
+            return Ok(());
+        }
+        Err(error) => {
+            return Err(CargoAllowError::new(format!(
+                "failed to inspect existing hook {}: {error}",
+                hook_path.display()
+            )));
+        }
+    };
+    if metadata.file_type().is_symlink() {
+        return Err(CargoAllowError::new(
+            "managed hook removal refuses symbolic links; inspect and remove the link manually",
+        ));
+    }
+
+    let contents = fs::read_to_string(&hook_path).map_err(|error| {
+        CargoAllowError::new(format!(
+            "failed to read managed hook {} before removal: {error}",
+            hook_path.display()
+        ))
+    })?;
+    if normalize_hook_text(&contents) != normalize_hook_text(&render_managed_hook(&plan)) {
+        let disposition = if contents.contains(MANAGED_BEGIN) || contents.contains(MANAGED_END) {
+            "Conflict"
+        } else {
+            "Changed"
+        };
+        let receipt = HookRemoveReceiptV1 {
+            schema: HOOK_REMOVE_RECEIPT_SCHEMA,
+            stage: plan.stage,
+            plan_identity: plan.plan_identity,
+            hook_path: expected_hook_path,
+            disposition,
+            operation: "none",
+            removed: false,
+            rollback: "no mutation; restore the exact managed identity or remove it manually after review",
+        };
+        write_json_receipt(&result_receipt, &receipt)?;
+        return Err(CargoAllowError::new(format!(
+            "managed hook is {disposition}; no files were changed, see receipt {}",
+            result_receipt.display()
+        )));
+    }
+
+    fs::remove_file(&hook_path).map_err(|error| {
+        CargoAllowError::new(format!(
+            "failed to remove exact managed hook {}: {error}",
+            hook_path.display()
+        ))
+    })?;
+    let receipt = HookRemoveReceiptV1 {
+        schema: HOOK_REMOVE_RECEIPT_SCHEMA,
+        stage: plan.stage,
+        plan_identity: plan.plan_identity,
+        hook_path: expected_hook_path,
+        disposition: "Managed",
+        operation: "remove",
+        removed: true,
+        rollback: "re-run hooks plan for this stage and hooks apply with --accept to recreate the managed hook",
+    };
+    write_json_receipt(&result_receipt, &receipt)
+}
+
+fn read_apply_receipt(path: &Path) -> CargoAllowResult<ReadHookApplyReceiptV1> {
+    let bytes = fs::read_to_string(path).map_err(|error| {
+        CargoAllowError::new(format!(
+            "failed to read hook apply receipt {}: {error}",
+            path.display()
+        ))
+    })?;
+    serde_json::from_str(&bytes).map_err(|error| {
+        CargoAllowError::new(format!(
+            "failed to parse hook apply receipt {}: {error}",
+            path.display()
+        ))
+    })
+}
+
+fn validate_apply_receipt(
+    receipt: &ReadHookApplyReceiptV1,
+    plan: &LocalHookPlanV1,
+) -> CargoAllowResult<()> {
+    if receipt.schema != HOOK_APPLY_RECEIPT_SCHEMA
+        || receipt.stage != plan.stage
+        || receipt.plan_identity != plan.plan_identity
+        || receipt.disposition != "Missing"
+        || receipt.operation != "create"
+        || !receipt.applied
+        || receipt.rollback.is_empty()
+    {
+        return Err(CargoAllowError::new(
+            "hook apply receipt is not an exact successful create receipt for the current supported plan",
+        ));
+    }
     Ok(())
 }
 
@@ -471,7 +651,7 @@ fn portable_path(root: &Path, path: &Path) -> String {
         .unwrap_or_else(|_| path.to_string_lossy().replace('\\', "/"))
 }
 
-fn write_receipt(path: &Path, receipt: &HookApplyReceiptV1) -> CargoAllowResult<()> {
+fn write_json_receipt<T: Serialize>(path: &Path, receipt: &T) -> CargoAllowResult<()> {
     let rendered = serde_json::to_string_pretty(receipt)
         .map_err(|error| CargoAllowError::new(format!("failed to render hook receipt: {error}")))?;
     write_file(path, &format!("{rendered}\n"))
