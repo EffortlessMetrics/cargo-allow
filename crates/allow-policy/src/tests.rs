@@ -259,6 +259,18 @@ fn load_policy_with_reportable_evidence_reads_file_and_keeps_invalid_links() -> 
 }
 
 #[test]
+fn load_policy_reports_path_when_read_fails() -> std::io::Result<()> {
+    let root = TempRoot::new("load-policy-read-error")?;
+    let policy_path = root.path().join("missing/allow.toml");
+
+    let error = load_policy(&policy_path).expect_err("missing policy should fail to read");
+    let message = error.to_string();
+    assert!(message.contains("failed to read"));
+    assert!(message.contains(&policy_path.display().to_string()));
+    Ok(())
+}
+
+#[test]
 fn load_policy_rejects_oversized_policy_files() -> std::io::Result<()> {
     let root = TempRoot::new("load-policy-oversized")?;
     let policy_path = root.path().join("policy/allow.toml");
