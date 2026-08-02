@@ -30,14 +30,16 @@ EOF
 chmod 0755 "${fixture_bin}"
 
 output="${work}/assets"
-CARGO_ALLOW_BIN="${fixture_bin}" VERSION=9.9.9 \
+CARGO_ALLOW_BIN="${fixture_bin}" VERSION=9.9.9 RELEASE_TAG=v9.9.9 \
+  RELEASE_COMMIT=fixture-commit RELEASE_TREE=fixture-tree \
   bash scripts/package-release-binary.sh --output-dir "${output}" >/dev/null
 archive="${output}/cargo-allow-v9.9.9-x86_64-unknown-linux-gnu.tar.gz"
 for mask in 022 077; do
   reproducible_output="${work}/umask-${mask}"
   (
     umask "${mask}"
-    CARGO_ALLOW_BIN="${fixture_bin}" VERSION=9.9.9 \
+    CARGO_ALLOW_BIN="${fixture_bin}" VERSION=9.9.9 RELEASE_TAG=v9.9.9 \
+      RELEASE_COMMIT=fixture-commit RELEASE_TREE=fixture-tree \
       bash scripts/package-release-binary.sh --output-dir "${reproducible_output}" >/dev/null
   )
 done
@@ -48,7 +50,8 @@ umask_archive_077="${work}/umask-077/$(basename "${archive}")"
   || { printf 'archive changed with umask\n' >&2; exit 1; }
 bash scripts/verify-release-binary.sh --version 9.9.9 "${archive}" >/dev/null
 rm -f "${receipt_path}"
-bash scripts/verify-release-binary.sh --version 9.9.9 --receipt "${receipt_path}" "${archive}" >/dev/null
+RELEASE_TAG=v9.9.9 RELEASE_COMMIT=fixture-commit RELEASE_TREE=fixture-tree \
+  bash scripts/verify-release-binary.sh --version 9.9.9 --receipt "${receipt_path}" "${archive}" >/dev/null
 
 manifest_output="${work}/release-manifest-v1.json"
 expect_failure() {
@@ -77,6 +80,25 @@ assert asset["attestation_subject_sha256"] == asset["archive_sha256"]
 assert asset["candidate_receipt_digest"].startswith("sha256:")
 assert asset["installed_smoke_receipt_digest"].startswith("sha256:")
 PY
+
+bad_identity_receipt="${work}/bad-identity.receipt.json"
+cp "${receipt_path}" "${bad_identity_receipt}"
+python3 - "${bad_identity_receipt}" <<'PY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+receipt = json.loads(path.read_text(encoding="utf-8"))
+receipt["commit"] = "other-commit"
+path.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+PY
+expect_failure env VERSION=9.9.9 REPOSITORY=EffortlessMetrics/cargo-allow \
+  TAG=v9.9.9 COMMIT=fixture-commit TREE=fixture-tree AUTH_SOURCE=oidc MSRV=1.95 \
+  BINARY_PACKAGE_RECEIPT="${output}/release-binary.receipt.json" \
+  BINARY_INSTALL_RECEIPT="${bad_identity_receipt}" \
+  OUTPUT="${work}/identity-conflict-manifest.json" \
+  bash scripts/generate-release-manifest.sh
 
 mkdir -p target/package
 for crate in allow-core allow-policy allow-inventory allow-files allow-rust \

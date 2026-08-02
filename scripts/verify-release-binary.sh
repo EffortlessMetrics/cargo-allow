@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
 # Verify and clean-install-test a cargo-allow Linux release archive (#2464).
 # This is consumer-shaped and does not verify GitHub attestations.
+# Release evidence callers should provide RELEASE_TAG, RELEASE_COMMIT, and
+# RELEASE_TREE so the receipt can be reconciled with the tagged source.
 set -euo pipefail
 
 archive=""
 expected_version=""
 receipt=""
+release_tag="${RELEASE_TAG:-}"
+release_commit="${RELEASE_COMMIT:-}"
+release_tree="${RELEASE_TREE:-}"
 log() { printf 'verify-release-binary: %s\n' "$*"; }
 fail() { printf 'verify-release-binary: error: %s\n' "$*" >&2; exit 1; }
 
@@ -121,12 +126,15 @@ executable_sha256="${actual_executable_sha256}"
 if [[ -z "${receipt}" ]]; then receipt="${archive%.tar.gz}.receipt.json"; fi
 mkdir -p "$(dirname "${receipt}")"
 python3 - "${receipt}" "${version}" "${archive_name}" "${archive_sha256}" \
-  "${executable_sha256}" <<'PY'
+  "${executable_sha256}" "${release_tag}" "${release_commit}" "${release_tree}" <<'PY'
 import json
 import pathlib
 import sys
 
-receipt, version, archive_name, archive_sha256, executable_sha256 = sys.argv[1:]
+(
+    receipt, version, archive_name, archive_sha256, executable_sha256,
+    release_tag, release_commit, release_tree,
+) = sys.argv[1:]
 payload = {
     "schema_id": "cargo-allow.release-binary-install.v1",
     "schema_version": 1,
@@ -137,6 +145,9 @@ payload = {
     "archive_sha256": f"sha256:{archive_sha256}",
     "executable_name": "cargo-allow",
     "executable_sha256": f"sha256:{executable_sha256}",
+    "tag": release_tag,
+    "commit": release_commit,
+    "tree": release_tree,
     "clean_install_commands": [
         "cargo-allow --version", "cargo-allow doctor", "cargo-allow audit",
         "cargo-allow init --root .", "cargo-allow check --mode no-new",

@@ -102,11 +102,22 @@ def receipt(path, schema):
     receipt_path = pathlib.Path(path)
     try:
         payload = json.loads(receipt_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
+        if not isinstance(payload, dict):
+            raise ValueError("JSON payload is not an object")
+    except (OSError, json.JSONDecodeError, ValueError) as error:
         raise SystemExit(f"release-manifest: invalid receipt {path}: {error}")
     if payload.get("schema_id") != schema or payload.get("schema_version") != 1:
         raise SystemExit(f"release-manifest: unsupported receipt schema in {path}")
     return receipt_path, payload
+
+
+def valid_digest(value):
+    return (
+        isinstance(value, str)
+        and value.startswith("sha256:")
+        and len(value) == len("sha256:") + 64
+        and all(char in "0123456789abcdef" for char in value[len("sha256:"):])
+    )
 
 
 crates = []
@@ -120,6 +131,7 @@ for name in PUBLISH_ORDER:
         all_crate_checksums = False
     crates.append(item)
 
+platforms = platforms_text.split()
 binary_assets = []
 binary_attestation_verified = True
 if package_path and install_path:
@@ -131,7 +143,7 @@ if package_path and install_path:
     )
     fields = (
         "version", "target_triple", "archive_name", "archive_sha256",
-        "executable_sha256",
+        "executable_sha256", "tag", "commit", "tree",
     )
     if any(field not in package or field not in install for field in fields):
         raise SystemExit("release-manifest: binary receipt is missing a required field")
@@ -140,11 +152,27 @@ if package_path and install_path:
             raise SystemExit(f"release-manifest: binary receipt disagreement in {field}")
     if package["version"] != version:
         raise SystemExit("release-manifest: binary receipt version disagrees with manifest")
+    for field, expected in (("tag", tag), ("commit", commit), ("tree", tree)):
+        if package[field] != expected:
+            raise SystemExit(
+                f"release-manifest: binary receipt {field} disagrees with manifest identity"
+            )
     if package["target_triple"] != "x86_64-unknown-linux-gnu":
         raise SystemExit("release-manifest: unsupported binary target")
+    if "linux" not in platforms:
+        raise SystemExit("release-manifest: Linux binary asset requires linux in PLATFORMS")
+    expected_archive = f"cargo-allow-v{version}-x86_64-unknown-linux-gnu.tar.gz"
+    if package["archive_name"] != expected_archive:
+        raise SystemExit("release-manifest: binary archive name is not the stable Linux name")
+    if package.get("archive_format") != "tar.gz":
+        raise SystemExit("release-manifest: Linux binary archive format must be tar.gz")
+    if package.get("executable_name") != "cargo-allow":
+        raise SystemExit("release-manifest: binary executable name must be cargo-allow")
+    if not rust_toolchain or not runner:
+        raise SystemExit("release-manifest: binary toolchain and runner are required")
     for field in ("archive_sha256", "executable_sha256"):
         value = package[field]
-        if not value.startswith("sha256:") or len(value) != len("sha256:") + 64:
+        if not valid_digest(value):
             raise SystemExit(f"release-manifest: malformed binary digest {field}")
 
     archive_sha = package["archive_sha256"]
@@ -185,20 +213,26 @@ manifest = {
     "crates": crates,
     "auth_source": auth_source,
     "msrv": msrv,
-    "platforms_proven": platforms_text.split(),
+    "platforms_proven": platforms,
     "binary_assets": binary_assets,
     "generations": {"release_manifest": 1, "add_finding_plan": 1, "mutation_receipt": 1},
     "limitations": LIMITATIONS,
     "claim_boundary": CLAIM_BOUNDARY,
     "result": (
         "Complete"
-        if all_crate_checksums and auth_source == "oidc" and binary_attestation_verified
+        if all_crate_checksums
+        and auth_source == "oidc"
+        and binary_attestation_verified
+        and (not binary_assets or binary_assets[0]["platform"] in platforms)
         else "Incomplete"
     ),
     "generated_at": generated_at,
 }
 if workflow_run_id:
-    manifest["workflow_run_id"] = int(workflow_run_id)
+    try:
+        manifest["workflow_run_id"] = int(workflow_run_id)
+    except ValueError:
+        raise SystemExit(f"release-manifest: invalid workflow_run_id: {workflow_run_id}")
 pathlib.Path(output).write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 PY
 
