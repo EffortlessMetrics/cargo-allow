@@ -746,6 +746,14 @@ mod tests {
         if read_plan(&path).is_ok() {
             return Err("malformed plan was accepted".to_string());
         }
+        if git_path(&fixture.path, "hooks").is_ok() {
+            return Err("Git path lookup succeeded outside a repository".to_string());
+        }
+        let invalid_hook = fixture.path.join("invalid-hook");
+        fs::write(&invalid_hook, [0xff, 0xfe]).map_err(|error| error.to_string())?;
+        if hook_disposition(&invalid_hook, &build_plan(HookStage::PreCommit)).is_ok() {
+            return Err("invalid UTF-8 hook was accepted".to_string());
+        }
         Ok(())
     }
 

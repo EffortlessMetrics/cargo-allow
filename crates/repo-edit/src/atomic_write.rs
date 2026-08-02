@@ -175,35 +175,29 @@ pub fn write_file_create_new_atomic_with_permissions(
     }
 
     let (tmp, mut file) = create_unique_temp(path)?;
-    if let Err(error) = file.write_all(contents.as_bytes()) {
+    let prepare_result: CargoAllowResult<()> = (|| {
+        file.write_all(contents.as_bytes()).map_err(|error| {
+            CargoAllowError::new(format!("failed to write {}: {error}", tmp.display()))
+        })?;
+        file.flush().map_err(|error| {
+            CargoAllowError::new(format!("failed to flush {}: {error}", tmp.display()))
+        })?;
+        if let Some(permissions) = permissions {
+            fs::set_permissions(&tmp, permissions).map_err(|error| {
+                CargoAllowError::new(format!(
+                    "failed to set permissions for {}: {error}",
+                    tmp.display()
+                ))
+            })?;
+        }
+        file.sync_all().map_err(|error| {
+            CargoAllowError::new(format!("failed to sync {}: {error}", tmp.display()))
+        })?;
+        Ok(())
+    })();
+    if let Err(error) = prepare_result {
         let _ = fs::remove_file(&tmp);
-        return Err(CargoAllowError::new(format!(
-            "failed to write {}: {error}",
-            tmp.display()
-        )));
-    }
-    if let Err(error) = file.flush() {
-        let _ = fs::remove_file(&tmp);
-        return Err(CargoAllowError::new(format!(
-            "failed to flush {}: {error}",
-            tmp.display()
-        )));
-    }
-    if let Some(permissions) = permissions
-        && let Err(error) = fs::set_permissions(&tmp, permissions)
-    {
-        let _ = fs::remove_file(&tmp);
-        return Err(CargoAllowError::new(format!(
-            "failed to set permissions for {}: {error}",
-            tmp.display()
-        )));
-    }
-    if let Err(error) = file.sync_all() {
-        let _ = fs::remove_file(&tmp);
-        return Err(CargoAllowError::new(format!(
-            "failed to sync {}: {error}",
-            tmp.display()
-        )));
+        return Err(error);
     }
     if let Err(error) = fs::hard_link(&tmp, path) {
         let _ = fs::remove_file(&tmp);
