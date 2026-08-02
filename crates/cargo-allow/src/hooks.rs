@@ -170,7 +170,14 @@ mod tests {
         {
             return Err("hook plan must be read-only and offline".to_string());
         }
-        if json["argv"] != serde_json::json!(["cargo-allow", "check", "--mode", "no-new"]) {
+        if json.get("argv")
+            != Some(&serde_json::json!([
+                "cargo-allow",
+                "check",
+                "--mode",
+                "no-new"
+            ]))
+        {
             return Err("hook plan argv drifted from the checked hook template".to_string());
         }
         Ok(())
