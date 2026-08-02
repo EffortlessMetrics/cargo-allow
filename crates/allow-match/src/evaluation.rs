@@ -458,5 +458,9 @@ fn fallback_candidate(
 
     let max_score = live.iter().map(|(_, score)| *score).max()?;
     live.retain(|(_, score)| *score == max_score);
-    (live.len() == 1).then(|| live[0])
+    if live.len() == 1 {
+        live.into_iter().next()
+    } else {
+        None
+    }
 }
