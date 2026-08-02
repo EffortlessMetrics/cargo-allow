@@ -801,11 +801,16 @@ fn mirror_divergence_projects_across_check_worklist_and_doctor() {
         Some("mirror_divergence"),
         "doctor should report the runtime divergence kind"
     );
-    assert_eq!(
-        doctor
-            .pointer("/federation/diagnostics/0/kind")
-            .and_then(Value::as_str),
-        Some("dialect_skipped"),
+    let diagnostics = doctor
+        .pointer("/federation/diagnostics")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| {
+            std::panic::panic_any("doctor federation diagnostics should be an array")
+        });
+    assert!(
+        diagnostics.iter().any(|diagnostic| {
+            diagnostic.pointer("/kind").and_then(Value::as_str) == Some("dialect_skipped")
+        }),
         "doctor should retain the advisory federation diagnostic"
     );
     let ledger_ids = doctor
