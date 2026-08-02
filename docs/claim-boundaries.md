@@ -38,6 +38,15 @@ No panic paths exist.
 All exceptions are proven safe.
 ```
 
+`cargo-allow capabilities` is the machine-checked source for the scanner
+matrix. Its `supported_syntax` rows describe selected syntax-visible facts,
+its `supported_presence` rows describe tracked-path classification, and its
+compatibility/policy rows describe derived projections. The catalog's
+`not_included` rows are explicit exclusions and never mean that a scan is
+clean. Repository-defined custom file-family rules require a separate
+policy-backed catalog registration; they do not inherit a built-in semantic
+claim automatically.
+
 ## Source Syntax Only
 
 The no-build claim is about the target repository, not cargo-allow's own
