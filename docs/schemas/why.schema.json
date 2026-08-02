@@ -98,6 +98,26 @@
   "allOf": [
     {
       "if": {
+        "required": ["inventory", "evaluation"],
+        "properties": {
+          "inventory": { "properties": { "completeness": { "const": "partial" } } },
+          "evaluation": {
+            "required": ["result_class"],
+            "properties": { "result_class": { "const": "exact_scoped" } }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "evaluation": {
+            "required": ["scanner_completeness"],
+            "properties": { "scanner_completeness": { "enum": ["complete", "scoped"] } }
+          }
+        }
+      }
+    },
+    {
+      "if": {
         "required": ["evaluation"],
         "properties": {
           "evaluation": {
@@ -114,14 +134,15 @@
           "inventory": {
             "required": ["completeness"],
             "properties": {
-              "completeness": { "enum": ["complete", "scoped"] }
+              "completeness": { "enum": ["complete", "scoped", "partial"] }
             }
           },
           "evaluation": {
             "properties": {
               "scope": { "const": "scoped" },
               "locality": { "const": "proven" },
-              "reasons": { "maxItems": 0 }
+              "reasons": { "maxItems": 0 },
+              "scanner_completeness": { "enum": ["complete", "scoped"] }
             }
           }
         }
@@ -146,6 +167,68 @@
             "required": ["completeness"],
             "properties": {
               "completeness": { "enum": ["complete", "scoped"] }
+            }
+          },
+          "evaluation": {
+            "properties": {
+              "scope": { "const": "full_fallback" },
+              "locality": { "const": "global_dependency" },
+              "reasons": { "minItems": 1 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["evaluation"],
+        "properties": {
+          "evaluation": {
+            "required": ["result_class"],
+            "properties": {
+              "result_class": { "const": "target_scanner_partial" }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": ["inventory", "evaluation"],
+        "properties": {
+          "inventory": {
+            "required": ["completeness"],
+            "properties": { "completeness": { "const": "partial" } }
+          },
+          "evaluation": {
+            "required": ["scanner_completeness"],
+            "properties": {
+              "scope": { "const": "scoped" },
+              "locality": { "const": "proven" },
+              "reasons": { "maxItems": 0 },
+              "scanner_completeness": { "const": "partial" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["evaluation"],
+        "properties": {
+          "evaluation": {
+            "required": ["result_class"],
+            "properties": {
+              "result_class": { "const": "full_fallback_unavailable" }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": ["inventory", "evaluation"],
+        "properties": {
+          "inventory": {
+            "required": ["completeness"],
+            "properties": {
+              "completeness": { "enum": ["fallback", "partial"] }
             }
           },
           "evaluation": {
@@ -280,7 +363,8 @@
       "additionalProperties": false,
       "required": ["scope", "locality", "reasons"],
       "properties": {
-        "result_class": { "enum": ["exact_scoped", "exact_after_full_fallback"] },
+        "result_class": { "enum": ["exact_scoped", "exact_after_full_fallback", "target_scanner_partial", "full_fallback_unavailable"] },
+        "scanner_completeness": { "enum": ["complete", "scoped", "partial"] },
         "scope": { "enum": ["scoped", "full_fallback"] },
         "locality": { "enum": ["proven", "global_dependency"] },
         "reasons": {

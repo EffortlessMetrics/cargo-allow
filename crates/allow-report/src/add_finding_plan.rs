@@ -1,10 +1,23 @@
 use serde_json::{Map, Value, json};
 
-use crate::artifacts::AddFindingPlanV1;
+use crate::artifacts::{AddFindingPlanV1, EvaluationResultClass};
 use crate::contracts::ADD_FINDING_PLAN_ARTIFACT;
 use crate::{claim_boundary_for_schema_id, scanner_limitations_for_schema_id};
 
 pub fn render_add_finding_plan_json(plan: &AddFindingPlanV1<'_>) -> String {
+    let result_class = plan
+        .evaluation
+        .result_class_kind_with_scanner_completeness(plan.inventory, None);
+    render_add_finding_plan_json_with_result_class(plan, result_class, None)
+}
+
+/// Render an add-finding plan with caller-supplied scanner evidence while
+/// retaining the existing public plan data shape.
+pub fn render_add_finding_plan_json_with_result_class(
+    plan: &AddFindingPlanV1<'_>,
+    result_class: Option<EvaluationResultClass>,
+    scanner_completeness: Option<&str>,
+) -> String {
     let inventory = plan.inventory;
     let mut inventory_json = Map::from_iter([
         ("scope".to_string(), json!(inventory.scope)),
@@ -29,8 +42,14 @@ pub fn render_add_finding_plan_json(plan: &AddFindingPlanV1<'_>) -> String {
         ("locality".to_string(), json!(plan.evaluation.locality)),
         ("reasons".to_string(), json!(plan.evaluation.reasons)),
     ]);
-    if let Some(result_class) = plan.evaluation.result_class(plan.inventory) {
-        evaluation_json.insert("result_class".to_string(), json!(result_class));
+    if let Some(result_class) = result_class {
+        evaluation_json.insert("result_class".to_string(), json!(result_class.as_str()));
+    }
+    if let Some(scanner_completeness) = scanner_completeness {
+        evaluation_json.insert(
+            "scanner_completeness".to_string(),
+            json!(scanner_completeness),
+        );
     }
 
     let value = json!({

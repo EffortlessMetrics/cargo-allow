@@ -106,7 +106,9 @@ mod worklist_summary;
 mod worklist_summary_tests;
 
 pub use add::{render_add_human, render_add_human_styled, render_add_json};
-pub use add_finding_plan::render_add_finding_plan_json;
+pub use add_finding_plan::{
+    render_add_finding_plan_json, render_add_finding_plan_json_with_result_class,
+};
 pub use add_plan_application::render_add_plan_application_json;
 pub use advisory_class::{ADVISORY_DENY_FIELD_NAMES, AdvisoryClass, advisory_count_for_deny_field};
 pub use allow_entry_json::{render_allow_entry_json, render_last_seen_json, render_selector_json};
@@ -118,14 +120,15 @@ pub use artifacts::{
     DiffMovementCounts, DiffOccurrenceLimitChange, DiffPolicyChange, DiffPolicyStatusChange,
     DiffPostureDeltaCounts, DiffPostureSummary, DiffReport, DiffRequirementChange, DiffScopeChange,
     DiffSelectorIdentityChange, DiffSelectorPrecisionChange, DoctorReport, EvaluationContext,
-    EvidenceReference, ExplainReport, FederationDiagnosticSummary, FederationDivergenceKindCount,
-    FederationDivergenceRecordSummary, FederationDivergenceSummary, FederationReportContext,
-    LedgerContributorSummary, ListColumn, ListFilters, ListRow, ManifestCrate, ManifestGap,
-    ManifestGenerations, ManifestInput, ManifestResult, MigrateReport, PUBLISH_ORDER,
-    ProposeReport, PruneCandidate, PruneModeContext, RELEASE_MANIFEST_CLAIM_BOUNDARY,
-    RELEASE_MANIFEST_SCHEMA_ID, RELEASE_MANIFEST_SCHEMA_VERSION, RefreshModeContext, RefreshReport,
-    ReleaseManifestV1, WhyCandidateEntry, WhyProofPlan, WhyReport, WorklistFilters, WorklistItem,
-    generate_release_manifest, render_release_manifest_json, validate_release_manifest,
+    EvaluationResultClass, EvidenceReference, ExplainReport, FederationDiagnosticSummary,
+    FederationDivergenceKindCount, FederationDivergenceRecordSummary, FederationDivergenceSummary,
+    FederationReportContext, LedgerContributorSummary, ListColumn, ListFilters, ListRow,
+    ManifestCrate, ManifestGap, ManifestGenerations, ManifestInput, ManifestResult, MigrateReport,
+    PUBLISH_ORDER, ProposeReport, PruneCandidate, PruneModeContext,
+    RELEASE_MANIFEST_CLAIM_BOUNDARY, RELEASE_MANIFEST_SCHEMA_ID, RELEASE_MANIFEST_SCHEMA_VERSION,
+    RefreshModeContext, RefreshReport, ReleaseManifestV1, WhyCandidateEntry, WhyProofPlan,
+    WhyReport, WorklistFilters, WorklistItem, generate_release_manifest,
+    render_release_manifest_json, validate_release_manifest,
 };
 pub use contracts::{
     ADD_FINDING_PLAN_CLAIM_BOUNDARY, ADD_FINDING_PLAN_SCHEMA_ID, ADD_FINDING_PLAN_SCHEMA_VERSION,
@@ -217,7 +220,7 @@ pub use summary::{
     occurrence_headroom_entries, occurrence_headroom_for_entry, policy_baseline_debt_entries,
     policy_missing_evidence_entries,
 };
-pub use why::render_why_json;
+pub use why::{render_why_json, render_why_json_with_result_class};
 pub use worklist::{render_worklist_human, render_worklist_human_styled, render_worklist_json};
 
 pub(crate) use non_rust::{FilePosture, non_rust_file_rows};

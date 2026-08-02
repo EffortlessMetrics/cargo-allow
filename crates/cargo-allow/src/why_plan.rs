@@ -19,6 +19,7 @@ pub(super) struct AddFindingPlanInput<'a> {
     pub include_untracked: bool,
     pub source_context: &'a SourceTreeReportContext,
     pub evaluation: EvaluationContext<'a>,
+    pub scanner_completeness: Option<&'a str>,
     pub finding: &'a Finding,
     pub outcome: &'a MatchOutcome,
     pub candidates: &'a [WhyCandidate<'a>],
@@ -32,6 +33,7 @@ pub(super) fn render_add_finding_plan(input: AddFindingPlanInput<'_>) -> CargoAl
         include_untracked,
         source_context,
         evaluation,
+        scanner_completeness,
         finding,
         outcome,
         candidates,
@@ -42,14 +44,10 @@ pub(super) fn render_add_finding_plan(input: AddFindingPlanInput<'_>) -> CargoAl
             outcome.status.as_str()
         )));
     }
-    if evaluation.scope == "scoped" && evaluation.locality != "proven" {
-        return Err(CargoAllowError::new(
-            "cannot produce an add-finding plan from an unproven scoped evaluation; re-run why with full fallback",
-        ));
-    }
+    let inventory = source_context.inventory();
+    ensure_exact_plan_evaluation(evaluation, inventory, scanner_completeness)?;
 
     let bindings = compute_plan_finding_bindings(root, config, cfg, include_untracked, finding)?;
-    let inventory = source_context.inventory();
     let root_text = source_context.source_tree_root().to_string();
 
     let plan = AddFindingPlanV1 {
@@ -98,7 +96,30 @@ pub(super) fn render_add_finding_plan(input: AddFindingPlanInput<'_>) -> CargoAl
             include_untracked,
         ),
     };
-    Ok(allow_report::render_add_finding_plan_json(&plan))
+    Ok(
+        allow_report::render_add_finding_plan_json_with_result_class(
+            &plan,
+            evaluation.result_class_kind_with_scanner_completeness(inventory, scanner_completeness),
+            scanner_completeness,
+        ),
+    )
+}
+
+fn ensure_exact_plan_evaluation(
+    evaluation: EvaluationContext<'_>,
+    inventory: allow_report::InventoryContext<'_>,
+    scanner_completeness: Option<&str>,
+) -> CargoAllowResult<()> {
+    if matches!(
+        evaluation.result_class_with_scanner_completeness(inventory, scanner_completeness),
+        Some("exact_scoped" | "exact_after_full_fallback")
+    ) {
+        Ok(())
+    } else {
+        Err(CargoAllowError::new(
+            "cannot produce an add-finding plan from a non-exact evaluation; re-run why after the scanner or full-fallback inventory is complete",
+        ))
+    }
 }
 
 fn scoped_proof_plans(
@@ -233,4 +254,69 @@ pub(crate) fn sample_add_finding_plan_json_for_contract_test() -> String {
         }],
     };
     allow_report::render_add_finding_plan_json(&plan)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ensure_exact_plan_evaluation;
+    use allow_report::{EvaluationContext, InventoryContext};
+
+    #[test]
+    fn add_finding_plan_requires_an_exact_result_class() {
+        let reasons = vec!["repository-wide policy scope".to_string()];
+        let cases = [
+            (
+                EvaluationContext {
+                    scope: "scoped",
+                    locality: "proven",
+                    reasons: &[],
+                },
+                "partial",
+                false,
+            ),
+            (
+                EvaluationContext {
+                    scope: "full_fallback",
+                    locality: "global_dependency",
+                    reasons: &reasons,
+                },
+                "fallback",
+                false,
+            ),
+            (
+                EvaluationContext {
+                    scope: "scoped",
+                    locality: "proven",
+                    reasons: &[],
+                },
+                "complete",
+                true,
+            ),
+        ];
+
+        for (evaluation, completeness, expected_ok) in cases {
+            let result = ensure_exact_plan_evaluation(
+                evaluation,
+                InventoryContext::source_syntax("git_tracked", Some("H:/repo"), Some(3))
+                    .with_completeness(completeness),
+                None,
+            );
+            assert_eq!(result.is_ok(), expected_ok, "completeness={completeness}");
+        }
+
+        let result = ensure_exact_plan_evaluation(
+            EvaluationContext {
+                scope: "scoped",
+                locality: "proven",
+                reasons: &[],
+            },
+            InventoryContext::source_syntax("git_tracked", Some("H:/repo"), Some(3))
+                .with_completeness("partial"),
+            Some("complete"),
+        );
+        assert!(
+            result.is_ok(),
+            "a complete target scan may produce a scoped plan despite unrelated inventory partiality"
+        );
+    }
 }

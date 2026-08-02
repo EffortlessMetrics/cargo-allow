@@ -23,7 +23,8 @@ pub(crate) use why_args::WhyArgs;
 #[cfg(test)]
 use why_render::render_why_text;
 use why_render::{
-    WhyCandidate, render_why_json_with_evaluation, render_why_text_styled_with_evaluation,
+    WhyCandidate, render_why_json_with_evaluation_and_scanner_completeness,
+    render_why_text_styled_with_evaluation_and_scanner_completeness,
 };
 #[cfg(test)]
 use why_render::{render_why_json, render_why_text_styled};
@@ -115,6 +116,13 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
         Vec::new()
     };
 
+    let scanner_completeness = if inventory_facts.rust_files_skipped > 0
+        || inventory_facts.rust_files_with_parse_errors > 0
+    {
+        Some("partial")
+    } else {
+        Some("complete")
+    };
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     if let Some(plan_path) = args.plan.as_deref() {
         let plan = why_plan::render_add_finding_plan(why_plan::AddFindingPlanInput {
@@ -124,6 +132,7 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
             include_untracked: args.include_untracked,
             source_context: &source_context,
             evaluation,
+            scanner_completeness,
             finding,
             outcome: &outcome,
             candidates: &candidates,
@@ -136,20 +145,22 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
         allow_report::Style::PLAIN
     };
     let text = match args.format {
-        HumanJsonFormat::Human => render_why_text_styled_with_evaluation(
+        HumanJsonFormat::Human => render_why_text_styled_with_evaluation_and_scanner_completeness(
             source_context.inventory(),
             finding,
             &outcome,
             &candidates,
             style,
             evaluation,
+            scanner_completeness,
         ),
-        HumanJsonFormat::Json => render_why_json_with_evaluation(
+        HumanJsonFormat::Json => render_why_json_with_evaluation_and_scanner_completeness(
             source_context.inventory(),
             evaluation,
             finding,
             &outcome,
             &candidates,
+            scanner_completeness,
         ),
     };
     emit_text(args.output.as_deref(), &text)?;
