@@ -43,6 +43,7 @@ pub(crate) fn command_artifact_samples() -> Vec<ArtifactSample> {
                 "config",
                 "evidence_repair_queues",
                 "federation",
+                "file_families",
                 "inventory",
                 "root",
                 "scanner_limitations",

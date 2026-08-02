@@ -14,6 +14,7 @@
     "root",
     "config",
     "inventory",
+    "file_families",
     "federation",
     "evidence_repair_queues"
   ],
@@ -133,6 +134,28 @@
     },
     "inventory": {
       "$ref": "#/$defs/inventory"
+    },
+    "file_families": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "configured",
+        "conflicts"
+      ],
+      "properties": {
+        "configured": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/file_family_rule"
+          }
+        },
+        "conflicts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/file_family_conflict"
+          }
+        }
+      }
     },
     "federation": {
       "type": "object",
@@ -416,6 +439,63 @@
             "partial"
           ],
           "description": "Authoritative inventory coverage classification for this artifact."
+        }
+      }
+    },
+    "file_family_rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "family",
+        "glob",
+        "matched_files"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "family": {
+          "type": "string",
+          "minLength": 1
+        },
+        "glob": {
+          "type": "string",
+          "minLength": 1
+        },
+        "matched_files": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "file_family_conflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "rule_ids",
+        "families"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rule_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "families": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     },

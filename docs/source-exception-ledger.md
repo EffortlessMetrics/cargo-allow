@@ -608,6 +608,12 @@ retain their existing contract in this slice.
 CI or agent runners can verify which source tree, policy contract, policy owner,
 policy state, and inventory mode a command would use before running wider policy
 checks.
+When a valid policy declares `[[workspace.file_family]]` rules, doctor also
+reports a `file_families` block: each configured rule includes its canonical
+family, glob, and count of inventory files it classified, while `conflicts`
+lists paths where equally specific rules remain ambiguous. These are
+classification diagnostics only; they do not exclude files, approve findings,
+or make claims about file contents.
 
 `cargo-allow worklist --format json` turns non-matched no-new outcomes and
 matched `baseline_debt` entries into agent-safe work items. Each item includes a

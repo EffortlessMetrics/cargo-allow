@@ -96,6 +96,8 @@ fn render_doctor_json_records_setup_context() {
         configured_ledgers: None,
         federation_diagnostics: None,
         federation_divergences: None,
+        file_family_rules: &[],
+        file_family_conflicts: &[],
     });
     let value = parse_json_artifact("doctor", &json, allow_report::DOCTOR_SCHEMA_ID, "doctor");
 
@@ -728,6 +730,122 @@ linked_plan = "plans/spec-system/implementation-plan.md"
         }),
         "active goal readiness should explain optional validation: {json}"
     );
+    remove_doctor_fixture_dir(root);
+}
+
+#[test]
+fn doctor_reports_custom_file_families_and_conflicts() {
+    let root = doctor_fixture_dir();
+    fs::create_dir_all(root.join("models"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create model fixture: {err}")));
+    for name in ["plain.onnx", "release.onnx", "conflict.onnx"] {
+        fs::write(root.join("models").join(name), b"fixture")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("write model fixture: {err}")));
+    }
+    let config = root.join("allow.toml");
+    fs::write(
+        &config,
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[workspace]
+ignored = []
+generated = []
+
+[[workspace.file_family]]
+id = "model-artifact"
+family = "ml_model"
+glob = "models/*.onnx"
+reason = "Govern model artifacts."
+
+[[workspace.file_family]]
+id = "release-metadata"
+family = "release_metadata"
+glob = "models/release.onnx"
+reason = "Govern release metadata."
+
+[[workspace.file_family]]
+id = "conflict-a"
+family = "family_a"
+glob = "models/conflict.onnx"
+reason = "Conflict fixture A."
+
+[[workspace.file_family]]
+id = "conflict-b"
+family = "family_b"
+glob = "models/conflict.onnx"
+reason = "Conflict fixture B."
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write doctor policy: {err}")));
+    let output = root.join("doctor-file-families.json");
+
+    cmd_doctor(&DoctorArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(config),
+        profile: None,
+        format: HumanJsonFormat::Json,
+        require_clean: false,
+        output: Some(output.clone()),
+    })
+    .unwrap_or_else(|err| std::panic::panic_any(format!("doctor should pass: {err}")));
+
+    let json = fs::read_to_string(&output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read doctor output: {err}")));
+    let value = parse_json_artifact(
+        "doctor custom file families",
+        &json,
+        allow_report::DOCTOR_SCHEMA_ID,
+        "doctor",
+    );
+    let configured = value
+        .pointer("/file_families/configured")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("configured file families should be an array"));
+    assert_eq!(configured.len(), 4, "{json}");
+    assert!(configured.iter().any(|rule| {
+        rule.get("id").and_then(Value::as_str) == Some("release-metadata")
+            && rule.get("matched_files").and_then(Value::as_u64) == Some(1)
+    }));
+    let conflicts = value
+        .pointer("/file_families/conflicts")
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any("file family conflicts should be an array"));
+    assert_eq!(conflicts.len(), 1, "{json}");
+    assert_eq!(
+        conflicts[0].get("path").and_then(Value::as_str),
+        Some("models/conflict.onnx")
+    );
+    assert_eq!(
+        conflicts[0]
+            .get("rule_ids")
+            .and_then(Value::as_array)
+            .map(Vec::len),
+        Some(2)
+    );
+    let human_output = root.join("doctor-file-families.txt");
+    cmd_doctor(&DoctorArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(root.join("allow.toml")),
+        profile: None,
+        format: HumanJsonFormat::Human,
+        require_clean: false,
+        output: Some(human_output.clone()),
+    })
+    .unwrap_or_else(|err| std::panic::panic_any(format!("human doctor should pass: {err}")));
+    let human = fs::read_to_string(human_output)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read human doctor output: {err}")));
+    assert!(
+        human.contains("custom file families: 4 configured"),
+        "{human}"
+    );
+    assert!(human.contains("matched files=1"), "{human}");
+    assert!(human.contains("custom file family conflicts: 1"), "{human}");
+    assert!(human.contains("models/conflict.onnx"), "{human}");
     remove_doctor_fixture_dir(root);
 }
 

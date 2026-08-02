@@ -28,6 +28,8 @@ fn doctor_json_renderer_records_root_config_and_inventory() {
         configured_ledgers: None,
         federation_diagnostics: None,
         federation_divergences: None,
+        file_family_rules: &[],
+        file_family_conflicts: &[],
     });
 
     assert!(json.contains("\"schema_id\": \"cargo-allow.doctor.v1\""));
@@ -80,6 +82,14 @@ fn doctor_json_renderer_records_root_config_and_inventory() {
     "broken_evidence_links": 0,
     "weak_evidence_references": 0
   }},
+  "file_families": {{
+    "configured": [
+
+    ],
+    "conflicts": [
+
+    ]
+  }},
   "federation": {{
     "found": false,
     "path": null,
@@ -124,6 +134,8 @@ fn doctor_human_renderer_records_root_config_and_inventory() {
         configured_ledgers: None,
         federation_diagnostics: None,
         federation_divergences: None,
+        file_family_rules: &[],
+        file_family_conflicts: &[],
     });
 
     assert!(text.contains("source tree root: H:/Code/Rust/cargo-allow"));
@@ -168,6 +180,8 @@ fn doctor_json_renderer_suggests_init_when_config_is_missing() {
         configured_ledgers: None,
         federation_diagnostics: None,
         federation_divergences: None,
+        file_family_rules: &[],
+        file_family_conflicts: &[],
     });
 
     assert!(json.contains("\"found\": false"));
@@ -209,6 +223,8 @@ fn doctor_human_renderer_reports_invalid_config_status() {
         configured_ledgers: None,
         federation_diagnostics: None,
         federation_divergences: None,
+        file_family_rules: &[],
+        file_family_conflicts: &[],
     });
 
     assert!(text.contains("config: policy/allow.toml"));
@@ -256,6 +272,8 @@ fn doctor_human_renderer_styles_fixed_status_labels_only() {
             configured_ledgers: None,
             federation_diagnostics: None,
             federation_divergences: None,
+            file_family_rules: &[],
+            file_family_conflicts: &[],
         },
         Style::ANSI,
     );
@@ -295,6 +313,8 @@ fn doctor_human_renderer_styles_fixed_status_labels_only() {
             configured_ledgers: None,
             federation_diagnostics: None,
             federation_divergences: None,
+            file_family_rules: &[],
+            file_family_conflicts: &[],
         },
         Style::ANSI,
     );
@@ -329,6 +349,8 @@ fn doctor_json_renderer_includes_optional_evidence_health_counts() {
         configured_ledgers: None,
         federation_diagnostics: None,
         federation_divergences: None,
+        file_family_rules: &[],
+        file_family_conflicts: &[],
     });
 
     assert!(json.contains("\"broken_evidence_links\": 2"));
@@ -363,6 +385,8 @@ fn doctor_json_renderer_routes_evidence_repair_queues() {
         configured_ledgers: None,
         federation_diagnostics: None,
         federation_divergences: None,
+        file_family_rules: &[],
+        file_family_conflicts: &[],
     });
 
     assert!(json.contains("\"evidence_repair_queues\""));
@@ -411,6 +435,8 @@ fn doctor_json_renderer_always_includes_evidence_repair_queues_even_when_clean()
         configured_ledgers: None,
         federation_diagnostics: None,
         federation_divergences: None,
+        file_family_rules: &[],
+        file_family_conflicts: &[],
     });
 
     assert!(
@@ -457,6 +483,8 @@ fn doctor_json_renderer_records_configured_federation_ledgers() {
         }]),
         federation_diagnostics: None,
         federation_divergences: None,
+        file_family_rules: &[],
+        file_family_conflicts: &[],
     });
 
     assert!(json.contains("\"federation\""));

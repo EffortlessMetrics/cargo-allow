@@ -27,7 +27,10 @@ pub use diff::{
     DiffReport, DiffRequirementChange, DiffScopeChange, DiffSelectorIdentityChange,
     DiffSelectorPrecisionChange,
 };
-pub use doctor::{ConfiguredLedgerSummary, DoctorReport, FederationDiagnosticSummary};
+pub use doctor::{
+    ConfiguredLedgerSummary, DoctorReport, FederationDiagnosticSummary, FileFamilyConflictSummary,
+    FileFamilyRuleSummary,
+};
 pub use explain::{EvidenceReference, ExplainReport};
 pub use federation::{
     FederationDivergenceKindCount, FederationDivergenceRecordSummary, FederationDivergenceSummary,

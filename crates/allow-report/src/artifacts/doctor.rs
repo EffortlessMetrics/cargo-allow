@@ -18,6 +18,21 @@ pub struct FederationDiagnosticSummary<'a> {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub struct FileFamilyRuleSummary<'a> {
+    pub id: &'a str,
+    pub family: &'a str,
+    pub glob: &'a str,
+    pub matched_files: usize,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct FileFamilyConflictSummary<'a> {
+    pub path: &'a str,
+    pub rule_ids: &'a [String],
+    pub families: &'a [String],
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct DoctorReport<'a> {
     pub source_tree_root: &'a str,
     pub root_discovery: &'a str,
@@ -53,4 +68,6 @@ pub struct DoctorReport<'a> {
     pub configured_ledgers: Option<&'a [ConfiguredLedgerSummary<'a>]>,
     pub federation_diagnostics: Option<&'a [FederationDiagnosticSummary<'a>]>,
     pub federation_divergences: Option<&'a [FederationDiagnosticSummary<'a>]>,
+    pub file_family_rules: &'a [FileFamilyRuleSummary<'a>],
+    pub file_family_conflicts: &'a [FileFamilyConflictSummary<'a>],
 }
