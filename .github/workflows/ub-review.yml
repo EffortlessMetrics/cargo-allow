@@ -19,19 +19,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     continue-on-error: true
+    env:
+      UB_REVIEW_AVAILABLE: ${{ secrets.MINIMAX_API_KEY != '' && 'yes' || 'no' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - name: Fail clearly if MINIMAX_API_KEY is missing
-        env:
-          _HAVE_MINIMAX: ${{ secrets.MINIMAX_API_KEY != '' && 'yes' || '' }}
+      - name: Report unavailable review lane
+        if: env.UB_REVIEW_AVAILABLE != 'yes'
         run: |
-          if [ -z "${_HAVE_MINIMAX:-}" ]; then
-            echo "::error::MINIMAX_API_KEY is empty or missing; ub-review requires it for model review lanes."
-            exit 1
-          fi
+          echo "::notice::UB Review skipped: MINIMAX_API_KEY is unavailable in this event context (expected for Dependabot or fork pull requests)."
+          mkdir -p target/ub-review
+          cat > target/ub-review/status.md <<'EOF'
+          # UB Review unavailable
+
+          The model-backed review lane was skipped because `MINIMAX_API_KEY` is
+          unavailable in this pull request event context. This is expected for
+          Dependabot and fork pull requests. Deterministic repository checks
+          remain authoritative for this lane.
+          EOF
       - name: Run ub-review
+        if: env.UB_REVIEW_AVAILABLE == 'yes'
         uses: EffortlessMetrics/ub-review@a1e64c65e39aadf341f4e5cb14094b9a87f592ad
         with:
           profile: gh-runner
