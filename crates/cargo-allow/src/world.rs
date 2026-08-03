@@ -700,6 +700,97 @@ mod tests {
             .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
     }
 
+    #[test]
+    fn staged_world_rejects_worktree_derived_companion_families() {
+        let root = fixture_dir();
+        let mut cfg = AllowConfig::empty();
+        cfg.allow.push(AllowEntry {
+            id: "allow-0001".to_string(),
+            kind: FindingKind::PolicyException,
+            family: Some("github_workflow".to_string()),
+            path: Some(PathBuf::from(".github/workflows/ci.yml")),
+            glob: None,
+            owner: "ci".to_string(),
+            classification: "github_workflow".to_string(),
+            reason: "Retained workflow fixture.".to_string(),
+            evidence: vec!["legacy-policy:test".to_string()],
+            links: Vec::new(),
+            occurrence_limit: None,
+            lifecycle: Lifecycle {
+                created: Some("2026-05-26".to_string()),
+                review_after: Some("2026-11-01".to_string()),
+                expires: None,
+            },
+            selector: Selector {
+                ast_kind: Some("github_workflow".to_string()),
+                symbol: Some(".github/workflows/ci.yml".to_string()),
+                glob: Some(".github/workflows/ci.yml".to_string()),
+                ..Selector::default()
+            },
+            last_seen: None,
+        });
+        fs::create_dir_all(root.join("policy"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+        fs::write(root.join("policy/allow.toml"), render_policy(&cfg))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("policy write: {err}")));
+        fs::write(root.join("candidate.rs"), "fn candidate() {}\n")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("source write: {err}")));
+        git(root.as_path(), &["init"]);
+        git(
+            root.as_path(),
+            &["config", "user.email", "cargo-allow@example.invalid"],
+        );
+        git(root.as_path(), &["config", "user.name", "cargo-allow test"]);
+        git(root.as_path(), &["add", "--all"]);
+        git(root.as_path(), &["commit", "-m", "staged companion policy"]);
+
+        let result = load_staged_world(Some(&root), Some(Path::new("policy/allow.toml")), None);
+        let error = result
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("unsupported family should fail closed"));
+        assert_eq!(error.kind(), allow_core::CargoAllowErrorKind::Unsupported);
+        assert!(error.to_string().contains("github_workflow"));
+        fs::remove_dir_all(root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+    }
+
+    #[test]
+    fn staged_text_reading_rejects_missing_and_non_utf8_candidates() {
+        let root = fixture_dir();
+        fs::create_dir_all(root.join("policy"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+        fs::write(
+            root.join("policy/allow.toml"),
+            "schema_version = 1\n\n[workspace]\nignored = []\ngenerated = []\n",
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy write: {err}")));
+        git(root.as_path(), &["init"]);
+        git(
+            root.as_path(),
+            &["config", "user.email", "cargo-allow@example.invalid"],
+        );
+        git(root.as_path(), &["config", "user.name", "cargo-allow test"]);
+        git(root.as_path(), &["add", "--all"]);
+        git(root.as_path(), &["commit", "-m", "staged text base"]);
+        fs::write(root.join("invalid.rs"), [0xff_u8, 0xfe_u8])
+            .unwrap_or_else(|err| std::panic::panic_any(format!("invalid source write: {err}")));
+        git(root.as_path(), &["add", "--", "invalid.rs"]);
+
+        let snapshot = staged_repository_snapshot(&root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("staged snapshot: {err}")));
+        let missing = read_staged_text(&snapshot, Path::new("missing.rs"))
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("missing staged source should fail"));
+        assert_eq!(missing.kind(), allow_core::CargoAllowErrorKind::Inventory);
+        let invalid = read_staged_text(&snapshot, Path::new("invalid.rs"))
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("invalid UTF-8 source should fail"));
+        assert_eq!(invalid.kind(), allow_core::CargoAllowErrorKind::Scan);
+        assert!(invalid.to_string().contains("not valid UTF-8"));
+        fs::remove_dir_all(root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+    }
+
     fn write_policy_with_untracked_evidence(root: &Path) {
         fs::create_dir_all(root.join("policy"))
             .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
