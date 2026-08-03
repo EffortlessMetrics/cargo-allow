@@ -118,6 +118,8 @@ cargo-allow hooks plan --stage pre-commit --format json \
 cargo-allow hooks apply \
   --plan target/cargo-allow/pre-commit-verified-hook-plan.json \
   --accept
+cargo-allow hooks status --stage pre-commit \
+  --plan target/cargo-allow/pre-commit-verified-hook-plan.json
 ```
 
 The resulting managed block invokes `hooks run` with the selected absolute
@@ -136,9 +138,11 @@ cargo-allow hooks status --stage pre-commit
 cargo-allow hooks apply --plan target/cargo-allow/pre-commit-hook-plan.json --accept
 ```
 
-`hooks status` is read-only. `hooks apply` resolves the repository's Git hooks
-directory, validates the plan schema and identity, and atomically creates the
-selected hook only when it is absent. It never overwrites an existing hook:
+`hooks status` is read-only. Without `--plan`, it reports the default ambient
+plan; pass the exact JSON plan when inspecting a verified hook. `hooks apply`
+resolves the repository's Git hooks directory, validates the plan schema and
+identity, and atomically creates the selected hook only when it is absent. It
+never overwrites an existing hook:
 unmanaged or mismatched managed content is reported as `ManualMerge` or
 `Conflict`; a single exact cargo-allow block inside otherwise unrelated hook
 content is reported as `Composed` and is left unchanged. These dispositions
@@ -146,11 +150,14 @@ are recorded in the apply receipt. The generated wrapper invokes either the
 ambient exact offline `cargo-allow check --mode no-new` command or, for a
 verified plan, the selected `hooks run` runtime over the tracked worktree; it
 does not claim exact staged-index evidence or install a binary.
-To remove a recognized managed hook or block, retain its matching apply receipt and run:
+For a verified hook, retain the exact JSON plan alongside its apply receipt.
+Ambient hooks preserve the receipt-only removal route; verified hooks pass the
+matching plan explicitly. To remove a recognized managed hook or block, run:
 
 ```bash
 cargo-allow hooks remove \
   --receipt target/cargo-allow/hooks/pre-commit.apply.receipt.json \
+  --plan target/cargo-allow/pre-commit-verified-hook-plan.json \
   --accept
 ```
 

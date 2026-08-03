@@ -83,6 +83,9 @@ pub(crate) struct HookStatusArgs {
     /// Write the status to a file instead of stdout.
     #[arg(long)]
     pub(crate) output: Option<PathBuf>,
+    /// Read the exact JSON plan whose managed hook should be inspected.
+    #[arg(long)]
+    pub(crate) plan: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -103,6 +106,9 @@ pub(crate) struct HookRemoveArgs {
     /// Read the exact apply receipt for the managed hook to remove.
     #[arg(long)]
     pub(crate) receipt: PathBuf,
+    /// Read the exact JSON plan when removing a verified managed hook.
+    #[arg(long)]
+    pub(crate) plan: Option<PathBuf>,
     /// Explicitly accept removing the exact managed hook file.
     #[arg(long)]
     pub(crate) accept: bool,
@@ -634,7 +640,20 @@ const MANAGED_END: &str = "# END cargo-allow managed hook";
 
 fn cmd_status(args: &HookStatusArgs) -> CargoAllowResult<()> {
     let root = source_tree_root()?;
-    let plan = build_plan(args.stage);
+    let plan = if let Some(plan_path) = &args.plan {
+        let plan = read_plan(plan_path)?;
+        validate_plan(&plan)?;
+        if plan.stage != args.stage.as_str() {
+            return Err(CargoAllowError::new(format!(
+                "status plan targets `{}`, but `--stage` selected `{}`",
+                plan.stage,
+                args.stage.as_str()
+            )));
+        }
+        plan
+    } else {
+        build_plan(args.stage)
+    };
     let hook_path = hook_path(&root, args.stage)?;
     let disposition = hook_disposition(&hook_path, &plan)?;
     let status = HookStatusV1 {
@@ -718,7 +737,7 @@ fn cmd_apply(args: &HookApplyArgs) -> CargoAllowResult<()> {
         disposition: "Missing",
         operation: "create",
         applied: true,
-        rollback: "run `cargo-allow hooks remove --receipt <this receipt> --accept`; removal refuses changed identity",
+        rollback: "run `cargo-allow hooks remove --receipt <this receipt> --accept`; verified plans also require `--plan <same plan>`",
     };
     write_json_receipt(&receipt_path, &receipt).map_err(|error| {
         CargoAllowError::new(format!(
@@ -739,7 +758,13 @@ fn cmd_remove(args: &HookRemoveArgs) -> CargoAllowResult<()> {
     let root = source_tree_root()?;
     let receipt = read_apply_receipt(&args.receipt)?;
     let stage = stage_from_str(&receipt.stage)?;
-    let plan = build_plan(stage);
+    let plan = if let Some(plan_path) = &args.plan {
+        let plan = read_plan(plan_path)?;
+        validate_plan(&plan)?;
+        plan
+    } else {
+        build_plan(stage)
+    };
     validate_apply_receipt(&receipt, &plan)?;
     let hook_path = hook_path(&root, stage)?;
     let expected_hook_path = portable_path(&root, &hook_path);

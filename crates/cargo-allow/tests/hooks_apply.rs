@@ -278,6 +278,50 @@ fn hooks_plan_can_wire_the_verified_runtime_into_an_applied_hook() -> TestResult
             && hook.contains(&format!("'{digest}'")),
         "applied hook did not preserve the verified runtime argv",
     )?;
+
+    let status = run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "status",
+            "--stage",
+            "pre-commit",
+            "--plan",
+            &plan_arg,
+            "--format",
+            "json",
+        ],
+    )?;
+    let status: Value = serde_json::from_slice(&status.stdout)?;
+    require(
+        status.get("disposition").and_then(Value::as_str) == Some("AlreadyPresent")
+            && status.get("plan_identity").and_then(Value::as_str)
+                == plan_value.get("plan_identity").and_then(Value::as_str),
+        "verified plan status did not recognize the applied hook",
+    )?;
+
+    let removal = fixture.path.join("target/verified-hook-removal.json");
+    let removal_arg = path_arg(&removal);
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "remove",
+            "--receipt",
+            &receipt_arg,
+            "--plan",
+            &plan_arg,
+            "--accept",
+            "--result-receipt",
+            &removal_arg,
+        ],
+    )?;
+    let removal: Value = serde_json::from_slice(&fs::read(&removal)?)?;
+    require(
+        removal.get("removed").and_then(Value::as_bool) == Some(true)
+            && !fixture.path.join(".git/hooks/pre-commit").exists(),
+        "verified apply receipt did not remove the exact managed hook",
+    )?;
     Ok(())
 }
 
