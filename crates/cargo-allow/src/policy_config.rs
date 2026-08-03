@@ -3,6 +3,8 @@ use allow_policy::{
     PrecedenceTier, SkippedPolicyCandidate, discover_config, evaluate_source_exception_policy,
     load_policy, load_policy_with_reportable_evidence,
 };
+#[cfg(test)]
+use allow_policy::{SOURCE_CONVENTIONAL_PATH, SOURCE_PACKAGE_METADATA, SOURCE_WORKSPACE_METADATA};
 use std::path::{Path, PathBuf};
 
 /// Centralized "no policy config found" error constructor (#2824).
@@ -15,6 +17,8 @@ pub(crate) fn missing_policy_config_error() -> CargoAllowError {
 pub(crate) struct ConfigDiscovery {
     pub path: Option<PathBuf>,
     pub skipped: Vec<SkippedPolicyCandidate>,
+    pub source: Option<&'static str>,
+    pub precedence: Option<PrecedenceTier>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -90,9 +94,16 @@ pub(crate) fn discover_config_path(root: &Path, config: Option<&Path>) -> Config
             } else {
                 Vec::new()
             };
+            let source = match evaluation.precedence_applied {
+                PrecedenceTier::CliOverride => Some("cli_override"),
+                PrecedenceTier::FederationRegistry => Some("federation_registry"),
+                PrecedenceTier::DiscoveryFallback => discover_config(root).selected_source,
+            };
             ConfigDiscovery {
                 path: Some(path),
                 skipped,
+                source,
+                precedence: Some(evaluation.precedence_applied),
             }
         }
         Err(_) => {
@@ -100,6 +111,8 @@ pub(crate) fn discover_config_path(root: &Path, config: Option<&Path>) -> Config
             ConfigDiscovery {
                 path: discovery.selected,
                 skipped: discovery.skipped,
+                source: discovery.selected_source,
+                precedence: None,
             }
         }
     }
@@ -306,6 +319,76 @@ mod tests {
         assert!(missing.is_none());
         remove_test_dir(&root);
         remove_test_dir(&missing_root);
+    }
+
+    #[test]
+    fn discovery_reports_source_exception_provenance() {
+        let root = unique_test_dir("policy-config-provenance");
+        write_policy(&root, valid_policy_config());
+
+        let explicit = discover_config_path(&root, Some(Path::new("policy/allow.toml")));
+        assert_eq!(explicit.source, Some("cli_override"));
+        assert_eq!(
+            explicit.precedence.map(PrecedenceTier::as_str),
+            Some("cli_override")
+        );
+
+        let discovered = discover_config_path(&root, None);
+        assert_eq!(discovered.source, Some(SOURCE_CONVENTIONAL_PATH));
+        assert_eq!(
+            discovered.precedence.map(PrecedenceTier::as_str),
+            Some("discovery_fallback")
+        );
+        remove_test_dir(&root);
+    }
+
+    #[test]
+    fn discovery_reports_metadata_and_conventional_sources_separately() {
+        let package_root = unique_test_dir("policy-config-package-metadata-source");
+        let package_config = package_root.join("config/package.toml");
+        fs::create_dir_all(package_config.parent().unwrap_or(&package_root)).unwrap_or_else(
+            |err| std::panic::panic_any(format!("create package config dir: {err}")),
+        );
+        fs::write(
+            package_root.join("Cargo.toml"),
+            "[package]\nname = \"package-source\"\nversion = \"0.1.0\"\n\n[package.metadata.cargo-allow]\nconfig = \"config/package.toml\"\n",
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write package manifest: {err}")));
+        fs::write(&package_config, render_policy(&valid_policy_config()))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("write package config: {err}")));
+
+        let workspace_root = unique_test_dir("policy-config-workspace-metadata-source");
+        let workspace_config = workspace_root.join("config/workspace.toml");
+        fs::create_dir_all(workspace_config.parent().unwrap_or(&workspace_root)).unwrap_or_else(
+            |err| std::panic::panic_any(format!("create workspace config dir: {err}")),
+        );
+        fs::write(
+            workspace_root.join("Cargo.toml"),
+            "[workspace]\nmembers = []\n\n[workspace.metadata.cargo-allow]\nconfig = \"config/workspace.toml\"\n",
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write workspace manifest: {err}")));
+        fs::write(&workspace_config, render_policy(&valid_policy_config()))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("write workspace config: {err}")));
+
+        let conventional_root = unique_test_dir("policy-config-conventional-source");
+        write_policy(&conventional_root, valid_policy_config());
+
+        assert_eq!(
+            discover_config_path(&package_root, None).source,
+            Some(SOURCE_PACKAGE_METADATA)
+        );
+        assert_eq!(
+            discover_config_path(&workspace_root, None).source,
+            Some(SOURCE_WORKSPACE_METADATA)
+        );
+        assert_eq!(
+            discover_config_path(&conventional_root, None).source,
+            Some(SOURCE_CONVENTIONAL_PATH)
+        );
+
+        remove_test_dir(&package_root);
+        remove_test_dir(&workspace_root);
+        remove_test_dir(&conventional_root);
     }
 
     #[test]

@@ -171,6 +171,7 @@ fn render_doctor_json_records_setup_context() {
         config_policy: Some("cargo-allow"),
         config_owner: Some("core/policy"),
         config_status: Some("active"),
+        config_provenance: None,
         config_valid: Some(true),
         config_diagnostic: None,
         broken_evidence_links: Some(0),

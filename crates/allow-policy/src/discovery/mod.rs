@@ -18,6 +18,13 @@ pub const DISCOVERY_REL_PATHS: [&str; 4] = [
 /// `policy/allow.toml`.
 pub const NATIVE_LEDGER_REL_PATH: &str = "policy/cargo-allow.toml";
 
+/// Provenance label for a config selected from package metadata.
+pub const SOURCE_PACKAGE_METADATA: &str = "package_metadata";
+/// Provenance label for a config selected from workspace metadata.
+pub const SOURCE_WORKSPACE_METADATA: &str = "workspace_metadata";
+/// Provenance label for a config selected from a conventional path.
+pub const SOURCE_CONVENTIONAL_PATH: &str = "conventional_path";
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SkippedPolicyCandidate {
     pub path: PathBuf,
@@ -27,6 +34,7 @@ pub struct SkippedPolicyCandidate {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiscoverConfigResult {
     pub selected: Option<PathBuf>,
+    pub selected_source: Option<&'static str>,
     pub skipped: Vec<SkippedPolicyCandidate>,
 }
 
@@ -43,15 +51,17 @@ pub fn discover_config(start: impl AsRef<Path>) -> DiscoverConfigResult {
         Err(_) => {
             return DiscoverConfigResult {
                 selected: None,
+                selected_source: None,
                 skipped: Vec::new(),
             };
         }
     };
     let mut skipped = Vec::new();
     loop {
-        if let Some(candidate) = discover_cargo_metadata_config(&dir, &mut skipped) {
+        if let Some((candidate, source)) = discover_cargo_metadata_config(&dir, &mut skipped) {
             return DiscoverConfigResult {
                 selected: Some(candidate),
+                selected_source: Some(source),
                 skipped,
             };
         }
@@ -64,6 +74,7 @@ pub fn discover_config(start: impl AsRef<Path>) -> DiscoverConfigResult {
                 CandidateClass::Accept => {
                     return DiscoverConfigResult {
                         selected: Some(candidate),
+                        selected_source: Some(SOURCE_CONVENTIONAL_PATH),
                         skipped,
                     };
                 }
@@ -79,6 +90,7 @@ pub fn discover_config(start: impl AsRef<Path>) -> DiscoverConfigResult {
     }
     DiscoverConfigResult {
         selected: None,
+        selected_source: None,
         skipped,
     }
 }
@@ -113,7 +125,7 @@ struct CargoAllowMetadataProbe {
 fn discover_cargo_metadata_config(
     dir: &Path,
     skipped: &mut Vec<SkippedPolicyCandidate>,
-) -> Option<PathBuf> {
+) -> Option<(PathBuf, &'static str)> {
     let manifest_path = dir.join("Cargo.toml");
     if !manifest_path.exists() {
         return None;
@@ -138,19 +150,20 @@ fn discover_cargo_metadata_config(
             return None;
         }
     };
-    let config = manifest
+    let (config, source) = manifest
         .package
         .and_then(|package| package.metadata)
         .and_then(|metadata| metadata.cargo_allow)
         .and_then(|metadata| metadata.config)
+        .map(|config| (config, SOURCE_PACKAGE_METADATA))
         .or_else(|| {
             manifest
                 .workspace
                 .and_then(|workspace| workspace.metadata)
                 .and_then(|metadata| metadata.cargo_allow)
                 .and_then(|metadata| metadata.config)
-        });
-    let config = config?;
+                .map(|config| (config, SOURCE_WORKSPACE_METADATA))
+        })?;
     let config_path = Path::new(&config);
     if config.is_empty()
         || config_path.is_absolute()
@@ -175,7 +188,7 @@ fn discover_cargo_metadata_config(
         return None;
     }
     match classify_candidate(&candidate, true) {
-        CandidateClass::Accept => Some(candidate),
+        CandidateClass::Accept => Some((candidate, source)),
         CandidateClass::Skip(reason) => {
             skipped.push(SkippedPolicyCandidate {
                 path: candidate,
