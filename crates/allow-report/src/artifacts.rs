@@ -1,6 +1,7 @@
 mod add;
 mod add_finding_plan;
 mod add_plan_application;
+mod adoption_plan;
 mod diff;
 mod doctor;
 mod explain;
@@ -20,6 +21,11 @@ pub use add_finding_plan::{
     AddFindingPlanProofPlan, AddFindingPlanRepository, AddFindingPlanV1,
 };
 pub use add_plan_application::AddPlanApplicationV1;
+pub use adoption_plan::{
+    AdoptionAction, AdoptionActionKind, AdoptionFacts, AdoptionInventoryFacts, AdoptionPolicyFacts,
+    BootstrapDisposition, CoreAdoptionPlanV1, InventoryCompleteness, InventoryMode, PolicyState,
+    WritePosture, recommend_core_adoption_plan,
+};
 pub use diff::{
     DiffEvidenceChange, DiffExceptionIdentityChange, DiffFindingChange, DiffLedgerMovementSummary,
     DiffLifecycleChange, DiffMetadataChange, DiffMovementCounts, DiffOccurrenceLimitChange,

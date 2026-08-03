@@ -35,6 +35,7 @@ fn artifact_contract_registry_covers_current_v1_artifacts() {
             "add",
             "add-finding-plan",
             "add-plan-application",
+            "core-adoption-plan",
             "doctor",
             "explain",
             "list",
