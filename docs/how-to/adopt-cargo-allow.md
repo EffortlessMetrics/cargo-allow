@@ -86,10 +86,12 @@ cargo-allow hooks apply --plan target/cargo-allow/pre-commit-hook-plan.json --ac
 directory, validates the plan schema and identity, and atomically creates the
 selected hook only when it is absent. It never overwrites an existing hook:
 unmanaged or mismatched managed content is reported as `ManualMerge` or
-`Conflict` and recorded in the apply receipt. The generated wrapper invokes
+`Conflict`; a single exact cargo-allow block inside otherwise unrelated hook
+content is reported as `Composed` and is left unchanged. These dispositions
+are recorded in the apply receipt. The generated wrapper invokes
 the exact offline `cargo-allow check --mode no-new` command over the tracked
 worktree; it does not claim exact staged-index evidence or install a binary.
-To remove a hook created by that exact apply, retain its receipt and run:
+To remove a recognized managed hook or block, retain its matching apply receipt and run:
 
 ```bash
 cargo-allow hooks remove \
@@ -97,13 +99,15 @@ cargo-allow hooks remove \
   --accept
 ```
 
-Removal is fail-closed: it recomputes the current stage, plan identity, Git
-common hook path, and complete managed-file bytes from the receipt and refuses
-changed, composed, unmanaged, or symbolic-link content. It writes a separate
+Removal is fail-closed: it recomputes the current stage, plan identity, and Git
+common hook path from the receipt. An exact standalone hook is removed as a
+file; a `Composed` hook removes only its exact managed block and preserves
+unrelated bytes. Changed, malformed, unmanaged, or symbolic-link content is
+refused. It writes a separate
 `cargo-allow.local-hook-remove-receipt.v1`; the receipt records the exact
 recreate route through `hooks plan` and `hooks apply`. Existing hook
-composition, partial managed-block removal, and exact staged-index enforcement
-remain separate follow-up capabilities.
+composition and exact staged-index enforcement remain separate follow-up
+capabilities.
 
 ## Optional reusable GitHub Action
 

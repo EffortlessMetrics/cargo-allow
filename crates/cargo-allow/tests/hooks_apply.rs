@@ -333,6 +333,93 @@ fn hooks_remove_refuses_changed_managed_content() -> TestResult {
 }
 
 #[test]
+fn hooks_compose_recognized_block_and_remove_only_that_block() -> TestResult {
+    let fixture = Fixture::new("compose")?;
+    init_git(&fixture.path)?;
+    let plan = fixture.path.join("target/hook-plan.json");
+    let apply_receipt = fixture.path.join("target/hook-receipt.json");
+    let remove_receipt = fixture.path.join("target/remove-receipt.json");
+    let plan_arg = path_arg(&plan);
+    let apply_receipt_arg = path_arg(&apply_receipt);
+    let remove_receipt_arg = path_arg(&remove_receipt);
+
+    run_success(
+        &fixture.path,
+        &["hooks", "plan", "--format", "json", "--output", &plan_arg],
+    )?;
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "apply",
+            "--plan",
+            &plan_arg,
+            "--accept",
+            "--receipt",
+            &apply_receipt_arg,
+        ],
+    )?;
+
+    let hook = fixture.path.join(".git/hooks/pre-commit");
+    let managed = fs::read_to_string(&hook)?;
+    let managed_block = managed.lines().skip(2).collect::<Vec<_>>().join("\r\n");
+    fs::write(
+        &hook,
+        format!("#!/bin/sh\r\ncustom-before\r\n{managed_block}\r\ncustom-after\r\n"),
+    )?;
+
+    let status = run_success(&fixture.path, &["hooks", "status", "--format", "json"])?;
+    let status: Value = serde_json::from_slice(&status.stdout)?;
+    require(
+        status.get("disposition").and_then(Value::as_str) == Some("Composed"),
+        "status did not recognize the composed managed block",
+    )?;
+
+    let before_apply = fs::read_to_string(&hook)?;
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "apply",
+            "--plan",
+            &plan_arg,
+            "--accept",
+            "--receipt",
+            &apply_receipt_arg,
+        ],
+    )?;
+    require(
+        fs::read_to_string(&hook)? == before_apply,
+        "reapplying a composed managed block changed unrelated hook bytes",
+    )?;
+
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "remove",
+            "--receipt",
+            &apply_receipt_arg,
+            "--accept",
+            "--result-receipt",
+            &remove_receipt_arg,
+        ],
+    )?;
+    require(
+        fs::read_to_string(&hook)? == "#!/bin/sh\r\ncustom-before\r\ncustom-after\r\n",
+        "composed removal did not preserve unrelated hook bytes",
+    )?;
+    let removal: Value = serde_json::from_slice(&fs::read(&remove_receipt)?)?;
+    require(
+        removal.get("disposition").and_then(Value::as_str) == Some("Composed")
+            && removal.get("operation").and_then(Value::as_str) == Some("remove_block")
+            && removal.get("removed").and_then(Value::as_bool) == Some(true),
+        "composed removal receipt did not describe block removal",
+    )?;
+    Ok(())
+}
+
+#[test]
 fn hooks_remove_is_a_receipted_noop_when_the_exact_hook_is_missing() -> TestResult {
     let fixture = Fixture::new("remove-missing")?;
     init_git(&fixture.path)?;
