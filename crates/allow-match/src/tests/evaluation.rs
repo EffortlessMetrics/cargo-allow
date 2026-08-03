@@ -348,6 +348,43 @@ fn live_broad_entry_covers_finding_when_precise_entry_is_expired() {
 }
 
 #[test]
+fn occurrence_limited_expired_entry_is_not_replaced_by_live_fallback() {
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut precise = entry_with_hash("fnv1a64:actual");
+    precise.id = "allow-precise-limited".to_string();
+    precise.lifecycle.expires = Some("2020-01-01".to_string());
+    precise.occurrence_limit = Some(0);
+
+    let mut broad = precise.clone();
+    broad.id = "allow-broad-live".to_string();
+    broad.selector.normalized_snippet_hash = None;
+    broad.lifecycle.expires = Some("2999-12-31".to_string());
+    broad.occurrence_limit = None;
+
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(precise);
+    cfg.allow.push(broad);
+
+    let evaluation = evaluate_detailed(&cfg, &[finding], CheckMode::NoNew);
+
+    assert!(evaluation.outcomes.iter().any(|outcome| {
+        outcome.status == MatchStatus::New
+            && outcome.allow_id.as_deref() == Some("allow-precise-limited")
+            && outcome.message.contains("occurrence_limit exceeded")
+    }));
+    assert!(!evaluation.outcomes.iter().any(|outcome| {
+        outcome.status == MatchStatus::Matched
+            && outcome.allow_id.as_deref() == Some("allow-broad-live")
+            && outcome.finding_index == Some(0)
+    }));
+    assert!(evaluation.outcomes.iter().any(|outcome| {
+        outcome.status == MatchStatus::Stale
+            && outcome.allow_id.as_deref() == Some("allow-broad-live")
+            && outcome.finding_index.is_none()
+    }));
+}
+
+#[test]
 fn live_broad_entry_covers_finding_when_precise_entry_lacks_evidence() {
     let finding = finding_with_hash("fnv1a64:actual");
     let mut precise = entry_with_hash("fnv1a64:actual");

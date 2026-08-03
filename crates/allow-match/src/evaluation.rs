@@ -77,16 +77,14 @@ impl EvalState {
         entry_index: usize,
         score: u32,
         candidate_ids: Vec<String>,
-    ) {
+    ) -> Option<MatchStatus> {
         let FindingContext {
             finding,
             finding_index,
             today,
             mode,
         } = *ctx;
-        let Some(entry) = cfg.allow.get(entry_index) else {
-            return;
-        };
+        let entry = cfg.allow.get(entry_index)?;
 
         // Record the structural observation. `observed_count` counts every
         // occurrence, including ones past the limit, and stays distinct from
@@ -116,7 +114,7 @@ impl EvalState {
                 ),
                 score,
             });
-            return;
+            return Some(MatchStatus::New);
         }
 
         let (status, message) = classify_matched(entry, finding, score, today, cfg, mode);
@@ -161,6 +159,7 @@ impl EvalState {
             message,
             score,
         });
+        Some(status)
     }
 }
 
@@ -243,14 +242,16 @@ pub fn evaluate_detailed(
                         .collect();
                     let fallback =
                         fallback_candidate(cfg, finding, many, entry_index, score, today, mode);
-                    state.evaluate_selected_candidate(
+                    let winner_status = state.evaluate_selected_candidate(
                         cfg,
                         &ctx,
                         entry_index,
                         score,
                         candidate_ids.clone(),
                     );
-                    if let Some((fallback_index, fallback_score)) = fallback {
+                    if winner_status.is_some_and(fallback_allowed_status)
+                        && let Some((fallback_index, fallback_score)) = fallback
+                    {
                         // MatchOutcome has one finding-level row, so project
                         // coverage through the weaker live candidate while
                         // retaining the stronger non-live entry in
@@ -432,10 +433,7 @@ fn fallback_candidate(
 ) -> Option<(usize, u32)> {
     let winner = cfg.allow.get(winner_index)?;
     let (winner_status, _) = classify_matched(winner, finding, winner_score, today, cfg, mode);
-    if !matches!(
-        winner_status,
-        MatchStatus::Expired | MatchStatus::EvidenceMissing
-    ) {
+    if !fallback_allowed_status(winner_status) {
         return None;
     }
 
@@ -463,4 +461,8 @@ fn fallback_candidate(
     } else {
         None
     }
+}
+
+fn fallback_allowed_status(status: MatchStatus) -> bool {
+    matches!(status, MatchStatus::Expired | MatchStatus::EvidenceMissing)
 }
