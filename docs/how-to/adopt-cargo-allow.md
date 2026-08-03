@@ -22,9 +22,9 @@ repository revision in the consumer's `.pre-commit-config.yaml`.
 The hook's source subject is the current tracked **worktree**, not the exact
 Git index candidate. It can inspect unstaged bytes, so treat it as fast local
 feedback rather than proof of the bytes a commit will contain. CI remains the
-authoritative merge backstop. The hook does not claim exact staged-index source
-exception enforcement yet; do not add `--staged` to this entry, because the
-currently supported staged profile is a separate intent-system contract.
+authoritative merge backstop. The shipped hook remains worktree-scoped; do not
+add `--staged` to this entry. For an exact source-exception candidate check,
+use the explicit staged command below.
 The published template is registered for both the `pre-commit` and `pre-push`
 stages. In either stage it remains a worktree advisory check, not a claim about
 the exact staged index or pushed commit/tree bytes. Use the pre-push stage for a
@@ -55,6 +55,25 @@ command is:
 # Subject: current tracked worktree, not the exact staged index.
 cargo-allow check --mode no-new
 ```
+
+For an exact source-exception check of the Git index candidate, use the
+pre-commit phase explicitly. It reads staged bytes (including partial files),
+never falls back to dirty worktree bytes, and records the staged source
+identity in JSON reports and receipts:
+
+```bash
+cargo-allow check --staged --phase precommit --mode no-new --format json \
+  --receipt target/cargo-allow/staged-receipt.json
+```
+
+This exact source-exception path currently fails closed when the policy uses
+worktree-derived companion families such as workflow extraction, executable
+bits, or `.gitattributes` generated-file metadata. It also fails closed when
+federated `.allow` inputs are configured, or when `--mode no-new`/`strict`
+would require product-move ledger enforcement that is not yet staged-aware.
+Use the tracked-worktree check for those repositories until the corresponding
+staged adapters exist. It does not invoke the separate `spec-system`/cargo-intent
+compatibility profile or self-hosted tool-selection flags.
 
 Before adopting either checked stage, preview the machine-readable hook
 contract from the installed binary:

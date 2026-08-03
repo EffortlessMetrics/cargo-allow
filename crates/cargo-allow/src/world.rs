@@ -1,10 +1,22 @@
-use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult, Finding};
-use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
+use allow_core::{
+    AllowConfig, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding,
+    SOURCE_FILE_READ_MAX_BYTES, normalize_path, source_tree_path_is_ignored,
+};
+use allow_inventory::{
+    Inventory, InventoryCompleteness, InventoryOptions, InventorySource, inventory,
+    resolve_source_tree_root,
+};
 use allow_policy::federation::{
     FederationEvaluation, PrecedenceTier, evaluate_source_exception_policy,
 };
 use std::cell::RefCell;
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
+
+use allow_diff::{
+    StagedEntryKind, StagedPathRead, StagedRepositorySnapshot, read_staged_path,
+    staged_repository_snapshot,
+};
 
 thread_local! {
     static SCAN_CACHE: RefCell<allow_rust::ScanCache> = RefCell::new(allow_rust::ScanCache::new());
@@ -17,6 +29,262 @@ use crate::{
     },
     extend_unique_findings, load_policy_at_path, parse_kind_filter,
 };
+
+type StagedRustInputs = (Vec<(PathBuf, String)>, Vec<(PathBuf, String)>);
+
+/// The exact staged source-exception evaluation result. The identity is kept
+/// separate from [`InventoryFacts`] so the ordinary worktree report contract
+/// does not acquire staged-only ownership semantics by accident.
+pub(crate) struct StagedWorld {
+    pub(crate) root: PathBuf,
+    pub(crate) cfg: AllowConfig,
+    pub(crate) findings: Vec<Finding>,
+    pub(crate) inventory_facts: InventoryFacts,
+    pub(crate) federation: FederationEvaluation,
+    pub(crate) source_identity: String,
+    pub(crate) evidence_source_tree_files: BTreeSet<String>,
+    pub(crate) product_move_ledger_present: bool,
+}
+
+/// Evaluate source-exception findings against one exact Git-index candidate.
+///
+/// The source bytes and inventory come from the exact staged-index adapter;
+/// this path never falls back to dirty worktree bytes. Worktree-derived
+/// companion sensors are rejected until they have an equivalent staged source
+/// adapter, rather than being silently mixed into an exact candidate result.
+pub(crate) fn load_staged_world(
+    explicit_root: Option<&Path>,
+    config: Option<&Path>,
+    kind_filter: Option<&str>,
+) -> CargoAllowResult<StagedWorld> {
+    let cwd = current_dir()?;
+    let root = resolve_source_tree_root(explicit_root, cwd)?;
+    let snapshot = staged_repository_snapshot(&root)?;
+    let (policy_path, federation) = evaluate_source_exception_policy(&root, config)?;
+    reject_unsupported_staged_federation(&snapshot, &federation)?;
+    let policy_relative = normalize_to_repo_relative(&root, &policy_path);
+    let policy_text = read_staged_text(&snapshot, &policy_relative).map_err(|error| {
+        CargoAllowError::new(format!(
+            "exact staged source-exception check could not read policy candidate {}: {error}",
+            policy_relative.display()
+        ))
+    })?;
+    let cfg = allow_policy::parse_policy_with_reportable_evidence_at(&policy_path, &policy_text)?;
+    reject_unsupported_staged_companion_sensors(&cfg)?;
+    let options = InventoryOptions {
+        ignored: cfg.workspace.ignored.clone(),
+        generated: cfg.workspace.generated.clone(),
+        include_untracked: false,
+    };
+    let source_identity = snapshot.identity.semantic_hash.clone();
+    let inventory = staged_inventory(&snapshot, &options);
+    let inventory_facts = InventoryFacts::scanned_inventory(&inventory);
+    let evidence_source_tree_files = inventory
+        .files
+        .iter()
+        .map(normalize_path)
+        .collect::<BTreeSet<_>>();
+    let product_move_ledger_present = evidence_source_tree_files
+        .contains(allow_policy::product_move::PRODUCT_MOVE_LEDGER_RELATIVE_PATH);
+    let (manifests, sources) = staged_rust_inputs(&snapshot, &inventory)?;
+    let packages = allow_rust::source_package_contexts_from_sources(manifests);
+    let mut findings = Vec::new();
+    let mut rust_files_with_parse_errors = 0usize;
+    for (path, text) in sources {
+        // Match the ordinary filesystem scanner's BOM normalization. The
+        // staged source view owns the bytes, but it must not create a second
+        // syntax interpretation for Windows-edited UTF-8 sources.
+        let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
+        let scan = allow_rust::scan_rust_source_with_completeness(&path, text);
+        if scan.has_parse_error {
+            rust_files_with_parse_errors += 1;
+        }
+        let mut source_findings = scan.findings;
+        allow_rust::apply_source_package_context(&path, &packages, &mut source_findings);
+        findings.extend(source_findings);
+    }
+    findings.extend(allow_files::scan_files_with_options(
+        &inventory.files,
+        &allow_files::FileScanOptions {
+            generated: options.generated.clone(),
+            file_families: cfg.workspace.file_families.clone(),
+        },
+    ));
+    let staged_companion_findings =
+        crate::companion::staged_companion_findings(&cfg, &inventory.files)?;
+    extend_unique_findings(&mut findings, staged_companion_findings);
+    if let Some(kind) = kind_filter {
+        let parsed = parse_kind_filter(kind)?;
+        findings.retain(|finding| parsed.matches_finding(finding));
+    }
+    if let Some(provenance) = federation.active_provenance.clone() {
+        for finding in &mut findings {
+            finding.ledger = Some(provenance.clone());
+        }
+    }
+    let final_snapshot = staged_repository_snapshot(&root)?;
+    if final_snapshot.identity.semantic_hash != source_identity {
+        return Err(CargoAllowError::new(
+            "Git index changed while scanning the exact staged source-exception candidate",
+        ));
+    }
+    Ok(StagedWorld {
+        root,
+        cfg,
+        findings,
+        inventory_facts: inventory_facts
+            .with_rust_files_with_parse_errors(rust_files_with_parse_errors),
+        federation,
+        source_identity,
+        evidence_source_tree_files,
+        product_move_ledger_present,
+    })
+}
+
+fn staged_inventory(snapshot: &StagedRepositorySnapshot, options: &InventoryOptions) -> Inventory {
+    let mut files = snapshot
+        .entries
+        .iter()
+        .filter(|entry| entry.stage == 0)
+        .filter(|entry| {
+            matches!(
+                entry.kind,
+                StagedEntryKind::RegularFile | StagedEntryKind::ExecutableFile
+            )
+        })
+        .filter_map(|entry| entry.path.clone())
+        .filter(|path| !source_tree_path_is_ignored(path, &options.ignored))
+        .collect::<Vec<_>>();
+    files.sort();
+    files.dedup();
+    let completeness = if snapshot.completeness == allow_diff::StagedSnapshotCompleteness::Partial {
+        InventoryCompleteness::Partial
+    } else if !options.ignored.is_empty() || !options.generated.is_empty() {
+        InventoryCompleteness::Scoped
+    } else {
+        InventoryCompleteness::Complete
+    };
+    Inventory {
+        files,
+        source: InventorySource::GitIndexStagedCandidate,
+        completeness,
+        empty_git_tracked: snapshot.entries.is_empty(),
+        deleted_tracked: Vec::new(),
+        git_error: None,
+        skipped_paths: Vec::new(),
+        submodule_paths: Vec::new(),
+    }
+}
+
+fn staged_rust_inputs(
+    snapshot: &StagedRepositorySnapshot,
+    inventory: &Inventory,
+) -> CargoAllowResult<StagedRustInputs> {
+    let mut manifests = Vec::new();
+    let mut sources = Vec::new();
+    for path in &inventory.files {
+        if path.file_name().and_then(|name| name.to_str()) == Some("Cargo.toml") {
+            manifests.push((path.clone(), read_staged_text(snapshot, path)?));
+        } else if path.extension().and_then(|extension| extension.to_str()) == Some("rs") {
+            sources.push((path.clone(), read_staged_text(snapshot, path)?));
+        }
+    }
+    Ok((manifests, sources))
+}
+
+fn read_staged_text(snapshot: &StagedRepositorySnapshot, path: &Path) -> CargoAllowResult<String> {
+    let bytes = match read_staged_path(snapshot, path)? {
+        StagedPathRead::Regular(bytes) => bytes,
+        StagedPathRead::Missing => {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Inventory,
+                format!(
+                    "staged source file {} is absent from the candidate",
+                    path.display()
+                ),
+            ));
+        }
+        StagedPathRead::Unsupported { kind, .. } => {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Inventory,
+                format!(
+                    "staged source file {} has unsupported entry kind {kind:?}",
+                    path.display()
+                ),
+            ));
+        }
+    };
+    if (bytes.len() as u64) > SOURCE_FILE_READ_MAX_BYTES {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Scan,
+            format!(
+                "staged source file {} exceeds the {}-byte source-read limit",
+                path.display(),
+                SOURCE_FILE_READ_MAX_BYTES
+            ),
+        ));
+    }
+    String::from_utf8(bytes).map_err(|source| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Scan,
+            format!("staged source file {} is not valid UTF-8", path.display()),
+        )
+        .with_cause(&source)
+    })
+}
+
+fn reject_unsupported_staged_companion_sensors(cfg: &AllowConfig) -> CargoAllowResult<()> {
+    let unsupported = cfg
+        .allow
+        .iter()
+        .filter(|entry| {
+            matches!(
+                entry.kind,
+                allow_core::FindingKind::GeneratedCode | allow_core::FindingKind::PolicyException
+            )
+        })
+        .map(|entry| entry.family.as_deref().unwrap_or("<unspecified>"))
+        .filter(|family| !crate::companion::staged_companion_family_supported(family))
+        .collect::<BTreeSet<_>>();
+    if !unsupported.is_empty() {
+        return Err(CargoAllowError::with_kind(
+            allow_core::CargoAllowErrorKind::Unsupported,
+            format!(
+                "exact staged source-exception evaluation does not yet support companion families {}; run the tracked-worktree check or use the staged compatibility profile",
+                unsupported
+                    .into_iter()
+                    .map(|family| format!("`{family}`"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+        ));
+    }
+    Ok(())
+}
+
+fn reject_unsupported_staged_federation(
+    snapshot: &StagedRepositorySnapshot,
+    federation: &FederationEvaluation,
+) -> CargoAllowResult<()> {
+    let staged_federation_metadata = snapshot.entries.iter().any(|entry| {
+        entry.stage == 0
+            && entry.path.as_deref().is_some_and(|path| {
+                path.components()
+                    .next()
+                    .is_some_and(|component| component.as_os_str() == ".allow")
+            })
+    });
+    if staged_federation_metadata
+        || !federation.ledger_contributors.is_empty()
+        || !federation.divergences.is_empty()
+    {
+        return Err(CargoAllowError::with_kind(
+            allow_core::CargoAllowErrorKind::Unsupported,
+            "exact staged source-exception evaluation does not yet support federated policy inputs; run the tracked-worktree check or stage through the federation-aware adapter",
+        ));
+    }
+    Ok(())
+}
 
 pub(crate) fn load_world(
     explicit_root: Option<&Path>,
@@ -455,6 +723,128 @@ mod tests {
                 "include-untracked inventory should accept untracked local links: {err}"
             ))
         });
+        fs::remove_dir_all(root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+    }
+
+    #[test]
+    fn staged_world_rejects_worktree_derived_companion_families() {
+        let root = fixture_dir();
+        let mut cfg = AllowConfig::empty();
+        cfg.allow.push(AllowEntry {
+            id: "allow-0001".to_string(),
+            kind: FindingKind::PolicyException,
+            family: Some("github_workflow".to_string()),
+            path: Some(PathBuf::from(".github/workflows/ci.yml")),
+            glob: None,
+            owner: "ci".to_string(),
+            classification: "github_workflow".to_string(),
+            reason: "Retained workflow fixture.".to_string(),
+            evidence: vec!["legacy-policy:test".to_string()],
+            links: Vec::new(),
+            occurrence_limit: None,
+            lifecycle: Lifecycle {
+                created: Some("2026-05-26".to_string()),
+                review_after: Some("2026-11-01".to_string()),
+                expires: None,
+            },
+            selector: Selector {
+                ast_kind: Some("github_workflow".to_string()),
+                symbol: Some(".github/workflows/ci.yml".to_string()),
+                glob: Some(".github/workflows/ci.yml".to_string()),
+                ..Selector::default()
+            },
+            last_seen: None,
+        });
+        fs::create_dir_all(root.join("policy"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+        fs::write(root.join("policy/allow.toml"), render_policy(&cfg))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("policy write: {err}")));
+        fs::write(root.join("candidate.rs"), "fn candidate() {}\n")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("source write: {err}")));
+        git(root.as_path(), &["init"]);
+        git(
+            root.as_path(),
+            &["config", "user.email", "cargo-allow@example.invalid"],
+        );
+        git(root.as_path(), &["config", "user.name", "cargo-allow test"]);
+        git(root.as_path(), &["add", "--all"]);
+        git(root.as_path(), &["commit", "-m", "staged companion policy"]);
+
+        let result = load_staged_world(Some(&root), Some(Path::new("policy/allow.toml")), None);
+        let error = result
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("unsupported family should fail closed"));
+        assert_eq!(error.kind(), allow_core::CargoAllowErrorKind::Unsupported);
+        assert!(error.to_string().contains("github_workflow"));
+        fs::remove_dir_all(root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+    }
+
+    #[test]
+    fn staged_text_reading_rejects_missing_and_non_utf8_candidates() {
+        let root = fixture_dir();
+        fs::create_dir_all(root.join("policy"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+        fs::write(
+            root.join("policy/allow.toml"),
+            "schema_version = 1\n\n[workspace]\nignored = []\ngenerated = []\n",
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy write: {err}")));
+        git(root.as_path(), &["init"]);
+        git(
+            root.as_path(),
+            &["config", "user.email", "cargo-allow@example.invalid"],
+        );
+        git(root.as_path(), &["config", "user.name", "cargo-allow test"]);
+        git(root.as_path(), &["add", "--all"]);
+        git(root.as_path(), &["commit", "-m", "staged text base"]);
+        fs::write(root.join("invalid.rs"), [0xff_u8, 0xfe_u8])
+            .unwrap_or_else(|err| std::panic::panic_any(format!("invalid source write: {err}")));
+        fs::write(
+            root.join("oversized.rs"),
+            vec![b'x'; (SOURCE_FILE_READ_MAX_BYTES as usize) + 1],
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("oversized source write: {err}")));
+        git(root.as_path(), &["add", "--", "invalid.rs", "oversized.rs"]);
+
+        let snapshot = staged_repository_snapshot(&root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("staged snapshot: {err}")));
+        let mut partial_snapshot = snapshot.clone();
+        partial_snapshot.completeness = allow_diff::StagedSnapshotCompleteness::Partial;
+        let partial_inventory = staged_inventory(&partial_snapshot, &InventoryOptions::default());
+        assert_eq!(
+            partial_inventory.completeness,
+            InventoryCompleteness::Partial
+        );
+        let mut federation_snapshot = snapshot.clone();
+        if let Some(entry) = federation_snapshot.entries.first_mut() {
+            entry.path = Some(PathBuf::from(".allow/config.toml"));
+        }
+        let federation_error = reject_unsupported_staged_federation(
+            &federation_snapshot,
+            &default_federation_evaluation(),
+        )
+        .err()
+        .unwrap_or_else(|| std::panic::panic_any("federation metadata should fail closed"));
+        assert_eq!(
+            federation_error.kind(),
+            allow_core::CargoAllowErrorKind::Unsupported
+        );
+        let missing = read_staged_text(&snapshot, Path::new("missing.rs"))
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("missing staged source should fail"));
+        assert_eq!(missing.kind(), allow_core::CargoAllowErrorKind::Inventory);
+        let invalid = read_staged_text(&snapshot, Path::new("invalid.rs"))
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("invalid UTF-8 source should fail"));
+        assert_eq!(invalid.kind(), allow_core::CargoAllowErrorKind::Scan);
+        assert!(invalid.to_string().contains("not valid UTF-8"));
+        let oversized = read_staged_text(&snapshot, Path::new("oversized.rs"))
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("oversized source should fail"));
+        assert_eq!(oversized.kind(), allow_core::CargoAllowErrorKind::Scan);
+        assert!(oversized.to_string().contains("exceeds"));
         fs::remove_dir_all(root)
             .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
     }

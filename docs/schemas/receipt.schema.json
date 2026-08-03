@@ -362,6 +362,11 @@
           "type": "string",
           "enum": ["complete", "scoped", "fallback", "partial"],
           "description": "Authoritative inventory coverage classification for this artifact."
+        },
+        "source_identity": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Exact source candidate identity when the inventory is staged or otherwise immutable."
         }
       }
     },

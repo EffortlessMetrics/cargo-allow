@@ -206,6 +206,12 @@ fn inventory_value(context: ReportContext<'_>) -> Value {
             Value::String(completeness.to_string()),
         );
     }
+    if let Some(source_identity) = inventory.source_identity {
+        value.insert(
+            "source_identity".to_string(),
+            Value::String(source_identity.to_string()),
+        );
+    }
     Value::Object(value)
 }
 

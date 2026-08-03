@@ -342,5 +342,11 @@ fn inventory_files_html_suffix(context: ReportContext<'_>) -> String {
             html_escape(completeness)
         ));
     }
+    if let Some(identity) = context.inventory.source_identity {
+        suffix.push_str(&format!(
+            "; source identity: <code>{}</code>",
+            html_escape(identity)
+        ));
+    }
     suffix
 }

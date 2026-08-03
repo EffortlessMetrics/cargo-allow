@@ -788,6 +788,9 @@ fn inventory_files_markdown_suffix(context: ReportContext<'_>) -> String {
     if let Some(completeness) = context.inventory.completeness {
         suffix.push_str(&format!("; completeness: `{completeness}`"));
     }
+    if let Some(identity) = context.inventory.source_identity {
+        suffix.push_str(&format!("; source identity: `{identity}`"));
+    }
     suffix
 }
 

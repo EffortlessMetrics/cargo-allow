@@ -421,6 +421,9 @@ pub struct InventoryContext<'a> {
     pub files_scanned: Option<usize>,
     pub empty_git_tracked: bool,
     pub completeness: Option<&'a str>,
+    /// Exact source identity when the inventory is bound to a staged or
+    /// otherwise immutable candidate. Worktree reports intentionally omit it.
+    pub source_identity: Option<&'a str>,
 }
 
 impl<'a> InventoryContext<'a> {
@@ -439,6 +442,7 @@ impl<'a> InventoryContext<'a> {
             files_scanned,
             empty_git_tracked: false,
             completeness: None,
+            source_identity: None,
         }
     }
 
@@ -484,6 +488,11 @@ impl<'a> InventoryContext<'a> {
         self
     }
 
+    pub fn with_source_identity(mut self, source_identity: Option<&'a str>) -> Self {
+        self.source_identity = source_identity;
+        self
+    }
+
     pub fn completeness_suffix(self) -> String {
         self.completeness
             .map(|completeness| format!("; completeness: {completeness}"))
@@ -499,6 +508,9 @@ impl<'a> InventoryContext<'a> {
             .map(|files| format!("; files scanned: {files}"))
             .unwrap_or_default();
         suffix.push_str(&self.completeness_suffix());
+        if let Some(identity) = self.source_identity {
+            suffix.push_str(&format!("; source identity: {identity}"));
+        }
         suffix
     }
 }
@@ -597,6 +609,11 @@ impl<'a> ReportContext<'a> {
 
     pub fn with_inventory_completeness(mut self, completeness: &'a str) -> Self {
         self.inventory = self.inventory.with_completeness(completeness);
+        self
+    }
+
+    pub fn with_inventory_source_identity(mut self, source_identity: Option<&'a str>) -> Self {
+        self.inventory = self.inventory.with_source_identity(source_identity);
         self
     }
 }
