@@ -14,7 +14,7 @@ use std::os::unix::fs::PermissionsExt;
 use crate::emit_text;
 use crate::precommit_tool::{
     CargoAllowToolIdentityV1, ToolCompatibilityRequirement, ToolResultClass, ToolSelectionMode,
-    ToolSelectionRequest, select_tool,
+    ToolSelectionRequest, select_tool, verify_tool_unchanged,
 };
 
 const PLAN_SCHEMA: &str = "cargo-allow.local-hook-plan.v1";
@@ -43,6 +43,8 @@ pub(crate) enum HooksCommand {
     Remove(HookRemoveArgs),
     /// Verify an explicitly selected cargo-allow executable offline.
     Verify(HookVerifyArgs),
+    /// Execute the closed worktree check through an explicitly verified executable.
+    Run(HookRunArgs),
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -117,6 +119,25 @@ pub(crate) struct HookVerifyArgs {
     /// Write the verification report to a file instead of stdout.
     #[arg(long)]
     pub(crate) output: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Parser)]
+pub(crate) struct HookRunArgs {
+    /// Executable to verify and run; PATH lookup is never performed.
+    #[arg(long)]
+    pub(crate) binary: PathBuf,
+    /// Expected immutable executable digest, for example sha256:v1:....
+    #[arg(long)]
+    pub(crate) digest: String,
+    /// Selection policy. Published releases are required by default.
+    #[arg(long, value_enum, default_value_t = ToolSelectionMode::InstalledPinned)]
+    pub(crate) mode: ToolSelectionMode,
+    /// Expected build/source commit, when the consumer has one.
+    #[arg(long)]
+    pub(crate) expected_build_source_commit: Option<String>,
+    /// Closed command to execute after `--`; only `check --mode no-new` is supported.
+    #[arg(last = true, required = true)]
+    pub(crate) command: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -221,6 +242,7 @@ pub(crate) fn cmd_hooks(args: &HooksArgs) -> CargoAllowResult<()> {
         HooksCommand::Apply(apply_args) => cmd_apply(apply_args),
         HooksCommand::Remove(remove_args) => cmd_remove(remove_args),
         HooksCommand::Verify(verify_args) => cmd_verify(verify_args),
+        HooksCommand::Run(run_args) => cmd_run(run_args),
     }
 }
 
@@ -241,42 +263,13 @@ struct HookBinaryVerificationV1 {
 }
 
 fn cmd_verify(args: &HookVerifyArgs) -> CargoAllowResult<()> {
-    if !args.binary.is_absolute() {
-        return Err(CargoAllowError::new(format!(
-            "selected cargo-allow executable `{}` must be an absolute path; PATH lookup is not allowed",
-            args.binary.display()
-        )));
-    }
-    let identity_output = Command::new(&args.binary)
-        .args(["tool", "identity", "--format", "json"])
-        .output()
-        .map_err(|error| {
-            CargoAllowError::new(format!(
-                "failed to invoke selected cargo-allow executable `{}` for tool identity: {error}",
-                args.binary.display()
-            ))
-        })?;
-    if !identity_output.status.success() {
-        return Err(CargoAllowError::new(format!(
-            "selected cargo-allow executable `{}` could not report tool identity: {}",
-            args.binary.display(),
-            String::from_utf8_lossy(&identity_output.stderr).trim()
-        )));
-    }
-    let identity: CargoAllowToolIdentityV1 =
-        serde_json::from_slice(&identity_output.stdout).map_err(|error| {
-            CargoAllowError::new(format!(
-                "selected cargo-allow executable `{}` returned malformed tool identity JSON: {error}",
-                args.binary.display()
-            ))
-        })?;
-    let request = ToolSelectionRequest {
-        mode: args.mode,
-        executable: args.binary.clone(),
-        expected_digest: Some(args.digest.clone()),
-        expected_build_source_commit: args.expected_build_source_commit.clone(),
-        preview_authorized: matches!(args.mode, ToolSelectionMode::ExplicitToolUnderTest),
-    };
+    let identity = read_selected_tool_identity(&args.binary)?;
+    let request = selection_request(
+        &args.binary,
+        &args.digest,
+        args.mode,
+        args.expected_build_source_commit.clone(),
+    );
     let result = select_tool(
         &request,
         identity.clone(),
@@ -323,6 +316,103 @@ fn cmd_verify(args: &HookVerifyArgs) -> CargoAllowResult<()> {
             failure
         ))
     })
+}
+
+fn cmd_run(args: &HookRunArgs) -> CargoAllowResult<()> {
+    let expected_command = ["check", "--mode", "no-new"];
+    if args.command.iter().map(String::as_str).collect::<Vec<_>>() != expected_command {
+        return Err(CargoAllowError::new(
+            "hooks run only permits the exact `check --mode no-new` command",
+        ));
+    }
+    let identity = read_selected_tool_identity(&args.binary)?;
+    let request = selection_request(
+        &args.binary,
+        &args.digest,
+        args.mode,
+        args.expected_build_source_commit.clone(),
+    );
+    let receipt = select_tool(&request, identity, &ToolCompatibilityRequirement::current())
+        .map_err(|failure| {
+            CargoAllowError::new(format!(
+                "selected cargo-allow executable was not accepted: {failure}"
+            ))
+        })?;
+    verify_tool_unchanged(&args.binary, &receipt.executable_digest).map_err(|failure| {
+        CargoAllowError::new(format!(
+            "verified cargo-allow executable changed before hook run: {failure}"
+        ))
+    })?;
+    let status = Command::new(&args.binary)
+        .args(&args.command)
+        .status()
+        .map_err(|error| {
+            CargoAllowError::new(format!(
+                "failed to execute verified cargo-allow executable `{}`: {error}",
+                args.binary.display()
+            ))
+        })?;
+    verify_tool_unchanged(&args.binary, &receipt.executable_digest).map_err(|failure| {
+        CargoAllowError::new(format!(
+            "verified cargo-allow executable changed during hook run: {failure}"
+        ))
+    })?;
+    if !status.success() {
+        return Err(CargoAllowError::new(format!(
+            "verified hook command exited with {}",
+            status
+                .code()
+                .map(|code| code.to_string())
+                .unwrap_or_else(|| "a signal".to_string())
+        )));
+    }
+    Ok(())
+}
+
+fn read_selected_tool_identity(binary: &Path) -> CargoAllowResult<CargoAllowToolIdentityV1> {
+    if !binary.is_absolute() {
+        return Err(CargoAllowError::new(format!(
+            "selected cargo-allow executable `{}` must be an absolute path; PATH lookup is not allowed",
+            binary.display()
+        )));
+    }
+    let identity_output = Command::new(binary)
+        .args(["tool", "identity", "--format", "json"])
+        .output()
+        .map_err(|error| {
+            CargoAllowError::new(format!(
+                "failed to invoke selected cargo-allow executable `{}` for tool identity: {error}",
+                binary.display()
+            ))
+        })?;
+    if !identity_output.status.success() {
+        return Err(CargoAllowError::new(format!(
+            "selected cargo-allow executable `{}` could not report tool identity: {}",
+            binary.display(),
+            String::from_utf8_lossy(&identity_output.stderr).trim()
+        )));
+    }
+    serde_json::from_slice(&identity_output.stdout).map_err(|error| {
+        CargoAllowError::new(format!(
+            "selected cargo-allow executable `{}` returned malformed tool identity JSON: {error}",
+            binary.display()
+        ))
+    })
+}
+
+fn selection_request(
+    binary: &Path,
+    digest: &str,
+    mode: ToolSelectionMode,
+    expected_build_source_commit: Option<String>,
+) -> ToolSelectionRequest {
+    ToolSelectionRequest {
+        mode,
+        executable: binary.to_path_buf(),
+        expected_digest: Some(digest.to_string()),
+        expected_build_source_commit,
+        preview_authorized: matches!(mode, ToolSelectionMode::ExplicitToolUnderTest),
+    }
 }
 
 #[derive(Debug, Serialize)]

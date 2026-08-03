@@ -91,7 +91,21 @@ cargo-allow hooks verify \
 `hooks verify` is an offline preflight report. It does not install a binary,
 rewrite an existing plan, or make the generated worktree-advisory hook perform
 runtime digest verification; that wrapper integration remains a separate
-follow-up.
+follow-up. The closed runtime seam can be exercised explicitly while that
+integration is pending:
+
+```bash
+cargo-allow hooks run \
+  --binary /absolute/path/to/cargo-allow \
+  --digest sha256:v1:<digest-from-tool-identity> \
+  --mode installed-pinned \
+  -- check --mode no-new
+```
+
+`hooks run` rejects any command other than the exact offline check, requires an
+absolute executable path, verifies the selected tool before launch and after
+exit, and inherits the check's output and failure posture. It does not invoke a
+shell or mutate the policy ledger.
 
 For a repository that deliberately uses a direct Git hook, the checked JSON
 plan can be inspected and applied with an explicit acceptance step:
