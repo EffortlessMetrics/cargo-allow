@@ -64,6 +64,79 @@ fn clap_parses_support_bundle_output() {
 }
 
 #[test]
+fn doctor_writes_redacted_support_bundle() -> Result<(), String> {
+    let root = doctor_fixture_dir();
+    fs::create_dir_all(root.join("policy")).map_err(|error| error.to_string())?;
+    fs::write(root.join("source.rs"), "fn source() {}\n").map_err(|error| error.to_string())?;
+    let policy = root.join("policy/allow.toml");
+    fs::write(
+        &policy,
+        "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\nowner = \"core/policy\"\nstatus = \"active\"\n",
+    )
+    .map_err(|error| error.to_string())?;
+    let doctor_output = root.join("doctor.txt");
+    let bundle_output = root.join("target/cargo-allow/support-bundle.json");
+
+    let result = cmd_doctor(&DoctorArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(policy),
+        profile: None,
+        format: HumanJsonFormat::Human,
+        require_clean: false,
+        output: Some(doctor_output),
+        support_bundle: Some(bundle_output.clone()),
+    })
+    .map_err(|error| error.to_string());
+    if let Err(error) = result {
+        remove_doctor_fixture_dir(root);
+        return Err(error);
+    }
+
+    let bundle = fs::read_to_string(&bundle_output).map_err(|error| error.to_string())?;
+    let value: Value = serde_json::from_str(&bundle).map_err(|error| error.to_string())?;
+    if value.pointer("/schema_id").and_then(Value::as_str) != Some("cargo-allow.support-bundle.v1")
+    {
+        return Err("support bundle schema id did not match".to_string());
+    }
+    if value.pointer("/root/path").and_then(Value::as_str) != Some("<redacted>") {
+        return Err("support bundle root was not redacted".to_string());
+    }
+    if value.pointer("/config/path").and_then(Value::as_str) != Some("policy/allow.toml") {
+        return Err("support bundle config path was not repository-relative".to_string());
+    }
+    if bundle.contains(root.to_string_lossy().as_ref()) || bundle.contains("fn source") {
+        return Err("support bundle leaked an absolute root or source contents".to_string());
+    }
+
+    remove_doctor_fixture_dir(root);
+    Ok(())
+}
+
+#[test]
+fn spec_system_doctor_rejects_support_bundle_output() -> Result<(), String> {
+    let root = doctor_fixture_dir();
+    let result = cmd_doctor(&DoctorArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        profile: Some(ProfileArg::SpecSystem),
+        format: HumanJsonFormat::Human,
+        require_clean: false,
+        output: None,
+        support_bundle: Some(root.join("support-bundle.json")),
+    });
+    remove_doctor_fixture_dir(root);
+    match result {
+        Ok(()) => Err("spec-system doctor unexpectedly accepted support bundle".to_string()),
+        Err(error) if error.to_string().contains("only supported") => Ok(()),
+        Err(error) => Err(format!("unexpected error: {error}")),
+    }
+}
+
+#[test]
 fn clap_parses_spec_system_profile_for_doctor() {
     let parsed = CargoAllowCli::try_parse_from(argv(vec![
         "cargo-allow",

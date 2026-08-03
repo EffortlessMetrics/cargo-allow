@@ -151,6 +151,7 @@ fn render_support_bundle_json(facts: SupportBundleFacts<'_>) -> CargoAllowResult
 mod tests {
     use super::*;
     use serde_json::Value;
+    use std::fs;
 
     fn facts() -> SupportBundleFacts<'static> {
         SupportBundleFacts {
@@ -193,5 +194,24 @@ mod tests {
             return Err("support bundle did not state its redaction boundary".to_string());
         }
         Ok(())
+    }
+
+    #[test]
+    fn support_bundle_rejects_output_outside_root() -> Result<(), String> {
+        let root =
+            std::env::temp_dir().join(format!("cargo-allow-support-bundle-{}", std::process::id()));
+        fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        let parent = root
+            .parent()
+            .ok_or_else(|| "temporary root should have a parent".to_string())?;
+        let output = parent.join("cargo-allow-support-bundle-outside.json");
+        let result = write_support_bundle(&root, &output, facts());
+        let _ = fs::remove_file(&output);
+        let _ = fs::remove_dir(&root);
+        match result {
+            Ok(()) => Err("support bundle accepted an outside output path".to_string()),
+            Err(error) if error.to_string().contains("outside the source-tree root") => Ok(()),
+            Err(error) => Err(format!("unexpected error: {error}")),
+        }
     }
 }

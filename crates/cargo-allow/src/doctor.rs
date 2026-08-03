@@ -177,7 +177,7 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
                     .then(|| portable_relative_under_root(&root, path).ok())
             })
             .flatten()
-            .and_then(|path| path.to_str().map(str::to_owned));
+            .map(|path| path.to_string_lossy().replace('\\', "/"));
         write_support_bundle(
             &root,
             output,
