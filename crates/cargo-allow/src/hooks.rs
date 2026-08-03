@@ -241,6 +241,12 @@ struct HookBinaryVerificationV1 {
 }
 
 fn cmd_verify(args: &HookVerifyArgs) -> CargoAllowResult<()> {
+    if !args.binary.is_absolute() {
+        return Err(CargoAllowError::new(format!(
+            "selected cargo-allow executable `{}` must be an absolute path; PATH lookup is not allowed",
+            args.binary.display()
+        )));
+    }
     let identity_output = Command::new(&args.binary)
         .args(["tool", "identity", "--format", "json"])
         .output()
