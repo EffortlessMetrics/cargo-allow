@@ -12,6 +12,8 @@
 
 const MATRIX: &str = include_str!("../../../docs/support-matrix.toml");
 const CARGO_TOML: &str = include_str!("../../../Cargo.toml");
+const CAPABILITIES_SOURCE: &str = include_str!("../src/capabilities.rs");
+const CLI_SOURCE: &str = include_str!("../src/cli.rs");
 const CI_WORKFLOW: &str = include_str!("../../../.github/workflows/ci.yml");
 const RELEASE_WORKFLOW: &str = include_str!("../../../.github/workflows/release.yml");
 const SUPPORT_DOC: &str = include_str!("../../../SUPPORT.md");
@@ -35,6 +37,56 @@ fn matrix_value(key: &str) -> String {
     rest.find('"')
         .and_then(|end| rest.get(..end))
         .unwrap_or_else(|| std::panic::panic_any(format!("support matrix `{key}` unterminated")))
+        .to_string()
+}
+
+fn matrix_table_value(table: &str, key: &str) -> String {
+    let header = format!("[{table}]");
+    let start = MATRIX
+        .find(&header)
+        .and_then(|index| MATRIX.get(index.saturating_add(header.len())..))
+        .unwrap_or_else(|| std::panic::panic_any(format!("support matrix missing `{table}`")));
+    let section = start
+        .split_once("\n[")
+        .map_or(start, |(section, _)| section);
+    let marker = format!("{key} = \"");
+    let rest = section
+        .find(&marker)
+        .and_then(|index| section.get(index.saturating_add(marker.len())..))
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!("support matrix `{table}` missing `{key}`"))
+        });
+    rest.find('"')
+        .and_then(|end| rest.get(..end))
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!("support matrix `{table}.{key}` is unterminated"))
+        })
+        .to_string()
+}
+
+fn matrix_table_contains(table: &str, text: &str) -> bool {
+    let header = format!("[{table}]");
+    let Some(start) = MATRIX
+        .find(&header)
+        .and_then(|index| MATRIX.get(index.saturating_add(header.len())..))
+    else {
+        return false;
+    };
+    let section = start
+        .split_once("\n[")
+        .map_or(start, |(section, _)| section);
+    section.lines().any(|line| line.trim() == text)
+}
+
+fn source_string_constant(source: &str, name: &str) -> String {
+    let marker = format!("{name}: &str = \"");
+    let rest = source
+        .find(&marker)
+        .and_then(|start| source.get(start.saturating_add(marker.len())..))
+        .unwrap_or_else(|| std::panic::panic_any(format!("source is missing `{name}`")));
+    rest.find('"')
+        .and_then(|end| rest.get(..end))
+        .unwrap_or_else(|| std::panic::panic_any(format!("source `{name}` is unterminated")))
         .to_string()
 }
 
@@ -74,6 +126,44 @@ fn published_version_matches_the_command_registry_snapshot() {
         matrix_value("published_version"),
         registry_version,
         "support matrix published_version must match the published command registry"
+    );
+}
+
+/// The support matrix must expose the installed capability contract without
+/// treating the source-candidate catalog as a published artifact schema or a
+/// semantic-analysis guarantee.
+#[test]
+fn capability_contract_matches_the_cli_and_first_hour_docs() {
+    assert_eq!(
+        matrix_table_value("capabilities", "schema"),
+        source_string_constant(CAPABILITIES_SOURCE, "SENSOR_CAPABILITY_SCHEMA"),
+        "support matrix capability schema must match the CLI catalog"
+    );
+    assert!(
+        matrix_table_contains("capabilities", "generation = 1"),
+        "support matrix capability generation must match the v1 CLI catalog"
+    );
+    assert_eq!(
+        matrix_table_value("capabilities", "command"),
+        "cargo-allow capabilities --format json",
+        "support matrix must name the machine-readable installed command"
+    );
+    assert_eq!(
+        matrix_table_value("capabilities", "support"),
+        "source-candidate",
+        "the capability command must remain explicitly source-candidate"
+    );
+    assert!(
+        CLI_SOURCE.contains("Capabilities(capabilities::CapabilitiesArgs)"),
+        "CLI command graph must still expose the capability command"
+    );
+    assert!(
+        PUBLISHED_REGISTRY.contains("capabilities"),
+        "published command registry must expose the capability command"
+    );
+    assert!(
+        GETTING_STARTED.contains("cargo run -p cargo-allow -- capabilities --format json"),
+        "first-hour docs must teach the machine-readable capability command"
     );
 }
 
