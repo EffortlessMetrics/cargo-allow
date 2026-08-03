@@ -47,15 +47,8 @@ impl RepositorySourceView {
     }
 
     pub fn staged(root: impl AsRef<Path>) -> CargoAllowResult<Self> {
-        Self::staged_with_options(root, &InventoryOptions::default())
-    }
-
-    pub fn staged_with_options(
-        root: impl AsRef<Path>,
-        options: &InventoryOptions,
-    ) -> CargoAllowResult<Self> {
         let snapshot = staged_repository_snapshot(root)?;
-        let inventory = staged_inventory(&snapshot, options);
+        let inventory = staged_inventory(&snapshot);
         Ok(Self::StagedIndex {
             snapshot,
             inventory,
@@ -196,7 +189,8 @@ impl RepositorySourceView {
     }
 }
 
-fn staged_inventory(snapshot: &StagedRepositorySnapshot, options: &InventoryOptions) -> Inventory {
+fn staged_inventory(snapshot: &StagedRepositorySnapshot) -> Inventory {
+    let options = InventoryOptions::default();
     let mut files = snapshot
         .entries
         .iter()
