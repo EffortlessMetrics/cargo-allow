@@ -12,13 +12,13 @@ this document yanks a crate, moves a tag, deletes an asset, or publishes a
 replacement automatically.
 
 The current `publish_recovery` workflow path is not yet safe to use for a real
-recovery. Its preflight checks that the requested tag exists, but the current
-publish step still derives the version from the checked-out workspace rather
-than binding publication to the exact recovery tag and source candidate.
-Do not invoke that path until [issue #2509](https://github.com/EffortlessMetrics/cargo-allow/issues/2509)
-has supplied and verified the exact tag, commit/tree, checkout, package, and
-publish binding. This runbook records the intended recovery law; it does not
-claim that the current workflow implements it.
+recovery. It now binds the requested tag, commit, tree, checkout, and release
+version through one preflight context, but it still lacks the complete
+per-crate visibility/checksum plan, explicit missing-crate selection, and
+typed recovery receipt required by [issue #2509](https://github.com/EffortlessMetrics/cargo-allow/issues/2509).
+Do not invoke that path until those remaining controls are supplied and
+verified. This runbook records the intended recovery law; it does not claim
+that exact context binding alone makes recovery safe.
 
 ## Response order
 
