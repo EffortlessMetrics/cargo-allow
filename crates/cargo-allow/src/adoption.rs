@@ -1125,4 +1125,18 @@ mod tests {
         )?;
         fs::remove_file(root.join(output)).map_err(|error| error.to_string())
     }
+
+    #[test]
+    fn command_projection_renders_human_output_without_writing() -> Result<(), String> {
+        let root = current_dir().map_err(|error| error.to_string())?;
+        cmd_adopt(&AdoptionArgs {
+            root: RootArgs { root: Some(root) },
+            config: None,
+            include_untracked: false,
+            strict: false,
+            format: HumanJsonFormat::Human,
+            output: None,
+        })
+        .map_err(|error| error.to_string())
+    }
 }
