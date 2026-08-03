@@ -121,7 +121,7 @@ fn source_exception_staged_check_reads_index_bytes_and_binds_identity() -> Resul
     let repo = FixtureRepo::new("source-exception-staged")?;
     repo.write(
         "policy/allow.toml",
-        "schema_version = 1\n\n[workspace]\nignored = []\ngenerated = []\n",
+        "schema_version = 1\n\n[workspace]\nignored = [\"ignored\"]\ngenerated = []\n",
     )?;
     repo.write(
         "Cargo.toml",
