@@ -175,6 +175,88 @@ fn hooks_verify_accepts_explicit_preview_binary_and_reports_digest_mismatch() ->
 }
 
 #[test]
+fn hooks_plan_can_wire_the_verified_runtime_into_an_applied_hook() -> TestResult {
+    let fixture = Fixture::new("verified-plan")?;
+    init_git(&fixture.path)?;
+    let binary = path_arg(Path::new(env!("CARGO_BIN_EXE_cargo-allow")));
+    let identity = run_success(&fixture.path, &["tool", "identity", "--format", "json"])?;
+    let identity: Value = serde_json::from_slice(&identity.stdout)?;
+    let digest = identity
+        .get("executable_digest")
+        .and_then(Value::as_str)
+        .ok_or("tool identity omitted executable_digest")?;
+    let plan = fixture.path.join("target/verified-hook-plan.json");
+    let plan_arg = path_arg(&plan);
+
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "plan",
+            "--stage",
+            "pre-commit",
+            "--format",
+            "json",
+            "--binary",
+            &binary,
+            "--digest",
+            digest,
+            "--mode",
+            "explicit-tool-under-test",
+            "--output",
+            &plan_arg,
+        ],
+    )?;
+
+    let plan_value: Value = serde_json::from_slice(&fs::read(&plan)?)?;
+    require(
+        plan_value.get("binary_resolution").and_then(Value::as_str)
+            == Some("explicit_verified_executable")
+            && plan_value
+                .get("verified_runtime")
+                .and_then(Value::as_object)
+                .is_some_and(|runtime| {
+                    runtime.get("binary").and_then(Value::as_str) == Some(binary.as_str())
+                        && runtime.get("digest").and_then(Value::as_str) == Some(digest)
+                }),
+        "verified hook plan omitted its selected runtime identity",
+    )?;
+    let argv = plan_value
+        .get("argv")
+        .and_then(Value::as_array)
+        .ok_or("verified hook plan omitted argv")?;
+    require(
+        argv.iter().any(|value| value.as_str() == Some("hooks"))
+            && argv.iter().any(|value| value.as_str() == Some("run"))
+            && argv.iter().any(|value| value.as_str() == Some("--digest"))
+            && argv.iter().any(|value| value.as_str() == Some("check")),
+        "verified hook plan did not emit the closed runtime argv",
+    )?;
+
+    let receipt = fixture.path.join("target/verified-hook-receipt.json");
+    let receipt_arg = path_arg(&receipt);
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "apply",
+            "--plan",
+            &plan_arg,
+            "--accept",
+            "--receipt",
+            &receipt_arg,
+        ],
+    )?;
+    let hook = fs::read_to_string(fixture.path.join(".git/hooks/pre-commit"))?;
+    require(
+        hook.contains(&format!("exec '{binary}' 'hooks' 'run'"))
+            && hook.contains(&format!("'{digest}'")),
+        "applied hook did not preserve the verified runtime argv",
+    )?;
+    Ok(())
+}
+
+#[test]
 fn hooks_run_executes_only_the_verified_check_command() -> TestResult {
     let fixture = Fixture::new("run")?;
     init_git(&fixture.path)?;
