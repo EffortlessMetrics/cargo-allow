@@ -118,7 +118,7 @@ fn doctor_json_renderer_records_config_provenance_without_claiming_validation() 
         config_owner: None,
         config_status: None,
         config_provenance: Some(ConfigProvenanceSummary {
-            source: "source_exception_policy",
+            source: "conventional_path",
             precedence: Some("discovery_fallback"),
         }),
         config_valid: None,
@@ -142,16 +142,29 @@ fn doctor_json_renderer_records_config_provenance_without_claiming_validation() 
         file_family_rules: &[],
         file_family_conflicts: &[],
     };
-    let json = render_doctor_json(report);
-    let human = render_doctor_human(report);
+    for source in [
+        "cli_override",
+        "federation_registry",
+        "package_metadata",
+        "workspace_metadata",
+        "conventional_path",
+    ] {
+        let mut report = report;
+        report.config_provenance = Some(ConfigProvenanceSummary {
+            source,
+            precedence: Some("discovery_fallback"),
+        });
+        let json = render_doctor_json(report);
+        let human = render_doctor_human(report);
+        assert!(json.contains(&format!("\"source\": \"{source}\"")));
+        assert!(human.contains(&format!("config provenance: source={source}")));
+    }
 
+    let json = render_doctor_json(report);
     assert!(json.contains(
-        "\"provenance\": {\"source\": \"source_exception_policy\", \"precedence\": \"discovery_fallback\"}"
+        "\"provenance\": {\"source\": \"conventional_path\", \"precedence\": \"discovery_fallback\"}"
     ));
     assert!(!json.contains("\"valid\": true"));
-    assert!(human.contains(
-        "config provenance: source=source_exception_policy precedence=discovery_fallback"
-    ));
 }
 
 #[test]

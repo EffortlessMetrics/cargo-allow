@@ -59,9 +59,12 @@ diagnostic instead of being parsed or merged.
 
 `cargo-allow doctor` exposes this source-exception resolution provenance in the
 `config.provenance` JSON object and the matching human line. `source` is
-`source_exception_policy`; `precedence` is `cli_override`,
-`federation_registry`, or `discovery_fallback`. If the resolver had to fall
-back after an evaluation error, the source remains visible while precedence is
+`cli_override` for an explicit `--config`, `federation_registry` for a valid
+canonical source-exception ledger, `package_metadata` or `workspace_metadata`
+for Cargo manifest metadata, and `conventional_path` for the ordered paths
+listed above. `precedence` is `cli_override`, `federation_registry`, or
+`discovery_fallback`. If the resolver had to fall back after an evaluation
+error, the selected discovery source remains visible while precedence is
 omitted. Provenance describes how the path was selected; it does not validate
 the policy contents or imply Cargo workspace metadata was executed.
 

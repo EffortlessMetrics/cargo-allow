@@ -113,10 +113,22 @@
           "properties": {
             "source": {
               "type": "string",
-              "description": "Configuration vocabulary that selected the policy."
+              "enum": [
+                "cli_override",
+                "federation_registry",
+                "package_metadata",
+                "workspace_metadata",
+                "conventional_path"
+              ],
+              "description": "Configuration source that selected the policy."
             },
             "precedence": {
               "type": "string",
+              "enum": [
+                "cli_override",
+                "federation_registry",
+                "discovery_fallback"
+              ],
               "description": "Precedence tier applied by the source-exception resolver; omitted when fallback discovery could not be evaluated."
             }
           },
