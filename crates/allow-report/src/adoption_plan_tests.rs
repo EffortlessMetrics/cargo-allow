@@ -234,7 +234,6 @@ fn core_adoption_plan_orders_repair_follow_ups_deterministically() -> Result<(),
         AdoptionActionKind::InspectAllow,
         AdoptionActionKind::PreviewPrune,
         AdoptionActionKind::ReconcileMirror,
-        AdoptionActionKind::RunNoNewCheck,
         AdoptionActionKind::ConfigureCi,
     ];
     if kinds != expected {
@@ -242,6 +241,22 @@ fn core_adoption_plan_orders_repair_follow_ups_deterministically() -> Result<(),
     }
     if plan.may_write_paths != vec!["policy/allow.toml".to_string()] {
         return Err("stale plan did not expose the normalized policy write path".into());
+    }
+    Ok(())
+}
+
+#[test]
+fn core_adoption_plan_propagates_follow_up_write_paths() -> Result<(), String> {
+    let mut input = facts();
+    input.policy.new_unreceipted_findings = 1;
+    input.policy.stale_entries = 1;
+    input.ci_guidance_completed = false;
+    let plan = recommend_core_adoption_plan(&input);
+    if plan.primary_action.kind != AdoptionActionKind::InspectNewFinding {
+        return Err("new finding did not remain the primary action".into());
+    }
+    if plan.may_write_paths != vec!["policy/allow.toml".to_string()] {
+        return Err("follow-up write path was not exposed".into());
     }
     Ok(())
 }
@@ -264,6 +279,14 @@ fn core_adoption_plan_rejects_unknown_inputs() -> Result<(), String> {
         || plan.primary_action.kind != AdoptionActionKind::RepairPolicy
     {
         return Err("unknown policy did not fail closed".into());
+    }
+    let mut completeness_unknown = facts();
+    completeness_unknown.inventory.completeness = InventoryCompleteness::Unknown;
+    let plan = recommend_core_adoption_plan(&completeness_unknown);
+    if plan.bootstrap_disposition != BootstrapDisposition::UnsupportedRepositoryState
+        || plan.primary_action.kind != AdoptionActionKind::DiagnoseInventory
+    {
+        return Err("unknown completeness did not fail closed as unsupported".into());
     }
     Ok(())
 }
@@ -288,8 +311,29 @@ fn core_adoption_plan_is_independent_of_absolute_checkout_path() -> Result<(), S
 }
 
 #[test]
+fn core_adoption_plan_normalizes_external_windows_paths() -> Result<(), String> {
+    let mut input = facts();
+    input.policy.path = Some("E:/other-repository/policy/allow.toml".into());
+    let plan = recommend_core_adoption_plan(&input);
+    if plan.policy.path.as_deref() != Some("<external-path>") {
+        return Err("external drive path was not portable".into());
+    }
+    input.policy.path = Some("\\\\server\\share\\policy\\allow.toml".into());
+    let plan = recommend_core_adoption_plan(&input);
+    if plan.policy.path.as_deref() != Some("<external-path>") {
+        return Err("UNC path was not portable".into());
+    }
+    Ok(())
+}
+
+#[test]
 fn core_adoption_plan_schema_is_versioned_and_non_mutating() -> Result<(), String> {
-    let plan = recommend_core_adoption_plan(&facts());
+    let input = facts();
+    let before = input.clone();
+    let plan = recommend_core_adoption_plan(&input);
+    if input != before {
+        return Err("recommendation mutated caller-owned facts".into());
+    }
     if plan.schema_id != CORE_ADOPTION_PLAN_SCHEMA_ID || plan.schema_version != 1 {
         return Err("unexpected adoption plan schema identity".into());
     }

@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use serde::{Deserialize, Serialize};
 
 use crate::{CORE_ADOPTION_PLAN_SCHEMA_ID, CORE_ADOPTION_PLAN_SCHEMA_VERSION};
@@ -151,11 +149,11 @@ pub struct AdoptionAction {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CoreAdoptionPlanV1 {
-    pub schema_id: &'static str,
+    pub schema_id: String,
     pub schema_version: u32,
     pub tool_version: String,
     pub repository_identity: String,
-    pub selected_root: &'static str,
+    pub selected_root: String,
     pub channel: String,
     pub executable_identity: String,
     pub inventory: AdoptionInventoryFacts,
@@ -169,7 +167,7 @@ pub struct CoreAdoptionPlanV1 {
     pub ci_example_path: String,
     pub rollback_guide_path: String,
     pub limitations: Vec<String>,
-    pub claim_boundary: &'static str,
+    pub claim_boundary: String,
 }
 
 pub fn recommend_core_adoption_plan(facts: &AdoptionFacts) -> CoreAdoptionPlanV1 {
@@ -184,7 +182,11 @@ pub fn recommend_core_adoption_plan(facts: &AdoptionFacts) -> CoreAdoptionPlanV1
     let (bootstrap_disposition, primary_kind) = primary_route(facts, &policy);
     let primary_action = action(primary_kind, facts);
     let follow_up_actions = follow_up_actions(facts, &policy, primary_kind);
-    let may_write_paths = if primary_action.write_posture == WritePosture::MayWrite {
+    let any_action_may_write = primary_action.write_posture == WritePosture::MayWrite
+        || follow_up_actions
+            .iter()
+            .any(|action| action.write_posture == WritePosture::MayWrite);
+    let may_write_paths = if any_action_may_write {
         policy.path.clone().into_iter().collect()
     } else {
         Vec::new()
@@ -197,11 +199,11 @@ pub fn recommend_core_adoption_plan(facts: &AdoptionFacts) -> CoreAdoptionPlanV1
     limitations.dedup();
 
     CoreAdoptionPlanV1 {
-        schema_id: CORE_ADOPTION_PLAN_SCHEMA_ID,
+        schema_id: CORE_ADOPTION_PLAN_SCHEMA_ID.to_string(),
         schema_version: CORE_ADOPTION_PLAN_SCHEMA_VERSION,
         tool_version: facts.tool_version.clone(),
         repository_identity: facts.repository_identity.clone(),
-        selected_root: PORTABLE_ROOT,
+        selected_root: PORTABLE_ROOT.to_string(),
         channel: facts.channel.clone(),
         executable_identity: facts.executable_identity.clone(),
         inventory: facts.inventory.clone(),
@@ -219,7 +221,7 @@ pub fn recommend_core_adoption_plan(facts: &AdoptionFacts) -> CoreAdoptionPlanV1
         ci_example_path: "docs/how-to/adopt-cargo-allow.md#step-3-ci-integration".into(),
         rollback_guide_path: "docs/how-to/rollback-cargo-allow-adoption.md".into(),
         limitations,
-        claim_boundary: CLAIM_BOUNDARY,
+        claim_boundary: CLAIM_BOUNDARY.to_string(),
     }
 }
 
@@ -233,7 +235,10 @@ fn primary_route(
             AdoptionActionKind::DiagnoseInventory,
         );
     }
-    if facts.unsupported_repository_state || facts.inventory.mode == InventoryMode::Unknown {
+    if facts.unsupported_repository_state
+        || facts.inventory.mode == InventoryMode::Unknown
+        || facts.inventory.completeness == InventoryCompleteness::Unknown
+    {
         return (
             BootstrapDisposition::UnsupportedRepositoryState,
             AdoptionActionKind::DiagnoseInventory,
@@ -500,11 +505,17 @@ fn action_is_relevant(
         }
         AdoptionActionKind::ReconcileMirror => policy.mirror_divergence,
         AdoptionActionKind::RunNoNewCheck => {
-            policy.state == PolicyState::Valid
+            facts.ci_guidance_completed
+                && policy.state == PolicyState::Valid
                 && facts.inventory.completeness == InventoryCompleteness::Complete
         }
         AdoptionActionKind::ConfigureCi => !facts.ci_guidance_completed,
-        _ => false,
+        AdoptionActionKind::ContinueAdvisoryAudit
+        | AdoptionActionKind::PreviewInit
+        | AdoptionActionKind::PreviewPropose
+        | AdoptionActionKind::InspectNewFinding
+        | AdoptionActionKind::DiagnoseInventory
+        | AdoptionActionKind::RepairPolicy => false,
     }
 }
 
@@ -543,9 +554,14 @@ fn portable_path(root: &str, path: &str) -> String {
             .get(prefix.len()..)
             .map(str::to_string)
             .unwrap_or_else(|| "<external-path>".into())
-    } else if Path::new(path).is_absolute() {
+    } else if is_absolute_path(&normalized_path) {
         "<external-path>".into()
     } else {
         normalized_path.trim_start_matches("./").to_string()
     }
+}
+
+fn is_absolute_path(path: &str) -> bool {
+    let bytes = path.as_bytes();
+    path.starts_with('/') || bytes.get(1) == Some(&b':') && bytes.get(2) == Some(&b'/')
 }
