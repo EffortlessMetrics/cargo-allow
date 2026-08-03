@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use clap::{Parser, ValueEnum};
 use serde::Serialize;
 use std::path::PathBuf;
@@ -418,11 +418,18 @@ pub(crate) fn cmd_capabilities(args: &CapabilitiesArgs) -> CargoAllowResult<()> 
     };
     let rendered = match args.format {
         CapabilityFormat::Human => render_human(&catalog),
-        CapabilityFormat::Json => serde_json::to_string_pretty(&catalog).map_err(|error| {
-            CargoAllowError::new(format!("failed to render capability JSON: {error}"))
-        })?,
+        CapabilityFormat::Json => render_json(&catalog)?,
     };
     emit_text(args.output.as_deref(), &format!("{rendered}\n"))
+}
+
+fn render_json<T: Serialize>(value: &T) -> CargoAllowResult<String> {
+    serde_json::to_string_pretty(value).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!("failed to render capability JSON: {error}"),
+        )
+    })
 }
 
 fn render_human(catalog: &CapabilityCatalog) -> String {
@@ -470,29 +477,36 @@ fn validate_catalog_entries(
     let mut seen_families = std::collections::BTreeSet::new();
     for capability in capabilities {
         if !seen_ids.insert(capability.sensor_id) {
-            return Err(CargoAllowError::new(format!(
-                "duplicate sensor capability id `{}`",
-                capability.sensor_id
-            )));
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Internal,
+                format!("duplicate sensor capability id `{}`", capability.sensor_id),
+            ));
         }
         if capability.analysis_class == "not_included" {
             if capability.kind.is_some() || capability.family.is_some() {
-                return Err(CargoAllowError::new(format!(
-                    "not-included capability `{}` must not claim a finding family",
-                    capability.sensor_id
-                )));
+                return Err(CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Internal,
+                    format!(
+                        "not-included capability `{}` must not claim a finding family",
+                        capability.sensor_id
+                    ),
+                ));
             }
         } else if let (Some(kind), Some(family)) = (capability.kind, capability.family) {
             if !seen_families.insert((kind, family)) {
-                return Err(CargoAllowError::new(format!(
-                    "duplicate finding capability `{kind}/{family}`"
-                )));
+                return Err(CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Internal,
+                    format!("duplicate finding capability `{kind}/{family}`"),
+                ));
             }
         } else {
-            return Err(CargoAllowError::new(format!(
-                "finding capability `{}` is missing kind/family",
-                capability.sensor_id
-            )));
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Internal,
+                format!(
+                    "finding capability `{}` is missing kind/family",
+                    capability.sensor_id
+                ),
+            ));
         }
         for field in [
             capability.owner,
@@ -506,18 +520,24 @@ fn validate_catalog_entries(
             capability.support_tier,
         ] {
             if field.trim().is_empty() {
-                return Err(CargoAllowError::new(format!(
-                    "capability `{}` has an empty required field",
-                    capability.sensor_id
-                )));
+                return Err(CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Internal,
+                    format!(
+                        "capability `{}` has an empty required field",
+                        capability.sensor_id
+                    ),
+                ));
             }
         }
     }
     let actual = seen_families.into_iter().collect::<Vec<_>>();
     if actual != expected {
-        return Err(CargoAllowError::new(format!(
-            "sensor capability family drift: catalog={actual:?}, scanner owners={expected:?}"
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!(
+                "sensor capability family drift: catalog={actual:?}, scanner owners={expected:?}"
+            ),
+        ));
     }
     Ok(())
 }
@@ -605,6 +625,30 @@ mod tests {
         );
         assert_eq!(CapabilityClass::PolicyDerived.as_str(), "policy_derived");
         assert_eq!(CapabilityClass::NotIncluded.as_str(), "not_included");
+    }
+
+    #[test]
+    fn capability_json_render_failures_are_artifact_errors() {
+        struct FailingSerialize;
+
+        impl serde::Serialize for FailingSerialize {
+            fn serialize<S>(&self, _serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                Err(serde::ser::Error::custom(
+                    "forced capability render failure",
+                ))
+            }
+        }
+
+        let error = render_json(&FailingSerialize).expect_err("render should fail");
+        assert_eq!(error.kind(), CargoAllowErrorKind::Artifact);
+        assert!(
+            error
+                .to_string()
+                .contains("failed to render capability JSON")
+        );
     }
 
     #[test]
@@ -759,7 +803,11 @@ mod tests {
                 "supported_syntax",
             ),
         ];
-        expect_validation_error(&duplicate_family, &[], "duplicate finding capability")?;
+        expect_validation_error(
+            &duplicate_family,
+            &[],
+            "duplicate finding capability `panic/unwrap`",
+        )?;
 
         let not_included_with_family = [test_capability(
             "excluded",
