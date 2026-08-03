@@ -348,7 +348,7 @@ fn live_broad_entry_covers_finding_when_precise_entry_is_expired() {
 }
 
 #[test]
-fn occurrence_limited_expired_entry_is_not_replaced_by_live_fallback() {
+fn occurrence_limited_expired_entry_is_not_replaced_by_live_fallback() -> Result<(), String> {
     let finding = finding_with_hash("fnv1a64:actual");
     let mut precise = entry_with_hash("fnv1a64:actual");
     precise.id = "allow-precise-limited".to_string();
@@ -382,6 +382,16 @@ fn occurrence_limited_expired_entry_is_not_replaced_by_live_fallback() {
             && outcome.allow_id.as_deref() == Some("allow-broad-live")
             && outcome.finding_index.is_none()
     }));
+    let accounting = evaluation
+        .occurrence_accounting
+        .iter()
+        .find(|accounting| accounting.allow_id == "allow-precise-limited")
+        .ok_or_else(|| "occurrence-limited precise entry should have accounting".to_string())?;
+    assert_eq!(accounting.observed_count, 1);
+    assert_eq!(accounting.occurrence_limit, 0);
+    assert_eq!(accounting.headroom, 0);
+    assert_eq!(accounting.exceeded_count, 1);
+    Ok(())
 }
 
 #[test]

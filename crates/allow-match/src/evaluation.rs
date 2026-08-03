@@ -207,7 +207,7 @@ pub fn evaluate_detailed(
                 let Some(entry) = cfg.allow.get(entry_index) else {
                     continue;
                 };
-                state.evaluate_selected_candidate(
+                let _ = state.evaluate_selected_candidate(
                     cfg,
                     &ctx,
                     entry_index,
