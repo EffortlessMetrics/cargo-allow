@@ -289,7 +289,7 @@ fn cmd_apply(args: &HookApplyArgs) -> CargoAllowResult<()> {
     assert_path_within_root(&root, &receipt_path)?;
 
     let disposition = hook_disposition(&hook_path, &plan)?;
-    if disposition == "AlreadyPresent" {
+    if matches!(disposition, "AlreadyPresent" | "Composed") {
         write_json_receipt(
             &receipt_path,
             &HookApplyReceiptV1 {
@@ -300,7 +300,7 @@ fn cmd_apply(args: &HookApplyArgs) -> CargoAllowResult<()> {
                 disposition,
                 operation: "none",
                 applied: false,
-                rollback: "no mutation; managed block already matches this plan",
+                rollback: "no mutation; the recognized managed block already matches this plan",
             },
         )?;
         return Ok(());
@@ -408,46 +408,89 @@ fn cmd_remove(args: &HookRemoveArgs) -> CargoAllowResult<()> {
             hook_path.display()
         ))
     })?;
-    if normalize_hook_text(&contents) != normalize_hook_text(&render_managed_hook(&plan)) {
-        let disposition = if contents.contains(MANAGED_BEGIN) || contents.contains(MANAGED_END) {
-            "Conflict"
-        } else {
-            "Changed"
-        };
+    if normalize_hook_text(&contents) == normalize_hook_text(&render_managed_hook(&plan)) {
+        fs::remove_file(&hook_path).map_err(|error| {
+            CargoAllowError::new(format!(
+                "failed to remove exact managed hook {}: {error}",
+                hook_path.display()
+            ))
+        })?;
         let receipt = HookRemoveReceiptV1 {
             schema: HOOK_REMOVE_RECEIPT_SCHEMA,
             stage: plan.stage,
             plan_identity: plan.plan_identity,
             hook_path: expected_hook_path,
-            disposition,
-            operation: "none",
-            removed: false,
-            rollback: "no mutation; restore the exact managed identity or remove it manually after review",
+            disposition: "Managed",
+            operation: "remove",
+            removed: true,
+            rollback: "re-run hooks plan for this stage and hooks apply with --accept to recreate the managed hook",
         };
-        write_json_receipt(&result_receipt, &receipt)?;
-        return Err(CargoAllowError::new(format!(
-            "managed hook is {disposition}; no files were changed, see receipt {}",
-            result_receipt.display()
-        )));
+        return write_json_receipt(&result_receipt, &receipt);
     }
 
-    fs::remove_file(&hook_path).map_err(|error| {
-        CargoAllowError::new(format!(
-            "failed to remove exact managed hook {}: {error}",
-            hook_path.display()
-        ))
-    })?;
+    match locate_managed_block(&contents, &plan) {
+        ManagedBlockPosture::Exact { start, end } => {
+            let mut retained = String::with_capacity(contents.len() - (end - start));
+            let prefix = contents.get(..start).ok_or_else(|| {
+                CargoAllowError::new("managed hook block boundary was not valid UTF-8")
+            })?;
+            let suffix = contents.get(end..).ok_or_else(|| {
+                CargoAllowError::new("managed hook block boundary was not valid UTF-8")
+            })?;
+            retained.push_str(prefix);
+            retained.push_str(suffix);
+            write_file(&hook_path, &retained)?;
+            let receipt = HookRemoveReceiptV1 {
+                schema: HOOK_REMOVE_RECEIPT_SCHEMA,
+                stage: plan.stage,
+                plan_identity: plan.plan_identity,
+                hook_path: expected_hook_path,
+                disposition: "Composed",
+                operation: "remove_block",
+                removed: true,
+                rollback: "re-run hooks plan for this stage and hooks apply with --accept to recreate the managed block",
+            };
+            write_json_receipt(&result_receipt, &receipt)
+        }
+        ManagedBlockPosture::Missing => remove_conflict_receipt(
+            &result_receipt,
+            &plan,
+            expected_hook_path,
+            "Changed",
+            "managed hook is Changed: content changed and no exact managed block remains",
+        ),
+        ManagedBlockPosture::Malformed => remove_conflict_receipt(
+            &result_receipt,
+            &plan,
+            expected_hook_path,
+            "Conflict",
+            "managed hook is Conflict: it contains duplicate or malformed cargo-allow markers",
+        ),
+    }
+}
+
+fn remove_conflict_receipt(
+    result_receipt: &Path,
+    plan: &LocalHookPlanV1,
+    hook_path: String,
+    disposition: &'static str,
+    message: &str,
+) -> CargoAllowResult<()> {
     let receipt = HookRemoveReceiptV1 {
         schema: HOOK_REMOVE_RECEIPT_SCHEMA,
-        stage: plan.stage,
-        plan_identity: plan.plan_identity,
-        hook_path: expected_hook_path,
-        disposition: "Managed",
-        operation: "remove",
-        removed: true,
-        rollback: "re-run hooks plan for this stage and hooks apply with --accept to recreate the managed hook",
+        stage: plan.stage.clone(),
+        plan_identity: plan.plan_identity.clone(),
+        hook_path,
+        disposition,
+        operation: "none",
+        removed: false,
+        rollback: "no mutation; restore the exact managed identity or remove it manually after review",
     };
-    write_json_receipt(&result_receipt, &receipt)
+    write_json_receipt(result_receipt, &receipt)?;
+    Err(CargoAllowError::new(format!(
+        "{message}; no files were changed, see receipt {}",
+        result_receipt.display()
+    )))
 }
 
 fn read_apply_receipt(path: &Path) -> CargoAllowResult<ReadHookApplyReceiptV1> {
@@ -472,13 +515,21 @@ fn validate_apply_receipt(
     if receipt.schema != HOOK_APPLY_RECEIPT_SCHEMA
         || receipt.stage != plan.stage
         || receipt.plan_identity != plan.plan_identity
-        || receipt.disposition != "Missing"
-        || receipt.operation != "create"
-        || !receipt.applied
         || receipt.rollback.is_empty()
     {
         return Err(CargoAllowError::new(
-            "hook apply receipt is not an exact successful create receipt for the current supported plan",
+            "hook apply receipt is not an exact successful create or recognized-block receipt for the current supported plan",
+        ));
+    }
+    let exact_create =
+        receipt.disposition == "Missing" && receipt.operation == "create" && receipt.applied;
+    let exact_recognized_block =
+        matches!(receipt.disposition.as_str(), "AlreadyPresent" | "Composed")
+            && receipt.operation == "none"
+            && !receipt.applied;
+    if !exact_create && !exact_recognized_block {
+        return Err(CargoAllowError::new(
+            "hook apply receipt is not an exact create or recognized-block receipt for the current supported plan",
         ));
     }
     Ok(())
@@ -613,13 +664,92 @@ fn hook_disposition(path: &Path, plan: &LocalHookPlanV1) -> CargoAllowResult<&'s
             )));
         }
     };
-    if normalize_hook_text(&contents).contains(&normalize_hook_text(&managed_block(plan))) {
-        return Ok("AlreadyPresent");
-    }
-    if contents.contains(MANAGED_BEGIN) || contents.contains(MANAGED_END) {
-        return Ok("Conflict");
+    match locate_managed_block(&contents, plan) {
+        ManagedBlockPosture::Exact { .. } => {
+            if normalize_hook_text(&contents) == normalize_hook_text(&render_managed_hook(plan)) {
+                return Ok("AlreadyPresent");
+            }
+            return Ok("Composed");
+        }
+        ManagedBlockPosture::Malformed => return Ok("Conflict"),
+        ManagedBlockPosture::Missing => {}
     }
     Ok("ManualMerge")
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ManagedBlockPosture {
+    Missing,
+    Exact { start: usize, end: usize },
+    Malformed,
+}
+
+fn locate_managed_block(text: &str, plan: &LocalHookPlanV1) -> ManagedBlockPosture {
+    let expected = managed_block(plan)
+        .lines()
+        .map(str::to_owned)
+        .collect::<Vec<_>>();
+    let lines = text
+        .split_inclusive('\n')
+        .scan(0usize, |offset, raw| {
+            let start = *offset;
+            *offset += raw.len();
+            let line = raw
+                .strip_suffix('\n')
+                .unwrap_or(raw)
+                .strip_suffix('\r')
+                .unwrap_or_else(|| raw.strip_suffix('\n').unwrap_or(raw));
+            Some((start, *offset, line))
+        })
+        .collect::<Vec<_>>();
+
+    let mut matches = Vec::new();
+    for window in lines.windows(expected.len()) {
+        if window
+            .iter()
+            .zip(&expected)
+            .all(|((_, _, actual), expected)| *actual == expected)
+        {
+            let Some(first) = window.first() else {
+                continue;
+            };
+            let Some(last) = window.last() else {
+                continue;
+            };
+            matches.push((first.0, last.1));
+        }
+    }
+
+    let has_marker = text.contains(MANAGED_BEGIN) || text.contains(MANAGED_END);
+    match matches.first().copied() {
+        Some((start, end)) if matches.len() == 1 => {
+            if !has_marker_except_exact(text, (start, end), &expected) {
+                ManagedBlockPosture::Exact { start, end }
+            } else {
+                ManagedBlockPosture::Malformed
+            }
+        }
+        None if !has_marker => ManagedBlockPosture::Missing,
+        _ => ManagedBlockPosture::Malformed,
+    }
+}
+
+fn has_marker_except_exact(text: &str, exact: (usize, usize), expected: &[String]) -> bool {
+    let Some(prefix) = text.get(..exact.0) else {
+        return true;
+    };
+    let Some(suffix) = text.get(exact.1..) else {
+        return true;
+    };
+    let Some(block) = text.get(exact.0..exact.1) else {
+        return true;
+    };
+    let outside = format!("{prefix}{suffix}");
+    outside.contains(MANAGED_BEGIN)
+        || outside.contains(MANAGED_END)
+        || expected
+            .iter()
+            .any(|line| line.starts_with(MANAGED_BEGIN) && block.matches(line).count() != 1)
 }
 
 fn managed_block(plan: &LocalHookPlanV1) -> String {
