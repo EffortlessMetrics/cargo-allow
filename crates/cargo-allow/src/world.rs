@@ -783,6 +783,13 @@ mod tests {
 
         let snapshot = staged_repository_snapshot(&root)
             .unwrap_or_else(|err| std::panic::panic_any(format!("staged snapshot: {err}")));
+        let mut partial_snapshot = snapshot.clone();
+        partial_snapshot.completeness = allow_diff::StagedSnapshotCompleteness::Partial;
+        let partial_inventory = staged_inventory(&partial_snapshot, &InventoryOptions::default());
+        assert_eq!(
+            partial_inventory.completeness,
+            InventoryCompleteness::Partial
+        );
         let missing = read_staged_text(&snapshot, Path::new("missing.rs"))
             .err()
             .unwrap_or_else(|| std::panic::panic_any("missing staged source should fail"));
