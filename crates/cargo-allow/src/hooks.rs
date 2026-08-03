@@ -761,6 +761,12 @@ fn cmd_remove(args: &HookRemoveArgs) -> CargoAllowResult<()> {
     let plan = if let Some(plan_path) = &args.plan {
         let plan = read_plan(plan_path)?;
         validate_plan(&plan)?;
+        if plan.stage != receipt.stage {
+            return Err(CargoAllowError::new(format!(
+                "remove plan targets `{}`, but apply receipt targets `{}`",
+                plan.stage, receipt.stage
+            )));
+        }
         plan
     } else {
         build_plan(stage)

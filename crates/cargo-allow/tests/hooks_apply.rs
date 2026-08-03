@@ -258,6 +258,19 @@ fn hooks_plan_can_wire_the_verified_runtime_into_an_applied_hook() -> TestResult
         "verified hook plan did not emit the closed runtime argv",
     )?;
 
+    let status_mismatch = run(
+        &fixture.path,
+        &[
+            "hooks", "status", "--stage", "pre-push", "--plan", &plan_arg,
+        ],
+    )?;
+    require(
+        !status_mismatch.status.success()
+            && String::from_utf8_lossy(&status_mismatch.stderr)
+                .contains("status plan targets `pre-commit`, but `--stage` selected `pre-push`"),
+        "status accepted a plan for a different hook stage",
+    )?;
+
     let receipt = fixture.path.join("target/verified-hook-receipt.json");
     let receipt_arg = path_arg(&receipt);
     run_success(
@@ -277,6 +290,52 @@ fn hooks_plan_can_wire_the_verified_runtime_into_an_applied_hook() -> TestResult
         hook.contains(&format!("exec '{binary}' 'hooks' 'run'"))
             && hook.contains(&format!("'{digest}'")),
         "applied hook did not preserve the verified runtime argv",
+    )?;
+
+    let mismatch_plan = fixture.path.join("target/verified-pre-push-plan.json");
+    let mismatch_plan_arg = path_arg(&mismatch_plan);
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "plan",
+            "--stage",
+            "pre-push",
+            "--binary",
+            &binary,
+            "--digest",
+            digest,
+            "--mode",
+            "explicit-tool-under-test",
+            "--format",
+            "json",
+            "--output",
+            &mismatch_plan_arg,
+        ],
+    )?;
+
+    let removal_mismatch = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "remove",
+            "--receipt",
+            &receipt_arg,
+            "--plan",
+            &mismatch_plan_arg,
+            "--accept",
+        ],
+    )?;
+    require(
+        !removal_mismatch.status.success()
+            && String::from_utf8_lossy(&removal_mismatch.stderr)
+                .contains("remove plan targets `pre-push`, but apply receipt targets `pre-commit`"),
+        &format!(
+            "remove accepted a plan for a different hook stage: status={}, stdout={}, stderr={}",
+            removal_mismatch.status,
+            String::from_utf8_lossy(&removal_mismatch.stdout),
+            String::from_utf8_lossy(&removal_mismatch.stderr)
+        ),
     )?;
 
     let status = run_success(
