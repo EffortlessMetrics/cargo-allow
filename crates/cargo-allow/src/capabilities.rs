@@ -452,6 +452,24 @@ fn configured_file_family_capabilities(
     if args.root.root.is_none() && args.config.is_none() {
         return Ok(Vec::new());
     }
+    let cwd = current_dir()?;
+    let root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
+    let Some(path) = args
+        .config
+        .as_deref()
+        .map(|config| root.join(config))
+        .or_else(|| config_path(&root, None))
+    else {
+        return Ok(Vec::new());
+    };
+    let config =
+        load_policy_at_path(path, EvidenceValidationMode::ReportOnly).map_err(|error| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::InvalidPolicy,
+                format!("failed to load capability policy: {error}"),
+            )
+        })?;
+
     if args
         .class
         .is_some_and(|class| class != CapabilityClass::SupportedPresence)
@@ -462,19 +480,6 @@ fn configured_file_family_capabilities(
     {
         return Ok(Vec::new());
     }
-
-    let cwd = current_dir()?;
-    let root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
-    let Some(path) = config_path(&root, args.config.as_deref()) else {
-        return Ok(Vec::new());
-    };
-    let config =
-        load_policy_at_path(path, EvidenceValidationMode::ReportOnly).map_err(|error| {
-            CargoAllowError::with_kind(
-                CargoAllowErrorKind::InvalidPolicy,
-                format!("failed to load capability policy: {error}"),
-            )
-        })?;
 
     let mut rules = config
         .workspace
@@ -829,7 +834,11 @@ mod tests {
         let root = output_path("configured-root");
         let policy_dir = root.join("policy");
         fs::create_dir_all(&policy_dir).map_err(|error| error.to_string())?;
-        let policy = policy_dir.join("allow.toml");
+        let federation_dir = root.join(".allow");
+        fs::create_dir_all(&federation_dir).map_err(|error| error.to_string())?;
+        fs::write(federation_dir.join("config.toml"), "not = [valid")
+            .map_err(|error| error.to_string())?;
+        let policy = policy_dir.join("selected.toml");
         fs::write(
             &policy,
             r#"schema_version = "0.1"
@@ -850,6 +859,23 @@ id = "a-release"
 family = "release_metadata"
 glob = "models/release.onnx"
 reason = "Govern release metadata."
+"#,
+        )
+        .map_err(|error| error.to_string())?;
+        fs::write(
+            policy_dir.join("allow.toml"),
+            r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[workspace]
+ignored = []
+generated = []
+
+[[workspace.file_family]]
+id = "fallback"
+family = "fallback_family"
+glob = "fallback/**/*.dat"
+reason = "Exercise explicit policy selection."
 "#,
         )
         .map_err(|error| error.to_string())?;
@@ -914,6 +940,32 @@ reason = "Govern release metadata."
             output: None,
         })
         .expect_err("invalid configured policy should fail closed");
+        if error.kind() != CargoAllowErrorKind::InvalidPolicy {
+            return Err(format!("unexpected error kind: {}", error.kind()));
+        }
+        fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn invalid_configured_policy_is_not_bypassed_by_filters() -> Result<(), String> {
+        let root = output_path("configured-invalid-filtered");
+        let policy_dir = root.join("policy");
+        fs::create_dir_all(&policy_dir).map_err(|error| error.to_string())?;
+        let policy = policy_dir.join("allow.toml");
+        fs::write(&policy, "not = [valid").map_err(|error| error.to_string())?;
+        let error = configured_file_family_capabilities(&CapabilitiesArgs {
+            root: RootArgs {
+                root: Some(root.clone()),
+            },
+            config: Some(policy),
+            format: CapabilityFormat::Json,
+            class: Some(CapabilityClass::NotIncluded),
+            kind: Some("panic".to_string()),
+            family: None,
+            output: None,
+        })
+        .expect_err("invalid configured policy should not be bypassed by filters");
         if error.kind() != CargoAllowErrorKind::InvalidPolicy {
             return Err(format!("unexpected error kind: {}", error.kind()));
         }
