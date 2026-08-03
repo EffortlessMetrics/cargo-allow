@@ -27,6 +27,20 @@ fn adopt_supports_clean_no_git_repositories_and_human_json_parity() -> Result<()
         "human write posture",
     )?;
 
+    let human_output_name = format!("adoption-human-{}.txt", std::process::id());
+    let human_output = run_adopt(&root, &["--output", human_output_name.as_str()])?;
+    require(
+        human_output.status.success() && human_output.stdout.is_empty(),
+        "human output file should succeed without stdout data",
+    )?;
+    let human_file =
+        fs::read_to_string(root.join(&human_output_name)).map_err(|error| error.to_string())?;
+    require(
+        human_file.contains("Repository state: clean_no_policy"),
+        "human output file should use the plain renderer",
+    )?;
+    fs::remove_file(root.join(human_output_name)).map_err(|error| error.to_string())?;
+
     let json = run_adopt(&root, &["--format", "json"])?;
     require(json.status.success(), "clean JSON adoption should succeed")?;
     let artifact = parse_stdout(&json)?;
@@ -154,7 +168,10 @@ fn adopt_projects_findings_without_policy_and_ci_guidance() -> Result<(), String
     require(init.status.success(), "strict init should succeed")?;
     git(&healthy_root, &["add", "."])?;
     git(&healthy_root, &["commit", "-m", "healthy adoption policy"])?;
-    let healthy = run_adopt(&healthy_root, &["--format", "json"])?;
+    let healthy = run_adopt(
+        &healthy_root,
+        &["--format", "json", "--config", "policy/allow.toml"],
+    )?;
     require(healthy.status.success(), "healthy plan should succeed")?;
     let healthy_artifact = parse_stdout(&healthy)?;
     require(
@@ -178,6 +195,12 @@ fn adopt_projects_findings_without_policy_and_ci_guidance() -> Result<(), String
             == Some("RunNoNewCheck"),
         "ci guidance should produce a no-new follow-up",
     )?;
+    let include_untracked = run_adopt(&healthy_root, &["--format", "json", "--include-untracked"])?;
+    require(
+        include_untracked.status.success(),
+        "tracked adoption should tolerate include-untracked",
+    )?;
+    parse_stdout(&include_untracked)?;
     remove_temp_root(healthy_root)?;
     Ok(())
 }
