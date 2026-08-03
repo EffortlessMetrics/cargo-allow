@@ -129,7 +129,7 @@ fn source_exception_staged_check_reads_index_bytes_and_binds_identity() -> Resul
 
     repo.write(
         "src/candidate.rs",
-        "fn candidate() { let _ = 1u8.unwrap(); }\n",
+        "\u{feff}#![allow(clippy::unwrap_used)]\nfn candidate() { let _ = 1u8.unwrap(); }\n",
     )?;
     repo.git(&["add", "--", "src/candidate.rs"])?;
     repo.write("src/candidate.rs", "fn candidate() { let _ = 1u8; }\n")?;
@@ -182,6 +182,9 @@ fn source_exception_staged_check_reads_index_bytes_and_binds_identity() -> Resul
             return Err(format!(
                 "{name} did not observe the staged Rust bytes; worktree bytes may have leaked"
             ));
+        }
+        if !text.contains("allow_attribute") {
+            return Err(format!("{name} did not normalize the staged UTF-8 BOM"));
         }
     }
     Ok(())

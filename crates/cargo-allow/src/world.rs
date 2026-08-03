@@ -83,7 +83,11 @@ pub(crate) fn load_staged_world(
     let mut findings = Vec::new();
     let mut rust_files_with_parse_errors = 0usize;
     for (path, text) in sources {
-        let scan = allow_rust::scan_rust_source_with_completeness(&path, &text);
+        // Match the ordinary filesystem scanner's BOM normalization. The
+        // staged source view owns the bytes, but it must not create a second
+        // syntax interpretation for Windows-edited UTF-8 sources.
+        let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
+        let scan = allow_rust::scan_rust_source_with_completeness(&path, text);
         if scan.has_parse_error {
             rust_files_with_parse_errors += 1;
         }
