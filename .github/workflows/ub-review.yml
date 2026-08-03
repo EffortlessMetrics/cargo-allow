@@ -40,7 +40,7 @@ jobs:
           EOF
       - name: Run ub-review
         if: env.UB_REVIEW_AVAILABLE == 'yes'
-        uses: EffortlessMetrics/ub-review@a1e64c65e39aadf341f4e5cb14094b9a87f592ad
+        uses: EffortlessMetrics/ub-review@6b70acfffba9d6e818d7aac9a05a21c9d8c9d304
         with:
           profile: gh-runner
           posting: review
