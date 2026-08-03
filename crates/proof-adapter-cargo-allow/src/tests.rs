@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use proof_protocol::ProofPlanCommandV1;
 use proof_protocol::ProofPlanV1;
 use proof_provider_api::{
-    run_provider_conformance, validate_provider_plan, validate_provider_surface,
+    ProofProviderV1, run_provider_conformance, validate_provider_plan, validate_provider_surface,
 };
 
 use crate::boundary::{
@@ -102,6 +102,70 @@ fn process_protocol_compiles_no_new_dry_run() -> Result<(), String> {
         return Err("unexpected program in dry-run report".to_string());
     }
     Ok(())
+}
+
+#[test]
+fn provider_advertises_capability_report_without_mutation() -> Result<(), String> {
+    let provider = CargoAllowProofProviderV1::new();
+    let capability = provider
+        .capability_catalog()
+        .capabilities
+        .iter()
+        .find(|capability| capability.capability_id == "cargo-allow.capabilities.json")
+        .ok_or_else(|| "capability report was not advertised".to_string())?;
+    if capability.kind != proof_protocol::ProofCapabilityKindV1::StaticReport
+        || !capability.statement.contains("sensor-capabilities.v1")
+    {
+        return Err("capability report has the wrong provider projection".to_string());
+    }
+
+    let plan = ProofPlanV1::new(
+        "proof-adapter-cargo-allow-capabilities-v1",
+        vec![ProofPlanCommandV1::new(
+            "cargo-allow",
+            vec![
+                "capabilities".to_string(),
+                "--format".to_string(),
+                "json".to_string(),
+            ],
+        )],
+    );
+    let report = compile_cargo_allow_dry_run(&plan)
+        .map_err(|err| err.as_str())?
+        .pop()
+        .ok_or_else(|| "capability report dry-run was empty".to_string())?;
+    if !report.would_read.is_empty()
+        || !report.would_write.is_empty()
+        || report.network != proof_adapter_command::NetworkAccessV1::None
+    {
+        return Err("capability report dry-run was not read-only".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn capability_report_rejects_output_tail() -> Result<(), String> {
+    let plan = ProofPlanV1::new(
+        "proof-adapter-cargo-allow-capabilities-output-v1",
+        vec![ProofPlanCommandV1::new(
+            "cargo-allow",
+            vec![
+                "capabilities".to_string(),
+                "--format".to_string(),
+                "json".to_string(),
+                "--output".to_string(),
+                "report.json".to_string(),
+            ],
+        )],
+    );
+    match compile_cargo_allow_dry_run(&plan) {
+        Err(crate::process_protocol::ProcessProtocolError::UnsupportedCommand { .. }) => Ok(()),
+        Ok(_) => Err("capability report accepted a mutating output tail".to_string()),
+        Err(error) => Err(format!(
+            "unexpected capability report error: {}",
+            error.as_str()
+        )),
+    }
 }
 
 #[test]

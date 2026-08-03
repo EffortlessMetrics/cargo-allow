@@ -6,6 +6,7 @@ required_registry_fields = [
   "command_id",
   "program",
   "argv_prefix",
+  "allow_trailing_args",
   "cwd_policy",
   "env_allowlist",
   "read_paths",

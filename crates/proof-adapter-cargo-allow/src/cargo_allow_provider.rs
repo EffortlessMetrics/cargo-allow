@@ -95,11 +95,22 @@ fn capability_catalog_from_contract(
         contract
             .required_capabilities
             .iter()
-            .map(|capability_id| ProofCapabilityV1 {
-                capability_id: capability_id.clone(),
-                kind: ProofCapabilityKindV1::CommandArgv,
-                program: contract.product_name.clone(),
-                statement: format!("Run {capability_id} via public process protocol"),
+            .map(|capability_id| {
+                let is_capability_report = capability_id == "cargo-allow.capabilities.json";
+                ProofCapabilityV1 {
+                    capability_id: capability_id.clone(),
+                    kind: if is_capability_report {
+                        ProofCapabilityKindV1::StaticReport
+                    } else {
+                        ProofCapabilityKindV1::CommandArgv
+                    },
+                    program: contract.product_name.clone(),
+                    statement: if is_capability_report {
+                        "Read the cargo-allow.sensor-capabilities.v1 report via the public process protocol".to_string()
+                    } else {
+                        format!("Run {capability_id} via public process protocol")
+                    },
+                }
             })
             .collect(),
     )

@@ -47,6 +47,7 @@ pub enum CommandSpecError {
     ProseNotExecutable,
     ProgramMismatch { expected: String, observed: String },
     ArgvPrefixMismatch { command_id: String },
+    ArgvTrailingArgs { command_id: String },
 }
 
 impl CommandSpecError {
@@ -56,6 +57,7 @@ impl CommandSpecError {
             Self::ProseNotExecutable => "prose_not_executable",
             Self::ProgramMismatch { .. } => "program_mismatch",
             Self::ArgvPrefixMismatch { .. } => "argv_prefix_mismatch",
+            Self::ArgvTrailingArgs { .. } => "argv_trailing_args",
         }
     }
 }
@@ -112,6 +114,11 @@ fn compile_invocation_from_entry(
                 command_id: entry.command_id.clone(),
             });
         }
+    }
+    if !entry.allow_trailing_args && plan_command.args.len() != entry.argv_prefix.len() {
+        return Err(CommandSpecError::ArgvTrailingArgs {
+            command_id: entry.command_id.clone(),
+        });
     }
     Ok(CommandInvocationSpecV1 {
         schema_id: COMMAND_INVOCATION_SPEC_SCHEMA_ID.to_string(),
