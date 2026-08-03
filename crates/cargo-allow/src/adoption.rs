@@ -775,3 +775,271 @@ fn render_human(plan: &allow_report::CoreAdoptionPlanV1, style: allow_report::St
         plan.claim_boundary,
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn require(condition: bool, message: &str) -> Result<(), String> {
+        condition.then_some(()).ok_or_else(|| message.to_string())
+    }
+
+    fn sample_plan() -> allow_report::CoreAdoptionPlanV1 {
+        let facts = allow_report::AdoptionFacts {
+            tool_version: "0.1.11".to_string(),
+            repository_identity: "sha256:v1:test-repository".to_string(),
+            selected_root: "C:\\repo".to_string(),
+            channel: "source-preview".to_string(),
+            executable_identity: "sha256:v1:test-executable".to_string(),
+            inventory: allow_report::AdoptionInventoryFacts {
+                mode: allow_report::InventoryMode::GitTracked,
+                completeness: allow_report::InventoryCompleteness::Complete,
+                limitations: Vec::new(),
+            },
+            policy: allow_report::AdoptionPolicyFacts {
+                state: allow_report::PolicyState::Absent,
+                path: None,
+                schema_version: None,
+                digest: None,
+                total_findings: 0,
+                new_unreceipted_findings: 0,
+                stale_entries: 0,
+                location_drift_entries: 0,
+                broken_evidence_entries: 0,
+                review_due_entries: 0,
+                expired_entries: 0,
+                occurrence_headroom_entries: 0,
+                mirror_divergence: false,
+            },
+            policy_config_diagnostic: None,
+            unsupported_repository_state: false,
+            instrument_failure: None,
+            strict_gate_requested: false,
+            ci_guidance_completed: false,
+        };
+        allow_report::recommend_core_adoption_plan(&facts)
+    }
+
+    fn inventory(source: InventorySource, completeness: InventoryCompleteness) -> Inventory {
+        Inventory {
+            files: vec![PathBuf::from("src/lib.rs")],
+            source,
+            completeness,
+            empty_git_tracked: false,
+            deleted_tracked: Vec::new(),
+            git_error: None,
+            skipped_paths: Vec::new(),
+            submodule_paths: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn projections_and_artifacts_fail_closed_for_unknown_or_partial_inputs() -> Result<(), String> {
+        let unknown = inventory_projection(None, None);
+        require(
+            unknown
+                == (
+                    allow_report::InventoryMode::Unknown,
+                    allow_report::InventoryCompleteness::Unknown,
+                ),
+            "missing inventory should remain unknown",
+        )?;
+
+        let complete_inventory =
+            inventory(InventorySource::GitTracked, InventoryCompleteness::Complete);
+        let complete_facts = InventoryFacts::scanned_inventory(&complete_inventory);
+        require(
+            inventory_projection(Some(&complete_inventory), Some(&complete_facts))
+                == (
+                    allow_report::InventoryMode::GitTracked,
+                    allow_report::InventoryCompleteness::Complete,
+                ),
+            "complete tracked inventory should project as complete",
+        )?;
+
+        let mut partial_facts = InventoryFacts::scanned_inventory(&complete_inventory);
+        partial_facts.rust_files_with_parse_errors = 1;
+        require(
+            inventory_projection(Some(&complete_inventory), Some(&partial_facts)).1
+                == allow_report::InventoryCompleteness::Partial,
+            "parse errors should make the projection partial",
+        )?;
+
+        let filesystem_inventory = inventory(
+            InventorySource::FilesystemIncludeUntracked,
+            InventoryCompleteness::Fallback,
+        );
+        require(
+            inventory_projection(Some(&filesystem_inventory), None).0
+                == allow_report::InventoryMode::Filesystem,
+            "filesystem inventory should preserve its mode",
+        )?;
+
+        let plan = sample_plan();
+        let missing = Inspection {
+            root: PathBuf::from("C:\\repo"),
+            inventory: None,
+            inventory_facts: None,
+            policy_path: None,
+            plan: plan.clone(),
+        };
+        let missing_artifact = inventory_artifact(&missing);
+        require(
+            missing_artifact.source == "unknown" && missing_artifact.completeness == "unknown",
+            "missing artifact inputs should remain unknown",
+        )?;
+
+        let present = Inspection {
+            root: PathBuf::from("C:\\repo"),
+            inventory: Some(complete_inventory),
+            inventory_facts: Some(partial_facts),
+            policy_path: None,
+            plan,
+        };
+        let present_artifact = inventory_artifact(&present);
+        require(
+            present_artifact.source == "git_tracked"
+                && present_artifact.completeness == "partial"
+                && present_artifact.files_scanned == 1,
+            "partial scanner facts should be visible in the artifact",
+        )
+    }
+
+    #[test]
+    fn path_and_diagnostic_helpers_preserve_repository_boundaries() -> Result<(), String> {
+        let root = Path::new("C:\\repo");
+        require(
+            resolve_output_path(root, Path::new("target/plan.json"))
+                == Path::new("C:\\repo\\target\\plan.json"),
+            "relative output should resolve under the root",
+        )?;
+        let absolute = PathBuf::from("D:\\out\\plan.json");
+        require(
+            resolve_output_path(root, &absolute) == absolute,
+            "absolute output should remain unchanged for boundary validation",
+        )?;
+        require(
+            same_path(Path::new("plan.json"), Path::new("plan.json")),
+            "equal paths should match",
+        )?;
+        require(
+            comparable_path(Path::new("C:\\repo\\plan.json")) == Path::new("C:\\repo\\plan.json"),
+            "unresolved paths should remain comparable",
+        )?;
+        require(
+            is_missing_git_metadata("fatal: not a git repository"),
+            "git repository errors should be recognized",
+        )?;
+        require(
+            is_missing_git_metadata("not a git repo"),
+            "short git repository errors should be recognized",
+        )?;
+        require(
+            !is_missing_git_metadata("permission denied while reading the index"),
+            "unrelated git errors should not be hidden",
+        )?;
+        let sanitized = sanitize_diagnostic(root, "C:\\repo\\policy\\allow.toml failed");
+        require(
+            sanitized == "<repository-root>\\policy\\allow.toml failed",
+            "diagnostics should use a portable root marker",
+        )?;
+        require(
+            resolve_config_path(root, Path::new("policy/allow.toml")).is_ok(),
+            "in-root config should resolve",
+        )?;
+        require(
+            resolve_config_path(root, Path::new("D:\\outside.toml")).is_err(),
+            "outside config should fail",
+        )
+    }
+
+    #[test]
+    fn human_rendering_covers_write_then_and_ready_ci_variants() -> Result<(), String> {
+        let mut plan = sample_plan();
+        plan.follow_up_actions.clear();
+        let plain = render_human(&plan, allow_report::Style::PLAIN);
+        require(
+            plain.contains("Writes: nothing"),
+            "empty write posture should be explicit",
+        )?;
+        require(
+            plain.contains("Then: none"),
+            "missing follow-up should be explicit",
+        )?;
+        require(
+            plain.contains("CI: docs/how-to/adopt-cargo-allow.md"),
+            "ci guidance should be shown",
+        )?;
+
+        plan.policy.state = allow_report::PolicyState::Valid;
+        plan.primary_action.kind = allow_report::AdoptionActionKind::RunNoNewCheck;
+        plan.primary_action.argv.clear();
+        plan.may_write_paths = vec!["policy/allow.toml".to_string()];
+        let ready = render_human(&plan, allow_report::Style::PLAIN);
+        require(
+            ready.contains("ready (docs/how-to/adopt-cargo-allow.md"),
+            "ready ci state should be labeled",
+        )?;
+        require(
+            ready.contains("Writes: policy/allow.toml"),
+            "write paths should be rendered",
+        )?;
+        let ansi = render_human(&plan, allow_report::Style::ANSI);
+        require(
+            ansi.contains("\u{1b}"),
+            "ansi output should use the selected style",
+        )
+    }
+
+    #[test]
+    fn identity_and_ci_guidance_are_deterministic() -> Result<(), String> {
+        let root = PathBuf::from("C:\\repo");
+        let tracked = inventory(InventorySource::GitTracked, InventoryCompleteness::Complete);
+        let first = inventory_identity(&root, Some(&tracked), None);
+        let second = inventory_identity(&root, Some(&tracked), None);
+        require(
+            first == second,
+            "same inventory should have a stable identity",
+        )?;
+        require(
+            inventory_identity(&root, None, Some("digest")) != first,
+            "policy digest should contribute to identity",
+        )?;
+
+        let test_root =
+            std::env::temp_dir().join(format!("cargo-allow-adoption-unit-{}", std::process::id()));
+        fs::create_dir_all(test_root.join(".github/workflows"))
+            .map_err(|error| error.to_string())?;
+        let workflow = test_root.join(".github/workflows/ci.yml");
+        fs::write(&workflow, "cargo-allow check --mode no-new")
+            .map_err(|error| error.to_string())?;
+        let unrelated = test_root.join("README.md");
+        fs::write(&unrelated, "readme").map_err(|error| error.to_string())?;
+        require(
+            ci_guidance_completed(&test_root, &[workflow, unrelated]),
+            "matching workflow should be detected",
+        )?;
+        fs::remove_dir_all(test_root).map_err(|error| error.to_string())
+    }
+
+    #[test]
+    fn every_bootstrap_disposition_has_a_stable_text_name() -> Result<(), String> {
+        let dispositions = [
+            allow_report::BootstrapDisposition::CleanNoPolicy,
+            allow_report::BootstrapDisposition::FindingsNoPolicy,
+            allow_report::BootstrapDisposition::ExistingPolicyHealthy,
+            allow_report::BootstrapDisposition::ExistingPolicyHasNewFindings,
+            allow_report::BootstrapDisposition::ExistingPolicyNeedsRepair,
+            allow_report::BootstrapDisposition::PartialInventory,
+            allow_report::BootstrapDisposition::InvalidPolicy,
+            allow_report::BootstrapDisposition::UnsupportedRepositoryState,
+            allow_report::BootstrapDisposition::InstrumentFailure,
+        ];
+        dispositions.iter().try_for_each(|disposition| {
+            require(
+                !disposition_text(*disposition).is_empty(),
+                "bootstrap disposition names must not be empty",
+            )
+        })
+    }
+}
