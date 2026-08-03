@@ -1098,4 +1098,31 @@ mod tests {
             )
         })
     }
+
+    #[test]
+    fn command_projection_writes_json_without_mutating_source_state() -> Result<(), String> {
+        let root = current_dir().map_err(|error| error.to_string())?;
+        let output = PathBuf::from(format!(
+            "target/cargo-allow/adoption-unit-{}.json",
+            std::process::id()
+        ));
+        fs::create_dir_all(root.join("target/cargo-allow")).map_err(|error| error.to_string())?;
+        let result = cmd_adopt(&AdoptionArgs {
+            root: RootArgs {
+                root: Some(root.clone()),
+            },
+            config: None,
+            include_untracked: false,
+            strict: false,
+            format: HumanJsonFormat::Json,
+            output: Some(output.clone()),
+        });
+        result.map_err(|error| error.to_string())?;
+        let artifact = fs::read_to_string(root.join(&output)).map_err(|error| error.to_string())?;
+        require(
+            artifact.contains("\"command\": \"adopt\""),
+            "direct command projection should write the adoption artifact",
+        )?;
+        fs::remove_file(root.join(output)).map_err(|error| error.to_string())
+    }
 }
