@@ -187,6 +187,31 @@ fn hooks_plan_can_wire_the_verified_runtime_into_an_applied_hook() -> TestResult
         .ok_or("tool identity omitted executable_digest")?;
     let plan = fixture.path.join("target/verified-hook-plan.json");
     let plan_arg = path_arg(&plan);
+    let rejected_plan = fixture.path.join("target/rejected-hook-plan.json");
+    let rejected_plan_arg = path_arg(&rejected_plan);
+
+    let rejected = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "plan",
+            "--binary",
+            &binary,
+            "--digest",
+            "sha256:v1:deliberate-mismatch",
+            "--mode",
+            "explicit-tool-under-test",
+            "--format",
+            "json",
+            "--output",
+            &rejected_plan_arg,
+        ],
+    )?;
+    require(
+        !rejected.status.success()
+            && String::from_utf8_lossy(&rejected.stderr).contains("was not accepted"),
+        "runtime-verified plan accepted a mismatched executable digest",
+    )?;
 
     run_success(
         &fixture.path,
