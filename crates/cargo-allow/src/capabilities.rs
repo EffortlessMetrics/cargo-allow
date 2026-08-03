@@ -884,7 +884,7 @@ reason = "Exercise explicit policy selection."
             root: RootArgs {
                 root: Some(root.clone()),
             },
-            config: Some(policy),
+            config: Some(policy.clone()),
             format: CapabilityFormat::Json,
             class: Some(CapabilityClass::SupportedPresence),
             kind: Some("non_rust_file".to_string()),
@@ -916,6 +916,61 @@ reason = "Exercise explicit policy selection."
                 != Some("supported_presence")
         {
             return Err(format!("unexpected configured family rows: {rules:?}"));
+        }
+
+        let human_path = root.join("capabilities.txt");
+        cmd_capabilities(&CapabilitiesArgs {
+            root: RootArgs {
+                root: Some(root.clone()),
+            },
+            config: Some(policy.clone()),
+            format: CapabilityFormat::Human,
+            class: Some(CapabilityClass::SupportedPresence),
+            kind: Some("non_rust_file".to_string()),
+            family: None,
+            output: Some(human_path.clone()),
+        })
+        .map_err(|error| error.to_string())?;
+        let human = fs::read_to_string(&human_path).map_err(|error| error.to_string())?;
+        fs::remove_file(&human_path).map_err(|error| error.to_string())?;
+        if !human.contains("Configured repository file-family rules:")
+            || !human.contains("z-model: ml_model")
+        {
+            return Err("human configured family output omitted expected rows".to_string());
+        }
+
+        let filtered = configured_file_family_capabilities(&CapabilitiesArgs {
+            root: RootArgs {
+                root: Some(root.clone()),
+            },
+            config: Some(policy.clone()),
+            format: CapabilityFormat::Json,
+            class: Some(CapabilityClass::NotIncluded),
+            kind: None,
+            family: None,
+            output: None,
+        })
+        .map_err(|error| error.to_string())?;
+        if !filtered.is_empty() {
+            return Err("non-presence class should omit configured families".to_string());
+        }
+
+        let family_filtered = configured_file_family_capabilities(&CapabilitiesArgs {
+            root: RootArgs {
+                root: Some(root.clone()),
+            },
+            config: Some(policy),
+            format: CapabilityFormat::Json,
+            class: Some(CapabilityClass::SupportedPresence),
+            kind: Some("non_rust_file".to_string()),
+            family: Some("release_metadata".to_string()),
+            output: None,
+        })
+        .map_err(|error| error.to_string())?;
+        if family_filtered.len() != 1
+            || family_filtered.first().map(|row| row.family.as_str()) != Some("release_metadata")
+        {
+            return Err("family filter returned an unexpected configured row".to_string());
         }
         fs::remove_dir_all(root).map_err(|error| error.to_string())?;
         Ok(())
@@ -968,6 +1023,29 @@ reason = "Exercise explicit policy selection."
         .expect_err("invalid configured policy should not be bypassed by filters");
         if error.kind() != CargoAllowErrorKind::InvalidPolicy {
             return Err(format!("unexpected error kind: {}", error.kind()));
+        }
+        fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn missing_configured_policy_keeps_configured_projection_empty() -> Result<(), String> {
+        let root = output_path("configured-missing");
+        fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        let rows = configured_file_family_capabilities(&CapabilitiesArgs {
+            root: RootArgs {
+                root: Some(root.clone()),
+            },
+            config: None,
+            format: CapabilityFormat::Json,
+            class: Some(CapabilityClass::SupportedPresence),
+            kind: Some("non_rust_file".to_string()),
+            family: None,
+            output: None,
+        })
+        .map_err(|error| error.to_string())?;
+        if !rows.is_empty() {
+            return Err("missing policy should not produce configured rows".to_string());
         }
         fs::remove_dir_all(root).map_err(|error| error.to_string())?;
         Ok(())
