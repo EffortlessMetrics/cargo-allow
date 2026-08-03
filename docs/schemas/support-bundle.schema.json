@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/support-bundle.v1.schema.json",
+  "title": "cargo-allow support bundle v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "schema_id", "tool", "command", "result",
+    "claim_boundary", "excluded_data", "platform", "root", "config",
+    "inventory", "federation"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "schema_id": { "const": "cargo-allow.support-bundle.v1" },
+    "tool": { "const": "cargo-allow" },
+    "command": { "const": "doctor --support-bundle" },
+    "result": { "const": "BundleComplete" },
+    "claim_boundary": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 },
+    "excluded_data": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 },
+    "platform": {
+      "type": "object", "additionalProperties": false, "required": ["os", "architecture"],
+      "properties": { "os": { "type": "string", "minLength": 1 }, "architecture": { "type": "string", "minLength": 1 } }
+    },
+    "root": {
+      "type": "object", "additionalProperties": false, "required": ["discovery", "repository_kind", "path"],
+      "properties": {
+        "discovery": { "type": "string", "minLength": 1 },
+        "repository_kind": { "enum": ["git", "non_git"] },
+        "path": { "const": "<redacted>" }
+      }
+    },
+    "config": {
+      "type": "object", "additionalProperties": false, "required": ["found", "path", "schema_version", "valid"],
+      "properties": {
+        "found": { "type": "boolean" },
+        "path": { "type": ["string", "null"] },
+        "schema_version": { "type": ["string", "null"] },
+        "valid": { "type": ["boolean", "null"] }
+      }
+    },
+    "inventory": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source", "completeness", "files_scanned", "deleted_tracked_files", "skipped_paths", "submodule_paths"],
+      "properties": {
+        "source": { "type": "string", "minLength": 1 },
+        "completeness": { "type": "string", "minLength": 1 },
+        "files_scanned": { "type": "integer", "minimum": 0 },
+        "deleted_tracked_files": { "type": "integer", "minimum": 0 },
+        "skipped_paths": { "type": "integer", "minimum": 0 },
+        "submodule_paths": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "federation": {
+      "type": "object", "additionalProperties": false, "required": ["found", "valid"],
+      "properties": {
+        "found": { "type": "boolean" },
+        "valid": { "type": ["boolean", "null"] }
+      }
+    }
+  }
+}

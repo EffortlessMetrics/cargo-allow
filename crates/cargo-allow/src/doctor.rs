@@ -11,15 +11,16 @@ mod doctor_args;
 pub(crate) use doctor_args::DoctorArgs;
 
 use crate::{
-    HumanJsonFormat, InventoryFacts, ProfileArg, SourceTreeReportContext, config_path, current_dir,
-    emit_text,
+    HumanJsonFormat, InventoryFacts, ProfileArg, SourceTreeReportContext, assert_path_within_root,
+    config_path, current_dir, emit_text,
     evidence_inventory::{
         PolicyReferenceDiagnostic, current_evidence_source_tree_files,
         policy_reference_diagnostics_for_source_tree,
     },
     federation_doctor::FederationDoctorFacts,
     intent_provider::{IntentProviderRequest, discover_intent_provider},
-    spec_system,
+    portable_relative_under_root, spec_system,
+    support_bundle::{SupportBundleFacts, write_support_bundle},
 };
 
 #[derive(Debug, Default)]
@@ -45,6 +46,11 @@ struct DoctorFileFamilyConflict {
 
 pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     if matches!(args.profile, Some(ProfileArg::SpecSystem)) {
+        if args.support_bundle.is_some() {
+            return Err(CargoAllowError::new(
+                "--support-bundle is only supported for the source-exception doctor profile",
+            ));
+        }
         return spec_system::cmd_spec_system_doctor(spec_system::SpecSystemDoctorCommandArgs {
             root: &args.root,
             config: args.config.as_deref(),
@@ -55,6 +61,9 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
 
     let cwd = current_dir()?;
     let root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
+    if let Some(path) = &args.support_bundle {
+        assert_path_within_root(&root, path)?;
+    }
     let root_discovery = root_discovery_kind(args.root.root.as_deref(), &root);
     let config = config_path(&root, args.config.as_deref());
     let policy = load_doctor_policy(config.as_deref());
@@ -160,6 +169,40 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         file_family_rules: file_family_rules.as_slice(),
         file_family_conflicts: file_family_conflicts.as_slice(),
     };
+    if let Some(output) = &args.support_bundle {
+        let support_config_path = config
+            .as_ref()
+            .and_then(|path| {
+                path.exists()
+                    .then(|| portable_relative_under_root(&root, path).ok())
+            })
+            .flatten()
+            .map(|path| path.to_string_lossy().replace('\\', "/"));
+        write_support_bundle(
+            &root,
+            output,
+            SupportBundleFacts {
+                root_discovery,
+                repository_kind: if root.join(".git").exists() {
+                    "git"
+                } else {
+                    "non_git"
+                },
+                config_found: config.is_some(),
+                config_path: support_config_path.as_deref(),
+                config_schema_version,
+                config_valid,
+                inventory_source: source_context.inventory_source(),
+                inventory_completeness: source_context.inventory_completeness(),
+                files_scanned,
+                deleted_tracked_files,
+                skipped_paths,
+                submodule_paths,
+                federation_found: federation.found,
+                federation_valid: federation.valid,
+            },
+        )?;
+    }
     let text = match args.format {
         HumanJsonFormat::Human => {
             let style = if args.output.is_none() {
@@ -169,6 +212,9 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
             };
             let mut rendered = allow_report::render_doctor_human_styled(report, style);
             rendered.push_str(&intent_provider_doctor_section(&root));
+            if let Some(path) = &args.support_bundle {
+                rendered.push_str(&format!("\nSupport bundle written to {}\n", path.display()));
+            }
             rendered
         }
         HumanJsonFormat::Json => allow_report::render_doctor_json(report),

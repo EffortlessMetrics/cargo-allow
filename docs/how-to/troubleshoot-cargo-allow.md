@@ -28,3 +28,20 @@ Channel note: `why` shipped in Published `0.1.11`. Use it freely alongside
 Related operator guides: [Manage an exception](manage-an-exception.md),
 [Review PR posture](review-pr-posture.md),
 [Rollback cargo-allow adoption](rollback-cargo-allow-adoption.md).
+
+## Share a redacted support bundle
+
+When a maintainer needs setup and inventory context, write a bounded bundle
+inside the repository:
+
+```bash
+cargo-allow doctor --support-bundle target/cargo-allow/support-bundle.json
+```
+
+The bundle is versioned as `cargo-allow.support-bundle.v1`. It contains only
+allowlisted setup metadata, repository-relative config identity, inventory
+counts, and federation presence/validity. The repository root is redacted; the
+bundle excludes source contents, policy reasons and evidence, environment
+variables, credentials, remotes, and unowned artifacts. It is written locally
+only and is not uploaded or sent over the network. Review the file before
+sharing it.

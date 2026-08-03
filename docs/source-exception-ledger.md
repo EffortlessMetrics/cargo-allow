@@ -615,6 +615,15 @@ lists paths where equally specific rules remain ambiguous. These are
 classification diagnostics only; they do not exclude files, approve findings,
 or make claims about file contents.
 
+For maintainer troubleshooting, `cargo-allow doctor --support-bundle <path>`
+writes the separate `cargo-allow.support-bundle.v1` contract to a path inside
+the source-tree root. The bundle is allowlisted and redacted: it records setup
+metadata, repository-relative config identity, inventory counts, and federation
+presence/validity, while excluding source contents, policy reasons and
+evidence, environment variables, credentials, remotes, and unowned artifacts.
+It performs no network upload and does not change the policy ledger. See the
+[support-bundle schema](schemas/support-bundle.schema.json).
+
 `cargo-allow worklist --format json` turns non-matched no-new outcomes and
 matched `baseline_debt` entries into agent-safe work items. Each item includes a
 kind, risk, difficulty, current status, governed exception kind, family where

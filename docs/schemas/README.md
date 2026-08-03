@@ -54,6 +54,7 @@ source-tree scan result.
 | Receipt | Schema ID | Producer |
 |---|---|---|
 | Operator latency | `cargo-allow.operator-latency.v1` | `scripts/perf-budget-smoke.sh` |
+| Redacted support bundle | `cargo-allow.support-bundle.v1` | `cargo-allow doctor --support-bundle <path>` |
 
 The operator-latency receipt binds end-to-end wall-clock observations to the
 tested binary, host, repository fixture, ordered command arguments, output
@@ -62,9 +63,17 @@ signal, not a source-tree scan artifact and not a promise about every machine
 or repository. It is intentionally not included in the Rust producer's
 `ARTIFACT_CONTRACTS` or the source-tree support matrix.
 
+The support bundle is a local troubleshooting contract rather than a governed
+source-tree scan artifact. It carries an explicit redaction boundary and
+metadata-only inventory counts, but does not use the governed artifact
+inventory shape or claim release/readiness proof. It is intentionally not
+included in the Rust producer's `ARTIFACT_CONTRACTS` or source-tree support
+matrix.
+
 ## Files
 
 - [doctor.schema.json](doctor.schema.json)
+- [support-bundle.schema.json](support-bundle.schema.json) (redacted troubleshooting contract; not a governed source-tree artifact)
 - [report.schema.json](report.schema.json)
 - [receipt.schema.json](receipt.schema.json)
 - [explain.schema.json](explain.schema.json)
