@@ -409,6 +409,14 @@ struct AdoptionFactInputs<'a> {
 }
 
 fn adoption_facts(inputs: AdoptionFactInputs<'_>) -> CargoAllowResult<allow_report::AdoptionFacts> {
+    let tool = crate::precommit_tool::current_tool_identity().ok();
+    adoption_facts_with_tool(inputs, tool)
+}
+
+fn adoption_facts_with_tool(
+    inputs: AdoptionFactInputs<'_>,
+    tool: Option<crate::precommit_tool::CargoAllowToolIdentityV1>,
+) -> CargoAllowResult<allow_report::AdoptionFacts> {
     let AdoptionFactInputs {
         root,
         inventory,
@@ -423,7 +431,6 @@ fn adoption_facts(inputs: AdoptionFactInputs<'_>) -> CargoAllowResult<allow_repo
         signals,
         instrument_failure,
     } = inputs;
-    let tool = crate::precommit_tool::current_tool_identity().ok();
     let (channel, executable_identity, tool_failure) = match tool {
         Some(identity) => (
             match identity.channel {
@@ -1076,6 +1083,41 @@ mod tests {
             "non-workflow files should not provide ci guidance",
         )?;
         fs::remove_dir_all(test_root).map_err(|error| error.to_string())
+    }
+
+    #[test]
+    fn adoption_facts_preserve_published_and_fail_closed_tool_identity() -> Result<(), String> {
+        let root = PathBuf::from("C:\\repo");
+        let cfg = AllowConfig::empty();
+        let inputs = || AdoptionFactInputs {
+            root: &root,
+            inventory: None,
+            inventory_facts: None,
+            policy_path: None,
+            cfg: &cfg,
+            policy_state: allow_report::PolicyState::Absent,
+            policy_diagnostic: None,
+            limitations: Vec::new(),
+            strict_gate_requested: false,
+            ci_guidance_completed: false,
+            signals: None,
+            instrument_failure: None,
+        };
+        let mut published = crate::precommit_tool::identity_for_bytes(b"published-test");
+        published.channel = crate::precommit_tool::ToolChannel::PublishedRelease;
+        let published_facts = adoption_facts_with_tool(inputs(), Some(published))
+            .map_err(|error| error.to_string())?;
+        require(
+            published_facts.channel == "published",
+            "published identities should retain their release channel",
+        )?;
+
+        let unknown_facts =
+            adoption_facts_with_tool(inputs(), None).map_err(|error| error.to_string())?;
+        require(
+            unknown_facts.channel == "unknown" && unknown_facts.instrument_failure.is_some(),
+            "missing identities should fail closed",
+        )
     }
 
     #[test]
