@@ -19,6 +19,9 @@ pub(crate) struct DoctorArgs {
     /// Write doctor output to a file instead of stdout.
     #[arg(long)]
     pub(super) output: Option<PathBuf>,
+    /// Write a redacted, read-only support bundle to a source-tree path.
+    #[arg(long)]
+    pub(super) support_bundle: Option<PathBuf>,
     /// Exit non-zero if the policy is invalid or evidence is broken.
     #[arg(long)]
     pub(super) require_clean: bool,

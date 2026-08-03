@@ -7,6 +7,7 @@ macro-expansion, or proof-level coverage.
 | Artifact | Schema ID | Producer |
 |---|---|---|
 | Setup diagnostics | `cargo-allow.doctor.v1` | `cargo-allow doctor --format json` |
+| Redacted support bundle | `cargo-allow.support-bundle.v1` | `cargo-allow doctor --support-bundle <path>` |
 | Audit/check/diff report | `cargo-allow.report.v1` | `cargo-allow audit --format json`, `cargo-allow check --format json`, `cargo-allow diff --format json` |
 | Check/diff receipt | `cargo-allow.receipt.v1` | `cargo-allow check --receipt <path>`, `cargo-allow diff --receipt <path>` |
 | Single-entry explanation | `cargo-allow.explain.v1` | `cargo-allow explain <id> --format json` |
@@ -65,6 +66,7 @@ or repository. It is intentionally not included in the Rust producer's
 ## Files
 
 - [doctor.schema.json](doctor.schema.json)
+- [support-bundle.schema.json](support-bundle.schema.json) (redacted troubleshooting bundle; not a source-tree scan artifact)
 - [report.schema.json](report.schema.json)
 - [receipt.schema.json](receipt.schema.json)
 - [explain.schema.json](explain.schema.json)

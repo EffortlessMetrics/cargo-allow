@@ -46,6 +46,7 @@ mod spec_system_source;
 mod spec_system_view;
 pub mod spec_system_workspace;
 pub mod spec_system_workspace_composition;
+mod support_bundle;
 mod vocabulary;
 mod why;
 mod worklist;

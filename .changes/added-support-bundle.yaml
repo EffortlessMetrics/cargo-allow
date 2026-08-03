@@ -1,0 +1,6 @@
+kind: Added
+body: >-
+  `doctor --support-bundle <path>` now writes a versioned, repository-local,
+  redacted support bundle for setup and release troubleshooting without source
+  contents, policy evidence, environment variables, credentials, or network
+  upload.

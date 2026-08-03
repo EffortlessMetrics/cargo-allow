@@ -35,11 +35,31 @@ fn clap_parses_doctor_json_output() {
             config: Some(config),
             profile: None,
             format: HumanJsonFormat::Json,
-        require_clean: false,
+            require_clean: false,
             output: Some(output),
+            support_bundle: None,
         })) if root == Path::new(".")
             && config == Path::new("policy/custom.toml")
             && output == Path::new("target/doctor.json")
+    ));
+}
+
+#[test]
+fn clap_parses_support_bundle_output() {
+    let parsed = CargoAllowCli::try_parse_from(argv(vec![
+        "cargo-allow",
+        "doctor",
+        "--support-bundle",
+        "target/cargo-allow/support-bundle.json",
+    ]))
+    .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse: {err}")));
+
+    assert!(matches!(
+        parsed.command,
+        Some(CargoAllowCommand::Doctor(DoctorArgs {
+            support_bundle: Some(path),
+            ..
+        })) if path == Path::new("target/cargo-allow/support-bundle.json")
     ));
 }
 
@@ -235,6 +255,7 @@ ignored = ["policy/**", "ignored/**"]
         format: HumanJsonFormat::Json,
         require_clean: false,
         output: Some(output.clone()),
+        support_bundle: None,
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("doctor should pass: {err}")));
 
@@ -293,6 +314,7 @@ ast_kind = "tracked_file"
         format: HumanJsonFormat::Json,
         require_clean: false,
         output: Some(output.clone()),
+        support_bundle: None,
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("doctor should pass: {err}")));
 
@@ -357,6 +379,7 @@ ast_kind = "tracked_file"
         format: HumanJsonFormat::Json,
         require_clean: false,
         output: Some(output.clone()),
+        support_bundle: None,
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("doctor should pass: {err}")));
 
@@ -424,6 +447,7 @@ fn doctor_reports_untracked_local_evidence_as_broken_by_default() {
         format: HumanJsonFormat::Json,
         require_clean: false,
         output: Some(output.clone()),
+        support_bundle: None,
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("doctor should pass: {err}")));
 
@@ -466,6 +490,7 @@ fn spec_system_doctor_reports_missing_readiness() {
         format: HumanJsonFormat::Json,
         require_clean: false,
         output: Some(output.clone()),
+        support_bundle: None,
     })
     .unwrap_or_else(|err| {
         std::panic::panic_any(format!("spec-system doctor should pass advisory: {err}"))
@@ -515,6 +540,7 @@ fn spec_system_doctor_reports_ready_when_bootstrap_files_exist() {
         format: HumanJsonFormat::Json,
         require_clean: false,
         output: Some(output.clone()),
+        support_bundle: None,
     })
     .unwrap_or_else(|err| {
         std::panic::panic_any(format!("spec-system doctor should pass advisory: {err}"))
@@ -580,6 +606,7 @@ fn spec_system_doctor_recognizes_allow_init_layout() {
         format: HumanJsonFormat::Json,
         require_clean: false,
         output: Some(output.clone()),
+        support_bundle: None,
     })
     .unwrap_or_else(|err| {
         std::panic::panic_any(format!("spec-system doctor should pass advisory: {err}"))
@@ -625,6 +652,7 @@ fn spec_system_doctor_reports_profile_config_provenance() {
         format: HumanJsonFormat::Json,
         require_clean: false,
         output: Some(output.clone()),
+        support_bundle: None,
     })
     .unwrap_or_else(|err| {
         std::panic::panic_any(format!("spec-system doctor should pass advisory: {err}"))
@@ -702,6 +730,7 @@ linked_plan = "plans/spec-system/implementation-plan.md"
         format: HumanJsonFormat::Json,
         require_clean: false,
         output: Some(output.clone()),
+        support_bundle: None,
     })
     .unwrap_or_else(|err| {
         std::panic::panic_any(format!("spec-system doctor should pass advisory: {err}"))
@@ -789,6 +818,7 @@ reason = "Conflict fixture B."
         format: HumanJsonFormat::Json,
         require_clean: false,
         output: Some(output.clone()),
+        support_bundle: None,
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("doctor should pass: {err}")));
 
@@ -835,6 +865,7 @@ reason = "Conflict fixture B."
         format: HumanJsonFormat::Human,
         require_clean: false,
         output: Some(human_output.clone()),
+        support_bundle: None,
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("human doctor should pass: {err}")));
     let human = fs::read_to_string(human_output)
@@ -876,6 +907,7 @@ fn doctor_reports_configured_federation_ledgers() {
         format: HumanJsonFormat::Json,
         require_clean: false,
         output: Some(output.clone()),
+        support_bundle: None,
     })
     .unwrap_or_else(|err| std::panic::panic_any(format!("doctor should pass: {err}")));
 
@@ -936,6 +968,7 @@ fn spec_system_doctor_reports_federation_ledgers_readiness() {
         format: HumanJsonFormat::Json,
         require_clean: false,
         output: Some(output.clone()),
+        support_bundle: None,
     })
     .unwrap_or_else(|err| {
         std::panic::panic_any(format!("spec-system doctor should pass advisory: {err}"))
