@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/core-adoption-plan.v1.schema.json",
+  "title": "cargo-allow core-adoption-plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "schema_id",
+    "tool",
+    "command",
+    "claim_boundary",
+    "scanner_limitations",
+    "inventory",
+    "plan"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "schema_id": { "const": "cargo-allow.core-adoption-plan.v1" },
+    "tool": { "const": "cargo-allow" },
+    "command": { "const": "adopt" },
+    "claim_boundary": { "type": "array", "items": { "$ref": "#/$defs/claim_boundary_flag" } },
+    "scanner_limitations": { "type": "array", "items": { "$ref": "#/$defs/scanner_limitation" } },
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "scanner", "source", "root", "files_scanned", "completeness", "empty_git_tracked"],
+      "properties": {
+        "scope": { "const": "source_tree" },
+        "scanner": { "const": "source_syntax" },
+        "source": {
+          "enum": [
+            "unknown",
+            "git_tracked",
+            "git_index_staged_candidate",
+            "filesystem_fallback",
+            "filesystem_include_untracked"
+          ]
+        },
+        "root": { "type": "string", "minLength": 1, "const": "<repository-root>" },
+        "files_scanned": { "type": "integer", "minimum": 0 },
+        "completeness": { "enum": ["complete", "scoped", "fallback", "partial", "unknown"] },
+        "empty_git_tracked": { "type": "boolean" }
+      }
+    },
+    "plan": { "$ref": "#/$defs/plan" }
+  },
+  "$defs": {
+    "claim_boundary_flag": {
+      "type": "string",
+      "enum": [
+        "source_tree_inventory", "source_syntax_only", "cargo_metadata_not_invoked",
+        "cargo_commands_not_invoked", "rustc_not_invoked", "clippy_not_invoked",
+        "build_scripts_not_executed", "proc_macros_not_executed", "macro_expansion_not_analyzed",
+        "macro_token_tree_contents_not_analyzed", "type_information_not_analyzed", "mir_not_analyzed",
+        "build_output_not_analyzed", "control_flow_not_analyzed", "data_flow_not_analyzed",
+        "external_evidence_tools_not_invoked", "repository_code_not_executed",
+        "source_text_in_identity_fields"
+      ]
+    },
+    "scanner_limitation": {
+      "type": "string",
+      "enum": [
+        "cargo_metadata_not_invoked", "cargo_commands_not_invoked", "rustc_not_invoked",
+        "clippy_not_invoked", "build_scripts_not_executed", "proc_macros_not_executed",
+        "macro_expansion_not_analyzed", "macro_token_tree_contents_not_analyzed",
+        "type_information_not_analyzed", "mir_not_analyzed", "build_output_not_analyzed",
+        "control_flow_not_analyzed", "data_flow_not_analyzed", "external_evidence_tools_not_invoked",
+        "repository_code_not_executed"
+      ]
+    },
+    "inventory_facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "completeness", "limitations"],
+      "properties": {
+        "mode": { "enum": ["GitTracked", "Filesystem", "Unknown"] },
+        "completeness": { "enum": ["Complete", "Partial", "Unknown"] },
+        "limitations": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "policy_facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state", "path", "schema_version", "digest", "total_findings",
+        "new_unreceipted_findings", "stale_entries", "location_drift_entries",
+        "broken_evidence_entries", "review_due_entries", "expired_entries",
+        "occurrence_headroom_entries", "mirror_divergence"
+      ],
+      "properties": {
+        "state": { "enum": ["Absent", "Valid", "Invalid", "Unknown"] },
+        "path": { "type": ["string", "null"] },
+        "schema_version": { "type": ["string", "null"] },
+        "digest": { "type": ["string", "null"] },
+        "total_findings": { "type": "integer", "minimum": 0 },
+        "new_unreceipted_findings": { "type": "integer", "minimum": 0 },
+        "stale_entries": { "type": "integer", "minimum": 0 },
+        "location_drift_entries": { "type": "integer", "minimum": 0 },
+        "broken_evidence_entries": { "type": "integer", "minimum": 0 },
+        "review_due_entries": { "type": "integer", "minimum": 0 },
+        "expired_entries": { "type": "integer", "minimum": 0 },
+        "occurrence_headroom_entries": { "type": "integer", "minimum": 0 },
+        "mirror_divergence": { "type": "boolean" }
+      }
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "argv", "reason", "write_posture", "expected_result"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "ContinueAdvisoryAudit", "PreviewInit", "PreviewPropose", "RunNoNewCheck",
+            "InspectNewFinding", "ApplyStaleSafeFindingPlan", "InspectAllow", "PreviewRefresh",
+            "RepairEvidence", "PreviewPrune", "ReconcileMirror", "DiagnoseInventory",
+            "RepairPolicy", "ConfigureCi"
+          ]
+        },
+        "argv": { "type": "array", "items": { "type": "string" } },
+        "reason": { "type": "string", "minLength": 1 },
+        "write_posture": { "enum": ["ReadOnly", "PreviewOnly", "MayWrite"] },
+        "expected_result": { "type": "string", "minLength": 1 }
+      }
+    },
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id", "schema_version", "tool_version", "repository_identity", "selected_root",
+        "channel", "executable_identity", "inventory", "policy", "bootstrap_disposition",
+        "primary_action", "follow_up_actions", "may_write_paths", "explicit_non_effects",
+        "expected_result_markers", "ci_example_path", "rollback_guide_path", "limitations",
+        "claim_boundary"
+      ],
+      "properties": {
+        "schema_id": { "const": "cargo-allow.core-adoption-plan.v1" },
+        "schema_version": { "const": 1 },
+        "tool_version": { "type": "string", "minLength": 1 },
+        "repository_identity": { "type": "string", "minLength": 1 },
+        "selected_root": { "const": "<repository-root>" },
+        "channel": { "type": "string", "minLength": 1 },
+        "executable_identity": { "type": "string", "minLength": 1 },
+        "inventory": { "$ref": "#/$defs/inventory_facts" },
+        "policy": { "$ref": "#/$defs/policy_facts" },
+        "bootstrap_disposition": {
+          "enum": [
+            "CleanNoPolicy", "FindingsNoPolicy", "ExistingPolicyHealthy",
+            "ExistingPolicyHasNewFindings", "ExistingPolicyNeedsRepair", "PartialInventory",
+            "InvalidPolicy", "UnsupportedRepositoryState", "InstrumentFailure"
+          ]
+        },
+        "primary_action": { "$ref": "#/$defs/action" },
+        "follow_up_actions": { "type": "array", "items": { "$ref": "#/$defs/action" } },
+        "may_write_paths": { "type": "array", "items": { "type": "string" } },
+        "explicit_non_effects": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "expected_result_markers": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "ci_example_path": { "type": "string", "minLength": 1 },
+        "rollback_guide_path": { "type": "string", "minLength": 1 },
+        "limitations": { "type": "array", "items": { "type": "string" } },
+        "claim_boundary": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

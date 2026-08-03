@@ -56,6 +56,23 @@ Source-candidate invoke (from this repository):
 cargo run -p cargo-allow -- doctor
 ```
 
+### 2a. Get one current adoption recommendation (source candidate)
+
+The source-candidate binary can project the bounded adoption plan before the
+first policy decision. It is read-only and does not execute the recommended
+command:
+
+```bash
+cargo run -p cargo-allow -- adopt
+cargo run -p cargo-allow -- adopt --format json --output target/cargo-allow/adoption-plan.json
+```
+
+Human output leads with `Repository state:`, one `Recommended next step:`, a
+copyable `Run:` command, an explicit `Writes:` line, and a rollback statement.
+The JSON artifact is `cargo-allow.core-adoption-plan.v1`; it is derived from
+the same plan and is portable across checkout paths. Published `0.1.11` does
+not expose `adopt` yet, so keep this command on the Source-candidate path.
+
 Do not copy release-candidate crate versions into install commands until they
 are published.
 
@@ -87,7 +104,7 @@ JSON identity (stable for scripts and the first-hour test):
 limitations, and local evidence-health diagnostics. It does not build the
 project.
 
-## 2a. Inspect scanner capabilities
+## 2b. Inspect scanner capabilities
 
 Before choosing a policy or interpreting a finding, inspect the capability
 matrix that the current source-candidate binary carries:
@@ -455,6 +472,7 @@ and `crates/cargo-allow/tests/first_hour_adoption.rs` (consumable by #2278):
 | `channel_select` | Choose published vs source-candidate channel |
 | `install_prereqs` | Rust 1.95+ / C toolchain for installing cargo-allow |
 | `doctor_no_policy` | Healthy doctor with no policy yet |
+| `adoption_plan` | Source-candidate read-only recommendation before `init` or `propose` |
 | `audit_clean` | Clean audit; no manufactured baseline debt |
 | `audit_with_finding` | Audit with retained findings → bootstrap choice |
 | `bootstrap_init` | Strict `init` path |
