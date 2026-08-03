@@ -907,15 +907,15 @@ mod tests {
 
     #[test]
     fn path_and_diagnostic_helpers_preserve_repository_boundaries() -> Result<(), String> {
-        let root = Path::new("C:\\repo");
+        let root = std::env::temp_dir().join("cargo-allow-adoption-path-root");
         require(
-            resolve_output_path(root, Path::new("target/plan.json"))
-                == Path::new("C:\\repo\\target\\plan.json"),
+            resolve_output_path(&root, Path::new("target/plan.json"))
+                == root.join("target").join("plan.json"),
             "relative output should resolve under the root",
         )?;
-        let absolute = PathBuf::from("D:\\out\\plan.json");
+        let absolute = std::env::temp_dir().join("cargo-allow-adoption-plan.json");
         require(
-            resolve_output_path(root, &absolute) == absolute,
+            resolve_output_path(&root, &absolute) == absolute,
             "absolute output should remain unchanged for boundary validation",
         )?;
         require(
@@ -923,7 +923,7 @@ mod tests {
             "equal paths should match",
         )?;
         require(
-            comparable_path(Path::new("C:\\repo\\plan.json")) == Path::new("C:\\repo\\plan.json"),
+            comparable_path(&root.join("plan.json")) == root.join("plan.json"),
             "unresolved paths should remain comparable",
         )?;
         require(
@@ -938,17 +938,33 @@ mod tests {
             !is_missing_git_metadata("permission denied while reading the index"),
             "unrelated git errors should not be hidden",
         )?;
-        let sanitized = sanitize_diagnostic(root, "C:\\repo\\policy\\allow.toml failed");
+        let sanitized = sanitize_diagnostic(
+            &root,
+            &format!(
+                "{}{}policy{}allow.toml failed",
+                root.display(),
+                std::path::MAIN_SEPARATOR,
+                std::path::MAIN_SEPARATOR,
+            ),
+        );
         require(
-            sanitized == "<repository-root>\\policy\\allow.toml failed",
+            sanitized.contains("<repository-root>")
+                && !sanitized.contains(root.to_string_lossy().as_ref()),
             "diagnostics should use a portable root marker",
         )?;
         require(
-            resolve_config_path(root, Path::new("policy/allow.toml")).is_ok(),
+            resolve_config_path(&root, Path::new("policy/allow.toml")).is_ok(),
             "in-root config should resolve",
         )?;
         require(
-            resolve_config_path(root, Path::new("D:\\outside.toml")).is_err(),
+            resolve_config_path(
+                &root,
+                &root
+                    .parent()
+                    .ok_or_else(|| "temporary root should have a parent".to_string())?
+                    .join("outside.toml"),
+            )
+            .is_err(),
             "outside config should fail",
         )
     }
