@@ -59,6 +59,20 @@ fn adopt_supports_clean_no_git_repositories_and_human_json_parity() -> Result<()
         "JSON should keep the root portable",
     )?;
 
+    let strict = run_adopt(&root, &["--format", "json", "--strict"])?;
+    require(
+        strict.status.success(),
+        "strict clean adoption should succeed",
+    )?;
+    let strict_artifact = parse_stdout(&strict)?;
+    require(
+        strict_artifact
+            .pointer("/plan/primary_action/kind")
+            .and_then(Value::as_str)
+            == Some("PreviewInit"),
+        "strict clean adoption should preview init",
+    )?;
+
     let output_name = format!("adoption-plan-{}.json", std::process::id());
     let written = run_adopt(
         &root,
@@ -77,10 +91,10 @@ fn adopt_supports_clean_no_git_repositories_and_human_json_parity() -> Result<()
         fs::read_to_string(root.join(&output_name)).map_err(|error| error.to_string())?;
     serde_json::from_str::<Value>(&written_contents)
         .map_err(|error| format!("JSON output file should parse: {error}"))?;
-    let accidental_workspace_output = PathBuf::from(&output_name);
-    if accidental_workspace_output.is_file() {
-        fs::remove_file(&accidental_workspace_output).map_err(|error| error.to_string())?;
-    }
+    require(
+        !PathBuf::from(&output_name).is_file(),
+        "relative output must not resolve in the caller's working directory",
+    )?;
 
     remove_temp_root(root)?;
     Ok(())
@@ -156,6 +170,7 @@ fn adopt_fails_closed_for_invalid_policy_and_preserves_collision_targets() -> Re
         !invalid.status.success(),
         "invalid policy should fail closed",
     )?;
+    require_exit_code(&invalid, 1, "invalid policy")?;
     let invalid_artifact = parse_stdout(&invalid)?;
     require(
         invalid_artifact
@@ -164,6 +179,24 @@ fn adopt_fails_closed_for_invalid_policy_and_preserves_collision_targets() -> Re
             == Some("InvalidPolicy"),
         "invalid policy disposition",
     )?;
+    let outside_config = invalid_root
+        .parent()
+        .ok_or_else(|| "invalid fixture should have a parent".to_string())?
+        .join("outside-policy.toml");
+    let invalid_config = run_adopt(
+        &invalid_root,
+        &[
+            "--format",
+            "json",
+            "--config",
+            outside_config.to_string_lossy().as_ref(),
+        ],
+    )?;
+    require(
+        !invalid_config.status.success(),
+        "config outside the selected root should fail",
+    )?;
+    require_exit_code(&invalid_config, 2, "config outside root")?;
     remove_temp_root(invalid_root)?;
 
     let collision_root = temp_root("adoption-output-collision")?;
@@ -192,11 +225,32 @@ fn adopt_fails_closed_for_invalid_policy_and_preserves_collision_targets() -> Re
         !collision.status.success(),
         "tracked output collision should fail",
     )?;
+    require_exit_code(&collision, 2, "tracked output collision")?;
     let contents =
         fs::read_to_string(collision_root.join("README.md")).map_err(|error| error.to_string())?;
     require(
         contents == "preserve me\n",
         "tracked output collision must preserve bytes",
+    )?;
+
+    fs::create_dir_all(collision_root.join("policy")).map_err(|error| error.to_string())?;
+    fs::write(collision_root.join("policy/allow.toml"), "").map_err(|error| error.to_string())?;
+    let policy_contents = fs::read_to_string(collision_root.join("policy/allow.toml"))
+        .map_err(|error| error.to_string())?;
+    let policy_collision = run_adopt(
+        &collision_root,
+        &["--format", "json", "--output", "policy/allow.toml"],
+    )?;
+    require(
+        !policy_collision.status.success(),
+        "repository metadata output collision should fail",
+    )?;
+    require_exit_code(&policy_collision, 2, "repository metadata collision")?;
+    require(
+        fs::read_to_string(collision_root.join("policy/allow.toml"))
+            .map_err(|error| error.to_string())?
+            == policy_contents,
+        "output collision must preserve existing bytes",
     )?;
     remove_temp_root(collision_root)?;
     Ok(())
@@ -265,4 +319,14 @@ fn git(root: &Path, args: &[&str]) -> Result<(), String> {
 
 fn require(condition: bool, message: &str) -> Result<(), String> {
     condition.then_some(()).ok_or_else(|| message.to_string())
+}
+
+fn require_exit_code(output: &Output, expected: i32, label: &str) -> Result<(), String> {
+    require(
+        output.status.code() == Some(expected),
+        &format!(
+            "{label} should exit {expected}, got {:?}",
+            output.status.code()
+        ),
+    )
 }

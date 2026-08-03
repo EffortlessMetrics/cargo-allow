@@ -76,7 +76,14 @@ pub(crate) fn cmd_adopt(args: &AdoptionArgs) -> CargoAllowResult<()> {
         )
     })?;
     let rendered = match args.format {
-        HumanJsonFormat::Human => render_human(&artifact.plan),
+        HumanJsonFormat::Human => {
+            let style = if output.is_none() {
+                crate::reporting::output_style()
+            } else {
+                allow_report::Style::PLAIN
+            };
+            render_human(&artifact.plan, style)
+        }
         HumanJsonFormat::Json => json,
     };
     emit_text(output.as_deref(), &rendered)?;
@@ -168,11 +175,13 @@ struct Inspection {
 
 fn inspect(args: &AdoptionArgs) -> CargoAllowResult<Inspection> {
     let root = resolve_root(&args.root)?;
-    let discovery = discover_config_path(&root, args.config.as_deref());
-    let policy_path = args
+    let explicit_config = args
         .config
         .as_deref()
-        .map(|config| root.join(config))
+        .map(|config| resolve_config_path(&root, config))
+        .transpose()?;
+    let discovery = discover_config_path(&root, explicit_config.as_deref());
+    let policy_path = explicit_config
         .or_else(|| discovery.path.clone())
         .or_else(|| {
             allow_policy::DISCOVERY_REL_PATHS
@@ -469,7 +478,6 @@ fn adoption_facts(inputs: AdoptionFactInputs<'_>) -> CargoAllowResult<allow_repo
     } else {
         (0, 0, 0, 0, 0, 0, 0, 0, false)
     };
-    let mut limitations = std::mem::take(&mut limitations);
     if instrument_failure.is_some() {
         limitations.push("instrumentation failed; the recommendation is fail-closed".into());
     }
@@ -634,7 +642,16 @@ fn validate_output_path(root: &Path, output: &Path, policy: Option<&Path>) -> Ca
             "--output may not overwrite the selected policy config",
         ));
     }
-    let tracked = allow_inventory::git_ls_files(root).unwrap_or_default();
+    let tracked = match allow_inventory::git_ls_files(root) {
+        Ok(files) => files,
+        Err(error) if is_missing_git_metadata(&error.to_string()) => Vec::new(),
+        Err(error) => {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Inventory,
+                format!("cannot verify tracked output collision: {error}"),
+            ));
+        }
+    };
     let relative = output_absolute
         .strip_prefix(root)
         .map(normalize_path)
@@ -657,12 +674,37 @@ fn resolve_output_path(root: &Path, output: &Path) -> PathBuf {
 }
 
 fn same_path(left: &Path, right: &Path) -> bool {
-    left == right
-        || left
-            .canonicalize()
-            .ok()
-            .zip(right.canonicalize().ok())
-            .is_some_and(|(left, right)| left == right)
+    comparable_path(left) == comparable_path(right)
+}
+
+fn comparable_path(path: &Path) -> PathBuf {
+    if let Ok(path) = path.canonicalize() {
+        return path;
+    }
+    let Some(file_name) = path.file_name() else {
+        return path.to_path_buf();
+    };
+    path.parent()
+        .and_then(|parent| parent.canonicalize().ok())
+        .map(|parent| parent.join(file_name))
+        .unwrap_or_else(|| path.to_path_buf())
+}
+
+fn is_missing_git_metadata(diagnostic: &str) -> bool {
+    let diagnostic = diagnostic.to_ascii_lowercase();
+    diagnostic.contains("not a git repository") || diagnostic.contains("not a git repo")
+}
+
+fn resolve_config_path(root: &Path, config: &Path) -> CargoAllowResult<PathBuf> {
+    let path = if config.is_absolute() {
+        config.to_path_buf()
+    } else {
+        root.join(config)
+    };
+    crate::assert_path_within_root(root, &path).map_err(|error| {
+        CargoAllowError::with_kind(CargoAllowErrorKind::Usage, error.to_string())
+    })?;
+    Ok(path)
 }
 
 fn sanitize_diagnostic(root: &Path, diagnostic: &str) -> String {
@@ -693,7 +735,7 @@ fn disposition_text(disposition: allow_report::BootstrapDisposition) -> &'static
     }
 }
 
-fn render_human(plan: &allow_report::CoreAdoptionPlanV1) -> String {
+fn render_human(plan: &allow_report::CoreAdoptionPlanV1, style: allow_report::Style) -> String {
     let primary = &plan.primary_action;
     let run = primary.argv.join(" ");
     let writes = if plan.may_write_paths.is_empty() {
@@ -709,16 +751,27 @@ fn render_human(plan: &allow_report::CoreAdoptionPlanV1) -> String {
     let ci = if plan.policy.state == allow_report::PolicyState::Valid
         && plan.primary_action.kind == allow_report::AdoptionActionKind::RunNoNewCheck
     {
-        "ready"
+        format!("ready ({})", plan.ci_example_path)
     } else {
-        "see docs/how-to/adopt-cargo-allow.md#step-3-ci-integration"
+        plan.ci_example_path.clone()
     };
     format!(
-        "Repository state: {}\nRecommended next step: {}\nRun: {run}\nWrites: {writes}\nWhy: {}\nThen: {then}\nCI: {ci}\nRollback: current operation changed nothing\nSchema: {}\nClaim boundary: {}",
+        "{} {}\n{} {}\n{} {run}\n{} {writes}\n{} {}\n{} {then}\n{} {ci}\n{} {}\n{} {}\n{} {}",
+        style.strong("Repository state:"),
         disposition_text(plan.bootstrap_disposition),
+        style.strong("Recommended next step:"),
         primary.kind.as_str(),
+        style.strong("Run:"),
+        style.strong("Writes:"),
+        style.strong("Why:"),
         primary.reason,
+        style.strong("Then:"),
+        style.strong("CI:"),
+        style.strong("Rollback:"),
+        plan.rollback_guide_path,
+        style.strong("Schema:"),
         plan.schema_id,
+        style.strong("Claim boundary:"),
         plan.claim_boundary,
     )
 }
