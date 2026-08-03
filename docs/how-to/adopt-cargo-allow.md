@@ -64,13 +64,13 @@ cargo-allow hooks plan --stage pre-commit
 cargo-allow hooks plan --stage pre-push --format json
 ```
 
-The plan is read-only and reports the exact `cargo-allow check --mode no-new`
-argv, the `tracked_worktree` subject, and the current ambient-PATH binary
-resolution. It is a worktree advisory: it does not prove exact staged-index or
-pushed-tree bytes, install or overwrite a hook, write a receipt, contact the
-network, or mutate policy. CI remains the enforcing merge backstop. Safe
-installation, rollback, and exact-index enforcement are separate capabilities
-and are not implied by this preview.
+The default plan is read-only and reports the exact `cargo-allow check
+--mode no-new` argv, the `tracked_worktree` subject, and the current
+ambient-PATH binary resolution. It is a worktree advisory: it does not prove
+exact staged-index or pushed-tree bytes, install or overwrite a hook, write a
+receipt, contact the network, or mutate policy. CI remains the enforcing merge
+backstop. Safe installation, rollback, and exact-index enforcement are separate
+capabilities and are not implied by this preview.
 
 When evaluating a direct hook's binary choice, verify an explicitly selected
 executable rather than relying on ambient PATH. The verifier invokes only the
@@ -88,11 +88,8 @@ cargo-allow hooks verify \
   --format human
 ```
 
-`hooks verify` is an offline preflight report. It does not install a binary,
-rewrite an existing plan, or make the generated worktree-advisory hook perform
-runtime digest verification; that wrapper integration remains a separate
-follow-up. The closed runtime seam can be exercised explicitly while that
-integration is pending:
+`hooks verify` is an offline preflight report. It does not install a binary or
+rewrite an existing plan. The closed runtime seam can be exercised explicitly:
 
 ```bash
 cargo-allow hooks run \
@@ -106,6 +103,28 @@ cargo-allow hooks run \
 absolute executable path, verifies the selected tool before launch and after
 exit, and inherits the check's output and failure posture. It does not invoke a
 shell or mutate the policy ledger.
+
+To install a generated hook that uses this verified runtime, pass the same
+explicit binary and digest to `hooks plan`. Planning verifies the selected
+binary's identity and capability generations, then records the exact runtime
+argv in the plan identity:
+
+```bash
+cargo-allow hooks plan --stage pre-commit --format json \
+  --binary /absolute/path/to/cargo-allow \
+  --digest sha256:v1:<digest-from-tool-identity> \
+  --mode installed-pinned \
+  --output target/cargo-allow/pre-commit-verified-hook-plan.json
+cargo-allow hooks apply \
+  --plan target/cargo-allow/pre-commit-verified-hook-plan.json \
+  --accept
+```
+
+The resulting managed block invokes `hooks run` with the selected absolute
+binary, digest, and closed `check --mode no-new` command. The wrapper verifies
+the binary before launch and after exit. This still observes tracked worktree
+bytes rather than the exact staged index; CI remains the authoritative merge
+backstop.
 
 For a repository that deliberately uses a direct Git hook, the checked JSON
 plan can be inspected and applied with an explicit acceptance step:
@@ -123,9 +142,10 @@ selected hook only when it is absent. It never overwrites an existing hook:
 unmanaged or mismatched managed content is reported as `ManualMerge` or
 `Conflict`; a single exact cargo-allow block inside otherwise unrelated hook
 content is reported as `Composed` and is left unchanged. These dispositions
-are recorded in the apply receipt. The generated wrapper invokes
-the exact offline `cargo-allow check --mode no-new` command over the tracked
-worktree; it does not claim exact staged-index evidence or install a binary.
+are recorded in the apply receipt. The generated wrapper invokes either the
+ambient exact offline `cargo-allow check --mode no-new` command or, for a
+verified plan, the selected `hooks run` runtime over the tracked worktree; it
+does not claim exact staged-index evidence or install a binary.
 To remove a recognized managed hook or block, retain its matching apply receipt and run:
 
 ```bash

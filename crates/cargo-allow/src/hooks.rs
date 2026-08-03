@@ -58,6 +58,18 @@ pub(crate) struct HookPlanArgs {
     /// Write the plan to a file instead of stdout.
     #[arg(long)]
     pub(crate) output: Option<PathBuf>,
+    /// Explicit executable for a runtime-verified hook plan. PATH lookup is never performed.
+    #[arg(long)]
+    pub(crate) binary: Option<PathBuf>,
+    /// Expected immutable executable digest for a runtime-verified hook plan.
+    #[arg(long)]
+    pub(crate) digest: Option<String>,
+    /// Selection policy for a runtime-verified hook plan.
+    #[arg(long, value_enum, default_value_t = ToolSelectionMode::InstalledPinned)]
+    pub(crate) mode: ToolSelectionMode,
+    /// Expected build/source commit for a runtime-verified hook plan.
+    #[arg(long)]
+    pub(crate) expected_build_source_commit: Option<String>,
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -180,30 +192,90 @@ struct LocalHookPlanV1 {
     claim_boundary: String,
     installation: String,
     #[serde(default)]
+    verified_runtime: Option<HookRuntimeV1>,
+    #[serde(default)]
     plan_identity: String,
 }
 
+#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+struct HookRuntimeV1 {
+    binary: String,
+    digest: String,
+    mode: ToolSelectionMode,
+    expected_build_source_commit: Option<String>,
+}
+
 fn build_plan(stage: HookStage) -> LocalHookPlanV1 {
+    build_plan_with_runtime(stage, None)
+}
+
+fn build_plan_with_runtime(
+    stage: HookStage,
+    verified_runtime: Option<HookRuntimeV1>,
+) -> LocalHookPlanV1 {
+    let (argv, binary_resolution, claim_boundary) = match verified_runtime.as_ref() {
+        Some(runtime) => (
+            runtime_argv(runtime),
+            "explicit_verified_executable".to_string(),
+            "Advisory no-new feedback over tracked worktree bytes through a runtime-verified executable; not exact staged-index or pushed-tree evidence.".to_string(),
+        ),
+        None => (
+            COMMAND.iter().map(|value| (*value).to_string()).collect(),
+            "ambient_path_installed_cargo_allow".to_string(),
+            "Advisory no-new feedback over tracked worktree bytes; not exact staged-index or pushed-tree evidence.".to_string(),
+        ),
+    };
     let mut plan = LocalHookPlanV1 {
         schema: PLAN_SCHEMA.to_string(),
         stage: stage.as_str().to_string(),
         framework: "pre-commit".to_string(),
         source_subject: "tracked_worktree".to_string(),
-        argv: COMMAND.iter().map(|value| (*value).to_string()).collect(),
+        argv,
         pass_filenames: false,
         always_run: true,
-        binary_resolution: "ambient_path_installed_cargo_allow".to_string(),
+        binary_resolution,
         network_access: false,
         repository_mutation: false,
         ci_backstop: "CI remains the authoritative merge backstop; --no-verify is not approval."
             .to_string(),
-        claim_boundary: "Advisory no-new feedback over tracked worktree bytes; not exact staged-index or pushed-tree evidence."
-            .to_string(),
+        claim_boundary,
         installation: "preview_only_no_files_written_no_existing_hook_overwritten".to_string(),
+        verified_runtime,
         plan_identity: String::new(),
     };
     plan.plan_identity = plan_identity(&plan);
     plan
+}
+
+fn runtime_argv(runtime: &HookRuntimeV1) -> Vec<String> {
+    let mut argv = vec![
+        runtime.binary.clone(),
+        "hooks".to_string(),
+        "run".to_string(),
+        "--binary".to_string(),
+        runtime.binary.clone(),
+        "--digest".to_string(),
+        runtime.digest.clone(),
+        "--mode".to_string(),
+        selection_mode_arg(runtime.mode).to_string(),
+    ];
+    if let Some(commit) = &runtime.expected_build_source_commit {
+        argv.extend(["--expected-build-source-commit".to_string(), commit.clone()]);
+    }
+    argv.extend([
+        "--".to_string(),
+        "check".to_string(),
+        "--mode".to_string(),
+        "no-new".to_string(),
+    ]);
+    argv
+}
+
+fn selection_mode_arg(mode: ToolSelectionMode) -> &'static str {
+    match mode {
+        ToolSelectionMode::InstalledPinned => "installed-pinned",
+        ToolSelectionMode::ExplicitToolUnderTest => "explicit-tool-under-test",
+    }
 }
 
 fn plan_identity(plan: &LocalHookPlanV1) -> String {
@@ -229,7 +301,11 @@ fn plan_identity(plan: &LocalHookPlanV1) -> String {
 pub(crate) fn cmd_hooks(args: &HooksArgs) -> CargoAllowResult<()> {
     match &args.command {
         HooksCommand::Plan(plan_args) => {
-            let plan = build_plan(plan_args.stage);
+            let verified_runtime = plan_runtime(plan_args)?;
+            if let Some(runtime) = &verified_runtime {
+                verify_plan_runtime(runtime)?;
+            }
+            let plan = build_plan_with_runtime(plan_args.stage, verified_runtime);
             let rendered = match plan_args.format {
                 HookPlanFormat::Human => render_human(&plan),
                 HookPlanFormat::Json => serde_json::to_string_pretty(&plan).map_err(|error| {
@@ -244,6 +320,57 @@ pub(crate) fn cmd_hooks(args: &HooksArgs) -> CargoAllowResult<()> {
         HooksCommand::Verify(verify_args) => cmd_verify(verify_args),
         HooksCommand::Run(run_args) => cmd_run(run_args),
     }
+}
+
+fn plan_runtime(args: &HookPlanArgs) -> CargoAllowResult<Option<HookRuntimeV1>> {
+    match (&args.binary, &args.digest) {
+        (None, None) if args.expected_build_source_commit.is_none() => Ok(None),
+        (Some(binary), Some(digest)) => {
+            if !binary.is_absolute() {
+                return Err(CargoAllowError::new(
+                    "runtime-verified hook plans require an absolute --binary path; PATH lookup is not allowed",
+                ));
+            }
+            if digest.trim().is_empty() {
+                return Err(CargoAllowError::new(
+                    "runtime-verified hook plans require a non-empty --digest",
+                ));
+            }
+            Ok(Some(HookRuntimeV1 {
+                binary: binary.display().to_string(),
+                digest: digest.clone(),
+                mode: args.mode,
+                expected_build_source_commit: args.expected_build_source_commit.clone(),
+            }))
+        }
+        (Some(_), None) => Err(CargoAllowError::new(
+            "runtime-verified hook plans require --digest when --binary is supplied",
+        )),
+        (None, Some(_)) => Err(CargoAllowError::new(
+            "runtime-verified hook plans require --binary when --digest is supplied",
+        )),
+        (None, None) => Err(CargoAllowError::new(
+            "runtime-verified hook plans require --binary and --digest when --expected-build-source-commit is supplied",
+        )),
+    }
+}
+
+fn verify_plan_runtime(runtime: &HookRuntimeV1) -> CargoAllowResult<()> {
+    let binary = Path::new(&runtime.binary);
+    let identity = read_selected_tool_identity(binary)?;
+    let request = selection_request(
+        binary,
+        &runtime.digest,
+        runtime.mode,
+        runtime.expected_build_source_commit.clone(),
+    );
+    select_tool(&request, identity, &ToolCompatibilityRequirement::current())
+        .map(|_| ())
+        .map_err(|failure| {
+            CargoAllowError::new(format!(
+                "selected cargo-allow executable was not accepted for the hook plan: {failure}"
+            ))
+        })
 }
 
 const HOOK_BINARY_VERIFICATION_SCHEMA: &str = "cargo-allow.local-hook-binary-verification.v1";
@@ -837,7 +964,20 @@ fn validate_plan(plan: &LocalHookPlanV1) -> CargoAllowResult<()> {
         ));
     }
     let stage = stage_from_str(&plan.stage)?;
-    if *plan != build_plan(stage) {
+    match &plan.verified_runtime {
+        Some(runtime)
+            if !Path::new(&runtime.binary).is_absolute()
+                || runtime.digest.trim().is_empty()
+                || plan.argv != runtime_argv(runtime)
+                || plan.binary_resolution != "explicit_verified_executable" =>
+        {
+            return Err(CargoAllowError::new(
+                "runtime-verified hook plan does not match its declared executable contract",
+            ));
+        }
+        _ => {}
+    }
+    if *plan != build_plan_with_runtime(stage, plan.verified_runtime.clone()) {
         return Err(CargoAllowError::new(
             "hook plan is stale or outside the supported offline tracked-worktree contract; regenerate it from this cargo-allow binary",
         ));
@@ -1149,6 +1289,10 @@ mod tests {
                 stage,
                 format,
                 output: Some(path.clone()),
+                binary: None,
+                digest: None,
+                mode: ToolSelectionMode::InstalledPinned,
+                expected_build_source_commit: None,
             }),
         };
         let result = cmd_hooks(&args).map_err(|error| error.to_string());
@@ -1483,6 +1627,130 @@ mod tests {
             .insert("unexpected".to_string(), serde_json::json!(true));
         if serde_json::from_value::<LocalHookPlanV1>(value).is_ok() {
             return Err("plan parser accepted an unknown field".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn ambient_v1_plan_without_runtime_field_remains_compatible() -> Result<(), String> {
+        let plan = build_plan(HookStage::PreCommit);
+        let mut value = serde_json::to_value(plan).map_err(|error| error.to_string())?;
+        value
+            .as_object_mut()
+            .ok_or_else(|| "serialized plan was not an object".to_string())?
+            .remove("verified_runtime");
+        let old_plan: LocalHookPlanV1 =
+            serde_json::from_value(value).map_err(|error| error.to_string())?;
+        validate_plan(&old_plan).map_err(|error| error.to_string())
+    }
+
+    #[test]
+    fn runtime_plan_arguments_fail_closed_and_preserve_optional_commit() -> Result<(), String> {
+        let mut args = HookPlanArgs {
+            stage: HookStage::PreCommit,
+            format: HookPlanFormat::Json,
+            output: None,
+            binary: None,
+            digest: None,
+            mode: ToolSelectionMode::ExplicitToolUnderTest,
+            expected_build_source_commit: None,
+        };
+        if plan_runtime(&args)
+            .map_err(|error| error.to_string())?
+            .is_some()
+        {
+            return Err("ambient plan unexpectedly selected a verified runtime".to_string());
+        }
+
+        args.binary = Some(PathBuf::from("cargo-allow"));
+        args.digest = Some("sha256:v1:test".to_string());
+        if !plan_runtime(&args)
+            .err()
+            .is_some_and(|error| error.to_string().contains("absolute"))
+        {
+            return Err("relative runtime binary was accepted".to_string());
+        }
+
+        args.binary = Some(
+            std::env::current_dir()
+                .map_err(|error| error.to_string())?
+                .join(format!("cargo-allow{}", std::env::consts::EXE_SUFFIX)),
+        );
+        args.digest = None;
+        if !plan_runtime(&args)
+            .err()
+            .is_some_and(|error| error.to_string().contains("--digest"))
+        {
+            return Err("runtime plan without a digest was accepted".to_string());
+        }
+
+        args.binary = None;
+        args.digest = Some("sha256:v1:test".to_string());
+        if !plan_runtime(&args)
+            .err()
+            .is_some_and(|error| error.to_string().contains("--binary"))
+        {
+            return Err("runtime plan without a binary was accepted".to_string());
+        }
+
+        args.binary = None;
+        args.digest = None;
+        args.expected_build_source_commit = Some("source-commit".to_string());
+        if !plan_runtime(&args)
+            .err()
+            .is_some_and(|error| error.to_string().contains("--binary and --digest"))
+        {
+            return Err("commit-only runtime plan was accepted".to_string());
+        }
+
+        args.binary = Some(
+            std::env::current_dir()
+                .map_err(|error| error.to_string())?
+                .join(format!("cargo-allow{}", std::env::consts::EXE_SUFFIX)),
+        );
+        args.digest = Some(" ".to_string());
+        if !plan_runtime(&args)
+            .err()
+            .is_some_and(|error| error.to_string().contains("non-empty"))
+        {
+            return Err("empty runtime digest was accepted".to_string());
+        }
+
+        args.digest = Some("sha256:v1:test".to_string());
+        let runtime = plan_runtime(&args)
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "valid runtime plan was not selected".to_string())?;
+        let argv = runtime_argv(&runtime);
+        if !argv.windows(2).any(|pair| {
+            pair == [
+                "--expected-build-source-commit".to_string(),
+                "source-commit".to_string(),
+            ]
+        }) {
+            return Err("runtime argv omitted the expected source commit".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn runtime_plan_validation_rejects_mismatched_argv() -> Result<(), String> {
+        let binary = std::env::current_dir()
+            .map_err(|error| error.to_string())?
+            .join(format!("cargo-allow{}", std::env::consts::EXE_SUFFIX));
+        let runtime = HookRuntimeV1 {
+            binary: binary.display().to_string(),
+            digest: "sha256:v1:test".to_string(),
+            mode: ToolSelectionMode::ExplicitToolUnderTest,
+            expected_build_source_commit: None,
+        };
+        let mut plan = build_plan_with_runtime(HookStage::PreCommit, Some(runtime));
+        plan.argv.push("unexpected".to_string());
+        plan.plan_identity = plan_identity(&plan);
+        if !validate_plan(&plan)
+            .err()
+            .is_some_and(|error| error.to_string().contains("executable contract"))
+        {
+            return Err("mismatched runtime argv was accepted".to_string());
         }
         Ok(())
     }
