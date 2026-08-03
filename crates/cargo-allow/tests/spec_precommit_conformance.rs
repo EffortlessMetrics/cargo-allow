@@ -208,6 +208,14 @@ fn source_exception_staged_check_reads_index_bytes_and_binds_identity() -> Resul
             "audit",
             "--format",
             "json",
+            "--output",
+            report_path
+                .to_str()
+                .ok_or_else(|| "non-UTF-8 report path".to_string())?,
+            "--receipt",
+            receipt_path
+                .to_str()
+                .ok_or_else(|| "non-UTF-8 receipt path".to_string())?,
             "--expect-staged-identity",
             "not-the-staged-identity",
         ])
@@ -220,6 +228,83 @@ fn source_exception_staged_check_reads_index_bytes_and_binds_identity() -> Resul
         return Err(format!(
             "unexpected staged identity diagnostic: {}",
             String::from_utf8_lossy(&mismatch.stderr)
+        ));
+    }
+    if report_path.exists() {
+        return Err("staged failure left a stale report output".to_string());
+    }
+    if !fs::read_to_string(&receipt_path)
+        .map_err(|error| error.to_string())?
+        .contains("staged identity did not match")
+    {
+        return Err("staged failure did not write an error receipt".to_string());
+    }
+
+    let unsupported_tool = Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+        .args([
+            "check",
+            "--root",
+            repo.root
+                .to_str()
+                .ok_or_else(|| "non-UTF-8 fixture root".to_string())?,
+            "--config",
+            "policy/allow.toml",
+            "--staged",
+            "--phase",
+            "precommit",
+            "--tool-digest",
+            "digest",
+        ])
+        .output()
+        .map_err(|error| error.to_string())?;
+    if unsupported_tool.status.success()
+        || !String::from_utf8_lossy(&unsupported_tool.stderr)
+            .contains("does not support self-hosted tool selection")
+    {
+        return Err("staged source checks should reject self-hosted tool selection".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn staged_no_new_fails_closed_for_product_move_ledger() -> Result<(), String> {
+    let repo = FixtureRepo::new("product-move-boundary")?;
+    repo.write(
+        "policy/allow.toml",
+        "schema_version = 1\n\n[workspace]\nignored = []\ngenerated = []\n",
+    )?;
+    repo.write(
+        "policy/product-move-ledger.toml",
+        "staged product move ledger fixture\n",
+    )?;
+    repo.write("candidate.rs", "fn candidate() {}\n")?;
+    repo.git(&["add", "--all"])?;
+    repo.git(&["commit", "-qm", "product move base"])?;
+
+    let command = Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+        .args([
+            "check",
+            "--root",
+            repo.root
+                .to_str()
+                .ok_or_else(|| "non-UTF-8 fixture root".to_string())?,
+            "--config",
+            "policy/allow.toml",
+            "--staged",
+            "--phase",
+            "precommit",
+            "--mode",
+            "no-new",
+        ])
+        .output()
+        .map_err(|error| error.to_string())?;
+    if command.status.success() {
+        return Err("staged no-new should fail closed for product-move enforcement".to_string());
+    }
+    if !String::from_utf8_lossy(&command.stderr).contains("product-move ledger enforcement") {
+        return Err(format!(
+            "unexpected product-move boundary diagnostic: {}",
+            String::from_utf8_lossy(&command.stderr)
         ));
     }
     Ok(())

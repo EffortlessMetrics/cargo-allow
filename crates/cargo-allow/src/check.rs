@@ -62,7 +62,24 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
                 "--staged source-exception evaluation cannot include untracked files",
             ));
         }
-        return cmd_check_staged_source_tree(args);
+        if args.tool_mode.is_some() || args.tool_digest.is_some() || args.preview_authorized {
+            return Err(CargoAllowError::with_kind(
+                allow_core::CargoAllowErrorKind::Usage,
+                "--staged source-exception evaluation does not support self-hosted tool selection",
+            ));
+        }
+        return match cmd_check_staged_source_tree(args) {
+            Ok(()) => Ok(()),
+            Err(err) => {
+                if let Some(path) = &args.receipt {
+                    write_check_error_receipt(path, args, &err)?;
+                }
+                if let Some(output) = &args.output {
+                    let _ = std::fs::remove_file(output);
+                }
+                Err(err)
+            }
+        };
     }
     if matches!(args.profile, Some(ProfileArg::SpecSystem)) {
         reject_source_exception_options(
@@ -289,6 +306,12 @@ fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
             .as_deref()
             .unwrap_or(report_cfg.workspace.default_mode.as_str()),
     );
+    if staged.product_move_ledger_present && matches!(mode, CheckMode::NoNew | CheckMode::Strict) {
+        return Err(CargoAllowError::with_kind(
+            allow_core::CargoAllowErrorKind::Unsupported,
+            "exact staged source-exception evaluation does not yet support product-move ledger enforcement in no-new or strict mode; use audit mode or the tracked-worktree check",
+        ));
+    }
     let outcomes = evaluate(&report_cfg, &staged.findings, mode);
     let projected_outcomes = allow_report::ledger_project_outcomes(
         &report_cfg,

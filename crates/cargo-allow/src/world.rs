@@ -43,6 +43,7 @@ pub(crate) struct StagedWorld {
     pub(crate) federation: FederationEvaluation,
     pub(crate) source_identity: String,
     pub(crate) evidence_source_tree_files: BTreeSet<String>,
+    pub(crate) product_move_ledger_present: bool,
 }
 
 /// Evaluate source-exception findings against one exact Git-index candidate.
@@ -58,8 +59,9 @@ pub(crate) fn load_staged_world(
 ) -> CargoAllowResult<StagedWorld> {
     let cwd = current_dir()?;
     let root = resolve_source_tree_root(explicit_root, cwd)?;
-    let (policy_path, federation) = evaluate_source_exception_policy(&root, config)?;
     let snapshot = staged_repository_snapshot(&root)?;
+    let (policy_path, federation) = evaluate_source_exception_policy(&root, config)?;
+    reject_unsupported_staged_federation(&snapshot, &federation)?;
     let policy_relative = normalize_to_repo_relative(&root, &policy_path);
     let policy_text = read_staged_text(&snapshot, &policy_relative).map_err(|error| {
         CargoAllowError::new(format!(
@@ -82,6 +84,8 @@ pub(crate) fn load_staged_world(
         .iter()
         .map(normalize_path)
         .collect::<BTreeSet<_>>();
+    let product_move_ledger_present = evidence_source_tree_files
+        .contains(allow_policy::product_move::PRODUCT_MOVE_LEDGER_RELATIVE_PATH);
     let (manifests, sources) = staged_rust_inputs(&snapshot, &inventory)?;
     let packages = allow_rust::source_package_contexts_from_sources(manifests);
     let mut findings = Vec::new();
@@ -133,6 +137,7 @@ pub(crate) fn load_staged_world(
         federation,
         source_identity,
         evidence_source_tree_files,
+        product_move_ledger_present,
     })
 }
 
@@ -141,20 +146,14 @@ fn staged_inventory(snapshot: &StagedRepositorySnapshot, options: &InventoryOpti
         .entries
         .iter()
         .filter(|entry| entry.stage == 0)
+        .filter(|entry| {
+            matches!(
+                entry.kind,
+                StagedEntryKind::RegularFile | StagedEntryKind::ExecutableFile
+            )
+        })
         .filter_map(|entry| entry.path.clone())
         .filter(|path| !source_tree_path_is_ignored(path, &options.ignored))
-        .filter(|path| {
-            snapshot
-                .entries
-                .iter()
-                .find(|entry| entry.stage == 0 && entry.path.as_ref() == Some(path))
-                .is_some_and(|entry| {
-                    matches!(
-                        entry.kind,
-                        StagedEntryKind::RegularFile | StagedEntryKind::ExecutableFile
-                    )
-                })
-        })
         .collect::<Vec<_>>();
     files.sort();
     files.dedup();
@@ -235,25 +234,53 @@ fn read_staged_text(snapshot: &StagedRepositorySnapshot, path: &Path) -> CargoAl
 }
 
 fn reject_unsupported_staged_companion_sensors(cfg: &AllowConfig) -> CargoAllowResult<()> {
-    let unsupported = cfg.allow.iter().find_map(|entry| {
-        let family = entry.family.as_deref()?;
-        let unsupported = match (entry.kind, family) {
-            (allow_core::FindingKind::GeneratedCode, "generated_code")
-            | (allow_core::FindingKind::PolicyException, "executable_file")
-            | (allow_core::FindingKind::PolicyException, "github_workflow")
-            | (allow_core::FindingKind::PolicyException, "workflow_external_action") => {
-                Some(family)
-            }
-            _ => None,
-        }?;
-        Some(unsupported)
-    });
-    if let Some(family) = unsupported {
+    let unsupported = cfg
+        .allow
+        .iter()
+        .filter(|entry| {
+            matches!(
+                entry.kind,
+                allow_core::FindingKind::GeneratedCode | allow_core::FindingKind::PolicyException
+            )
+        })
+        .map(|entry| entry.family.as_deref().unwrap_or("<unspecified>"))
+        .filter(|family| !crate::companion::staged_companion_family_supported(family))
+        .collect::<BTreeSet<_>>();
+    if !unsupported.is_empty() {
         return Err(CargoAllowError::with_kind(
             allow_core::CargoAllowErrorKind::Unsupported,
             format!(
-                "exact staged source-exception evaluation does not yet support companion family `{family}`; run the tracked-worktree check or use the staged compatibility profile"
+                "exact staged source-exception evaluation does not yet support companion families {}; run the tracked-worktree check or use the staged compatibility profile",
+                unsupported
+                    .into_iter()
+                    .map(|family| format!("`{family}`"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
             ),
+        ));
+    }
+    Ok(())
+}
+
+fn reject_unsupported_staged_federation(
+    snapshot: &StagedRepositorySnapshot,
+    federation: &FederationEvaluation,
+) -> CargoAllowResult<()> {
+    let staged_federation_metadata = snapshot.entries.iter().any(|entry| {
+        entry.stage == 0
+            && entry.path.as_deref().is_some_and(|path| {
+                path.components()
+                    .next()
+                    .is_some_and(|component| component.as_os_str() == ".allow")
+            })
+    });
+    if staged_federation_metadata
+        || !federation.ledger_contributors.is_empty()
+        || !federation.divergences.is_empty()
+    {
+        return Err(CargoAllowError::with_kind(
+            allow_core::CargoAllowErrorKind::Unsupported,
+            "exact staged source-exception evaluation does not yet support federated policy inputs; run the tracked-worktree check or stage through the federation-aware adapter",
         ));
     }
     Ok(())
@@ -789,6 +816,20 @@ mod tests {
         assert_eq!(
             partial_inventory.completeness,
             InventoryCompleteness::Partial
+        );
+        let mut federation_snapshot = snapshot.clone();
+        if let Some(entry) = federation_snapshot.entries.first_mut() {
+            entry.path = Some(PathBuf::from(".allow/config.toml"));
+        }
+        let federation_error = reject_unsupported_staged_federation(
+            &federation_snapshot,
+            &default_federation_evaluation(),
+        )
+        .err()
+        .unwrap_or_else(|| std::panic::panic_any("federation metadata should fail closed"));
+        assert_eq!(
+            federation_error.kind(),
+            allow_core::CargoAllowErrorKind::Unsupported
         );
         let missing = read_staged_text(&snapshot, Path::new("missing.rs"))
             .err()

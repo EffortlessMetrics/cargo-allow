@@ -45,19 +45,31 @@ pub(crate) fn staged_companion_findings(
     inventory_files: &[std::path::PathBuf],
 ) -> CargoAllowResult<Vec<Finding>> {
     let mut findings = Vec::new();
-    if has_allow_family(cfg, FindingKind::PolicyException, "dependency_surface") {
+    if has_staged_family(cfg, "dependency_surface") {
         findings.extend(allow_policy_legacy::dependency_surface_findings_from_paths(
             inventory_files,
             cfg,
         ));
     }
-    if has_allow_family(cfg, FindingKind::PolicyException, "process_spawn") {
+    if has_staged_family(cfg, "process_spawn") {
         findings.extend(allow_policy_legacy::process_findings_from_config(cfg));
     }
-    if has_allow_family(cfg, FindingKind::PolicyException, "network_destination") {
+    if has_staged_family(cfg, "network_destination") {
         findings.extend(allow_policy_legacy::network_findings_from_config(cfg));
     }
     Ok(findings)
+}
+
+pub(crate) const STAGED_SUPPORTED_COMPANION_FAMILIES: &[&str] =
+    &["dependency_surface", "process_spawn", "network_destination"];
+
+pub(crate) fn staged_companion_family_supported(family: &str) -> bool {
+    STAGED_SUPPORTED_COMPANION_FAMILIES.contains(&family)
+}
+
+fn has_staged_family(cfg: &AllowConfig, family: &str) -> bool {
+    staged_companion_family_supported(family)
+        && has_allow_family(cfg, FindingKind::PolicyException, family)
 }
 
 fn has_policy_family(cfg: &AllowConfig, families: &[&str]) -> bool {

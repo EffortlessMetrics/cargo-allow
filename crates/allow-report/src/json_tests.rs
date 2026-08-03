@@ -66,18 +66,22 @@ fn json_report_exposes_v1_schema_contract() {
 
 #[test]
 fn json_report_exposes_inventory_completeness() {
-    let context = ReportContext::source_syntax(
+    let completeness_context = ReportContext::source_syntax(
         "filesystem_fallback",
         Some("fixtures/source-snapshot"),
         Some(7),
         None,
     )
-    .with_inventory_completeness("fallback")
-    .with_inventory_source_identity(Some("staged-v1-test"));
-    let json = render_json_with_context("audit", &[], &[], false, context);
+    .with_inventory_completeness("fallback");
+    let json = render_json_with_context("audit", &[], &[], false, completeness_context);
 
     assert!(json.contains("\"completeness\": \"fallback\""));
-    assert!(json.contains("\"source_identity\": \"staged-v1-test\""));
+
+    let staged_context =
+        ReportContext::source_syntax("git_index_staged_candidate", None, Some(7), None)
+            .with_inventory_source_identity(Some("staged-v1-test"));
+    let staged_json = render_json_with_context("audit", &[], &[], false, staged_context);
+    assert!(staged_json.contains("\"source_identity\": \"staged-v1-test\""));
 }
 
 #[test]

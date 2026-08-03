@@ -68,8 +68,12 @@ cargo-allow check --staged --phase precommit --mode no-new --format json \
 
 This exact source-exception path currently fails closed when the policy uses
 worktree-derived companion families such as workflow extraction, executable
-bits, or `.gitattributes` generated-file metadata. It does not invoke the
-separate `spec-system`/cargo-intent compatibility profile.
+bits, or `.gitattributes` generated-file metadata. It also fails closed when
+federated `.allow` inputs are configured, or when `--mode no-new`/`strict`
+would require product-move ledger enforcement that is not yet staged-aware.
+Use the tracked-worktree check for those repositories until the corresponding
+staged adapters exist. It does not invoke the separate `spec-system`/cargo-intent
+compatibility profile or self-hosted tool-selection flags.
 
 Before adopting either checked stage, preview the machine-readable hook
 contract from the installed binary:
