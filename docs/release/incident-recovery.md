@@ -11,6 +11,15 @@ asset, and workflow identities have been independently confirmed. Nothing in
 this document yanks a crate, moves a tag, deletes an asset, or publishes a
 replacement automatically.
 
+The current `publish_recovery` workflow path is not yet safe to use for a real
+recovery. Its preflight checks that the requested tag exists, but the current
+publish step still derives the version from the checked-out workspace rather
+than binding publication to the exact recovery tag and source candidate.
+Do not invoke that path until [issue #2509](https://github.com/EffortlessMetrics/cargo-allow/issues/2509)
+has supplied and verified the exact tag, commit/tree, checkout, package, and
+publish binding. This runbook records the intended recovery law; it does not
+claim that the current workflow implements it.
+
 ## Response order
 
 Use this order for every material incident:
@@ -30,11 +39,14 @@ Use this order for every material incident:
    post-publication failure.
 5. Contain only the affected channels or assets after the decision owner has
    reviewed the evidence. Preserve the original tag, bytes, and failure record.
-6. Select a recovery version when any published byte, package, asset, or
-   registry state must change. A recovery release uses a new valid version and
-   a new exact source identity.
+6. Select a new recovery version whenever any published byte, package, asset,
+   or registry state must change. A same-tag recovery is permissible only for
+   the exact missing original crates or bytes, with the original dependency
+   graph and source identity unchanged, and only after the exact tag commit and
+   tree are checked out and the recovery workflow binding is proven. The
+   current workflow path does not yet meet that proof obligation; see #2509.
 7. Re-run the complete candidate, publication, install, manifest, checksum,
-   and provenance gates for the recovery version.
+   and provenance gates for the selected recovery identity.
 8. Notify consumers with the exact affected identities, current state,
    verification command, and rollback or recovery route.
 9. Close out the incident with links to the preserved evidence, the decision,
@@ -118,22 +130,37 @@ Candidate commands require explicit substitution and review:
 
 ```bash
 # Inspect, do not mutate, registry state.
-cargo search cargo-allow --limit 10
-cargo info cargo-allow --registry crates-io
+cargo search <crate> --limit 10
+cargo info <crate> --registry crates-io
 
-# Only after authorization and exact-version/dependency review:
-cargo yank --vers <version> cargo-allow
+# Only after authorization and exact-version/dependency review for every
+# affected crate/version:
+cargo yank --vers <version> <crate>
 gh release view v<version> --repo EffortlessMetrics/cargo-allow
 gh release edit v<version> --repo EffortlessMetrics/cargo-allow --draft
 ```
 
-The commands do not prove that all ten crates, dependents, assets, or
-consumers are safe. Record the exact output and decision separately.
+Repeat inspection and authorization for every affected crate and version. The
+commands do not prove that all crates, dependents, assets, or consumers are
+safe. Record the exact output and decision separately.
 
 ## Recovery release
 
 Use a new version whenever published bytes or registry state must change. A
-recovery release must:
+same-tag recovery is a narrow exception: it may restore only the exact missing
+original crates or bytes when the dependency graph, package/source identity,
+and every other release claim are unchanged. Any changed byte, package graph,
+asset, or release claim requires a new version.
+
+Before a same-tag recovery, prove that the workflow checks out the exact
+original tag commit and tree, packages from that checkout, and publishes only
+the explicitly missing original crates. The current `publish_recovery` path
+does not yet prove those conditions: it validates tag existence in preflight
+but its publish step can still read the workspace version. Treat same-tag
+recovery as unavailable until #2509 is fixed and its exact-candidate proof is
+reviewed.
+
+A new-version recovery release must:
 
 - freeze a reviewed source candidate with a new exact commit/tree identity;
 - preserve a link to the original incident and affected version;
@@ -148,8 +175,8 @@ recovery release must:
 
 Do not package a newer workspace version while attempting to recover an older
 tag. Do not move an existing tag to a different commit. A passing recovery run
-is a new evidence set attached to a new release identity, not a rewrite of the
-original incident.
+is a new evidence set attached to a verified release identity, not a rewrite
+of the original incident.
 
 ## Consumer notice and rollback
 
