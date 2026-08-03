@@ -32,6 +32,13 @@ exit_class = "success"
 output_id = "cargo-allow.doctor.v1"
 
 [[step]]
+id = "adoption_plan"
+channel = "candidate"
+argv_head = "adopt"
+exit_class = "success"
+output_id = "Repository state:"
+
+[[step]]
 id = "audit_clean"
 channel = "published"
 argv_head = "audit"

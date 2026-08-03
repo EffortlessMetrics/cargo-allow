@@ -1,5 +1,6 @@
 use crate::{
-    add, diff, doctor, explain, list, migrate, propose, prune, refresh, spec_system, why, worklist,
+    add, adoption, diff, doctor, explain, list, migrate, propose, prune, refresh, spec_system, why,
+    worklist,
 };
 
 pub(crate) struct ArtifactSample {
@@ -46,6 +47,22 @@ pub(crate) fn command_artifact_samples() -> Vec<ArtifactSample> {
                 "file_families",
                 "inventory",
                 "root",
+                "scanner_limitations",
+                "schema_id",
+                "schema_version",
+                "tool",
+            ],
+        },
+        ArtifactSample {
+            name: "core-adoption-plan",
+            schema_name: "core-adoption-plan",
+            json: adoption::sample_adoption_json_for_contract_test(),
+            expected_command: "adopt",
+            expected_top_level_keys: &[
+                "claim_boundary",
+                "command",
+                "inventory",
+                "plan",
                 "scanner_limitations",
                 "schema_id",
                 "schema_version",

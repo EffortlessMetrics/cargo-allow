@@ -15,6 +15,7 @@ tiers, policy ledgers, proof-command fields, release records, and closeouts.
 
 | I want to... | Start with | Then read |
 | --- | --- | --- |
+| get one bounded adoption recommendation (source candidate) | `cargo run -p cargo-allow -- adopt` | [Getting started](getting-started.md#2a-get-one-current-adoption-recommendation-source-candidate) |
 | audit source exceptions | `cargo-allow doctor` then `cargo-allow audit` | [Getting started](getting-started.md) |
 | manage one exception (Published `0.1.11`) | `cargo-allow list` / `cargo-allow explain` / `cargo-allow why` | [Manage an exception](how-to/manage-an-exception.md), [Explain why a finding](how-to/explain-why-a-finding.md) |
 | adopt no-new governance | `cargo-allow check --mode no-new` | [Adopt no-new-debt](how-to/adopt-no-new-debt.md) |
@@ -24,6 +25,13 @@ tiers, policy ledgers, proof-command fields, release records, and closeouts.
 | file adoption friction | use the adoption-friction issue template | [Cross-repo feedback loop](how-to/adopt-cargo-allow-across-repos.md#7-file-cargo-allow-issues-for-friction) and [issue template](../.github/ISSUE_TEMPLATE/cargo-allow-adoption-friction.yml) |
 
 ## Audit Source Exceptions
+
+On the current source-candidate channel, get one read-only recommendation
+before choosing a bootstrap path:
+
+```bash
+cargo run -p cargo-allow -- adopt
+```
 
 ```bash
 cargo-allow doctor

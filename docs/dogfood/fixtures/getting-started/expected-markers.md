@@ -10,6 +10,12 @@
 
 ## Live renderer
 
+### adoption plan (source candidate)
+
+- `Repository state:`
+- `Recommended next step:`
+- `Writes:`
+
 ### doctor (no policy)
 
 - `cargo-allow.doctor.v1`

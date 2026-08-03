@@ -68,6 +68,13 @@ fixture-backed expected outputs live in
 registry is
 [`published-command-registry.toml`](docs/dogfood/fixtures/getting-started/published-command-registry.toml).
 
+For the current source candidate, start an unfamiliar repository with the
+read-only guided plan before choosing `init` or `propose`:
+
+```bash
+cargo run -p cargo-allow -- adopt
+```
+
 ## The Problem
 
 Most repositories accumulate exceptions:
@@ -103,6 +110,9 @@ cargo-allow why --kind panic --path src/lib.rs --line 42  # diagnose an unreceip
 cargo-allow add --kind panic --path src/lib.rs --line 42 --update  # receipt a finding
 cargo-allow worklist --format json    # actionable work items
 ```
+
+The source-candidate-only `adopt` command projects one current next step; it
+is not part of the published `0.1.11` command surface yet.
 
 Lifecycle commands for policy maintenance:
 

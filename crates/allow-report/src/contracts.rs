@@ -199,7 +199,7 @@ pub(crate) const CORE_ADOPTION_PLAN_ARTIFACT: ArtifactContract = ArtifactContrac
     schema_id: CORE_ADOPTION_PLAN_SCHEMA_ID,
     schema_version: CORE_ADOPTION_PLAN_SCHEMA_VERSION,
     inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
-    fixed_command: None,
+    fixed_command: Some("adopt"),
 };
 
 pub const ARTIFACT_CONTRACTS: &[ArtifactContract] = &[

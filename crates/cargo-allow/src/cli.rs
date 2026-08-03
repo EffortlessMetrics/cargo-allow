@@ -4,8 +4,8 @@ use std::env;
 use std::ffi::OsStr;
 
 use crate::{
-    add, audit, capabilities, check, completions, diff, doctor, explain, hooks, init, list,
-    migrate, precommit_tool, propose, prune, reference, refresh, vocabulary, why, worklist,
+    add, adoption, audit, capabilities, check, completions, diff, doctor, explain, hooks, init,
+    list, migrate, precommit_tool, propose, prune, reference, refresh, vocabulary, why, worklist,
 };
 
 #[derive(Debug, Parser)]
@@ -22,7 +22,7 @@ pub(crate) struct CargoAllowCli {
     /// on stdout; `never` disables it. Machine formats (JSON, SARIF,
     /// receipts) and `--output` files are never styled.
     ///
-    /// Currently honored by `init`, `check`, `audit`, `list`, `explain`, `diff`,
+    /// Currently honored by `init`, `adopt`, `check`, `audit`, `list`, `explain`, `diff`,
     /// `why`, `doctor`, `propose`, `worklist`, `refresh`, `prune`, `add`,
     /// `migrate`, `tool`, and `vocabulary` human reports. Completion scripts
     /// and other machine-oriented output remain plain.
@@ -52,6 +52,8 @@ pub(crate) enum ColorChoice {
 pub(crate) enum CargoAllowCommand {
     /// Create policy/allow.toml.
     Init(init::InitArgs),
+    /// Recommend one bounded, read-only adoption step.
+    Adopt(adoption::AdoptionArgs),
     /// Inventory exceptions and policy health.
     Audit(audit::ReportArgs),
     /// CI gate for the exception ledger.
@@ -148,6 +150,7 @@ pub(crate) fn run() -> CargoAllowResult<()> {
     };
     match command {
         CargoAllowCommand::Init(args) => init::cmd_init(&args),
+        CargoAllowCommand::Adopt(args) => adoption::cmd_adopt(&args),
         CargoAllowCommand::Audit(args) => audit::cmd_audit(&args),
         CargoAllowCommand::Check(args) => check::cmd_check(&args),
         CargoAllowCommand::Capabilities(args) => capabilities::cmd_capabilities(&args),
@@ -247,6 +250,7 @@ impl CargoAllowCommand {
     /// the shim no longer steals it without a following known subcommand.
     pub(crate) const SUBCOMMANDS: &[&str] = &[
         "init",
+        "adopt",
         "audit",
         "check",
         "capabilities",

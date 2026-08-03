@@ -1,6 +1,7 @@
 use std::process;
 
 mod add;
+mod adoption;
 mod audit;
 mod capabilities;
 mod check;
