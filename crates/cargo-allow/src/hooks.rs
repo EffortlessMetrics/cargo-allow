@@ -339,21 +339,39 @@ fn cmd_run(args: &HookRunArgs) -> CargoAllowResult<()> {
                 "selected cargo-allow executable was not accepted: {failure}"
             ))
         })?;
-    verify_tool_unchanged(&args.binary, &receipt.executable_digest).map_err(|failure| {
+    run_verified_command(
+        &args.binary,
+        &args.command,
+        &receipt.executable_digest,
+        verify_hook_binary,
+        execute_hook_command,
+    )
+}
+
+#[cfg_attr(test, inline(never))]
+fn run_verified_command<Verify, Execute>(
+    binary: &Path,
+    command: &[String],
+    digest: &str,
+    mut verify: Verify,
+    execute: Execute,
+) -> CargoAllowResult<()>
+where
+    Verify: FnMut(&Path, &str) -> CargoAllowResult<()>,
+    Execute: FnOnce(&Path, &[String]) -> CargoAllowResult<std::process::ExitStatus>,
+{
+    verify(binary, digest).map_err(|failure| {
         CargoAllowError::new(format!(
             "verified cargo-allow executable changed before hook run: {failure}"
         ))
     })?;
-    let status = Command::new(&args.binary)
-        .args(&args.command)
-        .status()
-        .map_err(|error| {
-            CargoAllowError::new(format!(
-                "failed to execute verified cargo-allow executable `{}`: {error}",
-                args.binary.display()
-            ))
-        })?;
-    verify_tool_unchanged(&args.binary, &receipt.executable_digest).map_err(|failure| {
+    let status = execute(binary, command).map_err(|error| {
+        CargoAllowError::new(format!(
+            "failed to execute verified cargo-allow executable `{}`: {error}",
+            binary.display()
+        ))
+    })?;
+    verify(binary, digest).map_err(|failure| {
         CargoAllowError::new(format!(
             "verified cargo-allow executable changed during hook run: {failure}"
         ))
@@ -368,6 +386,21 @@ fn cmd_run(args: &HookRunArgs) -> CargoAllowResult<()> {
         )));
     }
     Ok(())
+}
+
+fn verify_hook_binary(binary: &Path, digest: &str) -> CargoAllowResult<()> {
+    verify_tool_unchanged(binary, digest)
+        .map_err(|failure| CargoAllowError::new(failure.to_string()))
+}
+
+fn execute_hook_command(
+    binary: &Path,
+    command: &[String],
+) -> CargoAllowResult<std::process::ExitStatus> {
+    Command::new(binary)
+        .args(command)
+        .status()
+        .map_err(|error| CargoAllowError::new(error.to_string()))
 }
 
 #[cfg_attr(test, inline(never))]
@@ -1341,6 +1374,92 @@ mod tests {
             ],
         };
         cmd_run(&args).map_err(|error| error.to_string())
+    }
+
+    fn status_with_exit_code(code: i32) -> Result<std::process::ExitStatus, String> {
+        #[cfg(windows)]
+        let status = std::process::Command::new("cmd")
+            .args(["/C", "exit", &code.to_string()])
+            .status();
+        #[cfg(not(windows))]
+        let status = std::process::Command::new("sh")
+            .args(["-c", &format!("exit {code}")])
+            .status();
+        status.map_err(|error| error.to_string())
+    }
+
+    #[test]
+    fn verified_runner_reports_each_process_boundary_failure() -> Result<(), String> {
+        let binary = Path::new("/absolute/cargo-allow");
+        let command = ["check".to_string()];
+        let error = run_verified_command(
+            binary,
+            &command,
+            "sha256:v1:test",
+            |_, _| Err(CargoAllowError::new("changed")),
+            |_, _| Err(CargoAllowError::new("should not execute")),
+        )
+        .err()
+        .ok_or_else(|| "pre-run verification failure was accepted".to_string())?;
+        if !error.to_string().contains("before hook run") {
+            return Err("pre-run verification failure was not identified".to_string());
+        }
+
+        let error = run_verified_command(
+            binary,
+            &command,
+            "sha256:v1:test",
+            |_, _| Ok(()),
+            |_, _| Err(CargoAllowError::new("spawn failed")),
+        )
+        .err()
+        .ok_or_else(|| "process execution failure was accepted".to_string())?;
+        if !error.to_string().contains("failed to execute") {
+            return Err("process execution failure was not identified".to_string());
+        }
+
+        let mut verification_count = 0;
+        let error = run_verified_command(
+            binary,
+            &command,
+            "sha256:v1:test",
+            |_, _| {
+                verification_count += 1;
+                if verification_count == 2 {
+                    Err(CargoAllowError::new("changed"))
+                } else {
+                    Ok(())
+                }
+            },
+            |_, _| status_with_exit_code(0).map_err(CargoAllowError::new),
+        )
+        .err()
+        .ok_or_else(|| "post-run verification failure was accepted".to_string())?;
+        if !error.to_string().contains("during hook run") {
+            return Err("post-run verification failure was not identified".to_string());
+        }
+
+        let error = run_verified_command(
+            binary,
+            &command,
+            "sha256:v1:test",
+            |_, _| Ok(()),
+            |_, _| status_with_exit_code(7).map_err(CargoAllowError::new),
+        )
+        .err()
+        .ok_or_else(|| "nonzero hook status was accepted".to_string())?;
+        if !error.to_string().contains("exited with 7") {
+            return Err("nonzero hook status was not preserved".to_string());
+        }
+
+        run_verified_command(
+            binary,
+            &command,
+            "sha256:v1:test",
+            |_, _| Ok(()),
+            |_, _| status_with_exit_code(0).map_err(CargoAllowError::new),
+        )
+        .map_err(|error| error.to_string())
     }
 
     #[test]
