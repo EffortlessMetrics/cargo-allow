@@ -8,7 +8,7 @@ use crate::boundary::{
 };
 use crate::command_registry::{default_cargo_allow_registry, validate_command_registry};
 use crate::command_registry_surface::CommandRegistrySurface;
-use crate::command_spec::{compile_invocation_spec, reject_prose_as_executable};
+use crate::command_spec::{CommandSpecError, compile_invocation_spec, reject_prose_as_executable};
 use crate::dry_run::{DryRunCommandReportV1, render_structured_argv};
 use crate::parity::{
     command_registry_parity_contract_paths, load_command_registry_parity_contract,
@@ -104,6 +104,47 @@ fn compile_invocation_spec_binds_registry_argv() -> Result<(), String> {
         return Err("expected bound receipt outcome".to_string());
     }
     Ok(())
+}
+
+#[test]
+fn registry_preserves_prefix_compatibility_and_exact_report_binding() -> Result<(), String> {
+    let registry = default_cargo_allow_registry();
+    let existing = ProofPlanCommandV1::new(
+        "cargo-allow",
+        vec![
+            "check".to_string(),
+            "--mode".to_string(),
+            "no-new".to_string(),
+            "--root".to_string(),
+            ".".to_string(),
+        ],
+    );
+    compile_invocation_spec(&registry, "cargo-allow.check.no-new", &existing)
+        .map_err(|err| err.as_str())?;
+
+    let report = ProofPlanCommandV1::new(
+        "cargo-allow",
+        vec![
+            "capabilities".to_string(),
+            "--format".to_string(),
+            "json".to_string(),
+        ],
+    );
+    compile_invocation_spec(&registry, "cargo-allow.capabilities.json", &report)
+        .map_err(|err| err.as_str())?;
+
+    let mut mutating_report = report;
+    mutating_report.args.push("--output".to_string());
+    mutating_report.args.push("report.json".to_string());
+    match compile_invocation_spec(&registry, "cargo-allow.capabilities.json", &mutating_report) {
+        Err(CommandSpecError::ArgvTrailingArgs { command_id })
+            if command_id == "cargo-allow.capabilities.json" =>
+        {
+            Ok(())
+        }
+        Ok(_) => Err("exact capability report accepted trailing arguments".to_string()),
+        Err(error) => Err(format!("unexpected exact argv error: {error:?}")),
+    }
 }
 
 #[test]
