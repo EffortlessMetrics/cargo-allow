@@ -315,10 +315,7 @@ pub(crate) fn cmd_hooks(args: &HooksArgs) -> CargoAllowResult<()> {
             let rendered = match plan_args.format {
                 HookPlanFormat::Human => render_human(&plan),
                 HookPlanFormat::Json => serde_json::to_string_pretty(&plan).map_err(|error| {
-                    CargoAllowError::with_kind(
-                        CargoAllowErrorKind::Artifact,
-                        format!("failed to render hook plan: {error}"),
-                    )
+                    CargoAllowError::new(format!("failed to render hook plan: {error}"))
                 })?,
             };
             emit_text(plan_args.output.as_deref(), &rendered)
@@ -447,10 +444,9 @@ fn cmd_verify(args: &HookVerifyArgs) -> CargoAllowResult<()> {
     };
     let rendered = match args.format {
         HookPlanFormat::Json => serde_json::to_string_pretty(&report).map_err(|error| {
-            CargoAllowError::with_kind(
-                CargoAllowErrorKind::Artifact,
-                format!("failed to render hook binary verification JSON: {error}"),
-            )
+            CargoAllowError::new(format!(
+                "failed to render hook binary verification JSON: {error}"
+            ))
         })?,
         HookPlanFormat::Human => render_binary_verification(&report),
     };
@@ -1867,6 +1863,151 @@ mod tests {
         if error.kind() != CargoAllowErrorKind::Usage {
             return Err(format!(
                 "digest-only runtime plan had kind {}, expected usage",
+                error.kind()
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn rejected_verified_tools_have_unsupported_kind() -> Result<(), String> {
+        let Some(binary) = built_binary()? else {
+            return Ok(());
+        };
+        let runtime = HookRuntimeV1 {
+            binary: binary.display().to_string(),
+            digest: "sha256:v1:deliberate-mismatch".to_string(),
+            mode: ToolSelectionMode::ExplicitToolUnderTest,
+            expected_build_source_commit: None,
+        };
+        let error = verify_plan_runtime(&runtime)
+            .err()
+            .ok_or_else(|| "mismatched verified plan binary was accepted".to_string())?;
+        if error.kind() != CargoAllowErrorKind::Unsupported {
+            return Err(format!(
+                "rejected verified plan binary had kind {}, expected unsupported",
+                error.kind()
+            ));
+        }
+
+        let output = output_path("verify-error-kind");
+        let args = HookVerifyArgs {
+            binary: binary.clone(),
+            digest: runtime.digest.clone(),
+            mode: ToolSelectionMode::ExplicitToolUnderTest,
+            expected_build_source_commit: None,
+            format: HookPlanFormat::Json,
+            output: Some(output.clone()),
+        };
+        let error = cmd_verify(&args)
+            .err()
+            .ok_or_else(|| "hooks verify accepted a mismatched binary".to_string())?;
+        let _ = fs::remove_file(output);
+        if error.kind() != CargoAllowErrorKind::Unsupported {
+            return Err(format!(
+                "hooks verify mismatch had kind {}, expected unsupported",
+                error.kind()
+            ));
+        }
+
+        let args = HookRunArgs {
+            binary,
+            digest: runtime.digest,
+            mode: ToolSelectionMode::ExplicitToolUnderTest,
+            expected_build_source_commit: None,
+            command: vec![
+                "check".to_string(),
+                "--mode".to_string(),
+                "no-new".to_string(),
+            ],
+        };
+        let error = cmd_run(&args)
+            .err()
+            .ok_or_else(|| "hooks run accepted a mismatched binary".to_string())?;
+        if error.kind() != CargoAllowErrorKind::Unsupported {
+            return Err(format!(
+                "hooks run mismatch had kind {}, expected unsupported",
+                error.kind()
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn missing_verified_tool_and_process_boundaries_have_instrument_kind() -> Result<(), String> {
+        let missing = std::env::current_dir()
+            .map_err(|error| error.to_string())?
+            .join("cargo-allow-missing-hook-binary");
+        let error = read_selected_tool_identity(&missing)
+            .err()
+            .ok_or_else(|| "missing verified tool unexpectedly returned identity".to_string())?;
+        if error.kind() != CargoAllowErrorKind::InstrumentFailure {
+            return Err(format!(
+                "missing verified tool had kind {}, expected instrument_failure",
+                error.kind()
+            ));
+        }
+
+        let error = verify_hook_binary(&missing, "sha256:v1:test")
+            .err()
+            .ok_or_else(|| "missing verified tool passed unchanged verification".to_string())?;
+        if error.kind() != CargoAllowErrorKind::InstrumentFailure {
+            return Err(format!(
+                "tool verification failure had kind {}, expected instrument_failure",
+                error.kind()
+            ));
+        }
+
+        let error = execute_hook_command(&missing, &[])
+            .err()
+            .ok_or_else(|| "missing verified tool unexpectedly executed".to_string())?;
+        if error.kind() != CargoAllowErrorKind::InstrumentFailure {
+            return Err(format!(
+                "tool execution failure had kind {}, expected instrument_failure",
+                error.kind()
+            ));
+        }
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn selected_tool_identity_process_and_json_failures_have_instrument_kind() -> Result<(), String>
+    {
+        use std::os::unix::fs::PermissionsExt;
+
+        let fixture = HookFixture::new("identity-errors")?;
+        let failing = fixture.path.join("failing-tool");
+        fs::write(&failing, "#!/bin/sh\nexit 7\n").map_err(|error| error.to_string())?;
+        let mut permissions = fs::metadata(&failing)
+            .map_err(|error| error.to_string())?
+            .permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&failing, permissions).map_err(|error| error.to_string())?;
+        let error = read_selected_tool_identity(&failing)
+            .err()
+            .ok_or_else(|| "failing identity tool unexpectedly succeeded".to_string())?;
+        if error.kind() != CargoAllowErrorKind::InstrumentFailure {
+            return Err(format!(
+                "failing identity tool had kind {}, expected instrument_failure",
+                error.kind()
+            ));
+        }
+
+        let malformed = fixture.path.join("malformed-tool");
+        fs::write(&malformed, "#!/bin/sh\nprintf 'not-json\\n'\n")
+            .map_err(|error| error.to_string())?;
+        let mut permissions = fs::metadata(&malformed)
+            .map_err(|error| error.to_string())?
+            .permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&malformed, permissions).map_err(|error| error.to_string())?;
+        let error = read_selected_tool_identity(&malformed)
+            .err()
+            .ok_or_else(|| "malformed identity tool unexpectedly succeeded".to_string())?;
+        if error.kind() != CargoAllowErrorKind::InstrumentFailure {
+            return Err(format!(
+                "malformed identity tool had kind {}, expected instrument_failure",
                 error.kind()
             ));
         }
