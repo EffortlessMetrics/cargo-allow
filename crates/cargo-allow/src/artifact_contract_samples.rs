@@ -231,6 +231,7 @@ pub(crate) fn command_artifact_samples() -> Vec<ArtifactSample> {
                 "inventory",
                 "mode",
                 "mutation_receipt",
+                "removed_toml_blocks",
                 "scanner_limitations",
                 "schema_id",
                 "schema_version",

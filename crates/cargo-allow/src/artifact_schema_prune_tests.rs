@@ -83,6 +83,20 @@ fn prune_schema_locks_stale_cleanup_artifact_contract() {
         Some("#/$defs/stale_entry"),
         "prune stale_entries should use stale entry rows"
     );
+    assert_eq!(
+        schema
+            .pointer("/properties/removed_toml_blocks/type")
+            .and_then(Value::as_str),
+        Some("array"),
+        "prune removed_toml_blocks should be an array"
+    );
+    assert_eq!(
+        schema
+            .pointer("/properties/removed_toml_blocks/items/type")
+            .and_then(Value::as_str),
+        Some("string"),
+        "prune removed_toml_blocks should contain strings"
+    );
     let stale_entry = required_schema_pointer("prune", &schema, "/$defs/stale_entry");
     assert_eq!(
         stale_entry

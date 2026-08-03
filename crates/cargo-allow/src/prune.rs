@@ -123,8 +123,7 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             "cargo-allow check --mode no-new".to_string(),
         ],
     };
-    let rendered_policy = (args.format == HumanJsonFormat::Human && !candidates.is_empty())
-        .then(|| render_policy(&cfg));
+    let rendered_policy = (!candidates.is_empty()).then(|| render_policy(&cfg));
     let removed_toml_blocks = rendered_policy
         .as_deref()
         .map(|rendered| stale_removed_toml_blocks(rendered, &candidates))
@@ -189,6 +188,7 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             args.write,
             written_path.as_deref(),
             cfg.allow.len(),
+            &removed_toml_blocks,
             context,
         ),
     };
@@ -205,6 +205,7 @@ pub(crate) fn sample_prune_json_for_contract_test() -> String {
         false,
         None,
         0,
+        &[],
         PruneContext {
             inventory: allow_report::InventoryContext::source_syntax(
                 "git_tracked",

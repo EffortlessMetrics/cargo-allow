@@ -62,6 +62,7 @@ pub(super) fn render_prune_stale_json(
     write_requested: bool,
     written_path: Option<&Path>,
     total_entries: usize,
+    removed_toml_blocks: &[String],
     context: PruneContext<'_>,
 ) -> String {
     let mode = PruneRenderMode::new(
@@ -76,6 +77,7 @@ pub(super) fn render_prune_stale_json(
         mode.context(),
         context.inventory,
         &context.mutation_receipt,
+        removed_toml_blocks,
     )
 }
 

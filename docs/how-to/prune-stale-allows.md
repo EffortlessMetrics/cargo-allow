@@ -28,7 +28,9 @@ full projection of each policy entry. Each `stale_entries` item includes the
 entry identity, kind, optional family, owner, classification, effective scope,
 and reason. It intentionally omits source `path`, `glob`, and `selector`
 details; use `list` or `explain` when you need that source context before
-approving removal.
+approving removal. The `removed_toml_blocks` array preserves the rendered TOML
+blocks that the candidates would remove, so JSON previews retain the same
+reviewable removal context as human output.
 
 ## Write
 

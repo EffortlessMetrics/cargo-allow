@@ -98,6 +98,7 @@ pub fn render_prune_json(
     mode: PruneModeContext<'_>,
     inventory: InventoryContext<'_>,
     mutation_receipt: &MutationReceipt<'_>,
+    removed_toml_blocks: &[String],
 ) -> String {
     let mut out = String::new();
     out.push_str("{\n");
@@ -132,6 +133,16 @@ pub fn render_prune_json(
         out.push_str(&render_prune_candidate_json(candidate, "  "));
     }
     out.push_str("\n  ],\n");
+    out.push_str("  \"removed_toml_blocks\": [");
+    for (index, block) in removed_toml_blocks.iter().enumerate() {
+        if index > 0 {
+            out.push_str(", ");
+        }
+        out.push('"');
+        out.push_str(&json_escape(block));
+        out.push('"');
+    }
+    out.push_str("],\n");
     out.push_str("  \"mutation_receipt\": ");
     out.push_str(&crate::render_mutation_receipt_json(mutation_receipt, "  "));
     out.push('\n');
