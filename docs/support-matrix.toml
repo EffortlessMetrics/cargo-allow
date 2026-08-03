@@ -100,6 +100,7 @@ ids = [
   "cargo-allow.add.v1",
   "cargo-allow.add-finding-plan.v1",
   "cargo-allow.add-plan-application.v1",
+  "cargo-allow.core-adoption-plan.v1",
   "cargo-allow.doctor.v1",
   "cargo-allow.explain.v1",
   "cargo-allow.list.v1",
