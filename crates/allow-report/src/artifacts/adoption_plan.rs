@@ -539,7 +539,10 @@ fn portable_path(root: &str, path: &str) -> String {
         .get(..prefix.len())
         .is_some_and(|value| value.eq_ignore_ascii_case(&prefix))
     {
-        normalized_path[prefix.len()..].to_string()
+        normalized_path
+            .get(prefix.len()..)
+            .map(str::to_string)
+            .unwrap_or_else(|| "<external-path>".into())
     } else if Path::new(path).is_absolute() {
         "<external-path>".into()
     } else {
