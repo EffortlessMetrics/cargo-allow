@@ -15,6 +15,8 @@ pub(crate) fn missing_policy_config_error() -> CargoAllowError {
 pub(crate) struct ConfigDiscovery {
     pub path: Option<PathBuf>,
     pub skipped: Vec<SkippedPolicyCandidate>,
+    pub source: Option<&'static str>,
+    pub precedence: Option<PrecedenceTier>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -93,13 +95,21 @@ pub(crate) fn discover_config_path(root: &Path, config: Option<&Path>) -> Config
             ConfigDiscovery {
                 path: Some(path),
                 skipped,
+                source: Some("source_exception_policy"),
+                precedence: Some(evaluation.precedence_applied),
             }
         }
         Err(_) => {
             let discovery = discover_config(root);
+            let source = discovery
+                .selected
+                .as_ref()
+                .map(|_| "source_exception_policy");
             ConfigDiscovery {
                 path: discovery.selected,
                 skipped: discovery.skipped,
+                source,
+                precedence: None,
             }
         }
     }
@@ -306,6 +316,27 @@ mod tests {
         assert!(missing.is_none());
         remove_test_dir(&root);
         remove_test_dir(&missing_root);
+    }
+
+    #[test]
+    fn discovery_reports_source_exception_provenance() {
+        let root = unique_test_dir("policy-config-provenance");
+        write_policy(&root, valid_policy_config());
+
+        let explicit = discover_config_path(&root, Some(Path::new("policy/allow.toml")));
+        assert_eq!(explicit.source, Some("source_exception_policy"));
+        assert_eq!(
+            explicit.precedence.map(PrecedenceTier::as_str),
+            Some("cli_override")
+        );
+
+        let discovered = discover_config_path(&root, None);
+        assert_eq!(discovered.source, Some("source_exception_policy"));
+        assert_eq!(
+            discovered.precedence.map(PrecedenceTier::as_str),
+            Some("discovery_fallback")
+        );
+        remove_test_dir(&root);
     }
 
     #[test]

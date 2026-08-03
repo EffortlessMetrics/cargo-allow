@@ -12,7 +12,7 @@ pub(crate) use doctor_args::DoctorArgs;
 
 use crate::{
     HumanJsonFormat, InventoryFacts, ProfileArg, SourceTreeReportContext, assert_path_within_root,
-    config_path, current_dir, emit_text,
+    current_dir, emit_text,
     evidence_inventory::{
         PolicyReferenceDiagnostic, current_evidence_source_tree_files,
         policy_reference_diagnostics_for_source_tree,
@@ -65,7 +65,9 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         assert_path_within_root(&root, path)?;
     }
     let root_discovery = root_discovery_kind(args.root.root.as_deref(), &root);
-    let config = config_path(&root, args.config.as_deref());
+    let config_discovery =
+        crate::policy_config::discover_config_path(&root, args.config.as_deref());
+    let config = config_discovery.path.clone();
     let policy = load_doctor_policy(config.as_deref());
     let opts = doctor_inventory_options(policy.as_ref());
     let inventory = inventory(&root, &opts)?;
@@ -136,6 +138,12 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         config_policy,
         config_owner,
         config_status,
+        config_provenance: config.as_ref().and(config_discovery.source).map(|source| {
+            allow_report::ConfigProvenanceSummary {
+                source,
+                precedence: config_discovery.precedence.map(|tier| tier.as_str()),
+            }
+        }),
         config_valid,
         config_diagnostic: config_diagnostic.as_deref(),
         broken_evidence_links,
@@ -414,6 +422,7 @@ pub(crate) fn sample_doctor_json_for_contract_test() -> String {
         config_policy: Some("cargo-allow"),
         config_owner: Some("core/policy"),
         config_status: Some("active"),
+        config_provenance: None,
         config_valid: Some(true),
         config_diagnostic: None,
         broken_evidence_links: Some(0),

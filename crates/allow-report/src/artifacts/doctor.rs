@@ -33,6 +33,12 @@ pub struct FileFamilyConflictSummary<'a> {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub struct ConfigProvenanceSummary<'a> {
+    pub source: &'a str,
+    pub precedence: Option<&'a str>,
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct DoctorReport<'a> {
     pub source_tree_root: &'a str,
     pub root_discovery: &'a str,
@@ -41,6 +47,7 @@ pub struct DoctorReport<'a> {
     pub config_policy: Option<&'a str>,
     pub config_owner: Option<&'a str>,
     pub config_status: Option<&'a str>,
+    pub config_provenance: Option<ConfigProvenanceSummary<'a>>,
     pub config_valid: Option<bool>,
     pub config_diagnostic: Option<&'a str>,
     pub broken_evidence_links: Option<usize>,

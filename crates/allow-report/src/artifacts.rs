@@ -34,8 +34,8 @@ pub use diff::{
     DiffSelectorPrecisionChange,
 };
 pub use doctor::{
-    ConfiguredLedgerSummary, DoctorReport, FederationDiagnosticSummary, FileFamilyConflictSummary,
-    FileFamilyRuleSummary,
+    ConfigProvenanceSummary, ConfiguredLedgerSummary, DoctorReport, FederationDiagnosticSummary,
+    FileFamilyConflictSummary, FileFamilyRuleSummary,
 };
 pub use explain::{EvidenceReference, ExplainReport};
 pub use federation::{

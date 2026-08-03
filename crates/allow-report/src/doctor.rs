@@ -38,6 +38,13 @@ pub fn render_doctor_human_styled(facts: DoctorReport<'_>, style: Style) -> Stri
                 ),
                 config_status_diagnostic_suffix(facts.config_valid, facts.config_diagnostic)
             ));
+            if let Some(provenance) = facts.config_provenance {
+                out.push_str(&format!(
+                    "config provenance: source={} precedence={}\n",
+                    provenance.source,
+                    provenance.precedence.unwrap_or("unavailable")
+                ));
+            }
             if facts.config_valid == Some(false) {
                 out.push_str(
                     "config repair: inspect the diagnostic above; run \
@@ -240,6 +247,16 @@ pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
     push_optional_string_field(&mut config_fields, "policy", facts.config_policy);
     push_optional_string_field(&mut config_fields, "owner", facts.config_owner);
     push_optional_string_field(&mut config_fields, "status", facts.config_status);
+    if let Some(provenance) = facts.config_provenance {
+        let precedence = provenance
+            .precedence
+            .map(|value| format!(", \"precedence\": \"{}\"", json_escape(value)))
+            .unwrap_or_default();
+        config_fields.push(format!(
+            "    \"provenance\": {{\"source\": \"{}\"{precedence}}}",
+            json_escape(provenance.source)
+        ));
+    }
     if let Some(valid) = facts.config_valid {
         config_fields.push(format!("    \"valid\": {}", bool_json(valid)));
     }

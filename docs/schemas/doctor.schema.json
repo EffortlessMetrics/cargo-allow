@@ -104,6 +104,24 @@
           ],
           "description": "Top-level policy status loaded from the config; omitted when unset or unavailable."
         },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source"
+          ],
+          "properties": {
+            "source": {
+              "type": "string",
+              "description": "Configuration vocabulary that selected the policy."
+            },
+            "precedence": {
+              "type": "string",
+              "description": "Precedence tier applied by the source-exception resolver; omitted when fallback discovery could not be evaluated."
+            }
+          },
+          "description": "Read-only configuration discovery provenance; this does not validate policy contents."
+        },
         "valid": {
           "type": [
             "boolean"

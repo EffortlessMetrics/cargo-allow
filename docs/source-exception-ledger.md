@@ -57,6 +57,14 @@ The native `policy/cargo-allow.toml` path may omit the `policy = "cargo-allow"`
 header. A foreign dialect at another conventional path is skipped with a
 diagnostic instead of being parsed or merged.
 
+`cargo-allow doctor` exposes this source-exception resolution provenance in the
+`config.provenance` JSON object and the matching human line. `source` is
+`source_exception_policy`; `precedence` is `cli_override`,
+`federation_registry`, or `discovery_fallback`. If the resolver had to fall
+back after an evaluation error, the source remains visible while precedence is
+omitted. Provenance describes how the path was selected; it does not validate
+the policy contents or imply Cargo workspace metadata was executed.
+
 ### Spec-system profile
 
 `--profile spec-system` has its own resolver. Unless an explicit profile config

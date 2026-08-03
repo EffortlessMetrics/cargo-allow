@@ -10,6 +10,7 @@ fn doctor_json_renderer_records_root_config_and_inventory() {
         config_policy: Some("cargo-allow"),
         config_owner: Some("core/policy"),
         config_status: Some("active"),
+        config_provenance: None,
         config_valid: Some(true),
         config_diagnostic: None,
         broken_evidence_links: Some(0),
@@ -107,6 +108,53 @@ fn doctor_json_renderer_records_root_config_and_inventory() {
 }
 
 #[test]
+fn doctor_json_renderer_records_config_provenance_without_claiming_validation() {
+    let report = DoctorReport {
+        source_tree_root: "repo",
+        root_discovery: "explicit_root",
+        config_path: Some("policy/allow.toml"),
+        config_schema_version: None,
+        config_policy: None,
+        config_owner: None,
+        config_status: None,
+        config_provenance: Some(ConfigProvenanceSummary {
+            source: "source_exception_policy",
+            precedence: Some("discovery_fallback"),
+        }),
+        config_valid: None,
+        config_diagnostic: None,
+        broken_evidence_links: None,
+        weak_evidence_references: None,
+        inventory_source: "git_tracked",
+        inventory_completeness: "complete",
+        files_scanned: 1,
+        empty_git_tracked: false,
+        deleted_tracked_files: 0,
+        git_inventory_error: None,
+        skipped_paths: 0,
+        submodule_paths: 0,
+        federation_config_path: None,
+        federation_config_found: false,
+        federation_config_valid: None,
+        configured_ledgers: None,
+        federation_diagnostics: None,
+        federation_divergences: None,
+        file_family_rules: &[],
+        file_family_conflicts: &[],
+    };
+    let json = render_doctor_json(report);
+    let human = render_doctor_human(report);
+
+    assert!(json.contains(
+        "\"provenance\": {\"source\": \"source_exception_policy\", \"precedence\": \"discovery_fallback\"}"
+    ));
+    assert!(!json.contains("\"valid\": true"));
+    assert!(human.contains(
+        "config provenance: source=source_exception_policy precedence=discovery_fallback"
+    ));
+}
+
+#[test]
 fn doctor_human_renderer_records_root_config_and_inventory() {
     let text = render_doctor_human(DoctorReport {
         source_tree_root: "H:/Code/Rust/cargo-allow",
@@ -116,6 +164,7 @@ fn doctor_human_renderer_records_root_config_and_inventory() {
         config_policy: None,
         config_owner: None,
         config_status: None,
+        config_provenance: None,
         config_valid: None,
         config_diagnostic: None,
         broken_evidence_links: None,
@@ -162,6 +211,7 @@ fn doctor_json_renderer_suggests_init_when_config_is_missing() {
         config_policy: None,
         config_owner: None,
         config_status: None,
+        config_provenance: None,
         config_valid: None,
         config_diagnostic: None,
         broken_evidence_links: None,
@@ -205,6 +255,7 @@ fn doctor_human_renderer_reports_invalid_config_status() {
         config_policy: Some("cargo-allow"),
         config_owner: Some("core/policy"),
         config_status: Some("active"),
+        config_provenance: None,
         config_valid: Some(false),
         config_diagnostic: Some("policy schema_version must not be empty"),
         broken_evidence_links: Some(2),
@@ -254,6 +305,7 @@ fn doctor_human_renderer_styles_fixed_status_labels_only() {
             config_policy: Some("cargo-allow"),
             config_owner: Some("core/policy"),
             config_status: Some("active"),
+            config_provenance: None,
             config_valid: Some(false),
             config_diagnostic: Some("policy schema_version must not be empty"),
             broken_evidence_links: Some(0),
@@ -295,6 +347,7 @@ fn doctor_human_renderer_styles_fixed_status_labels_only() {
             config_policy: Some("cargo-allow"),
             config_owner: Some("core/policy"),
             config_status: Some("active"),
+            config_provenance: None,
             config_valid: Some(true),
             config_diagnostic: None,
             broken_evidence_links: Some(0),
@@ -331,6 +384,7 @@ fn doctor_json_renderer_includes_optional_evidence_health_counts() {
         config_policy: Some("cargo-allow"),
         config_owner: Some("core/policy"),
         config_status: Some("active"),
+        config_provenance: None,
         config_valid: Some(false),
         config_diagnostic: Some("missing evidence file"),
         broken_evidence_links: Some(2),
@@ -367,6 +421,7 @@ fn doctor_json_renderer_routes_evidence_repair_queues() {
         config_policy: Some("cargo-allow"),
         config_owner: Some("core/policy"),
         config_status: Some("active"),
+        config_provenance: None,
         config_valid: Some(false),
         config_diagnostic: Some("missing evidence file"),
         broken_evidence_links: Some(2),
@@ -417,6 +472,7 @@ fn doctor_json_renderer_always_includes_evidence_repair_queues_even_when_clean()
         config_policy: Some("cargo-allow"),
         config_owner: Some("core/policy"),
         config_status: Some("active"),
+        config_provenance: None,
         config_valid: Some(true),
         config_diagnostic: None,
         broken_evidence_links: Some(0),
@@ -456,6 +512,7 @@ fn doctor_json_renderer_records_configured_federation_ledgers() {
         config_policy: Some("cargo-allow"),
         config_owner: None,
         config_status: None,
+        config_provenance: None,
         config_valid: Some(true),
         config_diagnostic: None,
         broken_evidence_links: Some(0),
