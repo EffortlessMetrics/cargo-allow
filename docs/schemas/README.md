@@ -197,6 +197,14 @@ Every `report.schema.json` `$defs` fragment is mirrored in
 fragments should be added to both files together so audit, check, and diff
 consumers do not lose the shared contract catalog.
 
+The report schema's `allOf` conditional describes that a `diff` field belongs
+to `command = "diff"`, but validators that do not enforce conditional JSON
+Schema keywords may not apply that constraint. The Rust report renderer is
+the producer-side authority and enforces the command relationship before
+emitting an artifact. Consumers that require strict rejection of mismatched
+command/field combinations should use a validator with conditional-keyword
+support or apply the same command check explicitly.
+
 List artifacts currently emit a `filters` object with every known filter key,
 but nested filter fields are optional in the schema so older `cargo-allow.list.v1`
 artifacts and future additive filter fields can remain compatible.
