@@ -111,6 +111,65 @@ producing `package-candidate-smoke-receipt`,
 the durable evidence for the #2256 Stage A / #2278 Stage A+ / #2372 Stage A
 candidate claims; Windows and macOS candidate smoke remain a documented
 follow-up.
+
+## Linux archive: download and install a tagged release
+
+The tagged release workflow publishes the prebuilt archive only for the
+claimed `x86_64-unknown-linux-gnu` target and only after the exact archive,
+manifest, clean-install, and attestation gates pass. Use an exact `v<version>`
+tag; `latest` is not an evidence-bearing substitute.
+
+From a Linux host with `gh`, `sha256sum`, and `tar` installed:
+
+```bash
+VERSION=0.2.0
+REPOSITORY=EffortlessMetrics/cargo-allow
+ARCHIVE="cargo-allow-v${VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+DOWNLOAD_DIR="cargo-allow-v${VERSION}-download"
+
+mkdir -p "${DOWNLOAD_DIR}"
+gh release download "v${VERSION}" \
+  --repo "${REPOSITORY}" \
+  --pattern "${ARCHIVE}*" \
+  --dir "${DOWNLOAD_DIR}"
+cd "${DOWNLOAD_DIR}"
+
+sha256sum --check "${ARCHIVE}.sha256"
+gh attestation verify "${ARCHIVE}" --repo "${REPOSITORY}"
+tar -xzf "${ARCHIVE}"
+cd "cargo-allow-v${VERSION}-x86_64-unknown-linux-gnu"
+./cargo-allow --version
+```
+
+The version command must report `cargo-allow <version>` for the downloaded
+tag. The executable digest sidecar can be checked after extraction with:
+
+```bash
+test "$(sha256sum cargo-allow | cut -d' ' -f1)" = \
+  "$(awk '$2 == "cargo-allow" { print $1; exit }' \
+    "../${ARCHIVE}.executable.sha256")"
+```
+
+Install the verified executable in a user-owned directory, then put that
+directory first on `PATH` so an older ambient installation is not selected:
+
+```bash
+mkdir -p "$HOME/.local/bin"
+install -m 0755 cargo-allow "$HOME/.local/bin/cargo-allow"
+export PATH="$HOME/.local/bin:$PATH"
+cargo-allow --version
+```
+
+For an upgrade, download and verify the new archive in a separate directory
+before replacing the existing executable. For rollback, restore the previous
+verified executable. To uninstall this archive installation, remove only
+`$HOME/.local/bin/cargo-allow`; package-manager or `cargo install` copies are
+separate installations and must be removed through their own paths.
+
+This is a Linux archive installation path, not a universal Linux, Windows, or
+macOS support claim. The crates.io `cargo install cargo-allow --locked` path
+remains the source-build fallback.
+
 ## Prerequisites
 
 Complete these checks before the first tag-triggered automated release:
