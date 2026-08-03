@@ -318,6 +318,7 @@ fn cmd_verify(args: &HookVerifyArgs) -> CargoAllowResult<()> {
     })
 }
 
+#[cfg_attr(test, inline(never))]
 fn cmd_run(args: &HookRunArgs) -> CargoAllowResult<()> {
     let expected_command = ["check", "--mode", "no-new"];
     if args.command.iter().map(String::as_str).collect::<Vec<_>>() != expected_command {
@@ -369,6 +370,7 @@ fn cmd_run(args: &HookRunArgs) -> CargoAllowResult<()> {
     Ok(())
 }
 
+#[cfg_attr(test, inline(never))]
 fn read_selected_tool_identity(binary: &Path) -> CargoAllowResult<CargoAllowToolIdentityV1> {
     if !binary.is_absolute() {
         return Err(CargoAllowError::new(format!(
@@ -400,6 +402,7 @@ fn read_selected_tool_identity(binary: &Path) -> CargoAllowResult<CargoAllowTool
     })
 }
 
+#[cfg_attr(test, inline(never))]
 fn selection_request(
     binary: &Path,
     digest: &str,
