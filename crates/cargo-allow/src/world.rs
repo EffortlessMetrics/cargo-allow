@@ -774,7 +774,12 @@ mod tests {
         git(root.as_path(), &["commit", "-m", "staged text base"]);
         fs::write(root.join("invalid.rs"), [0xff_u8, 0xfe_u8])
             .unwrap_or_else(|err| std::panic::panic_any(format!("invalid source write: {err}")));
-        git(root.as_path(), &["add", "--", "invalid.rs"]);
+        fs::write(
+            root.join("oversized.rs"),
+            vec![b'x'; (SOURCE_FILE_READ_MAX_BYTES as usize) + 1],
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("oversized source write: {err}")));
+        git(root.as_path(), &["add", "--", "invalid.rs", "oversized.rs"]);
 
         let snapshot = staged_repository_snapshot(&root)
             .unwrap_or_else(|err| std::panic::panic_any(format!("staged snapshot: {err}")));
@@ -787,6 +792,11 @@ mod tests {
             .unwrap_or_else(|| std::panic::panic_any("invalid UTF-8 source should fail"));
         assert_eq!(invalid.kind(), allow_core::CargoAllowErrorKind::Scan);
         assert!(invalid.to_string().contains("not valid UTF-8"));
+        let oversized = read_staged_text(&snapshot, Path::new("oversized.rs"))
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("oversized source should fail"));
+        assert_eq!(oversized.kind(), allow_core::CargoAllowErrorKind::Scan);
+        assert!(oversized.to_string().contains("exceeds"));
         fs::remove_dir_all(root)
             .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
     }
