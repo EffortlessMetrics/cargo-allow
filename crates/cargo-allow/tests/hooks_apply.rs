@@ -5,6 +5,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::Value;
 
+#[cfg(unix)]
+use std::os::unix::fs::symlink;
+
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
@@ -173,6 +176,445 @@ fn hooks_apply_preserves_unmanaged_hook_and_records_manual_merge() -> TestResult
         fs::read_to_string(&conflict_receipt)?.contains("Conflict"),
         "conflict receipt was not retained",
     )?;
+    Ok(())
+}
+
+#[test]
+fn hooks_remove_requires_exact_receipt_and_restores_apply_rollback_path() -> TestResult {
+    let fixture = Fixture::new("remove")?;
+    init_git(&fixture.path)?;
+    let plan = fixture.path.join("target/hook-plan.json");
+    let apply_receipt = fixture.path.join("target/hook-receipt.json");
+    let remove_receipt = fixture.path.join("target/remove-receipt.json");
+    let plan_arg = path_arg(&plan);
+    let apply_receipt_arg = path_arg(&apply_receipt);
+    let remove_receipt_arg = path_arg(&remove_receipt);
+
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "plan",
+            "--stage",
+            "pre-commit",
+            "--format",
+            "json",
+            "--output",
+            &plan_arg,
+        ],
+    )?;
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "apply",
+            "--plan",
+            &plan_arg,
+            "--accept",
+            "--receipt",
+            &apply_receipt_arg,
+        ],
+    )?;
+
+    let output = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "remove",
+            "--receipt",
+            &apply_receipt_arg,
+            "--result-receipt",
+            &remove_receipt_arg,
+        ],
+    )?;
+    require(
+        !output.status.success() && String::from_utf8_lossy(&output.stderr).contains("--accept"),
+        "remove did not require explicit acceptance",
+    )?;
+    require(
+        fixture.path.join(".git/hooks/pre-commit").is_file(),
+        "preview remove changed the managed hook",
+    )?;
+
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "remove",
+            "--receipt",
+            &apply_receipt_arg,
+            "--accept",
+            "--result-receipt",
+            &remove_receipt_arg,
+        ],
+    )?;
+    require(
+        !fixture.path.join(".git/hooks/pre-commit").exists(),
+        "accepted remove did not remove the exact managed hook",
+    )?;
+    let removal: Value = serde_json::from_slice(&fs::read(&remove_receipt)?)?;
+    require(
+        removal.get("schema").and_then(Value::as_str)
+            == Some("cargo-allow.local-hook-remove-receipt.v1")
+            && removal.get("operation").and_then(Value::as_str) == Some("remove")
+            && removal.get("removed").and_then(Value::as_bool) == Some(true),
+        "removal receipt did not record the exact managed deletion",
+    )?;
+    require(
+        removal
+            .get("rollback")
+            .and_then(Value::as_str)
+            .is_some_and(|value| value.contains("hooks apply")),
+        "removal receipt omitted the recreate rollback route",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn hooks_remove_refuses_changed_managed_content() -> TestResult {
+    let fixture = Fixture::new("remove-changed")?;
+    init_git(&fixture.path)?;
+    let plan = fixture.path.join("target/hook-plan.json");
+    let apply_receipt = fixture.path.join("target/hook-receipt.json");
+    let remove_receipt = fixture.path.join("target/remove-receipt.json");
+    let plan_arg = path_arg(&plan);
+    let apply_receipt_arg = path_arg(&apply_receipt);
+    let remove_receipt_arg = path_arg(&remove_receipt);
+    run_success(
+        &fixture.path,
+        &[
+            "hooks", "plan", "--stage", "pre-push", "--format", "json", "--output", &plan_arg,
+        ],
+    )?;
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "apply",
+            "--plan",
+            &plan_arg,
+            "--accept",
+            "--receipt",
+            &apply_receipt_arg,
+        ],
+    )?;
+    let hook = fixture.path.join(".git/hooks/pre-push");
+    fs::write(&hook, "#!/bin/sh\n# consumer change\n")?;
+
+    let output = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "remove",
+            "--receipt",
+            &apply_receipt_arg,
+            "--accept",
+            "--result-receipt",
+            &remove_receipt_arg,
+        ],
+    )?;
+    require(
+        !output.status.success() && String::from_utf8_lossy(&output.stderr).contains("Changed"),
+        &format!(
+            "remove did not report changed managed content: status={}, stderr={}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        ),
+    )?;
+    require(
+        fs::read_to_string(&hook)?.contains("# consumer change"),
+        "changed hook was removed despite the identity mismatch",
+    )?;
+    require(
+        fs::read_to_string(&remove_receipt)?.contains("\"removed\": false"),
+        "changed-hook receipt did not record a non-mutating result",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn hooks_remove_is_a_receipted_noop_when_the_exact_hook_is_missing() -> TestResult {
+    let fixture = Fixture::new("remove-missing")?;
+    init_git(&fixture.path)?;
+    let plan = fixture.path.join("target/hook-plan.json");
+    let apply_receipt = fixture.path.join("target/hook-receipt.json");
+    let remove_receipt = fixture.path.join("target/remove-receipt.json");
+    let plan_arg = path_arg(&plan);
+    let apply_receipt_arg = path_arg(&apply_receipt);
+    let remove_receipt_arg = path_arg(&remove_receipt);
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "plan",
+            "--stage",
+            "pre-commit",
+            "--format",
+            "json",
+            "--output",
+            &plan_arg,
+        ],
+    )?;
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "apply",
+            "--plan",
+            &plan_arg,
+            "--accept",
+            "--receipt",
+            &apply_receipt_arg,
+        ],
+    )?;
+    fs::remove_file(fixture.path.join(".git/hooks/pre-commit"))?;
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "remove",
+            "--receipt",
+            &apply_receipt_arg,
+            "--accept",
+            "--result-receipt",
+            &remove_receipt_arg,
+        ],
+    )?;
+    let removal: Value = serde_json::from_slice(&fs::read(&remove_receipt)?)?;
+    require(
+        removal.get("disposition").and_then(Value::as_str) == Some("Missing")
+            && removal.get("operation").and_then(Value::as_str) == Some("none")
+            && removal.get("removed").and_then(Value::as_bool) == Some(false),
+        "missing-hook removal did not record a non-mutating no-op",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn hooks_remove_refuses_composed_managed_content() -> TestResult {
+    let fixture = Fixture::new("remove-composed")?;
+    init_git(&fixture.path)?;
+    let plan = fixture.path.join("target/hook-plan.json");
+    let apply_receipt = fixture.path.join("target/hook-receipt.json");
+    let remove_receipt = fixture.path.join("target/remove-receipt.json");
+    let plan_arg = path_arg(&plan);
+    let apply_receipt_arg = path_arg(&apply_receipt);
+    let remove_receipt_arg = path_arg(&remove_receipt);
+    run_success(
+        &fixture.path,
+        &["hooks", "plan", "--format", "json", "--output", &plan_arg],
+    )?;
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "apply",
+            "--plan",
+            &plan_arg,
+            "--accept",
+            "--receipt",
+            &apply_receipt_arg,
+        ],
+    )?;
+    let hook = fixture.path.join(".git/hooks/pre-commit");
+    let mut composed = fs::read_to_string(&hook)?;
+    composed.push_str("# BEGIN cargo-allow managed hook: another-plan\n");
+    fs::write(&hook, composed)?;
+    let output = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "remove",
+            "--receipt",
+            &apply_receipt_arg,
+            "--accept",
+            "--result-receipt",
+            &remove_receipt_arg,
+        ],
+    )?;
+    require(
+        !output.status.success() && String::from_utf8_lossy(&output.stderr).contains("Conflict"),
+        "composed hook removal did not fail closed",
+    )?;
+    require(
+        fs::read_to_string(&hook)?.contains("another-plan"),
+        "composed hook was removed despite the conflict",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn hooks_remove_refuses_receipt_for_a_different_hook_path() -> TestResult {
+    let fixture = Fixture::new("remove-path-mismatch")?;
+    init_git(&fixture.path)?;
+    let plan = fixture.path.join("target/hook-plan.json");
+    let apply_receipt = fixture.path.join("target/hook-receipt.json");
+    let tampered_receipt = fixture.path.join("target/tampered-receipt.json");
+    let plan_arg = path_arg(&plan);
+    let apply_receipt_arg = path_arg(&apply_receipt);
+    let tampered_receipt_arg = path_arg(&tampered_receipt);
+    run_success(
+        &fixture.path,
+        &["hooks", "plan", "--format", "json", "--output", &plan_arg],
+    )?;
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "apply",
+            "--plan",
+            &plan_arg,
+            "--accept",
+            "--receipt",
+            &apply_receipt_arg,
+        ],
+    )?;
+    let mut receipt: Value = serde_json::from_slice(&fs::read(&apply_receipt)?)?;
+    receipt
+        .as_object_mut()
+        .ok_or("apply receipt was not a JSON object")?
+        .insert(
+            "hook_path".to_string(),
+            Value::String(".git/hooks/pre-push".to_string()),
+        );
+    fs::write(&tampered_receipt, serde_json::to_vec_pretty(&receipt)?)?;
+    let output = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "remove",
+            "--receipt",
+            &tampered_receipt_arg,
+            "--accept",
+        ],
+    )?;
+    require(
+        !output.status.success() && String::from_utf8_lossy(&output.stderr).contains("targets"),
+        "path-mismatched receipt was accepted",
+    )?;
+    require(
+        fixture.path.join(".git/hooks/pre-commit").is_file(),
+        "path-mismatched receipt removed the managed hook",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn hooks_remove_refuses_malformed_and_stale_apply_receipts() -> TestResult {
+    let fixture = Fixture::new("remove-invalid-receipt")?;
+    init_git(&fixture.path)?;
+    fs::create_dir_all(fixture.path.join("target"))?;
+    let malformed = fixture.path.join("target/malformed-receipt.json");
+    let malformed_arg = path_arg(&malformed);
+    fs::write(&malformed, "not-json")?;
+    let output = run(
+        &fixture.path,
+        &["hooks", "remove", "--receipt", &malformed_arg, "--accept"],
+    )?;
+    require(
+        !output.status.success() && String::from_utf8_lossy(&output.stderr).contains("parse"),
+        "malformed apply receipt was accepted",
+    )?;
+
+    let plan = fixture.path.join("target/hook-plan.json");
+    let apply_receipt = fixture.path.join("target/hook-receipt.json");
+    let stale_receipt = fixture.path.join("target/stale-receipt.json");
+    let plan_arg = path_arg(&plan);
+    let apply_receipt_arg = path_arg(&apply_receipt);
+    let stale_receipt_arg = path_arg(&stale_receipt);
+    run_success(
+        &fixture.path,
+        &["hooks", "plan", "--format", "json", "--output", &plan_arg],
+    )?;
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "apply",
+            "--plan",
+            &plan_arg,
+            "--accept",
+            "--receipt",
+            &apply_receipt_arg,
+        ],
+    )?;
+    let mut receipt: Value = serde_json::from_slice(&fs::read(&apply_receipt)?)?;
+    receipt
+        .as_object_mut()
+        .ok_or("apply receipt was not a JSON object")?
+        .insert(
+            "plan_identity".to_string(),
+            Value::String("stale-plan".to_string()),
+        );
+    fs::write(&stale_receipt, serde_json::to_vec_pretty(&receipt)?)?;
+    let output = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "remove",
+            "--receipt",
+            &stale_receipt_arg,
+            "--accept",
+        ],
+    )?;
+    require(
+        !output.status.success()
+            && String::from_utf8_lossy(&output.stderr).contains("exact successful"),
+        "stale apply receipt was accepted",
+    )?;
+    require(
+        fixture.path.join(".git/hooks/pre-commit").is_file(),
+        "stale apply receipt removed the managed hook",
+    )?;
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn hooks_remove_refuses_symbolic_link_even_when_target_bytes_match() -> TestResult {
+    let fixture = Fixture::new("remove-symlink")?;
+    init_git(&fixture.path)?;
+    let plan = fixture.path.join("target/hook-plan.json");
+    let apply_receipt = fixture.path.join("target/hook-receipt.json");
+    let target = fixture.path.join("target/managed-hook-target");
+    let hook = fixture.path.join(".git/hooks/pre-commit");
+    let plan_arg = path_arg(&plan);
+    let apply_receipt_arg = path_arg(&apply_receipt);
+    run_success(
+        &fixture.path,
+        &["hooks", "plan", "--format", "json", "--output", &plan_arg],
+    )?;
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "apply",
+            "--plan",
+            &plan_arg,
+            "--accept",
+            "--receipt",
+            &apply_receipt_arg,
+        ],
+    )?;
+    let hook_bytes = fs::read(&hook)?;
+    fs::write(&target, hook_bytes)?;
+    fs::remove_file(&hook)?;
+    symlink(&target, &hook)?;
+    let output = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "remove",
+            "--receipt",
+            &apply_receipt_arg,
+            "--accept",
+        ],
+    )?;
+    require(
+        !output.status.success() && String::from_utf8_lossy(&output.stderr).contains("symbolic"),
+        "symbolic-link hook removal was not refused",
+    )?;
+    require(hook.exists(), "symbolic-link hook was removed")?;
     Ok(())
 }
 
