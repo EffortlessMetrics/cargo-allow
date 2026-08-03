@@ -123,6 +123,10 @@ fn source_exception_staged_check_reads_index_bytes_and_binds_identity() -> Resul
         "policy/allow.toml",
         "schema_version = 1\n\n[workspace]\nignored = []\ngenerated = []\n",
     )?;
+    repo.write(
+        "Cargo.toml",
+        "[package]\nname = \"staged-fixture\"\nversion = \"0.0.0\"\nedition = \"2021\"\n",
+    )?;
     repo.write("src/candidate.rs", "fn candidate() { let _ = 1u8; }\n")?;
     repo.git(&["add", "--all"])?;
     repo.git(&["commit", "-qm", "base"])?;
