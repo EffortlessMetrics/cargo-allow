@@ -1,11 +1,22 @@
-use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult, Finding, normalize_path};
-use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
+use allow_core::{
+    AllowConfig, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding,
+    SOURCE_FILE_READ_MAX_BYTES, normalize_path, source_tree_path_is_ignored,
+};
+use allow_inventory::{
+    Inventory, InventoryCompleteness, InventoryOptions, InventorySource, inventory,
+    resolve_source_tree_root,
+};
 use allow_policy::federation::{
     FederationEvaluation, PrecedenceTier, evaluate_source_exception_policy,
 };
 use std::cell::RefCell;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
+
+use allow_diff::{
+    StagedEntryKind, StagedPathRead, StagedRepositorySnapshot, read_staged_path,
+    staged_repository_snapshot,
+};
 
 thread_local! {
     static SCAN_CACHE: RefCell<allow_rust::ScanCache> = RefCell::new(allow_rust::ScanCache::new());
@@ -18,6 +29,8 @@ use crate::{
     },
     extend_unique_findings, load_policy_at_path, parse_kind_filter,
 };
+
+type StagedRustInputs = (Vec<(PathBuf, String)>, Vec<(PathBuf, String)>);
 
 /// The exact staged source-exception evaluation result. The identity is kept
 /// separate from [`InventoryFacts`] so the ordinary worktree report contract
@@ -34,10 +47,10 @@ pub(crate) struct StagedWorld {
 
 /// Evaluate source-exception findings against one exact Git-index candidate.
 ///
-/// The source bytes and inventory come from `repo-snapshot`; this path never
-/// falls back to dirty worktree bytes. Worktree-derived companion sensors are
-/// rejected until they have an equivalent staged source adapter, rather than
-/// being silently mixed into an exact candidate result.
+/// The source bytes and inventory come from the exact staged-index adapter;
+/// this path never falls back to dirty worktree bytes. Worktree-derived
+/// companion sensors are rejected until they have an equivalent staged source
+/// adapter, rather than being silently mixed into an exact candidate result.
 pub(crate) fn load_staged_world(
     explicit_root: Option<&Path>,
     config: Option<&Path>,
@@ -46,9 +59,9 @@ pub(crate) fn load_staged_world(
     let cwd = current_dir()?;
     let root = resolve_source_tree_root(explicit_root, cwd)?;
     let (policy_path, federation) = evaluate_source_exception_policy(&root, config)?;
-    let initial_view = repo_snapshot::RepositorySourceView::staged(&root)?;
+    let snapshot = staged_repository_snapshot(&root)?;
     let policy_relative = normalize_to_repo_relative(&root, &policy_path);
-    let policy_text = initial_view.read_text(&policy_relative).map_err(|error| {
+    let policy_text = read_staged_text(&snapshot, &policy_relative).map_err(|error| {
         CargoAllowError::new(format!(
             "exact staged source-exception check could not read policy candidate {}: {error}",
             policy_relative.display()
@@ -61,24 +74,15 @@ pub(crate) fn load_staged_world(
         generated: cfg.workspace.generated.clone(),
         include_untracked: false,
     };
-    let view = repo_snapshot::RepositorySourceView::staged_with_options(&root, &options)?;
-    if initial_view.source_identity() != view.source_identity() {
-        return Err(CargoAllowError::new(
-            "Git index changed while preparing the exact staged source-exception candidate",
-        ));
-    }
-    let source_identity = view
-        .source_identity()
-        .ok_or_else(|| CargoAllowError::new("staged source view did not retain its identity"))?
-        .to_string();
-    let inventory = view.inventory();
-    let inventory_facts = InventoryFacts::scanned_inventory(inventory);
+    let source_identity = snapshot.identity.semantic_hash.clone();
+    let inventory = staged_inventory(&snapshot, &options);
+    let inventory_facts = InventoryFacts::scanned_inventory(&inventory);
     let evidence_source_tree_files = inventory
         .files
         .iter()
         .map(normalize_path)
         .collect::<BTreeSet<_>>();
-    let (manifests, sources) = view.rust_inputs()?;
+    let (manifests, sources) = staged_rust_inputs(&snapshot, &inventory)?;
     let packages = allow_rust::source_package_contexts_from_sources(manifests);
     let mut findings = Vec::new();
     let mut rust_files_with_parse_errors = 0usize;
@@ -114,8 +118,8 @@ pub(crate) fn load_staged_world(
             finding.ledger = Some(provenance.clone());
         }
     }
-    let final_view = repo_snapshot::RepositorySourceView::staged_with_options(&root, &options)?;
-    if final_view.source_identity() != Some(source_identity.as_str()) {
+    let final_snapshot = staged_repository_snapshot(&root)?;
+    if final_snapshot.identity.semantic_hash != source_identity {
         return Err(CargoAllowError::new(
             "Git index changed while scanning the exact staged source-exception candidate",
         ));
@@ -129,6 +133,104 @@ pub(crate) fn load_staged_world(
         federation,
         source_identity,
         evidence_source_tree_files,
+    })
+}
+
+fn staged_inventory(snapshot: &StagedRepositorySnapshot, options: &InventoryOptions) -> Inventory {
+    let mut files = snapshot
+        .entries
+        .iter()
+        .filter(|entry| entry.stage == 0)
+        .filter_map(|entry| entry.path.clone())
+        .filter(|path| !source_tree_path_is_ignored(path, &options.ignored))
+        .filter(|path| {
+            snapshot
+                .entries
+                .iter()
+                .find(|entry| entry.stage == 0 && entry.path.as_ref() == Some(path))
+                .is_some_and(|entry| {
+                    matches!(
+                        entry.kind,
+                        StagedEntryKind::RegularFile | StagedEntryKind::ExecutableFile
+                    )
+                })
+        })
+        .collect::<Vec<_>>();
+    files.sort();
+    files.dedup();
+    let completeness = if snapshot.completeness == allow_diff::StagedSnapshotCompleteness::Partial {
+        InventoryCompleteness::Partial
+    } else if !options.ignored.is_empty() || !options.generated.is_empty() {
+        InventoryCompleteness::Scoped
+    } else {
+        InventoryCompleteness::Complete
+    };
+    Inventory {
+        files,
+        source: InventorySource::GitIndexStagedCandidate,
+        completeness,
+        empty_git_tracked: snapshot.entries.is_empty(),
+        deleted_tracked: Vec::new(),
+        git_error: None,
+        skipped_paths: Vec::new(),
+        submodule_paths: Vec::new(),
+    }
+}
+
+fn staged_rust_inputs(
+    snapshot: &StagedRepositorySnapshot,
+    inventory: &Inventory,
+) -> CargoAllowResult<StagedRustInputs> {
+    let mut manifests = Vec::new();
+    let mut sources = Vec::new();
+    for path in &inventory.files {
+        if path.file_name().and_then(|name| name.to_str()) == Some("Cargo.toml") {
+            manifests.push((path.clone(), read_staged_text(snapshot, path)?));
+        } else if path.extension().and_then(|extension| extension.to_str()) == Some("rs") {
+            sources.push((path.clone(), read_staged_text(snapshot, path)?));
+        }
+    }
+    Ok((manifests, sources))
+}
+
+fn read_staged_text(snapshot: &StagedRepositorySnapshot, path: &Path) -> CargoAllowResult<String> {
+    let bytes = match read_staged_path(snapshot, path)? {
+        StagedPathRead::Regular(bytes) => bytes,
+        StagedPathRead::Missing => {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Inventory,
+                format!(
+                    "staged source file {} is absent from the candidate",
+                    path.display()
+                ),
+            ));
+        }
+        StagedPathRead::Unsupported { kind, .. } => {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Inventory,
+                format!(
+                    "staged source file {} has unsupported entry kind {kind:?}",
+                    path.display()
+                ),
+            ));
+        }
+    };
+    if (bytes.len() as u64) > SOURCE_FILE_READ_MAX_BYTES {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Scan,
+            format!(
+                "staged source file {} exceeds the {}-byte source-read limit",
+                path.display(),
+                SOURCE_FILE_READ_MAX_BYTES
+            ),
+        ));
+    }
+    String::from_utf8(bytes).map_err(|source| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Scan,
+            format!("staged source file {} is not valid UTF-8", path.display()),
+        )
+        .with_cause(&source)
     })
 }
 
