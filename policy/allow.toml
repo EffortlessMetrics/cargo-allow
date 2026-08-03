@@ -70,6 +70,28 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9200"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/incident-recovery.md"
+owner = "core/release"
+classification = "release_incident_runbook"
+reason = "Documents evidence-preserving incident classification, containment, consumer rollback, and new-version recovery without executing release mutations or claiming atomic rollback."
+evidence = ["issue:2484", "doc:docs/release/README.md", "workflow:.github/workflows/release.yml"]
+created = "2026-08-03"
+review_after = "2027-02-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/incident-recovery.md"
+target_fingerprint = "md"
+glob = "docs/release/incident-recovery.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0511"
 kind = "non_rust_file"
 family = "documentation"

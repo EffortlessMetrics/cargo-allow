@@ -14,6 +14,11 @@ The current qualification snapshot is
 [0.1.11-readiness.md](0.1.11-readiness.md). It is a go/no-go input, not a tag
 or publication authorization.
 
+When a release may be incomplete, unsafe, or unsupported after publication,
+follow the [release incident and recovery runbook](incident-recovery.md). It
+preserves the original identity and evidence and separates containment from a
+new verified recovery version.
+
 ## Pre-publication package candidate smoke
 
 Before freezing a version/changelog candidate, prove the exact source tree
