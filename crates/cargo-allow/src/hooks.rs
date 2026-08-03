@@ -1226,6 +1226,119 @@ mod tests {
         Ok(())
     }
 
+    fn built_binary() -> Result<PathBuf, String> {
+        let current = std::env::current_exe().map_err(|error| error.to_string())?;
+        let target_debug = current
+            .parent()
+            .and_then(Path::parent)
+            .ok_or_else(|| "test executable was not under target/debug/deps".to_string())?;
+        let binary = target_debug.join(format!("cargo-allow{}", std::env::consts::EXE_SUFFIX));
+        if !binary.is_file() {
+            return Err(format!(
+                "built cargo-allow binary is missing: {}",
+                binary.display()
+            ));
+        }
+        Ok(binary)
+    }
+
+    fn binary_digest(binary: &Path) -> Result<String, String> {
+        let output = std::process::Command::new(binary)
+            .args(["tool", "identity", "--format", "json"])
+            .output()
+            .map_err(|error| error.to_string())?;
+        if !output.status.success() {
+            return Err(format!(
+                "built cargo-allow identity failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            ));
+        }
+        let identity: CargoAllowToolIdentityV1 =
+            serde_json::from_slice(&output.stdout).map_err(|error| error.to_string())?;
+        Ok(identity.executable_digest)
+    }
+
+    #[test]
+    fn run_rejects_unapproved_commands_before_binary_selection() -> Result<(), String> {
+        let args = HookRunArgs {
+            binary: PathBuf::from("does-not-exist"),
+            digest: "sha256:v1:unused".to_string(),
+            mode: ToolSelectionMode::ExplicitToolUnderTest,
+            expected_build_source_commit: None,
+            command: vec!["audit".to_string()],
+        };
+        let error = cmd_run(&args)
+            .err()
+            .ok_or_else(|| "unapproved hook command was accepted".to_string())?;
+        if !error.to_string().contains("only permits") {
+            return Err("unapproved hook command did not name the closed contract".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn run_rejects_relative_binary_before_path_lookup() -> Result<(), String> {
+        let args = HookRunArgs {
+            binary: PathBuf::from("cargo-allow"),
+            digest: "sha256:v1:unused".to_string(),
+            mode: ToolSelectionMode::ExplicitToolUnderTest,
+            expected_build_source_commit: None,
+            command: vec![
+                "check".to_string(),
+                "--mode".to_string(),
+                "no-new".to_string(),
+            ],
+        };
+        let error = cmd_run(&args)
+            .err()
+            .ok_or_else(|| "relative hook binary was accepted".to_string())?;
+        if !error.to_string().contains("absolute path") {
+            return Err("relative hook binary did not name the path requirement".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn run_rejects_digest_mismatch_before_execution() -> Result<(), String> {
+        let binary = built_binary()?;
+        let args = HookRunArgs {
+            binary,
+            digest: "sha256:v1:deliberate-mismatch".to_string(),
+            mode: ToolSelectionMode::ExplicitToolUnderTest,
+            expected_build_source_commit: None,
+            command: vec![
+                "check".to_string(),
+                "--mode".to_string(),
+                "no-new".to_string(),
+            ],
+        };
+        let error = cmd_run(&args)
+            .err()
+            .ok_or_else(|| "digest-mismatched hook binary was accepted".to_string())?;
+        if !error.to_string().contains("was not accepted") {
+            return Err("digest mismatch did not fail closed".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn run_executes_the_verified_closed_command() -> Result<(), String> {
+        let binary = built_binary()?;
+        let digest = binary_digest(&binary)?;
+        let args = HookRunArgs {
+            binary,
+            digest,
+            mode: ToolSelectionMode::ExplicitToolUnderTest,
+            expected_build_source_commit: None,
+            command: vec![
+                "check".to_string(),
+                "--mode".to_string(),
+                "no-new".to_string(),
+            ],
+        };
+        cmd_run(&args).map_err(|error| error.to_string())
+    }
+
     #[test]
     fn validate_plan_rejects_unsupported_schema() -> Result<(), String> {
         let mut plan = build_plan(HookStage::PreCommit);
