@@ -40,6 +40,8 @@ handlers. Structured usage errors that reach `main` share exit `2` with Clap.
 | `E0007_ARTIFACT` | `artifact` | Artifact rendering, receipt, or policy-write failure. |
 | `E0008_INTERNAL` | `internal` | An internal invariant or implementation failure. |
 | `E0009_UNKNOWN` | `unknown` | A legacy or not-yet-classified error. |
+| `E0010_UNSUPPORTED` | `unsupported` | The requested capability, platform, or tool contract is not supported. |
+| `E0011_INSTRUMENT_FAILURE` | `instrument_failure` | An external tool or process failed to provide usable evidence. |
 
 Codes are append-only and are never reused for a different failure class.
 Adding a new code is compatible with consumers that handle the existing

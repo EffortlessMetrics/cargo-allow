@@ -133,6 +133,17 @@ fn error_exposes_the_code_of_its_kind() {
 }
 
 #[test]
+fn newly_classified_runtime_kinds_have_append_only_codes() {
+    assert_eq!(CargoAllowErrorKind::Unsupported.code(), "E0010_UNSUPPORTED");
+    assert_eq!(
+        CargoAllowErrorKind::InstrumentFailure.code(),
+        "E0011_INSTRUMENT_FAILURE"
+    );
+    assert_eq!(CargoAllowErrorKind::Internal.code(), "E0008_INTERNAL");
+    assert_eq!(CargoAllowErrorKind::Unknown.code(), "E0009_UNKNOWN");
+}
+
+#[test]
 fn error_exposes_structured_diagnostic_details() -> Result<(), String> {
     let error = CargoAllowError::with_kind(CargoAllowErrorKind::InvalidPolicy, "missing owner")
         .with_diagnostic(super::CargoAllowDiagnostic::error(
