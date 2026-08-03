@@ -69,8 +69,29 @@ argv, the `tracked_worktree` subject, and the current ambient-PATH binary
 resolution. It is a worktree advisory: it does not prove exact staged-index or
 pushed-tree bytes, install or overwrite a hook, write a receipt, contact the
 network, or mutate policy. CI remains the enforcing merge backstop. Safe
-installation, rollback, pinned binary selection, and exact-index enforcement
-are separate capabilities and are not implied by this preview.
+installation, rollback, and exact-index enforcement are separate capabilities
+and are not implied by this preview.
+
+When evaluating a direct hook's binary choice, verify an explicitly selected
+executable rather than relying on ambient PATH. The verifier invokes only the
+selected binary's offline `tool identity` command, checks the expected digest,
+and checks the current capability generations. Published installs use the
+default `installed-pinned` mode; source-built candidates must be explicitly
+marked as preview evidence:
+
+```bash
+cargo-allow tool identity --format json
+cargo-allow hooks verify \
+  --binary /absolute/path/to/cargo-allow \
+  --digest sha256:v1:<digest-from-tool-identity> \
+  --mode installed-pinned \
+  --format human
+```
+
+`hooks verify` is an offline preflight report. It does not install a binary,
+rewrite an existing plan, or make the generated worktree-advisory hook perform
+runtime digest verification; that wrapper integration remains a separate
+follow-up.
 
 For a repository that deliberately uses a direct Git hook, the checked JSON
 plan can be inspected and applied with an explicit acceptance step:

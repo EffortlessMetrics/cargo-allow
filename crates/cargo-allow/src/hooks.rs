@@ -12,6 +12,10 @@ use std::process::Command;
 use std::os::unix::fs::PermissionsExt;
 
 use crate::emit_text;
+use crate::precommit_tool::{
+    CargoAllowToolIdentityV1, ToolCompatibilityRequirement, ToolResultClass, ToolSelectionMode,
+    ToolSelectionRequest, select_tool,
+};
 
 const PLAN_SCHEMA: &str = "cargo-allow.local-hook-plan.v1";
 const COMMAND: [&str; 4] = ["cargo-allow", "check", "--mode", "no-new"];
@@ -37,6 +41,8 @@ pub(crate) enum HooksCommand {
     Apply(HookApplyArgs),
     /// Remove only the exact managed hook created by an apply receipt.
     Remove(HookRemoveArgs),
+    /// Verify an explicitly selected cargo-allow executable offline.
+    Verify(HookVerifyArgs),
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -89,6 +95,28 @@ pub(crate) struct HookRemoveArgs {
     /// Write the removal receipt to this path.
     #[arg(long)]
     pub(crate) result_receipt: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Parser)]
+pub(crate) struct HookVerifyArgs {
+    /// Executable to verify; PATH lookup is never performed.
+    #[arg(long)]
+    pub(crate) binary: PathBuf,
+    /// Expected immutable executable digest, for example sha256:v1:....
+    #[arg(long)]
+    pub(crate) digest: String,
+    /// Selection policy. Published releases are required by default.
+    #[arg(long, value_enum, default_value_t = ToolSelectionMode::InstalledPinned)]
+    pub(crate) mode: ToolSelectionMode,
+    /// Expected build/source commit, when the consumer has one.
+    #[arg(long)]
+    pub(crate) expected_build_source_commit: Option<String>,
+    /// Output format.
+    #[arg(long, value_enum, default_value_t = HookPlanFormat::Human)]
+    pub(crate) format: HookPlanFormat,
+    /// Write the verification report to a file instead of stdout.
+    #[arg(long)]
+    pub(crate) output: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -192,7 +220,103 @@ pub(crate) fn cmd_hooks(args: &HooksArgs) -> CargoAllowResult<()> {
         HooksCommand::Status(status_args) => cmd_status(status_args),
         HooksCommand::Apply(apply_args) => cmd_apply(apply_args),
         HooksCommand::Remove(remove_args) => cmd_remove(remove_args),
+        HooksCommand::Verify(verify_args) => cmd_verify(verify_args),
     }
+}
+
+const HOOK_BINARY_VERIFICATION_SCHEMA: &str = "cargo-allow.local-hook-binary-verification.v1";
+
+#[derive(Debug, Serialize)]
+struct HookBinaryVerificationV1 {
+    schema: &'static str,
+    binary: String,
+    expected_digest: String,
+    mode: ToolSelectionMode,
+    result: ToolResultClass,
+    selected: bool,
+    identity: Option<CargoAllowToolIdentityV1>,
+    preview_evidence: bool,
+    error: Option<String>,
+    claim_boundary: &'static str,
+}
+
+fn cmd_verify(args: &HookVerifyArgs) -> CargoAllowResult<()> {
+    let identity_output = Command::new(&args.binary)
+        .args(["tool", "identity", "--format", "json"])
+        .output()
+        .map_err(|error| {
+            CargoAllowError::new(format!(
+                "failed to invoke selected cargo-allow executable `{}` for tool identity: {error}",
+                args.binary.display()
+            ))
+        })?;
+    if !identity_output.status.success() {
+        return Err(CargoAllowError::new(format!(
+            "selected cargo-allow executable `{}` could not report tool identity: {}",
+            args.binary.display(),
+            String::from_utf8_lossy(&identity_output.stderr).trim()
+        )));
+    }
+    let identity: CargoAllowToolIdentityV1 =
+        serde_json::from_slice(&identity_output.stdout).map_err(|error| {
+            CargoAllowError::new(format!(
+                "selected cargo-allow executable `{}` returned malformed tool identity JSON: {error}",
+                args.binary.display()
+            ))
+        })?;
+    let request = ToolSelectionRequest {
+        mode: args.mode,
+        executable: args.binary.clone(),
+        expected_digest: Some(args.digest.clone()),
+        expected_build_source_commit: args.expected_build_source_commit.clone(),
+        preview_authorized: matches!(args.mode, ToolSelectionMode::ExplicitToolUnderTest),
+    };
+    let result = select_tool(
+        &request,
+        identity.clone(),
+        &ToolCompatibilityRequirement::current(),
+    );
+    let report = match &result {
+        Ok(receipt) => HookBinaryVerificationV1 {
+            schema: HOOK_BINARY_VERIFICATION_SCHEMA,
+            binary: args.binary.display().to_string(),
+            expected_digest: args.digest.clone(),
+            mode: args.mode,
+            result: receipt.result.clone(),
+            selected: true,
+            identity: Some(receipt.identity.clone()),
+            preview_evidence: receipt.preview_evidence,
+            error: None,
+            claim_boundary: "Offline verification of one explicitly selected executable, its immutable digest, reported tool identity, and current capability generations; it does not install or execute a hook.",
+        },
+        Err(failure) => HookBinaryVerificationV1 {
+            schema: HOOK_BINARY_VERIFICATION_SCHEMA,
+            binary: args.binary.display().to_string(),
+            expected_digest: args.digest.clone(),
+            mode: args.mode,
+            result: failure.result.clone(),
+            selected: false,
+            identity: Some(identity),
+            preview_evidence: matches!(args.mode, ToolSelectionMode::ExplicitToolUnderTest),
+            error: Some(failure.message.clone()),
+            claim_boundary: "Offline verification of one explicitly selected executable, its immutable digest, reported tool identity, and current capability generations; it does not install or execute a hook.",
+        },
+    };
+    let rendered = match args.format {
+        HookPlanFormat::Json => serde_json::to_string_pretty(&report).map_err(|error| {
+            CargoAllowError::new(format!(
+                "failed to render hook binary verification JSON: {error}"
+            ))
+        })?,
+        HookPlanFormat::Human => render_binary_verification(&report),
+    };
+    emit_text(args.output.as_deref(), &rendered)?;
+    result.map(|_| ()).map_err(|failure| {
+        CargoAllowError::new(format!(
+            "selected cargo-allow executable was not accepted: {}",
+            failure
+        ))
+    })
 }
 
 #[derive(Debug, Serialize)]
@@ -802,6 +926,40 @@ claim boundary: {}",
         status.plan_identity,
         status.repository_mutation,
         status.claim_boundary,
+    )
+}
+
+fn render_binary_verification(report: &HookBinaryVerificationV1) -> String {
+    let digest = report
+        .identity
+        .as_ref()
+        .map(|identity| identity.executable_digest.as_str())
+        .unwrap_or("unavailable");
+    format!(
+        "Hook binary verification\n\
+schema: {}\n\
+binary: {}\n\
+expected digest: {}\n\
+observed digest: {}\n\
+mode: {:?}\n\
+result: {:?}\n\
+selected: {}\n\
+preview evidence: {}\n\
+claim boundary: {}{}",
+        report.schema,
+        report.binary,
+        report.expected_digest,
+        digest,
+        report.mode,
+        report.result,
+        report.selected,
+        report.preview_evidence,
+        report.claim_boundary,
+        report
+            .error
+            .as_deref()
+            .map(|error| format!("\nerror: {error}"))
+            .unwrap_or_default(),
     )
 }
 
