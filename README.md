@@ -68,6 +68,10 @@ fixture-backed expected outputs live in
 registry is
 [`published-command-registry.toml`](docs/dogfood/fixtures/getting-started/published-command-registry.toml).
 
+If a local or CI run fails closed, use the
+[troubleshooting guide](docs/how-to/troubleshoot-cargo-allow.md) for the
+symptom, meaning, and safest next command before changing policy.
+
 For the current source candidate, start an unfamiliar repository with the
 read-only guided plan before choosing `init` or `propose`:
 
