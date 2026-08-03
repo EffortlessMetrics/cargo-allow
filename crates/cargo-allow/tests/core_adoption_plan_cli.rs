@@ -195,6 +195,23 @@ fn adopt_projects_findings_without_policy_and_ci_guidance() -> Result<(), String
             == Some("RunNoNewCheck"),
         "ci guidance should produce a no-new follow-up",
     )?;
+    let absolute_config = run_adopt(
+        &healthy_root,
+        &[
+            "--format",
+            "json",
+            "--config",
+            healthy_root
+                .join("policy/allow.toml")
+                .to_string_lossy()
+                .as_ref(),
+        ],
+    )?;
+    require(
+        absolute_config.status.success(),
+        "absolute in-root config should succeed",
+    )?;
+    parse_stdout(&absolute_config)?;
     let include_untracked = run_adopt(&healthy_root, &["--format", "json", "--include-untracked"])?;
     require(
         include_untracked.status.success(),
@@ -244,6 +261,24 @@ fn adopt_fails_closed_for_invalid_policy_and_preserves_collision_targets() -> Re
         "config outside the selected root should fail",
     )?;
     require_exit_code(&invalid_config, 2, "config outside root")?;
+    let absolute_output = invalid_root
+        .parent()
+        .ok_or_else(|| "invalid fixture should have a parent".to_string())?
+        .join("adoption-outside.json");
+    let outside_output = run_adopt(
+        &invalid_root,
+        &[
+            "--format",
+            "json",
+            "--output",
+            absolute_output.to_string_lossy().as_ref(),
+        ],
+    )?;
+    require(
+        !outside_output.status.success(),
+        "output outside the selected root should fail",
+    )?;
+    require_exit_code(&outside_output, 1, "output outside root")?;
     remove_temp_root(invalid_root)?;
 
     let collision_root = temp_root("adoption-output-collision")?;
