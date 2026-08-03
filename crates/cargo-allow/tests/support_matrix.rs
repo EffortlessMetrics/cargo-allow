@@ -165,6 +165,16 @@ fn capability_contract_matches_the_cli_and_first_hour_docs() {
         GETTING_STARTED.contains("cargo run -p cargo-allow -- capabilities --format json"),
         "first-hour docs must teach the machine-readable capability command"
     );
+    assert!(
+        GETTING_STARTED.contains(
+            "cargo run -p cargo-allow -- capabilities --root . --config policy/allow.toml --format json"
+        ),
+        "first-hour docs must teach policy-backed configured capability discovery"
+    );
+    assert!(
+        GETTING_STARTED.contains("configured_file_families"),
+        "first-hour docs must describe the configured capability projection"
+    );
 }
 
 /// Keep the first-hour evidence vocabulary aligned with the parser's canonical

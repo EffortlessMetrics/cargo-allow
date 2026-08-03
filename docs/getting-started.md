@@ -113,6 +113,7 @@ matrix that the current source-candidate binary carries:
 cargo run -p cargo-allow -- capabilities
 cargo run -p cargo-allow -- capabilities --format json
 cargo run -p cargo-allow -- capabilities --class not-included
+cargo run -p cargo-allow -- capabilities --root . --config policy/allow.toml --format json
 ```
 
 This is a current source-candidate command; the published `0.1.11` binary
@@ -125,6 +126,15 @@ each built-in finding family. `not_included` rows are explicit exclusions, not
 clean-scan results. This command describes source-tree observations; it does
 not add compilation, type, macro-expansion, MIR, runtime, or test-adequacy
 analysis.
+
+When a repository defines custom file-family rules in its policy, provide the
+source-tree root and policy path to include them in the JSON projection. These
+rows appear under `configured_file_families` and identify the rule id, family,
+glob, and configured path-presence support. They do not claim file-content
+safety or any compilation, type, flow, runtime, or test-adequacy behavior. If
+no root or policy is supplied, the command reports the static catalog only;
+when a supplied policy is invalid, the command fails instead of presenting a
+partial configured catalog.
 
 ## 3. Audit current exceptions
 

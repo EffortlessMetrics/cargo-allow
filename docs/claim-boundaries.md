@@ -43,9 +43,11 @@ matrix. Its `supported_syntax` rows describe selected syntax-visible facts,
 its `supported_presence` rows describe tracked-path classification, and its
 compatibility/policy rows describe derived projections. The catalog's
 `not_included` rows are explicit exclusions and never mean that a scan is
-clean. Repository-defined custom file-family rules require a separate
-policy-backed catalog registration; they do not inherit a built-in semantic
-claim automatically.
+clean. To inspect repository-defined custom file-family rules, provide the
+source-tree root and policy path, for example
+`cargo-allow capabilities --root . --config policy/allow.toml --format json`.
+They appear as `configured_file_families` rows with a path-presence claim only;
+they do not inherit a built-in semantic claim automatically.
 
 ## Source Syntax Only
 

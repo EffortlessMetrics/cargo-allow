@@ -3,7 +3,10 @@ use clap::{Parser, ValueEnum};
 use serde::Serialize;
 use std::path::PathBuf;
 
-use crate::emit_text;
+use crate::{
+    EvidenceValidationMode, RootArgs, config_path, current_dir, emit_text, load_policy_at_path,
+    resolve_source_tree_root,
+};
 
 pub(crate) const SENSOR_CAPABILITY_SCHEMA: &str = "cargo-allow.sensor-capabilities.v1";
 
@@ -41,6 +44,11 @@ impl CapabilityClass {
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct CapabilitiesArgs {
+    #[command(flatten)]
+    pub(crate) root: RootArgs,
+    /// Policy config path used to include repository-defined file-family rules.
+    #[arg(long)]
+    pub(crate) config: Option<PathBuf>,
     /// Output format.
     #[arg(long, value_enum, default_value_t = CapabilityFormat::Human)]
     pub(crate) format: CapabilityFormat,
@@ -64,7 +72,20 @@ struct CapabilityCatalog {
     generation: u32,
     claim_boundary: &'static str,
     capabilities: Vec<SensorCapability>,
+    configured_file_families: Vec<ConfiguredFileFamilyCapability>,
 }
+
+#[derive(Debug, Clone, Serialize)]
+struct ConfiguredFileFamilyCapability {
+    rule_id: String,
+    family: String,
+    glob: String,
+    analysis_class: &'static str,
+    support_tier: &'static str,
+    claim_boundary: &'static str,
+}
+
+const CONFIGURED_FILE_FAMILY_CLAIM_BOUNDARY: &str = "This row describes a repository-defined path-presence classifier; it does not claim file-content safety, compilation, type, flow, runtime, or test-adequacy behavior.";
 
 #[derive(Debug, Clone, Copy, Serialize)]
 struct SensorCapability {
@@ -392,6 +413,7 @@ const CAPABILITIES: &[SensorCapability] = &[
 
 pub(crate) fn cmd_capabilities(args: &CapabilitiesArgs) -> CargoAllowResult<()> {
     validate_catalog()?;
+    let configured_file_families = configured_file_family_capabilities(args)?;
     let capabilities = CAPABILITIES
         .iter()
         .copied()
@@ -415,12 +437,70 @@ pub(crate) fn cmd_capabilities(args: &CapabilitiesArgs) -> CargoAllowResult<()> 
         generation: 1,
         claim_boundary: "Source-tree observations only; no compilation, type, macro, MIR, runtime, or test-adequacy claim.",
         capabilities,
+        configured_file_families,
     };
     let rendered = match args.format {
         CapabilityFormat::Human => render_human(&catalog),
         CapabilityFormat::Json => render_json(&catalog)?,
     };
     emit_text(args.output.as_deref(), &format!("{rendered}\n"))
+}
+
+fn configured_file_family_capabilities(
+    args: &CapabilitiesArgs,
+) -> CargoAllowResult<Vec<ConfiguredFileFamilyCapability>> {
+    if args.root.root.is_none() && args.config.is_none() {
+        return Ok(Vec::new());
+    }
+    if args
+        .class
+        .is_some_and(|class| class != CapabilityClass::SupportedPresence)
+        || args
+            .kind
+            .as_deref()
+            .is_some_and(|kind| kind != "non_rust_file")
+    {
+        return Ok(Vec::new());
+    }
+
+    let cwd = current_dir()?;
+    let root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
+    let Some(path) = config_path(&root, args.config.as_deref()) else {
+        return Ok(Vec::new());
+    };
+    let config =
+        load_policy_at_path(path, EvidenceValidationMode::ReportOnly).map_err(|error| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::InvalidPolicy,
+                format!("failed to load capability policy: {error}"),
+            )
+        })?;
+
+    let mut rules = config
+        .workspace
+        .file_families
+        .into_iter()
+        .filter(|rule| {
+            args.family
+                .as_deref()
+                .is_none_or(|family| family == rule.family)
+        })
+        .map(|rule| ConfiguredFileFamilyCapability {
+            rule_id: rule.id,
+            family: rule.family,
+            glob: rule.glob,
+            analysis_class: "supported_presence",
+            support_tier: "configured",
+            claim_boundary: CONFIGURED_FILE_FAMILY_CLAIM_BOUNDARY,
+        })
+        .collect::<Vec<_>>();
+    rules.sort_by(|left, right| {
+        left.family
+            .cmp(&right.family)
+            .then_with(|| left.rule_id.cmp(&right.rule_id))
+            .then_with(|| left.glob.cmp(&right.glob))
+    });
+    Ok(rules)
 }
 
 fn render_json<T: Serialize>(value: &T) -> CargoAllowResult<String> {
@@ -457,6 +537,20 @@ fn render_human(catalog: &CapabilityCatalog) -> String {
             capability.claims_excluded.join(", "),
             capability.limitations.join(", "),
         ));
+    }
+    if !catalog.configured_file_families.is_empty() {
+        out.push_str("\nConfigured repository file-family rules:\n");
+        for rule in &catalog.configured_file_families {
+            out.push_str(&format!(
+                "- {}: {} [{}] glob={} support={}\n  claim={}\n",
+                rule.rule_id,
+                rule.family,
+                rule.analysis_class,
+                rule.glob,
+                rule.support_tier,
+                rule.claim_boundary,
+            ));
+        }
     }
     out
 }
@@ -591,6 +685,7 @@ mod tests {
             generation: 1,
             claim_boundary: "source-only",
             capabilities: CAPABILITIES.to_vec(),
+            configured_file_families: Vec::new(),
         })
         .unwrap_or_else(|error| std::panic::panic_any(error.to_string()));
         let value: serde_json::Value = serde_json::from_str(&json)
@@ -655,6 +750,8 @@ mod tests {
     fn capabilities_command_renders_and_filters_each_projection() -> Result<(), String> {
         let human_path = output_path("human");
         cmd_capabilities(&CapabilitiesArgs {
+            root: RootArgs { root: None },
+            config: None,
             format: CapabilityFormat::Human,
             class: None,
             kind: None,
@@ -667,12 +764,15 @@ mod tests {
         if !human.contains("cargo-allow sensor capabilities")
             || !human.contains("rust.panic.unwrap")
             || !human.contains("excluded.workflow.rich_semantics")
+            || human.contains("Configured repository file-family rules:")
         {
-            return Err("human capability output omitted expected rows".to_string());
+            return Err("human capability output had unexpected rows".to_string());
         }
 
         let excluded_path = output_path("excluded");
         cmd_capabilities(&CapabilitiesArgs {
+            root: RootArgs { root: None },
+            config: None,
             format: CapabilityFormat::Json,
             class: Some(CapabilityClass::NotIncluded),
             kind: None,
@@ -695,6 +795,8 @@ mod tests {
 
         let finding_path = output_path("finding");
         cmd_capabilities(&CapabilitiesArgs {
+            root: RootArgs { root: None },
+            config: None,
             format: CapabilityFormat::Json,
             class: Some(CapabilityClass::SupportedSyntax),
             kind: Some("panic".to_string()),
@@ -719,6 +821,103 @@ mod tests {
         {
             return Err("kind/family filter returned an unexpected row".to_string());
         }
+        Ok(())
+    }
+
+    #[test]
+    fn configured_file_family_capabilities_are_policy_backed_and_sorted() -> Result<(), String> {
+        let root = output_path("configured-root");
+        let policy_dir = root.join("policy");
+        fs::create_dir_all(&policy_dir).map_err(|error| error.to_string())?;
+        let policy = policy_dir.join("allow.toml");
+        fs::write(
+            &policy,
+            r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[workspace]
+ignored = []
+generated = []
+
+[[workspace.file_family]]
+id = "z-model"
+family = "ml_model"
+glob = "models/**/*.onnx"
+reason = "Govern model artifacts."
+
+[[workspace.file_family]]
+id = "a-release"
+family = "release_metadata"
+glob = "models/release.onnx"
+reason = "Govern release metadata."
+"#,
+        )
+        .map_err(|error| error.to_string())?;
+        let output = root.join("capabilities.json");
+        cmd_capabilities(&CapabilitiesArgs {
+            root: RootArgs {
+                root: Some(root.clone()),
+            },
+            config: Some(policy),
+            format: CapabilityFormat::Json,
+            class: Some(CapabilityClass::SupportedPresence),
+            kind: Some("non_rust_file".to_string()),
+            family: None,
+            output: Some(output.clone()),
+        })
+        .map_err(|error| error.to_string())?;
+        let value: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&output).map_err(|error| error.to_string())?)
+                .map_err(|error| error.to_string())?;
+        let rules = value
+            .get("configured_file_families")
+            .and_then(serde_json::Value::as_array)
+            .ok_or_else(|| "configured family rows should be an array".to_string())?;
+        let first = rules.first();
+        let second = rules.get(1);
+        if rules.len() != 2
+            || first
+                .and_then(|rule| rule.get("family"))
+                .and_then(serde_json::Value::as_str)
+                != Some("ml_model")
+            || second
+                .and_then(|rule| rule.get("family"))
+                .and_then(serde_json::Value::as_str)
+                != Some("release_metadata")
+            || first
+                .and_then(|rule| rule.get("analysis_class"))
+                .and_then(serde_json::Value::as_str)
+                != Some("supported_presence")
+        {
+            return Err(format!("unexpected configured family rows: {rules:?}"));
+        }
+        fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn invalid_configured_capability_policy_is_invalid_policy() -> Result<(), String> {
+        let root = output_path("configured-invalid");
+        let policy_dir = root.join("policy");
+        fs::create_dir_all(&policy_dir).map_err(|error| error.to_string())?;
+        let policy = policy_dir.join("allow.toml");
+        fs::write(&policy, "not = [valid").map_err(|error| error.to_string())?;
+        let error = configured_file_family_capabilities(&CapabilitiesArgs {
+            root: RootArgs {
+                root: Some(root.clone()),
+            },
+            config: Some(policy),
+            format: CapabilityFormat::Json,
+            class: None,
+            kind: None,
+            family: None,
+            output: None,
+        })
+        .expect_err("invalid configured policy should fail closed");
+        if error.kind() != CargoAllowErrorKind::InvalidPolicy {
+            return Err(format!("unexpected error kind: {}", error.kind()));
+        }
+        fs::remove_dir_all(root).map_err(|error| error.to_string())?;
         Ok(())
     }
 
