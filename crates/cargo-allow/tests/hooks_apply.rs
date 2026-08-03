@@ -175,6 +175,123 @@ fn hooks_verify_accepts_explicit_preview_binary_and_reports_digest_mismatch() ->
 }
 
 #[test]
+fn hooks_run_executes_only_the_verified_check_command() -> TestResult {
+    let fixture = Fixture::new("run")?;
+    init_git(&fixture.path)?;
+    let binary = path_arg(Path::new(env!("CARGO_BIN_EXE_cargo-allow")));
+    run_success(&fixture.path, &["init", "--strict"])?;
+    git_add(&fixture.path, "policy/allow.toml")?;
+    let identity = run_success(&fixture.path, &["tool", "identity", "--format", "json"])?;
+    let identity: Value = serde_json::from_slice(&identity.stdout)?;
+    let digest = identity
+        .get("executable_digest")
+        .and_then(Value::as_str)
+        .ok_or("tool identity omitted executable_digest")?;
+
+    let output = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "run",
+            "--binary",
+            &binary,
+            "--digest",
+            digest,
+            "--mode",
+            "explicit-tool-under-test",
+            "--",
+            "check",
+            "--mode",
+            "no-new",
+        ],
+    )?;
+    require(
+        output.status.success()
+            && String::from_utf8_lossy(&output.stdout).contains("Result: passed (enforcing)"),
+        &format!(
+            "verified hook runner did not execute the closed check command: status={}, stdout=`{}`, stderr=`{}`",
+            output.status,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        ),
+    )?;
+
+    let output = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "run",
+            "--binary",
+            &binary,
+            "--digest",
+            "sha256:v1:deliberate-mismatch",
+            "--mode",
+            "explicit-tool-under-test",
+            "--",
+            "check",
+            "--mode",
+            "no-new",
+        ],
+    )?;
+    require(
+        !output.status.success()
+            && String::from_utf8_lossy(&output.stderr).contains("was not accepted"),
+        "verified hook runner accepted a mismatched executable digest",
+    )?;
+
+    fs::create_dir_all(fixture.path.join("src"))?;
+    fs::write(
+        fixture.path.join("src/lib.rs"),
+        "pub fn finding() { let _ = Some(1).unwrap(); }\n",
+    )?;
+    git_add(&fixture.path, "src/lib.rs")?;
+    let output = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "run",
+            "--binary",
+            &binary,
+            "--digest",
+            digest,
+            "--mode",
+            "explicit-tool-under-test",
+            "--",
+            "check",
+            "--mode",
+            "no-new",
+        ],
+    )?;
+    require(
+        !output.status.success()
+            && String::from_utf8_lossy(&output.stdout).contains("Result: failed"),
+        "verified hook runner did not preserve a child policy failure",
+    )?;
+
+    let output = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "run",
+            "--binary",
+            &binary,
+            "--digest",
+            digest,
+            "--mode",
+            "explicit-tool-under-test",
+            "--",
+            "audit",
+        ],
+    )?;
+    require(
+        !output.status.success()
+            && String::from_utf8_lossy(&output.stderr).contains("only permits"),
+        "verified hook runner accepted a command outside the closed contract",
+    )?;
+    Ok(())
+}
+
+#[test]
 fn hooks_apply_creates_and_reports_a_managed_hook() -> TestResult {
     let fixture = Fixture::new("create")?;
     init_git(&fixture.path)?;
@@ -934,6 +1051,23 @@ fn init_git(root: &Path) -> TestResult {
         .into());
     }
     Ok(())
+}
+
+fn git_add(root: &Path, path: &str) -> TestResult {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(["add", "--", path])
+        .output()?;
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(format!(
+            "git add failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        )
+        .into())
+    }
 }
 
 fn run_success(root: &Path, args: &[&str]) -> Result<Output, Box<dyn std::error::Error>> {
