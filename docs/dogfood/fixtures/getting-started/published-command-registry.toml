@@ -49,6 +49,7 @@ first_run_subcommands = [
 # 0.1.11 freeze. They must remain explicitly labeled in getting-started.md.
 candidate_only_subcommands = [
   "capabilities",
+  "adopt",
 ]
 
 # Root/shared flags taught on the Published path (docs may use these).

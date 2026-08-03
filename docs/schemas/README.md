@@ -6,6 +6,7 @@ macro-expansion, or proof-level coverage.
 
 | Artifact | Schema ID | Producer |
 |---|---|---|
+| Core adoption plan | `cargo-allow.core-adoption-plan.v1` | `cargo-allow adopt --format json` |
 | Setup diagnostics | `cargo-allow.doctor.v1` | `cargo-allow doctor --format json` |
 | Audit/check/diff report | `cargo-allow.report.v1` | `cargo-allow audit --format json`, `cargo-allow check --format json`, `cargo-allow diff --format json` |
 | Check/diff receipt | `cargo-allow.receipt.v1` | `cargo-allow check --receipt <path>`, `cargo-allow diff --receipt <path>` |
@@ -72,6 +73,7 @@ matrix.
 
 ## Files
 
+- [core-adoption-plan.schema.json](core-adoption-plan.schema.json)
 - [doctor.schema.json](doctor.schema.json)
 - [support-bundle.schema.json](support-bundle.schema.json) (redacted troubleshooting contract; not a governed source-tree artifact)
 - [report.schema.json](report.schema.json)

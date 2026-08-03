@@ -29,6 +29,17 @@ candidate_version = "0.2.0"
 candidate_published = false
 candidate_evidence = "docs/release/0.2.0.md"
 
+# The installed capability command is a source-tree claim catalog, not an
+# artifact schema or a release qualification result. Keep its support contract
+# visible here so release/docs projections cannot omit or rename it silently.
+[capabilities]
+schema = "cargo-allow.sensor-capabilities.v1"
+generation = 1
+command = "cargo-allow capabilities --format json"
+support = "source-candidate"
+evidence = "crates/cargo-allow/src/capabilities.rs tests and docs/getting-started.md"
+claim_boundary = "Source-tree observations only; no compilation, type, macro, MIR, runtime, or test-adequacy claim."
+
 [rust]
 # Source of truth is `rust-version` under [workspace.package] in Cargo.toml.
 # scripts/check-msrv-consistency.sh proves the CI pin, the cache key, and the
@@ -100,6 +111,7 @@ ids = [
   "cargo-allow.add.v1",
   "cargo-allow.add-finding-plan.v1",
   "cargo-allow.add-plan-application.v1",
+  "cargo-allow.core-adoption-plan.v1",
   "cargo-allow.doctor.v1",
   "cargo-allow.explain.v1",
   "cargo-allow.list.v1",

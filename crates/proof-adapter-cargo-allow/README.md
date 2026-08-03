@@ -8,6 +8,11 @@ Most users should use [cargo-allow](https://github.com/EffortlessMetrics/cargo-a
 
 Packet 2567 lands the snapshot-bound read-only provider contract. Packet 2554 lands discovery, process-protocol argv compilation, and `ProofProviderV1` wiring. Process execution remains proof-engine owned.
 
+The provider advertises the read-only `cargo-allow capabilities --format json`
+report as `cargo-allow.capabilities.json`. Its reviewed argv is exact, emits no
+file writes or network access, and carries the `cargo-allow.sensor-capabilities.v1`
+claim boundary without duplicating sensor rows.
+
 `proof-adapter-cargo-allow` does not scan source files, does not invoke Cargo, compile code, or depend on intent or `cargo-allow` application crates.
 
 ## Packet 2567 / 2554

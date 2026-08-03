@@ -32,6 +32,8 @@ pub const MIGRATE_SCHEMA_VERSION: u32 = 1;
 pub const MIGRATE_SCHEMA_ID: &str = "cargo-allow.migrate.v1";
 pub const SPEC_SYSTEM_SCHEMA_VERSION: u32 = 1;
 pub const SPEC_SYSTEM_SCHEMA_ID: &str = "cargo-allow.spec-system.v1";
+pub const CORE_ADOPTION_PLAN_SCHEMA_VERSION: u32 = 1;
+pub const CORE_ADOPTION_PLAN_SCHEMA_ID: &str = "cargo-allow.core-adoption-plan.v1";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ArtifactContract {
@@ -192,10 +194,19 @@ pub(crate) const WORKLIST_ARTIFACT: ArtifactContract = ArtifactContract {
     fixed_command: Some("worklist"),
 };
 
+pub(crate) const CORE_ADOPTION_PLAN_ARTIFACT: ArtifactContract = ArtifactContract {
+    name: "core-adoption-plan",
+    schema_id: CORE_ADOPTION_PLAN_SCHEMA_ID,
+    schema_version: CORE_ADOPTION_PLAN_SCHEMA_VERSION,
+    inventory_scanner: INVENTORY_SCANNER_SOURCE_SYNTAX,
+    fixed_command: Some("adopt"),
+};
+
 pub const ARTIFACT_CONTRACTS: &[ArtifactContract] = &[
     ADD_ARTIFACT,
     ADD_FINDING_PLAN_ARTIFACT,
     ADD_PLAN_APPLICATION_ARTIFACT,
+    CORE_ADOPTION_PLAN_ARTIFACT,
     DOCTOR_ARTIFACT,
     EXPLAIN_ARTIFACT,
     LIST_ARTIFACT,

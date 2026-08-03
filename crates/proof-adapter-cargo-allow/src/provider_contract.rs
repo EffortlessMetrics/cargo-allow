@@ -64,7 +64,10 @@ pub fn default_cargo_allow_provider_contract() -> CargoAllowProviderContractV1 {
         forbidden_path_prefixes: vec!["target/".to_string(), "crates/".to_string()],
         environment_variable: "CARGO_ALLOW_BIN".to_string(),
         config_relative_path: ".allow/compatibility/proof-delegation.toml".to_string(),
-        required_capabilities: vec!["cargo-allow.check.no-new".to_string()],
+        required_capabilities: vec![
+            "cargo-allow.check.no-new".to_string(),
+            "cargo-allow.capabilities.json".to_string(),
+        ],
     }
 }
 

@@ -11,6 +11,497 @@ use std::os::unix::fs::symlink;
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
+fn hooks_verify_accepts_explicit_preview_binary_and_reports_digest_mismatch() -> TestResult {
+    let fixture = Fixture::new("verify")?;
+    let binary = path_arg(Path::new(env!("CARGO_BIN_EXE_cargo-allow")));
+    let identity = run_success(&fixture.path, &["tool", "identity", "--format", "json"])?;
+    let identity: Value = serde_json::from_slice(&identity.stdout)?;
+    let digest = identity
+        .get("executable_digest")
+        .and_then(Value::as_str)
+        .ok_or("tool identity omitted executable_digest")?;
+    let report = fixture.path.join("target/verification.json");
+    let report_arg = path_arg(&report);
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "verify",
+            "--binary",
+            &binary,
+            "--digest",
+            digest,
+            "--mode",
+            "explicit-tool-under-test",
+            "--format",
+            "json",
+            "--output",
+            &report_arg,
+        ],
+    )?;
+    let report_value: Value = serde_json::from_slice(&fs::read(&report)?)?;
+    require(
+        report_value.get("selected").and_then(Value::as_bool) == Some(true)
+            && report_value.get("result").and_then(Value::as_str)
+                == Some("ToolPrebuiltAndSelected")
+            && report_value
+                .get("preview_evidence")
+                .and_then(Value::as_bool)
+                == Some(true),
+        "explicit preview verification did not report a selected tool",
+    )?;
+
+    let human = run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "verify",
+            "--binary",
+            &binary,
+            "--digest",
+            digest,
+            "--mode",
+            "explicit-tool-under-test",
+            "--format",
+            "human",
+        ],
+    )?;
+    let human = String::from_utf8(human.stdout)?;
+    require(
+        human.contains("Hook binary verification")
+            && human.contains("selected: true")
+            && human.contains("preview evidence: true"),
+        "human verification output omitted selected-tool evidence",
+    )?;
+
+    let release_report = fixture.path.join("target/release-mode.json");
+    let release_report_arg = path_arg(&release_report);
+    let output = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "verify",
+            "--binary",
+            &binary,
+            "--digest",
+            digest,
+            "--format",
+            "json",
+            "--output",
+            &release_report_arg,
+        ],
+    )?;
+    require(
+        !output.status.success(),
+        "source-preview binary unexpectedly passed installed-pinned verification",
+    )?;
+    let release_report_value: Value = serde_json::from_slice(&fs::read(&release_report)?)?;
+    require(
+        release_report_value.get("result").and_then(Value::as_str)
+            == Some("PreviewToolNotAuthorized"),
+        "installed-pinned verification did not reject source-preview identity",
+    )?;
+
+    let mismatch = fixture.path.join("target/mismatch.json");
+    let mismatch_arg = path_arg(&mismatch);
+    let output = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "verify",
+            "--binary",
+            &binary,
+            "--digest",
+            "sha256:v1:deliberate-mismatch",
+            "--mode",
+            "explicit-tool-under-test",
+            "--format",
+            "json",
+            "--output",
+            &mismatch_arg,
+        ],
+    )?;
+    require(
+        !output.status.success(),
+        "binary verification unexpectedly accepted a mismatched digest",
+    )?;
+    let mismatch_value: Value = serde_json::from_slice(&fs::read(&mismatch)?)?;
+    require(
+        mismatch_value.get("selected").and_then(Value::as_bool) == Some(false)
+            && mismatch_value.get("result").and_then(Value::as_str) == Some("ToolIdentityMismatch"),
+        "digest mismatch report did not preserve the fail-closed result",
+    )?;
+
+    let missing = fixture.path.join("target/missing-cargo-allow.exe");
+    let missing_arg = path_arg(&missing);
+    let output = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "verify",
+            "--binary",
+            &missing_arg,
+            "--digest",
+            digest,
+            "--mode",
+            "explicit-tool-under-test",
+        ],
+    )?;
+    require(
+        !output.status.success()
+            && String::from_utf8_lossy(&output.stderr).contains("failed to invoke selected"),
+        "missing selected executable did not produce a clear invocation failure",
+    )?;
+
+    let output = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "verify",
+            "--binary",
+            "cargo-allow",
+            "--digest",
+            digest,
+            "--mode",
+            "explicit-tool-under-test",
+        ],
+    )?;
+    require(
+        !output.status.success()
+            && String::from_utf8_lossy(&output.stderr).contains("absolute path"),
+        "relative selected executable was not rejected before PATH lookup",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn hooks_plan_can_wire_the_verified_runtime_into_an_applied_hook() -> TestResult {
+    let fixture = Fixture::new("verified-plan")?;
+    init_git(&fixture.path)?;
+    let binary = path_arg(Path::new(env!("CARGO_BIN_EXE_cargo-allow")));
+    let identity = run_success(&fixture.path, &["tool", "identity", "--format", "json"])?;
+    let identity: Value = serde_json::from_slice(&identity.stdout)?;
+    let digest = identity
+        .get("executable_digest")
+        .and_then(Value::as_str)
+        .ok_or("tool identity omitted executable_digest")?;
+    let plan = fixture.path.join("target/verified-hook-plan.json");
+    let plan_arg = path_arg(&plan);
+    let rejected_plan = fixture.path.join("target/rejected-hook-plan.json");
+    let rejected_plan_arg = path_arg(&rejected_plan);
+
+    let rejected = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "plan",
+            "--binary",
+            &binary,
+            "--digest",
+            "sha256:v1:deliberate-mismatch",
+            "--mode",
+            "explicit-tool-under-test",
+            "--format",
+            "json",
+            "--output",
+            &rejected_plan_arg,
+        ],
+    )?;
+    require(
+        !rejected.status.success()
+            && String::from_utf8_lossy(&rejected.stderr).contains("was not accepted"),
+        "runtime-verified plan accepted a mismatched executable digest",
+    )?;
+
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "plan",
+            "--stage",
+            "pre-commit",
+            "--format",
+            "json",
+            "--binary",
+            &binary,
+            "--digest",
+            digest,
+            "--mode",
+            "explicit-tool-under-test",
+            "--output",
+            &plan_arg,
+        ],
+    )?;
+
+    let plan_value: Value = serde_json::from_slice(&fs::read(&plan)?)?;
+    require(
+        plan_value.get("binary_resolution").and_then(Value::as_str)
+            == Some("explicit_verified_executable")
+            && plan_value
+                .get("verified_runtime")
+                .and_then(Value::as_object)
+                .is_some_and(|runtime| {
+                    runtime.get("binary").and_then(Value::as_str) == Some(binary.as_str())
+                        && runtime.get("digest").and_then(Value::as_str) == Some(digest)
+                }),
+        "verified hook plan omitted its selected runtime identity",
+    )?;
+    let argv = plan_value
+        .get("argv")
+        .and_then(Value::as_array)
+        .ok_or("verified hook plan omitted argv")?;
+    require(
+        argv.iter().any(|value| value.as_str() == Some("hooks"))
+            && argv.iter().any(|value| value.as_str() == Some("run"))
+            && argv.iter().any(|value| value.as_str() == Some("--digest"))
+            && argv.iter().any(|value| value.as_str() == Some("check")),
+        "verified hook plan did not emit the closed runtime argv",
+    )?;
+
+    let status_mismatch = run(
+        &fixture.path,
+        &[
+            "hooks", "status", "--stage", "pre-push", "--plan", &plan_arg,
+        ],
+    )?;
+    require(
+        !status_mismatch.status.success()
+            && String::from_utf8_lossy(&status_mismatch.stderr)
+                .contains("status plan targets `pre-commit`, but `--stage` selected `pre-push`"),
+        "status accepted a plan for a different hook stage",
+    )?;
+
+    let receipt = fixture.path.join("target/verified-hook-receipt.json");
+    let receipt_arg = path_arg(&receipt);
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "apply",
+            "--plan",
+            &plan_arg,
+            "--accept",
+            "--receipt",
+            &receipt_arg,
+        ],
+    )?;
+    let hook = fs::read_to_string(fixture.path.join(".git/hooks/pre-commit"))?;
+    require(
+        hook.contains(&format!("exec '{binary}' 'hooks' 'run'"))
+            && hook.contains(&format!("'{digest}'")),
+        "applied hook did not preserve the verified runtime argv",
+    )?;
+
+    let mismatch_plan = fixture.path.join("target/verified-pre-push-plan.json");
+    let mismatch_plan_arg = path_arg(&mismatch_plan);
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "plan",
+            "--stage",
+            "pre-push",
+            "--binary",
+            &binary,
+            "--digest",
+            digest,
+            "--mode",
+            "explicit-tool-under-test",
+            "--format",
+            "json",
+            "--output",
+            &mismatch_plan_arg,
+        ],
+    )?;
+
+    let removal_mismatch = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "remove",
+            "--receipt",
+            &receipt_arg,
+            "--plan",
+            &mismatch_plan_arg,
+            "--accept",
+        ],
+    )?;
+    require(
+        !removal_mismatch.status.success()
+            && String::from_utf8_lossy(&removal_mismatch.stderr)
+                .contains("remove plan targets `pre-push`, but apply receipt targets `pre-commit`"),
+        &format!(
+            "remove accepted a plan for a different hook stage: status={}, stdout={}, stderr={}",
+            removal_mismatch.status,
+            String::from_utf8_lossy(&removal_mismatch.stdout),
+            String::from_utf8_lossy(&removal_mismatch.stderr)
+        ),
+    )?;
+
+    let status = run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "status",
+            "--stage",
+            "pre-commit",
+            "--plan",
+            &plan_arg,
+            "--format",
+            "json",
+        ],
+    )?;
+    let status: Value = serde_json::from_slice(&status.stdout)?;
+    require(
+        status.get("disposition").and_then(Value::as_str) == Some("AlreadyPresent")
+            && status.get("plan_identity").and_then(Value::as_str)
+                == plan_value.get("plan_identity").and_then(Value::as_str),
+        "verified plan status did not recognize the applied hook",
+    )?;
+
+    let removal = fixture.path.join("target/verified-hook-removal.json");
+    let removal_arg = path_arg(&removal);
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "remove",
+            "--receipt",
+            &receipt_arg,
+            "--plan",
+            &plan_arg,
+            "--accept",
+            "--result-receipt",
+            &removal_arg,
+        ],
+    )?;
+    let removal: Value = serde_json::from_slice(&fs::read(&removal)?)?;
+    require(
+        removal.get("removed").and_then(Value::as_bool) == Some(true)
+            && !fixture.path.join(".git/hooks/pre-commit").exists(),
+        "verified apply receipt did not remove the exact managed hook",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn hooks_run_executes_only_the_verified_check_command() -> TestResult {
+    let fixture = Fixture::new("run")?;
+    init_git(&fixture.path)?;
+    let binary = path_arg(Path::new(env!("CARGO_BIN_EXE_cargo-allow")));
+    run_success(&fixture.path, &["init", "--strict"])?;
+    git_add(&fixture.path, "policy/allow.toml")?;
+    let identity = run_success(&fixture.path, &["tool", "identity", "--format", "json"])?;
+    let identity: Value = serde_json::from_slice(&identity.stdout)?;
+    let digest = identity
+        .get("executable_digest")
+        .and_then(Value::as_str)
+        .ok_or("tool identity omitted executable_digest")?;
+
+    let output = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "run",
+            "--binary",
+            &binary,
+            "--digest",
+            digest,
+            "--mode",
+            "explicit-tool-under-test",
+            "--",
+            "check",
+            "--mode",
+            "no-new",
+        ],
+    )?;
+    require(
+        output.status.success()
+            && String::from_utf8_lossy(&output.stdout).contains("Result: passed (enforcing)"),
+        &format!(
+            "verified hook runner did not execute the closed check command: status={}, stdout=`{}`, stderr=`{}`",
+            output.status,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        ),
+    )?;
+
+    let output = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "run",
+            "--binary",
+            &binary,
+            "--digest",
+            "sha256:v1:deliberate-mismatch",
+            "--mode",
+            "explicit-tool-under-test",
+            "--",
+            "check",
+            "--mode",
+            "no-new",
+        ],
+    )?;
+    require(
+        !output.status.success()
+            && String::from_utf8_lossy(&output.stderr).contains("was not accepted"),
+        "verified hook runner accepted a mismatched executable digest",
+    )?;
+
+    fs::create_dir_all(fixture.path.join("src"))?;
+    fs::write(
+        fixture.path.join("src/lib.rs"),
+        "pub fn finding() { let _ = Some(1).unwrap(); }\n",
+    )?;
+    git_add(&fixture.path, "src/lib.rs")?;
+    let output = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "run",
+            "--binary",
+            &binary,
+            "--digest",
+            digest,
+            "--mode",
+            "explicit-tool-under-test",
+            "--",
+            "check",
+            "--mode",
+            "no-new",
+        ],
+    )?;
+    require(
+        !output.status.success()
+            && String::from_utf8_lossy(&output.stdout).contains("Result: failed"),
+        "verified hook runner did not preserve a child policy failure",
+    )?;
+
+    let output = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "run",
+            "--binary",
+            &binary,
+            "--digest",
+            digest,
+            "--mode",
+            "explicit-tool-under-test",
+            "--",
+            "audit",
+        ],
+    )?;
+    require(
+        !output.status.success()
+            && String::from_utf8_lossy(&output.stderr).contains("only permits"),
+        "verified hook runner accepted a command outside the closed contract",
+    )?;
+    Ok(())
+}
+
+#[test]
 fn hooks_apply_creates_and_reports_a_managed_hook() -> TestResult {
     let fixture = Fixture::new("create")?;
     init_git(&fixture.path)?;
@@ -770,6 +1261,23 @@ fn init_git(root: &Path) -> TestResult {
         .into());
     }
     Ok(())
+}
+
+fn git_add(root: &Path, path: &str) -> TestResult {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(["add", "--", path])
+        .output()?;
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(format!(
+            "git add failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        )
+        .into())
+    }
 }
 
 fn run_success(root: &Path, args: &[&str]) -> Result<Output, Box<dyn std::error::Error>> {
