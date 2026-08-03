@@ -39,6 +39,7 @@ fn prune_json_renderer_records_mode_context_and_candidates() {
                 "cargo-allow check --mode no-new".to_string(),
             ],
         },
+        &["[[allow]]\nid = \"allow-stale\"".to_string()],
     );
 
     assert!(json.contains("\"schema_id\": \"cargo-allow.prune.v1\""));
@@ -54,6 +55,7 @@ fn prune_json_renderer_records_mode_context_and_candidates() {
     assert!(json.contains("\"id\": \"allow-stale\""));
     assert!(json.contains("\"kind\": \"panic\""));
     assert!(json.contains("\"family\": \"unwrap\""));
+    assert!(json.contains("\"removed_toml_blocks\": [\"[[allow]]\\nid = \\\"allow-stale\\\"\"]"));
     assert!(json.contains("\"mutation_receipt\""));
     let parsed = serde_json::from_str::<serde_json::Value>(&json);
     assert!(parsed.is_ok(), "prune output must remain valid JSON");
@@ -110,6 +112,7 @@ fn prune_json_renderer_omits_unavailable_family() -> Result<(), String> {
             result: "stdout",
             next_commands: Vec::new(),
         },
+        &[],
     );
     let value: serde_json::Value = serde_json::from_str(&json)
         .map_err(|error| format!("sparse prune report should render valid JSON: {error}"))?;

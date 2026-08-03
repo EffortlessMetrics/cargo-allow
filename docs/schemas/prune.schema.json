@@ -91,6 +91,13 @@
         "$ref": "#/$defs/stale_entry"
       }
     },
+    "removed_toml_blocks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Rendered TOML blocks that the stale candidates would remove; empty when no candidates were found."
+    },
     "mutation_receipt": {
       "$ref": "#/$defs/mutation_receipt"
     }

@@ -294,6 +294,7 @@ pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static
                 "inventory",
                 "mode",
                 "mutation_receipt",
+                "removed_toml_blocks",
                 "scanner_limitations",
                 "schema_id",
                 "schema_version",

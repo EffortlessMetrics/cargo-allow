@@ -284,6 +284,13 @@ fn cmd_prune_write_removes_only_stale_entries_from_policy_file() {
         Some("allow-stale")
     );
     assert_eq!(
+        parsed
+            .pointer("/removed_toml_blocks/0")
+            .and_then(serde_json::Value::as_str)
+            .map(|block| block.contains("id = \"allow-stale\"")),
+        Some(true)
+    );
+    assert_eq!(
         parsed.pointer("/mutation_receipt/after_fingerprints/0"),
         Some(&serde_json::Value::Null)
     );

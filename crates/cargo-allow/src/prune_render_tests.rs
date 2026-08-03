@@ -59,6 +59,7 @@ fn render_prune_stale_json_records_context_and_candidates() {
         false,
         None,
         5,
+        &["[[allow]]\nid = \"allow-stale\"".to_string()],
         PruneContext {
             inventory: allow_report::InventoryContext::source_syntax(
                 "git_tracked",
@@ -102,6 +103,7 @@ fn render_prune_stale_json_records_context_and_candidates() {
     assert!(json.contains("\"id\": \"allow-stale\""));
     assert!(json.contains("\"kind\": \"panic\""));
     assert!(json.contains("\"family\": \"unwrap\""));
+    assert!(json.contains("\"removed_toml_blocks\": [\"[[allow]]\\nid = \\\"allow-stale\\\"\"]"));
     let parsed = serde_json::from_str::<serde_json::Value>(&json);
     assert!(parsed.is_ok(), "prune output must remain valid JSON");
     let Some(parsed) = parsed.ok() else {
