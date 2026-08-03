@@ -4,17 +4,29 @@ on:
   push:
     tags:
       - v*
-  workflow_dispatch:
-    # Manual runs validate preflight and cargo publish --dry-run only.
-    # Real uploads happen only on version tag pushes.
+ workflow_dispatch:
+    # Manual runs validate preflight and cargo publish --dry-run only unless
+    # the separately guarded publish_recovery path is explicitly selected.
     inputs:
-      publish_recovery:
-        description: "Publish missing crates for the current workspace version after a partial tag release"
+     publish_recovery:
+        description: "Publish an exact tagged candidate after a partial release; requires all recovery identity inputs"
         required: false
         default: false
         type: boolean
       recovery_version:
         description: "The already-tagged version to recover (e.g. 0.2.0). Must match an existing v* tag."
+        required: false
+        type: string
+      recovery_commit:
+        description: "The exact commit currently tagged for the recovery version"
+        required: false
+        type: string
+      recovery_tree:
+        description: "The exact tree currently tagged for the recovery version"
+        required: false
+        type: string
+      recovery_authorization:
+        description: "Incident/recovery authorization reference for a publishing recovery"
         required: false
         type: string
 
@@ -32,9 +44,81 @@ env:
 jobs:
   preflight:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release_context.outputs.version }}
+      tag: ${{ steps.release_context.outputs.tag }}
+      commit: ${{ steps.release_context.outputs.commit }}
+      tree: ${{ steps.release_context.outputs.tree }}
+      recovery: ${{ steps.release_context.outputs.recovery }}
+      authorization: ${{ steps.release_context.outputs.authorization }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_recovery && inputs.recovery_version != '' && format('refs/tags/v{0}', inputs.recovery_version) || github.sha }}
       - uses: dtolnay/rust-toolchain@stable
+      - name: Resolve exact release context
+        id: release_context
+        shell: bash
+        env:
+          RECOVERY_VERSION: ${{ inputs.recovery_version }}
+          RECOVERY_COMMIT: ${{ inputs.recovery_commit }}
+          RECOVERY_TREE: ${{ inputs.recovery_tree }}
+          RECOVERY_AUTHORIZATION: ${{ inputs.recovery_authorization }}
+        run: |
+          set -euo pipefail
+          recovery=false
+          authorization=""
+          if [ "${{ github.event_name }}" = "push" ] && [[ "${GITHUB_REF_NAME}" == v* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+            tag="${GITHUB_REF_NAME}"
+          elif [ "${{ inputs.publish_recovery }}" = "true" ]; then
+            recovery=true
+            version="${RECOVERY_VERSION}"
+            tag="v${version}"
+            authorization="${RECOVERY_AUTHORIZATION}"
+           if [ -z "${version}" ] || [ -z "${RECOVERY_COMMIT}" ] || [ -z "${RECOVERY_TREE}" ] || [ -z "${authorization}" ]; then
+             echo "::error::publish_recovery requires recovery_version, recovery_commit, recovery_tree, and recovery_authorization"
+             exit 1
+           fi
+            if [[ ! "${RECOVERY_COMMIT}" =~ ^[0-9a-fA-F]{40,64}$ ]] || [[ ! "${RECOVERY_TREE}" =~ ^[0-9a-fA-F]{40,64}$ ]]; then
+              echo "::error::recovery_commit and recovery_tree must be hexadecimal commit/tree identities"
+              exit 1
+            fi
+            if [[ ! "${authorization}" =~ ^[A-Za-z0-9._:/#-]+$ ]]; then
+              echo "::error::recovery_authorization must be a bounded reference token"
+              exit 1
+            fi
+           if ! git rev-parse "${tag}^{commit}" >/dev/null 2>&1; then
+              echo "::error::recovery_version ${tag} does not match an existing tag"
+              exit 1
+            fi
+          else
+            version="$(awk '/^\[workspace\.package\]/{f=1;next} /^\[/{if(f) exit} f && /^version = /{gsub(/version = "/,""); gsub(/".*/,""); print; exit}' Cargo.toml)"
+            tag=""
+          fi
+          commit="$(git rev-parse HEAD^{commit})"
+          tree="$(git rev-parse HEAD^{tree})"
+          if [ "${recovery}" = "true" ]; then
+            tagged_commit="$(git rev-parse "${tag}^{commit}")"
+            tagged_tree="$(git rev-parse "${tag}^{tree}")"
+            if [ "${tagged_commit}" != "${RECOVERY_COMMIT}" ] || [ "${tagged_tree}" != "${RECOVERY_TREE}" ]; then
+              echo "::error::recovery tag does not match the supplied commit/tree"
+              exit 1
+            fi
+            if [ "${commit}" != "${tagged_commit}" ] || [ "${tree}" != "${tagged_tree}" ]; then
+              echo "::error::recovery checkout is not the exact tagged commit/tree"
+              exit 1
+            fi
+          fi
+          bash scripts/release-version-preflight.sh "${version}"
+          {
+            echo "version=${version}"
+            echo "tag=${tag}"
+            echo "commit=${commit}"
+            echo "tree=${tree}"
+            echo "recovery=${recovery}"
+            echo "authorization=${authorization}"
+          } >> "${GITHUB_OUTPUT}"
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
@@ -53,22 +137,23 @@ jobs:
       auth_source: ${{ steps.registry_token.outputs.source }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.preflight.outputs.recovery == 'true' && format('refs/tags/{0}', needs.preflight.outputs.tag) || github.sha }}
       - uses: dtolnay/rust-toolchain@stable
       - name: Release version and artifact preflight
         env:
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && !inputs.publish_recovery && 'true' || 'false' }}
+          RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
+          RELEASE_COMMIT: ${{ needs.preflight.outputs.commit }}
+          RELEASE_TREE: ${{ needs.preflight.outputs.tree }}
+          RECOVERY: ${{ needs.preflight.outputs.recovery }}
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "push" ] && [[ "${GITHUB_REF_NAME}" == v* ]]; then
-            version="${GITHUB_REF_NAME#v}"
-          elif [ "${{ inputs.publish_recovery }}" = "true" ] && [ -n "${{ inputs.recovery_version }}" ]; then
-            version="${{ inputs.recovery_version }}"
-            if ! git rev-parse "v${version}" >/dev/null 2>&1; then
-              echo "::error::recovery_version v${version} does not match an existing tag"
-              exit 1
-            fi
-          else
-            version="$(awk '/^\[workspace\.package\]/{f=1;next} /^\[/{if(f) exit} f && /^version = /{gsub(/version = "/,""); gsub(/".*/,""); print; exit}' Cargo.toml)"
+          version="${RELEASE_VERSION}"
+          [ -n "${version}" ] || { echo "::error::preflight did not resolve a release version"; exit 1; }
+          if [ "${RECOVERY}" = "true" ]; then
+            [ "$(git rev-parse HEAD^{commit})" = "${RELEASE_COMMIT}" ] || { echo "::error::publish checkout commit differs from preflight"; exit 1; }
+            [ "$(git rev-parse HEAD^{tree})" = "${RELEASE_TREE}" ] || { echo "::error::publish checkout tree differs from preflight"; exit 1; }
           fi
           bash scripts/release-version-preflight.sh "${version}"
       - name: Authenticate with crates.io (Trusted Publishing)
@@ -91,12 +176,17 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.registry_token.outputs.token }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && !inputs.publish_recovery && 'true' || 'false' }}
+          RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
+          RELEASE_COMMIT: ${{ needs.preflight.outputs.commit }}
+          RELEASE_TREE: ${{ needs.preflight.outputs.tree }}
+          RECOVERY: ${{ needs.preflight.outputs.recovery }}
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "push" ] && [[ "${GITHUB_REF_NAME}" == v* ]]; then
-            version="${GITHUB_REF_NAME#v}"
-          else
-            version="$(awk '/^\[workspace\.package\]/{f=1;next} /^\[/{if(f) exit} f && /^version = /{gsub(/version = "/,""); gsub(/".*/,""); print; exit}' Cargo.toml)"
+          version="${RELEASE_VERSION}"
+          [ -n "${version}" ] || { echo "::error::preflight did not resolve a release version"; exit 1; }
+          if [ "${RECOVERY}" = "true" ]; then
+            [ "$(git rev-parse HEAD^{commit})" = "${RELEASE_COMMIT}" ] || { echo "::error::publish checkout commit differs from preflight"; exit 1; }
+            [ "$(git rev-parse HEAD^{tree})" = "${RELEASE_TREE}" ] || { echo "::error::publish checkout tree differs from preflight"; exit 1; }
           fi
           crates=(
             allow-core
@@ -155,6 +245,12 @@ jobs:
             "event": "${{ github.event_name }}",
             "ref": "${{ github.ref_name }}",
             "sha": "${{ github.sha }}",
+            "version": "${{ needs.preflight.outputs.version }}",
+            "tag": "${{ needs.preflight.outputs.tag }}",
+            "candidate_commit": "${{ needs.preflight.outputs.commit }}",
+            "candidate_tree": "${{ needs.preflight.outputs.tree }}",
+            "recovery": ${{ needs.preflight.outputs.recovery }},
+            "authorization": "${{ needs.preflight.outputs.authorization }}",
             "dry_run": ${{ github.event_name == 'workflow_dispatch' && !inputs.publish_recovery }},
             "workflow_run_id": ${{ github.run_id }},
             "auth": "${{ steps.registry_token.outputs.source }}"

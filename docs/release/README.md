@@ -337,8 +337,14 @@ in the `0.1.10` plan.
 7. Download the `release-publish-receipt` artifact and record the workflow run
    id in the release record or plan closeout.
 
-Tag pushes always perform real publishes once preflight succeeds. A
-workflow_dispatch run never uploads to crates.io.
+Tag pushes always perform real publishes once preflight succeeds. A normal
+`workflow_dispatch` run never uploads to crates.io. The guarded
+`publish_recovery` dispatch is a separate exception that requires the exact
+tagged version, commit, tree, and authorization inputs; do not use it as a
+general manual publish route. The recovery path remains unavailable for real
+incidents until the remaining #2509 visibility, checksum-plan, missing-crate,
+and typed-receipt controls are complete. See the [incident and recovery
+runbook](incident-recovery.md).
 
 ## Manual Publish Fallback
 

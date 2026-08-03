@@ -360,6 +360,51 @@ fn release_manifest_validate_produces_complete_with_all_checksums() {
     assert!(gaps.is_empty());
 }
 
+#[test]
+fn release_recovery_binds_one_exact_candidate_context() {
+    let root = workspace_root();
+    let workflow = read_workspace_file(&root, RELEASE_WORKFLOW);
+
+    for required in [
+        "recovery_commit:",
+        "recovery_tree:",
+        "recovery_authorization:",
+        "steps.release_context.outputs.version",
+        "steps.release_context.outputs.commit",
+        "steps.release_context.outputs.tree",
+        "needs.preflight.outputs.version",
+        "needs.preflight.outputs.commit",
+        "needs.preflight.outputs.tree",
+        "recovery tag does not match the supplied commit/tree",
+        "recovery checkout is not the exact tagged commit/tree",
+        "publish checkout commit differs from preflight",
+        "publish checkout tree differs from preflight",
+    ] {
+        assert!(
+            workflow.contains(required),
+            "{RELEASE_WORKFLOW} should contain exact recovery binding `{required}`"
+        );
+    }
+
+    let publish = workflow
+        .split("  publish:")
+        .nth(1)
+        .and_then(|section| section.split("  install-smoke:").next())
+        .unwrap_or_else(|| std::panic::panic_any("publish job should be present"));
+    assert!(
+        publish.contains("refs/tags/{0}"),
+        "recovery publish should check out the preflight-selected tag"
+    );
+    assert!(
+        publish.contains(r#"version="${RELEASE_VERSION}""#),
+        "publish should consume the preflight-resolved version"
+    );
+    assert!(
+        !publish.contains("awk"),
+        "publish must not recompute the version from the current workspace manifest"
+    );
+}
+
 fn workspace_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
