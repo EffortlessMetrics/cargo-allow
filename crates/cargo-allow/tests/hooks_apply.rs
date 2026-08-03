@@ -11,6 +11,170 @@ use std::os::unix::fs::symlink;
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 #[test]
+fn hooks_verify_accepts_explicit_preview_binary_and_reports_digest_mismatch() -> TestResult {
+    let fixture = Fixture::new("verify")?;
+    let binary = path_arg(Path::new(env!("CARGO_BIN_EXE_cargo-allow")));
+    let identity = run_success(&fixture.path, &["tool", "identity", "--format", "json"])?;
+    let identity: Value = serde_json::from_slice(&identity.stdout)?;
+    let digest = identity
+        .get("executable_digest")
+        .and_then(Value::as_str)
+        .ok_or("tool identity omitted executable_digest")?;
+    let report = fixture.path.join("target/verification.json");
+    let report_arg = path_arg(&report);
+    run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "verify",
+            "--binary",
+            &binary,
+            "--digest",
+            digest,
+            "--mode",
+            "explicit-tool-under-test",
+            "--format",
+            "json",
+            "--output",
+            &report_arg,
+        ],
+    )?;
+    let report_value: Value = serde_json::from_slice(&fs::read(&report)?)?;
+    require(
+        report_value.get("selected").and_then(Value::as_bool) == Some(true)
+            && report_value.get("result").and_then(Value::as_str)
+                == Some("ToolPrebuiltAndSelected")
+            && report_value
+                .get("preview_evidence")
+                .and_then(Value::as_bool)
+                == Some(true),
+        "explicit preview verification did not report a selected tool",
+    )?;
+
+    let human = run_success(
+        &fixture.path,
+        &[
+            "hooks",
+            "verify",
+            "--binary",
+            &binary,
+            "--digest",
+            digest,
+            "--mode",
+            "explicit-tool-under-test",
+            "--format",
+            "human",
+        ],
+    )?;
+    let human = String::from_utf8(human.stdout)?;
+    require(
+        human.contains("Hook binary verification")
+            && human.contains("selected: true")
+            && human.contains("preview evidence: true"),
+        "human verification output omitted selected-tool evidence",
+    )?;
+
+    let release_report = fixture.path.join("target/release-mode.json");
+    let release_report_arg = path_arg(&release_report);
+    let output = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "verify",
+            "--binary",
+            &binary,
+            "--digest",
+            digest,
+            "--format",
+            "json",
+            "--output",
+            &release_report_arg,
+        ],
+    )?;
+    require(
+        !output.status.success(),
+        "source-preview binary unexpectedly passed installed-pinned verification",
+    )?;
+    let release_report_value: Value = serde_json::from_slice(&fs::read(&release_report)?)?;
+    require(
+        release_report_value.get("result").and_then(Value::as_str)
+            == Some("PreviewToolNotAuthorized"),
+        "installed-pinned verification did not reject source-preview identity",
+    )?;
+
+    let mismatch = fixture.path.join("target/mismatch.json");
+    let mismatch_arg = path_arg(&mismatch);
+    let output = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "verify",
+            "--binary",
+            &binary,
+            "--digest",
+            "sha256:v1:deliberate-mismatch",
+            "--mode",
+            "explicit-tool-under-test",
+            "--format",
+            "json",
+            "--output",
+            &mismatch_arg,
+        ],
+    )?;
+    require(
+        !output.status.success(),
+        "binary verification unexpectedly accepted a mismatched digest",
+    )?;
+    let mismatch_value: Value = serde_json::from_slice(&fs::read(&mismatch)?)?;
+    require(
+        mismatch_value.get("selected").and_then(Value::as_bool) == Some(false)
+            && mismatch_value.get("result").and_then(Value::as_str) == Some("ToolIdentityMismatch"),
+        "digest mismatch report did not preserve the fail-closed result",
+    )?;
+
+    let missing = fixture.path.join("target/missing-cargo-allow.exe");
+    let missing_arg = path_arg(&missing);
+    let output = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "verify",
+            "--binary",
+            &missing_arg,
+            "--digest",
+            digest,
+            "--mode",
+            "explicit-tool-under-test",
+        ],
+    )?;
+    require(
+        !output.status.success()
+            && String::from_utf8_lossy(&output.stderr).contains("failed to invoke selected"),
+        "missing selected executable did not produce a clear invocation failure",
+    )?;
+
+    let output = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "verify",
+            "--binary",
+            "cargo-allow",
+            "--digest",
+            digest,
+            "--mode",
+            "explicit-tool-under-test",
+        ],
+    )?;
+    require(
+        !output.status.success()
+            && String::from_utf8_lossy(&output.stderr).contains("absolute path"),
+        "relative selected executable was not rejected before PATH lookup",
+    )?;
+    Ok(())
+}
+
+#[test]
 fn hooks_apply_creates_and_reports_a_managed_hook() -> TestResult {
     let fixture = Fixture::new("create")?;
     init_git(&fixture.path)?;
