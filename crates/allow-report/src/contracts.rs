@@ -32,6 +32,8 @@ pub const MIGRATE_SCHEMA_VERSION: u32 = 1;
 pub const MIGRATE_SCHEMA_ID: &str = "cargo-allow.migrate.v1";
 pub const SPEC_SYSTEM_SCHEMA_VERSION: u32 = 1;
 pub const SPEC_SYSTEM_SCHEMA_ID: &str = "cargo-allow.spec-system.v1";
+pub const CORE_ADOPTION_PLAN_SCHEMA_VERSION: u32 = 1;
+pub const CORE_ADOPTION_PLAN_SCHEMA_ID: &str = "cargo-allow.core-adoption-plan.v1";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ArtifactContract {
