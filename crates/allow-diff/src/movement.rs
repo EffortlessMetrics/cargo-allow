@@ -72,10 +72,12 @@ pub fn finding_posture_delta(kind: FindingPostureKind) -> PostureDelta {
 
 pub fn policy_change_movement(kind: PolicyChangeKind) -> PresenceMovement {
     match kind {
-        PolicyChangeKind::AddedAllow | PolicyChangeKind::BaselineDebtAdded => {
-            PresenceMovement::Introduced
+        PolicyChangeKind::AddedAllow
+        | PolicyChangeKind::BaselineDebtAdded
+        | PolicyChangeKind::FamilyRuleAdded => PresenceMovement::Introduced,
+        PolicyChangeKind::RemovedAllow | PolicyChangeKind::FamilyRuleRemoved => {
+            PresenceMovement::Removed
         }
-        PolicyChangeKind::RemovedAllow => PresenceMovement::Removed,
         _ => PresenceMovement::Retained,
     }
 }
@@ -327,6 +329,26 @@ mod tests {
             classify_policy_change(&retained).posture_delta,
             PostureDelta::Worsened
         );
+    }
+
+    #[test]
+    fn policy_classification_projects_family_rule_and_ambiguity_movement() {
+        for (kind, expected) in [
+            (
+                PolicyChangeKind::FamilyRuleAdded,
+                PresenceMovement::Introduced,
+            ),
+            (
+                PolicyChangeKind::FamilyRuleRemoved,
+                PresenceMovement::Removed,
+            ),
+            (
+                PolicyChangeKind::AmbiguousClassification,
+                PresenceMovement::Retained,
+            ),
+        ] {
+            assert_eq!(policy_change_movement(kind), expected, "{kind:?}");
+        }
     }
 
     #[test]

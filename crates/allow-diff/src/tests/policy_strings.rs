@@ -16,6 +16,12 @@ fn policy_change_string_helpers_cover_all_public_variants() {
         ),
         (PolicyChangeKind::KindChanged, "kind_changed"),
         (PolicyChangeKind::FamilyChanged, "family_changed"),
+        (PolicyChangeKind::FamilyRuleAdded, "family_rule_added"),
+        (PolicyChangeKind::FamilyRuleRemoved, "family_rule_removed"),
+        (
+            PolicyChangeKind::AmbiguousClassification,
+            "ambiguous_classification",
+        ),
         (PolicyChangeKind::ScopeBroadened, "scope_broadened"),
         (PolicyChangeKind::ScopeChanged, "scope_changed"),
         (PolicyChangeKind::ScopeNarrowed, "scope_narrowed"),

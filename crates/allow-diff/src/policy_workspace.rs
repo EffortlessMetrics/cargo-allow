@@ -1,4 +1,4 @@
-use allow_core::WorkspaceConfig;
+use allow_core::{FileFamilyRule, WorkspaceConfig, normalize_path};
 use std::collections::BTreeSet;
 
 use crate::policy_change::{
@@ -36,7 +36,77 @@ pub(crate) fn workspace_policy_changes(
         &base.generated,
         &head.generated,
     ));
+    changes.extend(file_family_rule_changes(
+        &base.file_families,
+        &head.file_families,
+    ));
     changes
+}
+
+fn file_family_rule_changes(base: &[FileFamilyRule], head: &[FileFamilyRule]) -> Vec<PolicyChange> {
+    let base_rules = base
+        .iter()
+        .map(|rule| (rule.id.as_str(), rule_signature(rule)))
+        .collect::<BTreeSet<_>>();
+    let head_rules = head
+        .iter()
+        .map(|rule| (rule.id.as_str(), rule_signature(rule)))
+        .collect::<BTreeSet<_>>();
+    let mut changes = Vec::new();
+
+    for (id, signature) in head_rules.difference(&base_rules) {
+        changes.push(file_family_rule_change(
+            id,
+            PolicyChangeKind::FamilyRuleAdded,
+            PolicyChangeSeverity::Review,
+            "added repository file-family rule",
+            None,
+            Some(signature),
+        ));
+    }
+    for (id, signature) in base_rules.difference(&head_rules) {
+        changes.push(file_family_rule_change(
+            id,
+            PolicyChangeKind::FamilyRuleRemoved,
+            PolicyChangeSeverity::Review,
+            "removed repository file-family rule",
+            Some(signature),
+            None,
+        ));
+    }
+    changes
+}
+
+fn rule_signature(rule: &FileFamilyRule) -> String {
+    format!(
+        "family={}; glob={}; reason={}",
+        rule.family,
+        normalize_path(std::path::Path::new(&rule.glob)),
+        rule.reason.trim()
+    )
+}
+
+fn file_family_rule_change(
+    rule_id: &str,
+    kind: PolicyChangeKind,
+    severity: PolicyChangeSeverity,
+    message: &str,
+    before: Option<&String>,
+    after: Option<&String>,
+) -> PolicyChange {
+    let allow_id = format!("workspace.file_family.{rule_id}");
+    let value = after.or(before).map(String::as_str).unwrap_or("<unset>");
+    PolicyChange::new(
+        allow_id,
+        kind,
+        severity,
+        format!("workspace file-family rule `{rule_id}` {message}: {value}"),
+    )
+    .with_scope(ScopeChange {
+        field: ScopeChangeField::Effective,
+        before: before.cloned(),
+        after: after.cloned(),
+    })
 }
 
 struct ListPolicy {
