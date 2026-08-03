@@ -216,6 +216,29 @@ fn hooks_run_executes_only_the_verified_check_command() -> TestResult {
         ),
     )?;
 
+    let output = run(
+        &fixture.path,
+        &[
+            "hooks",
+            "run",
+            "--binary",
+            &binary,
+            "--digest",
+            "sha256:v1:deliberate-mismatch",
+            "--mode",
+            "explicit-tool-under-test",
+            "--",
+            "check",
+            "--mode",
+            "no-new",
+        ],
+    )?;
+    require(
+        !output.status.success()
+            && String::from_utf8_lossy(&output.stderr).contains("was not accepted"),
+        "verified hook runner accepted a mismatched executable digest",
+    )?;
+
     fs::create_dir_all(fixture.path.join("src"))?;
     fs::write(
         fixture.path.join("src/lib.rs"),
