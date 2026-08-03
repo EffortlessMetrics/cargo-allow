@@ -370,8 +370,47 @@ fn saved_migrate_output_preserves_non_rust_evidence_matrix() {
     .unwrap_or_else(|err| std::panic::panic_any(format!("write non-rust policy fixture: {err}")));
 
     let artifact_dir = fixture.root.join("target/cargo-allow");
+    let compat_audit = artifact_dir.join("non-rust-compat-audit.json");
     let migrated_policy = artifact_dir.join("allow.migrated.toml");
     let migrate_summary = artifact_dir.join("migrate-summary.json");
+
+    run_cargo_allow(&[
+        "audit",
+        "--root",
+        fixture.root_str(),
+        "--compat",
+        "--kind",
+        "non-rust",
+        "--config",
+        path_arg(&legacy_dir.join("non-rust-allowlist.toml")),
+        "--format",
+        "json",
+        "--output",
+        path_arg(&compat_audit),
+    ]);
+
+    let compat_report = assert_source_syntax_artifact_with_inventory(
+        &compat_audit,
+        allow_report::REPORT_SCHEMA_ID,
+        "audit",
+        "filesystem_fallback",
+    );
+    assert_eq!(
+        compat_report
+            .pointer("/summary/findings")
+            .and_then(serde_json::Value::as_u64),
+        Some(6),
+        "legacy non-rust audit should report the complete fixture inventory"
+    );
+    let compat_paths = compat_report
+        .pointer("/findings")
+        .and_then(serde_json::Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|finding| finding.get("path"))
+        .filter_map(serde_json::Value::as_str)
+        .map(str::to_owned)
+        .collect::<Vec<_>>();
 
     run_cargo_allow(&[
         "migrate",
@@ -484,6 +523,45 @@ fn saved_migrate_output_preserves_non_rust_evidence_matrix() {
     );
     assert_entry_evidence(workflow, &["doc:docs/ci-evidence.md"]);
     assert_entry_links(workflow, &["legacy-policy:saved-non-rust-workflow"]);
+
+    let canonical_audit = artifact_dir.join("non-rust-canonical-audit.json");
+    run_cargo_allow(&[
+        "audit",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        path_arg(&migrated_policy),
+        "--format",
+        "json",
+        "--output",
+        path_arg(&canonical_audit),
+    ]);
+    let canonical_report = assert_source_syntax_artifact_with_inventory(
+        &canonical_audit,
+        allow_report::REPORT_SCHEMA_ID,
+        "audit",
+        "filesystem_fallback",
+    );
+    assert_eq!(
+        canonical_report
+            .pointer("/summary/findings")
+            .and_then(serde_json::Value::as_u64),
+        Some(6),
+        "canonical non-rust audit should report the complete fixture inventory"
+    );
+    let canonical_paths = canonical_report
+        .pointer("/findings")
+        .and_then(serde_json::Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|finding| finding.get("path"))
+        .filter_map(serde_json::Value::as_str)
+        .map(str::to_owned)
+        .collect::<Vec<_>>();
+    assert_eq!(
+        compat_paths, canonical_paths,
+        "legacy and canonical audits should preserve the same non-rust paths"
+    );
 }
 
 #[test]
