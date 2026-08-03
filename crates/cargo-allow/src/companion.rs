@@ -33,6 +33,33 @@ pub(crate) fn canonical_companion_findings(
     Ok(findings)
 }
 
+/// Companion findings that are derived from policy and the exact candidate
+/// path set, rather than from worktree-only metadata or file contents.
+///
+/// The staged source path deliberately rejects the remaining worktree-derived
+/// families in `world.rs`; keeping this adapter small prevents an exact staged
+/// report from accidentally consuming ambient `.gitattributes`, executable
+/// bits, or workflow bytes.
+pub(crate) fn staged_companion_findings(
+    cfg: &AllowConfig,
+    inventory_files: &[std::path::PathBuf],
+) -> CargoAllowResult<Vec<Finding>> {
+    let mut findings = Vec::new();
+    if has_allow_family(cfg, FindingKind::PolicyException, "dependency_surface") {
+        findings.extend(allow_policy_legacy::dependency_surface_findings_from_paths(
+            inventory_files,
+            cfg,
+        ));
+    }
+    if has_allow_family(cfg, FindingKind::PolicyException, "process_spawn") {
+        findings.extend(allow_policy_legacy::process_findings_from_config(cfg));
+    }
+    if has_allow_family(cfg, FindingKind::PolicyException, "network_destination") {
+        findings.extend(allow_policy_legacy::network_findings_from_config(cfg));
+    }
+    Ok(findings)
+}
+
 fn has_policy_family(cfg: &AllowConfig, families: &[&str]) -> bool {
     cfg.allow.iter().any(|entry| {
         entry.kind == FindingKind::PolicyException

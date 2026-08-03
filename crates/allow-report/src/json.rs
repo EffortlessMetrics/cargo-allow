@@ -216,6 +216,13 @@ pub fn render_inventory_json(context: InventoryContext<'_>, indent: &str) -> Str
             json_escape(completeness)
         ));
     }
+    if let Some(source_identity) = context.source_identity {
+        out.push_str(",\n");
+        out.push_str(&format!(
+            "{indent}  \"source_identity\": \"{}\"",
+            json_escape(source_identity)
+        ));
+    }
     out.push('\n');
     out.push_str(&format!("{indent}}}"));
     out

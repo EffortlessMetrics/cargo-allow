@@ -24,7 +24,7 @@ use crate::federation_report::FederationReportBundle;
 use crate::{
     EvidenceReportSummary, EvidenceValidationMode, InventoryFacts, ProfileArg, ReportRenderArgs,
     SourceTreeReportContext, assert_path_within_root, config_path, current_dir,
-    evidence_inventory::current_evidence_source_tree_files, load_compat_world,
+    evidence_inventory::current_evidence_source_tree_files, load_compat_world, load_staged_world,
     load_world_with_evidence_mode, policy_baseline_debt_entries, print_report, report_config,
     spec_precommit, spec_system, write_file,
 };
@@ -41,19 +41,28 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
                 "--phase precommit requires --staged, and staged evaluation requires --phase precommit",
             ));
         }
-        if !matches!(args.profile, Some(ProfileArg::SpecSystem)) {
+        if matches!(args.profile, Some(ProfileArg::SpecSystem)) {
+            reject_source_exception_options(
+                args.compat,
+                args.kind.as_deref(),
+                args.include_untracked,
+                &args.deny,
+            )?;
+            return spec_precommit::cmd_spec_precommit(args);
+        }
+        if args.compat {
             return Err(CargoAllowError::with_kind(
                 allow_core::CargoAllowErrorKind::Usage,
-                "--staged --phase precommit requires --profile spec-system",
+                "--staged source-exception evaluation does not support --compat",
             ));
         }
-        reject_source_exception_options(
-            args.compat,
-            args.kind.as_deref(),
-            args.include_untracked,
-            &args.deny,
-        )?;
-        return spec_precommit::cmd_spec_precommit(args);
+        if args.include_untracked {
+            return Err(CargoAllowError::with_kind(
+                allow_core::CargoAllowErrorKind::Usage,
+                "--staged source-exception evaluation cannot include untracked files",
+            ));
+        }
+        return cmd_check_staged_source_tree(args);
     }
     if matches!(args.profile, Some(ProfileArg::SpecSystem)) {
         reject_source_exception_options(
@@ -192,6 +201,7 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
             output: args.output.as_deref(),
             root: &root,
             inventory_facts,
+            inventory_source_identity: None,
             enforcement: Some(if mode.is_advisory() {
                 RECEIPT_ENFORCEMENT_ADVISORY
             } else {
@@ -233,6 +243,147 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
             render_receipt_with_context_and_inventory(
                 "check",
                 &findings,
+                &projected_outcomes,
+                failed,
+                receipt_context,
+            )
+        });
+        write_file(path, &receipt)?;
+    }
+    if failed {
+        process::exit(1);
+    }
+    Ok(())
+}
+
+fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
+    crate::emit_scan_status(
+        "check",
+        args.format,
+        args.output.as_deref(),
+        args.receipt.as_deref(),
+    );
+    let resolved_root = resolve_check_root(args)?;
+    if let Some(output) = &args.output {
+        assert_path_within_root(&resolved_root, output)?;
+    }
+    if let Some(receipt) = &args.receipt {
+        assert_path_within_root(&resolved_root, receipt)?;
+    }
+    let staged = load_staged_world(
+        args.root.root.as_deref(),
+        args.config.as_deref(),
+        args.kind.as_deref(),
+    )?;
+    if let Some(expected) = args.expect_staged_identity.as_deref()
+        && expected != staged.source_identity
+    {
+        return Err(CargoAllowError::new(format!(
+            "staged identity did not match --expect-staged-identity: expected {expected}, observed {}",
+            staged.source_identity
+        )));
+    }
+    let report_cfg = report_config(&staged.cfg, args.kind.as_deref())?;
+    let mode = CheckMode::parse(
+        args.mode
+            .as_deref()
+            .unwrap_or(report_cfg.workspace.default_mode.as_str()),
+    );
+    let outcomes = evaluate(&report_cfg, &staged.findings, mode);
+    let projected_outcomes = allow_report::ledger_project_outcomes(
+        &report_cfg,
+        &outcomes,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
+    let evidence = EvidenceReportSummary::from_policy_with_source_tree_files(
+        &staged.root,
+        &report_cfg,
+        &outcomes,
+        Some(&staged.evidence_source_tree_files),
+    );
+    let summary = Summary::from_outcomes(&projected_outcomes);
+    let baseline_debt_entries = policy_baseline_debt_entries(&report_cfg);
+    let source_context = SourceTreeReportContext::new_with_identity(
+        &staged.root,
+        staged.inventory_facts,
+        Some(&staged.source_identity),
+    );
+    let mut context = source_context.report(Some(baseline_debt_entries));
+    evidence.apply_to(&mut context);
+    let federation_bundle = FederationReportBundle::from_evaluation(&staged.federation);
+    let mirror_divergence_count = federation_bundle.mirror_divergence_advisory_count();
+    if mirror_divergence_count > 0 {
+        context.mirror_divergence_entries = Some(mirror_divergence_count);
+    }
+    let blocking_divergence_count = federation_bundle.blocking_divergence_count();
+    if blocking_divergence_count > 0 {
+        context.blocking_divergence_entries = Some(blocking_divergence_count);
+    }
+    context.rust_files_skipped = staged.inventory_facts.rust_files_skipped;
+    if !args.deny.is_empty() {
+        validate_deny_statuses(&args.deny, &summary, context)?;
+    }
+    let failed = check_failed_for_outcomes(&outcomes, &staged.findings, &report_cfg, mode)
+        || evidence.has_broken_evidence_links()
+        || federation_bundle.has_blocking_divergence()
+        || (!args.deny.is_empty() && deny_escalation_failed(&args.deny, &summary, context))
+        || (staged.inventory_facts.completeness == allow_inventory::InventoryCompleteness::Partial
+            && mode == CheckMode::NoNew)
+        || (staged.inventory_facts.rust_files_with_parse_errors > 0 && mode == CheckMode::NoNew);
+    if should_emit_report_stdout(args.output.as_deref(), args.receipt.as_deref(), args.format) {
+        print_report(ReportRenderArgs {
+            command: "check",
+            format: args.format,
+            baseline_debt_entries,
+            evidence,
+            findings: &staged.findings,
+            outcomes: &projected_outcomes,
+            failed,
+            output: args.output.as_deref(),
+            root: &staged.root,
+            inventory_facts: staged.inventory_facts,
+            inventory_source_identity: Some(&staged.source_identity),
+            enforcement: Some(if mode.is_advisory() {
+                RECEIPT_ENFORCEMENT_ADVISORY
+            } else {
+                RECEIPT_ENFORCEMENT_ENFORCING
+            }),
+        })?;
+    }
+    if let Some(path) = &args.receipt {
+        let policy_config = config_path(&staged.root, args.config.as_deref())
+            .map(|path| path.display().to_string());
+        let effective_mode = args
+            .mode
+            .as_deref()
+            .unwrap_or(report_cfg.workspace.default_mode.as_str());
+        let lane_posture = effective_lane_posture_for_findings(
+            &report_cfg.lanes,
+            staged.findings.iter().map(|finding| finding.kind),
+        );
+        let provenance = run_provenance();
+        let receipt = federation_bundle.with_context(|federation_context| {
+            let mut receipt_context = source_context.report(Some(baseline_debt_entries));
+            evidence.apply_to(&mut receipt_context);
+            if mirror_divergence_count > 0 {
+                receipt_context.mirror_divergence_entries = Some(mirror_divergence_count);
+            }
+            if blocking_divergence_count > 0 {
+                receipt_context.blocking_divergence_entries = Some(blocking_divergence_count);
+            }
+            apply_receipt_run_metadata(
+                &mut receipt_context,
+                effective_mode,
+                mode,
+                policy_config.as_deref(),
+                &provenance.started_at,
+                &provenance.run_id,
+            );
+            receipt_context.lane_posture = Some(&lane_posture);
+            receipt_context.federation = Some(federation_context);
+            render_receipt_with_context_and_inventory(
+                "check",
+                &staged.findings,
                 &projected_outcomes,
                 failed,
                 receipt_context,

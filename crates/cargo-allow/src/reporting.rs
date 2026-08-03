@@ -74,6 +74,7 @@ pub(crate) struct ReportRenderArgs<'a> {
     pub(crate) output: Option<&'a Path>,
     pub(crate) root: &'a Path,
     pub(crate) inventory_facts: InventoryFacts,
+    pub(crate) inventory_source_identity: Option<&'a str>,
     /// `"enforcing"` or `"advisory"`, so the rendered result line states the
     /// mode that produced a pass. Previously this reached the receipt only,
     /// which left every report claiming `advisory` regardless of mode (#2832).
@@ -84,13 +85,23 @@ pub(crate) struct ReportRenderArgs<'a> {
 pub(crate) struct SourceTreeReportContext {
     root: String,
     inventory_facts: InventoryFacts,
+    source_identity: Option<String>,
 }
 
 impl SourceTreeReportContext {
     pub(crate) fn new(root: &Path, inventory_facts: InventoryFacts) -> Self {
+        Self::new_with_identity(root, inventory_facts, None)
+    }
+
+    pub(crate) fn new_with_identity(
+        root: &Path,
+        inventory_facts: InventoryFacts,
+        source_identity: Option<&str>,
+    ) -> Self {
         Self {
             root: allow_report::source_tree_path_text(root),
             inventory_facts,
+            source_identity: source_identity.map(str::to_string),
         }
     }
 
@@ -102,6 +113,7 @@ impl SourceTreeReportContext {
         )
         .with_empty_git_tracked(self.inventory_facts.empty_git_tracked)
         .with_completeness(self.inventory_completeness())
+        .with_source_identity(self.source_identity.as_deref())
     }
 
     pub(crate) fn report(
@@ -116,6 +128,7 @@ impl SourceTreeReportContext {
         )
         .with_empty_git_tracked(self.inventory_facts.empty_git_tracked)
         .with_inventory_completeness(self.inventory_completeness())
+        .with_inventory_source_identity(self.source_identity.as_deref())
     }
 
     pub(crate) fn source_tree_root(&self) -> &str {
@@ -175,7 +188,11 @@ fn style_for(format: OutputFormat, output: Option<&Path>) -> allow_report::Style
 }
 
 pub(crate) fn print_report(args: ReportRenderArgs<'_>) -> CargoAllowResult<()> {
-    let source_context = SourceTreeReportContext::new(args.root, args.inventory_facts);
+    let source_context = SourceTreeReportContext::new_with_identity(
+        args.root,
+        args.inventory_facts,
+        args.inventory_source_identity,
+    );
     let mut context = source_context.report(Some(args.baseline_debt_entries));
     args.evidence.apply_to(&mut context);
     context.enforcement = args.enforcement;
@@ -400,6 +417,7 @@ mod tests {
                 output: Some(&output),
                 root: &root,
                 inventory_facts: InventoryFacts::scanned(InventorySource::GitTracked, 7),
+                inventory_source_identity: None,
                 enforcement: None,
             })
             .unwrap_or_else(|err| std::panic::panic_any(format!("print {file_name}: {err}")));

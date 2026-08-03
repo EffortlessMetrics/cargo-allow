@@ -1,9 +1,10 @@
-use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult, Finding};
+use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult, Finding, normalize_path};
 use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
 use allow_policy::federation::{
     FederationEvaluation, PrecedenceTier, evaluate_source_exception_policy,
 };
 use std::cell::RefCell;
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 thread_local! {
@@ -17,6 +18,140 @@ use crate::{
     },
     extend_unique_findings, load_policy_at_path, parse_kind_filter,
 };
+
+/// The exact staged source-exception evaluation result. The identity is kept
+/// separate from [`InventoryFacts`] so the ordinary worktree report contract
+/// does not acquire staged-only ownership semantics by accident.
+pub(crate) struct StagedWorld {
+    pub(crate) root: PathBuf,
+    pub(crate) cfg: AllowConfig,
+    pub(crate) findings: Vec<Finding>,
+    pub(crate) inventory_facts: InventoryFacts,
+    pub(crate) federation: FederationEvaluation,
+    pub(crate) source_identity: String,
+    pub(crate) evidence_source_tree_files: BTreeSet<String>,
+}
+
+/// Evaluate source-exception findings against one exact Git-index candidate.
+///
+/// The source bytes and inventory come from `repo-snapshot`; this path never
+/// falls back to dirty worktree bytes. Worktree-derived companion sensors are
+/// rejected until they have an equivalent staged source adapter, rather than
+/// being silently mixed into an exact candidate result.
+pub(crate) fn load_staged_world(
+    explicit_root: Option<&Path>,
+    config: Option<&Path>,
+    kind_filter: Option<&str>,
+) -> CargoAllowResult<StagedWorld> {
+    let cwd = current_dir()?;
+    let root = resolve_source_tree_root(explicit_root, cwd)?;
+    let (policy_path, federation) = evaluate_source_exception_policy(&root, config)?;
+    let initial_view = repo_snapshot::RepositorySourceView::staged(&root)?;
+    let policy_relative = normalize_to_repo_relative(&root, &policy_path);
+    let policy_text = initial_view.read_text(&policy_relative).map_err(|error| {
+        CargoAllowError::new(format!(
+            "exact staged source-exception check could not read policy candidate {}: {error}",
+            policy_relative.display()
+        ))
+    })?;
+    let cfg = allow_policy::parse_policy_with_reportable_evidence_at(&policy_path, &policy_text)?;
+    reject_unsupported_staged_companion_sensors(&cfg)?;
+    let options = InventoryOptions {
+        ignored: cfg.workspace.ignored.clone(),
+        generated: cfg.workspace.generated.clone(),
+        include_untracked: false,
+    };
+    let view = repo_snapshot::RepositorySourceView::staged_with_options(&root, &options)?;
+    if initial_view.source_identity() != view.source_identity() {
+        return Err(CargoAllowError::new(
+            "Git index changed while preparing the exact staged source-exception candidate",
+        ));
+    }
+    let source_identity = view
+        .source_identity()
+        .ok_or_else(|| CargoAllowError::new("staged source view did not retain its identity"))?
+        .to_string();
+    let inventory = view.inventory();
+    let inventory_facts = InventoryFacts::scanned_inventory(inventory);
+    let evidence_source_tree_files = inventory
+        .files
+        .iter()
+        .map(normalize_path)
+        .collect::<BTreeSet<_>>();
+    let (manifests, sources) = view.rust_inputs()?;
+    let packages = allow_rust::source_package_contexts_from_sources(manifests);
+    let mut findings = Vec::new();
+    let mut rust_files_with_parse_errors = 0usize;
+    for (path, text) in sources {
+        let scan = allow_rust::scan_rust_source_with_completeness(&path, &text);
+        if scan.has_parse_error {
+            rust_files_with_parse_errors += 1;
+        }
+        let mut source_findings = scan.findings;
+        allow_rust::apply_source_package_context(&path, &packages, &mut source_findings);
+        findings.extend(source_findings);
+    }
+    findings.extend(allow_files::scan_files_with_options(
+        &inventory.files,
+        &allow_files::FileScanOptions {
+            generated: options.generated.clone(),
+            file_families: cfg.workspace.file_families.clone(),
+        },
+    ));
+    let staged_companion_findings =
+        crate::companion::staged_companion_findings(&cfg, &inventory.files)?;
+    extend_unique_findings(&mut findings, staged_companion_findings);
+    if let Some(kind) = kind_filter {
+        let parsed = parse_kind_filter(kind)?;
+        findings.retain(|finding| parsed.matches_finding(finding));
+    }
+    if let Some(provenance) = federation.active_provenance.clone() {
+        for finding in &mut findings {
+            finding.ledger = Some(provenance.clone());
+        }
+    }
+    let final_view = repo_snapshot::RepositorySourceView::staged_with_options(&root, &options)?;
+    if final_view.source_identity() != Some(source_identity.as_str()) {
+        return Err(CargoAllowError::new(
+            "Git index changed while scanning the exact staged source-exception candidate",
+        ));
+    }
+    Ok(StagedWorld {
+        root,
+        cfg,
+        findings,
+        inventory_facts: inventory_facts
+            .with_rust_files_with_parse_errors(rust_files_with_parse_errors),
+        federation,
+        source_identity,
+        evidence_source_tree_files,
+    })
+}
+
+fn reject_unsupported_staged_companion_sensors(cfg: &AllowConfig) -> CargoAllowResult<()> {
+    let unsupported = cfg.allow.iter().find_map(|entry| {
+        let family = entry.family.as_deref()?;
+        let unsupported = match (entry.kind, family) {
+            (allow_core::FindingKind::GeneratedCode, "generated_code")
+            | (allow_core::FindingKind::PolicyException, "executable_file")
+            | (allow_core::FindingKind::PolicyException, "github_workflow")
+            | (allow_core::FindingKind::PolicyException, "workflow_external_action") => {
+                Some(family)
+            }
+            _ => None,
+        }?;
+        Some(unsupported)
+    });
+    if let Some(family) = unsupported {
+        return Err(CargoAllowError::with_kind(
+            allow_core::CargoAllowErrorKind::Unsupported,
+            format!(
+                "exact staged source-exception evaluation does not yet support companion family `{family}`; run the tracked-worktree check or use the staged compatibility profile"
+            ),
+        ));
+    }
+    Ok(())
+}
 
 pub(crate) fn load_world(
     explicit_root: Option<&Path>,

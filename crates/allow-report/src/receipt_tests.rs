@@ -204,6 +204,16 @@ fn receipt_counts_policy_baseline_debt_context() {
 }
 
 #[test]
+fn receipt_exposes_exact_source_identity_when_present() {
+    let context = ReportContext::source_syntax("git_index_staged_candidate", None, Some(2), None)
+        .with_inventory_source_identity(Some("staged-v1-test"));
+    let json = render_receipt_with_context("check", &[], false, context);
+
+    assert!(json.contains("\"source\": \"git_index_staged_candidate\""));
+    assert!(json.contains("\"source_identity\": \"staged-v1-test\""));
+}
+
+#[test]
 fn receipt_counts_broken_evidence_links_context() {
     let mut context = ReportContext::source_syntax("git_tracked", None, None, None);
     context.broken_evidence_links = Some(2);

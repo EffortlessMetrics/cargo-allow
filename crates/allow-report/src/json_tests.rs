@@ -72,10 +72,12 @@ fn json_report_exposes_inventory_completeness() {
         Some(7),
         None,
     )
-    .with_inventory_completeness("fallback");
+    .with_inventory_completeness("fallback")
+    .with_inventory_source_identity(Some("staged-v1-test"));
     let json = render_json_with_context("audit", &[], &[], false, context);
 
     assert!(json.contains("\"completeness\": \"fallback\""));
+    assert!(json.contains("\"source_identity\": \"staged-v1-test\""));
 }
 
 #[test]

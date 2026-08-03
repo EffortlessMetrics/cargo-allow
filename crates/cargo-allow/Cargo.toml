@@ -45,6 +45,7 @@ allow-report.workspace = true
 allow-diff.workspace = true
 allow-policy-legacy.workspace = true
 repo-protocol.workspace = true
+repo-snapshot.workspace = true
 repo-edit.workspace = true
 clap.workspace = true
 clap_complete.workspace = true
