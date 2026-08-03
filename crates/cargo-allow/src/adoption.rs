@@ -875,6 +875,25 @@ mod tests {
             "filesystem inventory should preserve its mode",
         )?;
 
+        let mut rooted_inventory = inventory(
+            InventorySource::GitIndexStagedCandidate,
+            InventoryCompleteness::Scoped,
+        );
+        *rooted_inventory
+            .files
+            .first_mut()
+            .ok_or_else(|| "sample inventory should contain a file".to_string())? =
+            PathBuf::from("repo-root/src/lib.rs");
+        let rooted_identity = inventory_identity(
+            Path::new("repo-root"),
+            Some(&rooted_inventory),
+            Some("digest"),
+        );
+        require(
+            !rooted_identity.is_empty(),
+            "rooted inventory paths should contribute to identity",
+        )?;
+
         let plan = sample_plan();
         let missing = Inspection {
             root: PathBuf::from("C:\\repo"),
@@ -902,6 +921,23 @@ mod tests {
                 && present_artifact.completeness == "partial"
                 && present_artifact.files_scanned == 1,
             "partial scanner facts should be visible in the artifact",
+        )?;
+        let complete_facts = InventoryFacts::scanned_inventory(
+            present
+                .inventory
+                .as_ref()
+                .ok_or_else(|| "inventory should exist".to_string())?,
+        );
+        let complete = inventory_artifact(&Inspection {
+            root: present.root.clone(),
+            inventory: present.inventory.clone(),
+            inventory_facts: Some(complete_facts),
+            policy_path: None,
+            plan: present.plan.clone(),
+        });
+        require(
+            complete.completeness == "complete",
+            "complete scanner facts should remain complete",
         )
     }
 
@@ -1032,8 +1068,12 @@ mod tests {
         let unrelated = test_root.join("README.md");
         fs::write(&unrelated, "readme").map_err(|error| error.to_string())?;
         require(
-            ci_guidance_completed(&test_root, &[workflow, unrelated]),
+            ci_guidance_completed(&test_root, &[workflow, unrelated.clone()]),
             "matching workflow should be detected",
+        )?;
+        require(
+            !ci_guidance_completed(&test_root, &[unrelated]),
+            "non-workflow files should not provide ci guidance",
         )?;
         fs::remove_dir_all(test_root).map_err(|error| error.to_string())
     }
