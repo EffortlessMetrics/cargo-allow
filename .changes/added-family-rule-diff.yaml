@@ -1,0 +1,6 @@
+kind: Added
+body: >-
+  Diff: repository-defined file-family rule additions and removals now emit
+  explicit review-required reclassification movements, with stable
+  `family_rule_added`, `family_rule_removed`, and `ambiguous_classification`
+  contract vocabulary.

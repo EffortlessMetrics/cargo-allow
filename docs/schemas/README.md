@@ -479,6 +479,13 @@ failing policy-posture signals because the retained receipt now covers a
 different source-exception class. These rows may include an optional
 `exception_identity` object with the changed field and before/after values.
 
+Diff report `policy_changes` use `family_rule_added` and
+`family_rule_removed` when repository-defined `[[workspace.file_family]]`
+rules are added or removed. These are review-required reclassification signals;
+they do not claim that any particular file was added or removed. An
+`ambiguous_classification` kind is reserved for classifier results that cannot
+select one strongest family deterministically.
+
 Diff report `policy_changes` use `owner_unassigned` when an existing reviewed
 entry changes from a concrete owner to `owner = "unowned"`. This is a failing
 policy-posture signal because retained exceptions must not silently lose
