@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowResult, sha256_v1_bytes};
+use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult, sha256_v1_bytes};
 use clap::{Parser, Subcommand, ValueEnum};
 use repo_edit::{
     assert_path_within_root, write_file, write_file_create_new_atomic_with_permissions,
@@ -333,12 +333,14 @@ fn plan_runtime(args: &HookPlanArgs) -> CargoAllowResult<Option<HookRuntimeV1>> 
         (None, None) if args.expected_build_source_commit.is_none() => Ok(None),
         (Some(binary), Some(digest)) => {
             if !binary.is_absolute() {
-                return Err(CargoAllowError::new(
+                return Err(CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Usage,
                     "runtime-verified hook plans require an absolute --binary path; PATH lookup is not allowed",
                 ));
             }
             if digest.trim().is_empty() {
-                return Err(CargoAllowError::new(
+                return Err(CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Usage,
                     "runtime-verified hook plans require a non-empty --digest",
                 ));
             }
@@ -349,13 +351,16 @@ fn plan_runtime(args: &HookPlanArgs) -> CargoAllowResult<Option<HookRuntimeV1>> 
                 expected_build_source_commit: args.expected_build_source_commit.clone(),
             }))
         }
-        (Some(_), None) => Err(CargoAllowError::new(
+        (Some(_), None) => Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
             "runtime-verified hook plans require --digest when --binary is supplied",
         )),
-        (None, Some(_)) => Err(CargoAllowError::new(
+        (None, Some(_)) => Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
             "runtime-verified hook plans require --binary when --digest is supplied",
         )),
-        (None, None) => Err(CargoAllowError::new(
+        (None, None) => Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
             "runtime-verified hook plans require --binary and --digest when --expected-build-source-commit is supplied",
         )),
     }
@@ -373,9 +378,12 @@ fn verify_plan_runtime(runtime: &HookRuntimeV1) -> CargoAllowResult<()> {
     select_tool(&request, identity, &ToolCompatibilityRequirement::current())
         .map(|_| ())
         .map_err(|failure| {
-            CargoAllowError::new(format!(
-                "selected cargo-allow executable was not accepted for the hook plan: {failure}"
-            ))
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Unsupported,
+                format!(
+                    "selected cargo-allow executable was not accepted for the hook plan: {failure}"
+                ),
+            )
         })
 }
 
@@ -444,10 +452,13 @@ fn cmd_verify(args: &HookVerifyArgs) -> CargoAllowResult<()> {
     };
     emit_text(args.output.as_deref(), &rendered)?;
     result.map(|_| ()).map_err(|failure| {
-        CargoAllowError::new(format!(
-            "selected cargo-allow executable was not accepted: {}",
-            failure
-        ))
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Unsupported,
+            format!(
+                "selected cargo-allow executable was not accepted: {}",
+                failure
+            ),
+        )
     })
 }
 
@@ -455,7 +466,8 @@ fn cmd_verify(args: &HookVerifyArgs) -> CargoAllowResult<()> {
 fn cmd_run(args: &HookRunArgs) -> CargoAllowResult<()> {
     let expected_command = ["check", "--mode", "no-new"];
     if args.command.iter().map(String::as_str).collect::<Vec<_>>() != expected_command {
-        return Err(CargoAllowError::new(
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
             "hooks run only permits the exact `check --mode no-new` command",
         ));
     }
@@ -468,9 +480,10 @@ fn cmd_run(args: &HookRunArgs) -> CargoAllowResult<()> {
     );
     let receipt = select_tool(&request, identity, &ToolCompatibilityRequirement::current())
         .map_err(|failure| {
-            CargoAllowError::new(format!(
-                "selected cargo-allow executable was not accepted: {failure}"
-            ))
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Unsupported,
+                format!("selected cargo-allow executable was not accepted: {failure}"),
+            )
         })?;
     run_verified_command(
         &args.binary,
@@ -494,36 +507,45 @@ where
     Execute: FnOnce(&Path, &[String]) -> CargoAllowResult<std::process::ExitStatus>,
 {
     verify(binary, digest).map_err(|failure| {
-        CargoAllowError::new(format!(
-            "verified cargo-allow executable changed before hook run: {failure}"
-        ))
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InstrumentFailure,
+            format!("verified cargo-allow executable changed before hook run: {failure}"),
+        )
     })?;
     let status = execute(binary, command).map_err(|error| {
-        CargoAllowError::new(format!(
-            "failed to execute verified cargo-allow executable `{}`: {error}",
-            binary.display()
-        ))
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InstrumentFailure,
+            format!(
+                "failed to execute verified cargo-allow executable `{}`: {error}",
+                binary.display()
+            ),
+        )
     })?;
     verify(binary, digest).map_err(|failure| {
-        CargoAllowError::new(format!(
-            "verified cargo-allow executable changed during hook run: {failure}"
-        ))
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InstrumentFailure,
+            format!("verified cargo-allow executable changed during hook run: {failure}"),
+        )
     })?;
     if !status.success() {
-        return Err(CargoAllowError::new(format!(
-            "verified hook command exited with {}",
-            status
-                .code()
-                .map(|code| code.to_string())
-                .unwrap_or_else(|| "a signal".to_string())
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::InstrumentFailure,
+            format!(
+                "verified hook command exited with {}",
+                status
+                    .code()
+                    .map(|code| code.to_string())
+                    .unwrap_or_else(|| "a signal".to_string())
+            ),
+        ));
     }
     Ok(())
 }
 
 fn verify_hook_binary(binary: &Path, digest: &str) -> CargoAllowResult<()> {
-    verify_tool_unchanged(binary, digest)
-        .map_err(|failure| CargoAllowError::new(failure.to_string()))
+    verify_tool_unchanged(binary, digest).map_err(|failure| {
+        CargoAllowError::with_kind(CargoAllowErrorKind::InstrumentFailure, failure.to_string())
+    })
 }
 
 fn execute_hook_command(
@@ -533,38 +555,52 @@ fn execute_hook_command(
     Command::new(binary)
         .args(command)
         .status()
-        .map_err(|error| CargoAllowError::new(error.to_string()))
+        .map_err(|error| {
+            CargoAllowError::with_kind(CargoAllowErrorKind::InstrumentFailure, error.to_string())
+        })
 }
 
 #[cfg_attr(test, inline(never))]
 fn read_selected_tool_identity(binary: &Path) -> CargoAllowResult<CargoAllowToolIdentityV1> {
     if !binary.is_absolute() {
-        return Err(CargoAllowError::new(format!(
-            "selected cargo-allow executable `{}` must be an absolute path; PATH lookup is not allowed",
-            binary.display()
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            format!(
+                "selected cargo-allow executable `{}` must be an absolute path; PATH lookup is not allowed",
+                binary.display()
+            ),
+        ));
     }
     let identity_output = Command::new(binary)
         .args(["tool", "identity", "--format", "json"])
         .output()
         .map_err(|error| {
-            CargoAllowError::new(format!(
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::InstrumentFailure,
+                format!(
                 "failed to invoke selected cargo-allow executable `{}` for tool identity: {error}",
                 binary.display()
-            ))
+                ),
+            )
         })?;
     if !identity_output.status.success() {
-        return Err(CargoAllowError::new(format!(
-            "selected cargo-allow executable `{}` could not report tool identity: {}",
-            binary.display(),
-            String::from_utf8_lossy(&identity_output.stderr).trim()
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::InstrumentFailure,
+            format!(
+                "selected cargo-allow executable `{}` could not report tool identity: {}",
+                binary.display(),
+                String::from_utf8_lossy(&identity_output.stderr).trim()
+            ),
+        ));
     }
     serde_json::from_slice(&identity_output.stdout).map_err(|error| {
-        CargoAllowError::new(format!(
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InstrumentFailure,
+            format!(
             "selected cargo-allow executable `{}` returned malformed tool identity JSON: {error}",
             binary.display()
-        ))
+            ),
+        )
     })
 }
 
@@ -1478,6 +1514,12 @@ mod tests {
         let error = cmd_run(&args)
             .err()
             .ok_or_else(|| "unapproved hook command was accepted".to_string())?;
+        if error.kind() != CargoAllowErrorKind::Usage {
+            return Err(format!(
+                "unapproved hook command had kind {}, expected usage",
+                error.kind()
+            ));
+        }
         if !error.to_string().contains("only permits") {
             return Err("unapproved hook command did not name the closed contract".to_string());
         }
@@ -1500,6 +1542,12 @@ mod tests {
         let error = cmd_run(&args)
             .err()
             .ok_or_else(|| "relative hook binary was accepted".to_string())?;
+        if error.kind() != CargoAllowErrorKind::Usage {
+            return Err(format!(
+                "relative hook binary had kind {}, expected usage",
+                error.kind()
+            ));
+        }
         if !error.to_string().contains("absolute path") {
             return Err("relative hook binary did not name the path requirement".to_string());
         }
@@ -1782,6 +1830,186 @@ mod tests {
             .is_some_and(|error| error.to_string().contains("executable contract"))
         {
             return Err("mismatched runtime argv was accepted".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn runtime_plan_argument_failures_have_usage_kind() -> Result<(), String> {
+        let mut args = HookPlanArgs {
+            stage: HookStage::PreCommit,
+            format: HookPlanFormat::Json,
+            output: None,
+            binary: Some(PathBuf::from("relative-cargo-allow")),
+            digest: Some("sha256:v1:test".to_string()),
+            mode: ToolSelectionMode::InstalledPinned,
+            expected_build_source_commit: None,
+        };
+        let error = plan_runtime(&args)
+            .err()
+            .ok_or_else(|| "relative runtime binary was accepted".to_string())?;
+        if error.kind() != CargoAllowErrorKind::Usage {
+            return Err(format!(
+                "relative runtime binary had kind {}, expected usage",
+                error.kind()
+            ));
+        }
+
+        args.binary = None;
+        args.digest = Some("sha256:v1:test".to_string());
+        let error = plan_runtime(&args)
+            .err()
+            .ok_or_else(|| "digest-only runtime plan was accepted".to_string())?;
+        if error.kind() != CargoAllowErrorKind::Usage {
+            return Err(format!(
+                "digest-only runtime plan had kind {}, expected usage",
+                error.kind()
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn rejected_verified_tools_have_unsupported_kind() -> Result<(), String> {
+        let Some(binary) = built_binary()? else {
+            return Ok(());
+        };
+        let runtime = HookRuntimeV1 {
+            binary: binary.display().to_string(),
+            digest: "sha256:v1:deliberate-mismatch".to_string(),
+            mode: ToolSelectionMode::ExplicitToolUnderTest,
+            expected_build_source_commit: None,
+        };
+        let error = verify_plan_runtime(&runtime)
+            .err()
+            .ok_or_else(|| "mismatched verified plan binary was accepted".to_string())?;
+        if error.kind() != CargoAllowErrorKind::Unsupported {
+            return Err(format!(
+                "rejected verified plan binary had kind {}, expected unsupported",
+                error.kind()
+            ));
+        }
+
+        let output = output_path("verify-error-kind");
+        let args = HookVerifyArgs {
+            binary: binary.clone(),
+            digest: runtime.digest.clone(),
+            mode: ToolSelectionMode::ExplicitToolUnderTest,
+            expected_build_source_commit: None,
+            format: HookPlanFormat::Json,
+            output: Some(output.clone()),
+        };
+        let error = cmd_verify(&args)
+            .err()
+            .ok_or_else(|| "hooks verify accepted a mismatched binary".to_string())?;
+        let _ = fs::remove_file(output);
+        if error.kind() != CargoAllowErrorKind::Unsupported {
+            return Err(format!(
+                "hooks verify mismatch had kind {}, expected unsupported",
+                error.kind()
+            ));
+        }
+
+        let args = HookRunArgs {
+            binary,
+            digest: runtime.digest,
+            mode: ToolSelectionMode::ExplicitToolUnderTest,
+            expected_build_source_commit: None,
+            command: vec![
+                "check".to_string(),
+                "--mode".to_string(),
+                "no-new".to_string(),
+            ],
+        };
+        let error = cmd_run(&args)
+            .err()
+            .ok_or_else(|| "hooks run accepted a mismatched binary".to_string())?;
+        if error.kind() != CargoAllowErrorKind::Unsupported {
+            return Err(format!(
+                "hooks run mismatch had kind {}, expected unsupported",
+                error.kind()
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn missing_verified_tool_and_process_boundaries_have_instrument_kind() -> Result<(), String> {
+        let missing = std::env::current_dir()
+            .map_err(|error| error.to_string())?
+            .join("cargo-allow-missing-hook-binary");
+        let error = read_selected_tool_identity(&missing)
+            .err()
+            .ok_or_else(|| "missing verified tool unexpectedly returned identity".to_string())?;
+        if error.kind() != CargoAllowErrorKind::InstrumentFailure {
+            return Err(format!(
+                "missing verified tool had kind {}, expected instrument_failure",
+                error.kind()
+            ));
+        }
+
+        let error = verify_hook_binary(&missing, "sha256:v1:test")
+            .err()
+            .ok_or_else(|| "missing verified tool passed unchanged verification".to_string())?;
+        if error.kind() != CargoAllowErrorKind::InstrumentFailure {
+            return Err(format!(
+                "tool verification failure had kind {}, expected instrument_failure",
+                error.kind()
+            ));
+        }
+
+        let error = execute_hook_command(&missing, &[])
+            .err()
+            .ok_or_else(|| "missing verified tool unexpectedly executed".to_string())?;
+        if error.kind() != CargoAllowErrorKind::InstrumentFailure {
+            return Err(format!(
+                "tool execution failure had kind {}, expected instrument_failure",
+                error.kind()
+            ));
+        }
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn selected_tool_identity_process_and_json_failures_have_instrument_kind() -> Result<(), String>
+    {
+        use std::os::unix::fs::PermissionsExt;
+
+        let fixture = HookFixture::new("identity-errors")?;
+        let failing = fixture.path.join("failing-tool");
+        fs::write(&failing, "#!/bin/sh\nexit 7\n").map_err(|error| error.to_string())?;
+        let mut permissions = fs::metadata(&failing)
+            .map_err(|error| error.to_string())?
+            .permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&failing, permissions).map_err(|error| error.to_string())?;
+        let error = read_selected_tool_identity(&failing)
+            .err()
+            .ok_or_else(|| "failing identity tool unexpectedly succeeded".to_string())?;
+        if error.kind() != CargoAllowErrorKind::InstrumentFailure {
+            return Err(format!(
+                "failing identity tool had kind {}, expected instrument_failure",
+                error.kind()
+            ));
+        }
+
+        let malformed = fixture.path.join("malformed-tool");
+        fs::write(&malformed, "#!/bin/sh\nprintf 'not-json\\n'\n")
+            .map_err(|error| error.to_string())?;
+        let mut permissions = fs::metadata(&malformed)
+            .map_err(|error| error.to_string())?
+            .permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&malformed, permissions).map_err(|error| error.to_string())?;
+        let error = read_selected_tool_identity(&malformed)
+            .err()
+            .ok_or_else(|| "malformed identity tool unexpectedly succeeded".to_string())?;
+        if error.kind() != CargoAllowErrorKind::InstrumentFailure {
+            return Err(format!(
+                "malformed identity tool had kind {}, expected instrument_failure",
+                error.kind()
+            ));
         }
         Ok(())
     }

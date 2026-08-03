@@ -85,6 +85,10 @@ pub enum CargoAllowErrorKind {
     PolicyViolation,
     /// Artifact or write failure (receipt rendering, policy write).
     Artifact,
+    /// Requested capability, platform, or tool contract is not supported.
+    Unsupported,
+    /// An external tool or process failed to provide usable evidence.
+    InstrumentFailure,
     /// Internal invariant failure (should not happen).
     Internal,
     /// Unclassified — preserved for backward compatibility with `new()`.
@@ -103,6 +107,8 @@ impl CargoAllowErrorKind {
         Self::Scan,
         Self::PolicyViolation,
         Self::Artifact,
+        Self::Unsupported,
+        Self::InstrumentFailure,
         Self::Internal,
         Self::Unknown,
     ];
@@ -118,6 +124,8 @@ impl CargoAllowErrorKind {
             Self::Scan => "scan",
             Self::PolicyViolation => "policy_violation",
             Self::Artifact => "artifact",
+            Self::Unsupported => "unsupported",
+            Self::InstrumentFailure => "instrument_failure",
             Self::Internal => "internal",
             Self::Unknown => "unknown",
         }
@@ -138,6 +146,8 @@ impl CargoAllowErrorKind {
             Self::Artifact => "E0007_ARTIFACT",
             Self::Internal => "E0008_INTERNAL",
             Self::Unknown => "E0009_UNKNOWN",
+            Self::Unsupported => "E0010_UNSUPPORTED",
+            Self::InstrumentFailure => "E0011_INSTRUMENT_FAILURE",
         }
     }
 }
