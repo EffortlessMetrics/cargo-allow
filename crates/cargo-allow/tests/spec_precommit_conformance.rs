@@ -187,6 +187,37 @@ fn source_exception_staged_check_reads_index_bytes_and_binds_identity() -> Resul
             return Err(format!("{name} did not normalize the staged UTF-8 BOM"));
         }
     }
+
+    let mismatch = Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+        .args([
+            "check",
+            "--root",
+            repo.root
+                .to_str()
+                .ok_or_else(|| "non-UTF-8 fixture root".to_string())?,
+            "--config",
+            "policy/allow.toml",
+            "--staged",
+            "--phase",
+            "precommit",
+            "--mode",
+            "audit",
+            "--format",
+            "json",
+            "--expect-staged-identity",
+            "not-the-staged-identity",
+        ])
+        .output()
+        .map_err(|error| error.to_string())?;
+    if mismatch.status.success() {
+        return Err("a mismatched staged identity should fail".to_string());
+    }
+    if !String::from_utf8_lossy(&mismatch.stderr).contains("staged identity did not match") {
+        return Err(format!(
+            "unexpected staged identity diagnostic: {}",
+            String::from_utf8_lossy(&mismatch.stderr)
+        ));
+    }
     Ok(())
 }
 
