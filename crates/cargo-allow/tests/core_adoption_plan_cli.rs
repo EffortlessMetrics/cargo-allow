@@ -101,7 +101,7 @@ fn adopt_supports_clean_no_git_repositories_and_human_json_parity() -> Result<()
 }
 
 #[test]
-fn adopt_projects_findings_without_policy_and_healthy_policy() -> Result<(), String> {
+fn adopt_projects_findings_without_policy_and_ci_guidance() -> Result<(), String> {
     let findings_root = temp_root("adoption-findings-no-policy")?;
     write_source(
         &findings_root,
@@ -131,12 +131,29 @@ fn adopt_projects_findings_without_policy_and_healthy_policy() -> Result<(), Str
 
     let healthy_root = temp_root("adoption-healthy-policy")?;
     write_source(&healthy_root, "pub fn value() -> u8 { 1 }\n")?;
+    fs::create_dir_all(healthy_root.join(".github/workflows"))
+        .map_err(|error| error.to_string())?;
+    fs::write(
+        healthy_root.join(".github/workflows/ci.yml"),
+        "cargo-allow check --mode no-new\n",
+    )
+    .map_err(|error| error.to_string())?;
+    git(&healthy_root, &["init"])?;
+    git(
+        &healthy_root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    )?;
+    git(&healthy_root, &["config", "user.name", "cargo-allow test"])?;
+    git(&healthy_root, &["add", "."])?;
+    git(&healthy_root, &["commit", "-m", "healthy adoption fixture"])?;
     let init = cargo_allow_command()
         .current_dir(&healthy_root)
         .args(["init", "--strict"])
         .output()
         .map_err(|error| format!("run init: {error}"))?;
     require(init.status.success(), "strict init should succeed")?;
+    git(&healthy_root, &["add", "."])?;
+    git(&healthy_root, &["commit", "-m", "healthy adoption policy"])?;
     let healthy = run_adopt(&healthy_root, &["--format", "json"])?;
     require(healthy.status.success(), "healthy plan should succeed")?;
     let healthy_artifact = parse_stdout(&healthy)?;
@@ -144,15 +161,22 @@ fn adopt_projects_findings_without_policy_and_healthy_policy() -> Result<(), Str
         healthy_artifact
             .pointer("/plan/bootstrap_disposition")
             .and_then(Value::as_str)
-            == Some("ExistingPolicyHealthy"),
-        "healthy disposition",
+            == Some("ExistingPolicyHasNewFindings"),
+        "workflow guidance should remain observable alongside the new finding",
     )?;
     require(
         healthy_artifact
             .pointer("/plan/primary_action/kind")
             .and_then(Value::as_str)
-            == Some("ConfigureCi"),
-        "healthy action without CI guidance",
+            == Some("InspectNewFinding"),
+        "new finding should remain the primary action",
+    )?;
+    require(
+        healthy_artifact
+            .pointer("/plan/follow_up_actions/0/kind")
+            .and_then(Value::as_str)
+            == Some("RunNoNewCheck"),
+        "ci guidance should produce a no-new follow-up",
     )?;
     remove_temp_root(healthy_root)?;
     Ok(())
