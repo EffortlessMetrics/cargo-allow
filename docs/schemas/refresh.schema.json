@@ -90,7 +90,8 @@
           "type": "string"
         },
         "lifecycle_preserved": {
-          "const": true
+          "const": true,
+          "description": "The current refresh command updates only the entry-level last_seen observation. It does not change lifecycle or authorization fields. A future lifecycle-changing refresh must introduce an explicitly versioned contract change rather than repurposing this field."
         },
         "operator_approved": {
           "type": "boolean"
