@@ -2,6 +2,7 @@ use super::*;
 use crate::artifact_contract_support::parse_json_artifact;
 use crate::init::cmd_init;
 use crate::{CargoAllowCli, CargoAllowCommand, HumanJsonFormat, ProfileArg, RootArgs};
+use allow_core::CargoAllowErrorKind;
 use clap::Parser;
 use serde_json::Value;
 use std::fs;
@@ -131,8 +132,125 @@ fn spec_system_doctor_rejects_support_bundle_output() -> Result<(), String> {
     remove_doctor_fixture_dir(root);
     match result {
         Ok(()) => Err("spec-system doctor unexpectedly accepted support bundle".to_string()),
-        Err(error) if error.to_string().contains("only supported") => Ok(()),
+        Err(error)
+            if error.kind() == CargoAllowErrorKind::Usage
+                && error.code() == "E0001_USAGE"
+                && error.to_string().contains("only supported") =>
+        {
+            Ok(())
+        }
         Err(error) => Err(format!("unexpected error: {error}")),
+    }
+}
+
+#[test]
+fn doctor_require_clean_classifies_missing_configuration() -> Result<(), String> {
+    let root = doctor_fixture_dir();
+    let result = cmd_doctor(&DoctorArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        profile: None,
+        format: HumanJsonFormat::Human,
+        require_clean: true,
+        output: None,
+        support_bundle: None,
+    });
+    remove_doctor_fixture_dir(root);
+
+    match result {
+        Err(error)
+            if error.kind() == CargoAllowErrorKind::InvalidConfig
+                && error.code() == "E0002_INVALID_CONFIG" =>
+        {
+            Ok(())
+        }
+        Err(error) => Err(format!("unexpected error: {error}")),
+        Ok(()) => Err("doctor --require-clean unexpectedly passed without config".to_string()),
+    }
+}
+
+#[test]
+fn doctor_require_clean_classifies_malformed_policy() -> Result<(), String> {
+    let root = doctor_fixture_dir();
+    let policy = root.join("allow.toml");
+    fs::write(
+        &policy,
+        "schema_version = \"\"\npolicy = \"cargo-allow\"\nowner = \"core/policy\"\nstatus = \"active\"\n",
+    )
+    .map_err(|error| error.to_string())?;
+    let result = cmd_doctor(&DoctorArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(policy),
+        profile: None,
+        format: HumanJsonFormat::Human,
+        require_clean: true,
+        output: None,
+        support_bundle: None,
+    });
+    remove_doctor_fixture_dir(root);
+
+    match result {
+        Err(error)
+            if error.kind() == CargoAllowErrorKind::InvalidPolicy
+                && error.code() == "E0003_INVALID_POLICY" =>
+        {
+            Ok(())
+        }
+        Err(error) => Err(format!("unexpected error: {error}")),
+        Ok(()) => Err("doctor --require-clean unexpectedly passed malformed policy".to_string()),
+    }
+}
+
+#[test]
+fn doctor_require_clean_classifies_broken_evidence() -> Result<(), String> {
+    let root = doctor_fixture_dir();
+    let policy = root.join("allow.toml");
+    fs::write(
+        &policy,
+        r#"
+policy = "cargo-allow"
+
+[[allow]]
+id = "allow-doc"
+kind = "non_rust_file"
+path = "docs/policy.md"
+owner = "docs"
+classification = "reviewed"
+reason = "Tracked documentation policy."
+evidence = ["doc:docs/missing.md"]
+review_after = "2026-06-30"
+
+[allow.selector]
+ast_kind = "tracked_file"
+"#,
+    )
+    .map_err(|error| error.to_string())?;
+    let result = cmd_doctor(&DoctorArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(policy),
+        profile: None,
+        format: HumanJsonFormat::Human,
+        require_clean: true,
+        output: None,
+        support_bundle: None,
+    });
+    remove_doctor_fixture_dir(root);
+
+    match result {
+        Err(error)
+            if error.kind() == CargoAllowErrorKind::PolicyViolation
+                && error.code() == "E0006_POLICY_VIOLATION" =>
+        {
+            Ok(())
+        }
+        Err(error) => Err(format!("unexpected error: {error}")),
+        Ok(()) => Err("doctor --require-clean unexpectedly passed broken evidence".to_string()),
     }
 }
 
