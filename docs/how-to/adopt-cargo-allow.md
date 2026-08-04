@@ -1,5 +1,8 @@
 # Adopting cargo-allow in a new repository
 
+> Maturity: `init`, `audit`, and `doctor` are Stable in published `0.1.11` and
+> Stabilizing on current main. See the [command maturity table](../status/SUPPORT_TIERS.md#command-maturity).
+
 This guide is the **repeatable rollout recipe** for adopting cargo-allow from
 an empty or existing repository. It records the exact bootstrap, CI, and
 no-new-debt enforcement path — the same path cargo-allow dogfoods on itself.

@@ -3,6 +3,9 @@
 Use cargo-allow in CI to show pull request posture and keep mainline policy
 receipts current.
 
+> Maturity: `check` is Stable in published `0.1.11` and Stabilizing on current
+> main. See the [command maturity table](../status/SUPPORT_TIERS.md#command-maturity).
+
 Copy the complete GitHub Actions workflows rather than inventing checkout,
 install, fetch, or artifact steps:
 

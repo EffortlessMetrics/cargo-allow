@@ -44,6 +44,10 @@ The selected metadata value must be a non-empty, existing relative path without
 Cargo-allow reads the manifest text directly. It does not invoke the Cargo
 `metadata` command or infer workspace membership.
 
+> Command maturity is maintained in the [Support Tiers command maturity table](status/SUPPORT_TIERS.md#command-maturity).
+> This reference describes current ledger behavior; it does not promote the
+> source candidate to the published channel.
+
 The conventional source-exception order is:
 
 ```text

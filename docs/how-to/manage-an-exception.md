@@ -12,6 +12,9 @@ Sibling references (do not duplicate every flag here):
 [Prune stale allows](prune-stale-allows.md),
 [Review PR posture](review-pr-posture.md).
 
+> Maturity: `add`, `refresh`, and `propose` are Stable in published `0.1.11`
+> and Stabilizing on current main. See the [command maturity table](../status/SUPPORT_TIERS.md#command-maturity).
+
 ## 1. Understand the finding
 
 Run the cheapest useful read first:

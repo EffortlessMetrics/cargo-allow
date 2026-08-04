@@ -2,6 +2,9 @@
 
 Use `prune` when policy entries no longer match current source-tree findings.
 
+> Maturity: `prune` is Stable in published `0.1.11` and Stabilizing on current
+> main. See the [command maturity table](../status/SUPPORT_TIERS.md#command-maturity).
+
 ## Preview First
 
 ```bash

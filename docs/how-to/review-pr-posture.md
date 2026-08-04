@@ -3,6 +3,9 @@
 Use this guide when a pull request changes source exceptions or policy
 receipts and you need to decide what a reviewer should do next.
 
+> Maturity: `diff` is Stable in published `0.1.11` and Stabilizing on current
+> main. See the [command maturity table](../status/SUPPORT_TIERS.md#command-maturity).
+
 ## Generate the Summary
 
 Run the reviewer-facing Markdown summary against the intended base:

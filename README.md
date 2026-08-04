@@ -103,6 +103,9 @@ receipts. The durable policy file is `policy/allow.toml`.
 
 Core workflows (Published `0.1.11` and source candidate):
 
+> Command maturity is channel-specific. See the [command maturity table](docs/status/SUPPORT_TIERS.md#command-maturity)
+> before wiring a command into long-lived automation.
+
 ```bash
 cargo-allow doctor                    # validate local setup
 cargo-allow audit                     # inventory exceptions and policy health
