@@ -7,6 +7,7 @@ use super::*;
 
 const DIGEST_A: &str = "sha256:v1:0000000000000000000000000000000000000000000000000000000000000000";
 const DIGEST_B: &str = "sha256:v1:1111111111111111111111111111111111111111111111111111111111111111";
+type FlagCase = (&'static str, fn(&mut AddArgs), &'static str);
 
 fn base_from_plan_args() -> AddArgs {
     AddArgs {
@@ -37,7 +38,7 @@ fn base_from_plan_args() -> AddArgs {
 
 #[test]
 fn from_plan_flag_contract_errors_are_usage() {
-    let cases: [(&str, fn(&mut AddArgs), &str); 5] = [
+    let cases: [FlagCase; 5] = [
         ("requires update", |_| {}, "requires --update"),
         (
             "write conflict",
