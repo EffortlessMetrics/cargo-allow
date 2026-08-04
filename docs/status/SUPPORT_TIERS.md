@@ -56,6 +56,42 @@ or retirement direction.
 | integrated three-product dogfood | Advisory | The monorepo exercises a bounded cross-product journey to detect wiring regressions. | `scripts/three-product-dogfood-smoke.sh` | Workspace proximity and fake/stub stages prevent a product-support or extraction claim. |
 | physical repository extraction | Not included | No current product or receipt authorizes moving the families into separate repositories. | CARGO-ALLOW-SPEC-0011 and #2559 | Requires independent package/CI/support proof, public-boundary dogfood, shim/private-path retirement, simplification review, and later explicit authorization. |
 
+## Command maturity
+
+User-facing command guides use this table as their maturity source. `Published
+0.1.11` is the frozen command channel described by
+[`published-command-registry.toml`](../dogfood/fixtures/getting-started/published-command-registry.toml).
+`Current main` describes the source candidate and is not a publication claim.
+
+| Command | Published 0.1.11 | Current main | Primary guide |
+| --- | --- | --- | --- |
+| `init` | Stable | Stabilizing | [Adopt cargo-allow](../how-to/adopt-cargo-allow.md) |
+| `audit` | Stable | Stabilizing | [Adopt cargo-allow](../how-to/adopt-cargo-allow.md) |
+| `check` | Stable | Stabilizing | [Run in CI](../how-to/run-in-ci.md) |
+| `diff` | Stable | Stabilizing | [Review PR posture](../how-to/review-pr-posture.md) |
+| `list` | Stable | Stabilizing | [Explain an allow entry](../how-to/explain-an-allow.md) |
+| `explain` | Stable | Stabilizing | [Explain an allow entry](../how-to/explain-an-allow.md) |
+| `why` | Stable | Stabilizing | [Explain why a finding is unreceipted](../how-to/explain-why-a-finding.md) |
+| `add` | Stable | Stabilizing | [Manage an exception](../how-to/manage-an-exception.md) |
+| `propose` | Stable | Stabilizing | [Adopt no-new-debt](../how-to/adopt-no-new-debt.md) |
+| `worklist` | Stable | Stabilizing | [Feed agent worklists](../how-to/feed-agent-worklists.md) |
+| `migrate` | Stable | Stabilizing | [Migrate from xtask](../how-to/migrate-from-xtask.md) |
+| `refresh` | Stable | Stabilizing | [Manage an exception](../how-to/manage-an-exception.md) |
+| `prune` | Stable | Stabilizing | [Prune stale allows](../how-to/prune-stale-allows.md) |
+| `doctor` | Stable | Stabilizing | [Adopt cargo-allow](../how-to/adopt-cargo-allow.md) |
+| `adopt` | Not included | Experimental | [Adopt cargo-allow](../how-to/adopt-cargo-allow.md) |
+| `capabilities` | Not included | Experimental | [Getting started](../getting-started.md) |
+| `vocabulary` | Not included | Experimental | [Source exception ledger](../source-exception-ledger.md) |
+| `tool` | Not included | Experimental | [Run in CI](../how-to/run-in-ci.md) |
+| `completions` | Not included | Experimental | [Install shell completions](../how-to/install-shell-completions.md) |
+| `reference` | Not included | Experimental | [Getting started](../getting-started.md) |
+| `hooks` | Not included | Experimental | [Run in CI](../how-to/run-in-ci.md) |
+
+The table intentionally separates published stability from current-main
+maturity. A guide marker must not be read as a claim that the source candidate
+is already published or that a command proves build, runtime, or semantic
+coverage outside cargo-allow's source-tree scan boundary.
+
 ## Claim boundaries
 
 Cargo-allow source scans do not compile code, run rustc/Clippy, execute build

@@ -3,6 +3,9 @@
 Use migration when a repository already has bespoke source-exception policy in
 an xtask or legacy TOML files.
 
+> Maturity: `migrate` is Stable in published `0.1.11` and Stabilizing on
+> current main. See the [command maturity table](../status/SUPPORT_TIERS.md#command-maturity).
+
 ## Side-By-Side First
 
 Run the old checker and cargo-allow in the closest compatible mode before

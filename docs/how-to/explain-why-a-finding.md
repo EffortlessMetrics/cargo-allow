@@ -3,6 +3,9 @@
 Use `why` when a check failure points at a path and line, and you need the
 inverse of `explain`: why this finding is not covered by an allow entry.
 
+> Maturity: `why` is Stable in published `0.1.11` and Stabilizing on current
+> main. See the [command maturity table](../status/SUPPORT_TIERS.md#command-maturity).
+
 ## Human Output
 
 ```bash

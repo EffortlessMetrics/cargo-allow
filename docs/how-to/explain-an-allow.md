@@ -3,6 +3,9 @@
 Use `explain` when a maintainer or reviewer needs to know why a retained
 exception exists.
 
+> Maturity: `explain` and its companion `list` command are Stable in published
+> `0.1.11` and Stabilizing on current main. See the [command maturity table](../status/SUPPORT_TIERS.md#command-maturity).
+
 ## Human Output
 
 ```bash

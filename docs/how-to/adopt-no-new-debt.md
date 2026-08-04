@@ -3,6 +3,9 @@
 Use this flow when a repository already has exception history and you want to
 stop new unreceipted findings before fixing all existing debt.
 
+> Maturity: `propose` is Stable in published `0.1.11` and Stabilizing on
+> current main. See the [command maturity table](../status/SUPPORT_TIERS.md#command-maturity).
+
 ## Steps
 
 Audit the current source-tree surface:
