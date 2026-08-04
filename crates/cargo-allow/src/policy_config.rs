@@ -1,4 +1,4 @@
-use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult};
+use allow_core::{AllowConfig, CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_policy::{
     PrecedenceTier, SkippedPolicyCandidate, discover_config, evaluate_source_exception_policy,
     load_policy, load_policy_with_reportable_evidence,
@@ -10,7 +10,10 @@ use std::path::{Path, PathBuf};
 /// Centralized "no policy config found" error constructor (#2824).
 /// Used by 18+ sites that previously copy-pasted this message.
 pub(crate) fn missing_policy_config_error() -> CargoAllowError {
-    CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
+    CargoAllowError::with_kind(
+        CargoAllowErrorKind::InvalidConfig,
+        "no policy config found; run `cargo-allow init` or pass --config",
+    )
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -127,11 +130,14 @@ fn missing_config_error(skipped: &[SkippedPolicyCandidate]) -> CargoAllowError {
         .map(|candidate| format!("{} ({})", candidate.path.display(), candidate.reason))
         .collect::<Vec<_>>()
         .join("; ");
-    CargoAllowError::new(format!(
-        "no cargo-allow policy config found; skipped {} foreign-dialect candidate(s): {}; run `cargo-allow init` or pass --config",
-        skipped.len(),
-        details
-    ))
+    CargoAllowError::with_kind(
+        CargoAllowErrorKind::InvalidConfig,
+        format!(
+            "no cargo-allow policy config found; skipped {} foreign-dialect candidate(s): {}; run `cargo-allow init` or pass --config",
+            skipped.len(),
+            details
+        ),
+    )
 }
 
 pub(crate) fn root_relative_path(root: &Path, path: &Path) -> PathBuf {
@@ -251,11 +257,20 @@ mod tests {
             EvidenceValidationMode::Abort,
         )
         .expect_err("missing required config should fail");
-        assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::Unknown);
+        assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
+        assert_eq!(err.code(), "E0002_INVALID_CONFIG");
 
         let err = git_relative_config_path(&missing_root, None)
             .expect_err("missing config should fail git relativization");
-        assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::Unknown);
+        assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
+
+        let err = missing_config_error(&[SkippedPolicyCandidate {
+            path: PathBuf::from("foreign/allow.toml"),
+            reason: "foreign policy dialect".to_string(),
+        }]);
+        assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
+        assert_eq!(err.code(), "E0002_INVALID_CONFIG");
+        assert!(err.to_string().contains("foreign/allow.toml"));
 
         remove_test_dir(&missing_root);
     }
@@ -289,7 +304,7 @@ mod tests {
             EvidenceValidationMode::Abort,
         )
         .expect_err("missing required config should fail");
-        assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::Unknown);
+        assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
         remove_test_dir(&root);
         remove_test_dir(&missing_root);
     }
@@ -308,15 +323,27 @@ mod tests {
         assert!(present.is_some());
 
         let missing_root = unique_test_dir("policy-config-optional-missing");
-        let missing = load_config_optional_with_evidence_mode(
-            &missing_root,
-            None,
-            EvidenceValidationMode::Abort,
-        )
-        .unwrap_or_else(|err| {
-            std::panic::panic_any(format!("load missing optional policy: {err}"))
-        });
-        assert!(missing.is_none());
+        let discovery = discover_config_path(&missing_root, None);
+        if discovery.skipped.is_empty() {
+            let missing = load_config_optional_with_evidence_mode(
+                &missing_root,
+                None,
+                EvidenceValidationMode::Abort,
+            )
+            .unwrap_or_else(|err| {
+                std::panic::panic_any(format!("load missing optional policy: {err}"))
+            });
+            assert!(missing.is_none());
+        } else {
+            let err = load_config_optional_with_evidence_mode(
+                &missing_root,
+                None,
+                EvidenceValidationMode::Abort,
+            )
+            .expect_err("skipped foreign policy should remain an explicit config error");
+            assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
+            assert_eq!(err.code(), "E0002_INVALID_CONFIG");
+        }
         remove_test_dir(&root);
         remove_test_dir(&missing_root);
     }
@@ -454,7 +481,7 @@ mod tests {
         let missing_root = unique_test_dir("policy-config-git-relative-missing");
         let err = git_relative_config_path(&missing_root, None)
             .expect_err("missing config should report init/config guidance");
-        assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::Unknown);
+        assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
 
         let err = git_relative_config_path(&root, Some(Path::new("policy/missing.toml")))
             .expect_err("missing explicit config should report canonicalization failure");
