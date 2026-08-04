@@ -3,6 +3,7 @@ use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_policy};
 use allow_report::MutationReceipt;
 
+use crate::policy_config::missing_policy_config_error;
 use crate::{
     EvidenceValidationMode, HumanJsonFormat, MutationLock, SourceTreeReportContext, config_path,
     emit_text,
@@ -57,12 +58,8 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
         let cwd = std::env::current_dir()
             .map_err(|error| CargoAllowError::new(format!("failed to read cwd: {error}")))?;
         let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;
-        let path = config_path(&root, args.config.as_deref()).ok_or_else(|| {
-            CargoAllowError::with_kind(
-                CargoAllowErrorKind::InvalidConfig,
-                "no policy config found; run `cargo-allow init` or pass --config",
-            )
-        })?;
+        let path =
+            config_path(&root, args.config.as_deref()).ok_or_else(missing_policy_config_error)?;
         crate::policy_config::assert_path_within_root(&root, &path)?;
         Some(MutationLock::acquire(path)?)
     } else {
@@ -79,12 +76,8 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
     let _mutation_lock = mutation_lock;
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
     let candidates = prune_stale_candidates(&cfg, &outcomes);
-    let policy_path = config_path(&root, args.config.as_deref()).ok_or_else(|| {
-        CargoAllowError::with_kind(
-            CargoAllowErrorKind::InvalidConfig,
-            "no policy config found; run `cargo-allow init` or pass --config",
-        )
-    })?;
+    let policy_path =
+        config_path(&root, args.config.as_deref()).ok_or_else(missing_policy_config_error)?;
     let mut receipt_candidates = candidates.iter().collect::<Vec<_>>();
     receipt_candidates.sort_by(|left, right| left.id.cmp(&right.id));
     let before_fingerprints = receipt_candidates

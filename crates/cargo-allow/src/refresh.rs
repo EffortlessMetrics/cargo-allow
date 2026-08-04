@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
+use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_policy};
 
@@ -16,6 +16,7 @@ use refresh_render::{render_refresh_json, render_refresh_result_styled};
 use refresh_select::{apply_last_seen_refresh, select_location_drift_refresh};
 use refresh_types::{RefreshContext, RefreshEmitInput, RefreshRenderInput};
 
+use crate::policy_config::missing_policy_config_error;
 use crate::{
     EvidenceValidationMode, HumanJsonFormat, MutationLock, SourceTreeReportContext, config_path,
     emit_text,
@@ -36,12 +37,8 @@ pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
         let cwd = std::env::current_dir()
             .map_err(|error| CargoAllowError::new(format!("failed to read cwd: {error}")))?;
         let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;
-        let path = config_path(&root, args.config.as_deref()).ok_or_else(|| {
-            CargoAllowError::with_kind(
-                CargoAllowErrorKind::InvalidConfig,
-                "no policy config found; run `cargo-allow init` or pass --config",
-            )
-        })?;
+        let path =
+            config_path(&root, args.config.as_deref()).ok_or_else(missing_policy_config_error)?;
         crate::policy_config::assert_path_within_root(&root, &path)?;
         Some(MutationLock::acquire(path)?)
     } else {
@@ -62,12 +59,8 @@ pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
     let finding = findings.get(finding_index).ok_or_else(|| {
         CargoAllowError::new("internal error: selected finding index out of range")
     })?;
-    let policy_path = config_path(&root, args.config.as_deref()).ok_or_else(|| {
-        CargoAllowError::with_kind(
-            CargoAllowErrorKind::InvalidConfig,
-            "no policy config found; run `cargo-allow init` or pass --config",
-        )
-    })?;
+    let policy_path =
+        config_path(&root, args.config.as_deref()).ok_or_else(missing_policy_config_error)?;
     let original_entry = cfg
         .allow
         .get(entry_index)
