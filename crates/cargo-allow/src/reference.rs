@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use clap::{Command, CommandFactory, Parser, ValueEnum};
 use serde::Serialize;
 use std::path::PathBuf;
@@ -149,7 +149,11 @@ fn parse_packaged_support_reference(source: &str) -> CargoAllowResult<SupportRef
 
 fn parse_toml(source: &str, source_name: &str) -> CargoAllowResult<toml::Table> {
     toml::from_str(source)
-        .map_err(|error| CargoAllowError::new(format!("failed to parse {source_name}: {error}")))
+        .map_err(|error| reference_internal(format!("failed to parse {source_name}: {error}")))
+}
+
+fn reference_internal(message: impl Into<String>) -> CargoAllowError {
+    CargoAllowError::with_kind(CargoAllowErrorKind::Internal, message)
 }
 
 fn parse_support_table(
@@ -166,12 +170,12 @@ fn parse_support_table(
         .get("channel")
         .and_then(toml::Value::as_array)
         .ok_or_else(|| {
-            CargoAllowError::new(format!(
+            reference_internal(format!(
                 "{source_name} must define at least one [[channel]] row"
             ))
         })?;
     if channel_values.is_empty() {
-        return Err(CargoAllowError::new(format!(
+        return Err(reference_internal(format!(
             "{source_name} must define at least one [[channel]] row"
         )));
     }
@@ -179,7 +183,7 @@ fn parse_support_table(
     for (index, value) in channel_values.iter().enumerate() {
         let context = format!("support matrix channel {index}");
         let channel = value.as_table().ok_or_else(|| {
-            CargoAllowError::new(format!("{source_name} {context} must be a table"))
+            reference_internal(format!("{source_name} {context} must be a table"))
         })?;
         channels.push(ChannelReference {
             name: required_string(channel, "name", &context)?,
@@ -187,7 +191,7 @@ fn parse_support_table(
                 .get("available")
                 .and_then(toml::Value::as_bool)
                 .ok_or_else(|| {
-                    CargoAllowError::new(format!(
+                    reference_internal(format!(
                         "{source_name} {context} is missing boolean `available`"
                     ))
                 })?,
@@ -195,7 +199,7 @@ fn parse_support_table(
                 .get("command")
                 .map(|value| {
                     value.as_str().map(str::to_owned).ok_or_else(|| {
-                        CargoAllowError::new(format!(
+                        reference_internal(format!(
                             "{source_name} {context} has a non-string `command`"
                         ))
                     })
@@ -221,7 +225,7 @@ fn required_table<'a>(
     table
         .get(key)
         .and_then(toml::Value::as_table)
-        .ok_or_else(|| CargoAllowError::new(format!("{context} is missing table `{key}`")))
+        .ok_or_else(|| reference_internal(format!("{context} is missing table `{key}`")))
 }
 
 fn required_string(table: &toml::Table, key: &str, context: &str) -> CargoAllowResult<String> {
@@ -229,7 +233,7 @@ fn required_string(table: &toml::Table, key: &str, context: &str) -> CargoAllowR
         .get(key)
         .and_then(toml::Value::as_str)
         .map(str::to_owned)
-        .ok_or_else(|| CargoAllowError::new(format!("{context} is missing string `{key}`")))
+        .ok_or_else(|| reference_internal(format!("{context} is missing string `{key}`")))
 }
 
 fn collect_command(command: &Command, parent_path: &str) -> CommandReference {
@@ -308,7 +312,12 @@ fn collect_arguments(command: &Command) -> Vec<ArgumentReference> {
 fn render_json(reference: &CliReference) -> CargoAllowResult<String> {
     serde_json::to_string_pretty(reference)
         .map(|json| format!("{json}\n"))
-        .map_err(|err| CargoAllowError::new(format!("failed to render CLI reference JSON: {err}")))
+        .map_err(|err| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                format!("failed to render CLI reference JSON: {err}"),
+            )
+        })
 }
 
 fn render_manpage(reference: &CliReference) -> String {
@@ -597,6 +606,18 @@ mod tests {
     }
 
     #[test]
+    fn support_reference_rejects_malformed_toml_as_internal() -> Result<(), String> {
+        let error = parse_support_reference("[tool").expect_err("malformed TOML is invalid");
+        assert_eq!(error.kind(), CargoAllowErrorKind::Internal);
+        assert!(
+            error
+                .to_string()
+                .contains("failed to parse docs/support-matrix.toml")
+        );
+        Ok(())
+    }
+
+    #[test]
     fn support_reference_rejects_missing_channel_evidence() -> Result<(), String> {
         let error = parse_support_reference(
             r#"
@@ -610,6 +631,7 @@ available = true
 "#,
         )
         .expect_err("support channel evidence is required");
+        assert_eq!(error.kind(), CargoAllowErrorKind::Internal);
         assert!(error.to_string().contains("missing string `evidence`"));
         Ok(())
     }
@@ -630,6 +652,7 @@ evidence = "test"
 "#,
         )
         .expect_err("non-string command must be rejected");
+        assert_eq!(error.kind(), CargoAllowErrorKind::Internal);
         assert!(error.to_string().contains("non-string `command`"));
         Ok(())
     }
