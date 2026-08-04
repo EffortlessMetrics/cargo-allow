@@ -70,7 +70,8 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     // message at add_from_plan.rs:127), instead of the generic load_world
     // error that doesn't reference the update operation.
     if args.update && config_path(&mutation_root, args.config.as_deref()).is_none() {
-        return Err(CargoAllowError::new(
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
             "no policy config found to update; run `cargo-allow init` or pass --config",
         ));
     }
@@ -155,10 +156,13 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         });
         let count = count_in_scope_findings(&findings, &broad);
         if count == 0 {
-            return Err(CargoAllowError::new(format!(
-                "no current {} findings match glob `{}`; cannot baseline an empty scope",
-                kind, glob
-            )));
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Usage,
+                format!(
+                    "no current {} findings match glob `{}`; cannot baseline an empty scope",
+                    kind, glob
+                ),
+            ));
         }
         broad.occurrence_limit = Some(count);
         let summary = match args.summary_format {
@@ -293,9 +297,10 @@ fn require_add_evidence_for_kind(kind: FindingKind, evidence: &[String]) -> Carg
         return Ok(());
     };
     if evidence.is_empty() {
-        return Err(CargoAllowError::new(format!(
-            "{label} allow entries require at least one --evidence reference"
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            format!("{label} allow entries require at least one --evidence reference"),
+        ));
     }
     if evidence
         .iter()
@@ -303,9 +308,12 @@ fn require_add_evidence_for_kind(kind: FindingKind, evidence: &[String]) -> Carg
     {
         return Ok(());
     }
-    Err(CargoAllowError::new(format!(
-        "{label} allow entries require at least one typed --evidence reference with a recognized non-empty prefix:value target"
-    )))
+    Err(CargoAllowError::with_kind(
+        CargoAllowErrorKind::Usage,
+        format!(
+            "{label} allow entries require at least one typed --evidence reference with a recognized non-empty prefix:value target"
+        ),
+    ))
 }
 
 fn render_add_summary_broad_human(
@@ -360,9 +368,10 @@ fn require_add_evidence(finding: &Finding, evidence: &[String]) -> CargoAllowRes
         return Ok(());
     };
     if evidence.is_empty() {
-        return Err(CargoAllowError::new(format!(
-            "{label} allow entries require at least one --evidence reference"
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            format!("{label} allow entries require at least one --evidence reference"),
+        ));
     }
     if evidence
         .iter()
@@ -370,9 +379,12 @@ fn require_add_evidence(finding: &Finding, evidence: &[String]) -> CargoAllowRes
     {
         return Ok(());
     }
-    Err(CargoAllowError::new(format!(
-        "{label} allow entries require at least one typed --evidence reference with a recognized non-empty prefix:value target"
-    )))
+    Err(CargoAllowError::with_kind(
+        CargoAllowErrorKind::Usage,
+        format!(
+            "{label} allow entries require at least one typed --evidence reference with a recognized non-empty prefix:value target"
+        ),
+    ))
 }
 
 fn add_evidence_required_label(finding: &Finding) -> Option<String> {
