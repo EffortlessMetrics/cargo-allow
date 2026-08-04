@@ -140,6 +140,32 @@ fn schema_index_artifact_table_matches_registered_producers() {
 }
 
 #[test]
+fn schema_index_documents_federation_and_movement_contracts() -> Result<(), String> {
+    let index = normalize_lf(include_str!("../../../docs/schemas/README.md"));
+    for required_text in [
+        "## Federation and movement contracts",
+        "`doctor.schema.json`",
+        "`receipt.schema.json`",
+        "`divergence_summary`",
+        "`mirror_divergence`",
+        "`drain_expired`",
+        "`advisory.mirror_divergence`",
+        "`advisory.blocking_divergence`",
+        "`worklist.schema.json`",
+        "`movement` counts",
+        "`posture_delta` counts",
+        "`review_required`",
+    ] {
+        if !index.contains(required_text) {
+            return Err(format!(
+                "schema index should document federation/movement text: {required_text}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn schema_index_documents_claim_boundary_vocabulary() {
     let index = normalize_lf(include_str!("../../../docs/schemas/README.md"));
     assert!(

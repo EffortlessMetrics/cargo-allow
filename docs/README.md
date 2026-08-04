@@ -155,5 +155,7 @@ governance profile model around it.
 - [Crate namespace](crate-namespace.md): first-party crate naming policy.
 - [Agent worklist prompt](agents/cargo-allow-worklist.md): bounded agent use of
   `cargo-allow worklist`.
-- [Schemas](schemas/README.md): JSON schemas for doctor, report, receipt,
-  explain, list, prune, propose, add, migrate, and worklist artifacts.
+- [Schemas](schemas/README.md): the current JSON artifact-contract catalog,
+  including source reports, receipts, `refresh` and other mutation summaries,
+  the `spec-system` graph report, and worklists. The catalog also documents
+  federation and movement/posture fields carried by existing v1 artifacts.

@@ -23,6 +23,53 @@ macro-expansion, or proof-level coverage.
 | Spec-system graph report | `cargo-allow.spec-system.v1` | `cargo-allow check --profile spec-system --format json`, `cargo-allow audit --profile spec-system --format json`, `cargo-allow worklist --profile spec-system --format json`, `cargo-allow doctor --profile spec-system --format json`, `cargo-allow explain <artifact-id> --profile spec-system --format json` |
 | Agent worklist | `cargo-allow.worklist.v1` | `cargo-allow worklist --format json` |
 
+## Federation and movement contracts
+
+Federation and movement are additive contract surfaces within existing v1
+artifacts. They do not introduce a separate schema ID or change the
+source-tree scan claim boundary. Optional federation fields are emitted only
+when the selected command has federation observations; absence means the field
+was not emitted, not that the observed count was zero.
+
+### Federation
+
+When `.allow/config.toml` declares a federation registry, the optional
+[`doctor.schema.json`](doctor.schema.json) `federation` object reports whether
+the registry was found and valid, its configured ledgers, and their roles,
+modes, dialects, and priorities. Check and related receipts use the optional
+[`receipt.schema.json`](receipt.schema.json) `federation` object to preserve the
+federation version, applied precedence, ledger contributors, and
+`divergence_summary` records.
+
+Federation drift is intentionally split by enforcement posture:
+
+- `mirror_divergence` and `mirror_stale` are advisory observations during an
+  active drain window. Receipt counts are emitted at
+  `advisory.mirror_divergence`. The
+  [`worklist.schema.json`](worklist.schema.json) routing signal preserves the
+  same advisory vocabulary when that command path emits it.
+- `drain_expired` is blocking. Receipts expose it through the non-zero
+  `advisory.blocking_divergence` count, and `check --deny mirror_divergence`
+  can escalate advisory mirror drift to a failed check.
+
+Consumers should preserve the ledger contributor identity and recommended
+action from `divergence_summary` rather than inferring federation posture from
+an aggregate count alone.
+
+### Movement and posture
+
+Diff reports expose movement and posture as separate dimensions. The `diff`
+object contains `movement` counts for `introduced`, `retained`, and `removed`
+rows, plus `posture_delta` counts for `improved`, `worsened`,
+`review_required`, and `unchanged` rows. Each finding-change and policy-change
+row carries the same dimensions alongside the legacy `change` or severity
+fields and the `changed_in_diff` navigation flag.
+
+Consumers should route review decisions from `movement` and `posture_delta`;
+the legacy fields remain part of the additive v1 compatibility surface. The
+movement dimensions describe posture classification and do not claim compiled,
+runtime, reachability, or semantic analysis.
+
 ## Release-control contract
 
 | Artifact | Schema ID | Producer |
