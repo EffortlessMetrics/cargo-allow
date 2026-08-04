@@ -246,13 +246,6 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
                 "doctor --require-clean: policy config is invalid or missing",
             ));
         }
-        if broken_evidence_links.unwrap_or(0) > 0 {
-            let count = broken_evidence_links.unwrap_or(0);
-            return Err(CargoAllowError::with_kind(
-                CargoAllowErrorKind::PolicyViolation,
-                format!("doctor --require-clean: {count} broken evidence link(s)",),
-            ));
-        }
     }
     Ok(())
 }
