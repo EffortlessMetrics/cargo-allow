@@ -153,7 +153,7 @@ fn ensure_addable_outcome_rejects_already_matched_findings() {
     let err = ensure_addable_outcome(MatchStatus::Matched)
         .expect_err("matched finding should not be addable");
 
-    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
+    assert_eq!(err.kind(), CargoAllowErrorKind::Usage);
 }
 
 #[test]
@@ -406,7 +406,7 @@ fn cmd_add_rejects_already_matched_finding() {
     })
     .expect_err("add should reject already matched findings");
 
-    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
+    assert_eq!(err.kind(), CargoAllowErrorKind::Usage);
     assert!(
         !output.exists(),
         "add should not write policy output when match status blocks add"
