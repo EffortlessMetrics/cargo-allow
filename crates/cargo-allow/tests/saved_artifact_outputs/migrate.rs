@@ -565,6 +565,122 @@ fn saved_migrate_output_preserves_non_rust_evidence_matrix() {
 }
 
 #[test]
+fn saved_migrate_output_is_deterministic_for_shuffled_non_rust_rows() {
+    let fixture = SourceTreeFixture::new("saved-migrate-non-rust-shuffled-rows");
+    let legacy_dir = fixture.root.join("legacy-policy");
+    fs::create_dir_all(&legacy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create legacy policy dir: {err}")));
+    write_fixture_doc(&fixture.root, "docs/guide.md");
+    write_fixture_doc(&fixture.root, "docs/reference.md");
+    write_fixture_doc(&fixture.root, "migration-evidence.md");
+
+    let legacy_policy = legacy_dir.join("non-rust-allowlist.toml");
+    let migrated_policy = fixture.root.join("target/cargo-allow/allow.migrated.toml");
+    let migrate_summary = fixture.root.join("target/cargo-allow/migrate-summary.json");
+
+    let forward = non_rust_policy_with_equal_specificity_rows_fixture_text(false);
+    let reverse = non_rust_policy_with_equal_specificity_rows_fixture_text(true);
+    assert_ne!(
+        forward, reverse,
+        "fixture should actually reorder legacy rows"
+    );
+
+    fs::write(&legacy_policy, &forward).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("write forward policy fixture: {err}"))
+    });
+    run_cargo_allow(&[
+        "migrate",
+        "--root",
+        fixture.root_str(),
+        "--repo-policy",
+        path_arg(&legacy_dir),
+        "--out",
+        path_arg(&migrated_policy),
+        "--summary-format",
+        "json",
+        "--summary-output",
+        path_arg(&migrate_summary),
+    ]);
+    assert_policy_output(&migrated_policy);
+    let first_summary = assert_policy_migration_artifact_with_inventory(
+        &migrate_summary,
+        allow_report::MIGRATE_SCHEMA_ID,
+        "migrate",
+        "filesystem_fallback",
+    );
+    let first_policy_text = fs::read_to_string(&migrated_policy).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("read forward migrated policy: {err}"))
+    });
+    let first_summary_text = fs::read_to_string(&migrate_summary).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("read forward migrate summary: {err}"))
+    });
+    let first_cfg = allow_policy::load_policy(&migrated_policy).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("load forward migrated policy: {err}"))
+    });
+    assert_eq!(
+        first_cfg
+            .allow
+            .iter()
+            .map(|entry| entry.id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["a-broad--0001", "a-broad--0002"],
+        "equal-specificity rows should select the stable rule ID"
+    );
+    assert_eq!(
+        first_summary
+            .pointer("/summary/allow_entries")
+            .and_then(serde_json::Value::as_u64),
+        Some(2),
+        "shuffled-row fixture should migrate both governed files"
+    );
+
+    fs::remove_file(&migrated_policy).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("remove first migrated policy: {err}"))
+    });
+    fs::remove_file(&migrate_summary).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("remove first migrate summary: {err}"))
+    });
+    fs::write(&legacy_policy, &reverse).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("write reverse policy fixture: {err}"))
+    });
+    run_cargo_allow(&[
+        "migrate",
+        "--root",
+        fixture.root_str(),
+        "--repo-policy",
+        path_arg(&legacy_dir),
+        "--out",
+        path_arg(&migrated_policy),
+        "--summary-format",
+        "json",
+        "--summary-output",
+        path_arg(&migrate_summary),
+    ]);
+    assert_policy_output(&migrated_policy);
+    assert_policy_migration_artifact_with_inventory(
+        &migrate_summary,
+        allow_report::MIGRATE_SCHEMA_ID,
+        "migrate",
+        "filesystem_fallback",
+    );
+    let second_policy_text = fs::read_to_string(&migrated_policy).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("read reverse migrated policy: {err}"))
+    });
+    let second_summary_text = fs::read_to_string(&migrate_summary).unwrap_or_else(|err| {
+        std::panic::panic_any(format!("read reverse migrate summary: {err}"))
+    });
+
+    assert_eq!(
+        first_policy_text, second_policy_text,
+        "shuffling equal-specificity legacy rows must not change canonical policy bytes"
+    );
+    assert_eq!(
+        first_summary_text, second_summary_text,
+        "shuffling equal-specificity legacy rows must not change migration summary bytes"
+    );
+}
+
+#[test]
 fn saved_migrate_output_preserves_policy_exception_evidence_matrix() {
     let fixture = SourceTreeFixture::new("saved-migrate-policy-exception-evidence-matrix");
     let legacy_dir = fixture.root.join("legacy-policy");
@@ -1541,6 +1657,60 @@ covered_by = "doc:docs/ci-evidence.md"
 created = "2026-05-09"
 expires = "permanent"
 "#
+}
+
+fn non_rust_policy_with_equal_specificity_rows_fixture_text(reverse: bool) -> String {
+    let rows = if reverse {
+        r#"[[allow]]
+id = "z-broad"
+glob = "docs/**"
+category = "documentation"
+owner = "docs-z"
+reason = "Later duplicate row."
+evidence = ["doc:migration-evidence.md"]
+created = "2026-05-09"
+review_after = "2026-09-09"
+
+[[allow]]
+id = "a-broad"
+glob = "docs/**"
+category = "documentation"
+owner = "docs-a"
+reason = "Stable duplicate row."
+evidence = ["doc:migration-evidence.md"]
+created = "2026-05-09"
+review_after = "2026-09-09"
+"#
+    } else {
+        r#"[[allow]]
+id = "a-broad"
+glob = "docs/**"
+category = "documentation"
+owner = "docs-a"
+reason = "Stable duplicate row."
+evidence = ["doc:migration-evidence.md"]
+created = "2026-05-09"
+review_after = "2026-09-09"
+
+[[allow]]
+id = "z-broad"
+glob = "docs/**"
+category = "documentation"
+owner = "docs-z"
+reason = "Later duplicate row."
+evidence = ["doc:migration-evidence.md"]
+created = "2026-05-09"
+review_after = "2026-09-09"
+"#
+    };
+    format!(
+        r#"schema_version = 1
+policy = "non-rust-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+{rows}"#
+    )
 }
 
 fn clippy_policy_with_evidence_fixture_text() -> &'static str {

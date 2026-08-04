@@ -1,4 +1,5 @@
 use allow_core::{Finding, Lifecycle};
+use std::cmp::Ordering;
 
 use crate::converter_metadata_support::{map_lifecycle, preserve_evidence};
 use crate::types::LegacyNonRustRule;
@@ -8,8 +9,30 @@ pub(crate) fn best_rule_index(rules: &[LegacyNonRustRule], finding: &Finding) ->
         .iter()
         .enumerate()
         .filter(|(_, rule)| rule.matches(finding))
-        .max_by_key(|(_, rule)| rule.specificity())
+        .max_by(|(_, left), (_, right)| compare_matching_rules(left, right))
         .map(|(index, _)| index)
+}
+
+/// Compare matching rules without relying on their source-row order.
+///
+/// Specificity remains the primary selection rule. Legacy files can contain
+/// duplicate or conflicting rows with equal specificity, though, and a plain
+/// `max_by_key` would select whichever row happened to appear last. Stable
+/// metadata selection keeps compat migration output reproducible when an
+/// operator or formatter reorders those rows.
+fn compare_matching_rules(left: &LegacyNonRustRule, right: &LegacyNonRustRule) -> Ordering {
+    left.specificity()
+        .cmp(&right.specificity())
+        .then_with(|| right.id.cmp(&left.id))
+        .then_with(|| right.pattern.cmp(&left.pattern))
+        .then_with(|| right.is_path.cmp(&left.is_path))
+        .then_with(|| right.owner.cmp(&left.owner))
+        .then_with(|| right.classification.cmp(&left.classification))
+        .then_with(|| right.reason.cmp(&left.reason))
+        .then_with(|| right.evidence.cmp(&left.evidence))
+        .then_with(|| right.created.cmp(&left.created))
+        .then_with(|| right.review_after.cmp(&left.review_after))
+        .then_with(|| right.expires.cmp(&left.expires))
 }
 
 pub(crate) fn lifecycle_from_rule(rule: &LegacyNonRustRule) -> Lifecycle {
@@ -44,6 +67,24 @@ mod tests {
         let finding = file_finding(FindingKind::NonRustFile, "docs\\guide.md");
 
         assert_eq!(best_rule_index(&rules, &finding), Some(1));
+    }
+
+    #[test]
+    fn best_rule_index_breaks_equal_specificity_ties_independently_of_input_order() {
+        let first = legacy_rule("z-last", "docs/*.md", false, Vec::new());
+        let second = legacy_rule("a-first", "docs/*.md", false, Vec::new());
+        let finding = file_finding(FindingKind::NonRustFile, "docs/guide.md");
+
+        let forward = vec![first.clone(), second.clone()];
+        let reverse = vec![second, first];
+
+        let forward_index = best_rule_index(&forward, &finding)
+            .unwrap_or_else(|| std::panic::panic_any("expected a matching forward rule"));
+        let reverse_index = best_rule_index(&reverse, &finding)
+            .unwrap_or_else(|| std::panic::panic_any("expected a matching reverse rule"));
+
+        assert_eq!(forward[forward_index].id, "a-first");
+        assert_eq!(reverse[reverse_index].id, "a-first");
     }
 
     #[test]
