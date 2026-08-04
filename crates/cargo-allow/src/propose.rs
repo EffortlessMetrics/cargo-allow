@@ -1,3 +1,8 @@
+use crate::{
+    EvidenceValidationMode, HumanJsonFormat, MutationLock, SourceTreeReportContext, current_dir,
+    emit_stderr_text, load_world_with_evidence_mode, portable_relative_under_root,
+    require_json_summary_output,
+};
 use allow_core::{CargoAllowError, CargoAllowResult, FindingKind, MatchStatus};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{
@@ -6,13 +11,6 @@ use allow_policy::{
 };
 use allow_report::MutationReceipt;
 use repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
-use std::env;
-
-use crate::{
-    EvidenceValidationMode, HumanJsonFormat, MutationLock, SourceTreeReportContext,
-    emit_stderr_text, load_world_with_evidence_mode, portable_relative_under_root,
-    require_json_summary_output,
-};
 
 #[path = "propose_args.rs"]
 mod propose_args;
@@ -53,8 +51,7 @@ fn next_allow_id(entries: &[allow_core::AllowEntry]) -> String {
 
 pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
     require_json_summary_output(args.summary_format, args.summary_output.as_deref())?;
-    let cwd = env::current_dir()
-        .map_err(|error| CargoAllowError::new(format!("failed to read cwd: {error}")))?;
+    let cwd = current_dir()?;
     let write_target = args.write.as_deref().map(|path| {
         if path.is_absolute() {
             path.to_path_buf()

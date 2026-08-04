@@ -2,7 +2,7 @@ use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_policy::{render_policy, validate_policy};
 
 use crate::{
-    HumanJsonFormat, MutationLock, emit_stderr_text,
+    HumanJsonFormat, MutationLock, current_dir, emit_stderr_text,
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
@@ -10,8 +10,6 @@ use crate::{
     write_file_no_overwrite,
 };
 use repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
-use std::env;
-
 #[path = "migrate_args.rs"]
 mod migrate_args;
 #[path = "migrate_load.rs"]
@@ -85,8 +83,7 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
             evidence_source_tree_files.as_ref(),
         )?;
     }
-    let cwd = env::current_dir()
-        .map_err(|error| CargoAllowError::new(format!("failed to read cwd: {error}")))?;
+    let cwd = current_dir()?;
     let repository_root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
     let output_absolute = if args.out.is_absolute() {
         args.out.clone()

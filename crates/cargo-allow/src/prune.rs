@@ -6,7 +6,7 @@ use allow_report::MutationReceipt;
 use crate::policy_config::missing_policy_config_error;
 use crate::{
     EvidenceValidationMode, HumanJsonFormat, MutationLock, SourceTreeReportContext, config_path,
-    emit_text,
+    current_dir, emit_text,
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
@@ -55,8 +55,7 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
         ));
     }
     let mutation_lock = if args.write {
-        let cwd = std::env::current_dir()
-            .map_err(|error| CargoAllowError::new(format!("failed to read cwd: {error}")))?;
+        let cwd = current_dir()?;
         let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;
         let path =
             config_path(&root, args.config.as_deref()).ok_or_else(missing_policy_config_error)?;
