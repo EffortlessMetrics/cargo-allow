@@ -290,9 +290,12 @@ fn load_policy_reports_path_when_read_fails() -> std::io::Result<()> {
     let policy_path = root.path().join("missing/allow.toml");
 
     let error = load_policy(&policy_path).expect_err("missing policy should fail to read");
+    assert_eq!(error.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
     let message = error.to_string();
     assert!(message.contains("failed to read"));
     assert!(message.contains(&policy_path.display().to_string()));
+    use std::error::Error as _;
+    assert!(error.source().is_some(), "IO source should remain attached");
     Ok(())
 }
 
@@ -310,11 +313,27 @@ fn load_policy_rejects_oversized_policy_files() -> std::io::Result<()> {
     std::fs::write(&policy_path, bytes)?;
 
     let err = load_policy(&policy_path).expect_err("oversized policy should fail closed");
+    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidPolicy);
     let message = err.to_string();
     assert!(
         message.contains("source-read limit") || message.contains("exceeds"),
         "expected size-limit diagnostic, got: {message}"
     );
+    Ok(())
+}
+
+#[test]
+fn load_policy_rejects_non_utf8_policy_as_invalid_policy() -> std::io::Result<()> {
+    let root = TempRoot::new("load-policy-non-utf8")?;
+    let policy_path = root.path().join("policy/allow.toml");
+    if let Some(parent) = policy_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(&policy_path, [0xff, 0xfe])?;
+
+    let err = load_policy(&policy_path).expect_err("non-UTF-8 policy should fail closed");
+    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidPolicy);
+    assert!(err.to_string().contains("not valid UTF-8"));
     Ok(())
 }
 
