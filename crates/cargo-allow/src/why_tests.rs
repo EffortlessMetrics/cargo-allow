@@ -7,6 +7,7 @@ use allow_core::{
 };
 use clap::Parser;
 use serde_json::Value;
+use std::fs;
 use std::path::PathBuf;
 
 #[test]
@@ -40,6 +41,33 @@ fn clap_parses_why_finding_location() {
         }
         other => std::panic::panic_any(format!("expected Why command, got {other:?}")),
     }
+}
+
+#[test]
+fn why_rejects_same_plan_and_output_as_usage() {
+    let path = PathBuf::from("target/cargo-allow-why-plan.json");
+    let err = cmd_why(&preflight_args(Some(path.clone()), Some(path)))
+        .expect_err("same plan and output path should be rejected");
+
+    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::Usage);
+    assert!(err.to_string().contains("--plan and --output"));
+}
+
+#[test]
+fn why_rejects_existing_plan_as_usage() {
+    let path = std::env::temp_dir().join(format!(
+        "cargo-allow-why-existing-plan-{}.json",
+        std::process::id()
+    ));
+    fs::write(&path, "existing plan")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write existing plan: {err}")));
+
+    let err = cmd_why(&preflight_args(Some(path.clone()), None))
+        .expect_err("existing plan path should be rejected");
+    let _ = fs::remove_file(&path);
+
+    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::Usage);
+    assert!(err.to_string().contains("already exists"));
 }
 
 #[test]
@@ -383,4 +411,18 @@ fn why_args_round_trip_through_root_args() {
     assert_eq!(args.line, 3);
     assert!(args.include_untracked);
     assert_eq!(args.plan, Some(PathBuf::from("target/add-plan.json")));
+}
+
+fn preflight_args(plan: Option<PathBuf>, output: Option<PathBuf>) -> WhyArgs {
+    WhyArgs {
+        root: RootArgs { root: None },
+        config: None,
+        kind: "panic".to_string(),
+        path: PathBuf::from("src/lib.rs"),
+        line: 1,
+        include_untracked: false,
+        format: HumanJsonFormat::Human,
+        output,
+        plan,
+    }
 }

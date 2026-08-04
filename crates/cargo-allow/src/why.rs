@@ -1,6 +1,6 @@
 use allow_core::{
-    AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, Finding, MatchStatus,
-    normalize_path,
+    AllowConfig, AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding,
+    MatchStatus, normalize_path,
 };
 use allow_match::{CheckMode, evaluate, explain_match_failure, score_match};
 
@@ -35,17 +35,21 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
     if let (Some(plan_path), Some(output_path)) = (args.plan.as_deref(), args.output.as_deref())
         && same_output_target(plan_path, output_path)?
     {
-        return Err(CargoAllowError::new(
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
             "--plan and --output must name different files",
         ));
     }
     if let Some(plan_path) = args.plan.as_deref()
         && plan_path.exists()
     {
-        return Err(CargoAllowError::new(format!(
-            "add-finding plan output {} already exists; choose a new --plan path",
-            plan_path.display()
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            format!(
+                "add-finding plan output {} already exists; choose a new --plan path",
+                plan_path.display()
+            ),
+        ));
     }
     let parsed_kind = parse_kind_filter(&args.kind)?;
     let cwd = current_dir()?;
