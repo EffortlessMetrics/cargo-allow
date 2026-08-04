@@ -1,7 +1,8 @@
 use std::path::Path;
 
 use allow_core::{
-    AllowConfig, CargoAllowError, CargoAllowResult, Finding, MatchOutcome, MatchStatus,
+    AllowConfig, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding, MatchOutcome,
+    MatchStatus,
 };
 use allow_report::{
     AddFindingPlanCandidate, AddFindingPlanFinding, AddFindingPlanOutcome, AddFindingPlanPolicy,
@@ -38,12 +39,7 @@ pub(super) fn render_add_finding_plan(input: AddFindingPlanInput<'_>) -> CargoAl
         outcome,
         candidates,
     } = input;
-    if outcome.status != MatchStatus::New {
-        return Err(CargoAllowError::new(format!(
-            "cannot produce an add-finding plan for status `{}`; use ordinary `why --format json` or `explain` for diagnosis",
-            outcome.status.as_str()
-        )));
-    }
+    ensure_plan_outcome_is_new(outcome.status)?;
     let inventory = source_context.inventory();
     ensure_exact_plan_evaluation(evaluation, inventory, scanner_completeness)?;
 
@@ -105,6 +101,19 @@ pub(super) fn render_add_finding_plan(input: AddFindingPlanInput<'_>) -> CargoAl
     )
 }
 
+fn ensure_plan_outcome_is_new(status: MatchStatus) -> CargoAllowResult<()> {
+    if status == MatchStatus::New {
+        return Ok(());
+    }
+    Err(CargoAllowError::with_kind(
+        CargoAllowErrorKind::Usage,
+        format!(
+            "cannot produce an add-finding plan for status `{}`; use ordinary `why --format json` or `explain` for diagnosis",
+            status.as_str()
+        ),
+    ))
+}
+
 fn ensure_exact_plan_evaluation(
     evaluation: EvaluationContext<'_>,
     inventory: allow_report::InventoryContext<'_>,
@@ -116,7 +125,8 @@ fn ensure_exact_plan_evaluation(
     ) {
         Ok(())
     } else {
-        Err(CargoAllowError::new(
+        Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
             "cannot produce an add-finding plan from a non-exact evaluation; re-run why after the scanner or full-fallback inventory is complete",
         ))
     }
@@ -258,8 +268,18 @@ pub(crate) fn sample_add_finding_plan_json_for_contract_test() -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::ensure_exact_plan_evaluation;
+    use super::{ensure_exact_plan_evaluation, ensure_plan_outcome_is_new};
+    use allow_core::{CargoAllowErrorKind, MatchStatus};
     use allow_report::{EvaluationContext, InventoryContext};
+
+    #[test]
+    fn add_finding_plan_rejects_non_new_outcomes_as_usage() {
+        let error = ensure_plan_outcome_is_new(MatchStatus::Matched)
+            .expect_err("a matched finding cannot produce an add-finding plan");
+
+        assert_eq!(error.kind(), CargoAllowErrorKind::Usage);
+        assert!(error.to_string().contains("status `matched`"));
+    }
 
     #[test]
     fn add_finding_plan_requires_an_exact_result_class() {
@@ -301,7 +321,12 @@ mod tests {
                     .with_completeness(completeness),
                 None,
             );
-            assert_eq!(result.is_ok(), expected_ok, "completeness={completeness}");
+            if expected_ok {
+                assert!(result.is_ok(), "completeness={completeness}");
+            } else {
+                let error = result.expect_err("non-exact evaluation should be rejected");
+                assert_eq!(error.kind(), CargoAllowErrorKind::Usage);
+            }
         }
 
         let result = ensure_exact_plan_evaluation(
