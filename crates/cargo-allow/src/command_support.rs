@@ -33,11 +33,15 @@ pub(crate) use allow_report::policy_baseline_debt_entries;
 /// Centralized current-dir reader (#2824). Replaces 20+ copy-pasted
 /// `env::current_dir().map_err(|e| CargoAllowError::new(...))` sites.
 pub(crate) fn current_dir() -> CargoAllowResult<std::path::PathBuf> {
-    std::env::current_dir().map_err(current_dir_error)
+    current_dir_with_prefix("failed to read cwd: ")
 }
 
-fn current_dir_error(error: std::io::Error) -> allow_core::CargoAllowError {
-    allow_core::CargoAllowError::from(error).with_message_prefix("failed to read cwd: ")
+pub(crate) fn current_dir_with_prefix(prefix: &str) -> CargoAllowResult<std::path::PathBuf> {
+    std::env::current_dir().map_err(|error| current_dir_error(error, prefix))
+}
+
+fn current_dir_error(error: std::io::Error, prefix: &str) -> allow_core::CargoAllowError {
+    allow_core::CargoAllowError::from(error).with_message_prefix(prefix)
 }
 
 pub(crate) fn emit_scan_status(
@@ -115,13 +119,34 @@ mod io_tests {
 
     #[test]
     fn current_dir_error_preserves_io_kind_and_source() -> Result<(), Box<dyn std::error::Error>> {
-        let error = current_dir_error(std::io::Error::new(
-            std::io::ErrorKind::PermissionDenied,
-            "directory access denied",
-        ));
+        let error = current_dir_error(
+            std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                "directory access denied",
+            ),
+            "failed to read cwd: ",
+        );
 
         assert_eq!(error.kind(), allow_core::CargoAllowErrorKind::Inventory);
         assert!(error.to_string().contains("failed to read cwd"));
+        use std::error::Error as _;
+        assert!(error.source().is_some());
+        Ok(())
+    }
+
+    #[test]
+    fn current_dir_error_preserves_custom_prefix() -> Result<(), Box<dyn std::error::Error>> {
+        let error = current_dir_error(
+            std::io::Error::new(std::io::ErrorKind::NotFound, "directory disappeared"),
+            "failed to read current directory: ",
+        );
+
+        assert_eq!(error.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
+        assert!(
+            error
+                .to_string()
+                .starts_with("failed to read current directory:")
+        );
         use std::error::Error as _;
         assert!(error.source().is_some());
         Ok(())
