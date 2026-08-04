@@ -11,7 +11,7 @@ requested by the operator.
 
 All commands operate on the source-tree inventory. They do not execute project
 code, invoke Cargo metadata, run rustc or Clippy, expand macros, or prove that a
-finding is reachable or can fail at runtime.
+finding is reachable or can fail at runtime. They do not prove runtime safety.
 
 ## Command map
 
