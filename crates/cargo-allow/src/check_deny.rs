@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_report::{AdvisoryClass, ReportContext, Summary, advisory_count_for_deny_field};
 
 pub(crate) fn validate_deny_statuses(
@@ -12,10 +12,13 @@ pub(crate) fn validate_deny_statuses(
         .collect::<Vec<_>>();
     for status in statuses {
         if !supported.iter().any(|field| field == status) {
-            return Err(CargoAllowError::new(format!(
-                "unknown --deny status `{status}`; supported advisory classes: {}",
-                supported.join(", ")
-            )));
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Usage,
+                format!(
+                    "unknown --deny status `{status}`; supported advisory classes: {}",
+                    supported.join(", ")
+                ),
+            ));
         }
     }
     Ok(())
