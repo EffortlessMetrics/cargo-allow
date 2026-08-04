@@ -263,6 +263,25 @@ fn list_columns_preserve_concise_default_and_explicit_selection() {
 }
 
 #[test]
+fn invalid_list_columns_are_a_usage_error() {
+    let parsed = CargoAllowCli::try_parse_from(argv(vec![
+        "cargo-allow",
+        "list",
+        "--columns",
+        "id,not-a-column",
+    ]))
+    .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse columns: {err}")));
+    let args = match parsed.command {
+        Some(CargoAllowCommand::List(args)) => args,
+        _ => std::panic::panic_any("expected list command"),
+    };
+
+    let err = super::list_columns(&args).expect_err("unknown list column should fail");
+    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::Usage);
+    assert!(err.to_string().contains("not-a-column"));
+}
+
+#[test]
 fn render_list_rows_with_columns_projects_subset() {
     // #2595: the adapter threads the column selection through to the
     // allow-report renderer. Exercises the same path cmd_list uses.

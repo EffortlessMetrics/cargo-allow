@@ -100,7 +100,9 @@ fn list_columns(args: &ListArgs) -> CargoAllowResult<Vec<allow_report::ListColum
         .as_deref()
         .map(allow_report::ListColumn::parse_csv)
         .transpose()
-        .map_err(allow_core::CargoAllowError::new)
+        .map_err(|error| {
+            allow_core::CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
+        })
         .map(|columns| columns.unwrap_or_else(|| allow_report::ListColumn::DEFAULT.to_vec()))
 }
 
