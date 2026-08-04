@@ -27,7 +27,8 @@ use serde_json::Value;
 
 use super::{
     AddArgs, AddEntryRequest, allow_entry_from_finding, default_add_review_after,
-    ensure_addable_outcome, next_allow_id, require_add_evidence, select_add_finding,
+    ensure_addable_outcome, ensure_unique_allow_id, next_allow_id, require_add_evidence,
+    select_add_finding,
 };
 use crate::plan_bindings::{PlanFindingBindings, compute_plan_finding_bindings, read_bound_file};
 use crate::{
@@ -204,11 +205,7 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
     // judgment. Approval metadata is never read from the plan.
     require_add_evidence(finding, &args.evidence)?;
     let id = args.id.clone().unwrap_or_else(|| next_allow_id(&cfg));
-    if cfg.allow.iter().any(|entry| entry.id == id) {
-        return Err(CargoAllowError::new(format!(
-            "allow entry id `{id}` already exists"
-        )));
-    }
+    ensure_unique_allow_id(cfg.allow.iter().map(|entry| entry.id.as_str()), &id)?;
     let entry = allow_entry_from_finding(AddEntryRequest {
         finding,
         id,

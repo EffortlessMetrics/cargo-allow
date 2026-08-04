@@ -91,6 +91,18 @@ fn from_plan_flag_contract_errors_are_usage() {
     }
 }
 
+#[test]
+fn from_plan_duplicate_allow_id_is_usage() {
+    let error = ensure_unique_allow_id(["allow-0001"], "allow-0001")
+        .expect_err("from-plan should reject a duplicate allow ID");
+
+    assert_eq!(error.kind(), allow_core::CargoAllowErrorKind::Usage);
+    assert!(error.to_string().contains(
+        "allow entry id `allow-0001` already exists; pass a unique --id or omit --id to auto-assign"
+    ));
+    assert!(ensure_unique_allow_id(["allow-0001"], "allow-0002").is_ok());
+}
+
 /// A single-field perturbation applied to a valid plan, used to prove each
 /// binding/generation check rejects independently.
 type PlanMutation = fn(&mut LoadedPlan);
