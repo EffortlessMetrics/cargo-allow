@@ -1,6 +1,8 @@
 use std::path::{Path, PathBuf};
 
-use allow_core::{CargoAllowError, CargoAllowResult, LedgerProvenance, normalize_path};
+use allow_core::{
+    CargoAllowError, CargoAllowErrorKind, CargoAllowResult, LedgerProvenance, normalize_path,
+};
 
 use super::FederationConfig;
 use super::config::{LedgerEntry, LedgerRole, ValidatedFederationConfig};
@@ -247,7 +249,8 @@ fn normalize_repo_relative_path(path: &Path, root: &Path) -> String {
 
 fn missing_policy_config_error(skipped: &[SkippedPolicyCandidate]) -> CargoAllowError {
     if skipped.is_empty() {
-        return CargoAllowError::new(
+        return CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
             "no policy config found; run `cargo-allow init` or pass --config",
         );
     }
@@ -256,17 +259,35 @@ fn missing_policy_config_error(skipped: &[SkippedPolicyCandidate]) -> CargoAllow
         .map(|candidate| format!("{} ({})", candidate.path.display(), candidate.reason))
         .collect::<Vec<_>>()
         .join("; ");
-    CargoAllowError::new(format!(
-        "no cargo-allow policy config found; skipped {} foreign-dialect candidate(s): {}; run `cargo-allow init` or pass --config",
-        skipped.len(),
-        details
-    ))
+    CargoAllowError::with_kind(
+        CargoAllowErrorKind::InvalidConfig,
+        format!(
+            "no cargo-allow policy config found; skipped {} foreign-dialect candidate(s): {}; run `cargo-allow init` or pass --config",
+            skipped.len(),
+            details
+        ),
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::fs;
+
+    #[test]
+    fn missing_policy_config_errors_are_invalid_config() {
+        let missing = missing_policy_config_error(&[]);
+        assert_eq!(missing.kind(), CargoAllowErrorKind::InvalidConfig);
+        assert_eq!(missing.code(), "E0002_INVALID_CONFIG");
+
+        let skipped = missing_policy_config_error(&[SkippedPolicyCandidate {
+            path: PathBuf::from("foreign/allow.toml"),
+            reason: "foreign policy dialect".to_string(),
+        }]);
+        assert_eq!(skipped.kind(), CargoAllowErrorKind::InvalidConfig);
+        assert_eq!(skipped.code(), "E0002_INVALID_CONFIG");
+        assert!(skipped.to_string().contains("foreign/allow.toml"));
+    }
 
     #[test]
     fn evaluate_source_exception_policy_uses_federation_registry_for_lane() {
