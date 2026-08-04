@@ -234,18 +234,16 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     // --require-clean: exit non-zero if the policy is invalid or evidence
     // is broken (#1817). This lets CI gates use `doctor --require-clean`
     // as a merge blocker.
-    if args.require_clean {
-        if !matches!(config_valid, Some(true)) {
-            let kind = match policy.as_ref() {
-                None => CargoAllowErrorKind::InvalidConfig,
-                Some(Err(_)) => CargoAllowErrorKind::InvalidPolicy,
-                Some(Ok(_)) => CargoAllowErrorKind::PolicyViolation,
-            };
-            return Err(CargoAllowError::with_kind(
-                kind,
-                "doctor --require-clean: policy config is invalid or missing",
-            ));
-        }
+    if args.require_clean && !matches!(config_valid, Some(true)) {
+        let kind = match policy.as_ref() {
+            None => CargoAllowErrorKind::InvalidConfig,
+            Some(Err(_)) => CargoAllowErrorKind::InvalidPolicy,
+            Some(Ok(_)) => CargoAllowErrorKind::PolicyViolation,
+        };
+        return Err(CargoAllowError::with_kind(
+            kind,
+            "doctor --require-clean: policy config is invalid or missing",
+        ));
     }
     Ok(())
 }
