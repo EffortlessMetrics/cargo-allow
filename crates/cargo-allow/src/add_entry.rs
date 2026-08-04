@@ -59,10 +59,13 @@ pub(super) fn ensure_addable_outcome(status: MatchStatus) -> CargoAllowResult<()
     if status == MatchStatus::New {
         return Ok(());
     }
-    Err(CargoAllowError::new(format!(
-        "selected finding is already receipted or blocked with status `{}`; use list or explain before editing policy",
-        status.as_str()
-    )))
+    Err(CargoAllowError::with_kind(
+        CargoAllowErrorKind::Usage,
+        format!(
+            "selected finding is already receipted or blocked with status `{}`; use list or explain before editing policy",
+            status.as_str()
+        ),
+    ))
 }
 
 pub(super) struct AddEntryRequest<'a> {
