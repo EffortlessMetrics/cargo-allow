@@ -85,8 +85,8 @@ cargo-allow check --mode no-new \
 
 An unknown advisory field fails closed. `mirror_divergence` is an optional
 status; use it with `--deny` only when the selected federation context emits
-that advisory field. `--deny` changes enforcement posture; it does not expand
-what the source scanner observes or prove runtime safety.
+that advisory field. `--deny` does not expand what the source scanner observes;
+it changes enforcement posture. It does not prove runtime safety.
 
 ## 3. Bootstrap a ledger
 
