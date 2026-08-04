@@ -103,14 +103,7 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         args.include_untracked,
     )?;
     let id = args.id.clone().unwrap_or_else(|| next_allow_id(&cfg));
-    if cfg.allow.iter().any(|entry| entry.id == id) {
-        return Err(CargoAllowError::with_kind(
-            CargoAllowErrorKind::Usage,
-            format!(
-                "allow entry id `{id}` already exists; pass a unique --id or omit --id to auto-assign"
-            ),
-        ));
-    }
+    ensure_unique_allow_id(cfg.allow.iter().map(|entry| entry.id.as_str()), &id)?;
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let context = AddContext {
         inventory: source_context.inventory(),
@@ -285,6 +278,24 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         );
     }
     emit_stderr_text(args.summary_output.as_deref(), &summary)?;
+    Ok(())
+}
+
+fn ensure_unique_allow_id<'a>(
+    existing_ids: impl IntoIterator<Item = &'a str>,
+    id: &str,
+) -> CargoAllowResult<()> {
+    if existing_ids
+        .into_iter()
+        .any(|existing_id| existing_id == id)
+    {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            format!(
+                "allow entry id `{id}` already exists; pass a unique --id or omit --id to auto-assign"
+            ),
+        ));
+    }
     Ok(())
 }
 
