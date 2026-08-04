@@ -180,7 +180,7 @@ fn source_exception_operations_guide_covers_issue_1887_commands() -> Result<(), 
     }
 
     for claim_boundary in [
-        "does not execute project",
+        "They do not execute project",
         "A passing audit is not approval",
         "does not expand what the source scanner observes",
         "does not prove runtime safety",
