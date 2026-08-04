@@ -15,7 +15,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use allow_core::{CargoAllowError, CargoAllowResult, sha256_v1_bytes};
+use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult, sha256_v1_bytes};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_policy};
 use allow_report::{
@@ -291,22 +291,26 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
 /// for callers that construct `AddArgs` without the parser (e.g. tests).
 fn reject_conflicting_from_plan_flags(args: &AddArgs) -> CargoAllowResult<()> {
     if !args.update {
-        return Err(CargoAllowError::new(
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
             "--from-plan applies to the live ledger and requires --update",
         ));
     }
     if args.write.is_some() {
-        return Err(CargoAllowError::new(
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
             "--from-plan cannot be combined with --write",
         ));
     }
     if args.force {
-        return Err(CargoAllowError::new(
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
             "--from-plan cannot be combined with --force",
         ));
     }
     if args.kind.is_some() {
-        return Err(CargoAllowError::new(
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
             "--kind cannot be combined with --from-plan; the kind comes from the plan",
         ));
     }
@@ -316,7 +320,8 @@ fn reject_conflicting_from_plan_flags(args: &AddArgs) -> CargoAllowResult<()> {
         || args.family.is_some()
         || args.callee.is_some()
     {
-        return Err(CargoAllowError::new(
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
             "manual target selectors (--path/--line/--glob/--family/--callee) cannot be combined with --from-plan",
         ));
     }
