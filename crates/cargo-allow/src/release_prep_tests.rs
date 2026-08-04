@@ -53,22 +53,36 @@ fn release_workflow_exists_and_lists_publish_order() {
 #[test]
 fn candidate_release_record_exposes_the_checked_capability_contract() {
     assert!(
-        CANDIDATE_RELEASE_RECORD.contains("cargo-allow capabilities --format json"),
+        CANDIDATE_RELEASE_RECORD.contains("## Scanner capability contract"),
+        "{CANDIDATE_RELEASE_DOC} should contain a dedicated capability section"
+    );
+    let Some((_, after_heading)) =
+        CANDIDATE_RELEASE_RECORD.split_once("## Scanner capability contract")
+    else {
+        return;
+    };
+    let capability_section = after_heading
+        .split_once("\n## ")
+        .map_or(after_heading, |(section, _)| section);
+
+    assert!(
+        capability_section.contains("cargo-allow capabilities --format json"),
         "{CANDIDATE_RELEASE_DOC} should teach the installed capability command"
     );
     assert!(
-        CANDIDATE_RELEASE_RECORD.contains("cargo-allow.sensor-capabilities.v1"),
+        capability_section.contains("cargo-allow.sensor-capabilities.v1"),
         "{CANDIDATE_RELEASE_DOC} should name the versioned capability schema"
     );
     assert!(
-        CANDIDATE_RELEASE_RECORD.contains("source-tree-only")
-            && CANDIDATE_RELEASE_RECORD.contains("makes no compilation, type,")
-            && CANDIDATE_RELEASE_RECORD.contains("macro, MIR, runtime"),
+        capability_section.contains("generation 1")
+            && capability_section.contains("source-tree-only")
+            && capability_section.contains("makes no compilation, type,")
+            && capability_section.contains("macro, MIR, runtime"),
         "{CANDIDATE_RELEASE_DOC} should preserve the capability claim boundary"
     );
     assert!(
-        CANDIDATE_RELEASE_RECORD.contains("#2570")
-            && CANDIDATE_RELEASE_RECORD.contains("docs/support-matrix.toml"),
+        capability_section.contains("#2570")
+            && capability_section.contains("docs/support-matrix.toml"),
         "{CANDIDATE_RELEASE_DOC} should link the capability source of truth"
     );
     assert!(
