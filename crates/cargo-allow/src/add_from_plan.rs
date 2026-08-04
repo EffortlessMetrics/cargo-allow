@@ -32,7 +32,7 @@ use super::{
 };
 use crate::plan_bindings::{PlanFindingBindings, compute_plan_finding_bindings, read_bound_file};
 use crate::{
-    MutationLock, SourceTreeReportContext, config_path, emit_stderr_text,
+    MutationLock, SourceTreeReportContext, config_path, current_dir, emit_stderr_text,
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
@@ -138,8 +138,7 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
 
     // Acquire the live-ledger mutation lock before the scan, so the recompute,
     // validate, and atomic replace are serialized against a concurrent writer.
-    let cwd = std::env::current_dir()
-        .map_err(|error| CargoAllowError::new(format!("failed to read cwd: {error}")))?;
+    let cwd = current_dir()?;
     let mutation_root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
     let mutation_target = config_path(&mutation_root, args.config.as_deref());
     if let Some(target) = &mutation_target {
