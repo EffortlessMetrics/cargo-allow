@@ -62,7 +62,8 @@ fn candidate_release_record_exposes_the_checked_capability_contract() {
     );
     assert!(
         CANDIDATE_RELEASE_RECORD.contains("source-tree-only")
-            && CANDIDATE_RELEASE_RECORD.contains("no compilation, type, macro, MIR, runtime"),
+            && CANDIDATE_RELEASE_RECORD.contains("makes no compilation, type,")
+            && CANDIDATE_RELEASE_RECORD.contains("macro, MIR, runtime"),
         "{CANDIDATE_RELEASE_DOC} should preserve the capability claim boundary"
     );
     assert!(
