@@ -27,7 +27,9 @@ macro-expansion, or proof-level coverage.
 
 Federation and movement are additive contract surfaces within existing v1
 artifacts. They do not introduce a separate schema ID or change the
-source-tree scan claim boundary.
+source-tree scan claim boundary. Optional federation fields are emitted only
+when the selected command has federation observations; absence means the field
+was not emitted, not that the observed count was zero.
 
 ### Federation
 
@@ -42,13 +44,14 @@ federation version, applied precedence, ledger contributors, and
 Federation drift is intentionally split by enforcement posture:
 
 - `mirror_divergence` and `mirror_stale` are advisory observations during an
-  active drain window. Receipt summary counts use `mirror_divergence`, and
-  [`report.schema.json`](report.schema.json) and
-  [`worklist.schema.json`](worklist.schema.json) expose the corresponding
-  routing signal and work-item kind.
+  active drain window. Receipt counts are emitted at
+  `advisory.mirror_divergence`. The optional
+  [`report.schema.json`](report.schema.json) `trend.mirror_divergence` field
+  and [`worklist.schema.json`](worklist.schema.json) routing signal preserve
+  the same advisory vocabulary when those command paths emit them.
 - `drain_expired` is blocking. Receipts expose it through the non-zero
-  `blocking_divergence` count, and `check --deny mirror_divergence` can escalate
-  advisory mirror drift to a failed check.
+  `advisory.blocking_divergence` count, and `check --deny mirror_divergence`
+  can escalate advisory mirror drift to a failed check.
 
 Consumers should preserve the ledger contributor identity and recommended
 action from `divergence_summary` rather than inferring federation posture from
