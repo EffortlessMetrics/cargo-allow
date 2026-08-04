@@ -65,7 +65,8 @@ fn join_errors(errors: Vec<CargoAllowError>) -> CargoAllowResult<()> {
         Err(errors
             .into_iter()
             .next()
-            .unwrap_or_else(|| CargoAllowError::new("validation error")))
+            .unwrap_or_else(|| CargoAllowError::new("validation error"))
+            .with_kind_preserving_metadata(CargoAllowErrorKind::InvalidPolicy))
     } else {
         let summary = errors
             .iter()
