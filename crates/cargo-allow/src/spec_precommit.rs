@@ -6,8 +6,8 @@
 use crate::check::CheckArgs;
 use crate::precommit_tool::CargoAllowToolIdentityV1;
 use crate::{
-    OutputFormat, RootArgs, assert_path_within_root, emit_text, resolve_source_tree_root,
-    root_relative_path, write_file,
+    OutputFormat, RootArgs, assert_path_within_root, current_dir, emit_text,
+    resolve_source_tree_root, root_relative_path, write_file,
 };
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_diff::{
@@ -15,7 +15,6 @@ use allow_diff::{
     staged_repository_snapshot,
 };
 use serde::Serialize;
-use std::env;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -342,8 +341,7 @@ fn render_human_report(report: &SpecPrecommitReportV1) -> String {
 }
 
 fn resolve_root(args: &RootArgs) -> CargoAllowResult<PathBuf> {
-    let cwd = env::current_dir()
-        .map_err(|error| CargoAllowError::new(format!("failed to read cwd: {error}")))?;
+    let cwd = current_dir()?;
     resolve_source_tree_root(args.root.as_deref(), cwd)
 }
 
