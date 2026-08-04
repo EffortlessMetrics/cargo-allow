@@ -14,6 +14,8 @@ const RELEASE_WORKFLOW: &str = ".github/workflows/release.yml";
 const RELEASE_DOC: &str = "docs/release/README.md";
 
 const CANDIDATE_RELEASE_DOC: &str = "docs/release/0.2.0.md";
+const CANDIDATE_RELEASE_RECORD: &str = include_str!("../../../docs/release/0.2.0.md");
+const CAPABILITIES_SOURCE: &str = include_str!("capabilities.rs");
 
 #[test]
 fn release_workflow_exists_and_lists_publish_order() {
@@ -46,6 +48,32 @@ fn release_workflow_exists_and_lists_publish_order() {
             "{RELEASE_WORKFLOW} should publish {package} in documented order"
         );
     }
+}
+
+#[test]
+fn candidate_release_record_exposes_the_checked_capability_contract() {
+    assert!(
+        CANDIDATE_RELEASE_RECORD.contains("cargo-allow capabilities --format json"),
+        "{CANDIDATE_RELEASE_DOC} should teach the installed capability command"
+    );
+    assert!(
+        CANDIDATE_RELEASE_RECORD.contains("cargo-allow.sensor-capabilities.v1"),
+        "{CANDIDATE_RELEASE_DOC} should name the versioned capability schema"
+    );
+    assert!(
+        CANDIDATE_RELEASE_RECORD.contains("source-tree-only")
+            && CANDIDATE_RELEASE_RECORD.contains("no compilation, type, macro, MIR, runtime"),
+        "{CANDIDATE_RELEASE_DOC} should preserve the capability claim boundary"
+    );
+    assert!(
+        CANDIDATE_RELEASE_RECORD.contains("#2570")
+            && CANDIDATE_RELEASE_RECORD.contains("docs/support-matrix.toml"),
+        "{CANDIDATE_RELEASE_DOC} should link the capability source of truth"
+    );
+    assert!(
+        CAPABILITIES_SOURCE.contains("pub(crate) const SENSOR_CAPABILITY_SCHEMA: &str = \"cargo-allow.sensor-capabilities.v1\""),
+        "the release record should remain tied to the CLI capability schema source"
+    );
 }
 
 #[test]
