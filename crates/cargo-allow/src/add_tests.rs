@@ -278,6 +278,26 @@ fn add_required_evidence_must_be_typed() {
 }
 
 #[test]
+fn add_broad_evidence_requirement_classifies_usage_errors() {
+    let missing = require_add_evidence_for_kind(FindingKind::Unsafe, &[])
+        .expect_err("broad unsafe add should require evidence");
+    assert_eq!(missing.kind(), CargoAllowErrorKind::Usage);
+
+    let weak = require_add_evidence_for_kind(
+        FindingKind::Unsafe,
+        &["manual review note".to_string(), "test:".to_string()],
+    )
+    .expect_err("broad unsafe add should require typed evidence");
+    assert_eq!(weak.kind(), CargoAllowErrorKind::Usage);
+
+    assert!(
+        require_add_evidence_for_kind(FindingKind::Unsafe, &["test:unsafe_is_guarded".to_string()])
+            .is_ok(),
+        "typed evidence should satisfy the broad unsafe add gate"
+    );
+}
+
+#[test]
 fn default_add_review_after_is_relative_to_current_date() {
     let before = allow_core::SimpleDate::today_utc_approx().add_days(ADD_REVIEW_AFTER_DEFAULT_DAYS);
     let review_after = default_add_review_after();
