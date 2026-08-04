@@ -1,6 +1,8 @@
 use std::path::Path;
 
-use allow_core::{CargoAllowError, CargoAllowResult, read_text_file_capped};
+use allow_core::{
+    CappedReadError, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, read_text_file_capped,
+};
 
 use super::config::{ValidatedFederationConfig, parse_federation_config_at};
 use super::validate::validate_federation_config;
@@ -47,17 +49,21 @@ impl FederationLoadResult {
 
 pub fn load_federation_config(root: &Path) -> CargoAllowResult<FederationLoadResult> {
     let path = root.join(FEDERATION_CONFIG_REL_PATH);
-    if !path.is_file() {
+    if !path.exists() {
         return Ok(FederationLoadResult {
             path: FEDERATION_CONFIG_REL_PATH.to_string(),
             outcome: FederationLoadOutcome::Missing,
         });
     }
-    let text = read_text_file_capped(&path).map_err(|err| {
-        CargoAllowError::new(format!(
-            "failed to read {}: {err}",
-            FEDERATION_CONFIG_REL_PATH
-        ))
+    let text = read_text_file_capped(&path).map_err(|err| match err {
+        CappedReadError::Io(source) => CargoAllowError::from(source)
+            .with_message_prefix(format!("failed to read {}: ", path.display())),
+        CappedReadError::Oversized { .. } | CappedReadError::NotUtf8(_) => {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::InvalidConfig,
+                format!("failed to read {}: {err}", path.display()),
+            )
+        }
     })?;
     let config = parse_federation_config_at(Some(&path), &text)?;
     let validated = validate_federation_config(config);

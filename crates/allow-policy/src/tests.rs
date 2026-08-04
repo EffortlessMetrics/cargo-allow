@@ -352,11 +352,70 @@ fn load_federation_config_rejects_oversized_config() -> std::io::Result<()> {
 
     let err = load_federation_config(root.path())
         .expect_err("oversized federation config should fail closed");
+    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
     let message = err.to_string();
     assert!(
         message.contains("source-read limit") || message.contains("exceeds"),
         "expected size-limit diagnostic, got: {message}"
     );
+    Ok(())
+}
+
+#[test]
+fn load_federation_config_reports_path_when_read_fails() -> std::io::Result<()> {
+    let root = TempRoot::new("federation-read-error")?;
+
+    let error = match load_federation_config(root.path()) {
+        Ok(error) => error,
+        Err(error) => {
+            return Err(std::io::Error::other(format!(
+                "missing federation config should be optional: {error}"
+            )));
+        }
+    };
+    assert!(matches!(
+        error.outcome,
+        crate::federation::FederationLoadOutcome::Missing
+    ));
+
+    let config_path = root.path().join(".allow/config.toml");
+    if let Some(parent) = config_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::create_dir_all(&config_path)?;
+
+    let error = match load_federation_config(root.path()) {
+        Ok(_) => {
+            return Err(std::io::Error::other(
+                "directory at the federation config path should fail to read",
+            ));
+        }
+        Err(error) => error,
+    };
+    assert!(matches!(
+        error.kind(),
+        allow_core::CargoAllowErrorKind::Unknown | allow_core::CargoAllowErrorKind::Inventory
+    ));
+    assert!(error.to_string().contains("failed to read"));
+    assert!(error.to_string().contains(".allow/config.toml"));
+    use std::error::Error as _;
+    assert!(error.source().is_some(), "IO source should remain attached");
+    Ok(())
+}
+
+#[test]
+fn load_federation_config_rejects_non_utf8_config() -> std::io::Result<()> {
+    let root = TempRoot::new("federation-non-utf8")?;
+    let config_path = root.path().join(".allow/config.toml");
+    if let Some(parent) = config_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(&config_path, [0xff, 0xfe])?;
+
+    let err = load_federation_config(root.path())
+        .expect_err("non-UTF-8 federation config should fail closed");
+    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
+    assert!(err.to_string().contains("not valid UTF-8"));
     Ok(())
 }
 
