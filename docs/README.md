@@ -70,7 +70,7 @@ governance profile model around it.
   accepted behavior contract for the opt-in source-of-truth profile.
 - [Support tiers](status/SUPPORT_TIERS.md): claim-to-proof map for current
   cargo-allow surfaces and the opt-in spec-system profile.
-- [Active goal manifest](../.codex/goals/README.md): Codex execution-state
+- [Active goal manifest](../.allow/goals/README.md): Codex execution-state
   model for the source-of-truth profile.
 - [Spec-system implementation plan](../plans/spec-system/implementation-plan.md):
   PR sequence for implementing the opt-in source-of-truth profile.
