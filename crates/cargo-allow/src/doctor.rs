@@ -1,4 +1,6 @@
-use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult, normalize_path};
+use allow_core::{
+    AllowConfig, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, normalize_path,
+};
 use allow_files::{FileFamilyClassification, FileScanOptions, classify_file_family_with_options};
 use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
 use allow_policy::load_policy_with_reportable_evidence;
@@ -47,7 +49,8 @@ struct DoctorFileFamilyConflict {
 pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     if matches!(args.profile, Some(ProfileArg::SpecSystem)) {
         if args.support_bundle.is_some() {
-            return Err(CargoAllowError::new(
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Usage,
                 "--support-bundle is only supported for the source-exception doctor profile",
             ));
         }
@@ -233,15 +236,22 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     // as a merge blocker.
     if args.require_clean {
         if !matches!(config_valid, Some(true)) {
-            return Err(CargoAllowError::new(
+            let kind = match policy.as_ref() {
+                None => CargoAllowErrorKind::InvalidConfig,
+                Some(Err(_)) => CargoAllowErrorKind::InvalidPolicy,
+                Some(Ok(_)) => CargoAllowErrorKind::PolicyViolation,
+            };
+            return Err(CargoAllowError::with_kind(
+                kind,
                 "doctor --require-clean: policy config is invalid or missing",
             ));
         }
         if broken_evidence_links.unwrap_or(0) > 0 {
             let count = broken_evidence_links.unwrap_or(0);
-            return Err(CargoAllowError::new(format!(
-                "doctor --require-clean: {count} broken evidence link(s)",
-            )));
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::PolicyViolation,
+                format!("doctor --require-clean: {count} broken evidence link(s)",),
+            ));
         }
     }
     Ok(())
