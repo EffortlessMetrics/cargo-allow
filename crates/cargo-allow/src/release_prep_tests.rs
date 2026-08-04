@@ -14,6 +14,8 @@ const RELEASE_WORKFLOW: &str = ".github/workflows/release.yml";
 const RELEASE_DOC: &str = "docs/release/README.md";
 
 const CANDIDATE_RELEASE_DOC: &str = "docs/release/0.2.0.md";
+const CANDIDATE_RELEASE_RECORD: &str = include_str!("../../../docs/release/0.2.0.md");
+const CAPABILITIES_SOURCE: &str = include_str!("capabilities.rs");
 
 #[test]
 fn release_workflow_exists_and_lists_publish_order() {
@@ -46,6 +48,49 @@ fn release_workflow_exists_and_lists_publish_order() {
             "{RELEASE_WORKFLOW} should publish {package} in documented order"
         );
     }
+}
+
+#[test]
+fn candidate_release_record_exposes_the_checked_capability_contract() {
+    assert!(
+        CANDIDATE_RELEASE_RECORD.contains("## Scanner capability contract"),
+        "{CANDIDATE_RELEASE_DOC} should contain a dedicated capability section"
+    );
+    let Some((_, after_heading)) =
+        CANDIDATE_RELEASE_RECORD.split_once("## Scanner capability contract")
+    else {
+        return;
+    };
+    let capability_section = after_heading
+        .split_once("\n## ")
+        .map_or(after_heading, |(section, _)| section);
+
+    assert!(
+        capability_section.contains("cargo-allow capabilities --format json"),
+        "{CANDIDATE_RELEASE_DOC} should teach the installed capability command"
+    );
+    assert!(
+        capability_section.contains("cargo-allow.sensor-capabilities.v1"),
+        "{CANDIDATE_RELEASE_DOC} should name the versioned capability schema"
+    );
+    assert!(
+        capability_section.contains("generation 1")
+            && capability_section.contains("source-tree sensors")
+            && capability_section.contains(
+                "catalog does not claim compilation, type analysis, macro expansion, MIR"
+            )
+            && capability_section.contains("runtime behavior, or test adequacy"),
+        "{CANDIDATE_RELEASE_DOC} should preserve the capability claim boundary"
+    );
+    assert!(
+        capability_section.contains("#2570")
+            && capability_section.contains("docs/support-matrix.toml"),
+        "{CANDIDATE_RELEASE_DOC} should link the capability source of truth"
+    );
+    assert!(
+        CAPABILITIES_SOURCE.contains("pub(crate) const SENSOR_CAPABILITY_SCHEMA: &str = \"cargo-allow.sensor-capabilities.v1\""),
+        "the release record should remain tied to the CLI capability schema source"
+    );
 }
 
 #[test]
