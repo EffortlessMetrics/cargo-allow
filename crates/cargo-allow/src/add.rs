@@ -27,7 +27,8 @@ use add_render::{add_mutation_receipt, render_add_summary_json, render_add_summa
 pub(super) use add_types::AddContext;
 
 use crate::{
-    HumanJsonFormat, MutationLock, SourceTreeReportContext, config_path, emit_stderr_text,
+    HumanJsonFormat, MutationLock, SourceTreeReportContext, config_path, current_dir,
+    emit_stderr_text,
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
@@ -50,8 +51,7 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         CargoAllowError::with_kind(CargoAllowErrorKind::Usage, "--kind is required")
     })?;
     let parsed_kind = parse_kind_filter(kind)?;
-    let cwd = std::env::current_dir()
-        .map_err(|error| CargoAllowError::new(format!("failed to read cwd: {error}")))?;
+    let cwd = current_dir()?;
     let mutation_root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
     // Clap enforces this mutual exclusion at parse time via
     // `conflicts_with = "write"` on `--update`. This guard is the direct-call
