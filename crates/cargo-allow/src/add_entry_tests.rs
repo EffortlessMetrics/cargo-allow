@@ -36,14 +36,14 @@ fn ensure_addable_outcome_boundary_accepts_new_status() {
 fn ensure_addable_outcome_rejects_matched_findings_with_exact_error() {
     let error = ensure_addable_outcome(MatchStatus::Matched)
         .expect_err("matched findings should be rejected");
-    assert_eq!(error.kind(), CargoAllowErrorKind::Unknown);
+    assert_eq!(error.kind(), CargoAllowErrorKind::Usage);
 }
 
 #[test]
 fn ensure_addable_outcome_rejects_stale_findings_with_exact_error() {
     let error =
         ensure_addable_outcome(MatchStatus::Stale).expect_err("stale findings should be rejected");
-    assert_eq!(error.kind(), CargoAllowErrorKind::Unknown);
+    assert_eq!(error.kind(), CargoAllowErrorKind::Usage);
 }
 
 #[test]
