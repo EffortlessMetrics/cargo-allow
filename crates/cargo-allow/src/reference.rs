@@ -312,12 +312,14 @@ fn collect_arguments(command: &Command) -> Vec<ArgumentReference> {
 fn render_json(reference: &CliReference) -> CargoAllowResult<String> {
     serde_json::to_string_pretty(reference)
         .map(|json| format!("{json}\n"))
-        .map_err(|err| {
-            CargoAllowError::with_kind(
-                CargoAllowErrorKind::Artifact,
-                format!("failed to render CLI reference JSON: {err}"),
-            )
-        })
+        .map_err(json_render_error)
+}
+
+fn json_render_error(error: serde_json::Error) -> CargoAllowError {
+    CargoAllowError::with_kind(
+        CargoAllowErrorKind::Artifact,
+        format!("failed to render CLI reference JSON: {error}"),
+    )
 }
 
 fn render_manpage(reference: &CliReference) -> String {
@@ -714,6 +716,20 @@ evidence = "test"
             value["commands"]
                 .as_array()
                 .is_some_and(|items| !items.is_empty())
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn json_render_errors_are_artifacts() -> Result<(), String> {
+        let serialization_error = serde_json::from_str::<Value>("{")
+            .expect_err("incomplete JSON should produce a serialization error");
+        let error = json_render_error(serialization_error);
+        assert_eq!(error.kind(), CargoAllowErrorKind::Artifact);
+        assert!(
+            error
+                .to_string()
+                .contains("failed to render CLI reference JSON")
         );
         Ok(())
     }
