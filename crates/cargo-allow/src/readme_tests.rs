@@ -183,7 +183,7 @@ fn source_exception_operations_guide_covers_issue_1887_commands() -> Result<(), 
         "They do not execute project",
         "A passing audit is not approval",
         "does not expand what the source scanner observes",
-        "does not prove runtime safety",
+        "They do not prove runtime safety",
     ] {
         if !guide.contains(claim_boundary) {
             return Err(format!(
