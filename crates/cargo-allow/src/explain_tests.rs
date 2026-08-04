@@ -263,6 +263,15 @@ fn explain_spec_system_profile_rejects_unknown_artifact() {
 }
 
 #[test]
+fn missing_explain_entry_is_a_usage_error() {
+    let err = super::missing_allow_entry_error("allow-missing");
+
+    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::Usage);
+    assert!(err.to_string().contains("no allow entry `allow-missing`"));
+    assert!(err.to_string().contains("cargo-allow list"));
+}
+
+#[test]
 fn explain_entry_text_reports_live_match_status() {
     let mut cfg = AllowConfig::empty();
     let entry = test_entry("allow-file", FindingKind::NonRustFile);
