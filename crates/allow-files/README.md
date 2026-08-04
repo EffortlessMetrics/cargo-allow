@@ -23,6 +23,34 @@ character count, and fewer wildcard segments/characters. Equally strong rules
 assigning different families produce an explicit `ambiguous_file_family`
 finding instead of depending on configuration order.
 
+## Family reference
+
+The `family` value is the policy match key for non-Rust findings. Built-in
+classification is path- and filename-based; it does not inspect file contents.
+Classifier precedence applies generated markers first, then repository-defined
+rule specificity, then the built-in fallback families.
+
+| Family | Trigger | Example |
+| --- | --- | --- |
+| `generated_code` | Configured generated glob or built-in generated path/name marker | `src/api.generated.rs` |
+| `ci_declarative` | `.github/workflows/` path | `.github/workflows/ci.yml` |
+| `editor_extension` | `.vscode/`, `.idea/`, or `.code-workspace` filename | `.vscode/settings.json` |
+| `package_metadata` | Known package manifest or lock filename | `Cargo.toml` |
+| `test_fixture` | `fixtures/`, `testdata/`, or `snapshots/` path segment | `tests/fixtures/input.toml` |
+| `release_script` | `scripts/` path with release, publish, deploy, or package filename marker | `scripts/release.sh` |
+| `documentation` | `docs/` path or `.md`, `.mdx`, `.rst`, `.adoc`, or `.txt` extension | `docs/guide.md` |
+| `shell_script` | `.sh`, `.bash`, `.zsh`, `.fish`, `.ps1`, `.bat`, or `.cmd` extension | `tools/check.sh` |
+| `python_tool` | `.py` extension | `tools/check.py` |
+| `javascript_tool` | `.js`, `.jsx`, `.ts`, `.tsx`, `.mjs`, or `.cjs` extension | `tools/check.ts` |
+| `configuration` | Common configuration extension or recognized dotfile | `config/tool.toml` |
+| `unknown_non_rust` | Non-Rust path not covered by another family | `assets/logo.bin` |
+| `ambiguous_file_family` | Equally specific repository rules assign different families | `models/current.onnx` |
+
+Repository-defined rules may return any configured family value. If equally
+strong matching rules disagree, the scanner reports `ambiguous_file_family`
+and includes the competing rule IDs and family values; it does not use rule
+order to choose an authorization.
+
 ## Who should use it
 
 Most users should use the `cargo-allow` binary. Use this crate directly only if

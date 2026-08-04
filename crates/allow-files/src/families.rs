@@ -273,6 +273,32 @@ mod tests {
     }
 
     #[test]
+    fn family_reference_documents_each_classifier_family() -> Result<(), String> {
+        let readme = include_str!("../README.md");
+        for family in [
+            "generated_code",
+            "ci_declarative",
+            "editor_extension",
+            "package_metadata",
+            "test_fixture",
+            "release_script",
+            "documentation",
+            "shell_script",
+            "python_tool",
+            "javascript_tool",
+            "configuration",
+            "unknown_non_rust",
+            "ambiguous_file_family",
+        ] {
+            let row = format!("| `{family}` |");
+            if !readme.contains(&row) {
+                return Err(format!("README family reference is missing {family}"));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
     fn custom_file_family_uses_specificity_not_rule_order() {
         let broad = FileFamilyRule {
             id: "model-files".to_string(),
