@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_policy};
 
@@ -37,7 +37,10 @@ pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
             .map_err(|error| CargoAllowError::new(format!("failed to read cwd: {error}")))?;
         let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;
         let path = config_path(&root, args.config.as_deref()).ok_or_else(|| {
-            CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::InvalidConfig,
+                "no policy config found; run `cargo-allow init` or pass --config",
+            )
         })?;
         crate::policy_config::assert_path_within_root(&root, &path)?;
         Some(MutationLock::acquire(path)?)
@@ -60,7 +63,10 @@ pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
         CargoAllowError::new("internal error: selected finding index out of range")
     })?;
     let policy_path = config_path(&root, args.config.as_deref()).ok_or_else(|| {
-        CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            "no policy config found; run `cargo-allow init` or pass --config",
+        )
     })?;
     let original_entry = cfg
         .allow

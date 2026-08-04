@@ -192,7 +192,9 @@ fn cmd_prune_write_reports_missing_policy_config_with_exact_error() {
     })
     .expect_err("prune write without policy config should fail");
 
-    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::Unknown);
+    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
+    assert_eq!(err.code(), "E0002_INVALID_CONFIG");
+    assert!(err.to_string().contains("cargo-allow init"));
 
     fs::remove_dir_all(&root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));

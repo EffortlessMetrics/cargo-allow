@@ -83,6 +83,34 @@ fn clap_parses_refresh_dry_run_json() {
 }
 
 #[test]
+fn cmd_refresh_write_reports_missing_policy_config_with_structured_error() {
+    let root = unique_fixture_copy();
+    fs::remove_file(root.join("policy/allow.toml"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove refresh policy: {err}")));
+
+    let err = cmd_refresh(&RefreshArgs {
+        root: crate::RootArgs {
+            root: Some(root.clone()),
+        },
+        config: None,
+        allow_id: "allow-0250".to_string(),
+        dry_run: false,
+        write: true,
+        include_untracked: true,
+        format: HumanJsonFormat::Human,
+        output: None,
+    })
+    .expect_err("refresh write without policy config should fail");
+
+    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
+    assert_eq!(err.code(), "E0002_INVALID_CONFIG");
+    assert!(err.to_string().contains("cargo-allow init"));
+
+    fs::remove_dir_all(&root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove refresh fixture: {err}")));
+}
+
+#[test]
 fn refresh_fixture_records_drift_receipt_without_extending_lifecycle() {
     let root = unique_fixture_copy();
     let policy_path = root.join("policy/allow.toml");

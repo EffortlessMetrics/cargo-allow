@@ -58,7 +58,10 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             .map_err(|error| CargoAllowError::new(format!("failed to read cwd: {error}")))?;
         let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;
         let path = config_path(&root, args.config.as_deref()).ok_or_else(|| {
-            CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::InvalidConfig,
+                "no policy config found; run `cargo-allow init` or pass --config",
+            )
         })?;
         crate::policy_config::assert_path_within_root(&root, &path)?;
         Some(MutationLock::acquire(path)?)
@@ -77,7 +80,10 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
     let candidates = prune_stale_candidates(&cfg, &outcomes);
     let policy_path = config_path(&root, args.config.as_deref()).ok_or_else(|| {
-        CargoAllowError::new("no policy config found; run `cargo-allow init` or pass --config")
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            "no policy config found; run `cargo-allow init` or pass --config",
+        )
     })?;
     let mut receipt_candidates = candidates.iter().collect::<Vec<_>>();
     receipt_candidates.sort_by(|left, right| left.id.cmp(&right.id));
