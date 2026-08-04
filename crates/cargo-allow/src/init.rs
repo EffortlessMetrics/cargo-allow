@@ -68,10 +68,13 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
     crate::policy_config::assert_path_within_root(&root, &path)?;
     let path_existed = path.exists();
     if path_existed && !args.force {
-        return Err(CargoAllowError::new(format!(
-            "{} already exists; use --force to overwrite",
-            path.display()
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            format!(
+                "{} already exists; use --force to overwrite",
+                path.display()
+            ),
+        ));
     }
     // Derive the receipt path from the validated write target, not the raw
     // `--config` spelling: an absolute in-root path would otherwise be stored

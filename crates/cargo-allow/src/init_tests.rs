@@ -188,7 +188,7 @@ fn cmd_init_rejects_existing_policy_without_force() {
     })
     .expect_err("existing policy should fail without --force");
 
-    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
+    assert_eq!(err.kind(), CargoAllowErrorKind::Usage);
 
     remove_init_fixture_dir(root);
 }
