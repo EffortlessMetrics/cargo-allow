@@ -5,7 +5,9 @@
 //! debt, and local evidence-reference constraints without executing linked
 //! evidence tools or repository code.
 
-use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult, read_text_file_capped};
+use allow_core::{
+    AllowConfig, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, read_text_file_capped,
+};
 use std::path::{Path, PathBuf};
 
 mod bare_allow_conflict;
@@ -128,7 +130,8 @@ pub fn parse_policy(input: &str) -> CargoAllowResult<AllowConfig> {
 }
 
 pub fn parse_policy_at(path: &Path, input: &str) -> CargoAllowResult<AllowConfig> {
-    let cfg = toml_model::parse_policy_toml_at(Some(path), input)?;
+    let cfg = toml_model::parse_policy_toml_at(Some(path), input)
+        .map_err(|error| error.with_kind_preserving_metadata(CargoAllowErrorKind::InvalidPolicy))?;
     validate_policy(&cfg)?;
     Ok(cfg)
 }
@@ -141,7 +144,8 @@ pub fn parse_policy_with_reportable_evidence_at(
     path: &Path,
     input: &str,
 ) -> CargoAllowResult<AllowConfig> {
-    let cfg = toml_model::parse_policy_toml_at(Some(path), input)?;
+    let cfg = toml_model::parse_policy_toml_at(Some(path), input)
+        .map_err(|error| error.with_kind_preserving_metadata(CargoAllowErrorKind::InvalidPolicy))?;
     validation::validate_policy_with_reportable_evidence(&cfg)?;
     Ok(cfg)
 }

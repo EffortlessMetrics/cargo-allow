@@ -124,7 +124,33 @@ fn parses_legacy_aliases_and_scalar_arrays() {
 fn reports_toml_parse_errors() {
     let err = parse_policy("policy = [").unwrap_err();
 
+    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidPolicy);
     assert!(err.to_string().contains("failed to parse policy TOML"));
+}
+
+#[test]
+fn rejects_empty_policy_as_invalid_policy() {
+    let err = parse_policy("\n  ").expect_err("empty policy should fail closed");
+
+    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidPolicy);
+    assert!(err.message().contains("policy file"));
+}
+
+#[test]
+fn classifies_typed_policy_conversion_failures_as_invalid_policy() {
+    let err = parse_policy(
+        r#"
+                policy = "cargo-allow"
+
+                [[allow]]
+                id = "allow-invalid-kind"
+                kind = "not-a-finding-kind"
+            "#,
+    )
+    .expect_err("unsupported finding kind should fail policy parsing");
+
+    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidPolicy);
+    assert!(err.message().contains("unsupported finding kind"));
 }
 
 #[test]
