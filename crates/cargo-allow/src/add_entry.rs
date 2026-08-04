@@ -1,6 +1,6 @@
 use allow_core::{
-    AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, Finding, FindingKind, LastSeen,
-    Lifecycle, MatchStatus, Selector, SimpleDate, normalize_path,
+    AllowConfig, AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding,
+    FindingKind, LastSeen, Lifecycle, MatchStatus, Selector, SimpleDate, normalize_path,
 };
 use allow_match::score_match;
 use std::path::Path;
@@ -28,23 +28,29 @@ pub(crate) fn select_add_finding<'a>(
         .collect::<Vec<_>>();
     candidates.sort_by_key(|(distance, _, finding)| (*distance, normalize_path(&finding.path)));
     let Some((distance, index, finding)) = candidates.first().copied() else {
-        return Err(CargoAllowError::new(format!(
-            "no current {} finding found near {}:{}; \
-             run `cargo-allow check --kind {} --format json` to list current findings, \
-             or use `--include-untracked` if the source file is not git-tracked",
-            kind.kind, normalized_path, line, kind.kind
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            format!(
+                "no current {} finding found near {}:{}; \
+                 run `cargo-allow check --kind {} --format json` to list current findings, \
+                 or use `--include-untracked` if the source file is not git-tracked",
+                kind.kind, normalized_path, line, kind.kind
+            ),
+        ));
     };
     let tied = candidates
         .iter()
         .filter(|(candidate_distance, _, _)| *candidate_distance == distance)
         .count();
     if tied > 1 {
-        return Err(CargoAllowError::new(format!(
-            "ambiguous add request: {tied} findings are equally near {}:{}; \
-             specify an exact --line that matches only one finding",
-            normalized_path, line
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            format!(
+                "ambiguous add request: {tied} findings are equally near {}:{}; \
+                 specify an exact --line that matches only one finding",
+                normalized_path, line
+            ),
+        ));
     }
     Ok((index, finding))
 }

@@ -123,7 +123,7 @@ fn select_add_finding_fails_closed_on_equal_nearest_findings() {
     let err = select_add_finding(&findings, kind, path, line)
         .expect_err("equally near findings should be ambiguous");
 
-    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
+    assert_eq!(err.kind(), CargoAllowErrorKind::Usage);
 }
 
 #[test]
@@ -143,7 +143,7 @@ fn select_add_finding_reports_missing_nearby_findings() {
     let err = select_add_finding(&findings, kind, path, line)
         .expect_err("missing nearby panic finding should fail closed");
 
-    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
+    assert_eq!(err.kind(), CargoAllowErrorKind::Usage);
 }
 
 #[test]
@@ -224,13 +224,13 @@ fn add_evidence_requirement_covers_high_risk_policy_exceptions() {
 
     let unsafe_err =
         require_add_evidence(&unsafe_finding, &[]).expect_err("unsafe add should require evidence");
-    assert_eq!(unsafe_err.kind(), CargoAllowErrorKind::Unknown);
+    assert_eq!(unsafe_err.kind(), CargoAllowErrorKind::Usage);
     let process_err = require_add_evidence(&process_finding, &[])
         .expect_err("process policy add should require evidence");
-    assert_eq!(process_err.kind(), CargoAllowErrorKind::Unknown);
+    assert_eq!(process_err.kind(), CargoAllowErrorKind::Usage);
     let network_err = require_add_evidence(&network_finding, &[])
         .expect_err("network policy add should require evidence");
-    assert_eq!(network_err.kind(), CargoAllowErrorKind::Unknown);
+    assert_eq!(network_err.kind(), CargoAllowErrorKind::Usage);
     assert!(
         require_add_evidence(&workflow_finding, &[]).is_ok(),
         "lower-risk policy exceptions can still be added without immediate evidence"
@@ -255,7 +255,7 @@ fn add_required_evidence_must_be_typed() {
     let err = require_add_evidence(&process_finding, &weak_references)
         .expect_err("weak evidence should not satisfy high-risk add evidence gate");
 
-    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
+    assert_eq!(err.kind(), CargoAllowErrorKind::Usage);
     assert!(
         require_add_evidence(
             &process_finding,
@@ -274,6 +274,26 @@ fn add_required_evidence_must_be_typed() {
         )
         .is_ok(),
         "one typed reference should satisfy the gate even if another retained reference is weak"
+    );
+}
+
+#[test]
+fn add_broad_evidence_requirement_classifies_usage_errors() {
+    let missing = require_add_evidence_for_kind(FindingKind::Unsafe, &[])
+        .expect_err("broad unsafe add should require evidence");
+    assert_eq!(missing.kind(), CargoAllowErrorKind::Usage);
+
+    let weak = require_add_evidence_for_kind(
+        FindingKind::Unsafe,
+        &["manual review note".to_string(), "test:".to_string()],
+    )
+    .expect_err("broad unsafe add should require typed evidence");
+    assert_eq!(weak.kind(), CargoAllowErrorKind::Usage);
+
+    assert!(
+        require_add_evidence_for_kind(FindingKind::Unsafe, &["test:unsafe_is_guarded".to_string()])
+            .is_ok(),
+        "typed evidence should satisfy the broad unsafe add gate"
     );
 }
 
@@ -788,7 +808,54 @@ fn cmd_add_update_requires_existing_policy() {
     })
     .expect_err("--update without a discovered policy should fail");
 
-    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
+    assert_eq!(err.kind(), CargoAllowErrorKind::InvalidConfig);
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
+fn cmd_add_rejects_empty_broad_scope_as_usage() {
+    let root = add_fixture_dir();
+    write_add_fixture_with_new_panic_finding(&root);
+    let output = root.join("policy/allow.added.toml");
+
+    let err = cmd_add(&AddArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(root.join("policy/allow.toml")),
+        kind: Some("panic".to_string()),
+        glob: Some("src/does-not-exist/**/*.rs".to_string()),
+        family: None,
+        callee: None,
+        path: None,
+        line: None,
+        owner: "parser".to_string(),
+        classification: "reviewed_exception".to_string(),
+        reason: "Parser validates before unwrap.".to_string(),
+        evidence: vec!["test:parser_validates".to_string()],
+        id: None,
+        review_after: Some("2026-11-01".to_string()),
+        expires: None,
+        include_untracked: false,
+        write: Some(output.clone()),
+        force: false,
+        update: false,
+        from_plan: None,
+        summary_format: HumanJsonFormat::Human,
+        summary_output: None,
+    })
+    .expect_err("add should reject a broad scope with no current findings");
+
+    assert_eq!(err.kind(), CargoAllowErrorKind::Usage);
+    assert!(
+        err.to_string().contains("cannot baseline an empty scope"),
+        "empty broad scope should explain the rejected request: {err}"
+    );
+    assert!(
+        !output.exists(),
+        "add should not write policy output for an empty broad scope"
+    );
     fs::remove_dir_all(root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
 }
