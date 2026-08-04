@@ -536,7 +536,7 @@ fn cmd_add_reports_missing_policy_config_with_exact_error() {
     })
     .expect_err("add without policy config should fail at load_world");
 
-    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
+    assert_eq!(err.kind(), CargoAllowErrorKind::InvalidConfig);
     assert!(
         !output.exists(),
         "add should not write policy output when load_world fails"
