@@ -223,6 +223,16 @@ impl CargoAllowError {
         }
     }
 
+    /// Reclassify an existing error without discarding its structured metadata.
+    ///
+    /// Aggregation and adapter layers should use this when the surrounding
+    /// contract provides a more precise kind. Rebuilding with [`Self::with_kind`]
+    /// would lose locations, diagnostics, and causes.
+    pub fn with_kind_preserving_metadata(mut self, kind: CargoAllowErrorKind) -> Self {
+        self.kind = kind;
+        self
+    }
+
     /// Attach a cause (underlying error) to this error, returning a new value.
     ///
     /// The cause is rendered as a `caused by:` line in `Display` and linked for

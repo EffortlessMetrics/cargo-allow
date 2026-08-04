@@ -600,7 +600,7 @@ fn cmd_add_validate_policy_rejects_unsupported_schema_version() {
     })
     .expect_err("add should fail closed when validate_policy rejects schema_version");
 
-    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
+    assert_eq!(err.kind(), CargoAllowErrorKind::InvalidPolicy);
     assert!(
         !output.exists(),
         "add should not write policy output when validate_policy fails"

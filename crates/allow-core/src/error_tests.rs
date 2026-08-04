@@ -22,6 +22,24 @@ fn with_kind_sets_structured_kind() {
     assert_eq!(err.message(), "missing owner");
 }
 
+#[test]
+fn with_kind_preserving_metadata_reclassifies_without_loss() -> Result<(), String> {
+    let reclassified = structured_error().with_kind_preserving_metadata(CargoAllowErrorKind::Usage);
+
+    assert_eq!(reclassified.kind(), CargoAllowErrorKind::Usage);
+    assert_eq!(reclassified.message(), "missing owner");
+    let location = reclassified
+        .location()
+        .ok_or_else(|| "reclassification should preserve location".to_string())?;
+    assert_eq!(location.path.as_deref(), Some("legacy/policy.toml"));
+    assert_eq!(reclassified.diagnostics().len(), 1);
+    assert_eq!(
+        reclassified.causes(),
+        &[String::from("underlying parse failure")]
+    );
+    Ok(())
+}
+
 fn structured_error() -> CargoAllowError {
     let cause = std::io::Error::other("underlying parse failure");
 

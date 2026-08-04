@@ -1,5 +1,7 @@
 use super::{validate_policy, validate_policy_with_reportable_evidence};
-use allow_core::{AllowConfig, AllowEntry, FindingKind, Lifecycle, Requirements, Selector};
+use allow_core::{
+    AllowConfig, AllowEntry, CargoAllowErrorKind, FindingKind, Lifecycle, Requirements, Selector,
+};
 use std::path::PathBuf;
 
 fn valid_entry(id: &str) -> AllowEntry {
@@ -59,6 +61,7 @@ fn validate_policy_rejects_unsupported_schema_version() {
         Ok(()) => std::panic::panic_any("unsupported schema_version should fail policy validation"),
     };
 
+    assert_eq!(err.kind(), CargoAllowErrorKind::InvalidPolicy);
     let message = err.to_string();
     assert!(message.contains("unsupported policy schema_version `9.9`"));
 }
@@ -73,6 +76,7 @@ fn validate_policy_rejects_duplicate_allow_ids() {
         Ok(()) => std::panic::panic_any("duplicate allow ids should fail policy validation"),
     };
 
+    assert_eq!(err.kind(), CargoAllowErrorKind::InvalidPolicy);
     let message = err.to_string();
     assert!(message.contains("duplicate allow id `allow-1`"));
 }
