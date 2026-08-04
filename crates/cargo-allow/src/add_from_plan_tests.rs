@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::path::PathBuf;
 
 use serde_json::{Value, json};
 
@@ -6,6 +7,88 @@ use super::*;
 
 const DIGEST_A: &str = "sha256:v1:0000000000000000000000000000000000000000000000000000000000000000";
 const DIGEST_B: &str = "sha256:v1:1111111111111111111111111111111111111111111111111111111111111111";
+
+fn base_from_plan_args() -> AddArgs {
+    AddArgs {
+        root: crate::RootArgs { root: None },
+        config: None,
+        kind: None,
+        path: None,
+        line: None,
+        glob: None,
+        family: None,
+        callee: None,
+        owner: "owner".to_string(),
+        reason: "reason".to_string(),
+        classification: "reviewed_exception".to_string(),
+        review_after: None,
+        expires: None,
+        evidence: Vec::new(),
+        id: None,
+        include_untracked: false,
+        write: None,
+        force: false,
+        update: false,
+        from_plan: Some(PathBuf::from("plan.json")),
+        summary_format: crate::HumanJsonFormat::Human,
+        summary_output: None,
+    }
+}
+
+#[test]
+fn from_plan_flag_contract_errors_are_usage() {
+    let cases: [(&str, fn(&mut AddArgs), &str); 5] = [
+        ("requires update", |_| {}, "requires --update"),
+        (
+            "write conflict",
+            |args| {
+                args.update = true;
+                args.write = Some(PathBuf::from("out.toml"));
+            },
+            "cannot be combined with --write",
+        ),
+        (
+            "force conflict",
+            |args| {
+                args.update = true;
+                args.force = true;
+            },
+            "cannot be combined with --force",
+        ),
+        (
+            "kind conflict",
+            |args| {
+                args.update = true;
+                args.kind = Some("panic".to_string());
+            },
+            "--kind cannot be combined",
+        ),
+        (
+            "manual selector conflict",
+            |args| {
+                args.update = true;
+                args.path = Some(PathBuf::from("src/lib.rs"));
+            },
+            "manual target selectors",
+        ),
+    ];
+
+    for (label, mutate, message) in cases {
+        let mut args = base_from_plan_args();
+        mutate(&mut args);
+        let error = reject_conflicting_from_plan_flags(&args)
+            .expect_err("conflicting from-plan invocation should fail");
+        assert_eq!(
+            error.kind(),
+            allow_core::CargoAllowErrorKind::Usage,
+            "{label} should be a usage error"
+        );
+        assert!(
+            error.to_string().contains(message),
+            "{label} should preserve its guidance: {error}"
+        );
+    }
+}
 
 /// A single-field perturbation applied to a valid plan, used to prove each
 /// binding/generation check rejects independently.
