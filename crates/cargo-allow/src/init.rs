@@ -2,7 +2,6 @@ use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_inventory::resolve_source_tree_root;
 use allow_policy::starter_policy;
 use repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
-use std::env;
 use std::path::{Path, PathBuf};
 
 #[path = "init_args.rs"]
@@ -24,8 +23,7 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
         let _mutation_lock = if args.dry_run {
             None
         } else {
-            let cwd = env::current_dir()
-                .map_err(|error| CargoAllowError::new(format!("failed to read cwd: {error}")))?;
+            let cwd = current_dir()?;
             let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;
             Some(MutationLock::acquire(
                 root.join(".cargo-allow-spec-system.lock"),
