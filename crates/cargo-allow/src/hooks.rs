@@ -11,11 +11,11 @@ use std::process::Command;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
-use crate::emit_text;
 use crate::precommit_tool::{
     CargoAllowToolIdentityV1, ToolCompatibilityRequirement, ToolResultClass, ToolSelectionMode,
     ToolSelectionRequest, select_tool, verify_tool_unchanged,
 };
+use crate::{current_dir_with_prefix, emit_text};
 
 const PLAN_SCHEMA: &str = "cargo-allow.local-hook-plan.v1";
 const COMMAND: [&str; 4] = ["cargo-allow", "check", "--mode", "no-new"];
@@ -997,9 +997,7 @@ fn hook_permissions() -> Option<fs::Permissions> {
 }
 
 fn source_tree_root() -> CargoAllowResult<PathBuf> {
-    let current = std::env::current_dir().map_err(|error| {
-        CargoAllowError::new(format!("failed to read current directory: {error}"))
-    })?;
+    let current = current_dir_with_prefix("failed to read current directory: ")?;
     allow_inventory::discover_source_tree_root(current)
 }
 
