@@ -75,9 +75,11 @@ fn candidate_release_record_exposes_the_checked_capability_contract() {
     );
     assert!(
         capability_section.contains("generation 1")
-            && capability_section.contains("source-tree-only")
-            && capability_section.contains("makes no compilation, type,")
-            && capability_section.contains("macro, MIR, runtime"),
+            && capability_section.contains("source-tree sensors")
+            && capability_section.contains(
+                "catalog does not claim compilation, type analysis, macro expansion, MIR"
+            )
+            && capability_section.contains("runtime behavior, or test adequacy"),
         "{CANDIDATE_RELEASE_DOC} should preserve the capability claim boundary"
     );
     assert!(
