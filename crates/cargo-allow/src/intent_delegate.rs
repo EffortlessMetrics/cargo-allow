@@ -5,8 +5,8 @@ use crate::intent_provider::{
     IntentDelegationSettings, IntentProviderFailureClass, IntentProviderRequest,
     discover_intent_provider, load_intent_delegation_settings,
 };
-use crate::resolve_source_tree_root;
 use crate::spec_precommit::{DelegatedPrecommitOutcome, complete_delegated_precommit};
+use crate::{current_dir, resolve_source_tree_root};
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult, sha256_v1_bytes};
 use allow_diff::staged_repository_snapshot;
 use repo_protocol::{
@@ -164,11 +164,7 @@ pub fn try_delegate_staged_precommit(
     args: &CheckArgs,
     started: Instant,
 ) -> CargoAllowResult<DelegationDisposition> {
-    let root = resolve_source_tree_root(
-        args.root.root.as_deref(),
-        &std::env::current_dir()
-            .map_err(|err| CargoAllowError::new(format!("failed to read cwd: {err}")))?,
-    )?;
+    let root = resolve_source_tree_root(args.root.root.as_deref(), &current_dir()?)?;
     let settings = match load_intent_delegation_settings(&root, None) {
         Ok(Some(settings)) if settings.delegate_staged_precommit => settings,
         Ok(_) => return Ok(DelegationDisposition::Disabled),
