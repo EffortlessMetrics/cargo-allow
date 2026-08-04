@@ -45,10 +45,9 @@ Federation drift is intentionally split by enforcement posture:
 
 - `mirror_divergence` and `mirror_stale` are advisory observations during an
   active drain window. Receipt counts are emitted at
-  `advisory.mirror_divergence`. The optional
-  [`report.schema.json`](report.schema.json) `trend.mirror_divergence` field
-  and [`worklist.schema.json`](worklist.schema.json) routing signal preserve
-  the same advisory vocabulary when those command paths emit them.
+  `advisory.mirror_divergence`. The
+  [`worklist.schema.json`](worklist.schema.json) routing signal preserves the
+  same advisory vocabulary when that command path emits it.
 - `drain_expired` is blocking. Receipts expose it through the non-zero
   `advisory.blocking_divergence` count, and `check --deny mirror_divergence`
   can escalate advisory mirror drift to a failed check.

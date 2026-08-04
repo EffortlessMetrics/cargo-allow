@@ -151,8 +151,6 @@ fn schema_index_documents_federation_and_movement_contracts() -> Result<(), Stri
         "`drain_expired`",
         "`advisory.mirror_divergence`",
         "`advisory.blocking_divergence`",
-        "`trend.mirror_divergence`",
-        "`report.schema.json`",
         "`worklist.schema.json`",
         "`movement` counts",
         "`posture_delta` counts",
