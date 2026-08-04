@@ -90,10 +90,13 @@ struct LoadedOutcome {
 }
 
 fn stale(message: impl Into<String>) -> CargoAllowError {
-    CargoAllowError::new(format!(
-        "add --from-plan rejected: {} (policy unchanged)",
-        message.into()
-    ))
+    CargoAllowError::with_kind(
+        CargoAllowErrorKind::Usage,
+        format!(
+            "add --from-plan rejected: {} (policy unchanged)",
+            message.into()
+        ),
+    )
 }
 
 /// Append a plan-regeneration hint to an add --from-plan rejection error. This
@@ -118,7 +121,7 @@ fn enrich_with_regen_hint(
     };
     let message = error.to_string();
     if message.contains("(policy unchanged)") && !message.contains("regenerate with") {
-        CargoAllowError::new(format!("{message}{hint}"))
+        error.with_message_suffix(hint)
     } else {
         error
     }

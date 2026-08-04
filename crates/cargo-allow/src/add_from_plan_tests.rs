@@ -301,6 +301,7 @@ fn enrich_with_regen_hint_appends_plan_regeneration_command() {
     let enriched = enrich_with_regen_hint(error, plan_path, &plan);
 
     let message = enriched.to_string();
+    assert_eq!(enriched.kind(), allow_core::CargoAllowErrorKind::Usage);
     assert!(
         message.contains("regenerate with cargo-allow why --plan"),
         "enriched error should include regeneration hint: {message}"

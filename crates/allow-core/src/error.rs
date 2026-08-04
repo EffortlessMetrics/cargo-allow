@@ -255,6 +255,19 @@ impl CargoAllowError {
         self
     }
 
+    /// Append a message suffix without discarding structured error metadata.
+    ///
+    /// Context layers should use this when adding remediation guidance after
+    /// an existing message. Rebuilding an error from its rendered string loses
+    /// metadata that machine consumers and editor integrations rely on.
+    pub fn with_message_suffix(mut self, suffix: impl AsRef<str>) -> Self {
+        let suffix = suffix.as_ref();
+        if !suffix.is_empty() {
+            self.message.push_str(suffix);
+        }
+        self
+    }
+
     /// Rendered cause messages in attachment order (outermost first).
     pub fn causes(&self) -> &[String] {
         &self.causes
