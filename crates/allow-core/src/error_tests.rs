@@ -72,6 +72,24 @@ fn message_prefix_preserves_structured_error_metadata() -> Result<(), String> {
 }
 
 #[test]
+fn message_suffix_preserves_structured_error_metadata() -> Result<(), String> {
+    let suffixed = structured_error().with_message_suffix("; regenerate the plan");
+
+    assert_eq!(suffixed.message(), "missing owner; regenerate the plan");
+    assert_eq!(suffixed.kind(), CargoAllowErrorKind::InvalidPolicy);
+    let location = suffixed
+        .location()
+        .ok_or_else(|| "message suffix should preserve location".to_string())?;
+    assert_eq!(location.path.as_deref(), Some("legacy/policy.toml"));
+    assert_eq!(suffixed.diagnostics().len(), 1);
+    assert_eq!(
+        suffixed.causes(),
+        &[String::from("underlying parse failure")]
+    );
+    Ok(())
+}
+
+#[test]
 fn empty_message_prefix_leaves_error_unchanged() -> Result<(), String> {
     let unchanged = structured_error().with_message_prefix("");
 
