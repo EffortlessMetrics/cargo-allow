@@ -20,6 +20,7 @@ Use these guides when you already know the task you want to complete.
 - [Adopt the spec-system profile](adopt-spec-system-profile.md)
 - [Run the spec-system profile in CI](run-spec-system-in-ci.md)
 - [Adopt cargo-allow across repos](adopt-cargo-allow-across-repos.md)
+- [Operate the source-exception ledger](operate-source-exception-ledger.md)
 
 All guides keep the same claim boundary: cargo-allow scans repository files
 directly and does not execute repository code, Cargo metadata, rustc, Clippy,

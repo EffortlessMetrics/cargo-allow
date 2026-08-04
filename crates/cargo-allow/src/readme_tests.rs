@@ -150,6 +150,57 @@ fn manage_an_exception_guide_keeps_command_parity_and_claim_boundary() {
 }
 
 #[test]
+fn source_exception_operations_guide_covers_issue_1887_commands() -> Result<(), String> {
+    let guide = normalize_lf(include_str!(
+        "../../../docs/how-to/operate-source-exception-ledger.md"
+    ));
+    let how_to_index = normalize_lf(include_str!("../../../docs/how-to/README.md"));
+
+    for command in [
+        "`audit`",
+        "`check`",
+        "`init`",
+        "`add`",
+        "`refresh`",
+        "check --mode no-new",
+        "`no-new`",
+        "`audit`",
+        "`--deny STATUS`",
+        "`--dry-run`",
+        "`--write`",
+        "`--update`",
+        "`check --mode strict`",
+        "`check --mode release`",
+        "`[lanes.<kind>]`",
+    ] {
+        if !guide.contains(command) {
+            return Err(format!(
+                "source-exception operations guide should document {command}"
+            ));
+        }
+    }
+
+    for claim_boundary in [
+        "These commands do not execute project",
+        "A passing audit is not approval",
+        "does not expand what the source scanner observes",
+        "They do not prove runtime safety",
+    ] {
+        if !guide.contains(claim_boundary) {
+            return Err(format!(
+                "source-exception operations guide should preserve claim boundary: {claim_boundary}"
+            ));
+        }
+    }
+
+    if !how_to_index.contains("operate-source-exception-ledger.md") {
+        return Err("how-to index should link the source-exception operations guide".to_string());
+    }
+
+    Ok(())
+}
+
+#[test]
 fn ci_docs_preserve_source_tree_scan_boundary() {
     let ci = normalize_lf(include_str!("../../../docs/ci.md"));
 
