@@ -1,6 +1,6 @@
 use allow_core::{
-    AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, Finding, LastSeen, MatchOutcome,
-    MatchStatus,
+    AllowConfig, AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding,
+    LastSeen, MatchOutcome, MatchStatus,
 };
 use allow_match::classify_match;
 
@@ -15,25 +15,32 @@ pub(crate) fn select_location_drift_refresh(
         .iter()
         .position(|entry| entry.id == allow_id)
         .ok_or_else(|| {
-            CargoAllowError::new(format!(
-                "allow entry id `{allow_id}` was not found in policy; \
-                 run `cargo-allow list --format json` to see valid entry IDs"
-            ))
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Usage,
+                format!(
+                    "allow entry id `{allow_id}` was not found in policy; \
+                     run `cargo-allow list --format json` to see valid entry IDs"
+                ),
+            )
         })?;
     let outcome = outcomes
         .iter()
         .find(|outcome| outcome.allow_id.as_deref() == Some(allow_id))
         .ok_or_else(|| {
-            CargoAllowError::new(format!(
-                "allow entry `{allow_id}` did not produce a match outcome"
-            ))
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Usage,
+                format!("allow entry `{allow_id}` did not produce a match outcome"),
+            )
         })?;
     if outcome.status != MatchStatus::LocationDrift {
-        return Err(CargoAllowError::new(format!(
-            "allow entry `{allow_id}` has status `{}`; refresh requires advisory location_drift; \
-             run `cargo-allow worklist --status location_drift --format json` to find refreshable entries",
-            outcome.status.as_str()
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            format!(
+                "allow entry `{allow_id}` has status `{}`; refresh requires advisory location_drift; \
+                 run `cargo-allow worklist --status location_drift --format json` to find refreshable entries",
+                outcome.status.as_str()
+            ),
+        ));
     }
     let finding_index = outcome.finding_index.ok_or_else(|| {
         CargoAllowError::new(format!(
@@ -77,7 +84,9 @@ pub(crate) fn apply_last_seen_refresh(entry: &mut AllowEntry, finding: &Finding)
 #[cfg(test)]
 mod tests {
     use super::*;
-    use allow_core::{FindingKind, Lifecycle, Selector, Span, StructuralIdentity};
+    use allow_core::{
+        CargoAllowErrorKind, FindingKind, Lifecycle, Selector, Span, StructuralIdentity,
+    };
 
     fn drift_entry() -> AllowEntry {
         AllowEntry {
@@ -161,6 +170,28 @@ mod tests {
             .expect_err("matched status should not refresh");
 
         assert!(err.to_string().contains("location_drift"));
+        assert_eq!(err.kind(), CargoAllowErrorKind::Usage);
+    }
+
+    #[test]
+    fn select_location_drift_refresh_rejects_unknown_allow_id_as_usage() {
+        let err = select_location_drift_refresh(&AllowConfig::empty(), &[], &[], "missing-entry")
+            .expect_err("unknown allow IDs should fail as usage errors");
+
+        assert!(err.to_string().contains("missing-entry"));
+        assert_eq!(err.kind(), CargoAllowErrorKind::Usage);
+    }
+
+    #[test]
+    fn select_location_drift_refresh_rejects_missing_outcome_as_usage() {
+        let mut cfg = AllowConfig::empty();
+        cfg.allow.push(drift_entry());
+
+        let err = select_location_drift_refresh(&cfg, &[], &[], "allow-drift")
+            .expect_err("missing outcomes should fail as usage errors");
+
+        assert!(err.to_string().contains("did not produce a match outcome"));
+        assert_eq!(err.kind(), CargoAllowErrorKind::Usage);
     }
 
     #[test]
