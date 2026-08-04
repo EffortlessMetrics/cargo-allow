@@ -6,7 +6,8 @@
 //! evidence tools or repository code.
 
 use allow_core::{
-    AllowConfig, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, read_text_file_capped,
+    AllowConfig, CappedReadError, CargoAllowError, CargoAllowErrorKind, CargoAllowResult,
+    read_text_file_capped,
 };
 use std::path::{Path, PathBuf};
 
@@ -107,8 +108,16 @@ pub fn find_config(start: impl AsRef<Path>) -> Option<PathBuf> {
 }
 
 fn read_policy_text(path: &Path) -> CargoAllowResult<String> {
-    read_text_file_capped(path)
-        .map_err(|e| CargoAllowError::new(format!("failed to read {}: {e}", path.display())))
+    read_text_file_capped(path).map_err(|error| match error {
+        CappedReadError::Io(source) => CargoAllowError::from(source)
+            .with_message_prefix(format!("failed to read {}: ", path.display())),
+        CappedReadError::Oversized { .. } | CappedReadError::NotUtf8(_) => {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::InvalidPolicy,
+                format!("failed to read {}: {error}", path.display()),
+            )
+        }
+    })
 }
 
 pub fn load_policy(path: impl AsRef<Path>) -> CargoAllowResult<AllowConfig> {
