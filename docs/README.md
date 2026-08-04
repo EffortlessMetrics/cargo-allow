@@ -124,11 +124,22 @@ governance profile model around it.
   spec-system first-hour adoption cleanup.
 - [0.1.8 GitHub Release body](release/github/v0.1.8.md): public release notes
   for the `v0.1.8` GitHub Release.
-
 - [0.1.9 release record](release/0.1.9.md): completed maintenance release.
+- [0.1.9 GitHub Release body](release/github/v0.1.9.md): public notes for
+  `v0.1.9`.
+- [0.1.10 readiness assessment](release/0.1.10-readiness.md): deferred
+  adoption-trust release checklist.
 - [0.1.10 release record](release/0.1.10.md): completed adoption-trust and ledger-coherence patch release.
+- [0.1.10 GitHub Release body](release/github/v0.1.10.md): public notes for
+  `v0.1.10`.
+- [0.1.11 readiness snapshot](release/0.1.11-readiness.md): current
+  qualification and publication posture.
 - [0.1.11 release record](release/0.1.11.md): supported-core usability, safety-bound, and installed-candidate patch release.
 - [0.1.11 GitHub Release body](release/github/v0.1.11.md): public notes for `v0.1.11`.
+- [0.2.0 release record](release/0.2.0.md): pre-publication release contract and
+  candidate posture.
+- [0.2.0 GitHub Release body](release/github/v0.2.0.md): public notes for the
+  `v0.2.0` candidate.
 
 ## Reference
 
