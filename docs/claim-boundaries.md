@@ -124,6 +124,12 @@ type, macro-expansion, or MIR-level identity.
 
 Evidence references are traceability. They are not automatic proof.
 
+The complete canonical prefix vocabulary, including parser-recognized aliases
+and the distinction between local-file and traceability-only references, lives
+in the [Evidence Prefix Vocabulary](schemas/README.md#evidence-prefix-vocabulary)
+table and is mirrored by [`common.v1.json`](schemas/common.v1.json). The
+examples below explain claim boundaries; they are not a second vocabulary.
+
 Examples:
 
 - `test:*` means a named test is cited. It does not prove the test covers every
