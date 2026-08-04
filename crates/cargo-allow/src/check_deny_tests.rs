@@ -1,5 +1,5 @@
 use super::*;
-use allow_core::MatchStatus;
+use allow_core::{CargoAllowErrorKind, MatchStatus};
 use allow_report::{ReportContext, Summary};
 
 fn outcome(status: MatchStatus) -> allow_core::MatchOutcome {
@@ -37,6 +37,7 @@ fn validate_deny_statuses_rejects_unknown_status() {
         err.to_string()
             .contains("unknown --deny status `not_a_status`")
     );
+    assert_eq!(err.kind(), CargoAllowErrorKind::Usage);
     assert!(err.to_string().contains("review_due"));
 }
 
@@ -54,6 +55,7 @@ fn validate_deny_statuses_rejects_absent_optional_advisory_class() {
         err.to_string()
             .contains("unknown --deny status `occurrence_headroom`")
     );
+    assert_eq!(err.kind(), CargoAllowErrorKind::Usage);
     assert!(
         !err.to_string().contains("occurrence_headroom,"),
         "absent optional classes should not be listed as supported: {err}"
