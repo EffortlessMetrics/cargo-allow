@@ -9,9 +9,11 @@ requested by the operator.
 > published `0.1.11` and Stabilizing on current main. See the [command
 > maturity table](../status/SUPPORT_TIERS.md#command-maturity).
 
-All commands operate on the source-tree inventory. They do not execute project
-code, invoke Cargo metadata, run rustc or Clippy, expand macros, or prove that a
-finding is reachable or can fail at runtime. They do not prove runtime safety.
+Source-exception ledger commands in this guide operate on the source-tree
+inventory. The `--profile spec-system` path is a separate profile and is outside
+this ledger claim. These commands do not execute project code, invoke Cargo
+metadata, run rustc or Clippy, expand macros, or prove that a finding is
+reachable or can fail at runtime. They do not prove runtime safety.
 
 ## Command map
 
@@ -57,9 +59,18 @@ The modes have distinct intent:
   missing-required-field, and missing-evidence outcomes. This is the normal CI
   gate.
 - `audit` reports all advisory statuses without failing the command.
-- `strict` fails on every non-matched status except `location_drift`.
-- `release` is currently equivalent to `strict`; use it when the command is
-  being run as a release-facing gate.
+- `check --mode strict` fails on every non-matched status except
+  `location_drift`.
+- `check --mode release` is currently equivalent to `strict`; use it when the
+  command is being run as a release-facing gate.
+
+Optional `[lanes.<kind>]` tables declare per-kind enforcement posture without
+splitting the ledger. Supported modes are `advisory`, `shadow`, and `blocking`;
+unconfigured kinds default to `blocking`. Advisory and shadow lanes report
+findings and receipt counts but do not fail check gate modes unless `--deny`
+promotes a receipt advisory class. Blocking lanes follow the `no-new` and
+`strict` failure rules. Receipts include the effective `lane_posture` for each
+configured or scanned kind.
 
 Use repeatable `--deny STATUS` flags to promote advisory receipt counts to
 blocking failures. `STATUS` is an advisory field such as `review_due`,
@@ -68,13 +79,14 @@ blocking failures. `STATUS` is an advisory field such as `review_due`,
 ```bash
 cargo-allow check --mode no-new \
   --deny review_due \
-  --deny mirror_divergence \
   --format json \
   --receipt target/cargo-allow/check.receipt.json
 ```
 
-An unknown advisory field fails closed. `--deny` changes enforcement posture; it
-does not expand what the source scanner observes or prove runtime safety.
+An unknown advisory field fails closed. `mirror_divergence` is an optional
+status; use it with `--deny` only when the selected federation context emits
+that advisory field. `--deny` changes enforcement posture; it does not expand
+what the source scanner observes or prove runtime safety.
 
 ## 3. Bootstrap a ledger
 
@@ -118,10 +130,14 @@ cargo-allow add --from-plan target/cargo-allow/add-plan.json --update \
 ```
 
 `why --plan` does not write policy. `add --from-plan --update` rescans and
-revalidates the plan before replacing the discovered ledger atomically. Omit
-`--update` to preview; `--write <new-path>` writes a candidate policy file and
-does not update the live ledger. Recheck the selected finding and then run the
-full `check` against the changed head.
+revalidates the plan before replacing the discovered ledger atomically. This
+plan-then-apply route is a current-main source-candidate workflow: published
+`0.1.11` does not support `why --plan`, `add --from-plan`, or `--update`. On
+current main, `add --from-plan --update` is always the apply route and cannot be
+combined with `--write` or omitted `--update`. For a manual-selector `add`, omit
+`--update` to preview; `--write <new-path>` writes a candidate policy file for
+inspection and does not update the live ledger. Recheck the selected finding and
+then run the full `check` against the changed head.
 
 ## 5. Repair one location drift
 
