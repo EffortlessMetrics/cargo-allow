@@ -325,7 +325,8 @@ fn selected_add_outcome_errors_when_finding_index_missing() {
     let err =
         selected_add_outcome(&outcomes, 0).expect_err("missing finding_index should fail closed");
 
-    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
+    assert_eq!(err.kind(), CargoAllowErrorKind::Internal);
+    assert_eq!(err.code(), "E0008_INTERNAL");
 }
 
 #[test]
