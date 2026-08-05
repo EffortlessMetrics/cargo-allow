@@ -7,6 +7,7 @@ use allow_core::{
 };
 use clap::Parser;
 use serde_json::Value;
+use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
 
@@ -80,6 +81,19 @@ fn why_missing_evaluation_outcome_is_an_internal_invariant() {
         err.to_string()
             .contains("no evaluation outcome for finding at src/lib.rs:42")
     );
+}
+
+#[test]
+fn why_output_path_resolution_failures_are_artifacts() {
+    let path = std::path::Path::new("target/why-output.json");
+    let source = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "permission denied");
+    let err = resolve_output_path_result(path, Err(source)).expect_err("resolution should fail");
+
+    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::Artifact);
+    assert_eq!(err.code(), "E0007_ARTIFACT");
+    assert!(err.to_string().contains("failed to resolve output path"));
+    assert!(err.to_string().contains("target/why-output.json"));
+    assert!(Error::source(&err).is_some());
 }
 
 #[test]

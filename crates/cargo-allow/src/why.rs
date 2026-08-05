@@ -176,19 +176,31 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
     Ok(())
 }
 
+fn output_path_resolution_error(
+    path: &std::path::Path,
+    source: &std::io::Error,
+) -> CargoAllowError {
+    CargoAllowError::with_kind(
+        CargoAllowErrorKind::Artifact,
+        format!("failed to resolve output path {}: {source}", path.display()),
+    )
+    .with_cause(source)
+}
+
+fn resolve_output_path_result(
+    path: &std::path::Path,
+    result: Result<std::path::PathBuf, std::io::Error>,
+) -> CargoAllowResult<std::path::PathBuf> {
+    result.map_err(|source| output_path_resolution_error(path, &source))
+}
+
+fn resolve_output_path(path: &std::path::Path) -> CargoAllowResult<std::path::PathBuf> {
+    resolve_output_path_result(path, std::path::absolute(path))
+}
+
 fn same_output_target(left: &std::path::Path, right: &std::path::Path) -> CargoAllowResult<bool> {
-    let left = std::path::absolute(left).map_err(|error| {
-        CargoAllowError::new(format!(
-            "failed to resolve output path {}: {error}",
-            left.display()
-        ))
-    })?;
-    let right = std::path::absolute(right).map_err(|error| {
-        CargoAllowError::new(format!(
-            "failed to resolve output path {}: {error}",
-            right.display()
-        ))
-    })?;
+    let left = resolve_output_path(left)?;
+    let right = resolve_output_path(right)?;
     Ok(left == right)
 }
 
