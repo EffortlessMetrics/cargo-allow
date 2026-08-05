@@ -208,19 +208,25 @@ fn tool_identity_artifact(message: impl Into<String>, source: &std::io::Error) -
     CargoAllowError::with_kind(CargoAllowErrorKind::Artifact, message).with_cause(source)
 }
 
-pub fn current_tool_identity() -> CargoAllowResult<CargoAllowToolIdentityV1> {
-    let executable = std::env::current_exe().map_err(|error| {
-        tool_identity_artifact("failed to resolve cargo-allow executable", &error)
-    })?;
-    let bytes = fs::read(&executable).map_err(|error| {
+fn current_tool_identity_resolution_error(source: std::io::Error) -> CargoAllowError {
+    tool_identity_artifact("failed to resolve cargo-allow executable", &source)
+}
+
+fn read_tool_executable(executable: &Path) -> CargoAllowResult<Vec<u8>> {
+    fs::read(executable).map_err(|source| {
         tool_identity_artifact(
             format!(
                 "failed to read cargo-allow executable `{}`",
                 executable.display()
             ),
-            &error,
+            &source,
         )
-    })?;
+    })
+}
+
+pub fn current_tool_identity() -> CargoAllowResult<CargoAllowToolIdentityV1> {
+    let executable = std::env::current_exe().map_err(current_tool_identity_resolution_error)?;
+    let bytes = read_tool_executable(&executable)?;
     Ok(identity_for_bytes(&bytes))
 }
 
@@ -496,16 +502,33 @@ mod tests {
     #[test]
     fn current_tool_identity_io_failures_are_artifacts() {
         let source = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "permission denied");
-        let error = tool_identity_artifact("failed to read cargo-allow executable", &source);
+        let resolution_error = current_tool_identity_resolution_error(source);
 
-        assert_eq!(error.kind(), CargoAllowErrorKind::Artifact);
-        assert_eq!(error.code(), "E0007_ARTIFACT");
+        assert_eq!(resolution_error.kind(), CargoAllowErrorKind::Artifact);
+        assert_eq!(resolution_error.code(), "E0007_ARTIFACT");
         assert!(
-            error
+            resolution_error
+                .to_string()
+                .contains("failed to resolve cargo-allow executable")
+        );
+        assert!(resolution_error.source().is_some());
+
+        let missing = selected_path("missing-identity");
+        let _ = fs::remove_file(&missing);
+        let read_error = read_tool_executable(&missing).expect_err("missing executable must fail");
+        assert_eq!(read_error.kind(), CargoAllowErrorKind::Artifact);
+        assert_eq!(read_error.code(), "E0007_ARTIFACT");
+        assert!(
+            read_error
                 .to_string()
                 .contains("failed to read cargo-allow executable")
         );
-        assert!(error.source().is_some());
+        assert!(
+            read_error
+                .to_string()
+                .contains(&missing.display().to_string())
+        );
+        assert!(read_error.source().is_some());
     }
 
     #[test]
