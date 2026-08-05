@@ -209,9 +209,7 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         ],
     };
     if let Some(path) = &args.write {
-        let absolute_target = write_target.as_ref().ok_or_else(|| {
-            CargoAllowError::new("internal error: --write target missing after containment check")
-        })?;
+        let absolute_target = write_target_after_containment(write_target.as_deref())?;
         let target = portable_relative_under_root(&root, absolute_target)?;
         let mode = if args.force {
             SingleTargetApplyMode::ReplaceWithBackup
@@ -279,6 +277,17 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
     };
     emit_stderr_text(args.summary_output.as_deref(), &summary)?;
     Ok(())
+}
+
+fn write_target_after_containment(
+    write_target: Option<&std::path::Path>,
+) -> CargoAllowResult<&std::path::Path> {
+    write_target.ok_or_else(|| {
+        CargoAllowError::with_kind(
+            allow_core::CargoAllowErrorKind::Internal,
+            "internal error: --write target missing after containment check",
+        )
+    })
 }
 
 #[cfg(test)]

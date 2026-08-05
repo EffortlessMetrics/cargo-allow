@@ -1,7 +1,7 @@
 use super::*;
 use crate::artifact_contract_support::parse_json_artifact;
 use crate::{CargoAllowCli, CargoAllowCommand, HumanJsonFormat};
-use allow_core::{Span, StructuralIdentity};
+use allow_core::{CargoAllowErrorKind, Span, StructuralIdentity};
 use allow_policy::BASELINE_DEBT_MAX_DAYS;
 use clap::Parser;
 use serde_json::Value;
@@ -33,6 +33,19 @@ fn clap_parses_propose_force() {
         })) if path == Path::new("target/proposed.toml")
             && summary_output == Path::new("target/propose-summary.json")
     ));
+}
+
+#[test]
+fn write_target_after_containment_errors_as_internal_when_missing() {
+    let err = write_target_after_containment(None)
+        .expect_err("a missing --write target should fail closed");
+
+    assert_eq!(err.kind(), CargoAllowErrorKind::Internal);
+    assert_eq!(err.code(), "E0008_INTERNAL");
+    assert_eq!(
+        err.to_string(),
+        "internal error: --write target missing after containment check"
+    );
 }
 
 #[test]
