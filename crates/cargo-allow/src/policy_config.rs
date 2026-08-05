@@ -16,6 +16,20 @@ pub(crate) fn missing_policy_config_error() -> CargoAllowError {
     )
 }
 
+pub(crate) fn missing_plan_policy_config_error() -> CargoAllowError {
+    CargoAllowError::with_kind(
+        CargoAllowErrorKind::InvalidConfig,
+        "no policy config found for add-finding plan; run `cargo-allow init`",
+    )
+}
+
+pub(crate) fn missing_plan_update_policy_config_error() -> CargoAllowError {
+    CargoAllowError::with_kind(
+        CargoAllowErrorKind::InvalidConfig,
+        "no policy config found to update; run `cargo-allow init`",
+    )
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ConfigDiscovery {
     pub path: Option<PathBuf>,
@@ -273,6 +287,24 @@ mod tests {
         assert!(err.to_string().contains("foreign/allow.toml"));
 
         remove_test_dir(&missing_root);
+    }
+
+    #[test]
+    fn plan_policy_config_errors_are_invalid_config() {
+        for (error, expected) in [
+            (
+                missing_plan_policy_config_error(),
+                "no policy config found for add-finding plan",
+            ),
+            (
+                missing_plan_update_policy_config_error(),
+                "no policy config found to update",
+            ),
+        ] {
+            assert_eq!(error.kind(), CargoAllowErrorKind::InvalidConfig);
+            assert_eq!(error.code(), "E0002_INVALID_CONFIG");
+            assert!(error.to_string().contains(expected));
+        }
     }
 
     #[test]
