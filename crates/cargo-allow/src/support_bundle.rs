@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use serde::Serialize;
 use std::path::Path;
 
@@ -143,8 +143,14 @@ fn render_support_bundle_json(facts: SupportBundleFacts<'_>) -> CargoAllowResult
             valid: facts.federation_valid,
         },
     };
-    serde_json::to_string_pretty(&bundle)
-        .map_err(|error| CargoAllowError::new(format!("failed to render support bundle: {error}")))
+    serde_json::to_string_pretty(&bundle).map_err(support_bundle_json_error)
+}
+
+fn support_bundle_json_error(error: serde_json::Error) -> CargoAllowError {
+    CargoAllowError::with_kind(
+        CargoAllowErrorKind::Artifact,
+        format!("failed to render support bundle: {error}"),
+    )
 }
 
 #[cfg(test)]
@@ -193,6 +199,20 @@ mod tests {
         if !json.contains("<redacted>") || !json.contains("source_file_contents") {
             return Err("support bundle did not state its redaction boundary".to_string());
         }
+        Ok(())
+    }
+
+    #[test]
+    fn support_bundle_json_errors_are_artifacts() -> Result<(), String> {
+        let serialization_error = serde_json::from_str::<Value>("{")
+            .expect_err("incomplete JSON should produce a serialization error");
+        let error = support_bundle_json_error(serialization_error);
+        assert_eq!(error.kind(), CargoAllowErrorKind::Artifact);
+        assert!(
+            error
+                .to_string()
+                .contains("failed to render support bundle")
+        );
         Ok(())
     }
 
