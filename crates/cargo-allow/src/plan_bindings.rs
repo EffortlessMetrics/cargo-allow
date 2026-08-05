@@ -89,6 +89,8 @@ pub(crate) fn read_bound_file(path: &Path, label: &str) -> CargoAllowResult<Vec<
         ));
         if label == "source file" {
             error.with_kind_preserving_metadata(CargoAllowErrorKind::Scan)
+        } else if label == "inventory file" {
+            error.with_kind_preserving_metadata(CargoAllowErrorKind::Inventory)
         } else {
             error
         }
@@ -212,6 +214,21 @@ mod tests {
         assert_eq!(error.kind(), CargoAllowErrorKind::Scan);
         assert_eq!(error.code(), "E0005_SCAN");
         assert!(error.to_string().contains("failed to read source file"));
+        assert!(error.to_string().contains(&path.display().to_string()));
+    }
+
+    #[test]
+    fn inventory_file_read_failures_are_inventory() {
+        let path = std::env::temp_dir().join(format!(
+            "cargo-allow-missing-plan-inventory-{}.toml",
+            std::process::id()
+        ));
+        let error = read_bound_file(&path, "inventory file")
+            .expect_err("missing inventory binding file should fail to read");
+
+        assert_eq!(error.kind(), CargoAllowErrorKind::Inventory);
+        assert_eq!(error.code(), "E0004_INVENTORY");
+        assert!(error.to_string().contains("failed to read inventory file"));
         assert!(error.to_string().contains(&path.display().to_string()));
     }
 }
