@@ -249,9 +249,7 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         })
         .into_result()?;
     } else if args.write.is_some() {
-        let absolute_target = mutation_target.as_ref().ok_or_else(|| {
-            CargoAllowError::new("internal error: --write target missing after containment check")
-        })?;
+        let absolute_target = write_target_after_containment(mutation_target.as_deref())?;
         let target = portable_relative_under_root(&mutation_root, absolute_target)?;
         let mode = if args.force {
             SingleTargetApplyMode::ReplaceWithBackup
@@ -279,6 +277,17 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     }
     emit_stderr_text(args.summary_output.as_deref(), &summary)?;
     Ok(())
+}
+
+fn write_target_after_containment(
+    mutation_target: Option<&std::path::Path>,
+) -> CargoAllowResult<&std::path::Path> {
+    mutation_target.ok_or_else(|| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            "internal error: --write target missing after containment check",
+        )
+    })
 }
 
 fn ensure_unique_allow_id<'a>(

@@ -330,6 +330,19 @@ fn selected_add_outcome_errors_when_finding_index_missing() {
 }
 
 #[test]
+fn write_target_after_containment_errors_as_internal_when_missing() {
+    let err = write_target_after_containment(None)
+        .expect_err("a missing --write target should fail closed");
+
+    assert_eq!(err.kind(), CargoAllowErrorKind::Internal);
+    assert_eq!(err.code(), "E0008_INTERNAL");
+    assert_eq!(
+        err.to_string(),
+        "internal error: --write target missing after containment check"
+    );
+}
+
+#[test]
 fn cmd_add_rejects_duplicate_allow_id() {
     let root = add_fixture_dir();
     write_add_fixture_with_new_panic_finding(&root);
