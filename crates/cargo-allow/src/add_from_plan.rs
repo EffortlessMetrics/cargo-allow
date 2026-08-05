@@ -100,6 +100,10 @@ fn stale(message: impl Into<String>) -> CargoAllowError {
     )
 }
 
+fn plan_input_error(error: CargoAllowError) -> CargoAllowError {
+    error.with_kind_preserving_metadata(CargoAllowErrorKind::Usage)
+}
+
 /// Append a plan-regeneration hint to an add --from-plan rejection error. This
 /// prevents the operator from being stuck: they know exactly how to regenerate
 /// the plan with `cargo-allow why --plan`.
@@ -131,7 +135,7 @@ fn enrich_with_regen_hint(
 pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowResult<()> {
     reject_conflicting_from_plan_flags(args)?;
 
-    let plan_bytes = read_bound_file(plan_path, "add-finding plan")?;
+    let plan_bytes = read_bound_file(plan_path, "add-finding plan").map_err(plan_input_error)?;
     let plan_digest = sha256_v1_bytes(&plan_bytes);
     let plan = parse_plan_strict(&plan_bytes)?;
     validate_plan_generation(&plan)?;
