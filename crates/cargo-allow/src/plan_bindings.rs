@@ -12,8 +12,8 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use allow_core::{
-    AllowConfig, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding, Selector,
-    finding_identity_key, normalize_path, read_file_capped, sha256_v1_bytes,
+    AllowConfig, CappedReadError, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding,
+    Selector, finding_identity_key, normalize_path, read_file_capped, sha256_v1_bytes,
 };
 use serde_json::{Value, json};
 
@@ -82,19 +82,29 @@ pub(crate) fn compute_plan_finding_bindings(
 }
 
 pub(crate) fn read_bound_file(path: &Path, label: &str) -> CargoAllowResult<Vec<u8>> {
-    read_file_capped(path).map_err(|error| {
-        let error = CargoAllowError::new(format!(
-            "failed to read {label} {} for add-finding plan: {error}",
-            path.display()
-        ));
-        if label == "source file" {
-            error.with_kind_preserving_metadata(CargoAllowErrorKind::Scan)
-        } else if label == "inventory file" {
-            error.with_kind_preserving_metadata(CargoAllowErrorKind::Inventory)
-        } else {
-            error
+    read_file_capped(path).map_err(|error| bound_file_error(path, label, error))
+}
+
+fn bound_file_error(path: &Path, label: &str, error: CappedReadError) -> CargoAllowError {
+    let message = format!(
+        "failed to read {label} {} for add-finding plan: {error}",
+        path.display()
+    );
+    match (label, error) {
+        ("policy", CappedReadError::Io(source)) => CargoAllowError::from(source)
+            .with_message_prefix(format!(
+                "failed to read {label} {} for add-finding plan: ",
+                path.display()
+            )),
+        ("policy", CappedReadError::Oversized { .. } | CappedReadError::NotUtf8(_)) => {
+            CargoAllowError::with_kind(CargoAllowErrorKind::InvalidPolicy, message)
         }
-    })
+        ("source file", _) => CargoAllowError::with_kind(CargoAllowErrorKind::Scan, message),
+        ("inventory file", _) => {
+            CargoAllowError::with_kind(CargoAllowErrorKind::Inventory, message)
+        }
+        (_, _) => CargoAllowError::new(message),
+    }
 }
 
 fn inventory_identity(
@@ -230,5 +240,38 @@ mod tests {
         assert_eq!(error.code(), "E0004_INVENTORY");
         assert!(error.to_string().contains("failed to read inventory file"));
         assert!(error.to_string().contains(&path.display().to_string()));
+    }
+
+    #[test]
+    fn policy_file_io_failures_preserve_config_kind_and_source() {
+        let path = std::env::temp_dir().join(format!(
+            "cargo-allow-missing-plan-policy-{}.toml",
+            std::process::id()
+        ));
+        let error = read_bound_file(&path, "policy")
+            .expect_err("missing policy binding file should fail to read");
+
+        assert_eq!(error.kind(), CargoAllowErrorKind::InvalidConfig);
+        assert_eq!(error.code(), "E0002_INVALID_CONFIG");
+        assert!(error.to_string().contains("failed to read policy"));
+        assert!(error.to_string().contains(&path.display().to_string()));
+        assert!(std::error::Error::source(&error).is_some());
+    }
+
+    #[test]
+    fn oversized_policy_binding_is_invalid_policy() {
+        let path = Path::new("policy/allow.toml");
+        let error = bound_file_error(
+            path,
+            "policy",
+            CappedReadError::Oversized {
+                len: Some(9 * 1024 * 1024),
+                limit: 8 * 1024 * 1024,
+            },
+        );
+
+        assert_eq!(error.kind(), CargoAllowErrorKind::InvalidPolicy);
+        assert_eq!(error.code(), "E0003_INVALID_POLICY");
+        assert!(error.to_string().contains("source-read limit"));
     }
 }
