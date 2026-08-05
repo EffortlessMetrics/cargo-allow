@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use clap::{CommandFactory, Parser};
 use clap_complete::Shell;
 
@@ -55,12 +55,26 @@ fn render_completions(shell: Shell) -> CargoAllowResult<String> {
     // `generate` writes shell script text, so this conversion does not fail in
     // practice. Kept fallible rather than unwrapped: this is a panic-scanning
     // tool, and a "cannot happen" is not a reason to panic in its own binary.
-    String::from_utf8(buffer).map_err(|err| CargoAllowError::new(format!("not UTF-8: {err}")))
+    String::from_utf8(buffer).map_err(completion_render_error)
+}
+
+fn completion_render_error(error: std::string::FromUtf8Error) -> CargoAllowError {
+    CargoAllowError::with_kind(CargoAllowErrorKind::Artifact, format!("not UTF-8: {error}"))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn completion_render_errors_are_artifacts() -> Result<(), String> {
+        let utf8_error = String::from_utf8(vec![0xff])
+            .expect_err("invalid UTF-8 should produce a conversion error");
+        let error = completion_render_error(utf8_error);
+        assert_eq!(error.kind(), CargoAllowErrorKind::Artifact);
+        assert!(error.to_string().contains("not UTF-8"));
+        Ok(())
+    }
 
     /// Every supported shell produces a non-empty script naming the binary.
     /// Generation is driven by the live command graph, so this also fails if
