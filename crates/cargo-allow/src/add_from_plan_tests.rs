@@ -103,6 +103,26 @@ fn from_plan_duplicate_allow_id_is_usage() {
     assert!(ensure_unique_allow_id(["allow-0001"], "allow-0002").is_ok());
 }
 
+#[test]
+fn plan_file_read_failures_are_usage() {
+    let path = std::env::temp_dir().join(format!(
+        "cargo-allow-missing-add-finding-plan-{}.json",
+        std::process::id()
+    ));
+    let error = read_bound_file(&path, "add-finding plan")
+        .expect_err("missing add-finding plan should fail to read");
+    let error = plan_input_error(error);
+
+    assert_eq!(error.kind(), allow_core::CargoAllowErrorKind::Usage);
+    assert_eq!(error.code(), "E0001_USAGE");
+    assert!(
+        error
+            .to_string()
+            .contains("failed to read add-finding plan")
+    );
+    assert!(error.to_string().contains(&path.display().to_string()));
+}
+
 /// A single-field perturbation applied to a valid plan, used to prove each
 /// binding/generation check rejects independently.
 type PlanMutation = fn(&mut LoadedPlan);
