@@ -155,9 +155,8 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
         args.include_untracked,
     )?;
 
-    let policy_path = config_path(&root, args.config.as_deref()).ok_or_else(|| {
-        CargoAllowError::new("no policy config found to update; run `cargo-allow init`")
-    })?;
+    let policy_path = config_path(&root, args.config.as_deref())
+        .ok_or_else(crate::policy_config::missing_plan_update_policy_config_error)?;
     let policy_before = read_bound_file(&policy_path, "policy")?;
     let policy_before_digest = sha256_v1_bytes(&policy_before);
 

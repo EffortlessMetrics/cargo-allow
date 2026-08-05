@@ -18,7 +18,7 @@ use allow_core::{
 use serde_json::{Value, json};
 
 use crate::config_path;
-use crate::policy_config::git_relative_config_path;
+use crate::policy_config::{git_relative_config_path, missing_plan_policy_config_error};
 use crate::selector::selector_from_finding;
 
 /// Recomputed identity bindings for one finding against the live scan. Every
@@ -50,9 +50,7 @@ pub(crate) fn compute_plan_finding_bindings(
     include_untracked: bool,
     finding: &Finding,
 ) -> CargoAllowResult<PlanFindingBindings> {
-    let policy_path = config_path(root, config).ok_or_else(|| {
-        CargoAllowError::new("no policy config found for add-finding plan; run `cargo-allow init`")
-    })?;
+    let policy_path = config_path(root, config).ok_or_else(missing_plan_policy_config_error)?;
     let policy_bytes = read_bound_file(&policy_path, "policy")?;
     let relative_policy = git_relative_config_path(root, Some(&policy_path))?;
     let source_path = root.join(&finding.path);
