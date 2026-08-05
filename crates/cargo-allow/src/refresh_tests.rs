@@ -1,6 +1,9 @@
-use super::{RefreshArgs, cmd_refresh};
+use super::{
+    RefreshArgs, cmd_refresh, selected_refresh_entry, selected_refresh_entry_mut,
+    selected_refresh_finding,
+};
 use crate::{CargoAllowCli, CargoAllowCommand, HumanJsonFormat};
-use allow_core::MatchStatus;
+use allow_core::{AllowConfig, CargoAllowErrorKind, MatchStatus};
 use allow_match::{CheckMode, evaluate};
 use allow_policy::load_policy;
 use clap::Parser;
@@ -80,6 +83,39 @@ fn clap_parses_refresh_dry_run_json() {
             ..
         })) if allow_id == "allow-0250" && path == Path::new("target/refresh.json")
     ));
+}
+
+#[test]
+fn refresh_index_invariants_are_internal_when_missing() {
+    let findings = Vec::new();
+    let err = selected_refresh_finding(&findings, 0)
+        .expect_err("a missing refresh finding index should fail closed");
+    assert_eq!(err.kind(), CargoAllowErrorKind::Internal);
+    assert_eq!(err.code(), "E0008_INTERNAL");
+    assert_eq!(
+        err.to_string(),
+        "internal error: selected finding index out of range"
+    );
+
+    let config = AllowConfig::empty();
+    let err = selected_refresh_entry(&config, 0)
+        .expect_err("a missing refresh allow-entry index should fail closed");
+    assert_eq!(err.kind(), CargoAllowErrorKind::Internal);
+    assert_eq!(err.code(), "E0008_INTERNAL");
+    assert_eq!(
+        err.to_string(),
+        "internal error: selected allow entry index out of range"
+    );
+
+    let mut config = AllowConfig::empty();
+    let err = selected_refresh_entry_mut(&mut config, 0)
+        .expect_err("a missing mutable refresh allow-entry index should fail closed");
+    assert_eq!(err.kind(), CargoAllowErrorKind::Internal);
+    assert_eq!(err.code(), "E0008_INTERNAL");
+    assert_eq!(
+        err.to_string(),
+        "internal error: selected allow entry index out of range"
+    );
 }
 
 #[test]
