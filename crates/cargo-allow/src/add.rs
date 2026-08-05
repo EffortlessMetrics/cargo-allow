@@ -371,7 +371,12 @@ fn selected_add_outcome(
     outcomes
         .iter()
         .find(|outcome| outcome.finding_index == Some(finding_index))
-        .ok_or_else(|| CargoAllowError::new("selected finding did not produce a match outcome"))
+        .ok_or_else(|| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Internal,
+                "selected finding did not produce a match outcome",
+            )
+        })
 }
 
 fn require_add_evidence(finding: &Finding, evidence: &[String]) -> CargoAllowResult<()> {
