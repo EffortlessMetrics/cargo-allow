@@ -620,6 +620,62 @@ mod tests {
     }
 
     #[test]
+    fn support_reference_rejects_structural_drift_as_internal() -> Result<(), String> {
+        for (source, expected) in [
+            (
+                r#"
+schema_id = "cargo-allow.support-matrix.v1"
+[tool]
+published_version = "0.1.11"
+candidate_version = "0.2.0"
+"#,
+                "must define at least one [[channel]] row",
+            ),
+            (
+                r#"
+schema_id = "cargo-allow.support-matrix.v1"
+channel = []
+[tool]
+published_version = "0.1.11"
+candidate_version = "0.2.0"
+"#,
+                "must define at least one [[channel]] row",
+            ),
+            (
+                r#"
+schema_id = "cargo-allow.support-matrix.v1"
+channel = ["not a table"]
+[tool]
+published_version = "0.1.11"
+candidate_version = "0.2.0"
+"#,
+                "must be a table",
+            ),
+            (
+                r#"
+schema_id = "cargo-allow.support-matrix.v1"
+[tool]
+published_version = "0.1.11"
+candidate_version = "0.2.0"
+[[channel]]
+name = "test"
+evidence = "test"
+"#,
+                "missing boolean `available`",
+            ),
+        ] {
+            let error = parse_support_reference(source).expect_err("structural drift is invalid");
+            assert_eq!(error.kind(), CargoAllowErrorKind::Internal);
+            assert!(error.to_string().contains(expected));
+        }
+
+        let error = parse_support_reference("").expect_err("missing tool table is invalid");
+        assert_eq!(error.kind(), CargoAllowErrorKind::Internal);
+        assert!(error.to_string().contains("missing table `tool`"));
+        Ok(())
+    }
+
+    #[test]
     fn support_reference_rejects_missing_channel_evidence() -> Result<(), String> {
         let error = parse_support_reference(
             r#"
