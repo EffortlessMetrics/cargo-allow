@@ -71,6 +71,18 @@ fn why_rejects_existing_plan_as_usage() {
 }
 
 #[test]
+fn why_missing_evaluation_outcome_is_an_internal_invariant() {
+    let err = missing_evaluation_outcome_error(std::path::Path::new("src/lib.rs"), 42);
+
+    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::Internal);
+    assert_eq!(err.code(), "E0008_INTERNAL");
+    assert!(
+        err.to_string()
+            .contains("no evaluation outcome for finding at src/lib.rs:42")
+    );
+}
+
+#[test]
 fn render_why_lists_mismatch_reasons_for_new_findings() {
     let finding = sample_finding_at("src/lib.rs", 10);
     let entry = near_miss_entry();

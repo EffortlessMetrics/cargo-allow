@@ -31,6 +31,17 @@ use why_render::{render_why_json, render_why_text_styled};
 
 const MAX_CANDIDATES: usize = 8;
 
+fn missing_evaluation_outcome_error(path: &std::path::Path, line: u32) -> CargoAllowError {
+    CargoAllowError::with_kind(
+        CargoAllowErrorKind::Internal,
+        format!(
+            "no evaluation outcome for finding at {}:{}",
+            normalize_path(path),
+            line
+        ),
+    )
+}
+
 pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
     if let (Some(plan_path), Some(output_path)) = (args.plan.as_deref(), args.output.as_deref())
         && same_output_target(plan_path, output_path)?
@@ -106,13 +117,7 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
     let outcome = outcomes
         .into_iter()
         .find(|outcome| outcome.finding_index == Some(finding_index))
-        .ok_or_else(|| {
-            CargoAllowError::new(format!(
-                "no evaluation outcome for finding at {}:{}",
-                normalize_path(&args.path),
-                args.line
-            ))
-        })?;
+        .ok_or_else(|| missing_evaluation_outcome_error(&args.path, args.line))?;
 
     let candidates = if outcome.status == MatchStatus::New {
         related_mismatch_candidates(&cfg, finding)
