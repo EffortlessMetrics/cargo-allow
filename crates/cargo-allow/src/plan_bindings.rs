@@ -12,8 +12,8 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use allow_core::{
-    AllowConfig, CargoAllowError, CargoAllowResult, Finding, Selector, finding_identity_key,
-    normalize_path, read_file_capped, sha256_v1_bytes,
+    AllowConfig, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding, Selector,
+    finding_identity_key, normalize_path, read_file_capped, sha256_v1_bytes,
 };
 use serde_json::{Value, json};
 
@@ -83,10 +83,15 @@ pub(crate) fn compute_plan_finding_bindings(
 
 pub(crate) fn read_bound_file(path: &Path, label: &str) -> CargoAllowResult<Vec<u8>> {
     read_file_capped(path).map_err(|error| {
-        CargoAllowError::new(format!(
+        let error = CargoAllowError::new(format!(
             "failed to read {label} {} for add-finding plan: {error}",
             path.display()
-        ))
+        ));
+        if label == "source file" {
+            error.with_kind_preserving_metadata(CargoAllowErrorKind::Scan)
+        } else {
+            error
+        }
     })
 }
 
@@ -189,4 +194,24 @@ pub(crate) fn selector_values(selector: &Selector) -> BTreeMap<String, Value> {
         ("line_hint".to_string(), json!(selector.line_hint)),
         ("glob".to_string(), json!(selector.glob)),
     ])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn source_file_read_failures_are_scan() {
+        let path = std::env::temp_dir().join(format!(
+            "cargo-allow-missing-plan-source-{}.rs",
+            std::process::id()
+        ));
+        let error = read_bound_file(&path, "source file")
+            .expect_err("missing source binding file should fail to read");
+
+        assert_eq!(error.kind(), CargoAllowErrorKind::Scan);
+        assert_eq!(error.code(), "E0005_SCAN");
+        assert!(error.to_string().contains("failed to read source file"));
+        assert!(error.to_string().contains(&path.display().to_string()));
+    }
 }
