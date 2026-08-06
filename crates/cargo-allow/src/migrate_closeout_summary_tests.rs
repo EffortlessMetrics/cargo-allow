@@ -219,6 +219,7 @@ fn migrate_context(
     legacy_source_files: Vec<String>,
     legacy_compat_kinds: Vec<&'static str>,
 ) -> MigrateContext {
+    let (signal, label) = allow_policy_legacy::baseline_debt_projection(&legacy_compat_kinds);
     MigrateContext {
         inventory_source: "filesystem_fallback".to_string(),
         source_tree_root: Some(root.display().to_string()),
@@ -226,6 +227,7 @@ fn migrate_context(
         input_kind: "from".to_string(),
         input_path,
         legacy_source_files,
+        baseline_debt_projection: allow_report::MigrateBaselineDebtProjection { signal, label },
         legacy_compat_kinds,
     }
 }

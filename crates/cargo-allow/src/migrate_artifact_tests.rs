@@ -28,6 +28,7 @@ fn render_migrate_summary_json_records_policy_migration_context() {
         input_path: "policy".to_string(),
         legacy_source_files: Vec::new(),
         legacy_compat_kinds: Vec::new(),
+        baseline_debt_projection: allow_report::MigrateBaselineDebtProjection::default_projection(),
     };
 
     let json = render_migrate_summary_json(&cfg, &context, Path::new("policy/allow.toml"), true);

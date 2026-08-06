@@ -3,6 +3,39 @@ use allow_core::json_escape;
 use crate::artifacts::MigrateReport;
 use crate::migrate_closeout_queues::build_migrate_closeout_next_queues;
 
+/// Migration closeout item-kind/signal vocabulary. These are rendered field
+/// values (also used by `cargo-allow worklist --item-kind <X>`). They used to
+/// be imported from `allow-policy-legacy`; owning them here lets `allow-report`
+/// render migration closeout queues without depending on the legacy crate.
+/// See #2941.
+pub const BASELINE_DEBT_ITEM_KIND: &str = "baseline_debt";
+pub const MISSING_EVIDENCE_ITEM_KIND: &str = "missing_evidence";
+pub const NO_NEW_GATE_SIGNAL: &str = "no_new_gate";
+pub const NO_NEW_GATE_ITEM_KIND: &str = "no_new";
+
+/// Baseline-debt closeout metadata projected out of the legacy crate.
+///
+/// `allow-report` renders this without importing `allow-policy-legacy`; the
+/// projection is computed by the caller (cargo-allow's migrate load, which
+/// already depends on legacy) and threaded in via `MigrateCloseoutInput`.
+/// See #2941.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MigrateBaselineDebtProjection {
+    pub signal: &'static str,
+    pub label: &'static str,
+}
+
+impl MigrateBaselineDebtProjection {
+    /// The default projection when no legacy lane descriptor resolves the
+    /// compat kinds (mirrors `baseline_debt_closeout_metadata(None)`).
+    pub const fn default_projection() -> Self {
+        Self {
+            signal: BASELINE_DEBT_ITEM_KIND,
+            label: "baseline debt entries",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MigrateLegacySource {
     pub file_name: String,
@@ -14,15 +47,10 @@ pub struct MigrateCloseoutInput<'a> {
     pub report: MigrateReport<'a>,
     pub missing_evidence_entries: usize,
     pub legacy_sources: &'a [MigrateLegacySource],
-}
-
-impl<'a> MigrateCloseoutInput<'a> {
-    pub(crate) fn legacy_compat_kind_ids(&self) -> Vec<&'static str> {
-        self.legacy_sources
-            .iter()
-            .map(|source| source.compat_kind)
-            .collect()
-    }
+    /// Baseline-debt closeout projection computed by the caller from the
+    /// legacy lane descriptors. Replaces the former `legacy_compat_kind_ids`
+    /// lookup that forced `allow-report` to depend on `allow-policy-legacy`.
+    pub baseline_debt_projection: MigrateBaselineDebtProjection,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -95,7 +123,7 @@ pub fn migrate_closeout_from_input(input: MigrateCloseoutInput<'_>) -> MigrateCl
     };
     let blockers = migrate_closeout_blockers(report.baseline_debt, &evidence_debt);
     let next_queues =
-        build_migrate_closeout_next_queues(report, &evidence_debt, &input.legacy_compat_kind_ids());
+        build_migrate_closeout_next_queues(report, &evidence_debt, input.baseline_debt_projection);
     let retirement_status = if blockers.is_empty() {
         "ready"
     } else {
@@ -419,6 +447,10 @@ mod tests {
             report,
             missing_evidence_entries: 0,
             legacy_sources: &legacy_sources,
+            baseline_debt_projection: MigrateBaselineDebtProjection {
+                signal: BASELINE_DEBT_ITEM_KIND,
+                label: "panic baseline debt entries",
+            },
         });
 
         assert_eq!(closeout.preserved.allow_entries, 1);
@@ -444,6 +476,10 @@ mod tests {
             report,
             missing_evidence_entries: 1,
             legacy_sources: &legacy_sources,
+            baseline_debt_projection: MigrateBaselineDebtProjection {
+                signal: BASELINE_DEBT_ITEM_KIND,
+                label: "panic baseline debt entries",
+            },
         });
 
         assert_eq!(closeout.preserved.reviewed_entries, 0);
