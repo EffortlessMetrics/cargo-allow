@@ -78,6 +78,48 @@ implementation plans, profile config, and CLI support. Historical goal
 artifacts remain available for navigation but are not current coordination
 state.
 
+## Current-Head Review
+
+PR review is a distinct read-only lifecycle stage, not a final author self-check.
+The canonical repository procedure is
+[`.agents/skills/review-current-head/SKILL.md`](../../.agents/skills/review-current-head/SKILL.md).
+
+A reviewer starts from live PR metadata and binds the verdict to the exact
+current head and intended base. The reviewer consumes the controlling issue,
+accepted requirement or implementation slice when one exists, the complete
+changed-file list and diff, current owner/consumer code, existing review
+threads, and exact-head checks or receipts.
+
+Review should be proportionate but independently consider the dimensions that
+can change the verdict:
+
+```text
+correctness and invariant preservation
+architecture and source-of-truth ownership
+integration and consumer coverage
+test/oracle grip and false-green paths
+security, privacy, release, and claim boundaries
+simplification and unnecessary machinery
+```
+
+The reviewer verifies bot and human findings against current code, avoids
+duplicate comments, and posts one bounded actionable review. Valid findings are
+consolidated into one repair packet for one writer. A reviewer who mutates the
+branch becomes an author of the new head; the prior review is stale.
+
+After any repair, fetch the new head, verify old dispositions against current
+code, rerun affected review dimensions, inspect repair-created edge cases, and
+reconcile exact-head CI and receipts again. Green CI alone is not merge
+readiness.
+
+Merge readiness requires the reviewed head to remain current, the PR to be
+non-draft and mergeable, substantive conversations to be resolved with
+current-head evidence, required checks to be terminal and green or explicitly
+not applicable, and no unreviewed author commit after the final review. Pending,
+cancelled, stale, malformed, action-required, and silently skipped evidence do
+not satisfy the gate. Merge remains followed by current-main verification and
+durable issue/spec/proof/worktree reconciliation.
+
 ## Current Work and Historical Goals
 
 Current work is identified by GitHub issues and PRs, accepted requirements, and
