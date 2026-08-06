@@ -130,19 +130,19 @@ pub struct CoreCommandActionV1 {
 }
 
 impl CoreCommandActionV1 {
+    #[allow(clippy::too_many_arguments)]
     pub fn command(
         id: impl Into<String>,
         title: impl Into<String>,
         program: impl Into<String>,
-        args: impl IntoIterator<Item = impl Into<String>>,
+        args: Vec<String>,
         write_posture: CoreCommandWritePostureV1,
-        may_write_paths: impl IntoIterator<Item = String>,
+        may_write_paths: Vec<String>,
         reason: impl Into<String>,
         expected_effect: impl Into<String>,
         proof_boundary: impl Into<String>,
     ) -> Self {
         let program = program.into();
-        let args = args.into_iter().map(Into::into).collect::<Vec<_>>();
         let display = render_argv_for_display(&program, &args);
         Self {
             id: id.into(),
@@ -152,7 +152,7 @@ impl CoreCommandActionV1 {
             args,
             display,
             write_posture,
-            may_write_paths: may_write_paths.into_iter().collect(),
+            may_write_paths,
             reason: reason.into(),
             expected_effect: expected_effect.into(),
             proof_boundary: proof_boundary.into(),
@@ -197,14 +197,14 @@ pub struct CoreCommandEffectsV1 {
 }
 
 impl CoreCommandEffectsV1 {
-    pub fn read_only(explicit_non_effects: impl IntoIterator<Item = String>) -> Self {
+    pub fn read_only(explicit_non_effects: Vec<String>) -> Self {
         Self {
             reads_repository: true,
             writes_repository: false,
             executes_repository_code: false,
             invokes_network: false,
             write_paths: Vec::new(),
-            explicit_non_effects: explicit_non_effects.into_iter().collect(),
+            explicit_non_effects,
         }
     }
 }
@@ -421,11 +421,7 @@ pub fn core_command_summary_from_adoption_plan(
         result_class,
         posture,
         completeness,
-        currentness: if result_class == ResultClassV1::StaleInput {
-            CurrentnessV1::Stale
-        } else {
-            CurrentnessV1::Current
-        },
+        currentness: CurrentnessV1::Current,
         reason: CoreCommandReasonV1 {
             code: format!(
                 "adoption.{}",
@@ -437,9 +433,7 @@ pub fn core_command_summary_from_adoption_plan(
         additional_action_count,
         additional_actions_ref: (additional_action_count > 0)
             .then_some("core_adoption_plan.follow_up_actions".to_string()),
-        operation_effects: CoreCommandEffectsV1::read_only(
-            plan.explicit_non_effects.clone(),
-        ),
+        operation_effects: CoreCommandEffectsV1::read_only(plan.explicit_non_effects.clone()),
         next_proof,
         artifacts: Vec::new(),
         claim_boundary: ClaimBoundaryV1::new(plan.claim_boundary.clone())
@@ -517,7 +511,7 @@ fn action_from_adoption(
         action.kind.as_str(),
         format!("Run {}", action.kind.as_str()),
         program.clone(),
-        argv.cloned(),
+        argv.cloned().collect(),
         write_posture,
         write_paths,
         action.reason.clone(),
@@ -822,6 +816,10 @@ mod tests {
         }
     }
 
+    fn strings(values: &[&str]) -> Vec<String> {
+        values.iter().map(|value| (*value).to_string()).collect()
+    }
+
     fn base_input(operation: &str) -> CoreCommandSummaryInputV1 {
         CoreCommandSummaryInputV1 {
             tool_version: "0.2.0".to_string(),
@@ -840,7 +838,7 @@ mod tests {
             primary_action: None,
             additional_action_count: 0,
             additional_actions_ref: None,
-            operation_effects: CoreCommandEffectsV1::read_only([
+            operation_effects: CoreCommandEffectsV1::read_only(vec![
                 "does not execute repository code".to_string(),
             ]),
             next_proof: None,
@@ -876,9 +874,9 @@ mod tests {
             "check.inspect_finding",
             "Inspect the new finding",
             "cargo-allow",
-            ["why", "--kind", "panic", "--path", "src/lib.rs", "--line", "42"],
+            strings(&["why", "--kind", "panic", "--path", "src/lib.rs", "--line", "42"]),
             CoreCommandWritePostureV1::ReadOnly,
-            [],
+            Vec::new(),
             "the blocking finding needs an exact explanation",
             "a bounded finding explanation is produced",
             "the explanation is not a policy mutation",
@@ -946,9 +944,9 @@ mod tests {
             "add.full_check",
             "Run the full no-new check",
             "cargo-allow",
-            ["check", "--mode", "no-new"],
+            strings(&["check", "--mode", "no-new"]),
             CoreCommandWritePostureV1::ReadOnly,
-            [],
+            Vec::new(),
             "targeted confirmation is not full repository proof",
             "the complete current repository posture is evaluated",
             "source-syntax evaluation does not prove compiled or runtime correctness",
@@ -998,19 +996,14 @@ mod tests {
             bootstrap_disposition: allow_report::BootstrapDisposition::FindingsNoPolicy,
             primary_action: allow_report::AdoptionAction {
                 kind: allow_report::AdoptionActionKind::PreviewPropose,
-                argv: vec!["cargo-allow".to_string(), "propose".to_string()],
+                argv: strings(&["cargo-allow", "propose"]),
                 reason: "preview before retaining debt".to_string(),
                 write_posture: allow_report::WritePosture::PreviewOnly,
                 expected_result: "candidate entries are reviewable".to_string(),
             },
             follow_up_actions: vec![allow_report::AdoptionAction {
                 kind: allow_report::AdoptionActionKind::RunNoNewCheck,
-                argv: vec![
-                    "cargo-allow".to_string(),
-                    "check".to_string(),
-                    "--mode".to_string(),
-                    "no-new".to_string(),
-                ],
+                argv: strings(&["cargo-allow", "check", "--mode", "no-new"]),
                 reason: "verify the selected policy".to_string(),
                 write_posture: allow_report::WritePosture::ReadOnly,
                 expected_result: "the full source-tree posture is evaluated".to_string(),
@@ -1038,7 +1031,11 @@ mod tests {
         )?;
         ensure(
             summary.next_proof.as_ref().is_some_and(|action| {
-                action.args == ["check", "--mode", "no-new"]
+                action
+                    .args
+                    .iter()
+                    .map(String::as_str)
+                    .eq(["check", "--mode", "no-new"])
             }),
             "adoption follow-up should expose the full check",
         )
@@ -1055,7 +1052,7 @@ mod tests {
             "check",
             CoreSourceSubjectV1::worktree("repo:test", "repo:test:worktree"),
             &error,
-            CoreCommandEffectsV1::read_only(Vec::<String>::new()),
+            CoreCommandEffectsV1::read_only(Vec::new()),
             None,
             ClaimBoundaryV1::new("source syntax only"),
         )?;
