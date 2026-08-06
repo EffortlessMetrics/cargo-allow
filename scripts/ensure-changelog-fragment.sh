@@ -31,7 +31,7 @@ run_expected() {
 }
 
 run_self_test() {
-  local tmp repo hook bad_index
+  local tmp repo hook bad_index orphan_hook
   tmp="$(mktemp -d)"
   SELF_TEST_TMP="${tmp}"
   trap 'rm -rf "${SELF_TEST_TMP}"' EXIT
@@ -66,7 +66,6 @@ FIXTURE
     git -C "${repo}" clean -fdq
   }
 
-  # An irrelevant staged path needs no fragment and emits no reminder.
   printf 'irrelevant\n' >> "${repo}/README.md"
   git -C "${repo}" add README.md
   run_expected 0 irrelevant-path "${hook}"
@@ -76,14 +75,12 @@ FIXTURE
     return 1
   }
 
-  # A committed historical fragment must not satisfy a new staged source edit.
   reset_fixture
   printf '// user-visible change\n' >> "${repo}/crates/demo/src/lib.rs"
   git -C "${repo}" add crates/demo/src/lib.rs
   run_expected 1 pre-existing-fragment "${hook}"
   grep -Fq 'no staged Changie fragment' <<<"${SELF_TEST_OUTPUT}"
 
-  # An untracked or nested fragment is outside the exact staged contract.
   cat > "${repo}/.changes/Unstaged.yaml" <<'FIXTURE'
 kind: Fixed
 body: Unstaged fixture fragment.
@@ -97,7 +94,6 @@ FIXTURE
   git -C "${repo}" add .changes/nested/Fixed.yaml
   run_expected 1 nested-fragment "${hook}"
 
-  # The same candidate passes once a root-level YAML fragment is staged.
   cat > "${repo}/.changes/Fixed-new.yaml" <<'FIXTURE'
 kind: Fixed
 body: Staged fixture fragment.
@@ -105,12 +101,10 @@ FIXTURE
   git -C "${repo}" add .changes/Fixed-new.yaml
   run_expected 0 staged-fragment "${hook}"
 
-  # Deleting an old fragment by itself is not a new fragment obligation.
   reset_fixture
   git -C "${repo}" rm -q .changes/Old.yaml
   run_expected 0 staged-deletion-only "${hook}"
 
-  # NUL-delimited path handling preserves spaces in selected paths/fragments.
   reset_fixture
   printf '// spaced change\n' >> "${repo}/crates/space dir/src/lib.rs"
   git -C "${repo}" add 'crates/space dir/src/lib.rs'
@@ -122,12 +116,18 @@ FIXTURE
   git -C "${repo}" add '.changes/Fixed with spaces.yaml'
   run_expected 0 spaced-path-with-fragment "${hook}"
 
-  # A copied hook resolves the worktree even when invoked elsewhere.
   pushd "${tmp}" >/dev/null
   run_expected 0 invoked-outside-root "${hook}"
   popd >/dev/null
 
-  # A broken index is an instrument failure, never "no relevant paths".
+  orphan_hook="${tmp}/orphan-pre-commit"
+  cp "${SCRIPT_PATH}" "${orphan_hook}"
+  chmod +x "${orphan_hook}"
+  pushd "${repo}" >/dev/null
+  run_expected 1 orphan-hook-refuses-pwd "${orphan_hook}"
+  popd >/dev/null
+  grep -Fq 'unable to resolve the Git worktree' <<<"${SELF_TEST_OUTPUT}"
+
   reset_fixture
   printf '// staged before index failure\n' >> "${repo}/crates/demo/src/lib.rs"
   git -C "${repo}" add crates/demo/src/lib.rs
@@ -146,7 +146,7 @@ fi
 
 resolve_root() {
   local candidate root
-  for candidate in "${SCRIPT_DIR}/.." "${SCRIPT_DIR}/../.." "${PWD}"; do
+  for candidate in "${SCRIPT_DIR}/.." "${SCRIPT_DIR}/../.."; do
     if root="$(git -C "${candidate}" rev-parse --show-toplevel 2>/dev/null)"; then
       printf '%s\n' "${root}"
       return 0
