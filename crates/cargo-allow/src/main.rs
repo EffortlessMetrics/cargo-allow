@@ -11,6 +11,7 @@ mod command_support;
 mod companion;
 mod compat;
 mod completions;
+pub mod core_command_summary;
 mod diff;
 #[cfg(test)]
 mod diff_json_test_support;
