@@ -1,0 +1,65 @@
+name: One-shot review-current-head policy repair
+
+on:
+  push:
+    branches:
+      - agent/review-current-head-skill-3161
+    paths:
+      - .github/workflows/_review-current-head-policy-repair.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: agent/review-current-head-skill-3161
+          fetch-depth: 0
+
+      - name: Add the exact source-exception receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! grep -Fq 'id = "allow-0513"' policy/allow.toml; then
+            cat >> policy/allow.toml <<'EOF'
+
+          [[allow]]
+          id = "allow-0513"
+          kind = "non_rust_file"
+          family = "documentation"
+          path = ".agents/skills/review-current-head/SKILL.md"
+          owner = "core/devex"
+          classification = "agent_skill"
+          reason = "Defines the repository-native exact-head pull-request review, repair, re-review, and merge-readiness contract without executing reviews or replacing CI or branch protection."
+          evidence = ["issue:3161", "doc:AGENTS.md", "doc:CONTRIBUTING.md", "test:current_head_review_skill_contract_is_wired"]
+          created = "2026-08-06"
+          review_after = "2027-02-01"
+
+          [allow.selector]
+          ast_kind = "tracked_file"
+          symbol = ".agents/skills/review-current-head/SKILL.md"
+          target_fingerprint = "md"
+          glob = ".agents/skills/review-current-head/SKILL.md"
+
+          [allow.last_seen]
+          line = 1
+          column = 1
+          EOF
+          fi
+          rm .github/workflows/_review-current-head-policy-repair.yml
+          git diff --check
+
+      - name: Commit the reviewable source tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name EffortlessSteven
+          git config user.email git@effortlesssteven.com
+          git add policy/allow.toml .github/workflows/_review-current-head-policy-repair.yml
+          git commit -m 'policy(skills): receipt current-head review skill'
+          git push origin HEAD:agent/review-current-head-skill-3161
