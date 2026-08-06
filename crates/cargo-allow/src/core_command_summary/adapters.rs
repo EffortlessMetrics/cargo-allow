@@ -17,13 +17,17 @@ pub fn core_command_summary_from_adoption_plan(
         allow_report::InventoryCompleteness::Unknown => CompletenessV1::Unknown,
     };
     let primary_action = action_from_adoption(&plan.primary_action, &plan.may_write_paths)?;
-    let next_proof = plan
+    let next_proof_index = plan
         .follow_up_actions
         .iter()
-        .find(|action| action.kind == allow_report::AdoptionActionKind::RunNoNewCheck)
-        .map(|action| action_from_adoption(action, &[]))
+        .position(|action| action.kind == allow_report::AdoptionActionKind::RunNoNewCheck);
+    let next_proof = next_proof_index
+        .map(|index| action_from_adoption(&plan.follow_up_actions[index], &[]))
         .transpose()?;
-    let additional_action_count = plan.follow_up_actions.len();
+    let additional_action_count = plan
+        .follow_up_actions
+        .len()
+        .saturating_sub(usize::from(next_proof_index.is_some()));
 
     build_core_command_summary(CoreCommandSummaryInputV1 {
         tool_version: plan.tool_version.clone(),
@@ -47,8 +51,12 @@ pub fn core_command_summary_from_adoption_plan(
         },
         primary_action: Some(primary_action),
         additional_action_count,
-        additional_actions_ref: (additional_action_count > 0)
-            .then_some("core_adoption_plan.follow_up_actions".to_string()),
+        additional_actions_ref: (additional_action_count > 0).then_some(format!(
+            "core_adoption_plan.follow_up_actions?exclude_index={}",
+            next_proof_index
+                .map(|index| index.to_string())
+                .unwrap_or_else(|| "none".to_string())
+        )),
         operation_effects: CoreCommandEffectsV1::read_only(plan.explicit_non_effects.clone()),
         next_proof,
         artifacts: Vec::new(),
@@ -115,15 +123,22 @@ fn action_from_adoption(
     let Some(program) = argv.next() else {
         return Err("adoption action argv must include a program".to_string());
     };
-    let write_posture = match action.write_posture {
-        allow_report::WritePosture::ReadOnly => CoreCommandWritePostureV1::ReadOnly,
-        allow_report::WritePosture::PreviewOnly => CoreCommandWritePostureV1::PreviewOnly,
-        allow_report::WritePosture::MayWrite => CoreCommandWritePostureV1::LiveMutation,
-    };
-    let write_paths = if action.write_posture == allow_report::WritePosture::MayWrite {
-        may_write_paths.to_vec()
-    } else {
-        Vec::new()
+    let (write_posture, write_paths) = match action.write_posture {
+        allow_report::WritePosture::ReadOnly => {
+            (CoreCommandWritePostureV1::ReadOnly, Vec::new())
+        }
+        allow_report::WritePosture::PreviewOnly => {
+            (CoreCommandWritePostureV1::PreviewOnly, Vec::new())
+        }
+        allow_report::WritePosture::MayWrite if may_write_paths.is_empty() => {
+            return Err(
+                "adoption MayWrite action requires policy.path-derived may_write_paths".to_string(),
+            );
+        }
+        allow_report::WritePosture::MayWrite => (
+            CoreCommandWritePostureV1::LiveMutation,
+            may_write_paths.to_vec(),
+        ),
     };
 
     Ok(CoreCommandActionV1::command(
@@ -192,16 +207,6 @@ fn error_result(kind: CargoAllowErrorKind) -> (ResultClassV1, CompletenessV1, Cu
             ResultClassV1::Unsupported,
             CompletenessV1::Unknown,
             CurrentnessV1::NotProbed,
-        ),
-        CargoAllowErrorKind::Inventory
-        | CargoAllowErrorKind::Scan
-        | CargoAllowErrorKind::Artifact
-        | CargoAllowErrorKind::InstrumentFailure
-        | CargoAllowErrorKind::Internal
-        | CargoAllowErrorKind::Unknown => (
-            ResultClassV1::InstrumentFailure,
-            CompletenessV1::Unknown,
-            CurrentnessV1::PartialOrUnavailable,
         ),
         _ => (
             ResultClassV1::InstrumentFailure,
