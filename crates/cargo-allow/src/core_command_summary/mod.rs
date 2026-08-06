@@ -125,7 +125,6 @@ pub struct CoreCommandActionV1 {
     pub program: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub args: Vec<String>,
-    pub display: String,
     pub write_posture: CoreCommandWritePostureV1,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub may_write_paths: Vec<String>,
@@ -141,15 +140,12 @@ impl CoreCommandActionV1 {
         program: impl Into<String>,
         args: Vec<String>,
     ) -> Self {
-        let program = program.into();
-        let display = render::render_argv_for_display(&program, &args);
         Self {
             id: id.into(),
             kind: CoreCommandActionKindV1::Command,
             title: title.into(),
-            program: Some(program),
+            program: Some(program.into()),
             args,
-            display,
             write_posture: CoreCommandWritePostureV1::ReadOnly,
             may_write_paths: Vec::new(),
             reason: String::new(),
@@ -159,12 +155,10 @@ impl CoreCommandActionV1 {
     }
 
     pub fn decision(id: impl Into<String>, title: impl Into<String>) -> Self {
-        let title = title.into();
         Self {
             id: id.into(),
             kind: CoreCommandActionKindV1::Decision,
-            display: title.clone(),
-            title,
+            title: title.into(),
             program: None,
             args: Vec::new(),
             write_posture: CoreCommandWritePostureV1::ReadOnly,
@@ -412,7 +406,6 @@ pub fn validate_core_command_summary(summary: &CoreCommandSummaryV1) -> Result<(
 fn validate_action(action: &CoreCommandActionV1) -> Result<(), String> {
     require_non_empty("action.id", &action.id)?;
     require_non_empty("action.title", &action.title)?;
-    require_non_empty("action.display", &action.display)?;
     require_non_empty("action.reason", &action.reason)?;
     require_non_empty("action.expected_effect", &action.expected_effect)?;
     require_non_empty("action.proof_boundary", &action.proof_boundary)?;
