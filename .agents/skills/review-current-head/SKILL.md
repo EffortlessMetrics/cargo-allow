@@ -1,6 +1,6 @@
 ---
 name: review-current-head
-description: Review or re-review an open pull request's exact current head, disposition existing feedback, and verify merge readiness without mutating the branch. Use when asked to review a PR, re-review after repairs, validate review threads, synthesize a repair packet, or decide whether a PR is merge-ready. Do not use as the primary implementation or repair skill.
+description: Review or re-review an open pull request's exact current base/head pair, disposition existing feedback, and verify merge readiness without mutating the branch. Use when asked to review a PR, re-review after repairs, validate review threads, synthesize a repair packet, or decide whether a PR is merge-ready. Do not use as the primary implementation or repair skill.
 ---
 
 # Review Current Head
@@ -13,7 +13,7 @@ Use this skill when the task is to:
 - re-review a PR after the author, a bot, or CI-driven repair changed its head;
 - verify whether existing review comments remain valid on current code;
 - consolidate review findings into one repair packet;
-- decide whether an exact PR head is merge-ready.
+- decide whether an exact PR base/head pair is merge-ready.
 
 Do not use this skill as the primary implementation workflow, for broad issue
 research before a PR exists, or to fix the branch while claiming independent
@@ -27,26 +27,30 @@ Bind the review to live, retrievable identities:
 ```text
 repository and pull-request number
 current head SHA
-current base SHA/ref
+current base ref and base SHA
+current merge-base SHA when distinct or relevant
 PR draft and mergeability state
 controlling issue/spec/requirement/implementation slice, when present
 PR purpose, non-goals, claim boundary, and rollback posture
-complete changed-file list and diff
+complete changed-file list and effective diff
 current file contents and relevant callers/consumers
 existing review threads, submissions, and top-level feedback
-required and current checks for the exact head
+required and current checks for the exact base/head pair
 retained proof or receipt identities claimed by the PR
 ```
 
 Refresh these inputs before reviewing. If the live head changes during the
-review, stop. Findings and check results for the prior head remain historical
-evidence; restart from the new exact head.
+review, stop. If the base SHA or merge-base changes, recompute the effective
+diff and invalidate every affected review dimension before continuing. Findings
+and check results for the prior base/head pair remain historical evidence; they
+do not review the new pair.
 
 ## Review Procedure
 
 ### 1. Reconcile live state
 
-- Confirm the repository, PR number, base, and exact current head.
+- Confirm the repository, PR number, exact current head, base ref, base SHA, and
+  effective merge base.
 - Confirm whether the PR is draft, mergeable, conflicted, closed, or superseded.
 - Inspect the controlling issue and any accepted specification or PR-local
   implementation slice.
@@ -104,9 +108,10 @@ release, and support claims where relevant.
 ### Test and oracle grip
 
 Determine whether tests discriminate the claimed behavior and the observed
-failure. Require negative, adversarial, stale-head, replay, collision, partial,
-and instrument-failure cases when those can create a false green. Process exit
-success, field resemblance, or one happy-path fixture is not semantic parity.
+failure. Require negative, adversarial, stale-head, changed-base, replay,
+collision, partial, and instrument-failure cases when those can create a false
+green. Process exit success, field resemblance, or one happy-path fixture is
+not semantic parity.
 
 ### Security, privacy, release, and claim boundaries
 
@@ -125,7 +130,8 @@ machinery that can be a private module instead of a package or protocol.
 
 CI is evidence, not the review authority.
 
-- Bind every check, receipt, and external result to the exact reviewed head.
+- Bind every check, receipt, and external result to the exact reviewed
+  base/head pair and relevant tool/configuration identity.
 - Distinguish `failed`, `pending`, `cancelled`, `skipped`, `not applicable`,
   `stale`, `malformed`, `not proven`, and `action required`.
 - Classify failures as product, test/oracle, policy, instrument, infrastructure,
@@ -143,7 +149,7 @@ architecture, or release readiness.
 ## Finding Contract
 
 Post only findings that are current, actionable, and supported by the reviewed
-head. Each finding should state:
+base/head pair. Each finding should state:
 
 ```text
 posture or severity
@@ -173,50 +179,61 @@ bot claims against current code and primary contracts before adopting them.
 ## Posting Discipline
 
 - Prefer one batched review over streaming individual comments.
-- State the exact reviewed head SHA in the review body.
+- State the exact reviewed base SHA, merge-base SHA when relevant, and head SHA
+  in the review body.
+- Re-fetch those identities immediately before submitting the review. If the
+  pair changed, do not post the stale verdict; restart the affected review.
 - Anchor inline comments to current lines when possible.
 - Put cross-file or missing-location findings in the review body.
 - Do not resolve a thread merely because the author replied; verify the fix or
   refutation on current code.
-- Keep prior-head comments as historical evidence instead of pretending they
-  reviewed the repaired head.
+- Keep prior-pair comments as historical evidence instead of pretending they
+  reviewed the repaired or rebased PR.
 - Consolidate valid findings into one repair packet for one writer. Several
   reviewers must not push competing fixes.
 
-A clean review should state the reviewed head, review dimensions exercised,
-check/evidence posture, and absence of actionable findings. Do not use `LGTM` as
-an evidence substitute.
+A clean review should state the reviewed base/head pair, review dimensions
+exercised, check/evidence posture, and absence of actionable findings. Do not
+use `LGTM` as an evidence substitute.
 
 ## Re-review After Repairs
 
-Any repair that changes the head invalidates the affected review evidence.
+Any repair that changes the head invalidates the affected review evidence. A
+base or merge-base change can also change the effective patch and invalidates
+the affected dimensions even when the head SHA is unchanged.
+
 Perform a fresh affected review:
 
 ```text
-fetch the new exact head
+fetch the new exact base/head pair
+→ compare it with the previously reviewed pair
 → verify every prior disposition against current code
 → rerun the affected review passes
-→ inspect edge cases introduced by the repair
-→ inspect exact-head CI and receipts again
+→ inspect edge cases introduced by the repair or new base
+→ inspect exact-pair CI and receipts again
 → post or record the fresh verdict
 ```
 
-New defects can be introduced by a correct repair. Do not limit re-review to
-checking that old comments were mechanically addressed.
+New defects can be introduced by a correct repair or by interaction with newly
+merged base changes. Do not limit re-review to checking that old comments were
+mechanically addressed.
 
 ## Merge Readiness
 
 A PR is merge-ready only when all applicable statements are true:
 
-- the reviewed head still equals the live PR head;
+- the reviewed head, base SHA/ref, and effective merge base still match the live
+  PR state used for the verdict;
 - the PR is non-draft and mergeable against the intended base;
-- every substantive review thread is resolved with current-head evidence;
+- every substantive inline thread and top-level review conversation is resolved
+  with current-pair evidence;
 - all required checks are terminal and green, or explicitly accepted as not
   applicable under repository policy;
 - pending, cancelled, stale, malformed, action-required, and silently skipped
   evidence are not treated as green;
-- claimed tests and receipts belong to the exact head;
-- no author commit landed after the final current-head review;
+- claimed tests and receipts belong to the exact base/head pair;
+- no author commit or material base change landed after the final current-pair
+  review;
 - source-exception, schema, documentation, changelog, package, support, and
   release impacts are reconciled where applicable;
 - the merge is head-pinned where the platform permits;
@@ -229,9 +246,10 @@ Green CI alone is not merge readiness. Merge is not closeout.
 
 Return a blocked or not-proven review instead of guessing when:
 
-- the PR, diff, controlling issue, current head, or required checks cannot be
-  read;
+- the PR, diff, controlling issue, current head, base identity, merge base, or
+  required checks cannot be read;
 - the head changes during review;
+- the base or merge base changed and the effective diff was not reconciled;
 - the source-of-truth owner or accepted contract is materially ambiguous;
 - a required external receipt is absent, stale, malformed, or for another
   subject;
@@ -243,11 +261,11 @@ Return a blocked or not-proven review instead of guessing when:
 Return a compact review packet:
 
 ```text
-repository / PR / base / reviewed head
+repository / PR / reviewed base SHA / merge base / reviewed head SHA
 verdict
 review dimensions exercised or skipped with reason
 actionable findings and dispositions
-exact-head check and receipt posture
+exact-pair check and receipt posture
 unresolved contradiction or root decision
 one recommended next action
 claim boundary
@@ -258,8 +276,8 @@ copying them into every review summary.
 
 ## Claim Boundary
 
-This skill standardizes read-only, exact-head pull-request review,
-feedback disposition, re-review after repair, and merge-readiness verification.
-It does not execute tests, certify semantic correctness, replace deterministic
-CI or branch protection, authorize publication, or make model output
-repository authority.
+This skill standardizes read-only, exact-base/head pull-request review,
+feedback disposition, re-review after repair or base movement, and
+merge-readiness verification. It does not execute tests, certify semantic
+correctness, replace deterministic CI or branch protection, authorize
+publication, or make model output repository authority.
