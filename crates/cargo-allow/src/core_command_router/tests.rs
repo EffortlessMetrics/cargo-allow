@@ -1,7 +1,7 @@
 use super::*;
 use allow_core::{Finding, MatchOutcome};
 use allow_inventory::InventorySource;
-use serde_json::Value;
+use serde_json::{Map, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -64,6 +64,32 @@ fn human_report_starts_with_the_common_summary() -> Result<(), String> {
 }
 
 #[test]
+fn non_core_report_commands_delegate_without_a_summary() -> Result<(), String> {
+    let root = temp_root("delegation").map_err(|error| error.to_string())?;
+    let output = root.join("report.txt");
+    let mut args = report_args(
+        &root,
+        Some(&output),
+        OutputFormat::Human,
+        &[],
+        &[],
+        crate::InventoryFacts::scanned(InventorySource::GitTracked, 1),
+    );
+    args.command = "other";
+    print_report(args).map_err(|error| error.to_string())?;
+    let text = fs::read_to_string(&output).map_err(|error| error.to_string())?;
+    require(
+        !text.starts_with("Result:"),
+        format!("non-core command received a common summary: {text}"),
+    )?;
+    require(
+        text.contains("cargo-allow other"),
+        "delegated detailed report was not preserved",
+    )?;
+    fs::remove_dir_all(root).map_err(|error| error.to_string())
+}
+
+#[test]
 fn json_detail_is_byte_equal_to_the_existing_renderer() -> Result<(), String> {
     let root = temp_root("json").map_err(|error| error.to_string())?;
     let expected_path = root.join("expected.json");
@@ -94,6 +120,26 @@ fn json_detail_is_byte_equal_to_the_existing_renderer() -> Result<(), String> {
     let actual = fs::read(&actual_path).map_err(|error| error.to_string())?;
     require(expected == actual, "detailed JSON bytes changed")?;
     fs::remove_dir_all(root).map_err(|error| error.to_string())
+}
+
+#[test]
+fn canonical_json_sorting_is_recursive_and_deterministic() -> Result<(), String> {
+    let mut nested = Map::new();
+    nested.insert("z".to_string(), Value::from(1));
+    nested.insert("a".to_string(), Value::from(2));
+    let mut root = Map::new();
+    root.insert("z".to_string(), Value::Object(nested));
+    root.insert("a".to_string(), Value::from(3));
+    let mut value = Value::Object(root);
+    sort_json_keys(&mut value);
+    let bytes = serde_json::to_vec(&value).map_err(|error| error.to_string())?;
+    require(
+        bytes == br#"{"a":3,"z":{"a":2,"z":1}}"#,
+        format!(
+            "canonical JSON order changed: {}",
+            String::from_utf8_lossy(&bytes)
+        ),
+    )
 }
 
 #[test]
@@ -157,6 +203,24 @@ fn partial_inventory_cannot_render_as_satisfied() -> Result<(), String> {
     require(
         summary.posture == CoreCommandPostureV1::Blocking,
         "partial inventory did not remain blocking",
+    )?;
+    fs::remove_dir_all(root).map_err(|error| error.to_string())
+}
+
+#[test]
+fn scoped_inventory_with_a_later_scanner_skip_remains_partial() -> Result<(), String> {
+    let root = temp_root("scoped-skip").map_err(|error| error.to_string())?;
+    let facts = crate::InventoryFacts::scanned(InventorySource::GitTracked, 1)
+        .with_rust_files_skipped(1);
+    let args = report_args(&root, None, OutputFormat::Json, &[], &[], facts);
+    let summary = build_report_summary(&args).map_err(|error| error.to_string())?;
+    require(
+        summary.completeness == CompletenessV1::Partial,
+        "scoped inventory hid a later Rust scanner skip",
+    )?;
+    require(
+        summary.result_class == ResultClassV1::PartialData,
+        "scoped inventory with scanner omissions did not remain partial-data",
     )?;
     fs::remove_dir_all(root).map_err(|error| error.to_string())
 }
