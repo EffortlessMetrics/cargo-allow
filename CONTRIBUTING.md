@@ -168,7 +168,7 @@ integration, test-oracle, security, simplification, or release review.
 
 A substantive review must:
 
-- record the exact current head and intended base;
+- record the exact current head, base SHA/ref, and effective merge base;
 - reconstruct the controlling issue/specification and compare it to the actual
   diff;
 - inspect every changed file plus relevant owners, callers, consumers, schemas,
@@ -178,19 +178,22 @@ A substantive review must:
 - post one bounded actionable review rather than streaming generic comments;
 - leave repair to one writer.
 
-Any author or repair commit makes the affected review evidence stale. Re-review
-the new exact head, verify prior dispositions against current code, inspect
-repair-created edge cases, and inspect exact-head CI and receipts again. A
-reviewer who pushes a fix is an author of the new head and cannot count the old
-review as independent verification.
+Any author or repair commit makes the affected review evidence stale. A material
+base or merge-base change can also change the effective patch and invalidates
+the affected review dimensions. Re-review the new exact pair, verify prior
+dispositions against current code, inspect repair- or base-created edge cases,
+and inspect exact-pair CI and receipts again. A reviewer who pushes a fix is an
+author of the new head and cannot count the old review as independent
+verification.
 
-A PR is merge-ready only when the final reviewed head still equals the live PR
-head, the PR is non-draft and mergeable, substantive conversations are resolved
-with current-head evidence, and all required checks are terminal and green or
-explicitly not applicable under repository policy. Pending, cancelled, stale,
-malformed, action-required, and silently skipped evidence are not green. Green
-CI alone is not merge readiness. Prefer a head-pinned merge and complete the
-post-merge main, issue, branch, and worktree reconciliation.
+A PR is merge-ready only when the final reviewed head, base SHA/ref, and merge
+base still equal the live effective PR pair, the PR is non-draft and mergeable,
+substantive conversations are resolved with current-pair evidence, and all
+required checks are terminal and green or explicitly not applicable under
+repository policy. Pending, cancelled, stale, malformed, action-required, and
+silently skipped evidence are not green. Green CI alone is not merge readiness.
+Prefer a head-pinned merge and complete the post-merge main, issue, branch, and
+worktree reconciliation.
 
 ## Documentation
 
