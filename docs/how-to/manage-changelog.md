@@ -82,12 +82,21 @@ round-trip behavior.
 
 ## Optional pre-commit convention
 
-Install the repository convenience hook with:
+Install the repository convenience hook through Git's active hook path:
 
 ```bash
-cp scripts/ensure-changelog-fragment.sh .git/hooks/pre-commit
-chmod +x .git/hooks/pre-commit
+hook_path="$(git rev-parse --path-format=absolute --git-path hooks/pre-commit)"
+mkdir -p "$(dirname "${hook_path}")"
+cp scripts/ensure-changelog-fragment.sh "${hook_path}"
+chmod +x "${hook_path}"
 ```
+
+This avoids assuming `.git` is a directory. Linked worktrees share the common
+hook path but retain independent worktree roots and indexes; the hook resolves
+the active worktree from Git's invocation context and verifies that its own
+path is the active repository hook or source copy before inspecting the index.
+An orphaned copy does not adopt a repository merely from the caller's current
+directory.
 
 The hook evaluates the exact Git index candidate. When the staged diff contains
 an added, copied, modified, or renamed path under `crates/`, `scripts/`, or
@@ -102,9 +111,10 @@ These do not satisfy the check:
 - a nested YAML file;
 - `.changes/README.md`, a Markdown version note, or a version marker.
 
-A missing staged fragment exits non-zero. A Git/index inventory failure is also
-non-clean rather than being treated as an empty staged candidate. For a change
-that is intentionally not user-facing, the explicit bypass remains:
+A missing staged fragment exits non-zero. A Git/index inventory failure or an
+untrusted worktree identity is also non-clean rather than being treated as an
+empty staged candidate. For a change that is intentionally not user-facing,
+the explicit bypass remains:
 
 ```bash
 git commit --no-verify
@@ -114,7 +124,8 @@ The hook is a path-based per-commit convention. It does not decide whether a
 change is semantically user-facing and it does not validate fragment contents;
 run the pinned dry-run preview separately.
 
-The hook's isolated Git characterization can be run directly:
+The hook's isolated Git characterization includes ordinary and linked
+worktrees and can be run directly:
 
 ```bash
 bash scripts/ensure-changelog-fragment.sh --self-test
