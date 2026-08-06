@@ -5,6 +5,7 @@ pub(crate) use crate::cli_types::{
 };
 pub(crate) use crate::companion::{canonical_companion_findings, extend_unique_findings};
 pub(crate) use crate::compat::load_compat_world;
+pub(crate) use crate::core_command_router::print_report;
 pub(crate) use crate::kind_filter::{
     FamilyFilter, KindFilter, is_clippy_compat_kind, is_dependency_surface_compat_kind,
     is_executable_compat_kind, is_network_compat_kind, is_no_panic_allowlist_compat_kind,
@@ -21,7 +22,7 @@ pub(crate) use repo_edit::{write_file, write_file_no_overwrite};
 pub(crate) use std::path::Path;
 
 pub(crate) use crate::reporting::{
-    EvidenceReportSummary, ReportRenderArgs, SourceTreeReportContext, print_report, report_config,
+    EvidenceReportSummary, ReportRenderArgs, SourceTreeReportContext, report_config,
 };
 pub(crate) use crate::selector::selector_from_finding;
 pub(crate) use crate::world::{
