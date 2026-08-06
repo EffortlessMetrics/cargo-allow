@@ -19,7 +19,7 @@ fn current_head_review_skill_contract_is_wired() -> Result<(), Box<dyn Error>> {
         "review-current-head skill must retain its canonical front matter",
     )?;
     for marker in [
-        "description: Review or re-review an open pull request's exact current head",
+        "description: Review or re-review an open pull request's exact current base/head pair",
         "## Trigger",
         "## Inputs",
         "## Review Procedure",
@@ -33,6 +33,8 @@ fn current_head_review_skill_contract_is_wired() -> Result<(), Box<dyn Error>> {
         "## Output",
         "## Claim Boundary",
         "If the live head changes during the review, stop.",
+        "If the base SHA or merge-base changes",
+        "Re-fetch those identities immediately before submitting the review.",
         "DuplicateOrSuperseded",
         "StaleAfterHeadChange",
         "Green CI alone is not merge readiness.",
@@ -80,7 +82,9 @@ fn current_head_review_skill_contract_is_wired() -> Result<(), Box<dyn Error>> {
         "Exact head intended for review",
         "Highest-risk invariants or failure modes",
         "## Review readiness",
+        "Final reviewed base and merge-base:",
         "Final reviewed head:",
+        "Final review source and independence posture:",
         "Required-check and unresolved-thread disposition:",
     ] {
         require_contains(&template, marker, "pull request template")?;
