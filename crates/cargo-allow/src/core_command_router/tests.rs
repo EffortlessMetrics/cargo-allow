@@ -210,8 +210,8 @@ fn partial_inventory_cannot_render_as_satisfied() -> Result<(), String> {
 #[test]
 fn scoped_inventory_with_a_later_scanner_skip_remains_partial() -> Result<(), String> {
     let root = temp_root("scoped-skip").map_err(|error| error.to_string())?;
-    let facts = crate::InventoryFacts::scanned(InventorySource::GitTracked, 1)
-        .with_rust_files_skipped(1);
+    let facts =
+        crate::InventoryFacts::scanned(InventorySource::GitTracked, 1).with_rust_files_skipped(1);
     let args = report_args(&root, None, OutputFormat::Json, &[], &[], facts);
     let summary = build_report_summary(&args).map_err(|error| error.to_string())?;
     require(

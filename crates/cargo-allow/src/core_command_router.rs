@@ -311,13 +311,11 @@ fn report_completeness(args: &ReportRenderArgs<'_>) -> CompletenessV1 {
     {
         return CompletenessV1::Partial;
     }
+    // `allow_inventory::inventory` assigns Partial before Scoped when deleted,
+    // submodule, or skipped paths exist. The explicit Rust scanner checks above
+    // cover later read/parse omissions.
     match args.inventory_facts.completeness {
-        InventoryCompleteness::Complete | InventoryCompleteness::Scoped => {
-            // `allow_inventory::inventory` assigns Partial before Scoped when
-            // deleted, submodule, or skipped paths exist. The explicit Rust
-            // scanner checks above cover later read/parse omissions.
-            CompletenessV1::Complete
-        }
+        InventoryCompleteness::Complete | InventoryCompleteness::Scoped => CompletenessV1::Complete,
         InventoryCompleteness::Fallback | InventoryCompleteness::Partial => CompletenessV1::Partial,
     }
 }
