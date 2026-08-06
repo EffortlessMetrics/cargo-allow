@@ -8,10 +8,10 @@ mod check;
 mod cli;
 mod cli_types;
 mod command_support;
-pub mod core_command_summary;
 mod companion;
 mod compat;
 mod completions;
+pub mod core_command_summary;
 mod diff;
 #[cfg(test)]
 mod diff_json_test_support;
