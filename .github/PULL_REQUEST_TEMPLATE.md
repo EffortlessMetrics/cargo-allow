@@ -56,6 +56,8 @@ merge-readiness verification.
 
 Final reviewed head:
 
+Final review source and independence posture:
+
 Required-check and unresolved-thread disposition:
 
 ## Review notes
