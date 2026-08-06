@@ -1,12 +1,8 @@
 use repo_protocol::ResultClassV1;
 
-use super::{
-    CoreCommandPostureV1, CoreCommandSummaryV1, validate_core_command_summary,
-};
+use super::{CoreCommandPostureV1, CoreCommandSummaryV1, validate_core_command_summary};
 
-pub fn render_core_command_summary_json(
-    summary: &CoreCommandSummaryV1,
-) -> Result<String, String> {
+pub fn render_core_command_summary_json(summary: &CoreCommandSummaryV1) -> Result<String, String> {
     validate_core_command_summary(summary)?;
     serde_json::to_string_pretty(summary).map_err(|error| error.to_string())
 }
