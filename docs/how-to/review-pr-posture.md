@@ -3,6 +3,11 @@
 Use this guide when a pull request changes source exceptions or policy
 receipts and you need to decide what a reviewer should do next.
 
+For complete correctness, architecture, integration, test-oracle, security,
+simplification, exact-head, and merge-readiness review, follow the canonical
+[review-current-head skill](../../.agents/skills/review-current-head/SKILL.md).
+This guide supplies the source-exception posture dimension only.
+
 > Maturity: `diff` is Stable in published `0.1.11` and Stabilizing on current
 > main. See the [command maturity table](../status/SUPPORT_TIERS.md#command-maturity).
 
