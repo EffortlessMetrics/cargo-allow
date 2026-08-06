@@ -29,6 +29,7 @@ repository and pull-request number
 current head SHA
 current base ref and base SHA
 current merge-base SHA when distinct or relevant
+synthetic merge/check commit identity when the provider evaluates one
 PR draft and mergeability state
 controlling issue/spec/requirement/implementation slice, when present
 PR purpose, non-goals, claim boundary, and rollback posture
@@ -132,6 +133,9 @@ CI is evidence, not the review authority.
 
 - Bind every check, receipt, and external result to the exact reviewed
   base/head pair and relevant tool/configuration identity.
+- When a provider evaluates a synthetic merge or queue commit, record that
+  commit and verify its parents correspond to the reviewed base/head pair. Do
+  not present synthetic-merge evidence as bare-head evidence.
 - Distinguish `failed`, `pending`, `cancelled`, `skipped`, `not applicable`,
   `stale`, `malformed`, `not proven`, and `action required`.
 - Classify failures as product, test/oracle, policy, instrument, infrastructure,
@@ -168,6 +172,7 @@ NonBlocking
 RefutedWithEvidence
 DuplicateOrSuperseded
 StaleAfterHeadChange
+StaleAfterBaseChange
 AcceptedFollowUp
 RootDecisionRequired
 ```
