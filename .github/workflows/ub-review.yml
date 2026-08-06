@@ -30,6 +30,8 @@ jobs:
       - name: Install exact Changie module
         env:
           GOBIN: ${{ runner.temp }}/changie-bin
+          GOPROXY: https://proxy.golang.org
+          GOSUMDB: sum.golang.org
           GOTOOLCHAIN: local
         run: |
           set -euo pipefail
@@ -69,10 +71,14 @@ jobs:
             echo 'Changie accepted an unknown configured kind' >&2
             exit 1
           fi
+          grep -Fq 'invalid kind: NotAConfiguredKind' "${tmp}/invalid-kind.out"
 
           "${CHANGIE_BIN}" batch v999.0.0 --dry-run > "${tmp}/batch.md"
           grep -Fq '## [999.0.0] - ' "${tmp}/batch.md"
           grep -Fq '### Fixed' "${tmp}/batch.md"
+          grep -Fq \
+            'Add an exact Go 1.25 and Changie 1.25.2 compatibility lane' \
+            "${tmp}/batch.md"
 
           git status --porcelain=v1 --untracked-files=all > "${tmp}/after.status"
           git diff --binary --no-ext-diff HEAD -- > "${tmp}/after.worktree.diff"
