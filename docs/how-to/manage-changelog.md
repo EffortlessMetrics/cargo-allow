@@ -1,65 +1,100 @@
 # Manage the Changelog
 
-cargo-allow uses [changie](https://github.com/miniscruff/changie) for
-fragment-based changelog management. Each change creates a small YAML
-fragment under `.changes/`; fragments are batched into `CHANGELOG.md`
-on release.
+cargo-allow uses [Changie](https://github.com/miniscruff/changie) for
+fragment authoring and non-mutating release-note previews. Each user-facing
+change adds a small YAML fragment under `.changes/`.
 
-## Install changie
+The repository compatibility contract is currently pinned to Changie `1.25.2`.
+
+## Install the pinned version
+
+For the exact source-installed version used by the compatibility lane:
 
 ```bash
-# macOS
-brew install changie
-
-# Linux: download from https://github.com/miniscruff/changie/releases
-# Go
-go install github.com/miniscruff/changie/v2@latest
+go install github.com/miniscruff/changie@v1.25.2
 ```
 
-Verify: `changie --version`
+Packaged installations are also available through Homebrew and the upstream
+release page. A source-installed binary may report `vdev` from
+`changie --version` because release linker metadata is not injected by
+`go install`; inspect its embedded module identity when exact reproduction
+matters:
 
-## Workflow
+```bash
+go version -m "$(command -v changie)" |
+  grep 'github.com/miniscruff/changie.*v1.25.2'
+```
 
-### 1. Before merging a user-facing PR
+## Supported contributor workflow
+
+### 1. Create a fragment
+
+Before merging a user-facing change:
 
 ```bash
 changie new
 ```
 
-Select the kind (Added, Changed, Fixed, Security, Documentation, etc.)
-and write a one-line summary. This creates a `.changes/YYYYMMDD-HHMMSS.yaml`
-fragment.
+Select one configured kind and write the release-note body. The current
+configuration writes a root-level fragment such as:
 
-### 2. On release
+```text
+.changes/Fixed-20260806-042100.yaml
+```
+
+Commit the fragment with the change.
+
+### 2. Validate and preview without changing the repository
+
+Before review or merge, render the prospective version note without writing,
+moving, or deleting any file:
 
 ```bash
-# Merge all fragments into CHANGELOG.md under a new version heading
-changie batch v0.2.1
+changie batch <next-version> --dry-run
+```
 
-# Archive fragments and apply the [Unreleased] replacement
+This exercises the pinned upstream configuration and loads every selected
+`.changes/*.yaml` fragment. Upstream batch validation catches malformed YAML,
+unknown configured kinds, and rendering failures. It is not a complete lint of
+every interactive prompt constraint; the planned cargo-allow Changie sensor is
+a separate capability.
+
+## Release mutation is not yet authoritative
+
+Do **not** run either of these commands against the live repository as part of
+the current release procedure:
+
+```bash
+changie batch <version>
 changie merge
 ```
 
-Versioned release markers such as `.changes/v0.2.0` may remain as empty
-tracked files after batching. They are release metadata, not change fragments,
-and are retained with an owned `cargo-allow` policy receipt.
+`CHANGELOG.md` predates a complete Changie version-file archive. Its historical
+sections have not yet been split into authoritative `.changes/<version>.md`
+inputs and proven to round-trip byte-for-byte. A mutating batch can move or
+delete fragments, and merge reconstructs the changelog from the retained
+version files; presenting those operations as safe today would overstate the
+repository evidence.
 
-### 3. Pre-commit hook (optional)
+Release-note mutation remains owned by the release train until a dedicated
+history migration proves exact preview, apply, rollback, and changelog
+round-trip behavior.
+
+## Optional pre-commit reminder
+
+The repository contains a separate convenience hook:
 
 ```bash
-# Copy the hook script
 cp scripts/ensure-changelog-fragment.sh .git/hooks/pre-commit
 chmod +x .git/hooks/pre-commit
 ```
 
-The hook checks for modified source files and reminds you to create a
-fragment if none exists. Skip with `git commit --no-verify` for
-non-user-facing changes (tests, refactors, CI-only).
+The hook is not a fragment-content validator and does not replace the dry-run
+preview above. Its staged-candidate behavior is tracked independently.
 
 ## Kinds
 
-The `.changie.yaml` config defines kinds matching the existing CHANGELOG
-structure:
+The `.changie.yaml` configuration accepts these fragment kinds:
 
 | Kind | When to use |
 | --- | --- |
@@ -71,11 +106,13 @@ structure:
 | Security | Security fixes |
 | Documentation | Documentation improvements |
 
-## What doesn't need a fragment
+## Changes that normally do not need a fragment
 
 - Test-only changes
-- Refactors that don't change behavior
-- CI workflow updates not visible to users
+- Refactors that do not change behavior
+- CI workflow updates that are not user-visible
 - Policy ledger receipts (`policy/allow.toml`)
 
-Use `git commit --no-verify` or simply don't create a fragment.
+The repository decision about whether a specific change is user-facing remains
+a human judgment; Changie validates the selected fragment format, not that
+judgment.
