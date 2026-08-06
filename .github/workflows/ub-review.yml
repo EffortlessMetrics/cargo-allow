@@ -28,8 +28,10 @@ jobs:
       - name: Install exact Changie module
         env:
           GOBIN: ${{ runner.temp }}/changie-bin
+          GOTOOLCHAIN: local
         run: |
           set -euo pipefail
+          test "$(go env GOVERSION)" = 'go1.25.0'
           mkdir -p "${GOBIN}"
           go install github.com/miniscruff/changie@v1.25.2
           go version -m "${GOBIN}/changie" | tee "${RUNNER_TEMP}/changie-module.txt"
