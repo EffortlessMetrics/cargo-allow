@@ -1,5 +1,5 @@
 kind: Fixed
 body: >-
-  Make the optional changelog-fragment hook require a fragment in the exact
-  staged candidate instead of accepting any historical repository fragment,
-  and add an isolated Git self-test for its path and failure behavior.
+  Make the optional changelog-fragment hook inspect the exact active worktree
+  and staged candidate, including linked worktrees, instead of accepting a
+  historical fragment, the wrong index, or an orphaned script location.
