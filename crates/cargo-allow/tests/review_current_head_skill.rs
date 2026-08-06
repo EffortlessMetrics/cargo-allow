@@ -136,10 +136,16 @@ fn read(root: &Path, relative: &str) -> Result<String, Box<dyn Error>> {
 }
 
 fn require_contains(haystack: &str, needle: &str, owner: &str) -> Result<(), Box<dyn Error>> {
+    let normalized_haystack = normalize_whitespace(haystack);
+    let normalized_needle = normalize_whitespace(needle);
     require(
-        haystack.contains(needle),
+        normalized_haystack.contains(&normalized_needle),
         &format!("{owner} is missing required review-contract marker: {needle}"),
     )
+}
+
+fn normalize_whitespace(value: &str) -> String {
+    value.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 fn require(condition: bool, message: &str) -> Result<(), Box<dyn Error>> {
