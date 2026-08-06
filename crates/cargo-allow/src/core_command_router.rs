@@ -38,6 +38,9 @@ pub(crate) fn configure_summary_output(config: SummaryOutputConfig) -> CargoAllo
 }
 
 pub(crate) fn print_report(args: ReportRenderArgs<'_>) -> CargoAllowResult<()> {
+    if !matches!(args.command, "audit" | "check") {
+        return crate::reporting::print_report(args);
+    }
     print_report_with_summary_config(args, SUMMARY_OUTPUT.get())
 }
 
@@ -246,6 +249,7 @@ fn canonical_report_identity(args: &ReportRenderArgs<'_>) -> CargoAllowResult<St
         )
     })?;
     scrub_non_semantic_fields(&mut value);
+    sort_json_keys(&mut value);
     let bytes = serde_json::to_vec(&value).map_err(|error| {
         CargoAllowError::with_kind(
             CargoAllowErrorKind::Artifact,
@@ -280,6 +284,25 @@ fn scrub_non_semantic_fields(value: &mut Value) {
     }
 }
 
+fn sort_json_keys(value: &mut Value) {
+    match value {
+        Value::Object(map) => {
+            let mut entries = std::mem::take(map).into_iter().collect::<Vec<_>>();
+            entries.sort_by(|left, right| left.0.cmp(&right.0));
+            for (key, mut child) in entries {
+                sort_json_keys(&mut child);
+                map.insert(key, child);
+            }
+        }
+        Value::Array(values) => {
+            for child in values {
+                sort_json_keys(child);
+            }
+        }
+        _ => {}
+    }
+}
+
 fn report_completeness(args: &ReportRenderArgs<'_>) -> CompletenessV1 {
     if args.inventory_facts.rust_files_skipped > 0
         || args.inventory_facts.rust_files_with_parse_errors > 0
@@ -289,7 +312,12 @@ fn report_completeness(args: &ReportRenderArgs<'_>) -> CompletenessV1 {
         return CompletenessV1::Partial;
     }
     match args.inventory_facts.completeness {
-        InventoryCompleteness::Complete | InventoryCompleteness::Scoped => CompletenessV1::Complete,
+        InventoryCompleteness::Complete | InventoryCompleteness::Scoped => {
+            // `allow_inventory::inventory` assigns Partial before Scoped when
+            // deleted, submodule, or skipped paths exist. The explicit Rust
+            // scanner checks above cover later read/parse omissions.
+            CompletenessV1::Complete
+        }
         InventoryCompleteness::Fallback | InventoryCompleteness::Partial => CompletenessV1::Partial,
     }
 }
@@ -437,16 +465,15 @@ fn validate_summary_output_path(
 }
 
 fn reject_tracked_summary_output(root: &Path, output: &Path) -> CargoAllowResult<()> {
-    let tracked = match allow_inventory::git_ls_files(root) {
-        Ok(files) => files,
-        Err(error) if is_missing_git_metadata(&error.to_string()) => Vec::new(),
-        Err(error) => {
-            return Err(CargoAllowError::with_kind(
-                CargoAllowErrorKind::Inventory,
-                format!("cannot verify tracked summary-output collision: {error}"),
-            ));
-        }
-    };
+    if !allow_inventory::git_worktree_metadata_present(root) {
+        return Ok(());
+    }
+    let tracked = allow_inventory::git_ls_files(root).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Inventory,
+            format!("cannot verify tracked summary-output collision: {error}"),
+        )
+    })?;
     let relative = output
         .strip_prefix(root)
         .map(allow_core::normalize_path)
@@ -486,11 +513,6 @@ fn comparable_path(path: &Path) -> PathBuf {
         .and_then(|parent| parent.canonicalize().ok())
         .map(|parent| parent.join(file_name))
         .unwrap_or_else(|| path.to_path_buf())
-}
-
-fn is_missing_git_metadata(diagnostic: &str) -> bool {
-    let diagnostic = diagnostic.to_ascii_lowercase();
-    diagnostic.contains("not a git repository") || diagnostic.contains("not a git repo")
 }
 
 #[cfg(test)]
