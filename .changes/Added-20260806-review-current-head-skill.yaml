@@ -1,0 +1,5 @@
+kind: Added
+body: >-
+  Add a repository-native exact-head pull-request review skill and wire its
+  review, repair, re-review, and merge-readiness contract into agent guidance,
+  contributor instructions, and the pull-request template.
