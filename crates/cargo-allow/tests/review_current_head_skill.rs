@@ -21,6 +21,7 @@ fn current_head_review_skill_contract_is_wired() -> Result<(), Box<dyn Error>> {
     for marker in [
         "description: Review or re-review an open pull request's exact current base/head pair",
         "## Trigger",
+        "## Independence and Correlated Failure",
         "## Inputs",
         "## Review Procedure",
         "## Review Passes",
@@ -32,6 +33,8 @@ fn current_head_review_skill_contract_is_wired() -> Result<(), Box<dyn Error>> {
         "## Failure Conditions",
         "## Output",
         "## Claim Boundary",
+        "Reviewer identity alone does not create independence.",
+        "Independence is designed into fresh evidence and controls",
         "If the live head changes during the review, stop.",
         "If the base SHA or merge-base changes",
         "When a provider evaluates a synthetic merge or queue commit",
