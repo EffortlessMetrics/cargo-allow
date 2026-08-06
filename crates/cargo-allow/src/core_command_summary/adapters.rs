@@ -17,13 +17,15 @@ pub fn core_command_summary_from_adoption_plan(
         allow_report::InventoryCompleteness::Unknown => CompletenessV1::Unknown,
     };
     let primary_action = action_from_adoption(&plan.primary_action, &plan.may_write_paths)?;
-    let next_proof_index = plan
+    let (next_proof_index, next_proof) = match plan
         .follow_up_actions
         .iter()
-        .position(|action| action.kind == allow_report::AdoptionActionKind::RunNoNewCheck);
-    let next_proof = next_proof_index
-        .map(|index| action_from_adoption(&plan.follow_up_actions[index], &[]))
-        .transpose()?;
+        .enumerate()
+        .find(|(_, action)| action.kind == allow_report::AdoptionActionKind::RunNoNewCheck)
+    {
+        Some((index, action)) => (Some(index), Some(action_from_adoption(action, &[])?)),
+        None => (None, None),
+    };
     let additional_action_count = plan
         .follow_up_actions
         .len()
