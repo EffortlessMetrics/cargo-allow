@@ -43,7 +43,7 @@ jobs:
           tmp="$(mktemp -d)"
           trap 'rm -rf "${tmp}"' EXIT
 
-          git status --porcelain=v1 --untracked-files=no > "${tmp}/before.status"
+          git status --porcelain=v1 --untracked-files=all > "${tmp}/before.status"
           git diff --binary --no-ext-diff HEAD -- > "${tmp}/before.worktree.diff"
           git diff --cached --binary --no-ext-diff HEAD -- > "${tmp}/before.index.diff"
 
@@ -70,7 +70,7 @@ jobs:
           grep -Fq '## [999.0.0] - ' "${tmp}/batch.md"
           grep -Fq '### Fixed' "${tmp}/batch.md"
 
-          git status --porcelain=v1 --untracked-files=no > "${tmp}/after.status"
+          git status --porcelain=v1 --untracked-files=all > "${tmp}/after.status"
           git diff --binary --no-ext-diff HEAD -- > "${tmp}/after.worktree.diff"
           git diff --cached --binary --no-ext-diff HEAD -- > "${tmp}/after.index.diff"
 
