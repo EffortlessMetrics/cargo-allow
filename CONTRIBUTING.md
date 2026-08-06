@@ -42,16 +42,27 @@ cargo run -p cargo-allow -- check --mode no-new
 
 ## Changelog
 
-User-facing changes require a changelog fragment. Install
-[changie](https://github.com/miniscruff/changie) and run `changie new` before
-merging a PR that changes user-visible behavior. See
-[Manage the Changelog](docs/how-to/manage-changelog.md) for the full workflow.
+User-facing changes require a Changie fragment. The repository compatibility
+contract is pinned to Changie `1.25.2`; install that exact source version and
+run `changie new` before merging a PR that changes user-visible behavior:
 
 ```bash
-changie new        # create a fragment for your change
-changie batch v0.2.0  # merge fragments into CHANGELOG.md on release
-changie merge      # archive fragments after batching
+go install github.com/miniscruff/changie@v1.25.2
+changie new
 ```
+
+Before review or merge, validate all selected fragments and preview the next
+version note without modifying the repository:
+
+```bash
+changie batch <next-version> --dry-run
+```
+
+Mutating `changie batch` and `changie merge` are not the current release
+authority. The existing changelog history has not yet been backfilled into a
+complete version-file archive or proven to round-trip exactly. See
+[Manage the Changelog](docs/how-to/manage-changelog.md) for the supported
+workflow and its claim boundary.
 
 If you have [`just`](https://github.com/casey/just) installed, `just ci` runs
 the same checks as the CI workflow (`just --list` shows the individual
