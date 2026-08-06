@@ -157,6 +157,41 @@ If the change affects CLI output or source-tree posture, also run the relevant
 local `cargo run -p cargo-allow -- ...` command and include any generated
 review artifacts in the PR discussion when useful.
 
+## Current-Head Review and Merge Readiness
+
+Reviewers and agents should follow the canonical
+[`review-current-head` skill](.agents/skills/review-current-head/SKILL.md).
+The source-exception posture guide in
+[`docs/how-to/review-pr-posture.md`](docs/how-to/review-pr-posture.md) is one
+review input; it is not a substitute for correctness, architecture,
+integration, test-oracle, security, simplification, or release review.
+
+A substantive review must:
+
+- record the exact current head and intended base;
+- reconstruct the controlling issue/specification and compare it to the actual
+  diff;
+- inspect every changed file plus relevant owners, callers, consumers, schemas,
+  fixtures, docs, packages, and release surfaces;
+- inspect existing review threads before posting and avoid duplicate comments;
+- verify bot claims against current code and primary contracts;
+- post one bounded actionable review rather than streaming generic comments;
+- leave repair to one writer.
+
+Any author or repair commit makes the affected review evidence stale. Re-review
+the new exact head, verify prior dispositions against current code, inspect
+repair-created edge cases, and inspect exact-head CI and receipts again. A
+reviewer who pushes a fix is an author of the new head and cannot count the old
+review as independent verification.
+
+A PR is merge-ready only when the final reviewed head still equals the live PR
+head, the PR is non-draft and mergeable, substantive conversations are resolved
+with current-head evidence, and all required checks are terminal and green or
+explicitly not applicable under repository policy. Pending, cancelled, stale,
+malformed, action-required, and silently skipped evidence are not green. Green
+CI alone is not merge readiness. Prefer a head-pinned merge and complete the
+post-merge main, issue, branch, and worktree reconciliation.
+
 ## Documentation
 
 Documentation changes are first-class contributions. Update the README for
