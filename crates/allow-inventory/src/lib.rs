@@ -13,7 +13,7 @@ mod git;
 mod options;
 mod root;
 
-pub use git::{git_ls_files, git_ls_files_include_untracked};
+pub use git::{git_ls_files, git_ls_files_include_untracked, git_worktree_metadata_present};
 pub use options::{Inventory, InventoryCompleteness, InventoryOptions, InventorySource};
 pub use root::{discover_source_tree_root, resolve_source_tree_root};
 
