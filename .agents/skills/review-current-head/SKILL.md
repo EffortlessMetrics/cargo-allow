@@ -20,6 +20,26 @@ research before a PR exists, or to fix the branch while claiming independent
 review. A reviewer who mutates the branch becomes an author of the new head;
 prior independent-review status is stale.
 
+## Independence and Correlated Failure
+
+Reviewer identity alone does not create independence. A different agent can
+share the same stale assumptions, evidence, or gate blind spots; the same agent
+can take a genuinely fresh pass when explicitly redirected to reload live state,
+discard prior verdicts, and review without mutating the branch.
+
+State the independence posture honestly:
+
+- identify whether the reviewer authored or repaired the current head;
+- reload the current base/head pair, issue/spec, diff, consumers, threads, and
+  checks rather than relying on conversation memory;
+- use repository tests, receipts, branch protection, and retained artifacts as
+  external controls;
+- disclose shared-prior or correlated-failure limits;
+- do not count an author-side self-review as separate independent evidence.
+
+Independence is designed into fresh evidence and controls, not assumed from
+separate role names.
+
 ## Inputs
 
 Bind the review to live, retrievable identities:
