@@ -1,6 +1,9 @@
 use repo_protocol::ResultClassV1;
 
-use super::{CoreCommandPostureV1, CoreCommandSummaryV1, validate_core_command_summary};
+use super::{
+    CoreCommandActionKindV1, CoreCommandActionV1, CoreCommandPostureV1,
+    CoreCommandSummaryV1, validate_core_command_summary,
+};
 
 pub fn render_core_command_summary_json(summary: &CoreCommandSummaryV1) -> Result<String, String> {
     validate_core_command_summary(summary)?;
@@ -35,7 +38,9 @@ pub fn render_core_command_summary_human(summary: &CoreCommandSummaryV1) -> Stri
     output.push('\n');
     output.push_str("Next: ");
     match summary.primary_action.as_ref() {
-        Some(action) => output.push_str(&allow_report::sanitize_terminal_text(&action.display)),
+        Some(action) => output.push_str(&allow_report::sanitize_terminal_text(
+            &render_action_display(action),
+        )),
         None if summary.posture == CoreCommandPostureV1::DecisionRequired => {
             output.push_str("repository decision required")
         }
@@ -47,7 +52,9 @@ pub fn render_core_command_summary_human(summary: &CoreCommandSummaryV1) -> Stri
     output.push('\n');
     output.push_str("Then: ");
     match summary.next_proof.as_ref() {
-        Some(action) => output.push_str(&allow_report::sanitize_terminal_text(&action.display)),
+        Some(action) => output.push_str(&allow_report::sanitize_terminal_text(
+            &render_action_display(action),
+        )),
         None => output.push_str("no follow-up proof command selected"),
     }
     output.push('\n');
@@ -80,6 +87,17 @@ fn result_label(summary: &CoreCommandSummaryV1) -> String {
     }
 }
 
+fn render_action_display(action: &CoreCommandActionV1) -> String {
+    match action.kind {
+        CoreCommandActionKindV1::Command => action
+            .program
+            .as_deref()
+            .map(|program| render_argv_for_display(program, &action.args))
+            .unwrap_or_else(|| "[invalid command action: missing program]".to_string()),
+        _ => action.title.clone(),
+    }
+}
+
 fn render_writes(summary: &CoreCommandSummaryV1, output: &mut String) {
     if summary.operation_effects.writes_repository {
         output.push_str(&join_paths(&summary.operation_effects.write_paths));
@@ -103,17 +121,18 @@ fn join_paths(paths: &[String]) -> String {
 }
 
 pub(super) fn render_argv_for_display(program: &str, args: &[String]) -> String {
-    if std::iter::once(program)
-        .chain(args.iter().map(String::as_str))
-        .any(|part| part.contains('\0') || part.contains('\n') || part.contains('\r'))
-    {
+    let parts = std::iter::once(program).chain(args.iter().map(String::as_str));
+    if parts.clone().any(|part| part.chars().any(char::is_control)) {
         return "[use structured argv; command contains non-pasteable control text]".to_string();
     }
-    std::iter::once(program)
-        .chain(args.iter().map(String::as_str))
-        .map(quote_for_platform)
-        .collect::<Vec<_>>()
-        .join(" ")
+    if cfg!(windows)
+        && parts
+            .clone()
+            .any(|part| part.contains('%') || part.contains('!'))
+    {
+        return "[use structured argv; command is unsafe to paste through cmd.exe]".to_string();
+    }
+    parts.map(quote_for_platform).collect::<Vec<_>>().join(" ")
 }
 
 fn quote_for_platform(argument: &str) -> String {
@@ -174,8 +193,6 @@ fn quote_windows_cmd(argument: &str) -> String {
                 | '<'
                 | '>'
                 | '^'
-                | '%'
-                | '!'
                 | '('
                 | ')'
                 | ','
