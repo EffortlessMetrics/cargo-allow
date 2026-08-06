@@ -1,0 +1,5 @@
+kind: Fixed
+body: >-
+  Make the optional changelog-fragment hook require a fragment in the exact
+  staged candidate instead of accepting any historical repository fragment,
+  and add an isolated Git self-test for its path and failure behavior.
