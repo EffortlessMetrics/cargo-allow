@@ -34,9 +34,11 @@ fn current_head_review_skill_contract_is_wired() -> Result<(), Box<dyn Error>> {
         "## Claim Boundary",
         "If the live head changes during the review, stop.",
         "If the base SHA or merge-base changes",
+        "When a provider evaluates a synthetic merge or queue commit",
         "Re-fetch those identities immediately before submitting the review.",
         "DuplicateOrSuperseded",
         "StaleAfterHeadChange",
+        "StaleAfterBaseChange",
         "Green CI alone is not merge readiness.",
     ] {
         require_contains(&skill, marker, "canonical review skill")?;
