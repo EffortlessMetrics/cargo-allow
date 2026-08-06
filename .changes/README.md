@@ -1,29 +1,40 @@
 # Changelog fragments
 
-This directory holds changelog fragments managed by [changie](https://github.com/miniscruff/changie).
+This directory holds release-note fragments authored with
+[Changie](https://github.com/miniscruff/changie).
 
-## Workflow
+The repository compatibility contract is pinned to Changie `1.25.2`.
 
-1. **Before merging a PR**, run `changie new` and select a kind (Added, Changed,
-   Fixed, etc.). This creates a `.yaml` fragment under `.changes/`. Commit the
-   fragment as part of your PR (`git add .changes/<your>.yaml`) — fragments are
-   tracked, not gitignored.
+## Contributor workflow
 
-2. **On release**, run `changie batch v0.2.1` (or the next version) to merge
-   fragments into `CHANGELOG.md` under a new version heading.
+1. **Before merging a user-facing PR**, run `changie new`, select a configured
+   kind, and write the release-note body. Changie creates a root-level YAML
+   fragment under `.changes/`. Commit that fragment with the change.
 
-3. **After batching**, run `changie merge` to apply the replacement and archive
-   fragments under `.changes/`.
+2. **Validate without mutation** by rendering a prospective version note:
 
-## Install changie
+   ```bash
+   changie batch <next-version> --dry-run
+   ```
+
+   The dry run loads all selected fragments and prints the rendered note without
+   writing, moving, or deleting repository files.
+
+3. **Do not use mutating batch or merge as the current release authority.** The
+   existing `CHANGELOG.md` history has not yet been backfilled into a complete
+   Changie version-file archive or proven to round-trip exactly.
+
+## Install the pinned version
 
 ```bash
-# macOS: brew install changie
-# Linux: download from https://github.com/miniscruff/changie/releases
-# Go: go install github.com/miniscruff/changie/v2@latest
+go install github.com/miniscruff/changie@v1.25.2
 ```
+
+A source-installed binary may identify itself as `vdev`; use `go version -m`
+on the executable to verify the embedded module version when exact reproduction
+matters.
 
 ## Kinds
 
-The `.changie.yaml` config defines these kinds matching the existing CHANGELOG
-structure: Added, Changed, Deprecated, Removed, Fixed, Security, Documentation.
+The `.changie.yaml` configuration accepts: Added, Changed, Deprecated, Removed,
+Fixed, Security, and Documentation.

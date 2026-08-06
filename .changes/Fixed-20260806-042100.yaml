@@ -1,0 +1,5 @@
+kind: Fixed
+body: >-
+  Replace the unsupported Changie configuration with the pinned 1.25
+  fragment-authoring and dry-run preview contract, and stop presenting
+  unproven batch and merge mutation as release authority.
