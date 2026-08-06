@@ -1,0 +1,673 @@
+use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult, MatchStatus};
+use allow_inventory::InventoryCompleteness;
+use repo_protocol::{ClaimBoundaryV1, CompletenessV1, CurrentnessV1, ResultClassV1};
+use serde_json::Value;
+use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
+
+use crate::core_command_summary::{
+    CoreCommandActionV1, CoreCommandEffectsV1, CoreCommandPostureV1, CoreCommandReasonV1,
+    CoreCommandSummaryInputV1, CoreCommandSummaryV1, CoreSourceSubjectKindV1,
+    CoreSourceSubjectV1, build_core_command_summary, render_core_command_summary_human,
+    render_core_command_summary_json,
+};
+use crate::reporting::{ReportRenderArgs, SourceTreeReportContext};
+use crate::{OutputFormat, emit_text, write_file};
+
+#[derive(Debug, Clone)]
+pub(crate) struct SummaryOutputConfig {
+    path: PathBuf,
+    conflicts: Vec<PathBuf>,
+}
+
+impl SummaryOutputConfig {
+    pub(crate) fn new(path: PathBuf, conflicts: Vec<PathBuf>) -> Self {
+        Self { path, conflicts }
+    }
+}
+
+static SUMMARY_OUTPUT: OnceLock<SummaryOutputConfig> = OnceLock::new();
+
+pub(crate) fn configure_summary_output(config: SummaryOutputConfig) -> CargoAllowResult<()> {
+    SUMMARY_OUTPUT.set(config).map_err(|_| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            "core command summary output was configured more than once",
+        )
+    })
+}
+
+pub(crate) fn print_report(args: ReportRenderArgs<'_>) -> CargoAllowResult<()> {
+    print_report_with_summary_config(args, SUMMARY_OUTPUT.get())
+}
+
+fn print_report_with_summary_config(
+    args: ReportRenderArgs<'_>,
+    summary_config: Option<&SummaryOutputConfig>,
+) -> CargoAllowResult<()> {
+    let summary = build_report_summary(&args)?;
+    let detail = render_detail(&args);
+    let rendered = if args.format == OutputFormat::Human {
+        format!(
+            "{}\n{detail}",
+            render_core_command_summary_human(&summary)
+        )
+    } else {
+        detail
+    };
+
+    if let Some(config) = summary_config {
+        let path = validate_summary_output_path(args.root, config)?;
+        let json = render_core_command_summary_json(&summary).map_err(|error| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                format!("failed to render core command summary: {error}"),
+            )
+        })?;
+        write_file(&path, &format!("{json}\n"))?;
+    }
+
+    emit_text(args.output, &rendered)
+}
+
+fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCommandSummaryV1> {
+    let completeness = report_completeness(args);
+    let advisory_count = report_advisory_count(args);
+    let (result_class, posture, reason) = if completeness != CompletenessV1::Complete {
+        (
+            ResultClassV1::PartialData,
+            CoreCommandPostureV1::Blocking,
+            CoreCommandReasonV1 {
+                code: format!("{}.partial_coverage", args.command),
+                message: partial_reason(args),
+            },
+        )
+    } else if args.failed {
+        (
+            ResultClassV1::Findings,
+            CoreCommandPostureV1::Blocking,
+            CoreCommandReasonV1 {
+                code: format!("{}.blocking_findings", args.command),
+                message: format!("{advisory_count} blocking or review outcome(s) require attention"),
+            },
+        )
+    } else if advisory_count > 0 {
+        (
+            ResultClassV1::Findings,
+            CoreCommandPostureV1::Advisory,
+            CoreCommandReasonV1 {
+                code: format!("{}.advisory_findings", args.command),
+                message: format!("{advisory_count} advisory or review outcome(s) remain"),
+            },
+        )
+    } else {
+        (
+            ResultClassV1::Completed,
+            CoreCommandPostureV1::Satisfied,
+            CoreCommandReasonV1 {
+                code: format!("{}.satisfied", args.command),
+                message: "the selected source-exception posture is satisfied".to_string(),
+            },
+        )
+    };
+
+    let primary_action = if completeness != CompletenessV1::Complete {
+        Some(
+            CoreCommandActionV1::command(
+                format!("{}.diagnose_coverage", args.command),
+                "Diagnose coverage",
+                "cargo-allow",
+                vec!["doctor".to_string()],
+            )
+            .with_contract(
+                "coverage limitations must be diagnosed before a clean result is possible",
+                "the selected inventory, scanner, policy, and support limitations are explained",
+                "doctor remains read-only and does not repair or authorize exceptions",
+            ),
+        )
+    } else if advisory_count > 0 || args.failed {
+        Some(
+            CoreCommandActionV1::command(
+                format!("{}.inspect_worklist", args.command),
+                "Inspect the worklist",
+                "cargo-allow",
+                vec![
+                    "worklist".to_string(),
+                    "--format".to_string(),
+                    "json".to_string(),
+                ],
+            )
+            .with_contract(
+                "the report contains one or more exact maintenance or repair outcomes",
+                "the current typed work items and their detailed actions are emitted",
+                "the worklist is guidance and does not mutate source or policy",
+            ),
+        )
+    } else {
+        None
+    };
+
+    let next_proof = (args.command == "audit" && completeness == CompletenessV1::Complete)
+        .then(|| {
+            CoreCommandActionV1::command(
+                "audit.full_no_new_check",
+                "Run the enforcing no-new check",
+                "cargo-allow",
+                vec![
+                    "check".to_string(),
+                    "--mode".to_string(),
+                    "no-new".to_string(),
+                ],
+            )
+            .with_contract(
+                "audit is informational even when its source inputs are complete",
+                "the current repository is evaluated under the no-new gate",
+                "the source-syntax gate does not prove compiled or runtime correctness",
+            )
+        });
+
+    let subject = report_subject(args)?;
+    let mut limitations = vec![
+        "cargo metadata, rustc, Clippy, build scripts, proc macros, tests, and repository code were not invoked"
+            .to_string(),
+        "macro expansion, type information, MIR, control flow, and data flow were not analyzed"
+            .to_string(),
+    ];
+    limitations.extend(subject.limitations.iter().cloned());
+
+    build_core_command_summary(CoreCommandSummaryInputV1 {
+        tool_version: env!("CARGO_PKG_VERSION").to_string(),
+        operation: args.command.to_string(),
+        mode: args.enforcement.map(str::to_string),
+        profile: None,
+        subject,
+        result_class,
+        posture,
+        completeness,
+        currentness: CurrentnessV1::Current,
+        reason,
+        primary_action,
+        additional_action_count: 0,
+        additional_actions_ref: None,
+        operation_effects: CoreCommandEffectsV1::read_only(vec![
+            "does not modify source, policy, Git, hooks, workflows, or GitHub settings".to_string(),
+            "does not execute repository code or external evidence tools".to_string(),
+        ]),
+        next_proof,
+        artifacts: Vec::new(),
+        claim_boundary: ClaimBoundaryV1::new(
+            "cargo-allow evaluated selected source-tree syntax and source-exception ledger posture only",
+        )
+        .with_limitations(limitations),
+    })
+    .map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!("failed to build core command summary: {error}"),
+        )
+    })
+}
+
+fn report_subject(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreSourceSubjectV1> {
+    let semantic_identity = canonical_report_identity(args)?;
+    let (kind, portable_identity, limitations) = match args.inventory_source_identity {
+        Some(identity) => (
+            CoreSourceSubjectKindV1::Index,
+            identity.to_string(),
+            Vec::new(),
+        ),
+        None => (
+            CoreSourceSubjectKindV1::Worktree,
+            format!("worktree:{}:current-unpinned", args.inventory_facts.source.as_str()),
+            vec![
+                "the current worktree result is not bound to a commit, tree, or Git-index identity"
+                    .to_string(),
+            ],
+        ),
+    };
+    Ok(CoreSourceSubjectV1 {
+        kind,
+        repository_identity: format!("local-repository:{semantic_identity}"),
+        portable_identity,
+        base: None,
+        head: None,
+        paths: Vec::new(),
+        limitations,
+    })
+}
+
+fn canonical_report_identity(args: &ReportRenderArgs<'_>) -> CargoAllowResult<String> {
+    let mut value: Value = serde_json::from_str(&render_detail_json(args)).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!("failed to parse report identity input: {error}"),
+        )
+    })?;
+    scrub_non_semantic_fields(&mut value);
+    let bytes = serde_json::to_vec(&value).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!("failed to canonicalize report identity input: {error}"),
+        )
+    })?;
+    Ok(allow_core::sha256_v1_bytes(&bytes))
+}
+
+fn scrub_non_semantic_fields(value: &mut Value) {
+    match value {
+        Value::Object(map) => {
+            for key in [
+                "root",
+                "source_tree_root",
+                "policy_config",
+                "started_at",
+                "run_id",
+            ] {
+                map.remove(key);
+            }
+            for child in map.values_mut() {
+                scrub_non_semantic_fields(child);
+            }
+        }
+        Value::Array(values) => {
+            for child in values {
+                scrub_non_semantic_fields(child);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn report_completeness(args: &ReportRenderArgs<'_>) -> CompletenessV1 {
+    if args.inventory_facts.rust_files_skipped > 0
+        || args.inventory_facts.rust_files_with_parse_errors > 0
+        || args.inventory_facts.deleted_tracked.unwrap_or(0) > 0
+        || args.inventory_facts.empty_git_tracked
+    {
+        return CompletenessV1::Partial;
+    }
+    match args.inventory_facts.completeness {
+        InventoryCompleteness::Complete | InventoryCompleteness::Scoped => CompletenessV1::Complete,
+        InventoryCompleteness::Fallback | InventoryCompleteness::Partial => CompletenessV1::Partial,
+    }
+}
+
+fn report_advisory_count(args: &ReportRenderArgs<'_>) -> usize {
+    let outcomes = args
+        .outcomes
+        .iter()
+        .filter(|outcome| outcome.status != MatchStatus::Matched)
+        .count();
+    outcomes
+        + args.evidence.policy_missing_evidence_entries
+        + args.evidence.broken_evidence_links
+        + args.evidence.weak_evidence_references
+        + args.evidence.occurrence_headroom_entries
+}
+
+fn partial_reason(args: &ReportRenderArgs<'_>) -> String {
+    let mut reasons = Vec::new();
+    if args.inventory_facts.empty_git_tracked {
+        reasons.push("Git reported no tracked files".to_string());
+    }
+    if args.inventory_facts.deleted_tracked.unwrap_or(0) > 0 {
+        reasons.push(format!(
+            "{} tracked path(s) are absent from the worktree",
+            args.inventory_facts.deleted_tracked.unwrap_or(0)
+        ));
+    }
+    if args.inventory_facts.rust_files_skipped > 0 {
+        reasons.push(format!(
+            "{} Rust file(s) were skipped",
+            args.inventory_facts.rust_files_skipped
+        ));
+    }
+    if args.inventory_facts.rust_files_with_parse_errors > 0 {
+        reasons.push(format!(
+            "{} Rust file(s) contained parse errors",
+            args.inventory_facts.rust_files_with_parse_errors
+        ));
+    }
+    if matches!(
+        args.inventory_facts.completeness,
+        InventoryCompleteness::Fallback | InventoryCompleteness::Partial
+    ) {
+        reasons.push(format!(
+            "inventory completeness is {}",
+            args.inventory_facts.completeness.as_str()
+        ));
+    }
+    if reasons.is_empty() {
+        "source inventory or scanner coverage is incomplete".to_string()
+    } else {
+        reasons.join("; ")
+    }
+}
+
+fn render_detail(args: &ReportRenderArgs<'_>) -> String {
+    let style = if args.format == OutputFormat::Human && args.output.is_none() {
+        crate::reporting::output_style()
+    } else {
+        allow_report::Style::PLAIN
+    };
+    let context = report_context(args);
+    match args.format {
+        OutputFormat::Human => allow_report::render_human_with_context_styled(
+            args.command,
+            args.findings,
+            args.outcomes,
+            args.failed,
+            context,
+            style,
+        ),
+        OutputFormat::Json => allow_report::render_json_with_context(
+            args.command,
+            args.findings,
+            args.outcomes,
+            args.failed,
+            context,
+        ),
+        OutputFormat::Html => allow_report::render_html_with_context(
+            args.command,
+            args.findings,
+            args.outcomes,
+            args.failed,
+            context,
+        ),
+        OutputFormat::Sarif => allow_report::render_sarif_with_context(
+            args.command,
+            args.findings,
+            args.outcomes,
+            args.failed,
+            context,
+        ),
+        OutputFormat::Markdown => allow_report::render_markdown_with_context(
+            args.command,
+            args.findings,
+            args.outcomes,
+            args.failed,
+            context,
+        ),
+    }
+}
+
+fn render_detail_json(args: &ReportRenderArgs<'_>) -> String {
+    allow_report::render_json_with_context(
+        args.command,
+        args.findings,
+        args.outcomes,
+        args.failed,
+        report_context(args),
+    )
+}
+
+fn report_context<'a>(args: &'a ReportRenderArgs<'a>) -> allow_report::ReportContext<'a> {
+    let source_context = SourceTreeReportContext::new_with_identity(
+        args.root,
+        args.inventory_facts,
+        args.inventory_source_identity,
+    );
+    let mut context = source_context.report(Some(args.baseline_debt_entries));
+    args.evidence.apply_to(&mut context);
+    context.enforcement = args.enforcement;
+    context
+}
+
+fn validate_summary_output_path(
+    root: &Path,
+    config: &SummaryOutputConfig,
+) -> CargoAllowResult<PathBuf> {
+    let path = resolve_under_root(root, &config.path);
+    crate::assert_path_within_root(root, &path)?;
+    for conflict in &config.conflicts {
+        let conflict = resolve_under_root(root, conflict);
+        if same_path(&path, &conflict) {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Usage,
+                "--summary-output must differ from --output, --receipt, and --config",
+            ));
+        }
+    }
+    reject_tracked_summary_output(root, &path)?;
+    Ok(path)
+}
+
+fn reject_tracked_summary_output(root: &Path, output: &Path) -> CargoAllowResult<()> {
+    let tracked = match allow_inventory::git_ls_files(root) {
+        Ok(files) => files,
+        Err(error) if is_missing_git_metadata(&error.to_string()) => Vec::new(),
+        Err(error) => {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Inventory,
+                format!("cannot verify tracked summary-output collision: {error}"),
+            ));
+        }
+    };
+    let relative = output
+        .strip_prefix(root)
+        .map(allow_core::normalize_path)
+        .unwrap_or_default();
+    if tracked
+        .iter()
+        .any(|path| allow_core::normalize_path(path) == relative)
+    {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            "--summary-output may not overwrite a tracked or staged repository file",
+        ));
+    }
+    Ok(())
+}
+
+fn resolve_under_root(root: &Path, path: &Path) -> PathBuf {
+    if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        root.join(path)
+    }
+}
+
+fn same_path(left: &Path, right: &Path) -> bool {
+    comparable_path(left) == comparable_path(right)
+}
+
+fn comparable_path(path: &Path) -> PathBuf {
+    if let Ok(path) = path.canonicalize() {
+        return path;
+    }
+    let Some(file_name) = path.file_name() else {
+        return path.to_path_buf();
+    };
+    path.parent()
+        .and_then(|parent| parent.canonicalize().ok())
+        .map(|parent| parent.join(file_name))
+        .unwrap_or_else(|| path.to_path_buf())
+}
+
+fn is_missing_git_metadata(diagnostic: &str) -> bool {
+    let diagnostic = diagnostic.to_ascii_lowercase();
+    diagnostic.contains("not a git repository") || diagnostic.contains("not a git repo")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use allow_core::{Finding, FindingKind, MatchOutcome};
+    use allow_inventory::{InventorySource, InventoryCompleteness};
+    use std::fs;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    fn require(condition: bool, message: impl Into<String>) -> Result<(), String> {
+        if condition {
+            Ok(())
+        } else {
+            Err(message.into())
+        }
+    }
+
+    fn report_args<'a>(
+        root: &'a Path,
+        output: Option<&'a Path>,
+        format: OutputFormat,
+        findings: &'a [Finding],
+        outcomes: &'a [MatchOutcome],
+        inventory_facts: crate::InventoryFacts,
+    ) -> ReportRenderArgs<'a> {
+        ReportRenderArgs {
+            command: "audit",
+            format,
+            baseline_debt_entries: 0,
+            evidence: crate::EvidenceReportSummary::default(),
+            findings,
+            outcomes,
+            failed: false,
+            output,
+            root,
+            inventory_facts,
+            inventory_source_identity: None,
+            enforcement: None,
+        }
+    }
+
+    #[test]
+    fn human_report_starts_with_the_common_summary() -> Result<(), String> {
+        let root = temp_root("human").map_err(|error| error.to_string())?;
+        let output = root.join("report.txt");
+        let args = report_args(
+            &root,
+            Some(&output),
+            OutputFormat::Human,
+            &[],
+            &[],
+            crate::InventoryFacts::scanned(InventorySource::GitTracked, 1),
+        );
+        print_report_with_summary_config(args, None).map_err(|error| error.to_string())?;
+        let text = fs::read_to_string(&output).map_err(|error| error.to_string())?;
+        require(
+            text.starts_with("Result: satisfied\nWhy:"),
+            format!("common summary was not first: {text}"),
+        )?;
+        require(
+            text.contains("cargo-allow audit"),
+            "detailed human report was not preserved",
+        )?;
+        fs::remove_dir_all(root).map_err(|error| error.to_string())
+    }
+
+    #[test]
+    fn json_detail_is_byte_equal_to_the_existing_renderer() -> Result<(), String> {
+        let root = temp_root("json").map_err(|error| error.to_string())?;
+        let expected_path = root.join("expected.json");
+        let actual_path = root.join("actual.json");
+        let facts = crate::InventoryFacts::scanned(InventorySource::GitTracked, 1);
+        crate::reporting::print_report(report_args(
+            &root,
+            Some(&expected_path),
+            OutputFormat::Json,
+            &[],
+            &[],
+            facts,
+        ))
+        .map_err(|error| error.to_string())?;
+        print_report_with_summary_config(
+            report_args(
+                &root,
+                Some(&actual_path),
+                OutputFormat::Json,
+                &[],
+                &[],
+                facts,
+            ),
+            None,
+        )
+        .map_err(|error| error.to_string())?;
+        let expected = fs::read(&expected_path).map_err(|error| error.to_string())?;
+        let actual = fs::read(&actual_path).map_err(|error| error.to_string())?;
+        require(expected == actual, "detailed JSON bytes changed")?;
+        fs::remove_dir_all(root).map_err(|error| error.to_string())
+    }
+
+    #[test]
+    fn summary_sidecar_is_structured_and_rejects_output_collision() -> Result<(), String> {
+        let root = temp_root("sidecar").map_err(|error| error.to_string())?;
+        let detail = root.join("report.json");
+        let summary = root.join("summary.json");
+        let config = SummaryOutputConfig::new(summary.clone(), vec![detail.clone()]);
+        print_report_with_summary_config(
+            report_args(
+                &root,
+                Some(&detail),
+                OutputFormat::Json,
+                &[],
+                &[],
+                crate::InventoryFacts::scanned(InventorySource::GitTracked, 1),
+            ),
+            Some(&config),
+        )
+        .map_err(|error| error.to_string())?;
+        let value: Value = serde_json::from_str(
+            &fs::read_to_string(&summary).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        require(
+            value
+                .pointer("/schema_id")
+                .and_then(Value::as_str)
+                == Some(crate::core_command_summary::CORE_COMMAND_SUMMARY_SCHEMA_ID),
+            "summary sidecar schema ID is missing",
+        )?;
+        let collision = SummaryOutputConfig::new(detail.clone(), vec![detail.clone()]);
+        let error = print_report_with_summary_config(
+            report_args(
+                &root,
+                Some(&detail),
+                OutputFormat::Json,
+                &[],
+                &[],
+                crate::InventoryFacts::scanned(InventorySource::GitTracked, 1),
+            ),
+            Some(&collision),
+        )
+        .err()
+        .ok_or_else(|| "summary/detail collision should fail".to_string())?;
+        require(
+            error.kind() == CargoAllowErrorKind::Usage,
+            format!("collision used the wrong error kind: {}", error.code()),
+        )?;
+        fs::remove_dir_all(root).map_err(|error| error.to_string())
+    }
+
+    #[test]
+    fn partial_inventory_cannot_render_as_satisfied() -> Result<(), String> {
+        let root = temp_root("partial").map_err(|error| error.to_string())?;
+        let mut facts = crate::InventoryFacts::scanned(InventorySource::GitTracked, 1);
+        facts.completeness = InventoryCompleteness::Partial;
+        let args = report_args(&root, None, OutputFormat::Json, &[], &[], facts);
+        let summary = build_report_summary(&args).map_err(|error| error.to_string())?;
+        require(
+            summary.result_class == ResultClassV1::PartialData,
+            "partial inventory did not remain partial-data",
+        )?;
+        require(
+            summary.posture == CoreCommandPostureV1::Blocking,
+            "partial inventory did not remain blocking",
+        )?;
+        fs::remove_dir_all(root).map_err(|error| error.to_string())
+    }
+
+    static NEXT_TEMP_ROOT: AtomicUsize = AtomicUsize::new(0);
+
+    fn temp_root(label: &str) -> std::io::Result<PathBuf> {
+        let id = NEXT_TEMP_ROOT.fetch_add(1, Ordering::Relaxed);
+        let stamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or(0);
+        let root = std::env::temp_dir().join(format!(
+            "cargo-allow-core-router-{label}-{}-{stamp}-{id}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&root)?;
+        Ok(root)
+    }
+}
