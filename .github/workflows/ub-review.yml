@@ -88,6 +88,16 @@ jobs:
           cmp "${tmp}/before.worktree.diff" "${tmp}/after.worktree.diff"
           cmp "${tmp}/before.index.diff" "${tmp}/after.index.diff"
 
+  changelog-hook-contract:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Characterize the staged changelog-fragment hook
+        run: bash scripts/ensure-changelog-fragment.sh --self-test
+
   review:
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
