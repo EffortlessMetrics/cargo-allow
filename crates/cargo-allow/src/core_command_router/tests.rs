@@ -163,9 +163,9 @@ fn summary_sidecar_is_structured_and_rejects_output_collision() -> Result<(), St
     let value: Value =
         serde_json::from_str(&fs::read_to_string(&summary).map_err(|error| error.to_string())?)
             .map_err(|error| error.to_string())?;
+    let schema_id = value.pointer("/schema_id").and_then(Value::as_str);
     require(
-        value.pointer("/schema_id").and_then(Value::as_str)
-            == Some(crate::core_command_summary::CORE_COMMAND_SUMMARY_SCHEMA_ID),
+        schema_id == Some(crate::core_command_summary::CORE_COMMAND_SUMMARY_SCHEMA_ID),
         "summary sidecar schema ID is missing",
     )?;
     let collision = SummaryOutputConfig::new(detail.clone(), vec![detail.clone()]);
