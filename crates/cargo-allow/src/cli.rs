@@ -1,7 +1,8 @@
-use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use std::env;
 use std::ffi::OsStr;
+use std::path::PathBuf;
 
 use crate::{
     add, adoption, audit, capabilities, check, completions, diff, doctor, explain, hooks, init,
@@ -37,6 +38,13 @@ pub(crate) struct CargoAllowCli {
     /// non-matched advisory outcomes). Show only result + counts.
     #[arg(short = 'q', long, global = true)]
     pub(crate) quiet: bool,
+    /// Write the versioned common command summary to a separate JSON file.
+    ///
+    /// This first migration slice supports source-exception `audit` and
+    /// `check` reports. Existing detailed human, JSON, Markdown, HTML, SARIF,
+    /// and receipt artifacts remain unchanged.
+    #[arg(long, global = true, value_name = "PATH")]
+    pub(crate) summary_output: Option<PathBuf>,
     #[command(subcommand)]
     pub(crate) command: Option<CargoAllowCommand>,
 }
@@ -142,12 +150,19 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         }
     }
     let Some(command) = cli.command else {
+        if cli.summary_output.is_some() {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Usage,
+                "--summary-output requires the audit or check subcommand",
+            ));
+        }
         CargoAllowCli::command()
             .print_help()
             .map_err(|e| CargoAllowError::new(format!("failed to print help: {e}")))?;
         println!();
         return Ok(());
     };
+    configure_summary_output(cli.summary_output, &command)?;
     match command {
         CargoAllowCommand::Init(args) => init::cmd_init(&args),
         CargoAllowCommand::Adopt(args) => adoption::cmd_adopt(&args),
@@ -171,6 +186,40 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::Reference(args) => reference::cmd_reference(&args),
         CargoAllowCommand::Hooks(args) => hooks::cmd_hooks(&args),
     }
+}
+
+fn configure_summary_output(
+    summary_output: Option<PathBuf>,
+    command: &CargoAllowCommand,
+) -> CargoAllowResult<()> {
+    let Some(path) = summary_output else {
+        return Ok(());
+    };
+    let conflicts = match command {
+        CargoAllowCommand::Audit(args) if args.profile.is_none() => {
+            [args.output.clone(), args.config.clone()]
+                .into_iter()
+                .flatten()
+                .collect()
+        }
+        CargoAllowCommand::Check(args)
+            if args.profile.is_none() && !args.staged_identity_only =>
+        {
+            [args.output.clone(), args.receipt.clone(), args.config.clone()]
+                .into_iter()
+                .flatten()
+                .collect()
+        }
+        _ => {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Usage,
+                "--summary-output currently supports source-exception audit and check reports only",
+            ));
+        }
+    };
+    crate::core_command_router::configure_summary_output(
+        crate::core_command_router::SummaryOutputConfig::new(path, conflicts),
+    )
 }
 
 pub(crate) fn normalized_args<I, S>(args: I) -> Vec<S>
