@@ -36,6 +36,15 @@ unsafe-proof, test-adequacy, or coverage-proof behavior until implemented.
 For exploratory, review-only, or analysis-only work, stop at findings unless
 the user turns it into an implementation lane.
 
+When asked to review or re-review a pull request, validate review feedback, or
+decide merge readiness, follow
+[`.agents/skills/review-current-head/SKILL.md`](.agents/skills/review-current-head/SKILL.md).
+Bind the review to the exact live head, inspect the complete changed-file set
+plus relevant owners and consumers, check existing review threads before
+posting, and prefer one batched actionable review. Do not mutate the branch
+while claiming independent review. If the reviewer pushes a repair, the prior
+review is stale and the new head requires fresh affected review.
+
 For a user-authorized swarm, PR, or release lane, scoped commits, branch pushes,
 PR creation, PR updates, PR merge, post-merge sync, and cleanup are normal once
 the diff has been inspected and validation is recorded.
@@ -47,6 +56,14 @@ change state, inspect branch, status, and the relevant diff.
 Do not hard-reset, force-push, rewrite history, or move branch refs unless
 explicitly asked. Do not push directly to `main`; use the normal PR merge path
 unless the user explicitly asks for direct repository maintenance.
+
+Before merge, verify that the live PR head still equals the final reviewed
+head, the PR is non-draft and mergeable, substantive conversations are
+resolved with current-head evidence, and every required check is terminal and
+green or explicitly not applicable under repository policy. Pending,
+cancelled, stale, malformed, action-required, and silently skipped evidence are
+not green. Green CI alone is not merge readiness. Prefer a head-pinned merge
+when the platform supports it.
 
 Deleting local or remote branches and worktrees is allowed for branches and
 worktrees created by the current lane, or confirmed stale after inspection. Do
