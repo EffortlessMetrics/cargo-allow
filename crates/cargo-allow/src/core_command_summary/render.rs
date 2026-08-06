@@ -1,8 +1,8 @@
 use repo_protocol::ResultClassV1;
 
 use super::{
-    CoreCommandActionKindV1, CoreCommandActionV1, CoreCommandPostureV1,
-    CoreCommandSummaryV1, validate_core_command_summary,
+    CoreCommandActionKindV1, CoreCommandActionV1, CoreCommandPostureV1, CoreCommandSummaryV1,
+    validate_core_command_summary,
 };
 
 pub fn render_core_command_summary_json(summary: &CoreCommandSummaryV1) -> Result<String, String> {
@@ -186,18 +186,7 @@ fn quote_windows_cmd(argument: &str) -> String {
     if !argument.chars().any(|character| {
         matches!(
             character,
-            ' ' | '\t'
-                | '"'
-                | '&'
-                | '|'
-                | '<'
-                | '>'
-                | '^'
-                | '('
-                | ')'
-                | ','
-                | ';'
-                | '='
+            ' ' | '\t' | '"' | '&' | '|' | '<' | '>' | '^' | '(' | ')' | ',' | ';' | '='
         )
     }) {
         return argument.to_string();
