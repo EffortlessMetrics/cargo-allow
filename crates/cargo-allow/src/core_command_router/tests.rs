@@ -1,0 +1,178 @@
+use super::*;
+use allow_core::{Finding, MatchOutcome};
+use allow_inventory::InventorySource;
+use serde_json::Value;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+fn require(condition: bool, message: impl Into<String>) -> Result<(), String> {
+    if condition {
+        Ok(())
+    } else {
+        Err(message.into())
+    }
+}
+
+fn report_args<'a>(
+    root: &'a Path,
+    output: Option<&'a Path>,
+    format: OutputFormat,
+    findings: &'a [Finding],
+    outcomes: &'a [MatchOutcome],
+    inventory_facts: crate::InventoryFacts,
+) -> ReportRenderArgs<'a> {
+    ReportRenderArgs {
+        command: "audit",
+        format,
+        baseline_debt_entries: 0,
+        evidence: crate::EvidenceReportSummary::default(),
+        findings,
+        outcomes,
+        failed: false,
+        output,
+        root,
+        inventory_facts,
+        inventory_source_identity: None,
+        enforcement: None,
+    }
+}
+
+#[test]
+fn human_report_starts_with_the_common_summary() -> Result<(), String> {
+    let root = temp_root("human").map_err(|error| error.to_string())?;
+    let output = root.join("report.txt");
+    let args = report_args(
+        &root,
+        Some(&output),
+        OutputFormat::Human,
+        &[],
+        &[],
+        crate::InventoryFacts::scanned(InventorySource::GitTracked, 1),
+    );
+    print_report_with_summary_config(args, None).map_err(|error| error.to_string())?;
+    let text = fs::read_to_string(&output).map_err(|error| error.to_string())?;
+    require(
+        text.starts_with("Result: satisfied\nWhy:"),
+        format!("common summary was not first: {text}"),
+    )?;
+    require(
+        text.contains("cargo-allow audit"),
+        "detailed human report was not preserved",
+    )?;
+    fs::remove_dir_all(root).map_err(|error| error.to_string())
+}
+
+#[test]
+fn json_detail_is_byte_equal_to_the_existing_renderer() -> Result<(), String> {
+    let root = temp_root("json").map_err(|error| error.to_string())?;
+    let expected_path = root.join("expected.json");
+    let actual_path = root.join("actual.json");
+    let facts = crate::InventoryFacts::scanned(InventorySource::GitTracked, 1);
+    crate::reporting::print_report(report_args(
+        &root,
+        Some(&expected_path),
+        OutputFormat::Json,
+        &[],
+        &[],
+        facts,
+    ))
+    .map_err(|error| error.to_string())?;
+    print_report_with_summary_config(
+        report_args(
+            &root,
+            Some(&actual_path),
+            OutputFormat::Json,
+            &[],
+            &[],
+            facts,
+        ),
+        None,
+    )
+    .map_err(|error| error.to_string())?;
+    let expected = fs::read(&expected_path).map_err(|error| error.to_string())?;
+    let actual = fs::read(&actual_path).map_err(|error| error.to_string())?;
+    require(expected == actual, "detailed JSON bytes changed")?;
+    fs::remove_dir_all(root).map_err(|error| error.to_string())
+}
+
+#[test]
+fn summary_sidecar_is_structured_and_rejects_output_collision() -> Result<(), String> {
+    let root = temp_root("sidecar").map_err(|error| error.to_string())?;
+    let detail = root.join("report.json");
+    let summary = root.join("summary.json");
+    let config = SummaryOutputConfig::new(summary.clone(), vec![detail.clone()]);
+    print_report_with_summary_config(
+        report_args(
+            &root,
+            Some(&detail),
+            OutputFormat::Json,
+            &[],
+            &[],
+            crate::InventoryFacts::scanned(InventorySource::GitTracked, 1),
+        ),
+        Some(&config),
+    )
+    .map_err(|error| error.to_string())?;
+    let value: Value =
+        serde_json::from_str(&fs::read_to_string(&summary).map_err(|error| error.to_string())?)
+            .map_err(|error| error.to_string())?;
+    require(
+        value.pointer("/schema_id").and_then(Value::as_str)
+            == Some(crate::core_command_summary::CORE_COMMAND_SUMMARY_SCHEMA_ID),
+        "summary sidecar schema ID is missing",
+    )?;
+    let collision = SummaryOutputConfig::new(detail.clone(), vec![detail.clone()]);
+    let error = print_report_with_summary_config(
+        report_args(
+            &root,
+            Some(&detail),
+            OutputFormat::Json,
+            &[],
+            &[],
+            crate::InventoryFacts::scanned(InventorySource::GitTracked, 1),
+        ),
+        Some(&collision),
+    )
+    .err()
+    .ok_or_else(|| "summary/detail collision should fail".to_string())?;
+    require(
+        error.kind() == CargoAllowErrorKind::Usage,
+        format!("collision used the wrong error kind: {}", error.code()),
+    )?;
+    fs::remove_dir_all(root).map_err(|error| error.to_string())
+}
+
+#[test]
+fn partial_inventory_cannot_render_as_satisfied() -> Result<(), String> {
+    let root = temp_root("partial").map_err(|error| error.to_string())?;
+    let mut facts = crate::InventoryFacts::scanned(InventorySource::GitTracked, 1);
+    facts.completeness = InventoryCompleteness::Partial;
+    let args = report_args(&root, None, OutputFormat::Json, &[], &[], facts);
+    let summary = build_report_summary(&args).map_err(|error| error.to_string())?;
+    require(
+        summary.result_class == ResultClassV1::PartialData,
+        "partial inventory did not remain partial-data",
+    )?;
+    require(
+        summary.posture == CoreCommandPostureV1::Blocking,
+        "partial inventory did not remain blocking",
+    )?;
+    fs::remove_dir_all(root).map_err(|error| error.to_string())
+}
+
+static NEXT_TEMP_ROOT: AtomicUsize = AtomicUsize::new(0);
+
+fn temp_root(label: &str) -> std::io::Result<PathBuf> {
+    let id = NEXT_TEMP_ROOT.fetch_add(1, Ordering::Relaxed);
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-core-router-{label}-{}-{stamp}-{id}",
+        std::process::id()
+    ));
+    fs::create_dir_all(&root)?;
+    Ok(root)
+}
