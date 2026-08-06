@@ -202,14 +202,14 @@ fn configure_summary_output(
                 .flatten()
                 .collect()
         }
-        CargoAllowCommand::Check(args)
-            if args.profile.is_none() && !args.staged_identity_only =>
-        {
-            [args.output.clone(), args.receipt.clone(), args.config.clone()]
-                .into_iter()
-                .flatten()
-                .collect()
-        }
+        CargoAllowCommand::Check(args) if args.profile.is_none() && !args.staged_identity_only => [
+            args.output.clone(),
+            args.receipt.clone(),
+            args.config.clone(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect(),
         _ => {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::Usage,
