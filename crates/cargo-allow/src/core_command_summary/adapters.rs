@@ -124,9 +124,7 @@ fn action_from_adoption(
         return Err("adoption action argv must include a program".to_string());
     };
     let (write_posture, write_paths) = match action.write_posture {
-        allow_report::WritePosture::ReadOnly => {
-            (CoreCommandWritePostureV1::ReadOnly, Vec::new())
-        }
+        allow_report::WritePosture::ReadOnly => (CoreCommandWritePostureV1::ReadOnly, Vec::new()),
         allow_report::WritePosture::PreviewOnly => {
             (CoreCommandWritePostureV1::PreviewOnly, Vec::new())
         }
