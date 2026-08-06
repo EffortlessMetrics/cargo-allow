@@ -42,6 +42,60 @@ fn base_input(operation: &str) -> CoreCommandSummaryInputV1 {
     }
 }
 
+fn adoption_plan() -> allow_report::CoreAdoptionPlanV1 {
+    allow_report::CoreAdoptionPlanV1 {
+        schema_id: allow_report::CORE_ADOPTION_PLAN_SCHEMA_ID.to_string(),
+        schema_version: allow_report::CORE_ADOPTION_PLAN_SCHEMA_VERSION,
+        tool_version: "0.2.0".to_string(),
+        repository_identity: "repo:test".to_string(),
+        selected_root: "<repository-root>".to_string(),
+        channel: "candidate".to_string(),
+        executable_identity: "sha256:test".to_string(),
+        inventory: allow_report::AdoptionInventoryFacts {
+            mode: allow_report::InventoryMode::GitTracked,
+            completeness: allow_report::InventoryCompleteness::Complete,
+            limitations: Vec::new(),
+        },
+        policy: allow_report::AdoptionPolicyFacts {
+            state: allow_report::PolicyState::Absent,
+            path: None,
+            schema_version: None,
+            digest: None,
+            total_findings: 2,
+            new_unreceipted_findings: 0,
+            stale_entries: 0,
+            location_drift_entries: 0,
+            broken_evidence_entries: 0,
+            review_due_entries: 0,
+            expired_entries: 0,
+            occurrence_headroom_entries: 0,
+            mirror_divergence: false,
+        },
+        bootstrap_disposition: allow_report::BootstrapDisposition::FindingsNoPolicy,
+        primary_action: allow_report::AdoptionAction {
+            kind: allow_report::AdoptionActionKind::PreviewPropose,
+            argv: strings(&["cargo-allow", "propose"]),
+            reason: "preview before retaining debt".to_string(),
+            write_posture: allow_report::WritePosture::PreviewOnly,
+            expected_result: "candidate entries are reviewable".to_string(),
+        },
+        follow_up_actions: vec![allow_report::AdoptionAction {
+            kind: allow_report::AdoptionActionKind::RunNoNewCheck,
+            argv: strings(&["cargo-allow", "check", "--mode", "no-new"]),
+            reason: "verify the selected policy".to_string(),
+            write_posture: allow_report::WritePosture::ReadOnly,
+            expected_result: "the full source-tree posture is evaluated".to_string(),
+        }],
+        may_write_paths: Vec::new(),
+        explicit_non_effects: vec!["does not write policy".to_string()],
+        expected_result_markers: vec!["preview".to_string()],
+        ci_example_path: "docs/how-to/adopt-cargo-allow.md".to_string(),
+        rollback_guide_path: "docs/how-to/rollback-cargo-allow-adoption.md".to_string(),
+        limitations: vec!["source syntax only".to_string()],
+        claim_boundary: "adoption recommendation only".to_string(),
+    }
+}
+
 #[test]
 fn completed_summary_rejects_partial_coverage() -> Result<(), String> {
     let mut input = base_input("check");
@@ -53,6 +107,16 @@ fn completed_summary_rejects_partial_coverage() -> Result<(), String> {
             format!("unexpected validation error: {error}"),
         ),
     }
+}
+
+#[test]
+fn summary_survives_a_json_round_trip() -> Result<(), String> {
+    let summary = build_core_command_summary(base_input("check"))?;
+    let json = render_core_command_summary_json(&summary)?;
+    let parsed: CoreCommandSummaryV1 =
+        serde_json::from_str(&json).map_err(|error| error.to_string())?;
+    ensure(parsed == summary, "round trip changed the summary")?;
+    validate_core_command_summary(&parsed)
 }
 
 #[test]
@@ -108,6 +172,10 @@ fn check_summary_keeps_human_and_json_result_semantics_equal() -> Result<(), Str
             .and_then(serde_json::Value::as_str)
             == Some("why"),
         format!("structured argv missing: {json}"),
+    )?;
+    ensure(
+        value.pointer("/primary_action/display").is_none(),
+        format!("host-dependent display leaked into JSON: {json}"),
     )
 }
 
@@ -176,58 +244,7 @@ fn mutation_summary_names_live_target_and_full_check() -> Result<(), String> {
 
 #[test]
 fn adoption_adapter_reuses_typed_primary_action() -> Result<(), String> {
-    let plan = allow_report::CoreAdoptionPlanV1 {
-        schema_id: allow_report::CORE_ADOPTION_PLAN_SCHEMA_ID.to_string(),
-        schema_version: allow_report::CORE_ADOPTION_PLAN_SCHEMA_VERSION,
-        tool_version: "0.2.0".to_string(),
-        repository_identity: "repo:test".to_string(),
-        selected_root: "<repository-root>".to_string(),
-        channel: "candidate".to_string(),
-        executable_identity: "sha256:test".to_string(),
-        inventory: allow_report::AdoptionInventoryFacts {
-            mode: allow_report::InventoryMode::GitTracked,
-            completeness: allow_report::InventoryCompleteness::Complete,
-            limitations: Vec::new(),
-        },
-        policy: allow_report::AdoptionPolicyFacts {
-            state: allow_report::PolicyState::Absent,
-            path: None,
-            schema_version: None,
-            digest: None,
-            total_findings: 2,
-            new_unreceipted_findings: 0,
-            stale_entries: 0,
-            location_drift_entries: 0,
-            broken_evidence_entries: 0,
-            review_due_entries: 0,
-            expired_entries: 0,
-            occurrence_headroom_entries: 0,
-            mirror_divergence: false,
-        },
-        bootstrap_disposition: allow_report::BootstrapDisposition::FindingsNoPolicy,
-        primary_action: allow_report::AdoptionAction {
-            kind: allow_report::AdoptionActionKind::PreviewPropose,
-            argv: strings(&["cargo-allow", "propose"]),
-            reason: "preview before retaining debt".to_string(),
-            write_posture: allow_report::WritePosture::PreviewOnly,
-            expected_result: "candidate entries are reviewable".to_string(),
-        },
-        follow_up_actions: vec![allow_report::AdoptionAction {
-            kind: allow_report::AdoptionActionKind::RunNoNewCheck,
-            argv: strings(&["cargo-allow", "check", "--mode", "no-new"]),
-            reason: "verify the selected policy".to_string(),
-            write_posture: allow_report::WritePosture::ReadOnly,
-            expected_result: "the full source-tree posture is evaluated".to_string(),
-        }],
-        may_write_paths: Vec::new(),
-        explicit_non_effects: vec!["does not write policy".to_string()],
-        expected_result_markers: vec!["preview".to_string()],
-        ci_example_path: "docs/how-to/adopt-cargo-allow.md".to_string(),
-        rollback_guide_path: "docs/how-to/rollback-cargo-allow-adoption.md".to_string(),
-        limitations: vec!["source syntax only".to_string()],
-        claim_boundary: "adoption recommendation only".to_string(),
-    };
-    let summary = core_command_summary_from_adoption_plan(&plan)?;
+    let summary = core_command_summary_from_adoption_plan(&adoption_plan())?;
     ensure(
         summary.result_class == ResultClassV1::Findings,
         "findings/no-policy must remain a findings result",
@@ -249,7 +266,58 @@ fn adoption_adapter_reuses_typed_primary_action() -> Result<(), String> {
                 .eq(["check", "--mode", "no-new"])
         }),
         "adoption follow-up should expose the full check",
+    )?;
+    ensure(
+        summary.additional_action_count == 0 && summary.additional_actions_ref.is_none(),
+        "promoted next proof must not be counted again as an additional action",
     )
+}
+
+#[test]
+fn adoption_adapter_counts_only_unpromoted_follow_ups() -> Result<(), String> {
+    let mut plan = adoption_plan();
+    plan.follow_up_actions.push(allow_report::AdoptionAction {
+        kind: allow_report::AdoptionActionKind::ConfigureCi,
+        argv: strings(&["cargo-allow", "reference", "--format", "markdown"]),
+        reason: "inspect the supported CI reference".to_string(),
+        write_posture: allow_report::WritePosture::ReadOnly,
+        expected_result: "the checked CI contract is available".to_string(),
+    });
+    let summary = core_command_summary_from_adoption_plan(&plan)?;
+    ensure(
+        summary.additional_action_count == 1,
+        format!(
+            "expected one unpromoted follow-up, got {}",
+            summary.additional_action_count
+        ),
+    )?;
+    ensure(
+        summary
+            .additional_actions_ref
+            .as_deref()
+            .is_some_and(|reference| reference.contains("exclude_index=0")),
+        "additional action reference must exclude the promoted next proof",
+    )
+}
+
+#[test]
+fn adoption_adapter_rejects_unknown_live_mutation_target() -> Result<(), String> {
+    let mut plan = adoption_plan();
+    plan.primary_action = allow_report::AdoptionAction {
+        kind: allow_report::AdoptionActionKind::ApplyStaleSafeFindingPlan,
+        argv: strings(&["cargo-allow", "add", "--from-plan", "plan.json", "--update"]),
+        reason: "apply a reviewed finding plan".to_string(),
+        write_posture: allow_report::WritePosture::MayWrite,
+        expected_result: "the selected ledger entry is updated".to_string(),
+    };
+    plan.may_write_paths.clear();
+    match core_command_summary_from_adoption_plan(&plan) {
+        Ok(_) => Err("MayWrite without a target must fail".to_string()),
+        Err(error) => ensure(
+            error.contains("policy.path-derived may_write_paths"),
+            format!("unexpected missing-target error: {error}"),
+        ),
+    }
 }
 
 #[test]
@@ -291,5 +359,35 @@ fn human_renderer_sanitizes_repository_control_text() -> Result<(), String> {
     ensure(
         !human.contains('\u{1b}'),
         format!("terminal escape survived rendering: {human}"),
+    )
+}
+
+#[test]
+fn command_display_falls_back_for_control_text() -> Result<(), String> {
+    let mut input = base_input("why");
+    input.result_class = ResultClassV1::Findings;
+    input.posture = CoreCommandPostureV1::Advisory;
+    input.primary_action = Some(
+        CoreCommandActionV1::command(
+            "why.inspect",
+            "Inspect finding",
+            "cargo-allow",
+            vec!["why".to_string(), "src/\u{1b}[31m.rs".to_string()],
+        )
+        .with_contract(
+            "inspect the finding",
+            "a bounded explanation is produced",
+            "the command remains read-only",
+        ),
+    );
+    let summary = build_core_command_summary(input)?;
+    let human = render_core_command_summary_human(&summary);
+    ensure(
+        human.contains("use structured argv; command contains non-pasteable control text"),
+        format!("structured-argv fallback missing: {human}"),
+    )?;
+    ensure(
+        !human.contains('\u{1b}'),
+        format!("control character survived command rendering: {human}"),
     )
 }
