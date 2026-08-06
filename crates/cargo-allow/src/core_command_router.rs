@@ -7,8 +7,8 @@ use std::sync::OnceLock;
 
 use crate::core_command_summary::{
     CoreCommandActionV1, CoreCommandEffectsV1, CoreCommandPostureV1, CoreCommandReasonV1,
-    CoreCommandSummaryInputV1, CoreCommandSummaryV1, CoreSourceSubjectKindV1,
-    CoreSourceSubjectV1, build_core_command_summary, render_core_command_summary_human,
+    CoreCommandSummaryInputV1, CoreCommandSummaryV1, CoreSourceSubjectKindV1, CoreSourceSubjectV1,
+    build_core_command_summary, render_core_command_summary_human,
     render_core_command_summary_json,
 };
 use crate::reporting::{ReportRenderArgs, SourceTreeReportContext};
@@ -48,10 +48,7 @@ fn print_report_with_summary_config(
     let summary = build_report_summary(&args)?;
     let detail = render_detail(&args);
     let rendered = if args.format == OutputFormat::Human {
-        format!(
-            "{}\n{detail}",
-            render_core_command_summary_human(&summary)
-        )
+        format!("{}\n{detail}", render_core_command_summary_human(&summary))
     } else {
         detail
     };
@@ -88,7 +85,9 @@ fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCom
             CoreCommandPostureV1::Blocking,
             CoreCommandReasonV1 {
                 code: format!("{}.blocking_findings", args.command),
-                message: format!("{advisory_count} blocking or review outcome(s) require attention"),
+                message: format!(
+                    "{advisory_count} blocking or review outcome(s) require attention"
+                ),
             },
         )
     } else if advisory_count > 0 {
@@ -147,8 +146,8 @@ fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCom
         None
     };
 
-    let next_proof = (args.command == "audit" && completeness == CompletenessV1::Complete)
-        .then(|| {
+    let next_proof =
+        (args.command == "audit" && completeness == CompletenessV1::Complete).then(|| {
             CoreCommandActionV1::command(
                 "audit.full_no_new_check",
                 "Run the enforcing no-new check",
@@ -178,7 +177,7 @@ fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCom
     build_core_command_summary(CoreCommandSummaryInputV1 {
         tool_version: env!("CARGO_PKG_VERSION").to_string(),
         operation: args.command.to_string(),
-        mode: args.enforcement.map(str::to_string),
+        mode: None,
         profile: None,
         subject,
         result_class,
@@ -218,7 +217,10 @@ fn report_subject(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreSourceSub
         ),
         None => (
             CoreSourceSubjectKindV1::Worktree,
-            format!("worktree:{}:current-unpinned", args.inventory_facts.source.as_str()),
+            format!(
+                "worktree:{}:current-unpinned",
+                args.inventory_facts.source.as_str()
+            ),
             vec![
                 "the current worktree result is not bound to a commit, tree, or Git-index identity"
                     .to_string(),
@@ -345,20 +347,26 @@ fn partial_reason(args: &ReportRenderArgs<'_>) -> String {
 }
 
 fn render_detail(args: &ReportRenderArgs<'_>) -> String {
-    let style = if args.format == OutputFormat::Human && args.output.is_none() {
+    let source_context = SourceTreeReportContext::new_with_identity(
+        args.root,
+        args.inventory_facts,
+        args.inventory_source_identity,
+    );
+    let mut context = source_context.report(Some(args.baseline_debt_entries));
+    args.evidence.apply_to(&mut context);
+    context.enforcement = args.enforcement;
+    context.style = if args.format == OutputFormat::Human && args.output.is_none() {
         crate::reporting::output_style()
     } else {
         allow_report::Style::PLAIN
     };
-    let context = report_context(args);
     match args.format {
-        OutputFormat::Human => allow_report::render_human_with_context_styled(
+        OutputFormat::Human => allow_report::render_human_with_context(
             args.command,
             args.findings,
             args.outcomes,
             args.failed,
             context,
-            style,
         ),
         OutputFormat::Json => allow_report::render_json_with_context(
             args.command,
@@ -392,16 +400,6 @@ fn render_detail(args: &ReportRenderArgs<'_>) -> String {
 }
 
 fn render_detail_json(args: &ReportRenderArgs<'_>) -> String {
-    allow_report::render_json_with_context(
-        args.command,
-        args.findings,
-        args.outcomes,
-        args.failed,
-        report_context(args),
-    )
-}
-
-fn report_context<'a>(args: &'a ReportRenderArgs<'a>) -> allow_report::ReportContext<'a> {
     let source_context = SourceTreeReportContext::new_with_identity(
         args.root,
         args.inventory_facts,
@@ -410,7 +408,13 @@ fn report_context<'a>(args: &'a ReportRenderArgs<'a>) -> allow_report::ReportCon
     let mut context = source_context.report(Some(args.baseline_debt_entries));
     args.evidence.apply_to(&mut context);
     context.enforcement = args.enforcement;
-    context
+    allow_report::render_json_with_context(
+        args.command,
+        args.findings,
+        args.outcomes,
+        args.failed,
+        context,
+    )
 }
 
 fn validate_summary_output_path(
@@ -490,184 +494,4 @@ fn is_missing_git_metadata(diagnostic: &str) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use allow_core::{Finding, FindingKind, MatchOutcome};
-    use allow_inventory::{InventorySource, InventoryCompleteness};
-    use std::fs;
-    use std::sync::atomic::{AtomicUsize, Ordering};
-
-    fn require(condition: bool, message: impl Into<String>) -> Result<(), String> {
-        if condition {
-            Ok(())
-        } else {
-            Err(message.into())
-        }
-    }
-
-    fn report_args<'a>(
-        root: &'a Path,
-        output: Option<&'a Path>,
-        format: OutputFormat,
-        findings: &'a [Finding],
-        outcomes: &'a [MatchOutcome],
-        inventory_facts: crate::InventoryFacts,
-    ) -> ReportRenderArgs<'a> {
-        ReportRenderArgs {
-            command: "audit",
-            format,
-            baseline_debt_entries: 0,
-            evidence: crate::EvidenceReportSummary::default(),
-            findings,
-            outcomes,
-            failed: false,
-            output,
-            root,
-            inventory_facts,
-            inventory_source_identity: None,
-            enforcement: None,
-        }
-    }
-
-    #[test]
-    fn human_report_starts_with_the_common_summary() -> Result<(), String> {
-        let root = temp_root("human").map_err(|error| error.to_string())?;
-        let output = root.join("report.txt");
-        let args = report_args(
-            &root,
-            Some(&output),
-            OutputFormat::Human,
-            &[],
-            &[],
-            crate::InventoryFacts::scanned(InventorySource::GitTracked, 1),
-        );
-        print_report_with_summary_config(args, None).map_err(|error| error.to_string())?;
-        let text = fs::read_to_string(&output).map_err(|error| error.to_string())?;
-        require(
-            text.starts_with("Result: satisfied\nWhy:"),
-            format!("common summary was not first: {text}"),
-        )?;
-        require(
-            text.contains("cargo-allow audit"),
-            "detailed human report was not preserved",
-        )?;
-        fs::remove_dir_all(root).map_err(|error| error.to_string())
-    }
-
-    #[test]
-    fn json_detail_is_byte_equal_to_the_existing_renderer() -> Result<(), String> {
-        let root = temp_root("json").map_err(|error| error.to_string())?;
-        let expected_path = root.join("expected.json");
-        let actual_path = root.join("actual.json");
-        let facts = crate::InventoryFacts::scanned(InventorySource::GitTracked, 1);
-        crate::reporting::print_report(report_args(
-            &root,
-            Some(&expected_path),
-            OutputFormat::Json,
-            &[],
-            &[],
-            facts,
-        ))
-        .map_err(|error| error.to_string())?;
-        print_report_with_summary_config(
-            report_args(
-                &root,
-                Some(&actual_path),
-                OutputFormat::Json,
-                &[],
-                &[],
-                facts,
-            ),
-            None,
-        )
-        .map_err(|error| error.to_string())?;
-        let expected = fs::read(&expected_path).map_err(|error| error.to_string())?;
-        let actual = fs::read(&actual_path).map_err(|error| error.to_string())?;
-        require(expected == actual, "detailed JSON bytes changed")?;
-        fs::remove_dir_all(root).map_err(|error| error.to_string())
-    }
-
-    #[test]
-    fn summary_sidecar_is_structured_and_rejects_output_collision() -> Result<(), String> {
-        let root = temp_root("sidecar").map_err(|error| error.to_string())?;
-        let detail = root.join("report.json");
-        let summary = root.join("summary.json");
-        let config = SummaryOutputConfig::new(summary.clone(), vec![detail.clone()]);
-        print_report_with_summary_config(
-            report_args(
-                &root,
-                Some(&detail),
-                OutputFormat::Json,
-                &[],
-                &[],
-                crate::InventoryFacts::scanned(InventorySource::GitTracked, 1),
-            ),
-            Some(&config),
-        )
-        .map_err(|error| error.to_string())?;
-        let value: Value = serde_json::from_str(
-            &fs::read_to_string(&summary).map_err(|error| error.to_string())?,
-        )
-        .map_err(|error| error.to_string())?;
-        require(
-            value
-                .pointer("/schema_id")
-                .and_then(Value::as_str)
-                == Some(crate::core_command_summary::CORE_COMMAND_SUMMARY_SCHEMA_ID),
-            "summary sidecar schema ID is missing",
-        )?;
-        let collision = SummaryOutputConfig::new(detail.clone(), vec![detail.clone()]);
-        let error = print_report_with_summary_config(
-            report_args(
-                &root,
-                Some(&detail),
-                OutputFormat::Json,
-                &[],
-                &[],
-                crate::InventoryFacts::scanned(InventorySource::GitTracked, 1),
-            ),
-            Some(&collision),
-        )
-        .err()
-        .ok_or_else(|| "summary/detail collision should fail".to_string())?;
-        require(
-            error.kind() == CargoAllowErrorKind::Usage,
-            format!("collision used the wrong error kind: {}", error.code()),
-        )?;
-        fs::remove_dir_all(root).map_err(|error| error.to_string())
-    }
-
-    #[test]
-    fn partial_inventory_cannot_render_as_satisfied() -> Result<(), String> {
-        let root = temp_root("partial").map_err(|error| error.to_string())?;
-        let mut facts = crate::InventoryFacts::scanned(InventorySource::GitTracked, 1);
-        facts.completeness = InventoryCompleteness::Partial;
-        let args = report_args(&root, None, OutputFormat::Json, &[], &[], facts);
-        let summary = build_report_summary(&args).map_err(|error| error.to_string())?;
-        require(
-            summary.result_class == ResultClassV1::PartialData,
-            "partial inventory did not remain partial-data",
-        )?;
-        require(
-            summary.posture == CoreCommandPostureV1::Blocking,
-            "partial inventory did not remain blocking",
-        )?;
-        fs::remove_dir_all(root).map_err(|error| error.to_string())
-    }
-
-    static NEXT_TEMP_ROOT: AtomicUsize = AtomicUsize::new(0);
-
-    fn temp_root(label: &str) -> std::io::Result<PathBuf> {
-        let id = NEXT_TEMP_ROOT.fetch_add(1, Ordering::Relaxed);
-        let stamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|duration| duration.as_nanos())
-            .unwrap_or(0);
-        let root = std::env::temp_dir().join(format!(
-            "cargo-allow-core-router-{label}-{}-{stamp}-{id}",
-            std::process::id()
-        ));
-        fs::create_dir_all(&root)?;
-        Ok(root)
-    }
-}
+mod tests;
