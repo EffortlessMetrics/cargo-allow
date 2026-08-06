@@ -1,0 +1,5 @@
+kind: Fixed
+body: >-
+  Add an exact Go 1.25 and Changie 1.25.2 compatibility lane that proves
+  fragment creation and batch previews remain read-only and rejects unknown
+  configured kinds.

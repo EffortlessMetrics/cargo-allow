@@ -14,6 +14,80 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  changie-contract:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version: '1.25.0'
+          cache: false
+      - name: Install exact Changie module
+        env:
+          GOBIN: ${{ runner.temp }}/changie-bin
+          GOPROXY: https://proxy.golang.org
+          GOSUMDB: sum.golang.org
+          GOTOOLCHAIN: local
+        run: |
+          set -euo pipefail
+          test "$(go env GOVERSION)" = 'go1.25.0'
+          mkdir -p "${GOBIN}"
+          go install github.com/miniscruff/changie@v1.25.2
+          go version -m "${GOBIN}/changie" | tee "${RUNNER_TEMP}/changie-module.txt"
+          grep -Eq $'^\tmod\tgithub\.com/miniscruff/changie\tv1\.25\.2(\t|$)' \
+            "${RUNNER_TEMP}/changie-module.txt"
+      - name: Validate Changie config and fragments without mutation
+        env:
+          CHANGIE_BIN: ${{ runner.temp }}/changie-bin/changie
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "${tmp}"' EXIT
+
+          git status --porcelain=v1 --untracked-files=all > "${tmp}/before.status"
+          git diff --binary --no-ext-diff HEAD -- > "${tmp}/before.worktree.diff"
+          git diff --cached --binary --no-ext-diff HEAD -- > "${tmp}/before.index.diff"
+
+          CI=true "${CHANGIE_BIN}" new \
+            --dry-run \
+            --interactive=false \
+            --kind Fixed \
+            --body 'Changie contract probe.' \
+            > "${tmp}/new.yaml"
+          grep -Eq '^kind: Fixed$' "${tmp}/new.yaml"
+          grep -Eq '^body: Changie contract probe\.$' "${tmp}/new.yaml"
+
+          if CI=true "${CHANGIE_BIN}" new \
+            --dry-run \
+            --interactive=false \
+            --kind NotAConfiguredKind \
+            --body 'This must be rejected.' \
+            > "${tmp}/invalid-kind.out" 2>&1; then
+            echo 'Changie accepted an unknown configured kind' >&2
+            exit 1
+          fi
+          grep -Fq 'invalid kind: NotAConfiguredKind' "${tmp}/invalid-kind.out"
+
+          "${CHANGIE_BIN}" batch v999.0.0 --dry-run > "${tmp}/batch.md"
+          grep -Fq '## [999.0.0] - ' "${tmp}/batch.md"
+          grep -Fq '### Fixed' "${tmp}/batch.md"
+          grep -Fq \
+            'Add an exact Go 1.25 and Changie 1.25.2 compatibility lane' \
+            "${tmp}/batch.md"
+
+          git status --porcelain=v1 --untracked-files=all > "${tmp}/after.status"
+          git diff --binary --no-ext-diff HEAD -- > "${tmp}/after.worktree.diff"
+          git diff --cached --binary --no-ext-diff HEAD -- > "${tmp}/after.index.diff"
+
+          cmp "${tmp}/before.status" "${tmp}/after.status"
+          cmp "${tmp}/before.worktree.diff" "${tmp}/after.worktree.diff"
+          cmp "${tmp}/before.index.diff" "${tmp}/after.index.diff"
+
   review:
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
