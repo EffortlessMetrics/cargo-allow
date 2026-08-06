@@ -51,8 +51,10 @@ merge-readiness verification.
 - [ ] The PR body describes the current head, not an earlier candidate.
 - [ ] The changed-file set and relevant callers/consumers are ready to inspect.
 - [ ] Existing review threads were checked before adding new feedback.
-- [ ] Repairs after review will receive a fresh affected current-head review.
-- [ ] Required checks and retained receipts will be verified against the final head.
+- [ ] Repairs or material base changes after review will receive a fresh affected review.
+- [ ] Required checks and retained receipts will be verified against the final base/head pair.
+
+Final reviewed base and merge-base:
 
 Final reviewed head:
 
