@@ -3,8 +3,8 @@
 //! Interprets proof-protocol receipt bindings against reviewed command specs.
 //! Does not parse receipt payloads or authorize merge.
 
+use effortless_repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID;
 use proof_protocol::ProofReceiptBindingV1;
-use repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID;
 
 use crate::command_spec::CommandInvocationSpecV1;
 

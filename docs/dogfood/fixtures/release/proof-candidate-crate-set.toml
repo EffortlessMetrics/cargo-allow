@@ -6,7 +6,7 @@ schema_version = 1
 
 # Dependency / package order (leaf → binary).
 crates = [
-  "repo-protocol",
+  "effortless-repo-protocol",
   "proof-protocol",
   "proof-provider-api",
   "proof-adapter-command",

@@ -1,5 +1,5 @@
 [package]
-name = "repo-snapshot"
+name = "effortless-repo-snapshot"
 description = "Exact repository source views and snapshot implementation for three-product extraction."
 version.workspace = true
 edition.workspace = true
@@ -21,4 +21,4 @@ toml.workspace = true
 
 [dev-dependencies]
 allow-diff = { path = "../allow-diff" }
-repo-protocol = { path = "../repo-protocol" }
+effortless-repo-protocol = { path = "../effortless-repo-protocol" }

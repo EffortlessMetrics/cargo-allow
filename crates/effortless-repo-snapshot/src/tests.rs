@@ -228,7 +228,7 @@ fn validate_staged_contract(
 }
 
 fn validate_transport_contract(
-    transport: &repo_protocol::RepositorySnapshotV1,
+    transport: &effortless_repo_protocol::RepositorySnapshotV1,
     contract: &ParityContract,
 ) -> Result<(), String> {
     for field in &contract.required_transport_fields {
@@ -242,7 +242,10 @@ fn validate_transport_contract(
     Ok(())
 }
 
-fn transport_field_present(transport: &repo_protocol::RepositorySnapshotV1, field: &str) -> bool {
+fn transport_field_present(
+    transport: &effortless_repo_protocol::RepositorySnapshotV1,
+    field: &str,
+) -> bool {
     match field {
         "schema_id" => !transport.schema_id.is_empty(),
         "kind" => true,

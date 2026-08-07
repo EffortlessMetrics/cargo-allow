@@ -1,5 +1,5 @@
 [package]
-name = "repo-protocol"
+name = "effortless-repo-protocol"
 description = "Provider-neutral repository identity and transport envelopes for three-product extraction."
 version.workspace = true
 edition.workspace = true

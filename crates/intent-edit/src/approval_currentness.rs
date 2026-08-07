@@ -3,7 +3,7 @@
 //! These DTOs bind edit authority to snapshot currentness. They do not apply
 //! edits, invoke repo-edit, or run proof commands.
 
-use repo_protocol::CurrentnessV1;
+use effortless_repo_protocol::CurrentnessV1;
 use serde::{Deserialize, Serialize};
 
 pub const INTENT_EDIT_APPROVAL_CURRENTNESS_SCHEMA_ID: &str = "intent.edit-approval-currentness.v1";

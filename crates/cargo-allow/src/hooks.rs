@@ -1,6 +1,6 @@
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult, sha256_v1_bytes};
 use clap::{Parser, Subcommand, ValueEnum};
-use repo_edit::{
+use effortless_repo_edit::{
     assert_path_within_root, write_file, write_file_create_new_atomic_with_permissions,
 };
 use serde::{Deserialize, Serialize};

@@ -11,7 +11,7 @@ mod render;
 pub use adapters::{core_command_summary_from_adoption_plan, core_command_summary_from_error};
 pub use render::{render_core_command_summary_human, render_core_command_summary_json};
 
-use repo_protocol::{ClaimBoundaryV1, CompletenessV1, CurrentnessV1, ResultClassV1};
+use effortless_repo_protocol::{ClaimBoundaryV1, CompletenessV1, CurrentnessV1, ResultClassV1};
 use serde::{Deserialize, Serialize};
 
 pub const CORE_COMMAND_SUMMARY_SCHEMA_ID: &str = "cargo-allow.core-command-summary.v1";

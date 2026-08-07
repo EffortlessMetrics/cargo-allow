@@ -28,8 +28,8 @@ order = receipt.get("package_set", {}).get("order", [])
 assert order == [
     "allow-core",
     "allow-inventory",
-    "repo-protocol",
-    "repo-snapshot",
+    "effortless-repo-protocol",
+    "effortless-repo-snapshot",
     "intent-protocol",
     "intent-engine",
     "cargo-intent",

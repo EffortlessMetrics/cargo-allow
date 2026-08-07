@@ -35,7 +35,7 @@ use crate::{
     git_relative_config_path, load_world, parse_kind_filter, portable_relative_under_root,
     require_json_summary_output, resolve_source_tree_root,
 };
-use repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
+use effortless_repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 
 const ADD_REVIEW_AFTER_DEFAULT_DAYS: i64 = 90;
 

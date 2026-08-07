@@ -14,7 +14,7 @@ publish = false
 
 [dependencies]
 proof-protocol.workspace = true
-repo-protocol.workspace = true
+effortless-repo-protocol.workspace = true
 
 [dev-dependencies]
 toml.workspace = true

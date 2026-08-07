@@ -1,11 +1,11 @@
 //! Provider-neutral analysis receipt wrapping for process delegation (#2601-B).
 
 use crate::{CHANGE_STATUS_SCHEMA_ID, ChangeStatusReportV1};
-use intent_protocol::RepositorySnapshotV1 as IntentRepositorySnapshotV1;
-use repo_protocol::{
+use effortless_repo_protocol::{
     ANALYSIS_RECEIPT_SCHEMA_ID, AnalysisReceiptEnvelopeV1, ClaimBoundaryV1, CompletenessV1,
     CurrentnessV1, REPOSITORY_SNAPSHOT_SCHEMA_ID, RepositorySnapshotV1, ResultClassV1,
 };
+use intent_protocol::RepositorySnapshotV1 as IntentRepositorySnapshotV1;
 
 pub const PROVIDER_ID: &str = "cargo-intent";
 

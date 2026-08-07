@@ -1,4 +1,4 @@
-use rust_source_index::test_subjects_parity_contract_paths;
+use effortless_rust_source_index::test_subjects_parity_contract_paths;
 use std::path::PathBuf;
 
 #[test]

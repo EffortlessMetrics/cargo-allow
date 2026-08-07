@@ -304,7 +304,7 @@ fn validate_approval_currentness_fails_closed_on_stale() -> Result<(), String> {
     let envelope = IntentEditApprovalCurrentnessV1::new(
         "plan-stale",
         IntentEditApprovalStateV1::Approved,
-        repo_protocol::CurrentnessV1::Stale,
+        effortless_repo_protocol::CurrentnessV1::Stale,
         "sha256:v1:deadbeef",
     );
     match validate_approval_currentness(&envelope) {
@@ -318,7 +318,7 @@ fn validate_approval_currentness_accepts_approved_current() -> Result<(), String
     let envelope = IntentEditApprovalCurrentnessV1::new(
         "plan-approved",
         IntentEditApprovalStateV1::Approved,
-        repo_protocol::CurrentnessV1::Current,
+        effortless_repo_protocol::CurrentnessV1::Current,
         "sha256:v1:deadbeef",
     );
     validate_approval_currentness(&envelope).map_err(|err| err.as_str().to_string())
@@ -360,7 +360,7 @@ fn translate_plan_to_repo_edit_maps_replace_file() -> Result<(), String> {
     let approval = IntentEditApprovalCurrentnessV1::new(
         "plan-translate",
         IntentEditApprovalStateV1::Approved,
-        repo_protocol::CurrentnessV1::Current,
+        effortless_repo_protocol::CurrentnessV1::Current,
         "sha256:v1:abc",
     );
     let translation =
@@ -375,7 +375,7 @@ fn translate_plan_to_repo_edit_maps_replace_file() -> Result<(), String> {
     if request.target != "policy/allow.toml" {
         return Err(format!("unexpected target {}", request.target));
     }
-    if request.mode != repo_edit::SingleTargetApplyMode::AtomicReplace {
+    if request.mode != effortless_repo_edit::SingleTargetApplyMode::AtomicReplace {
         return Err("expected atomic replace mode".to_string());
     }
     if request.caller_reference != action_id {
@@ -402,7 +402,7 @@ fn translate_plan_to_repo_edit_rejects_delete_file() -> Result<(), String> {
     let approval = IntentEditApprovalCurrentnessV1::new(
         "plan-delete",
         IntentEditApprovalStateV1::Approved,
-        repo_protocol::CurrentnessV1::Current,
+        effortless_repo_protocol::CurrentnessV1::Current,
         "sha256:v1:abc",
     );
     match translate_plan_to_repo_edit(&plan, &approval, IntentEditDialectV1::CargoAllowPolicy) {
@@ -450,7 +450,7 @@ fn compile_recompile_contract_emits_phase_obligation_plan() -> Result<(), String
     let approval = IntentEditApprovalCurrentnessV1::new(
         "plan-recompile",
         IntentEditApprovalStateV1::Approved,
-        repo_protocol::CurrentnessV1::Current,
+        effortless_repo_protocol::CurrentnessV1::Current,
         "sha256:v1:abc",
     );
     let translation =
@@ -523,7 +523,7 @@ fn compile_settlement_plan_emits_residual_obligations() -> Result<(), String> {
     let approval = IntentEditApprovalCurrentnessV1::new(
         "plan-settlement",
         IntentEditApprovalStateV1::Approved,
-        repo_protocol::CurrentnessV1::Current,
+        effortless_repo_protocol::CurrentnessV1::Current,
         "sha256:v1:abc",
     );
     let settlement =

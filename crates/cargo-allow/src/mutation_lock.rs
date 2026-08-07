@@ -2,4 +2,4 @@
 //!
 //! Canonical implementation lives in `repo-edit::MutationLock`.
 
-pub(crate) use repo_edit::MutationLock;
+pub(crate) use effortless_repo_edit::MutationLock;

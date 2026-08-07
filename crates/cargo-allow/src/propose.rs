@@ -10,7 +10,7 @@ use allow_policy::{
     validate_policy,
 };
 use allow_report::MutationReceipt;
-use repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
+use effortless_repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 
 #[path = "propose_args.rs"]
 mod propose_args;

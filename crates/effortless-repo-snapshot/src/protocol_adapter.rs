@@ -2,7 +2,7 @@ use crate::revision_identity::{
     RepositorySnapshotIdentity, RepositorySnapshotKind, ResolvedRevisionIdentity,
     SelectedPathIdentity,
 };
-use repo_protocol::{
+use effortless_repo_protocol::{
     RepositorySnapshotKindV1, RepositorySnapshotV1, ResolvedRevisionV1, SelectedPathIdentityV1,
 };
 
@@ -10,7 +10,7 @@ pub fn repository_snapshot_v1_from_allow_diff(
     identity: &RepositorySnapshotIdentity,
 ) -> RepositorySnapshotV1 {
     RepositorySnapshotV1 {
-        schema_id: repo_protocol::REPOSITORY_SNAPSHOT_SCHEMA_ID.to_string(),
+        schema_id: effortless_repo_protocol::REPOSITORY_SNAPSHOT_SCHEMA_ID.to_string(),
         kind: match identity.kind {
             RepositorySnapshotKind::CommittedHead => RepositorySnapshotKindV1::CommittedHead,
             RepositorySnapshotKind::CommittedRange => RepositorySnapshotKindV1::CommittedRange,

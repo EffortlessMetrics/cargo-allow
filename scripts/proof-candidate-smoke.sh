@@ -336,7 +336,7 @@ log "cargo-proof identity"
 "${cargo_bin}" identity >/dev/null
 
 declare -a install_closure=(
-  repo-protocol
+  effortless-repo-protocol
   proof-protocol
   proof-provider-api
   proof-adapter-command

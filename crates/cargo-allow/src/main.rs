@@ -155,6 +155,12 @@ mod compat_panic_integration_tests;
 #[cfg(test)]
 mod compat_test_support;
 #[cfg(test)]
+mod effortless_repo_edit_parity_tests;
+#[cfg(test)]
+mod effortless_repo_snapshot_parity_tests;
+#[cfg(test)]
+mod effortless_rust_source_index_parity_tests;
+#[cfg(test)]
 mod extraction_shim_registry_tests;
 #[cfg(test)]
 mod intent_edit_parity_tests;
@@ -189,17 +195,11 @@ mod readme_tests;
 #[cfg(test)]
 mod release_prep_tests;
 #[cfg(test)]
-mod repo_edit_parity_tests;
-#[cfg(test)]
-mod repo_snapshot_parity_tests;
-#[cfg(test)]
 mod report_config_tests;
 #[cfg(test)]
 mod root_cli_compat_tests;
 #[cfg(test)]
 mod root_cli_tests;
-#[cfg(test)]
-mod rust_source_index_parity_tests;
 #[cfg(test)]
 mod spec_design_artifact_links_tests;
 #[cfg(test)]

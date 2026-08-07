@@ -96,7 +96,8 @@ fn compile_invocation_spec_binds_registry_argv() -> Result<(), String> {
         binding_id: "cargo-allow.check.no-new:0".to_string(),
         plan_id: "plan-1".to_string(),
         command_index: 0,
-        analysis_receipt_schema_id: repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID.to_string(),
+        analysis_receipt_schema_id: effortless_repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID
+            .to_string(),
         receipt_digest: "sha256:v1:abc".to_string(),
     };
     let outcome = interpret_receipt_binding(&spec, &binding);

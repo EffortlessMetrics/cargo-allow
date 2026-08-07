@@ -1,6 +1,6 @@
 //! Boundary surface and upstream topology markers (#2613-A).
 
-use repo_edit::APPLY_RECEIPT_CLAIM_BOUNDARY;
+use effortless_repo_edit::APPLY_RECEIPT_CLAIM_BOUNDARY;
 
 pub struct BoundarySurface;
 
