@@ -1,0 +1,5 @@
+kind: Fixed
+body: >-
+  Make the optional changelog-fragment hook inspect the exact active worktree
+  and staged candidate, including linked worktrees, instead of accepting a
+  historical fragment, the wrong index, or an orphaned script location.

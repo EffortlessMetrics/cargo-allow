@@ -80,17 +80,56 @@ Release-note mutation remains owned by the release train until a dedicated
 history migration proves exact preview, apply, rollback, and changelog
 round-trip behavior.
 
-## Optional pre-commit reminder
+## Optional pre-commit convention
 
-The repository contains a separate convenience hook:
+Install the repository convenience hook through Git's active hook path:
 
 ```bash
-cp scripts/ensure-changelog-fragment.sh .git/hooks/pre-commit
-chmod +x .git/hooks/pre-commit
+hook_path="$(git rev-parse --path-format=absolute --git-path hooks/pre-commit)"
+mkdir -p "$(dirname "${hook_path}")"
+cp scripts/ensure-changelog-fragment.sh "${hook_path}"
+chmod +x "${hook_path}"
 ```
 
-The hook is not a fragment-content validator and does not replace the dry-run
-preview above. Its staged-candidate behavior is tracked independently.
+This avoids assuming `.git` is a directory. Linked worktrees share the common
+hook path but retain independent worktree roots and indexes; the hook resolves
+the active worktree from Git's invocation context and verifies that its own
+path is the active repository hook or source copy before inspecting the index.
+An orphaned copy does not adopt a repository merely from the caller's current
+directory.
+
+The hook evaluates the exact Git index candidate. When the staged diff contains
+an added, copied, modified, or renamed path under `crates/`, `scripts/`, or
+`.github/`, it requires an added, copied, modified, or renamed **root-level**
+`.changes/*.yaml` path in that same staged candidate.
+
+These do not satisfy the check:
+
+- a fragment that already existed before the commit;
+- an unstaged fragment;
+- a deleted fragment;
+- a nested YAML file;
+- `.changes/README.md`, a Markdown version note, or a version marker.
+
+A missing staged fragment exits non-zero. A Git/index inventory failure or an
+untrusted worktree identity is also non-clean rather than being treated as an
+empty staged candidate. For a change that is intentionally not user-facing,
+the explicit bypass remains:
+
+```bash
+git commit --no-verify
+```
+
+The hook is a path-based per-commit convention. It does not decide whether a
+change is semantically user-facing and it does not validate fragment contents;
+run the pinned dry-run preview separately.
+
+The hook's isolated Git characterization includes ordinary and linked
+worktrees and can be run directly:
+
+```bash
+bash scripts/ensure-changelog-fragment.sh --self-test
+```
 
 ## Kinds
 
