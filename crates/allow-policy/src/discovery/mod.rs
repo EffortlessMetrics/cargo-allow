@@ -72,6 +72,23 @@ pub fn discover_config(start: impl AsRef<Path>) -> DiscoverConfigResult {
             }
             match classify_candidate(&candidate, rel == NATIVE_LEDGER_REL_PATH) {
                 CandidateClass::Accept => {
+                    // Warn if the native ledger (cargo-allow.toml) shadows a
+                    // conventional allow.toml at the same directory level (#3232).
+                    // The native path wins on discovery precedence, but an
+                    // operator who just ran `init` (which writes allow.toml)
+                    // may be confused that their new file is ignored.
+                    if rel == NATIVE_LEDGER_REL_PATH {
+                        let shadowed = dir.join("policy/allow.toml");
+                        if shadowed.exists() && shadowed != candidate {
+                            eprintln!(
+                                "warning: {} is shadowed by the native ledger {} on the discovery path; \
+                                 only {} will be used (#3232)",
+                                shadowed.display(),
+                                candidate.display(),
+                                candidate.display(),
+                            );
+                        }
+                    }
                     return DiscoverConfigResult {
                         selected: Some(candidate),
                         selected_source: Some(SOURCE_CONVENTIONAL_PATH),
