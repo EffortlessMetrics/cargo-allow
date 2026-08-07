@@ -27,7 +27,7 @@ If you are testing an unreleased branch, replace only the install step with a
 Git source such as:
 
 ```bash
-cargo install --git https://github.com/EffortlessMetrics/cargo-allow cargo-allow --locked
+cargo install cargo-allow --version 0.1.11 --locked
 ```
 
 `cargo allow ...` remains optional Cargo external subcommand compatibility.
