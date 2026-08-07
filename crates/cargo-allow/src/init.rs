@@ -73,7 +73,7 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
             CargoAllowErrorKind::Usage,
             format!(
                 "{} already exists; use --force to overwrite",
-                path.display()
+                created_path_display(&root, &path)
             ),
         ));
     }

@@ -107,9 +107,9 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let context = AddContext {
         inventory: source_context.inventory(),
-        repo_root: Some(root.display().to_string()),
+        repo_root: Some(allow_report::source_tree_path_text(&root)),
         config_source: config_path(&root, args.config.as_deref())
-            .map(|path| path.display().to_string()),
+            .map(|path| allow_report::source_tree_path_text(&path)),
     };
     // For the mutation receipt's `result` field: --update writes the live
     // ledger, so report the discovered config path; --write reports its target;

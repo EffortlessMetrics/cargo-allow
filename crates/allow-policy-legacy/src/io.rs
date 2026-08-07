@@ -5,7 +5,7 @@ pub(crate) fn read_policy(path: &Path) -> CargoAllowResult<String> {
     read_text_file_capped(path).map_err(|e| {
         CargoAllowError::new(format!(
             "failed to read legacy policy {}: {e}",
-            path.display()
+            allow_core::normalize_path(path)
         ))
     })
 }
@@ -44,7 +44,7 @@ mod tests {
 
         let err = read_policy(&path).expect_err("missing policy should produce read error");
         assert!(err.to_string().contains("failed to read legacy policy"));
-        assert!(err.to_string().contains(&path.display().to_string()));
+        assert!(err.to_string().contains(&allow_core::normalize_path(&path)));
     }
 
     #[test]

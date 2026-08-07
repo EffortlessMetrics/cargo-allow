@@ -577,9 +577,10 @@ fn has_artifact_value(value: Option<&str>) -> bool {
 }
 
 fn root_relative_display(root: &Path, path: &Path) -> String {
-    path.strip_prefix(root)
-        .map(|path| path.display().to_string())
-        .unwrap_or_else(|_| path.display().to_string())
+    path.strip_prefix(root).map_or_else(
+        |_| allow_report::source_tree_path_text(path),
+        allow_report::source_tree_path_text,
+    )
 }
 
 fn collect_artifacts(ledger: &DocArtifactLedger) -> Vec<SpecSystemArtifact> {
