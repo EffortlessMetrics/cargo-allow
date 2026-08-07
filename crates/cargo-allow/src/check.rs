@@ -227,8 +227,8 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
         })?;
     }
     if let Some(path) = &args.receipt {
-        let policy_config =
-            config_path(&root, args.config.as_deref()).map(|path| path.display().to_string());
+        let policy_config = config_path(&root, args.config.as_deref())
+            .map(|path| allow_report::source_tree_path_text(&path));
         let effective_mode = args
             .mode
             .as_deref()

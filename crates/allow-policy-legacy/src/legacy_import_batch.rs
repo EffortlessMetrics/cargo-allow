@@ -93,7 +93,7 @@ pub fn import_legacy_policy_dir(
     if loaded == 0 {
         return Err(CargoAllowError::new(format!(
             "{} contains no supported legacy policy files",
-            dir.display()
+            allow_core::normalize_path(dir)
         )));
     }
 

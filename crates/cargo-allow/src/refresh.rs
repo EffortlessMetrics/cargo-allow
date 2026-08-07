@@ -99,8 +99,8 @@ pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
     } else {
         &preview_entry
     };
-    let repo_root = root.display().to_string();
-    let config_source = policy_path.display().to_string();
+    let repo_root = allow_report::source_tree_path_text(&root);
+    let config_source = allow_report::source_tree_path_text(&policy_path);
     let mutation_receipt = MutationReceipt {
         operation: "refresh",
         tool_version: env!("CARGO_PKG_VERSION"),

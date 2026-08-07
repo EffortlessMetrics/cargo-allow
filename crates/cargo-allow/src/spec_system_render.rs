@@ -313,7 +313,7 @@ fn push_spec_system_report_preamble(text: &mut String, report: &SpecSystemReport
     text.push_str("Profile: `spec-system`\n\n");
     text.push_str(&format!(
         "Source tree root: `{}`\n\n",
-        report.root.display()
+        allow_report::source_tree_path_text(&report.root)
     ));
     text.push_str(&format!("Config: `{}`\n\n", report.config_source));
     text.push_str(&format!(
@@ -377,12 +377,12 @@ pub(super) fn render_spec_system_json(report: &SpecSystemReport) -> String {
     ));
     text.push_str(&format!(
         "    \"root\": \"{}\"\n",
-        json_escape(&report.root.display().to_string())
+        json_escape(&allow_report::source_tree_path_text(&report.root))
     ));
     text.push_str("  },\n");
     text.push_str(&format!(
         "  \"source_tree_root\": \"{}\",\n",
-        json_escape(&report.root.display().to_string())
+        json_escape(&allow_report::source_tree_path_text(&report.root))
     ));
     text.push_str(&format!(
         "  \"config_source\": \"{}\",\n",

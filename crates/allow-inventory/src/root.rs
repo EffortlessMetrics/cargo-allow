@@ -76,15 +76,18 @@ fn canonical_dir(path: &Path) -> CargoAllowResult<PathBuf> {
     } else {
         Err(CargoAllowError::new(format!(
             "source tree root is not a directory: {}",
-            canonical.display()
+            allow_core::normalize_path(&canonical)
         )))
     }
 }
 
 fn canonical_start_dir(start: &Path) -> CargoAllowResult<PathBuf> {
-    let canonical = start
-        .canonicalize()
-        .map_err(|e| CargoAllowError::new(format!("failed to canonicalize start path: {e}")))?;
+    let canonical = start.canonicalize().map_err(|e| {
+        CargoAllowError::new(format!(
+            "failed to canonicalize start path '{}': {e}",
+            allow_core::normalize_path(start)
+        ))
+    })?;
     if canonical.is_file() {
         canonical
             .parent()
