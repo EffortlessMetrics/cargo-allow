@@ -42,12 +42,8 @@ use allow_core::{AllowConfig, FindingKind, MatchOutcome, MatchStatus};
 use std::path::PathBuf;
 
 pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
-    if !args.stale {
-        return Err(CargoAllowError::with_kind(
-            CargoAllowErrorKind::Usage,
-            "prune currently supports only --stale",
-        ));
-    }
+    // Prune operates on stale entries by default (#3168). The --stale flag is
+    // accepted for backwards compatibility but no longer required.
     if args.dry_run && args.write {
         return Err(CargoAllowError::with_kind(
             CargoAllowErrorKind::Usage,
