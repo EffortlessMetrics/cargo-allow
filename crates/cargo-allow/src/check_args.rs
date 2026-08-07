@@ -8,7 +8,8 @@ pub(crate) struct CheckArgs {
     #[command(flatten)]
     pub(crate) root: RootArgs,
     /// Policy config path. With --profile spec-system, profile config path.
-    #[arg(long)]
+    /// Can also be set via the CARGO_ALLOW_CONFIG environment variable (#3230).
+    #[arg(long, env = "CARGO_ALLOW_CONFIG")]
     pub(crate) config: Option<PathBuf>,
     /// Opt-in profile to run instead of the default source-exception ledger.
     #[arg(long, value_enum)]
@@ -39,7 +40,8 @@ pub(crate) struct CheckArgs {
     ///            (so stale/review_due/baseline_debt and the no-new set fail)
     ///   release  Currently equivalent to strict; advisory escalation is
     ///            driven by --deny, not by this mode
-    #[arg(long, value_parser = ["audit", "no-new", "strict", "release"])]
+    /// Can also be set via the CARGO_ALLOW_MODE environment variable (#3230).
+    #[arg(long, value_parser = ["audit", "no-new", "strict", "release"], env = "CARGO_ALLOW_MODE")]
     pub(crate) mode: Option<String>,
     /// Promote one receipt `advisory` count class to a blocking failure.
     /// Repeatable. Supported classes mirror receipt `advisory` fields, including `occurrence_headroom`.
