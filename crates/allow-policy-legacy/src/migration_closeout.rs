@@ -47,6 +47,18 @@ pub fn baseline_debt_closeout_metadata(
         })
 }
 
+/// Project the baseline-debt closeout `(signal, label)` for a set of legacy
+/// compat-kind ids, without forcing the caller to depend on legacy internals.
+///
+/// Callers that render migration closeout queues (e.g. `allow-report` via
+/// `cargo-allow`) use this to obtain the projection at load time and pass it
+/// in, so `allow-report` no longer needs a direct dependency on this crate.
+/// See #2941.
+pub fn baseline_debt_projection(compat_kind_ids: &[&str]) -> (&'static str, &'static str) {
+    let metadata = baseline_debt_closeout_metadata(primary_legacy_descriptor(compat_kind_ids));
+    (metadata.signal, metadata.label)
+}
+
 pub fn migration_debt_classes(descriptor: &LegacyLaneDescriptor) -> &'static [MigrationDebtClass] {
     match descriptor.debt_policy {
         DebtPolicy::None => &[],

@@ -157,6 +157,8 @@ fn sample_closeout_input<'a>(
         report,
         missing_evidence_entries,
         legacy_sources,
+        baseline_debt_projection:
+            crate::migrate_closeout::MigrateBaselineDebtProjection::default_projection(),
     }
 }
 

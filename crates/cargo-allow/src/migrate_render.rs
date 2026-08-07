@@ -19,6 +19,7 @@ pub(super) fn render_migrate_summary_styled(
         report,
         missing_evidence_entries: policy_missing_evidence_entries(cfg),
         legacy_sources: &legacy_sources,
+        baseline_debt_projection: context.baseline_debt_projection,
     };
     allow_report::render_migrate_human_styled(report, closeout_input, style)
 }
@@ -37,6 +38,7 @@ pub(super) fn render_migrate_summary_json(
         report,
         missing_evidence_entries: policy_missing_evidence_entries(cfg),
         legacy_sources: &legacy_sources,
+        baseline_debt_projection: context.baseline_debt_projection,
     };
     allow_report::render_migrate_json(report, closeout_input, &mutation_receipt)
 }
@@ -265,6 +267,8 @@ mod tests {
             input_path: "policy/legacy.toml".to_string(),
             legacy_source_files: Vec::new(),
             legacy_compat_kinds: Vec::new(),
+            baseline_debt_projection:
+                allow_report::MigrateBaselineDebtProjection::default_projection(),
         }
     }
 

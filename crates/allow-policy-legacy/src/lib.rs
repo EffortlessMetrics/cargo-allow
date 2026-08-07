@@ -121,7 +121,8 @@ pub use loaders::{
 pub use migration_closeout::{
     BASELINE_DEBT_ITEM_KIND, MISSING_EVIDENCE_ITEM_KIND, MigrationCloseoutBaselineDebt,
     MigrationDebtClass, NO_NEW_GATE_ITEM_KIND, NO_NEW_GATE_SIGNAL, baseline_debt_closeout_metadata,
-    migration_closeout_baseline_debt, migration_debt_classes, primary_legacy_descriptor,
+    baseline_debt_projection, migration_closeout_baseline_debt, migration_debt_classes,
+    primary_legacy_descriptor,
 };
 pub use migration_lane_descriptors::{
     CloseoutQueueHints, CompatKind, DebtPolicy, EvidencePolicy, ExpectedCanonicalShape,

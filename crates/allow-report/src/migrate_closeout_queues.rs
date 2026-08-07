@@ -1,13 +1,11 @@
-use allow_policy_legacy::{
-    BASELINE_DEBT_ITEM_KIND, MISSING_EVIDENCE_ITEM_KIND, NO_NEW_GATE_ITEM_KIND, NO_NEW_GATE_SIGNAL,
-    baseline_debt_closeout_metadata, primary_legacy_descriptor,
-};
-
 use crate::MigrateReport;
 use crate::migrate::{
     MigrateEvidenceRepairQueue, MigrateFollowUpQueue, migrate_evidence_repair_queues,
 };
-use crate::migrate_closeout::{MigrateCloseoutQueue, MigrateEvidenceDebt};
+use crate::migrate_closeout::{
+    BASELINE_DEBT_ITEM_KIND, MISSING_EVIDENCE_ITEM_KIND, MigrateBaselineDebtProjection,
+    MigrateCloseoutQueue, MigrateEvidenceDebt, NO_NEW_GATE_ITEM_KIND, NO_NEW_GATE_SIGNAL,
+};
 
 const CHECK_NO_NEW_COMMAND: &str = "cargo-allow check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md";
 const MISSING_EVIDENCE_COMMAND: &str =
@@ -15,15 +13,14 @@ const MISSING_EVIDENCE_COMMAND: &str =
 
 pub(crate) fn baseline_debt_follow_up_queue(
     count: usize,
-    legacy_compat_kinds: &[&str],
+    projection: MigrateBaselineDebtProjection,
 ) -> Option<MigrateFollowUpQueue> {
     if count == 0 {
         return None;
     }
-    let metadata = baseline_debt_closeout_metadata(primary_legacy_descriptor(legacy_compat_kinds));
     Some(MigrateFollowUpQueue {
-        signal: metadata.signal,
-        label: metadata.label,
+        signal: projection.signal,
+        label: projection.label,
         route_kind: "worklist_item_kind",
         item_kind: BASELINE_DEBT_ITEM_KIND,
         count,
@@ -33,9 +30,9 @@ pub(crate) fn baseline_debt_follow_up_queue(
 
 pub(crate) fn migrate_follow_up_queues_for_legacy(
     report: MigrateReport<'_>,
-    legacy_compat_kinds: &[&str],
+    projection: MigrateBaselineDebtProjection,
 ) -> Vec<MigrateFollowUpQueue> {
-    baseline_debt_follow_up_queue(report.baseline_debt, legacy_compat_kinds)
+    baseline_debt_follow_up_queue(report.baseline_debt, projection)
         .into_iter()
         .collect()
 }
@@ -43,12 +40,12 @@ pub(crate) fn migrate_follow_up_queues_for_legacy(
 pub(crate) fn build_migrate_closeout_next_queues(
     report: MigrateReport<'_>,
     evidence_debt: &MigrateEvidenceDebt,
-    legacy_compat_kinds: &[&str],
+    projection: MigrateBaselineDebtProjection,
 ) -> Vec<MigrateCloseoutQueue> {
     let mut queues = Vec::new();
     let mut phase = 1usize;
 
-    for queue in migrate_follow_up_queues_for_legacy(report, legacy_compat_kinds) {
+    for queue in migrate_follow_up_queues_for_legacy(report, projection) {
         queues.push(closeout_queue_from_follow_up(queue, phase));
         phase += 1;
     }
@@ -140,7 +137,14 @@ mod tests {
             missing_evidence_entries: 0,
         };
 
-        let queues = build_migrate_closeout_next_queues(report, &evidence_debt, &["panic"]);
+        let queues = build_migrate_closeout_next_queues(
+            report,
+            &evidence_debt,
+            MigrateBaselineDebtProjection {
+                signal: BASELINE_DEBT_ITEM_KIND,
+                label: "panic baseline debt entries",
+            },
+        );
 
         let [baseline, no_new] = queues.as_slice() else {
             std::panic::panic_any(format!(

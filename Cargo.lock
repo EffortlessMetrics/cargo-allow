@@ -101,7 +101,6 @@ name = "allow-report"
 version = "0.2.0"
 dependencies = [
  "allow-core",
- "allow-policy-legacy",
  "serde",
  "serde_json",
  "unicode-segmentation",

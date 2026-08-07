@@ -1,10 +1,19 @@
 use allow_core::{CargoAllowError, CargoAllowResult, FindingKind, normalize_path};
 use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
 use allow_policy::import_bespoke_ledger_at;
+use allow_report::MigrateBaselineDebtProjection;
 use std::path::{Path, PathBuf};
 
 use super::migrate_types::{MigrateContext, MigrationLoad};
 use crate::{current_dir, root_relative_path};
+
+/// Compute the baseline-debt closeout projection from legacy lane descriptors.
+/// `allow-report` consumes the result without depending on `allow-policy-legacy`
+/// (#2941).
+fn baseline_debt_projection(legacy_compat_kinds: &[&'static str]) -> MigrateBaselineDebtProjection {
+    let (signal, label) = allow_policy_legacy::baseline_debt_projection(legacy_compat_kinds);
+    MigrateBaselineDebtProjection { signal, label }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SingleFileMigrationSource {
@@ -21,6 +30,10 @@ pub(super) fn load_single_file_migration_config(
     let inventory_source = inventory.source;
     let files_scanned = inventory.files.len();
     let (cfg, source) = load_single_file_policy(from)?;
+    let legacy_compat_kinds = match source {
+        SingleFileMigrationSource::BespokeLedger => vec!["bespoke-ledger"],
+        SingleFileMigrationSource::LegacyOrCanonical => legacy_source_compat_kinds(from),
+    };
     Ok(MigrationLoad {
         cfg,
         context: MigrateContext {
@@ -41,10 +54,8 @@ pub(super) fn load_single_file_migration_config(
                 ],
                 SingleFileMigrationSource::LegacyOrCanonical => legacy_source_file_names(from),
             },
-            legacy_compat_kinds: match source {
-                SingleFileMigrationSource::BespokeLedger => vec!["bespoke-ledger"],
-                SingleFileMigrationSource::LegacyOrCanonical => legacy_source_compat_kinds(from),
-            },
+            baseline_debt_projection: baseline_debt_projection(&legacy_compat_kinds),
+            legacy_compat_kinds,
         },
         root: Some(root),
     })
@@ -91,6 +102,7 @@ pub(super) fn load_repo_policy_migration_config(
             input_kind: "repo_policy".to_string(),
             input_path: normalize_path(&repo_policy),
             legacy_source_files,
+            baseline_debt_projection: baseline_debt_projection(&legacy_compat_kinds),
             legacy_compat_kinds,
         },
         root: Some(root),

@@ -184,6 +184,8 @@ pub(crate) fn sample_migrate_json_for_contract_test() -> String {
             input_path: "policy/legacy.toml".to_string(),
             legacy_source_files: Vec::new(),
             legacy_compat_kinds: Vec::new(),
+            baseline_debt_projection:
+                allow_report::MigrateBaselineDebtProjection::default_projection(),
         },
         Path::new("policy/allow.toml"),
         false,

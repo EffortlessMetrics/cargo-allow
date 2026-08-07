@@ -193,7 +193,9 @@ pub use list::{
 };
 pub use migrate::{render_migrate_human, render_migrate_human_styled, render_migrate_json};
 pub use migrate_closeout::{
-    MigrateCloseoutInput, MigrateLegacySource, migrate_closeout_from_input,
+    BASELINE_DEBT_ITEM_KIND, MISSING_EVIDENCE_ITEM_KIND, MigrateBaselineDebtProjection,
+    MigrateCloseoutInput, MigrateLegacySource, NO_NEW_GATE_ITEM_KIND, NO_NEW_GATE_SIGNAL,
+    migrate_closeout_from_input,
 };
 pub use mutation_receipt::{
     MUTATION_RECEIPT_CLAIM_BOUNDARY, MUTATION_RECEIPT_SCHEMA_ID, MUTATION_RECEIPT_SCHEMA_VERSION,

@@ -2,8 +2,8 @@ use crate::contracts::MIGRATE_ARTIFACT;
 use crate::evidence_repair::evidence_repair_queues_from_counts;
 use crate::json::{bool_json, push_json_fixed_artifact_preamble};
 use crate::migrate_closeout::{
-    MigrateCloseoutInput, append_migrate_closeout_human, append_migrate_closeout_json,
-    migrate_closeout_from_input,
+    MigrateBaselineDebtProjection, MigrateCloseoutInput, append_migrate_closeout_human,
+    append_migrate_closeout_json, migrate_closeout_from_input,
 };
 use crate::migrate_closeout_queues::migrate_follow_up_queues_for_legacy;
 use crate::{
@@ -85,7 +85,7 @@ pub fn render_migrate_human_styled(
     append_migrate_follow_up_queues_human(
         report,
         &mut out,
-        &closeout_input.legacy_compat_kind_ids(),
+        closeout_input.baseline_debt_projection,
     );
     append_migrate_evidence_repair_queues_human(report, &mut out);
     append_migrate_closeout_human(&closeout, &mut out);
@@ -111,9 +111,9 @@ pub fn render_migrate_human_styled(
 fn append_migrate_follow_up_queues_human(
     report: MigrateReport<'_>,
     out: &mut String,
-    legacy_compat_kinds: &[&str],
+    projection: MigrateBaselineDebtProjection,
 ) {
-    let queues = migrate_follow_up_queues_for_legacy(report, legacy_compat_kinds);
+    let queues = migrate_follow_up_queues_for_legacy(report, projection);
     if queues.is_empty() {
         return;
     }
@@ -229,11 +229,7 @@ pub fn render_migrate_json(
     out.push_str(&summary_tail.join(",\n"));
     out.push('\n');
     out.push_str("  },\n");
-    append_migrate_follow_up_queues_json(
-        report,
-        &mut out,
-        &closeout_input.legacy_compat_kind_ids(),
-    );
+    append_migrate_follow_up_queues_json(report, &mut out, closeout_input.baseline_debt_projection);
     append_migrate_evidence_repair_queues_json(report, &mut out);
     let closeout = migrate_closeout_from_input(closeout_input);
     append_migrate_closeout_json(&closeout, &mut out);
@@ -250,9 +246,9 @@ pub fn render_migrate_json(
 fn append_migrate_follow_up_queues_json(
     report: MigrateReport<'_>,
     out: &mut String,
-    legacy_compat_kinds: &[&str],
+    projection: MigrateBaselineDebtProjection,
 ) {
-    let queues = migrate_follow_up_queues_for_legacy(report, legacy_compat_kinds);
+    let queues = migrate_follow_up_queues_for_legacy(report, projection);
     if queues.is_empty() {
         return;
     }

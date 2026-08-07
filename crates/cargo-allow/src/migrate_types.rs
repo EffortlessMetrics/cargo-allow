@@ -1,4 +1,5 @@
 use allow_core::AllowConfig;
+use allow_report::MigrateBaselineDebtProjection;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
@@ -19,4 +20,8 @@ pub(super) struct MigrateContext {
     pub(super) input_path: String,
     pub(super) legacy_source_files: Vec<String>,
     pub(super) legacy_compat_kinds: Vec<&'static str>,
+    /// Baseline-debt closeout projection computed from the legacy lane
+    /// descriptors at load time. Threaded into `allow-report` so it can render
+    /// closeout queues without depending on `allow-policy-legacy` (#2941).
+    pub(super) baseline_debt_projection: MigrateBaselineDebtProjection,
 }
