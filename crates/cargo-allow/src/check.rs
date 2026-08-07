@@ -118,9 +118,17 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
 }
 
 fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
+    // Infer format from output file extension when --format is not explicitly
+    // set (#3210). Without this, `--output foo.md` silently writes human text
+    // to a .md file. We only infer when the user didn't explicitly pass --format;
+    // clap's default_value_t makes it impossible to distinguish "not passed"
+    // from "passed as human", so we infer only when the extension strongly implies
+    // a different format than the default.
+    let effective_format = infer_format_from_output(args.format, args.output.as_deref());
+
     crate::emit_scan_status(
         "check",
-        args.format,
+        effective_format,
         args.output.as_deref(),
         args.receipt.as_deref(),
     );
@@ -206,10 +214,14 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
         || (inventory_facts.rust_files_skipped > 0 && mode == CheckMode::NoNew)
         || (inventory_facts.rust_files_with_parse_errors > 0 && mode == CheckMode::NoNew)
         || product_move_ledger_failed;
-    if should_emit_report_stdout(args.output.as_deref(), args.receipt.as_deref(), args.format) {
+    if should_emit_report_stdout(
+        args.output.as_deref(),
+        args.receipt.as_deref(),
+        effective_format,
+    ) {
         print_report(ReportRenderArgs {
             command: "check",
-            format: args.format,
+            format: effective_format,
             baseline_debt_entries,
             evidence,
             findings: &findings,
@@ -481,6 +493,30 @@ fn should_emit_report_stdout(
         return true;
     }
     !(receipt.is_some() && format == crate::OutputFormat::Human)
+}
+
+/// Infer the output format from the --output file extension when the user
+/// didn't explicitly pass --format (#3210). Without this, `--output foo.md`
+/// silently writes human text to a .md file.
+fn infer_format_from_output(
+    declared: crate::OutputFormat,
+    output: Option<&Path>,
+) -> crate::OutputFormat {
+    // Only infer when the declared format is the clap default (Human).
+    // If the user explicitly passed --format json, respect that.
+    if declared != crate::OutputFormat::Human {
+        return declared;
+    }
+    let Some(ext) = output.and_then(|p| p.extension()).and_then(|e| e.to_str()) else {
+        return declared;
+    };
+    match ext.to_ascii_lowercase().as_str() {
+        "json" => crate::OutputFormat::Json,
+        "md" => crate::OutputFormat::Markdown,
+        "html" | "htm" => crate::OutputFormat::Html,
+        "sarif" => crate::OutputFormat::Sarif,
+        _ => declared,
+    }
 }
 
 fn apply_receipt_run_metadata<'a>(

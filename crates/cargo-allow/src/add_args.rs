@@ -23,7 +23,7 @@ pub(crate) struct AddArgs {
     pub(super) kind: Option<String>,
     /// Path containing the finding. Use with --line to receipt one specific
     /// occurrence. Mutually exclusive with --glob. Requires --line.
-    #[arg(long, requires = "line")]
+    #[arg(long, requires = "line", conflicts_with = "glob")]
     pub(super) path: Option<PathBuf>,
     /// Line near the finding. Use with --path to receipt one specific
     /// occurrence. Mutually exclusive with --glob. Requires --path.
@@ -34,7 +34,7 @@ pub(crate) struct AddArgs {
     /// in-scope finding and pins the count as `occurrence_limit`, so the N+1th
     /// in-scope occurrence fails `check --mode no-new` (#2056). Mutually
     /// exclusive with --path/--line.
-    #[arg(long)]
+    #[arg(long, conflicts_with = "path")]
     pub(super) glob: Option<String>,
     /// Family filter for a --glob baseline (e.g. `unwrap`, `expect`). Narrows
     /// which in-scope findings the broad selector matches. Only meaningful with
