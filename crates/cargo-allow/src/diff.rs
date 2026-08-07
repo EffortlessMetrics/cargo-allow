@@ -288,35 +288,41 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
             }
         }
     }
-    if args.format == OutputFormat::Json && args.output.is_none() && !policy_changes.is_empty() {
-        eprintln!(
-            "{}",
-            render_policy_changes_human(&policy_changes, &head_cfg_for_diff)
-        );
-    }
-    if args.format == OutputFormat::Json && args.output.is_none() && !finding_changes.is_empty() {
-        eprintln!(
-            "{}",
-            render_finding_posture_changes_human(&finding_changes, &head_cfg_for_diff)
-        );
+    // Suppress human-readable diagnostics on stderr when format is JSON to avoid
+    // corrupting JSON pipeline scripts (#3218).
+    if args.format != OutputFormat::Json {
+        if !policy_changes.is_empty() {
+            eprintln!(
+                "{}",
+                render_policy_changes_human(&policy_changes, &head_cfg_for_diff)
+            );
+        }
+        if !finding_changes.is_empty() {
+            eprintln!(
+                "{}",
+                render_finding_posture_changes_human(&finding_changes, &head_cfg_for_diff)
+            );
+        }
     }
     // Surface missing change notes as a clear stderr diagnostic (#2075).
-    for missing in &missing_change_notes {
-        let fingerprint_hint = format_fingerprint_hint(
-            missing.before_fingerprint.as_deref(),
-            missing.after_fingerprint.as_deref(),
-        );
-        eprintln!(
-            "change note required: {allow_id} {kind} ({severity}) — add a revision note in {dir} \
-             covering allow_id=\"{allow_id}\" change_kind=\"{kind}\"; pass \
-             --write-change-note-template <path> to generate a TOML template",
-            allow_id = missing.allow_id,
-            kind = missing.change_kind,
-            severity = missing.severity,
-            dir = args.revisions_dir.display()
-        );
-        if !fingerprint_hint.is_empty() {
-            eprintln!("change note fingerprint template:{fingerprint_hint}");
+    // Guarded by format check so JSON pipelines see clean stderr (#3218).
+    if args.format != OutputFormat::Json {
+        for missing in &missing_change_notes {
+            let fingerprint_hint = format_fingerprint_hint(
+                missing.before_fingerprint.as_deref(),
+                missing.after_fingerprint.as_deref(),
+            );
+            eprintln!(
+                "change note required: {allow_id} {kind} ({severity}) — add a revision note in {dir} \
+             covering allow_id=\"{allow_id}\" change_kind=\"{kind}\"",
+                allow_id = missing.allow_id,
+                kind = missing.change_kind,
+                severity = missing.severity,
+                dir = args.revisions_dir.display()
+            );
+            if !fingerprint_hint.is_empty() {
+                eprintln!("change note fingerprint template:{fingerprint_hint}");
+            }
         }
     }
     emit_text(args.output.as_deref(), &text)?;
