@@ -14,7 +14,11 @@ pub(crate) struct MigrateArgs {
     #[arg(long)]
     pub(super) repo_policy: Option<PathBuf>,
     /// Output canonical policy path.
-    #[arg(long, default_value = "policy/allow.toml")]
+    #[arg(
+        long = "output",
+        visible_alias = "out",
+        default_value = "policy/allow.toml"
+    )]
     pub(super) out: PathBuf,
     /// Overwrite an existing output policy file.
     #[arg(long)]

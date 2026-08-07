@@ -35,6 +35,7 @@ pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
             "pass either --dry-run or --write, not both",
         ));
     }
+    let allow_id = args.effective_allow_id()?;
     let mutation_lock = if args.write {
         let cwd = current_dir()?;
         let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;
@@ -56,7 +57,7 @@ pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
     let _mutation_lock = mutation_lock;
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
     let (entry_index, finding_index, drift_message) =
-        select_location_drift_refresh(&cfg, &outcomes, &findings, &args.allow_id)?;
+        select_location_drift_refresh(&cfg, &outcomes, &findings, allow_id)?;
     let finding = selected_refresh_finding(&findings, finding_index)?;
     let policy_path =
         config_path(&root, args.config.as_deref()).ok_or_else(missing_policy_config_error)?;
