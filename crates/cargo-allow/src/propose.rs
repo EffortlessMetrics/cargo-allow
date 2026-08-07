@@ -81,7 +81,19 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         .filter(|o| o.status == MatchStatus::New)
         .count();
     let mut proposed = cfg.clone();
-    let start = proposed.allow.len() + 1;
+    // Compute the starting ID suffix from the highest existing numeric
+    // allow-NNNN id, not the entry count. Using len()+1 collides when the
+    // ledger has gaps (e.g. allow-0001,allow-0002,allow-0005 → len=3 → first
+    // proposed id would be allow-0004 which is free, but allow-0001..0003,0005
+    // → len=4 → first proposed id allow-0005 collides). (#3231)
+    let start = proposed
+        .allow
+        .iter()
+        .filter_map(|entry| entry.id.strip_prefix("allow-"))
+        .filter_map(|number| number.parse::<usize>().ok())
+        .max()
+        .unwrap_or(0)
+        + 1;
     let mut proposed_entries = 0;
     let mut unsafe_proposed_entries = 0;
     let mut unreceiptable_new_findings = 0;

@@ -13,7 +13,7 @@ fn renders_added_entry_receipt_with_null_before_fingerprint() {
         before_fingerprints: vec![None],
         after_fingerprints: vec![Some("sha256:v1:abc123".to_string())],
         result: "stdout",
-        next_commands: vec!["cargo-allow explain --id allow-0042".to_string()],
+        next_commands: vec!["cargo-allow explain allow-0042".to_string()],
     };
     let json = render_mutation_receipt_json(&receipt, "  ");
 
@@ -27,7 +27,7 @@ fn renders_added_entry_receipt_with_null_before_fingerprint() {
     assert!(json.contains("\"before_fingerprints\": [null]"));
     assert!(json.contains("\"after_fingerprints\": [\"sha256:v1:abc123\"]"));
     assert!(json.contains("\"result\": \"stdout\""));
-    assert!(json.contains("\"next_commands\": [\"cargo-allow explain --id allow-0042\"]"));
+    assert!(json.contains("\"next_commands\": [\"cargo-allow explain allow-0042\"]"));
     assert!(json.contains("\"claim_boundary\": \"Provenance envelope only"));
 }
 
