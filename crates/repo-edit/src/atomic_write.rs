@@ -61,7 +61,7 @@ pub fn write_file(path: impl AsRef<Path>, contents: &str) -> CargoAllowResult<()
     if let Err(error) = fs::rename(&tmp, path) {
         let _ = fs::remove_file(&tmp);
         return Err(CargoAllowError::new(format!(
-            "failed to install {}: {error}",
+            "failed to save {}: {error}",
             path.display()
         )));
     }
@@ -202,7 +202,7 @@ pub fn write_file_create_new_atomic_with_permissions(
     if let Err(error) = fs::hard_link(&tmp, path) {
         let _ = fs::remove_file(&tmp);
         return Err(CargoAllowError::new(format!(
-            "failed to install {} without overwrite: {error}; create-only installation requires hard-link support on this filesystem",
+            "failed to save {} without overwrite: {error}; create-only mode requires hard-link support on this filesystem",
             path.display()
         )));
     }

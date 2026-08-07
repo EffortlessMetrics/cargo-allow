@@ -252,7 +252,7 @@ fn cmd_init_reports_policy_write_errors() {
 
     let message = err.to_string();
     assert!(
-        message.contains("failed to install") || message.contains("failed to read"),
+        message.contains("failed to save") || message.contains("failed to read"),
         "expected install or read failure for directory target, got: {err}"
     );
 
