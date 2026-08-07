@@ -29,6 +29,7 @@ fn base_from_plan_args() -> AddArgs {
         include_untracked: false,
         write: None,
         force: false,
+        dry_run: false,
         update: false,
         from_plan: Some(PathBuf::from("plan.json")),
         summary_format: crate::HumanJsonFormat::Human,

@@ -28,7 +28,7 @@ pub(super) use add_types::AddContext;
 
 use crate::{
     HumanJsonFormat, MutationLock, SourceTreeReportContext, config_path, current_dir,
-    emit_stderr_text,
+    emit_stderr_text, emit_text,
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
@@ -233,6 +233,13 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         current_evidence_source_tree_files(&root, args.include_untracked);
     validate_evidence_references_for_source_tree(&root, &cfg, evidence_source_tree_files.as_ref())?;
     let rendered = render_policy(&cfg);
+    if args.dry_run {
+        // --dry-run: compute and validate the entry, print it, but skip the
+        // write/replace (#3189).
+        emit_text(args.summary_output.as_deref(), &rendered)?;
+        eprintln!("dry-run: no files written (--dry-run)");
+        return Ok(());
+    }
     if args.update {
         let policy_target = git_relative_config_path(&root, args.config.as_deref())?;
         apply_single_target(SingleTargetApplyRequest {
