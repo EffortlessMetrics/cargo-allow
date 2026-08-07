@@ -25,9 +25,9 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
         } else {
             let cwd = current_dir()?;
             let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;
-            Some(MutationLock::acquire(
-                root.join(".cargo-allow-spec-system.lock"),
-            )?)
+            // Lock the spec-system profile config path, not a sidecar (#3224).
+            let lock_target = root.join(".allow/profiles/spec-system.toml");
+            Some(MutationLock::acquire(&lock_target)?)
         };
         let config = spec_system_config_arg(&args.config);
         return spec_system::cmd_spec_system_init(spec_system::SpecSystemInitCommandArgs {
@@ -61,7 +61,10 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
         );
         return Ok(());
     }
-    let _mutation_lock = MutationLock::acquire(root.join(".cargo-allow-init.lock"))?;
+    // Lock the actual target file path, not a sidecar lock file (#3224).
+    // This matches add/propose/refresh/prune, which lock the mutation target
+    // directly so that concurrent mutations on the same file are serialized.
+    let _mutation_lock = MutationLock::acquire(&path)?;
     // #2490: assert the write target is within the source-tree root.
     crate::policy_config::assert_path_within_root(&root, &path)?;
     let path_existed = path.exists();

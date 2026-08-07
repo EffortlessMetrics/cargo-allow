@@ -14,7 +14,12 @@ pub(crate) struct CheckArgs {
     /// Opt-in profile to run instead of the default source-exception ledger.
     #[arg(long, value_enum)]
     pub(crate) profile: Option<ProfileArg>,
-    /// Use a compatible legacy policy for the selected kind.
+    /// Use a compatible legacy policy for the selected kind. Imports and
+    /// validates legacy xtask/ripr policy formats (no-panic-allowlist,
+    /// unsafe-allowlist, clippy-exceptions, non-rust-allowlist, executable,
+    /// workflow, dependency-surface, process, network) alongside the canonical
+    /// cargo-allow ledger. See `cargo-allow migrate --from <legacy-file>` to
+    /// convert a legacy policy permanently.
     #[arg(long)]
     pub(crate) compat: bool,
     /// Filter findings by kind.
