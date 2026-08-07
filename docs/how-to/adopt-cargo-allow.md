@@ -12,7 +12,7 @@ no-new-debt enforcement path — the same path cargo-allow dogfoods on itself.
 - Rust toolchain (MSRV 1.95+)
 - C toolchain (GCC/Clang on Unix-like systems or MSVC on Windows) to compile
   cargo-allow's tree-sitter parser dependency
-- `cargo-allow` installed: `cargo install --git https://github.com/EffortlessMetrics/cargo-allow`
+- `cargo-allow` installed: `cargo install cargo-allow --version 0.1.11 --locked`
 - A git repository (cargo-allow scans git-tracked files)
 
 ## Optional pre-commit integration
@@ -273,7 +273,7 @@ jobs:
         with:
           fetch-depth: 0  # required for diff
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo install --git https://github.com/EffortlessMetrics/cargo-allow
+      - run: cargo install cargo-allow --version 0.1.11 --locked
       - run: cargo-allow check --mode no-new --config policy/allow.toml --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
       - uses: actions/upload-artifact@v4
         if: always()
