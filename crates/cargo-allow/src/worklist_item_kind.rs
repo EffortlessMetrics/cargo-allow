@@ -41,7 +41,10 @@ pub(crate) fn parse_work_item_kind_filter(value: &str) -> Result<String, String>
     if WORK_ITEM_KINDS.iter().any(|kind| *kind == canonical) {
         return Ok(canonical);
     }
-    Err(format!("unknown work item kind `{value}`"))
+    Err(format!(
+        "unknown work item kind `{value}`; supported kinds: {}",
+        WORK_ITEM_KINDS.join(", ")
+    ))
 }
 
 #[cfg(test)]
