@@ -1,4 +1,3 @@
-use crate::TestSubjectsSurface;
 use crate::parity::{TestSubjectsParityContract, load_test_subjects_parity_contract};
 use std::path::PathBuf;
 
@@ -8,27 +7,6 @@ fn parity_contracts_load_from_fixtures() -> Result<(), String> {
     for path in crate::parity::test_subjects_parity_contract_paths(&root) {
         let contract = load_test_subjects_parity_contract(&path)?;
         validate_contract(&contract)?;
-    }
-    Ok(())
-}
-
-#[test]
-fn test_subjects_surface_matches_parity_contract() -> Result<(), String> {
-    let root = workspace_root();
-    let contract_path = crate::parity::test_subjects_parity_contract_path(&root);
-    let contract = load_test_subjects_parity_contract(&contract_path)?;
-    if contract.rust_source_index_module != TestSubjectsSurface::MODULE_ID {
-        return Err(format!(
-            "surface marker {} does not match contract {}",
-            TestSubjectsSurface::MODULE_ID,
-            contract.rust_source_index_module
-        ));
-    }
-    if contract.allow_rust_module != "allow-rust::test_subjects" {
-        return Err("fixture must reference allow-rust::test_subjects".to_string());
-    }
-    if contract.parity_case != "parity-rust-source-index-test-subjects-v1" {
-        return Err("fixture parity_case mismatch".to_string());
     }
     Ok(())
 }

@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use crate::ProofCorpusSurface;
 use crate::boundary::{
     ALLOWED_UPSTREAM_CRATES, BoundarySurface, FORBIDDEN_DEPENDENCY_EDGES, upstream_surface_markers,
 };
@@ -106,24 +105,6 @@ fn parity_contracts_load_from_fixtures() -> Result<(), String> {
 }
 
 #[test]
-fn plan_dtos_surface_matches_parity_contract() -> Result<(), String> {
-    let root = workspace_root();
-    let contract_path = crate::parity::plan_dtos_parity_contract_paths(&root)
-        .into_iter()
-        .next()
-        .ok_or_else(|| "missing plan dtos parity fixture path".to_string())?;
-    let contract = crate::parity::load_plan_dtos_parity_contract(&contract_path)?;
-    if contract.proof_protocol_module != crate::PlanDtosSurface::MODULE_ID {
-        return Err(format!(
-            "surface marker {} does not match contract {}",
-            crate::PlanDtosSurface::MODULE_ID,
-            contract.proof_protocol_module
-        ));
-    }
-    Ok(())
-}
-
-#[test]
 fn validate_proof_plan_rejects_empty_commands() -> Result<(), String> {
     let plan = crate::ProofPlanV1::new("plan-empty", Vec::new());
     match crate::validate_proof_plan(&plan) {
@@ -151,17 +132,10 @@ fn receipt_set_requires_repo_protocol_schema() -> Result<(), String> {
 }
 
 #[test]
-fn proof_corpus_surface_matches_contract() -> Result<(), String> {
+fn proof_corpus_contract_matches_external_profile() -> Result<(), String> {
     let root = workspace_root();
     let contract_path = proof_corpus_contract_path(&root);
     let contract = load_proof_corpus_contract(&contract_path)?;
-    if contract.proof_protocol_module != ProofCorpusSurface::MODULE_ID {
-        return Err(format!(
-            "surface marker {} does not match contract {}",
-            ProofCorpusSurface::MODULE_ID,
-            contract.proof_protocol_module
-        ));
-    }
     if contract.profile_id != crate::RIPR_EXTERNAL_PROOF_PROFILE_ID {
         return Err("contract profile_id mismatch".to_string());
     }

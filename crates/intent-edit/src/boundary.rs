@@ -6,7 +6,6 @@ pub struct BoundarySurface;
 
 impl BoundarySurface {
     pub const MODULE_ID: &'static str = "intent-edit::boundary";
-    pub const CLAIM_BOUNDARY: &'static str = "Crate scaffold and dependency topology only; edit planning and repo-edit settlement land in later #2613 packets.";
 }
 
 pub const EVALUATOR_PACKET_MODULE_ID: &str = "intent-engine::evaluator_packet";

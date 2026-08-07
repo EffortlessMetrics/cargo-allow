@@ -7,18 +7,12 @@
 //! build scripts, proc macros, or proof commands.
 
 mod domain_queries;
-mod domain_queries_surface;
-mod engine_surface;
 mod graph_comparison;
-mod graph_comparison_surface;
 mod packet;
 mod parity;
 mod parity_corpus;
-mod parity_corpus_surface;
 mod phase_obligations;
-mod phase_obligations_surface;
 mod workspace;
-mod workspace_surface;
 
 pub use domain_queries::{
     BOUNDED_DOMAIN_QUERY_RESPONSE_SCHEMA_ID, BOUNDED_DOMAIN_QUERY_SCHEMA_ID,
@@ -27,14 +21,11 @@ pub use domain_queries::{
     execute_bounded_domain_query, load_bounded_domain_query_catalog_toml,
     to_intent_query_response_json,
 };
-pub use domain_queries_surface::DomainQueriesSurface;
-pub use engine_surface::EvaluatorPacketSurface;
 pub use graph_comparison::{
     GRAPH_COMPARISON_REPORT_SCHEMA_ID, GraphComparisonReportV1, GraphMovementKindV1,
     GraphMovementV1, canonical_graph_movement_kinds, load_graph_comparison_report_json,
     sort_graph_movements,
 };
-pub use graph_comparison_surface::GraphComparisonSurface;
 pub use packet::{
     INTENT_ENGINE_PACKET_SCHEMA_ID, INTENT_QUERY_TRANSPORT_SCHEMA_ID, IntentEnginePacketEnvelopeV1,
     IntentEnginePacketKindV1,
@@ -62,19 +53,16 @@ pub use parity_corpus::{
     ParityCorpusScenarioV1, ParityCorpusV1, canonical_parity_dispositions, load_parity_corpus_toml,
     validate_parity_corpus,
 };
-pub use parity_corpus_surface::ParityCorpusSurface;
 pub use phase_obligations::{
     InventoryPostureV1, ObligationPostureV1, PHASE_OBLIGATION_PLAN_SCHEMA_ID, PRECOMMIT_PHASE_ID,
     PhaseObligationCompileInputV1, PhaseObligationItemV1, PhaseObligationKindV1,
     PhaseObligationPlanV1, compile_phase_obligation_plan, load_phase_obligation_plan_toml,
 };
-pub use phase_obligations_surface::PhaseObligationsSurface;
 pub use workspace::{
     AUTHORITY_COMPILE_PLAN_SCHEMA_ID, AuthorityCompilePlanV1, AuthoritySourceRoleV1,
     AuthoritySourceV1, SELF_HOSTED_RUNTIME_PROMOTION_COMPOSITION_ID, WorkspaceCompositionV1,
     composition_sources_present, load_workspace_composition_toml, plan_authority_compile,
 };
-pub use workspace_surface::WorkspaceCompilerSurface;
 
 #[cfg(test)]
 mod tests;

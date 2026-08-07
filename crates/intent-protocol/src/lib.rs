@@ -11,7 +11,6 @@ mod diff;
 mod identity;
 mod obligation;
 mod parity;
-mod protocol_surface;
 mod query;
 mod snapshot_package;
 mod view;
@@ -38,7 +37,6 @@ pub use parity::{
     obligation_plan_parity_contract_paths, view_diff_closure_parity_contract_path,
     view_diff_closure_parity_contract_paths,
 };
-pub use protocol_surface::{IdentityQuerySurface, ObligationPlanSurface, ViewDiffClosureSurface};
 pub use query::{
     INTENT_QUERY_RESPONSE_SCHEMA_ID, INTENT_QUERY_SCHEMA_ID, IntentQueryEnvelopeV1,
     IntentQueryKindV1, IntentQueryResponseV1,

@@ -5,27 +5,18 @@ use proof_engine::{run_provider_conformance, validate_provider_plan, validate_pr
 use crate::analysis_receipt::{
     HawkAnalysisReceiptV1, HawkExecutionModeV1, HawkFindingV1, validate_hawk_analysis_receipt,
 };
-use crate::analysis_receipt_surface::AnalysisReceiptSurface;
 use crate::boundary::{
     ALLOWED_UPSTREAM_CRATES, BoundarySurface, FORBIDDEN_DEPENDENCY_EDGES, upstream_surface_markers,
 };
 use crate::finding_mapping::{HawkResultClassV1, map_hawk_finding, map_missing_finding};
-use crate::finding_mapping_surface::FindingMappingSurface;
 use crate::hawk_adapter::HawkProofProviderV1;
-use crate::hawk_adapter_surface::HawkAdapterSurface;
-use crate::parity::{
-    analysis_receipt_parity_contract_path, finding_mapping_parity_contract_path,
-    load_analysis_receipt_parity_contract, load_finding_mapping_parity_contract,
-    parity_contract_paths,
-};
+use crate::parity::parity_contract_paths;
 use crate::receipt_currentness::{
     HawkCurrentnessRequest, HawkReceiptCurrentnessStatusV1, evaluate_hawk_receipt_currentness,
 };
-use crate::receipt_currentness_surface::ReceiptCurrentnessSurface;
 use crate::source_anchor_resolution::{
     SourceAnchorRequest, SourceAnchorResolutionClassV1, resolve_source_anchor,
 };
-use crate::source_anchor_resolution_surface::SourceAnchorResolutionSurface;
 
 fn sample_receipt() -> HawkAnalysisReceiptV1 {
     HawkAnalysisReceiptV1 {
@@ -82,28 +73,6 @@ fn boundary_surface_matches_parity_contract_module() -> Result<(), String> {
             BoundarySurface::MODULE_ID,
             module
         ));
-    }
-    Ok(())
-}
-
-#[test]
-fn analysis_receipt_surface_matches_parity_contract() -> Result<(), String> {
-    let root = workspace_root();
-    let contract =
-        load_analysis_receipt_parity_contract(&analysis_receipt_parity_contract_path(&root))?;
-    if contract.proof_adapter_hawk_module != AnalysisReceiptSurface::MODULE_ID {
-        return Err("analysis receipt surface drift".to_string());
-    }
-    Ok(())
-}
-
-#[test]
-fn finding_mapping_surface_matches_parity_contract() -> Result<(), String> {
-    let root = workspace_root();
-    let contract =
-        load_finding_mapping_parity_contract(&finding_mapping_parity_contract_path(&root))?;
-    if contract.proof_adapter_hawk_module != FindingMappingSurface::MODULE_ID {
-        return Err("finding mapping surface drift".to_string());
     }
     Ok(())
 }
@@ -244,26 +213,6 @@ fn parity_contracts_load_from_fixtures() -> Result<(), String> {
     for path in parity_contract_paths(&root) {
         if !path.is_file() {
             return Err(format!("missing parity fixture {}", path.display()));
-        }
-    }
-    Ok(())
-}
-
-#[test]
-fn surface_markers_are_distinct() -> Result<(), String> {
-    let markers = [
-        BoundarySurface::MODULE_ID,
-        AnalysisReceiptSurface::MODULE_ID,
-        FindingMappingSurface::MODULE_ID,
-        SourceAnchorResolutionSurface::MODULE_ID,
-        ReceiptCurrentnessSurface::MODULE_ID,
-        HawkAdapterSurface::MODULE_ID,
-    ];
-    for (index, left) in markers.iter().enumerate() {
-        for right in markers.iter().skip(index + 1) {
-            if left == right {
-                return Err(format!("duplicate surface marker {left}"));
-            }
         }
     }
     Ok(())

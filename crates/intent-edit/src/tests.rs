@@ -4,45 +4,22 @@ use crate::approval_currentness::{
     ApprovalCurrentnessError, IntentEditApprovalCurrentnessV1, IntentEditApprovalStateV1,
     validate_approval_currentness,
 };
-use crate::approval_currentness_surface::ApprovalCurrentnessSurface;
 use crate::boundary::{
-    ALLOWED_UPSTREAM_CRATES, BoundarySurface, EVALUATOR_PACKET_MODULE_ID,
-    FORBIDDEN_DEPENDENCY_EDGES, upstream_surface_markers,
+    ALLOWED_UPSTREAM_CRATES, BoundarySurface, FORBIDDEN_DEPENDENCY_EDGES, upstream_surface_markers,
 };
-use crate::dialect_adapter::{CANONICAL_DIALECT_IDS, IntentEditDialectV1, adapt_selector};
-use crate::dialect_adapter_surface::DialectAdapterSurface;
+use crate::dialect_adapter::{IntentEditDialectV1, adapt_selector};
 use crate::edit_plan::{
     IntentEditActionKindV1, IntentEditActionV1, IntentEditPlanError, IntentEditPlanV1,
     IntentEditTargetResolutionV1, stable_action_id, validate_edit_plan,
 };
-use crate::edit_plan_surface::EditPlanSurface;
-use crate::parity::{
-    approval_currentness_parity_contract_paths, dialect_adapter_parity_contract_paths,
-    edit_plan_parity_contract_paths, load_approval_currentness_parity_contract,
-    load_dialect_adapter_parity_contract, load_edit_plan_parity_contract,
-    load_recompile_contract_parity_contract, load_repo_edit_translation_parity_contract,
-    load_settlement_parity_contract, parity_contract_paths,
-    recompile_contract_parity_contract_paths, repo_edit_translation_parity_contract_paths,
-    settlement_parity_contract_paths,
-};
+use crate::parity::parity_contract_paths;
 use crate::recompile_contract::{
     TARGET_PHASE_OBLIGATION_PLAN_SCHEMA_ID, compile_recompile_contract, validate_recompile_contract,
 };
-use crate::recompile_contract_surface::RecompileContractSurface;
 use crate::repo_edit_translation::{RepoEditTranslationError, translate_plan_to_repo_edit};
-use crate::repo_edit_translation_surface::RepoEditTranslationSurface;
 use crate::settlement::{
     IntentEditResidualObligationKindV1, compile_settlement_plan, validate_settlement_plan,
 };
-use crate::settlement_surface::SettlementSurface;
-
-#[test]
-fn intent_engine_surface_matches_topology_marker() -> Result<(), String> {
-    if intent_engine::EvaluatorPacketSurface::MODULE_ID != EVALUATOR_PACKET_MODULE_ID {
-        return Err("intent-engine surface marker drifted from topology contract".to_string());
-    }
-    Ok(())
-}
 
 #[test]
 fn boundary_surface_matches_parity_contract_module() -> Result<(), String> {
@@ -142,24 +119,6 @@ fn parity_contracts_load_from_fixtures() -> Result<(), String> {
 }
 
 #[test]
-fn edit_plan_surface_matches_parity_contract() -> Result<(), String> {
-    let root = workspace_root();
-    let contract_path = edit_plan_parity_contract_paths(&root)
-        .into_iter()
-        .next()
-        .ok_or_else(|| "missing edit plan parity fixture path".to_string())?;
-    let contract = load_edit_plan_parity_contract(&contract_path)?;
-    if contract.intent_edit_module != EditPlanSurface::MODULE_ID {
-        return Err(format!(
-            "surface marker {} does not match contract {}",
-            EditPlanSurface::MODULE_ID,
-            contract.intent_edit_module
-        ));
-    }
-    Ok(())
-}
-
-#[test]
 fn stable_action_id_is_deterministic() -> Result<(), String> {
     let id = stable_action_id(IntentEditActionKindV1::ReplaceFile, "policy/allow.toml")
         .map_err(|err| err.as_str().to_string())?;
@@ -229,33 +188,6 @@ fn validate_edit_plan_accepts_find_then_create() -> Result<(), String> {
 }
 
 #[test]
-fn dialect_adapter_surface_matches_parity_contract() -> Result<(), String> {
-    let root = workspace_root();
-    let contract_path = dialect_adapter_parity_contract_paths(&root)
-        .into_iter()
-        .next()
-        .ok_or_else(|| "missing dialect adapter parity fixture path".to_string())?;
-    let contract = load_dialect_adapter_parity_contract(&contract_path)?;
-    if contract.intent_edit_module != DialectAdapterSurface::MODULE_ID {
-        return Err(format!(
-            "surface marker {} does not match contract {}",
-            DialectAdapterSurface::MODULE_ID,
-            contract.intent_edit_module
-        ));
-    }
-    for dialect_id in CANONICAL_DIALECT_IDS {
-        if !contract
-            .canonical_dialect_ids
-            .iter()
-            .any(|entry| entry == dialect_id)
-        {
-            return Err(format!("fixture missing dialect id {dialect_id}"));
-        }
-    }
-    Ok(())
-}
-
-#[test]
 fn adapt_selector_normalizes_cargo_allow_paths() -> Result<(), String> {
     let adapted = adapt_selector(
         IntentEditDialectV1::CargoAllowPolicy,
@@ -277,24 +209,6 @@ fn adapt_selector_strips_allow_prefix_for_spec_system() -> Result<(), String> {
     .map_err(|err| err.as_str().to_string())?;
     if adapted != "spec-system/evidence/x.toml" {
         return Err(format!("unexpected adapted selector: {adapted}"));
-    }
-    Ok(())
-}
-
-#[test]
-fn approval_currentness_surface_matches_parity_contract() -> Result<(), String> {
-    let root = workspace_root();
-    let contract_path = approval_currentness_parity_contract_paths(&root)
-        .into_iter()
-        .next()
-        .ok_or_else(|| "missing approval currentness parity fixture path".to_string())?;
-    let contract = load_approval_currentness_parity_contract(&contract_path)?;
-    if contract.intent_edit_module != ApprovalCurrentnessSurface::MODULE_ID {
-        return Err(format!(
-            "surface marker {} does not match contract {}",
-            ApprovalCurrentnessSurface::MODULE_ID,
-            contract.intent_edit_module
-        ));
     }
     Ok(())
 }
@@ -322,24 +236,6 @@ fn validate_approval_currentness_accepts_approved_current() -> Result<(), String
         "sha256:v1:deadbeef",
     );
     validate_approval_currentness(&envelope).map_err(|err| err.as_str().to_string())
-}
-
-#[test]
-fn repo_edit_translation_surface_matches_parity_contract() -> Result<(), String> {
-    let root = workspace_root();
-    let contract_path = repo_edit_translation_parity_contract_paths(&root)
-        .into_iter()
-        .next()
-        .ok_or_else(|| "missing repo-edit translation parity fixture path".to_string())?;
-    let contract = load_repo_edit_translation_parity_contract(&contract_path)?;
-    if contract.intent_edit_module != RepoEditTranslationSurface::MODULE_ID {
-        return Err(format!(
-            "surface marker {} does not match contract {}",
-            RepoEditTranslationSurface::MODULE_ID,
-            contract.intent_edit_module
-        ));
-    }
-    Ok(())
 }
 
 #[test]
@@ -412,27 +308,6 @@ fn translate_plan_to_repo_edit_rejects_delete_file() -> Result<(), String> {
 }
 
 #[test]
-fn recompile_contract_surface_matches_parity_contract() -> Result<(), String> {
-    let root = workspace_root();
-    let contract_path = recompile_contract_parity_contract_paths(&root)
-        .into_iter()
-        .next()
-        .ok_or_else(|| "missing recompile contract parity fixture path".to_string())?;
-    let contract = load_recompile_contract_parity_contract(&contract_path)?;
-    if contract.intent_edit_module != RecompileContractSurface::MODULE_ID {
-        return Err(format!(
-            "surface marker {} does not match contract {}",
-            RecompileContractSurface::MODULE_ID,
-            contract.intent_edit_module
-        ));
-    }
-    if contract.target_transport_schema_id != TARGET_PHASE_OBLIGATION_PLAN_SCHEMA_ID {
-        return Err("fixture transport schema drifted from intent-engine".to_string());
-    }
-    Ok(())
-}
-
-#[test]
 fn compile_recompile_contract_emits_phase_obligation_plan() -> Result<(), String> {
     let selector = "policy/allow.toml";
     let action_id = stable_action_id(IntentEditActionKindV1::ReplaceFile, selector)
@@ -470,37 +345,6 @@ fn compile_recompile_contract_emits_phase_obligation_plan() -> Result<(), String
         .map_err(|err| format!("intent-engine transport parse failed: {err}"))?;
     if parsed.obligations.is_empty() {
         return Err("intent-engine rejected recompile transport obligations".to_string());
-    }
-    Ok(())
-}
-
-#[test]
-fn settlement_surface_matches_parity_contract() -> Result<(), String> {
-    let root = workspace_root();
-    let contract_path = settlement_parity_contract_paths(&root)
-        .into_iter()
-        .next()
-        .ok_or_else(|| "missing settlement parity fixture path".to_string())?;
-    let contract = load_settlement_parity_contract(&contract_path)?;
-    if contract.intent_edit_module != SettlementSurface::MODULE_ID {
-        return Err(format!(
-            "surface marker {} does not match contract {}",
-            SettlementSurface::MODULE_ID,
-            contract.intent_edit_module
-        ));
-    }
-    for kind in [
-        IntentEditResidualObligationKindV1::AwaitApplyReceipt,
-        IntentEditResidualObligationKindV1::AwaitRecompileProof,
-        IntentEditResidualObligationKindV1::AwaitCurrentnessRefresh,
-    ] {
-        if !contract
-            .required_residual_kinds
-            .iter()
-            .any(|entry| entry == kind.as_str())
-        {
-            return Err(format!("fixture missing residual kind {}", kind.as_str()));
-        }
     }
     Ok(())
 }

@@ -121,10 +121,6 @@ fn source_view_staged_parity_fixture() -> Result<(), String> {
     if !contract.forbid_worktree_fallback {
         return Err("source-view parity fixture must forbid worktree fallback".to_string());
     }
-    assert_eq!(
-        contract.repo_snapshot_module,
-        crate::source_view_surface::SourceViewSurface::MODULE_ID
-    );
     Ok(())
 }
 

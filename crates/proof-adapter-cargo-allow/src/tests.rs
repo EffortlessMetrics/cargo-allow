@@ -10,16 +10,9 @@ use crate::boundary::{
     ALLOWED_UPSTREAM_CRATES, BoundarySurface, FORBIDDEN_DEPENDENCY_EDGES, upstream_surface_markers,
 };
 use crate::cargo_allow_provider::CargoAllowProofProviderV1;
-use crate::cargo_allow_provider_surface::CargoAllowProviderSurface;
-use crate::parity::{
-    load_provider_contract_parity_contract, parity_contract_paths,
-    provider_contract_parity_contract_paths,
-};
+use crate::parity::parity_contract_paths;
 use crate::process_protocol::{compile_cargo_allow_dry_run, validate_process_protocol_plan};
-use crate::process_protocol_surface::ProcessProtocolSurface;
 use crate::provider_contract::{default_cargo_allow_provider_contract, validate_provider_contract};
-use crate::provider_contract_surface::ProviderContractSurface;
-use crate::provider_discovery_surface::ProviderDiscoverySurface;
 
 #[test]
 fn boundary_surface_matches_parity_contract_module() -> Result<(), String> {
@@ -41,24 +34,6 @@ fn boundary_surface_matches_parity_contract_module() -> Result<(), String> {
             "surface marker {} does not match fixture {}",
             BoundarySurface::MODULE_ID,
             module
-        ));
-    }
-    Ok(())
-}
-
-#[test]
-fn provider_contract_surface_matches_parity_contract() -> Result<(), String> {
-    let root = workspace_root();
-    let contract_path = provider_contract_parity_contract_paths(&root)
-        .into_iter()
-        .next()
-        .ok_or_else(|| "missing provider contract parity fixture path".to_string())?;
-    let contract = load_provider_contract_parity_contract(&contract_path)?;
-    if contract.proof_adapter_cargo_allow_module != ProviderContractSurface::MODULE_ID {
-        return Err(format!(
-            "surface marker {} does not match contract {}",
-            ProviderContractSurface::MODULE_ID,
-            contract.proof_adapter_cargo_allow_module
         ));
     }
     Ok(())
@@ -237,25 +212,6 @@ fn parity_contracts_load_from_fixtures() -> Result<(), String> {
     for path in parity_contract_paths(&root) {
         if !path.is_file() {
             return Err(format!("missing parity fixture {}", path.display()));
-        }
-    }
-    Ok(())
-}
-
-#[test]
-fn surface_markers_are_distinct() -> Result<(), String> {
-    let markers = [
-        BoundarySurface::MODULE_ID,
-        ProviderContractSurface::MODULE_ID,
-        ProviderDiscoverySurface::MODULE_ID,
-        ProcessProtocolSurface::MODULE_ID,
-        CargoAllowProviderSurface::MODULE_ID,
-    ];
-    for (index, left) in markers.iter().enumerate() {
-        for right in markers.iter().skip(index + 1) {
-            if left == right {
-                return Err(format!("duplicate surface marker {left}"));
-            }
         }
     }
     Ok(())

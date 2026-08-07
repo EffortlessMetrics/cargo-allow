@@ -8,7 +8,6 @@ pub struct BoundarySurface;
 
 impl BoundarySurface {
     pub const MODULE_ID: &'static str = "proof-adapter-hawk::boundary";
-    pub const CLAIM_BOUNDARY: &'static str = "Captured Hawk report validation, finding mapping, and source-anchor resolution only; Hawk liveness remains provider-owned.";
 }
 
 pub const ALLOWED_UPSTREAM_CRATES: &[&str] =

@@ -10,14 +10,12 @@
 
 mod parity;
 mod spec_system;
-mod spec_system_surface;
 
 pub use parity::{
     SpecSystemParityContract, load_spec_system_parity_contract, spec_system_parity_contract_path,
     spec_system_parity_contract_paths,
 };
 pub use spec_system::*;
-pub use spec_system_surface::SpecSystemSurface;
 
 #[cfg(test)]
 mod tests;

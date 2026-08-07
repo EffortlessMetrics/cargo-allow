@@ -6,7 +6,6 @@ pub struct BoundarySurface;
 
 impl BoundarySurface {
     pub const MODULE_ID: &'static str = "proof-adapter-command::boundary";
-    pub const CLAIM_BOUNDARY: &'static str = "Reviewed command registry and adapter contracts only; process execution remains proof-engine owned.";
 }
 
 pub const ALLOWED_UPSTREAM_CRATES: &[&str] =

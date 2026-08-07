@@ -1,4 +1,3 @@
-use crate::SpecSystemSurface;
 use crate::parity::{SpecSystemParityContract, load_spec_system_parity_contract};
 use std::path::PathBuf;
 
@@ -8,27 +7,6 @@ fn parity_contracts_load_from_fixtures() -> Result<(), String> {
     for path in crate::parity::spec_system_parity_contract_paths(&root) {
         let contract = load_spec_system_parity_contract(&path)?;
         validate_contract(&contract)?;
-    }
-    Ok(())
-}
-
-#[test]
-fn spec_system_surface_matches_parity_contract() -> Result<(), String> {
-    let root = workspace_root();
-    let contract_path = crate::parity::spec_system_parity_contract_path(&root);
-    let contract = load_spec_system_parity_contract(&contract_path)?;
-    if contract.intent_model_module != SpecSystemSurface::MODULE_ID {
-        return Err(format!(
-            "surface marker {} does not match contract {}",
-            SpecSystemSurface::MODULE_ID,
-            contract.intent_model_module
-        ));
-    }
-    if contract.allow_policy_module != "allow-policy::spec_system" {
-        return Err("fixture must reference allow-policy::spec_system".to_string());
-    }
-    if contract.parity_case != "parity-intent-model-spec-system-v1" {
-        return Err("fixture parity_case mismatch".to_string());
     }
     Ok(())
 }

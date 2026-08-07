@@ -8,7 +8,6 @@ mod git;
 mod parity;
 mod revision_identity;
 mod source_view;
-mod source_view_surface;
 mod staged_index;
 
 #[cfg(test)]
@@ -24,7 +23,6 @@ pub use revision_identity::{
     resolve_dirty_state, resolve_revision_identity,
 };
 pub use source_view::RepositorySourceView;
-pub use source_view_surface::SourceViewSurface;
 pub use staged_index::StagedIndexSurface;
 pub use staged_index::{
     STAGED_GIT_CAPABILITY_GENERATION, StagedEntryKind, StagedGitCapabilities, StagedIndexEntry,
