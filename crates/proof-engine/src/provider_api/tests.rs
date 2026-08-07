@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 
-use crate::boundary::{
+use super::boundary::{
     ALLOWED_UPSTREAM_CRATES, BoundarySurface, FORBIDDEN_DEPENDENCY_EDGES, upstream_surface_markers,
 };
-use crate::conformance::run_fake_provider_conformance;
-use crate::fake_provider::FakeProofProviderV1;
-use crate::parity::parity_contract_paths;
-use crate::provider_api::validate_provider_surface;
+use super::conformance::run_fake_provider_conformance;
+use super::contracts::validate_provider_surface;
+use super::fake_provider::FakeProofProviderV1;
+use super::parity::parity_contract_paths;
 
 #[test]
 fn boundary_surface_matches_parity_contract_module() -> Result<(), String> {

@@ -16,7 +16,7 @@ crates = [
   "allow-report",
   "allow-policy-legacy",
   "allow-diff",
-  "effortless-effortless-repo-protocol",
-  "effortless-effortless-repo-edit",
+  "effortless-repo-protocol",
+  "effortless-repo-edit",
   "cargo-allow",
 ]

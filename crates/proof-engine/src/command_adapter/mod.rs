@@ -1,10 +1,8 @@
 //! Reviewed proof command registry and adapter contracts (#2603-B).
 //!
-//! Most users should use [cargo-allow](https://github.com/EffortlessMetrics/cargo-allow);
-//! `proof-adapter-command` defines reviewed command registry entries, structured
-//! program/argv invocation specs, dry-run projections, and receipt interpretation.
-//! It does not scan source files, does not invoke Cargo, compile code, execute
-//! repository code, spawn processes, or depend on intent crates.
+//! Absorbed into proof-engine from the standalone `proof-adapter-command` crate
+//! (#2937). Defines reviewed command registry entries, structured program/argv
+//! invocation specs, dry-run projections, and receipt interpretation.
 
 mod boundary;
 mod command_registry;
@@ -40,9 +38,8 @@ pub use dry_run::{
 };
 pub use dry_run_surface::DryRunSurface;
 pub use parity::{
-    CommandRegistryParityContract, command_registry_parity_contract_path,
-    command_registry_parity_contract_paths, load_command_registry_parity_contract,
-    parity_contract_path, parity_contract_paths,
+    command_registry_parity_contract_path, command_registry_parity_contract_paths,
+    load_command_registry_parity_contract, parity_contract_path, parity_contract_paths,
 };
 pub use receipt_interpretation::{
     COMMAND_RECEIPT_OUTCOME_SCHEMA_ID, CommandReceiptOutcomeV1, CommandReceiptStatusV1,

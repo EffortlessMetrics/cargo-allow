@@ -39,9 +39,7 @@ id = "cargo-proof"
 binary = "cargo-proof"
 owned_crates = [
   "proof-protocol",
-  "proof-provider-api",
   "proof-engine",
-  "proof-adapter-command",
   "proof-adapter-cargo-allow",
   "proof-adapter-ripr",
   "proof-adapter-hawk",
@@ -50,24 +48,24 @@ owned_crates = [
 forbid_product_dependencies = []
 
 [[shared_crate]]
-name = "repo-protocol"
+name = "effortless-repo-protocol"
 role = "SharedProtocol"
 allowed_domain_dependencies = []
 
 [[shared_crate]]
-name = "repo-snapshot"
+name = "effortless-repo-snapshot"
 role = "SharedSnapshot"
-allowed_domain_dependencies = ["repo-protocol"]
+allowed_domain_dependencies = ["effortless-repo-protocol"]
 
 [[shared_crate]]
-name = "repo-edit"
+name = "effortless-repo-edit"
 role = "SharedSnapshot"
-allowed_domain_dependencies = ["repo-protocol", "repo-snapshot"]
+allowed_domain_dependencies = ["effortless-repo-protocol", "effortless-repo-snapshot"]
 
 [[shared_crate]]
-name = "rust-source-index"
+name = "effortless-rust-source-index"
 role = "SharedProtocol"
-allowed_domain_dependencies = ["repo-protocol"]
+allowed_domain_dependencies = ["effortless-repo-protocol"]
 
 [[forbidden_crate_dependency]]
 from = "proof-engine"

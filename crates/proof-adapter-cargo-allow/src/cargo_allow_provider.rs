@@ -1,9 +1,9 @@
 //! cargo-allow ProofProviderV1 implementation (#2554).
 
+use proof_engine::{ProofProviderV1, ProviderApiError};
 use proof_protocol::{
     ProofCapabilityCatalogV1, ProofCapabilityKindV1, ProofCapabilityV1, ProofPlanV1,
 };
-use proof_provider_api::{ProofProviderV1, ProviderApiError};
 
 use crate::process_protocol::{ProcessProtocolError, validate_process_protocol_plan};
 use crate::provider_contract::{

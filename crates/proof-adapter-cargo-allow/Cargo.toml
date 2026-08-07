@@ -13,9 +13,8 @@ categories.workspace = true
 publish = false
 
 [dependencies]
-proof-adapter-command.workspace = true
+proof-engine.workspace = true
 proof-protocol.workspace = true
-proof-provider-api.workspace = true
 effortless-repo-protocol.workspace = true
 serde = { workspace = true, features = ["derive"] }
 sha2.workspace = true

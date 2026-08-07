@@ -2,8 +2,8 @@
 
 use proof_protocol::{ProofPlanCommandV1, ProofPlanV1};
 
-use crate::fake_provider::FakeProofProviderV1;
-use crate::provider_api::{ProofProviderV1, validate_provider_plan};
+use super::contracts::{ProofProviderV1, validate_provider_plan};
+use super::fake_provider::FakeProofProviderV1;
 
 pub const CONFORMANCE_SCENARIO_ID: &str = "proof-provider-api-conformance-v1";
 

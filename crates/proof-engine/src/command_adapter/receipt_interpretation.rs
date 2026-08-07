@@ -6,7 +6,7 @@
 use effortless_repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID;
 use proof_protocol::ProofReceiptBindingV1;
 
-use crate::command_spec::CommandInvocationSpecV1;
+use super::command_spec::CommandInvocationSpecV1;
 
 pub const COMMAND_RECEIPT_OUTCOME_SCHEMA_ID: &str = "proof.command-receipt-outcome.v1";
 

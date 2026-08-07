@@ -1,5 +1,6 @@
-# Six-crate ProofCandidate package / install set (#2589-B).
+# Four-crate ProofCandidate package / install set (#2589-B, #2937).
 # Shared by proof-candidate smoke and extraction parity receipts.
+# proof-provider-api and proof-adapter-command were absorbed into proof-engine.
 
 schema_id = "cargo-allow.proof-candidate-crate-set.v1"
 schema_version = 1
@@ -8,8 +9,6 @@ schema_version = 1
 crates = [
   "effortless-repo-protocol",
   "proof-protocol",
-  "proof-provider-api",
-  "proof-adapter-command",
   "proof-engine",
   "cargo-proof",
 ]

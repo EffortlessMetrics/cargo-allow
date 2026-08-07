@@ -100,7 +100,7 @@ for i in "${!crates[@]}"; do
   crates[$i]="${crates[$i]//$'\r'/}"
 done
 
-[[ "${#crates[@]}" -eq 6 ]] || fail "expected 6 crates from ${crate_set_fixture}, got ${#crates[@]}"
+[[ "${#crates[@]}" -eq 4 ]] || fail "expected 4 crates from ${crate_set_fixture}, got ${#crates[@]}"
 
 version="$(read_workspace_version)"
 [[ -n "${version}" ]] || fail "could not read workspace.package.version"
@@ -338,8 +338,6 @@ log "cargo-proof identity"
 declare -a install_closure=(
   effortless-repo-protocol
   proof-protocol
-  proof-provider-api
-  proof-adapter-command
   proof-engine
   cargo-proof
 )

@@ -1,4 +1,4 @@
-# rust-source-index
+# effortless-rust-source-index
 
 Structural Rust package/target/module/test subject inventory (#2587).
 

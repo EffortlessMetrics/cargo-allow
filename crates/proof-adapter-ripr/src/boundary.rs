@@ -1,6 +1,6 @@
 //! Boundary surface and upstream topology markers (#2556).
 
-use proof_provider_api::PROOF_PROVIDER_API_SCHEMA_ID;
+use proof_engine::PROOF_PROVIDER_API_SCHEMA_ID;
 
 use crate::grip_receipt::RIPR_GRIP_RECEIPT_SCHEMA_ID;
 

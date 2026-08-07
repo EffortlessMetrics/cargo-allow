@@ -1,4 +1,4 @@
-# repo-snapshot
+# effortless-repo-snapshot
 
 Exact repository source views and Git snapshot implementation (#2583).
 

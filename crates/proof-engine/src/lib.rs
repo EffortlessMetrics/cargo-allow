@@ -3,15 +3,18 @@
 //! Most users should use [cargo-allow](https://github.com/EffortlessMetrics/cargo-allow);
 //! `proof-engine` orchestrates provider registry, captured receipts, obligation
 //! planning, currentness, dry-run projection, explicit execution gates, cache,
-//! contradiction detection, and phase gates. It does not scan source files,
-//! does not invoke Cargo, compile code, execute repository code, spawn processes,
-//! or depend on intent crates.
+//! contradiction detection, and phase gates. It also absorbs the provider API
+//! contracts (#2603-A) and command adapter contracts (#2603-B) that previously
+//! lived in standalone `proof-provider-api` and `proof-adapter-command` crates
+//! (#2937). It does not scan source files, does not invoke Cargo, compile code,
+//! execute repository code, spawn processes, or depend on intent crates.
 
 mod boundary;
 mod cache;
 mod cache_surface;
 mod captured_receipts;
 mod captured_receipts_surface;
+mod command_adapter;
 mod contradiction;
 mod contradiction_surface;
 mod currentness;
@@ -28,6 +31,7 @@ mod phase_gate;
 mod phase_gate_surface;
 mod planner;
 mod planner_surface;
+mod provider_api;
 mod provider_registry;
 mod provider_registry_surface;
 mod ripr_routing;
@@ -49,6 +53,26 @@ pub use captured_receipts::{
     validate_captured_receipt_store,
 };
 pub use captured_receipts_surface::CapturedReceiptsSurface;
+// Re-export the absorbed command adapter contracts (#2937). Prefixed aliases
+// avoid collisions with proof-engine's own boundary/dry_run surface markers.
+pub use command_adapter::{
+    ALLOWED_UPSTREAM_CRATES as COMMAND_ADAPTER_ALLOWED_UPSTREAM_CRATES,
+    BoundarySurface as CommandAdapterBoundarySurface, COMMAND_INVOCATION_SPEC_SCHEMA_ID,
+    COMMAND_RECEIPT_OUTCOME_SCHEMA_ID, COMMAND_REGISTRY_SCHEMA_ID, CancellationPostureV1,
+    CommandInvocationSpecV1, CommandReceiptOutcomeV1, CommandReceiptStatusV1, CommandRegistryError,
+    CommandRegistrySurface, CommandSourceKindV1, CommandSpecError, CommandSpecSurface, CwdPolicyV1,
+    DRY_RUN_COMMAND_REPORT_SCHEMA_ID, DryRunCommandReportV1,
+    DryRunSurface as CommandAdapterDryRunSurface,
+    FORBIDDEN_DEPENDENCY_EDGES as COMMAND_ADAPTER_FORBIDDEN_DEPENDENCY_EDGES, NetworkAccessV1,
+    ReceiptInterpretationSurface, ReviewedCommandEntryV1, ReviewedCommandRegistryV1,
+    ShellProjectionKindV1, command_registry_parity_contract_path,
+    command_registry_parity_contract_paths, compile_invocation_spec, default_cargo_allow_registry,
+    interpret_receipt_binding, load_command_registry_parity_contract,
+    parity_contract_path as command_adapter_parity_contract_path,
+    parity_contract_paths as command_adapter_parity_contract_paths, reject_prose_as_executable,
+    render_structured_argv, upstream_surface_markers as command_adapter_upstream_surface_markers,
+    validate_command_registry,
+};
 pub use contradiction::{
     ContradictionError, detect_contradictions, validate_engine_contradiction_report,
 };
@@ -85,6 +109,17 @@ pub use phase_gate::{
 pub use phase_gate_surface::PhaseGateSurface;
 pub use planner::{PROOF_PLANNER_SCHEMA_ID, PlannerError, plan_proof_execution};
 pub use planner_surface::PlannerSurface;
+// Re-export the absorbed provider API contracts (#2937).
+pub use provider_api::{
+    ALLOWED_UPSTREAM_CRATES as PROVIDER_API_ALLOWED_UPSTREAM_CRATES,
+    BoundarySurface as ProviderApiBoundarySurface, CONFORMANCE_SCENARIO_ID, FAKE_PROOF_PROVIDER_ID,
+    FORBIDDEN_DEPENDENCY_EDGES as PROVIDER_API_FORBIDDEN_DEPENDENCY_EDGES, FakeProofProviderV1,
+    PROOF_PROVIDER_API_SCHEMA_ID, ProofProviderV1, ProviderApiError,
+    parity_contract_path as provider_api_parity_contract_path,
+    parity_contract_paths as provider_api_parity_contract_paths, run_fake_provider_conformance,
+    run_provider_conformance, upstream_surface_markers as provider_api_upstream_surface_markers,
+    validate_provider_plan, validate_provider_surface,
+};
 pub use provider_registry::{
     PROVIDER_REGISTRY_SCHEMA_ID, ProviderRegistryEntryV1, ProviderRegistryError,
     ProviderRegistryV1, register_validated_provider, require_registered_provider,

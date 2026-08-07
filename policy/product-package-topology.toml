@@ -78,7 +78,7 @@ candidate_inclusion = true
 release_order = 90
 
 [[package]]
-package = "repo-protocol"
+package = "effortless-repo-protocol"
 product_family = "shared"
 posture = "SharedProtocolInternalOrStabilizing"
 publish = true
@@ -86,7 +86,7 @@ candidate_inclusion = true
 release_order = 95
 
 [[package]]
-package = "repo-edit"
+package = "effortless-repo-edit"
 product_family = "shared"
 posture = "SharedImplementationInternalOrExperimental"
 publish = true
@@ -102,7 +102,7 @@ candidate_inclusion = true
 release_order = 100
 
 [[package]]
-package = "repo-snapshot"
+package = "effortless-repo-snapshot"
 product_family = "shared"
 posture = "SharedImplementationInternalOrExperimental"
 publish = false
@@ -110,7 +110,7 @@ candidate_inclusion = false
 release_order = 220
 
 [[package]]
-package = "rust-source-index"
+package = "effortless-rust-source-index"
 product_family = "shared"
 posture = "SharedProtocolInternalOrStabilizing"
 publish = false
@@ -164,22 +164,6 @@ posture = "CargoProofExperimental"
 publish = false
 candidate_inclusion = false
 release_order = 410
-
-[[package]]
-package = "proof-provider-api"
-product_family = "cargo-proof"
-posture = "CargoProofExperimental"
-publish = false
-candidate_inclusion = false
-release_order = 420
-
-[[package]]
-package = "proof-adapter-command"
-product_family = "cargo-proof"
-posture = "CargoProofExperimental"
-publish = false
-candidate_inclusion = false
-release_order = 425
 
 [[package]]
 package = "proof-adapter-cargo-allow"

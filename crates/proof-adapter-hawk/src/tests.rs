@@ -1,8 +1,6 @@
 use std::path::PathBuf;
 
-use proof_provider_api::{
-    run_provider_conformance, validate_provider_plan, validate_provider_surface,
-};
+use proof_engine::{run_provider_conformance, validate_provider_plan, validate_provider_surface};
 
 use crate::analysis_receipt::{
     HawkAnalysisReceiptV1, HawkExecutionModeV1, HawkFindingV1, validate_hawk_analysis_receipt,

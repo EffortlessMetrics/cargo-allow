@@ -28,11 +28,10 @@
 - `MoveToIntentEngine`: **11**
 - `MoveToIntentModel`: **6**
 - `MoveToIntentProtocol`: **4**
-- `MoveToProofAdapter`: **13**
-- `MoveToProofAdapterCommand`: **2**
-- `MoveToProofEngine`: **4**
+- `MoveToProofAdapter`: **12**
+- `MoveToProofEngine`: **9**
 - `MoveToProofProtocol`: **8**
-- `MoveToProofProviderApi`: **3**
+- `MoveToProofProviderApi`: **1**
 - `MoveToRustSourceIndex`: **2**
 - `MoveToSharedProtocol`: **4**
 - `MoveToSharedSnapshot`: **17**
@@ -129,13 +128,13 @@
 
 ### `INVENTORY-PROOF_ADAPTER_COMMAND-SRC`
 
-- Current: Extracted proof-adapter-command source tree under no-new intent/proof/shared enforcement (#2598)
-- Target: `cargo-proof / proof-adapter-command::proof-adapter-command`
-- Disposition: `MoveToProofAdapter`
+- Current: Absorbed proof-adapter-command source tree under proof-engine (#2937)
+- Target: `cargo-proof / proof-engine::proof_engine::command_adapter`
+- Disposition: `MoveToProofEngine`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
-- Removal: #2603 cutover receipt, then delete compatibility scaffold
-- Next: Register new proof-adapter-command sources in this row before landing extraction changes.
+- Removal: absorbed into proof-engine (#2937)
+- Next: Absorbed into proof-engine; row tracks new submodule paths.
 - Deletion output: Delete scaffold sources after parity cutover and old-path retirement.
 
 ### `INVENTORY-PROOF_ADAPTER_HAWK-SRC`
@@ -184,19 +183,19 @@
 
 ### `INVENTORY-PROOF_PROVIDER_API-SRC`
 
-- Current: Extracted proof-provider-api source tree under no-new intent/proof/shared enforcement (#2598)
-- Target: `cargo-proof / proof-provider-api::proof-provider-api`
-- Disposition: `MoveToProofProviderApi`
+- Current: Absorbed proof-provider-api source tree under proof-engine (#2937)
+- Target: `cargo-proof / proof-engine::proof_engine::provider_api`
+- Disposition: `MoveToProofEngine`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
-- Removal: #2603 cutover receipt, then delete compatibility scaffold
-- Next: Register new proof-provider-api sources in this row before landing extraction changes.
+- Removal: absorbed into proof-engine (#2937)
+- Next: Absorbed into proof-engine; row tracks new submodule paths.
 - Deletion output: Delete scaffold sources after parity cutover and old-path retirement.
 
 ### `INVENTORY-REPO_EDIT-SRC`
 
 - Current: Extracted repo-edit source tree under no-new intent/proof/shared enforcement (#2598)
-- Target: `shared / repo-edit::repo-edit`
+- Target: `shared / effortless-repo-edit::repo-edit`
 - Disposition: `MoveToSharedSnapshot`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -207,7 +206,7 @@
 ### `INVENTORY-REPO_PROTOCOL-SRC`
 
 - Current: Extracted repo-protocol source tree under no-new intent/proof/shared enforcement (#2598)
-- Target: `shared / repo-protocol::repo-protocol`
+- Target: `shared / effortless-repo-protocol::repo-protocol`
 - Disposition: `MoveToSharedProtocol`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -218,7 +217,7 @@
 ### `INVENTORY-REPO_SNAPSHOT-SRC`
 
 - Current: Extracted repo-snapshot source tree under no-new intent/proof/shared enforcement (#2598)
-- Target: `shared / repo-snapshot::repo-snapshot`
+- Target: `shared / effortless-repo-snapshot::repo-snapshot`
 - Disposition: `MoveToSharedSnapshot`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -229,7 +228,7 @@
 ### `INVENTORY-RUST_SOURCE_INDEX-SRC`
 
 - Current: Extracted rust-source-index source tree under no-new intent/proof/shared enforcement (#2598)
-- Target: `shared / rust-source-index::rust-source-index`
+- Target: `shared / effortless-rust-source-index::rust-source-index`
 - Disposition: `MoveToRustSourceIndex`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -526,7 +525,7 @@
 ### `MOVE-ISSUES-PROVIDERS`
 
 - Current: Cargo-allow, RIPR, and Hawk provider adapter implementation ownership
-- Target: `cargo-proof / proof-provider-api::issues.providers`
+- Target: `cargo-proof / proof-engine::proof_engine::provider_api`
 - Disposition: `MoveToProofProviderApi`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `ExplicitlyDeferredWithinBound`
@@ -537,7 +536,7 @@
 ### `MOVE-ISSUES-SHARED-CUTOVER`
 
 - Current: Shared substrate, architecture law, package topology, parity, shims, interop, and extraction-readiness owners
-- Target: `shared / repo-protocol::issues.control`
+- Target: `shared / effortless-repo-protocol::issues.control`
 - Disposition: `MoveToSharedProtocol`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `ExplicitlyDeferredWithinBound`
@@ -559,7 +558,7 @@
 ### `MOVE-REPO-PROTOCOL-TOOL-IDENTITY`
 
 - Current: Tool identity, selection request/receipt, compatibility requirement, and executable digest
-- Target: `shared / repo-protocol::tool_identity`
+- Target: `shared / effortless-repo-protocol::tool_identity`
 - Disposition: `MoveToSharedProtocol`
 - Stage/status: `RepoProtocol` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -570,7 +569,7 @@
 ### `MOVE-REPO-SNAPSHOT-GIT`
 
 - Current: Generic committed revision, tree/blob reads, snapshot identity, staged-index identity, exact staged bytes, and re-exports
-- Target: `shared / repo-snapshot::git`
+- Target: `shared / effortless-repo-snapshot::git`
 - Disposition: `MoveToSharedSnapshot`
 - Stage/status: `RepoSnapshot` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -581,7 +580,7 @@
 ### `MOVE-REPO-SNAPSHOT-SOURCE-VIEW`
 
 - Current: Filesystem, staged-index, and committed-tree source view and exact reads
-- Target: `shared / repo-snapshot::source_view`
+- Target: `shared / effortless-repo-snapshot::source_view`
 - Disposition: `MoveToSharedSnapshot`
 - Stage/status: `RepoSnapshot` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -592,7 +591,7 @@
 ### `MOVE-RUST-SOURCE-INDEX-SUBJECTS`
 
 - Current: RustTest inventory, selector, resolution, source/body identity, package/target/module ownership, and re-exports
-- Target: `shared / rust-source-index::rust.tests`
+- Target: `shared / effortless-rust-source-index::rust.tests`
 - Disposition: `MoveToRustSourceIndex`
 - Stage/status: `RustSourceIndex` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -646,8 +645,8 @@
 
 ### `extend-repo-edit-apply-backup-mode`
 
-- Current: crates/repo-edit/src/single_target_apply.rs
-- Target: `shared / repo-edit::repo_edit`
+- Current: crates/effortless-repo-edit/src/single_target_apply.rs
+- Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -767,23 +766,23 @@
 
 ### `introduce-proof-adapter-command-crate`
 
-- Current: crates/proof-adapter-command/src/lib.rs
-- Target: `cargo-proof / proof-adapter-command::proof_adapter_command`
-- Disposition: `MoveToProofAdapterCommand`
+- Current: crates/proof-engine/src/command_adapter/mod.rs
+- Target: `cargo-proof / proof-engine::proof_engine::command_adapter`
+- Disposition: `MoveToProofEngine`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
-- Removal: issue:#2606 proof-adapter-command stage-1 cutover receipt
+- Removal: absorbed into proof-engine (#2937)
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
 - Deletion output: Deferred to extraction cutover and parity receipts.
 
 ### `introduce-proof-adapter-command-registry`
 
-- Current: crates/proof-adapter-command/src/command_registry.rs
-- Target: `cargo-proof / proof-adapter-command::proof_adapter_command`
-- Disposition: `MoveToProofAdapterCommand`
+- Current: crates/proof-engine/src/command_adapter/command_registry.rs
+- Target: `cargo-proof / proof-engine::proof_engine::command_adapter`
+- Disposition: `MoveToProofEngine`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
-- Removal: issue:#2606 proof-adapter-command stage-2 cutover receipt
+- Removal: absorbed into proof-engine (#2937)
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
 - Deletion output: Deferred to extraction cutover and parity receipts.
 
@@ -954,19 +953,19 @@
 
 ### `introduce-proof-provider-api-crate`
 
-- Current: crates/proof-provider-api/src/lib.rs
-- Target: `cargo-proof / proof-provider-api::proof_provider_api`
-- Disposition: `MoveToProofProviderApi`
+- Current: crates/proof-engine/src/provider_api/mod.rs
+- Target: `cargo-proof / proof-engine::proof_engine::provider_api`
+- Disposition: `MoveToProofEngine`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
-- Removal: issue:#2606 proof-provider-api stage-1 cutover receipt
+- Removal: absorbed into proof-engine (#2937)
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
 - Deletion output: Deferred to extraction cutover and parity receipts.
 
 ### `introduce-repo-edit-apply-receipt`
 
-- Current: crates/repo-edit/src/single_target_apply.rs
-- Target: `shared / repo-edit::repo_edit`
+- Current: crates/effortless-repo-edit/src/single_target_apply.rs
+- Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -977,7 +976,7 @@
 ### `migrate-cargo-allow-add-command`
 
 - Current: crates/cargo-allow/src/add.rs
-- Target: `shared / repo-edit::repo_edit`
+- Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -988,7 +987,7 @@
 ### `migrate-cargo-allow-init-command`
 
 - Current: crates/cargo-allow/src/init.rs
-- Target: `shared / repo-edit::repo_edit`
+- Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -999,7 +998,7 @@
 ### `migrate-cargo-allow-migrate-command`
 
 - Current: crates/cargo-allow/src/migrate.rs
-- Target: `shared / repo-edit::repo_edit`
+- Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -1010,7 +1009,7 @@
 ### `migrate-cargo-allow-propose-command`
 
 - Current: crates/cargo-allow/src/propose.rs
-- Target: `shared / repo-edit::repo_edit`
+- Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -1021,7 +1020,7 @@
 ### `migrate-cargo-allow-prune-command`
 
 - Current: crates/cargo-allow/src/prune.rs
-- Target: `shared / repo-edit::repo_edit`
+- Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -1032,7 +1031,7 @@
 ### `migrate-cargo-allow-refresh-command`
 
 - Current: crates/cargo-allow/src/refresh.rs
-- Target: `shared / repo-edit::repo_edit`
+- Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -1042,8 +1041,8 @@
 
 ### `move-allow-diff-revision-identity`
 
-- Current: crates/repo-snapshot/src/revision_identity.rs
-- Target: `shared / repo-snapshot::repo_snapshot`
+- Current: crates/effortless-repo-snapshot/src/revision_identity.rs
+- Target: `shared / effortless-repo-snapshot::repo_snapshot`
 - Disposition: `MoveToSharedSnapshot`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -1053,8 +1052,8 @@
 
 ### `move-allow-diff-staged-index`
 
-- Current: crates/repo-snapshot/src/staged_index.rs
-- Target: `shared / repo-snapshot::repo_snapshot`
+- Current: crates/effortless-repo-snapshot/src/staged_index.rs
+- Target: `shared / effortless-repo-snapshot::repo_snapshot`
 - Disposition: `MoveToSharedSnapshot`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -1087,7 +1086,7 @@
 ### `move-allow-rust-test-subjects`
 
 - Current: crates/allow-rust/src/test_subjects.rs
-- Target: `shared / rust-source-index::rust_source_index`
+- Target: `shared / effortless-rust-source-index::rust_source_index`
 - Disposition: `MoveToSharedProtocol`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -1098,7 +1097,7 @@
 ### `move-cargo-allow-atomic-write`
 
 - Current: crates/cargo-allow/src/command_support.rs
-- Target: `shared / repo-edit::repo_edit`
+- Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -1109,7 +1108,7 @@
 ### `move-cargo-allow-mutation-lock`
 
 - Current: crates/cargo-allow/src/mutation_lock.rs
-- Target: `shared / repo-edit::repo_edit`
+- Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -1120,7 +1119,7 @@
 ### `move-cargo-allow-path-containment`
 
 - Current: crates/cargo-allow/src/policy_config.rs
-- Target: `shared / repo-edit::repo_edit`
+- Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`

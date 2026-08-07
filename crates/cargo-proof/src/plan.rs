@@ -2,12 +2,12 @@
 
 use std::path::Path;
 
+use proof_engine::FakeProofProviderV1;
 use proof_engine::{
     ProviderRegistryV1, load_obligation_plan_toml, plan_proof_execution,
     register_validated_provider,
 };
 use proof_protocol::{PROOF_PLAN_SCHEMA_ID, ProofPlanV1};
-use proof_provider_api::FakeProofProviderV1;
 
 use crate::render::{OutputFormat, PlanFrameV1, emit_frame};
 

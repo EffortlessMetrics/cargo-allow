@@ -198,8 +198,8 @@ jobs:
             allow-policy-legacy
             allow-report
             allow-diff
-            repo-protocol
-            repo-edit
+            effortless-repo-protocol
+            effortless-repo-edit
             cargo-allow
           )
           if [ "${DRY_RUN}" = "true" ]; then

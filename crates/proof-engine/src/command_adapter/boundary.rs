@@ -1,6 +1,6 @@
 //! Boundary surface and upstream topology markers (#2603-B).
 
-use proof_provider_api::PROOF_PROVIDER_API_SCHEMA_ID;
+use crate::provider_api::PROOF_PROVIDER_API_SCHEMA_ID;
 
 pub struct BoundarySurface;
 

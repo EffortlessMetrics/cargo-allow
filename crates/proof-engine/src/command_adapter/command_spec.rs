@@ -5,7 +5,7 @@
 
 use proof_protocol::ProofPlanCommandV1;
 
-use crate::command_registry::{
+use super::command_registry::{
     CommandRegistryError, ReviewedCommandEntryV1, ReviewedCommandRegistryV1,
     validate_command_registry,
 };
@@ -32,13 +32,13 @@ pub struct CommandInvocationSpecV1 {
     pub source_kind: CommandSourceKindV1,
     pub program: String,
     pub argv: Vec<String>,
-    pub cwd_policy: crate::command_registry::CwdPolicyV1,
+    pub cwd_policy: super::command_registry::CwdPolicyV1,
     pub env_allowlist: Vec<String>,
     pub read_paths: Vec<String>,
     pub write_paths: Vec<String>,
-    pub network: crate::command_registry::NetworkAccessV1,
+    pub network: super::command_registry::NetworkAccessV1,
     pub timeout_ms: u64,
-    pub cancellation: crate::command_registry::CancellationPostureV1,
+    pub cancellation: super::command_registry::CancellationPostureV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

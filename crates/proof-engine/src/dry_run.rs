@@ -1,6 +1,6 @@
 //! Dry-run projection for proof plans (#2589-A).
 
-use proof_adapter_command::{
+use crate::command_adapter::{
     DryRunCommandReportV1, compile_invocation_spec, default_cargo_allow_registry,
     render_structured_argv, validate_command_registry,
 };

@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::command_spec::CommandInvocationSpecV1;
+use super::command_spec::CommandInvocationSpecV1;
 
 pub const DRY_RUN_COMMAND_REPORT_SCHEMA_ID: &str = "proof.dry-run-command-report.v1";
 
@@ -30,13 +30,13 @@ pub struct DryRunCommandReportV1 {
     pub command_id: String,
     pub program: String,
     pub argv: Vec<String>,
-    pub cwd_policy: crate::command_registry::CwdPolicyV1,
+    pub cwd_policy: super::command_registry::CwdPolicyV1,
     pub env_allowlist: Vec<String>,
     pub would_read: Vec<String>,
     pub would_write: Vec<String>,
-    pub network: crate::command_registry::NetworkAccessV1,
+    pub network: super::command_registry::NetworkAccessV1,
     pub timeout_ms: u64,
-    pub cancellation: crate::command_registry::CancellationPostureV1,
+    pub cancellation: super::command_registry::CancellationPostureV1,
     pub shell_projection_kind: ShellProjectionKindV1,
 }
 
