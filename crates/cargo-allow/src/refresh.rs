@@ -35,7 +35,12 @@ pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
             "pass either --dry-run or --write, not both",
         ));
     }
-    let allow_id = args.effective_allow_id()?;
+    let allow_id = args.allow_id.as_deref().ok_or_else(|| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            "allow entry id is required; pass --allow-id <id> or use --all for bulk refresh",
+        )
+    })?;
     let mutation_lock = if args.write {
         let cwd = current_dir()?;
         let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;
@@ -100,8 +105,8 @@ pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
     } else {
         &preview_entry
     };
-    let repo_root = allow_report::source_tree_path_text(&root);
-    let config_source = allow_report::source_tree_path_text(&policy_path);
+    let repo_root = root.display().to_string();
+    let config_source = policy_path.display().to_string();
     let mutation_receipt = MutationReceipt {
         operation: "refresh",
         tool_version: env!("CARGO_PKG_VERSION"),

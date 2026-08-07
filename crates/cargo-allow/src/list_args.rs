@@ -111,6 +111,14 @@ pub(crate) struct ListArgs {
     /// Include untracked files when determining current match status.
     #[arg(long)]
     pub(super) include_untracked: bool,
+    /// Limit the number of entries shown (after filtering and sorting).
+    /// Useful for large ledgers or paginated inspection (#3173).
+    #[arg(long)]
+    pub(super) limit: Option<usize>,
+    /// Skip this many entries before rendering (after filtering and sorting).
+    /// Use with --limit for pagination (#3173).
+    #[arg(long)]
+    pub(super) offset: Option<usize>,
 }
 
 const MIN_LIST_WIDTH: usize = 40;

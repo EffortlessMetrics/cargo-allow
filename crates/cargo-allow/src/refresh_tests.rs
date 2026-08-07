@@ -125,12 +125,12 @@ fn cmd_refresh_write_reports_missing_policy_config_with_structured_error() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove refresh policy: {err}")));
 
     let err = cmd_refresh(&RefreshArgs {
-        allow_id_positional: None,
         root: crate::RootArgs {
             root: Some(root.clone()),
         },
         config: None,
         allow_id: Some("allow-0250".to_string()),
+        all: false,
         dry_run: false,
         write: true,
         include_untracked: true,
@@ -167,12 +167,12 @@ fn refresh_fixture_records_drift_receipt_without_extending_lifecycle() {
     );
 
     cmd_refresh(&RefreshArgs {
-        allow_id_positional: None,
         root: crate::RootArgs {
             root: Some(root.clone()),
         },
         config: Some(config_arg.clone()),
         allow_id: Some("allow-0250".to_string()),
+        all: false,
         dry_run: true,
         write: false,
         include_untracked: true,
@@ -196,12 +196,12 @@ fn refresh_fixture_records_drift_receipt_without_extending_lifecycle() {
         .unwrap_or_else(|| std::panic::panic_any("expected refresh fixture entry"));
 
     cmd_refresh(&RefreshArgs {
-        allow_id_positional: None,
         root: crate::RootArgs {
             root: Some(root.clone()),
         },
         config: Some(config_arg.clone()),
         allow_id: Some("allow-0250".to_string()),
+        all: false,
         dry_run: false,
         write: true,
         include_untracked: true,
