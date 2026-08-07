@@ -225,6 +225,19 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
                 RECEIPT_ENFORCEMENT_ENFORCING
             }),
         })?;
+    } else if args.format == crate::OutputFormat::Human && args.receipt.is_some() {
+        // When only --receipt is given (no --output), the full human report is
+        // suppressed to keep stdout clean for CI scripts. But the operator still
+        // needs a pass/fail signal — emit a brief summary to stderr (#3190).
+        let status_word = if failed { "FAILED" } else { "passed" };
+        eprintln!(
+            "cargo-allow check: {status_word} (mode: {}, receipt written to {})",
+            mode.as_str(),
+            args.receipt
+                .as_deref()
+                .unwrap_or_else(|| std::path::Path::new("<receipt>"))
+                .display()
+        );
     }
     if let Some(path) = &args.receipt {
         let policy_config = config_path(&root, args.config.as_deref())
