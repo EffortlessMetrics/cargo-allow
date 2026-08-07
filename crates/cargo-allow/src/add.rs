@@ -47,10 +47,11 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     if let Some(plan_path) = args.from_plan.as_deref() {
         return add_from_plan::cmd_add_from_plan(args, plan_path);
     }
-    let kind = args.kind.as_deref().ok_or_else(|| {
-        CargoAllowError::with_kind(CargoAllowErrorKind::Usage, "--kind is required")
-    })?;
-    let parsed_kind = parse_kind_filter(kind)?;
+    // --kind can be inferred from --path/--line if not explicitly given (#3194).
+    // The inference happens after load_world scans the source tree; here we
+    // just defer the kind resolution. If --path/--line are absent and --kind
+    // is not given, the original error fires.
+    let declared_kind = args.kind.clone();
     let cwd = current_dir()?;
     let mutation_root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
     // Clap enforces this mutual exclusion at parse time via
@@ -99,7 +100,7 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         args.root.root.as_deref(),
         args.config.as_deref(),
         true,
-        Some(kind),
+        declared_kind.as_deref(),
         args.include_untracked,
     )?;
     let id = args.id.clone().unwrap_or_else(|| next_allow_id(&cfg));
@@ -118,6 +119,27 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         config_path(&root, args.config.as_deref()).map(|path| path.display().to_string())
     } else {
         args.write.as_deref().map(|path| path.display().to_string())
+    };
+
+    // Resolve the kind filter: declared via --kind, or required for --glob.
+    // For --path/--line, inference from the scanned finding is handled below (#3194).
+    let parsed_kind = match &declared_kind {
+        Some(k) => parse_kind_filter(k)?,
+        None if args.glob.is_some() => {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Usage,
+                "--kind is required with --glob (cannot infer from a broad scope)",
+            ));
+        }
+        None => {
+            // Will be inferred from the finding at path/line below.
+            // Use a placeholder; the actual resolution happens in the path/line branch.
+            parse_kind_filter("panic")? // overwritten below if path/line
+        }
+    };
+    let kind = match &declared_kind {
+        Some(k) => k.clone(),
+        None => String::new(), // not used for glob branch (early-returned above)
     };
 
     let (entry, summary) = if let Some(glob) = args.glob.clone() {
@@ -190,7 +212,41 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
             )
         })?;
         let outcomes = evaluate(&cfg, &findings, CheckMode::Audit);
-        let (finding_index, finding) = select_add_finding(&findings, parsed_kind, path, line)?;
+        // Infer --kind from the scanned finding if not explicitly declared (#3194).
+        let effective_kind = match &declared_kind {
+            Some(_) => parsed_kind,
+            None => {
+                let matching: Vec<_> = findings
+                    .iter()
+                    .filter(|f| f.path == *path)
+                    .filter(|f| f.span.as_ref().is_some_and(|s| s.line == line))
+                    .collect();
+                match matching.as_slice() {
+                    [] => {
+                        return Err(CargoAllowError::with_kind(
+                            CargoAllowErrorKind::Usage,
+                            format!(
+                                "no finding at {}:{} to infer --kind from; pass --kind explicitly",
+                                path.display(),
+                                line
+                            ),
+                        ));
+                    }
+                    [one] => parse_kind_filter(one.kind.as_str())?,
+                    _ => {
+                        return Err(CargoAllowError::with_kind(
+                            CargoAllowErrorKind::Usage,
+                            format!(
+                                "multiple finding kinds at {}:{}; pass --kind explicitly",
+                                path.display(),
+                                line
+                            ),
+                        ));
+                    }
+                }
+            }
+        };
+        let (finding_index, finding) = select_add_finding(&findings, effective_kind, path, line)?;
         let selected_outcome = selected_add_outcome(&outcomes, finding_index)?;
         ensure_addable_outcome(selected_outcome.status)?;
         require_add_evidence(finding, &args.evidence)?;
