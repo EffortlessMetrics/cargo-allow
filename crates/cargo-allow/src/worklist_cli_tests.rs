@@ -127,7 +127,8 @@ fn clap_rejects_unknown_worklist_kind() {
             .expect_err("unknown worklist kind should fail closed");
 
     assert!(
-        err.to_string().contains("unknown worklist kind"),
+        err.to_string()
+            .contains("unknown kind `unsfae`; supported kinds:"),
         "unexpected parse error: {err}"
     );
 }

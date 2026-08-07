@@ -1,7 +1,7 @@
 use clap::Parser;
 use std::path::PathBuf;
 
-use crate::{HumanJsonFormat, ProfileArg, RootArgs, parse_kind_filter, parse_match_status_arg};
+use crate::{HumanJsonFormat, ProfileArg, RootArgs, parse_kind_filter_arg, parse_match_status_arg};
 
 use super::worklist_item_kind::parse_work_item_kind_filter;
 use super::worklist_types::WorklistFilters;
@@ -78,9 +78,7 @@ pub(crate) struct WorklistArgs {
 }
 
 fn parse_worklist_kind_filter(value: &str) -> Result<String, String> {
-    parse_kind_filter(value)
-        .map(|_| value.to_string())
-        .map_err(|_| format!("unknown worklist kind `{value}`"))
+    parse_kind_filter_arg(value)
 }
 
 pub(super) fn worklist_filters(args: &WorklistArgs) -> WorklistFilters<'_> {
