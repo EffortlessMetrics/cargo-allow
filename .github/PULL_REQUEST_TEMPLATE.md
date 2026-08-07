@@ -2,6 +2,21 @@
 
 <!-- Briefly describe what changed and why. -->
 
+## Controlling authority and reviewer focus
+
+<!--
+Give reviewers the smallest durable map for the current PR. Use `not applicable`
+when the change is deliberately mechanical or docs-only; do not invent a spec.
+-->
+
+- Controlling issue/spec/requirement:
+- Intended base:
+- Exact head intended for review (fill after the final author push):
+- Changed seams and semantic owners:
+- Highest-risk invariants or failure modes:
+- Required negative, adversarial, replay, or platform proof:
+- Schema, docs, package, support, release, or migration impact:
+
 ## Source-exception ledger impact
 
 <!--
@@ -24,6 +39,28 @@ cargo-allow diff/audit output or explain why it does not apply.
 - [ ] `cargo clippy --workspace --all-targets -- -D warnings`
 - [ ] `cargo test --workspace`
 - [ ] `cargo run -p cargo-allow -- diff --base origin/main --format markdown`
+
+## Review readiness
+
+<!--
+The author supplies review inputs; the reviewer/operator determines the verdict.
+Follow `.agents/skills/review-current-head/SKILL.md` for substantive review and
+merge-readiness verification.
+-->
+
+- [ ] The PR body describes the current head, not an earlier candidate.
+- [ ] The changed-file set and relevant callers/consumers are ready to inspect.
+- [ ] Existing review threads were checked before adding new feedback.
+- [ ] Repairs or material base changes after review will receive a fresh affected review.
+- [ ] Required checks and retained receipts will be verified against the final base/head pair.
+
+Final reviewed base and merge-base:
+
+Final reviewed head:
+
+Final review source and independence posture:
+
+Required-check and unresolved-thread disposition:
 
 ## Review notes
 
