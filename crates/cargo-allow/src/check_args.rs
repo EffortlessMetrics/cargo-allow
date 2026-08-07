@@ -49,7 +49,10 @@ pub(crate) struct CheckArgs {
     #[arg(long, value_parser = ["audit", "no-new", "strict", "release"], env = "CARGO_ALLOW_MODE")]
     pub(crate) mode: Option<String>,
     /// Promote one receipt `advisory` count class to a blocking failure.
-    /// Repeatable. Supported classes mirror receipt `advisory` fields, including `occurrence_headroom`.
+    /// Repeatable. Common supported classes: expired, review_due, stale,
+    /// baseline_debt, location_drift, broad_scope, occurrence_headroom,
+    /// broken_evidence, weak_evidence, missing_evidence, mirror_divergence.
+    /// Run with an invalid value to see the full list for your repository.
     #[arg(long = "deny", value_name = "STATUS")]
     pub(crate) deny: Vec<String>,
     /// Evaluation phase for profile-specific checks.

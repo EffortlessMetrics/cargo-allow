@@ -66,7 +66,8 @@ impl MutationLock {
                     if start.elapsed() >= timeout {
                         return Err(CargoAllowError::new(format!(
                             "mutation lock held by another process; waited {}s for {}; \
-                             check for stale processes or rerun after the current mutation completes",
+                             another cargo-allow mutation (add/propose/refresh/prune/migrate/init) \
+                             may be running; check for stale processes or rerun after it completes",
                             timeout.as_secs(),
                             path.display()
                         )));
@@ -75,7 +76,8 @@ impl MutationLock {
                 }
                 Err(TryLockError::Error(error)) => {
                     return Err(CargoAllowError::new(format!(
-                        "failed to acquire mutation lock {}: {error}",
+                        "failed to acquire mutation lock {}: {error}; \
+                         ensure the directory is writable and not on a read-only filesystem",
                         path.display()
                     )));
                 }
