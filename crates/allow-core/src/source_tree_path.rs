@@ -4,9 +4,22 @@ use crate::AllowEntry;
 
 /// Normalize a path for source-tree identity and matching.
 ///
-/// All backslashes are converted to forward slashes, `.`/`..` segments are
-/// folded, and the Windows verbatim prefix (`\\?\`) is stripped. This is a
-/// lexical normalization only — it does not touch the filesystem.
+/// All backslashes are converted to forward slashes, Unicode is normalized to
+/// NFC (composed form), `.`/`..` segments are folded, and the Windows verbatim
+/// prefix (`\\?\`) is stripped. This is a lexical normalization only — it does
+/// not touch the filesystem.
+///
+/// # Unicode NFC normalization (#1823)
+///
+/// macOS (HFS+/APFS) and git may represent the same path in different Unicode
+/// normalization forms (NFC composed vs NFD decomposed). Without NFC
+/// normalization, `files.sort(); files.dedup()` in the inventory treats NFC
+/// and NFD forms of the same path as distinct, and finding→entry matching
+/// (`normalize_path(finding_path) == normalize_path(entry_path)`) produces
+/// **false positives/false negatives split across platforms** — a real
+/// `unwrap()` finding goes unreceipted on macOS but matched on Linux.
+/// Normalizing to NFC inside this function ensures all downstream matching,
+/// fingerprinting, and identity keying sees one canonical Unicode form.
 ///
 /// # Windows absolute paths (#1821)
 ///
@@ -29,9 +42,14 @@ use crate::AllowEntry;
 /// calling this function, so repo-relative paths are the normal input.
 pub fn normalize_path(path: impl AsRef<Path>) -> String {
     let text = path.as_ref().to_string_lossy().replace('\\', "/");
+    // NFC-normalize the text so that composed/decomposed Unicode forms of the
+    // same path produce the same identity key (#1823). This prevents
+    // cross-platform (macOS NFD vs Linux NFC) matching divergence.
+    use unicode_normalization::UnicodeNormalization;
+    let nfc: String = text.nfc().collect();
     // Strip the Windows verbatim prefix (\\?\) so it doesn't survive as path
     // segments. Drive letters and plain UNC roots are preserved (see docs).
-    let (stripped, force_absolute) = strip_verbatim_prefix(&text);
+    let (stripped, force_absolute) = strip_verbatim_prefix(&nfc);
     let absolute = force_absolute || stripped.starts_with('/');
     let mut parts = Vec::new();
     for part in stripped.split('/') {

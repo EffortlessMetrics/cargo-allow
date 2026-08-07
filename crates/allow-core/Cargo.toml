@@ -13,6 +13,7 @@ categories.workspace = true
 
 [dependencies]
 sha2.workspace = true
+unicode-normalization.workspace = true
 
 [dev-dependencies]
 proptest = { version = "1.11.0", default-features = false, features = ["std"] }
