@@ -30,6 +30,14 @@ pub(crate) fn normalize_legacy_expires(expires: Option<String>) -> Option<String
     })
 }
 
+/// Normalize a legacy `created` or `review_after` date field through the same
+/// canonicalization as `expires` (#1870). Without this, RFC3339 timestamps in
+/// `created`/`review_after` produce byte-different migration output across
+/// ripr versions.
+pub(crate) fn normalize_legacy_date_field(value: Option<String>) -> Option<String> {
+    value.map(|v| canonicalize_legacy_date(&v))
+}
+
 /// Canonicalize a legacy date/timestamp to YYYY-MM-DD for deterministic
 /// migration output (#1870).
 ///
@@ -42,7 +50,7 @@ pub(crate) fn normalize_legacy_expires(expires: Option<String>) -> Option<String
 /// This function strips any time/timezone component and returns just the
 /// date portion. If the input is already a plain date, it passes through
 /// unchanged.
-fn canonicalize_legacy_date(value: &str) -> String {
+pub(crate) fn canonicalize_legacy_date(value: &str) -> String {
     // If it's already a plain YYYY-MM-DD (10 chars, no 'T'), pass through.
     if value.len() == 10 && !value.contains('T') {
         return value.to_string();

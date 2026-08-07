@@ -2,6 +2,7 @@ use allow_core::{CargoAllowError, CargoAllowResult};
 use toml::Value;
 
 use crate::fields::{legacy_evidence, string_array_field, string_field};
+use crate::parser_support::normalize_legacy_date_field;
 use crate::parser_support::normalize_legacy_expires;
 use crate::types::LegacyWorkflowRule;
 
@@ -34,8 +35,8 @@ fn parse_workflow_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyWo
         external_actions: string_array_field(table, "external_actions"),
         duplicate_of_lane: string_field(table, "duplicate_of_lane"),
         evidence: legacy_evidence(table),
-        created: string_field(table, "created"),
-        review_after: string_field(table, "review_after"),
+        created: normalize_legacy_date_field(string_field(table, "created")),
+        review_after: normalize_legacy_date_field(string_field(table, "review_after")),
         expires: normalize_legacy_expires(string_field(table, "expires")),
     })
 }

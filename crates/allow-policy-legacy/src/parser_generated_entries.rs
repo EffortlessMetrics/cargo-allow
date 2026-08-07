@@ -2,6 +2,7 @@ use allow_core::{CargoAllowError, CargoAllowResult};
 use toml::Value;
 
 use crate::fields::{legacy_evidence, string_field};
+use crate::parser_support::normalize_legacy_date_field;
 use crate::parser_support::normalize_legacy_expires;
 use crate::types::LegacyGeneratedRule;
 
@@ -34,7 +35,7 @@ fn parse_generated_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyG
         generator: string_field(table, "generator"),
         regenerate_command: string_field(table, "regenerate_command"),
         evidence: legacy_evidence(table),
-        created: string_field(table, "created"),
+        created: normalize_legacy_date_field(string_field(table, "created")),
         expires: normalize_legacy_expires(string_field(table, "expires")),
     })
 }
