@@ -1,9 +1,3 @@
-use crate::DomainQueriesSurface;
-use crate::EvaluatorPacketSurface;
-use crate::GraphComparisonSurface;
-use crate::ParityCorpusSurface;
-use crate::PhaseObligationsSurface;
-use crate::WorkspaceCompilerSurface;
 use crate::parity::{
     BoundedDomainQueriesParityContract, EvaluatorPacketParityContract,
     GraphComparisonParityContract, ParityCorpusParityContract, PhaseObligationsParityContract,
@@ -47,21 +41,6 @@ fn parity_contracts_load_from_fixtures() -> Result<(), String> {
 }
 
 #[test]
-fn evaluator_packet_surface_matches_parity_contract() -> Result<(), String> {
-    let root = workspace_root();
-    let contract_path = crate::parity::evaluator_packet_parity_contract_path(&root);
-    let contract = load_evaluator_packet_parity_contract(&contract_path)?;
-    if contract.intent_engine_module != EvaluatorPacketSurface::MODULE_ID {
-        return Err(format!(
-            "surface marker {} does not match contract {}",
-            EvaluatorPacketSurface::MODULE_ID,
-            contract.intent_engine_module
-        ));
-    }
-    Ok(())
-}
-
-#[test]
 fn evaluator_packet_envelope_roundtrip() -> Result<(), String> {
     let packet = crate::IntentEnginePacketEnvelopeV1::new(
         serde_json::json!({
@@ -80,21 +59,6 @@ fn evaluator_packet_envelope_roundtrip() -> Result<(), String> {
     }
     if decoded.query_schema_id != crate::INTENT_QUERY_TRANSPORT_SCHEMA_ID {
         return Err("query schema id mismatch".to_string());
-    }
-    Ok(())
-}
-
-#[test]
-fn workspace_compiler_surface_matches_parity_contract() -> Result<(), String> {
-    let root = workspace_root();
-    let contract_path = crate::parity::workspace_composition_parity_contract_path(&root);
-    let contract = load_workspace_composition_parity_contract(&contract_path)?;
-    if contract.intent_engine_module != WorkspaceCompilerSurface::MODULE_ID {
-        return Err(format!(
-            "surface marker {} does not match contract {}",
-            WorkspaceCompilerSurface::MODULE_ID,
-            contract.intent_engine_module
-        ));
     }
     Ok(())
 }
@@ -131,21 +95,6 @@ fn authority_compile_plan_orders_sources() -> Result<(), String> {
 }
 
 #[test]
-fn graph_comparison_surface_matches_parity_contract() -> Result<(), String> {
-    let root = workspace_root();
-    let contract_path = crate::parity::graph_comparison_parity_contract_path(&root);
-    let contract = load_graph_comparison_parity_contract(&contract_path)?;
-    if contract.intent_engine_module != GraphComparisonSurface::MODULE_ID {
-        return Err(format!(
-            "surface marker {} does not match contract {}",
-            GraphComparisonSurface::MODULE_ID,
-            contract.intent_engine_module
-        ));
-    }
-    Ok(())
-}
-
-#[test]
 fn graph_movement_kinds_match_fixture() -> Result<(), String> {
     let root = workspace_root();
     let fixture_kinds = load_graph_movement_kinds_fixture(&root)?;
@@ -155,21 +104,6 @@ fn graph_movement_kinds_match_fixture() -> Result<(), String> {
         .collect::<Vec<_>>();
     if fixture_kinds != canonical {
         return Err("graph movement kinds fixture drifted from canonical ordering".to_string());
-    }
-    Ok(())
-}
-
-#[test]
-fn phase_obligations_surface_matches_parity_contract() -> Result<(), String> {
-    let root = workspace_root();
-    let contract_path = crate::parity::phase_obligations_parity_contract_path(&root);
-    let contract = load_phase_obligations_parity_contract(&contract_path)?;
-    if contract.intent_engine_module != PhaseObligationsSurface::MODULE_ID {
-        return Err(format!(
-            "surface marker {} does not match contract {}",
-            PhaseObligationsSurface::MODULE_ID,
-            contract.intent_engine_module
-        ));
     }
     Ok(())
 }
@@ -213,21 +147,6 @@ fn precommit_obligation_plan_fixture_loads() -> Result<(), String> {
     }
     if fixture.obligations.len() < 3 {
         return Err("fixture must include representative obligations".to_string());
-    }
-    Ok(())
-}
-
-#[test]
-fn domain_queries_surface_matches_parity_contract() -> Result<(), String> {
-    let root = workspace_root();
-    let contract_path = crate::parity::bounded_domain_queries_parity_contract_path(&root);
-    let contract = load_bounded_domain_queries_parity_contract(&contract_path)?;
-    if contract.intent_engine_module != DomainQueriesSurface::MODULE_ID {
-        return Err(format!(
-            "surface marker {} does not match contract {}",
-            DomainQueriesSurface::MODULE_ID,
-            contract.intent_engine_module
-        ));
     }
     Ok(())
 }
@@ -342,21 +261,6 @@ fn validate_bounded_domain_queries_contract(
     }
     if contract.required_query_kinds.len() < 3 {
         return Err("required_query_kinds too small".to_string());
-    }
-    Ok(())
-}
-
-#[test]
-fn parity_corpus_surface_matches_contract() -> Result<(), String> {
-    let root = workspace_root();
-    let contract_path = crate::parity::parity_corpus_contract_path(&root);
-    let contract = load_parity_corpus_contract(&contract_path)?;
-    if contract.intent_engine_module != ParityCorpusSurface::MODULE_ID {
-        return Err(format!(
-            "surface marker {} does not match contract {}",
-            ParityCorpusSurface::MODULE_ID,
-            contract.intent_engine_module
-        ));
     }
     Ok(())
 }

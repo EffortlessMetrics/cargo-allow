@@ -24,7 +24,6 @@ use crate::ripr_routing::{
     ProofClaimPostureV1, RiprPreflightClaimInputV1, RiprRouteClaimInputV1, RiprRoutingError,
     compose_preflight_receipt, compose_route_receipt, compose_routing_aggregate,
 };
-use crate::ripr_routing_surface::RiprRoutingSurface;
 use proof_protocol::ProofResultStateV1;
 
 #[test]
@@ -203,16 +202,9 @@ fn parity_fixture_paths_exist() -> Result<(), String> {
 }
 
 #[test]
-fn ripr_routing_surface_matches_contract() -> Result<(), String> {
+fn ripr_routing_contract_requires_both_phases() -> Result<(), String> {
     let root = workspace_root();
     let contract = load_ripr_routing_contract(&ripr_routing_contract_path(&root))?;
-    if contract.proof_engine_module != RiprRoutingSurface::MODULE_ID {
-        return Err(format!(
-            "surface marker {} does not match contract {}",
-            RiprRoutingSurface::MODULE_ID,
-            contract.proof_engine_module
-        ));
-    }
     if !contract.required_phases.contains(&"route".to_string()) {
         return Err("contract must require route phase".to_string());
     }

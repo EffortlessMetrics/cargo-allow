@@ -6,37 +6,27 @@
 //! does not scan source files, does not invoke Cargo, compile code, execute
 //! repository code, spawn processes, or depend on intent crates.
 
+#[cfg(test)]
 mod boundary;
 mod capability_dtos;
-mod capability_dtos_surface;
 mod contradiction_dtos;
-mod contradiction_dtos_surface;
 mod parity;
 mod phase_gate_dtos;
-mod phase_gate_dtos_surface;
 mod plan_dtos;
-mod plan_dtos_surface;
 mod proof_corpus;
-mod proof_corpus_surface;
 mod receipt_dtos;
-mod receipt_dtos_surface;
 
 #[cfg(test)]
 mod tests;
 
-pub use boundary::{
-    ALLOWED_UPSTREAM_CRATES, BoundarySurface, FORBIDDEN_DEPENDENCY_EDGES, upstream_surface_markers,
-};
 pub use capability_dtos::{
     PROOF_CAPABILITY_CATALOG_SCHEMA_ID, ProofCapabilityCatalogV1, ProofCapabilityError,
     ProofCapabilityKindV1, ProofCapabilityV1, validate_capability_catalog,
 };
-pub use capability_dtos_surface::CapabilityDtosSurface;
 pub use contradiction_dtos::{
     PROOF_CONTRADICTION_REPORT_SCHEMA_ID, ProofContradictionError, ProofContradictionReportV1,
     ProofContradictionV1, validate_contradiction_report,
 };
-pub use contradiction_dtos_surface::ContradictionDtosSurface;
 pub use parity::{
     CapabilityDtosParityContract, ContradictionDtosParityContract, PhaseGateDtosParityContract,
     PlanDtosParityContract, ProofCorpusParityContract, ReceiptDtosParityContract,
@@ -55,12 +45,10 @@ pub use phase_gate_dtos::{
     PROOF_PHASE_GATE_SCHEMA_ID, ProofPhaseGateError, ProofPhaseGatePostureV1, ProofPhaseGateV1,
     validate_phase_gate,
 };
-pub use phase_gate_dtos_surface::PhaseGateDtosSurface;
 pub use plan_dtos::{
     PROOF_PLAN_COMMAND_SCHEMA_ID, PROOF_PLAN_SCHEMA_ID, ProofPlanCommandV1, ProofPlanError,
     ProofPlanV1, load_proof_plan_toml, validate_proof_plan,
 };
-pub use plan_dtos_surface::PlanDtosSurface;
 pub use proof_corpus::{
     BindingCurrentnessV1, PROOF_CORPUS_DIGEST_V1, PROOF_CORPUS_SCHEMA_ID, ProofBindingIdentityV1,
     ProofCorpusDimensionV1, ProofCorpusScenarioV1, ProofCorpusV1, ProofResultStateV1,
@@ -69,9 +57,7 @@ pub use proof_corpus::{
     provider_envelope_distinct, validate_composition_honesty, validate_proof_corpus,
     validate_provider_envelope,
 };
-pub use proof_corpus_surface::ProofCorpusSurface;
 pub use receipt_dtos::{
     PROOF_RECEIPT_BINDING_SCHEMA_ID, PROOF_RECEIPT_SET_SCHEMA_ID, ProofReceiptBindingV1,
     ProofReceiptError, ProofReceiptSetV1, validate_receipt_set,
 };
-pub use receipt_dtos_surface::ReceiptDtosSurface;

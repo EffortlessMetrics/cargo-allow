@@ -1,6 +1,3 @@
-use crate::IdentityQuerySurface;
-use crate::ObligationPlanSurface;
-use crate::ViewDiffClosureSurface;
 use crate::parity::{
     IdentityQueryParityContract, ObligationPlanParityContract, ViewDiffClosureParityContract,
     load_identity_query_parity_contract, load_obligation_plan_parity_contract,
@@ -31,24 +28,6 @@ fn parity_contracts_load_from_fixtures() -> Result<(), String> {
 }
 
 #[test]
-fn identity_query_surface_matches_parity_contract() -> Result<(), String> {
-    let root = workspace_root();
-    let contract_path = crate::parity::identity_query_parity_contract_path(&root);
-    let contract = load_identity_query_parity_contract(&contract_path)?;
-    if contract.intent_protocol_module != IdentityQuerySurface::MODULE_ID {
-        return Err(format!(
-            "surface marker {} does not match contract {}",
-            IdentityQuerySurface::MODULE_ID,
-            contract.intent_protocol_module
-        ));
-    }
-    if contract.parity_case != "parity-intent-protocol-identity-query-v1" {
-        return Err("fixture parity_case mismatch".to_string());
-    }
-    Ok(())
-}
-
-#[test]
 fn query_envelope_roundtrip_preserves_identity() -> Result<(), String> {
     let snapshot = sample_snapshot();
     let identity = crate::IntentIdentityEnvelopeV1::new(
@@ -72,42 +51,6 @@ fn query_envelope_roundtrip_preserves_identity() -> Result<(), String> {
     }
     if decoded.selector != "policy/spec-system.toml" {
         return Err("selector did not round-trip".to_string());
-    }
-    Ok(())
-}
-
-#[test]
-fn view_diff_closure_surface_matches_parity_contract() -> Result<(), String> {
-    let root = workspace_root();
-    let contract_path = crate::parity::view_diff_closure_parity_contract_path(&root);
-    let contract = load_view_diff_closure_parity_contract(&contract_path)?;
-    if contract.intent_protocol_module != ViewDiffClosureSurface::MODULE_ID {
-        return Err(format!(
-            "surface marker {} does not match contract {}",
-            ViewDiffClosureSurface::MODULE_ID,
-            contract.intent_protocol_module
-        ));
-    }
-    if contract.parity_case != "parity-intent-protocol-view-diff-closure-v1" {
-        return Err("fixture parity_case mismatch".to_string());
-    }
-    Ok(())
-}
-
-#[test]
-fn obligation_plan_surface_matches_parity_contract() -> Result<(), String> {
-    let root = workspace_root();
-    let contract_path = crate::parity::obligation_plan_parity_contract_path(&root);
-    let contract = load_obligation_plan_parity_contract(&contract_path)?;
-    if contract.intent_protocol_module != ObligationPlanSurface::MODULE_ID {
-        return Err(format!(
-            "surface marker {} does not match contract {}",
-            ObligationPlanSurface::MODULE_ID,
-            contract.intent_protocol_module
-        ));
-    }
-    if contract.parity_case != "parity-intent-protocol-obligation-plan-v1" {
-        return Err("fixture parity_case mismatch".to_string());
     }
     Ok(())
 }

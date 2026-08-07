@@ -3,6 +3,7 @@
 //! Absorbed into proof-engine from the standalone `proof-provider-api` crate
 //! (#2937). Provider-neutral execution contracts over proof-protocol transport.
 
+#[cfg(test)]
 mod boundary;
 mod conformance;
 mod contracts;
@@ -12,9 +13,6 @@ mod parity;
 #[cfg(test)]
 mod tests;
 
-pub use boundary::{
-    ALLOWED_UPSTREAM_CRATES, BoundarySurface, FORBIDDEN_DEPENDENCY_EDGES, upstream_surface_markers,
-};
 pub use conformance::{
     CONFORMANCE_SCENARIO_ID, run_fake_provider_conformance, run_provider_conformance,
 };

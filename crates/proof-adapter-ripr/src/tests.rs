@@ -8,22 +8,15 @@ use crate::boundary::{
 use crate::grip_comparison::{
     GripComparisonDispositionV1, RequirementEvidencePurposeV1, compare_requirement_grip,
 };
-use crate::grip_comparison_surface::GripComparisonSurface;
 use crate::grip_receipt::{
     RiprCompletenessV1, RiprExecutionModeV1, RiprGripDispositionV1, RiprGripReceiptV1,
     validate_ripr_grip_receipt,
 };
-use crate::grip_receipt_surface::GripReceiptSurface;
-use crate::parity::{
-    grip_comparison_parity_contract_path, grip_receipt_parity_contract_path,
-    load_grip_comparison_parity_contract, load_grip_receipt_parity_contract, parity_contract_paths,
-};
+use crate::parity::parity_contract_paths;
 use crate::receipt_currentness::{
     RiprCurrentnessRequest, RiprReceiptCurrentnessStatusV1, evaluate_receipt_currentness,
 };
-use crate::receipt_currentness_surface::ReceiptCurrentnessSurface;
 use crate::ripr_adapter::RiprProofProviderV1;
-use crate::ripr_adapter_surface::RiprAdapterSurface;
 
 fn strong_grip_receipt() -> RiprGripReceiptV1 {
     RiprGripReceiptV1 {
@@ -74,27 +67,6 @@ fn boundary_surface_matches_parity_contract_module() -> Result<(), String> {
             BoundarySurface::MODULE_ID,
             module
         ));
-    }
-    Ok(())
-}
-
-#[test]
-fn grip_receipt_surface_matches_parity_contract() -> Result<(), String> {
-    let root = workspace_root();
-    let contract = load_grip_receipt_parity_contract(&grip_receipt_parity_contract_path(&root))?;
-    if contract.proof_adapter_ripr_module != GripReceiptSurface::MODULE_ID {
-        return Err("grip receipt surface drift".to_string());
-    }
-    Ok(())
-}
-
-#[test]
-fn grip_comparison_surface_matches_parity_contract() -> Result<(), String> {
-    let root = workspace_root();
-    let contract =
-        load_grip_comparison_parity_contract(&grip_comparison_parity_contract_path(&root))?;
-    if contract.proof_adapter_ripr_module != GripComparisonSurface::MODULE_ID {
-        return Err("grip comparison surface drift".to_string());
     }
     Ok(())
 }
@@ -232,25 +204,6 @@ fn parity_contracts_load_from_fixtures() -> Result<(), String> {
     for path in parity_contract_paths(&root) {
         if !path.is_file() {
             return Err(format!("missing parity fixture {}", path.display()));
-        }
-    }
-    Ok(())
-}
-
-#[test]
-fn surface_markers_are_distinct() -> Result<(), String> {
-    let markers = [
-        BoundarySurface::MODULE_ID,
-        GripReceiptSurface::MODULE_ID,
-        ReceiptCurrentnessSurface::MODULE_ID,
-        GripComparisonSurface::MODULE_ID,
-        RiprAdapterSurface::MODULE_ID,
-    ];
-    for (index, left) in markers.iter().enumerate() {
-        for right in markers.iter().skip(index + 1) {
-            if left == right {
-                return Err(format!("duplicate surface marker {left}"));
-            }
         }
     }
     Ok(())

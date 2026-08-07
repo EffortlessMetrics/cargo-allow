@@ -11,7 +11,6 @@ mod inventory;
 mod parity;
 mod syntax;
 mod test_subjects;
-mod test_subjects_surface;
 
 pub use inventory::{
     inventory_rust_test_subjects, inventory_rust_test_subjects_from_sources,
@@ -26,8 +25,6 @@ pub use test_subjects::{
     RustTestInventoryOptions, RustTestInventoryStatus, RustTestResolution, RustTestSelector,
     RustTestSourceRange, RustTestSubject, RustTestTargetIdentity, RustTestTargetKind,
 };
-pub use test_subjects_surface::TestSubjectsSurface;
-
 #[cfg(test)]
 mod inventory_tests;
 #[cfg(test)]

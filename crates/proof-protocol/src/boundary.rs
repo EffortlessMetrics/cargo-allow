@@ -6,8 +6,6 @@ pub struct BoundarySurface;
 
 impl BoundarySurface {
     pub const MODULE_ID: &'static str = "proof-protocol::boundary";
-    pub const CLAIM_BOUNDARY: &'static str =
-        "Crate scaffold and dependency topology only; plan DTO transport lands in #2588-B.";
 }
 
 pub const ALLOWED_UPSTREAM_CRATES: &[&str] = &["repo-protocol"];

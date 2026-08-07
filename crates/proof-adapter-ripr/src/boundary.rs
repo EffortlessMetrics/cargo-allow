@@ -8,7 +8,6 @@ pub struct BoundarySurface;
 
 impl BoundarySurface {
     pub const MODULE_ID: &'static str = "proof-adapter-ripr::boundary";
-    pub const CLAIM_BOUNDARY: &'static str = "RIPR grip receipt validation, currentness, and requirement-grip comparison only; authored evidence purpose remains cargo-intent owned.";
 }
 
 pub const ALLOWED_UPSTREAM_CRATES: &[&str] =

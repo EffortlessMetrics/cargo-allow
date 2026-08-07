@@ -8,7 +8,6 @@ pub struct BoundarySurface;
 
 impl BoundarySurface {
     pub const MODULE_ID: &'static str = "proof-adapter-cargo-allow::boundary";
-    pub const CLAIM_BOUNDARY: &'static str = "Snapshot-bound read-only cargo-allow provider contract and public process discovery only; execution remains proof-engine owned.";
 }
 
 pub const ALLOWED_UPSTREAM_CRATES: &[&str] = &[

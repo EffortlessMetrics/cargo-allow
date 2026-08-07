@@ -7,13 +7,9 @@ use super::boundary::{
     ALLOWED_UPSTREAM_CRATES, BoundarySurface, FORBIDDEN_DEPENDENCY_EDGES, upstream_surface_markers,
 };
 use super::command_registry::{default_cargo_allow_registry, validate_command_registry};
-use super::command_registry_surface::CommandRegistrySurface;
 use super::command_spec::{CommandSpecError, compile_invocation_spec, reject_prose_as_executable};
 use super::dry_run::{DryRunCommandReportV1, render_structured_argv};
-use super::parity::{
-    command_registry_parity_contract_paths, load_command_registry_parity_contract,
-    parity_contract_paths,
-};
+use super::parity::parity_contract_paths;
 use super::receipt_interpretation::{CommandReceiptStatusV1, interpret_receipt_binding};
 
 #[test]
@@ -36,27 +32,6 @@ fn boundary_surface_matches_parity_contract_module() -> Result<(), String> {
             BoundarySurface::MODULE_ID,
             module
         ));
-    }
-    Ok(())
-}
-
-#[test]
-fn command_registry_surface_matches_parity_contract() -> Result<(), String> {
-    let root = workspace_root();
-    let contract_path = command_registry_parity_contract_paths(&root)
-        .into_iter()
-        .next()
-        .ok_or_else(|| "missing command registry parity fixture path".to_string())?;
-    let contract = load_command_registry_parity_contract(&contract_path)?;
-    if contract.proof_adapter_command_module != CommandRegistrySurface::MODULE_ID {
-        return Err(format!(
-            "surface marker {} does not match contract {}",
-            CommandRegistrySurface::MODULE_ID,
-            contract.proof_adapter_command_module
-        ));
-    }
-    if contract.proof_adapter_command_module != CommandRegistrySurface::MODULE_ID {
-        return Err("registry surface drift".to_string());
     }
     Ok(())
 }

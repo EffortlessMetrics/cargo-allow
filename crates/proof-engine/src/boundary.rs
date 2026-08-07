@@ -6,7 +6,6 @@ pub struct BoundarySurface;
 
 impl BoundarySurface {
     pub const MODULE_ID: &'static str = "proof-engine::boundary";
-    pub const CLAIM_BOUNDARY: &'static str = "Engine orchestration contracts only; process execution and cargo-proof CLI land in follow-on packets.";
 }
 
 pub const ALLOWED_UPSTREAM_CRATES: &[&str] = &[

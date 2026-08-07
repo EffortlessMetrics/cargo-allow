@@ -6,7 +6,6 @@ pub struct BoundarySurface;
 
 impl BoundarySurface {
     pub const MODULE_ID: &'static str = "proof-provider-api::boundary";
-    pub const CLAIM_BOUNDARY: &'static str = "Provider API contracts and conformance harness only; command adapters land in proof-adapter-command.";
 }
 
 pub const ALLOWED_UPSTREAM_CRATES: &[&str] = &["proof-protocol", "repo-protocol"];
