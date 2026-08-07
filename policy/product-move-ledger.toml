@@ -31,10 +31,10 @@ recursive_roots = [
   "crates/proof-adapter-ripr/src",
   "crates/proof-adapter-hawk/src",
   "crates/cargo-proof/src",
-  "crates/repo-protocol/src",
-  "crates/repo-snapshot/src",
-  "crates/repo-edit/src",
-  "crates/rust-source-index/src",
+  "crates/effortless-repo-protocol/src",
+  "crates/effortless-repo-snapshot/src",
+  "crates/effortless-repo-edit/src",
+  "crates/effortless-rust-source-index/src",
 ]
 no_new_enforcement = true
 token_scan_roots = ["crates/cargo-allow/src", "docs/schemas"]
@@ -1310,9 +1310,9 @@ deletion_output = "Delete or reduce to supported long-lived architecture checks 
 [[entry]]
 id = "extend-repo-edit-apply-backup-mode"
 source_kind = "RustModule"
-current_paths = ['crates/repo-edit/src/single_target_apply.rs']
+current_paths = ['crates/effortless-repo-edit/src/single_target_apply.rs']
 current_refs = []
-current_identity = "crates/repo-edit/src/single_target_apply.rs"
+current_identity = "crates/effortless-repo-edit/src/single_target_apply.rs"
 current_product = "shared"
 current_crate = "repo-edit"
 current_consumers = ["extraction shims", "parity harness"]
@@ -2500,9 +2500,9 @@ deletion_output = "Deferred to extraction cutover and parity receipts."
 [[entry]]
 id = "move-allow-diff-revision-identity"
 source_kind = "RustModule"
-current_paths = ['crates/repo-snapshot/src/revision_identity.rs']
+current_paths = ['crates/effortless-repo-snapshot/src/revision_identity.rs']
 current_refs = []
-current_identity = "crates/repo-snapshot/src/revision_identity.rs"
+current_identity = "crates/effortless-repo-snapshot/src/revision_identity.rs"
 current_product = "shared"
 current_crate = "repo-snapshot"
 current_consumers = ["extraction shims", "parity harness"]
@@ -2535,9 +2535,9 @@ deletion_output = "Deferred to extraction cutover and parity receipts."
 [[entry]]
 id = "move-allow-diff-staged-index"
 source_kind = "RustModule"
-current_paths = ['crates/repo-snapshot/src/staged_index.rs']
+current_paths = ['crates/effortless-repo-snapshot/src/staged_index.rs']
 current_refs = []
-current_identity = "crates/repo-snapshot/src/staged_index.rs"
+current_identity = "crates/effortless-repo-snapshot/src/staged_index.rs"
 current_product = "shared"
 current_crate = "repo-snapshot"
 current_consumers = ["extraction shims", "parity harness"]
@@ -2849,9 +2849,9 @@ deletion_output = "Deferred to extraction cutover and parity receipts."
 [[entry]]
 id = "introduce-repo-edit-apply-receipt"
 source_kind = "RustModule"
-current_paths = ["crates/repo-edit/src/single_target_apply.rs"]
+current_paths = ["crates/effortless-repo-edit/src/single_target_apply.rs"]
 current_refs = []
-current_identity = "crates/repo-edit/src/single_target_apply.rs"
+current_identity = "crates/effortless-repo-edit/src/single_target_apply.rs"
 current_product = "shared"
 current_crate = "repo-edit"
 current_consumers = ["extraction shims", "parity harness"]
@@ -3428,7 +3428,7 @@ deletion_output = "Delete scaffold sources after parity cutover and old-path ret
 [[entry]]
 id = "INVENTORY-REPO_PROTOCOL-SRC"
 source_kind = "RustModule"
-current_paths = ["crates/repo-protocol/src/analysis_receipt.rs", "crates/repo-protocol/src/canonical.rs", "crates/repo-protocol/src/claim_boundary.rs", "crates/repo-protocol/src/completeness.rs", "crates/repo-protocol/src/currentness.rs", "crates/repo-protocol/src/lib.rs", "crates/repo-protocol/src/repository_snapshot.rs", "crates/repo-protocol/src/result_class.rs", "crates/repo-protocol/src/source_anchor.rs", "crates/repo-protocol/src/tests.rs"]
+current_paths = ["crates/effortless-repo-protocol/src/analysis_receipt.rs", "crates/effortless-repo-protocol/src/canonical.rs", "crates/effortless-repo-protocol/src/claim_boundary.rs", "crates/effortless-repo-protocol/src/completeness.rs", "crates/effortless-repo-protocol/src/currentness.rs", "crates/effortless-repo-protocol/src/lib.rs", "crates/effortless-repo-protocol/src/repository_snapshot.rs", "crates/effortless-repo-protocol/src/result_class.rs", "crates/effortless-repo-protocol/src/source_anchor.rs", "crates/effortless-repo-protocol/src/tests.rs"]
 current_refs = []
 current_identity = "Extracted repo-protocol source tree under no-new intent/proof/shared enforcement (#2598)"
 current_product = "shared"
@@ -3462,7 +3462,7 @@ deletion_output = "Delete scaffold sources after parity cutover and old-path ret
 [[entry]]
 id = "INVENTORY-REPO_SNAPSHOT-SRC"
 source_kind = "RustModule"
-current_paths = ["crates/repo-snapshot/src/git.rs", "crates/repo-snapshot/src/lib.rs", "crates/repo-snapshot/src/parity/mod.rs", "crates/repo-snapshot/src/protocol_adapter.rs", "crates/repo-snapshot/src/source_view_surface.rs", "crates/repo-snapshot/src/source_view_tests.rs", "crates/repo-snapshot/src/source_view.rs", "crates/repo-snapshot/src/tests.rs"]
+current_paths = ["crates/effortless-repo-snapshot/src/git.rs", "crates/effortless-repo-snapshot/src/lib.rs", "crates/effortless-repo-snapshot/src/parity/mod.rs", "crates/effortless-repo-snapshot/src/protocol_adapter.rs", "crates/effortless-repo-snapshot/src/source_view_surface.rs", "crates/effortless-repo-snapshot/src/source_view_tests.rs", "crates/effortless-repo-snapshot/src/source_view.rs", "crates/effortless-repo-snapshot/src/tests.rs"]
 current_refs = []
 current_identity = "Extracted repo-snapshot source tree under no-new intent/proof/shared enforcement (#2598)"
 current_product = "shared"
@@ -3496,7 +3496,7 @@ deletion_output = "Delete scaffold sources after parity cutover and old-path ret
 [[entry]]
 id = "INVENTORY-REPO_EDIT-SRC"
 source_kind = "RustModule"
-current_paths = ["crates/repo-edit/src/apply_receipt_tests.rs", "crates/repo-edit/src/apply_receipt.rs", "crates/repo-edit/src/atomic_write.rs", "crates/repo-edit/src/containment.rs", "crates/repo-edit/src/digest.rs", "crates/repo-edit/src/lib.rs", "crates/repo-edit/src/mutation_lock.rs", "crates/repo-edit/src/parity/mod.rs", "crates/repo-edit/src/target_identity.rs", "crates/repo-edit/src/tests.rs"]
+current_paths = ["crates/effortless-repo-edit/src/apply_receipt_tests.rs", "crates/effortless-repo-edit/src/apply_receipt.rs", "crates/effortless-repo-edit/src/atomic_write.rs", "crates/effortless-repo-edit/src/containment.rs", "crates/effortless-repo-edit/src/digest.rs", "crates/effortless-repo-edit/src/lib.rs", "crates/effortless-repo-edit/src/mutation_lock.rs", "crates/effortless-repo-edit/src/parity/mod.rs", "crates/effortless-repo-edit/src/target_identity.rs", "crates/effortless-repo-edit/src/tests.rs"]
 current_refs = []
 current_identity = "Extracted repo-edit source tree under no-new intent/proof/shared enforcement (#2598)"
 current_product = "shared"
@@ -3530,7 +3530,7 @@ deletion_output = "Delete scaffold sources after parity cutover and old-path ret
 [[entry]]
 id = "INVENTORY-RUST_SOURCE_INDEX-SRC"
 source_kind = "RustModule"
-current_paths = ["crates/rust-source-index/src/inventory_tests.rs", "crates/rust-source-index/src/inventory.rs", "crates/rust-source-index/src/lib.rs", "crates/rust-source-index/src/parity/mod.rs", "crates/rust-source-index/src/syntax.rs", "crates/rust-source-index/src/test_subjects_surface.rs", "crates/rust-source-index/src/test_subjects.rs", "crates/rust-source-index/src/tests.rs"]
+current_paths = ["crates/effortless-rust-source-index/src/inventory_tests.rs", "crates/effortless-rust-source-index/src/inventory.rs", "crates/effortless-rust-source-index/src/lib.rs", "crates/effortless-rust-source-index/src/parity/mod.rs", "crates/effortless-rust-source-index/src/syntax.rs", "crates/effortless-rust-source-index/src/test_subjects_surface.rs", "crates/effortless-rust-source-index/src/test_subjects.rs", "crates/effortless-rust-source-index/src/tests.rs"]
 current_refs = []
 current_identity = "Extracted rust-source-index source tree under no-new intent/proof/shared enforcement (#2598)"
 current_product = "shared"

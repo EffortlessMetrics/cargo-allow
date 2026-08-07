@@ -69,7 +69,6 @@ normalized_snippet_hash = "fnv1a64:15b5e01eae57adf1"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-9200"
 kind = "non_rust_file"
@@ -91,7 +90,6 @@ glob = "docs/release/incident-recovery.md"
 [allow.last_seen]
 line = 1
 column = 1
-
 
 [[allow]]
 id = "allow-0511"
@@ -659,7 +657,7 @@ path = "docs/architecture/repo-protocol.md"
 owner = "repo-infra"
 classification = "three_product_protocol_projection"
 reason = "Human projection of the repo-protocol shared transport crate (#2582)."
-evidence = ["doc:crates/repo-protocol/README.md", "doc:policy/product-crates.toml", "doc:policy/product-package-topology.toml"]
+evidence = ["doc:crates/effortless-repo-protocol/README.md", "doc:policy/product-crates.toml", "doc:policy/product-package-topology.toml"]
 created = "2026-07-22"
 review_after = "2026-11-01"
 
@@ -677,18 +675,18 @@ column = 1
 id = "allow-9032"
 kind = "non_rust_file"
 family = "package_metadata"
-path = "crates/repo-protocol/Cargo.toml"
+path = "crates/effortless-repo-protocol/Cargo.toml"
 owner = "repo-infra"
 classification = "rust_package_metadata"
 reason = "repo-protocol manifest is tracked shared-protocol package metadata (#2582)."
-evidence = ["doc:crates/repo-protocol/README.md", "doc:policy/product-package-topology.toml", "doc:docs/architecture/repo-protocol.md"]
+evidence = ["doc:crates/effortless-repo-protocol/README.md", "doc:policy/product-package-topology.toml", "doc:docs/architecture/repo-protocol.md"]
 created = "2026-07-22"
 review_after = "2026-11-01"
 
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-glob = "crates/repo-protocol/Cargo.toml"
+glob = "crates/effortless-repo-protocol/Cargo.toml"
 
 [allow.last_seen]
 line = 1
@@ -720,18 +718,18 @@ column = 1
 id = "allow-9034"
 kind = "non_rust_file"
 family = "package_metadata"
-path = "crates/repo-snapshot/Cargo.toml"
+path = "crates/effortless-repo-snapshot/Cargo.toml"
 owner = "repo-infra"
 classification = "rust_package_metadata"
 reason = "repo-snapshot manifest is tracked shared-snapshot package metadata (#2583)."
-evidence = ["doc:crates/repo-snapshot/README.md", "doc:policy/product-package-topology.toml", "doc:docs/architecture/repo-snapshot.md"]
+evidence = ["doc:crates/effortless-repo-snapshot/README.md", "doc:policy/product-package-topology.toml", "doc:docs/architecture/repo-snapshot.md"]
 created = "2026-07-22"
 review_after = "2026-11-01"
 
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-glob = "crates/repo-snapshot/Cargo.toml"
+glob = "crates/effortless-repo-snapshot/Cargo.toml"
 
 [allow.last_seen]
 line = 1
@@ -851,7 +849,7 @@ column = 1
 id = "allow-9055"
 kind = "lint_exception"
 family = "expect_attribute"
-path = "crates/repo-snapshot/src/git.rs"
+path = "crates/effortless-repo-snapshot/src/git.rs"
 owner = "repo-infra"
 classification = "repo_snapshot_implementation"
 reason = "Git parser helpers in repo-snapshot are exercised via allow-diff facade tests until reader tests migrate (#2583-D)."
@@ -864,7 +862,7 @@ ast_kind = "attribute"
 lint = "dead_code"
 symbol = "#![expect( dead_code, reason = \"policy:allow-9055: git helpers via allow-diff facade (#2583-D)\" )]"
 target_fingerprint = "policy:allow-9055"
-glob = "crates/repo-snapshot/src/git.rs"
+glob = "crates/effortless-repo-snapshot/src/git.rs"
 
 [allow.last_seen]
 line = 2
@@ -986,18 +984,18 @@ column = 1
 id = "allow-9061"
 kind = "non_rust_file"
 family = "package_metadata"
-path = "crates/rust-source-index/Cargo.toml"
+path = "crates/effortless-rust-source-index/Cargo.toml"
 owner = "repo-infra"
 classification = "rust_package_metadata"
 reason = "rust-source-index manifest is tracked shared-protocol package metadata (#2587-A)."
-evidence = ["doc:crates/rust-source-index/README.md", "doc:policy/product-package-topology.toml", "doc:docs/architecture/rust-source-index.md"]
+evidence = ["doc:crates/effortless-rust-source-index/README.md", "doc:policy/product-package-topology.toml", "doc:docs/architecture/rust-source-index.md"]
 created = "2026-07-22"
 review_after = "2026-11-01"
 
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-glob = "crates/rust-source-index/Cargo.toml"
+glob = "crates/effortless-rust-source-index/Cargo.toml"
 
 [allow.last_seen]
 line = 1
@@ -6638,7 +6636,7 @@ symbol = "#[expect(clippy::unwrap_used, reason = \"policy:allow-0250: refresh re
 target_fingerprint = "policy:allow-0250"
 
 [allow.last_seen]
-line = 2
+line = 7
 column = 5
 
 [[allow]]
@@ -6660,7 +6658,7 @@ callee = "unwrap"
 receiver_fingerprint = "Some(1)"
 
 [allow.last_seen]
-line = 3
+line = 8
 column = 25
 
 [[allow]]
@@ -8350,7 +8348,7 @@ column = 1
 id = "allow-9104"
 kind = "non_rust_file"
 family = "package_metadata"
-path = "crates/repo-edit/Cargo.toml"
+path = "crates/effortless-repo-edit/Cargo.toml"
 owner = "repo-infra"
 classification = "rust_package_metadata"
 reason = "repo-edit manifest is tracked shared-mutation package metadata (#2602-A)."
@@ -8361,7 +8359,7 @@ review_after = "2027-01-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-glob = "crates/repo-edit/Cargo.toml"
+glob = "crates/effortless-repo-edit/Cargo.toml"
 
 [allow.last_seen]
 line = 1
@@ -10430,7 +10428,7 @@ container = "run"
 normalized_snippet_hash = "fnv1a64:2944683783674e0a"
 
 [allow.last_seen]
-line = 79
+line = 148
 column = 9
 
 [[allow]]

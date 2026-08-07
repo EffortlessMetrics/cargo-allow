@@ -1,4 +1,4 @@
-use repo_snapshot::parity_contract_paths;
+use effortless_repo_snapshot::parity_contract_paths;
 use std::path::PathBuf;
 
 #[test]

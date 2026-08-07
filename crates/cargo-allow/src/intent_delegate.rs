@@ -9,7 +9,7 @@ use crate::spec_precommit::{DelegatedPrecommitOutcome, complete_delegated_precom
 use crate::{current_dir, resolve_source_tree_root};
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult, sha256_v1_bytes};
 use allow_diff::staged_repository_snapshot;
-use repo_protocol::{
+use effortless_repo_protocol::{
     ANALYSIS_RECEIPT_SCHEMA_ID, AnalysisReceiptEnvelopeV1, REPOSITORY_SNAPSHOT_SCHEMA_ID,
 };
 use std::fs;
@@ -701,7 +701,7 @@ fn delegate_error_kind(class: IntentDelegateFailureClass) -> CargoAllowErrorKind
 #[cfg(test)]
 mod tests {
     use super::*;
-    use repo_protocol::{
+    use effortless_repo_protocol::{
         ClaimBoundaryV1, CompletenessV1, CurrentnessV1, RepositorySnapshotV1, ResolvedRevisionV1,
         ResultClassV1,
     };

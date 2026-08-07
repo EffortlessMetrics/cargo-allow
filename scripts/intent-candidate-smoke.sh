@@ -338,7 +338,7 @@ log "cargo-intent identity"
 declare -a install_closure=(
   allow-core
   allow-inventory
-  repo-snapshot
+  effortless-repo-snapshot
   intent-protocol
   intent-engine
   cargo-intent

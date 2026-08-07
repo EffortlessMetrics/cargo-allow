@@ -38,7 +38,7 @@ use crate::{
     },
     git_relative_config_path, load_world, parse_kind_filter, resolve_source_tree_root,
 };
-use repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
+use effortless_repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 
 /// Strictly-parsed `cargo-allow.add-finding-plan.v1` envelope. `deny_unknown_fields`
 /// The parse models exactly the fields the transaction reads; other v1 fields

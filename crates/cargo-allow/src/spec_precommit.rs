@@ -415,7 +415,7 @@ fn static_exit_family(family: &str) -> &'static str {
 }
 
 pub(crate) struct DelegatedPrecommitOutcome {
-    pub result_class: repo_protocol::ResultClassV1,
+    pub result_class: effortless_repo_protocol::ResultClassV1,
     pub exit_success: bool,
     pub staged_identity: String,
     pub process_exit_family: String,
@@ -430,22 +430,22 @@ impl DelegatedPrecommitOutcome {
     ) -> Self {
         let result_class = match failure.class {
             crate::intent_delegate::IntentDelegateFailureClass::StaleSource => {
-                repo_protocol::ResultClassV1::StaleInput
+                effortless_repo_protocol::ResultClassV1::StaleInput
             }
             crate::intent_delegate::IntentDelegateFailureClass::MalformedOutput => {
-                repo_protocol::ResultClassV1::MalformedInput
+                effortless_repo_protocol::ResultClassV1::MalformedInput
             }
             crate::intent_delegate::IntentDelegateFailureClass::WrongProduct
             | crate::intent_delegate::IntentDelegateFailureClass::WrongProtocol => {
-                repo_protocol::ResultClassV1::MalformedInput
+                effortless_repo_protocol::ResultClassV1::MalformedInput
             }
             crate::intent_delegate::IntentDelegateFailureClass::Timeout => {
-                repo_protocol::ResultClassV1::InstrumentFailure
+                effortless_repo_protocol::ResultClassV1::InstrumentFailure
             }
             crate::intent_delegate::IntentDelegateFailureClass::ProviderAbsent
             | crate::intent_delegate::IntentDelegateFailureClass::IdentityMismatch
             | crate::intent_delegate::IntentDelegateFailureClass::InstrumentFailure => {
-                repo_protocol::ResultClassV1::InstrumentFailure
+                effortless_repo_protocol::ResultClassV1::InstrumentFailure
             }
         };
         Self {
@@ -540,32 +540,42 @@ pub(crate) fn complete_delegated_precommit(
 fn map_delegated_result_class(outcome: &DelegatedPrecommitOutcome) -> SpecPrecommitResultClass {
     if outcome.error.is_some() {
         return match outcome.result_class {
-            repo_protocol::ResultClassV1::StaleInput => SpecPrecommitResultClass::StaleInput,
-            repo_protocol::ResultClassV1::MalformedInput => {
+            effortless_repo_protocol::ResultClassV1::StaleInput => {
+                SpecPrecommitResultClass::StaleInput
+            }
+            effortless_repo_protocol::ResultClassV1::MalformedInput => {
                 SpecPrecommitResultClass::MalformedInput
             }
             _ => SpecPrecommitResultClass::InstrumentFailure,
         };
     }
     match outcome.result_class {
-        repo_protocol::ResultClassV1::Completed => SpecPrecommitResultClass::Passed,
-        repo_protocol::ResultClassV1::Findings => {
+        effortless_repo_protocol::ResultClassV1::Completed => SpecPrecommitResultClass::Passed,
+        effortless_repo_protocol::ResultClassV1::Findings => {
             if outcome.process_exit_family == "advisory" {
                 SpecPrecommitResultClass::FindingsAdvisory
             } else {
                 SpecPrecommitResultClass::FindingsBlocking
             }
         }
-        repo_protocol::ResultClassV1::PartialData => SpecPrecommitResultClass::PartialData,
-        repo_protocol::ResultClassV1::StaleInput => SpecPrecommitResultClass::StaleInput,
-        repo_protocol::ResultClassV1::MalformedInput => SpecPrecommitResultClass::MalformedInput,
-        repo_protocol::ResultClassV1::Unsupported => SpecPrecommitResultClass::Unsupported,
-        repo_protocol::ResultClassV1::InstrumentFailure => {
+        effortless_repo_protocol::ResultClassV1::PartialData => {
+            SpecPrecommitResultClass::PartialData
+        }
+        effortless_repo_protocol::ResultClassV1::StaleInput => SpecPrecommitResultClass::StaleInput,
+        effortless_repo_protocol::ResultClassV1::MalformedInput => {
+            SpecPrecommitResultClass::MalformedInput
+        }
+        effortless_repo_protocol::ResultClassV1::Unsupported => {
+            SpecPrecommitResultClass::Unsupported
+        }
+        effortless_repo_protocol::ResultClassV1::InstrumentFailure => {
             SpecPrecommitResultClass::InstrumentFailure
         }
-        repo_protocol::ResultClassV1::NotProven
-        | repo_protocol::ResultClassV1::Cancelled
-        | repo_protocol::ResultClassV1::Conflict => SpecPrecommitResultClass::InstrumentFailure,
+        effortless_repo_protocol::ResultClassV1::NotProven
+        | effortless_repo_protocol::ResultClassV1::Cancelled
+        | effortless_repo_protocol::ResultClassV1::Conflict => {
+            SpecPrecommitResultClass::InstrumentFailure
+        }
     }
 }
 

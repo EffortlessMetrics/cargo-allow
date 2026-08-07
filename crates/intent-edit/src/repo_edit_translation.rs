@@ -3,7 +3,7 @@
 //! Translation produces portable request DTOs only. It does not invoke
 //! `repo-edit::apply_single_target`, touch the filesystem, or run proof commands.
 
-use repo_edit::SingleTargetApplyMode;
+use effortless_repo_edit::SingleTargetApplyMode;
 
 use crate::approval_currentness::{
     ApprovalCurrentnessError, IntentEditApprovalCurrentnessV1, validate_approval_currentness,

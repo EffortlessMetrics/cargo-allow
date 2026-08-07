@@ -11,10 +11,10 @@ members = [
   "crates/allow-report",
   "crates/allow-diff",
   "crates/allow-policy-legacy",
-  "crates/repo-protocol",
-  "crates/repo-snapshot",
-  "crates/repo-edit",
-  "crates/rust-source-index",
+  "crates/effortless-repo-protocol",
+  "crates/effortless-repo-snapshot",
+  "crates/effortless-repo-edit",
+  "crates/effortless-rust-source-index",
   "crates/intent-model",
   "crates/intent-protocol",
   "crates/intent-engine",
@@ -51,10 +51,10 @@ allow-rust = { path = "crates/allow-rust", version = "0.2.0" }
 allow-match = { path = "crates/allow-match", version = "0.2.0" }
 allow-report = { path = "crates/allow-report", version = "0.2.0" }
 allow-diff = { path = "crates/allow-diff", version = "0.2.0" }
-repo-protocol = { path = "crates/repo-protocol", version = "0.2.0" }
-repo-snapshot = { path = "crates/repo-snapshot", version = "0.2.0" }
-repo-edit = { path = "crates/repo-edit", version = "0.2.0" }
-rust-source-index = { path = "crates/rust-source-index", version = "0.2.0" }
+effortless-repo-protocol = { path = "crates/effortless-repo-protocol", version = "0.2.0" }
+effortless-repo-snapshot = { path = "crates/effortless-repo-snapshot", version = "0.2.0" }
+effortless-repo-edit = { path = "crates/effortless-repo-edit", version = "0.2.0" }
+effortless-rust-source-index = { path = "crates/effortless-rust-source-index", version = "0.2.0" }
 intent-model = { path = "crates/intent-model", version = "0.2.0" }
 intent-protocol = { path = "crates/intent-protocol", version = "0.2.0" }
 intent-engine = { path = "crates/intent-engine", version = "0.2.0" }

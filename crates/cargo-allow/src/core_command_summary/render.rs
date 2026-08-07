@@ -1,4 +1,4 @@
-use repo_protocol::ResultClassV1;
+use effortless_repo_protocol::ResultClassV1;
 
 use super::{
     CoreCommandActionKindV1, CoreCommandActionV1, CoreCommandPostureV1, CoreCommandSummaryV1,

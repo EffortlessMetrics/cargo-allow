@@ -160,7 +160,8 @@ fn currentness_contradiction_and_phase_gate_evaluate_receipts() -> Result<(), St
         binding_id: "binding-1".to_string(),
         plan_id: plan_id.to_string(),
         command_index: 0,
-        analysis_receipt_schema_id: repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID.to_string(),
+        analysis_receipt_schema_id: effortless_repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID
+            .to_string(),
         receipt_digest: "digest-a".to_string(),
     };
     let set = ProofReceiptSetV1::new(plan_id, vec![binding]);

@@ -1,6 +1,6 @@
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult, MatchStatus};
 use allow_inventory::InventoryCompleteness;
-use repo_protocol::{ClaimBoundaryV1, CompletenessV1, CurrentnessV1, ResultClassV1};
+use effortless_repo_protocol::{ClaimBoundaryV1, CompletenessV1, CurrentnessV1, ResultClassV1};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;

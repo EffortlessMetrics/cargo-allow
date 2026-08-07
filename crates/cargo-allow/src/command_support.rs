@@ -18,7 +18,7 @@ pub(crate) use crate::policy_config::{
     load_policy_at_path, portable_relative_under_root, root_relative_path,
 };
 pub(crate) use allow_core::CargoAllowResult;
-pub(crate) use repo_edit::{write_file, write_file_no_overwrite};
+pub(crate) use effortless_repo_edit::{write_file, write_file_no_overwrite};
 pub(crate) use std::path::Path;
 
 pub(crate) use crate::reporting::{

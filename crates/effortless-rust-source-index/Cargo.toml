@@ -1,6 +1,6 @@
 [package]
-name = "repo-edit"
-description = "Repository-safe target identity, containment, and mutation locking for three-product extraction."
+name = "effortless-rust-source-index"
+description = "Structural Rust test-subject inventory for three-product extraction."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,8 +10,11 @@ homepage.workspace = true
 readme = "README.md"
 keywords.workspace = true
 categories.workspace = true
-publish = true
+publish = false
 
 [dependencies]
 allow-core.workspace = true
-sha2.workspace = true
+serde = { workspace = true, features = ["derive"] }
+toml.workspace = true
+tree-sitter.workspace = true
+tree-sitter-rust.workspace = true

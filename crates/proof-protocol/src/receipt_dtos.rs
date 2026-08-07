@@ -3,7 +3,7 @@
 //! Binds proof-plan commands to repo-protocol analysis receipt envelopes.
 //! Does not parse receipt payloads or authorize merge.
 
-use repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID;
+use effortless_repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID;
 use serde::{Deserialize, Serialize};
 
 pub const PROOF_RECEIPT_BINDING_SCHEMA_ID: &str = "proof.receipt-binding.v1";

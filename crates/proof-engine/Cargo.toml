@@ -16,6 +16,6 @@ publish = false
 proof-adapter-command.workspace = true
 proof-protocol.workspace = true
 proof-provider-api.workspace = true
-repo-protocol.workspace = true
+effortless-repo-protocol.workspace = true
 serde = { workspace = true, features = ["derive"] }
 toml.workspace = true

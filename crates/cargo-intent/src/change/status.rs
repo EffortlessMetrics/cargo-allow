@@ -6,6 +6,10 @@ use crate::change::report::{
 use crate::config::IntentConfigV1;
 use crate::exit::{ProcessExitFamilyV1, exit_family_for_result_class};
 use crate::render::{OutputFormat, emit_frame};
+use effortless_repo_snapshot::{
+    StagedPathStatus, StagedRepositorySnapshot, StagedSnapshotCompleteness,
+    staged_repository_snapshot,
+};
 use intent_engine::{
     GraphMovementKindV1, GraphMovementV1, InventoryPostureV1, ObligationPostureV1,
     PRECOMMIT_PHASE_ID, PhaseObligationCompileInputV1, PhaseObligationItemV1,
@@ -16,10 +20,6 @@ use intent_protocol::{
     IntentObligationPlanResponseV1, IntentObligationPostureV1, IntentPhaseObligationKindV1,
     IntentPhaseObligationV1, IntentViewEnvelopeV1, IntentViewKindV1, IntentViewResponseV1,
     RepositorySnapshotV1, ResolvedRevisionV1, ResultClassV1,
-};
-use repo_snapshot::{
-    StagedPathStatus, StagedRepositorySnapshot, StagedSnapshotCompleteness,
-    staged_repository_snapshot,
 };
 use std::path::Path;
 
@@ -182,7 +182,7 @@ fn completeness_label(completeness: StagedSnapshotCompleteness) -> String {
     }
 }
 
-fn staged_change(change: &repo_snapshot::StagedPathChange) -> StagedChangeV1 {
+fn staged_change(change: &effortless_repo_snapshot::StagedPathChange) -> StagedChangeV1 {
     StagedChangeV1 {
         status: staged_status_label(change.status),
         path: change

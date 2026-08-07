@@ -1,6 +1,6 @@
 //! Boundary surface and upstream topology markers (#2588-A).
 
-use repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID;
+use effortless_repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID;
 
 pub struct BoundarySurface;
 

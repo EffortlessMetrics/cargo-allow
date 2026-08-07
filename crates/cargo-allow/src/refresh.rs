@@ -27,7 +27,7 @@ use crate::{
     },
     git_relative_config_path, load_world_with_evidence_mode, resolve_source_tree_root,
 };
-use repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
+use effortless_repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 
 pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
     if args.dry_run && args.write {

@@ -33,8 +33,8 @@
       "allow-report",
       "allow-policy-legacy",
       "allow-diff",
-      "repo-protocol",
-      "repo-edit",
+      "effortless-repo-protocol",
+      "effortless-repo-edit",
       "cargo-allow"
     ],
     "crates": [
@@ -120,21 +120,21 @@
         "no_path_deps": true
       },
       {
-        "name": "repo-protocol",
+        "name": "effortless-repo-protocol",
         "version": "0.1.10",
-        "crate_file": "repo-protocol-0.1.10.crate",
+        "crate_file": "effortless-repo-protocol-0.1.10.crate",
         "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         "size_bytes": 1,
-        "extracted_dir": "repo-protocol-0.1.10",
+        "extracted_dir": "effortless-repo-protocol-0.1.10",
         "no_path_deps": true
       },
       {
-        "name": "repo-edit",
+        "name": "effortless-repo-edit",
         "version": "0.1.10",
-        "crate_file": "repo-edit-0.1.10.crate",
+        "crate_file": "effortless-repo-edit-0.1.10.crate",
         "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         "size_bytes": 1,
-        "extracted_dir": "repo-edit-0.1.10",
+        "extracted_dir": "effortless-repo-edit-0.1.10",
         "no_path_deps": true
       },
       {

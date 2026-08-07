@@ -1,6 +1,6 @@
 [package]
 name = "intent-edit"
-description = "Intent edit planning, dialect adaptation, and repo-edit settlement for three-product extraction."
+description = "Intent edit planning, dialect adaptation, and effortless-repo-edit settlement for three-product extraction."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -13,8 +13,8 @@ categories.workspace = true
 publish = false
 
 [dependencies]
-repo-edit.workspace = true
-repo-protocol.workspace = true
+effortless-repo-edit.workspace = true
+effortless-repo-protocol.workspace = true
 serde = { workspace = true, features = ["derive"] }
 toml.workspace = true
 

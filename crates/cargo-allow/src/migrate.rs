@@ -9,7 +9,7 @@ use crate::{
     portable_relative_under_root, require_json_summary_output, resolve_source_tree_root,
     write_file_no_overwrite,
 };
-use repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
+use effortless_repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 #[path = "migrate_args.rs"]
 mod migrate_args;
 #[path = "migrate_load.rs"]
