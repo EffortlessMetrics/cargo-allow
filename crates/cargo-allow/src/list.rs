@@ -52,13 +52,25 @@ pub(crate) fn cmd_list(args: &ListArgs) -> CargoAllowResult<()> {
     let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew);
     let evidence_source_tree_files =
         current_evidence_source_tree_files(&root, args.include_untracked);
-    let rows = list_rows_with_source_tree_files(
+    let all_rows = list_rows_with_source_tree_files(
         &root,
         &cfg,
         &findings,
         &outcomes,
         evidence_source_tree_files.as_ref(),
     );
+    // Apply --offset/--offset pagination after row assembly and before
+    // rendering (#3173). Sort order is determined by the row builder; the
+    // slice applies to the final sorted set.
+    let rows: Vec<_> = {
+        let offset = args.offset.unwrap_or(0);
+        let take = args.limit;
+        all_rows
+            .into_iter()
+            .skip(offset)
+            .take(take.unwrap_or(usize::MAX))
+            .collect()
+    };
     let filters = list_filters(args)?;
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let context = ListContext {

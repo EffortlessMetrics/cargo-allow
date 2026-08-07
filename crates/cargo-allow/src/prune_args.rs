@@ -13,6 +13,9 @@ pub(crate) struct PruneArgs {
     /// Preview stale allow entries.
     #[arg(long)]
     pub(super) stale: bool,
+    /// Target a single entry by allow ID instead of all stale entries (#3184).
+    #[arg(long, value_name = "ALLOW_ID")]
+    pub(super) allow_id: Option<String>,
     /// Explicitly run without writing policy changes.
     #[arg(long, conflicts_with = "write")]
     pub(super) dry_run: bool,
