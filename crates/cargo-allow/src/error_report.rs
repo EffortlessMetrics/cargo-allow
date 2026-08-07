@@ -8,9 +8,9 @@ use allow_core::CargoAllowError;
 use std::error::Error;
 use std::io::{self, Write};
 
-/// Format a CLI error report: top-level message, then each cause on its own line.
+/// Format a CLI error report: error code, top-level message, then each cause.
 pub(crate) fn format_cli_error(err: &CargoAllowError) -> String {
-    let mut out = format!("error: {}", err.message());
+    let mut out = format!("error[{}]: {}", err.code(), err.message());
     let mut current = err.source();
     while let Some(cause) = current {
         let text = cause.to_string();
@@ -51,7 +51,7 @@ mod tests {
         let report = format_cli_error(&err);
         assert_eq!(
             report,
-            "error: failed to load revision notes\n  caused by: git diff failed\n  caused by: broken pipe"
+            "error[E0004_INVENTORY]: failed to load revision notes\n  caused by: git diff failed\n  caused by: broken pipe"
         );
     }
 
@@ -59,6 +59,9 @@ mod tests {
     fn format_cli_error_skips_duplicate_io_from_conversion() {
         let err: CargoAllowError =
             std::io::Error::new(std::io::ErrorKind::NotFound, "policy missing").into();
-        assert_eq!(format_cli_error(&err), "error: policy missing");
+        assert_eq!(
+            format_cli_error(&err),
+            "error[E0002_INVALID_CONFIG]: policy missing"
+        );
     }
 }
