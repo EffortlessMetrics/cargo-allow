@@ -6,7 +6,8 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Default, Args)]
 pub(crate) struct RootArgs {
     /// Source tree root. Defaults to the nearest git root, then current directory.
-    #[arg(long)]
+    /// Can also be set via the CARGO_ALLOW_ROOT environment variable (#3230).
+    #[arg(long, env = "CARGO_ALLOW_ROOT")]
     pub(crate) root: Option<PathBuf>,
 }
 

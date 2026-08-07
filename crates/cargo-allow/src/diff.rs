@@ -308,7 +308,8 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         );
         eprintln!(
             "change note required: {allow_id} {kind} ({severity}) — add a revision note in {dir} \
-             covering allow_id=\"{allow_id}\" change_kind=\"{kind}\"",
+             covering allow_id=\"{allow_id}\" change_kind=\"{kind}\"; pass \
+             --write-change-note-template <path> to generate a TOML template",
             allow_id = missing.allow_id,
             kind = missing.change_kind,
             severity = missing.severity,
