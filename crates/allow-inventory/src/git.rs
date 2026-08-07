@@ -2,6 +2,21 @@ use allow_core::{CargoAllowError, CargoAllowResult};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+/// Return whether `root` is inside a conventional Git worktree.
+///
+/// This is a structured filesystem fact used before optional Git queries. It
+/// recognizes ordinary repositories, linked worktrees, and submodules by
+/// accepting either a `.git` directory or a `.git` file in `root` or one of
+/// its ancestors. A present marker does not mean a later Git command must
+/// succeed; permission, ownership, corruption, and process failures remain
+/// typed inventory errors.
+pub fn git_worktree_metadata_present(root: impl AsRef<Path>) -> bool {
+    root.as_ref().ancestors().any(|candidate| {
+        let marker = candidate.join(".git");
+        marker.is_dir() || marker.is_file()
+    })
+}
+
 pub fn git_ls_files(root: impl AsRef<Path>) -> CargoAllowResult<Vec<PathBuf>> {
     let output = Command::new("git")
         .arg("-C")
@@ -78,4 +93,59 @@ fn bytes_to_path(bytes: &[u8]) -> PathBuf {
 #[cfg(not(unix))]
 fn bytes_to_path(bytes: &[u8]) -> PathBuf {
     PathBuf::from(String::from_utf8_lossy(bytes).into_owned())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::git_worktree_metadata_present;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    #[test]
+    fn metadata_presence_distinguishes_plain_and_nested_worktrees() -> std::io::Result<()> {
+        let root = temp_root("metadata-directory")?;
+        let nested = root.join("nested/source");
+        fs::create_dir_all(&nested)?;
+        if git_worktree_metadata_present(&nested) {
+            return Err(std::io::Error::other(
+                "plain directory must not report Git metadata",
+            ));
+        }
+        fs::create_dir(root.join(".git"))?;
+        if !git_worktree_metadata_present(&nested) {
+            return Err(std::io::Error::other(
+                "nested path must discover an ancestor .git directory",
+            ));
+        }
+        fs::remove_dir_all(root)
+    }
+
+    #[test]
+    fn metadata_presence_accepts_worktree_git_files() -> std::io::Result<()> {
+        let root = temp_root("metadata-file")?;
+        fs::write(root.join(".git"), "gitdir: ../metadata\n")?;
+        if !git_worktree_metadata_present(&root) {
+            return Err(std::io::Error::other(
+                "linked worktree .git file must be recognized",
+            ));
+        }
+        fs::remove_dir_all(root)
+    }
+
+    static NEXT_TEMP_ROOT: AtomicUsize = AtomicUsize::new(0);
+
+    fn temp_root(label: &str) -> std::io::Result<PathBuf> {
+        let id = NEXT_TEMP_ROOT.fetch_add(1, Ordering::Relaxed);
+        let stamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or(0);
+        let root = std::env::temp_dir().join(format!(
+            "allow-inventory-git-{label}-{}-{stamp}-{id}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&root)?;
+        Ok(root)
+    }
 }
