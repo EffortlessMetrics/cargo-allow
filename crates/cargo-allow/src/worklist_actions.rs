@@ -55,7 +55,10 @@ pub(crate) fn suggested_actions(kind: &str) -> Vec<String> {
             "or remove the underlying exception".to_string(),
         ],
         REVIEW_DUE => {
-            vec!["review the retained exception and update evidence or remove it".to_string()]
+            vec![
+                "review the retained exception and update evidence or remove it".to_string(),
+                "if the entry drifted to a new line, run `cargo-allow refresh <allow-id>` to update last_seen".to_string(),
+            ]
         }
         BROAD_SCOPE => vec![
             "replace the broad glob with exact paths or a narrower glob where practical"
@@ -284,6 +287,10 @@ fn append_closeout_commands(kind: &str, commands: &mut Vec<String>) {
     if kind == STALE_ALLOW {
         commands.push("cargo-allow prune --stale --dry-run".to_string());
         commands.push("cargo-allow prune --stale --format json".to_string());
+    }
+    if kind == REVIEW_DUE {
+        commands.push("cargo-allow refresh <allow-id> --dry-run".to_string());
+        commands.push("cargo-allow refresh <allow-id> --format json".to_string());
     }
 }
 
