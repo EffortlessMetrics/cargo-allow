@@ -14,7 +14,12 @@ pub fn git_ls_files(root: impl AsRef<Path>) -> CargoAllowResult<Vec<PathBuf>> {
         let stderr = String::from_utf8_lossy(&output.stderr);
         let code = output.status.code().unwrap_or(-1);
         return Err(CargoAllowError::new(format!(
-            "git ls-files failed (exit {code}): {stderr}"
+            "git ls-files failed (exit {code}): {stderr}{}",
+            if stderr.contains("not a git repository") || stderr.contains("fatal: not a git") {
+                "; this directory may not be a git repository — run `git init` or use `--inventory filesystem` to scan without git"
+            } else {
+                ""
+            }
         )));
     }
     Ok(parse_git_ls_files_z(&output.stdout))

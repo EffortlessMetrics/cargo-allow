@@ -312,6 +312,11 @@ fn append_resolution_commands(
         commands.push(format!(
             "cargo-allow why --kind {kind_arg} --path {path} --line {line} --format json"
         ));
+        // Provide a concrete add template with the finding's kind and path
+        // pre-filled, leaving --owner and --reason as required placeholders (#3220).
+        commands.push(format!(
+            "cargo-allow add --kind {kind_arg} --path {path} --line {line} --owner <owner> --reason <reason>"
+        ));
     }
 }
 

@@ -129,6 +129,7 @@ fn proof_commands_use_finding_kind_when_present() {
             "cargo-allow list --allow-id allow-unsafe --format json",
             "cargo-allow worklist --allow-id allow-unsafe --format json",
             "cargo-allow why --kind lint-exception --path src/lib.rs --line 1 --format json",
+            "cargo-allow add --kind lint-exception --path src/lib.rs --line 1 --owner <owner> --reason <reason>",
             "cargo-allow check --kind lint-exception --mode no-new",
             "cargo-allow worklist --item-kind new_unreceipted_finding --format json",
             "cargo-allow worklist --kind lint-exception --format json",
