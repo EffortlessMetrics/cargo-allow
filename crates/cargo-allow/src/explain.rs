@@ -48,11 +48,14 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
         args.include_untracked,
         EvidenceValidationMode::ReportOnly,
     )?;
+    // Normalize numeric shorthand: "42" → "allow-0042", matching the ledger's
+    // zero-padded id format (#3166).
+    let normalized_id = normalize_allow_id_shorthand(&args.id);
     let entry = cfg
         .allow
         .iter()
-        .find(|e| e.id == args.id)
-        .ok_or_else(|| missing_allow_entry_error(&args.id))?;
+        .find(|e| e.id == normalized_id)
+        .ok_or_else(|| missing_allow_entry_error(&normalized_id))?;
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let context = ExplainContext {
         inventory: source_context.inventory(),
@@ -91,6 +94,20 @@ fn missing_allow_entry_error(id: &str) -> CargoAllowError {
         CargoAllowErrorKind::Usage,
         format!("no allow entry `{id}`; run `cargo-allow list` to see valid IDs"),
     )
+}
+
+/// Normalize an allow-entry id shorthand for lookup.
+///
+/// If `raw` is purely numeric, expands to `allow-{raw:04}` (zero-padded to 4
+/// digits, matching the ledger's standard id format). Non-numeric ids pass
+/// through unchanged. So "42" → "allow-0042", "allow-0272" → "allow-0272".
+fn normalize_allow_id_shorthand(raw: &str) -> String {
+    if raw.chars().all(|c| c.is_ascii_digit()) && !raw.is_empty() {
+        let n: usize = raw.parse().unwrap_or(0);
+        format!("allow-{n:04}")
+    } else {
+        raw.to_string()
+    }
 }
 
 #[cfg(test)]

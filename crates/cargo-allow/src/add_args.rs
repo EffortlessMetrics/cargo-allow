@@ -82,6 +82,11 @@ pub(crate) struct AddArgs {
     /// Mutually exclusive with --write.
     #[arg(long, conflicts_with = "write")]
     pub(super) update: bool,
+    /// Preview the entry that would be added without writing any file (#3189).
+    /// Compatible with --write and --update: computes and validates the entry,
+    /// prints it to stdout, but skips the atomic write/replace.
+    #[arg(long)]
+    pub(super) dry_run: bool,
     /// Apply a versioned add-finding plan produced by `why --plan`. Re-scans the
     /// live source tree, recomputes and verifies every plan binding, requires the
     /// exact finding to remain uniquely `New`, and atomically replaces the live
