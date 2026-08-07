@@ -2,7 +2,7 @@ use allow_core::{CargoAllowError, CargoAllowResult};
 use toml::Value;
 
 use crate::fields::{legacy_evidence, string_field};
-use crate::parser_support::{has_glob_meta, normalize_legacy_expires};
+use crate::parser_support::{has_glob_meta, normalize_legacy_date_field, normalize_legacy_expires};
 use crate::types::LegacyDependencySurfaceRule;
 
 pub(crate) fn parse_dependency_surface_rules(
@@ -46,8 +46,8 @@ fn parse_dependency_surface_rule(
             .get("dep_count_at_baseline")
             .and_then(Value::as_integer),
         evidence: legacy_evidence(table),
-        created: string_field(table, "created"),
-        review_after: string_field(table, "review_after"),
+        created: normalize_legacy_date_field(string_field(table, "created")),
+        review_after: normalize_legacy_date_field(string_field(table, "review_after")),
         expires: normalize_legacy_expires(string_field(table, "expires")),
     })
 }

@@ -2,6 +2,7 @@ use allow_core::{CargoAllowError, CargoAllowResult};
 use toml::Value;
 
 use crate::fields::{legacy_evidence, string_field};
+use crate::parser_support::normalize_legacy_date_field;
 use crate::parser_support::normalize_legacy_expires;
 use crate::types::LegacyExecutableRule;
 
@@ -33,8 +34,8 @@ fn parse_executable_rule(index: usize, entry: &Value) -> CargoAllowResult<Legacy
         reason: string_field(table, "reason").unwrap_or_default(),
         interpreter: string_field(table, "interpreter"),
         evidence: legacy_evidence(table),
-        created: string_field(table, "created"),
-        review_after: string_field(table, "review_after"),
+        created: normalize_legacy_date_field(string_field(table, "created")),
+        review_after: normalize_legacy_date_field(string_field(table, "review_after")),
         expires: normalize_legacy_expires(string_field(table, "expires")),
     })
 }
