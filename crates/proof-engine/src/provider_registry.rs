@@ -1,6 +1,6 @@
 //! Provider registry for proof-engine orchestration (#2589-A).
 
-use proof_provider_api::{ProofProviderV1, ProviderApiError, validate_provider_surface};
+use crate::provider_api::{ProofProviderV1, ProviderApiError, validate_provider_surface};
 
 pub const PROVIDER_REGISTRY_SCHEMA_ID: &str = "proof.provider-registry.v1";
 

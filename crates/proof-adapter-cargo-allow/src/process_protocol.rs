@@ -1,6 +1,6 @@
 //! Public process protocol argv compilation (#2554).
 
-use proof_adapter_command::{
+use proof_engine::{
     DryRunCommandReportV1, ReviewedCommandEntryV1, ReviewedCommandRegistryV1,
     compile_invocation_spec, default_cargo_allow_registry, validate_command_registry,
 };

@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
+use crate::provider_api::{FAKE_PROOF_PROVIDER_ID, FakeProofProviderV1};
 use proof_protocol::{
     ProofPhaseGatePostureV1, ProofPhaseGateV1, ProofReceiptBindingV1, ProofReceiptSetV1,
 };
-use proof_provider_api::{FAKE_PROOF_PROVIDER_ID, FakeProofProviderV1};
 
 use crate::boundary::{
     ALLOWED_UPSTREAM_CRATES, BoundarySurface, FORBIDDEN_DEPENDENCY_EDGES, upstream_surface_markers,

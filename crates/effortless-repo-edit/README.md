@@ -1,4 +1,4 @@
-# repo-edit
+# effortless-repo-edit
 
 Shared repository-safe mutation substrate (#2602).
 

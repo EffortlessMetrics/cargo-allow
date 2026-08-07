@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
-use proof_protocol::ProofPlanCommandV1;
-use proof_protocol::ProofPlanV1;
-use proof_provider_api::{
+use proof_engine::{
     ProofProviderV1, run_provider_conformance, validate_provider_plan, validate_provider_surface,
 };
+use proof_protocol::ProofPlanCommandV1;
+use proof_protocol::ProofPlanV1;
 
 use crate::boundary::{
     ALLOWED_UPSTREAM_CRATES, BoundarySurface, FORBIDDEN_DEPENDENCY_EDGES, upstream_surface_markers,
@@ -136,7 +136,7 @@ fn provider_advertises_capability_report_without_mutation() -> Result<(), String
         .ok_or_else(|| "capability report dry-run was empty".to_string())?;
     if !report.would_read.is_empty()
         || !report.would_write.is_empty()
-        || report.network != proof_adapter_command::NetworkAccessV1::None
+        || report.network != proof_engine::NetworkAccessV1::None
     {
         return Err("capability report dry-run was not read-only".to_string());
     }

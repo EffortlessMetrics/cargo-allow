@@ -1,9 +1,9 @@
 //! Hawk ProofProviderV1 implementation (#2555).
 
+use proof_engine::{ProofProviderV1, ProviderApiError};
 use proof_protocol::{
     ProofCapabilityCatalogV1, ProofCapabilityKindV1, ProofCapabilityV1, ProofPlanV1,
 };
-use proof_provider_api::{ProofProviderV1, ProviderApiError};
 
 pub const HAWK_PROOF_PROVIDER_ID: &str = "proof.hawk.v1";
 

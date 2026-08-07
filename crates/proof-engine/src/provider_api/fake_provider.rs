@@ -4,7 +4,7 @@ use proof_protocol::{
     ProofCapabilityCatalogV1, ProofCapabilityKindV1, ProofCapabilityV1, ProofPlanV1,
 };
 
-use crate::provider_api::{ProofProviderV1, ProviderApiError};
+use super::contracts::{ProofProviderV1, ProviderApiError};
 
 pub const FAKE_PROOF_PROVIDER_ID: &str = "proof.fake-provider.v1";
 

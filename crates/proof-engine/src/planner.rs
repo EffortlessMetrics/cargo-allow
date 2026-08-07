@@ -1,6 +1,6 @@
 //! Proof planner over change obligation plans (#2589-A).
 
-use proof_adapter_command::{
+use crate::command_adapter::{
     compile_invocation_spec, default_cargo_allow_registry, validate_command_registry,
 };
 use proof_protocol::{ProofPlanCommandV1, ProofPlanV1, validate_proof_plan};

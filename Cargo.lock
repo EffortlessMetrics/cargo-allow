@@ -274,7 +274,6 @@ dependencies = [
  "clap",
  "proof-engine",
  "proof-protocol",
- "proof-provider-api",
  "serde",
  "serde_json",
  "toml",
@@ -1037,22 +1036,10 @@ name = "proof-adapter-cargo-allow"
 version = "0.2.0"
 dependencies = [
  "effortless-repo-protocol",
- "proof-adapter-command",
+ "proof-engine",
  "proof-protocol",
- "proof-provider-api",
  "serde",
  "sha2",
- "toml",
-]
-
-[[package]]
-name = "proof-adapter-command"
-version = "0.2.0"
-dependencies = [
- "effortless-repo-protocol",
- "proof-protocol",
- "proof-provider-api",
- "serde",
  "toml",
 ]
 
@@ -1061,8 +1048,8 @@ name = "proof-adapter-hawk"
 version = "0.2.0"
 dependencies = [
  "effortless-repo-protocol",
+ "proof-engine",
  "proof-protocol",
- "proof-provider-api",
  "serde",
  "toml",
 ]
@@ -1072,8 +1059,8 @@ name = "proof-adapter-ripr"
 version = "0.2.0"
 dependencies = [
  "effortless-repo-protocol",
+ "proof-engine",
  "proof-protocol",
- "proof-provider-api",
  "serde",
  "toml",
 ]
@@ -1083,9 +1070,7 @@ name = "proof-engine"
 version = "0.2.0"
 dependencies = [
  "effortless-repo-protocol",
- "proof-adapter-command",
  "proof-protocol",
- "proof-provider-api",
  "serde",
  "toml",
 ]
@@ -1096,15 +1081,6 @@ version = "0.2.0"
 dependencies = [
  "effortless-repo-protocol",
  "serde",
- "toml",
-]
-
-[[package]]
-name = "proof-provider-api"
-version = "0.2.0"
-dependencies = [
- "effortless-repo-protocol",
- "proof-protocol",
  "toml",
 ]
 

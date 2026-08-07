@@ -3,18 +3,18 @@ use std::path::PathBuf;
 use proof_protocol::ProofPlanCommandV1;
 use proof_protocol::ProofReceiptBindingV1;
 
-use crate::boundary::{
+use super::boundary::{
     ALLOWED_UPSTREAM_CRATES, BoundarySurface, FORBIDDEN_DEPENDENCY_EDGES, upstream_surface_markers,
 };
-use crate::command_registry::{default_cargo_allow_registry, validate_command_registry};
-use crate::command_registry_surface::CommandRegistrySurface;
-use crate::command_spec::{CommandSpecError, compile_invocation_spec, reject_prose_as_executable};
-use crate::dry_run::{DryRunCommandReportV1, render_structured_argv};
-use crate::parity::{
+use super::command_registry::{default_cargo_allow_registry, validate_command_registry};
+use super::command_registry_surface::CommandRegistrySurface;
+use super::command_spec::{CommandSpecError, compile_invocation_spec, reject_prose_as_executable};
+use super::dry_run::{DryRunCommandReportV1, render_structured_argv};
+use super::parity::{
     command_registry_parity_contract_paths, load_command_registry_parity_contract,
     parity_contract_paths,
 };
-use crate::receipt_interpretation::{CommandReceiptStatusV1, interpret_receipt_binding};
+use super::receipt_interpretation::{CommandReceiptStatusV1, interpret_receipt_binding};
 
 #[test]
 fn boundary_surface_matches_parity_contract_module() -> Result<(), String> {
@@ -65,7 +65,7 @@ fn command_registry_surface_matches_parity_contract() -> Result<(), String> {
 fn reject_prose_as_executable_blocks_issue_markdown() -> Result<(), String> {
     let prose = "Run `rtk cargo run -p cargo-allow -- check --mode no-new` before merge.";
     match reject_prose_as_executable(prose) {
-        Err(crate::command_spec::CommandSpecError::ProseNotExecutable) => Ok(()),
+        Err(super::command_spec::CommandSpecError::ProseNotExecutable) => Ok(()),
         other => Err(format!("expected prose_not_executable, got {other:?}")),
     }
 }

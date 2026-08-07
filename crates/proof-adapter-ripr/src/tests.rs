@@ -1,8 +1,6 @@
 use std::path::PathBuf;
 
-use proof_provider_api::{
-    run_provider_conformance, validate_provider_plan, validate_provider_surface,
-};
+use proof_engine::{run_provider_conformance, validate_provider_plan, validate_provider_surface};
 
 use crate::boundary::{
     ALLOWED_UPSTREAM_CRATES, BoundarySurface, FORBIDDEN_DEPENDENCY_EDGES, upstream_surface_markers,

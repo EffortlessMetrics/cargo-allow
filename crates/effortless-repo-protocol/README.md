@@ -1,4 +1,4 @@
-# repo-protocol
+# effortless-repo-protocol
 
 Provider-neutral repository identity and transport envelopes (#2582).
 

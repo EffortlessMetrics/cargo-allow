@@ -24,7 +24,6 @@ path = "src/main.rs"
 clap.workspace = true
 proof-engine.workspace = true
 proof-protocol.workspace = true
-proof-provider-api.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 toml.workspace = true
