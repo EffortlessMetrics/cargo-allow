@@ -243,6 +243,12 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         .into_result()?;
         let _ = path;
     } else {
+        // When printing the full policy TOML to stdout, warn interactive
+        // users that the summary is on stderr so they don't miss it (#3191).
+        use std::io::IsTerminal;
+        if std::io::stdout().is_terminal() && args.summary_output.is_none() {
+            eprintln!("note: proposed policy written to stdout; summary follows below on stderr");
+        }
         println!("{rendered}");
     }
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
