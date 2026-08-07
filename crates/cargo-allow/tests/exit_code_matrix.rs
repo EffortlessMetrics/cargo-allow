@@ -200,7 +200,7 @@ fn exit_matrix_missing_config_is_1() {
         .arg(&missing)
         .output()
         .unwrap_or_else(|err| std::panic::panic_any(format!("run missing config: {err}")));
-    assert_exit("missing config", &output, 1, "error:");
+    assert_exit("missing config", &output, 1, "error[");
     drop_root(root);
 }
 
