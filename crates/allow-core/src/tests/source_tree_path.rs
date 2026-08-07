@@ -236,6 +236,35 @@ fn normalize_path_strips_verbatim_prefix() {
 }
 
 #[test]
+fn normalize_path_canonicalizes_unicode_nfc_nfd_divergence() {
+    // #1823: macOS (HFS+/APFS) may store paths in NFD (decomposed), while
+    // git and Linux typically use NFC (composed). Without NFC normalization,
+    // the same logical path in different normalization forms produces
+    // different identity keys, causing silent cross-platform matching
+    // divergence.
+    //
+    // café in NFC:   U+0063 U+0061 U+0066 U+00E9 (é is a single codepoint)
+    // café in NFD:   U+0063 U+0061 U+0066 U+0065 U+0301 (e + combining acute)
+    let nfc = "src/café.rs";
+    let nfd = "src/cafe\u{0301}.rs";
+    assert_ne!(
+        nfc.chars().collect::<Vec<_>>(),
+        nfd.chars().collect::<Vec<_>>(),
+        "sanity: NFC and NFD should be different byte sequences"
+    );
+    assert_eq!(
+        normalize_path(nfc),
+        normalize_path(nfd),
+        "normalize_path must produce the same NFC form for both NFC and NFD input"
+    );
+    assert_eq!(
+        normalize_path(nfc),
+        "src/café.rs",
+        "normalize_path should produce the NFC (composed) form"
+    );
+}
+
+#[test]
 fn allow_entry_path_or_glob_prefers_path_then_entry_glob_then_selector_glob() {
     let mut entry = AllowEntry {
         id: "allow-panic".to_string(),
