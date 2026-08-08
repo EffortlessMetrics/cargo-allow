@@ -22,6 +22,42 @@ macro-expansion, or proof-level coverage.
 | Legacy migration summary | `cargo-allow.migrate.v1` | `cargo-allow migrate --summary-format json --summary-output <path>` |
 | Spec-system graph report | `cargo-allow.spec-system.v1` | `cargo-allow check --profile spec-system --format json`, `cargo-allow audit --profile spec-system --format json`, `cargo-allow worklist --profile spec-system --format json`, `cargo-allow doctor --profile spec-system --format json`, `cargo-allow explain <artifact-id> --profile spec-system --format json` |
 | Agent worklist | `cargo-allow.worklist.v1` | `cargo-allow worklist --format json` |
+| Common command summary | `cargo-allow.core-command-summary.v1` | `cargo-allow --command-summary-output <path> adopt`, `... doctor`, `... audit`, `... check` |
+
+## Common command summary
+
+`--command-summary-output <path>` writes a compact, versioned projection of the
+command's outcome as a sidecar file, in addition to — never instead of — the
+command's own artifact above. It answers one fixed set of operator questions:
+result, reason, exact source subject, coverage, one primary next action, write
+posture, next proof boundary, and what remains unproven.
+
+The same projection is what the human output renders as its opening
+`Result` / `Why` / `Subject` / `Coverage` / `Next` / `Writes` / `Then` /
+`Not proven` block, so automation never has to parse human prose to decide
+whether a command passed or what to run next.
+
+Consumers should rely on these properties:
+
+- `result_class` and `posture` are the load-bearing discriminators. Human text
+  is presentation and is never the machine discriminator.
+- Partial, stale, unsupported, malformed, unprobed, cancelled, and
+  instrument-failure states cannot render as a satisfied result.
+- `primary_action` is present only when one deterministic safe action exists.
+  Where repository judgment is required, a `decision` action is emitted rather
+  than a guessed command.
+- `subject.repository_identity` is content-addressed and stable across
+  relocated checkouts; it embeds no private absolute paths.
+- `operation_effects` states the operation's own read/write posture, separately
+  from any paths a suggested next action may write.
+
+The supported command set grows as the migration proceeds; a command that does
+not yet emit the summary rejects `--command-summary-output` rather than silently
+ignoring it.
+
+Note the distinct names: the global `--command-summary-output` writes this
+projection, while `add`, `propose`, and `migrate` each own a separate
+per-command `--summary-output` carrying their own mutation summary.
 
 ## Federation and movement contracts
 

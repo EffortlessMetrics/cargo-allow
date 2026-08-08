@@ -1,0 +1,12 @@
+kind: Changed
+body: >-
+  UX: `adopt` and `doctor` now open with the same compact operator summary
+  (`Result` / `Why` / `Subject` / `Coverage` / `Next` / `Writes` / `Then` /
+  `Not proven`) already used by `audit` and `check`, so the supported
+  first-hour loop no longer requires learning per-command output conventions.
+  `--command-summary-output` accepts these two commands as well and writes the
+  versioned `cargo-allow.core-command-summary.v1` sidecar. The detailed
+  adoption-plan and doctor artifacts, their JSON schemas, and every exit code
+  are unchanged. Doctor keeps unprobed evidence health visibly non-green
+  instead of reporting it as zero defects, and the summary's repository
+  identity is stable across relocated checkouts.

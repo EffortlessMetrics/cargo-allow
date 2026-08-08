@@ -214,6 +214,23 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
             },
         )?;
     }
+    // Common operator grammar (#3149). The detailed doctor report remains
+    // authoritative; this projection is additive and derived from the same
+    // already-computed facts without rescanning source or reloading policy.
+    let summary = doctor_summary(
+        report,
+        &root,
+        &source_context,
+        DoctorSetupFacts {
+            config_present: config.is_some(),
+            config_valid,
+            config_diagnostic: config_diagnostic.as_deref(),
+            broken_evidence_links,
+            weak_evidence_references,
+        },
+    )?;
+    crate::core_command_router::write_summary_artifact(&root, &summary)?;
+
     let text = match args.format {
         HumanJsonFormat::Human => {
             let style = if args.output.is_none() {
@@ -221,7 +238,10 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
             } else {
                 allow_report::Style::PLAIN
             };
-            let mut rendered = allow_report::render_doctor_human_styled(report, style);
+            let mut rendered =
+                crate::core_command_summary::render_core_command_summary_human(&summary);
+            rendered.push('\n');
+            rendered.push_str(&allow_report::render_doctor_human_styled(report, style));
             rendered.push_str(&intent_provider_doctor_section(&root));
             if let Some(path) = &args.support_bundle {
                 rendered.push_str(&format!("\nSupport bundle written to {}\n", path.display()));
@@ -246,6 +266,116 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         ));
     }
     Ok(())
+}
+
+/// Build the common operator summary from facts doctor has already computed.
+///
+/// Doctor's own JSON artifact supplies the relocation-stable semantic identity,
+/// so the summary never rescans source or reloads policy to describe itself.
+struct DoctorSetupFacts<'a> {
+    config_present: bool,
+    config_valid: Option<bool>,
+    config_diagnostic: Option<&'a str>,
+    /// `None` means evidence health was not probed, not that it is clean.
+    broken_evidence_links: Option<usize>,
+    weak_evidence_references: Option<usize>,
+}
+
+fn doctor_summary(
+    report: allow_report::DoctorReport<'_>,
+    root: &Path,
+    source_context: &SourceTreeReportContext,
+    setup: DoctorSetupFacts<'_>,
+) -> CargoAllowResult<crate::core_command_summary::CoreCommandSummaryV1> {
+    let semantic_identity = crate::core_command_router::canonical_semantic_identity(
+        &allow_report::render_doctor_json(report),
+        Some(root),
+    )?;
+    let inventory_source = source_context.inventory_source();
+    let (completeness, coverage_limitation) = doctor_completeness(report, source_context);
+
+    let mut subject = crate::core_command_summary::CoreSourceSubjectV1::worktree(
+        format!("local-repository:{semantic_identity}"),
+        format!("worktree:{inventory_source}:current-unpinned"),
+    );
+    subject.limitations.push(
+        "the current worktree result is not bound to a commit, tree, or Git-index identity"
+            .to_string(),
+    );
+
+    crate::core_command_summary::core_command_summary_from_doctor(
+        crate::core_command_summary::DoctorSummaryFactsV1 {
+            tool_version: env!("CARGO_PKG_VERSION").to_string(),
+            subject,
+            completeness,
+            coverage_limitation,
+            config_present: setup.config_present,
+            config_valid: setup.config_valid,
+            config_diagnostic: setup.config_diagnostic.map(str::to_string),
+            broken_evidence_links: setup.broken_evidence_links,
+            weak_evidence_references: setup.weak_evidence_references,
+            claim_boundary: effortless_repo_protocol::ClaimBoundaryV1::new(
+                "cargo-allow diagnosed source-exception setup health only",
+            )
+            .with_limitations(vec![
+                "cargo metadata, rustc, Clippy, build scripts, proc macros, tests, and repository code were not invoked"
+                    .to_string(),
+                "macro expansion, type information, MIR, control flow, and data flow were not analyzed"
+                    .to_string(),
+                "a healthy setup does not prove the repository passes the no-new gate".to_string(),
+            ]),
+        },
+    )
+    .map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!("failed to build core command summary: {error}"),
+        )
+    })
+}
+
+/// Map doctor's inventory facts onto summary coverage.
+///
+/// Mirrors the audit/check router: a scoped inventory is complete for the paths
+/// it claims, while absent tracked files, an empty Git inventory, skipped
+/// paths, or a fallback inventory make the diagnosis non-conclusive.
+fn doctor_completeness(
+    report: allow_report::DoctorReport<'_>,
+    source_context: &SourceTreeReportContext,
+) -> (effortless_repo_protocol::CompletenessV1, Option<String>) {
+    use effortless_repo_protocol::CompletenessV1;
+
+    let mut reasons = Vec::new();
+    if report.empty_git_tracked {
+        reasons.push("Git reported no tracked files".to_string());
+    }
+    if report.deleted_tracked_files > 0 {
+        reasons.push(format!(
+            "{} tracked path(s) are absent from the worktree",
+            report.deleted_tracked_files
+        ));
+    }
+    if report.skipped_paths > 0 {
+        reasons.push(format!("{} path(s) were skipped", report.skipped_paths));
+    }
+    if report.git_inventory_error.is_some() {
+        reasons.push("the Git inventory reported an error".to_string());
+    }
+    if matches!(
+        source_context.inventory_completeness(),
+        "partial" | "fallback"
+    ) {
+        reasons.push(format!(
+            "inventory completeness is {}",
+            source_context.inventory_completeness()
+        ));
+    }
+
+    if reasons.is_empty() {
+        (CompletenessV1::Complete, None)
+    } else {
+        (CompletenessV1::Partial, Some(reasons.join("; ")))
+    }
 }
 
 fn intent_provider_doctor_section(root: &Path) -> String {

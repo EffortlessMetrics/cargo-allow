@@ -240,3 +240,95 @@ fn temp_root(label: &str) -> std::io::Result<PathBuf> {
     fs::create_dir_all(&root)?;
     Ok(root)
 }
+
+fn identity(artifact_json: &str, root: &Path) -> Result<String, String> {
+    canonical_semantic_identity(artifact_json, Some(root)).map_err(|error| error.to_string())
+}
+
+#[test]
+fn semantic_identity_survives_repository_relocation() -> Result<(), String> {
+    // The same repository content checked out at two different absolute paths
+    // must produce one identity. Key scrubbing alone cannot reach a root that
+    // is embedded inside a suggested command string (#3149).
+    let artifact = |root: &str| {
+        format!(
+            r#"{{"root":{{"path":"{root}"}},
+                "inventory":{{"root":"{root}","files_scanned":7}},
+                "config":{{"suggested_init_command":"cargo-allow init --root \"{root}\""}}}}"#
+        )
+    };
+    let left = identity(
+        &artifact("/home/alice/checkout"),
+        Path::new("/home/alice/checkout"),
+    )?;
+    let right = identity(&artifact("/srv/ci/build-42"), Path::new("/srv/ci/build-42"))?;
+    require(
+        left == right,
+        format!("relocated identity drifted: {left} != {right}"),
+    )
+}
+
+#[test]
+fn semantic_identity_still_separates_different_content() -> Result<(), String> {
+    // Root redaction must not flatten genuinely different repositories into
+    // one identity.
+    let root = Path::new("/home/alice/checkout");
+    let left = identity(r#"{"inventory":{"files_scanned":7},"findings":1}"#, root)?;
+    let right = identity(r#"{"inventory":{"files_scanned":7},"findings":2}"#, root)?;
+    require(
+        left != right,
+        "different findings must not share a semantic identity",
+    )
+}
+
+#[test]
+fn semantic_identity_redacts_both_path_spellings() -> Result<(), String> {
+    // Windows artifacts mix native backslash roots with forward-slash portable
+    // paths in the same document; both must redact to the same placeholder.
+    let root = Path::new(r"C:\work\repo");
+    let mixed = identity(
+        r#"{"a":"C:\\work\\repo\\src","b":"C:/work/repo/src"}"#,
+        root,
+    )?;
+    let redacted = identity(
+        r#"{"a":"<repository-root>\\src","b":"<repository-root>/src"}"#,
+        root,
+    )?;
+    require(
+        mixed == redacted,
+        "native and portable root spellings must redact identically",
+    )
+}
+
+#[test]
+fn semantic_identity_redacts_a_verbatim_prefixed_root() -> Result<(), String> {
+    // #3180 strips the Win32 verbatim prefix from operator-facing text, so an
+    // artifact can name the root as `D:\repo` while the resolved root is still
+    // `\\?\D:\repo`. Both must redact to the same identity, or a Windows
+    // checkout drifts against itself.
+    let verbatim = identity(
+        r#"{"a":"D:\\repo\\src","b":"D:/repo/src"}"#,
+        Path::new(r"\\?\D:\repo"),
+    )?;
+    let plain = identity(
+        r#"{"a":"D:\\repo\\src","b":"D:/repo/src"}"#,
+        Path::new(r"D:\repo"),
+    )?;
+    require(
+        verbatim == plain,
+        format!("verbatim and plain roots must redact identically: {verbatim} != {plain}"),
+    )
+}
+
+#[test]
+fn semantic_identity_never_redacts_a_bare_separator_root() -> Result<(), String> {
+    // A root of `/` or `\` would otherwise match every separator in the
+    // document and destroy its structure. Such a root is not a real checkout.
+    let artifact = r#"{"a":"/usr/lib/x","b":"findings/1"}"#;
+    let separator_root = identity(artifact, Path::new("/"))?;
+    let untouched = canonical_semantic_identity(artifact, None).map_err(|e| e.to_string())?;
+    require(
+        separator_root == untouched,
+        "a bare separator root must redact nothing",
+    )
+}

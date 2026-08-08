@@ -391,3 +391,204 @@ fn command_display_falls_back_for_control_text() -> Result<(), String> {
         format!("control character survived command rendering: {human}"),
     )
 }
+
+fn doctor_facts() -> DoctorSummaryFactsV1 {
+    DoctorSummaryFactsV1 {
+        tool_version: "0.2.0".to_string(),
+        subject: CoreSourceSubjectV1::worktree(
+            "local-repository:sha256:v1:test",
+            "worktree:git_tracked:current-unpinned",
+        ),
+        completeness: CompletenessV1::Complete,
+        coverage_limitation: None,
+        config_present: true,
+        config_valid: Some(true),
+        config_diagnostic: None,
+        broken_evidence_links: Some(0),
+        weak_evidence_references: Some(0),
+        claim_boundary: ClaimBoundaryV1::new("setup health only"),
+    }
+}
+
+#[test]
+fn adoption_adapter_describes_its_subject_in_the_shared_grammar() -> Result<(), String> {
+    let summary = core_command_summary_from_adoption_plan(&adoption_plan())?;
+    // `audit`, `check`, and `doctor` all name the evaluated subject as
+    // `worktree:<inventory mode>:current-unpinned`. Adoption must not invent a
+    // second spelling for the same concept (#3149).
+    ensure(
+        summary.subject.portable_identity == "worktree:git_tracked:current-unpinned",
+        format!(
+            "adoption subject must use the shared grammar, got {}",
+            summary.subject.portable_identity
+        ),
+    )?;
+    ensure(
+        summary.subject.repository_identity == "repo:test",
+        "content-addressed repository identity must be preserved",
+    )?;
+    ensure(
+        summary
+            .subject
+            .limitations
+            .iter()
+            .any(|limitation| limitation.contains("not bound to a commit")),
+        "an unpinned worktree subject must say so",
+    )
+}
+
+#[test]
+fn doctor_adapter_reports_healthy_setup_without_claiming_the_gate() -> Result<(), String> {
+    let summary = core_command_summary_from_doctor(doctor_facts())?;
+    ensure(
+        summary.result_class == ResultClassV1::Completed
+            && summary.posture == CoreCommandPostureV1::Satisfied,
+        "a healthy, complete, fully probed setup is a satisfied result",
+    )?;
+    ensure(
+        summary.primary_action.is_none(),
+        "a healthy setup must not invent a repair action",
+    )?;
+    ensure(
+        summary.next_proof.as_ref().is_some_and(|action| {
+            action
+                .args
+                .iter()
+                .map(String::as_str)
+                .eq(["check", "--mode", "no-new"])
+        }),
+        "doctor must route to the enforcing gate rather than imply it already passed",
+    )?;
+    ensure(
+        !summary.operation_effects.writes_repository,
+        "doctor is read-only",
+    )
+}
+
+#[test]
+fn doctor_adapter_never_reads_unprobed_evidence_as_zero_defects() -> Result<(), String> {
+    let mut facts = doctor_facts();
+    facts.broken_evidence_links = None;
+    facts.weak_evidence_references = None;
+    let summary = core_command_summary_from_doctor(facts)?;
+    ensure(
+        summary.result_class == ResultClassV1::NotProven,
+        "unprobed evidence health is not proof of health",
+    )?;
+    ensure(
+        summary.posture != CoreCommandPostureV1::Satisfied,
+        "an unprobed diagnosis must not render as satisfied",
+    )?;
+    ensure(
+        summary.next_proof.is_none(),
+        "an inconclusive diagnosis must not promise the gate proves anything",
+    )
+}
+
+#[test]
+fn doctor_adapter_defers_invalid_policy_to_repository_judgment() -> Result<(), String> {
+    let mut facts = doctor_facts();
+    facts.config_valid = Some(false);
+    facts.config_diagnostic = Some("policy/allow.toml: expected table".to_string());
+    let summary = core_command_summary_from_doctor(facts)?;
+    ensure(
+        summary.result_class == ResultClassV1::MalformedInput
+            && summary.posture == CoreCommandPostureV1::DecisionRequired,
+        "an invalid policy is malformed input requiring repository judgment",
+    )?;
+    ensure(
+        summary
+            .primary_action
+            .as_ref()
+            .is_some_and(|action| action.kind == CoreCommandActionKindV1::Decision),
+        "cargo-allow must not guess a command that repairs a malformed policy",
+    )?;
+    ensure(
+        summary.reason.message.contains("expected table"),
+        "the typed diagnostic must survive into the summary reason",
+    )?;
+    ensure(
+        summary.next_proof.is_none(),
+        "a malformed policy cannot promise a meaningful gate run",
+    )
+}
+
+#[test]
+fn doctor_adapter_keeps_partial_coverage_non_green() -> Result<(), String> {
+    let mut facts = doctor_facts();
+    facts.completeness = CompletenessV1::Partial;
+    facts.coverage_limitation = Some("3 path(s) were skipped".to_string());
+    let summary = core_command_summary_from_doctor(facts)?;
+    ensure(
+        summary.result_class == ResultClassV1::PartialData
+            && summary.posture == CoreCommandPostureV1::Blocking,
+        "partial coverage must not be green",
+    )?;
+    ensure(
+        summary.next_proof.is_none(),
+        "partial coverage must not imply the gate would prove anything",
+    )?;
+    ensure(
+        summary
+            .subject
+            .limitations
+            .iter()
+            .any(|limitation| limitation.contains("3 path(s) were skipped")),
+        "the exact coverage limitation must reach the operator",
+    )
+}
+
+#[test]
+fn doctor_adapter_routes_an_absent_policy_to_adoption() -> Result<(), String> {
+    let mut facts = doctor_facts();
+    facts.config_present = false;
+    facts.config_valid = None;
+    facts.broken_evidence_links = None;
+    facts.weak_evidence_references = None;
+    let summary = core_command_summary_from_doctor(facts)?;
+    ensure(
+        summary.result_class == ResultClassV1::Findings
+            && summary.posture == CoreCommandPostureV1::Advisory,
+        "an unadopted repository is an advisory finding, not a failure",
+    )?;
+    ensure(
+        summary.primary_action.as_ref().is_some_and(|action| {
+            action.args.iter().map(String::as_str).eq(["adopt"])
+                && action.may_write_paths.is_empty()
+        }),
+        "the first-hour route from doctor is read-only adopt",
+    )
+}
+
+#[test]
+fn doctor_adapter_separates_broken_from_weak_evidence_posture() -> Result<(), String> {
+    let mut blocking = doctor_facts();
+    blocking.broken_evidence_links = Some(2);
+    let blocking = core_command_summary_from_doctor(blocking)?;
+    ensure(
+        blocking.posture == CoreCommandPostureV1::Blocking,
+        "unresolved evidence references block",
+    )?;
+    ensure(
+        blocking
+            .primary_action
+            .as_ref()
+            .is_some_and(|action| action.args.contains(&"--broken-evidence".to_string())),
+        "broken evidence must route to the broken-evidence worklist",
+    )?;
+
+    let mut advisory = doctor_facts();
+    advisory.weak_evidence_references = Some(5);
+    let advisory = core_command_summary_from_doctor(advisory)?;
+    ensure(
+        advisory.posture == CoreCommandPostureV1::Advisory,
+        "weak evidence is advisory rather than blocking",
+    )?;
+    ensure(
+        advisory
+            .primary_action
+            .as_ref()
+            .is_some_and(|action| action.args.contains(&"--weak-evidence".to_string())),
+        "weak evidence must route to the weak-evidence worklist",
+    )
+}
