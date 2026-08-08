@@ -10,7 +10,7 @@ use super::{
     spec_system_legacy_compatibility,
 };
 use crate::{OutputFormat, RootArgs, current_dir, emit_text, root_relative_path, write_file};
-use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_inventory::resolve_source_tree_root;
 use std::fs;
 use std::path::Path;
@@ -50,10 +50,13 @@ pub(crate) fn cmd_spec_system(args: SpecSystemCommandArgs<'_>) -> CargoAllowResu
         write_file(path, &render_spec_system_json(&report))?;
     }
     if spec_system_command_failed(&report) {
-        return Err(CargoAllowError::new(format!(
-            "spec-system blocking findings found: {}",
-            spec_system_blocking_finding_count(&report)
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!(
+                "spec-system blocking findings found: {}",
+                spec_system_blocking_finding_count(&report)
+            ),
+        ));
     }
     Ok(())
 }
@@ -151,10 +154,13 @@ pub(crate) fn cmd_spec_system_init(args: SpecSystemInitCommandArgs<'_>) -> Cargo
                 );
             }
         } else if let Some(conflict) = conflicts.first() {
-            return Err(CargoAllowError::new(format!(
-                "current spec-system bootstrap will not overwrite legacy active-goal state at {}; choose an explicit legacy-v1 profile or migrate it first",
-                root_relative_display(&root, conflict)
-            )));
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                format!(
+                    "current spec-system bootstrap will not overwrite legacy active-goal state at {}; choose an explicit legacy-v1 profile or migrate it first",
+                    root_relative_display(&root, conflict)
+                ),
+            ));
         }
     }
     let files = spec_system_bootstrap_files(config_path, legacy_compatibility);
@@ -179,11 +185,17 @@ pub(crate) fn cmd_spec_system_init(args: SpecSystemInitCommandArgs<'_>) -> Cargo
         }
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).map_err(|e| {
-                CargoAllowError::new(format!("failed to create {}: {e}", parent.display()))
+                CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Artifact,
+                    format!("failed to create {}: {e}", parent.display()),
+                )
             })?;
         }
         fs::write(&path, file.contents).map_err(|e| {
-            CargoAllowError::new(format!("failed to write {}: {e}", path.display()))
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                format!("failed to write {}: {e}", path.display()),
+            )
         })?;
         let action = if args.force { "wrote" } else { "created" };
         println!("{action} {display}");

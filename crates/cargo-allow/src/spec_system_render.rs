@@ -20,7 +20,12 @@ pub(super) fn filter_spec_system_report_for_artifact(
         .artifacts
         .iter()
         .find(|artifact| artifact.id == artifact_id)
-        .ok_or_else(|| CargoAllowError::new(format!("no spec-system artifact `{artifact_id}`")))?;
+        .ok_or_else(|| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                format!("no spec-system artifact `{artifact_id}`"),
+            )
+        })?;
     let links = report
         .links
         .iter()

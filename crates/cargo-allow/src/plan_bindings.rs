@@ -103,7 +103,7 @@ fn bound_file_error(path: &Path, label: &str, error: CappedReadError) -> CargoAl
         ("inventory file", _) => {
             CargoAllowError::with_kind(CargoAllowErrorKind::Inventory, message)
         }
-        (_, _) => CargoAllowError::new(message),
+        (_, _) => CargoAllowError::with_kind(CargoAllowErrorKind::InvalidPolicy, message),
     }
 }
 

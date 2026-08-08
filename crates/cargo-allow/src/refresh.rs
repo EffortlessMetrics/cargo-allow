@@ -31,7 +31,8 @@ use effortless_repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, appl
 
 pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
     if args.dry_run && args.write {
-        return Err(CargoAllowError::new(
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
             "pass either --dry-run or --write, not both",
         ));
     }
