@@ -11,6 +11,7 @@ mod cross_check;
 mod dependency_graph;
 mod v1_reader;
 mod v2;
+mod v2_reconcile;
 mod v2_validate;
 mod validate;
 mod workspace;
@@ -38,6 +39,10 @@ pub use v2::{
     ArchitectureManifestV2, CrateIdentityV2, parse_architecture_manifest_v2,
     parse_architecture_manifest_v2_at,
 };
+pub use v2_reconcile::{
+    ReconcileDiagnostic, ReconcileDiagnosticKind, ReconcileReport, reconcile_v2_denominators,
+    reconcile_v2_denominators_at,
+};
 pub use v2_validate::{
     IdentityDiagnostic, IdentityDiagnosticKind, validate_v2_alias_map,
     validate_v2_identity_uniqueness,
@@ -54,5 +59,7 @@ pub use workspace::workspace_members_from_manifest;
 mod closure_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod v2_reconcile_tests;
 #[cfg(test)]
 mod v2_tests;

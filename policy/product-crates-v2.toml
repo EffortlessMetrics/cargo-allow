@@ -1,0 +1,244 @@
+schema_version = "2.0"
+authority_generation = 2
+manifest_id = "CARGO-ALLOW-ARCH-V2-0001"
+controlling_issue = 2923
+linked_move_ledger = "CARGO-ALLOW-MOVE-LEDGER-0001"
+
+# Generation-2 architecture authority (#2923).
+# Every workspace member has exactly one crate_identity record.
+# logical_id is the stable architecture/move-ledger identity.
+# cargo_package_name is the current Cargo registry/package identity.
+# rust_library_name is the current import identity.
+
+# --- cargo-allow product ---
+
+[[crate_identity]]
+logical_id = "allow-core"
+workspace_path = "crates/allow-core"
+workspace_dependency_aliases = ["allow-core"]
+cargo_package_name = "allow-core"
+rust_library_name = "allow_core"
+product_or_shared_owner = "cargo-allow"
+crate_role = "CargoAllowCore"
+
+[[crate_identity]]
+logical_id = "allow-policy"
+workspace_path = "crates/allow-policy"
+workspace_dependency_aliases = ["allow-policy"]
+cargo_package_name = "allow-policy"
+rust_library_name = "allow_policy"
+product_or_shared_owner = "cargo-allow"
+crate_role = "CargoAllowCore"
+
+[[crate_identity]]
+logical_id = "allow-inventory"
+workspace_path = "crates/allow-inventory"
+workspace_dependency_aliases = ["allow-inventory"]
+cargo_package_name = "allow-inventory"
+rust_library_name = "allow_inventory"
+product_or_shared_owner = "cargo-allow"
+crate_role = "CargoAllowCore"
+
+[[crate_identity]]
+logical_id = "allow-files"
+workspace_path = "crates/allow-files"
+workspace_dependency_aliases = ["allow-files"]
+cargo_package_name = "allow-files"
+rust_library_name = "allow_files"
+product_or_shared_owner = "cargo-allow"
+crate_role = "CargoAllowCore"
+
+[[crate_identity]]
+logical_id = "allow-rust"
+workspace_path = "crates/allow-rust"
+workspace_dependency_aliases = ["allow-rust"]
+cargo_package_name = "allow-rust"
+rust_library_name = "allow_rust"
+product_or_shared_owner = "cargo-allow"
+crate_role = "CargoAllowCore"
+
+[[crate_identity]]
+logical_id = "allow-match"
+workspace_path = "crates/allow-match"
+workspace_dependency_aliases = ["allow-match"]
+cargo_package_name = "allow-match"
+rust_library_name = "allow_match"
+product_or_shared_owner = "cargo-allow"
+crate_role = "CargoAllowCore"
+
+[[crate_identity]]
+logical_id = "allow-report"
+workspace_path = "crates/allow-report"
+workspace_dependency_aliases = ["allow-report"]
+cargo_package_name = "allow-report"
+rust_library_name = "allow_report"
+product_or_shared_owner = "cargo-allow"
+crate_role = "CargoAllowCore"
+
+[[crate_identity]]
+logical_id = "allow-diff"
+workspace_path = "crates/allow-diff"
+workspace_dependency_aliases = ["allow-diff"]
+cargo_package_name = "allow-diff"
+rust_library_name = "allow_diff"
+product_or_shared_owner = "cargo-allow"
+crate_role = "CargoAllowCore"
+
+[[crate_identity]]
+logical_id = "allow-policy-legacy"
+workspace_path = "crates/allow-policy-legacy"
+workspace_dependency_aliases = ["allow-policy-legacy"]
+cargo_package_name = "allow-policy-legacy"
+rust_library_name = "allow_policy_legacy"
+product_or_shared_owner = "cargo-allow"
+crate_role = "LegacyMigration"
+
+[[crate_identity]]
+logical_id = "cargo-allow"
+workspace_path = "crates/cargo-allow"
+workspace_dependency_aliases = ["cargo-allow"]
+cargo_package_name = "cargo-allow"
+rust_library_name = "cargo_allow"
+product_or_shared_owner = "cargo-allow"
+crate_role = "CargoAllowCore"
+
+# --- shared crates (logical_id ≠ cargo_package_name for effortless-*) ---
+
+[[crate_identity]]
+logical_id = "repo-protocol"
+workspace_path = "crates/effortless-repo-protocol"
+workspace_dependency_aliases = ["effortless-repo-protocol"]
+cargo_package_name = "effortless-repo-protocol"
+rust_library_name = "effortless_repo_protocol"
+product_or_shared_owner = "shared"
+crate_role = "SharedProtocol"
+
+[[crate_identity]]
+logical_id = "repo-snapshot"
+workspace_path = "crates/effortless-repo-snapshot"
+workspace_dependency_aliases = ["effortless-repo-snapshot"]
+cargo_package_name = "effortless-repo-snapshot"
+rust_library_name = "effortless_repo_snapshot"
+product_or_shared_owner = "shared"
+crate_role = "SharedSnapshot"
+
+[[crate_identity]]
+logical_id = "repo-edit"
+workspace_path = "crates/effortless-repo-edit"
+workspace_dependency_aliases = ["effortless-repo-edit"]
+cargo_package_name = "effortless-repo-edit"
+rust_library_name = "effortless_repo_edit"
+product_or_shared_owner = "shared"
+crate_role = "SharedSnapshot"
+
+[[crate_identity]]
+logical_id = "rust-source-index"
+workspace_path = "crates/effortless-rust-source-index"
+workspace_dependency_aliases = ["effortless-rust-source-index"]
+cargo_package_name = "effortless-rust-source-index"
+rust_library_name = "effortless_rust_source_index"
+product_or_shared_owner = "shared"
+crate_role = "SharedProtocol"
+
+# --- cargo-intent product ---
+
+[[crate_identity]]
+logical_id = "intent-model"
+workspace_path = "crates/intent-model"
+workspace_dependency_aliases = ["intent-model"]
+cargo_package_name = "intent-model"
+rust_library_name = "intent_model"
+product_or_shared_owner = "cargo-intent"
+crate_role = "CargoIntent"
+
+[[crate_identity]]
+logical_id = "intent-protocol"
+workspace_path = "crates/intent-protocol"
+workspace_dependency_aliases = ["intent-protocol"]
+cargo_package_name = "intent-protocol"
+rust_library_name = "intent_protocol"
+product_or_shared_owner = "cargo-intent"
+crate_role = "CargoIntent"
+
+[[crate_identity]]
+logical_id = "intent-engine"
+workspace_path = "crates/intent-engine"
+workspace_dependency_aliases = ["intent-engine"]
+cargo_package_name = "intent-engine"
+rust_library_name = "intent_engine"
+product_or_shared_owner = "cargo-intent"
+crate_role = "CargoIntent"
+
+[[crate_identity]]
+logical_id = "intent-edit"
+workspace_path = "crates/intent-edit"
+workspace_dependency_aliases = ["intent-edit"]
+cargo_package_name = "intent-edit"
+rust_library_name = "intent_edit"
+product_or_shared_owner = "cargo-intent"
+crate_role = "CargoIntent"
+
+[[crate_identity]]
+logical_id = "cargo-intent"
+workspace_path = "crates/cargo-intent"
+workspace_dependency_aliases = ["cargo-intent"]
+cargo_package_name = "cargo-intent"
+rust_library_name = "cargo_intent"
+product_or_shared_owner = "cargo-intent"
+crate_role = "CargoIntent"
+
+# --- cargo-proof product ---
+
+[[crate_identity]]
+logical_id = "proof-protocol"
+workspace_path = "crates/proof-protocol"
+workspace_dependency_aliases = ["proof-protocol"]
+cargo_package_name = "proof-protocol"
+rust_library_name = "proof_protocol"
+product_or_shared_owner = "cargo-proof"
+crate_role = "CargoProof"
+
+[[crate_identity]]
+logical_id = "proof-adapter-cargo-allow"
+workspace_path = "crates/proof-adapter-cargo-allow"
+workspace_dependency_aliases = ["proof-adapter-cargo-allow"]
+cargo_package_name = "proof-adapter-cargo-allow"
+rust_library_name = "proof_adapter_cargo_allow"
+product_or_shared_owner = "cargo-proof"
+crate_role = "ProviderAdapter"
+
+[[crate_identity]]
+logical_id = "proof-adapter-ripr"
+workspace_path = "crates/proof-adapter-ripr"
+workspace_dependency_aliases = ["proof-adapter-ripr"]
+cargo_package_name = "proof-adapter-ripr"
+rust_library_name = "proof_adapter_ripr"
+product_or_shared_owner = "cargo-proof"
+crate_role = "ProviderAdapter"
+
+[[crate_identity]]
+logical_id = "proof-adapter-hawk"
+workspace_path = "crates/proof-adapter-hawk"
+workspace_dependency_aliases = ["proof-adapter-hawk"]
+cargo_package_name = "proof-adapter-hawk"
+rust_library_name = "proof_adapter_hawk"
+product_or_shared_owner = "cargo-proof"
+crate_role = "ProviderAdapter"
+
+[[crate_identity]]
+logical_id = "proof-engine"
+workspace_path = "crates/proof-engine"
+workspace_dependency_aliases = ["proof-engine"]
+cargo_package_name = "proof-engine"
+rust_library_name = "proof_engine"
+product_or_shared_owner = "cargo-proof"
+crate_role = "CargoProof"
+
+[[crate_identity]]
+logical_id = "cargo-proof"
+workspace_path = "crates/cargo-proof"
+workspace_dependency_aliases = ["cargo-proof"]
+cargo_package_name = "cargo-proof"
+rust_library_name = "cargo_proof"
+product_or_shared_owner = "cargo-proof"
+crate_role = "CargoProof"

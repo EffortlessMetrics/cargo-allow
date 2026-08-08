@@ -1,0 +1,317 @@
+schema_version = "2.0"
+authority_generation = 2
+topology_id = "CARGO-ALLOW-PKG-TOPOLOGY-V2-0001"
+controlling_issue = 2923
+linked_architecture_manifest = "CARGO-ALLOW-ARCH-V2-0001"
+
+# Generation-2 package topology (#2923).
+# Every package carries explicit version_source and publication_state.
+# logical_id links to the V2 architecture authority.
+
+# --- cargo-allow product (release order 10-100) ---
+
+[[package]]
+logical_id = "allow-core"
+cargo_package_name = "allow-core"
+product_family = "cargo-allow"
+posture = "CargoAllowSupported"
+package_version = "0.2.0"
+version_source = "WorkspaceProduct"
+publication_state = "UnpublishedInternal"
+publish = true
+candidate_inclusion = true
+release_order = 10
+
+[[package]]
+logical_id = "allow-policy"
+cargo_package_name = "allow-policy"
+product_family = "cargo-allow"
+posture = "CargoAllowSupported"
+package_version = "0.2.0"
+version_source = "WorkspaceProduct"
+publication_state = "UnpublishedInternal"
+publish = true
+candidate_inclusion = true
+release_order = 20
+
+[[package]]
+logical_id = "allow-inventory"
+cargo_package_name = "allow-inventory"
+product_family = "cargo-allow"
+posture = "CargoAllowSupported"
+package_version = "0.2.0"
+version_source = "WorkspaceProduct"
+publication_state = "UnpublishedInternal"
+publish = true
+candidate_inclusion = true
+release_order = 30
+
+[[package]]
+logical_id = "allow-files"
+cargo_package_name = "allow-files"
+product_family = "cargo-allow"
+posture = "CargoAllowSupported"
+package_version = "0.2.0"
+version_source = "WorkspaceProduct"
+publication_state = "UnpublishedInternal"
+publish = true
+candidate_inclusion = true
+release_order = 40
+
+[[package]]
+logical_id = "allow-rust"
+cargo_package_name = "allow-rust"
+product_family = "cargo-allow"
+posture = "CargoAllowSupported"
+package_version = "0.2.0"
+version_source = "WorkspaceProduct"
+publication_state = "UnpublishedInternal"
+publish = true
+candidate_inclusion = true
+release_order = 50
+
+[[package]]
+logical_id = "allow-match"
+cargo_package_name = "allow-match"
+product_family = "cargo-allow"
+posture = "CargoAllowSupported"
+package_version = "0.2.0"
+version_source = "WorkspaceProduct"
+publication_state = "UnpublishedInternal"
+publish = true
+candidate_inclusion = true
+release_order = 60
+
+[[package]]
+logical_id = "allow-report"
+cargo_package_name = "allow-report"
+product_family = "cargo-allow"
+posture = "CargoAllowSupported"
+package_version = "0.2.0"
+version_source = "WorkspaceProduct"
+publication_state = "UnpublishedInternal"
+publish = true
+candidate_inclusion = true
+release_order = 70
+
+[[package]]
+logical_id = "allow-policy-legacy"
+cargo_package_name = "allow-policy-legacy"
+product_family = "cargo-allow"
+posture = "LegacyMigration"
+package_version = "0.2.0"
+version_source = "WorkspaceProduct"
+publication_state = "UnpublishedInternal"
+publish = true
+candidate_inclusion = true
+release_order = 75
+
+[[package]]
+logical_id = "allow-diff"
+cargo_package_name = "allow-diff"
+product_family = "cargo-allow"
+posture = "CargoAllowSupported"
+package_version = "0.2.0"
+version_source = "WorkspaceProduct"
+publication_state = "UnpublishedInternal"
+publish = true
+candidate_inclusion = true
+release_order = 80
+
+[[package]]
+logical_id = "cargo-allow"
+cargo_package_name = "cargo-allow"
+product_family = "cargo-allow"
+posture = "CargoAllowSupported"
+package_version = "0.2.0"
+version_source = "WorkspaceProduct"
+publication_state = "UnpublishedInternal"
+publish = true
+candidate_inclusion = true
+release_order = 100
+
+# --- shared crates (release order 90-98, 220-230) ---
+
+[[package]]
+logical_id = "repo-protocol"
+cargo_package_name = "effortless-repo-protocol"
+product_family = "shared"
+posture = "SharedProtocolInternalOrStabilizing"
+package_version = "0.2.0"
+version_source = "WorkspaceProduct"
+publication_state = "UnpublishedInternal"
+publish = true
+candidate_inclusion = true
+release_order = 95
+
+[[package]]
+logical_id = "repo-edit"
+cargo_package_name = "effortless-repo-edit"
+product_family = "shared"
+posture = "SharedImplementationInternalOrExperimental"
+package_version = "0.2.0"
+version_source = "WorkspaceProduct"
+publication_state = "UnpublishedInternal"
+publish = true
+candidate_inclusion = true
+release_order = 98
+
+[[package]]
+logical_id = "repo-snapshot"
+cargo_package_name = "effortless-repo-snapshot"
+product_family = "shared"
+posture = "SharedImplementationInternalOrExperimental"
+package_version = "0.2.0"
+version_source = "WorkspaceProduct"
+publication_state = "UnpublishedInternal"
+publish = false
+candidate_inclusion = false
+release_order = 220
+
+[[package]]
+logical_id = "rust-source-index"
+cargo_package_name = "effortless-rust-source-index"
+product_family = "shared"
+posture = "SharedProtocolInternalOrStabilizing"
+package_version = "0.2.0"
+version_source = "WorkspaceProduct"
+publication_state = "UnpublishedInternal"
+publish = false
+candidate_inclusion = false
+release_order = 230
+
+# --- cargo-intent product (release order 310-360) ---
+
+[[package]]
+logical_id = "intent-model"
+cargo_package_name = "intent-model"
+product_family = "cargo-intent"
+posture = "CargoIntentExperimental"
+package_version = "0.2.0"
+version_source = "WorkspaceProduct"
+publication_state = "UnpublishedInternal"
+publish = false
+candidate_inclusion = false
+release_order = 310
+
+[[package]]
+logical_id = "intent-protocol"
+cargo_package_name = "intent-protocol"
+product_family = "cargo-intent"
+posture = "CargoIntentExperimental"
+package_version = "0.2.0"
+version_source = "WorkspaceProduct"
+publication_state = "UnpublishedInternal"
+publish = false
+candidate_inclusion = false
+release_order = 320
+
+[[package]]
+logical_id = "intent-engine"
+cargo_package_name = "intent-engine"
+product_family = "cargo-intent"
+posture = "CargoIntentExperimental"
+package_version = "0.2.0"
+version_source = "WorkspaceProduct"
+publication_state = "UnpublishedInternal"
+publish = false
+candidate_inclusion = false
+release_order = 330
+
+[[package]]
+logical_id = "intent-edit"
+cargo_package_name = "intent-edit"
+product_family = "cargo-intent"
+posture = "CargoIntentExperimental"
+package_version = "0.2.0"
+version_source = "WorkspaceProduct"
+publication_state = "UnpublishedInternal"
+publish = false
+candidate_inclusion = false
+release_order = 340
+
+[[package]]
+logical_id = "cargo-intent"
+cargo_package_name = "cargo-intent"
+product_family = "cargo-intent"
+posture = "CargoIntentExperimental"
+package_version = "0.2.0"
+version_source = "WorkspaceProduct"
+publication_state = "UnpublishedInternal"
+publish = false
+candidate_inclusion = false
+release_order = 360
+
+# --- cargo-proof product (release order 410-435) ---
+
+[[package]]
+logical_id = "proof-protocol"
+cargo_package_name = "proof-protocol"
+product_family = "cargo-proof"
+posture = "CargoProofExperimental"
+package_version = "0.2.0"
+version_source = "WorkspaceProduct"
+publication_state = "UnpublishedInternal"
+publish = false
+candidate_inclusion = false
+release_order = 410
+
+[[package]]
+logical_id = "proof-adapter-cargo-allow"
+cargo_package_name = "proof-adapter-cargo-allow"
+product_family = "cargo-proof"
+posture = "CargoProofExperimental"
+package_version = "0.2.0"
+version_source = "WorkspaceProduct"
+publication_state = "UnpublishedInternal"
+publish = false
+candidate_inclusion = false
+release_order = 427
+
+[[package]]
+logical_id = "proof-adapter-ripr"
+cargo_package_name = "proof-adapter-ripr"
+product_family = "cargo-proof"
+posture = "CargoProofExperimental"
+package_version = "0.2.0"
+version_source = "WorkspaceProduct"
+publication_state = "UnpublishedInternal"
+publish = false
+candidate_inclusion = false
+release_order = 428
+
+[[package]]
+logical_id = "proof-adapter-hawk"
+cargo_package_name = "proof-adapter-hawk"
+product_family = "cargo-proof"
+posture = "CargoProofExperimental"
+package_version = "0.2.0"
+version_source = "WorkspaceProduct"
+publication_state = "UnpublishedInternal"
+publish = false
+candidate_inclusion = false
+release_order = 429
+
+[[package]]
+logical_id = "proof-engine"
+cargo_package_name = "proof-engine"
+product_family = "cargo-proof"
+posture = "CargoProofExperimental"
+package_version = "0.2.0"
+version_source = "WorkspaceProduct"
+publication_state = "UnpublishedInternal"
+publish = false
+candidate_inclusion = false
+release_order = 430
+
+[[package]]
+logical_id = "cargo-proof"
+cargo_package_name = "cargo-proof"
+product_family = "cargo-proof"
+posture = "CargoProofExperimental"
+package_version = "0.2.0"
+version_source = "WorkspaceProduct"
+publication_state = "UnpublishedInternal"
+publish = false
+candidate_inclusion = false
+release_order = 435
