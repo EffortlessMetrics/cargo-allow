@@ -168,10 +168,7 @@ pub fn reconcile_v2_denominators(
                     "logical_id mismatch for package `{package}`: architecture=`{}`, topology=`{}`",
                     arch_entry.logical_id, topo_entry.logical_id
                 ),
-                logical_ids: vec![
-                    arch_entry.logical_id.clone(),
-                    topo_entry.logical_id.clone(),
-                ],
+                logical_ids: vec![arch_entry.logical_id.clone(), topo_entry.logical_id.clone()],
             });
         }
     }
