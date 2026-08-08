@@ -309,7 +309,8 @@ fn build_explain_summary(
         reason,
         primary_action,
         additional_action_count: projection.suggested_actions.len().saturating_sub(1),
-        additional_actions_ref: None,
+        additional_actions_ref: (projection.suggested_actions.len() > 1)
+            .then_some("explain.next.suggested_actions".to_string()),
         operation_effects: CoreCommandEffectsV1::read_only(vec![
             "does not modify source, policy, Git, hooks, workflows, or GitHub settings".to_string(),
             "does not execute repository code or external evidence tools".to_string(),
