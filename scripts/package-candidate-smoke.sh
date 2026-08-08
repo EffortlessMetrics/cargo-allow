@@ -49,6 +49,21 @@ read_workspace_version() {
   ' Cargo.toml
 }
 
+# Read the version of a specific crate from its Cargo.toml.
+# Handles both `version.workspace = true` (resolves workspace version) and
+# explicit `version = "X.Y.Z"` (#2885 version split).
+read_crate_version() {
+  local crate="$1"
+  local manifest="crates/${crate}/Cargo.toml"
+  local line
+  line="$(grep -m1 '^version' "${manifest}" 2>/dev/null)" || true
+  if [[ "${line}" == "version.workspace = true" ]]; then
+    read_workspace_version
+  else
+    echo "${line}" | sed 's/^version = "//; s/"$//'
+  fi
+}
+
 assert_no_path_deps() {
   local tree="$1"
   local label="$2"
@@ -130,17 +145,19 @@ if [[ "${SKIP_PACKAGE:-0}" != "1" ]]; then
   # proof-engine depends on unpublished proof-protocol workspace crate; exclude until #2604 publish posture.
   cargo package --workspace --locked --exclude cargo-intent --exclude proof-adapter-cargo-allow --exclude proof-adapter-ripr --exclude proof-adapter-hawk --exclude proof-engine --exclude cargo-proof
   for crate in "${crates[@]}"; do
-    crate_file="target/package/${crate}-${version}.crate"
+    crate_version="$(read_crate_version "${crate}")"
+    crate_file="target/package/${crate}-${crate_version}.crate"
     [[ -f "${crate_file}" ]] || fail "missing packaged crate ${crate_file}"
     cp "${crate_file}" "${packages_dir}/"
-    echo "packaged=${crate}-${version}.crate" >>"${receipt}"
+    echo "packaged=${crate}-${crate_version}.crate" >>"${receipt}"
   done
 else
   log "SKIP_PACKAGE=1; reusing packages under ${packages_dir}"
 fi
 
 for crate in "${crates[@]}"; do
-  crate_file="${packages_dir}/${crate}-${version}.crate"
+  crate_version="$(read_crate_version "${crate}")"
+  crate_file="${packages_dir}/${crate}-${crate_version}.crate"
   [[ -f "${crate_file}" ]] || fail "missing ${crate_file}"
 done
 
@@ -151,7 +168,7 @@ for crate in "${crates[@]}"; do
   mkdir -p "${tmp}"
   # --force-local stops GNU tar from reading a Windows drive-letter prefix
   # (e.g. C:/...) as a remote "host:path" pair. Harmless on Linux/macOS.
-  tar --force-local -xzf "${packages_dir}/${crate}-${version}.crate" -C "${tmp}"
+  tar --force-local -xzf "${packages_dir}/${crate}-${crate_version}.crate" -C "${tmp}"
   assert_no_path_deps "${tmp}" "${crate}"
   echo "no_path_deps=${crate}" >>"${receipt}"
 done
