@@ -92,12 +92,13 @@ pub(crate) fn cmd_adopt(args: &AdoptionArgs) -> CargoAllowResult<()> {
         allow_report::BootstrapDisposition::PartialInventory
         | allow_report::BootstrapDisposition::InvalidPolicy
         | allow_report::BootstrapDisposition::UnsupportedRepositoryState
-        | allow_report::BootstrapDisposition::InstrumentFailure => {
-            Err(CargoAllowError::new(format!(
+        | allow_report::BootstrapDisposition::InstrumentFailure => Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!(
                 "cargo-allow adopt: {}",
                 disposition_text(artifact.plan.bootstrap_disposition)
-            )))
-        }
+            ),
+        )),
         _ => Ok(()),
     }
 }

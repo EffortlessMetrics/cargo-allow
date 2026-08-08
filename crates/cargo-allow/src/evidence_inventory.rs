@@ -1,4 +1,6 @@
-use allow_core::{AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, normalize_path};
+use allow_core::{
+    AllowConfig, AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, normalize_path,
+};
 use allow_policy::{
     EvidenceReferenceCategory, EvidenceReferenceDiagnostic, EvidenceReferenceSource,
     EvidenceReferenceStatus, evidence_reference_diagnostics, policy_reference_diagnostics,
@@ -55,13 +57,16 @@ pub(crate) fn validate_evidence_references_for_source_tree(
             policy_reference_diagnostics_for_source_tree(root, entry, source_tree_files)
         {
             if reference.diagnostic.status.is_broken_local_link() {
-                return Err(CargoAllowError::new(format!(
-                    "{} {} `{}`: {}",
-                    entry.id,
-                    reference.source.label(),
-                    reference.diagnostic.raw,
-                    reference.source.message(&reference.diagnostic.message)
-                )));
+                return Err(CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Artifact,
+                    format!(
+                        "{} {} `{}`: {}",
+                        entry.id,
+                        reference.source.label(),
+                        reference.diagnostic.raw,
+                        reference.source.message(&reference.diagnostic.message)
+                    ),
+                ));
             }
         }
     }

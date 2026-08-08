@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_match::{CheckMode, evaluate};
 
 use crate::evidence_inventory::current_evidence_source_tree_files;
@@ -180,9 +180,10 @@ fn reject_source_exception_options_for_profile(args: &WorklistArgs) -> CargoAllo
 }
 
 fn profile_option_error<T>(option: &str) -> CargoAllowResult<T> {
-    Err(CargoAllowError::new(format!(
-        "{option} is not supported with --profile spec-system"
-    )))
+    Err(CargoAllowError::with_kind(
+        CargoAllowErrorKind::Artifact,
+        format!("{option} is not supported with --profile spec-system"),
+    ))
 }
 
 #[cfg(test)]

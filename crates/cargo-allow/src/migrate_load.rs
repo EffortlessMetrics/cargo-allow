@@ -1,4 +1,6 @@
-use allow_core::{CargoAllowError, CargoAllowResult, FindingKind, normalize_path};
+use allow_core::{
+    CargoAllowError, CargoAllowErrorKind, CargoAllowResult, FindingKind, normalize_path,
+};
 use allow_inventory::{InventoryOptions, inventory, resolve_source_tree_root};
 use allow_policy::import_bespoke_ledger_at;
 use allow_report::MigrateBaselineDebtProjection;
@@ -128,10 +130,13 @@ fn repo_policy_source_tree_root(
             .filter(|parent| !parent.as_os_str().is_empty())
             .map(PathBuf::from)
             .ok_or_else(|| {
-                CargoAllowError::new(format!(
-                    "failed to infer repository root from {}",
-                    repo_policy.display()
-                ))
+                CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Artifact,
+                    format!(
+                        "failed to infer repository root from {}",
+                        repo_policy.display()
+                    ),
+                )
             });
     }
     resolve_source_tree_root(None, cwd)

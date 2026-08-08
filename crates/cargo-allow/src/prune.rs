@@ -82,10 +82,13 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
                 .iter()
                 .find(|entry| entry.id == candidate.id)
                 .ok_or_else(|| {
-                    CargoAllowError::new(format!(
-                        "internal error: stale candidate {} is missing from policy",
-                        candidate.id
-                    ))
+                    CargoAllowError::with_kind(
+                        CargoAllowErrorKind::Artifact,
+                        format!(
+                            "internal error: stale candidate {} is missing from policy",
+                            candidate.id
+                        ),
+                    )
                 })
                 .map(|entry| Some(allow_core::allow_entry_content_fingerprint(entry)))
         })

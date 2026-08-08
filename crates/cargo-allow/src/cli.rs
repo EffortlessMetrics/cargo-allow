@@ -156,9 +156,12 @@ pub(crate) fn run() -> CargoAllowResult<()> {
                 "--summary-output requires the audit or check subcommand",
             ));
         }
-        CargoAllowCli::command()
-            .print_help()
-            .map_err(|e| CargoAllowError::new(format!("failed to print help: {e}")))?;
+        CargoAllowCli::command().print_help().map_err(|e| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                format!("failed to print help: {e}"),
+            )
+        })?;
         println!();
         return Ok(());
     };
