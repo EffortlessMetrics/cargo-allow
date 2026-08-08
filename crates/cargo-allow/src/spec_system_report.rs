@@ -22,7 +22,11 @@ pub(super) fn build_spec_system_report(
     let config_provenance = loaded_config.provenance.as_str().to_string();
     let mut findings = profile_config_findings(&loaded_config, config.is_some());
     if let Some(message) = profile_config_conflict_message(&loaded_config.resolved) {
-        findings.push(SpecSystemFinding::new("profile_config", message));
+        findings.push(SpecSystemFinding::new_typed(
+            "profile_config",
+            message,
+            "profile_config_parse_failure",
+        ));
     }
     findings.extend(federation_config_findings(&root));
     let mut artifacts = Vec::new();
