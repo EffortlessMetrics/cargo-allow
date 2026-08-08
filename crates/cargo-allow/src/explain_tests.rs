@@ -94,9 +94,8 @@ fn explain_core_summary_routes_attention_with_invocation_context() {
         Some(Path::new("policy/allow.toml")),
         true,
         ExplainSummaryProjection {
-            suggested_actions: &[],
+            suggested_actions: &["inspect the entry worklist".to_string()],
             proof_commands: &[],
-            repository_identity: "test-repository".to_string(),
         },
     )
     .unwrap_or_else(|error| std::panic::panic_any(format!("explain summary: {error}")));
@@ -107,19 +106,8 @@ fn explain_core_summary_routes_attention_with_invocation_context() {
         summary
             .primary_action
             .as_ref()
-            .map(|action| action.args.clone()),
-        Some(vec![
-            "worklist".to_string(),
-            "--allow-id".to_string(),
-            "allow-explain-attention".to_string(),
-            "--format".to_string(),
-            "json".to_string(),
-            "--root".to_string(),
-            "repo".to_string(),
-            "--config".to_string(),
-            "policy/allow.toml".to_string(),
-            "--include-untracked".to_string(),
-        ])
+            .map(|action| action.id.as_str()),
+        Some("explain.inspect_worklist")
     );
 }
 
@@ -139,7 +127,6 @@ fn explain_json_adds_schema_validated_core_summary_without_replacing_detail() ->
         ExplainSummaryProjection {
             suggested_actions: &[],
             proof_commands: &[],
-            repository_identity: "test-repository".to_string(),
         },
     )
     .map_err(|error| format!("explain summary: {error}"))?;
@@ -178,14 +165,15 @@ fn explain_summary_does_not_claim_satisfied_when_detail_has_repair_steps() {
         false,
         ExplainSummaryProjection {
             suggested_actions: &["repair evidence".to_string()],
-            proof_commands: &[],
-            repository_identity: "test-repository".to_string(),
+            proof_commands: &["cargo-allow explain allow-explain-reference-debt".to_string()],
         },
     )
     .unwrap_or_else(|error| std::panic::panic_any(format!("explain summary: {error}")));
 
     assert_eq!(summary.result_class, ResultClassV1::Findings);
     assert_eq!(summary.posture, CoreCommandPostureV1::Advisory);
+    assert!(summary.primary_action.is_some());
+    assert!(summary.next_proof.is_some());
     assert_eq!(
         summary.reason.code,
         "explain.entry_requires_attention".to_string()

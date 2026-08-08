@@ -9,7 +9,6 @@ use std::path::Path;
 
 use crate::{
     EvidenceValidationMode, HumanJsonFormat, ProfileArg, SourceTreeReportContext,
-    core_command_router::canonical_semantic_identity,
     core_command_summary::{
         CoreCommandActionV1, CoreCommandEffectsV1, CoreCommandPostureV1, CoreCommandReasonV1,
         CoreCommandSummaryInputV1, CoreCommandSummaryV1, CoreSourceSubjectKindV1,
@@ -102,7 +101,6 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
             &proof_commands,
         ),
     );
-    let repository_identity = canonical_semantic_identity(&detail_json, Some(&root))?;
     let summary = build_explain_summary(
         entry,
         &outcomes,
@@ -113,7 +111,6 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
         ExplainSummaryProjection {
             suggested_actions: &suggested_actions,
             proof_commands: &proof_commands,
-            repository_identity,
         },
     )?;
     let text = match args.format {
@@ -142,7 +139,6 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
 struct ExplainSummaryProjection<'a> {
     suggested_actions: &'a [String],
     proof_commands: &'a [String],
-    repository_identity: String,
 }
 
 fn build_explain_summary(
@@ -203,9 +199,9 @@ fn build_explain_summary(
             CoreCommandReasonV1 {
                 code: "explain.entry_requires_attention".to_string(),
                 message: format!(
-                    "allow entry `{}` has {} outcome(s) requiring attention",
+                    "allow entry `{}` has {} outcome(s) or deterministic next step(s) requiring attention",
                     entry.id,
-                    attention.len()
+                    attention.len(),
                 ),
             },
         )
@@ -225,50 +221,55 @@ fn build_explain_summary(
                 "doctor remains read-only, uses its default inventory scope, and does not authorize policy entries",
             ),
         )
-    } else if !attention.is_empty() {
-        Some(
-            CoreCommandActionV1::command(
+    } else {
+        projection.suggested_actions.first().map(|action| {
+            CoreCommandActionV1::decision(
                 "explain.inspect_worklist",
                 "Inspect entry repair guidance",
-                "cargo-allow",
-                explain_context_args_with_prefix(
-                    vec![
-                        "worklist".to_string(),
-                        "--allow-id".to_string(),
-                        entry.id.clone(),
-                        "--format".to_string(),
-                        "json".to_string(),
-                    ],
-                    root_arg,
-                    config,
-                    include_untracked,
-                ),
             )
             .with_contract(
-                "the explained entry has a non-matched outcome",
+                action,
                 "the exact typed maintenance and repair guidance for this entry is shown",
-                "worklist is guidance and does not mutate source or policy",
-            ),
-        )
-    } else {
-        None
+                "the suggested action is guidance and does not mutate source or policy",
+            )
+        })
     };
 
-    let portable_identity = inventory
+    let next_proof = projection.proof_commands.first().map(|command| {
+        let mut parts = command.split_ascii_whitespace();
+        let program = parts.next().unwrap_or("cargo-allow");
+        let args = parts.map(str::to_string).collect::<Vec<_>>();
+        CoreCommandActionV1::command(
+            "explain.next_proof",
+            "Run the next proof command",
+            program,
+            args,
+        )
+        .with_contract(
+            "the detailed explanation emitted a deterministic proof command",
+            "the selected proof command is available for operator execution",
+            "cargo-allow does not execute the proof command as part of explain",
+        )
+    });
+    let repository_identity = inventory
         .source_identity
-        .map(|identity| format!("{identity}:allow-entry:{}", entry.id))
+        .map(str::to_string)
         .unwrap_or_else(|| {
             format!(
-                "worktree:{}:{}:{}:allow-entry:{}",
-                inventory.source, inventory.scope, inventory.scanner, entry.id
+                "worktree:{}:{}:{}",
+                inventory.source, inventory.scope, inventory.scanner
             )
         });
+    let portable_identity = inventory
+        .source_identity
+        .map(str::to_string)
+        .unwrap_or_else(|| format!("worktree:{}:current-unpinned", inventory.source));
     let subject = CoreSourceSubjectV1 {
         kind: inventory
             .source_identity
             .map(|_| CoreSourceSubjectKindV1::Index)
             .unwrap_or(CoreSourceSubjectKindV1::Worktree),
-        repository_identity: format!("sha256:v1:{}", projection.repository_identity),
+        repository_identity: format!("local-repository:{repository_identity}"),
         portable_identity,
         base: None,
         head: None,
@@ -314,7 +315,7 @@ fn build_explain_summary(
             "does not modify source, policy, Git, hooks, workflows, or GitHub settings".to_string(),
             "does not execute repository code or external evidence tools".to_string(),
         ]),
-        next_proof: None,
+        next_proof,
         artifacts: Vec::new(),
         claim_boundary: ClaimBoundaryV1::new(
             "cargo-allow explained one selected source-tree ledger entry and its observed matching outcomes; it did not authorize or mutate the entry",
