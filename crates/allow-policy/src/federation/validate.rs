@@ -13,6 +13,7 @@ pub fn validate_federation_config(config: FederationConfig) -> ValidatedFederati
     diagnostics.extend(detect_duplicate_paths(&config.ledgers));
     diagnostics.extend(detect_mirror_targets(&config.ledgers));
     diagnostics.extend(detect_duplicate_canonical_lanes(&config.ledgers));
+    diagnostics.extend(detect_priority_ties(&config.ledgers));
     diagnostics.extend(detect_dialect_issues(&config.ledgers));
     diagnostics.extend(detect_drain_window_issues(
         &config.ledgers,
@@ -151,6 +152,44 @@ fn detect_duplicate_canonical_lanes(ledgers: &[LedgerEntry]) -> Vec<FederationDi
                 message: format!(
                     "multiple canonical ledgers claim lane `{lane}`: {}",
                     ids.join(", ")
+                ),
+                ledger_ids: ids,
+            }
+        })
+        .collect()
+}
+
+/// Detect canonical ledgers that share the same lane AND the same priority
+/// value — the precedence is undocumented declaration order, which is fragile
+/// (#2010). Each such tie produces a diagnostic so operators can assign
+/// distinct priorities.
+fn detect_priority_ties(ledgers: &[LedgerEntry]) -> Vec<FederationDiagnostic> {
+    let mut lane_priority_owners: BTreeMap<(String, u32), Vec<&LedgerEntry>> = BTreeMap::new();
+    for ledger in ledgers {
+        if ledger.role != LedgerRole::Canonical {
+            continue;
+        }
+        for lane in &ledger.lanes {
+            lane_priority_owners
+                .entry((lane.clone(), ledger.priority))
+                .or_default()
+                .push(ledger);
+        }
+    }
+
+    lane_priority_owners
+        .into_iter()
+        .filter(|(_, owners)| owners.len() > 1)
+        .map(|((lane, priority), owners)| {
+            let ids = owners
+                .iter()
+                .map(|entry| entry.id.to_string())
+                .collect::<Vec<_>>();
+            FederationDiagnostic {
+                kind: FederationDiagnosticKind::PriorityTie,
+                message: format!(
+                    "canonical ledgers {ids:?} share lane `{lane}` at priority {priority}; \
+                     precedence is undocumented declaration order — assign distinct priorities"
                 ),
                 ledger_ids: ids,
             }

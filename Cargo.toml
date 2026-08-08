@@ -35,6 +35,7 @@ version = "0.2.0"
 rust-version = "1.95"
 repository = "https://github.com/EffortlessMetrics/cargo-allow"
 homepage = "https://github.com/EffortlessMetrics/cargo-allow"
+documentation = "https://github.com/EffortlessMetrics/cargo-allow#readme"
 readme = "README.md"
 keywords = ["rust", "policy", "audit", "governance", "scanner"]
 categories = ["development-tools"]

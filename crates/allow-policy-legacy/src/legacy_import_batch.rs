@@ -63,6 +63,12 @@ pub fn import_legacy_policy_dir(
     }
 
     let mut merged = AllowConfig::empty();
+    // `AllowConfig::empty()` seeds `status: Some("active")`, and the
+    // first-non-None merge below only writes into a `None` slot. Left as-is,
+    // every lane's declared status is discarded and a legacy policy marked
+    // `advisory` would silently import as enforcing. Clear it here and restore
+    // the default after the lanes have had their say.
+    merged.status = None;
     let mut families = Vec::new();
     let mut loaded = 0usize;
 
@@ -97,6 +103,10 @@ pub fn import_legacy_policy_dir(
             allow_core::normalize_path(dir)
         )));
     }
+
+    // Restore the `AllowConfig::empty()` default only when no lane declared a
+    // status of its own.
+    merged.status.get_or_insert_with(|| "active".to_string());
 
     // #1867: detect unrecognized .toml files in the legacy directory that
     // were silently skipped because they don't match a known lane descriptor.

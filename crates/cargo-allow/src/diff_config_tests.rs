@@ -29,7 +29,9 @@ fn cmd_diff_with_explicit_head_reports_missing_default_policy_config_with_exact_
     })
     .expect_err("diff without policy in compared revisions should fail");
 
-    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
+    // #2511/#3275: a missing or unresolvable policy config is typed
+    // `InvalidConfig`, not the untyped `Unknown` fallback.
+    assert_eq!(err.kind(), CargoAllowErrorKind::InvalidConfig);
 
     fs::remove_dir_all(&root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
@@ -58,7 +60,9 @@ fn cmd_diff_with_explicit_head_rejects_missing_explicit_config_path_with_exact_e
     })
     .expect_err("diff with missing explicit --config in compared revisions should fail");
 
-    assert_eq!(err.kind(), CargoAllowErrorKind::Unknown);
+    // #2511/#3275: a missing or unresolvable policy config is typed
+    // `InvalidConfig`, not the untyped `Unknown` fallback.
+    assert_eq!(err.kind(), CargoAllowErrorKind::InvalidConfig);
 
     fs::remove_dir_all(&root)
         .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));

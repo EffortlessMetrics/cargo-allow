@@ -72,7 +72,12 @@ fn policy_change_notes_pin_exact_transition_and_inverse_is_improvement() {
     );
     let (before_fingerprint, after_fingerprint) =
         transition_fingerprints(&weakening_base, &weakening_head);
-    let missing_stderr = String::from_utf8_lossy(&missing.stderr);
+    // #3218 keeps stderr clean in JSON mode so pipelines are not disturbed, so
+    // the #2075 change-note diagnostic is asserted on the human render instead.
+    // The JSON run above still pins the machine-readable transition rows.
+    let missing_rendered = run_diff_rendered(&weakening_root, "human", true);
+    assert_status("weakening without note (human)", &missing_rendered, false);
+    let missing_stderr = String::from_utf8_lossy(&missing_rendered.stderr);
     assert!(
         missing_stderr.contains("change note required: allow-transition occurrence_limit_loosened"),
         "missing-note diagnostic should identify the transition: {missing_stderr}"
@@ -151,8 +156,10 @@ fn policy_change_notes_pin_exact_transition_and_inverse_is_improvement() {
         &stale_output,
     );
     assert_status("weakening with stale note", &stale, false);
+    let stale_rendered = run_diff_rendered(&weakening_root, "human", true);
+    assert_status("weakening with stale note (human)", &stale_rendered, false);
     assert!(
-        String::from_utf8_lossy(&stale.stderr).contains("change note required"),
+        String::from_utf8_lossy(&stale_rendered.stderr).contains("change note required"),
         "stale fingerprint should reopen the note obligation"
     );
     remove_temp_root(weakening_root);

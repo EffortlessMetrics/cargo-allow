@@ -140,6 +140,18 @@ impl AllowEntry {
             String::new()
         }
     }
+
+    /// Return the path or glob as an Option, avoiding the empty-string sentinel
+    /// that `path_or_glob()` returns when no path/glob is set (#1923).
+    pub fn path_or_glob_opt(&self) -> Option<String> {
+        if let Some(path) = &self.path {
+            return Some(normalize_path(path));
+        }
+        if let Some(glob) = &self.glob {
+            return Some(normalize_source_tree_scope(glob));
+        }
+        self.selector.glob.as_deref().map(normalize_source_tree_scope)
+    }
 }
 
 /// Per-ledger requirements toggles. Defaults are intentionally strict on

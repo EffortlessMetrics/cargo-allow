@@ -71,6 +71,9 @@ pub enum FederationDiagnosticKind {
     DrainWindowMissingField,
     DrainWindowInvalidDate,
     DrainWindowNotMirror,
+    /// Two canonical ledgers share the same lane and the same priority —
+    /// precedence is undocumented first-in-file (#2010).
+    PriorityTie,
 }
 
 impl FederationDiagnosticKind {
@@ -87,6 +90,7 @@ impl FederationDiagnosticKind {
             Self::DrainWindowMissingField => "drain_window_missing_field",
             Self::DrainWindowInvalidDate => "drain_window_invalid_date",
             Self::DrainWindowNotMirror => "drain_window_not_mirror",
+            Self::PriorityTie => "priority_tie",
         }
     }
 }

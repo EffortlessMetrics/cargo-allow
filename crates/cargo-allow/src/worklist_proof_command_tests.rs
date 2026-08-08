@@ -233,8 +233,10 @@ fn proof_commands_cover_policy_family_aliases_and_unknown_policy_fallback() {
                 format!("cargo-allow explain allow-{family}"),
                 format!("cargo-allow list --allow-id allow-{family} --format json"),
                 format!("cargo-allow worklist --allow-id allow-{family} --format json"),
-                "cargo-allow refresh <allow-id> --dry-run".to_string(),
-                "cargo-allow refresh <allow-id> --format json".to_string(),
+                // #3181: review-due items carry the entry's real allow ID so the
+                // command is copy-pasteable, rather than a `<allow-id>` placeholder.
+                format!("cargo-allow refresh allow-{family} --dry-run"),
+                format!("cargo-allow refresh allow-{family} --format json"),
                 format!("cargo-allow check --kind {kind_arg} --mode no-new"),
                 "cargo-allow worklist --item-kind review_due --format json".to_string(),
                 "cargo-allow list --review-due --format json".to_string(),
@@ -266,8 +268,9 @@ fn proof_commands_cover_policy_family_aliases_and_unknown_policy_fallback() {
             "cargo-allow explain allow-policy",
             "cargo-allow list --allow-id allow-policy --format json",
             "cargo-allow worklist --allow-id allow-policy --format json",
-            "cargo-allow refresh <allow-id> --dry-run",
-            "cargo-allow refresh <allow-id> --format json",
+            // #3181: the entry's real allow ID, not a placeholder.
+            "cargo-allow refresh allow-policy --dry-run",
+            "cargo-allow refresh allow-policy --format json",
             "cargo-allow check --mode no-new",
             "cargo-allow worklist --item-kind review_due --format json",
             "cargo-allow list --review-due --format json",

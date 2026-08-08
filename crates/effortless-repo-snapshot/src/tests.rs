@@ -127,8 +127,9 @@ fn source_view_staged_parity_fixture() -> Result<(), String> {
 #[test]
 fn source_view_package_copy_matches_repo_snapshot() -> Result<(), String> {
     let root = workspace_root();
-    let canonical = std::fs::read_to_string(root.join("crates/repo-snapshot/src/source_view.rs"))
-        .map_err(|err| format!("read canonical source_view: {err}"))?;
+    let canonical =
+        std::fs::read_to_string(root.join("crates/effortless-repo-snapshot/src/source_view.rs"))
+            .map_err(|err| format!("read canonical source_view: {err}"))?;
     let packaged =
         std::fs::read_to_string(root.join("crates/cargo-allow/src/spec_system_source_view.rs"))
             .map_err(|err| format!("read packaged source_view copy: {err}"))?;
@@ -142,7 +143,7 @@ fn source_view_package_copy_matches_repo_snapshot() -> Result<(), String> {
         .ok_or_else(|| "packaged source_view missing body marker".to_string())?;
     if canonical_body.replace("\r\n", "\n") != packaged_body.replace("\r\n", "\n") {
         return Err(
-            "cargo-allow spec_system_source_view.rs must match repo-snapshot source_view.rs (modulo import paths)"
+            "cargo-allow spec_system_source_view.rs must match effortless-repo-snapshot source_view.rs (modulo import paths)"
                 .to_string(),
         );
     }

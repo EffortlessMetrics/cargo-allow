@@ -43,8 +43,12 @@ pub(crate) struct CargoAllowCli {
     /// This first migration slice supports source-exception `audit` and
     /// `check` reports. Existing detailed human, JSON, Markdown, HTML, SARIF,
     /// and receipt artifacts remain unchanged.
+    ///
+    /// Deliberately *not* named `--summary-output`: `add`, `propose`, and
+    /// `migrate` each own a per-command `--summary-output` with different
+    /// semantics, and a global flag of that name shadows them.
     #[arg(long, global = true, value_name = "PATH")]
-    pub(crate) summary_output: Option<PathBuf>,
+    pub(crate) command_summary_output: Option<PathBuf>,
     #[command(subcommand)]
     pub(crate) command: Option<CargoAllowCommand>,
 }
@@ -150,10 +154,10 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         }
     }
     let Some(command) = cli.command else {
-        if cli.summary_output.is_some() {
+        if cli.command_summary_output.is_some() {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::Usage,
-                "--summary-output requires the audit or check subcommand",
+                "--command-summary-output requires the audit or check subcommand",
             ));
         }
         CargoAllowCli::command().print_help().map_err(|e| {
@@ -165,7 +169,7 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         println!();
         return Ok(());
     };
-    configure_summary_output(cli.summary_output, &command)?;
+    configure_summary_output(cli.command_summary_output, &command)?;
     match command {
         CargoAllowCommand::Init(args) => init::cmd_init(&args),
         CargoAllowCommand::Adopt(args) => adoption::cmd_adopt(&args),
@@ -216,7 +220,7 @@ fn configure_summary_output(
         _ => {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::Usage,
-                "--summary-output currently supports source-exception audit and check reports only",
+                "--command-summary-output currently supports source-exception audit and check reports only",
             ));
         }
     };

@@ -454,7 +454,7 @@ fn validate_summary_output_path(
         if same_path(&path, &conflict) {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::Usage,
-                "--summary-output must differ from --output, --receipt, and --config",
+                "--command-summary-output must differ from --output, --receipt, and --config",
             ));
         }
     }
@@ -482,7 +482,7 @@ fn reject_tracked_summary_output(root: &Path, output: &Path) -> CargoAllowResult
     {
         return Err(CargoAllowError::with_kind(
             CargoAllowErrorKind::Usage,
-            "--summary-output may not overwrite a tracked or staged repository file",
+            "--command-summary-output may not overwrite a tracked or staged repository file",
         ));
     }
     Ok(())

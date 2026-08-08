@@ -84,6 +84,6 @@ The lane must not:
 - Implementation plan:
   [plans/migration-parity/implementation-plan.md](../../plans/migration-parity/implementation-plan.md)
 - Active goal:
-  [CARGO-ALLOW-GOAL-0002](../../.codex/goals/active.toml)
+  [CARGO-ALLOW-GOAL-0002](../../.allow/goals/active.toml)
 - Migration guide:
   [docs/migration-from-xtask.md](../migration-from-xtask.md)
