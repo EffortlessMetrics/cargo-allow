@@ -330,33 +330,67 @@ fn scrub_non_semantic_fields(value: &mut Value) {
 /// placeholder, in both native and forward-slash spelling, so a relocated or
 /// differently-spelled checkout of the same content hashes identically.
 fn redact_root_text(value: &mut Value, root: &Path) {
-    let native = root.to_string_lossy().to_string();
-    if native.is_empty() {
+    let spellings = root_spellings(root);
+    if spellings.is_empty() {
         return;
     }
-    let portable = native.replace('\\', "/");
-    redact_root_spellings(value, &native, &portable);
+    redact_root_spellings(value, &spellings);
 }
 
-fn redact_root_spellings(value: &mut Value, native: &str, portable: &str) {
+/// Every spelling of the root that can appear inside an artifact string.
+///
+/// A Windows artifact can carry the native backslash form, the portable
+/// forward-slash form, and — because `#3180` strips the Win32 verbatim prefix
+/// from operator-facing text while the resolved root may still carry it — the
+/// prefix-stripped form of either. Longest first, so a longer spelling is never
+/// left half-redacted by a shorter prefix of itself.
+fn root_spellings(root: &Path) -> Vec<String> {
+    let native = root.to_string_lossy().to_string();
+    // `strip_win32_verbatim_prefix` returns the forward-slash form, so each
+    // base is expanded into both separator spellings rather than assuming one.
+    let bases = [
+        native.clone(),
+        allow_core::strip_win32_verbatim_prefix(&native),
+    ];
+    let mut spellings = Vec::new();
+    for base in bases {
+        spellings.push(base.replace('\\', "/"));
+        spellings.push(base.replace('/', "\\"));
+        spellings.push(base);
+    }
+    // A root that is only separators (`/` or `\`) would match every path
+    // separator in the document and destroy its structure. Such a root is not a
+    // real repository checkout, so redact nothing.
+    spellings.retain(|spelling| {
+        spelling
+            .chars()
+            .any(|character| !matches!(character, '/' | '\\'))
+    });
+    // Longest first, so a longer spelling is never left half-redacted by a
+    // shorter prefix of itself.
+    spellings.sort_by(|left, right| right.len().cmp(&left.len()).then_with(|| left.cmp(right)));
+    spellings.dedup();
+    spellings
+}
+
+fn redact_root_spellings(value: &mut Value, spellings: &[String]) {
     const PLACEHOLDER: &str = "<repository-root>";
     match value {
         Value::Object(map) => {
             for child in map.values_mut() {
-                redact_root_spellings(child, native, portable);
+                redact_root_spellings(child, spellings);
             }
         }
         Value::Array(values) => {
             for child in values {
-                redact_root_spellings(child, native, portable);
+                redact_root_spellings(child, spellings);
             }
         }
         Value::String(text) => {
-            if text.contains(native) {
-                *text = text.replace(native, PLACEHOLDER);
-            }
-            if portable != native && text.contains(portable) {
-                *text = text.replace(portable, PLACEHOLDER);
+            for spelling in spellings {
+                if text.contains(spelling.as_str()) {
+                    *text = text.replace(spelling.as_str(), PLACEHOLDER);
+                }
             }
         }
         _ => {}

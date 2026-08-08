@@ -299,3 +299,36 @@ fn semantic_identity_redacts_both_path_spellings() -> Result<(), String> {
         "native and portable root spellings must redact identically",
     )
 }
+
+#[test]
+fn semantic_identity_redacts_a_verbatim_prefixed_root() -> Result<(), String> {
+    // #3180 strips the Win32 verbatim prefix from operator-facing text, so an
+    // artifact can name the root as `D:\repo` while the resolved root is still
+    // `\\?\D:\repo`. Both must redact to the same identity, or a Windows
+    // checkout drifts against itself.
+    let verbatim = identity(
+        r#"{"a":"D:\\repo\\src","b":"D:/repo/src"}"#,
+        Path::new(r"\\?\D:\repo"),
+    )?;
+    let plain = identity(
+        r#"{"a":"D:\\repo\\src","b":"D:/repo/src"}"#,
+        Path::new(r"D:\repo"),
+    )?;
+    require(
+        verbatim == plain,
+        format!("verbatim and plain roots must redact identically: {verbatim} != {plain}"),
+    )
+}
+
+#[test]
+fn semantic_identity_never_redacts_a_bare_separator_root() -> Result<(), String> {
+    // A root of `/` or `\` would otherwise match every separator in the
+    // document and destroy its structure. Such a root is not a real checkout.
+    let artifact = r#"{"a":"/usr/lib/x","b":"findings/1"}"#;
+    let separator_root = identity(artifact, Path::new("/"))?;
+    let untouched = canonical_semantic_identity(artifact, None).map_err(|e| e.to_string())?;
+    require(
+        separator_root == untouched,
+        "a bare separator root must redact nothing",
+    )
+}
