@@ -172,7 +172,7 @@ pub(crate) fn root_relative_path(root: &Path, path: &Path) -> PathBuf {
 /// `canonicalize`-based checks, which fail on missing paths and behave
 /// inconsistently across platforms in the presence of symlinks.
 pub(crate) fn assert_path_within_root(root: &Path, path: &Path) -> CargoAllowResult<()> {
-    effortless_repo_edit::assert_path_within_root(root, path)
+    Ok(effortless_repo_edit::assert_path_within_root(root, path)?)
 }
 
 pub(crate) fn strip_verbatim_prefix(path: &Path) -> PathBuf {
