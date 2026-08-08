@@ -31,10 +31,10 @@ family = "expect"
 path = "crates/allow-policy/src/tests.rs"
 owner = "core/policy"
 classification = "policy_parser_fixture"
-reason = "Parser regression test intentionally unwraps the inline policy fixture so malformed fixture text fails the test immediately."
+reason = "Reviewed 2026-08-08: still required. Parser regression test intentionally unwraps the inline policy fixture so malformed fixture text fails the test immediately."
 evidence = ["test:parses_policy_with_allow"]
 created = "2026-05-26"
-review_after = "2026-08-01"
+review_after = "2027-02-08"
 
 [allow.selector]
 ast_kind = "method_call"
@@ -53,10 +53,10 @@ family = "expect_attribute"
 path = "fixtures/lint/src/lib.rs"
 owner = "core/rust-scanner"
 classification = "lint_exception_fixture"
-reason = "Lint fixture intentionally contains a policy-linked expect attribute so cargo-allow can dogfood lint-suppression inventory."
+reason = "Reviewed 2026-08-08: still required. Lint fixture intentionally contains a policy-linked expect attribute so cargo-allow can dogfood lint-suppression inventory."
 evidence = ["test:detects_outer_and_inner_lint_attributes_from_syntax"]
 created = "2026-05-26"
-review_after = "2026-08-01"
+review_after = "2027-02-08"
 
 [allow.selector]
 ast_kind = "attribute"
@@ -2552,10 +2552,10 @@ family = "unwrap"
 path = "fixtures/panic/src/lib.rs"
 owner = "core/rust-scanner"
 classification = "panic_scanner_fixture"
-reason = "Panic fixture intentionally contains an unwrap call so cargo-allow can dogfood panic-family source inventory."
+reason = "Reviewed 2026-08-08: still required. Panic fixture intentionally contains an unwrap call so cargo-allow can dogfood panic-family source inventory."
 evidence = ["test:detects_panic_methods_from_syntax"]
 created = "2026-05-26"
-review_after = "2026-08-01"
+review_after = "2027-02-08"
 
 [allow.selector]
 ast_kind = "method_call"
@@ -2575,10 +2575,10 @@ family = "indexing"
 path = "fixtures/panic/src/lib.rs"
 owner = "core/rust-scanner"
 classification = "panic_scanner_fixture"
-reason = "Panic fixture intentionally contains indexing syntax so cargo-allow can dogfood indexing and slicing source inventory."
+reason = "Reviewed 2026-08-08: still required. Panic fixture intentionally contains indexing syntax so cargo-allow can dogfood indexing and slicing source inventory."
 evidence = ["test:syntax_indexing_detects_true_positive_shapes"]
 created = "2026-05-26"
-review_after = "2026-08-01"
+review_after = "2027-02-08"
 
 [allow.selector]
 ast_kind = "index_expr"
@@ -2598,10 +2598,10 @@ family = "unsafe_fn"
 path = "fixtures/unsafe/src/lib.rs"
 owner = "core/rust-scanner"
 classification = "unsafe_scanner_fixture"
-reason = "Unsafe fixture intentionally contains an unsafe function so cargo-allow can dogfood unsafe syntax inventory without executing repository code."
+reason = "Reviewed 2026-08-08: still required. Unsafe fixture intentionally contains an unsafe function so cargo-allow can dogfood unsafe syntax inventory without executing repository code."
 evidence = ["test:detects_unsafe_function_signatures_from_syntax"]
 created = "2026-05-26"
-review_after = "2026-08-01"
+review_after = "2027-02-08"
 
 [allow.selector]
 ast_kind = "unsafe_fn"
@@ -2619,10 +2619,10 @@ family = "unsafe_block"
 path = "fixtures/unsafe/src/lib.rs"
 owner = "core/rust-scanner"
 classification = "unsafe_scanner_fixture"
-reason = "Unsafe fixture intentionally contains an unsafe block so cargo-allow can dogfood unsafe block inventory without executing repository code."
+reason = "Reviewed 2026-08-08: still required. Unsafe fixture intentionally contains an unsafe block so cargo-allow can dogfood unsafe block inventory without executing repository code."
 evidence = ["test:detects_multiple_unsafe_constructs_on_one_line"]
 created = "2026-05-26"
-review_after = "2026-08-01"
+review_after = "2027-02-08"
 
 [allow.selector]
 ast_kind = "unsafe_block"
@@ -10849,3 +10849,37 @@ glob = "policy/product-package-topology-v2.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-9214"
+kind = "panic"
+family = "expect"
+path = "crates/effortless-repo-edit/src/mutation_target_tests.rs"
+owner = "core/tests"
+classification = "test_fixture"
+reason = "Temp-repository setup helper expects directory creation to succeed; a failure here is a broken test environment, not a product path."
+evidence = ["issue:2489", "test:mutation_target"]
+occurrence_limit = 1
+created = "2026-08-08"
+review_after = "2027-02-08"
+
+[allow.selector]
+ast_kind = "method_call"
+callee = "expect"
+
+[[allow]]
+id = "allow-9215"
+kind = "panic"
+family = "unwrap"
+path = "crates/effortless-repo-edit/src/mutation_target_tests.rs"
+owner = "core/tests"
+classification = "test_fixture"
+reason = "Mutation-target fixtures unwrap the parent of a path they just constructed under a temp repository root."
+evidence = ["issue:2489", "test:mutation_target"]
+occurrence_limit = 4
+created = "2026-08-08"
+review_after = "2027-02-08"
+
+[allow.selector]
+ast_kind = "method_call"
+callee = "unwrap"

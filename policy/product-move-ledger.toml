@@ -1339,6 +1339,41 @@ deletion_output = "Deferred to extraction cutover and parity receipts."
 
 
 [[entry]]
+id = "extend-repo-edit-canonical-mutation-target"
+source_kind = "RustModule"
+current_paths = ['crates/effortless-repo-edit/src/mutation_target.rs', 'crates/effortless-repo-edit/src/mutation_target_tests.rs']
+current_refs = []
+current_identity = "crates/effortless-repo-edit/src/mutation_target.rs"
+current_product = "shared"
+current_crate = "effortless-repo-edit"
+current_consumers = ["mutation lock", "extraction shims"]
+posture = "PrivateImplementation"
+target_product = "shared"
+target_crate = "effortless-repo-edit"
+target_module = "repo_edit"
+disposition = "MoveToSharedSnapshot"
+compatibility_strategy = "ParallelParityThenDelete"
+schema_producer_impact = "internal identity resolver; no schema producer change"
+parity_case_ids = ['PARITY-EXTEND_REPO_EDIT_CANONICAL_MUTATION_TARGET']
+cutover_stage = "ArchitectureInventory"
+expected_cutover_receipt = "CUTOVER-ARCHITECTURE-INVENTORY"
+old_path_reachability_disposition = "OldPathStillReachable"
+active_shim_ids = []
+latest_allowed_shim_stage = "ArchitectureInventory"
+duplicate_authority_class = "BoundedParityOnly"
+selected_public_producer_after_cutover = "repository"
+package_ci_docs_impact = ["extraction shims", "parity fixtures"]
+removal_issue_or_condition = "issue:#2606 stage-7 cutover receipt"
+migration_owner_issue = "#2489"
+risk = "Medium"
+rollback = "Revert the resolver and this ledger row together."
+status = "TargetRatified"
+claim_boundary = "Canonical mutation-target identity resolution only; no code movement or parity claim is made by this row."
+next_move = "Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607."
+deletion_output = "Deferred to extraction cutover and parity receipts."
+
+
+[[entry]]
 id = "introduce-cargo-proof-crate"
 source_kind = "RustModule"
 current_paths = ['crates/cargo-proof/src/lib.rs']

@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  The global common-command-summary flag introduced alongside the `audit`/`check`
+  summary projection was named `--summary-output`, which shadowed the existing
+  per-command `--summary-output` on `add`, `propose`, and `migrate` and made
+  every documented `--summary-format json --summary-output <path>` invocation
+  fail with a usage error. The global flag is renamed to
+  `--command-summary-output`; `add`, `propose`, and `migrate` keep
+  `--summary-output` with unchanged semantics. This only affects the unreleased
+  0.2.0 line.

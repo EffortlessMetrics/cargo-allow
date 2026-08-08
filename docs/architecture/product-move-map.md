@@ -7,7 +7,7 @@
 ## Denominator
 
 - Ledger schema: `cargo-allow.three-product-move-ledger.v1` generation `1`
-- Entries: **102**
+- Entries: **103**
 - Topology authority: Issue **#2612**
 - Move/deletion owner: Issue **#2598**
 - Current posture: inventory and target ratification only; no implementation moved.
@@ -15,7 +15,7 @@
 ### Status counts
 
 - `RepositoryDecisionRequired`: **1**
-- `TargetRatified`: **101**
+- `TargetRatified`: **102**
 
 ### Disposition counts
 
@@ -34,7 +34,7 @@
 - `MoveToProofProviderApi`: **1**
 - `MoveToRustSourceIndex`: **2**
 - `MoveToSharedProtocol`: **4**
-- `MoveToSharedSnapshot`: **17**
+- `MoveToSharedSnapshot`: **18**
 - `RemainCargoAllowCore`: **3**
 - `RemainProviderOwned`: **1**
 - `RepositoryDecisionRequired`: **1**
@@ -646,6 +646,17 @@
 ### `extend-repo-edit-apply-backup-mode`
 
 - Current: crates/effortless-repo-edit/src/single_target_apply.rs
+- Target: `shared / effortless-repo-edit::repo_edit`
+- Disposition: `MoveToSharedSnapshot`
+- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: issue:#2606 stage-7 cutover receipt
+- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Deletion output: Deferred to extraction cutover and parity receipts.
+
+### `extend-repo-edit-canonical-mutation-target`
+
+- Current: crates/effortless-repo-edit/src/mutation_target.rs
 - Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
