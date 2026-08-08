@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  Legacy policy-directory migration no longer promotes an advisory policy to
+  enforcing. The field-by-field merge keeps the first non-`None` status, but the
+  config it merged into was seeded with `status = "active"`, so every lane's
+  declared status was discarded and a legacy policy marked `advisory` silently
+  imported as `active`. The seed is now cleared before merging and the default
+  is restored only when no lane declares a status.

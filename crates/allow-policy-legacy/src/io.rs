@@ -43,8 +43,26 @@ mod tests {
             .unwrap_or_else(|err| std::panic::panic_any(format!("fixture cleanup: {err}")));
 
         let err = read_policy(&path).expect_err("missing policy should produce read error");
-        assert!(err.to_string().contains("failed to read legacy policy"));
-        assert!(err.to_string().contains(&allow_core::normalize_path(&path)));
+        let message = err.to_string();
+        assert!(message.contains("failed to read legacy policy"));
+        // Assert on the separator-independent file name rather than a whole
+        // rendered path. `read_policy` reports the path in its native spelling
+        // (backslashes on Windows), so comparing against the forward-slash
+        // `normalize_path` form could never match there.
+        let file_name = path
+            .file_name()
+            .unwrap_or_else(|| std::panic::panic_any("fixture path has a file name"))
+            .to_string_lossy()
+            .into_owned();
+        assert!(
+            message.contains(&file_name),
+            "read error should name the offending policy file: {message}"
+        );
+        // #3180: the Win32 verbatim prefix must never survive into operator text.
+        assert!(
+            !message.contains("\\\\?\\") && !message.contains("//?/"),
+            "read error must not leak a Win32 verbatim prefix: {message}"
+        );
     }
 
     #[test]

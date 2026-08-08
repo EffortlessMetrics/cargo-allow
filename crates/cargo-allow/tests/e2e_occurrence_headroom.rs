@@ -5,8 +5,8 @@ mod support;
 use e2e_support::{assert_success_and_quiet, write_file};
 use json_assertions::{assert_json_str, assert_json_u64};
 use support::{
-    assert_saved_json_artifact, assert_status, assert_stderr_empty, assert_stdout_empty,
-    cargo_allow_command, remove_temp_root, temp_root,
+    assert_saved_json_artifact, assert_status, assert_stdout_empty, cargo_allow_command,
+    remove_temp_root, temp_root,
 };
 
 #[test]
@@ -94,7 +94,16 @@ glob = "crates/*/Cargo.toml"
         &check,
         "--receipt should not emit report JSON to stdout",
     );
-    assert_stderr_empty("check", &check, "headroom-only check should stay quiet");
+    // #3190: with `--receipt` and no `--output`, the full report is withheld from
+    // stdout but a one-line pass/fail summary is deliberately written to stderr so
+    // the operator still gets a signal. Pin that rather than the old silence — the
+    // property under test is that no *report* leaks, which the stdout check above
+    // already covers.
+    let check_stderr = String::from_utf8_lossy(&check.stderr);
+    assert!(
+        check_stderr.contains("cargo-allow check: passed (mode: no-new"),
+        "headroom-only check should report its pass summary on stderr: `{check_stderr}`"
+    );
     let receipt = assert_saved_json_artifact(
         &receipt_output,
         "check receipt",

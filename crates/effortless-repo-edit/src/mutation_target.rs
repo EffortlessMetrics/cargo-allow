@@ -13,7 +13,8 @@ use crate::target_identity::canonicalize_lexically;
 
 /// The canonical identity of a mutation target (#2489).
 ///
-/// Equal supported aliases produce the same [`target_fingerprint`], which is
+/// Equal supported aliases produce the same
+/// [`target_fingerprint`](MutationTarget::target_fingerprint), which is
 /// used as the mutation lock key. The `repo_relative_display` is safe for
 /// receipts; absolute paths are kept private.
 #[derive(Debug, Clone, PartialEq, Eq)]

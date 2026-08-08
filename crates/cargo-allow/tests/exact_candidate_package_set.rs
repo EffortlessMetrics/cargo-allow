@@ -24,8 +24,8 @@ const EXPECTED_CRATES: &[&str] = &[
     "allow-report",
     "allow-policy-legacy",
     "allow-diff",
-    "repo-protocol",
-    "repo-edit",
+    "effortless-repo-protocol",
+    "effortless-repo-edit",
     "cargo-allow",
 ];
 

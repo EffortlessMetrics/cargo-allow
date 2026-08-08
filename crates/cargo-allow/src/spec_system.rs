@@ -801,6 +801,11 @@ fn spec_system_report_status(report: &SpecSystemReport) -> &'static str {
 fn typed_blocking_reason(diagnostic_kind: &str) -> Option<&'static str> {
     match diagnostic_kind {
         "profile_config_parse_failure" => Some("profile_config_parse_failure"),
+        // Listed explicitly rather than left to the `_` fallback so a future
+        // typed-migration cannot silently escalate this advisory to blocking:
+        // an owned/legacy profile-config conflict resolves deterministically
+        // and only asks the repository to remove the unused file.
+        "profile_config_legacy_conflict" => None,
         "duplicate_id" => Some("duplicate_id"),
         "dialect_conflict" => Some("dialect_conflict"),
         "federation_config_invalid" => Some("federation_config_invalid"),

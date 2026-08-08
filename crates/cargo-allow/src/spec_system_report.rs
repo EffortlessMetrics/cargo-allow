@@ -22,10 +22,14 @@ pub(super) fn build_spec_system_report(
     let config_provenance = loaded_config.provenance.as_str().to_string();
     let mut findings = profile_config_findings(&loaded_config, config.is_some());
     if let Some(message) = profile_config_conflict_message(&loaded_config.resolved) {
+        // An owned/legacy conflict is an ambiguity advisory, not a failure:
+        // resolution succeeded and deterministically selected one file. It
+        // carries its own diagnostic kind so it is never confused with a real
+        // parse failure, which does block.
         findings.push(SpecSystemFinding::new_typed(
             "profile_config",
             message,
-            "profile_config_parse_failure",
+            "profile_config_legacy_conflict",
         ));
     }
     findings.extend(federation_config_findings(&root));

@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  spec-system: an owned/legacy profile-config conflict is advisory again. The
+  typed `diagnostic_kind` migration reused `profile_config_parse_failure` for
+  this finding, which escalated it to blocking even though profile resolution
+  succeeds and deterministically selects one file. It now carries its own
+  `profile_config_legacy_conflict` kind, listed explicitly as non-blocking so a
+  future migration cannot silently re-escalate it.

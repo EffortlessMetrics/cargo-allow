@@ -520,3 +520,31 @@ fn typed_blocking_classification_is_stable_under_message_text_change() {
         "blocking reason must be stable under message text change"
     );
 }
+
+#[test]
+fn owned_and_legacy_profile_config_conflict_stays_advisory() {
+    // #3269 migrated this finding to `new_typed` but reused the parse-failure
+    // diagnostic kind, which silently escalated an ambiguity advisory into a
+    // blocking finding. Profile resolution *succeeds* here: one file is
+    // selected deterministically and the operator is asked to remove the
+    // unused one. It must never block.
+    use crate::spec_system::SpecSystemFinding;
+
+    let finding = SpecSystemFinding::new_typed(
+        "profile_config",
+        "both owned profile config `.allow/profiles/spec-system.toml` and legacy \
+         `policy/spec-system.toml` exist; using `.allow/profiles/spec-system.toml` \
+         — remove or migrate the unused file to avoid ambiguity"
+            .to_string(),
+        "profile_config_legacy_conflict",
+    );
+
+    assert!(
+        !finding.blocking_eligible,
+        "an owned/legacy profile-config conflict resolves deterministically and must stay advisory"
+    );
+    assert_eq!(
+        finding.blocking_reason, None,
+        "an advisory conflict must not carry a blocking reason"
+    );
+}
