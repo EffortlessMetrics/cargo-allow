@@ -142,6 +142,25 @@ PY
 version="$(read_workspace_version)"
 [[ -n "${version}" ]] || fail "could not read workspace.package.version"
 
+# Each binary carries the version its own crate declares, which is no longer
+# always the workspace release version.
+read_crate_version() {
+  local crate="$1"
+  local manifest="${ROOT}/crates/${crate}/Cargo.toml"
+  local line
+  line="$(grep -m1 '^version' "${manifest}" 2>/dev/null)" || true
+  if [[ "${line}" == "version.workspace = true" ]]; then
+    printf '%s\n' "${version}"
+  else
+    printf '%s\n' "${line}" | sed 's/^version = "//; s/"$//'
+  fi
+}
+
+cargo_allow_version="$(read_crate_version cargo-allow)"
+cargo_intent_version="$(read_crate_version cargo-intent)"
+[[ -n "${cargo_allow_version}" && -n "${cargo_intent_version}" ]] \
+  || fail "could not read candidate binary versions"
+
 git_head=""
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   git_head="$(git rev-parse HEAD 2>/dev/null || true)"
@@ -195,7 +214,7 @@ record_negative() {
 # --- Journey A: cargo-allow alone ---
 log "journey A: cargo-allow alone (compatible)"
 a_version="$("${cargo_allow_bin}" --version | tr -d '\r')"
-printf '%s\n' "${a_version}" | grep -F "cargo-allow ${version}" >/dev/null \
+printf '%s\n' "${a_version}" | grep -F "cargo-allow ${cargo_allow_version}" >/dev/null \
   || fail "journey A version mismatch: ${a_version}"
 "${cargo_allow_bin}" doctor --root "${consumer_dir}" --format json >/dev/null
 record_journey "A" "cargo-allow" "Passed"
@@ -203,7 +222,7 @@ record_journey "A" "cargo-allow" "Passed"
 # --- Journey B: cargo-intent alone ---
 log "journey B: cargo-intent alone (compatible)"
 b_version="$("${cargo_intent_bin}" --version | tr -d '\r')"
-printf '%s\n' "${b_version}" | grep -F "cargo-intent ${version}" >/dev/null \
+printf '%s\n' "${b_version}" | grep -F "cargo-intent ${cargo_intent_version}" >/dev/null \
   || fail "journey B version mismatch: ${b_version}"
 "${cargo_intent_bin}" --root "${consumer_dir}" --format json identity >/dev/null
 printf 'staged\n' >"${consumer_dir}/candidate.txt"

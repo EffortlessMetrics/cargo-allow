@@ -124,6 +124,27 @@ done
 version="$(read_workspace_version)"
 [[ -n "${version}" ]] || fail "could not read workspace.package.version"
 
+# Read the version a specific crate declares. Crates either inherit the
+# workspace release line with `version.workspace = true` or pin their own
+# literal, so the workspace version alone cannot name every archive.
+read_crate_version() {
+  local crate="$1"
+  local manifest="crates/${crate}/Cargo.toml"
+  local line
+  line="$(grep -m1 '^version' "${manifest}" 2>/dev/null)" || true
+  if [[ "${line}" == "version.workspace = true" ]]; then
+    printf '%s\n' "${version}"
+  else
+    printf '%s\n' "${line}" | sed 's/^version = "//; s/"$//'
+  fi
+}
+
+declare -A crate_versions=()
+for crate in "${crates[@]}"; do
+  crate_versions["${crate}"]="$(read_crate_version "${crate}")"
+  [[ -n "${crate_versions[${crate}]}" ]] || fail "could not read version for ${crate}"
+done
+
 git_head=""
 if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   git_head="$(git rev-parse HEAD 2>/dev/null || true)"
@@ -156,7 +177,7 @@ else
   fi
   cargo package "${package_flags[@]}"
   for crate in "${crates[@]}"; do
-    src="target/package/${crate}-${version}.crate"
+    src="target/package/${crate}-${crate_versions[${crate}]}.crate"
     [[ -f "${src}" ]] || fail "missing packaged crate ${src}"
     cp "${src}" "${packages_dir}/"
   done
@@ -189,10 +210,10 @@ assert_no_path_deps() {
 
 declare -a crate_records=()
 for crate in "${crates[@]}"; do
-  crate_file="${crate}-${version}.crate"
+  crate_file="${crate}-${crate_versions[${crate}]}.crate"
   src="${packages_dir}/${crate_file}"
   [[ -f "${src}" ]] || fail "missing ${src}"
-  dest="${extracted_dir}/${crate}-${version}"
+  dest="${extracted_dir}/${crate}-${crate_versions[${crate}]}"
   rm -rf "${dest}"
   mkdir -p "${dest}"
   tar --force-local -xzf "${src}" -C "${extracted_dir}"
@@ -200,7 +221,7 @@ for crate in "${crates[@]}"; do
   assert_no_path_deps "${dest}" "${crate}"
   digest="$(sha256_file "${src}")"
   size="$(wc -c <"${src}" | tr -d ' \r')"
-  crate_records+=("${crate}|${crate_file}|${digest}|${size}|${crate}-${version}")
+  crate_records+=("${crate}|${crate_file}|${digest}|${size}|${crate}-${crate_versions[${crate}]}")
   log "packaged ${crate_file} sha256=${digest}"
 done
 
@@ -223,7 +244,7 @@ write_patch_config() {
       if [[ -n "${omit_crate}" && "${crate}" == "${omit_crate}" ]]; then
         continue
       fi
-      path_value="$(to_cargo_path "${extracted_dir}/${crate}-${version}")"
+      path_value="$(to_cargo_path "${extracted_dir}/${crate}-${crate_versions[${crate}]}")"
       printf '%s = { path = "%s" }\n' "${crate}" "${path_value}"
     done
   } >"${config_path}"
@@ -290,7 +311,7 @@ if [[ "${SKIP_LOCAL_REGISTRY:-0}" == "1" && -d "${local_registry_dir}/index" ]];
 else
   candidate_args=()
   for crate in "${crates[@]}"; do
-    candidate_args+=(--candidate "${crate}=${version}")
+    candidate_args+=(--candidate "${crate}=${crate_versions[${crate}]}")
   done
   python3 "${ROOT}/scripts/exact-candidate-assemble-local-registry.py" \
     --lockfile "${extracted_bin_pkg}/Cargo.lock" \
@@ -574,7 +595,7 @@ PY
       if [[ "${crate}" == "allow-core" ]]; then
         path_value="$(to_cargo_path "${version_conflict_dir}")"
       else
-        path_value="$(to_cargo_path "${extracted_dir}/${crate}-${version}")"
+        path_value="$(to_cargo_path "${extracted_dir}/${crate}-${crate_versions[${crate}]}")"
       fi
       printf '%s = { path = "%s" }\n' "${crate}" "${path_value}"
     done
