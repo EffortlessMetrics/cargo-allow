@@ -10386,7 +10386,7 @@ container = "run"
 normalized_snippet_hash = "fnv1a64:2944683783674e0a"
 
 [allow.last_seen]
-line = 148
+line = 152
 column = 9
 
 [[allow]]
@@ -10849,37 +10849,3 @@ glob = "policy/product-package-topology-v2.toml"
 [allow.last_seen]
 line = 1
 column = 1
-
-[[allow]]
-id = "allow-9214"
-kind = "panic"
-family = "expect"
-path = "crates/effortless-repo-edit/src/mutation_target_tests.rs"
-owner = "core/tests"
-classification = "test_fixture"
-reason = "Temp-repository setup helper expects directory creation to succeed; a failure here is a broken test environment, not a product path."
-evidence = ["issue:2489", "test:mutation_target"]
-occurrence_limit = 1
-created = "2026-08-08"
-review_after = "2027-02-08"
-
-[allow.selector]
-ast_kind = "method_call"
-callee = "expect"
-
-[[allow]]
-id = "allow-9215"
-kind = "panic"
-family = "unwrap"
-path = "crates/effortless-repo-edit/src/mutation_target_tests.rs"
-owner = "core/tests"
-classification = "test_fixture"
-reason = "Mutation-target fixtures unwrap the parent of a path they just constructed under a temp repository root."
-evidence = ["issue:2489", "test:mutation_target"]
-occurrence_limit = 4
-created = "2026-08-08"
-review_after = "2027-02-08"
-
-[allow.selector]
-ast_kind = "method_call"
-callee = "unwrap"

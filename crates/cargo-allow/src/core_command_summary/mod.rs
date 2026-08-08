@@ -8,7 +8,10 @@
 mod adapters;
 mod render;
 
-pub use adapters::{core_command_summary_from_adoption_plan, core_command_summary_from_error};
+pub use adapters::{
+    DoctorSummaryFactsV1, core_command_summary_from_adoption_plan,
+    core_command_summary_from_doctor, core_command_summary_from_error,
+};
 pub use render::{render_core_command_summary_human, render_core_command_summary_json};
 
 use effortless_repo_protocol::{ClaimBoundaryV1, CompletenessV1, CurrentnessV1, ResultClassV1};

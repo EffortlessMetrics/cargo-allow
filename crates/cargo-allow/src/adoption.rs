@@ -75,6 +75,19 @@ pub(crate) fn cmd_adopt(args: &AdoptionArgs) -> CargoAllowResult<()> {
             format!("failed to render adoption plan JSON: {error}"),
         )
     })?;
+    // Common operator grammar (#3149). The adoption plan remains authoritative
+    // for its full semantics; this projection is additive and derived from the
+    // same in-memory plan without re-inspecting the repository.
+    let summary =
+        crate::core_command_summary::core_command_summary_from_adoption_plan(&artifact.plan)
+            .map_err(|error| {
+                CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Internal,
+                    format!("failed to build core command summary: {error}"),
+                )
+            })?;
+    crate::core_command_router::write_summary_artifact(&inspection.root, &summary)?;
+
     let rendered = match args.format {
         HumanJsonFormat::Human => {
             let style = if output.is_none() {
@@ -82,7 +95,11 @@ pub(crate) fn cmd_adopt(args: &AdoptionArgs) -> CargoAllowResult<()> {
             } else {
                 allow_report::Style::PLAIN
             };
-            render_human(&artifact.plan, style)
+            format!(
+                "{}\n{}",
+                crate::core_command_summary::render_core_command_summary_human(&summary),
+                render_human(&artifact.plan, style)
+            )
         }
         HumanJsonFormat::Json => json,
     };

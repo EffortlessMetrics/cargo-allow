@@ -56,18 +56,38 @@ fn print_report_with_summary_config(
         detail
     };
 
-    if let Some(config) = summary_config {
-        let path = validate_summary_output_path(args.root, config)?;
-        let json = render_core_command_summary_json(&summary).map_err(|error| {
-            CargoAllowError::with_kind(
-                CargoAllowErrorKind::Artifact,
-                format!("failed to render core command summary: {error}"),
-            )
-        })?;
-        write_file(&path, &format!("{json}\n"))?;
-    }
+    write_summary_artifact_with_config(args.root, &summary, summary_config)?;
 
     emit_text(args.output, &rendered)
+}
+
+/// Write the `--summary-output` artifact for a command that builds its own
+/// summary. Commands that render through [`print_report`] get this for free;
+/// `adopt` and `doctor` keep their own detailed artifacts and call this
+/// directly. Does nothing when `--summary-output` was not requested.
+pub(crate) fn write_summary_artifact(
+    root: &Path,
+    summary: &CoreCommandSummaryV1,
+) -> CargoAllowResult<()> {
+    write_summary_artifact_with_config(root, summary, SUMMARY_OUTPUT.get())
+}
+
+fn write_summary_artifact_with_config(
+    root: &Path,
+    summary: &CoreCommandSummaryV1,
+    summary_config: Option<&SummaryOutputConfig>,
+) -> CargoAllowResult<()> {
+    let Some(config) = summary_config else {
+        return Ok(());
+    };
+    let path = validate_summary_output_path(root, config)?;
+    let json = render_core_command_summary_json(summary).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!("failed to render core command summary: {error}"),
+        )
+    })?;
+    write_file(&path, &format!("{json}\n"))
 }
 
 fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCommandSummaryV1> {
@@ -242,13 +262,35 @@ fn report_subject(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreSourceSub
 }
 
 fn canonical_report_identity(args: &ReportRenderArgs<'_>) -> CargoAllowResult<String> {
-    let mut value: Value = serde_json::from_str(&render_detail_json(args)).map_err(|error| {
+    canonical_semantic_identity(&render_detail_json(args), None)
+}
+
+/// Derive a relocation-stable semantic identity from a command's own JSON
+/// artifact.
+///
+/// Absolute roots, config paths, and run-scoped fields are scrubbed first so
+/// the same repository content yields the same identity from any checkout
+/// location or working directory.
+///
+/// `redact_root` additionally replaces the selected root wherever it is
+/// embedded *inside* a string value — suggested commands, diagnostics, and
+/// rendered paths — which key scrubbing alone cannot reach. Callers whose
+/// artifacts already carry no root-derived prose pass `None` so their existing
+/// identities are unaffected.
+pub(crate) fn canonical_semantic_identity(
+    artifact_json: &str,
+    redact_root: Option<&Path>,
+) -> CargoAllowResult<String> {
+    let mut value: Value = serde_json::from_str(artifact_json).map_err(|error| {
         CargoAllowError::with_kind(
             CargoAllowErrorKind::Artifact,
             format!("failed to parse report identity input: {error}"),
         )
     })?;
     scrub_non_semantic_fields(&mut value);
+    if let Some(root) = redact_root {
+        redact_root_text(&mut value, root);
+    }
     sort_json_keys(&mut value);
     let bytes = serde_json::to_vec(&value).map_err(|error| {
         CargoAllowError::with_kind(
@@ -278,6 +320,77 @@ fn scrub_non_semantic_fields(value: &mut Value) {
         Value::Array(values) => {
             for child in values {
                 scrub_non_semantic_fields(child);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Replace every embedded occurrence of the selected root with a stable
+/// placeholder, in both native and forward-slash spelling, so a relocated or
+/// differently-spelled checkout of the same content hashes identically.
+fn redact_root_text(value: &mut Value, root: &Path) {
+    let spellings = root_spellings(root);
+    if spellings.is_empty() {
+        return;
+    }
+    redact_root_spellings(value, &spellings);
+}
+
+/// Every spelling of the root that can appear inside an artifact string.
+///
+/// A Windows artifact can carry the native backslash form, the portable
+/// forward-slash form, and — because `#3180` strips the Win32 verbatim prefix
+/// from operator-facing text while the resolved root may still carry it — the
+/// prefix-stripped form of either. Longest first, so a longer spelling is never
+/// left half-redacted by a shorter prefix of itself.
+fn root_spellings(root: &Path) -> Vec<String> {
+    let native = root.to_string_lossy().to_string();
+    // `strip_win32_verbatim_prefix` returns the forward-slash form, so each
+    // base is expanded into both separator spellings rather than assuming one.
+    let bases = [
+        native.clone(),
+        allow_core::strip_win32_verbatim_prefix(&native),
+    ];
+    let mut spellings = Vec::new();
+    for base in bases {
+        spellings.push(base.replace('\\', "/"));
+        spellings.push(base.replace('/', "\\"));
+        spellings.push(base);
+    }
+    // A root that is only separators (`/` or `\`) would match every path
+    // separator in the document and destroy its structure. Such a root is not a
+    // real repository checkout, so redact nothing.
+    spellings.retain(|spelling| {
+        spelling
+            .chars()
+            .any(|character| !matches!(character, '/' | '\\'))
+    });
+    // Longest first, so a longer spelling is never left half-redacted by a
+    // shorter prefix of itself.
+    spellings.sort_by(|left, right| right.len().cmp(&left.len()).then_with(|| left.cmp(right)));
+    spellings.dedup();
+    spellings
+}
+
+fn redact_root_spellings(value: &mut Value, spellings: &[String]) {
+    const PLACEHOLDER: &str = "<repository-root>";
+    match value {
+        Value::Object(map) => {
+            for child in map.values_mut() {
+                redact_root_spellings(child, spellings);
+            }
+        }
+        Value::Array(values) => {
+            for child in values {
+                redact_root_spellings(child, spellings);
+            }
+        }
+        Value::String(text) => {
+            for spelling in spellings {
+                if text.contains(spelling.as_str()) {
+                    *text = text.replace(spelling.as_str(), PLACEHOLDER);
+                }
             }
         }
         _ => {}
