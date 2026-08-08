@@ -173,7 +173,7 @@ fn exit_matrix_post_parse_structured_usage_is_2() {
         "post-parse structured Usage (--command-summary-output on an unsupported command)",
         &output,
         2,
-        "currently supports source-exception",
+        "currently supports the source-exception",
     );
     assert!(
         !summary.exists(),
@@ -198,7 +198,7 @@ fn exit_matrix_command_summary_output_without_a_subcommand_is_2() {
         "post-parse structured Usage (--command-summary-output with no subcommand)",
         &output,
         2,
-        "requires the audit or check subcommand",
+        "requires the adopt, doctor, audit, or check subcommand",
     );
     assert!(
         !summary.exists(),

@@ -56,18 +56,38 @@ fn print_report_with_summary_config(
         detail
     };
 
-    if let Some(config) = summary_config {
-        let path = validate_summary_output_path(args.root, config)?;
-        let json = render_core_command_summary_json(&summary).map_err(|error| {
-            CargoAllowError::with_kind(
-                CargoAllowErrorKind::Artifact,
-                format!("failed to render core command summary: {error}"),
-            )
-        })?;
-        write_file(&path, &format!("{json}\n"))?;
-    }
+    write_summary_artifact_with_config(args.root, &summary, summary_config)?;
 
     emit_text(args.output, &rendered)
+}
+
+/// Write the `--summary-output` artifact for a command that builds its own
+/// summary. Commands that render through [`print_report`] get this for free;
+/// `adopt` and `doctor` keep their own detailed artifacts and call this
+/// directly. Does nothing when `--summary-output` was not requested.
+pub(crate) fn write_summary_artifact(
+    root: &Path,
+    summary: &CoreCommandSummaryV1,
+) -> CargoAllowResult<()> {
+    write_summary_artifact_with_config(root, summary, SUMMARY_OUTPUT.get())
+}
+
+fn write_summary_artifact_with_config(
+    root: &Path,
+    summary: &CoreCommandSummaryV1,
+    summary_config: Option<&SummaryOutputConfig>,
+) -> CargoAllowResult<()> {
+    let Some(config) = summary_config else {
+        return Ok(());
+    };
+    let path = validate_summary_output_path(root, config)?;
+    let json = render_core_command_summary_json(summary).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!("failed to render core command summary: {error}"),
+        )
+    })?;
+    write_file(&path, &format!("{json}\n"))
 }
 
 fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCommandSummaryV1> {
@@ -242,13 +262,35 @@ fn report_subject(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreSourceSub
 }
 
 fn canonical_report_identity(args: &ReportRenderArgs<'_>) -> CargoAllowResult<String> {
-    let mut value: Value = serde_json::from_str(&render_detail_json(args)).map_err(|error| {
+    canonical_semantic_identity(&render_detail_json(args), None)
+}
+
+/// Derive a relocation-stable semantic identity from a command's own JSON
+/// artifact.
+///
+/// Absolute roots, config paths, and run-scoped fields are scrubbed first so
+/// the same repository content yields the same identity from any checkout
+/// location or working directory.
+///
+/// `redact_root` additionally replaces the selected root wherever it is
+/// embedded *inside* a string value — suggested commands, diagnostics, and
+/// rendered paths — which key scrubbing alone cannot reach. Callers whose
+/// artifacts already carry no root-derived prose pass `None` so their existing
+/// identities are unaffected.
+pub(crate) fn canonical_semantic_identity(
+    artifact_json: &str,
+    redact_root: Option<&Path>,
+) -> CargoAllowResult<String> {
+    let mut value: Value = serde_json::from_str(artifact_json).map_err(|error| {
         CargoAllowError::with_kind(
             CargoAllowErrorKind::Artifact,
             format!("failed to parse report identity input: {error}"),
         )
     })?;
     scrub_non_semantic_fields(&mut value);
+    if let Some(root) = redact_root {
+        redact_root_text(&mut value, root);
+    }
     sort_json_keys(&mut value);
     let bytes = serde_json::to_vec(&value).map_err(|error| {
         CargoAllowError::with_kind(
@@ -278,6 +320,43 @@ fn scrub_non_semantic_fields(value: &mut Value) {
         Value::Array(values) => {
             for child in values {
                 scrub_non_semantic_fields(child);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Replace every embedded occurrence of the selected root with a stable
+/// placeholder, in both native and forward-slash spelling, so a relocated or
+/// differently-spelled checkout of the same content hashes identically.
+fn redact_root_text(value: &mut Value, root: &Path) {
+    let native = root.to_string_lossy().to_string();
+    if native.is_empty() {
+        return;
+    }
+    let portable = native.replace('\\', "/");
+    redact_root_spellings(value, &native, &portable);
+}
+
+fn redact_root_spellings(value: &mut Value, native: &str, portable: &str) {
+    const PLACEHOLDER: &str = "<repository-root>";
+    match value {
+        Value::Object(map) => {
+            for child in map.values_mut() {
+                redact_root_spellings(child, native, portable);
+            }
+        }
+        Value::Array(values) => {
+            for child in values {
+                redact_root_spellings(child, native, portable);
+            }
+        }
+        Value::String(text) => {
+            if text.contains(native) {
+                *text = text.replace(native, PLACEHOLDER);
+            }
+            if portable != native && text.contains(portable) {
+                *text = text.replace(portable, PLACEHOLDER);
             }
         }
         _ => {}
