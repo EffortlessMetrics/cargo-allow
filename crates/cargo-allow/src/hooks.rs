@@ -315,7 +315,10 @@ pub(crate) fn cmd_hooks(args: &HooksArgs) -> CargoAllowResult<()> {
             let rendered = match plan_args.format {
                 HookPlanFormat::Human => render_human(&plan),
                 HookPlanFormat::Json => serde_json::to_string_pretty(&plan).map_err(|error| {
-                    CargoAllowError::new(format!("failed to render hook plan: {error}"))
+                    CargoAllowError::with_kind(
+                        CargoAllowErrorKind::Artifact,
+                        format!("failed to render hook plan: {error}"),
+                    )
                 })?,
             };
             emit_text(plan_args.output.as_deref(), &rendered)
@@ -444,9 +447,10 @@ fn cmd_verify(args: &HookVerifyArgs) -> CargoAllowResult<()> {
     };
     let rendered = match args.format {
         HookPlanFormat::Json => serde_json::to_string_pretty(&report).map_err(|error| {
-            CargoAllowError::new(format!(
-                "failed to render hook binary verification JSON: {error}"
-            ))
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                format!("failed to render hook binary verification JSON: {error}"),
+            )
         })?,
         HookPlanFormat::Human => render_binary_verification(&report),
     };
@@ -680,11 +684,14 @@ fn cmd_status(args: &HookStatusArgs) -> CargoAllowResult<()> {
         let plan = read_plan(plan_path)?;
         validate_plan(&plan)?;
         if plan.stage != args.stage.as_str() {
-            return Err(CargoAllowError::new(format!(
-                "status plan targets `{}`, but `--stage` selected `{}`",
-                plan.stage,
-                args.stage.as_str()
-            )));
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                format!(
+                    "status plan targets `{}`, but `--stage` selected `{}`",
+                    plan.stage,
+                    args.stage.as_str()
+                ),
+            ));
         }
         plan
     } else {
@@ -704,7 +711,10 @@ fn cmd_status(args: &HookStatusArgs) -> CargoAllowResult<()> {
     let rendered = match args.format {
         HookPlanFormat::Human => render_status(&status),
         HookPlanFormat::Json => serde_json::to_string_pretty(&status).map_err(|error| {
-            CargoAllowError::new(format!("failed to render hook status: {error}"))
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                format!("failed to render hook status: {error}"),
+            )
         })?,
     };
     crate::emit_text(args.output.as_deref(), &rendered)
@@ -712,7 +722,8 @@ fn cmd_status(args: &HookStatusArgs) -> CargoAllowResult<()> {
 
 fn cmd_apply(args: &HookApplyArgs) -> CargoAllowResult<()> {
     if !args.accept {
-        return Err(CargoAllowError::new(
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
             "hook apply is preview-safe by default; pass --accept to create the managed hook",
         ));
     }
@@ -757,10 +768,13 @@ fn cmd_apply(args: &HookApplyArgs) -> CargoAllowResult<()> {
                 rollback: "no mutation; manual merge is required and arbitrary hooks are never overwritten",
             },
         )?;
-        return Err(CargoAllowError::new(format!(
-            "existing hook has disposition {disposition}; no files were changed, see receipt {}",
-            receipt_path.display()
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!(
+                "existing hook has disposition {disposition}; no files were changed, see receipt {}",
+                receipt_path.display()
+            ),
+        ));
     }
 
     let contents = render_managed_hook(&plan);
@@ -776,17 +790,21 @@ fn cmd_apply(args: &HookApplyArgs) -> CargoAllowResult<()> {
         rollback: "run `cargo-allow hooks remove --receipt <this receipt> --accept`; verified plans also require `--plan <same plan>`",
     };
     write_json_receipt(&receipt_path, &receipt).map_err(|error| {
-        CargoAllowError::new(format!(
-            "created managed hook {} but failed to write the apply receipt: {error}",
-            hook_path.display()
-        ))
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!(
+                "created managed hook {} but failed to write the apply receipt: {error}",
+                hook_path.display()
+            ),
+        )
     })?;
     Ok(())
 }
 
 fn cmd_remove(args: &HookRemoveArgs) -> CargoAllowResult<()> {
     if !args.accept {
-        return Err(CargoAllowError::new(
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
             "hook remove is preview-safe by default; pass --accept to remove the exact managed hook",
         ));
     }
@@ -798,10 +816,13 @@ fn cmd_remove(args: &HookRemoveArgs) -> CargoAllowResult<()> {
         let plan = read_plan(plan_path)?;
         validate_plan(&plan)?;
         if plan.stage != receipt.stage {
-            return Err(CargoAllowError::new(format!(
-                "remove plan targets `{}`, but apply receipt targets `{}`",
-                plan.stage, receipt.stage
-            )));
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                format!(
+                    "remove plan targets `{}`, but apply receipt targets `{}`",
+                    plan.stage, receipt.stage
+                ),
+            ));
         }
         plan
     } else {
@@ -811,10 +832,13 @@ fn cmd_remove(args: &HookRemoveArgs) -> CargoAllowResult<()> {
     let hook_path = hook_path(&root, stage)?;
     let expected_hook_path = portable_path(&root, &hook_path);
     if receipt.hook_path != expected_hook_path {
-        return Err(CargoAllowError::new(format!(
-            "apply receipt targets `{}`, but the current managed hook is `{expected_hook_path}`",
-            receipt.hook_path
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!(
+                "apply receipt targets `{}`, but the current managed hook is `{expected_hook_path}`",
+                receipt.hook_path
+            ),
+        ));
     }
 
     let result_receipt = args.result_receipt.clone().unwrap_or_else(|| {
@@ -840,30 +864,40 @@ fn cmd_remove(args: &HookRemoveArgs) -> CargoAllowResult<()> {
             return Ok(());
         }
         Err(error) => {
-            return Err(CargoAllowError::new(format!(
-                "failed to inspect existing hook {}: {error}",
-                hook_path.display()
-            )));
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                format!(
+                    "failed to inspect existing hook {}: {error}",
+                    hook_path.display()
+                ),
+            ));
         }
     };
     if metadata.file_type().is_symlink() {
-        return Err(CargoAllowError::new(
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
             "managed hook removal refuses symbolic links; inspect and remove the link manually",
         ));
     }
 
     let contents = fs::read_to_string(&hook_path).map_err(|error| {
-        CargoAllowError::new(format!(
-            "failed to read managed hook {} before removal: {error}",
-            hook_path.display()
-        ))
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!(
+                "failed to read managed hook {} before removal: {error}",
+                hook_path.display()
+            ),
+        )
     })?;
     if normalize_hook_text(&contents) == normalize_hook_text(&render_managed_hook(&plan)) {
         fs::remove_file(&hook_path).map_err(|error| {
-            CargoAllowError::new(format!(
-                "failed to remove exact managed hook {}: {error}",
-                hook_path.display()
-            ))
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                format!(
+                    "failed to remove exact managed hook {}: {error}",
+                    hook_path.display()
+                ),
+            )
         })?;
         let receipt = HookRemoveReceiptV1 {
             schema: HOOK_REMOVE_RECEIPT_SCHEMA,
@@ -882,10 +916,16 @@ fn cmd_remove(args: &HookRemoveArgs) -> CargoAllowResult<()> {
         ManagedBlockPosture::Exact { start, end } => {
             let mut retained = String::with_capacity(contents.len() - (end - start));
             let prefix = contents.get(..start).ok_or_else(|| {
-                CargoAllowError::new("managed hook block boundary was not valid UTF-8")
+                CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Scan,
+                    "managed hook block boundary was not valid UTF-8",
+                )
             })?;
             let suffix = contents.get(end..).ok_or_else(|| {
-                CargoAllowError::new("managed hook block boundary was not valid UTF-8")
+                CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Scan,
+                    "managed hook block boundary was not valid UTF-8",
+                )
             })?;
             retained.push_str(prefix);
             retained.push_str(suffix);
@@ -937,24 +977,33 @@ fn remove_conflict_receipt(
         rollback: "no mutation; restore the exact managed identity or remove it manually after review",
     };
     write_json_receipt(result_receipt, &receipt)?;
-    Err(CargoAllowError::new(format!(
-        "{message}; no files were changed, see receipt {}",
-        result_receipt.display()
-    )))
+    Err(CargoAllowError::with_kind(
+        CargoAllowErrorKind::Artifact,
+        format!(
+            "{message}; no files were changed, see receipt {}",
+            result_receipt.display()
+        ),
+    ))
 }
 
 fn read_apply_receipt(path: &Path) -> CargoAllowResult<ReadHookApplyReceiptV1> {
     let bytes = fs::read_to_string(path).map_err(|error| {
-        CargoAllowError::new(format!(
-            "failed to read hook apply receipt {}: {error}",
-            path.display()
-        ))
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!(
+                "failed to read hook apply receipt {}: {error}",
+                path.display()
+            ),
+        )
     })?;
     serde_json::from_str(&bytes).map_err(|error| {
-        CargoAllowError::new(format!(
-            "failed to parse hook apply receipt {}: {error}",
-            path.display()
-        ))
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!(
+                "failed to parse hook apply receipt {}: {error}",
+                path.display()
+            ),
+        )
     })
 }
 
@@ -967,7 +1016,8 @@ fn validate_apply_receipt(
         || receipt.plan_identity != plan.plan_identity
         || receipt.rollback.is_empty()
     {
-        return Err(CargoAllowError::new(
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
             "hook apply receipt is not an exact successful create or recognized-block receipt for the current supported plan",
         ));
     }
@@ -978,7 +1028,8 @@ fn validate_apply_receipt(
             && receipt.operation == "none"
             && !receipt.applied;
     if !exact_create && !exact_recognized_block {
-        return Err(CargoAllowError::new(
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
             "hook apply receipt is not an exact create or recognized-block receipt for the current supported plan",
         ));
     }
@@ -1003,28 +1054,32 @@ fn source_tree_root() -> CargoAllowResult<PathBuf> {
 
 fn read_plan(path: &Path) -> CargoAllowResult<LocalHookPlanV1> {
     let bytes = fs::read_to_string(path).map_err(|error| {
-        CargoAllowError::new(format!(
-            "failed to read hook plan {}: {error}",
-            path.display()
-        ))
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!("failed to read hook plan {}: {error}", path.display()),
+        )
     })?;
     serde_json::from_str(&bytes).map_err(|error| {
-        CargoAllowError::new(format!(
-            "failed to parse hook plan {}: {error}",
-            path.display()
-        ))
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!("failed to parse hook plan {}: {error}", path.display()),
+        )
     })
 }
 
 fn validate_plan(plan: &LocalHookPlanV1) -> CargoAllowResult<()> {
     if plan.schema != PLAN_SCHEMA {
-        return Err(CargoAllowError::new(format!(
-            "unsupported hook plan schema `{}`; expected `{PLAN_SCHEMA}`",
-            plan.schema
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Unsupported,
+            format!(
+                "unsupported hook plan schema `{}`; expected `{PLAN_SCHEMA}`",
+                plan.schema
+            ),
+        ));
     }
     if plan.plan_identity.is_empty() || plan.plan_identity != plan_identity(plan) {
-        return Err(CargoAllowError::new(
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
             "hook plan identity is missing or stale; regenerate it with `cargo-allow hooks plan --format json`",
         ));
     }
@@ -1036,14 +1091,16 @@ fn validate_plan(plan: &LocalHookPlanV1) -> CargoAllowResult<()> {
                 || plan.argv != runtime_argv(runtime)
                 || plan.binary_resolution != "explicit_verified_executable" =>
         {
-            return Err(CargoAllowError::new(
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
                 "runtime-verified hook plan does not match its declared executable contract",
             ));
         }
         _ => {}
     }
     if *plan != build_plan_with_runtime(stage, plan.verified_runtime.clone()) {
-        return Err(CargoAllowError::new(
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
             "hook plan is stale or outside the supported offline tracked-worktree contract; regenerate it from this cargo-allow binary",
         ));
     }
@@ -1054,9 +1111,10 @@ fn stage_from_str(stage: &str) -> CargoAllowResult<HookStage> {
     match stage {
         "pre-commit" => Ok(HookStage::PreCommit),
         "pre-push" => Ok(HookStage::PrePush),
-        other => Err(CargoAllowError::new(format!(
-            "unsupported hook stage `{other}`"
-        ))),
+        other => Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Unsupported,
+            format!("unsupported hook stage `{other}`"),
+        )),
     }
 }
 
@@ -1069,10 +1127,13 @@ fn hook_path(root: &Path, stage: HookStage) -> CargoAllowResult<PathBuf> {
         root.join(git_common_dir)
     };
     let git_common_dir = git_common_dir.canonicalize().map_err(|error| {
-        CargoAllowError::new(format!(
-            "failed to canonicalize Git common directory {}: {error}",
-            git_common_dir.display()
-        ))
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Inventory,
+            format!(
+                "failed to canonicalize Git common directory {}: {error}",
+                git_common_dir.display()
+            ),
+        )
     })?;
     let hooks_dir = if hooks_dir.is_absolute() {
         hooks_dir
@@ -1088,9 +1149,10 @@ fn git_path(root: &Path, argument: &str) -> CargoAllowResult<PathBuf> {
         "--git-common-dir" => vec!["rev-parse", "--git-common-dir"],
         "hooks" => vec!["rev-parse", "--git-path", "hooks"],
         other => {
-            return Err(CargoAllowError::new(format!(
-                "unsupported Git hook path query `{other}`"
-            )));
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Inventory,
+                format!("unsupported Git hook path query `{other}`"),
+            ));
         }
     };
     let output = Command::new("git")
@@ -1099,17 +1161,26 @@ fn git_path(root: &Path, argument: &str) -> CargoAllowResult<PathBuf> {
         .args(git_args)
         .output()
         .map_err(|error| {
-            CargoAllowError::new(format!("failed to invoke git for hook path: {error}"))
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Inventory,
+                format!("failed to invoke git for hook path: {error}"),
+            )
         })?;
     if !output.status.success() {
-        return Err(CargoAllowError::new(format!(
-            "git could not resolve hook path: {}",
-            String::from_utf8_lossy(&output.stderr).trim()
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Inventory,
+            format!(
+                "git could not resolve hook path: {}",
+                String::from_utf8_lossy(&output.stderr).trim()
+            ),
+        ));
     }
     let value = String::from_utf8_lossy(&output.stdout).trim().to_string();
     if value.is_empty() {
-        return Err(CargoAllowError::new("git returned an empty hook path"));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Inventory,
+            "git returned an empty hook path",
+        ));
     }
     Ok(PathBuf::from(value))
 }
@@ -1119,10 +1190,13 @@ fn hook_disposition(path: &Path, plan: &LocalHookPlanV1) -> CargoAllowResult<&'s
         Ok(contents) => contents,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok("Missing"),
         Err(error) => {
-            return Err(CargoAllowError::new(format!(
-                "failed to inspect existing hook {}: {error}",
-                path.display()
-            )));
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                format!(
+                    "failed to inspect existing hook {}: {error}",
+                    path.display()
+                ),
+            ));
         }
     };
     match locate_managed_block(&contents, plan) {
@@ -1243,8 +1317,12 @@ fn portable_path(root: &Path, path: &Path) -> String {
 }
 
 fn write_json_receipt<T: Serialize>(path: &Path, receipt: &T) -> CargoAllowResult<()> {
-    let rendered = serde_json::to_string_pretty(receipt)
-        .map_err(|error| CargoAllowError::new(format!("failed to render hook receipt: {error}")))?;
+    let rendered = serde_json::to_string_pretty(receipt).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!("failed to render hook receipt: {error}"),
+        )
+    })?;
     write_file(path, &format!("{rendered}\n"))
 }
 
