@@ -14,9 +14,10 @@ fn parity_contracts_load_from_fixtures() -> Result<(), String> {
 #[test]
 fn test_subjects_package_copy_matches_rust_source_index() -> Result<(), String> {
     let root = workspace_root();
-    let canonical =
-        std::fs::read_to_string(root.join("crates/rust-source-index/src/test_subjects.rs"))
-            .map_err(|err| format!("read canonical test_subjects: {err}"))?;
+    let canonical = std::fs::read_to_string(
+        root.join("crates/effortless-rust-source-index/src/test_subjects.rs"),
+    )
+    .map_err(|err| format!("read canonical test_subjects: {err}"))?;
     let packaged = std::fs::read_to_string(
         root.join("crates/allow-rust/src/snapshot_package/test_subjects.rs"),
     )
@@ -33,8 +34,9 @@ fn test_subjects_package_copy_matches_rust_source_index() -> Result<(), String> 
 #[test]
 fn syntax_package_copy_matches_rust_source_index() -> Result<(), String> {
     let root = workspace_root();
-    let canonical = std::fs::read_to_string(root.join("crates/rust-source-index/src/syntax.rs"))
-        .map_err(|err| format!("read canonical syntax: {err}"))?;
+    let canonical =
+        std::fs::read_to_string(root.join("crates/effortless-rust-source-index/src/syntax.rs"))
+            .map_err(|err| format!("read canonical syntax: {err}"))?;
     let packaged =
         std::fs::read_to_string(root.join("crates/allow-rust/src/snapshot_package/syntax.rs"))
             .map_err(|err| format!("read allow-rust snapshot syntax: {err}"))?;
@@ -50,9 +52,10 @@ fn syntax_package_copy_matches_rust_source_index() -> Result<(), String> {
 #[test]
 fn inventory_package_copy_matches_rust_source_index() -> Result<(), String> {
     let root = workspace_root();
-    let canonical = std::fs::read_to_string(root.join("crates/rust-source-index/src/inventory.rs"))
-        .map_err(|err| format!("read canonical inventory: {err}"))?
-        .replace("\r\n", "\n");
+    let canonical =
+        std::fs::read_to_string(root.join("crates/effortless-rust-source-index/src/inventory.rs"))
+            .map_err(|err| format!("read canonical inventory: {err}"))?
+            .replace("\r\n", "\n");
     let packaged =
         std::fs::read_to_string(root.join("crates/allow-rust/src/snapshot_package/inventory.rs"))
             .map_err(|err| format!("read allow-rust snapshot inventory: {err}"))?

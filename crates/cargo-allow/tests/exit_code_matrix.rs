@@ -151,36 +151,33 @@ fn exit_matrix_clap_conflicting_list_status_shortcuts_is_2() {
 
 #[test]
 fn exit_matrix_post_parse_structured_usage_is_2() {
-    let root = temp_root("exit-add-usage");
+    // This test exists to prove the *post-parse* route: a structured
+    // `CargoAllowErrorKind::Usage` raised by our own code after clap has
+    // accepted the argv still exits 2. It used to ride on `add --glob` with
+    // `--path`, but #3203/#3210 moved that exclusion into clap's
+    // `conflicts_with`, so that combination is now rejected at parse time and
+    // no longer exercises this path. `--command-summary-output` on a command
+    // that does not emit the summary is parse-valid and rejected afterwards,
+    // so it exercises the same route this test was written for.
+    let root = temp_root("exit-post-parse-usage");
     write_panic_source(&root);
     write_empty_policy(&root);
+    let summary = root.join("summary.json");
     let output = cargo_allow()
-        .arg("add")
-        .arg("--root")
-        .arg(&root)
-        .arg("--kind")
-        .arg("panic")
-        .arg("--glob")
-        .arg("src/**")
-        .arg("--path")
-        .arg("src/lib.rs")
-        .arg("--line")
-        .arg("1")
-        .arg("--owner")
-        .arg("core")
-        .arg("--classification")
-        .arg("approved")
-        .arg("--reason")
-        .arg("fixture")
-        .arg("--evidence")
-        .arg("doc:README.md")
+        .arg("--command-summary-output")
+        .arg(&summary)
+        .arg("vocabulary")
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run add usage: {err}")));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run post-parse usage: {err}")));
     assert_exit(
-        "post-parse structured Usage (add --glob with --path)",
+        "post-parse structured Usage (--command-summary-output on an unsupported command)",
         &output,
         2,
-        "mutually exclusive",
+        "currently supports source-exception",
+    );
+    assert!(
+        !summary.exists(),
+        "a rejected usage error must not leave a partial artifact behind"
     );
     drop_root(root);
 }

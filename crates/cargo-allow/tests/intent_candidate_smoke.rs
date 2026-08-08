@@ -14,8 +14,8 @@ const CRATE_SET: &str =
 const EXPECTED_CRATES: &[&str] = &[
     "allow-core",
     "allow-inventory",
-    "repo-protocol",
-    "repo-snapshot",
+    "effortless-repo-protocol",
+    "effortless-repo-snapshot",
     "intent-protocol",
     "intent-engine",
     "cargo-intent",

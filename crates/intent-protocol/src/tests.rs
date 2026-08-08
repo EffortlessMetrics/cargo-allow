@@ -119,9 +119,10 @@ const REPO_PROTOCOL_SNAPSHOT_FILES: &[&str] = &["repository_snapshot.rs", "resul
 fn repo_protocol_snapshot_matches_canonical() -> Result<(), String> {
     let root = workspace_root();
     for file in REPO_PROTOCOL_SNAPSHOT_FILES {
-        let canonical =
-            std::fs::read_to_string(root.join(format!("crates/repo-protocol/src/{file}")))
-                .map_err(|err| format!("read canonical repo-protocol/{file}: {err}"))?;
+        let canonical = std::fs::read_to_string(
+            root.join(format!("crates/effortless-repo-protocol/src/{file}")),
+        )
+        .map_err(|err| format!("read canonical repo-protocol/{file}: {err}"))?;
         let packaged = std::fs::read_to_string(root.join(format!(
             "crates/intent-protocol/src/snapshot_package/repo_protocol/{file}"
         )))

@@ -29,6 +29,46 @@ mod tests {
     use std::path::Path;
 
     #[test]
+    fn import_legacy_policy_dir_keeps_lane_status_and_defaults_only_when_undeclared() {
+        // #1866 merged status with a first-non-None rule, but `AllowConfig::empty()`
+        // seeds `status = "active"`, so every lane's declared status was discarded
+        // and an advisory legacy policy silently imported as enforcing.
+        let declared = fixture_dir();
+        fs::write(
+            declared.join("process-allowlist.toml"),
+            process_policy_fixture_text(),
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("declared fixture write: {err}")));
+
+        let batch = import_legacy_policy_dir(&declared, None)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("declared dir migrates: {err}")));
+        assert_eq!(
+            batch.config.status.as_deref(),
+            Some("advisory"),
+            "a lane's declared status must survive migration rather than being promoted to active"
+        );
+
+        // With no lane declaring a status, the documented default still applies.
+        let undeclared = fixture_dir();
+        let without_status = process_policy_fixture_text().replace("status = \"advisory\"\n", "");
+        assert!(
+            !without_status.contains("status ="),
+            "the undeclared fixture must not declare a status"
+        );
+        fs::write(undeclared.join("process-allowlist.toml"), without_status).unwrap_or_else(
+            |err| std::panic::panic_any(format!("undeclared fixture write: {err}")),
+        );
+
+        let batch = import_legacy_policy_dir(&undeclared, None)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("undeclared dir migrates: {err}")));
+        assert_eq!(
+            batch.config.status.as_deref(),
+            Some("active"),
+            "an undeclared status must fall back to the empty-config default"
+        );
+    }
+
+    #[test]
     fn import_legacy_policy_dir_rejects_non_directory_and_empty_policy_dir() {
         let dir = fixture_dir();
         let not_a_dir = dir.join("policy.toml");
