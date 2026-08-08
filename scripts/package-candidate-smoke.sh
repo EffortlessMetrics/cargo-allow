@@ -163,6 +163,9 @@ done
 
 log "assert packaged crates have no path dependencies"
 for crate in "${crates[@]}"; do
+  # Resolve per crate rather than inheriting the loop above: crates no longer
+  # share one version, so a leftover value would name the wrong archive.
+  crate_version="$(read_crate_version "${crate}")"
   tmp="${package_dir}/inspect-${crate}"
   rm -rf "${tmp}"
   mkdir -p "${tmp}"
