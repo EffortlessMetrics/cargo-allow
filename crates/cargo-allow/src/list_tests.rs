@@ -984,8 +984,10 @@ fn list_core_summary_distinguishes_empty_filtered_and_single_entry_routes() {
         Some("adopt")
     );
 
-    let mut filtered = ListFilters::default();
-    filtered.owner = Some("missing-owner");
+    let filtered = ListFilters {
+        owner: Some("missing-owner"),
+        ..ListFilters::default()
+    };
     let no_match = build_list_summary(
         &[list_row(
             "allow-one",
@@ -1097,8 +1099,10 @@ fn list_pagination_keeps_filtered_rows_before_offset_and_limit() {
         list_row("allow-other", FindingKind::Panic, "other", "approved"),
         list_row("allow-match", FindingKind::Panic, "parser", "approved"),
     ];
-    let mut filters = ListFilters::default();
-    filters.owner = Some("parser");
+    let filters = ListFilters {
+        owner: Some("parser"),
+        ..ListFilters::default()
+    };
     let filtered = rows
         .into_iter()
         .filter(|row| list_filter::list_row_matches(row, &filters))
