@@ -1,10 +1,10 @@
 //! Source-supplied Rust test-subject discovery (#2587-C).
 
+use crate::error::{
+    IndexError, IndexResult, normalize_path, read_text_file_capped, stable_hash_hex,
+};
 use crate::syntax::{node_text, parse_rust_syntax, source_column};
 use crate::test_subjects::*;
-use allow_core::{
-    CargoAllowError, CargoAllowResult, normalize_path, read_text_file_capped, stable_hash_hex,
-};
 use std::path::{Component, Path, PathBuf};
 use tree_sitter::Node;
 
@@ -12,7 +12,7 @@ pub fn inventory_rust_test_subjects(
     root: impl AsRef<Path>,
     files: &[PathBuf],
     options: &RustTestInventoryOptions,
-) -> CargoAllowResult<RustTestInventory> {
+) -> IndexResult<RustTestInventory> {
     let root = root.as_ref();
     let mut manifests = Vec::new();
     let mut sources = Vec::new();
@@ -241,11 +241,11 @@ impl PackageManifest {
         path: &Path,
         text: &str,
         source_paths: &[PathBuf],
-    ) -> Result<Option<Self>, CargoAllowError> {
+    ) -> Result<Option<Self>, IndexError> {
         // Strip UTF-8 BOM if present (#2003).
         let text = text.strip_prefix('\u{feff}').unwrap_or(text);
         let table = toml::from_str::<toml::Table>(text)
-            .map_err(|error| CargoAllowError::new(format!("invalid Cargo manifest: {error}")))?;
+            .map_err(|error| IndexError::new(format!("invalid Cargo manifest: {error}")))?;
         let Some(package) = table.get("package").and_then(toml::Value::as_table) else {
             if table
                 .get("workspace")
@@ -254,7 +254,7 @@ impl PackageManifest {
             {
                 return Ok(None);
             }
-            return Err(CargoAllowError::new(
+            return Err(IndexError::new(
                 "Cargo manifest has neither [package] nor [workspace]",
             ));
         };
@@ -263,7 +263,7 @@ impl PackageManifest {
             .and_then(toml::Value::as_str)
             .map(str::trim)
             .filter(|name| !name.is_empty())
-            .ok_or_else(|| CargoAllowError::new("Cargo package name is missing"))?
+            .ok_or_else(|| IndexError::new("Cargo package name is missing"))?
             .to_string();
         let root = path.parent().unwrap_or_else(|| Path::new("")).to_path_buf();
         let default_target_name = name.replace('-', "_");

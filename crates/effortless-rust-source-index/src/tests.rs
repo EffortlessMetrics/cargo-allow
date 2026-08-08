@@ -40,7 +40,16 @@ fn syntax_package_copy_matches_rust_source_index() -> Result<(), String> {
     let packaged =
         std::fs::read_to_string(root.join("crates/allow-rust/src/snapshot_package/syntax.rs"))
             .map_err(|err| format!("read allow-rust snapshot syntax: {err}"))?;
-    if canonical.replace("\r\n", "\n") != packaged.replace("\r\n", "\n") {
+    let canonical = canonical
+        .replace("\r\n", "\n")
+        .replace(
+            "use crate::error::{IndexError, IndexResult};",
+            "use allow_core::{CargoAllowError, CargoAllowResult};",
+        )
+        .replace("IndexResult", "CargoAllowResult")
+        .replace("IndexError", "CargoAllowError");
+    let packaged = packaged.replace("\r\n", "\n");
+    if canonical != packaged {
         return Err(
             "allow-rust snapshot_package/syntax.rs must match rust-source-index syntax.rs"
                 .to_string(),
@@ -60,10 +69,13 @@ fn inventory_package_copy_matches_rust_source_index() -> Result<(), String> {
         std::fs::read_to_string(root.join("crates/allow-rust/src/snapshot_package/inventory.rs"))
             .map_err(|err| format!("read allow-rust snapshot inventory: {err}"))?
             .replace("\r\n", "\n");
-    let canonical = canonical.replace(
-        "use crate::syntax::{node_text, parse_rust_syntax, source_column};\nuse crate::test_subjects::*;",
-        "use super::subject_syntax::{node_text, parse_rust_syntax, source_column};\nuse super::subject_types::*;",
-    );
+    let canonical = canonical
+        .replace(
+            "use crate::error::{\n    IndexError, IndexResult, normalize_path, read_text_file_capped, stable_hash_hex,\n};\nuse crate::syntax::{node_text, parse_rust_syntax, source_column};\nuse crate::test_subjects::*;",
+            "use super::subject_syntax::{node_text, parse_rust_syntax, source_column};\nuse super::subject_types::*;\nuse allow_core::{\n    CargoAllowError, CargoAllowResult, normalize_path, read_text_file_capped, stable_hash_hex,\n};",
+        )
+        .replace("IndexResult", "CargoAllowResult")
+        .replace("IndexError", "CargoAllowError");
     if canonical != packaged {
         return Err(
             "allow-rust snapshot_package/inventory.rs must match rust-source-index inventory.rs (import-adjusted)"

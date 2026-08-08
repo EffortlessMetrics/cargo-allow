@@ -15,6 +15,7 @@ mod cache;
 mod captured_receipts;
 mod command_adapter;
 mod contradiction;
+mod corpus_semantics;
 mod currentness;
 mod dry_run;
 mod execution;
@@ -36,6 +37,11 @@ pub use cache::{
 pub use captured_receipts::{
     CAPTURED_RECEIPT_STORE_SCHEMA_ID, CapturedReceiptError, CapturedReceiptStoreV1,
     validate_captured_receipt_store,
+};
+pub use corpus_semantics::{
+    canonical_proof_result_states, compose_blocking_aggregate, evaluate_binding_currentness,
+    provider_envelope_distinct, validate_composition_honesty, validate_proof_corpus,
+    validate_provider_envelope,
 };
 // Re-export the absorbed command adapter contracts (#2937).
 pub use command_adapter::{

@@ -5,12 +5,12 @@ use proof_protocol::{
     ProofCapabilityCatalogV1, ProofCapabilityKindV1, ProofCapabilityV1, ProofPlanV1,
 };
 
-use crate::process_protocol::{ProcessProtocolError, validate_process_protocol_plan};
-use crate::provider_contract::{
+use super::process_protocol::{ProcessProtocolError, validate_process_protocol_plan};
+use super::provider_contract::{
     CARGO_ALLOW_PROOF_PROVIDER_ID, default_cargo_allow_provider_contract,
     validate_provider_contract,
 };
-use crate::provider_discovery::{
+use super::provider_discovery::{
     CargoAllowProviderRequest, CargoAllowProviderResolution, discover_cargo_allow_provider,
 };
 

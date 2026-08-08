@@ -4,10 +4,9 @@
 //! corpus-backed claim receipts and a required aggregate. Does not spawn
 //! processes, access the network, or execute real RIPR providers.
 
-use proof_protocol::{
-    PROOF_CORPUS_DIGEST_V1, ProofResultStateV1, RIPR_EXTERNAL_PROOF_PROFILE_ID,
-    compose_blocking_aggregate,
-};
+use proof_protocol::{PROOF_CORPUS_DIGEST_V1, ProofResultStateV1, RIPR_EXTERNAL_PROOF_PROFILE_ID};
+
+use crate::corpus_semantics::compose_blocking_aggregate;
 
 use crate::currentness::CurrentnessStatusV1;
 use crate::execution::ExecutionApprovalV1;

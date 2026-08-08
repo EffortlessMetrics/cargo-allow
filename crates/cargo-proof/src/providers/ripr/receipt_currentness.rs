@@ -1,6 +1,6 @@
 //! RIPR receipt currentness evaluation (#2556).
 
-use crate::grip_receipt::{RiprGripReceiptV1, validate_ripr_grip_receipt};
+use super::grip_receipt::{RiprGripReceiptV1, validate_ripr_grip_receipt};
 
 pub const RIPR_RECEIPT_CURRENTNESS_SCHEMA_ID: &str = "proof.ripr-receipt-currentness.v1";
 
