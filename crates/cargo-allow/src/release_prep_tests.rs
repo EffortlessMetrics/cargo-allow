@@ -249,14 +249,16 @@ fn published_release_versions_match_workspace() {
         "release note should document the published install pin"
     );
 
-    for (package, manifest) in &package_manifests {
-        assert!(
-            manifest.contains("version.workspace = true"),
-            "{package} should inherit the workspace release version"
-        );
-    }
-
     let package_names = package_manifests.keys().cloned().collect::<BTreeSet<_>>();
+    let package_versions = package_manifests
+        .iter()
+        .map(|(package, manifest)| {
+            (
+                package.clone(),
+                package_manifest_version(manifest, &workspace_version),
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
     let workspace_dependency_versions =
         workspace_internal_dependency_versions(&workspace_manifest, &package_names);
     let mut expected_workspace_dependency_names = package_names.clone();
@@ -271,8 +273,9 @@ fn published_release_versions_match_workspace() {
     );
     for (dependency, version) in workspace_dependency_versions {
         assert_eq!(
-            version, workspace_version,
-            "{dependency} workspace dependency should require the published version"
+            package_versions.get(&dependency),
+            Some(&version),
+            "{dependency} workspace dependency should require its package version"
         );
     }
 
@@ -284,8 +287,9 @@ fn published_release_versions_match_workspace() {
     );
     for (package, version) in lock_versions {
         assert_eq!(
-            version, workspace_version,
-            "{package} lockfile entry should carry the published version"
+            package_versions.get(&package),
+            Some(&version),
+            "{package} lockfile entry should carry its package version"
         );
     }
 }
@@ -594,6 +598,27 @@ fn workspace_package_version(workspace_manifest: &str) -> String {
         }
     }
     std::panic::panic_any("workspace manifest should declare workspace.package.version");
+}
+
+fn package_manifest_version(manifest: &str, workspace_version: &str) -> String {
+    let mut in_package = false;
+    for line in manifest.lines() {
+        let line = line.trim();
+        if line.starts_with('[') {
+            in_package = line == "[package]";
+            continue;
+        }
+        if !in_package {
+            continue;
+        }
+        if line == "version.workspace = true" {
+            return workspace_version.to_owned();
+        }
+        if let Some(version) = manifest_value(line, "version") {
+            return version;
+        }
+    }
+    std::panic::panic_any("package manifest should declare package.version");
 }
 
 fn workspace_internal_dependency_versions(
