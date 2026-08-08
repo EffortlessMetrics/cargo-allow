@@ -113,7 +113,7 @@ fn visit(
             if dir == root {
                 return Err(CargoAllowError::new(format!(
                     "failed to read {}: {e}",
-                    dir.display()
+                    allow_core::strip_win32_verbatim_prefix(&dir.display().to_string())
                 )));
             }
             let rel = dir.strip_prefix(root).unwrap_or(dir).to_path_buf();

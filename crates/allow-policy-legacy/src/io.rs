@@ -5,7 +5,7 @@ pub(crate) fn read_policy(path: &Path) -> CargoAllowResult<String> {
     read_text_file_capped(path).map_err(|e| {
         CargoAllowError::new(format!(
             "failed to read legacy policy {}: {e}",
-            allow_core::normalize_path(path)
+            allow_core::strip_win32_verbatim_prefix(&path.display().to_string())
         ))
     })
 }

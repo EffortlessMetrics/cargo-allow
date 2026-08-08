@@ -400,7 +400,7 @@ fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
     }
     if let Some(path) = &args.receipt {
         let policy_config = config_path(&staged.root, args.config.as_deref())
-            .map(|path| path.display().to_string());
+            .map(|path| allow_core::strip_win32_verbatim_prefix(&path.display().to_string()));
         let effective_mode = args
             .mode
             .as_deref()
@@ -461,8 +461,8 @@ fn write_check_error_receipt(
         .map(CheckMode::parse)
         .unwrap_or(CheckMode::NoNew);
     let default_cfg = allow_core::AllowConfig::empty();
-    let policy_config =
-        config_path(&root, args.config.as_deref()).map(|path| path.display().to_string());
+    let policy_config = config_path(&root, args.config.as_deref())
+        .map(|path| allow_core::strip_win32_verbatim_prefix(&path.display().to_string()));
     let effective_mode = args
         .mode
         .as_deref()

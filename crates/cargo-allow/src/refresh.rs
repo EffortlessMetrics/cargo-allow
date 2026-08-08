@@ -105,8 +105,8 @@ pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
     } else {
         &preview_entry
     };
-    let repo_root = root.display().to_string();
-    let config_source = policy_path.display().to_string();
+    let repo_root = allow_core::strip_win32_verbatim_prefix(&root.display().to_string());
+    let config_source = allow_core::strip_win32_verbatim_prefix(&policy_path.display().to_string());
     let mutation_receipt = MutationReceipt {
         operation: "refresh",
         tool_version: env!("CARGO_PKG_VERSION"),
@@ -182,7 +182,9 @@ fn render_and_emit(args: &RefreshArgs, input: RefreshEmitInput<'_>) -> CargoAllo
     let context = RefreshContext {
         inventory: source_context.inventory(),
     };
-    let written = input.written_path.map(|path| path.display().to_string());
+    let written = input
+        .written_path
+        .map(|path| allow_core::strip_win32_verbatim_prefix(&path.display().to_string()));
     let written_ref = written.as_deref();
     let render_input = RefreshRenderInput {
         entry: input.entry,

@@ -57,6 +57,7 @@ pub use policy::{
 pub use source_tree_path::{
     GLOB_MATCH_MAX_STEPS, allow_entry_broad_scope, glob_matches, glob_matches_str, normalize_path,
     source_tree_path_is_ignored, source_tree_path_matches_filter, source_tree_scope_has_wildcard,
+    strip_win32_verbatim_prefix,
 };
 
 #[cfg(test)]
