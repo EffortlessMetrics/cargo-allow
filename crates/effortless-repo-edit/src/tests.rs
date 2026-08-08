@@ -129,7 +129,6 @@ fn write_file_reports_parent_creation_errors() -> Result<(), Box<dyn std::error:
 
     assert!(message.contains("failed to create"));
     assert!(message.contains(&file_parent.display().to_string()));
-    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::Unknown);
     Ok(())
 }
 

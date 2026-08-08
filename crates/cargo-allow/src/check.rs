@@ -486,7 +486,10 @@ fn write_check_error_receipt(
         &provenance.started_at,
         &provenance.run_id,
     );
-    write_file(path, &render_error_receipt(&err.to_string(), context))
+    Ok(write_file(
+        path,
+        &render_error_receipt(&err.to_string(), context),
+    )?)
 }
 
 fn should_emit_report_stdout(

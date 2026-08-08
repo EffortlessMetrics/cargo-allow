@@ -1,9 +1,9 @@
-use allow_core::{CargoAllowError, CargoAllowResult};
+use crate::error::{RepoEditError, RepoEditResult};
 use std::path::{Component, Path, PathBuf};
 
 /// Rejects paths that escape via `..` traversal or absolute paths outside the
 /// root (#1791). Purely lexical for not-yet-created output paths.
-pub fn assert_path_within_root(root: &Path, path: &Path) -> CargoAllowResult<()> {
+pub fn assert_path_within_root(root: &Path, path: &Path) -> RepoEditResult<()> {
     let joined = if path.is_absolute() {
         path.to_path_buf()
     } else {
@@ -23,7 +23,7 @@ pub fn assert_path_within_root(root: &Path, path: &Path) -> CargoAllowResult<()>
             return Ok(());
         }
     }
-    Err(CargoAllowError::new(format!(
+    Err(RepoEditError::new(format!(
         "output path {} is outside the source-tree root {}",
         path.display(),
         root.display()

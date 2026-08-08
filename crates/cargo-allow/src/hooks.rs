@@ -1323,7 +1323,7 @@ fn write_json_receipt<T: Serialize>(path: &Path, receipt: &T) -> CargoAllowResul
             format!("failed to render hook receipt: {error}"),
         )
     })?;
-    write_file(path, &format!("{rendered}\n"))
+    Ok(write_file(path, &format!("{rendered}\n"))?)
 }
 
 fn render_status(status: &HookStatusV1) -> String {

@@ -6,7 +6,7 @@
 
 use std::path::{Path, PathBuf};
 
-use allow_core::{CargoAllowError, CargoAllowResult};
+use crate::error::{RepoEditError, RepoEditResult};
 
 use crate::containment::strip_verbatim_prefix;
 use crate::target_identity::canonicalize_lexically;
@@ -69,7 +69,7 @@ impl MutationTarget {
 pub fn resolve_mutation_target(
     requested: &Path,
     source_tree_root: &Path,
-) -> CargoAllowResult<MutationTarget> {
+) -> RepoEditResult<MutationTarget> {
     // Step 1: Strip verbatim prefix and lexical normalization.
     let stripped = strip_verbatim_prefix(requested);
     let lexical = canonicalize_lexically(&stripped);
@@ -79,13 +79,13 @@ pub fn resolve_mutation_target(
         lexical
     } else {
         std::env::current_dir()
-            .map_err(|e| CargoAllowError::new(format!("failed to get current dir: {e}")))?
+            .map_err(|e| RepoEditError::new(format!("failed to get current dir: {e}")))?
             .join(&lexical)
     };
 
     // Step 3: Canonicalize the source tree root for ownership comparison.
     let canonical_root = source_tree_root.canonicalize().map_err(|e| {
-        CargoAllowError::new(format!(
+        RepoEditError::new(format!(
             "failed to canonicalize source tree root {}: {e}",
             source_tree_root.display()
         ))
@@ -114,7 +114,7 @@ pub fn resolve_mutation_target(
     };
 
     // Step 7: Compute stable fingerprint from the resolved canonical path.
-    let fingerprint = allow_core::stable_hash_hex(&resolved.to_string_lossy());
+    let fingerprint = crate::error::stable_hash_hex(&resolved.to_string_lossy());
 
     Ok(MutationTarget {
         normalized_absolute: resolved,
@@ -130,10 +130,10 @@ pub fn resolve_mutation_target(
 /// identity (resolving symlinks).
 /// For non-existing files: canonicalize the nearest existing parent, then
 /// append the remaining components.
-fn resolve_nearest_existing(path: &Path) -> CargoAllowResult<PathBuf> {
+fn resolve_nearest_existing(path: &Path) -> RepoEditResult<PathBuf> {
     if path.exists() {
         return path.canonicalize().map_err(|e| {
-            CargoAllowError::new(format!(
+            RepoEditError::new(format!(
                 "failed to canonicalize target {}: {e}",
                 path.display()
             ))
@@ -147,22 +147,20 @@ fn resolve_nearest_existing(path: &Path) -> CargoAllowResult<PathBuf> {
         let parent = existing_parent
             .parent()
             .map(|p| p.to_path_buf())
-            .ok_or_else(|| {
-                CargoAllowError::new(format!("path has no parent: {}", path.display()))
-            })?;
+            .ok_or_else(|| RepoEditError::new(format!("path has no parent: {}", path.display())))?;
         if let Some(name) = file_name {
             remaining.push(name);
         }
         existing_parent = parent;
         if existing_parent.as_os_str().is_empty() || existing_parent == Path::new("/") {
-            return Err(CargoAllowError::new(format!(
+            return Err(RepoEditError::new(format!(
                 "no existing parent directory found for {}",
                 path.display()
             )));
         }
     }
     let canonical_parent = existing_parent.canonicalize().map_err(|e| {
-        CargoAllowError::new(format!(
+        RepoEditError::new(format!(
             "failed to canonicalize parent {}: {e}",
             existing_parent.display()
         ))
