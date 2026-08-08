@@ -24,13 +24,12 @@
 
 use std::path::{Path, PathBuf};
 
-use allow_core::{CargoAllowResult, sha256_v1_bytes};
+use crate::error::{SnapshotErrorKind, SnapshotResult, sha256_v1_bytes};
 
 use crate::git::{
     git_command, git_error, git_status_error, is_full_oid, parse_single_oid, resolve_commit_oid,
     run_git, tree_blob_oid_at_commit,
 };
-use allow_core::CargoAllowErrorKind;
 
 /// Semantic schema/generation tag for the snapshot identity contract.
 pub const REPOSITORY_SNAPSHOT_SCHEMA: &str = "cargo-allow.repository-snapshot.v1";
@@ -220,7 +219,7 @@ pub struct RepositorySnapshotIdentity {
 pub fn resolve_revision_identity(
     root: impl AsRef<Path>,
     revision: &str,
-) -> CargoAllowResult<ResolvedRevisionIdentity> {
+) -> SnapshotResult<ResolvedRevisionIdentity> {
     let root = root.as_ref();
     let commit = resolve_commit_oid(root, revision)?;
     let tree = resolve_tree_oid(root, &commit)?;
@@ -329,7 +328,7 @@ pub fn repository_object_format(root: impl AsRef<Path>) -> RepositoryObjectForma
 pub fn repository_snapshot(
     root: impl AsRef<Path>,
     request: &RepositorySnapshotRequest,
-) -> CargoAllowResult<RepositorySnapshotIdentity> {
+) -> SnapshotResult<RepositorySnapshotIdentity> {
     let root = root.as_ref();
     let head_spec = if request.head.trim().is_empty() {
         "HEAD"
@@ -343,7 +342,7 @@ pub fn repository_snapshot(
         RepositorySnapshotKind::CommittedRange => {
             let base_spec = request.base.as_deref().ok_or_else(|| {
                 git_error(
-                    CargoAllowErrorKind::InvalidConfig,
+                    SnapshotErrorKind::InvalidConfig,
                     "snapshot_base_required",
                     "a committed-range snapshot requires an explicit base revision",
                 )
@@ -402,7 +401,7 @@ pub fn repository_snapshot(
     })
 }
 
-fn resolve_tree_oid(root: &Path, commit_oid: &str) -> CargoAllowResult<String> {
+fn resolve_tree_oid(root: &Path, commit_oid: &str) -> SnapshotResult<String> {
     let mut cmd = git_command(root);
     cmd.arg("rev-parse")
         .arg("--verify")
@@ -419,7 +418,7 @@ fn resolve_merge_base(
     root: &Path,
     base_commit: &str,
     head_commit: &str,
-) -> CargoAllowResult<Option<String>> {
+) -> SnapshotResult<Option<String>> {
     let mut cmd = git_command(root);
     cmd.arg("merge-base").arg(base_commit).arg(head_commit);
     let output = run_git(cmd, "git merge-base")?;
@@ -469,7 +468,7 @@ fn repository_root_identity(
     root: &Path,
     head_commit: &str,
     shallow: bool,
-) -> CargoAllowResult<String> {
+) -> SnapshotResult<String> {
     if shallow {
         return Ok(SHALLOW_ROOT_IDENTITY.to_string());
     }
@@ -481,11 +480,11 @@ fn repository_root_identity(
     }
     let text = std::str::from_utf8(&output.stdout).map_err(|source| {
         git_error(
-            CargoAllowErrorKind::Inventory,
+            SnapshotErrorKind::Inventory,
             "git_output_malformed",
             "git rev-list returned non-UTF-8 object ids",
         )
-        .with_cause(&source)
+        .with_cause(source)
     })?;
     let mut roots = text
         .split_ascii_whitespace()
@@ -493,7 +492,7 @@ fn repository_root_identity(
         .collect::<Vec<_>>();
     if roots.is_empty() || !roots.iter().all(|oid| is_full_oid(oid)) {
         return Err(git_error(
-            CargoAllowErrorKind::Inventory,
+            SnapshotErrorKind::Inventory,
             "git_output_malformed",
             "git rev-list returned no valid root commit identity",
         ));
