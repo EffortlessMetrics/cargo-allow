@@ -163,6 +163,11 @@ pub struct Requirements {
     pub stale_entries_fail: bool,
     pub unsafe_evidence_required: bool,
     pub unsafe_safety_comment_required: bool,
+    /// Require at least one verified local-file evidence reference for unsafe
+    /// entries (#3237). Traceability-only evidence (test:, issue:, pr:, etc.)
+    /// is accepted as supplementary but does not satisfy this mandate alone.
+    /// Default: false (opt-in to tighten the governance boundary).
+    pub unsafe_verified_evidence_required: bool,
 }
 
 impl Default for Requirements {
@@ -178,6 +183,7 @@ impl Default for Requirements {
             stale_entries_fail: false,
             unsafe_evidence_required: true,
             unsafe_safety_comment_required: false,
+            unsafe_verified_evidence_required: false,
         }
     }
 }
