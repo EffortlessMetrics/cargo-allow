@@ -10849,3 +10849,25 @@ glob = "policy/product-package-topology-v2.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0514"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/crate-version-lib.sh"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Shared crate-version resolver for the release and candidate smokes; scoped [package] parsing so crates on independent version lines name the archives that actually exist."
+evidence = ["doc:docs/release/README.md"]
+created = "2026-08-08"
+review_after = "2026-11-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/crate-version-lib.sh"
+target_fingerprint = "sh"
+glob = "scripts/crate-version-lib.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
