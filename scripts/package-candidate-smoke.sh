@@ -163,6 +163,7 @@ done
 
 log "assert packaged crates have no path dependencies"
 for crate in "${crates[@]}"; do
+  crate_version="$(read_crate_version "${crate}")"
   tmp="${package_dir}/inspect-${crate}"
   rm -rf "${tmp}"
   mkdir -p "${tmp}"
