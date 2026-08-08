@@ -237,7 +237,10 @@ fn shortest_path_finds_transitive_path() -> Result<(), String> {
     }"#;
     let graph = parse_cargo_metadata_graph_v2(json).map_err(|e| e.to_string())?;
     let path = shortest_closure_path(&graph, "a", "c").ok_or("no path found")?;
-    if path.len() != 3 || path[0] != "a" || path[2] != "c" {
+    if path.len() != 3
+        || path.first().map(|s| s.as_str()) != Some("a")
+        || path.get(2).map(|s| s.as_str()) != Some("c")
+    {
         return Err(format!("unexpected path: {path:?}"));
     }
     Ok(())
