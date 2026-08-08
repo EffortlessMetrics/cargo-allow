@@ -147,7 +147,10 @@ fn summary_sidecar_is_structured_and_rejects_output_collision() -> Result<(), St
     let root = temp_root("sidecar").map_err(|error| error.to_string())?;
     let detail = root.join("report.json");
     let summary = root.join("summary.json");
-    let config = SummaryOutputConfig::new(summary.clone(), vec![detail.clone()]);
+    let config = SummaryOutputConfig::new(
+        summary.clone(),
+        vec![(ConflictBase::WorkingDirectory, detail.clone())],
+    );
     print_report_with_summary_config(
         report_args(
             &root,
@@ -168,7 +171,10 @@ fn summary_sidecar_is_structured_and_rejects_output_collision() -> Result<(), St
         schema_id == Some(crate::core_command_summary::CORE_COMMAND_SUMMARY_SCHEMA_ID),
         "summary sidecar schema ID is missing",
     )?;
-    let collision = SummaryOutputConfig::new(detail.clone(), vec![detail.clone()]);
+    let collision = SummaryOutputConfig::new(
+        detail.clone(),
+        vec![(ConflictBase::WorkingDirectory, detail.clone())],
+    );
     let error = print_report_with_summary_config(
         report_args(
             &root,

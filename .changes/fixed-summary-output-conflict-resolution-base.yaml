@@ -1,7 +1,8 @@
 kind: Fixed
 body: >-
-  Refuse a `--command-summary-output` path that collides with `--plan`,
-  `--output`, `--receipt`, or `--config` under either resolution base. `why`
-  writes its artifacts relative to the working directory while the sidecar
-  resolves under `--root`, so a relative `--root` could hide a real collision
-  and let the summary silently overwrite the add-finding plan.
+  Resolve each `--command-summary-output` conflict candidate against the base
+  its own command writes with, instead of assuming the source-tree root for all
+  of them. `--config` is discovered under the root and `adopt --output` resolves
+  there too, but `why --plan` and the `emit_text` outputs are relative to the
+  working directory, so a relative `--root` could hide a real collision and let
+  the summary sidecar silently overwrite the add-finding plan.

@@ -235,6 +235,49 @@ fn why_plan_conflicts_with_the_summary_across_resolution_bases() -> Result<(), S
     remove_temp_root(root)
 }
 
+/// The mirror of the case above: `adopt` resolves `--output` under the root, so
+/// a root-relative output that merely *looks* like the sidecar path under the
+/// working-directory base targets a different file and must still be allowed.
+#[test]
+fn adopt_output_is_not_a_conflict_when_only_the_wrong_base_would_collide() -> Result<(), String> {
+    let root = temp_root("summary-adopt-base")?;
+    write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
+    run(&root, &["init"])?;
+    git_commit_fixture(&root)?;
+
+    let parent = root
+        .parent()
+        .ok_or_else(|| "temp root needs a parent".to_string())?
+        .to_path_buf();
+    let name = root
+        .file_name()
+        .ok_or_else(|| "temp root needs a name".to_string())?
+        .to_string_lossy()
+        .to_string();
+    // `adopt --output <name>/plan.json` resolves under the root, so it lands on
+    // `<root>/<name>/plan.json` — not the sidecar's `<root>/plan.json`. Only the
+    // working-directory base would make these two collide.
+    let output_arg = format!("{name}/plan.json");
+    let output = Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+        .current_dir(&parent)
+        .args(["--command-summary-output", "plan.json", "adopt"])
+        .args(["--output", &output_arg])
+        .arg("--root")
+        .arg(&name)
+        .output()
+        .map_err(|error| format!("run adopt: {error}"))?;
+
+    require(
+        !String::from_utf8_lossy(&output.stderr).contains("--command-summary-output must differ"),
+        format!(
+            "distinct files must not be refused as a conflict, got {}",
+            String::from_utf8_lossy(&output.stderr)
+        ),
+    )?;
+
+    remove_temp_root(root)
+}
+
 #[test]
 fn adopt_and_doctor_agree_between_human_and_summary_artifacts() -> Result<(), String> {
     let root = temp_root("summary-parity")?;

@@ -14,14 +14,30 @@ use crate::core_command_summary::{
 use crate::reporting::{ReportRenderArgs, SourceTreeReportContext};
 use crate::{OutputFormat, emit_text, write_file};
 
+/// The base a command resolves one of its own artifact paths against.
+///
+/// Commands do not agree: `--config` is discovered under the source-tree root
+/// everywhere, `adopt` resolves `--output` under the root too, while the
+/// commands that emit through `emit_text` (and `why --plan`) write relative to
+/// the working directory. A conflict is only real when the summary sidecar and
+/// the artifact land on the same file, so each candidate must be resolved
+/// against the base its own command actually uses.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ConflictBase {
+    /// Resolved under the source-tree root (`--config`, `adopt --output`).
+    SourceTreeRoot,
+    /// Resolved under the process working directory.
+    WorkingDirectory,
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct SummaryOutputConfig {
     path: PathBuf,
-    conflicts: Vec<PathBuf>,
+    conflicts: Vec<(ConflictBase, PathBuf)>,
 }
 
 impl SummaryOutputConfig {
-    pub(crate) fn new(path: PathBuf, conflicts: Vec<PathBuf>) -> Self {
+    pub(crate) fn new(path: PathBuf, conflicts: Vec<(ConflictBase, PathBuf)>) -> Self {
         Self { path, conflicts }
     }
 }
@@ -571,23 +587,18 @@ fn validate_summary_output_path(
 ) -> CargoAllowResult<PathBuf> {
     let path = resolve_under_root(root, &config.path);
     crate::assert_path_within_root(root, &path)?;
-    // Commands do not agree on the base for their own artifact paths: adopt and
-    // doctor resolve relative paths under the source-tree root, while why writes
-    // `--plan` and `--output` relative to the working directory. Comparing under
-    // a single base lets `--root` hide a real collision, and the summary sidecar
-    // would then silently overwrite the artifact it was supposed to leave alone.
-    // Treat a match under either base as a conflict.
+    // Resolve each candidate against the base its own command writes with, so a
+    // relative `--root` can neither hide a real collision nor invent one between
+    // two paths that land on different files.
     let cwd = std::env::current_dir().ok();
-    for conflict in &config.conflicts {
-        let candidates = [
-            Some(resolve_under_root(root, conflict)),
-            cwd.as_deref().map(|cwd| resolve_under_root(cwd, conflict)),
-        ];
-        if candidates
-            .into_iter()
-            .flatten()
-            .any(|candidate| same_path(&path, &candidate))
-        {
+    for (base, conflict) in &config.conflicts {
+        let candidate = match base {
+            ConflictBase::SourceTreeRoot => Some(resolve_under_root(root, conflict)),
+            ConflictBase::WorkingDirectory => {
+                cwd.as_deref().map(|cwd| resolve_under_root(cwd, conflict))
+            }
+        };
+        if candidate.is_some_and(|candidate| same_path(&path, &candidate)) {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::Usage,
                 "--command-summary-output must differ from --output, --receipt, and --config",
