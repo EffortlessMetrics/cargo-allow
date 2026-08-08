@@ -3492,7 +3492,7 @@ deletion_output = "Delete scaffold sources after parity cutover and old-path ret
 [[entry]]
 id = "INVENTORY-REPO_EDIT-SRC"
 source_kind = "RustModule"
-current_paths = ["crates/effortless-repo-edit/src/apply_receipt_tests.rs", "crates/effortless-repo-edit/src/apply_receipt.rs", "crates/effortless-repo-edit/src/atomic_write.rs", "crates/effortless-repo-edit/src/containment.rs", "crates/effortless-repo-edit/src/digest.rs", "crates/effortless-repo-edit/src/lib.rs", "crates/effortless-repo-edit/src/mutation_lock.rs", "crates/effortless-repo-edit/src/parity/mod.rs", "crates/effortless-repo-edit/src/target_identity.rs", "crates/effortless-repo-edit/src/tests.rs"]
+current_paths = ["crates/effortless-repo-edit/src/apply_receipt_tests.rs", "crates/effortless-repo-edit/src/apply_receipt.rs", "crates/effortless-repo-edit/src/atomic_write.rs", "crates/effortless-repo-edit/src/containment.rs", "crates/effortless-repo-edit/src/digest.rs", "crates/effortless-repo-edit/src/lib.rs", "crates/effortless-repo-edit/src/mutation_lock.rs", "crates/effortless-repo-edit/src/mutation_target.rs", "crates/effortless-repo-edit/src/mutation_target_tests.rs", "crates/effortless-repo-edit/src/parity/mod.rs", "crates/effortless-repo-edit/src/target_identity.rs", "crates/effortless-repo-edit/src/tests.rs"]
 current_refs = []
 current_identity = "Extracted repo-edit source tree under no-new intent/proof/shared enforcement (#2598)"
 current_product = "shared"
