@@ -249,12 +249,26 @@ fn published_release_versions_match_workspace() {
         "release note should document the published install pin"
     );
 
-    for (package, manifest) in &package_manifests {
-        assert!(
-            manifest.contains("version.workspace = true"),
-            "{package} should inherit the workspace release version"
-        );
-    }
+    // Not every publishable crate rides the workspace release line: the
+    // `effortless-*` and `intent-*` crates were split onto their own version
+    // in #3286 so they can ship independently of the scanner. What must hold
+    // is that each crate's own declared version is the single source of truth
+    // everywhere it is referenced, so a bump can never land half-applied.
+    let package_versions = package_manifests
+        .iter()
+        .map(|(package, manifest)| {
+            (
+                package.clone(),
+                package_declared_version(manifest, &workspace_version),
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
+
+    assert_eq!(
+        package_versions.get("cargo-allow"),
+        Some(&workspace_version),
+        "the cargo-allow package should ride the workspace release version"
+    );
 
     let package_names = package_manifests.keys().cloned().collect::<BTreeSet<_>>();
     let workspace_dependency_versions =
@@ -271,8 +285,9 @@ fn published_release_versions_match_workspace() {
     );
     for (dependency, version) in workspace_dependency_versions {
         assert_eq!(
-            version, workspace_version,
-            "{dependency} workspace dependency should require the published version"
+            Some(&version),
+            package_versions.get(&dependency),
+            "{dependency} workspace dependency should require the version its own manifest declares"
         );
     }
 
@@ -284,8 +299,9 @@ fn published_release_versions_match_workspace() {
     );
     for (package, version) in lock_versions {
         assert_eq!(
-            version, workspace_version,
-            "{package} lockfile entry should carry the published version"
+            Some(&version),
+            package_versions.get(&package),
+            "{package} lockfile entry should carry the version its own manifest declares"
         );
     }
 }
@@ -526,6 +542,29 @@ fn all_workspace_package_manifests(root: &Path) -> BTreeMap<String, String> {
 
 fn is_publishable_workspace_package(manifest: &str) -> bool {
     !manifest.contains("publish = false")
+}
+
+/// The version a crate's own manifest declares.
+///
+/// A crate either inherits the workspace release line with a standalone
+/// `version.workspace = true` or pins its own literal. The inherit form is
+/// matched line-by-line rather than by substring, because a plain
+/// `manifest.contains("version.workspace = true")` is also satisfied by
+/// `rust-version.workspace = true` — which every crate has, making the check
+/// vacuous and letting an independently versioned crate pass unnoticed.
+fn package_declared_version(manifest: &str, workspace_version: &str) -> String {
+    if manifest
+        .lines()
+        .any(|line| line.trim() == "version.workspace = true")
+    {
+        return workspace_version.to_string();
+    }
+    manifest_value(manifest, "version").unwrap_or_else(|| {
+        std::panic::panic_any(
+            "package manifest should either inherit the workspace version or declare its own"
+                .to_string(),
+        )
+    })
 }
 
 fn active_publish_order_doc(workspace_version: &str) -> &'static str {
