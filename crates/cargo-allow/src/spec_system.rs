@@ -196,7 +196,7 @@ fn default_spec_system_config() -> SpecSystemConfig {
             plans: "plans".to_string(),
             goals: None,
             support_tiers: "docs/status/SUPPORT_TIERS.md".to_string(),
-            artifact_ledger: "policy/doc-artifacts.toml".to_string(),
+            artifact_ledger: DEFAULT_OWNED_ARTIFACT_LEDGER.to_string(),
         },
         requirements: SpecSystemRequirements {
             ledger_required: true,
@@ -236,7 +236,8 @@ fn work_items_from_artifact_files(
                 ),
                 vec![
                     "create the registered artifact file".to_string(),
-                    "or correct the artifact path in policy/doc-artifacts.toml".to_string(),
+                    "or correct the artifact path in .allow/artifacts/doc-artifacts.toml"
+                        .to_string(),
                 ],
             ));
             continue;
@@ -253,7 +254,8 @@ fn work_items_from_artifact_files(
                     ),
                     vec![
                         "add the artifact id to the file so links are machine-readable".to_string(),
-                        "or correct the id/path pair in policy/doc-artifacts.toml".to_string(),
+                        "or correct the id/path pair in .allow/artifacts/doc-artifacts.toml"
+                            .to_string(),
                     ],
                 ));
             }
@@ -264,7 +266,8 @@ fn work_items_from_artifact_files(
                 format!("failed to read artifact file {}: {err}", artifact.path),
                 vec![
                     "make the registered artifact file readable".to_string(),
-                    "or correct the artifact path in policy/doc-artifacts.toml".to_string(),
+                    "or correct the artifact path in .allow/artifacts/doc-artifacts.toml"
+                        .to_string(),
                 ],
             )),
         }
@@ -289,7 +292,7 @@ fn work_items_from_artifact_links(ledger: &DocArtifactLedger) -> Vec<SpecSystemW
                         artifact.id, target
                     ),
                     vec![
-                        format!("register {target} in policy/doc-artifacts.toml"),
+                        format!("register {target} in .allow/artifacts/doc-artifacts.toml"),
                         format!("or correct {field} in {}", artifact.path),
                     ],
                 ));
@@ -1031,7 +1034,7 @@ pub(crate) fn sample_spec_system_json_for_contract_test() -> String {
             status: Some("accepted".to_string()),
             message: "CARGO-ALLOW-SPEC-0001 linked_proposal target CARGO-ALLOW-PROP-0001 is not registered".to_string(),
             suggested_actions: vec![
-                "register CARGO-ALLOW-PROP-0001 in policy/doc-artifacts.toml".to_string(),
+                "register CARGO-ALLOW-PROP-0001 in .allow/artifacts/doc-artifacts.toml".to_string(),
                 "or correct linked_proposal in docs/specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md".to_string(),
             ],
             proof_commands: spec_system_proof_commands(),
