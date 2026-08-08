@@ -1,9 +1,11 @@
 kind: Fixed
 body: >-
-  Restore the workspace test and documentation suites to green. Parity and
-  release-fixture tests still referenced the pre-rename `repo-protocol`,
-  `repo-snapshot`, `repo-edit`, and `rust-source-index` crate paths and package
-  names; two `cargo doc` intra-doc links pointed at a private module and an
-  unqualified method, failing `RUSTDOCFLAGS=-D warnings`; and three assertions
-  had fallen behind deliberate behavior changes to check stderr summaries,
-  clap-enforced argument exclusion, and JSON-mode stderr quieting.
+  Restore the workspace test and documentation suites to green on Linux and
+  Windows. Parity and release-fixture tests still referenced the pre-rename
+  `repo-protocol`, `repo-snapshot`, `repo-edit`, and `rust-source-index` crate
+  paths and package names; two `cargo doc` intra-doc links pointed at a private
+  module and an unqualified method, failing `RUSTDOCFLAGS=-D warnings`; a legacy
+  policy read-error assertion compared operator text against a forward-slash
+  normalized path that could never match Windows' native spelling; and three
+  assertions had fallen behind deliberate behavior changes to check stderr
+  summaries, clap-enforced argument exclusion, and JSON-mode stderr quieting.
