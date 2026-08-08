@@ -967,6 +967,199 @@ fn render_list_rows_json_projects_rows_filters_and_dash_lifecycle_fields() {
     );
 }
 
+#[test]
+fn list_core_summary_distinguishes_empty_filtered_and_single_entry_routes() {
+    let inventory = allow_report::InventoryContext::source_syntax("git_tracked", None, Some(2))
+        .with_completeness("complete");
+    let empty = build_list_summary(&[], &ListFilters::default(), inventory, None, None, false)
+        .unwrap_or_else(|error| std::panic::panic_any(format!("empty list summary: {error}")));
+    assert_eq!(empty.reason.code, "list.no_entries");
+    assert_eq!(empty.posture, CoreCommandPostureV1::NotApplicable);
+    assert_eq!(
+        empty
+            .primary_action
+            .as_ref()
+            .and_then(|action| action.args.first())
+            .map(String::as_str),
+        Some("adopt")
+    );
+
+    let filtered = ListFilters {
+        owner: Some("missing-owner"),
+        ..ListFilters::default()
+    };
+    let no_match = build_list_summary(
+        &[list_row(
+            "allow-one",
+            FindingKind::Panic,
+            "parser",
+            "approved",
+        )],
+        &filtered,
+        inventory,
+        None,
+        None,
+        false,
+    )
+    .unwrap_or_else(|error| std::panic::panic_any(format!("filtered list summary: {error}")));
+    assert_eq!(no_match.reason.code, "list.no_filter_matches");
+    assert_eq!(
+        no_match
+            .primary_action
+            .as_ref()
+            .and_then(|action| action.args.first())
+            .map(String::as_str),
+        Some("list")
+    );
+
+    let one = build_list_summary(
+        &[list_row(
+            "allow-one",
+            FindingKind::Panic,
+            "parser",
+            "approved",
+        )],
+        &ListFilters::default(),
+        inventory,
+        None,
+        None,
+        false,
+    )
+    .unwrap_or_else(|error| std::panic::panic_any(format!("single-entry list summary: {error}")));
+    assert_eq!(one.reason.code, "list.entries_available");
+    assert_eq!(one.posture, CoreCommandPostureV1::NotApplicable);
+    assert_eq!(
+        one.primary_action
+            .as_ref()
+            .and_then(|action| action.args.get(1))
+            .map(String::as_str),
+        Some("allow-one")
+    );
+
+    let unhealthy = build_list_summary(
+        &[list_row(
+            "allow-due",
+            FindingKind::Panic,
+            "parser",
+            "baseline_debt",
+        )],
+        &ListFilters::default(),
+        inventory,
+        Some(Path::new("repo")),
+        Some(Path::new("policy/allow.toml")),
+        true,
+    )
+    .unwrap_or_else(|error| std::panic::panic_any(format!("unhealthy list summary: {error}")));
+    assert_eq!(
+        unhealthy.result_class,
+        effortless_repo_protocol::ResultClassV1::Findings
+    );
+    assert_eq!(unhealthy.posture, CoreCommandPostureV1::Advisory);
+    assert_eq!(
+        unhealthy
+            .primary_action
+            .as_ref()
+            .map(|action| action.args.clone()),
+        Some(vec![
+            "explain".to_string(),
+            "allow-due".to_string(),
+            "--root".to_string(),
+            "repo".to_string(),
+            "--config".to_string(),
+            "policy/allow.toml".to_string(),
+            "--include-untracked".to_string(),
+        ])
+    );
+}
+
+#[test]
+fn list_core_summary_refuses_safe_green_claim_for_partial_inventory() {
+    let inventory = allow_report::InventoryContext::source_syntax("git_tracked", None, Some(1))
+        .with_completeness("partial");
+    let summary = build_list_summary(&[], &ListFilters::default(), inventory, None, None, false)
+        .unwrap_or_else(|error| std::panic::panic_any(format!("partial list summary: {error}")));
+    assert_eq!(
+        summary.result_class,
+        effortless_repo_protocol::ResultClassV1::PartialData
+    );
+    assert_eq!(summary.posture, CoreCommandPostureV1::Blocking);
+    assert_eq!(
+        summary
+            .primary_action
+            .as_ref()
+            .and_then(|action| action.args.first())
+            .map(String::as_str),
+        Some("doctor")
+    );
+}
+
+#[test]
+fn list_pagination_keeps_filtered_rows_before_offset_and_limit() {
+    let rows = vec![
+        list_row("allow-other", FindingKind::Panic, "other", "approved"),
+        list_row("allow-match", FindingKind::Panic, "parser", "approved"),
+    ];
+    let filters = ListFilters {
+        owner: Some("parser"),
+        ..ListFilters::default()
+    };
+    let filtered = rows
+        .into_iter()
+        .filter(|row| list_filter::list_row_matches(row, &filters))
+        .collect();
+    let page = paginate_list_rows(filtered, 0, Some(1));
+    assert_eq!(page.len(), 1);
+    assert_eq!(page[0].id, "allow-match");
+}
+
+#[test]
+fn list_json_adds_core_summary_without_removing_existing_artifact_fields() -> Result<(), String> {
+    let inventory = allow_report::InventoryContext::source_syntax("git_tracked", None, Some(1))
+        .with_completeness("complete");
+    let summary = build_list_summary(&[], &ListFilters::default(), inventory, None, None, false)
+        .unwrap_or_else(|error| std::panic::panic_any(format!("list summary: {error}")));
+    let detail = render_list_rows_json(
+        &[],
+        &ListFilters::default(),
+        ListContext {
+            inventory,
+            kind_arg: None,
+        },
+    );
+    let json = add_core_summary_to_list_json(&detail, &summary)
+        .unwrap_or_else(|error| std::panic::panic_any(format!("list JSON summary: {error}")));
+    let value = parse_json("list JSON with core summary", &json);
+    assert_eq!(
+        value
+            .pointer("/core_command_summary/operation")
+            .and_then(Value::as_str),
+        Some("list")
+    );
+    assert_eq!(
+        value.pointer("/summary/allow_entries"),
+        Some(&Value::from(0))
+    );
+    assert!(value.pointer("/allow_entries").is_some());
+    let schema: Value =
+        serde_json::from_str(include_str!("../../../docs/schemas/list.schema.json"))
+            .map_err(|error| format!("list schema JSON: {error}"))?;
+    let validator = jsonschema::validator_for(&schema)
+        .map_err(|error| format!("list schema compilation: {error}"))?;
+    validator
+        .validate(&value)
+        .map_err(|error| format!("list core summary output violates list schema: {error}"))?;
+    let core_summary: CoreCommandSummaryV1 = serde_json::from_value(
+        value
+            .get("core_command_summary")
+            .cloned()
+            .ok_or_else(|| "list output omitted core_command_summary".to_string())?,
+    )
+    .map_err(|error| format!("core summary contract: {error}"))?;
+    crate::core_command_summary::validate_core_command_summary(&core_summary)
+        .map_err(|error| format!("core summary validation: {error}"))?;
+    Ok(())
+}
+
 fn list_fixture_dir() -> std::path::PathBuf {
     let stamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

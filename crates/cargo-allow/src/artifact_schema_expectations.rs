@@ -240,6 +240,7 @@ pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static
                 "allow_entries",
                 "claim_boundary",
                 "command",
+                "core_command_summary",
                 "filters",
                 "inventory",
                 "scanner_limitations",
