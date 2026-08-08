@@ -122,14 +122,14 @@ fn repo_protocol_snapshot_matches_canonical() -> Result<(), String> {
         let canonical = std::fs::read_to_string(
             root.join(format!("crates/effortless-repo-protocol/src/{file}")),
         )
-        .map_err(|err| format!("read canonical repo-protocol/{file}: {err}"))?;
+        .map_err(|err| format!("read canonical effortless-repo-protocol/{file}: {err}"))?;
         let packaged = std::fs::read_to_string(root.join(format!(
             "crates/intent-protocol/src/snapshot_package/repo_protocol/{file}"
         )))
         .map_err(|err| format!("read intent-protocol snapshot repo_protocol/{file}: {err}"))?;
         if canonical.replace("\r\n", "\n") != packaged.replace("\r\n", "\n") {
             return Err(format!(
-                "intent-protocol snapshot_package/repo_protocol/{file} must match repo-protocol/{file}"
+                "intent-protocol snapshot_package/repo_protocol/{file} must match effortless-repo-protocol/{file}"
             ));
         }
     }

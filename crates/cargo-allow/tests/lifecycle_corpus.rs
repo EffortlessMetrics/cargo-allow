@@ -76,6 +76,7 @@ fn policy_change_notes_pin_exact_transition_and_inverse_is_improvement() {
     // the #2075 change-note diagnostic is asserted on the human render instead.
     // The JSON run above still pins the machine-readable transition rows.
     let missing_rendered = run_diff_rendered(&weakening_root, "human", true);
+    assert_status("weakening without note (human)", &missing_rendered, false);
     let missing_stderr = String::from_utf8_lossy(&missing_rendered.stderr);
     assert!(
         missing_stderr.contains("change note required: allow-transition occurrence_limit_loosened"),
@@ -156,6 +157,7 @@ fn policy_change_notes_pin_exact_transition_and_inverse_is_improvement() {
     );
     assert_status("weakening with stale note", &stale, false);
     let stale_rendered = run_diff_rendered(&weakening_root, "human", true);
+    assert_status("weakening with stale note (human)", &stale_rendered, false);
     assert!(
         String::from_utf8_lossy(&stale_rendered.stderr).contains("change note required"),
         "stale fingerprint should reopen the note obligation"

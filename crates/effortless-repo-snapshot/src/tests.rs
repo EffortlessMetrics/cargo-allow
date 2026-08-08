@@ -143,7 +143,7 @@ fn source_view_package_copy_matches_repo_snapshot() -> Result<(), String> {
         .ok_or_else(|| "packaged source_view missing body marker".to_string())?;
     if canonical_body.replace("\r\n", "\n") != packaged_body.replace("\r\n", "\n") {
         return Err(
-            "cargo-allow spec_system_source_view.rs must match repo-snapshot source_view.rs (modulo import paths)"
+            "cargo-allow spec_system_source_view.rs must match effortless-repo-snapshot source_view.rs (modulo import paths)"
                 .to_string(),
         );
     }
