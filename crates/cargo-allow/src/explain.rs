@@ -2,21 +2,21 @@ use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding,
     MatchOutcome,
 };
-use allow_match::{evaluate, score_match, CheckMode};
+use allow_match::{CheckMode, evaluate, score_match};
 use effortless_repo_protocol::{ClaimBoundaryV1, CompletenessV1, CurrentnessV1, ResultClassV1};
 use serde_json::Value;
 use std::path::Path;
 
 use crate::{
+    EvidenceValidationMode, HumanJsonFormat, ProfileArg, SourceTreeReportContext,
     core_command_summary::{
-        build_core_command_summary, render_core_command_summary_human, CoreCommandActionV1,
-        CoreCommandEffectsV1, CoreCommandPostureV1, CoreCommandReasonV1, CoreCommandSummaryInputV1,
-        CoreCommandSummaryV1, CoreSourceSubjectKindV1, CoreSourceSubjectV1,
+        CoreCommandActionV1, CoreCommandEffectsV1, CoreCommandPostureV1, CoreCommandReasonV1,
+        CoreCommandSummaryInputV1, CoreCommandSummaryV1, CoreSourceSubjectKindV1,
+        CoreSourceSubjectV1, build_core_command_summary, render_core_command_summary_human,
     },
     emit_text,
     evidence_inventory::current_evidence_source_tree_files,
-    load_world_with_evidence_mode, spec_system, EvidenceValidationMode, HumanJsonFormat,
-    ProfileArg, SourceTreeReportContext,
+    load_world_with_evidence_mode, spec_system,
 };
 
 #[path = "explain_args.rs"]

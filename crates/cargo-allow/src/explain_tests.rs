@@ -234,9 +234,11 @@ fn explain_spec_system_profile_json_reports_one_artifact() {
         .unwrap_or_else(|| {
             std::panic::panic_any("spec-system explain should include claim boundary")
         });
-    assert!(claim_boundary
-        .iter()
-        .any(|flag| { flag.as_str() == Some("proof_commands_not_executed") }));
+    assert!(
+        claim_boundary
+            .iter()
+            .any(|flag| { flag.as_str() == Some("proof_commands_not_executed") })
+    );
 }
 
 #[test]
@@ -300,9 +302,10 @@ fn explain_spec_system_profile_rejects_include_untracked() {
     let Err(err) = result else {
         return;
     };
-    assert!(err
-        .to_string()
-        .contains("--include-untracked is not supported with --profile spec-system"));
+    assert!(
+        err.to_string()
+            .contains("--include-untracked is not supported with --profile spec-system")
+    );
 }
 
 #[test]
@@ -328,9 +331,10 @@ fn explain_spec_system_profile_rejects_unknown_artifact() {
     let Err(err) = result else {
         return;
     };
-    assert!(err
-        .to_string()
-        .contains("no spec-system artifact `CARGO-ALLOW-SPEC-9999`"));
+    assert!(
+        err.to_string()
+            .contains("no spec-system artifact `CARGO-ALLOW-SPEC-9999`")
+    );
 }
 
 #[test]
