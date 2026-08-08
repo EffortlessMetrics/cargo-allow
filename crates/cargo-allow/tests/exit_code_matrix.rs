@@ -183,6 +183,31 @@ fn exit_matrix_post_parse_structured_usage_is_2() {
 }
 
 #[test]
+fn exit_matrix_command_summary_output_without_a_subcommand_is_2() {
+    // `--command-summary-output` is a global flag, so it parses fine with no
+    // subcommand at all. That reaches a second post-parse `Usage` branch,
+    // distinct from the unsupported-subcommand one above.
+    let root = temp_root("exit-summary-no-subcommand");
+    let summary = root.join("summary.json");
+    let output = cargo_allow()
+        .arg("--command-summary-output")
+        .arg(&summary)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run bare usage: {err}")));
+    assert_exit(
+        "post-parse structured Usage (--command-summary-output with no subcommand)",
+        &output,
+        2,
+        "requires the audit or check subcommand",
+    );
+    assert!(
+        !summary.exists(),
+        "a rejected usage error must not leave a partial artifact behind"
+    );
+    drop_root(root);
+}
+
+#[test]
 fn exit_matrix_missing_config_is_1() {
     let root = temp_root("exit-missing-config");
     write_panic_source(&root);
