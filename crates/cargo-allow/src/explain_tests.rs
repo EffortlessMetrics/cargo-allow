@@ -184,6 +184,33 @@ fn explain_summary_does_not_claim_satisfied_when_detail_has_repair_steps() {
 }
 
 #[test]
+fn explain_summary_references_additional_repair_actions() {
+    let entry = test_entry("allow-explain-multiple-actions", FindingKind::NonRustFile);
+    let inventory = allow_report::InventoryContext::source_syntax("git_tracked", None, Some(4))
+        .with_completeness("complete");
+    let summary = build_explain_summary(
+        &entry,
+        &[],
+        inventory,
+        None,
+        None,
+        false,
+        ExplainSummaryProjection {
+            suggested_actions: &["repair evidence".to_string(), "rerun explain".to_string()],
+            proof_commands: &["cargo-allow explain allow-explain-multiple-actions".to_string()],
+            repository_identity: "test-repository".to_string(),
+        },
+    )
+    .unwrap_or_else(|error| std::panic::panic_any(format!("explain summary: {error}")));
+
+    assert_eq!(summary.additional_action_count, 1);
+    assert_eq!(
+        summary.additional_actions_ref.as_deref(),
+        Some("explain.next.suggested_actions")
+    );
+}
+
+#[test]
 fn explain_spec_system_profile_json_reports_one_artifact() {
     let root = spec_system_fixture_dir();
     write_spec_system_fixture(&root);
