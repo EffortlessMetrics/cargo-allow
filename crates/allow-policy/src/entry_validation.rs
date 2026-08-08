@@ -140,6 +140,24 @@ pub(crate) fn validate_allow_entry_evidence_and_limit(
             entry.id,
         )));
     }
+    // Stricter mandate: unsafe entries require at least one verified local-file
+    // evidence reference, not just traceability-only references (#3237).
+    // Traceability evidence (test:, issue:, pr:) is accepted as supplementary
+    // but cannot satisfy the mandate alone when this flag is enabled.
+    if requirements.unsafe_verified_evidence_required
+        && entry.kind == FindingKind::Unsafe
+        && !entry
+            .evidence
+            .iter()
+            .any(|evidence| evidence_is_verified_local(evidence))
+    {
+        return Err(CargoAllowError::new(format!(
+            "{} unsafe entry requires at least one verified local-file evidence reference \
+             (doc:, spec:, adr:, ripr:, coverage:, or unsafe-review:); \
+             traceability-only references (test:, issue:, pr:) are supplementary",
+            entry.id,
+        )));
+    }
     if requirements.evidence_required {
         if entry.evidence.is_empty() {
             return Err(CargoAllowError::new(format!(
@@ -197,6 +215,22 @@ fn evidence_is_typed(evidence: &str) -> bool {
     let prefix = prefix.trim();
     let target = target.trim();
     !target.is_empty() && recognized_evidence_prefixes().any(|known| known == prefix)
+}
+
+/// Check whether an evidence reference points to a verified local-file
+/// evidence kind (doc, spec, adr, ripr, coverage, unsafe-review) rather than
+/// a traceability-only reference (test, cargo, issue, pr, legacy-policy) (#3237).
+///
+/// Local-file evidence is filesystem-verified by cargo-allow; traceability
+/// evidence is trust-on-source and never resolved.
+pub fn evidence_is_verified_local(evidence: &str) -> bool {
+    let Some((prefix, target)) = evidence.split_once(':') else {
+        return false;
+    };
+    let prefix = prefix.trim();
+    let target = target.trim();
+    !target.is_empty()
+        && crate::evidence_reference::local_file_evidence_prefixes().any(|known| known == prefix)
 }
 
 fn validate_allow_id(id: &str) -> CargoAllowResult<()> {
@@ -617,6 +651,53 @@ mod tests {
         let mut ceiling_limit = entry("ceiling-limit");
         ceiling_limit.occurrence_limit = Some(OCCURRENCE_LIMIT_MAX);
         assert!(validate_allow_entry_evidence_and_limit(&ceiling_limit, &requirements).is_ok());
+    }
+
+    #[test]
+    fn unsafe_verified_evidence_mandate_distinguishes_local_from_traceability() {
+        let mut requirements = required();
+        requirements.unsafe_verified_evidence_required = true;
+
+        // Traceability-only evidence fails the stricter mandate.
+        let mut trace_only = entry("unsafe-trace");
+        trace_only.kind = FindingKind::Unsafe;
+        trace_only.evidence = vec!["test:unsafe_path_is_covered".to_string()];
+        let err = err_text(validate_allow_entry_evidence_and_limit(
+            &trace_only,
+            &requirements,
+        ));
+        assert!(
+            err.contains("requires at least one verified local-file evidence reference"),
+            "traceability-only should fail verified mandate: {err}"
+        );
+
+        // Local-file evidence satisfies the stricter mandate.
+        let mut local_file = entry("unsafe-local");
+        local_file.kind = FindingKind::Unsafe;
+        local_file.evidence = vec!["doc:docs/safety.md".to_string()];
+        assert!(
+            validate_allow_entry_evidence_and_limit(&local_file, &requirements).is_ok(),
+            "local-file evidence should satisfy verified mandate"
+        );
+
+        // Mixed (local + trace) satisfies the mandate.
+        let mut mixed = entry("unsafe-mixed");
+        mixed.kind = FindingKind::Unsafe;
+        mixed.evidence = vec![
+            "test:unsafe_path_is_covered".to_string(),
+            "adr:docs/adr-0001.md".to_string(),
+        ];
+        assert!(
+            validate_allow_entry_evidence_and_limit(&mixed, &requirements).is_ok(),
+            "mixed local+trace should satisfy verified mandate"
+        );
+
+        // When the flag is off (default), traceability-only passes.
+        requirements.unsafe_verified_evidence_required = false;
+        assert!(
+            validate_allow_entry_evidence_and_limit(&trace_only, &requirements).is_ok(),
+            "traceability-only should pass when verified mandate is off"
+        );
     }
 
     #[test]

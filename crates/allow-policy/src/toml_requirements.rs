@@ -65,6 +65,7 @@ impl RequirementsToml {
                 .unsafe_requirements
                 .safety_comment_required
                 .unwrap_or(default.unsafe_safety_comment_required),
+            unsafe_verified_evidence_required: default.unsafe_verified_evidence_required,
         }
     }
 }
@@ -111,6 +112,7 @@ mod tests {
                 stale_entries_fail: true,
                 unsafe_evidence_required: false,
                 unsafe_safety_comment_required: true,
+                unsafe_verified_evidence_required: false,
             }
         );
     }
