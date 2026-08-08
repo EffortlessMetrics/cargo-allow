@@ -148,7 +148,13 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
     if let Some(target) = &mutation_target {
         crate::policy_config::assert_path_within_root(&mutation_root, target)?;
     }
-    let _mutation_lock = mutation_target.map(MutationLock::acquire).transpose()?;
+    let _mutation_lock = mutation_target
+        .as_ref()
+        .map(|target| {
+            let resolved = effortless_repo_edit::resolve_mutation_target(target, &mutation_root)?;
+            MutationLock::acquire_for_target(&resolved)
+        })
+        .transpose()?;
 
     let kind_filter = parse_kind_filter(&plan.finding.kind)?;
     let (root, mut cfg, findings, inventory_facts, _federation) = load_world(

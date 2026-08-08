@@ -33,6 +33,20 @@ impl MutationLock {
     ) -> RepoEditResult<Self> {
         let target = target.as_ref();
         let path = lock_path(target);
+        Self::acquire_at_path(path, timeout)
+    }
+
+    /// Acquire the lock for a resolved MutationTarget, using its canonical
+    /// fingerprint for the lock key (#2487/#2489). This ensures that path
+    /// aliases (relative/absolute, dot-dot, symlinks) share one lock file.
+    pub fn acquire_for_target(
+        target: &crate::mutation_target::MutationTarget,
+    ) -> RepoEditResult<Self> {
+        let path = crate::mutation_target::lock_path_for_target(target);
+        Self::acquire_at_path(path, DEFAULT_LOCK_TIMEOUT)
+    }
+
+    fn acquire_at_path(path: PathBuf, timeout: Duration) -> RepoEditResult<Self> {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).map_err(|error| {
                 RepoEditError::new(format!(
