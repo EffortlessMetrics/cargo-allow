@@ -171,6 +171,70 @@ fn why_plan_reports_the_candidate_write_it_performed() -> Result<(), String> {
     remove_temp_root(root)
 }
 
+/// `why` writes `--plan` relative to the working directory, so resolving the
+/// summary conflict list only under `--root` let a relative `--root` hide a
+/// real collision: the sidecar then overwrote the plan it was meant to spare.
+#[test]
+fn why_plan_conflicts_with_the_summary_across_resolution_bases() -> Result<(), String> {
+    let root = temp_root("summary-why-plan-base")?;
+    write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
+    run(&root, &["init"])?;
+    git_commit_fixture(&root)?;
+
+    let parent = root
+        .parent()
+        .ok_or_else(|| "temp root needs a parent".to_string())?
+        .to_path_buf();
+    let name = root
+        .file_name()
+        .ok_or_else(|| "temp root needs a name".to_string())?
+        .to_string_lossy()
+        .to_string();
+    // From `parent`, both artifacts name the same file: the plan resolves
+    // against the working directory, the sidecar against `--root`.
+    let plan_arg = format!("{name}/collision.json");
+    let mut argv = vec!["--command-summary-output", "collision.json"];
+    argv.extend(WHY_ARGV.iter().copied());
+    argv.push("--plan");
+    argv.push(&plan_arg);
+    let output = Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+        .current_dir(&parent)
+        .args(&argv)
+        .arg("--root")
+        .arg(&name)
+        .output()
+        .map_err(|error| format!("run {argv:?}: {error}"))?;
+
+    require(
+        !output.status.success(),
+        format!(
+            "the collision must be refused, got {:?} / {}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        ),
+    )?;
+    require(
+        String::from_utf8_lossy(&output.stderr).contains("--command-summary-output must differ"),
+        format!(
+            "the refusal must name the conflicting flags, got {}",
+            String::from_utf8_lossy(&output.stderr)
+        ),
+    )?;
+    // The plan is written before the summary stage, so the guard's job is to
+    // refuse rather than to prevent the write: what must not happen is the
+    // sidecar replacing the plan on its way out.
+    let artifact = fs::read_to_string(root.join("collision.json"))
+        .map_err(|error| format!("read the contested artifact: {error}"))?;
+    let artifact: Value = serde_json::from_str(&artifact)
+        .map_err(|error| format!("parse the contested artifact: {error}"))?;
+    require(
+        field(&artifact, &["operation_effects"]).is_none(),
+        "the add-finding plan must survive; the summary must not overwrite it",
+    )?;
+
+    remove_temp_root(root)
+}
+
 #[test]
 fn adopt_and_doctor_agree_between_human_and_summary_artifacts() -> Result<(), String> {
     let root = temp_root("summary-parity")?;

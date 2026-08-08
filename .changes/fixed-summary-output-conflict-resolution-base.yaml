@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Refuse a `--command-summary-output` path that collides with `--plan`,
+  `--output`, `--receipt`, or `--config` under either resolution base. `why`
+  writes its artifacts relative to the working directory while the sidecar
+  resolves under `--root`, so a relative `--root` could hide a real collision
+  and let the summary silently overwrite the add-finding plan.

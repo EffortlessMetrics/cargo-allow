@@ -571,9 +571,23 @@ fn validate_summary_output_path(
 ) -> CargoAllowResult<PathBuf> {
     let path = resolve_under_root(root, &config.path);
     crate::assert_path_within_root(root, &path)?;
+    // Commands do not agree on the base for their own artifact paths: adopt and
+    // doctor resolve relative paths under the source-tree root, while why writes
+    // `--plan` and `--output` relative to the working directory. Comparing under
+    // a single base lets `--root` hide a real collision, and the summary sidecar
+    // would then silently overwrite the artifact it was supposed to leave alone.
+    // Treat a match under either base as a conflict.
+    let cwd = std::env::current_dir().ok();
     for conflict in &config.conflicts {
-        let conflict = resolve_under_root(root, conflict);
-        if same_path(&path, &conflict) {
+        let candidates = [
+            Some(resolve_under_root(root, conflict)),
+            cwd.as_deref().map(|cwd| resolve_under_root(cwd, conflict)),
+        ];
+        if candidates
+            .into_iter()
+            .flatten()
+            .any(|candidate| same_path(&path, &candidate))
+        {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::Usage,
                 "--command-summary-output must differ from --output, --receipt, and --config",
