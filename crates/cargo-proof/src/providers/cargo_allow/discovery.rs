@@ -7,8 +7,8 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
-use crate::digest::sha256_v1_bytes;
-use crate::provider_contract::default_cargo_allow_provider_contract;
+use super::digest::sha256_v1_bytes;
+use super::provider_contract::default_cargo_allow_provider_contract;
 
 pub const PROOF_DELEGATION_CONFIG_SCHEMA_ID: &str = "proof.cargo-allow-delegation.v1";
 

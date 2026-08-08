@@ -7,7 +7,7 @@
 ## Denominator
 
 - Ledger schema: `cargo-allow.three-product-move-ledger.v1` generation `1`
-- Entries: **104**
+- Entries: **101**
 - Topology authority: Issue **#2612**
 - Move/deletion owner: Issue **#2598**
 - Current posture: inventory and target ratification only; no implementation moved.
@@ -15,7 +15,7 @@
 ### Status counts
 
 - `RepositoryDecisionRequired`: **1**
-- `TargetRatified`: **103**
+- `TargetRatified`: **100**
 
 ### Disposition counts
 
@@ -28,7 +28,7 @@
 - `MoveToIntentEngine`: **11**
 - `MoveToIntentModel`: **6**
 - `MoveToIntentProtocol`: **4**
-- `MoveToProofAdapter`: **12**
+- `MoveToProofAdapter`: **9**
 - `MoveToProofEngine`: **9**
 - `MoveToProofProtocol`: **8**
 - `MoveToProofProviderApi`: **1**
@@ -115,17 +115,6 @@
 - Next: Register new intent-protocol sources in this row before landing extraction changes.
 - Deletion output: Delete scaffold sources after parity cutover and old-path retirement.
 
-### `INVENTORY-PROOF_ADAPTER_CARGO_ALLOW-SRC`
-
-- Current: Extracted proof-adapter-cargo-allow source tree under no-new intent/proof/shared enforcement (#2598)
-- Target: `cargo-proof / proof-adapter-cargo-allow::proof-adapter-cargo-allow`
-- Disposition: `MoveToProofAdapter`
-- Stage/status: `ArchitectureInventory` / `TargetRatified`
-- Old path: `OldPathStillReachable`
-- Removal: #2567 cutover receipt, then delete compatibility scaffold
-- Next: Register new proof-adapter-cargo-allow sources in this row before landing extraction changes.
-- Deletion output: Delete scaffold sources after parity cutover and old-path retirement.
-
 ### `INVENTORY-PROOF_ADAPTER_COMMAND-SRC`
 
 - Current: Absorbed proof-adapter-command source tree under proof-engine (#2937)
@@ -135,28 +124,6 @@
 - Old path: `OldPathStillReachable`
 - Removal: absorbed into proof-engine (#2937)
 - Next: Absorbed into proof-engine; row tracks new submodule paths.
-- Deletion output: Delete scaffold sources after parity cutover and old-path retirement.
-
-### `INVENTORY-PROOF_ADAPTER_HAWK-SRC`
-
-- Current: Extracted proof-adapter-hawk source tree under no-new intent/proof/shared enforcement (#2598)
-- Target: `cargo-proof / proof-adapter-hawk::proof-adapter-hawk`
-- Disposition: `MoveToProofAdapter`
-- Stage/status: `ArchitectureInventory` / `TargetRatified`
-- Old path: `OldPathStillReachable`
-- Removal: #2555 cutover receipt, then delete compatibility scaffold
-- Next: Register new proof-adapter-hawk sources in this row before landing extraction changes.
-- Deletion output: Delete scaffold sources after parity cutover and old-path retirement.
-
-### `INVENTORY-PROOF_ADAPTER_RIPR-SRC`
-
-- Current: Extracted proof-adapter-ripr source tree under no-new intent/proof/shared enforcement (#2598)
-- Target: `cargo-proof / proof-adapter-ripr::proof-adapter-ripr`
-- Disposition: `MoveToProofAdapter`
-- Stage/status: `ArchitectureInventory` / `TargetRatified`
-- Old path: `OldPathStillReachable`
-- Removal: #2556 cutover receipt, then delete compatibility scaffold
-- Next: Register new proof-adapter-ripr sources in this row before landing extraction changes.
 - Deletion output: Delete scaffold sources after parity cutover and old-path retirement.
 
 ### `INVENTORY-PROOF_ENGINE-SRC`
@@ -755,8 +722,8 @@
 
 ### `introduce-proof-adapter-cargo-allow-contract`
 
-- Current: crates/proof-adapter-cargo-allow/src/provider_contract.rs
-- Target: `cargo-proof / proof-adapter-cargo-allow::proof_adapter_cargo_allow`
+- Current: crates/cargo-proof/src/providers/cargo_allow/contract.rs
+- Target: `cargo-proof / cargo-proof::cargo_proof::providers::cargo_allow`
 - Disposition: `MoveToProofAdapter`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -766,8 +733,8 @@
 
 ### `introduce-proof-adapter-cargo-allow-crate`
 
-- Current: crates/proof-adapter-cargo-allow/src/lib.rs
-- Target: `cargo-proof / proof-adapter-cargo-allow::proof_adapter_cargo_allow`
+- Current: crates/cargo-proof/src/providers/cargo_allow/mod.rs
+- Target: `cargo-proof / cargo-proof::cargo_proof::providers::cargo_allow`
 - Disposition: `MoveToProofAdapter`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -777,8 +744,8 @@
 
 ### `introduce-proof-adapter-cargo-allow-provider`
 
-- Current: crates/proof-adapter-cargo-allow/src/cargo_allow_provider.rs
-- Target: `cargo-proof / proof-adapter-cargo-allow::proof_adapter_cargo_allow`
+- Current: crates/cargo-proof/src/providers/cargo_allow/adapter.rs
+- Target: `cargo-proof / cargo-proof::cargo_proof::providers::cargo_allow`
 - Disposition: `MoveToProofAdapter`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -810,8 +777,8 @@
 
 ### `introduce-proof-adapter-hawk-analysis-receipt`
 
-- Current: crates/proof-adapter-hawk/src/analysis_receipt.rs
-- Target: `cargo-proof / proof-adapter-hawk::proof_adapter_hawk`
+- Current: crates/cargo-proof/src/providers/hawk/analysis_receipt.rs
+- Target: `cargo-proof / cargo-proof::proof_adapter_hawk`
 - Disposition: `MoveToProofAdapter`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -821,8 +788,8 @@
 
 ### `introduce-proof-adapter-hawk-crate`
 
-- Current: crates/proof-adapter-hawk/src/lib.rs
-- Target: `cargo-proof / proof-adapter-hawk::proof_adapter_hawk`
+- Current: crates/cargo-proof/src/providers/hawk/mod.rs
+- Target: `cargo-proof / cargo-proof::proof_adapter_hawk`
 - Disposition: `MoveToProofAdapter`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -832,8 +799,8 @@
 
 ### `introduce-proof-adapter-hawk-finding-mapping`
 
-- Current: crates/proof-adapter-hawk/src/finding_mapping.rs
-- Target: `cargo-proof / proof-adapter-hawk::proof_adapter_hawk`
+- Current: crates/cargo-proof/src/providers/hawk/finding_mapping.rs
+- Target: `cargo-proof / cargo-proof::proof_adapter_hawk`
 - Disposition: `MoveToProofAdapter`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -843,8 +810,8 @@
 
 ### `introduce-proof-adapter-ripr-crate`
 
-- Current: crates/proof-adapter-ripr/src/lib.rs
-- Target: `cargo-proof / proof-adapter-ripr::proof_adapter_ripr`
+- Current: crates/cargo-proof/src/providers/ripr/mod.rs
+- Target: `cargo-proof / cargo-proof::proof_adapter_ripr`
 - Disposition: `MoveToProofAdapter`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -854,8 +821,8 @@
 
 ### `introduce-proof-adapter-ripr-grip-comparison`
 
-- Current: crates/proof-adapter-ripr/src/grip_comparison.rs
-- Target: `cargo-proof / proof-adapter-ripr::proof_adapter_ripr`
+- Current: crates/cargo-proof/src/providers/ripr/grip_comparison.rs
+- Target: `cargo-proof / cargo-proof::proof_adapter_ripr`
 - Disposition: `MoveToProofAdapter`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
@@ -865,8 +832,8 @@
 
 ### `introduce-proof-adapter-ripr-grip-receipt`
 
-- Current: crates/proof-adapter-ripr/src/grip_receipt.rs
-- Target: `cargo-proof / proof-adapter-ripr::proof_adapter_ripr`
+- Current: crates/cargo-proof/src/providers/ripr/grip_receipt.rs
+- Target: `cargo-proof / cargo-proof::proof_adapter_ripr`
 - Disposition: `MoveToProofAdapter`
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`

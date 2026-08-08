@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::analysis_receipt::HawkFindingV1;
+use super::analysis_receipt::HawkFindingV1;
 
 pub const HAWK_FINDING_RESULT_SCHEMA_ID: &str = "proof.hawk-finding-result.v1";
 

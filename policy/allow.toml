@@ -9464,27 +9464,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-9163"
-kind = "non_rust_file"
-family = "package_metadata"
-path = "crates/proof-adapter-cargo-allow/Cargo.toml"
-owner = "repo-infra"
-classification = "rust_package_metadata"
-reason = "proof-adapter-cargo-allow manifest is tracked cargo-proof package metadata (#2567 / #2554)."
-evidence = ["test:proof_adapter_cargo_allow_parity_fixtures_registered", "issue:2567", "doc:policy/product-package-topology.toml"]
-created = "2026-07-24"
-review_after = "2027-01-01"
-
-[allow.selector]
-ast_kind = "tracked_file"
-target_fingerprint = "toml"
-glob = "crates/proof-adapter-cargo-allow/Cargo.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-9164"
 kind = "non_rust_file"
 family = "documentation"
@@ -9590,27 +9569,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-9169"
-kind = "non_rust_file"
-family = "package_metadata"
-path = "crates/proof-adapter-ripr/Cargo.toml"
-owner = "repo-infra"
-classification = "rust_package_metadata"
-reason = "proof-adapter-ripr manifest is tracked cargo-proof package metadata (#2556)."
-evidence = ["test:proof_adapter_ripr_parity_fixtures_registered", "issue:2556", "doc:policy/product-package-topology.toml"]
-created = "2026-07-24"
-review_after = "2027-01-01"
-
-[allow.selector]
-ast_kind = "tracked_file"
-target_fingerprint = "toml"
-glob = "crates/proof-adapter-ripr/Cargo.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-9170"
 kind = "non_rust_file"
 family = "documentation"
@@ -9710,27 +9668,6 @@ review_after = "2027-01-01"
 ast_kind = "tracked_file"
 target_fingerprint = "md"
 glob = "tests/fixtures/proof-adapter-hawk/README.md"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-9175"
-kind = "non_rust_file"
-family = "package_metadata"
-path = "crates/proof-adapter-hawk/Cargo.toml"
-owner = "repo-infra"
-classification = "rust_package_metadata"
-reason = "proof-adapter-hawk manifest is tracked cargo-proof package metadata (#2555)."
-evidence = ["test:proof_adapter_hawk_parity_fixtures_registered", "issue:2555", "doc:policy/product-package-topology.toml"]
-created = "2026-07-24"
-review_after = "2027-01-01"
-
-[allow.selector]
-ast_kind = "tracked_file"
-target_fingerprint = "toml"
-glob = "crates/proof-adapter-hawk/Cargo.toml"
 
 [allow.last_seen]
 line = 1

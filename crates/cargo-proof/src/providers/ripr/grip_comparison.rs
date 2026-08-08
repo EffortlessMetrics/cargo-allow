@@ -2,11 +2,11 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::grip_receipt::{
+use super::grip_receipt::{
     RiprCompletenessV1, RiprGripDispositionV1, RiprGripReceiptError, RiprGripReceiptV1,
     validate_ripr_grip_receipt,
 };
-use crate::receipt_currentness::{
+use super::receipt_currentness::{
     RiprCurrentnessRequest, RiprReceiptCurrentnessStatusV1, evaluate_receipt_currentness,
 };
 
