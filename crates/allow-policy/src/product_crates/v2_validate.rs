@@ -58,35 +58,35 @@ pub fn validate_v2_identity_uniqueness(
     }
 
     for entry in &manifest.crate_identity {
-        if seen_logical[&entry.logical_id] > 1 {
+        if count(&seen_logical, &entry.logical_id) > 1 {
             diagnostics.push(IdentityDiagnostic {
                 kind: IdentityDiagnosticKind::DuplicateLogicalId,
                 message: format!("duplicate logical_id `{}`", entry.logical_id),
-                logical_ids: collect_duplicates(&seen_logical, &entry.logical_id),
+                logical_ids: collect_duplicates(&seen_logical),
             });
         }
-        if seen_path[&entry.workspace_path] > 1 {
+        if count(&seen_path, &entry.workspace_path) > 1 {
             diagnostics.push(IdentityDiagnostic {
                 kind: IdentityDiagnosticKind::DuplicateWorkspacePath,
                 message: format!("duplicate workspace_path `{}`", entry.workspace_path),
-                logical_ids: collect_duplicates(&seen_path, &entry.workspace_path),
+                logical_ids: collect_duplicates(&seen_path),
             });
         }
-        if seen_package[&entry.cargo_package_name] > 1 {
+        if count(&seen_package, &entry.cargo_package_name) > 1 {
             diagnostics.push(IdentityDiagnostic {
                 kind: IdentityDiagnosticKind::DuplicatePackageName,
                 message: format!(
                     "duplicate cargo_package_name `{}`",
                     entry.cargo_package_name
                 ),
-                logical_ids: collect_duplicates(&seen_package, &entry.cargo_package_name),
+                logical_ids: collect_duplicates(&seen_package),
             });
         }
-        if seen_library[&entry.rust_library_name] > 1 {
+        if count(&seen_library, &entry.rust_library_name) > 1 {
             diagnostics.push(IdentityDiagnostic {
                 kind: IdentityDiagnosticKind::DuplicateLibraryName,
                 message: format!("duplicate rust_library_name `{}`", entry.rust_library_name),
-                logical_ids: collect_duplicates(&seen_library, &entry.rust_library_name),
+                logical_ids: collect_duplicates(&seen_library),
             });
         }
     }
@@ -145,7 +145,11 @@ fn increment(map: &mut BTreeMap<String, usize>, key: &str) {
     *map.entry(key.to_string()).or_insert(0) += 1;
 }
 
-fn collect_duplicates(map: &BTreeMap<String, usize>, _key: &str) -> Vec<String> {
+fn count(map: &BTreeMap<String, usize>, key: &str) -> usize {
+    map.get(key).copied().unwrap_or(0)
+}
+
+fn collect_duplicates(map: &BTreeMap<String, usize>) -> Vec<String> {
     map.iter()
         .filter(|(_, count)| **count > 1)
         .map(|(key, _)| key.clone())
