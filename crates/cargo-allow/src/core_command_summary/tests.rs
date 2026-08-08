@@ -876,6 +876,31 @@ fn why_adapter_reports_an_unattributable_match_as_not_proven() -> Result<(), Str
 }
 
 #[test]
+fn why_plan_reports_its_write_even_when_the_finding_is_receipted() -> Result<(), String> {
+    // A receipted finding leaves nothing to decide, so there is no primary
+    // action — but `--plan` still wrote a file, and the summary must keep
+    // disclosing that. Pins the write disclosure on the satisfied path so a
+    // later refactor cannot drop it.
+    let mut facts = why_facts();
+    facts.plan_path = Some("target/cargo-allow/add-finding.plan.json".to_string());
+    let summary = core_command_summary_from_why(facts)?;
+    ensure(
+        summary.result_class == ResultClassV1::Completed && summary.primary_action.is_none(),
+        "a receipted finding leaves nothing for the operator to decide",
+    )?;
+    ensure(
+        summary.operation_effects.writes_repository
+            && summary
+                .operation_effects
+                .write_paths
+                .iter()
+                .map(String::as_str)
+                .eq(["target/cargo-allow/add-finding.plan.json"]),
+        "the plan write must be disclosed even on a satisfied result",
+    )
+}
+
+#[test]
 fn why_plan_names_its_candidate_write_target() -> Result<(), String> {
     let mut facts = why_facts();
     facts.outcome_status = MatchStatus::New;

@@ -87,7 +87,10 @@ fn write_summary_artifact_with_config(
             format!("failed to render core command summary: {error}"),
         )
     })?;
-    write_file(&path, &format!("{json}\n"))
+    // `write_file` returns `RepoEditError` after the effortless-repo-edit
+    // product-neutrality refactor (#3283); `?` coerces it into the command
+    // error type, matching the other call sites.
+    Ok(write_file(&path, &format!("{json}\n"))?)
 }
 
 fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCommandSummaryV1> {

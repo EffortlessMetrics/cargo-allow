@@ -364,9 +364,16 @@ fn why_disposition(
         );
     }
     let message = match (status, matched_allow_id) {
-        (MatchStatus::New, _) if near_miss_candidate_count > 0 => format!(
-            "no allow entry matches the finding at {location}; {near_miss_candidate_count} near-miss entr(y/ies) were listed and none of them receipts it"
-        ),
+        (MatchStatus::New, _) if near_miss_candidate_count > 0 => {
+            let listed = if near_miss_candidate_count == 1 {
+                "1 near-miss entry was listed"
+            } else {
+                &format!("{near_miss_candidate_count} near-miss entries were listed")
+            };
+            format!(
+                "no allow entry matches the finding at {location}; {listed} and none of them receipts it"
+            )
+        }
         (MatchStatus::New, _) => {
             format!("no allow entry matches the finding at {location}")
         }
@@ -531,8 +538,11 @@ fn worklist_disposition(
     } else {
         CoreCommandPostureV1::Advisory
     };
+    // Keep both coordinates when the item has them: the allow ID says which
+    // ledger entry to open, the path says where to look.
     let scope = match (first.allow_id.as_deref(), first.path.as_deref()) {
-        (Some(allow_id), _) => format!(" for allow entry `{allow_id}`"),
+        (Some(allow_id), Some(path)) => format!(" for allow entry `{allow_id}` at {path}"),
+        (Some(allow_id), None) => format!(" for allow entry `{allow_id}`"),
         (None, Some(path)) => format!(" at {path}"),
         (None, None) => String::new(),
     };

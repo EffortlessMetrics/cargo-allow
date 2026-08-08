@@ -58,16 +58,21 @@ fn first_hour_commands_share_one_operator_grammar() -> Result<(), String> {
     for command in GRAMMAR_COMMANDS {
         let output = run(&root, command)?;
         let text = stdout(&output)?;
-        // Walk the fields in order over an advancing suffix. `split_at` keeps
-        // this free of panic-family slicing, which this repository's own
-        // source-exception ledger tracks.
-        let mut rest = text.as_str();
+        // Assert the *first eight lines*, not merely that the labels appear
+        // somewhere. Several commands repeat words like `Why:` inside their
+        // detailed section, so a search-anywhere check would still pass if the
+        // summary were not prepended at all.
+        let mut lines = text.lines();
         for field in GRAMMAR_FIELDS {
-            let found = rest.find(field).ok_or_else(|| {
-                format!("`{command:?}` human output is missing `{field}` in order; got:\n{text}")
+            let line = lines.next().ok_or_else(|| {
+                format!(
+                    "`{command:?}` human output ended before summary line `{field}`; got:\n{text}"
+                )
             })?;
-            let (_, tail) = rest.split_at(found + field.len());
-            rest = tail;
+            require(
+                line.starts_with(field),
+                format!("`{command:?}` summary line must start with `{field}`; got `{line}`"),
+            )?;
         }
     }
 
