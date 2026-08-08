@@ -130,9 +130,15 @@ fn repository_root() -> Result<PathBuf, Box<dyn Error>> {
 
 fn read(root: &Path, relative: &str) -> Result<String, Box<dyn Error>> {
     let path = root.join(relative);
-    fs::read_to_string(&path).map_err(|error| {
-        io::Error::other(format!("failed to read {}: {error}", path.display())).into()
-    })
+    // Normalize line endings at the read boundary. The repository has no
+    // `.gitattributes`, so a Windows checkout with `core.autocrlf=true` yields
+    // CRLF and every literal `\n` assertion below would fail on content that is
+    // actually correct.
+    fs::read_to_string(&path)
+        .map(|text| text.replace("\r\n", "\n"))
+        .map_err(|error| {
+            io::Error::other(format!("failed to read {}: {error}", path.display())).into()
+        })
 }
 
 fn require_contains(haystack: &str, needle: &str, owner: &str) -> Result<(), Box<dyn Error>> {
