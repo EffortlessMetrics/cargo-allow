@@ -64,10 +64,13 @@ pub(crate) fn load_staged_world(
     reject_unsupported_staged_federation(&snapshot, &federation)?;
     let policy_relative = normalize_to_repo_relative(&root, &policy_path);
     let policy_text = read_staged_text(&snapshot, &policy_relative).map_err(|error| {
-        CargoAllowError::new(format!(
-            "exact staged source-exception check could not read policy candidate {}: {error}",
-            policy_relative.display()
-        ))
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!(
+                "exact staged source-exception check could not read policy candidate {}: {error}",
+                policy_relative.display()
+            ),
+        )
     })?;
     let cfg = allow_policy::parse_policy_with_reportable_evidence_at(&policy_path, &policy_text)?;
     reject_unsupported_staged_companion_sensors(&cfg)?;
@@ -124,7 +127,8 @@ pub(crate) fn load_staged_world(
     }
     let final_snapshot = staged_repository_snapshot(&root)?;
     if final_snapshot.identity.semantic_hash != source_identity {
-        return Err(CargoAllowError::new(
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Scan,
             "Git index changed while scanning the exact staged source-exception candidate",
         ));
     }
@@ -441,15 +445,20 @@ pub(crate) fn load_world_for_path(
     )?;
     // Normalize the target path to repo-relative for the scan.
     let files = vec![normalize_to_repo_relative(&root, target_path)];
-    let target = files
-        .first()
-        .cloned()
-        .ok_or_else(|| CargoAllowError::new("target source path was not prepared for scanning"))?;
+    let target = files.first().cloned().ok_or_else(|| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            "target source path was not prepared for scanning",
+        )
+    })?;
     if !inventory.files.iter().any(|path| path == &target) {
-        return Err(CargoAllowError::new(format!(
-            "target {} is not present in the source inventory; use --include-untracked if it is intentionally untracked",
-            target_path.display()
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Inventory,
+            format!(
+                "target {} is not present in the source inventory; use --include-untracked if it is intentionally untracked",
+                target_path.display()
+            ),
+        ));
     }
     let mut findings = Vec::new();
     let rust_scan = allow_rust::scan_rust_files(&root, &files)?;

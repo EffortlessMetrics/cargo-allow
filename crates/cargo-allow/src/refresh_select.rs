@@ -43,29 +43,39 @@ pub(crate) fn select_location_drift_refresh(
         ));
     }
     let finding_index = outcome.finding_index.ok_or_else(|| {
-        CargoAllowError::new(format!(
-            "allow entry `{allow_id}` location drift outcome is missing finding index"
-        ))
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!("allow entry `{allow_id}` location drift outcome is missing finding index"),
+        )
     })?;
     let finding = findings.get(finding_index).ok_or_else(|| {
-        CargoAllowError::new(format!(
+        CargoAllowError::with_kind(CargoAllowErrorKind::Internal, format!(
             "allow entry `{allow_id}` location drift outcome references missing finding index {finding_index}"
         ))
     })?;
     let entry = cfg.allow.get(entry_index).ok_or_else(|| {
-        CargoAllowError::new(format!(
-            "allow entry `{allow_id}` selection references missing policy index {entry_index}"
-        ))
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!(
+                "allow entry `{allow_id}` selection references missing policy index {entry_index}"
+            ),
+        )
     })?;
     if classify_match(entry, finding).is_none() {
-        return Err(CargoAllowError::new(format!(
-            "allow entry `{allow_id}` selected finding no longer matches the entry selector"
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!(
+                "allow entry `{allow_id}` selected finding no longer matches the entry selector"
+            ),
+        ));
     }
     if finding.span.is_none() {
-        return Err(CargoAllowError::new(format!(
-            "allow entry `{allow_id}` matched finding has no source span for last_seen refresh"
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!(
+                "allow entry `{allow_id}` matched finding has no source span for last_seen refresh"
+            ),
+        ));
     }
     Ok((entry_index, finding_index, outcome.message.clone()))
 }
