@@ -487,9 +487,9 @@ linked_goal = "CARGO-ALLOW-GOAL-0003"
 linked_plan = "CARGO-ALLOW-PLAN-0004"
 
 [[artifact]]
-id = "CARGO-ALLOW-CLOSEOUT-0018"
+id = "CARGO-ALLOW-CLOSEOUT-0017"
 kind = "closeout"
-path = "plans/spec-system/closeouts/import-graph-dogfood.md"
+path = "plans/spec-system/closeouts/goal-0003-partial-progress.md"
 status = "done"
 owner = "repo-infra"
 created = "2026-06-18"
@@ -500,9 +500,9 @@ linked_goal = "CARGO-ALLOW-GOAL-0003"
 linked_plan = "CARGO-ALLOW-PLAN-0004"
 
 [[artifact]]
-id = "CARGO-ALLOW-CLOSEOUT-0017"
+id = "CARGO-ALLOW-CLOSEOUT-0018"
 kind = "closeout"
-path = "plans/spec-system/closeouts/goal-0003-partial-progress.md"
+path = "plans/spec-system/closeouts/import-graph-dogfood.md"
 status = "done"
 owner = "repo-infra"
 created = "2026-06-18"
