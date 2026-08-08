@@ -153,10 +153,13 @@ pub(super) fn spec_system_legacy_compatibility(
         return Ok(false);
     }
     let text = read_text_file_capped(&path).map_err(|error| {
-        CargoAllowError::new(format!(
-            "failed to read existing spec-system profile config {}: {error}",
-            path.display()
-        ))
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!(
+                "failed to read existing spec-system profile config {}: {error}",
+                path.display()
+            ),
+        )
     })?;
     let config = parse_spec_system_config_at(Some(&path), &text)?;
     Ok(matches!(config.generation, SpecSystemGeneration::LegacyV1))

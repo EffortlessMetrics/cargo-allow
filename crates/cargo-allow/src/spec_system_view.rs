@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_policy::spec_system::GraphDiagnostic;
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
@@ -24,15 +24,21 @@ pub(crate) fn render_self_hosted_explain(
     }
     let compilation = compile_self_hosted_graph(root)?;
     if !contains_graph_id(&compilation, id) {
-        return Err(CargoAllowError::new(format!(
-            "no self-hosted graph object `{id}`"
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!("no self-hosted graph object `{id}`"),
+        ));
     }
     let value = graph_view(&compilation, id)?;
     if json_format {
         serde_json::to_string_pretty(&value)
             .map(|text| Some(format!("{text}\n")))
-            .map_err(|error| CargoAllowError::new(format!("failed to render graph JSON: {error}")))
+            .map_err(|error| {
+                CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Artifact,
+                    format!("failed to render graph JSON: {error}"),
+                )
+            })
     } else {
         Ok(Some(render_human(id, &value)))
     }
@@ -51,8 +57,12 @@ fn contains_graph_id(compilation: &SelfHostedGraphCompilation, id: &str) -> bool
 }
 
 fn graph_view(compilation: &SelfHostedGraphCompilation, id: &str) -> CargoAllowResult<Value> {
-    let kind = graph_id_kind(compilation, id)
-        .ok_or_else(|| CargoAllowError::new(format!("no self-hosted graph object `{id}`")))?;
+    let kind = graph_id_kind(compilation, id).ok_or_else(|| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!("no self-hosted graph object `{id}`"),
+        )
+    })?;
     let related = related_graph_nodes(compilation, id, kind);
     let (diagnostics, graph_diagnostics) = scoped_diagnostics(compilation, id, &related);
     let result_class = result_class(&diagnostics, &graph_diagnostics);

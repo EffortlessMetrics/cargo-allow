@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowResult, read_text_file_capped};
+use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult, read_text_file_capped};
 use allow_inventory::resolve_source_tree_root;
 use allow_policy::federation::{FederationLoadOutcome, load_federation_config};
 use allow_policy::spec_system::{
@@ -728,9 +728,12 @@ fn spec_system_mode_name(mode: &SpecSystemMode) -> &'static str {
 fn parse_spec_system_mode_override(value: &str) -> CargoAllowResult<SpecSystemMode> {
     match value.trim().to_ascii_lowercase().as_str() {
         "audit" | "advisory" => Ok(SpecSystemMode::Advisory),
-        other => Err(CargoAllowError::new(format!(
-            "--mode `{other}` is not supported with --profile spec-system; use --mode audit for a report-only run, and set shadow or blocking enforcement in the spec-system config"
-        ))),
+        other => Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!(
+                "--mode `{other}` is not supported with --profile spec-system; use --mode audit for a report-only run, and set shadow or blocking enforcement in the spec-system config"
+            ),
+        )),
     }
 }
 

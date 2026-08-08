@@ -210,13 +210,19 @@ pub fn compile_paired_self_hosted_graph(
     let parent_view = RepositorySourceView::committed(root, "HEAD")?;
     let candidate_view = RepositorySourceView::staged(root)?;
     let parent_identity = parent_view.revision_identity().cloned().ok_or_else(|| {
-        CargoAllowError::new("parent source view did not retain its revision identity")
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            "parent source view did not retain its revision identity",
+        )
     })?;
     let candidate_identity_before = candidate_view
         .source_identity()
         .map(str::to_string)
         .ok_or_else(|| {
-            CargoAllowError::new("staged source view did not retain its candidate identity")
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                "staged source view did not retain its candidate identity",
+            )
         })?;
 
     let parent = compile_self_hosted_graph_from_view(&parent_view)?;
@@ -530,20 +536,26 @@ fn compile_self_hosted_graph_from_view(
 
 fn authored_selector(subject: &AuthoredSubjectSelector) -> CargoAllowResult<RustTestSelector> {
     let (kind, name) = subject.target.split_once(':').ok_or_else(|| {
-        CargoAllowError::new(format!(
-            "authored subject {} has malformed target {}",
-            subject.id, subject.target
-        ))
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!(
+                "authored subject {} has malformed target {}",
+                subject.id, subject.target
+            ),
+        )
     })?;
     let target_kind = match kind {
         "lib" => RustTestTargetKind::Library,
         "bin" => RustTestTargetKind::Binary,
         "integration_test" => RustTestTargetKind::IntegrationTest,
         _ => {
-            return Err(CargoAllowError::new(format!(
-                "authored subject {} has unsupported target kind {}",
-                subject.id, kind
-            )));
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                format!(
+                    "authored subject {} has unsupported target kind {}",
+                    subject.id, kind
+                ),
+            ));
         }
     };
     Ok(RustTestSelector {

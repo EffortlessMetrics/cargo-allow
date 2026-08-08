@@ -1,4 +1,6 @@
-use allow_core::{AllowConfig, CargoAllowError, CargoAllowResult, Finding, FindingKind};
+use allow_core::{
+    AllowConfig, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding, FindingKind,
+};
 use allow_inventory::{InventoryOptions, InventorySource, inventory, resolve_source_tree_root};
 use std::path::{Path, PathBuf};
 
@@ -50,9 +52,12 @@ pub(crate) fn load_compat_world(
     // from policy config, so `--include-untracked` would be silently ignored.
     // Fail closed rather than accept a flag that does nothing (#1948).
     if include_untracked && compat_kind_ignores_include_untracked(compat_kind, &parsed_filter) {
-        return Err(CargoAllowError::new(format!(
-            "--include-untracked has no effect for --compat --kind {compat_kind}: this compat surface scans a fixed source (git-tracked files, .gitattributes, or policy config), so untracked files are never inventoried; re-run without --include-untracked"
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            format!(
+                "--include-untracked has no effect for --compat --kind {compat_kind}: this compat surface scans a fixed source (git-tracked files, .gitattributes, or policy config), so untracked files are never inventoried; re-run without --include-untracked"
+            ),
+        ));
     }
     let cwd = current_dir()?;
     let root = resolve_source_tree_root(explicit_root, cwd)?;
@@ -160,7 +165,8 @@ pub(crate) fn load_compat_world(
         ));
     }
     if parsed_filter.kind != FindingKind::NonRustFile {
-        return Err(CargoAllowError::new(
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
             "--compat currently supports only --kind non-rust, --kind generated, --kind panic, --kind no-panic-allowlist, --kind lint-exception, --kind unsafe, --kind executable, --kind workflow, --kind dependency-surface, --kind process, or --kind network",
         ));
     }

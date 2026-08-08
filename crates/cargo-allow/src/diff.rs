@@ -416,10 +416,13 @@ fn git_relative_config_path_for_diff(
         if revision_has_config(root, head, &path)? || revision_has_config(root, base, &path)? {
             return Ok(path);
         }
-        return Err(CargoAllowError::new(format!(
-            "policy config {} not found in compared revisions",
-            normalize_path(&path)
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!(
+                "policy config {} not found in compared revisions",
+                normalize_path(&path)
+            ),
+        ));
     }
     for candidate in default_diff_policy_paths() {
         let candidate = PathBuf::from(candidate);
@@ -433,7 +436,8 @@ fn git_relative_config_path_for_diff(
             return Ok(candidate);
         }
     }
-    Err(CargoAllowError::new(
+    Err(CargoAllowError::with_kind(
+        CargoAllowErrorKind::InvalidConfig,
         "no policy config found in compared revisions; pass --config",
     ))
 }
@@ -715,17 +719,32 @@ fn check_change_notes(
     let mut covered: Vec<(String, String, Option<String>, Option<String>)> = Vec::new();
     if dir.is_dir() {
         for entry in fs::read_dir(&dir).map_err(|e| {
-            CargoAllowError::new(format!("read revisions dir {}: {e}", dir.display()))
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Inventory,
+                format!("read revisions dir {}: {e}", dir.display()),
+            )
         })? {
-            let entry = entry.map_err(|e| CargoAllowError::new(format!("read dir entry: {e}")))?;
+            let entry = entry.map_err(|e| {
+                CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Inventory,
+                    format!("read dir entry: {e}"),
+                )
+            })?;
             let path = entry.path();
             if path.extension().and_then(|e| e.to_str()) != Some("toml") {
                 continue;
             }
-            let text = read_text_file_capped(&path)
-                .map_err(|e| CargoAllowError::new(format!("read {}: {e}", path.display())))?;
+            let text = read_text_file_capped(&path).map_err(|e| {
+                CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Inventory,
+                    format!("read {}: {e}", path.display()),
+                )
+            })?;
             let table: toml::Table = toml::from_str(&text).map_err(|error| {
-                CargoAllowError::new(format!("parse revision note {}: {error}", path.display()))
+                CargoAllowError::with_kind(
+                    CargoAllowErrorKind::InvalidConfig,
+                    format!("parse revision note {}: {error}", path.display()),
+                )
             })?;
             if let Some(records) = table.get("records").and_then(|v| v.as_array()) {
                 for record in records {
@@ -819,7 +838,8 @@ fn write_change_note_template(
     missing: &[MissingChangeNote],
 ) -> CargoAllowResult<()> {
     if missing.is_empty() {
-        return Err(CargoAllowError::new(
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
             "cannot write a change-note template when no note is required",
         ));
     }
@@ -828,26 +848,36 @@ fn write_change_note_template(
             .components()
             .any(|component| matches!(component, std::path::Component::ParentDir))
     {
-        return Err(CargoAllowError::new(
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
             "change-note template path must be repository-relative",
         ));
     }
 
     let destination = root.join(template_path);
     if destination.exists() {
-        return Err(CargoAllowError::new(format!(
-            "change-note template already exists: {}",
-            destination.display()
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!(
+                "change-note template already exists: {}",
+                destination.display()
+            ),
+        ));
     }
     let parent = destination.parent().ok_or_else(|| {
-        CargoAllowError::new("change-note template path has no repository parent")
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            "change-note template path has no repository parent",
+        )
     })?;
     fs::create_dir_all(parent).map_err(|error| {
-        CargoAllowError::new(format!(
-            "create change-note template directory {}: {error}",
-            parent.display()
-        ))
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!(
+                "create change-note template directory {}: {error}",
+                parent.display()
+            ),
+        )
     })?;
 
     let mut contents = String::from(
@@ -869,20 +899,31 @@ fn write_change_note_template(
     let file_name = destination
         .file_name()
         .and_then(|name| name.to_str())
-        .ok_or_else(|| CargoAllowError::new("change-note template filename must be valid UTF-8"))?;
+        .ok_or_else(|| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Scan,
+                "change-note template filename must be valid UTF-8",
+            )
+        })?;
     let temporary = parent.join(format!(".{file_name}.tmp-{}", process::id()));
     fs::write(&temporary, contents).map_err(|error| {
-        CargoAllowError::new(format!(
-            "write change-note template {}: {error}",
-            temporary.display()
-        ))
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!(
+                "write change-note template {}: {error}",
+                temporary.display()
+            ),
+        )
     })?;
     if let Err(error) = fs::rename(&temporary, &destination) {
         let _ = fs::remove_file(&temporary);
-        return Err(CargoAllowError::new(format!(
-            "install change-note template {}: {error}",
-            destination.display()
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!(
+                "install change-note template {}: {error}",
+                destination.display()
+            ),
+        ));
     }
     Ok(())
 }

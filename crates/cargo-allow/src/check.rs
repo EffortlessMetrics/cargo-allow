@@ -1,4 +1,6 @@
-use allow_core::{CargoAllowError, CargoAllowResult, effective_lane_posture_for_findings};
+use allow_core::{
+    CargoAllowError, CargoAllowErrorKind, CargoAllowResult, effective_lane_posture_for_findings,
+};
 use allow_match::{CheckMode, evaluate};
 use allow_report::{
     RECEIPT_ENFORCEMENT_ADVISORY, RECEIPT_ENFORCEMENT_ENFORCING, ReportContext, Summary,
@@ -320,10 +322,13 @@ fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
     if let Some(expected) = args.expect_staged_identity.as_deref()
         && expected != staged.source_identity
     {
-        return Err(CargoAllowError::new(format!(
-            "staged identity did not match --expect-staged-identity: expected {expected}, observed {}",
-            staged.source_identity
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!(
+                "staged identity did not match --expect-staged-identity: expected {expected}, observed {}",
+                staged.source_identity
+            ),
+        ));
     }
     let report_cfg = report_config(&staged.cfg, args.kind.as_deref())?;
     let mode = CheckMode::parse(

@@ -55,13 +55,17 @@ pub(super) fn validate_active_goal_file(
     ledger: &DocArtifactLedger,
 ) -> CargoAllowResult<()> {
     let source_path = active_goal_manifest_source_path(cfg).ok_or_else(|| {
-        CargoAllowError::new("legacy active-goal validation requires an explicit legacy goals root")
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            "legacy active-goal validation requires an explicit legacy goals root",
+        )
     })?;
     let active_goal_path = root_relative_path(root, Path::new(&source_path));
     let text = read_text_file_capped(&active_goal_path).map_err(|err| {
-        CargoAllowError::new(format!(
-            "failed to read active goal manifest {source_path}: {err}"
-        ))
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!("failed to read active goal manifest {source_path}: {err}"),
+        )
     })?;
     validate_active_goal_manifest_text_at(Some(&active_goal_path), &text, ledger).map(|_| ())
 }
