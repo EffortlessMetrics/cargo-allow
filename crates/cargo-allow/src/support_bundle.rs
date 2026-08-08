@@ -103,7 +103,7 @@ pub(crate) fn write_support_bundle(
 ) -> CargoAllowResult<()> {
     crate::assert_path_within_root(root, output)?;
     let json = render_support_bundle_json(facts)?;
-    crate::write_file(output, &format!("{json}\n"))
+    Ok(crate::write_file(output, &format!("{json}\n"))?)
 }
 
 fn render_support_bundle_json(facts: SupportBundleFacts<'_>) -> CargoAllowResult<String> {

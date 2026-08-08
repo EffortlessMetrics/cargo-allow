@@ -3,7 +3,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use allow_core::{CargoAllowError, CargoAllowResult};
+use crate::error::{RepoEditError, RepoEditResult};
 
 use crate::apply_receipt::{ApplyOperation, ApplyReceiptV1, AtomicityClass, TargetOutcome};
 use crate::atomic_write::{write_file, write_file_no_overwrite};
@@ -46,11 +46,11 @@ pub struct SingleTargetApplyResponse {
 }
 
 impl SingleTargetApplyResponse {
-    pub fn into_result(self) -> CargoAllowResult<Self> {
+    pub fn into_result(self) -> RepoEditResult<Self> {
         if self.receipt.applied() {
             Ok(self)
         } else {
-            Err(CargoAllowError::new(
+            Err(RepoEditError::new(
                 self.receipt
                     .error_detail
                     .clone()

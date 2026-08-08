@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowResult};
+use crate::error::{RepoEditError, RepoEditResult};
 use std::fs::TryLockError;
 use std::fs::{self, File, OpenOptions};
 use std::path::{Path, PathBuf};
@@ -20,7 +20,7 @@ pub struct MutationLock {
 }
 
 impl MutationLock {
-    pub fn acquire(target: impl AsRef<Path>) -> CargoAllowResult<Self> {
+    pub fn acquire(target: impl AsRef<Path>) -> RepoEditResult<Self> {
         Self::acquire_with_timeout(target, DEFAULT_LOCK_TIMEOUT)
     }
 
@@ -30,12 +30,12 @@ impl MutationLock {
     pub fn acquire_with_timeout(
         target: impl AsRef<Path>,
         timeout: Duration,
-    ) -> CargoAllowResult<Self> {
+    ) -> RepoEditResult<Self> {
         let target = target.as_ref();
         let path = lock_path(target);
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).map_err(|error| {
-                CargoAllowError::new(format!(
+                RepoEditError::new(format!(
                     "failed to create mutation lock directory {}: {error}",
                     parent.display()
                 ))
@@ -48,7 +48,7 @@ impl MutationLock {
             .truncate(false)
             .open(&path)
             .map_err(|error| {
-                CargoAllowError::new(format!(
+                RepoEditError::new(format!(
                     "failed to open mutation lock {}: {error}",
                     path.display()
                 ))
@@ -64,7 +64,7 @@ impl MutationLock {
                 }
                 Err(TryLockError::WouldBlock) => {
                     if start.elapsed() >= timeout {
-                        return Err(CargoAllowError::new(format!(
+                        return Err(RepoEditError::new(format!(
                             "mutation lock held by another process; waited {}s for {}; \
                              another cargo-allow mutation (add/propose/refresh/prune/migrate/init) \
                              may be running; check for stale processes or rerun after it completes",
@@ -75,7 +75,7 @@ impl MutationLock {
                     std::thread::sleep(LOCK_POLL_INTERVAL);
                 }
                 Err(TryLockError::Error(error)) => {
-                    return Err(CargoAllowError::new(format!(
+                    return Err(RepoEditError::new(format!(
                         "failed to acquire mutation lock {}: {error}; \
                          ensure the directory is writable and not on a read-only filesystem",
                         path.display()
@@ -111,6 +111,6 @@ pub(crate) fn lock_path(target: &Path) -> PathBuf {
     let canonical = canonicalize_lexically(&absolute_target);
     std::env::temp_dir().join("cargo-allow-locks").join(format!(
         "{}.lock",
-        allow_core::stable_hash_hex(&canonical.to_string_lossy())
+        crate::error::stable_hash_hex(&canonical.to_string_lossy())
     ))
 }

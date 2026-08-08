@@ -1,6 +1,6 @@
 //! Generic single-target apply receipt (#2602-C).
 
-use allow_core::json_escape;
+use crate::error::json_escape;
 
 pub const APPLY_RECEIPT_SCHEMA_VERSION: u32 = 1;
 pub const APPLY_RECEIPT_SCHEMA_ID: &str = "repo-edit.apply-receipt.v1";
