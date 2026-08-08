@@ -27,6 +27,41 @@ pub(super) fn render_explain_entry_styled(
         outcomes,
         evidence_source_tree_files,
         ExplainContext::default(),
+        None,
+        |report| allow_report::render_explain_human_styled(report, style),
+    )
+}
+
+pub(super) fn explain_reference_attention_for_source_tree(
+    root: &Path,
+    entry: &AllowEntry,
+    evidence_source_tree_files: Option<&BTreeSet<String>>,
+) -> ExplainReferenceAttention {
+    let evidence_diagnostics =
+        evidence_reference_diagnostics_for_source_tree(root, entry, evidence_source_tree_files);
+    let link_diagnostics =
+        link_reference_diagnostics_for_source_tree(root, entry, evidence_source_tree_files);
+    explain_reference_attention(&evidence_diagnostics, &link_diagnostics)
+}
+
+pub(super) fn render_explain_entry_styled_with_steps(
+    root: &Path,
+    entry: &AllowEntry,
+    findings: &[Finding],
+    outcomes: &[MatchOutcome],
+    evidence_source_tree_files: Option<&BTreeSet<String>>,
+    style: allow_report::Style,
+    suggested_actions: &[String],
+    proof_commands: &[String],
+) -> String {
+    render_explain_report(
+        root,
+        entry,
+        findings,
+        outcomes,
+        evidence_source_tree_files,
+        ExplainContext::default(),
+        Some((suggested_actions, proof_commands)),
         |report| allow_report::render_explain_human_styled(report, style),
     )
 }
@@ -46,6 +81,29 @@ pub(super) fn render_explain_entry_json(
         outcomes,
         evidence_source_tree_files,
         context,
+        None,
+        allow_report::render_explain_json,
+    )
+}
+
+pub(super) fn render_explain_entry_json_with_steps(
+    root: &Path,
+    entry: &AllowEntry,
+    findings: &[Finding],
+    outcomes: &[MatchOutcome],
+    evidence_source_tree_files: Option<&BTreeSet<String>>,
+    context: ExplainContext<'_>,
+    suggested_actions: &[String],
+    proof_commands: &[String],
+) -> String {
+    render_explain_report(
+        root,
+        entry,
+        findings,
+        outcomes,
+        evidence_source_tree_files,
+        context,
+        Some((suggested_actions, proof_commands)),
         allow_report::render_explain_json,
     )
 }
@@ -57,34 +115,22 @@ fn render_explain_report<R>(
     outcomes: &[MatchOutcome],
     evidence_source_tree_files: Option<&BTreeSet<String>>,
     context: ExplainContext<'_>,
+    precomputed_steps: Option<(&[String], &[String])>,
     render: impl FnOnce(allow_report::ExplainReport<'_>) -> R,
 ) -> R {
     let evidence_diagnostics =
         evidence_reference_diagnostics_for_source_tree(root, entry, evidence_source_tree_files);
     let link_diagnostics =
         link_reference_diagnostics_for_source_tree(root, entry, evidence_source_tree_files);
-    let references = ExplainReferenceAttention {
-        has_broken_evidence: evidence_diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.status.is_broken_local_link()),
-        has_weak_evidence: evidence_diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.status.is_weak_reference()),
-        has_evidence_outside_default_inventory: evidence_diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.message == DEFAULT_SOURCE_TREE_INVENTORY_EVIDENCE_MESSAGE),
-        has_broken_link: link_diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.status.is_broken_local_link()),
-        has_weak_link: link_diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.status.is_weak_reference()),
-        has_link_outside_default_inventory: link_diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.message == DEFAULT_SOURCE_TREE_INVENTORY_EVIDENCE_MESSAGE),
+    let (suggested_actions, proof_commands) = match precomputed_steps {
+        Some((suggested_actions, proof_commands)) => {
+            (suggested_actions.to_vec(), proof_commands.to_vec())
+        }
+        None => {
+            let references = explain_reference_attention(&evidence_diagnostics, &link_diagnostics);
+            explain_next_steps(entry, findings, outcomes, references)
+        }
     };
-    let (suggested_actions, proof_commands) =
-        explain_next_steps(entry, findings, outcomes, references);
     let normalized_targets = evidence_diagnostics
         .iter()
         .map(evidence_reference_target_text)
@@ -151,6 +197,32 @@ fn link_reference_diagnostics_for_source_tree(
         .collect()
 }
 
+fn explain_reference_attention(
+    evidence_diagnostics: &[allow_policy::EvidenceReferenceDiagnostic],
+    link_diagnostics: &[allow_policy::EvidenceReferenceDiagnostic],
+) -> ExplainReferenceAttention {
+    ExplainReferenceAttention {
+        has_broken_evidence: evidence_diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.status.is_broken_local_link()),
+        has_weak_evidence: evidence_diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.status.is_weak_reference()),
+        has_evidence_outside_default_inventory: evidence_diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message == DEFAULT_SOURCE_TREE_INVENTORY_EVIDENCE_MESSAGE),
+        has_broken_link: link_diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.status.is_broken_local_link()),
+        has_weak_link: link_diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.status.is_weak_reference()),
+        has_link_outside_default_inventory: link_diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.message == DEFAULT_SOURCE_TREE_INVENTORY_EVIDENCE_MESSAGE),
+    }
+}
+
 fn link_reference_message(message: &str) -> String {
     message.replace("evidence", "link")
 }
@@ -208,6 +280,7 @@ mod tests {
             &[],
             Some(&source_tree_files),
             ExplainContext::default(),
+            None,
             capture_explain_report,
         );
 
@@ -284,6 +357,7 @@ mod tests {
             &outcomes,
             None,
             ExplainContext::default(),
+            None,
             capture_explain_report,
         );
 

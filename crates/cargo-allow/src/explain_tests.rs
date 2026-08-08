@@ -93,6 +93,9 @@ fn explain_core_summary_routes_attention_with_invocation_context() {
         Some(Path::new("repo")),
         Some(Path::new("policy/allow.toml")),
         true,
+        &[],
+        &[],
+        "test-repository".to_string(),
     )
     .unwrap_or_else(|error| std::panic::panic_any(format!("explain summary: {error}")));
 
@@ -124,8 +127,18 @@ fn explain_json_adds_schema_validated_core_summary_without_replacing_detail() ->
     let entry = test_entry("allow-explain-json", FindingKind::Panic);
     let inventory = allow_report::InventoryContext::source_syntax("git_tracked", None, Some(4))
         .with_completeness("complete");
-    let summary = build_explain_summary(&entry, &[], inventory, None, None, false)
-        .map_err(|error| format!("explain summary: {error}"))?;
+    let summary = build_explain_summary(
+        &entry,
+        &[],
+        inventory,
+        None,
+        None,
+        false,
+        &[],
+        &[],
+        "test-repository".to_string(),
+    )
+    .map_err(|error| format!("explain summary: {error}"))?;
     let json = add_core_summary_to_explain_json(&sample_explain_json_for_contract_test(), &summary)
         .map_err(|error| format!("explain JSON projection: {error}"))?;
     let value: Value = serde_json::from_str(&json).map_err(|error| error.to_string())?;
@@ -145,6 +158,32 @@ fn explain_json_adds_schema_validated_core_summary_without_replacing_detail() ->
     );
     assert!(value.get("allow_entry").is_some());
     Ok(())
+}
+
+#[test]
+fn explain_summary_does_not_claim_satisfied_when_detail_has_repair_steps() {
+    let entry = test_entry("allow-explain-reference-debt", FindingKind::NonRustFile);
+    let inventory = allow_report::InventoryContext::source_syntax("git_tracked", None, Some(4))
+        .with_completeness("complete");
+    let summary = build_explain_summary(
+        &entry,
+        &[],
+        inventory,
+        None,
+        None,
+        false,
+        &["repair evidence".to_string()],
+        &[],
+        "test-repository".to_string(),
+    )
+    .unwrap_or_else(|error| std::panic::panic_any(format!("explain summary: {error}")));
+
+    assert_eq!(summary.result_class, ResultClassV1::Findings);
+    assert_eq!(summary.posture, CoreCommandPostureV1::Advisory);
+    assert_eq!(
+        summary.reason.code,
+        "explain.entry_requires_attention".to_string()
+    );
 }
 
 #[test]

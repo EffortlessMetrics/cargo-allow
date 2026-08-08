@@ -9,6 +9,7 @@ use std::path::Path;
 
 use crate::{
     EvidenceValidationMode, HumanJsonFormat, ProfileArg, SourceTreeReportContext,
+    core_command_router::canonical_semantic_identity,
     core_command_summary::{
         CoreCommandActionV1, CoreCommandEffectsV1, CoreCommandPostureV1, CoreCommandReasonV1,
         CoreCommandSummaryInputV1, CoreCommandSummaryV1, CoreSourceSubjectKindV1,
@@ -28,7 +29,12 @@ mod explain_steps;
 #[path = "explain_types.rs"]
 mod explain_types;
 pub(crate) use explain_args::ExplainArgs;
-use explain_render::{render_explain_entry_json, render_explain_entry_styled};
+use explain_render::{
+    explain_reference_attention_for_source_tree, render_explain_entry_json,
+    render_explain_entry_json_with_steps, render_explain_entry_styled,
+    render_explain_entry_styled_with_steps,
+};
+use explain_steps::explain_next_steps;
 pub(super) use explain_types::ExplainContext;
 
 pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
@@ -75,7 +81,25 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
     } else {
         allow_report::Style::PLAIN
     };
-    let (_, outcomes) = explain_entry_state(&cfg, entry, &findings);
+    let (matching_findings, outcomes) = explain_entry_state(&cfg, entry, &findings);
+    let references = explain_reference_attention_for_source_tree(
+        &root,
+        entry,
+        evidence_source_tree_files.as_ref(),
+    );
+    let (suggested_actions, proof_commands) =
+        explain_next_steps(entry, &matching_findings, &outcomes, references);
+    let detail_json = render_explain_entry_json_with_steps(
+        &root,
+        entry,
+        &matching_findings,
+        &outcomes,
+        evidence_source_tree_files.as_ref(),
+        context,
+        &suggested_actions,
+        &proof_commands,
+    );
+    let repository_identity = canonical_semantic_identity(&detail_json, Some(&root))?;
     let summary = build_explain_summary(
         entry,
         &outcomes,
@@ -83,30 +107,25 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
         args.root.root.as_deref(),
         args.config.as_deref(),
         args.include_untracked,
+        &suggested_actions,
+        &proof_commands,
+        repository_identity,
     )?;
     let text = match args.format {
         HumanJsonFormat::Human => {
-            let detail = explain_entry_text_with_source_tree_files(
+            let detail = render_explain_entry_styled_with_steps(
                 &root,
-                &cfg,
                 entry,
-                &findings,
+                &matching_findings,
+                &outcomes,
                 evidence_source_tree_files.as_ref(),
                 style,
+                &suggested_actions,
+                &proof_commands,
             );
             format!("{}\n{detail}", render_core_command_summary_human(&summary))
         }
-        HumanJsonFormat::Json => {
-            let detail = explain_entry_json_with_source_tree_files(
-                &root,
-                &cfg,
-                entry,
-                &findings,
-                evidence_source_tree_files.as_ref(),
-                context,
-            );
-            add_core_summary_to_explain_json(&detail, &summary)?
-        }
+        HumanJsonFormat::Json => add_core_summary_to_explain_json(&detail_json, &summary)?,
     };
     emit_text(args.output.as_deref(), &text)?;
     Ok(())
@@ -119,6 +138,9 @@ fn build_explain_summary(
     root_arg: Option<&Path>,
     config: Option<&Path>,
     include_untracked: bool,
+    suggested_actions: &[String],
+    proof_commands: &[String],
+    repository_identity: String,
 ) -> CargoAllowResult<CoreCommandSummaryV1> {
     let complete = matches!(inventory.completeness, Some("complete" | "scoped"));
     let attention = outcomes
@@ -128,6 +150,8 @@ fn build_explain_summary(
     let blocking_attention = attention
         .iter()
         .any(|outcome| outcome.status.is_failure_in_no_new());
+    let requires_attention =
+        !attention.is_empty() || !suggested_actions.is_empty() || !proof_commands.is_empty();
     let (result_class, posture, completeness, currentness, reason) = if !complete {
         (
             ResultClassV1::PartialData,
@@ -139,7 +163,7 @@ fn build_explain_summary(
                 message: "the source inventory is incomplete; this explanation cannot establish a complete entry posture".to_string(),
             },
         )
-    } else if attention.is_empty() {
+    } else if !requires_attention {
         (
             ResultClassV1::Completed,
             CoreCommandPostureV1::Satisfied,
@@ -185,7 +209,7 @@ fn build_explain_summary(
             .with_contract(
                 "the explanation inventory is incomplete",
                 "the inventory limitation is explained without modifying the repository",
-                "doctor remains read-only and does not authorize policy entries",
+                "doctor remains read-only, uses its default inventory scope, and does not authorize policy entries",
             ),
         )
     } else if !attention.is_empty() {
@@ -231,11 +255,11 @@ fn build_explain_summary(
             .source_identity
             .map(|_| CoreSourceSubjectKindV1::Index)
             .unwrap_or(CoreSourceSubjectKindV1::Worktree),
-        repository_identity: format!("local-repository:{}", inventory.source),
+        repository_identity: format!("sha256:v1:{repository_identity}"),
         portable_identity,
         base: None,
         head: None,
-        paths: vec![entry.id.clone()],
+        paths: Vec::new(),
         limitations: if inventory.source_identity.is_none() {
             vec![
                 "the current worktree result is not bound to a commit or index identity"
@@ -252,6 +276,11 @@ fn build_explain_summary(
     ];
     if inventory.source_identity.is_none() {
         limitations.push("the worktree is not bound to an immutable source identity".to_string());
+    }
+    if !complete && include_untracked {
+        limitations.push(
+            "the partial-coverage doctor action uses its default inventory because doctor does not support --include-untracked".to_string(),
+        );
     }
 
     build_core_command_summary(CoreCommandSummaryInputV1 {
