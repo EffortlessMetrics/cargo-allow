@@ -64,6 +64,17 @@ read_workspace_version() {
   ' Cargo.toml
 }
 
+read_crate_version() {
+  local crate="$1"
+  local line
+  line="$(grep -m1 '^version' "crates/${crate}/Cargo.toml" 2>/dev/null)" || true
+  if [[ "${line}" == "version.workspace = true" ]]; then
+    read_workspace_version
+  else
+    echo "${line}" | sed 's/^version = "//; s/"$//'
+  fi
+}
+
 to_cargo_path() {
   local input="$1"
   if command -v cygpath >/dev/null 2>&1; then
@@ -141,6 +152,8 @@ PY
 
 version="$(read_workspace_version)"
 [[ -n "${version}" ]] || fail "could not read workspace.package.version"
+intent_version="$(read_crate_version cargo-intent)"
+[[ -n "${intent_version}" ]] || fail "could not read cargo-intent package version"
 
 git_head=""
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
@@ -203,7 +216,7 @@ record_journey "A" "cargo-allow" "Passed"
 # --- Journey B: cargo-intent alone ---
 log "journey B: cargo-intent alone (compatible)"
 b_version="$("${cargo_intent_bin}" --version | tr -d '\r')"
-printf '%s\n' "${b_version}" | grep -F "cargo-intent ${version}" >/dev/null \
+printf '%s\n' "${b_version}" | grep -F "cargo-intent ${intent_version}" >/dev/null \
   || fail "journey B version mismatch: ${b_version}"
 "${cargo_intent_bin}" --root "${consumer_dir}" --format json identity >/dev/null
 printf 'staged\n' >"${consumer_dir}/candidate.txt"
