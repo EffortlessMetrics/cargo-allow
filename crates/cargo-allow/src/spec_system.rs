@@ -4,10 +4,10 @@ use allow_policy::federation::{FederationLoadOutcome, load_federation_config};
 use allow_policy::spec_system::{
     ArtifactKind, ArtifactStatus, DocArtifact, DocArtifactLedger, ProfileConfigProvenance,
     ResolvedProfileConfig, SpecSystemConfig, SpecSystemGeneration, SpecSystemMode,
-    SpecSystemRequirements, SpecSystemRoots, SupportTierLevel, load_doc_artifacts,
-    parse_spec_system_config_at, parse_support_tier_claims, profile_config_conflict_message,
-    validate_active_goal_manifest_text_at, validate_doc_artifact_files,
-    validate_doc_artifact_links, validate_support_tier_claims,
+    SpecSystemRequirements, SpecSystemRoots, SupportTierLevel, contains_artifact_id,
+    load_doc_artifacts, parse_spec_system_config_at, parse_support_tier_claims,
+    profile_config_conflict_message, validate_active_goal_manifest_text_at,
+    validate_doc_artifact_files, validate_doc_artifact_links, validate_support_tier_claims,
 };
 use std::path::{Path, PathBuf};
 
@@ -230,7 +230,7 @@ fn work_items_from_artifact_files(
         }
 
         match read_text_file_capped(&source_path) {
-            Ok(text) if !text.contains(&artifact.id) => {
+            Ok(text) if !contains_artifact_id(&text, &artifact.id) => {
                 items.push(artifact_work_item(
                     "artifact_id_not_in_file",
                     artifact,
@@ -534,11 +534,23 @@ fn apply_work_item_ledger_provenance(
     provenance: &allow_core::LedgerProvenance,
 ) {
     for item in work_items {
+        // ledger_id and ledger_path are always the doc-artifact ledger identity.
         item.ledger_id = Some(provenance.ledger_id.clone());
         item.ledger_path = Some(provenance.ledger_path.clone());
-        item.lane = Some(provenance.lane.clone());
-        item.mode = Some(provenance.mode.clone());
-        item.role = Some(provenance.role.clone());
+        // lane/mode/role are only filled in if the work item didn't already
+        // set them from its own derivation context (e.g., import-graph items
+        // set lane="import", migration items set lane="migration").
+        // Overwriting those with the ledger's lane would silently lose the
+        // work item's origin signal (#3241).
+        if item.lane.is_none() {
+            item.lane = Some(provenance.lane.clone());
+        }
+        if item.mode.is_none() {
+            item.mode = Some(provenance.mode.clone());
+        }
+        if item.role.is_none() {
+            item.role = Some(provenance.role.clone());
+        }
     }
 }
 

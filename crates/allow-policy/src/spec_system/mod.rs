@@ -57,7 +57,9 @@ pub use runtime_promotion::{
     validate_runtime_promotion, validated_runtime_transition,
 };
 pub use support_tiers::{parse_support_tier_claims, validate_support_tier_claims};
-pub use validate::{validate_doc_artifact_files, validate_doc_artifact_links};
+pub use validate::{
+    contains_artifact_id, validate_doc_artifact_files, validate_doc_artifact_links,
+};
 
 #[cfg(test)]
 mod design_package_tests;

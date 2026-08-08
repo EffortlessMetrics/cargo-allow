@@ -467,7 +467,7 @@ fn normalize_source_path(path: &str) -> String {
     path.trim_matches('/').replace('\\', "/")
 }
 
-fn contains_artifact_id(text: &str, id: &str) -> bool {
+pub fn contains_artifact_id(text: &str, id: &str) -> bool {
     text.match_indices(id)
         .any(|(index, _)| has_id_boundaries(text.as_bytes(), index, index + id.len()))
 }
