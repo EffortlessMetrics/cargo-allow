@@ -228,7 +228,8 @@ pub(crate) fn proof_commands(
     entry: Option<&AllowEntry>,
 ) -> Vec<String> {
     let mut commands = Vec::new();
-    if let Some(allow_id) = entry.map(|entry| entry.id.as_str()) {
+    let allow_id = entry.map(|entry| entry.id.as_str());
+    if let Some(allow_id) = allow_id {
         commands.push(format!("cargo-allow explain {allow_id}"));
         commands.push(format!(
             "cargo-allow list --allow-id {allow_id} --format json"
@@ -237,7 +238,7 @@ pub(crate) fn proof_commands(
             "cargo-allow worklist --allow-id {allow_id} --format json"
         ));
     }
-    append_closeout_commands(kind, &mut commands);
+    append_closeout_commands(kind, &mut commands, allow_id);
     append_resolution_commands(kind, finding, entry, &mut commands);
     let kind_arg = worklist_kind_arg(finding, entry);
     let has_unsafe_kind_check = kind_arg == Some("unsafe");
@@ -283,14 +284,15 @@ pub(crate) fn proof_commands(
     commands
 }
 
-fn append_closeout_commands(kind: &str, commands: &mut Vec<String>) {
+fn append_closeout_commands(kind: &str, commands: &mut Vec<String>, allow_id: Option<&str>) {
     if kind == STALE_ALLOW {
         commands.push("cargo-allow prune --stale --dry-run".to_string());
         commands.push("cargo-allow prune --stale --format json".to_string());
     }
     if kind == REVIEW_DUE {
-        commands.push("cargo-allow refresh <allow-id> --dry-run".to_string());
-        commands.push("cargo-allow refresh <allow-id> --format json".to_string());
+        let id_arg = allow_id.unwrap_or("<allow-id>");
+        commands.push(format!("cargo-allow refresh {id_arg} --dry-run"));
+        commands.push(format!("cargo-allow refresh {id_arg} --format json"));
     }
 }
 
