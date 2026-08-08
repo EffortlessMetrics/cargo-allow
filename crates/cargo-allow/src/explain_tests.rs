@@ -96,6 +96,7 @@ fn explain_core_summary_routes_attention_with_invocation_context() {
         ExplainSummaryProjection {
             suggested_actions: &["inspect the entry worklist".to_string()],
             proof_commands: &[],
+            repository_identity: "test-repository".to_string(),
         },
     )
     .unwrap_or_else(|error| std::panic::panic_any(format!("explain summary: {error}")));
@@ -127,6 +128,7 @@ fn explain_json_adds_schema_validated_core_summary_without_replacing_detail() ->
         ExplainSummaryProjection {
             suggested_actions: &[],
             proof_commands: &[],
+            repository_identity: "test-repository".to_string(),
         },
     )
     .map_err(|error| format!("explain summary: {error}"))?;
@@ -166,6 +168,7 @@ fn explain_summary_does_not_claim_satisfied_when_detail_has_repair_steps() {
         ExplainSummaryProjection {
             suggested_actions: &["repair evidence".to_string()],
             proof_commands: &["cargo-allow explain allow-explain-reference-debt".to_string()],
+            repository_identity: "test-repository".to_string(),
         },
     )
     .unwrap_or_else(|error| std::panic::panic_any(format!("explain summary: {error}")));

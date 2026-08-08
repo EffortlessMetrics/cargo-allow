@@ -16,7 +16,9 @@ use crate::{
     },
     emit_text,
     evidence_inventory::current_evidence_source_tree_files,
-    load_world_with_evidence_mode, spec_system,
+    load_world_with_evidence_mode,
+    plan_bindings::compute_repository_identity,
+    spec_system,
 };
 
 #[path = "explain_args.rs"]
@@ -82,6 +84,8 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
         allow_report::Style::PLAIN
     };
     let (matching_findings, outcomes) = explain_entry_state(&cfg, entry, &findings);
+    let repository_identity =
+        compute_repository_identity(&root, args.config.as_deref(), &cfg, args.include_untracked)?;
     let references = explain_reference_attention_for_source_tree(
         &root,
         entry,
@@ -111,6 +115,7 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
         ExplainSummaryProjection {
             suggested_actions: &suggested_actions,
             proof_commands: &proof_commands,
+            repository_identity,
         },
     )?;
     let text = match args.format {
@@ -139,6 +144,7 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
 struct ExplainSummaryProjection<'a> {
     suggested_actions: &'a [String],
     proof_commands: &'a [String],
+    repository_identity: String,
 }
 
 fn build_explain_summary(
@@ -199,9 +205,11 @@ fn build_explain_summary(
             CoreCommandReasonV1 {
                 code: "explain.entry_requires_attention".to_string(),
                 message: format!(
-                    "allow entry `{}` has {} outcome(s) or deterministic next step(s) requiring attention",
+                    "allow entry `{}` has {} outcome(s), {} suggested action(s), and {} proof command(s) requiring attention",
                     entry.id,
                     attention.len(),
+                    projection.suggested_actions.len(),
+                    projection.proof_commands.len(),
                 ),
             },
         )
@@ -251,15 +259,6 @@ fn build_explain_summary(
             "cargo-allow does not execute the proof command as part of explain",
         )
     });
-    let repository_identity = inventory
-        .source_identity
-        .map(str::to_string)
-        .unwrap_or_else(|| {
-            format!(
-                "worktree:{}:{}:{}",
-                inventory.source, inventory.scope, inventory.scanner
-            )
-        });
     let portable_identity = inventory
         .source_identity
         .map(str::to_string)
@@ -269,7 +268,7 @@ fn build_explain_summary(
             .source_identity
             .map(|_| CoreSourceSubjectKindV1::Index)
             .unwrap_or(CoreSourceSubjectKindV1::Worktree),
-        repository_identity: format!("local-repository:{repository_identity}"),
+        repository_identity: format!("local-repository:{}", projection.repository_identity),
         portable_identity,
         base: None,
         head: None,
@@ -309,7 +308,7 @@ fn build_explain_summary(
         currentness,
         reason,
         primary_action,
-        additional_action_count: 0,
+        additional_action_count: projection.suggested_actions.len().saturating_sub(1),
         additional_actions_ref: None,
         operation_effects: CoreCommandEffectsV1::read_only(vec![
             "does not modify source, policy, Git, hooks, workflows, or GitHub settings".to_string(),

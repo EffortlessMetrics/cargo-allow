@@ -149,6 +149,25 @@ fn inventory_identity(
     Ok(sha256_v1_bytes(&canonical))
 }
 
+/// Compute the repository identity shared by plan bindings and explain
+/// summaries. It is content-addressed from the selected inventory and policy,
+/// so it is stable across checkout roots and changes when either source content
+/// or the resolved policy changes.
+pub(crate) fn compute_repository_identity(
+    root: &Path,
+    config: Option<&Path>,
+    cfg: &AllowConfig,
+    include_untracked: bool,
+) -> CargoAllowResult<String> {
+    let policy_path = config_path(root, config).ok_or_else(missing_plan_policy_config_error)?;
+    let policy_digest = sha256_v1_bytes(&read_bound_file(&policy_path, "policy")?);
+    let inventory_basis_identity = inventory_identity(root, cfg, include_untracked)?;
+    Ok(sha256_v1_bytes(
+        format!("cargo-allow.repository.v1\n{inventory_basis_identity}\n{policy_digest}")
+            .as_bytes(),
+    ))
+}
+
 fn push_bound_value(output: &mut Vec<u8>, value: &str) {
     output.extend_from_slice(&(value.len() as u64).to_be_bytes());
     output.extend_from_slice(value.as_bytes());
