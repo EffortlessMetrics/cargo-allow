@@ -150,7 +150,10 @@ impl AllowEntry {
         if let Some(glob) = &self.glob {
             return Some(normalize_source_tree_scope(glob));
         }
-        self.selector.glob.as_deref().map(normalize_source_tree_scope)
+        self.selector
+            .glob
+            .as_deref()
+            .map(normalize_source_tree_scope)
     }
 }
 
