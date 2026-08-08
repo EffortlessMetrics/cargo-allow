@@ -13,5 +13,10 @@ categories.workspace = true
 publish = true
 
 [dependencies]
-allow-core.workspace = true
 sha2.workspace = true
+allow-core = { workspace = true, optional = true }
+
+[features]
+default = []
+# Enable allow-core error conversion for product consumers (#2969).
+allow-core-interop = ["dep:allow-core"]

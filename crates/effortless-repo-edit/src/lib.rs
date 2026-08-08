@@ -10,6 +10,7 @@ mod apply_receipt;
 mod atomic_write;
 mod containment;
 mod digest;
+mod error;
 mod mutation_lock;
 mod mutation_target;
 mod parity;
@@ -27,6 +28,7 @@ pub use atomic_write::{
 pub use containment::assert_path_within_root;
 pub use containment::strip_verbatim_prefix;
 pub use digest::sha256_v1_bytes;
+pub use error::{RepoEditError, RepoEditResult, json_escape, stable_hash_hex};
 pub use mutation_lock::MutationLock;
 pub use mutation_target::{
     MutationTarget, MutationTargetOwnership, lock_path_for_target, resolve_mutation_target,
