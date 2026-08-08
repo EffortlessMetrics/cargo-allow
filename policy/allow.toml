@@ -10786,3 +10786,25 @@ glob = "policy/product-package-topology-v2.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0514"
+kind = "non_rust_file"
+family = "documentation"
+path = "CLAUDE.md"
+owner = "core/maintainers"
+classification = "agent_guidance"
+reason = "Documents repo-local Claude Code guidance for cargo-allow: build/test commands, three-product architecture, and source-tree claim boundaries."
+evidence = ["doc:AGENTS.md", "doc:docs/claim-boundaries.md"]
+created = "2026-08-08"
+review_after = "2026-11-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "CLAUDE.md"
+target_fingerprint = "md"
+glob = "CLAUDE.md"
+
+[allow.last_seen]
+line = 1
+column = 1
