@@ -9041,27 +9041,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-9138"
-kind = "non_rust_file"
-family = "package_metadata"
-path = "crates/proof-provider-api/Cargo.toml"
-owner = "repo-infra"
-classification = "rust_package_metadata"
-reason = "proof-provider-api manifest is tracked cargo-proof package metadata (#2603-A)."
-evidence = ["test:proof_provider_api_parity_fixtures_registered", "issue:2603", "doc:policy/product-package-topology.toml"]
-created = "2026-07-24"
-review_after = "2027-01-01"
-
-[allow.selector]
-ast_kind = "tracked_file"
-target_fingerprint = "toml"
-glob = "crates/proof-provider-api/Cargo.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-9139"
 kind = "non_rust_file"
 family = "test_fixture"
@@ -10256,27 +10235,6 @@ review_after = "2027-01-01"
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
 glob = "tests/fixtures/proof-adapter-command/parity-command-registry-v1.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-9142"
-kind = "non_rust_file"
-family = "package_metadata"
-path = "crates/proof-adapter-command/Cargo.toml"
-owner = "repo-infra"
-classification = "rust_package_metadata"
-reason = "proof-adapter-command manifest is tracked cargo-proof package metadata (#2603-B)."
-evidence = ["test:proof_adapter_command_parity_fixtures_registered", "issue:2603", "doc:policy/product-package-topology.toml"]
-created = "2026-07-24"
-review_after = "2027-01-01"
-
-[allow.selector]
-ast_kind = "tracked_file"
-target_fingerprint = "toml"
-glob = "crates/proof-adapter-command/Cargo.toml"
 
 [allow.last_seen]
 line = 1
