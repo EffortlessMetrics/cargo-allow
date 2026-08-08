@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::analysis_receipt::{HawkAnalysisReceiptV1, validate_hawk_analysis_receipt};
+use super::analysis_receipt::{HawkAnalysisReceiptV1, validate_hawk_analysis_receipt};
 
 pub const HAWK_SOURCE_ANCHOR_RESOLUTION_SCHEMA_ID: &str = "proof.hawk-source-anchor-resolution.v1";
 

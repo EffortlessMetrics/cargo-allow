@@ -27,6 +27,15 @@ proof-protocol.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 toml.workspace = true
+effortless-repo-protocol.workspace = true
+sha2.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true
+
+[features]
+default = []
+provider-cargo-allow = []
+provider-hawk = []
+provider-ripr = []
+all-providers = ["provider-cargo-allow", "provider-hawk", "provider-ripr"]
