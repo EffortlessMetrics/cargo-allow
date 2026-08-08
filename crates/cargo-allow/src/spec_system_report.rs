@@ -35,10 +35,13 @@ pub(super) fn build_spec_system_report(
         if legacy_active_goal.is_file() {
             let message = format!(
                 "legacy active goal manifest {} is historical-only; it cannot select current work, authorize mutation, or promote implementation/support state",
-                legacy_active_goal
-                    .strip_prefix(&root)
-                    .unwrap_or(&legacy_active_goal)
-                    .display()
+                allow_core::strip_win32_verbatim_prefix(
+                    &legacy_active_goal
+                        .strip_prefix(&root)
+                        .unwrap_or(&legacy_active_goal)
+                        .display()
+                        .to_string()
+                )
             );
             findings.push(SpecSystemFinding::new(
                 "legacy_active_goal_present",

@@ -116,9 +116,12 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     // ledger, so report the discovered config path; --write reports its target;
     // otherwise stdout (None).
     let policy_output: Option<String> = if args.update {
-        config_path(&root, args.config.as_deref()).map(|path| path.display().to_string())
+        config_path(&root, args.config.as_deref())
+            .map(|path| allow_core::strip_win32_verbatim_prefix(&path.display().to_string()))
     } else {
-        args.write.as_deref().map(|path| path.display().to_string())
+        args.write
+            .as_deref()
+            .map(|path| allow_core::strip_win32_verbatim_prefix(&path.display().to_string()))
     };
 
     // Resolve the kind filter: declared via --kind, or required for --glob.

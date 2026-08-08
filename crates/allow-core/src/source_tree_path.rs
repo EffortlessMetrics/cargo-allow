@@ -177,6 +177,22 @@ pub fn allow_entry_broad_scope(entry: &AllowEntry) -> Option<String> {
         })
 }
 
+/// Strip Win32 verbatim path prefixes (`\\?\` and `\\?\UNC\`) from a path
+/// string for clean display in error messages and JSON output (#3180-#3187).
+///
+/// On non-Windows or paths without the prefix, this is a no-op.
+pub fn strip_win32_verbatim_prefix(path: &str) -> String {
+    // Handle both backslash and forward slash variants
+    let normalized = path.replace('\\', "/");
+    if let Some(rest) = normalized.strip_prefix("//?/UNC/") {
+        format!("/{rest}")
+    } else if let Some(rest) = normalized.strip_prefix("//?/") {
+        rest.to_string()
+    } else {
+        path.to_string()
+    }
+}
+
 fn split_glob(s: &str) -> Vec<&str> {
     s.split('/').filter(|part| !part.is_empty()).collect()
 }
