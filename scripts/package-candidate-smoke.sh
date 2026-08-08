@@ -126,6 +126,9 @@ if [[ "${SKIP_PACKAGE:-0}" != "1" ]]; then
   mkdir -p "${packages_dir}"
   # cargo-intent depends on unpublished intent-* workspace crates; exclude until #2599-C / #2604 publish posture.
   # proof-engine depends on unpublished proof-protocol workspace crate; exclude until #2604 publish posture.
+  # cargo-proof absorbed the proof-adapter-* crates in #3289, so it carries their
+  # unpublished path dependencies and is excluded in their place.
+  cargo package --workspace --locked --exclude cargo-intent --exclude proof-engine --exclude cargo-proof
   for crate in "${crates[@]}"; do
     crate_version="$(read_crate_version "${crate}")"
     crate_file="target/package/${crate}-${crate_version}.crate"
