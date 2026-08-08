@@ -71,7 +71,7 @@ The system must not:
 | `policy/spec-system.toml` | profile-dependent | Defines roots, requirements, and advisory/shadow/blocking posture. |
 | `policy/doc-artifacts.toml` | profile-dependent | Registers governed proposal, spec, ADR, plan, active-goal, support-tier, policy, and closeout artifacts. |
 | Artifact Markdown files | profile-dependent | Proposal, spec, ADR, implementation plan, plan item, closeout, and related source-of-truth docs. |
-| `.codex/goals/active.toml` | profile-dependent | Active goal manifest when profile requirements enable active-goal checks. |
+| `.allow/goals/active.toml` | profile-dependent | Active goal manifest when profile requirements enable active-goal checks. |
 | `docs/status/SUPPORT_TIERS.md` | profile-dependent | Support-tier claim to proof-command map when profile requirements enable support-tier checks. |
 
 ## Outputs
@@ -212,7 +212,7 @@ reliable. It must not lint prose quality or general Markdown style.
 - Linked support-tier surface:
   [CARGO-ALLOW-SUPPORT-0001](../status/SUPPORT_TIERS.md).
 - Linked active goal:
-  [CARGO-ALLOW-GOAL-0001](../../.codex/goals/active.toml).
+  [CARGO-ALLOW-GOAL-0001](../../.allow/goals/active.toml).
 - Linked closeout:
   [CARGO-ALLOW-CLOSEOUT-0001](../../plans/spec-system/closeout.md).
 - Linked policy ledgers: this spec declares policy impact for
@@ -235,7 +235,7 @@ proposals = "docs/proposals"
 specs = "docs/specs"
 adrs = "docs/adr"
 plans = "plans"
-goals = ".codex/goals"
+goals = ".allow/goals"
 support_tiers = "docs/status/SUPPORT_TIERS.md"
 artifact_ledger = "policy/doc-artifacts.toml"
 
@@ -345,7 +345,7 @@ fields. It does not duplicate support-tier rows or execute proof commands.
 ## Active Goal Impact
 
 The profile should support
-[`CARGO-ALLOW-GOAL-0001`](../../.codex/goals/active.toml) as an active
+[`CARGO-ALLOW-GOAL-0001`](../../.allow/goals/active.toml) as an active
 execution manifest when profile requirements enable active-goal checks.
 
 The active goal manifest should link to known proposal, spec, and plan
