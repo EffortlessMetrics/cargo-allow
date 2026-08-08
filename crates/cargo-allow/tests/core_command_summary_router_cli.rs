@@ -274,6 +274,19 @@ fn adopt_output_is_not_a_conflict_when_only_the_wrong_base_would_collide() -> Re
             String::from_utf8_lossy(&output.stderr)
         ),
     )?;
+    // Absence of the conflict message is not acceptance: without these the test
+    // would also pass if adopt had failed for some unrelated reason.
+    require(
+        output.status.success(),
+        format!(
+            "adopt must succeed on distinct paths, got {}",
+            String::from_utf8_lossy(&output.stderr)
+        ),
+    )?;
+    require(
+        root.join("plan.json").is_file(),
+        "the sidecar must actually be written to the accepted path",
+    )?;
 
     remove_temp_root(root)
 }

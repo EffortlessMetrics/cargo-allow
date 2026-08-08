@@ -590,15 +590,27 @@ fn validate_summary_output_path(
     // Resolve each candidate against the base its own command writes with, so a
     // relative `--root` can neither hide a real collision nor invent one between
     // two paths that land on different files.
-    let cwd = std::env::current_dir().ok();
     for (base, conflict) in &config.conflicts {
         let candidate = match base {
-            ConflictBase::SourceTreeRoot => Some(resolve_under_root(root, conflict)),
+            ConflictBase::SourceTreeRoot => resolve_under_root(root, conflict),
+            // An absolute conflict resolves to itself, so it needs no base at all.
+            // Only a relative one has to consult the working directory, and if that
+            // is unavailable the collision is undecidable — refuse rather than skip
+            // the check, which would let the sidecar clobber the artifact silently.
+            ConflictBase::WorkingDirectory if conflict.is_absolute() => conflict.clone(),
             ConflictBase::WorkingDirectory => {
-                cwd.as_deref().map(|cwd| resolve_under_root(cwd, conflict))
+                let cwd = std::env::current_dir().map_err(|error| {
+                    CargoAllowError::with_kind(
+                        CargoAllowErrorKind::Usage,
+                        format!(
+                            "cannot resolve --command-summary-output against the working directory to check for a conflict: {error}"
+                        ),
+                    )
+                })?;
+                resolve_under_root(&cwd, conflict)
             }
         };
-        if candidate.is_some_and(|candidate| same_path(&path, &candidate)) {
+        if same_path(&path, &candidate) {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::Usage,
                 "--command-summary-output must differ from --output, --receipt, and --config",
