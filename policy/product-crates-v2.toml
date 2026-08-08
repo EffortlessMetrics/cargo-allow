@@ -199,31 +199,10 @@ product_or_shared_owner = "cargo-proof"
 crate_role = "CargoProof"
 
 [[crate_identity]]
-logical_id = "proof-adapter-cargo-allow"
-workspace_path = "crates/proof-adapter-cargo-allow"
-workspace_dependency_aliases = ["proof-adapter-cargo-allow"]
-cargo_package_name = "proof-adapter-cargo-allow"
-rust_library_name = "proof_adapter_cargo_allow"
-product_or_shared_owner = "cargo-proof"
-crate_role = "ProviderAdapter"
 
 [[crate_identity]]
-logical_id = "proof-adapter-ripr"
-workspace_path = "crates/proof-adapter-ripr"
-workspace_dependency_aliases = ["proof-adapter-ripr"]
-cargo_package_name = "proof-adapter-ripr"
-rust_library_name = "proof_adapter_ripr"
-product_or_shared_owner = "cargo-proof"
-crate_role = "ProviderAdapter"
 
 [[crate_identity]]
-logical_id = "proof-adapter-hawk"
-workspace_path = "crates/proof-adapter-hawk"
-workspace_dependency_aliases = ["proof-adapter-hawk"]
-cargo_package_name = "proof-adapter-hawk"
-rust_library_name = "proof_adapter_hawk"
-product_or_shared_owner = "cargo-proof"
-crate_role = "ProviderAdapter"
 
 [[crate_identity]]
 logical_id = "proof-engine"

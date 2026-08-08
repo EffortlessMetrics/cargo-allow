@@ -21,9 +21,6 @@ members = [
   "crates/intent-edit",
   "crates/cargo-intent",
   "crates/proof-protocol",
-  "crates/proof-adapter-cargo-allow",
-  "crates/proof-adapter-ripr",
-  "crates/proof-adapter-hawk",
   "crates/proof-engine",
   "crates/cargo-proof",
 ]
@@ -60,9 +57,6 @@ intent-engine = { path = "crates/intent-engine", version = "0.1.0" }
 intent-edit = { path = "crates/intent-edit", version = "0.1.0" }
 cargo-intent = { path = "crates/cargo-intent", version = "0.1.0" }
 proof-protocol = { path = "crates/proof-protocol", version = "0.1.0" }
-proof-adapter-cargo-allow = { path = "crates/proof-adapter-cargo-allow", version = "0.1.0" }
-proof-adapter-ripr = { path = "crates/proof-adapter-ripr", version = "0.1.0" }
-proof-adapter-hawk = { path = "crates/proof-adapter-hawk", version = "0.1.0" }
 proof-engine = { path = "crates/proof-engine", version = "0.1.0" }
 cargo-proof = { path = "crates/cargo-proof", version = "0.1.0" }
 serde = { version = "1.0.228", features = ["derive"] }

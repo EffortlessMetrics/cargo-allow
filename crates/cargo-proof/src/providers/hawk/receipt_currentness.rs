@@ -1,6 +1,6 @@
 //! Hawk receipt currentness evaluation (#2555).
 
-use crate::analysis_receipt::{HawkAnalysisReceiptV1, validate_hawk_analysis_receipt};
+use super::analysis_receipt::{HawkAnalysisReceiptV1, validate_hawk_analysis_receipt};
 
 pub const HAWK_RECEIPT_CURRENTNESS_SCHEMA_ID: &str = "proof.hawk-receipt-currentness.v1";
 

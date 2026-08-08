@@ -13,6 +13,7 @@ mod dry_run_cmd;
 mod exit;
 mod identity;
 mod plan;
+mod providers;
 mod render;
 
 pub use config::{ConfigProfileV1, ProofConfigV1, load_config};

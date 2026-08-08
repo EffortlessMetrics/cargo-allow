@@ -272,10 +272,12 @@ name = "cargo-proof"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "effortless-repo-protocol",
  "proof-engine",
  "proof-protocol",
  "serde",
  "serde_json",
+ "sha2",
  "toml",
 ]
 
@@ -1029,40 +1031,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "985e7ec9bb745e6ce6535b544d84d6cd6f7ad8bd711c398938ae983b91a766d9"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "proof-adapter-cargo-allow"
-version = "0.1.0"
-dependencies = [
- "effortless-repo-protocol",
- "proof-engine",
- "proof-protocol",
- "serde",
- "sha2",
- "toml",
-]
-
-[[package]]
-name = "proof-adapter-hawk"
-version = "0.1.0"
-dependencies = [
- "effortless-repo-protocol",
- "proof-engine",
- "proof-protocol",
- "serde",
- "toml",
-]
-
-[[package]]
-name = "proof-adapter-ripr"
-version = "0.1.0"
-dependencies = [
- "effortless-repo-protocol",
- "proof-engine",
- "proof-protocol",
- "serde",
- "toml",
 ]
 
 [[package]]
