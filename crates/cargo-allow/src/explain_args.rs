@@ -11,10 +11,10 @@ pub(crate) struct ExplainArgs {
     pub(super) root: RootArgs,
     /// Policy config path. With --profile spec-system, profile config path.
     #[arg(long)]
-    pub(super) config: Option<PathBuf>,
+    pub(crate) config: Option<PathBuf>,
     /// Opt-in profile to explain instead of the default source-exception ledger.
     #[arg(long, value_enum)]
-    pub(super) profile: Option<ProfileArg>,
+    pub(crate) profile: Option<ProfileArg>,
     /// Include untracked files in addition to git-tracked files.
     #[arg(long)]
     pub(super) include_untracked: bool,
@@ -23,5 +23,5 @@ pub(crate) struct ExplainArgs {
     pub(super) format: HumanJsonFormat,
     /// Write explanation output to a file instead of stdout.
     #[arg(long)]
-    pub(super) output: Option<PathBuf>,
+    pub(crate) output: Option<PathBuf>,
 }

@@ -91,7 +91,7 @@ fn write_summary_artifact_with_config(
 }
 
 fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCommandSummaryV1> {
-    let completeness = report_completeness(args);
+    let completeness = summary_completeness(&args.inventory_facts);
     let advisory_count = report_advisory_count(args);
     let (result_class, posture, reason) = if completeness != CompletenessV1::Complete {
         (
@@ -99,7 +99,7 @@ fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCom
             CoreCommandPostureV1::Blocking,
             CoreCommandReasonV1 {
                 code: format!("{}.partial_coverage", args.command),
-                message: partial_reason(args),
+                message: partial_coverage_reason(&args.inventory_facts),
             },
         )
     } else if args.failed {
@@ -416,18 +416,23 @@ fn sort_json_keys(value: &mut Value) {
     }
 }
 
-fn report_completeness(args: &ReportRenderArgs<'_>) -> CompletenessV1 {
-    if args.inventory_facts.rust_files_skipped > 0
-        || args.inventory_facts.rust_files_with_parse_errors > 0
-        || args.inventory_facts.deleted_tracked.unwrap_or(0) > 0
-        || args.inventory_facts.empty_git_tracked
+/// Map already-computed inventory facts onto summary coverage.
+///
+/// Every command that projects the common summary reads coverage from the same
+/// facts its own report already carries, so `audit`, `check`, `explain`, `why`,
+/// and `worklist` cannot disagree about whether a run was complete.
+pub(crate) fn summary_completeness(facts: &crate::InventoryFacts) -> CompletenessV1 {
+    if facts.rust_files_skipped > 0
+        || facts.rust_files_with_parse_errors > 0
+        || facts.deleted_tracked.unwrap_or(0) > 0
+        || facts.empty_git_tracked
     {
         return CompletenessV1::Partial;
     }
     // `allow_inventory::inventory` assigns Partial before Scoped when deleted,
     // submodule, or skipped paths exist. The explicit Rust scanner checks above
     // cover later read/parse omissions.
-    match args.inventory_facts.completeness {
+    match facts.completeness {
         InventoryCompleteness::Complete | InventoryCompleteness::Scoped => CompletenessV1::Complete,
         InventoryCompleteness::Fallback | InventoryCompleteness::Partial => CompletenessV1::Partial,
     }
@@ -446,36 +451,37 @@ fn report_advisory_count(args: &ReportRenderArgs<'_>) -> usize {
         + args.evidence.occurrence_headroom_entries
 }
 
-fn partial_reason(args: &ReportRenderArgs<'_>) -> String {
+/// Explain, in the operator's own vocabulary, why coverage was not complete.
+pub(crate) fn partial_coverage_reason(facts: &crate::InventoryFacts) -> String {
     let mut reasons = Vec::new();
-    if args.inventory_facts.empty_git_tracked {
+    if facts.empty_git_tracked {
         reasons.push("Git reported no tracked files".to_string());
     }
-    if args.inventory_facts.deleted_tracked.unwrap_or(0) > 0 {
+    if facts.deleted_tracked.unwrap_or(0) > 0 {
         reasons.push(format!(
             "{} tracked path(s) are absent from the worktree",
-            args.inventory_facts.deleted_tracked.unwrap_or(0)
+            facts.deleted_tracked.unwrap_or(0)
         ));
     }
-    if args.inventory_facts.rust_files_skipped > 0 {
+    if facts.rust_files_skipped > 0 {
         reasons.push(format!(
             "{} Rust file(s) were skipped",
-            args.inventory_facts.rust_files_skipped
+            facts.rust_files_skipped
         ));
     }
-    if args.inventory_facts.rust_files_with_parse_errors > 0 {
+    if facts.rust_files_with_parse_errors > 0 {
         reasons.push(format!(
             "{} Rust file(s) contained parse errors",
-            args.inventory_facts.rust_files_with_parse_errors
+            facts.rust_files_with_parse_errors
         ));
     }
     if matches!(
-        args.inventory_facts.completeness,
+        facts.completeness,
         InventoryCompleteness::Fallback | InventoryCompleteness::Partial
     ) {
         reasons.push(format!(
             "inventory completeness is {}",
-            args.inventory_facts.completeness.as_str()
+            facts.completeness.as_str()
         ));
     }
     if reasons.is_empty() {

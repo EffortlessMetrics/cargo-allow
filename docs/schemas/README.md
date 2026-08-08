@@ -22,7 +22,7 @@ macro-expansion, or proof-level coverage.
 | Legacy migration summary | `cargo-allow.migrate.v1` | `cargo-allow migrate --summary-format json --summary-output <path>` |
 | Spec-system graph report | `cargo-allow.spec-system.v1` | `cargo-allow check --profile spec-system --format json`, `cargo-allow audit --profile spec-system --format json`, `cargo-allow worklist --profile spec-system --format json`, `cargo-allow doctor --profile spec-system --format json`, `cargo-allow explain <artifact-id> --profile spec-system --format json` |
 | Agent worklist | `cargo-allow.worklist.v1` | `cargo-allow worklist --format json` |
-| Common command summary | `cargo-allow.core-command-summary.v1` | `cargo-allow --command-summary-output <path> adopt`, `... doctor`, `... audit`, `... check` |
+| Common command summary | `cargo-allow.core-command-summary.v1` | `cargo-allow --command-summary-output <path> adopt`, `... doctor`, `... audit`, `... check`, `... explain <id>`, `... why`, `... worklist` |
 
 ## Common command summary
 
@@ -49,7 +49,9 @@ Consumers should rely on these properties:
 - `subject.repository_identity` is content-addressed and stable across
   relocated checkouts; it embeds no private absolute paths.
 - `operation_effects` states the operation's own read/write posture, separately
-  from any paths a suggested next action may write.
+  from any paths a suggested next action may write. The inspection commands
+  (`explain`, `why`, `worklist`) are read-only; `why --plan` is the one
+  exception, and it names the exact candidate plan path it wrote.
 
 The supported command set grows as the migration proceeds; a command that does
 not yet emit the summary rejects `--command-summary-output` rather than silently

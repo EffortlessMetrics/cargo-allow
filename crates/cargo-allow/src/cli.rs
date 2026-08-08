@@ -40,9 +40,9 @@ pub(crate) struct CargoAllowCli {
     pub(crate) quiet: bool,
     /// Write the versioned common command summary to a separate JSON file.
     ///
-    /// Supports the source-exception `adopt`, `doctor`, `audit`, and `check`
-    /// commands. Existing detailed human, JSON, Markdown, HTML, SARIF, and
-    /// receipt artifacts remain unchanged.
+    /// Supports the source-exception `adopt`, `doctor`, `audit`, `check`,
+    /// `explain`, `why`, and `worklist` commands. Existing detailed human,
+    /// JSON, Markdown, HTML, SARIF, and receipt artifacts remain unchanged.
     ///
     /// Deliberately *not* named `--summary-output`: `add`, `propose`, and
     /// `migrate` each own a per-command `--summary-output` with different
@@ -157,7 +157,7 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         if cli.command_summary_output.is_some() {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::Usage,
-                "--command-summary-output requires the adopt, doctor, audit, or check subcommand",
+                "--command-summary-output requires the adopt, doctor, audit, check, explain, why, or worklist subcommand",
             ));
         }
         CargoAllowCli::command().print_help().map_err(|e| {
@@ -229,10 +229,30 @@ fn configure_summary_output(
         .into_iter()
         .flatten()
         .collect(),
+        CargoAllowCommand::Explain(args) if args.profile.is_none() => {
+            [args.output.clone(), args.config.clone()]
+                .into_iter()
+                .flatten()
+                .collect()
+        }
+        // `why --plan` writes a candidate add-finding plan, so the summary
+        // sidecar must not be allowed to overwrite it.
+        CargoAllowCommand::Why(args) => {
+            [args.output.clone(), args.config.clone(), args.plan.clone()]
+                .into_iter()
+                .flatten()
+                .collect()
+        }
+        CargoAllowCommand::Worklist(args) if args.profile.is_none() => {
+            [args.output.clone(), args.config.clone()]
+                .into_iter()
+                .flatten()
+                .collect()
+        }
         _ => {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::Usage,
-                "--command-summary-output currently supports the source-exception adopt, doctor, audit, and check commands only",
+                "--command-summary-output currently supports the source-exception adopt, doctor, audit, check, explain, why, and worklist commands only",
             ));
         }
     };

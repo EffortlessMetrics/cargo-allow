@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowError, CargoAllowErrorKind};
+use allow_core::{CargoAllowError, CargoAllowErrorKind, MatchStatus};
 use effortless_repo_protocol::{ClaimBoundaryV1, CompletenessV1, CurrentnessV1, ResultClassV1};
 
 use super::*;
@@ -590,5 +590,442 @@ fn doctor_adapter_separates_broken_from_weak_evidence_posture() -> Result<(), St
             .as_ref()
             .is_some_and(|action| action.args.contains(&"--weak-evidence".to_string())),
         "weak evidence must route to the weak-evidence worklist",
+    )
+}
+
+fn explain_facts() -> ExplainSummaryFactsV1 {
+    ExplainSummaryFactsV1 {
+        tool_version: "0.2.0".to_string(),
+        subject: CoreSourceSubjectV1 {
+            kind: CoreSourceSubjectKindV1::ScopedPath,
+            repository_identity: "local-repository:sha256:v1:test".to_string(),
+            portable_identity: "scoped:allow-entry:allow-0001:git_tracked:current-unpinned"
+                .to_string(),
+            base: None,
+            head: None,
+            paths: strings(&["src/lib.rs"]),
+            limitations: Vec::new(),
+        },
+        completeness: CompletenessV1::Complete,
+        coverage_limitation: None,
+        allow_id: "allow-0001".to_string(),
+        attention_status: None,
+        matching_finding_count: 2,
+        suggested_actions: Vec::new(),
+        claim_boundary: ClaimBoundaryV1::new("one ledger entry only"),
+    }
+}
+
+fn why_facts() -> WhySummaryFactsV1 {
+    WhySummaryFactsV1 {
+        tool_version: "0.2.0".to_string(),
+        subject: CoreSourceSubjectV1 {
+            kind: CoreSourceSubjectKindV1::ScopedPath,
+            repository_identity: "local-repository:sha256:v1:test".to_string(),
+            portable_identity: "scoped:finding:panic:src/lib.rs:42:git_tracked:current-unpinned"
+                .to_string(),
+            base: None,
+            head: None,
+            paths: strings(&["src/lib.rs:42"]),
+            limitations: Vec::new(),
+        },
+        completeness: CompletenessV1::Complete,
+        coverage_limitation: None,
+        location: "src/lib.rs:42".to_string(),
+        outcome_status: MatchStatus::Matched,
+        matched_allow_id: Some("allow-0001".to_string()),
+        near_miss_candidate_count: 0,
+        suggested_actions: Vec::new(),
+        plan_path: None,
+        claim_boundary: ClaimBoundaryV1::new("one finding only"),
+    }
+}
+
+fn worklist_facts() -> WorklistSummaryFactsV1 {
+    WorklistSummaryFactsV1 {
+        tool_version: "0.2.0".to_string(),
+        subject: CoreSourceSubjectV1::worktree(
+            "local-repository:sha256:v1:test",
+            "worktree:git_tracked:current-unpinned",
+        ),
+        completeness: CompletenessV1::Complete,
+        coverage_limitation: None,
+        items: Vec::new(),
+        filtered: false,
+        claim_boundary: ClaimBoundaryV1::new("queued maintenance work only"),
+    }
+}
+
+fn work_item(kind: &str, status: MatchStatus, actions: &[&str]) -> WorklistSummaryItemV1 {
+    WorklistSummaryItemV1 {
+        kind: kind.to_string(),
+        status,
+        allow_id: Some("allow-0001".to_string()),
+        path: Some("src/lib.rs".to_string()),
+        suggested_actions: strings(actions),
+    }
+}
+
+#[test]
+fn explain_adapter_reports_a_receipted_entry_as_satisfied() -> Result<(), String> {
+    let summary = core_command_summary_from_explain(explain_facts())?;
+    ensure(
+        summary.result_class == ResultClassV1::Completed
+            && summary.posture == CoreCommandPostureV1::Satisfied,
+        "an entry whose findings are all matched, with no maintenance left, is satisfied",
+    )?;
+    ensure(
+        summary.primary_action.is_none() && summary.additional_action_count == 0,
+        "a healthy entry must not carry an invented action",
+    )?;
+    ensure(
+        !summary.operation_effects.writes_repository
+            && summary.operation_effects.write_paths.is_empty(),
+        "explain is read-only",
+    )?;
+    ensure(
+        summary.next_proof.as_ref().is_some_and(|action| {
+            action
+                .args
+                .iter()
+                .map(String::as_str)
+                .eq(["check", "--mode", "no-new"])
+        }),
+        "one healthy entry must route to the gate rather than imply it already passed",
+    )
+}
+
+#[test]
+fn explain_adapter_keeps_a_gate_failing_entry_blocking() -> Result<(), String> {
+    let mut facts = explain_facts();
+    facts.attention_status = Some(MatchStatus::EvidenceMissing);
+    facts.suggested_actions = strings(&[
+        "add evidence that supports the exception reason",
+        "keep the selector scoped to the reviewed boundary",
+    ]);
+    let summary = core_command_summary_from_explain(facts)?;
+    ensure(
+        summary.result_class == ResultClassV1::Findings
+            && summary.posture == CoreCommandPostureV1::Blocking,
+        "an outcome the no-new gate fails on must block",
+    )?;
+    // The ranked step is reused verbatim; the summary neither rewrites it nor
+    // promotes it into a command cargo-allow would run.
+    ensure(
+        summary.primary_action.as_ref().is_some_and(|action| {
+            action.kind == CoreCommandActionKindV1::Decision
+                && action.title == "add evidence that supports the exception reason"
+                && action.program.is_none()
+        }),
+        "explain must reuse the typed ranked step as a repository decision",
+    )?;
+    ensure(
+        summary.additional_action_count == 1
+            && summary
+                .additional_actions_ref
+                .as_deref()
+                .is_some_and(|reference| reference.contains("explain.v1")),
+        "the unpromoted ranked steps must stay retrievable from the detailed artifact",
+    )
+}
+
+#[test]
+fn explain_adapter_defers_a_competing_entry_to_repository_judgment() -> Result<(), String> {
+    let mut facts = explain_facts();
+    facts.attention_status = Some(MatchStatus::Ambiguous);
+    facts.suggested_actions =
+        strings(&["narrow selectors so each finding matches exactly one allow entry"]);
+    let summary = core_command_summary_from_explain(facts)?;
+    ensure(
+        summary.posture == CoreCommandPostureV1::DecisionRequired,
+        "competing entries are a repository decision, not a cargo-allow preference",
+    )?;
+    ensure(
+        summary
+            .primary_action
+            .as_ref()
+            .is_some_and(|action| action.kind == CoreCommandActionKindV1::Decision),
+        "an ambiguous entry must not resolve to a guessed command",
+    )
+}
+
+#[test]
+fn explain_adapter_never_reports_an_unmatched_entry_as_satisfied() -> Result<(), String> {
+    // No current finding matches the entry any more. That is the `stale`
+    // outcome, which the no-new gate tolerates but which is still not a clean
+    // entry, so it must render as advisory rather than satisfied.
+    let mut facts = explain_facts();
+    facts.matching_finding_count = 0;
+    facts.attention_status = Some(MatchStatus::Stale);
+    facts.suggested_actions = strings(&["remove the stale allow entry if the exception is gone"]);
+    let summary = core_command_summary_from_explain(facts)?;
+    ensure(
+        summary.result_class == ResultClassV1::Findings
+            && summary.posture == CoreCommandPostureV1::Advisory,
+        "a stale entry is an advisory finding, not a satisfied result",
+    )?;
+    ensure(
+        summary.reason.code == "explain.stale",
+        format!(
+            "the typed status must survive into the reason: {}",
+            summary.reason.code
+        ),
+    )
+}
+
+#[test]
+fn explain_adapter_keeps_partial_coverage_non_green() -> Result<(), String> {
+    let mut facts = explain_facts();
+    facts.completeness = CompletenessV1::Partial;
+    facts.coverage_limitation = Some("2 Rust file(s) were skipped".to_string());
+    let summary = core_command_summary_from_explain(facts)?;
+    ensure(
+        summary.result_class == ResultClassV1::PartialData
+            && summary.posture == CoreCommandPostureV1::Blocking,
+        "partial coverage must not be green",
+    )?;
+    ensure(
+        summary.next_proof.is_none(),
+        "partial coverage must not imply the gate would prove anything",
+    )?;
+    ensure(
+        summary
+            .subject
+            .limitations
+            .iter()
+            .any(|limitation| limitation.contains("2 Rust file(s) were skipped")),
+        "the exact coverage limitation must reach the operator",
+    )
+}
+
+#[test]
+fn why_adapter_reports_a_receipted_finding_as_satisfied() -> Result<(), String> {
+    let summary = core_command_summary_from_why(why_facts())?;
+    ensure(
+        summary.result_class == ResultClassV1::Completed
+            && summary.posture == CoreCommandPostureV1::Satisfied,
+        "a finding bound to an allow entry is satisfied",
+    )?;
+    ensure(
+        summary.primary_action.is_none(),
+        "a receipted finding must not carry an invented action",
+    )?;
+    ensure(
+        summary.reason.message.contains("allow-0001"),
+        format!(
+            "the receipting entry must be named: {}",
+            summary.reason.message
+        ),
+    )?;
+    ensure(
+        !summary.operation_effects.writes_repository,
+        "why without --plan is read-only",
+    )
+}
+
+#[test]
+fn why_adapter_never_promotes_a_near_miss_candidate_to_a_winner() -> Result<(), String> {
+    let mut facts = why_facts();
+    facts.outcome_status = MatchStatus::New;
+    facts.matched_allow_id = None;
+    facts.near_miss_candidate_count = 3;
+    facts.suggested_actions = strings(&[
+        "Receipt this occurrence with cargo-allow add.",
+        "Or repair the source so the finding disappears.",
+    ]);
+    let summary = core_command_summary_from_why(facts)?;
+    ensure(
+        summary.result_class == ResultClassV1::Findings
+            && summary.posture == CoreCommandPostureV1::Blocking,
+        "an unreceipted finding blocks the no-new gate",
+    )?;
+    ensure(
+        summary.reason.message.contains("no allow entry matches"),
+        format!(
+            "the absence of a match must be explicit: {}",
+            summary.reason.message
+        ),
+    )?;
+    ensure(
+        summary
+            .primary_action
+            .as_ref()
+            .is_some_and(|action| action.kind == CoreCommandActionKindV1::Decision),
+        "receipting versus repairing is a repository judgment",
+    )?;
+    ensure(
+        !summary.reason.message.contains("allow-0001"),
+        "a near-miss candidate must never be reported as the covering entry",
+    )
+}
+
+#[test]
+fn why_adapter_reports_an_unattributable_match_as_not_proven() -> Result<(), String> {
+    let mut facts = why_facts();
+    facts.matched_allow_id = None;
+    let summary = core_command_summary_from_why(facts)?;
+    ensure(
+        summary.result_class == ResultClassV1::NotProven
+            && summary.posture == CoreCommandPostureV1::Blocking,
+        "a matched outcome with no recorded entry ID is not proof of coverage",
+    )?;
+    ensure(
+        summary.next_proof.is_none(),
+        "an unattributable result must not promise the gate proves anything",
+    )
+}
+
+#[test]
+fn why_plan_names_its_candidate_write_target() -> Result<(), String> {
+    let mut facts = why_facts();
+    facts.outcome_status = MatchStatus::New;
+    facts.matched_allow_id = None;
+    facts.suggested_actions = strings(&[
+        "Receipt this occurrence with cargo-allow add.",
+        "Or repair the source so the finding disappears.",
+    ]);
+    facts.plan_path = Some("target/cargo-allow/add-finding.plan.json".to_string());
+    let summary = core_command_summary_from_why(facts)?;
+    ensure(
+        summary.operation_effects.writes_repository,
+        "--plan writes a candidate artifact, so the operation is not read-only",
+    )?;
+    ensure(
+        summary
+            .operation_effects
+            .write_paths
+            .iter()
+            .map(String::as_str)
+            .eq(["target/cargo-allow/add-finding.plan.json"]),
+        format!(
+            "the exact plan path must be named: {:?}",
+            summary.operation_effects.write_paths
+        ),
+    )?;
+    ensure(
+        summary
+            .operation_effects
+            .explicit_non_effects
+            .iter()
+            .any(|effect| effect.contains("does not retain, approve, or authorize the exception")),
+        "a candidate plan must not read as an approved exception",
+    )?;
+    ensure(
+        summary.primary_action.as_ref().is_some_and(|action| {
+            action.kind == CoreCommandActionKindV1::Decision
+                && action
+                    .title
+                    .contains("target/cargo-allow/add-finding.plan.json")
+        }),
+        "the written plan must be routed to human review rather than auto-applied",
+    )?;
+    let human = render_core_command_summary_human(&summary);
+    ensure(
+        human.contains("Writes: target/cargo-allow/add-finding.plan.json"),
+        format!("the human summary must name the write target: {human}"),
+    )
+}
+
+#[test]
+fn worklist_adapter_reports_an_empty_queue_as_satisfied() -> Result<(), String> {
+    let summary = core_command_summary_from_worklist(worklist_facts())?;
+    ensure(
+        summary.result_class == ResultClassV1::Completed
+            && summary.posture == CoreCommandPostureV1::Satisfied,
+        "an empty unfiltered queue is a satisfied result",
+    )?;
+    ensure(
+        summary.primary_action.is_none()
+            && summary.additional_action_count == 0
+            && summary.additional_actions_ref.is_none(),
+        "an empty queue must not carry an invented action",
+    )?;
+    ensure(
+        !summary.operation_effects.writes_repository,
+        "worklist is read-only",
+    )
+}
+
+#[test]
+fn worklist_adapter_blocks_on_the_highest_severity_queued_item() -> Result<(), String> {
+    let mut facts = worklist_facts();
+    facts.items = vec![
+        work_item(
+            "review_due",
+            MatchStatus::ReviewDue,
+            &["review the retained exception and update evidence or remove it"],
+        ),
+        work_item(
+            "new_unreceipted_finding",
+            MatchStatus::New,
+            &["remove the new source exception if it is accidental"],
+        ),
+    ];
+    let summary = core_command_summary_from_worklist(facts)?;
+    ensure(
+        summary.result_class == ResultClassV1::Findings
+            && summary.posture == CoreCommandPostureV1::Blocking,
+        "a queue containing a gate-failing item blocks even when it is not ranked first",
+    )?;
+    ensure(
+        summary.primary_action.as_ref().is_some_and(|action| {
+            action.kind == CoreCommandActionKindV1::Decision
+                && action.title == "review the retained exception and update evidence or remove it"
+        }),
+        "the primary action must reuse the ranked step of the highest-ranked item",
+    )?;
+    ensure(
+        summary.additional_action_count == 1
+            && summary.additional_actions_ref.as_deref()
+                == Some("cargo-allow.worklist.v1.work_items"),
+        "remaining queue items must stay retrievable from the worklist artifact",
+    )
+}
+
+#[test]
+fn worklist_adapter_never_reads_an_empty_filtered_queue_as_a_clean_repository() -> Result<(), String>
+{
+    let mut facts = worklist_facts();
+    facts.filtered = true;
+    let summary = core_command_summary_from_worklist(facts)?;
+    ensure(
+        summary.result_class == ResultClassV1::NotProven
+            && summary.posture != CoreCommandPostureV1::Satisfied,
+        "an empty filtered queue proves nothing about the repository",
+    )?;
+    ensure(
+        summary.primary_action.as_ref().is_some_and(|action| {
+            action
+                .args
+                .iter()
+                .map(String::as_str)
+                .eq(["worklist", "--format", "json"])
+        }),
+        "the deterministic safe route is to list the unfiltered queue",
+    )?;
+    ensure(
+        summary
+            .subject
+            .limitations
+            .iter()
+            .any(|limitation| limitation.contains("the queue was filtered")),
+        "the filter must be stated as a subject limitation",
+    )
+}
+
+#[test]
+fn worklist_adapter_keeps_partial_coverage_non_green() -> Result<(), String> {
+    let mut facts = worklist_facts();
+    facts.completeness = CompletenessV1::Partial;
+    facts.coverage_limitation = Some("Git reported no tracked files".to_string());
+    let summary = core_command_summary_from_worklist(facts)?;
+    ensure(
+        summary.result_class == ResultClassV1::PartialData
+            && summary.posture == CoreCommandPostureV1::Blocking,
+        "an incomplete scan must not present its queue as the whole story",
+    )?;
+    ensure(
+        summary.next_proof.is_none(),
+        "partial coverage must not imply the gate would prove anything",
     )
 }

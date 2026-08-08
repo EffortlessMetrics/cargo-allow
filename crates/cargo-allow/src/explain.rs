@@ -20,6 +20,7 @@ mod explain_steps;
 #[path = "explain_types.rs"]
 mod explain_types;
 pub(crate) use explain_args::ExplainArgs;
+#[cfg(test)]
 use explain_render::{render_explain_entry_json, render_explain_entry_styled};
 pub(super) use explain_types::ExplainContext;
 
@@ -67,26 +68,147 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
     } else {
         allow_report::Style::PLAIN
     };
+    let (matching_findings, outcomes) = explain_entry_state(&cfg, entry, &findings);
+    // One report build serves both renderings and the summary projection, so
+    // the evidence and traceability references are read exactly once.
+    let (detail_json, detail_human, suggested_actions) = explain_render::render_explain_report(
+        &root,
+        entry,
+        &matching_findings,
+        &outcomes,
+        evidence_source_tree_files.as_ref(),
+        context,
+        |report| {
+            (
+                allow_report::render_explain_json(report),
+                matches!(args.format, HumanJsonFormat::Human)
+                    .then(|| allow_report::render_explain_human_styled(report, style)),
+                report.suggested_actions.to_vec(),
+            )
+        },
+    );
+    // Common operator grammar (#3149). The detailed explain artifact remains
+    // authoritative; this projection is additive and derived from the same
+    // in-memory entry state without rescanning source or reloading policy.
+    let summary = explain_summary(
+        &detail_json,
+        &root,
+        &source_context,
+        ExplainEntryFacts {
+            entry,
+            attention_status: outcomes
+                .iter()
+                .find(|outcome| outcome.status != allow_core::MatchStatus::Matched)
+                .map(|outcome| outcome.status),
+            matching_finding_count: matching_findings.len(),
+            suggested_actions,
+            inventory_facts,
+        },
+    )?;
+    crate::core_command_router::write_summary_artifact(&root, &summary)?;
+
     let text = match args.format {
-        HumanJsonFormat::Human => explain_entry_text_with_source_tree_files(
-            &root,
-            &cfg,
-            entry,
-            &findings,
-            evidence_source_tree_files.as_ref(),
-            style,
-        ),
-        HumanJsonFormat::Json => explain_entry_json_with_source_tree_files(
-            &root,
-            &cfg,
-            entry,
-            &findings,
-            evidence_source_tree_files.as_ref(),
-            context,
-        ),
+        HumanJsonFormat::Human => {
+            let mut rendered =
+                crate::core_command_summary::render_core_command_summary_human(&summary);
+            rendered.push('\n');
+            rendered.push_str(detail_human.as_deref().unwrap_or_default());
+            rendered
+        }
+        HumanJsonFormat::Json => detail_json,
     };
     emit_text(args.output.as_deref(), &text)?;
     Ok(())
+}
+
+/// Entry-scoped facts `explain` has already computed for the common summary.
+struct ExplainEntryFacts<'a> {
+    entry: &'a AllowEntry,
+    /// Status of the first outcome for this entry that is not `Matched`.
+    attention_status: Option<allow_core::MatchStatus>,
+    matching_finding_count: usize,
+    suggested_actions: Vec<String>,
+    inventory_facts: crate::InventoryFacts,
+}
+
+/// Build the common operator summary from the entry state explain already holds.
+///
+/// The relocation-stable semantic identity comes from explain's own JSON
+/// artifact, exactly as `audit`, `check`, and `doctor` derive theirs, so the
+/// summary never rescans source or reloads policy to describe itself.
+fn explain_summary(
+    detail_json: &str,
+    root: &Path,
+    source_context: &SourceTreeReportContext,
+    facts: ExplainEntryFacts<'_>,
+) -> CargoAllowResult<crate::core_command_summary::CoreCommandSummaryV1> {
+    let semantic_identity =
+        crate::core_command_router::canonical_semantic_identity(detail_json, Some(root))?;
+    let completeness = crate::core_command_router::summary_completeness(&facts.inventory_facts);
+    let coverage_limitation = (completeness != effortless_repo_protocol::CompletenessV1::Complete)
+        .then(|| crate::core_command_router::partial_coverage_reason(&facts.inventory_facts));
+    let inventory_source = source_context.inventory_source();
+
+    // The subject is the explained ledger entry, named in the shared
+    // `<subject>:<inventory mode>:current-unpinned` grammar the worktree
+    // commands use, with the entry's own scope carried in `paths`.
+    let mut subject = crate::core_command_summary::CoreSourceSubjectV1 {
+        kind: crate::core_command_summary::CoreSourceSubjectKindV1::ScopedPath,
+        repository_identity: format!("local-repository:{semantic_identity}"),
+        portable_identity: format!(
+            "scoped:allow-entry:{}:{inventory_source}:current-unpinned",
+            facts.entry.id
+        ),
+        base: None,
+        head: None,
+        paths: entry_scope_paths(facts.entry),
+        limitations: Vec::new(),
+    };
+    subject.limitations.push(
+        "the current worktree result is not bound to a commit, tree, or Git-index identity"
+            .to_string(),
+    );
+
+    crate::core_command_summary::core_command_summary_from_explain(
+        crate::core_command_summary::ExplainSummaryFactsV1 {
+            tool_version: env!("CARGO_PKG_VERSION").to_string(),
+            subject,
+            completeness,
+            coverage_limitation,
+            allow_id: facts.entry.id.clone(),
+            attention_status: facts.attention_status,
+            matching_finding_count: facts.matching_finding_count,
+            suggested_actions: facts.suggested_actions,
+            claim_boundary: effortless_repo_protocol::ClaimBoundaryV1::new(
+                "cargo-allow explained one source-exception ledger entry against current source-tree syntax only",
+            )
+            .with_limitations(vec![
+                "cargo metadata, rustc, Clippy, build scripts, proc macros, tests, and repository code were not invoked"
+                    .to_string(),
+                "macro expansion, type information, MIR, control flow, and data flow were not analyzed"
+                    .to_string(),
+                "one healthy entry does not prove the repository passes the no-new gate".to_string(),
+            ]),
+        },
+    )
+    .map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!("failed to build core command summary: {error}"),
+        )
+    })
+}
+
+/// The entry's own declared scope, if it declares one.
+fn entry_scope_paths(entry: &AllowEntry) -> Vec<String> {
+    if let Some(path) = entry.path.as_deref() {
+        return vec![allow_core::normalize_path(path)];
+    }
+    entry
+        .glob
+        .as_deref()
+        .map(|glob| vec![glob.to_string()])
+        .unwrap_or_default()
 }
 
 fn missing_allow_entry_error(id: &str) -> CargoAllowError {
@@ -127,6 +249,7 @@ fn explain_entry_text(
     )
 }
 
+#[cfg(test)]
 fn explain_entry_text_with_source_tree_files(
     root: &Path,
     cfg: &AllowConfig,
@@ -157,6 +280,7 @@ fn explain_entry_json(
     explain_entry_json_with_source_tree_files(root, cfg, entry, findings, None, context)
 }
 
+#[cfg(test)]
 fn explain_entry_json_with_source_tree_files(
     root: &Path,
     cfg: &AllowConfig,
