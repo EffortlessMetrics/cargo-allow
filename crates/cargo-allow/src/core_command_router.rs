@@ -87,7 +87,7 @@ fn write_summary_artifact_with_config(
             format!("failed to render core command summary: {error}"),
         )
     })?;
-    write_file(&path, &format!("{json}\n"))
+    Ok(write_file(&path, &format!("{json}\n"))?)
 }
 
 fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCommandSummaryV1> {
