@@ -30,10 +30,11 @@ mod explain_steps;
 mod explain_types;
 pub(crate) use explain_args::ExplainArgs;
 use explain_render::{
-    explain_reference_attention_for_source_tree, render_explain_entry_json,
-    render_explain_entry_json_with_steps, render_explain_entry_styled,
+    explain_reference_attention_for_source_tree, render_explain_entry_json_with_steps,
     render_explain_entry_styled_with_steps,
 };
+#[cfg(test)]
+use explain_render::{render_explain_entry_json, render_explain_entry_styled};
 use explain_steps::explain_next_steps;
 pub(super) use explain_types::ExplainContext;
 
@@ -94,10 +95,12 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
         entry,
         &matching_findings,
         &outcomes,
-        evidence_source_tree_files.as_ref(),
-        context,
-        &suggested_actions,
-        &proof_commands,
+        explain_render::ExplainRenderOptions::with_steps(
+            evidence_source_tree_files.as_ref(),
+            context,
+            &suggested_actions,
+            &proof_commands,
+        ),
     );
     let repository_identity = canonical_semantic_identity(&detail_json, Some(&root))?;
     let summary = build_explain_summary(
@@ -107,9 +110,11 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
         args.root.root.as_deref(),
         args.config.as_deref(),
         args.include_untracked,
-        &suggested_actions,
-        &proof_commands,
-        repository_identity,
+        ExplainSummaryProjection {
+            suggested_actions: &suggested_actions,
+            proof_commands: &proof_commands,
+            repository_identity,
+        },
     )?;
     let text = match args.format {
         HumanJsonFormat::Human => {
@@ -118,10 +123,13 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
                 entry,
                 &matching_findings,
                 &outcomes,
-                evidence_source_tree_files.as_ref(),
                 style,
-                &suggested_actions,
-                &proof_commands,
+                explain_render::ExplainRenderOptions::with_steps(
+                    evidence_source_tree_files.as_ref(),
+                    context,
+                    &suggested_actions,
+                    &proof_commands,
+                ),
             );
             format!("{}\n{detail}", render_core_command_summary_human(&summary))
         }
@@ -131,6 +139,12 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
     Ok(())
 }
 
+struct ExplainSummaryProjection<'a> {
+    suggested_actions: &'a [String],
+    proof_commands: &'a [String],
+    repository_identity: String,
+}
+
 fn build_explain_summary(
     entry: &AllowEntry,
     outcomes: &[MatchOutcome],
@@ -138,9 +152,7 @@ fn build_explain_summary(
     root_arg: Option<&Path>,
     config: Option<&Path>,
     include_untracked: bool,
-    suggested_actions: &[String],
-    proof_commands: &[String],
-    repository_identity: String,
+    projection: ExplainSummaryProjection<'_>,
 ) -> CargoAllowResult<CoreCommandSummaryV1> {
     let complete = matches!(inventory.completeness, Some("complete" | "scoped"));
     let attention = outcomes
@@ -150,8 +162,9 @@ fn build_explain_summary(
     let blocking_attention = attention
         .iter()
         .any(|outcome| outcome.status.is_failure_in_no_new());
-    let requires_attention =
-        !attention.is_empty() || !suggested_actions.is_empty() || !proof_commands.is_empty();
+    let requires_attention = !attention.is_empty()
+        || !projection.suggested_actions.is_empty()
+        || !projection.proof_commands.is_empty();
     let (result_class, posture, completeness, currentness, reason) = if !complete {
         (
             ResultClassV1::PartialData,
@@ -255,7 +268,7 @@ fn build_explain_summary(
             .source_identity
             .map(|_| CoreSourceSubjectKindV1::Index)
             .unwrap_or(CoreSourceSubjectKindV1::Worktree),
-        repository_identity: format!("sha256:v1:{repository_identity}"),
+        repository_identity: format!("sha256:v1:{}", projection.repository_identity),
         portable_identity,
         base: None,
         head: None,
@@ -414,6 +427,7 @@ fn explain_entry_text(
     )
 }
 
+#[cfg(test)]
 fn explain_entry_text_with_source_tree_files(
     root: &Path,
     cfg: &AllowConfig,
@@ -444,6 +458,7 @@ fn explain_entry_json(
     explain_entry_json_with_source_tree_files(root, cfg, entry, findings, None, context)
 }
 
+#[cfg(test)]
 fn explain_entry_json_with_source_tree_files(
     root: &Path,
     cfg: &AllowConfig,

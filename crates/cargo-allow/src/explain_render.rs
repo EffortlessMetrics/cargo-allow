@@ -12,6 +12,28 @@ use allow_diff::selector_precision_score;
 use std::collections::BTreeSet;
 use std::path::Path;
 
+pub(super) struct ExplainRenderOptions<'a, 'b> {
+    evidence_source_tree_files: Option<&'a BTreeSet<String>>,
+    context: ExplainContext<'b>,
+    precomputed_steps: Option<(&'a [String], &'a [String])>,
+}
+
+impl<'a, 'b> ExplainRenderOptions<'a, 'b> {
+    pub(super) fn with_steps(
+        evidence_source_tree_files: Option<&'a BTreeSet<String>>,
+        context: ExplainContext<'b>,
+        suggested_actions: &'a [String],
+        proof_commands: &'a [String],
+    ) -> Self {
+        Self {
+            evidence_source_tree_files,
+            context,
+            precomputed_steps: Some((suggested_actions, proof_commands)),
+        }
+    }
+}
+
+#[cfg(test)]
 pub(super) fn render_explain_entry_styled(
     root: &Path,
     entry: &AllowEntry,
@@ -25,9 +47,11 @@ pub(super) fn render_explain_entry_styled(
         entry,
         findings,
         outcomes,
-        evidence_source_tree_files,
-        ExplainContext::default(),
-        None,
+        ExplainRenderOptions {
+            evidence_source_tree_files,
+            context: ExplainContext::default(),
+            precomputed_steps: None,
+        },
         |report| allow_report::render_explain_human_styled(report, style),
     )
 }
@@ -49,23 +73,15 @@ pub(super) fn render_explain_entry_styled_with_steps(
     entry: &AllowEntry,
     findings: &[Finding],
     outcomes: &[MatchOutcome],
-    evidence_source_tree_files: Option<&BTreeSet<String>>,
     style: allow_report::Style,
-    suggested_actions: &[String],
-    proof_commands: &[String],
+    options: ExplainRenderOptions<'_, '_>,
 ) -> String {
-    render_explain_report(
-        root,
-        entry,
-        findings,
-        outcomes,
-        evidence_source_tree_files,
-        ExplainContext::default(),
-        Some((suggested_actions, proof_commands)),
-        |report| allow_report::render_explain_human_styled(report, style),
-    )
+    render_explain_report(root, entry, findings, outcomes, options, |report| {
+        allow_report::render_explain_human_styled(report, style)
+    })
 }
 
+#[cfg(test)]
 pub(super) fn render_explain_entry_json(
     root: &Path,
     entry: &AllowEntry,
@@ -79,9 +95,11 @@ pub(super) fn render_explain_entry_json(
         entry,
         findings,
         outcomes,
-        evidence_source_tree_files,
-        context,
-        None,
+        ExplainRenderOptions {
+            evidence_source_tree_files,
+            context,
+            precomputed_steps: None,
+        },
         allow_report::render_explain_json,
     )
 }
@@ -91,19 +109,14 @@ pub(super) fn render_explain_entry_json_with_steps(
     entry: &AllowEntry,
     findings: &[Finding],
     outcomes: &[MatchOutcome],
-    evidence_source_tree_files: Option<&BTreeSet<String>>,
-    context: ExplainContext<'_>,
-    suggested_actions: &[String],
-    proof_commands: &[String],
+    options: ExplainRenderOptions<'_, '_>,
 ) -> String {
     render_explain_report(
         root,
         entry,
         findings,
         outcomes,
-        evidence_source_tree_files,
-        context,
-        Some((suggested_actions, proof_commands)),
+        options,
         allow_report::render_explain_json,
     )
 }
@@ -113,16 +126,17 @@ fn render_explain_report<R>(
     entry: &AllowEntry,
     findings: &[Finding],
     outcomes: &[MatchOutcome],
-    evidence_source_tree_files: Option<&BTreeSet<String>>,
-    context: ExplainContext<'_>,
-    precomputed_steps: Option<(&[String], &[String])>,
+    options: ExplainRenderOptions<'_, '_>,
     render: impl FnOnce(allow_report::ExplainReport<'_>) -> R,
 ) -> R {
-    let evidence_diagnostics =
-        evidence_reference_diagnostics_for_source_tree(root, entry, evidence_source_tree_files);
+    let evidence_diagnostics = evidence_reference_diagnostics_for_source_tree(
+        root,
+        entry,
+        options.evidence_source_tree_files,
+    );
     let link_diagnostics =
-        link_reference_diagnostics_for_source_tree(root, entry, evidence_source_tree_files);
-    let (suggested_actions, proof_commands) = match precomputed_steps {
+        link_reference_diagnostics_for_source_tree(root, entry, options.evidence_source_tree_files);
+    let (suggested_actions, proof_commands) = match options.precomputed_steps {
         Some((suggested_actions, proof_commands)) => {
             (suggested_actions.to_vec(), proof_commands.to_vec())
         }
@@ -172,7 +186,7 @@ fn render_explain_report<R>(
         .collect::<Vec<_>>();
 
     render(allow_report::ExplainReport {
-        inventory: context.inventory,
+        inventory: options.context.inventory,
         entry,
         selector_precision: selector_precision_score(entry),
         broad_scope: allow_entry_broad_scope(entry).is_some(),
@@ -278,9 +292,11 @@ mod tests {
             &entry,
             &[],
             &[],
-            Some(&source_tree_files),
-            ExplainContext::default(),
-            None,
+            ExplainRenderOptions {
+                evidence_source_tree_files: Some(&source_tree_files),
+                context: ExplainContext::default(),
+                precomputed_steps: None,
+            },
             capture_explain_report,
         );
 
@@ -355,9 +371,11 @@ mod tests {
             &entry,
             std::slice::from_ref(&finding),
             &outcomes,
-            None,
-            ExplainContext::default(),
-            None,
+            ExplainRenderOptions {
+                evidence_source_tree_files: None,
+                context: ExplainContext::default(),
+                precomputed_steps: None,
+            },
             capture_explain_report,
         );
 

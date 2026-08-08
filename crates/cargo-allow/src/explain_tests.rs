@@ -93,9 +93,11 @@ fn explain_core_summary_routes_attention_with_invocation_context() {
         Some(Path::new("repo")),
         Some(Path::new("policy/allow.toml")),
         true,
-        &[],
-        &[],
-        "test-repository".to_string(),
+        ExplainSummaryProjection {
+            suggested_actions: &[],
+            proof_commands: &[],
+            repository_identity: "test-repository".to_string(),
+        },
     )
     .unwrap_or_else(|error| std::panic::panic_any(format!("explain summary: {error}")));
 
@@ -134,9 +136,11 @@ fn explain_json_adds_schema_validated_core_summary_without_replacing_detail() ->
         None,
         None,
         false,
-        &[],
-        &[],
-        "test-repository".to_string(),
+        ExplainSummaryProjection {
+            suggested_actions: &[],
+            proof_commands: &[],
+            repository_identity: "test-repository".to_string(),
+        },
     )
     .map_err(|error| format!("explain summary: {error}"))?;
     let json = add_core_summary_to_explain_json(&sample_explain_json_for_contract_test(), &summary)
@@ -172,9 +176,11 @@ fn explain_summary_does_not_claim_satisfied_when_detail_has_repair_steps() {
         None,
         None,
         false,
-        &["repair evidence".to_string()],
-        &[],
-        "test-repository".to_string(),
+        ExplainSummaryProjection {
+            suggested_actions: &["repair evidence".to_string()],
+            proof_commands: &[],
+            repository_identity: "test-repository".to_string(),
+        },
     )
     .unwrap_or_else(|error| std::panic::panic_any(format!("explain summary: {error}")));
 
