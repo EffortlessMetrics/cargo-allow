@@ -4,6 +4,7 @@
 //! source-tree snapshot consumers. It does not invoke Cargo, compile code, or execute
 //! repository policy.
 
+mod error;
 mod git;
 mod parity;
 mod revision_identity;
