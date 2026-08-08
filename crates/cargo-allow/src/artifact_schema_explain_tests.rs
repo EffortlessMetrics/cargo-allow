@@ -11,6 +11,14 @@ fn explain_schema_locks_entry_status_and_next_steps_contract() {
         include_str!("../../../docs/schemas/explain.schema.json"),
     );
 
+    assert_eq!(
+        schema
+            .pointer("/properties/core_command_summary/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/core_command_summary"),
+        "explain should expose the additive core command summary projection"
+    );
+
     assert_required_fields(
         "explain",
         &schema,

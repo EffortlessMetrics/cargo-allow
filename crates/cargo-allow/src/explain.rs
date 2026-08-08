@@ -2,13 +2,21 @@ use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding,
     MatchOutcome,
 };
-use allow_match::{CheckMode, evaluate, score_match};
+use allow_match::{evaluate, score_match, CheckMode};
+use effortless_repo_protocol::{ClaimBoundaryV1, CompletenessV1, CurrentnessV1, ResultClassV1};
+use serde_json::Value;
 use std::path::Path;
 
 use crate::{
-    EvidenceValidationMode, HumanJsonFormat, ProfileArg, SourceTreeReportContext, emit_text,
-    evidence_inventory::current_evidence_source_tree_files, load_world_with_evidence_mode,
-    spec_system,
+    core_command_summary::{
+        build_core_command_summary, render_core_command_summary_human, CoreCommandActionV1,
+        CoreCommandEffectsV1, CoreCommandPostureV1, CoreCommandReasonV1, CoreCommandSummaryInputV1,
+        CoreCommandSummaryV1, CoreSourceSubjectKindV1, CoreSourceSubjectV1,
+    },
+    emit_text,
+    evidence_inventory::current_evidence_source_tree_files,
+    load_world_with_evidence_mode, spec_system, EvidenceValidationMode, HumanJsonFormat,
+    ProfileArg, SourceTreeReportContext,
 };
 
 #[path = "explain_args.rs"]
@@ -67,26 +75,276 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
     } else {
         allow_report::Style::PLAIN
     };
+    let (_, outcomes) = explain_entry_state(&cfg, entry, &findings);
+    let summary = build_explain_summary(
+        entry,
+        &outcomes,
+        context.inventory,
+        args.root.root.as_deref(),
+        args.config.as_deref(),
+        args.include_untracked,
+    )?;
     let text = match args.format {
-        HumanJsonFormat::Human => explain_entry_text_with_source_tree_files(
-            &root,
-            &cfg,
-            entry,
-            &findings,
-            evidence_source_tree_files.as_ref(),
-            style,
-        ),
-        HumanJsonFormat::Json => explain_entry_json_with_source_tree_files(
-            &root,
-            &cfg,
-            entry,
-            &findings,
-            evidence_source_tree_files.as_ref(),
-            context,
-        ),
+        HumanJsonFormat::Human => {
+            let detail = explain_entry_text_with_source_tree_files(
+                &root,
+                &cfg,
+                entry,
+                &findings,
+                evidence_source_tree_files.as_ref(),
+                style,
+            );
+            format!("{}\n{detail}", render_core_command_summary_human(&summary))
+        }
+        HumanJsonFormat::Json => {
+            let detail = explain_entry_json_with_source_tree_files(
+                &root,
+                &cfg,
+                entry,
+                &findings,
+                evidence_source_tree_files.as_ref(),
+                context,
+            );
+            add_core_summary_to_explain_json(&detail, &summary)?
+        }
     };
     emit_text(args.output.as_deref(), &text)?;
     Ok(())
+}
+
+fn build_explain_summary(
+    entry: &AllowEntry,
+    outcomes: &[MatchOutcome],
+    inventory: allow_report::InventoryContext<'_>,
+    root_arg: Option<&Path>,
+    config: Option<&Path>,
+    include_untracked: bool,
+) -> CargoAllowResult<CoreCommandSummaryV1> {
+    let complete = matches!(inventory.completeness, Some("complete" | "scoped"));
+    let attention = outcomes
+        .iter()
+        .filter(|outcome| outcome.status != allow_core::MatchStatus::Matched)
+        .collect::<Vec<_>>();
+    let blocking_attention = attention
+        .iter()
+        .any(|outcome| outcome.status.is_failure_in_no_new());
+    let (result_class, posture, completeness, currentness, reason) = if !complete {
+        (
+            ResultClassV1::PartialData,
+            CoreCommandPostureV1::Blocking,
+            CompletenessV1::Partial,
+            CurrentnessV1::PartialOrUnavailable,
+            CoreCommandReasonV1 {
+                code: "explain.partial_coverage".to_string(),
+                message: "the source inventory is incomplete; this explanation cannot establish a complete entry posture".to_string(),
+            },
+        )
+    } else if attention.is_empty() {
+        (
+            ResultClassV1::Completed,
+            CoreCommandPostureV1::Satisfied,
+            CompletenessV1::Complete,
+            CurrentnessV1::Current,
+            CoreCommandReasonV1 {
+                code: "explain.entry_matched".to_string(),
+                message: format!(
+                    "allow entry `{}` matched the selected source findings",
+                    entry.id
+                ),
+            },
+        )
+    } else {
+        (
+            ResultClassV1::Findings,
+            if blocking_attention {
+                CoreCommandPostureV1::Blocking
+            } else {
+                CoreCommandPostureV1::Advisory
+            },
+            CompletenessV1::Complete,
+            CurrentnessV1::Current,
+            CoreCommandReasonV1 {
+                code: "explain.entry_requires_attention".to_string(),
+                message: format!(
+                    "allow entry `{}` has {} outcome(s) requiring attention",
+                    entry.id,
+                    attention.len()
+                ),
+            },
+        )
+    };
+
+    let primary_action = if !complete {
+        Some(
+            CoreCommandActionV1::command(
+                "explain.diagnose_coverage",
+                "Diagnose coverage",
+                "cargo-allow",
+                explain_context_args("doctor", root_arg, config, false),
+            )
+            .with_contract(
+                "the explanation inventory is incomplete",
+                "the inventory limitation is explained without modifying the repository",
+                "doctor remains read-only and does not authorize policy entries",
+            ),
+        )
+    } else if !attention.is_empty() {
+        Some(
+            CoreCommandActionV1::command(
+                "explain.inspect_worklist",
+                "Inspect entry repair guidance",
+                "cargo-allow",
+                explain_context_args_with_prefix(
+                    vec![
+                        "worklist".to_string(),
+                        "--allow-id".to_string(),
+                        entry.id.clone(),
+                        "--format".to_string(),
+                        "json".to_string(),
+                    ],
+                    root_arg,
+                    config,
+                    include_untracked,
+                ),
+            )
+            .with_contract(
+                "the explained entry has a non-matched outcome",
+                "the exact typed maintenance and repair guidance for this entry is shown",
+                "worklist is guidance and does not mutate source or policy",
+            ),
+        )
+    } else {
+        None
+    };
+
+    let portable_identity = inventory
+        .source_identity
+        .map(|identity| format!("{identity}:allow-entry:{}", entry.id))
+        .unwrap_or_else(|| {
+            format!(
+                "worktree:{}:{}:{}:allow-entry:{}",
+                inventory.source, inventory.scope, inventory.scanner, entry.id
+            )
+        });
+    let subject = CoreSourceSubjectV1 {
+        kind: inventory
+            .source_identity
+            .map(|_| CoreSourceSubjectKindV1::Index)
+            .unwrap_or(CoreSourceSubjectKindV1::Worktree),
+        repository_identity: format!("local-repository:{}", inventory.source),
+        portable_identity,
+        base: None,
+        head: None,
+        paths: vec![entry.id.clone()],
+        limitations: if inventory.source_identity.is_none() {
+            vec![
+                "the current worktree result is not bound to a commit or index identity"
+                    .to_string(),
+            ]
+        } else {
+            Vec::new()
+        },
+    };
+    let mut limitations = vec![
+        "explain evaluates one selected source-tree ledger entry and its matching findings only"
+            .to_string(),
+        "the explain command does not prove compiled or runtime behavior".to_string(),
+    ];
+    if inventory.source_identity.is_none() {
+        limitations.push("the worktree is not bound to an immutable source identity".to_string());
+    }
+
+    build_core_command_summary(CoreCommandSummaryInputV1 {
+        tool_version: env!("CARGO_PKG_VERSION").to_string(),
+        operation: "explain".to_string(),
+        mode: None,
+        profile: None,
+        subject,
+        result_class,
+        posture,
+        completeness,
+        currentness,
+        reason,
+        primary_action,
+        additional_action_count: 0,
+        additional_actions_ref: None,
+        operation_effects: CoreCommandEffectsV1::read_only(vec![
+            "does not modify source, policy, Git, hooks, workflows, or GitHub settings".to_string(),
+            "does not execute repository code or external evidence tools".to_string(),
+        ]),
+        next_proof: None,
+        artifacts: Vec::new(),
+        claim_boundary: ClaimBoundaryV1::new(
+            "cargo-allow explained one selected source-tree ledger entry and its observed matching outcomes; it did not authorize or mutate the entry",
+        )
+        .with_limitations(limitations),
+    })
+    .map_err(|error| CargoAllowError::with_kind(CargoAllowErrorKind::Internal, error))
+}
+
+fn explain_context_args(
+    command: &str,
+    root: Option<&Path>,
+    config: Option<&Path>,
+    include_untracked: bool,
+) -> Vec<String> {
+    explain_context_args_with_prefix(vec![command.to_string()], root, config, include_untracked)
+}
+
+fn explain_context_args_with_prefix(
+    mut args: Vec<String>,
+    root: Option<&Path>,
+    config: Option<&Path>,
+    include_untracked: bool,
+) -> Vec<String> {
+    if let Some(root) = root {
+        args.extend(["--root".to_string(), root.to_string_lossy().into_owned()]);
+    }
+    if let Some(config) = config {
+        args.extend([
+            "--config".to_string(),
+            config.to_string_lossy().into_owned(),
+        ]);
+    }
+    if include_untracked {
+        args.push("--include-untracked".to_string());
+    }
+    args
+}
+
+fn add_core_summary_to_explain_json(
+    detail: &str,
+    summary: &CoreCommandSummaryV1,
+) -> CargoAllowResult<String> {
+    let mut document: Value = serde_json::from_str(detail).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!("failed to parse explain JSON for core summary projection: {error}"),
+        )
+    })?;
+    let summary = serde_json::to_value(summary).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!("failed to serialize explain core summary: {error}"),
+        )
+    })?;
+    document
+        .as_object_mut()
+        .ok_or_else(|| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                "explain JSON root must be an object",
+            )
+        })?
+        .insert("core_command_summary".to_string(), summary);
+    serde_json::to_string_pretty(&document)
+        .map(|json| format!("{json}\n"))
+        .map_err(|error| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                format!("failed to render explain JSON with core summary: {error}"),
+            )
+        })
 }
 
 fn missing_allow_entry_error(id: &str) -> CargoAllowError {

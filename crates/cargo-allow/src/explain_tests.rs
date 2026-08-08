@@ -1,7 +1,7 @@
 use super::test_support::{test_entry, test_finding};
 use super::*;
 use crate::{CargoAllowCli, CargoAllowCommand, HumanJsonFormat, ProfileArg, RootArgs};
-use allow_core::FindingKind;
+use allow_core::{FindingKind, MatchOutcome, MatchStatus};
 use clap::Parser;
 use serde_json::Value;
 use std::collections::BTreeSet;
@@ -70,6 +70,81 @@ fn clap_parses_spec_system_profile_for_explain() {
         })) if id == "CARGO-ALLOW-SPEC-0001"
             && output.as_deref() == Some(Path::new("target/spec-system-explain.json"))
     ));
+}
+
+#[test]
+fn explain_core_summary_routes_attention_with_invocation_context() {
+    let entry = test_entry("allow-explain-attention", FindingKind::Panic);
+    let outcomes = vec![MatchOutcome {
+        status: MatchStatus::Expired,
+        allow_id: Some(entry.id.clone()),
+        candidate_ids: vec![entry.id.clone()],
+        finding_index: None,
+        message: "expired entry".to_string(),
+        score: 0,
+    }];
+    let inventory =
+        allow_report::InventoryContext::source_syntax("git_tracked", Some("F:/repo"), Some(12))
+            .with_completeness("complete");
+    let summary = build_explain_summary(
+        &entry,
+        &outcomes,
+        inventory,
+        Some(Path::new("repo")),
+        Some(Path::new("policy/allow.toml")),
+        true,
+    )
+    .unwrap_or_else(|error| std::panic::panic_any(format!("explain summary: {error}")));
+
+    assert_eq!(summary.result_class, ResultClassV1::Findings);
+    assert_eq!(summary.posture, CoreCommandPostureV1::Blocking);
+    assert_eq!(
+        summary
+            .primary_action
+            .as_ref()
+            .map(|action| action.args.clone()),
+        Some(vec![
+            "worklist".to_string(),
+            "--allow-id".to_string(),
+            "allow-explain-attention".to_string(),
+            "--format".to_string(),
+            "json".to_string(),
+            "--root".to_string(),
+            "repo".to_string(),
+            "--config".to_string(),
+            "policy/allow.toml".to_string(),
+            "--include-untracked".to_string(),
+        ])
+    );
+}
+
+#[test]
+fn explain_json_adds_schema_validated_core_summary_without_replacing_detail() -> Result<(), String>
+{
+    let entry = test_entry("allow-explain-json", FindingKind::Panic);
+    let inventory = allow_report::InventoryContext::source_syntax("git_tracked", None, Some(4))
+        .with_completeness("complete");
+    let summary = build_explain_summary(&entry, &[], inventory, None, None, false)
+        .map_err(|error| format!("explain summary: {error}"))?;
+    let json = add_core_summary_to_explain_json(&sample_explain_json_for_contract_test(), &summary)
+        .map_err(|error| format!("explain JSON projection: {error}"))?;
+    let value: Value = serde_json::from_str(&json).map_err(|error| error.to_string())?;
+    let schema: Value =
+        serde_json::from_str(include_str!("../../../docs/schemas/explain.schema.json"))
+            .map_err(|error| format!("explain schema JSON: {error}"))?;
+    let validator = jsonschema::validator_for(&schema)
+        .map_err(|error| format!("explain schema compilation: {error}"))?;
+    validator
+        .validate(&value)
+        .map_err(|error| format!("explain core summary violates schema: {error}"))?;
+    assert_eq!(
+        value
+            .pointer("/core_command_summary/operation")
+            .and_then(Value::as_str),
+        Some("explain")
+    );
+    assert!(value.get("allow_entry").is_some());
+    Ok(())
 }
 
 #[test]
@@ -159,11 +234,9 @@ fn explain_spec_system_profile_json_reports_one_artifact() {
         .unwrap_or_else(|| {
             std::panic::panic_any("spec-system explain should include claim boundary")
         });
-    assert!(
-        claim_boundary
-            .iter()
-            .any(|flag| { flag.as_str() == Some("proof_commands_not_executed") })
-    );
+    assert!(claim_boundary
+        .iter()
+        .any(|flag| { flag.as_str() == Some("proof_commands_not_executed") }));
 }
 
 #[test]
@@ -227,10 +300,9 @@ fn explain_spec_system_profile_rejects_include_untracked() {
     let Err(err) = result else {
         return;
     };
-    assert!(
-        err.to_string()
-            .contains("--include-untracked is not supported with --profile spec-system")
-    );
+    assert!(err
+        .to_string()
+        .contains("--include-untracked is not supported with --profile spec-system"));
 }
 
 #[test]
@@ -256,10 +328,9 @@ fn explain_spec_system_profile_rejects_unknown_artifact() {
     let Err(err) = result else {
         return;
     };
-    assert!(
-        err.to_string()
-            .contains("no spec-system artifact `CARGO-ALLOW-SPEC-9999`")
-    );
+    assert!(err
+        .to_string()
+        .contains("no spec-system artifact `CARGO-ALLOW-SPEC-9999`"));
 }
 
 #[test]

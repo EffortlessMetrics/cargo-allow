@@ -131,9 +131,123 @@
           }
         }
       }
+    },
+    "core_command_summary": {
+      "$ref": "#/$defs/core_command_summary"
     }
   },
   "$defs": {
+    "core_command_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id",
+        "schema_version",
+        "tool",
+        "tool_version",
+        "operation",
+        "subject",
+        "result_class",
+        "posture",
+        "completeness",
+        "currentness",
+        "reason",
+        "additional_action_count",
+        "operation_effects",
+        "claim_boundary"
+      ],
+      "properties": {
+        "schema_id": { "const": "cargo-allow.core-command-summary.v1" },
+        "schema_version": { "const": 1 },
+        "tool": { "const": "cargo-allow" },
+        "tool_version": { "type": "string", "minLength": 1 },
+        "operation": { "const": "explain" },
+        "mode": { "type": ["string", "null"] },
+        "profile": { "type": ["string", "null"] },
+        "subject": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "repository_identity", "portable_identity"],
+          "properties": {
+            "kind": { "enum": ["worktree", "index", "commit_tree", "committed_range", "scoped_path", "unknown"] },
+            "repository_identity": { "type": "string", "minLength": 1 },
+            "portable_identity": { "type": "string", "minLength": 1 },
+            "base": { "type": ["string", "null"] },
+            "head": { "type": ["string", "null"] },
+            "paths": { "type": "array", "items": { "type": "string" } },
+            "limitations": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "result_class": { "enum": ["completed", "findings", "not_proven", "partial_data", "stale_input", "unsupported", "malformed_input", "instrument_failure", "cancelled", "conflict"] },
+        "posture": { "enum": ["satisfied", "advisory", "blocking", "decision_required", "not_applicable"] },
+        "completeness": { "enum": ["complete", "partial", "unknown"] },
+        "currentness": { "enum": ["current", "stale", "not_probed", "partial_or_unavailable"] },
+        "reason": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code", "message"],
+          "properties": {
+            "code": { "type": "string", "minLength": 1 },
+            "message": { "type": "string", "minLength": 1 }
+          }
+        },
+        "primary_action": { "$ref": "#/$defs/core_command_action" },
+        "additional_action_count": { "type": "integer", "minimum": 0 },
+        "additional_actions_ref": { "type": ["string", "null"] },
+        "operation_effects": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["reads_repository", "writes_repository", "executes_repository_code", "invokes_network"],
+          "properties": {
+            "reads_repository": { "type": "boolean" },
+            "writes_repository": { "type": "boolean" },
+            "executes_repository_code": { "type": "boolean" },
+            "invokes_network": { "type": "boolean" },
+            "write_paths": { "type": "array", "items": { "type": "string" } },
+            "explicit_non_effects": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "next_proof": { "$ref": "#/$defs/core_command_action" },
+        "artifacts": { "type": "array", "items": { "$ref": "#/$defs/core_command_artifact" } },
+        "claim_boundary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["statement"],
+          "properties": {
+            "statement": { "type": "string", "minLength": 1 },
+            "limitations": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "core_command_action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "title", "write_posture", "reason", "expected_effect", "proof_boundary"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["command", "navigation", "decision", "external"] },
+        "title": { "type": "string", "minLength": 1 },
+        "program": { "type": ["string", "null"] },
+        "args": { "type": "array", "items": { "type": "string" } },
+        "write_posture": { "enum": ["read_only", "preview_only", "candidate_write", "live_mutation", "external"] },
+        "may_write_paths": { "type": "array", "items": { "type": "string" } },
+        "reason": { "type": "string", "minLength": 1 },
+        "expected_effect": { "type": "string", "minLength": 1 },
+        "proof_boundary": { "type": "string", "minLength": 1 }
+      }
+    },
+    "core_command_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "schema_id", "path"],
+      "properties": {
+        "kind": { "type": "string" },
+        "schema_id": { "type": "string" },
+        "path": { "type": "string" },
+        "digest": { "type": ["string", "null"] }
+      }
+    },
     "claim_boundary_flag": {
       "type": "string",
       "enum": [

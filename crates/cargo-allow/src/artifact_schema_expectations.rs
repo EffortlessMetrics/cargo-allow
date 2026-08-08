@@ -204,6 +204,7 @@ pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static
                 "allow_entry",
                 "claim_boundary",
                 "command",
+                "core_command_summary",
                 "current_findings",
                 "evidence_references",
                 "inventory",
