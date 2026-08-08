@@ -1,13 +1,13 @@
 //! Tests for canonical mutation target identity (#2489).
 
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use super::mutation_target::{
     MutationTargetOwnership, lock_path_for_target, resolve_mutation_target,
 };
 
-fn make_temp_repo() -> PathBuf {
+fn make_temp_repo() -> Result<PathBuf, String> {
     let dir = std::env::temp_dir().join(format!(
         "mutation-target-test-{}-{}",
         std::process::id(),
@@ -16,15 +16,15 @@ fn make_temp_repo() -> PathBuf {
             .map(|d| d.as_nanos())
             .unwrap_or(0)
     ));
-    fs::create_dir_all(&dir).expect("create temp repo");
-    dir
+    fs::create_dir_all(&dir).map_err(|e| format!("create temp repo: {e}"))?;
+    Ok(dir)
 }
 
 #[test]
 fn relative_and_absolute_spellings_produce_same_fingerprint() -> Result<(), String> {
-    let repo = make_temp_repo();
+    let repo = make_temp_repo()?;
     let file_path = repo.join("policy/allow.toml");
-    fs::create_dir_all(file_path.parent().unwrap()).ok();
+    fs::create_dir_all(file_path.parent().unwrap_or(Path::new("."))).ok();
     fs::write(&file_path, "test").ok();
 
     // Absolute spelling.
@@ -49,9 +49,9 @@ fn relative_and_absolute_spellings_produce_same_fingerprint() -> Result<(), Stri
 
 #[test]
 fn dot_dot_aliases_produce_same_fingerprint() -> Result<(), String> {
-    let repo = make_temp_repo();
+    let repo = make_temp_repo()?;
     let file_path = repo.join("policy/allow.toml");
-    fs::create_dir_all(file_path.parent().unwrap()).ok();
+    fs::create_dir_all(file_path.parent().unwrap_or(Path::new("."))).ok();
     fs::write(&file_path, "test").ok();
 
     let target_a = resolve_mutation_target(&file_path, &repo).map_err(|e| e.to_string())?;
@@ -71,7 +71,7 @@ fn dot_dot_aliases_produce_same_fingerprint() -> Result<(), String> {
 
 #[test]
 fn not_yet_existing_target_resolves_via_parent() -> Result<(), String> {
-    let repo = make_temp_repo();
+    let repo = make_temp_repo()?;
     let dir = repo.join("policy");
     fs::create_dir_all(&dir).ok();
     let missing = dir.join("new-allow.toml");
@@ -85,7 +85,7 @@ fn not_yet_existing_target_resolves_via_parent() -> Result<(), String> {
 
 #[test]
 fn out_of_tree_target_is_classified() -> Result<(), String> {
-    let repo = make_temp_repo();
+    let repo = make_temp_repo()?;
     let outside = std::env::temp_dir().join("outside-target-test.toml");
     fs::write(&outside, "test").ok();
 
@@ -101,7 +101,7 @@ fn out_of_tree_target_is_classified() -> Result<(), String> {
 
 #[test]
 fn distinct_files_have_distinct_fingerprints() -> Result<(), String> {
-    let repo = make_temp_repo();
+    let repo = make_temp_repo()?;
     let file_a = repo.join("a.toml");
     let file_b = repo.join("b.toml");
     fs::write(&file_a, "a").ok();
@@ -121,9 +121,9 @@ fn distinct_files_have_distinct_fingerprints() -> Result<(), String> {
 
 #[test]
 fn repo_relative_display_excludes_absolute_path() -> Result<(), String> {
-    let repo = make_temp_repo();
+    let repo = make_temp_repo()?;
     let file_path = repo.join("policy/allow.toml");
-    fs::create_dir_all(file_path.parent().unwrap()).ok();
+    fs::create_dir_all(file_path.parent().unwrap_or(Path::new("."))).ok();
     fs::write(&file_path, "test").ok();
 
     let target = resolve_mutation_target(&file_path, &repo).map_err(|e| e.to_string())?;
@@ -139,9 +139,9 @@ fn repo_relative_display_excludes_absolute_path() -> Result<(), String> {
 
 #[test]
 fn lock_key_matches_for_same_target() -> Result<(), String> {
-    let repo = make_temp_repo();
+    let repo = make_temp_repo()?;
     let file_path = repo.join("policy/allow.toml");
-    fs::create_dir_all(file_path.parent().unwrap()).ok();
+    fs::create_dir_all(file_path.parent().unwrap_or(Path::new("."))).ok();
     fs::write(&file_path, "test").ok();
 
     let target = resolve_mutation_target(&file_path, &repo).map_err(|e| e.to_string())?;

@@ -72,12 +72,13 @@ pub fn import_legacy_policy_dir(
             continue;
         }
         let cfg = load_lane_config(descriptor, &path, non_rust_findings)?;
-        if loaded == 0 {
-            merged.owner = cfg.owner.clone();
-            merged.status = cfg.status.clone();
-            merged.workspace = cfg.workspace.clone();
-            merged.requirements = cfg.requirements.clone();
-        }
+        // Merge workspace and requirements field-by-field across all lanes
+        // instead of wholesale cloning from the first lane only (#1866).
+        // First non-empty/non-default value wins for each field.
+        merge_owner_field(&mut merged.owner, &cfg.owner);
+        merge_owner_field(&mut merged.status, &cfg.status);
+        merge_workspace(&mut merged.workspace, &cfg.workspace);
+        merge_requirements(&mut merged.requirements, &cfg.requirements);
         loaded += 1;
         families.push(LegacyImportFamily {
             compat_kind: descriptor.lane,
@@ -204,6 +205,60 @@ fn entry_families_from_config(cfg: &AllowConfig) -> Vec<String> {
     families.sort();
     families.dedup();
     families
+}
+
+/// Merge an optional owner/status field: first non-None value wins (#1866).
+fn merge_owner_field(dst: &mut Option<String>, src: &Option<String>) {
+    if dst.is_none() {
+        *dst = src.clone();
+    }
+}
+
+/// Merge workspace config field-by-field: first non-default value wins (#1866).
+fn merge_workspace(dst: &mut allow_core::WorkspaceConfig, src: &allow_core::WorkspaceConfig) {
+    let default = allow_core::WorkspaceConfig::default();
+    if dst.root == default.root && src.root != default.root {
+        dst.root = src.root.clone();
+    }
+    if dst.inventory == default.inventory && src.inventory != default.inventory {
+        dst.inventory = src.inventory.clone();
+    }
+    if dst.default_mode == default.default_mode && src.default_mode != default.default_mode {
+        dst.default_mode = src.default_mode.clone();
+    }
+    if dst.ignored == default.ignored && src.ignored != default.ignored {
+        dst.ignored = src.ignored.clone();
+    }
+    if dst.generated == default.generated && src.generated != default.generated {
+        dst.generated = src.generated.clone();
+    }
+    if dst.file_families.is_empty() && !src.file_families.is_empty() {
+        dst.file_families = src.file_families.clone();
+    }
+}
+
+/// Merge requirements field-by-field: first non-default bool wins (#1866).
+fn merge_requirements(dst: &mut allow_core::Requirements, src: &allow_core::Requirements) {
+    let default = allow_core::Requirements::default();
+    // Only copy fields that differ from default in src AND are still default in dst.
+    macro_rules! merge_bool {
+        ($field:ident) => {
+            if dst.$field == default.$field && src.$field != default.$field {
+                dst.$field = src.$field;
+            }
+        };
+    }
+    merge_bool!(owner_required);
+    merge_bool!(reason_required);
+    merge_bool!(classification_required);
+    merge_bool!(evidence_required);
+    merge_bool!(expires_or_review_after_required);
+    merge_bool!(allow_bare_allow_attributes);
+    merge_bool!(lint_policy_id_required);
+    merge_bool!(stale_entries_fail);
+    merge_bool!(unsafe_evidence_required);
+    merge_bool!(unsafe_safety_comment_required);
+    merge_bool!(unsafe_verified_evidence_required);
 }
 
 #[cfg(test)]
