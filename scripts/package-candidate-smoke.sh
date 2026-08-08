@@ -163,6 +163,9 @@ done
 
 log "assert packaged crates have no path dependencies"
 for crate in "${crates[@]}"; do
+  # Resolve per crate: the effortless-* substrate carries its own 0.1.x version
+  # source, so the loop above's trailing value is not reusable here (#3286).
+  crate_version="$(read_crate_version "${crate}")"
   tmp="${package_dir}/inspect-${crate}"
   rm -rf "${tmp}"
   mkdir -p "${tmp}"

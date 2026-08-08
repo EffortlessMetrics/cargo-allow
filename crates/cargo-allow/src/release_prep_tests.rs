@@ -10,6 +10,8 @@ const PUBLISHED_INSTALL_PIN_PHRASE: &str =
     "Public install examples now pin the published `0.1.11` release";
 const CANDIDATE_RELEASE_VERSION: &str = "0.2.0";
 
+const PACKAGE_TOPOLOGY: &str = "policy/product-package-topology-v2.toml";
+
 const RELEASE_WORKFLOW: &str = ".github/workflows/release.yml";
 const RELEASE_DOC: &str = "docs/release/README.md";
 
@@ -249,14 +251,33 @@ fn published_release_versions_match_workspace() {
         "release note should document the published install pin"
     );
 
+    // Generation-2 topology is the version authority, not the workspace version
+    // alone: the product-neutral `effortless-*` substrate carries its own 0.1.x
+    // version source while the cargo-allow family stays on the workspace
+    // version (#2923 / #3286).
+    let topology_versions =
+        topology_package_versions(&read_workspace_file(&root, PACKAGE_TOPOLOGY));
+    let package_names = package_manifests.keys().cloned().collect::<BTreeSet<_>>();
+    // The topology covers every workspace package; this test only governs the
+    // publishable release closure, so require coverage rather than equality.
+    let undeclared = package_names
+        .iter()
+        .filter(|package| !topology_versions.contains_key(*package))
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    assert!(
+        undeclared.is_empty(),
+        "{PACKAGE_TOPOLOGY} should declare a version for every publishable workspace package, missing {undeclared:?}"
+    );
+
     for (package, manifest) in &package_manifests {
-        assert!(
-            manifest.contains("version.workspace = true"),
-            "{package} should inherit the workspace release version"
+        assert_eq!(
+            &declared_package_version(manifest, &workspace_version),
+            expected_package_version(&topology_versions, package),
+            "{package} manifest version should match its declared topology version"
         );
     }
 
-    let package_names = package_manifests.keys().cloned().collect::<BTreeSet<_>>();
     let workspace_dependency_versions =
         workspace_internal_dependency_versions(&workspace_manifest, &package_names);
     let mut expected_workspace_dependency_names = package_names.clone();
@@ -271,8 +292,9 @@ fn published_release_versions_match_workspace() {
     );
     for (dependency, version) in workspace_dependency_versions {
         assert_eq!(
-            version, workspace_version,
-            "{dependency} workspace dependency should require the published version"
+            &version,
+            expected_package_version(&topology_versions, &dependency),
+            "{dependency} workspace dependency should require its declared topology version"
         );
     }
 
@@ -284,8 +306,9 @@ fn published_release_versions_match_workspace() {
     );
     for (package, version) in lock_versions {
         assert_eq!(
-            version, workspace_version,
-            "{package} lockfile entry should carry the published version"
+            &version,
+            expected_package_version(&topology_versions, &package),
+            "{package} lockfile entry should carry its declared topology version"
         );
     }
 }
@@ -594,6 +617,58 @@ fn workspace_package_version(workspace_manifest: &str) -> String {
         }
     }
     std::panic::panic_any("workspace manifest should declare workspace.package.version");
+}
+
+/// Declared `cargo_package_name` -> `package_version` pairs from the
+/// generation-2 package topology manifest.
+fn topology_package_versions(topology: &str) -> BTreeMap<String, String> {
+    let mut versions = BTreeMap::new();
+    let mut current_name = None::<String>;
+
+    for line in topology.lines() {
+        let line = line.trim();
+        if line == "[[package]]" {
+            current_name = None;
+            continue;
+        }
+        if let Some(name) = manifest_value(line, "cargo_package_name") {
+            current_name = Some(name);
+            continue;
+        }
+        if let Some(version) = manifest_value(line, "package_version")
+            && let Some(name) = current_name.take()
+        {
+            versions.insert(name, version);
+        }
+    }
+    versions
+}
+
+fn expected_package_version<'a>(
+    topology_versions: &'a BTreeMap<String, String>,
+    package: &str,
+) -> &'a String {
+    if let Some(version) = topology_versions.get(package) {
+        version
+    } else {
+        std::panic::panic_any(format!("{PACKAGE_TOPOLOGY} should declare {package}"));
+    }
+}
+
+/// The version a package manifest actually claims, resolving workspace
+/// inheritance. Matched on the exact `version` key so `rust-version.workspace`
+/// cannot satisfy it.
+fn declared_package_version(manifest: &str, workspace_version: &str) -> String {
+    for line in manifest.lines() {
+        let line = line.trim();
+        if line == "version.workspace = true" {
+            return workspace_version.to_string();
+        }
+        if let Some(version) = manifest_value(line, "version") {
+            return version;
+        }
+    }
+    std::panic::panic_any("package manifest should declare a version");
 }
 
 fn workspace_internal_dependency_versions(
