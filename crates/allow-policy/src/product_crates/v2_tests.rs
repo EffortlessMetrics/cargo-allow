@@ -43,7 +43,10 @@ fn v2_parser_reads_identity_fields() -> Result<(), String> {
     if manifest.crate_identity.len() != 1 {
         return Err("expected 1 crate_identity".to_string());
     }
-    let entry = manifest.crate_identity.first().ok_or("expected crate_identity entry")?;
+    let entry = manifest
+        .crate_identity
+        .first()
+        .ok_or("expected crate_identity entry")?;
     if entry.logical_id != "repo-protocol" {
         return Err(format!("unexpected logical_id: {}", entry.logical_id));
     }

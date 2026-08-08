@@ -5,6 +5,7 @@
 //! PR3 cross-checks architecture ownership against #2598 move ledger and #2604
 //! package topology denominators.
 
+mod closure;
 mod config;
 mod cross_check;
 mod dependency_graph;
@@ -14,6 +15,12 @@ mod v2_validate;
 mod validate;
 mod workspace;
 
+pub use closure::{
+    CargoDependencyClass, CargoDependencyEdge, CargoMetadataGraphV2, CargoPackageIdResolver,
+    ClosureDiagnostic, ClosureResultKind, PackageResolutionError, find_identity_by_library,
+    find_identity_by_package, load_workspace_metadata_graph_v2, parse_cargo_metadata_graph_v2,
+    shortest_closure_path,
+};
 pub use config::{
     ArchitectureManifest, CrateRole, ForbiddenCrateDependency, PlannedCrate, ProductDefinition,
     SharedCrateDefinition, parse_architecture_manifest, parse_architecture_manifest_at,
@@ -43,6 +50,8 @@ pub use validate::{
 };
 pub use workspace::workspace_members_from_manifest;
 
+#[cfg(test)]
+mod closure_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
