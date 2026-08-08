@@ -488,3 +488,35 @@ fn write_fixture_file(root: &Path, relative: &str, contents: &str) -> std::io::R
     }
     std::fs::write(path, contents)
 }
+
+#[test]
+fn typed_blocking_classification_is_stable_under_message_text_change() {
+    // #1942: blocking classification should not depend on rendered error
+    // message text. Two findings with the same diagnostic_kind but different
+    // messages should have the same blocking eligibility.
+    use crate::spec_system::SpecSystemFinding;
+
+    let finding_a = SpecSystemFinding::new_typed(
+        "profile_config",
+        "failed to parse spec-system config TOML at line 5".to_string(),
+        "profile_config_parse_failure",
+    );
+    let finding_b = SpecSystemFinding::new_typed(
+        "profile_config",
+        "completely different error message wording".to_string(),
+        "profile_config_parse_failure",
+    );
+
+    assert!(
+        finding_a.blocking_eligible,
+        "profile_config_parse_failure should be blocking"
+    );
+    assert_eq!(
+        finding_a.blocking_eligible, finding_b.blocking_eligible,
+        "blocking eligibility must be stable under message text change"
+    );
+    assert_eq!(
+        finding_a.blocking_reason, finding_b.blocking_reason,
+        "blocking reason must be stable under message text change"
+    );
+}

@@ -122,6 +122,19 @@ impl SpecSystemFinding {
             blocking_reason,
         }
     }
+
+    /// Construct a finding with a typed diagnostic kind that drives blocking
+    /// classification directly, without parsing the rendered message string
+    /// (#1942).
+    fn new_typed(kind: &'static str, message: String, diagnostic_kind: &'static str) -> Self {
+        let blocking_reason = typed_blocking_reason(diagnostic_kind);
+        Self {
+            kind,
+            message,
+            blocking_eligible: blocking_reason.is_some(),
+            blocking_reason,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -771,6 +784,27 @@ fn spec_system_report_status(report: &SpecSystemReport) -> &'static str {
         "failed"
     } else {
         "passed"
+    }
+}
+
+/// Typed blocking classification: maps a diagnostic kind string directly to
+/// a blocking reason without parsing the rendered message (#1942).
+///
+/// This replaces the fragile substring-based classification that would silently
+/// downgrade blocking findings to advisory if upstream error text changed.
+fn typed_blocking_reason(diagnostic_kind: &str) -> Option<&'static str> {
+    match diagnostic_kind {
+        "profile_config_parse_failure" => Some("profile_config_parse_failure"),
+        "duplicate_id" => Some("duplicate_id"),
+        "dialect_conflict" => Some("dialect_conflict"),
+        "federation_config_invalid" => Some("federation_config_invalid"),
+        "federation_config_parse_failure" => Some("federation_config_parse_failure"),
+        "doc_artifact_ledger_missing" => Some("doc_artifact_ledger_missing"),
+        "doc_artifact_ledger_parse_failure" => Some("doc_artifact_ledger_parse_failure"),
+        "invalid_artifact_kind_or_status" => Some("invalid_artifact_kind_or_status"),
+        "artifact_file_missing" => Some("artifact_file_missing"),
+        "artifact_link_broken" => Some("artifact_link_broken"),
+        _ => None,
     }
 }
 
