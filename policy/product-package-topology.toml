@@ -166,30 +166,6 @@ candidate_inclusion = false
 release_order = 410
 
 [[package]]
-package = "proof-adapter-cargo-allow"
-product_family = "cargo-proof"
-posture = "CargoProofExperimental"
-publish = false
-candidate_inclusion = false
-release_order = 427
-
-[[package]]
-package = "proof-adapter-ripr"
-product_family = "cargo-proof"
-posture = "CargoProofExperimental"
-publish = false
-candidate_inclusion = false
-release_order = 428
-
-[[package]]
-package = "proof-adapter-hawk"
-product_family = "cargo-proof"
-posture = "CargoProofExperimental"
-publish = false
-candidate_inclusion = false
-release_order = 429
-
-[[package]]
 package = "proof-engine"
 product_family = "cargo-proof"
 posture = "CargoProofExperimental"

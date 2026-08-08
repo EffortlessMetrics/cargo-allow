@@ -13,8 +13,12 @@ categories.workspace = true
 publish = false
 
 [dependencies]
-allow-core.workspace = true
+allow-core = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 toml.workspace = true
 tree-sitter.workspace = true
 tree-sitter-rust.workspace = true
+
+[features]
+default = []
+allow-core-interop = ["dep:allow-core"]

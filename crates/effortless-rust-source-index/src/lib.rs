@@ -7,6 +7,7 @@
 //! resolution from supplied source-tree bytes. It does not invoke Cargo, rustc,
 //! Clippy, build scripts, proc macros, or repository code execution.
 
+mod error;
 mod inventory;
 mod parity;
 mod syntax;

@@ -3,10 +3,7 @@ use std::path::PathBuf;
 use crate::boundary::{
     ALLOWED_UPSTREAM_CRATES, BoundarySurface, FORBIDDEN_DEPENDENCY_EDGES, upstream_surface_markers,
 };
-use crate::parity::{
-    load_proof_corpus_contract, load_proof_corpus_fixture, parity_contract_paths,
-    proof_corpus_contract_path,
-};
+use crate::parity::parity_contract_paths;
 
 #[test]
 fn boundary_surface_matches_parity_contract_module() -> Result<(), String> {
@@ -129,100 +126,6 @@ fn receipt_set_requires_repo_protocol_schema() -> Result<(), String> {
         Err(crate::ProofReceiptError::SchemaDrift { .. }) => Ok(()),
         other => Err(format!("expected schema drift, got {other:?}")),
     }
-}
-
-#[test]
-fn proof_corpus_contract_matches_external_profile() -> Result<(), String> {
-    let root = workspace_root();
-    let contract_path = proof_corpus_contract_path(&root);
-    let contract = load_proof_corpus_contract(&contract_path)?;
-    if contract.profile_id != crate::RIPR_EXTERNAL_PROOF_PROFILE_ID {
-        return Err("contract profile_id mismatch".to_string());
-    }
-    Ok(())
-}
-
-#[test]
-fn proof_corpus_fixture_records_all_dimensions_and_states() -> Result<(), String> {
-    let root = workspace_root();
-    let corpus = load_proof_corpus_fixture(&root)?;
-    if corpus.corpus_digest != crate::PROOF_CORPUS_DIGEST_V1 {
-        return Err("corpus digest drift".to_string());
-    }
-    for state in crate::canonical_proof_result_states() {
-        if !state.allows_passed_composition() && state.is_non_execution() {
-            crate::validate_composition_honesty(*state)?;
-        }
-    }
-    Ok(())
-}
-
-#[test]
-fn composition_honesty_rejects_non_execution_passed_upgrade() -> Result<(), String> {
-    let aggregate = crate::compose_blocking_aggregate(&[
-        crate::ProofResultStateV1::ProofPassed,
-        crate::ProofResultStateV1::ProviderUnavailable,
-    ]);
-    if aggregate == crate::ProofResultStateV1::ProofPassed {
-        return Err("non-execution must not compose to proof_passed".to_string());
-    }
-    Ok(())
-}
-
-#[test]
-fn binding_currentness_distinguishes_missing_stale_and_incomparable() -> Result<(), String> {
-    let expected = crate::ProofBindingIdentityV1 {
-        repo_snapshot_id: "sha256:abc".to_string(),
-        phase_id: "merge-gate".to_string(),
-        config_digest: "sha256:cfg".to_string(),
-        tool_identity: "cargo-proof@0.1.0".to_string(),
-        proof_reference_id: "crates/ripr/src/lib.rs::tests::proof_smoke".to_string(),
-    };
-    if crate::evaluate_binding_currentness(&expected, None) != crate::BindingCurrentnessV1::Missing
-    {
-        return Err("missing binding should be missing".to_string());
-    }
-    let stale = crate::ProofBindingIdentityV1 {
-        phase_id: "preflight".to_string(),
-        ..expected.clone()
-    };
-    if crate::evaluate_binding_currentness(&expected, Some(&stale))
-        != crate::BindingCurrentnessV1::Stale
-    {
-        return Err("phase drift should be stale".to_string());
-    }
-    let incomparable = crate::ProofBindingIdentityV1 {
-        tool_identity: "cargo-proof@0.2.0".to_string(),
-        ..expected.clone()
-    };
-    if crate::evaluate_binding_currentness(&expected, Some(&incomparable))
-        != crate::BindingCurrentnessV1::Incomparable
-    {
-        return Err("tool mismatch should be incomparable".to_string());
-    }
-    Ok(())
-}
-
-#[test]
-fn provider_envelopes_remain_namespaced_and_distinct() -> Result<(), String> {
-    let opaque = crate::ProviderEnvelopeV1 {
-        provider_id: "proof-adapter-ripr".to_string(),
-        envelope_namespace: "ripr::grip_receipt.v1".to_string(),
-        result_class: "opaque".to_string(),
-        payload_digest: "sha256:v1:opaque".to_string(),
-    };
-    let unsupported = crate::ProviderEnvelopeV1 {
-        provider_id: "proof-adapter-ripr".to_string(),
-        envelope_namespace: "ripr::grip_receipt.v1".to_string(),
-        result_class: "unsupported".to_string(),
-        payload_digest: "sha256:v1:unsupported".to_string(),
-    };
-    crate::validate_provider_envelope(&opaque)?;
-    crate::validate_provider_envelope(&unsupported)?;
-    if !crate::provider_envelope_distinct(&opaque, &unsupported) {
-        return Err("opaque and unsupported envelopes must remain distinct".to_string());
-    }
-    Ok(())
 }
 
 fn manifest_lists_dependency(manifest_text: &str, crate_name: &str) -> bool {

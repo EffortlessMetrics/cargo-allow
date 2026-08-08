@@ -52,10 +52,7 @@ pub use plan_dtos::{
 pub use proof_corpus::{
     BindingCurrentnessV1, PROOF_CORPUS_DIGEST_V1, PROOF_CORPUS_SCHEMA_ID, ProofBindingIdentityV1,
     ProofCorpusDimensionV1, ProofCorpusScenarioV1, ProofCorpusV1, ProofResultStateV1,
-    ProviderEnvelopeV1, RIPR_EXTERNAL_PROOF_PROFILE_ID, canonical_proof_result_states,
-    compose_blocking_aggregate, evaluate_binding_currentness, load_proof_corpus_toml,
-    provider_envelope_distinct, validate_composition_honesty, validate_proof_corpus,
-    validate_provider_envelope,
+    ProviderEnvelopeV1, RIPR_EXTERNAL_PROOF_PROFILE_ID, load_proof_corpus_toml,
 };
 pub use receipt_dtos::{
     PROOF_RECEIPT_BINDING_SCHEMA_ID, PROOF_RECEIPT_SET_SCHEMA_ID, ProofReceiptBindingV1,

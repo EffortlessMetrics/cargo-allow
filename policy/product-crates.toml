@@ -40,9 +40,6 @@ binary = "cargo-proof"
 owned_crates = [
   "proof-protocol",
   "proof-engine",
-  "proof-adapter-cargo-allow",
-  "proof-adapter-ripr",
-  "proof-adapter-hawk",
   "cargo-proof",
 ]
 forbid_product_dependencies = []

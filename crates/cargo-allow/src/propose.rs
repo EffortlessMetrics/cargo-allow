@@ -59,13 +59,16 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
             cwd.join(path)
         }
     });
+    let mutation_root = crate::resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
     if let Some(target) = &write_target {
-        let mutation_root = crate::resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
         crate::policy_config::assert_path_within_root(&mutation_root, target)?;
     }
     let _mutation_lock = write_target
         .as_ref()
-        .map(MutationLock::acquire)
+        .map(|target| {
+            let resolved = effortless_repo_edit::resolve_mutation_target(target, &mutation_root)?;
+            MutationLock::acquire_for_target(&resolved)
+        })
         .transpose()?;
     let (root, cfg, findings, inventory_facts, _federation) = load_world_with_evidence_mode(
         args.root.root.as_deref(),
