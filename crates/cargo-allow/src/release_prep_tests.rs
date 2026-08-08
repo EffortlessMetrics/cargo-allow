@@ -546,25 +546,123 @@ fn is_publishable_workspace_package(manifest: &str) -> bool {
 
 /// The version a crate's own manifest declares.
 ///
-/// A crate either inherits the workspace release line with a standalone
-/// `version.workspace = true` or pins its own literal. The inherit form is
-/// matched line-by-line rather than by substring, because a plain
-/// `manifest.contains("version.workspace = true")` is also satisfied by
-/// `rust-version.workspace = true` — which every crate has, making the check
-/// vacuous and letting an independently versioned crate pass unnoticed.
+/// A crate either inherits the workspace release line with
+/// `version.workspace = true` or pins its own literal.
+///
+/// Resolution is scoped to the `[package]` table and tolerates a trailing
+/// comment, because both looser readings fail silently rather than loudly. A
+/// substring test for `"version.workspace = true"` is satisfied by every
+/// crate's `rust-version.workspace = true`, making the check vacuous; and an
+/// unscoped search for `version = "..."` would happily return the version of a
+/// dependency declared under `[dependencies.serde]`, naming an archive that
+/// does not exist.
 fn package_declared_version(manifest: &str, workspace_version: &str) -> String {
-    if manifest
-        .lines()
-        .any(|line| line.trim() == "version.workspace = true")
-    {
+    if package_table_value(manifest, "version.workspace").as_deref() == Some("true") {
         return workspace_version.to_string();
     }
-    manifest_value(manifest, "version").unwrap_or_else(|| {
+    package_table_value(manifest, "version").unwrap_or_else(|| {
         std::panic::panic_any(
             "package manifest should either inherit the workspace version or declare its own"
                 .to_string(),
         )
     })
+}
+
+#[test]
+fn package_declared_version_reads_only_the_package_table() {
+    let inherited_with_comment = "\
+[package]
+name = \"inherit\"
+version.workspace = true # valid TOML comment
+rust-version.workspace = true
+";
+    assert_eq!(
+        package_declared_version(inherited_with_comment, "0.2.0"),
+        "0.2.0",
+        "a trailing comment must not defeat workspace inheritance"
+    );
+
+    // The decoy that an unscoped search would return instead of the real
+    // package version.
+    let decoy = "\
+[package]
+name = \"decoy\"
+version.workspace = true
+
+[dependencies.serde]
+version = \"1.0.219\"
+";
+    assert_eq!(
+        package_declared_version(decoy, "0.2.0"),
+        "0.2.0",
+        "a dependency table version must never be read as the package version"
+    );
+
+    let literal = "\
+[package]
+name = \"literal\"
+version = \"0.1.0\"
+
+[dependencies.serde]
+version = \"1.0.219\"
+";
+    assert_eq!(
+        package_declared_version(literal, "0.2.0"),
+        "0.1.0",
+        "an independently versioned crate keeps its own literal"
+    );
+
+    // `rust-version` is the substring that made the previous inheritance check
+    // vacuous for every crate in the workspace.
+    let rust_version_only = "\
+[package]
+name = \"rust-version-only\"
+version = \"0.3.0\"
+rust-version.workspace = true
+";
+    assert_eq!(
+        package_declared_version(rust_version_only, "0.2.0"),
+        "0.3.0",
+        "rust-version.workspace must not be mistaken for version.workspace"
+    );
+}
+
+/// Read `key` from the manifest's `[package]` table, ignoring other tables.
+///
+/// Returns the value with surrounding quotes and any trailing comment removed.
+fn package_table_value(manifest: &str, key: &str) -> Option<String> {
+    let mut in_package = false;
+    for line in manifest.lines() {
+        let line = line.trim();
+        if line.starts_with('[') {
+            in_package = line == "[package]";
+            continue;
+        }
+        if !in_package {
+            continue;
+        }
+        let Some(rest) = line.strip_prefix(key) else {
+            continue;
+        };
+        let Some(rest) = rest.trim_start().strip_prefix('=') else {
+            // `version-something = ...` merely starts with the key text.
+            continue;
+        };
+        let rest = rest.trim();
+        return Some(match rest.strip_prefix('"') {
+            // Quoted: the value ends at the closing quote, so a trailing
+            // comment cannot leak in.
+            Some(quoted) => quoted.split('"').next().unwrap_or_default().to_string(),
+            // Bare: strip a trailing comment.
+            None => rest
+                .split('#')
+                .next()
+                .unwrap_or_default()
+                .trim()
+                .to_string(),
+        });
+    }
+    None
 }
 
 fn active_publish_order_doc(workspace_version: &str) -> &'static str {

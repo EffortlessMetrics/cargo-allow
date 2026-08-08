@@ -62,17 +62,11 @@ command -v cargo >/dev/null 2>&1 || fail "cargo is required"
 command -v python3 >/dev/null 2>&1 || fail "python3 is required"
 command -v tar >/dev/null 2>&1 || fail "tar is required"
 
+# shellcheck source=scripts/crate-version-lib.sh
+source "${ROOT}/scripts/crate-version-lib.sh"
+
 read_workspace_version() {
-  awk '
-    /^\[workspace\.package\]/ { in_ws = 1; next }
-    /^\[/ { if (in_ws) exit }
-    in_ws && /^version = / {
-      gsub(/^version = "/, "", $0)
-      gsub(/".*$/, "", $0)
-      print $0
-      exit
-    }
-  ' Cargo.toml
+  read_workspace_package_version "${ROOT}"
 }
 
 mapfile -t crates < <(
@@ -105,19 +99,8 @@ done
 version="$(read_workspace_version)"
 [[ -n "${version}" ]] || fail "could not read workspace.package.version"
 
-# Read the version a specific crate declares. Crates either inherit the
-# workspace release line with `version.workspace = true` or pin their own
-# literal, so the workspace version alone cannot name every archive.
 read_crate_version() {
-  local crate="$1"
-  local manifest="crates/${crate}/Cargo.toml"
-  local line
-  line="$(grep -m1 '^version' "${manifest}" 2>/dev/null)" || true
-  if [[ "${line}" == "version.workspace = true" ]]; then
-    printf '%s\n' "${version}"
-  else
-    printf '%s\n' "${line}" | sed 's/^version = "//; s/"$//'
-  fi
+  read_crate_declared_version "${ROOT}" "$1" "${version}"
 }
 
 declare -A crate_versions=()

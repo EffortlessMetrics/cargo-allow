@@ -36,32 +36,15 @@ fail() {
   exit 1
 }
 
+# shellcheck source=scripts/crate-version-lib.sh
+source "${ROOT}/scripts/crate-version-lib.sh"
+
 read_workspace_version() {
-  awk '
-    /^\[workspace\.package\]/ { in_ws = 1; next }
-    /^\[/ { if (in_ws) exit }
-    in_ws && /^version = / {
-      gsub(/^version = "/, "", $0)
-      gsub(/".*$/, "", $0)
-      print $0
-      exit
-    }
-  ' Cargo.toml
+  read_workspace_package_version "${ROOT}"
 }
 
-# Read the version of a specific crate from its Cargo.toml.
-# Handles both `version.workspace = true` (resolves workspace version) and
-# explicit `version = "X.Y.Z"` (#2885 version split).
 read_crate_version() {
-  local crate="$1"
-  local manifest="crates/${crate}/Cargo.toml"
-  local line
-  line="$(grep -m1 '^version' "${manifest}" 2>/dev/null)" || true
-  if [[ "${line}" == "version.workspace = true" ]]; then
-    read_workspace_version
-  else
-    echo "${line}" | sed 's/^version = "//; s/"$//'
-  fi
+  read_crate_declared_version "${ROOT}" "$1" "${version}"
 }
 
 assert_no_path_deps() {

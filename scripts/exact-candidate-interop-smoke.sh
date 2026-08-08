@@ -51,17 +51,11 @@ command -v cargo >/dev/null 2>&1 || fail "cargo is required"
 command -v python3 >/dev/null 2>&1 || fail "python3 is required"
 command -v git >/dev/null 2>&1 || fail "git is required"
 
+# shellcheck source=scripts/crate-version-lib.sh
+source "${ROOT}/scripts/crate-version-lib.sh"
+
 read_workspace_version() {
-  awk '
-    /^\[workspace\.package\]/ { in_ws = 1; next }
-    /^\[/ { if (in_ws) exit }
-    in_ws && /^version = / {
-      gsub(/^version = "/, "", $0)
-      gsub(/".*$/, "", $0)
-      print $0
-      exit
-    }
-  ' Cargo.toml
+  read_workspace_package_version "${ROOT}"
 }
 
 to_cargo_path() {
@@ -142,18 +136,8 @@ PY
 version="$(read_workspace_version)"
 [[ -n "${version}" ]] || fail "could not read workspace.package.version"
 
-# Each binary carries the version its own crate declares, which is no longer
-# always the workspace release version.
 read_crate_version() {
-  local crate="$1"
-  local manifest="${ROOT}/crates/${crate}/Cargo.toml"
-  local line
-  line="$(grep -m1 '^version' "${manifest}" 2>/dev/null)" || true
-  if [[ "${line}" == "version.workspace = true" ]]; then
-    printf '%s\n' "${version}"
-  else
-    printf '%s\n' "${line}" | sed 's/^version = "//; s/"$//'
-  fi
+  read_crate_declared_version "${ROOT}" "$1" "${version}"
 }
 
 cargo_allow_version="$(read_crate_version cargo-allow)"

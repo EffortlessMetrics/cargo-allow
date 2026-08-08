@@ -69,17 +69,11 @@ command -v cargo >/dev/null 2>&1 || fail "cargo is required"
 command -v python3 >/dev/null 2>&1 || fail "python3 is required to emit the JSON receipt"
 command -v mktemp >/dev/null 2>&1 || fail "mktemp is required"
 
+# shellcheck source=scripts/crate-version-lib.sh
+source "${ROOT}/scripts/crate-version-lib.sh"
+
 read_workspace_version() {
-  awk '
-    /^\[workspace\.package\]/ { in_ws = 1; next }
-    /^\[/ { if (in_ws) exit }
-    in_ws && /^version = / {
-      gsub(/^version = "/, "", $0)
-      gsub(/".*$/, "", $0)
-      print $0
-      exit
-    }
-  ' Cargo.toml
+  read_workspace_package_version "${ROOT}"
 }
 
 version="$(read_workspace_version)"
