@@ -10847,3 +10847,47 @@ glob = ".agents/skills/review-current-head/SKILL.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-9212"
+kind = "non_rust_file"
+family = "configuration"
+path = "policy/product-crates-v2.toml"
+owner = "repo-infra"
+classification = "three_product_architecture_manifest_v2"
+reason = "Generation-2 architecture authority with independent logical/package/library identity fields (#2921/#2923)."
+evidence = ["issue:2921", "issue:2923", "doc:policy/product-crates.toml"]
+created = "2026-08-08"
+review_after = "2027-02-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "policy/product-crates-v2.toml"
+target_fingerprint = "toml"
+glob = "policy/product-crates-v2.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9213"
+kind = "non_rust_file"
+family = "configuration"
+path = "policy/product-package-topology-v2.toml"
+owner = "repo-infra"
+classification = "three_product_package_topology_v2"
+reason = "Generation-2 package topology with explicit per-package version, publication state, and logical_id linkage (#2921/#2923)."
+evidence = ["issue:2921", "issue:2923", "doc:policy/product-package-topology.toml"]
+created = "2026-08-08"
+review_after = "2027-02-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "policy/product-package-topology-v2.toml"
+target_fingerprint = "toml"
+glob = "policy/product-package-topology-v2.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
