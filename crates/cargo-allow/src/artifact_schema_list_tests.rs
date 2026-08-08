@@ -121,6 +121,40 @@ fn list_schema_locks_allow_id_filter_contract() {
     assert_eq!(types, vec!["string", "null"]);
 }
 
+#[test]
+fn list_schema_allows_the_additive_core_command_summary_projection() {
+    let schema = parse_schema(
+        "list",
+        include_str!("../../../docs/schemas/list.schema.json"),
+    );
+    assert_eq!(
+        schema
+            .pointer("/properties/core_command_summary/$ref")
+            .and_then(Value::as_str),
+        Some("#/$defs/core_command_summary")
+    );
+    assert_required_fields(
+        "list core command summary",
+        required_schema_pointer("list", &schema, "/$defs/core_command_summary"),
+        &[
+            "schema_id",
+            "schema_version",
+            "tool",
+            "tool_version",
+            "operation",
+            "subject",
+            "result_class",
+            "posture",
+            "completeness",
+            "currentness",
+            "reason",
+            "additional_action_count",
+            "operation_effects",
+            "claim_boundary",
+        ],
+    );
+}
+
 fn assert_list_filter_properties(filters: &Value) {
     let Some(properties) = filters.get("properties").and_then(Value::as_object) else {
         std::panic::panic_any("list filters properties should be an object");
