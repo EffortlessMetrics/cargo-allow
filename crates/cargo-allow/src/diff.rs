@@ -360,9 +360,12 @@ fn load_current_world(args: &DiffArgs) -> CargoAllowResult<CurrentWorld> {
 }
 
 fn current_world_loaded(current_world: &Option<CurrentWorld>) -> CargoAllowResult<&CurrentWorld> {
-    current_world
-        .as_ref()
-        .ok_or_else(|| CargoAllowError::new("internal error: current diff world was not loaded"))
+    current_world.as_ref().ok_or_else(|| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            "internal error: current diff world was not loaded",
+        )
+    })
 }
 
 fn resolve_diff_root(explicit_root: Option<&Path>) -> CargoAllowResult<PathBuf> {
@@ -381,7 +384,12 @@ fn auto_detect_merge_base(root: &Path) -> CargoAllowResult<Option<String>> {
         .arg("HEAD")
         .arg("@{u}")
         .output()
-        .map_err(|e| CargoAllowError::new(format!("failed to run git merge-base: {e}")))?;
+        .map_err(|e| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Inventory,
+                format!("failed to run git merge-base: {e}"),
+            )
+        })?;
     if !output.status.success() {
         return Ok(None);
     }

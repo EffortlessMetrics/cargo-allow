@@ -186,10 +186,10 @@ pub(crate) fn strip_verbatim_prefix(path: &Path) -> PathBuf {
 /// normalization for targets whose parent directories do not exist yet.
 pub(crate) fn portable_relative_under_root(root: &Path, path: &Path) -> CargoAllowResult<PathBuf> {
     let root_canonical = root.canonicalize().map_err(|error| {
-        CargoAllowError::new(format!(
-            "failed to canonicalize {}: {error}",
-            root.display()
-        ))
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Inventory,
+            format!("failed to canonicalize {}: {error}", root.display()),
+        )
     })?;
     let resolved = if path.is_absolute() {
         path.to_path_buf()
@@ -224,11 +224,14 @@ fn best_effort_canonical(path: &Path) -> PathBuf {
 }
 
 fn outside_root_error(path: &Path, root: &Path) -> CargoAllowError {
-    CargoAllowError::new(format!(
-        "{} is outside source tree {}",
-        path.display(),
-        root.display()
-    ))
+    CargoAllowError::with_kind(
+        CargoAllowErrorKind::InvalidConfig,
+        format!(
+            "{} is outside source tree {}",
+            path.display(),
+            root.display()
+        ),
+    )
 }
 
 pub(crate) fn git_relative_config_path(
@@ -240,17 +243,26 @@ pub(crate) fn git_relative_config_path(
         .path
         .ok_or_else(|| missing_config_error(&discovery.skipped))?;
     let root = root.canonicalize().map_err(|e| {
-        CargoAllowError::new(format!("failed to canonicalize {}: {e}", root.display()))
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Inventory,
+            format!("failed to canonicalize {}: {e}", root.display()),
+        )
     })?;
     let path = path.canonicalize().map_err(|e| {
-        CargoAllowError::new(format!("failed to canonicalize {}: {e}", path.display()))
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Inventory,
+            format!("failed to canonicalize {}: {e}", path.display()),
+        )
     })?;
     path.strip_prefix(&root).map(PathBuf::from).map_err(|_| {
-        CargoAllowError::new(format!(
-            "policy config {} is not inside source tree {}",
-            path.display(),
-            root.display()
-        ))
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!(
+                "policy config {} is not inside source tree {}",
+                path.display(),
+                root.display()
+            ),
+        )
     })
 }
 
