@@ -5,6 +5,7 @@
 //! cover argv routing, `--command-summary-output` acceptance, and the human/machine
 //! parity an automation consumer depends on.
 
+use allow_core::SOURCE_FILE_READ_MAX_BYTES;
 use serde_json::Value;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -507,6 +508,56 @@ safety_comment_required = false
     }
 
     remove_temp_root(root)
+}
+
+#[test]
+fn why_summary_keeps_a_skipped_target_partial_and_non_green() -> Result<(), String> {
+    let root = temp_root("summary-why-partial-target")?;
+    write_source(&root, "pub fn value() -> u8 { 1 }\n")?;
+    run(&root, &["init"])?;
+    fs::write(
+        root.join("src/large.rs"),
+        vec![b' '; (SOURCE_FILE_READ_MAX_BYTES as usize).saturating_add(1)],
+    )
+    .map_err(|error| format!("write oversized target: {error}"))?;
+    git_commit_fixture(&root)?;
+
+    let sidecar = root.join("why-partial-summary.json");
+    let sidecar_text = sidecar.to_string_lossy().to_string();
+    let mut argv = vec!["--command-summary-output", &sidecar_text];
+    argv.extend([
+        "why",
+        "--kind",
+        "panic",
+        "--path",
+        "src/large.rs",
+        "--line",
+        "1",
+    ]);
+    let output = run(&root, &argv)?;
+    let summary: Value = serde_json::from_str(
+        &fs::read_to_string(&sidecar)
+            .map_err(|error| format!("read partial why summary: {error}"))?,
+    )
+    .map_err(|error| format!("parse partial why summary: {error}"))?;
+
+    require(
+        field(&summary, &["result_class"]) == Some(&Value::from("partial_data"))
+            && field(&summary, &["posture"]) == Some(&Value::from("blocking"))
+            && field(&summary, &["completeness"]) == Some(&Value::from("partial"))
+            && field(&summary, &["next_proof"]).is_none()
+            && field(&summary, &["operation_effects", "writes_repository"])
+                == Some(&Value::Bool(false))
+            && field(&summary, &["primary_action", "kind"]) == Some(&Value::from("decision")),
+        format!("partial why summary made an unsafe claim: {summary}"),
+    )?;
+    require(
+        stdout(&output)?.contains("partial") && stdout(&output)?.contains("large.rs"),
+        format!(
+            "partial why human output lost its coverage context: {}",
+            stdout(&output)?
+        ),
+    )
 }
 
 #[test]
