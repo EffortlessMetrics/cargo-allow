@@ -653,10 +653,18 @@ callee = "unwrap"
             && field(&summary, &["operation_effects", "write_paths"]).is_none(),
         format!("ambiguous why summary lost judgment boundaries: {summary}"),
     )?;
+    let human_lines: Vec<&str> = human.lines().collect();
+    require(
+        human_lines.len() >= GRAMMAR_FIELDS.len(),
+        format!(
+            "ambiguous why human summary must contain all {} grammar lines: {human}",
+            GRAMMAR_FIELDS.len()
+        ),
+    )?;
     require(
         GRAMMAR_FIELDS
             .iter()
-            .zip(human.lines())
+            .zip(human_lines.iter().copied())
             .all(|(field_name, line)| line.starts_with(field_name))
             && human.contains("Result: findings (decision_required)")
             && human.contains("Next: Multiple allow entries compete for this finding.")
