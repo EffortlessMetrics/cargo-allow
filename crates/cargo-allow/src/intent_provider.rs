@@ -14,6 +14,12 @@ pub const INTENT_DELEGATION_CONFIG_SCHEMA_ID: &str = "cargo-allow.intent-delegat
 pub const DEFAULT_INTENT_DELEGATION_CONFIG: &str = ".allow/compatibility/intent-delegation.toml";
 pub const INTENT_PROVIDER_ENV_VAR: &str = "CARGO_INTENT_BIN";
 pub const INTENT_PROVIDER_PRODUCT_NAME: &str = "cargo-intent";
+pub const INTENT_PROVIDER_REQUIRED_VERSION_RANGE: &str = "0.1.x";
+pub const INTENT_PROVIDER_REQUIRED_PROTOCOL: &str = "repo.analysis-receipt.v1";
+pub const INTENT_PROVIDER_CANONICAL_COMMAND: &str =
+    "cargo-intent --format json change status --staged --phase precommit";
+pub const INTENT_PROVIDER_SUPPORT_REFERENCE: &str =
+    "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/status/SUPPORT_TIERS.md";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IntentProviderDiscoveryMode {

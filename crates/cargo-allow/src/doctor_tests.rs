@@ -46,6 +46,29 @@ fn clap_parses_doctor_json_output() {
 }
 
 #[test]
+fn intent_provider_failure_is_explicitly_non_clean_and_actionable() {
+    let unavailable =
+        render_intent_provider_failure(&crate::intent_provider::IntentProviderFailure {
+            class: crate::intent_provider::IntentProviderFailureClass::Absent,
+            detail: "provider not found".to_string(),
+        });
+    assert!(unavailable.contains("status: unavailable"));
+    assert!(unavailable.contains("required version range: 0.1.x"));
+    assert!(unavailable.contains("required protocol: repo.analysis-receipt.v1"));
+    assert!(unavailable.contains("canonical command:"));
+    assert!(unavailable.contains("intent evaluation: not performed"));
+    assert!(unavailable.contains("clean claim: not available"));
+
+    let incompatible =
+        render_intent_provider_failure(&crate::intent_provider::IntentProviderFailure {
+            class: crate::intent_provider::IntentProviderFailureClass::WrongProductName,
+            detail: "wrong product".to_string(),
+        });
+    assert!(incompatible.contains("status: incompatible"));
+    assert!(incompatible.contains("binary detected, version not probed"));
+}
+
+#[test]
 fn clap_parses_support_bundle_output() {
     let parsed = CargoAllowCli::try_parse_from(argv(vec![
         "cargo-allow",
