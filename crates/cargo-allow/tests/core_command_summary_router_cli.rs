@@ -25,6 +25,8 @@ const GRAMMAR_FIELDS: [&str; 8] = [
 /// Argv for the inspection commands, which need a subject argument to have
 /// anything to inspect.
 const EXPLAIN_ARGV: &[&str] = &["explain", "allow-0001"];
+const AUDIT_ARGV: &[&str] = &["audit"];
+const CHECK_ARGV: &[&str] = &["check", "--mode", "no-new"];
 const WHY_ARGV: &[&str] = &[
     "why",
     "--kind",
@@ -40,8 +42,8 @@ const WORKLIST_ARGV: &[&str] = &["worklist"];
 const GRAMMAR_COMMANDS: [&[&str]; 7] = [
     &["adopt"],
     &["doctor"],
-    &["audit"],
-    &["check", "--mode", "no-new"],
+    AUDIT_ARGV,
+    CHECK_ARGV,
     EXPLAIN_ARGV,
     WHY_ARGV,
     WORKLIST_ARGV,
@@ -87,8 +89,8 @@ fn summary_commands_emit_a_read_only_summary_sidecar() -> Result<(), String> {
     run(&root, &["init"])?;
 
     for (label, command) in [
-        ("audit", &["audit"][..]),
-        ("check", &["check", "--mode", "no-new"][..]),
+        ("audit", AUDIT_ARGV),
+        ("check", CHECK_ARGV),
         ("explain", EXPLAIN_ARGV),
         ("why", WHY_ARGV),
         ("worklist", WORKLIST_ARGV),
