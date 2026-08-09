@@ -85,7 +85,16 @@ the machine manifests under `policy/` are authoritative and are contract-tested.
   Their maturity does not gate cargo-allow.
 - **shared substrate** (`effortless-repo-*`, `effortless-rust-source-index`) —
   must stay product-neutral: no production dependency on allow/intent/proof
-  ontology.
+  ontology. This is the architecture law, not a claim that every shared
+  package has already reached the target: `effortless-repo-snapshot` remains
+  transitional because its source-view layer still depends on cargo-allow
+  inventory and error types.
+
+The cargo-allow, cargo-intent, cargo-proof, and shared packages use separate
+version lines. Candidate and package proofs are mixed-version aware, so a
+package's published version is not inferred from the workspace root version.
+The proof adapters have been absorbed into `cargo-proof`; its provider modules
+are now the authority for those integrations.
 
 Dependency direction is law, not style. `cargo-allow` takes no intent/proof
 library dependency (compatibility goes through an *installed* `cargo-intent`
@@ -128,8 +137,8 @@ review hints, not identity anchors — identity comes from the selector
 
 ### CLI shape
 
-`crates/cargo-allow/src/main.rs` is a binary with ~250 sibling modules; each
-command is split into `<cmd>.rs`, `<cmd>_args.rs`, `<cmd>_render.rs`,
+`crates/cargo-allow/src/main.rs` is a binary whose command surface is split
+into `<cmd>.rs`, `<cmd>_args.rs`, `<cmd>_render.rs`,
 `<cmd>_types.rs`, and `<cmd>_tests.rs`. Unit tests live in sibling `*_tests.rs`
 files wired from the crate root under `#[cfg(test)]` (a project convention —
 keep it), so command modules stay reviewable. Integration/contract tests live in
