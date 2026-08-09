@@ -163,6 +163,85 @@ fn core_command_summary_mutation_init() -> Result<(), String> {
 }
 
 #[test]
+fn core_command_summary_mutation_propose_preserves_candidate_boundary() -> Result<(), String> {
+    let root = temp_root("summary-propose")?;
+    write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
+    run(&root, &["init"])?;
+    git_commit_fixture(&root)?;
+
+    let written_sidecar = root.join("propose-written-summary.json");
+    let written_sidecar_text = written_sidecar.to_string_lossy().to_string();
+    let written_target = root.join("policy/allow.proposed.toml");
+    let written_target_text = written_target.to_string_lossy().to_string();
+    let written = run(
+        &root,
+        &[
+            "--command-summary-output",
+            &written_sidecar_text,
+            "propose",
+            "--write",
+            &written_target_text,
+            "--force",
+        ],
+    )?;
+    require(
+        written.status.success(),
+        format!(
+            "propose write failed: {}",
+            String::from_utf8_lossy(&written.stderr)
+        ),
+    )?;
+    require(
+        String::from_utf8_lossy(&written.stderr).starts_with("Result: completed (advisory)"),
+        format!(
+            "propose write must expose the candidate summary on stderr: {}",
+            String::from_utf8_lossy(&written.stderr)
+        ),
+    )?;
+    let written_summary: Value = serde_json::from_str(
+        &fs::read_to_string(&written_sidecar)
+            .map_err(|error| format!("read written propose summary: {error}"))?,
+    )
+    .map_err(|error| format!("parse written propose summary: {error}"))?;
+    require(
+        field(
+            &written_summary,
+            &["operation_effects", "writes_repository"],
+        ) == Some(&Value::Bool(true))
+            && field(&written_summary, &["operation_effects", "write_paths"])
+                == Some(&Value::from(vec!["policy/allow.proposed.toml"])),
+        format!("propose write lost candidate target posture: {written_summary}"),
+    )?;
+
+    let stdout_sidecar = root.join("propose-stdout-summary.json");
+    let stdout_sidecar_text = stdout_sidecar.to_string_lossy().to_string();
+    let stdout_candidate = run(
+        &root,
+        &["--command-summary-output", &stdout_sidecar_text, "propose"],
+    )?;
+    require(
+        stdout_candidate.status.success(),
+        format!(
+            "propose stdout candidate failed: {}",
+            String::from_utf8_lossy(&stdout_candidate.stderr)
+        ),
+    )?;
+    let stdout_summary: Value = serde_json::from_str(
+        &fs::read_to_string(&stdout_sidecar)
+            .map_err(|error| format!("read stdout propose summary: {error}"))?,
+    )
+    .map_err(|error| format!("parse stdout propose summary: {error}"))?;
+    require(
+        field(&stdout_summary, &["operation_effects", "writes_repository"])
+            == Some(&Value::Bool(false))
+            && field(&stdout_summary, &["posture"]) == Some(&Value::from("advisory")),
+        format!("propose stdout must remain read-only advisory output: {stdout_summary}"),
+    )?;
+
+    remove_temp_root(root)
+}
+
+#[test]
 fn summary_commands_emit_a_read_only_summary_sidecar() -> Result<(), String> {
     let root = temp_root("summary-inspection")?;
     write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;

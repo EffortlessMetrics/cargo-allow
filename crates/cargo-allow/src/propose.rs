@@ -204,6 +204,14 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
     let repo_root = root.display().to_string();
     let config_source = crate::policy_config::config_path(&root, args.config.as_deref())
         .map(|path| path.display().to_string());
+    let write_path = write_target
+        .as_ref()
+        .map(|path| portable_relative_under_root(&root, path))
+        .transpose()?
+        .map(|path| {
+            path.to_string_lossy()
+                .replace(std::path::MAIN_SEPARATOR, "/")
+        });
     let mutation_receipt = MutationReceipt {
         operation: "propose",
         tool_version: env!("CARGO_PKG_VERSION"),
@@ -273,6 +281,35 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
         unreceiptable_new_findings,
         unreceiptable_reason,
     };
+    let core_summary = crate::core_command_summary::core_command_summary_from_propose(
+        crate::core_command_summary::ProposeSummaryFactsV1 {
+            repository_identity: "local-repository:current".to_string(),
+            portable_identity: format!(
+                "worktree:propose:{}",
+                write_path.as_deref().unwrap_or("stdout")
+            ),
+            write_path,
+            force: args.force,
+            completeness: crate::core_command_router::summary_completeness(&inventory_facts),
+            proposed_entries,
+            unsafe_proposed_entries,
+            truncated_new_findings,
+            unreceiptable_new_findings,
+        },
+    )
+    .map_err(|error| {
+        CargoAllowError::with_kind(
+            allow_core::CargoAllowErrorKind::Internal,
+            format!("failed to build propose command summary: {error}"),
+        )
+    })?;
+    crate::core_command_router::write_summary_artifact(&root, &core_summary)?;
+    if args.summary_format == HumanJsonFormat::Human {
+        eprint!(
+            "{}",
+            crate::core_command_summary::render_core_command_summary_human(&core_summary)
+        );
+    }
     let summary = match args.summary_format {
         HumanJsonFormat::Human => {
             let style = if args.summary_output.is_none() {
