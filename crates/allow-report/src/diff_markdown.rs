@@ -18,8 +18,10 @@ const FINDING_IMPROVEMENT_LABEL: &str = PresenceMovement::Removed.finding_change
 
 pub fn render_diff_analysis_markdown(context: crate::DiffAnalysisContext<'_>) -> String {
     format!(
-        "### Diff analysis\n\n- Result class: `{}`\n- Base inventory complete: `{}`\n- Base scanner complete: `{}`\n- Head inventory complete: `{}`\n- Head scanner complete: `{}`\n- Movement: introduced `{}`, retained `{}`, removed `{}`\n\n",
+        "### Diff analysis\n\n- Result class: `{}`\n- Base revision: `{}`\n- Head revision: `{}`\n- Base inventory complete: `{}`\n- Base scanner complete: `{}`\n- Head inventory complete: `{}`\n- Head scanner complete: `{}`\n- Movement: introduced `{}`, retained `{}`, removed `{}`\n\n",
         context.result_class,
+        context.base_revision.unwrap_or("<none>"),
+        context.head_revision.unwrap_or("<none>"),
         context.base_inventory_complete,
         context.base_scanner_complete,
         context.head_inventory_complete,

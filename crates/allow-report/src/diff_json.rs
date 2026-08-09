@@ -119,8 +119,23 @@ pub(crate) fn render_diff_posture_json_with_evidence_health_and_context(
     if let Some(diff) = context.diff_analysis {
         out.push_str("    \"diff_analysis\": {");
         out.push_str(&format!(
-            "\"result_class\": \"{}\", \"base_inventory_complete\": {}, \"base_scanner_complete\": {}, \"head_inventory_complete\": {}, \"head_scanner_complete\": {}, \"introduced\": {}, \"retained\": {}, \"removed\": {}}},\n",
-            json_escape(diff.result_class),
+            "\"result_class\": \"{}\"",
+            json_escape(diff.result_class)
+        ));
+        if let Some(revision) = diff.base_revision {
+            out.push_str(&format!(
+                ", \"base_revision\": \"{}\"",
+                json_escape(revision)
+            ));
+        }
+        if let Some(revision) = diff.head_revision {
+            out.push_str(&format!(
+                ", \"head_revision\": \"{}\"",
+                json_escape(revision)
+            ));
+        }
+        out.push_str(&format!(
+            ", \"base_inventory_complete\": {}, \"base_scanner_complete\": {}, \"head_inventory_complete\": {}, \"head_scanner_complete\": {}, \"introduced\": {}, \"retained\": {}, \"removed\": {}}},\n",
             crate::json::bool_json(diff.base_inventory_complete),
             crate::json::bool_json(diff.base_scanner_complete),
             crate::json::bool_json(diff.head_inventory_complete),

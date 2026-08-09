@@ -212,6 +212,11 @@ fn diff_json_projection_includes_shared_analysis_context() -> Result<(), Box<dyn
         value["diff"]["diff_analysis"]["result_class"],
         "base_partial"
     );
+    assert_eq!(
+        value["diff"]["diff_analysis"]["base_revision"],
+        "origin/main"
+    );
+    assert_eq!(value["diff"]["diff_analysis"]["head_revision"], "HEAD");
     assert_eq!(value["diff"]["diff_analysis"]["removed"], 0);
     Ok(())
 }

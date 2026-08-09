@@ -3,6 +3,24 @@ use crate::diff_row_test_support::empty_ledger_movement_summary;
 use super::*;
 
 #[test]
+fn diff_analysis_human_shows_revisions_and_absent_head() {
+    let text = render_diff_analysis_human(DiffAnalysisContext {
+        result_class: "complete",
+        base_revision: Some("origin/main"),
+        head_revision: None,
+        base_inventory_complete: true,
+        base_scanner_complete: true,
+        head_inventory_complete: true,
+        head_scanner_complete: true,
+        introduced: 1,
+        retained: 2,
+        removed: 0,
+    });
+    assert!(text.contains("base_revision=origin/main"));
+    assert!(text.contains("head_revision=<none>"));
+}
+
+#[test]
 fn diff_finding_human_output_groups_findings_by_change() {
     let mut identity = allow_core::StructuralIdentity::new("rust", "unsafe_block");
     identity.container = Some("runtime_init".to_string());
