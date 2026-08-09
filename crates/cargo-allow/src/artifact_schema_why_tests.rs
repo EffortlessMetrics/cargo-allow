@@ -178,6 +178,24 @@ fn result_class_schema_binds_to_its_evidence_tuple() -> Result<(), String> {
                         "reason": "file exceeds scanner limit"
                     }),
                 );
+            partial
+                .as_object_mut()
+                .ok_or_else(|| format!("{name} sample should be an object"))?
+                .insert("finding".to_string(), Value::Null);
+            partial
+                .as_object_mut()
+                .ok_or_else(|| format!("{name} sample should be an object"))?
+                .insert("outcome".to_string(), Value::Null);
+            partial
+                .get_mut("candidate_entries")
+                .and_then(Value::as_array_mut)
+                .ok_or_else(|| format!("{name} sample should contain candidate_entries"))?
+                .clear();
+            partial
+                .pointer_mut("/next/proof_plans")
+                .and_then(Value::as_array_mut)
+                .ok_or_else(|| format!("{name} sample should contain proof plans"))?
+                .clear();
         }
         if validator.validate(&partial).is_err() {
             return Err(format!(
