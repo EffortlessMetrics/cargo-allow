@@ -9,6 +9,7 @@ const PREVIOUS_RELEASE_DOC: &str = "docs/release/0.1.10.md";
 const PUBLISHED_INSTALL_PIN_PHRASE: &str =
     "Public install examples now pin the published `0.1.11` release";
 const CANDIDATE_RELEASE_VERSION: &str = "0.2.0";
+const PACKAGE_TOPOLOGY: &str = "policy/product-package-topology-v2.toml";
 
 const RELEASE_WORKFLOW: &str = ".github/workflows/release.yml";
 const RELEASE_DOC: &str = "docs/release/README.md";
@@ -249,27 +250,29 @@ fn published_release_versions_match_workspace() {
         "release note should document the published install pin"
     );
 
-    // Not every publishable crate rides the workspace release line: the
-    // `effortless-*` and `intent-*` crates were split onto their own version
-    // in #3286 so they can ship independently of the scanner. What must hold
-    // is that each crate's own declared version is the single source of truth
-    // everywhere it is referenced, so a bump can never land half-applied.
+    // Generation-2 topology is the version authority, not the workspace version
+    // alone: product-neutral and intent crates carry their own version source
+    // while the cargo-allow family stays on the workspace version.
+    let topology_versions =
+        topology_package_versions(&read_workspace_file(&root, PACKAGE_TOPOLOGY));
     let package_names = package_manifests.keys().cloned().collect::<BTreeSet<_>>();
-    let package_versions = package_manifests
+    let undeclared = package_names
         .iter()
-        .map(|(package, manifest)| {
-            (
-                package.clone(),
-                package_declared_version(manifest, &workspace_version),
-            )
-        })
-        .collect::<BTreeMap<_, _>>();
-
-    assert_eq!(
-        package_versions.get("cargo-allow"),
-        Some(&workspace_version),
-        "the cargo-allow package should ride the workspace release version"
+        .filter(|package| !topology_versions.contains_key(*package))
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    assert!(
+        undeclared.is_empty(),
+        "{PACKAGE_TOPOLOGY} should declare a version for every publishable workspace package, missing {undeclared:?}"
     );
+
+    for (package, manifest) in &package_manifests {
+        assert_eq!(
+            &package_declared_version(manifest, &workspace_version),
+            expected_package_version(&topology_versions, package),
+            "{package} manifest version should match its declared topology version"
+        );
+    }
 
     let workspace_dependency_versions =
         workspace_internal_dependency_versions(&workspace_manifest, &package_names);
@@ -285,9 +288,9 @@ fn published_release_versions_match_workspace() {
     );
     for (dependency, version) in workspace_dependency_versions {
         assert_eq!(
-            package_versions.get(&dependency),
-            Some(&version),
-            "{dependency} workspace dependency should require its package version"
+            &version,
+            expected_package_version(&topology_versions, &dependency),
+            "{dependency} workspace dependency should require its declared topology version"
         );
     }
 
@@ -299,9 +302,9 @@ fn published_release_versions_match_workspace() {
     );
     for (package, version) in lock_versions {
         assert_eq!(
-            package_versions.get(&package),
-            Some(&version),
-            "{package} lockfile entry should carry its package version"
+            &version,
+            expected_package_version(&topology_versions, &package),
+            "{package} lockfile entry should carry its declared topology version"
         );
     }
 }
@@ -566,6 +569,40 @@ fn package_declared_version(manifest: &str, workspace_version: &str) -> String {
                 .to_string(),
         )
     })
+}
+
+/// Read package version pairs from the generation-2 package topology authority.
+fn topology_package_versions(topology: &str) -> BTreeMap<String, String> {
+    let mut versions = BTreeMap::new();
+    let mut current_name = None::<String>;
+    for line in topology.lines() {
+        let line = line.trim();
+        if line == "[[package]]" {
+            current_name = None;
+            continue;
+        }
+        if let Some(name) = manifest_value(line, "cargo_package_name") {
+            current_name = Some(name);
+            continue;
+        }
+        if let Some(version) = manifest_value(line, "package_version")
+            && let Some(name) = current_name.take()
+        {
+            versions.insert(name, version);
+        }
+    }
+    versions
+}
+
+fn expected_package_version<'a>(
+    topology_versions: &'a BTreeMap<String, String>,
+    package: &str,
+) -> &'a String {
+    if let Some(version) = topology_versions.get(package) {
+        version
+    } else {
+        std::panic::panic_any(format!("{PACKAGE_TOPOLOGY} should declare {package}"));
+    }
 }
 
 #[test]
