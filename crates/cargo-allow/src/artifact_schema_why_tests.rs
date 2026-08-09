@@ -5,7 +5,7 @@ use crate::artifact_schema_support::{
 use serde_json::{Value, json};
 
 #[test]
-fn why_schema_locks_finding_outcome_and_candidates_contract() {
+fn why_schema_locks_finding_outcome_and_candidates_contract() -> Result<(), String> {
     let schema = parse_schema("why", include_str!("../../../docs/schemas/why.schema.json"));
 
     assert_required_fields(
@@ -71,22 +71,26 @@ fn why_schema_locks_finding_outcome_and_candidates_contract() {
         ("finding", "#/$defs/current_finding"),
         ("outcome", "#/$defs/match_outcome"),
     ] {
-        let any_of = schema
+        let Some(any_of) = schema
             .pointer(&format!("/properties/{field}/anyOf"))
             .and_then(Value::as_array)
-            .expect("nullable why fields should use anyOf");
-        assert!(
-            any_of
-                .iter()
-                .any(|variant| { variant.get("$ref").and_then(Value::as_str) == Some(reference) }),
-            "why {field} should reuse {reference}"
-        );
-        assert!(
-            any_of
-                .iter()
-                .any(|variant| variant.get("type") == Some(&json!("null"))),
-            "why {field} should permit null for partial target scans"
-        );
+        else {
+            return Err(format!("nullable why field {field} should use anyOf"));
+        };
+        if !any_of
+            .iter()
+            .any(|variant| variant.get("$ref").and_then(Value::as_str) == Some(reference))
+        {
+            return Err(format!("why {field} should reuse {reference}"));
+        }
+        if !any_of
+            .iter()
+            .any(|variant| variant.get("type").and_then(Value::as_str) == Some("null"))
+        {
+            return Err(format!(
+                "why {field} should permit null for partial target scans"
+            ));
+        }
     }
     assert_enum_equals(
         "why match status",
@@ -116,6 +120,7 @@ fn why_schema_locks_finding_outcome_and_candidates_contract() {
     );
     let proof_plan = required_schema_pointer("why", &schema, "/$defs/proof_plan");
     assert_required_fields("why proof_plan", proof_plan, &["program", "args"]);
+    Ok(())
 }
 
 #[test]
