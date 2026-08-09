@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Check every workspace crate's declared version against the workspace
+  dependency table and the lockfile individually, so crates on an independent
+  release line are verified rather than assumed to ride the workspace version.
+  The previous check was satisfied by any crate's `rust-version.workspace`
+  entry and so never verified version inheritance at all.

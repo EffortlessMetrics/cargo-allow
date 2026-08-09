@@ -1,6 +1,6 @@
 //! Minimal tree-sitter helpers for structural subject discovery (#2587-C).
 
-use allow_core::{CargoAllowError, CargoAllowResult};
+use crate::error::{IndexError, IndexResult};
 use tree_sitter::{Node, Parser, Tree};
 
 pub(crate) struct RustSyntaxTree {
@@ -17,15 +17,15 @@ impl RustSyntaxTree {
     }
 }
 
-pub(crate) fn parse_rust_syntax(source: &str) -> CargoAllowResult<RustSyntaxTree> {
+pub(crate) fn parse_rust_syntax(source: &str) -> IndexResult<RustSyntaxTree> {
     let mut parser = Parser::new();
     let language = tree_sitter_rust::LANGUAGE.into();
     parser
         .set_language(&language)
-        .map_err(|e| CargoAllowError::new(format!("failed to load Rust parser: {e}")))?;
+        .map_err(|e| IndexError::new(format!("failed to load Rust parser: {e}")))?;
     let tree = parser
         .parse(source, None)
-        .ok_or_else(|| CargoAllowError::new("failed to parse Rust source"))?;
+        .ok_or_else(|| IndexError::new("failed to parse Rust source"))?;
     Ok(RustSyntaxTree { tree })
 }
 

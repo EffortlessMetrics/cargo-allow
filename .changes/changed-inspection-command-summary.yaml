@@ -1,0 +1,14 @@
+kind: Changed
+body: >-
+  UX: `explain`, `why`, and `worklist` now open with the same compact operator
+  summary (`Result` / `Why` / `Subject` / `Coverage` / `Next` / `Writes` /
+  `Then` / `Not proven`) already used by `adopt`, `doctor`, `audit`, and
+  `check`, and `--command-summary-output` accepts all three and writes the
+  versioned `cargo-allow.core-command-summary.v1` sidecar. The detailed explain,
+  why, and worklist artifacts, their JSON schemas, and every exit code are
+  unchanged. The projection reuses each command's existing typed next steps
+  rather than inventing a second action ontology: where the remaining routes are
+  repository judgment it emits a decision instead of guessing a command, an
+  unreceipted finding never promotes a near-miss entry to a winner, an empty
+  filtered work queue is never reported as a clean repository, and `why --plan`
+  reports the exact candidate plan path it wrote instead of claiming read-only.

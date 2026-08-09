@@ -436,3 +436,57 @@ pub(super) fn render_why_json_with_evaluation_and_scanner_completeness(
         scanner_completeness,
     )
 }
+
+pub(super) fn render_why_target_scan_json(
+    inventory: allow_report::InventoryContext<'_>,
+    evaluation: EvaluationContext<'_>,
+    path: &str,
+    status: &str,
+    reason: Option<&str>,
+) -> String {
+    let suggested_actions = vec![
+        format!("Repair or reduce the target so the Rust scanner can inspect `{path}`."),
+        "Re-run cargo-allow why after the target scan is complete.".to_string(),
+        "No add-finding plan was written because the selected target was not fully scanned."
+            .to_string(),
+    ];
+    allow_report::render_why_target_scan_json(allow_report::WhyTargetScanReport {
+        inventory,
+        evaluation,
+        target: allow_report::WhyTargetScan {
+            path,
+            status,
+            reason,
+        },
+        suggested_actions: &suggested_actions,
+        proof_commands: &[],
+        proof_plans: &[],
+    })
+}
+
+pub(super) fn render_why_target_scan_text(
+    evaluation: EvaluationContext<'_>,
+    inventory: allow_report::InventoryContext<'_>,
+    path: &str,
+    status: &str,
+    reason: Option<&str>,
+) -> String {
+    let mut out = String::new();
+    out.push_str("# Why the selected target could not be fully scanned\n\n");
+    out.push_str("## Target scan\n\n");
+    out.push_str(&format!("- path: {path}\n- status: {status}\n"));
+    if let Some(reason) = reason {
+        out.push_str(&format!("- reason: {reason}\n"));
+    }
+    out.push_str("\n## Evaluation scope\n\n");
+    if let Some(result_class) =
+        evaluation.result_class_with_scanner_completeness(inventory, Some("partial"))
+    {
+        out.push_str(&format!("- result_class: {result_class}\n"));
+    }
+    out.push_str(&format!("- scope: {}\n", evaluation.scope));
+    out.push_str(&format!("- locality: {}\n", evaluation.locality));
+    out.push_str("- scanner_completeness: partial\n\n");
+    out.push_str("No finding was selected and no add-finding plan was written. Repair the target or reduce its size, then re-run `cargo-allow why`.\n");
+    out
+}

@@ -3,6 +3,7 @@ use allow_core::{
     MatchStatus, normalize_path,
 };
 use allow_match::{CheckMode, evaluate, explain_match_failure, score_match};
+use allow_rust::RustFileScanOutcome;
 
 use crate::{
     EvidenceValidationMode, HumanJsonFormat, SourceTreeReportContext, current_dir, emit_text,
@@ -24,6 +25,7 @@ pub(crate) use why_args::WhyArgs;
 use why_render::render_why_text;
 use why_render::{
     WhyCandidate, render_why_json_with_evaluation_and_scanner_completeness,
+    render_why_target_scan_json, render_why_target_scan_text,
     render_why_text_styled_with_evaluation_and_scanner_completeness,
 };
 #[cfg(test)]
@@ -81,6 +83,50 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
         &target_path,
     )?;
     let target_repo_path = crate::world::normalize_to_repo_relative(&scoped_world.0, &target_path);
+    if let Some(target_scan) = scoped_world.5.as_ref()
+        && !matches!(target_scan, RustFileScanOutcome::Scanned)
+    {
+        let (status, reason) = match target_scan {
+            RustFileScanOutcome::ParseError => ("parse_error", None),
+            RustFileScanOutcome::Skipped { reason } => ("skipped", Some(reason.as_str())),
+            RustFileScanOutcome::Scanned => ("scanned", None),
+        };
+        let evaluation = allow_report::EvaluationContext {
+            scope: "scoped",
+            locality: "proven",
+            reasons: &[],
+        };
+        let source_context = SourceTreeReportContext::new(&scoped_world.0, scoped_world.3);
+        let target_path_text = normalize_path(&target_repo_path);
+        let detail_json = render_why_target_scan_json(
+            source_context.inventory(),
+            evaluation,
+            &target_path_text,
+            status,
+            reason,
+        );
+        let summary = why_target_summary(
+            &detail_json,
+            &scoped_world.0,
+            &source_context,
+            &target_path_text,
+            args.line,
+            scoped_world.3,
+        )?;
+        crate::core_command_router::write_summary_artifact(&scoped_world.0, &summary)?;
+        let text = match args.format {
+            HumanJsonFormat::Human => render_why_target_scan_text(
+                evaluation,
+                source_context.inventory(),
+                &target_path_text,
+                status,
+                reason,
+            ),
+            HumanJsonFormat::Json => detail_json,
+        };
+        emit_text(args.output.as_deref(), &text)?;
+        return Ok(());
+    }
     let scoped_finding =
         crate::add::select_add_finding(&scoped_world.2, parsed_kind, &target_repo_path, args.line)?
             .1;
@@ -100,7 +146,13 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
         }
     };
     let (root, cfg, findings, inventory_facts, _federation) = if locality_reasons.is_empty() {
-        scoped_world
+        (
+            scoped_world.0,
+            scoped_world.1,
+            scoped_world.2,
+            scoped_world.3,
+            scoped_world.4,
+        )
     } else {
         load_world_with_evidence_mode(
             args.root.root.as_deref(),
@@ -133,6 +185,7 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
         Some("complete")
     };
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
+    let mut written_plan_path = None;
     if let Some(plan_path) = args.plan.as_deref() {
         let plan = why_plan::render_add_finding_plan(why_plan::AddFindingPlanInput {
             root: &root,
@@ -147,33 +200,230 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
             candidates: &candidates,
         })?;
         crate::write_file_no_overwrite(plan_path, &plan, false)?;
+        written_plan_path = Some(plan_write_path(&root, plan_path));
     }
     let style = if matches!(args.format, HumanJsonFormat::Human) && args.output.is_none() {
         crate::reporting::output_style()
     } else {
         allow_report::Style::PLAIN
     };
+    // The JSON artifact is rendered for every format: it supplies the
+    // relocation-stable semantic identity the summary reports, and it is the
+    // command's own artifact when JSON was requested.
+    let detail_json = render_why_json_with_evaluation_and_scanner_completeness(
+        source_context.inventory(),
+        evaluation,
+        finding,
+        &outcome,
+        &candidates,
+        scanner_completeness,
+    );
+    // Common operator grammar (#3149). The detailed why artifact remains
+    // authoritative; this projection is additive and derived from the same
+    // in-memory evaluation without re-evaluating the finding.
+    let summary = why_summary(
+        &detail_json,
+        &root,
+        &source_context,
+        WhyFindingFacts {
+            finding,
+            outcome: &outcome,
+            candidates: &candidates,
+            queried_line: args.line,
+            plan_path: written_plan_path,
+            inventory_facts,
+        },
+    )?;
+    crate::core_command_router::write_summary_artifact(&root, &summary)?;
+
     let text = match args.format {
-        HumanJsonFormat::Human => render_why_text_styled_with_evaluation_and_scanner_completeness(
-            source_context.inventory(),
-            finding,
-            &outcome,
-            &candidates,
-            style,
-            evaluation,
-            scanner_completeness,
-        ),
-        HumanJsonFormat::Json => render_why_json_with_evaluation_and_scanner_completeness(
-            source_context.inventory(),
-            evaluation,
-            finding,
-            &outcome,
-            &candidates,
-            scanner_completeness,
-        ),
+        HumanJsonFormat::Human => {
+            let mut rendered =
+                crate::core_command_summary::render_core_command_summary_human(&summary);
+            rendered.push('\n');
+            rendered.push_str(
+                &render_why_text_styled_with_evaluation_and_scanner_completeness(
+                    source_context.inventory(),
+                    finding,
+                    &outcome,
+                    &candidates,
+                    style,
+                    evaluation,
+                    scanner_completeness,
+                ),
+            );
+            rendered
+        }
+        HumanJsonFormat::Json => detail_json,
     };
     emit_text(args.output.as_deref(), &text)?;
     Ok(())
+}
+
+/// Finding-scoped facts `why` has already computed for the common summary.
+struct WhyFindingFacts<'a> {
+    finding: &'a Finding,
+    outcome: &'a allow_core::MatchOutcome,
+    candidates: &'a [WhyCandidate<'a>],
+    queried_line: u32,
+    /// Source-tree-relative path of the add-finding plan this run wrote.
+    plan_path: Option<String>,
+    inventory_facts: crate::InventoryFacts,
+}
+
+/// Build the common operator summary from the evaluation `why` already holds.
+///
+/// The relocation-stable semantic identity comes from why's own JSON artifact,
+/// exactly as `audit`, `check`, and `doctor` derive theirs, so the summary never
+/// rescans source or re-evaluates the finding to describe itself.
+fn why_summary(
+    detail_json: &str,
+    root: &std::path::Path,
+    source_context: &SourceTreeReportContext,
+    facts: WhyFindingFacts<'_>,
+) -> CargoAllowResult<crate::core_command_summary::CoreCommandSummaryV1> {
+    let semantic_identity =
+        crate::core_command_router::canonical_semantic_identity(detail_json, Some(root))?;
+    let completeness = crate::core_command_router::summary_completeness(&facts.inventory_facts);
+    let coverage_limitation = (completeness != effortless_repo_protocol::CompletenessV1::Complete)
+        .then(|| crate::core_command_router::partial_coverage_reason(&facts.inventory_facts));
+    let inventory_source = source_context.inventory_source();
+    let location = format!(
+        "{}:{}",
+        normalize_path(&facts.finding.path),
+        facts
+            .finding
+            .span
+            .as_ref()
+            .map(|span| span.line)
+            .unwrap_or(facts.queried_line)
+    );
+
+    // The subject is the exact queried location, named in the shared
+    // `<subject>:<inventory mode>:current-unpinned` grammar.
+    let mut subject = crate::core_command_summary::CoreSourceSubjectV1 {
+        kind: crate::core_command_summary::CoreSourceSubjectKindV1::ScopedPath,
+        repository_identity: format!("local-repository:{semantic_identity}"),
+        portable_identity: format!(
+            "scoped:finding:{}:{location}:{inventory_source}:current-unpinned",
+            facts.finding.kind.as_str()
+        ),
+        base: None,
+        head: None,
+        paths: vec![location.clone()],
+        limitations: Vec::new(),
+    };
+    subject.limitations.push(
+        "the current worktree result is not bound to a commit, tree, or Git-index identity"
+            .to_string(),
+    );
+
+    let next = why_render::why_next_steps(facts.finding, facts.outcome, facts.candidates);
+    crate::core_command_summary::core_command_summary_from_why(
+        crate::core_command_summary::WhySummaryFactsV1 {
+            tool_version: env!("CARGO_PKG_VERSION").to_string(),
+            subject,
+            completeness,
+            coverage_limitation,
+            location,
+            outcome_status: facts.outcome.status,
+            matched_allow_id: facts.outcome.allow_id.clone(),
+            near_miss_candidate_count: facts.candidates.len(),
+            suggested_actions: next.suggested_actions,
+            plan_path: facts.plan_path,
+            claim_boundary: effortless_repo_protocol::ClaimBoundaryV1::new(
+                "cargo-allow explained one source-tree finding against current source-exception ledger posture only",
+            )
+            .with_limitations(vec![
+                "cargo metadata, rustc, Clippy, build scripts, proc macros, tests, and repository code were not invoked"
+                    .to_string(),
+                "macro expansion, type information, MIR, control flow, and data flow were not analyzed"
+                    .to_string(),
+                "one receipted finding does not prove the repository passes the no-new gate".to_string(),
+            ]),
+        },
+    )
+    .map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!("failed to build core command summary: {error}"),
+        )
+    })
+}
+
+fn why_target_summary(
+    detail_json: &str,
+    root: &std::path::Path,
+    source_context: &SourceTreeReportContext,
+    target_path: &str,
+    queried_line: u32,
+    inventory_facts: crate::InventoryFacts,
+) -> CargoAllowResult<crate::core_command_summary::CoreCommandSummaryV1> {
+    let semantic_identity =
+        crate::core_command_router::canonical_semantic_identity(detail_json, Some(root))?;
+    let completeness = crate::core_command_router::summary_completeness(&inventory_facts);
+    let coverage_limitation = (completeness != effortless_repo_protocol::CompletenessV1::Complete)
+        .then(|| crate::core_command_router::partial_coverage_reason(&inventory_facts));
+    let location = format!("{target_path}:{queried_line}");
+    let mut subject = crate::core_command_summary::CoreSourceSubjectV1 {
+        kind: crate::core_command_summary::CoreSourceSubjectKindV1::ScopedPath,
+        repository_identity: format!("local-repository:{semantic_identity}"),
+        portable_identity: format!(
+            "scoped:target-scan:{location}:{}:current-unpinned",
+            source_context.inventory_source()
+        ),
+        base: None,
+        head: None,
+        paths: vec![target_path.to_string()],
+        limitations: vec![
+            "the current worktree result is not bound to a commit, tree, or Git-index identity"
+                .to_string(),
+        ],
+    };
+    if let Some(limitation) = coverage_limitation.as_ref() {
+        subject.limitations.push(limitation.clone());
+    }
+    let suggested_actions = vec![
+        format!("Repair or reduce the target so the Rust scanner can inspect `{target_path}`."),
+        "Re-run cargo-allow why after the target scan is complete.".to_string(),
+    ];
+    crate::core_command_summary::core_command_summary_from_why(
+        crate::core_command_summary::WhySummaryFactsV1 {
+            tool_version: env!("CARGO_PKG_VERSION").to_string(),
+            subject,
+            completeness,
+            coverage_limitation: None,
+            location,
+            outcome_status: MatchStatus::New,
+            matched_allow_id: None,
+            near_miss_candidate_count: 0,
+            suggested_actions,
+            plan_path: None,
+            claim_boundary: effortless_repo_protocol::ClaimBoundaryV1::new(
+                "cargo-allow could not fully scan the selected source target, so no finding or add-finding plan was produced",
+            )
+            .with_limitations(vec![
+                "the result is non-green and does not establish whether the target contains no findings"
+                    .to_string(),
+                "macro expansion, type information, MIR, control flow, and data flow were not analyzed"
+                    .to_string(),
+            ]),
+        },
+    )
+    .map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!("failed to build target scan summary: {error}"),
+        )
+    })
+}
+
+/// Name the written plan the way an operator can act on it: source-tree
+/// relative when it lives under the root, otherwise its normalized path.
+fn plan_write_path(root: &std::path::Path, plan_path: &std::path::Path) -> String {
+    crate::portable_relative_under_root(root, plan_path)
+        .map(|relative| normalize_path(&relative))
+        .unwrap_or_else(|_| allow_report::source_tree_path_text(plan_path))
 }
 
 fn output_path_resolution_error(

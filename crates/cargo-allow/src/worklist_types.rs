@@ -90,3 +90,28 @@ pub(super) struct WorklistFilters<'a> {
     pub(super) broken_evidence: bool,
     pub(super) weak_evidence: bool,
 }
+
+impl WorklistFilters<'_> {
+    /// Whether any filter narrowed the listing.
+    ///
+    /// A filtered queue only ever describes the slice it listed, so an empty
+    /// filtered queue must not be reported as a clean repository.
+    pub(super) fn any_active(&self) -> bool {
+        self.kind.is_some()
+            || self.family.is_some()
+            || self.item_kind.is_some()
+            || self.status.is_some()
+            || self.allow_id.is_some()
+            || self.path.is_some()
+            || self.source_package.is_some()
+            || self.owner.is_some()
+            || self.classification.is_some()
+            || self.risk.is_some()
+            || self.difficulty.is_some()
+            || self.baseline_debt
+            || self.broad_scope
+            || self.missing_evidence
+            || self.broken_evidence
+            || self.weak_evidence
+    }
+}

@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  Resolve each crate's own version when verifying packaged archives in the
+  package candidate smoke, instead of reusing a version left over from the
+  previous loop. Crates on an independent release line were looked up under
+  the wrong archive name and failed the path-dependency assertion.

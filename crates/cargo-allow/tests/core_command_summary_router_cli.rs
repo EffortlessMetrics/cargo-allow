@@ -22,26 +22,271 @@ const GRAMMAR_FIELDS: [&str; 8] = [
     "Not proven:",
 ];
 
+/// Argv for the inspection commands, which need a subject argument to have
+/// anything to inspect.
+const EXPLAIN_ARGV: &[&str] = &["explain", "allow-0001"];
+const WHY_ARGV: &[&str] = &[
+    "why",
+    "--kind",
+    "panic",
+    "--path",
+    "src/lib.rs",
+    "--line",
+    "1",
+];
+const WORKLIST_ARGV: &[&str] = &["worklist"];
+
+/// Every command that projects the summary.
+const GRAMMAR_COMMANDS: [&[&str]; 6] = [
+    &["adopt"],
+    &["doctor"],
+    &["audit"],
+    EXPLAIN_ARGV,
+    WHY_ARGV,
+    WORKLIST_ARGV,
+];
+
 #[test]
 fn first_hour_commands_share_one_operator_grammar() -> Result<(), String> {
     let root = temp_root("summary-grammar")?;
-    write_source(&root, "pub fn value() -> u8 { 1 }\n")?;
+    // `explain` and `why` need a ledger and an unreceipted finding to inspect,
+    // so the fixture carries both. `adopt`, `doctor`, `audit`, and `worklist`
+    // are unaffected by their presence.
+    write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
+    run(&root, &["init"])?;
 
-    for command in ["adopt", "doctor", "audit"] {
-        let output = run(&root, &[command])?;
+    for command in GRAMMAR_COMMANDS {
+        let output = run(&root, command)?;
         let text = stdout(&output)?;
-        // Walk the fields in order over an advancing suffix. `split_at` keeps
-        // this free of panic-family slicing, which this repository's own
-        // source-exception ledger tracks.
-        let mut rest = text.as_str();
+        // Assert the *first eight lines*, not merely that the labels appear
+        // somewhere. Several commands repeat words like `Why:` inside their
+        // detailed section, so a search-anywhere check would still pass if the
+        // summary were not prepended at all.
+        let mut lines = text.lines();
         for field in GRAMMAR_FIELDS {
-            let found = rest.find(field).ok_or_else(|| {
-                format!("`{command}` human output is missing `{field}` in order; got:\n{text}")
+            let line = lines.next().ok_or_else(|| {
+                format!(
+                    "`{command:?}` human output ended before summary line `{field}`; got:\n{text}"
+                )
             })?;
-            let (_, tail) = rest.split_at(found + field.len());
-            rest = tail;
+            require(
+                line.starts_with(field),
+                format!("`{command:?}` summary line must start with `{field}`; got `{line}`"),
+            )?;
         }
     }
+
+    remove_temp_root(root)
+}
+
+#[test]
+fn inspection_commands_emit_a_read_only_summary_sidecar() -> Result<(), String> {
+    let root = temp_root("summary-inspection")?;
+    write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
+    run(&root, &["init"])?;
+
+    for (label, command) in [
+        ("explain", EXPLAIN_ARGV),
+        ("why", WHY_ARGV),
+        ("worklist", WORKLIST_ARGV),
+    ] {
+        let sidecar = root.join(format!("{label}-summary.json"));
+        let mut argv = vec!["--command-summary-output"];
+        let sidecar_text = sidecar.to_string_lossy().to_string();
+        argv.push(&sidecar_text);
+        argv.extend(command.iter().copied());
+        let text = stdout(&run(&root, &argv)?)?;
+        let summary: Value = serde_json::from_str(
+            &fs::read_to_string(&sidecar)
+                .map_err(|error| format!("read {label} summary: {error}"))?,
+        )
+        .map_err(|error| format!("parse {label} summary: {error}"))?;
+
+        require(
+            field(&summary, &["operation"]) == Some(&Value::from(label)),
+            format!("{label} summary must name its own operation"),
+        )?;
+        let reason = field(&summary, &["reason", "message"])
+            .and_then(Value::as_str)
+            .ok_or_else(|| format!("{label} summary needs a human reason"))?;
+        require(
+            text.contains(reason),
+            format!("{label} human `Why:` must match the summary reason"),
+        )?;
+        // None of these three writes anything without `why --plan`.
+        require(
+            field(&summary, &["operation_effects", "writes_repository"])
+                == Some(&Value::Bool(false)),
+            format!("{label} is read-only"),
+        )?;
+        require(
+            text.contains("Writes: nothing in this operation"),
+            format!("{label} must state its read-only posture in the summary"),
+        )?;
+    }
+
+    remove_temp_root(root)
+}
+
+#[test]
+fn why_plan_reports_the_candidate_write_it_performed() -> Result<(), String> {
+    let root = temp_root("summary-why-plan")?;
+    write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
+    run(&root, &["init"])?;
+    // An add-finding plan requires an exact evaluation, which requires a
+    // committed Git inventory rather than the filesystem fallback.
+    git_commit_fixture(&root)?;
+
+    let sidecar = root.join("why-summary.json");
+    let sidecar_text = sidecar.to_string_lossy().to_string();
+    let plan = root.join("add-finding.plan.json");
+    let plan_text = plan.to_string_lossy().to_string();
+    let mut argv = vec!["--command-summary-output", &sidecar_text];
+    argv.extend(WHY_ARGV.iter().copied());
+    argv.push("--plan");
+    argv.push(&plan_text);
+    run(&root, &argv)?;
+
+    require(
+        plan.exists(),
+        "why --plan must write its candidate artifact",
+    )?;
+    let summary: Value = serde_json::from_str(
+        &fs::read_to_string(&sidecar).map_err(|error| format!("read why summary: {error}"))?,
+    )
+    .map_err(|error| format!("parse why summary: {error}"))?;
+    require(
+        field(&summary, &["operation_effects", "writes_repository"]) == Some(&Value::Bool(true)),
+        "why --plan is not read-only",
+    )?;
+    require(
+        field(&summary, &["operation_effects", "write_paths"])
+            == Some(&Value::from(vec!["add-finding.plan.json"])),
+        format!(
+            "the summary must name the exact plan path, got {:?}",
+            field(&summary, &["operation_effects", "write_paths"])
+        ),
+    )?;
+
+    remove_temp_root(root)
+}
+
+/// `why` writes `--plan` relative to the working directory, so resolving the
+/// summary conflict list only under `--root` let a relative `--root` hide a
+/// real collision: the sidecar then overwrote the plan it was meant to spare.
+#[test]
+fn why_plan_conflicts_with_the_summary_across_resolution_bases() -> Result<(), String> {
+    let root = temp_root("summary-why-plan-base")?;
+    write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
+    run(&root, &["init"])?;
+    git_commit_fixture(&root)?;
+
+    let parent = root
+        .parent()
+        .ok_or_else(|| "temp root needs a parent".to_string())?
+        .to_path_buf();
+    let name = root
+        .file_name()
+        .ok_or_else(|| "temp root needs a name".to_string())?
+        .to_string_lossy()
+        .to_string();
+    // From `parent`, both artifacts name the same file: the plan resolves
+    // against the working directory, the sidecar against `--root`.
+    let plan_arg = format!("{name}/collision.json");
+    let mut argv = vec!["--command-summary-output", "collision.json"];
+    argv.extend(WHY_ARGV.iter().copied());
+    argv.push("--plan");
+    argv.push(&plan_arg);
+    let output = Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+        .current_dir(&parent)
+        .args(&argv)
+        .arg("--root")
+        .arg(&name)
+        .output()
+        .map_err(|error| format!("run {argv:?}: {error}"))?;
+
+    require(
+        !output.status.success(),
+        format!(
+            "the collision must be refused, got {:?} / {}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        ),
+    )?;
+    require(
+        String::from_utf8_lossy(&output.stderr).contains("--command-summary-output must differ"),
+        format!(
+            "the refusal must name the conflicting flags, got {}",
+            String::from_utf8_lossy(&output.stderr)
+        ),
+    )?;
+    // The plan is written before the summary stage, so the guard's job is to
+    // refuse rather than to prevent the write: what must not happen is the
+    // sidecar replacing the plan on its way out.
+    let artifact = fs::read_to_string(root.join("collision.json"))
+        .map_err(|error| format!("read the contested artifact: {error}"))?;
+    let artifact: Value = serde_json::from_str(&artifact)
+        .map_err(|error| format!("parse the contested artifact: {error}"))?;
+    require(
+        field(&artifact, &["operation_effects"]).is_none(),
+        "the add-finding plan must survive; the summary must not overwrite it",
+    )?;
+
+    remove_temp_root(root)
+}
+
+/// The mirror of the case above: `adopt` resolves `--output` under the root, so
+/// a root-relative output that merely *looks* like the sidecar path under the
+/// working-directory base targets a different file and must still be allowed.
+#[test]
+fn adopt_output_is_not_a_conflict_when_only_the_wrong_base_would_collide() -> Result<(), String> {
+    let root = temp_root("summary-adopt-base")?;
+    write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
+    run(&root, &["init"])?;
+    git_commit_fixture(&root)?;
+
+    let parent = root
+        .parent()
+        .ok_or_else(|| "temp root needs a parent".to_string())?
+        .to_path_buf();
+    let name = root
+        .file_name()
+        .ok_or_else(|| "temp root needs a name".to_string())?
+        .to_string_lossy()
+        .to_string();
+    // `adopt --output <name>/plan.json` resolves under the root, so it lands on
+    // `<root>/<name>/plan.json` — not the sidecar's `<root>/plan.json`. Only the
+    // working-directory base would make these two collide.
+    let output_arg = format!("{name}/plan.json");
+    let output = Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+        .current_dir(&parent)
+        .args(["--command-summary-output", "plan.json", "adopt"])
+        .args(["--output", &output_arg])
+        .arg("--root")
+        .arg(&name)
+        .output()
+        .map_err(|error| format!("run adopt: {error}"))?;
+
+    require(
+        !String::from_utf8_lossy(&output.stderr).contains("--command-summary-output must differ"),
+        format!(
+            "distinct files must not be refused as a conflict, got {}",
+            String::from_utf8_lossy(&output.stderr)
+        ),
+    )?;
+    // Absence of the conflict message is not acceptance: without these the test
+    // would also pass if adopt had failed for some unrelated reason.
+    require(
+        output.status.success(),
+        format!(
+            "adopt must succeed on distinct paths, got {}",
+            String::from_utf8_lossy(&output.stderr)
+        ),
+    )?;
+    require(
+        root.join("plan.json").is_file(),
+        "the sidecar must actually be written to the accepted path",
+    )?;
 
     remove_temp_root(root)
 }
@@ -227,6 +472,39 @@ fn run(root: &Path, args: &[&str]) -> Result<Output, String> {
 
 fn stdout(output: &Output) -> Result<String, String> {
     String::from_utf8(output.stdout.clone()).map_err(|error| error.to_string())
+}
+
+/// Commit the fixture so the Git inventory, not the filesystem fallback,
+/// backs the scan.
+fn git_commit_fixture(root: &Path) -> Result<(), String> {
+    for args in [
+        vec!["init", "-q"],
+        vec!["add", "-A"],
+        vec![
+            "-c",
+            "user.email=fixture@example.invalid",
+            "-c",
+            "user.name=fixture",
+            "commit",
+            "-q",
+            "-m",
+            "fixture",
+        ],
+    ] {
+        let output = Command::new("git")
+            .current_dir(root)
+            .args(&args)
+            .output()
+            .map_err(|error| format!("git {args:?}: {error}"))?;
+        require(
+            output.status.success(),
+            format!(
+                "git {args:?} failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            ),
+        )?;
+    }
+    Ok(())
 }
 
 fn write_source(root: &Path, source: &str) -> Result<(), String> {

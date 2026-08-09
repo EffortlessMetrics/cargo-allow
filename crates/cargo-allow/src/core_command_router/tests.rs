@@ -147,7 +147,10 @@ fn summary_sidecar_is_structured_and_rejects_output_collision() -> Result<(), St
     let root = temp_root("sidecar").map_err(|error| error.to_string())?;
     let detail = root.join("report.json");
     let summary = root.join("summary.json");
-    let config = SummaryOutputConfig::new(summary.clone(), vec![detail.clone()]);
+    let config = SummaryOutputConfig::new(
+        summary.clone(),
+        vec![(ConflictBase::WorkingDirectory, detail.clone())],
+    );
     print_report_with_summary_config(
         report_args(
             &root,
@@ -168,7 +171,10 @@ fn summary_sidecar_is_structured_and_rejects_output_collision() -> Result<(), St
         schema_id == Some(crate::core_command_summary::CORE_COMMAND_SUMMARY_SCHEMA_ID),
         "summary sidecar schema ID is missing",
     )?;
-    let collision = SummaryOutputConfig::new(detail.clone(), vec![detail.clone()]);
+    let collision = SummaryOutputConfig::new(
+        detail.clone(),
+        vec![(ConflictBase::WorkingDirectory, detail.clone())],
+    );
     let error = print_report_with_summary_config(
         report_args(
             &root,
@@ -182,6 +188,44 @@ fn summary_sidecar_is_structured_and_rejects_output_collision() -> Result<(), St
     )
     .err()
     .ok_or_else(|| "summary/detail collision should fail".to_string())?;
+    require(
+        error.kind() == CargoAllowErrorKind::Usage,
+        format!("collision used the wrong error kind: {}", error.code()),
+    )?;
+    fs::remove_dir_all(root).map_err(|error| error.to_string())
+}
+
+/// An absolute working-directory conflict resolves to itself, so the collision
+/// must be found without consulting the process working directory. This pins the
+/// case that matters if `current_dir()` is ever unavailable: the guard must still
+/// refuse, rather than skip the comparison and let the sidecar clobber the
+/// artifact (an absolute `why --plan` target being the reachable example).
+#[test]
+fn an_absolute_working_directory_conflict_is_caught_independently_of_the_cwd() -> Result<(), String>
+{
+    let root = temp_root("abs-conflict").map_err(|error| error.to_string())?;
+    let detail = root.join("plan.json");
+    require(
+        detail.is_absolute(),
+        "fixture must use an absolute conflict path to exercise the base-free branch",
+    )?;
+    let collision = SummaryOutputConfig::new(
+        detail.clone(),
+        vec![(ConflictBase::WorkingDirectory, detail.clone())],
+    );
+    let error = print_report_with_summary_config(
+        report_args(
+            &root,
+            Some(&detail),
+            OutputFormat::Json,
+            &[],
+            &[],
+            crate::InventoryFacts::scanned(InventorySource::GitTracked, 1),
+        ),
+        Some(&collision),
+    )
+    .err()
+    .ok_or_else(|| "absolute working-directory collision should fail".to_string())?;
     require(
         error.kind() == CargoAllowErrorKind::Usage,
         format!("collision used the wrong error kind: {}", error.code()),
