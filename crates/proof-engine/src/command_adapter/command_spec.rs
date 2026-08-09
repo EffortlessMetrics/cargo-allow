@@ -69,7 +69,6 @@ pub fn reject_prose_as_executable(prose: &str) -> Result<(), CommandSpecError> {
     }
     if trimmed.contains("cargo-allow")
         || trimmed.contains("```")
-        || trimmed.starts_with("rtk ")
         || trimmed.contains(" --")
     {
         return Err(CommandSpecError::ProseNotExecutable);
