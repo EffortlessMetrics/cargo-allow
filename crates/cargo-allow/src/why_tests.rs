@@ -484,10 +484,17 @@ fn target_scan_renderers_report_partial_scope_without_a_finding() -> Result<(), 
         ));
     }
 
-    let text = render_why_target_scan_text(evaluation, inventory, "src/large.rs", "skipped", None);
+    let text = render_why_target_scan_text(
+        evaluation,
+        inventory,
+        "src/large.rs",
+        "skipped",
+        Some("file exceeds scanner limit"),
+    );
     for expected in [
         "src/large.rs",
         "status: skipped",
+        "reason: file exceeds scanner limit",
         "result_class: target_scanner_partial",
         "No finding was selected",
     ] {

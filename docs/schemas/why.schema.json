@@ -107,9 +107,10 @@
   "allOf": [
     {
       "if": {
-        "required": ["evaluation", "target"],
+        "required": ["evaluation"],
         "properties": {
           "evaluation": {
+            "required": ["result_class"],
             "properties": {
               "result_class": { "const": "target_scanner_partial" }
             }
