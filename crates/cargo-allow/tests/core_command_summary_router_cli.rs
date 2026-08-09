@@ -399,6 +399,60 @@ fn summary_commands_emit_a_read_only_summary_sidecar() -> Result<(), String> {
 }
 
 #[test]
+fn triage_summary_matrix_preserves_read_only_and_judgment_boundaries() -> Result<(), String> {
+    let root = temp_root("summary-triage-matrix")?;
+    write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
+    run(&root, &["init"])?;
+    git_commit_fixture(&root)?;
+
+    let list = run(&root, &["list", "--format", "json"])?;
+    let list_json: Value = serde_json::from_slice(&list.stdout)
+        .map_err(|error| format!("parse list triage summary: {error}"))?;
+    let list_summary = list_json
+        .get("core_command_summary")
+        .ok_or_else(|| "list JSON omitted the common summary".to_string())?;
+    require(
+        field(list_summary, &["operation"]) == Some(&Value::from("list"))
+            && field(list_summary, &["operation_effects", "writes_repository"])
+                == Some(&Value::Bool(false)),
+        format!("list must remain a read-only common summary: {list_summary}"),
+    )?;
+
+    for (label, command) in [("why", WHY_ARGV), ("worklist", WORKLIST_ARGV)] {
+        let sidecar = root.join(format!("{label}-triage-summary.json"));
+        let sidecar_text = sidecar.to_string_lossy().to_string();
+        let mut argv = vec!["--command-summary-output", &sidecar_text];
+        argv.extend(command.iter().copied());
+        let output = run(&root, &argv)?;
+        let summary: Value = serde_json::from_str(
+            &fs::read_to_string(&sidecar)
+                .map_err(|error| format!("read {label} triage summary: {error}"))?,
+        )
+        .map_err(|error| format!("parse {label} triage summary: {error}"))?;
+
+        require(
+            field(&summary, &["operation"]) == Some(&Value::from(label))
+                && field(&summary, &["operation_effects", "writes_repository"])
+                    == Some(&Value::Bool(false)),
+            format!("{label} must remain read-only: {summary}"),
+        )?;
+        if let Some(action) = summary.get("primary_action") {
+            require(
+                field(action, &["kind"]) == Some(&Value::from("decision"))
+                    && field(action, &["program"]).is_none(),
+                format!("{label} repository-controlled next step must remain a decision: {action}"),
+            )?;
+        }
+        require(
+            !output.stdout.windows(2).any(|pair| pair == [0x1b, b'[']),
+            format!("{label} summary unexpectedly emitted an ANSI escape"),
+        )?;
+    }
+
+    remove_temp_root(root)
+}
+
+#[test]
 fn why_plan_reports_the_candidate_write_it_performed() -> Result<(), String> {
     let root = temp_root("summary-why-plan")?;
     write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
