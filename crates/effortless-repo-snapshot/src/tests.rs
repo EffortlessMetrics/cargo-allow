@@ -14,7 +14,7 @@ fn source_tree_ignore_patterns_match_without_unchecked_slicing() -> Result<(), S
     let cases = [
         ("src/lib.rs", true),
         ("generated/schema.rs", true),
-        ("src-other/lib.rs", false),
+        ("other/src/lib.rs", false),
         ("README.md", false),
     ];
     for (path, expected) in cases {
