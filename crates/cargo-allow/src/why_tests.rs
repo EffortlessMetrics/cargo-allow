@@ -5,6 +5,7 @@ use allow_core::{
     AllowEntry, Finding, FindingKind, Lifecycle, MatchOutcome, MatchStatus, Selector, Span,
     StructuralIdentity, normalize_path,
 };
+use allow_report::EvaluationContext;
 use clap::Parser;
 use serde_json::Value;
 use std::error::Error;
