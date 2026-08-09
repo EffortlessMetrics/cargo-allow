@@ -322,6 +322,198 @@ pub fn core_command_summary_from_propose(
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AddSummaryFactsV1 {
+    pub repository_identity: String,
+    pub portable_identity: String,
+    pub write_path: Option<String>,
+    pub live_update: bool,
+    pub candidate_write: bool,
+    pub dry_run: bool,
+    pub completeness: CompletenessV1,
+    pub entry_id: String,
+    pub kind: String,
+    pub scope: String,
+}
+
+pub fn core_command_summary_from_add(
+    facts: AddSummaryFactsV1,
+) -> Result<CoreCommandSummaryV1, String> {
+    let AddSummaryFactsV1 {
+        repository_identity,
+        portable_identity,
+        write_path,
+        live_update,
+        candidate_write,
+        dry_run,
+        completeness,
+        entry_id,
+        kind,
+        scope,
+    } = facts;
+    let complete = completeness == CompletenessV1::Complete;
+    let mut primary_action = if live_update {
+        CoreCommandActionV1::command(
+            "add.explain_entry",
+            "Inspect the newly retained entry",
+            "cargo-allow",
+            vec!["explain".to_string(), entry_id.clone()],
+        )
+        .with_contract(
+            "add records the selected typed finding as one policy entry",
+            "the entry's selector, evidence, ownership, and lifecycle fields are shown",
+            "entry inspection does not prove the repository passes the no-new gate",
+        )
+    } else {
+        CoreCommandActionV1::decision(
+            "add.review_candidate",
+            "Review the generated policy entry before relying on it",
+        )
+        .with_contract(
+            "candidate or preview output is not human approval",
+            "a maintainer reviews ownership, reason, evidence, and scope",
+            "the summary does not establish that the exception is justified",
+        )
+    };
+    if dry_run {
+        let write_posture = if live_update {
+            CoreCommandWritePostureV1::LiveMutation
+        } else {
+            CoreCommandWritePostureV1::CandidateWrite
+        };
+        if let Some(path) = write_path.clone() {
+            primary_action = primary_action.with_write_posture(write_posture, vec![path]);
+        }
+    }
+    let next_proof = if live_update {
+        Some(
+            CoreCommandActionV1::command(
+                "add.full_no_new_check",
+                "Run the enforcing no-new check",
+                "cargo-allow",
+                vec![
+                    "check".to_string(),
+                    "--mode".to_string(),
+                    "no-new".to_string(),
+                ],
+            )
+            .with_contract(
+                "entry inspection is targeted confirmation, not full repository proof",
+                "the current source tree is evaluated under the no-new gate",
+                "source-syntax evaluation does not prove compiled or runtime correctness",
+            ),
+        )
+    } else {
+        write_path.clone().map(|path| {
+            CoreCommandActionV1::command(
+                "add.targeted_no_new_check",
+                "Run the no-new check against the candidate policy",
+                "cargo-allow",
+                vec![
+                    "check".to_string(),
+                    "--mode".to_string(),
+                    "no-new".to_string(),
+                    "--config".to_string(),
+                    path,
+                ],
+            )
+            .with_contract(
+                "candidate generation and review do not prove policy posture",
+                "the source tree is evaluated against the written candidate policy",
+                "source-syntax evaluation does not prove compiled or runtime correctness",
+            )
+        })
+    };
+    let (result_class, posture) = if !complete {
+        (ResultClassV1::PartialData, CoreCommandPostureV1::Blocking)
+    } else if live_update && !dry_run {
+        (ResultClassV1::Completed, CoreCommandPostureV1::Satisfied)
+    } else {
+        (ResultClassV1::Completed, CoreCommandPostureV1::Advisory)
+    };
+    let operation_effects = if live_update && !dry_run {
+        CoreCommandEffectsV1 {
+            reads_repository: true,
+            writes_repository: true,
+            executes_repository_code: false,
+            invokes_network: false,
+            write_paths: write_path.clone().into_iter().collect(),
+            explicit_non_effects: vec![
+                "does not execute repository code or external evidence tools".to_string(),
+            ],
+        }
+    } else if candidate_write && !dry_run {
+        CoreCommandEffectsV1 {
+            reads_repository: true,
+            writes_repository: true,
+            executes_repository_code: false,
+            invokes_network: false,
+            write_paths: write_path.clone().into_iter().collect(),
+            explicit_non_effects: vec![
+                "does not update the discovered live policy unless --update is used".to_string(),
+                "does not execute repository code or external evidence tools".to_string(),
+            ],
+        }
+    } else {
+        CoreCommandEffectsV1::read_only(vec![
+            "does not persist a policy entry in this operation".to_string(),
+            "does not execute repository code or external evidence tools".to_string(),
+        ])
+    };
+    let message = if dry_run {
+        format!("would add {kind} entry {entry_id} for {scope}")
+    } else if live_update {
+        format!("added {kind} entry {entry_id} for {scope}")
+    } else if candidate_write {
+        format!("wrote candidate {kind} entry {entry_id} for {scope}")
+    } else {
+        format!("generated candidate {kind} entry {entry_id} for {scope}")
+    };
+    build_core_command_summary(CoreCommandSummaryInputV1 {
+        tool_version: env!("CARGO_PKG_VERSION").to_string(),
+        operation: "add".to_string(),
+        mode: None,
+        profile: None,
+        subject: CoreSourceSubjectV1 {
+            kind: CoreSourceSubjectKindV1::Worktree,
+            repository_identity,
+            portable_identity,
+            base: None,
+            head: None,
+            paths: write_path.into_iter().collect(),
+            limitations: vec![
+                "the current worktree result is not bound to a commit, tree, or Git-index identity"
+                    .to_string(),
+            ],
+        },
+        result_class,
+        posture,
+        completeness,
+        currentness: CurrentnessV1::Current,
+        reason: CoreCommandReasonV1 {
+            code: if dry_run {
+                "add.preview".to_string()
+            } else if live_update {
+                "add.live_entry".to_string()
+            } else {
+                "add.candidate_entry".to_string()
+            },
+            message,
+        },
+        primary_action: Some(primary_action),
+        additional_action_count: 0,
+        additional_actions_ref: None,
+        operation_effects,
+        next_proof,
+        artifacts: Vec::new(),
+        claim_boundary: ClaimBoundaryV1::new("selected policy entry and write posture only")
+            .with_limitations(vec![
+                "human ownership, reason, evidence, and scope remain operator claims".to_string(),
+                "the summary does not prove compiled or runtime correctness".to_string(),
+            ]),
+    })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiffSummaryFactsV1 {
     pub repository_identity: String,
     pub portable_identity: String,

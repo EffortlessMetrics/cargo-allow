@@ -206,6 +206,55 @@ fn core_command_summary_propose_distinguishes_candidate_output_and_write() -> Re
 }
 
 #[test]
+fn core_command_summary_add_distinguishes_preview_candidate_and_live_entry() -> Result<(), String> {
+    let candidate = core_command_summary_from_add(AddSummaryFactsV1 {
+        repository_identity: "local-repository:test".to_string(),
+        portable_identity: "worktree:add:policy/allow.proposed.toml".to_string(),
+        write_path: Some("policy/allow.proposed.toml".to_string()),
+        live_update: false,
+        candidate_write: true,
+        dry_run: false,
+        completeness: CompletenessV1::Complete,
+        entry_id: "allow-0001".to_string(),
+        kind: "panic".to_string(),
+        scope: "src/lib.rs:1".to_string(),
+    })?;
+    ensure(
+        candidate.posture == CoreCommandPostureV1::Advisory
+            && candidate.operation_effects.writes_repository
+            && candidate.operation_effects.write_paths == vec!["policy/allow.proposed.toml"]
+            && candidate.next_proof.is_some(),
+        "candidate add must remain advisory and name its written policy target",
+    )?;
+
+    let live = core_command_summary_from_add(AddSummaryFactsV1 {
+        repository_identity: "local-repository:test".to_string(),
+        portable_identity: "worktree:add:policy/allow.toml".to_string(),
+        write_path: Some("policy/allow.toml".to_string()),
+        live_update: true,
+        candidate_write: false,
+        dry_run: false,
+        completeness: CompletenessV1::Complete,
+        entry_id: "allow-0001".to_string(),
+        kind: "panic".to_string(),
+        scope: "src/lib.rs:1".to_string(),
+    })?;
+    ensure(
+        live.posture == CoreCommandPostureV1::Satisfied
+            && live.operation_effects.writes_repository
+            && live
+                .primary_action
+                .as_ref()
+                .is_some_and(|action| action.args == vec!["explain", "allow-0001"])
+            && live
+                .next_proof
+                .as_ref()
+                .is_some_and(|action| action.args == vec!["check", "--mode", "no-new"]),
+        "live add must separate targeted entry inspection from full proof",
+    )
+}
+
+#[test]
 fn core_command_summary_diff_preserves_revision_and_completeness_posture() -> Result<(), String> {
     let complete = core_command_summary_from_diff(DiffSummaryFactsV1 {
         repository_identity: "local-repository:test".to_string(),

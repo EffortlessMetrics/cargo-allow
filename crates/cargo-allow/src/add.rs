@@ -291,24 +291,40 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         (entry, summary)
     };
 
-    cfg.allow.push(entry);
+    cfg.allow.push(entry.clone());
     validate_policy(&cfg)?;
     let evidence_source_tree_files =
         current_evidence_source_tree_files(&root, args.include_untracked);
     validate_evidence_references_for_source_tree(&root, &cfg, evidence_source_tree_files.as_ref())?;
     let rendered = render_policy(&cfg);
+    let live_policy_target = args
+        .update
+        .then(|| git_relative_config_path(&root, args.config.as_deref()))
+        .transpose()?;
+    let common_write_path = live_policy_target
+        .as_deref()
+        .or(mutation_target.as_deref())
+        .map(|path| portable_relative_under_root(&root, path))
+        .transpose()?
+        .map(|path| {
+            path.to_string_lossy()
+                .replace(std::path::MAIN_SEPARATOR, "/")
+        });
     if args.dry_run {
         // --dry-run: compute and validate the entry, print it, but skip the
         // write/replace (#3189).
         emit_text(args.summary_output.as_deref(), &rendered)?;
         eprintln!("dry-run: no files written (--dry-run)");
-        return Ok(());
-    }
-    if args.update {
-        let policy_target = git_relative_config_path(&root, args.config.as_deref())?;
+    } else if args.update {
+        let policy_target = live_policy_target.as_deref().ok_or_else(|| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Internal,
+                "internal error: live add target was not resolved",
+            )
+        })?;
         apply_single_target(SingleTargetApplyRequest {
             repository_root: &root,
-            target: &policy_target,
+            target: policy_target,
             contents: &rendered,
             caller_reference: Some("cargo-allow:add"),
             lock_identity: Some(
@@ -345,6 +361,39 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         eprintln!(
             "Nothing was persisted. Rerun with --update to write this entry into the live policy."
         );
+    }
+    let core_summary = crate::core_command_summary::core_command_summary_from_add(
+        crate::core_command_summary::AddSummaryFactsV1 {
+            repository_identity: "local-repository:current".to_string(),
+            portable_identity: format!(
+                "worktree:add:{}",
+                common_write_path.as_deref().unwrap_or("stdout")
+            ),
+            write_path: common_write_path,
+            live_update: args.update,
+            candidate_write: args.write.is_some(),
+            dry_run: args.dry_run,
+            completeness: crate::core_command_router::summary_completeness(&inventory_facts),
+            entry_id: entry.id.clone(),
+            kind: entry.kind.to_string(),
+            scope: entry.path_or_glob(),
+        },
+    )
+    .map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!("failed to build add command summary: {error}"),
+        )
+    })?;
+    crate::core_command_router::write_summary_artifact(&root, &core_summary)?;
+    if args.summary_format == HumanJsonFormat::Human {
+        eprint!(
+            "{}",
+            crate::core_command_summary::render_core_command_summary_human(&core_summary)
+        );
+    }
+    if args.dry_run {
+        return Ok(());
     }
     emit_stderr_text(args.summary_output.as_deref(), &summary)?;
     Ok(())

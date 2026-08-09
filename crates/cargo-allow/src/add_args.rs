@@ -9,7 +9,7 @@ pub(crate) struct AddArgs {
     pub(super) root: RootArgs,
     /// Policy config path.
     #[arg(long)]
-    pub(super) config: Option<PathBuf>,
+    pub(crate) config: Option<PathBuf>,
     /// Finding kind to add. Required for ordinary target selection; omitted with
     /// `--from-plan`, where the kind is taken from the plan.
     /// Same vocabulary as check/audit/diff: panic, unsafe, lint-exception,
@@ -72,7 +72,7 @@ pub(crate) struct AddArgs {
     pub(super) include_untracked: bool,
     /// Write proposed policy to this path.
     #[arg(long)]
-    pub(super) write: Option<PathBuf>,
+    pub(crate) write: Option<PathBuf>,
     /// Overwrite an existing output policy file.
     #[arg(long)]
     pub(super) force: bool,
@@ -81,7 +81,7 @@ pub(crate) struct AddArgs {
     /// result, and atomically replaces it. Recommended for adding one receipt.
     /// Mutually exclusive with --write.
     #[arg(long, conflicts_with = "write")]
-    pub(super) update: bool,
+    pub(crate) update: bool,
     /// Preview the entry that would be added without writing any file (#3189).
     /// Compatible with --write and --update: computes and validates the entry,
     /// prints it to stdout, but skips the atomic write/replace.
@@ -98,12 +98,12 @@ pub(crate) struct AddArgs {
         requires = "update",
         conflicts_with_all = ["write", "force", "path", "line", "glob", "family", "callee"]
     )]
-    pub(super) from_plan: Option<PathBuf>,
+    pub(crate) from_plan: Option<PathBuf>,
     /// Summary output format. JSON requires --summary-output so it cannot be
     /// mixed with policy or warning text on stderr. Policy output remains TOML.
     #[arg(long, value_enum, default_value_t = HumanJsonFormat::Human)]
     pub(super) summary_format: HumanJsonFormat,
     /// Write add summary to a file. Required with --summary-format json.
     #[arg(long)]
-    pub(super) summary_output: Option<PathBuf>,
+    pub(crate) summary_output: Option<PathBuf>,
 }
