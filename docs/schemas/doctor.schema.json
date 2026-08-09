@@ -14,6 +14,7 @@
     "root",
     "config",
     "inventory",
+    "scanner",
     "file_families",
     "federation",
     "evidence_repair_queues"
@@ -164,6 +165,66 @@
     },
     "inventory": {
       "$ref": "#/$defs/inventory"
+    },
+    "scanner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "completeness",
+        "rust"
+      ],
+      "properties": {
+        "completeness": {
+          "enum": [
+            "complete",
+            "partial",
+            "unknown"
+          ],
+          "description": "Rust scanner coverage classification. unknown means no Rust files were selected; it is not a complete scan claim."
+        },
+        "rust": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "files_considered",
+            "files_scanned",
+            "files_skipped",
+            "files_with_parse_errors",
+            "skipped_by_reason"
+          ],
+          "properties": {
+            "files_considered": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "files_scanned": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "files_skipped": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "files_with_parse_errors": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "skipped_by_reason": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "read_failed_or_unsupported"
+              ],
+              "properties": {
+                "read_failed_or_unsupported": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "file_families": {
       "type": "object",

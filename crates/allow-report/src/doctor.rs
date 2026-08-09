@@ -85,6 +85,20 @@ pub fn render_doctor_human_styled(facts: DoctorReport<'_>, style: Style) -> Stri
         facts.inventory_source,
         doctor_inventory_suffix(facts)
     ));
+    out.push_str(&format!(
+        "Rust scanner: completeness={} files considered={} scanned={} skipped={} parse errors={}\n",
+        facts.rust_scanner_completeness,
+        facts.rust_files_considered,
+        facts.rust_files_scanned,
+        facts.rust_files_skipped,
+        facts.rust_files_with_parse_errors
+    ));
+    if facts.rust_files_skipped > 0 {
+        out.push_str(&format!(
+            "Rust scanner warning: {} file(s) skipped (read failed, non-UTF-8, or unsupported size)\n",
+            facts.rust_files_skipped
+        ));
+    }
     if facts.empty_git_tracked {
         out.push_str(
             "inventory warning: git reported no tracked files; newly initialized repos need `git add` or `--include-untracked` before cargo-allow scans source files\n",
@@ -301,6 +315,16 @@ pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
         out.push_str(field);
     }
     out.push_str("\n  },\n");
+    out.push_str("  \"scanner\": {\n");
+    out.push_str(&format!(
+        "    \"completeness\": \"{}\",\n    \"rust\": {{\n      \"files_considered\": {},\n      \"files_scanned\": {},\n      \"files_skipped\": {},\n      \"files_with_parse_errors\": {},\n      \"skipped_by_reason\": {{\n        \"read_failed_or_unsupported\": {}\n      }}\n    }}\n  }},\n",
+        json_escape(facts.rust_scanner_completeness),
+        facts.rust_files_considered,
+        facts.rust_files_scanned,
+        facts.rust_files_skipped,
+        facts.rust_files_with_parse_errors,
+        facts.rust_files_skipped_by_read_or_unsupported
+    ));
     append_file_family_doctor_json(facts, &mut out);
     out.push_str(",\n");
     append_federation_doctor_json(facts, &mut out);

@@ -69,6 +69,15 @@ pub struct DoctorReport<'a> {
     /// Count of detected submodule gitlinks (checked-out directories that are
     /// git-tracked). Their contents are not scanned (#1846).
     pub submodule_paths: usize,
+    /// Completeness of the Rust source scan, independent of inventory
+    /// traversal completeness. `unknown` means no Rust files were selected.
+    pub rust_scanner_completeness: &'a str,
+    pub rust_files_considered: usize,
+    pub rust_files_scanned: usize,
+    pub rust_files_skipped: usize,
+    pub rust_files_with_parse_errors: usize,
+    /// Bounded aggregate for read, encoding, and size failures.
+    pub rust_files_skipped_by_read_or_unsupported: usize,
     pub federation_config_path: Option<&'a str>,
     pub federation_config_found: bool,
     pub federation_config_valid: Option<bool>,
