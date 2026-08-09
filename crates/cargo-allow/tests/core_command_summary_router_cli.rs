@@ -561,6 +561,150 @@ fn why_summary_keeps_a_skipped_target_partial_and_non_green() -> Result<(), Stri
 }
 
 #[test]
+fn why_summary_preserves_ambiguous_candidates_and_read_only_posture() -> Result<(), String> {
+    let root = temp_root("summary-why-ambiguous")?;
+    write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
+    run(&root, &["init"])?;
+    fs::write(
+        root.join("policy/allow.toml"),
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+stale_entries_fail = false
+allow_bare_allow_attributes = false
+lint_policy_id_required = false
+
+[requirements.unsafe]
+evidence_required = true
+safety_comment_required = false
+
+[[allow]]
+id = "allow-tied-a"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "First equally matching reviewed exception."
+evidence = ["test:tied_a"]
+created = "2026-01-01"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "method_call"
+callee = "unwrap"
+
+[[allow]]
+id = "allow-tied-b"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Second equally matching reviewed exception."
+evidence = ["test:tied_b"]
+created = "2026-01-01"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "method_call"
+callee = "unwrap"
+"#,
+    )
+    .map_err(|error| format!("write ambiguous policy: {error}"))?;
+    git_commit_fixture(&root)?;
+
+    let sidecar = root.join("why-ambiguous-summary.json");
+    let sidecar_text = sidecar.to_string_lossy().to_string();
+    let mut summary_argv = vec!["--command-summary-output", &sidecar_text];
+    summary_argv.extend(WHY_ARGV.iter().copied());
+    let summary_output = run(&root, &summary_argv)?;
+    require(
+        summary_output.status.success(),
+        format!(
+            "ambiguous why should be inspectable: {}",
+            String::from_utf8_lossy(&summary_output.stderr)
+        ),
+    )?;
+    let human = stdout(&summary_output)?;
+    let summary: Value = serde_json::from_str(
+        &fs::read_to_string(&sidecar)
+            .map_err(|error| format!("read ambiguous why summary: {error}"))?,
+    )
+    .map_err(|error| format!("parse ambiguous why summary: {error}"))?;
+    require(
+        field(&summary, &["result_class"]) == Some(&Value::from("findings"))
+            && field(&summary, &["posture"]) == Some(&Value::from("decision_required"))
+            && field(&summary, &["reason", "code"]) == Some(&Value::from("why.ambiguous"))
+            && field(&summary, &["primary_action", "kind"]) == Some(&Value::from("decision"))
+            && field(&summary, &["additional_action_count"])
+                .and_then(Value::as_u64)
+                .is_some_and(|count| count >= 2)
+            && field(&summary, &["additional_actions_ref"])
+                == Some(&Value::from("cargo-allow.why.v1.next.suggested_actions"))
+            && field(&summary, &["operation_effects", "writes_repository"])
+                == Some(&Value::Bool(false))
+            && field(&summary, &["operation_effects", "write_paths"]).is_none(),
+        format!("ambiguous why summary lost judgment boundaries: {summary}"),
+    )?;
+    require(
+        GRAMMAR_FIELDS
+            .iter()
+            .zip(human.lines())
+            .all(|(field_name, line)| line.starts_with(field_name))
+            && human.contains("Result: findings (decision_required)")
+            && human.contains("Next: Multiple allow entries compete for this finding.")
+            && human.contains("Writes: nothing in this operation")
+            && !human.contains('\u{1b}'),
+        format!("ambiguous why human summary lost parity: {human}"),
+    )?;
+
+    let detailed = root.join("why-ambiguous.json");
+    let detailed_text = detailed.to_string_lossy().to_string();
+    let mut detailed_argv = WHY_ARGV.to_vec();
+    detailed_argv.extend(["--format", "json", "--output", &detailed_text]);
+    let detailed_output = run(&root, &detailed_argv)?;
+    require(
+        detailed_output.status.success(),
+        format!(
+            "ambiguous why JSON should be inspectable: {}",
+            String::from_utf8_lossy(&detailed_output.stderr)
+        ),
+    )?;
+    let detailed: Value = serde_json::from_str(
+        &fs::read_to_string(&detailed)
+            .map_err(|error| format!("read ambiguous why detail: {error}"))?,
+    )
+    .map_err(|error| format!("parse ambiguous why detail: {error}"))?;
+    require(
+        field(&detailed, &["outcome", "status"]) == Some(&Value::from("ambiguous"))
+            && field(&detailed, &["outcome", "allow_id"]) == Some(&Value::Null)
+            && field(&detailed, &["outcome", "candidate_ids"])
+                == Some(&Value::from(vec!["allow-tied-a", "allow-tied-b"]))
+            && field(&detailed, &["next", "proof_plans"])
+                .and_then(Value::as_array)
+                .is_some_and(|plans| {
+                    plans.iter().any(|plan| {
+                        field(plan, &["args"])
+                            == Some(&Value::from(vec!["explain", "allow-tied-a"]))
+                    }) && plans.iter().any(|plan| {
+                        field(plan, &["args"])
+                            == Some(&Value::from(vec!["explain", "allow-tied-b"]))
+                    })
+                }),
+        format!("ambiguous why detail lost candidates or alternatives: {detailed}"),
+    )?;
+
+    remove_temp_root(root)
+}
+
+#[test]
 fn why_plan_reports_the_candidate_write_it_performed() -> Result<(), String> {
     let root = temp_root("summary-why-plan")?;
     write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
