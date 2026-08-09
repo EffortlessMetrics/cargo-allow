@@ -324,7 +324,7 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         })?;
         apply_single_target(SingleTargetApplyRequest {
             repository_root: &root,
-            target: &policy_target,
+            target: policy_target,
             contents: &rendered,
             caller_reference: Some("cargo-allow:add"),
             lock_identity: Some(
