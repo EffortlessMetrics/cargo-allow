@@ -442,7 +442,8 @@ fn why_args_round_trip_through_root_args() {
 
 #[test]
 fn target_scan_renderers_report_partial_scope_without_a_finding() -> Result<(), String> {
-    let inventory = allow_report::InventoryContext::source_syntax("git_tracked", None, None);
+    let inventory = allow_report::InventoryContext::source_syntax("git_tracked", None, None)
+        .with_completeness("complete");
     let evaluation = EvaluationContext {
         scope: "scoped",
         locality: "proven",
