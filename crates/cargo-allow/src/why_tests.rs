@@ -473,7 +473,7 @@ fn target_scan_renderers_report_partial_scope_without_a_finding() -> Result<(), 
         }
     }
     let proof_plans = value.pointer("/next/proof_plans").and_then(Value::as_array);
-    if proof_plans.map_or(true, |plans| !plans.is_empty()) {
+    if proof_plans.is_none_or(|plans| !plans.is_empty()) {
         return Err(format!(
             "partial target should not emit proof plans: {value}"
         ));
