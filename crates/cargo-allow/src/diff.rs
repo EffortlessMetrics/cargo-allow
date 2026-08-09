@@ -144,11 +144,13 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         // own inventory and scanner failure rules.
         allow_diff::DiffScanCoverage::complete()
     };
+    let base_inventory_complete = base_revision_scan.inventory_completeness == "complete";
+    let base_scanner_complete = base_revision_scan.rust_files_skipped == 0
+        && base_revision_scan.rust_files_with_parse_errors == 0;
     let result_class = allow_diff::classify_diff_result(
         allow_diff::DiffScanCoverage {
-            inventory_complete: base_revision_scan.inventory_completeness == "complete",
-            scanner_complete: base_revision_scan.rust_files_skipped == 0
-                && base_revision_scan.rust_files_with_parse_errors == 0,
+            inventory_complete: base_inventory_complete,
+            scanner_complete: base_scanner_complete,
         },
         head_coverage,
     );
@@ -156,6 +158,8 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         result_class,
         allow_diff::finding_posture_changes(&base_findings, &head_findings_for_diff),
     );
+    let head_inventory_complete = head_coverage.inventory_complete;
+    let head_scanner_complete = head_coverage.scanner_complete;
     let mut policy_changes = policy_changes_for_diff(
         Some(base_cfg.clone()),
         &head_cfg_for_diff,
@@ -233,12 +237,34 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     let source_context = SourceTreeReportContext::new(&root, report_inventory_facts);
     let mut report_context = source_context.report(Some(policy_baseline_debt_entries(&report_cfg)));
     evidence.apply_to(&mut report_context);
+    let provisional_ledger = DiffLedgerContext::new(
+        &base_cfg,
+        &head_cfg_for_diff,
+        &finding_changes,
+        &policy_changes,
+        allow_report::DiffAnalysisContext::default(),
+    );
+    let movement = provisional_ledger.ledger_movement_summary().movement;
+    let diff_analysis = allow_report::DiffAnalysisContext {
+        result_class: result_class.as_str(),
+        base_revision: Some(&base),
+        head_revision: args.head.as_deref(),
+        base_inventory_complete,
+        base_scanner_complete,
+        head_inventory_complete,
+        head_scanner_complete,
+        introduced: movement.introduced,
+        retained: movement.retained,
+        removed: movement.removed,
+    };
+    report_context.diff_analysis = Some(diff_analysis);
     let receipt_context = report_context;
     let ledger = DiffLedgerContext::new(
         &base_cfg,
         &head_cfg_for_diff,
         &finding_changes,
         &policy_changes,
+        diff_analysis,
     );
     let mut text = match args.format {
         OutputFormat::Json => render_diff_json_report(

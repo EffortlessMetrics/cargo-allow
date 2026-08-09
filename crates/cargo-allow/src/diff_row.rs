@@ -24,6 +24,7 @@ pub struct DiffLedgerContext<'a> {
     pub head_cfg: &'a AllowConfig,
     pub finding_changes: &'a [allow_diff::FindingPostureChange],
     pub policy_changes: &'a [allow_diff::PolicyChange],
+    pub diff_analysis: allow_report::DiffAnalysisContext<'a>,
 }
 
 impl<'a> DiffLedgerContext<'a> {
@@ -32,12 +33,14 @@ impl<'a> DiffLedgerContext<'a> {
         head_cfg: &'a AllowConfig,
         finding_changes: &'a [allow_diff::FindingPostureChange],
         policy_changes: &'a [allow_diff::PolicyChange],
+        diff_analysis: allow_report::DiffAnalysisContext<'a>,
     ) -> Self {
         Self {
             base_cfg,
             head_cfg,
             finding_changes,
             policy_changes,
+            diff_analysis,
         }
     }
 

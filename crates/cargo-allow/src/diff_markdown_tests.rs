@@ -9,7 +9,13 @@ fn ledger<'a>(
     finding_changes: &'a [allow_diff::FindingPostureChange],
     policy_changes: &'a [allow_diff::PolicyChange],
 ) -> DiffLedgerContext<'a> {
-    DiffLedgerContext::new(cfg, cfg, finding_changes, policy_changes)
+    DiffLedgerContext::new(
+        cfg,
+        cfg,
+        finding_changes,
+        policy_changes,
+        allow_report::DiffAnalysisContext::default(),
+    )
 }
 
 #[test]

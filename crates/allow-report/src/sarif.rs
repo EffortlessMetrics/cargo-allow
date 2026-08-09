@@ -96,6 +96,21 @@ pub fn render_sarif_with_context(
     push_json_source_context_properties(&mut out, context.into(), "        ");
     push_policy_context_properties(&mut out, &summary, context);
     push_evidence_repair_queues_property(&mut out, &summary, context);
+    if let Some(diff) = context.diff_analysis {
+        out.push_str(",\n        \"diff_analysis\": {");
+        out.push_str(&format!(
+            "\"result_class\": \"{}\", \"base_inventory_complete\": {}, \"base_scanner_complete\": {}, \"head_inventory_complete\": {}, \"head_scanner_complete\": {}, \"introduced\": {}, \"retained\": {}, \"removed\": {}",
+            json_escape(diff.result_class),
+            bool_json(diff.base_inventory_complete),
+            bool_json(diff.base_scanner_complete),
+            bool_json(diff.head_inventory_complete),
+            bool_json(diff.head_scanner_complete),
+            diff.introduced,
+            diff.retained,
+            diff.removed,
+        ));
+        out.push('}');
+    }
     out.push_str("      },\n");
     out.push_str("      \"results\": [\n");
     for (index, outcome) in reportable.iter().enumerate() {

@@ -559,12 +559,46 @@ pub struct ReportContext<'a> {
     pub started_at: Option<&'a str>,
     /// Unique run identifier (process-stable) for correlating receipt to CI run (#1854).
     pub run_id: Option<&'a str>,
+    /// Cross-format diff posture and revision completeness, when rendering a
+    /// committed-revision diff (#3302).
+    pub diff_analysis: Option<DiffAnalysisContext<'a>>,
     /// Count of Rust source files skipped during scan (oversized, binary,
     /// permission-denied). When non-zero and mode is no-new, the check fails
     /// closed (#2667).
     pub rust_files_skipped: usize,
     pub rust_files_considered: usize,
     pub rust_files_with_parse_errors: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DiffAnalysisContext<'a> {
+    pub result_class: &'a str,
+    pub base_revision: Option<&'a str>,
+    pub head_revision: Option<&'a str>,
+    pub base_inventory_complete: bool,
+    pub base_scanner_complete: bool,
+    pub head_inventory_complete: bool,
+    pub head_scanner_complete: bool,
+    pub introduced: usize,
+    pub retained: usize,
+    pub removed: usize,
+}
+
+impl Default for DiffAnalysisContext<'static> {
+    fn default() -> Self {
+        Self {
+            result_class: "complete",
+            base_revision: None,
+            head_revision: None,
+            base_inventory_complete: true,
+            base_scanner_complete: true,
+            head_inventory_complete: true,
+            head_scanner_complete: true,
+            introduced: 0,
+            retained: 0,
+            removed: 0,
+        }
+    }
 }
 
 impl<'a> ReportContext<'a> {
@@ -600,6 +634,7 @@ impl<'a> ReportContext<'a> {
             policy_digest: None,
             started_at: None,
             run_id: None,
+            diff_analysis: None,
             rust_files_skipped: 0,
             rust_files_considered: 0,
             rust_files_with_parse_errors: 0,

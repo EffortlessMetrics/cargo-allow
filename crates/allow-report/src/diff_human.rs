@@ -12,6 +12,20 @@ use allow_core::PresenceMovement;
 
 const DIFF_HUMAN_CHANGE_LIMIT: usize = 120;
 
+pub fn render_diff_analysis_human(context: crate::DiffAnalysisContext<'_>) -> String {
+    format!(
+        "diff_analysis: result_class={} base_inventory_complete={} base_scanner_complete={} head_inventory_complete={} head_scanner_complete={} movement=introduced:{},retained:{},removed:{}\n",
+        context.result_class,
+        context.base_inventory_complete,
+        context.base_scanner_complete,
+        context.head_inventory_complete,
+        context.head_scanner_complete,
+        context.introduced,
+        context.retained,
+        context.removed,
+    )
+}
+
 pub fn render_diff_posture_summary_human(
     current_failures: usize,
     finding_changes: &[DiffFindingChange<'_>],
