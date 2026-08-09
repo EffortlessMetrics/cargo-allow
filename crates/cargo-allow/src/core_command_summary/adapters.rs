@@ -34,7 +34,8 @@ pub fn core_command_summary_from_diff(
         current_failures,
         failed,
     } = facts;
-    let result_class = if failed && result_class == ResultClassV1::Completed {
+    let comparison_complete = result_class == ResultClassV1::Completed;
+    let result_class = if failed && comparison_complete {
         ResultClassV1::Findings
     } else {
         result_class
@@ -44,7 +45,15 @@ pub fn core_command_summary_from_diff(
     } else {
         CoreCommandPostureV1::Satisfied
     };
-    let reason = if result_class == ResultClassV1::Completed {
+    let reason = if comparison_complete && failed {
+        CoreCommandReasonV1 {
+            code: "diff.blocking_findings".to_string(),
+            message: format!(
+                "the revision comparison is complete but {} finding(s) require attention",
+                current_failures
+            ),
+        }
+    } else if result_class == ResultClassV1::Completed {
         CoreCommandReasonV1 {
             code: "diff.satisfied".to_string(),
             message: "the selected revisions have a complete diff posture".to_string(),
