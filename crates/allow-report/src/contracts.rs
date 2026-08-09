@@ -563,6 +563,8 @@ pub struct ReportContext<'a> {
     /// permission-denied). When non-zero and mode is no-new, the check fails
     /// closed (#2667).
     pub rust_files_skipped: usize,
+    pub rust_files_considered: usize,
+    pub rust_files_with_parse_errors: usize,
 }
 
 impl<'a> ReportContext<'a> {
@@ -599,6 +601,8 @@ impl<'a> ReportContext<'a> {
             started_at: None,
             run_id: None,
             rust_files_skipped: 0,
+            rust_files_considered: 0,
+            rust_files_with_parse_errors: 0,
         }
     }
 
@@ -614,6 +618,18 @@ impl<'a> ReportContext<'a> {
 
     pub fn with_inventory_source_identity(mut self, source_identity: Option<&'a str>) -> Self {
         self.inventory = self.inventory.with_source_identity(source_identity);
+        self
+    }
+
+    pub fn with_rust_scanner_facts(
+        mut self,
+        considered: usize,
+        skipped: usize,
+        parse_errors: usize,
+    ) -> Self {
+        self.rust_files_considered = considered;
+        self.rust_files_skipped = skipped;
+        self.rust_files_with_parse_errors = parse_errors;
         self
     }
 }
