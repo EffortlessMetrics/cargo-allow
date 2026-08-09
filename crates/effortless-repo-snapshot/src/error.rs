@@ -108,7 +108,10 @@ pub fn sha256_v1_bytes(input: &[u8]) -> String {
 
 pub fn source_tree_path_is_ignored(path: &str, patterns: &[String]) -> bool {
     for pattern in patterns {
-        if pattern == "**" || pattern.is_empty() || path == pattern {
+        // An empty pattern is not match-all: allow_core::source_tree_path_is_ignored,
+        // which this replaces, has no such branch, so treating it as match-all would
+        // let one blank `workspace.ignored` entry hide the whole source tree.
+        if pattern == "**" || path == pattern {
             return true;
         }
         if pattern.ends_with("/**") && path.starts_with(&pattern[..pattern.len() - 3]) {

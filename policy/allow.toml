@@ -10808,7 +10808,7 @@ target_fingerprint = "..pattern.len() - 3"
 normalized_snippet_hash = "fnv1a64:9d3bb72983de1dc0"
 
 [allow.last_seen]
-line = 114
+line = 117
 column = 65
 
 [[allow]]
@@ -10832,7 +10832,7 @@ target_fingerprint = "..pattern.len() - 1"
 normalized_snippet_hash = "fnv1a64:4c95fa30ab64278f"
 
 [allow.last_seen]
-line = 117
+line = 120
 column = 63
 
 [[allow]]
