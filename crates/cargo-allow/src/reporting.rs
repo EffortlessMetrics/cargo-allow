@@ -129,6 +129,11 @@ impl SourceTreeReportContext {
         .with_empty_git_tracked(self.inventory_facts.empty_git_tracked)
         .with_inventory_completeness(self.inventory_completeness())
         .with_inventory_source_identity(self.source_identity.as_deref())
+        .with_rust_scanner_facts(
+            self.inventory_facts.rust_files_considered,
+            self.inventory_facts.rust_files_skipped,
+            self.inventory_facts.rust_files_with_parse_errors,
+        )
     }
 
     pub(crate) fn source_tree_root(&self) -> &str {

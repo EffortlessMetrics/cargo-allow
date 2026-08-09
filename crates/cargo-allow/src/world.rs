@@ -396,6 +396,7 @@ pub(crate) fn load_world_with_evidence_mode(
         cfg,
         findings,
         inventory_facts
+            .with_rust_files_considered(rust_scan.files_considered)
             .with_rust_files_skipped(rust_files_skipped)
             .with_rust_files_with_parse_errors(rust_files_with_parse_errors),
         federation,
@@ -483,6 +484,7 @@ pub(crate) fn load_world_for_path(
         }
     }
     let inventory_facts = InventoryFacts::scanned_inventory(&inventory)
+        .with_rust_files_considered(rust_scan.files_considered)
         .with_rust_files_skipped(rust_scan.files_skipped)
         .with_rust_files_with_parse_errors(rust_scan.files_with_parse_errors);
     Ok((

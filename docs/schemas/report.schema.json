@@ -40,6 +40,7 @@
     "claim_boundary",
     "scanner_limitations",
     "inventory",
+    "rust_scanner",
     "summary",
     "outcomes",
     "findings"
@@ -114,6 +115,25 @@
     },
     "inventory": {
       "$ref": "#/$defs/inventory"
+    },
+    "rust_scanner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["completeness", "files_considered", "files_scanned", "files_skipped", "files_with_parse_errors", "skipped_by_reason"],
+      "properties": {
+        "completeness": { "enum": ["complete", "scoped", "fallback", "partial", "unknown"] },
+        "files_considered": { "type": "integer", "minimum": 0 },
+        "files_scanned": { "type": "integer", "minimum": 0 },
+        "files_skipped": { "type": "integer", "minimum": 0 },
+        "files_with_parse_errors": { "type": "integer", "minimum": 0 },
+        "skipped_by_reason": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "read_failed_or_unsupported": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
     },
     "summary": {
       "$ref": "#/$defs/summary"

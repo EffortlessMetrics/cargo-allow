@@ -85,6 +85,26 @@ fn json_report_exposes_inventory_completeness() {
 }
 
 #[test]
+fn json_report_exposes_rust_scanner_completeness_facts() {
+    let context = ReportContext::source_syntax(
+        "git_tracked",
+        Some("fixtures/source-snapshot"),
+        Some(12),
+        None,
+    )
+    .with_inventory_completeness("partial")
+    .with_rust_scanner_facts(5, 2, 1);
+    let json = render_json_with_context("audit", &[], &[], false, context);
+
+    assert!(json.contains("\"rust_scanner\""));
+    assert!(json.contains("\"files_considered\": 5"));
+    assert!(json.contains("\"files_scanned\": 3"));
+    assert!(json.contains("\"files_skipped\": 2"));
+    assert!(json.contains("\"files_with_parse_errors\": 1"));
+    assert!(json.contains("\"read_failed_or_unsupported\": 2"));
+}
+
+#[test]
 fn json_report_matches_empty_audit_golden_contract() {
     let json = render_json_with_context(
         "audit",
@@ -114,6 +134,16 @@ fn json_report_matches_empty_audit_golden_contract() {
     "source": "filesystem_fallback",
     "root": "fixtures/source-snapshot",
     "files_scanned": 7
+  }},
+  "rust_scanner": {{
+    "completeness": "unknown",
+    "files_considered": 0,
+    "files_scanned": 0,
+    "files_skipped": 0,
+    "files_with_parse_errors": 0,
+    "skipped_by_reason": {{
+      "read_failed_or_unsupported": 0
+    }}
   }},
   "summary": {{
     "findings": 0,

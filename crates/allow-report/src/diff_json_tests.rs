@@ -1018,6 +1018,16 @@ fn diff_json_report_matches_posture_golden_contract() {
     "root": "H:/repo",
     "files_scanned": 2
   }},
+  "rust_scanner": {{
+    "completeness": "unknown",
+    "files_considered": 0,
+    "files_scanned": 0,
+    "files_skipped": 0,
+    "files_with_parse_errors": 0,
+    "skipped_by_reason": {{
+      "read_failed_or_unsupported": 0
+    }}
+  }},
   "summary": {{
     "findings": 0,
     "outcomes": 0,

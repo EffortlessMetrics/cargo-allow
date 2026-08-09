@@ -70,6 +70,18 @@ fn render_json_report(
     push_json_artifact_header(&mut out, REPORT_ARTIFACT, command);
     push_json_status_fields(&mut out, failed);
     push_json_artifact_source_context(&mut out, context.into());
+    out.push_str("  \"rust_scanner\": {");
+    out.push_str(&format!(
+        "\n    \"completeness\": \"{}\",\n    \"files_considered\": {},\n    \"files_scanned\": {},\n    \"files_skipped\": {},\n    \"files_with_parse_errors\": {},\n    \"skipped_by_reason\": {{\n      \"read_failed_or_unsupported\": {}\n    }}\n  }},\n",
+        json_escape(context.inventory.completeness.unwrap_or("unknown")),
+        context.rust_files_considered,
+        context
+            .rust_files_considered
+            .saturating_sub(context.rust_files_skipped),
+        context.rust_files_skipped,
+        context.rust_files_with_parse_errors,
+        context.rust_files_skipped,
+    ));
     out.push_str("  \"summary\": {\n");
     out.push_str(&format!("    \"findings\": {},\n", findings.len()));
     out.push_str(&format!("    \"outcomes\": {},\n", summary.total));
