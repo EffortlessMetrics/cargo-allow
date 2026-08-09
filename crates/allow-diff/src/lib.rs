@@ -28,6 +28,7 @@ mod policy_requirements;
 mod policy_scope;
 mod policy_selector;
 mod policy_workspace;
+mod result;
 mod revision;
 mod revision_git;
 mod revision_identity;
@@ -52,6 +53,8 @@ pub use policy_change::{
     SelectorIdentityChange, SelectorPrecisionChange,
 };
 pub use policy_scope::selector_precision_score;
+pub use result::retain_confident_finding_changes;
+pub use result::{DiffResultClass, DiffScanCoverage, classify_diff_result};
 pub use revision::{RevisionScanResult, findings_at_revision, scan_at_revision};
 pub use revision_git::{changed_files, git_tracked_files_at_revision, read_file_at_revision};
 pub use revision_identity::{
