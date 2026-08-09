@@ -2,7 +2,7 @@ use super::*;
 use crate::artifact_contract_support::parse_json_artifact;
 use crate::init::cmd_init;
 use crate::{CargoAllowCli, CargoAllowCommand, HumanJsonFormat, ProfileArg, RootArgs};
-use allow_core::CargoAllowErrorKind;
+use allow_core::{CargoAllowErrorKind, SOURCE_FILE_READ_MAX_BYTES};
 use clap::Parser;
 use serde_json::Value;
 use std::fs;
@@ -255,6 +255,90 @@ ast_kind = "tracked_file"
 }
 
 #[test]
+fn doctor_projects_partial_rust_scan_and_require_clean_rejects_it() -> Result<(), String> {
+    let root = doctor_fixture_dir();
+    fs::create_dir_all(root.join("policy")).map_err(|error| error.to_string())?;
+    fs::write(root.join("source.rs"), "fn source() {}\n").map_err(|error| error.to_string())?;
+    fs::write(
+        root.join("oversized.rs"),
+        vec![b'a'; (SOURCE_FILE_READ_MAX_BYTES as usize).saturating_add(1)],
+    )
+    .map_err(|error| error.to_string())?;
+    let policy = root.join("policy/allow.toml");
+    fs::write(
+        &policy,
+        "policy = \"cargo-allow\"\n\n[workspace]\nignored = [\"policy/**\"]\n",
+    )
+    .map_err(|error| error.to_string())?;
+    let output = root.join("doctor.json");
+
+    cmd_doctor(&DoctorArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(policy.clone()),
+        profile: None,
+        format: HumanJsonFormat::Json,
+        require_clean: false,
+        output: Some(output.clone()),
+        support_bundle: None,
+    })
+    .map_err(|error| error.to_string())?;
+
+    let json = fs::read_to_string(&output).map_err(|error| error.to_string())?;
+    let value = parse_json_artifact("doctor", &json, allow_report::DOCTOR_SCHEMA_ID, "doctor");
+    if value
+        .pointer("/scanner/completeness")
+        .and_then(Value::as_str)
+        != Some("partial")
+        || value
+            .pointer("/scanner/rust/files_considered")
+            .and_then(Value::as_u64)
+            != Some(2)
+        || value
+            .pointer("/scanner/rust/files_scanned")
+            .and_then(Value::as_u64)
+            != Some(1)
+        || value
+            .pointer("/scanner/rust/files_skipped")
+            .and_then(Value::as_u64)
+            != Some(1)
+        || value
+            .pointer("/scanner/rust/skipped_by_reason/read_failed_or_unsupported")
+            .and_then(Value::as_u64)
+            != Some(1)
+    {
+        remove_doctor_fixture_dir(root);
+        return Err(format!("doctor did not project partial Rust scan: {value}"));
+    }
+
+    let result = cmd_doctor(&DoctorArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(policy),
+        profile: None,
+        format: HumanJsonFormat::Human,
+        require_clean: true,
+        output: None,
+        support_bundle: None,
+    });
+    remove_doctor_fixture_dir(root);
+    match result {
+        Err(error)
+            if error.kind() == CargoAllowErrorKind::PolicyViolation
+                && error
+                    .to_string()
+                    .contains("Rust scanner coverage is partial") =>
+        {
+            Ok(())
+        }
+        Err(error) => Err(format!("unexpected error: {error}")),
+        Ok(()) => Err("doctor --require-clean unexpectedly accepted partial Rust coverage".into()),
+    }
+}
+
+#[test]
 fn clap_parses_spec_system_profile_for_doctor() {
     let parsed = CargoAllowCli::try_parse_from(argv(vec![
         "cargo-allow",
@@ -302,6 +386,12 @@ fn render_doctor_json_records_setup_context() {
         git_inventory_error: None,
         skipped_paths: 0,
         submodule_paths: 0,
+        rust_scanner_completeness: "unknown",
+        rust_files_considered: 0,
+        rust_files_scanned: 0,
+        rust_files_skipped: 0,
+        rust_files_with_parse_errors: 0,
+        rust_files_skipped_by_read_or_unsupported: 0,
         federation_config_path: None,
         federation_config_found: false,
         federation_config_valid: None,

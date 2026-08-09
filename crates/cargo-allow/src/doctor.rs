@@ -74,6 +74,7 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     let policy = load_doctor_policy(config.as_deref());
     let opts = doctor_inventory_options(policy.as_ref());
     let inventory = inventory(&root, &opts)?;
+    let rust_scan = allow_rust::scan_rust_files(&root, &inventory.files)?;
     let files_scanned = inventory.files.len();
     let empty_git_tracked = inventory.empty_git_tracked;
     let deleted_tracked_files = inventory.deleted_tracked.len();
@@ -159,6 +160,14 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         git_inventory_error,
         skipped_paths,
         submodule_paths,
+        rust_scanner_completeness: rust_scanner_completeness(&rust_scan),
+        rust_files_considered: rust_scan.files_considered,
+        rust_files_scanned: rust_scan
+            .files_considered
+            .saturating_sub(rust_scan.files_skipped),
+        rust_files_skipped: rust_scan.files_skipped,
+        rust_files_with_parse_errors: rust_scan.files_with_parse_errors,
+        rust_files_skipped_by_read_or_unsupported: rust_scan.files_skipped,
         federation_config_path: federation.federation_config_path(),
         federation_config_found: federation.found,
         federation_config_valid: federation.valid,
@@ -254,6 +263,16 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     // --require-clean: exit non-zero if the policy is invalid or evidence
     // is broken (#1817). This lets CI gates use `doctor --require-clean`
     // as a merge blocker.
+    if args.require_clean && (rust_scan.files_skipped > 0 || rust_scan.files_with_parse_errors > 0)
+    {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::PolicyViolation,
+            format!(
+                "doctor --require-clean: Rust scanner coverage is partial ({} skipped, {} parse errors)",
+                rust_scan.files_skipped, rust_scan.files_with_parse_errors
+            ),
+        ));
+    }
     if args.require_clean && !matches!(config_valid, Some(true)) {
         let kind = match policy.as_ref() {
             None => CargoAllowErrorKind::InvalidConfig,
@@ -266,6 +285,16 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
         ));
     }
     Ok(())
+}
+
+fn rust_scanner_completeness(scan: &allow_rust::RustScanResult) -> &'static str {
+    if scan.files_considered == 0 {
+        "unknown"
+    } else if scan.files_skipped > 0 || scan.files_with_parse_errors > 0 {
+        "partial"
+    } else {
+        "complete"
+    }
 }
 
 /// Build the common operator summary from facts doctor has already computed.
@@ -357,6 +386,18 @@ fn doctor_completeness(
     }
     if report.skipped_paths > 0 {
         reasons.push(format!("{} path(s) were skipped", report.skipped_paths));
+    }
+    if report.rust_files_skipped > 0 {
+        reasons.push(format!(
+            "{} Rust file(s) were skipped",
+            report.rust_files_skipped
+        ));
+    }
+    if report.rust_files_with_parse_errors > 0 {
+        reasons.push(format!(
+            "{} Rust file(s) contained parse errors",
+            report.rust_files_with_parse_errors
+        ));
     }
     if report.git_inventory_error.is_some() {
         reasons.push("the Git inventory reported an error".to_string());
@@ -566,6 +607,12 @@ pub(crate) fn sample_doctor_json_for_contract_test() -> String {
         git_inventory_error: None,
         skipped_paths: 0,
         submodule_paths: 0,
+        rust_scanner_completeness: "unknown",
+        rust_files_considered: 0,
+        rust_files_scanned: 0,
+        rust_files_skipped: 0,
+        rust_files_with_parse_errors: 0,
+        rust_files_skipped_by_read_or_unsupported: 0,
         federation_config_path: None,
         federation_config_found: false,
         federation_config_valid: None,
