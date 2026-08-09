@@ -969,6 +969,164 @@ pub fn core_command_summary_from_prune(
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MigrateSummaryFactsV1 {
+    pub repository_identity: String,
+    pub portable_identity: String,
+    pub output_path: String,
+    pub input_path: String,
+    pub entry_count: usize,
+    pub update: bool,
+    pub force: bool,
+    pub complete_inventory: bool,
+}
+
+pub fn core_command_summary_from_migrate(
+    facts: MigrateSummaryFactsV1,
+) -> Result<CoreCommandSummaryV1, String> {
+    let MigrateSummaryFactsV1 {
+        repository_identity,
+        portable_identity,
+        output_path,
+        input_path,
+        entry_count,
+        update,
+        force,
+        complete_inventory,
+    } = facts;
+    let live = update || force;
+    let completeness = if complete_inventory {
+        CompletenessV1::Complete
+    } else {
+        CompletenessV1::Partial
+    };
+    let primary_action = if live {
+        Some(
+            CoreCommandActionV1::command(
+                "migrate.recover_diff",
+                "Inspect the migrated policy diff",
+                "git",
+                vec!["diff".to_string(), "--".to_string(), output_path.clone()],
+            )
+            .with_contract(
+                "migration wrote the named policy target",
+                "the exact diff shows the recoverable migration change",
+                "the diff does not prove migrated entries are correct or owned",
+            ),
+        )
+    } else {
+        Some(
+            CoreCommandActionV1::command(
+                "migrate.review_candidate",
+                "Review the generated candidate policy",
+                "cargo-allow",
+                vec![
+                    "diff".to_string(),
+                    "--config".to_string(),
+                    output_path.clone(),
+                ],
+            )
+            .with_contract(
+                "migration created a candidate policy without live replacement",
+                "the candidate is reviewed before adoption",
+                "candidate review does not authorize or update the live ledger",
+            ),
+        )
+    };
+    let next_proof = live.then(|| {
+        CoreCommandActionV1::command(
+            "migrate.full_no_new_check",
+            "Run the enforcing no-new check",
+            "cargo-allow",
+            vec![
+                "check".to_string(),
+                "--mode".to_string(),
+                "no-new".to_string(),
+            ],
+        )
+        .with_contract(
+            "migration summary and diff inspection are not full repository proof",
+            "the current source tree is evaluated under the no-new gate",
+            "source-syntax evaluation does not prove compiled or runtime correctness",
+        )
+    });
+    build_core_command_summary(CoreCommandSummaryInputV1 {
+        tool_version: env!("CARGO_PKG_VERSION").to_string(),
+        operation: "migrate".to_string(),
+        mode: Some(if update {
+            "update".to_string()
+        } else if force {
+            "force".to_string()
+        } else {
+            "candidate".to_string()
+        }),
+        profile: None,
+        subject: CoreSourceSubjectV1 {
+            kind: CoreSourceSubjectKindV1::Worktree,
+            repository_identity,
+            portable_identity,
+            base: None,
+            head: None,
+            paths: vec![output_path.clone(), input_path],
+            limitations: vec![
+                "migration compatibility and entry ownership remain operator claims".to_string(),
+            ],
+        },
+        result_class: if complete_inventory {
+            ResultClassV1::Completed
+        } else {
+            ResultClassV1::PartialData
+        },
+        posture: if complete_inventory {
+            if live {
+                CoreCommandPostureV1::Satisfied
+            } else {
+                CoreCommandPostureV1::Advisory
+            }
+        } else {
+            CoreCommandPostureV1::Blocking
+        },
+        completeness,
+        currentness: CurrentnessV1::Current,
+        reason: CoreCommandReasonV1 {
+            code: if live {
+                "migrate.written".to_string()
+            } else {
+                "migrate.candidate".to_string()
+            },
+            message: format!(
+                "{} {entry_count} migrated entr{} to {output_path}",
+                if live {
+                    "wrote"
+                } else {
+                    "created candidate with"
+                },
+                if entry_count == 1 { "y" } else { "ies" }
+            ),
+        },
+        primary_action,
+        additional_action_count: 0,
+        additional_actions_ref: None,
+        operation_effects: CoreCommandEffectsV1 {
+            reads_repository: true,
+            writes_repository: true,
+            executes_repository_code: false,
+            invokes_network: false,
+            write_paths: vec![output_path],
+            explicit_non_effects: vec![
+                "does not execute repository code or external evidence tools".to_string(),
+            ],
+        },
+        next_proof,
+        artifacts: Vec::new(),
+        claim_boundary: ClaimBoundaryV1::new("migration output and replacement posture only")
+            .with_limitations(vec![
+                "migration does not prove human ownership or evidence quality".to_string(),
+                "migration does not prove compiled or runtime correctness".to_string(),
+            ]),
+    })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiffSummaryFactsV1 {
     pub repository_identity: String,
     pub portable_identity: String,

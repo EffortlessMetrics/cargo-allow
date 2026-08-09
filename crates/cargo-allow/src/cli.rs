@@ -269,10 +269,14 @@ fn configure_summary_output(
             (WorkingDirectory, args.output.clone()),
             (SourceTreeRoot, args.config.clone()),
         ],
+        CargoAllowCommand::Migrate(args) => vec![
+            (SourceTreeRoot, Some(args.out.clone())),
+            (WorkingDirectory, args.summary_output.clone()),
+        ],
         _ => {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::Usage,
-                "--command-summary-output currently supports the source-exception adopt, doctor, audit, check, diff, init, propose, add, refresh, prune, explain, why, and worklist commands only",
+                "--command-summary-output currently supports the source-exception adopt, doctor, audit, check, diff, init, propose, add, refresh, prune, migrate, explain, why, and worklist commands only",
             ));
         }
     }
