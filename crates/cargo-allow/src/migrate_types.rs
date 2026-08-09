@@ -18,6 +18,12 @@ pub(super) struct MigrateContext {
     pub(super) inventory_source: String,
     pub(super) source_tree_root: Option<String>,
     pub(super) inventory_files: Option<usize>,
+    /// Inventory completeness posture (#3383): carries the discovered-file
+    /// count and whether the scan was complete, scoped, or partial.
+    pub(super) inventory_completeness: Option<String>,
+    /// Repository identity digest bound to the discovered source tree (#3383).
+    /// Prevents cross-repository identity collision in summaries.
+    pub(super) repository_identity: Option<String>,
     pub(super) input_kind: String,
     pub(super) input_path: String,
     pub(super) legacy_source_files: Vec<String>,

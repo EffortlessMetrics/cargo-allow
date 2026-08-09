@@ -218,6 +218,8 @@ pub(crate) fn sample_migrate_json_for_contract_test() -> String {
             inventory_source: "unknown".to_string(),
             source_tree_root: None,
             inventory_files: None,
+            inventory_completeness: None,
+            repository_identity: None,
             input_kind: "from".to_string(),
             input_path: "policy/legacy.toml".to_string(),
             legacy_source_files: Vec::new(),

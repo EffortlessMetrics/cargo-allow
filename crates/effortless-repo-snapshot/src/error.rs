@@ -2,6 +2,7 @@
 //!
 //! Replaces allow-core dependency for error/utility types.
 //! allow-inventory remains a hard dependency pending inventory type abstraction.
+
 pub type SnapshotResult<T> = Result<T, SnapshotError>;
 
 #[derive(Debug, Clone)]
@@ -30,8 +31,19 @@ impl SnapshotError {
         self
     }
 
+    pub fn with_cause(self, _cause: impl std::fmt::Display) -> Self {
+        self
+    }
+
     pub fn as_str(&self) -> &str {
         &self.message
+    }
+
+    pub fn diagnostics(&self) -> Vec<&SnapshotDiagnostic> {
+        match &self.diagnostic {
+            Some(d) => vec![d.as_ref()],
+            None => vec![],
+        }
     }
 }
 
@@ -94,34 +106,9 @@ impl From<SnapshotError> for allow_core::CargoAllowError {
     }
 }
 
-impl SnapshotError {
-    pub fn with_cause(self, _cause: impl std::fmt::Display) -> Self {
-        self
-    }
-}
-
 #[cfg(feature = "allow-core-interop")]
 impl From<allow_core::CargoAllowError> for SnapshotError {
     fn from(err: allow_core::CargoAllowError) -> Self {
         SnapshotError::new(err.to_string())
-    }
-}
-impl SnapshotError {}
-
-impl SnapshotError {
-    pub fn diagnostics(&self) -> Vec<&SnapshotDiagnostic> {
-        match &self.diagnostic {
-            Some(d) => vec![d],
-            None => vec![],
-        }
-    }
-}
-
-impl SnapshotError {
-    pub fn diagnostics_new(&self) -> Vec<&SnapshotDiagnostic> {
-        match &self.diagnostic {
-            Some(d) => vec![d.as_ref()],
-            None => vec![],
-        }
     }
 }
