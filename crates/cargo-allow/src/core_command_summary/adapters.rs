@@ -791,6 +791,184 @@ pub fn core_command_summary_from_refresh(
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PruneSummaryFactsV1 {
+    pub repository_identity: String,
+    pub portable_identity: String,
+    pub policy_path: String,
+    pub candidate_count: usize,
+    pub write_requested: bool,
+    pub dry_run: bool,
+    pub completeness: CompletenessV1,
+}
+
+pub fn core_command_summary_from_prune(
+    facts: PruneSummaryFactsV1,
+) -> Result<CoreCommandSummaryV1, String> {
+    let PruneSummaryFactsV1 {
+        repository_identity,
+        portable_identity,
+        policy_path,
+        candidate_count,
+        write_requested,
+        dry_run: _,
+        completeness,
+    } = facts;
+    let complete = completeness == CompletenessV1::Complete;
+    let changed = write_requested && candidate_count > 0;
+    let primary_action = if changed {
+        Some(
+            CoreCommandActionV1::command(
+                "prune.recover_diff",
+                "Inspect the policy diff for recovery",
+                "git",
+                vec!["diff".to_string(), "--".to_string(), policy_path.clone()],
+            )
+            .with_contract(
+                "prune removed only the selected stale policy entries",
+                "the exact policy diff shows the recoverable removal",
+                "the diff does not prove the repository passes no-new",
+            ),
+        )
+    } else if candidate_count > 0 {
+        Some(
+            CoreCommandActionV1::command(
+                "prune.apply",
+                "Apply the reviewed stale-entry removal",
+                "cargo-allow",
+                vec![
+                    "prune".to_string(),
+                    "--stale".to_string(),
+                    "--config".to_string(),
+                    policy_path.clone(),
+                    "--write".to_string(),
+                ],
+            )
+            .with_write_posture(
+                CoreCommandWritePostureV1::LiveMutation,
+                vec![policy_path.clone()],
+            )
+            .with_contract(
+                "the preview identifies stale entries without changing policy bytes",
+                "the selected stale entries are removed from the named policy",
+                "prune does not approve human ownership or prove repository-wide posture",
+            ),
+        )
+    } else {
+        None
+    };
+    let (result_class, posture) = if !complete {
+        (ResultClassV1::PartialData, CoreCommandPostureV1::Blocking)
+    } else if candidate_count == 0 || changed {
+        (ResultClassV1::Completed, CoreCommandPostureV1::Satisfied)
+    } else {
+        (ResultClassV1::Completed, CoreCommandPostureV1::Advisory)
+    };
+    let effects = if changed {
+        CoreCommandEffectsV1 {
+            reads_repository: true,
+            writes_repository: true,
+            executes_repository_code: false,
+            invokes_network: false,
+            write_paths: vec![policy_path.clone()],
+            explicit_non_effects: vec![
+                "does not execute repository code or external evidence tools".to_string(),
+            ],
+        }
+    } else {
+        CoreCommandEffectsV1::read_only(vec![
+            if candidate_count == 0 {
+                "no stale entries required removal; policy bytes were unchanged".to_string()
+            } else {
+                "does not update the policy until --write is used".to_string()
+            },
+            "does not execute repository code or external evidence tools".to_string(),
+        ])
+    };
+    let next_proof = if changed {
+        Some(
+            CoreCommandActionV1::command(
+                "prune.full_no_new_check",
+                "Run the enforcing no-new check",
+                "cargo-allow",
+                vec![
+                    "check".to_string(),
+                    "--mode".to_string(),
+                    "no-new".to_string(),
+                ],
+            )
+            .with_contract(
+                "policy diff inspection is not full repository proof",
+                "the current source tree is evaluated under the no-new gate",
+                "source-syntax evaluation does not prove compiled or runtime correctness",
+            ),
+        )
+    } else {
+        None
+    };
+    build_core_command_summary(CoreCommandSummaryInputV1 {
+        tool_version: env!("CARGO_PKG_VERSION").to_string(),
+        operation: "prune".to_string(),
+        mode: Some(if changed {
+            "write".to_string()
+        } else {
+            "preview".to_string()
+        }),
+        profile: None,
+        subject: CoreSourceSubjectV1 {
+            kind: CoreSourceSubjectKindV1::Worktree,
+            repository_identity,
+            portable_identity,
+            base: None,
+            head: None,
+            paths: vec![policy_path.clone()],
+            limitations: vec![
+                "the summary is scoped to stale-entry selection and the current worktree"
+                    .to_string(),
+            ],
+        },
+        result_class,
+        posture,
+        completeness,
+        currentness: CurrentnessV1::Current,
+        reason: CoreCommandReasonV1 {
+            code: if candidate_count == 0 {
+                "prune.no_candidates".to_string()
+            } else if changed {
+                "prune.written".to_string()
+            } else {
+                "prune.preview".to_string()
+            },
+            message: if candidate_count == 0 {
+                "no stale entries required removal".to_string()
+            } else if changed {
+                format!(
+                    "removed {candidate_count} stale entr{} from {policy_path}",
+                    if candidate_count == 1 { "y" } else { "ies" }
+                )
+            } else {
+                format!(
+                    "previewed removal of {candidate_count} stale entr{} from {policy_path}",
+                    if candidate_count == 1 { "y" } else { "ies" }
+                )
+            },
+        },
+        primary_action,
+        additional_action_count: 0,
+        additional_actions_ref: None,
+        operation_effects: effects,
+        next_proof,
+        artifacts: Vec::new(),
+        claim_boundary: ClaimBoundaryV1::new(
+            "stale-entry selection and policy removal posture only",
+        )
+        .with_limitations(vec![
+            "human ownership, reason, and evidence remain operator claims".to_string(),
+            "prune does not prove compiled or runtime correctness".to_string(),
+        ]),
+    })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiffSummaryFactsV1 {
     pub repository_identity: String,
     pub portable_identity: String,
