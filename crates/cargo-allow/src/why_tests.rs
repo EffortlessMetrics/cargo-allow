@@ -457,7 +457,7 @@ fn target_scan_renderers_report_partial_scope_without_a_finding() -> Result<(), 
     );
     let value: Value = serde_json::from_str(&json).map_err(|err| err.to_string())?;
     for (pointer, expected) in [
-        ("/result_class", "target_scanner_partial"),
+        ("/evaluation/result_class", "target_scanner_partial"),
         ("/evaluation/scanner_completeness", "partial"),
         ("/target/path", "src/large.rs"),
         ("/target/status", "skipped"),
