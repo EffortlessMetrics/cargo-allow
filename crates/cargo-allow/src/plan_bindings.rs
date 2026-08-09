@@ -107,7 +107,7 @@ fn bound_file_error(path: &Path, label: &str, error: CappedReadError) -> CargoAl
     }
 }
 
-fn inventory_identity(
+pub(crate) fn inventory_identity(
     root: &Path,
     cfg: &AllowConfig,
     include_untracked: bool,
@@ -117,13 +117,21 @@ fn inventory_identity(
         generated: cfg.workspace.generated.clone(),
         include_untracked,
     };
-    let mut inventory = allow_inventory::inventory(root, &options)?;
-    inventory.files.sort_by_key(|path| normalize_path(path));
+    let inventory = allow_inventory::inventory(root, &options)?;
+    inventory_identity_from_inventory(root, &inventory)
+}
+
+pub(crate) fn inventory_identity_from_inventory(
+    root: &Path,
+    inventory: &allow_inventory::Inventory,
+) -> CargoAllowResult<String> {
+    let mut files = inventory.files.clone();
+    files.sort_by_key(|path| normalize_path(path));
     let mut canonical = Vec::new();
     push_bound_value(&mut canonical, "cargo-allow.inventory-basis.v1");
     push_bound_value(&mut canonical, inventory.source.as_str());
     push_bound_value(&mut canonical, inventory.completeness.as_str());
-    for path in &inventory.files {
+    for path in &files {
         let relative = path.strip_prefix(root).unwrap_or(path);
         push_bound_value(&mut canonical, &normalize_path(relative));
         let source_path = if path.is_absolute() {

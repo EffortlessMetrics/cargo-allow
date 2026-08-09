@@ -972,7 +972,9 @@ pub fn core_command_summary_from_prune(
 pub struct MigrateSummaryFactsV1 {
     pub repository_identity: String,
     pub portable_identity: String,
+    pub root_path: String,
     pub output_path: String,
+    pub portable_output: bool,
     pub input_path: String,
     pub entry_count: usize,
     pub update: bool,
@@ -986,7 +988,9 @@ pub fn core_command_summary_from_migrate(
     let MigrateSummaryFactsV1 {
         repository_identity,
         portable_identity,
+        root_path,
         output_path,
+        portable_output,
         input_path,
         entry_count,
         update,
@@ -994,18 +998,25 @@ pub fn core_command_summary_from_migrate(
         complete_inventory,
     } = facts;
     let live = update || force;
+    let repository_write = live && portable_output;
     let completeness = if complete_inventory {
         CompletenessV1::Complete
     } else {
         CompletenessV1::Partial
     };
-    let primary_action = if live {
+    let primary_action = if repository_write {
         Some(
             CoreCommandActionV1::command(
                 "migrate.recover_diff",
                 "Inspect the migrated policy diff",
                 "git",
-                vec!["diff".to_string(), "--".to_string(), output_path.clone()],
+                vec![
+                    "-C".to_string(),
+                    root_path.clone(),
+                    "diff".to_string(),
+                    "--".to_string(),
+                    output_path.clone(),
+                ],
             )
             .with_contract(
                 "migration wrote the named policy target",
@@ -1013,7 +1024,7 @@ pub fn core_command_summary_from_migrate(
                 "the diff does not prove migrated entries are correct or owned",
             ),
         )
-    } else {
+    } else if portable_output {
         Some(
             CoreCommandActionV1::command(
                 "migrate.review_candidate",
@@ -1023,6 +1034,8 @@ pub fn core_command_summary_from_migrate(
                     "diff".to_string(),
                     "--config".to_string(),
                     output_path.clone(),
+                    "--root".to_string(),
+                    root_path.clone(),
                 ],
             )
             .with_contract(
@@ -1031,8 +1044,10 @@ pub fn core_command_summary_from_migrate(
                 "candidate review does not authorize or update the live ledger",
             ),
         )
+    } else {
+        None
     };
-    let next_proof = live.then(|| {
+    let next_proof = (repository_write && complete_inventory).then(|| {
         CoreCommandActionV1::command(
             "migrate.full_no_new_check",
             "Run the enforcing no-new check",
@@ -1041,6 +1056,8 @@ pub fn core_command_summary_from_migrate(
                 "check".to_string(),
                 "--mode".to_string(),
                 "no-new".to_string(),
+                "--root".to_string(),
+                root_path.clone(),
             ],
         )
         .with_contract(
@@ -1077,7 +1094,7 @@ pub fn core_command_summary_from_migrate(
             ResultClassV1::PartialData
         },
         posture: if complete_inventory {
-            if live {
+            if repository_write {
                 CoreCommandPostureV1::Satisfied
             } else {
                 CoreCommandPostureV1::Advisory
@@ -1108,13 +1125,23 @@ pub fn core_command_summary_from_migrate(
         additional_actions_ref: None,
         operation_effects: CoreCommandEffectsV1 {
             reads_repository: true,
-            writes_repository: true,
+            writes_repository: portable_output,
             executes_repository_code: false,
             invokes_network: false,
-            write_paths: vec![output_path],
-            explicit_non_effects: vec![
-                "does not execute repository code or external evidence tools".to_string(),
-            ],
+            write_paths: if portable_output {
+                vec![output_path]
+            } else {
+                Vec::new()
+            },
+            explicit_non_effects: if portable_output {
+                vec!["does not execute repository code or external evidence tools".to_string()]
+            } else {
+                vec![
+                    "the external candidate output path is intentionally omitted from portable summary paths"
+                        .to_string(),
+                    "does not execute repository code or external evidence tools".to_string(),
+                ]
+            },
         },
         next_proof,
         artifacts: Vec::new(),

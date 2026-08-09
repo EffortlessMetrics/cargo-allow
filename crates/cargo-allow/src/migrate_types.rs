@@ -6,6 +6,8 @@ use std::path::PathBuf;
 pub(super) struct MigrationLoad {
     pub(super) cfg: AllowConfig,
     pub(super) context: MigrateContext,
+    pub(super) repository_identity: String,
+    pub(super) inventory_completeness: String,
     /// The resolved source-tree root, used for evidence reference validation
     /// (#1871). `None` when no root was resolved (e.g. legacy fallback).
     pub(super) root: Option<PathBuf>,
