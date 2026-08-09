@@ -204,3 +204,7 @@ mod root_cli_tests;
 mod spec_design_artifact_links_tests;
 #[cfg(test)]
 mod spec_system_profile_tests;
+
+#[cfg(test)]
+#[path = "no_new_marker_guard_tests.rs"]
+mod no_new_marker_guard_tests;
