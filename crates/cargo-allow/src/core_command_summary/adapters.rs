@@ -619,6 +619,178 @@ pub fn core_command_summary_from_add_plan(
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RefreshSummaryFactsV1 {
+    pub repository_identity: String,
+    pub portable_identity: String,
+    pub policy_path: String,
+    pub allow_id: String,
+    pub write_requested: bool,
+    pub dry_run: bool,
+    pub completeness: CompletenessV1,
+}
+
+pub fn core_command_summary_from_refresh(
+    facts: RefreshSummaryFactsV1,
+) -> Result<CoreCommandSummaryV1, String> {
+    let RefreshSummaryFactsV1 {
+        repository_identity,
+        portable_identity,
+        policy_path,
+        allow_id,
+        write_requested,
+        dry_run: _,
+        completeness,
+    } = facts;
+    let apply_action = CoreCommandActionV1::command(
+        "refresh.apply",
+        "Apply the reviewed location refresh",
+        "cargo-allow",
+        vec![
+            "refresh".to_string(),
+            "--allow-id".to_string(),
+            allow_id.clone(),
+            "--config".to_string(),
+            policy_path.clone(),
+            "--write".to_string(),
+        ],
+    )
+    .with_write_posture(
+        CoreCommandWritePostureV1::LiveMutation,
+        vec![policy_path.clone()],
+    )
+    .with_contract(
+        "the preview records the selected location-drift refresh only",
+        "the selected entry's last_seen location is updated in the named policy",
+        "refresh does not approve human ownership or prove repository-wide posture",
+    );
+    let complete = completeness == CompletenessV1::Complete;
+    let (result_class, posture, primary_action, effects, next_proof) = if write_requested {
+        (
+            if complete {
+                ResultClassV1::Completed
+            } else {
+                ResultClassV1::PartialData
+            },
+            if complete {
+                CoreCommandPostureV1::Satisfied
+            } else {
+                CoreCommandPostureV1::Blocking
+            },
+            Some(
+                CoreCommandActionV1::command(
+                    "refresh.inspect_entry",
+                    "Inspect the refreshed entry",
+                    "cargo-allow",
+                    vec!["explain".to_string(), allow_id.clone()],
+                )
+                .with_contract(
+                    "refresh confirms one selected location-drift update",
+                    "the entry's retained metadata and refreshed location are shown",
+                    "entry inspection does not prove the repository passes no-new",
+                ),
+            ),
+            CoreCommandEffectsV1 {
+                reads_repository: true,
+                writes_repository: true,
+                executes_repository_code: false,
+                invokes_network: false,
+                write_paths: vec![policy_path.clone()],
+                explicit_non_effects: vec![
+                    "does not execute repository code or external evidence tools".to_string(),
+                ],
+            },
+            Some(
+                CoreCommandActionV1::command(
+                    "refresh.full_no_new_check",
+                    "Run the enforcing no-new check",
+                    "cargo-allow",
+                    vec![
+                        "check".to_string(),
+                        "--mode".to_string(),
+                        "no-new".to_string(),
+                    ],
+                )
+                .with_contract(
+                    "targeted entry inspection is not full repository proof",
+                    "the current source tree is evaluated under the no-new gate",
+                    "source-syntax evaluation does not prove compiled or runtime correctness",
+                ),
+            ),
+        )
+    } else {
+        (
+            if complete {
+                ResultClassV1::Completed
+            } else {
+                ResultClassV1::PartialData
+            },
+            if completeness == CompletenessV1::Complete {
+                CoreCommandPostureV1::Advisory
+            } else {
+                CoreCommandPostureV1::Blocking
+            },
+            Some(apply_action),
+            CoreCommandEffectsV1::read_only(vec![
+                "does not update the policy until --write is used".to_string(),
+                "does not execute repository code or external evidence tools".to_string(),
+            ]),
+            None,
+        )
+    };
+    build_core_command_summary(CoreCommandSummaryInputV1 {
+        tool_version: env!("CARGO_PKG_VERSION").to_string(),
+        operation: "refresh".to_string(),
+        mode: Some(if write_requested {
+            "write".to_string()
+        } else {
+            "preview".to_string()
+        }),
+        profile: None,
+        subject: CoreSourceSubjectV1 {
+            kind: CoreSourceSubjectKindV1::Worktree,
+            repository_identity,
+            portable_identity,
+            base: None,
+            head: None,
+            paths: vec![policy_path.clone()],
+            limitations: vec![
+                "the summary is scoped to the selected location-drift entry and current worktree"
+                    .to_string(),
+            ],
+        },
+        result_class,
+        posture,
+        completeness,
+        currentness: CurrentnessV1::Current,
+        reason: CoreCommandReasonV1 {
+            code: if write_requested {
+                "refresh.written".to_string()
+            } else {
+                "refresh.preview".to_string()
+            },
+            message: if write_requested {
+                format!("refreshed location for {allow_id} in {policy_path}")
+            } else {
+                format!("previewed location refresh for {allow_id} in {policy_path}")
+            },
+        },
+        primary_action,
+        additional_action_count: 0,
+        additional_actions_ref: None,
+        operation_effects: effects,
+        next_proof,
+        artifacts: Vec::new(),
+        claim_boundary: ClaimBoundaryV1::new(
+            "one selected location-drift last_seen update and its write posture only",
+        )
+        .with_limitations(vec![
+            "human ownership, reason, and evidence remain operator claims".to_string(),
+            "refresh does not prove compiled or runtime correctness".to_string(),
+        ]),
+    })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiffSummaryFactsV1 {
     pub repository_identity: String,
     pub portable_identity: String,

@@ -30,7 +30,10 @@ fn refresh_write_updates_last_seen_in_policy_toml() {
     );
 
     let refresh_output = root.join("target/cargo-allow/refresh.json");
+    let common_summary = root.join("common-summary.json");
     let refresh = cargo_allow_command()
+        .arg("--command-summary-output")
+        .arg(&common_summary)
         .arg("refresh")
         .arg("--root")
         .arg(&root)
@@ -56,6 +59,34 @@ fn refresh_write_updates_last_seen_in_policy_toml() {
         "refresh --write",
         &refresh,
         "--output should not emit to stderr",
+    );
+
+    let common: Value = serde_json::from_str(
+        &fs::read_to_string(&common_summary)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read common summary: {err}"))),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("parse common summary: {err}")));
+    assert_eq!(
+        common.get("schema_id").and_then(Value::as_str),
+        Some("cargo-allow.core-command-summary.v1")
+    );
+    assert_eq!(
+        common.pointer("/operation").and_then(Value::as_str),
+        Some("refresh")
+    );
+    assert_eq!(
+        common.pointer("/posture").and_then(Value::as_str),
+        Some("satisfied")
+    );
+    assert_eq!(
+        common
+            .pointer("/operation_effects/write_paths/0")
+            .and_then(Value::as_str),
+        Some("policy/allow.toml")
+    );
+    assert_eq!(
+        common.pointer("/next_proof/args/0").and_then(Value::as_str),
+        Some("check")
     );
 
     let report = assert_saved_json_artifact(
