@@ -341,6 +341,20 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         &head_cfg_for_diff,
         style,
     );
+    let summary = diff_summary(
+        &base,
+        args.head.as_deref(),
+        result_class,
+        current_failures,
+        failed,
+    )?;
+    crate::core_command_router::write_summary_artifact(&root, &summary)?;
+    if args.format == OutputFormat::Human {
+        text = format!(
+            "{}\n{text}",
+            crate::core_command_summary::render_core_command_summary_human(&summary)
+        );
+    }
     match allow_diff::changed_files(&root, &base, args.head.as_deref()) {
         Ok(changed) => {
             if args.format == OutputFormat::Human {
@@ -414,6 +428,64 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         process::exit(1);
     }
     Ok(())
+}
+
+fn diff_summary(
+    base: &str,
+    head: Option<&str>,
+    result_class: allow_diff::DiffResultClass,
+    current_failures: usize,
+    failed: bool,
+) -> CargoAllowResult<crate::core_command_summary::CoreCommandSummaryV1> {
+    use effortless_repo_protocol::{CompletenessV1, CurrentnessV1, ResultClassV1};
+    let (result_class_v1, completeness, currentness) = match result_class {
+        allow_diff::DiffResultClass::Complete => (
+            ResultClassV1::Completed,
+            CompletenessV1::Complete,
+            CurrentnessV1::Current,
+        ),
+        allow_diff::DiffResultClass::StaleInput => (
+            ResultClassV1::StaleInput,
+            CompletenessV1::Unknown,
+            CurrentnessV1::Stale,
+        ),
+        allow_diff::DiffResultClass::Unsupported => (
+            ResultClassV1::Unsupported,
+            CompletenessV1::Unknown,
+            CurrentnessV1::PartialOrUnavailable,
+        ),
+        allow_diff::DiffResultClass::InstrumentFailure => (
+            ResultClassV1::InstrumentFailure,
+            CompletenessV1::Unknown,
+            CurrentnessV1::PartialOrUnavailable,
+        ),
+        allow_diff::DiffResultClass::BasePartial
+        | allow_diff::DiffResultClass::HeadPartial
+        | allow_diff::DiffResultClass::BothPartial => (
+            ResultClassV1::PartialData,
+            CompletenessV1::Partial,
+            CurrentnessV1::PartialOrUnavailable,
+        ),
+    };
+    crate::core_command_summary::core_command_summary_from_diff(
+        crate::core_command_summary::DiffSummaryFactsV1 {
+            repository_identity: "local-repository:current".to_string(),
+            portable_identity: format!("diff:{base}:{}", head.unwrap_or("current-worktree")),
+            base: base.to_string(),
+            head: head.map(str::to_string),
+            result_class: result_class_v1,
+            completeness,
+            currentness,
+            current_failures,
+            failed,
+        },
+    )
+    .map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!("failed to build diff command summary: {error}"),
+        )
+    })
 }
 
 fn load_current_world(args: &DiffArgs) -> CargoAllowResult<CurrentWorld> {
@@ -1014,3 +1086,46 @@ mod markdown_tests;
 #[cfg(test)]
 #[path = "diff_policy_filter_tests.rs"]
 mod policy_filter_tests;
+
+#[cfg(test)]
+mod summary_tests {
+    use super::diff_summary;
+    use allow_diff::DiffResultClass;
+    use effortless_repo_protocol::ResultClassV1;
+
+    #[test]
+    fn diff_summary_preserves_each_revision_result_class() -> Result<(), String> {
+        for (result_class, expected) in [
+            (DiffResultClass::Complete, ResultClassV1::Findings),
+            (DiffResultClass::BasePartial, ResultClassV1::PartialData),
+            (DiffResultClass::HeadPartial, ResultClassV1::PartialData),
+            (DiffResultClass::BothPartial, ResultClassV1::PartialData),
+            (DiffResultClass::StaleInput, ResultClassV1::StaleInput),
+            (DiffResultClass::Unsupported, ResultClassV1::Unsupported),
+            (
+                DiffResultClass::InstrumentFailure,
+                ResultClassV1::InstrumentFailure,
+            ),
+        ] {
+            let summary = diff_summary("base", Some("head"), result_class, 1, true)
+                .map_err(|error| error.to_string())?;
+            if summary.result_class != expected {
+                return Err(format!(
+                    "{result_class:?} mapped to {:?}, expected {expected:?}",
+                    summary.result_class
+                ));
+            }
+            if summary.posture != crate::core_command_summary::CoreCommandPostureV1::Blocking {
+                return Err(format!("{result_class:?} must remain blocking"));
+            }
+        }
+        let clean = diff_summary("base", Some("head"), DiffResultClass::Complete, 0, false)
+            .map_err(|error| error.to_string())?;
+        if clean.result_class != ResultClassV1::Completed
+            || clean.posture != crate::core_command_summary::CoreCommandPostureV1::Satisfied
+        {
+            return Err("complete clean diff must be satisfied".to_string());
+        }
+        Ok(())
+    }
+}

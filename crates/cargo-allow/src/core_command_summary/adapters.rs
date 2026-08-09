@@ -4,8 +4,149 @@ use effortless_repo_protocol::{ClaimBoundaryV1, CompletenessV1, CurrentnessV1, R
 use super::{
     CoreCommandActionV1, CoreCommandEffectsV1, CoreCommandPostureV1, CoreCommandReasonV1,
     CoreCommandSummaryInputV1, CoreCommandSummaryV1, CoreCommandWritePostureV1,
-    CoreSourceSubjectV1, build_core_command_summary,
+    CoreSourceSubjectKindV1, CoreSourceSubjectV1, build_core_command_summary,
 };
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DiffSummaryFactsV1 {
+    pub repository_identity: String,
+    pub portable_identity: String,
+    pub base: String,
+    pub head: Option<String>,
+    pub result_class: ResultClassV1,
+    pub completeness: CompletenessV1,
+    pub currentness: CurrentnessV1,
+    pub current_failures: usize,
+    pub failed: bool,
+}
+
+pub fn core_command_summary_from_diff(
+    facts: DiffSummaryFactsV1,
+) -> Result<CoreCommandSummaryV1, String> {
+    let DiffSummaryFactsV1 {
+        repository_identity,
+        portable_identity,
+        base,
+        head,
+        result_class,
+        completeness,
+        currentness,
+        current_failures,
+        failed,
+    } = facts;
+    let comparison_complete = result_class == ResultClassV1::Completed;
+    let result_class = if failed && comparison_complete {
+        ResultClassV1::Findings
+    } else {
+        result_class
+    };
+    let posture = if failed {
+        CoreCommandPostureV1::Blocking
+    } else {
+        CoreCommandPostureV1::Satisfied
+    };
+    let reason = if comparison_complete && failed {
+        CoreCommandReasonV1 {
+            code: "diff.blocking_findings".to_string(),
+            message: format!(
+                "the revision comparison is complete but {} finding(s) require attention",
+                current_failures
+            ),
+        }
+    } else if result_class == ResultClassV1::Completed {
+        CoreCommandReasonV1 {
+            code: "diff.satisfied".to_string(),
+            message: "the selected revisions have a complete diff posture".to_string(),
+        }
+    } else {
+        CoreCommandReasonV1 {
+            code: format!("diff.{}", result_class.as_str()),
+            message: format!(
+                "the selected revision comparison is not complete ({} failure(s) remain)",
+                current_failures
+            ),
+        }
+    };
+    let primary_action = failed.then(|| {
+        CoreCommandActionV1::command(
+            "diff.inspect_report",
+            "Inspect the diff report",
+            "cargo-allow",
+            vec![
+                "diff".to_string(),
+                "--format".to_string(),
+                "json".to_string(),
+            ],
+        )
+        .with_contract(
+            "the diff summary is a compact posture projection",
+            "the detailed diff report exposes the exact finding and policy changes",
+            "the report does not prove compiled or runtime behavior",
+        )
+    });
+    let next_proof = (!failed && result_class == ResultClassV1::Completed).then(|| {
+        CoreCommandActionV1::command(
+            "diff.rerun_no_new",
+            "Run the enforcing no-new check",
+            "cargo-allow",
+            vec![
+                "check".to_string(),
+                "--mode".to_string(),
+                "no-new".to_string(),
+            ],
+        )
+        .with_contract(
+            "diff is comparative evidence, not the repository enforcement gate",
+            "the current repository posture is evaluated under no-new",
+            "source-syntax evaluation does not prove compiled or runtime correctness",
+        )
+    });
+    let mut subject = CoreSourceSubjectV1 {
+        kind: CoreSourceSubjectKindV1::CommittedRange,
+        repository_identity,
+        portable_identity,
+        base: Some(base),
+        head,
+        paths: Vec::new(),
+        limitations: Vec::new(),
+    };
+    if subject.head.is_none() {
+        subject.limitations.push(
+            "the comparison head is the current worktree rather than an explicitly pinned revision"
+                .to_string(),
+        );
+    }
+    build_core_command_summary(CoreCommandSummaryInputV1 {
+        tool_version: env!("CARGO_PKG_VERSION").to_string(),
+        operation: "diff".to_string(),
+        mode: None,
+        profile: None,
+        subject,
+        result_class,
+        posture,
+        completeness,
+        currentness,
+        reason,
+        primary_action,
+        additional_action_count: 0,
+        additional_actions_ref: None,
+        operation_effects: CoreCommandEffectsV1::read_only(vec![
+            "does not modify source, policy, Git, hooks, workflows, or GitHub settings".to_string(),
+            "does not execute repository code or external evidence tools".to_string(),
+        ]),
+        next_proof,
+        artifacts: Vec::new(),
+        claim_boundary: ClaimBoundaryV1::new(
+            "revision comparison and source-exception posture only",
+        )
+        .with_limitations(vec![
+            "macro expansion, type information, MIR, control flow, and data flow were not analyzed"
+                .to_string(),
+            "a complete diff does not establish release readiness or runtime correctness"
+                .to_string(),
+        ]),
+    })
+}
 
 pub fn core_command_summary_from_adoption_plan(
     plan: &allow_report::CoreAdoptionPlanV1,

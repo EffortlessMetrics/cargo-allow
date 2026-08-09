@@ -110,6 +110,48 @@ fn completed_summary_rejects_partial_coverage() -> Result<(), String> {
 }
 
 #[test]
+fn core_command_summary_diff_preserves_revision_and_completeness_posture() -> Result<(), String> {
+    let complete = core_command_summary_from_diff(DiffSummaryFactsV1 {
+        repository_identity: "local-repository:test".to_string(),
+        portable_identity: "diff:base:head".to_string(),
+        base: "base".to_string(),
+        head: Some("head".to_string()),
+        result_class: ResultClassV1::Completed,
+        completeness: CompletenessV1::Complete,
+        currentness: CurrentnessV1::Current,
+        current_failures: 0,
+        failed: false,
+    })?;
+    ensure(
+        complete.subject.base.as_deref() == Some("base")
+            && complete.subject.head.as_deref() == Some("head"),
+        "diff summary must retain the exact revision pair",
+    )?;
+    ensure(
+        complete.next_proof.is_some(),
+        "a complete diff must name the enforcing follow-up proof",
+    )?;
+
+    let partial = core_command_summary_from_diff(DiffSummaryFactsV1 {
+        repository_identity: "local-repository:test".to_string(),
+        portable_identity: "diff:base:current-worktree".to_string(),
+        base: "base".to_string(),
+        head: None,
+        result_class: ResultClassV1::PartialData,
+        completeness: CompletenessV1::Partial,
+        currentness: CurrentnessV1::PartialOrUnavailable,
+        current_failures: 1,
+        failed: true,
+    })?;
+    ensure(
+        partial.posture == CoreCommandPostureV1::Blocking
+            && partial.primary_action.is_some()
+            && partial.next_proof.is_none(),
+        "partial diff must block and avoid a clean-proof claim",
+    )
+}
+
+#[test]
 fn summary_survives_a_json_round_trip() -> Result<(), String> {
     let summary = build_core_command_summary(base_input("check"))?;
     let json = render_core_command_summary_json(&summary)?;
