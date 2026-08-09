@@ -408,7 +408,9 @@ fn core_command_summary_migrate_distinguishes_candidate_and_update() -> Result<(
     let candidate = core_command_summary_from_migrate(MigrateSummaryFactsV1 {
         repository_identity: "local-repository:test".to_string(),
         portable_identity: "worktree:migrate:policy/allow.toml".to_string(),
+        root_path: "/repo".to_string(),
         output_path: "policy/allow.toml".to_string(),
+        portable_output: true,
         input_path: "legacy/allow.toml".to_string(),
         entry_count: 2,
         update: false,
@@ -419,7 +421,8 @@ fn core_command_summary_migrate_distinguishes_candidate_and_update() -> Result<(
         candidate.mode.as_deref() == Some("candidate")
             && candidate.posture == CoreCommandPostureV1::Advisory
             && candidate.primary_action.as_ref().is_some_and(|action| {
-                action.args == strings(&["diff", "--config", "policy/allow.toml"])
+                action.args
+                    == strings(&["diff", "--config", "policy/allow.toml", "--root", "/repo"])
             })
             && candidate.next_proof.is_none(),
         "migrate candidate must remain advisory and reviewable",
@@ -427,7 +430,9 @@ fn core_command_summary_migrate_distinguishes_candidate_and_update() -> Result<(
     let update = core_command_summary_from_migrate(MigrateSummaryFactsV1 {
         repository_identity: "local-repository:test".to_string(),
         portable_identity: "worktree:migrate:policy/allow.toml".to_string(),
+        root_path: "/repo".to_string(),
         output_path: "policy/allow.toml".to_string(),
+        portable_output: true,
         input_path: "legacy/allow.toml".to_string(),
         entry_count: 2,
         update: true,
@@ -438,11 +443,56 @@ fn core_command_summary_migrate_distinguishes_candidate_and_update() -> Result<(
         update.mode.as_deref() == Some("update")
             && update.posture == CoreCommandPostureV1::Satisfied
             && update.operation_effects.writes_repository
-            && update
-                .next_proof
-                .as_ref()
-                .is_some_and(|action| action.args == strings(&["check", "--mode", "no-new"])),
+            && update.next_proof.as_ref().is_some_and(|action| {
+                action.args == strings(&["check", "--mode", "no-new", "--root", "/repo"])
+            }),
         "migrate update must name its write and full proof",
+    )
+}
+
+#[test]
+fn core_command_summary_migrate_blocks_on_partial_inventory() -> Result<(), String> {
+    let summary = core_command_summary_from_migrate(MigrateSummaryFactsV1 {
+        repository_identity: "local-repository:test".to_string(),
+        portable_identity: "worktree:migrate:policy/allow.toml".to_string(),
+        root_path: "/repo".to_string(),
+        output_path: "policy/allow.toml".to_string(),
+        portable_output: true,
+        input_path: "legacy/allow.toml".to_string(),
+        entry_count: 2,
+        update: true,
+        force: false,
+        complete_inventory: false,
+    })?;
+    ensure(
+        summary.result_class == ResultClassV1::PartialData
+            && summary.posture == CoreCommandPostureV1::Blocking
+            && summary.next_proof.is_none(),
+        "partial migrate inventory must block and avoid a clean-proof claim",
+    )
+}
+
+#[test]
+fn core_command_summary_migrate_omits_external_output_from_portable_actions() -> Result<(), String>
+{
+    let summary = core_command_summary_from_migrate(MigrateSummaryFactsV1 {
+        repository_identity: "local-repository:test".to_string(),
+        portable_identity: "worktree:migrate:external-output".to_string(),
+        root_path: "C:/repo".to_string(),
+        output_path: "external-output".to_string(),
+        portable_output: false,
+        input_path: "legacy/allow.toml".to_string(),
+        entry_count: 2,
+        update: true,
+        force: false,
+        complete_inventory: true,
+    })?;
+    ensure(
+        summary.primary_action.is_none()
+            && summary.next_proof.is_none()
+            && !summary.operation_effects.writes_repository
+            && summary.operation_effects.write_paths.is_empty(),
+        "external migrate output must not claim portable repository actions",
     )
 }
 

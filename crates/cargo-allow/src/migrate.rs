@@ -91,17 +91,15 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
         cwd.join(&args.out)
     };
     let rendered = render_policy(&cfg);
-    let output_path = portable_relative_under_root(&repository_root, &output_absolute)
-        .map(|path| {
-            path.to_string_lossy()
-                .replace(std::path::MAIN_SEPARATOR, "/")
-        })
-        .unwrap_or_else(|_| {
-            output_absolute
-                .to_string_lossy()
-                .replace(std::path::MAIN_SEPARATOR, "/")
-        });
-    match portable_relative_under_root(&repository_root, &output_absolute) {
+    let output_target = portable_relative_under_root(&repository_root, &output_absolute);
+    let portable_output = output_target.as_ref().ok().map(|path| {
+        path.to_string_lossy()
+            .replace(std::path::MAIN_SEPARATOR, "/")
+    });
+    let output_path = portable_output
+        .clone()
+        .unwrap_or_else(|| "external-output".to_string());
+    match output_target {
         Ok(target) => {
             crate::policy_config::assert_path_within_root(&repository_root, &output_absolute)?;
             let mode = if args.update {
@@ -138,17 +136,19 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
     }
     let core_summary = crate::core_command_summary::core_command_summary_from_migrate(
         crate::core_command_summary::MigrateSummaryFactsV1 {
-            repository_identity: format!(
-                "local-repository:{}",
-                migration.context.inventory_source.as_str()
-            ),
+            repository_identity: format!("local-repository:{}", migration.repository_identity),
             portable_identity: format!("worktree:migrate:{output_path}"),
+            root_path: repository_root.to_string_lossy().replace('\\', "/"),
             output_path,
+            portable_output: portable_output.is_some(),
             input_path: migration.context.input_path.clone(),
             entry_count: cfg.allow.len(),
             update: args.update,
             force: args.force,
-            complete_inventory: migration.context.inventory_files.is_some(),
+            complete_inventory: matches!(
+                migration.inventory_completeness.as_str(),
+                "complete" | "scoped"
+            ),
         },
     )
     .map_err(|error| {

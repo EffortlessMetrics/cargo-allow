@@ -32,6 +32,9 @@ pub(super) fn load_single_file_migration_config(
     let inventory_source = inventory.source;
     let files_scanned = inventory.files.len();
     let (cfg, source) = load_single_file_policy(from)?;
+    let repository_identity =
+        crate::plan_bindings::inventory_identity_from_inventory(&root, &inventory)?;
+    let inventory_completeness = inventory.completeness.as_str().to_string();
     let legacy_compat_kinds = match source {
         SingleFileMigrationSource::BespokeLedger => vec!["bespoke-ledger"],
         SingleFileMigrationSource::LegacyOrCanonical => legacy_source_compat_kinds(from),
@@ -59,6 +62,8 @@ pub(super) fn load_single_file_migration_config(
             baseline_debt_projection: baseline_debt_projection(&legacy_compat_kinds),
             legacy_compat_kinds,
         },
+        repository_identity,
+        inventory_completeness,
         root: Some(root),
     })
 }
@@ -89,6 +94,9 @@ pub(super) fn load_repo_policy_migration_config(
         .filter(|finding| finding.kind == FindingKind::NonRustFile)
         .collect::<Vec<_>>();
     let batch = allow_policy_legacy::import_legacy_policy_dir(&repo_policy, Some(&findings))?;
+    let repository_identity =
+        crate::plan_bindings::inventory_identity_from_inventory(&root, &inventory)?;
+    let inventory_completeness = inventory.completeness.as_str().to_string();
     let legacy_source_files = batch.legacy_source_files();
     let legacy_compat_kinds = batch.compat_kind_ids();
     // #1867: surface unrecognized files from the legacy directory as warnings.
@@ -107,6 +115,8 @@ pub(super) fn load_repo_policy_migration_config(
             baseline_debt_projection: baseline_debt_projection(&legacy_compat_kinds),
             legacy_compat_kinds,
         },
+        repository_identity,
+        inventory_completeness,
         root: Some(root),
     })
 }
