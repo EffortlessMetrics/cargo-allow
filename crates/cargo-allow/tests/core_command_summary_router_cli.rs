@@ -453,6 +453,63 @@ fn triage_summary_matrix_preserves_read_only_and_judgment_boundaries() -> Result
 }
 
 #[test]
+fn list_summary_distinguishes_empty_ledger_from_empty_filter_result() -> Result<(), String> {
+    let root = temp_root("summary-list-filter-matrix")?;
+    write_source(&root, "pub fn value() -> u8 { 1 }\n")?;
+    run(&root, &["init"])?;
+    fs::write(
+        root.join("policy/allow.toml"),
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+stale_entries_fail = false
+allow_bare_allow_attributes = false
+lint_policy_id_required = false
+
+[requirements.unsafe]
+evidence_required = true
+safety_comment_required = false
+"#,
+    )
+    .map_err(|error| format!("write empty policy fixture: {error}"))?;
+    git_commit_fixture(&root)?;
+
+    for (label, extra_args, expected_reason, expected_action) in [
+        ("empty", Vec::<&str>::new(), "list.no_entries", "adopt"),
+        (
+            "filtered-empty",
+            vec!["--owner", "no-such-owner"],
+            "list.no_filter_matches",
+            "list",
+        ),
+    ] {
+        let mut argv = vec!["list", "--format", "json"];
+        argv.extend(extra_args);
+        let output = run(&root, &argv)?;
+        let json: Value = serde_json::from_slice(&output.stdout)
+            .map_err(|error| format!("parse {label} list output: {error}"))?;
+        let summary = json
+            .get("core_command_summary")
+            .ok_or_else(|| format!("{label} list output omitted common summary"))?;
+        require(
+            field(summary, &["reason", "code"]) == Some(&Value::from(expected_reason))
+                && field(summary, &["operation_effects", "writes_repository"])
+                    == Some(&Value::Bool(false))
+                && summary.pointer("/primary_action/args/0") == Some(&Value::from(expected_action)),
+            format!("{label} list summary lost its distinction: {summary}"),
+        )?;
+    }
+
+    remove_temp_root(root)
+}
+
+#[test]
 fn why_plan_reports_the_candidate_write_it_performed() -> Result<(), String> {
     let root = temp_root("summary-why-plan")?;
     write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
