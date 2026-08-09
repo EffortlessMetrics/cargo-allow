@@ -157,7 +157,7 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         if cli.command_summary_output.is_some() {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::Usage,
-                "--command-summary-output requires the adopt, doctor, audit, check, explain, why, or worklist subcommand",
+                "--command-summary-output requires the adopt, doctor, audit, check, diff, explain, why, or worklist subcommand",
             ));
         }
         CargoAllowCli::command().print_help().map_err(|e| {
