@@ -24,6 +24,7 @@ pub(super) struct RefreshEmitInput<'a> {
     pub previous_last_seen: Option<LastSeen>,
     pub drift_message: &'a str,
     pub root: &'a std::path::Path,
+    pub policy_path: &'a std::path::Path,
     pub inventory_facts: crate::InventoryFacts,
     pub written_path: Option<&'a std::path::Path>,
     pub mutation_receipt: MutationReceipt<'a>,

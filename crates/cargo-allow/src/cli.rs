@@ -157,7 +157,7 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         if cli.command_summary_output.is_some() {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::Usage,
-                "--command-summary-output requires the adopt, doctor, audit, check, diff, init, propose, add, explain, why, or worklist subcommand",
+                "--command-summary-output requires the adopt, doctor, audit, check, diff, init, propose, add, refresh, explain, why, or worklist subcommand",
             ));
         }
         CargoAllowCli::command().print_help().map_err(|e| {
@@ -261,10 +261,14 @@ fn configure_summary_output(
             (WorkingDirectory, args.summary_output.clone()),
             (SourceTreeRoot, args.config.clone()),
         ],
+        CargoAllowCommand::Refresh(args) => vec![
+            (WorkingDirectory, args.output.clone()),
+            (SourceTreeRoot, args.config.clone()),
+        ],
         _ => {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::Usage,
-                "--command-summary-output currently supports the source-exception adopt, doctor, audit, check, diff, init, propose, add, explain, why, and worklist commands only",
+                "--command-summary-output currently supports the source-exception adopt, doctor, audit, check, diff, init, propose, add, refresh, explain, why, and worklist commands only",
             ));
         }
     }

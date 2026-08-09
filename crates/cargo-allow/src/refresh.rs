@@ -25,7 +25,8 @@ use crate::{
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
-    git_relative_config_path, load_world_with_evidence_mode, resolve_source_tree_root,
+    git_relative_config_path, load_world_with_evidence_mode, portable_relative_under_root,
+    resolve_source_tree_root,
 };
 use effortless_repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 
@@ -138,6 +139,7 @@ pub(crate) fn cmd_refresh(args: &RefreshArgs) -> CargoAllowResult<()> {
             previous_last_seen,
             drift_message: &drift_message,
             root: &root,
+            policy_path: &policy_path,
             inventory_facts,
             written_path: written_path.as_deref(),
             mutation_receipt,
@@ -201,6 +203,36 @@ fn render_and_emit(args: &RefreshArgs, input: RefreshEmitInput<'_>) -> CargoAllo
         context,
         mutation_receipt: input.mutation_receipt,
     };
+    let policy_path = portable_relative_under_root(input.root, input.policy_path)?
+        .to_string_lossy()
+        .replace(std::path::MAIN_SEPARATOR, "/");
+    let core_summary = crate::core_command_summary::core_command_summary_from_refresh(
+        crate::core_command_summary::RefreshSummaryFactsV1 {
+            repository_identity: format!(
+                "local-repository:{}",
+                input.inventory_facts.source.as_str()
+            ),
+            portable_identity: format!("worktree:refresh:{}:{}", policy_path, input.entry.id),
+            policy_path,
+            allow_id: input.entry.id.clone(),
+            write_requested: args.write,
+            dry_run: args.dry_run,
+            completeness: crate::core_command_router::summary_completeness(&input.inventory_facts),
+        },
+    )
+    .map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!("failed to build refresh command summary: {error}"),
+        )
+    })?;
+    crate::core_command_router::write_summary_artifact(input.root, &core_summary)?;
+    if args.format == HumanJsonFormat::Human {
+        eprint!(
+            "{}",
+            crate::core_command_summary::render_core_command_summary_human(&core_summary)
+        );
+    }
     let text = match args.format {
         HumanJsonFormat::Human => {
             let style = if args.output.is_none() {

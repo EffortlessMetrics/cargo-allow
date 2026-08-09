@@ -295,6 +295,54 @@ fn core_command_summary_add_from_plan_separates_targeted_and_full_proof() -> Res
 }
 
 #[test]
+fn core_command_summary_refresh_separates_preview_and_live_write() -> Result<(), String> {
+    let preview = core_command_summary_from_refresh(RefreshSummaryFactsV1 {
+        repository_identity: "local-repository:test".to_string(),
+        portable_identity: "worktree:refresh:policy/allow.toml:allow-0001".to_string(),
+        policy_path: "policy/allow.toml".to_string(),
+        allow_id: "allow-0001".to_string(),
+        write_requested: false,
+        dry_run: true,
+        completeness: CompletenessV1::Complete,
+    })?;
+    ensure(
+        preview.posture == CoreCommandPostureV1::Advisory
+            && !preview.operation_effects.writes_repository
+            && preview.primary_action.as_ref().is_some_and(|action| {
+                action.args
+                    == strings(&[
+                        "refresh",
+                        "--allow-id",
+                        "allow-0001",
+                        "--config",
+                        "policy/allow.toml",
+                        "--write",
+                    ])
+            }),
+        "refresh preview must remain advisory and name the live write target",
+    )?;
+    let live = core_command_summary_from_refresh(RefreshSummaryFactsV1 {
+        repository_identity: "local-repository:test".to_string(),
+        portable_identity: "worktree:refresh:policy/allow.toml:allow-0001".to_string(),
+        policy_path: "policy/allow.toml".to_string(),
+        allow_id: "allow-0001".to_string(),
+        write_requested: true,
+        dry_run: false,
+        completeness: CompletenessV1::Complete,
+    })?;
+    ensure(
+        live.posture == CoreCommandPostureV1::Satisfied
+            && live.operation_effects.writes_repository
+            && live.operation_effects.write_paths == vec!["policy/allow.toml"]
+            && live
+                .next_proof
+                .as_ref()
+                .is_some_and(|action| action.args == strings(&["check", "--mode", "no-new"])),
+        "live refresh must name its policy write and full proof",
+    )
+}
+
+#[test]
 fn core_command_summary_diff_preserves_revision_and_completeness_posture() -> Result<(), String> {
     let complete = core_command_summary_from_diff(DiffSummaryFactsV1 {
         repository_identity: "local-repository:test".to_string(),
