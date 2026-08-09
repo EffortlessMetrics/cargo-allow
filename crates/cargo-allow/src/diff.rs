@@ -1086,3 +1086,44 @@ mod markdown_tests;
 #[cfg(test)]
 #[path = "diff_policy_filter_tests.rs"]
 mod policy_filter_tests;
+
+#[cfg(test)]
+mod summary_tests {
+    use super::diff_summary;
+    use allow_diff::DiffResultClass;
+    use effortless_repo_protocol::ResultClassV1;
+
+    #[test]
+    fn diff_summary_preserves_each_revision_result_class() -> Result<(), String> {
+        for (result_class, expected) in [
+            (DiffResultClass::Complete, ResultClassV1::Completed),
+            (DiffResultClass::BasePartial, ResultClassV1::PartialData),
+            (DiffResultClass::HeadPartial, ResultClassV1::PartialData),
+            (DiffResultClass::BothPartial, ResultClassV1::PartialData),
+            (DiffResultClass::StaleInput, ResultClassV1::StaleInput),
+            (DiffResultClass::Unsupported, ResultClassV1::Unsupported),
+            (
+                DiffResultClass::InstrumentFailure,
+                ResultClassV1::InstrumentFailure,
+            ),
+        ] {
+            let summary = diff_summary("base", Some("head"), result_class, 1, true)?;
+            if summary.result_class != expected {
+                return Err(format!(
+                    "{result_class:?} mapped to {:?}, expected {expected:?}",
+                    summary.result_class
+                ));
+            }
+            if summary.posture != crate::core_command_summary::CoreCommandPostureV1::Blocking {
+                return Err(format!("{result_class:?} must remain blocking"));
+            }
+        }
+        let clean = diff_summary("base", Some("head"), DiffResultClass::Complete, 0, false)?;
+        if clean.result_class != ResultClassV1::Completed
+            || clean.posture != crate::core_command_summary::CoreCommandPostureV1::Satisfied
+        {
+            return Err("complete clean diff must be satisfied".to_string());
+        }
+        Ok(())
+    }
+}
