@@ -24,6 +24,8 @@ fn render_migrate_summary_json_records_policy_migration_context() {
         inventory_source: "git_tracked".to_string(),
         source_tree_root: Some("H:/Code/Rust/cargo-allow".to_string()),
         inventory_files: Some(53),
+        inventory_completeness: Some("complete".to_string()),
+        repository_identity: Some("test".to_string()),
         input_kind: "repo_policy".to_string(),
         input_path: "policy".to_string(),
         legacy_source_files: Vec::new(),

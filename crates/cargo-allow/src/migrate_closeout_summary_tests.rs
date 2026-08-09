@@ -224,6 +224,8 @@ fn migrate_context(
         inventory_source: "filesystem_fallback".to_string(),
         source_tree_root: Some(root.display().to_string()),
         inventory_files: Some(1),
+        inventory_completeness: Some("complete".to_string()),
+        repository_identity: Some("test".to_string()),
         input_kind: "from".to_string(),
         input_path,
         legacy_source_files,

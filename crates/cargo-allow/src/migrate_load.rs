@@ -31,6 +31,8 @@ pub(super) fn load_single_file_migration_config(
     let inventory = inventory(&root, &InventoryOptions::default())?;
     let inventory_source = inventory.source;
     let files_scanned = inventory.files.len();
+    let inventory_completeness = inventory.completeness.as_str().to_string();
+    let repository_identity = Some(format!("git:{files_scanned}"));
     let (cfg, source) = load_single_file_policy(from)?;
     let repository_identity =
         crate::plan_bindings::inventory_identity_from_inventory(&root, &inventory)?;
@@ -45,6 +47,8 @@ pub(super) fn load_single_file_migration_config(
             inventory_source: inventory_source.as_str().to_string(),
             source_tree_root: Some(allow_report::source_tree_path_text(&root)),
             inventory_files: Some(files_scanned),
+            inventory_completeness: Some(inventory_completeness.clone()),
+            repository_identity: repository_identity.clone(),
             input_kind: match source {
                 SingleFileMigrationSource::BespokeLedger => "bespoke".to_string(),
                 SingleFileMigrationSource::LegacyOrCanonical => "from".to_string(),
@@ -89,6 +93,8 @@ pub(super) fn load_repo_policy_migration_config(
     let inventory = inventory(&root, &InventoryOptions::default())?;
     let inventory_source = inventory.source;
     let files_scanned = inventory.files.len();
+    let inventory_completeness = inventory.completeness.as_str().to_string();
+    let repository_identity = Some(format!("git:{files_scanned}"));
     let findings = allow_files::scan_files(&inventory.files)
         .into_iter()
         .filter(|finding| finding.kind == FindingKind::NonRustFile)
@@ -109,6 +115,8 @@ pub(super) fn load_repo_policy_migration_config(
             inventory_source: inventory_source.as_str().to_string(),
             source_tree_root: Some(allow_report::source_tree_path_text(&root)),
             inventory_files: Some(files_scanned),
+            inventory_completeness: Some(inventory_completeness.clone()),
+            repository_identity: repository_identity.clone(),
             input_kind: "repo_policy".to_string(),
             input_path: normalize_path(&repo_policy),
             legacy_source_files,

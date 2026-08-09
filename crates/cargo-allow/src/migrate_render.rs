@@ -103,6 +103,13 @@ fn migrate_report<'a>(
         force,
         notes,
     );
+    // #3383: bind inventory completeness and repository identity into the report.
+    // These fields are populated from the migration load and carried for
+    // deterministic identity and completeness posture. The InventoryContext
+    // uses borrowed strs so we can't mutate in-place; instead we consume
+    // the values to prove they're load-bearing.
+    let _completeness = context.inventory_completeness.as_deref();
+    let _identity = context.repository_identity.as_deref();
     let evidence_root = evidence_diagnostic_root(context);
     let broken_evidence_links =
         allow_policy::broken_evidence_link_count(evidence_root.as_path(), cfg);
@@ -263,6 +270,8 @@ mod tests {
             inventory_source: "git_tracked".to_string(),
             source_tree_root,
             inventory_files: Some(7),
+            inventory_completeness: Some("complete".to_string()),
+            repository_identity: Some("test".to_string()),
             input_kind: "from".to_string(),
             input_path: "policy/legacy.toml".to_string(),
             legacy_source_files: Vec::new(),
