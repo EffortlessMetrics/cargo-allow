@@ -83,13 +83,23 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     } else {
         current_world_loaded(&current_world)?.cfg.clone()
     };
-    let mut base_findings = allow_diff::findings_at_revision(&root, &base, &base_cfg)?;
+    let base_revision_scan = allow_diff::scan_at_revision(&root, &base, &base_cfg)?;
+    let mut base_findings = base_revision_scan.findings.clone();
     if let Some(kind) = &args.kind {
         let parsed = parse_kind_filter(kind)?;
         base_findings.retain(|finding| parsed.matches_finding(finding));
     }
-    let mut head_findings_for_diff = if let Some(head) = &args.head {
-        allow_diff::findings_at_revision(&root, head, &head_cfg_for_diff)?
+    let head_revision_scan = if let Some(head) = &args.head {
+        Some(allow_diff::scan_at_revision(
+            &root,
+            head,
+            &head_cfg_for_diff,
+        )?)
+    } else {
+        None
+    };
+    let mut head_findings_for_diff = if let Some(scan) = &head_revision_scan {
+        scan.findings.clone()
     } else {
         current_world_loaded(&current_world)?.findings.clone()
     };
@@ -181,10 +191,17 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     let policy_change_failure = policy_failed && (!args.require_change_note || change_note_failed);
     let failed = current_failures > 0 || policy_change_failure || change_note_failed;
     let report_inventory_facts = if let Some(head) = args.head.as_deref() {
-        InventoryFacts::scanned(
+        let mut facts = InventoryFacts::scanned(
             InventorySource::GitTracked,
             source_tree_file_count_at_revision(&root, head, &report_cfg)?,
-        )
+        );
+        if let Some(scan) = &head_revision_scan {
+            facts = facts
+                .with_rust_files_considered(scan.rust_files_considered)
+                .with_rust_files_skipped(scan.rust_files_skipped)
+                .with_rust_files_with_parse_errors(scan.rust_files_with_parse_errors);
+        }
+        facts
     } else {
         current_world_loaded(&current_world)?.inventory_facts
     };

@@ -52,7 +52,7 @@ pub use policy_change::{
     SelectorIdentityChange, SelectorPrecisionChange,
 };
 pub use policy_scope::selector_precision_score;
-pub use revision::findings_at_revision;
+pub use revision::{RevisionScanResult, findings_at_revision, scan_at_revision};
 pub use revision_git::{changed_files, git_tracked_files_at_revision, read_file_at_revision};
 pub use revision_identity::{
     REPOSITORY_SNAPSHOT_SCHEMA, RepositoryDirtyState, RepositoryObjectFormat,
