@@ -120,6 +120,9 @@ fn render_receipt_value(input: ReceiptRenderInput<'_>) -> String {
         string_array_value(SCANNER_LIMITATIONS),
     );
     artifact.insert("inventory".to_string(), inventory_value(context));
+    if let Some(diff) = context.diff_analysis {
+        artifact.insert("diff_analysis".to_string(), diff_analysis_value(diff));
+    }
 
     if let Some(diagnostic) = diagnostic {
         artifact.insert(
@@ -146,6 +149,46 @@ fn render_receipt_value(input: ReceiptRenderInput<'_>) -> String {
     }
 
     serialize_artifact(Value::Object(artifact))
+}
+
+fn diff_analysis_value(context: crate::DiffAnalysisContext<'_>) -> Value {
+    let mut value = Map::new();
+    value.insert(
+        "result_class".to_string(),
+        Value::String(context.result_class.to_string()),
+    );
+    if let Some(revision) = context.base_revision {
+        value.insert(
+            "base_revision".to_string(),
+            Value::String(revision.to_string()),
+        );
+    }
+    if let Some(revision) = context.head_revision {
+        value.insert(
+            "head_revision".to_string(),
+            Value::String(revision.to_string()),
+        );
+    }
+    value.insert(
+        "base_inventory_complete".to_string(),
+        Value::Bool(context.base_inventory_complete),
+    );
+    value.insert(
+        "base_scanner_complete".to_string(),
+        Value::Bool(context.base_scanner_complete),
+    );
+    value.insert(
+        "head_inventory_complete".to_string(),
+        Value::Bool(context.head_inventory_complete),
+    );
+    value.insert(
+        "head_scanner_complete".to_string(),
+        Value::Bool(context.head_scanner_complete),
+    );
+    value.insert("introduced".to_string(), Value::from(context.introduced));
+    value.insert("retained".to_string(), Value::from(context.retained));
+    value.insert("removed".to_string(), Value::from(context.removed));
+    Value::Object(value)
 }
 
 fn insert_run_metadata(artifact: &mut Map<String, Value>, context: ReportContext<'_>) {

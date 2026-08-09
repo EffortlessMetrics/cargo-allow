@@ -21,6 +21,7 @@ fn common_schema_fragment_catalog_keeps_expected_defs() {
         "counts",
         "current_finding",
         "diff",
+        "diff_analysis",
         "diff_movement_counts",
         "diff_posture_delta_counts",
         "diff_summary",

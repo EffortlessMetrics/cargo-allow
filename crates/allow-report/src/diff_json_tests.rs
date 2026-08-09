@@ -167,6 +167,61 @@ fn diff_json_renderer_appends_posture_extension() {
 }
 
 #[test]
+fn diff_json_projection_includes_shared_analysis_context() -> Result<(), Box<dyn std::error::Error>>
+{
+    let analysis = DiffAnalysisContext {
+        result_class: "base_partial",
+        base_revision: Some("origin/main"),
+        head_revision: Some("HEAD"),
+        base_inventory_complete: true,
+        base_scanner_complete: false,
+        head_inventory_complete: true,
+        head_scanner_complete: true,
+        introduced: 2,
+        retained: 3,
+        removed: 0,
+    };
+    let context = ReportContext {
+        diff_analysis: Some(analysis),
+        ..ReportContext::default()
+    };
+    let json = render_json_with_context_and_diff(
+        "diff",
+        &[],
+        &[],
+        true,
+        context,
+        DiffReport {
+            net_posture: "unchanged",
+            reviewer_action: "repair scanner evidence",
+            summary: DiffPostureSummary {
+                current_failures: 1,
+                new_findings: 0,
+                removed_findings: 0,
+                policy_failures: 0,
+                policy_review_items: 0,
+                policy_improvements: 0,
+            },
+            ledger_movement: crate::diff_row_test_support::empty_ledger_movement_summary(),
+            finding_changes: &[],
+            policy_changes: &[],
+        },
+    );
+    let value: serde_json::Value = serde_json::from_str(&json)?;
+    assert_eq!(
+        value["diff"]["diff_analysis"]["result_class"],
+        "base_partial"
+    );
+    assert_eq!(
+        value["diff"]["diff_analysis"]["base_revision"],
+        "origin/main"
+    );
+    assert_eq!(value["diff"]["diff_analysis"]["head_revision"], "HEAD");
+    assert_eq!(value["diff"]["diff_analysis"]["removed"], 0);
+    Ok(())
+}
+
+#[test]
 fn diff_json_renderer_survives_a_brace_inside_a_string_value() {
     // #1852: a `}` inside a string value (e.g. a finding message ending in a
     // brace) made the old `strip_suffix('}')` text surgery strip the wrong

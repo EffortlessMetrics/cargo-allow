@@ -3,6 +3,35 @@ use allow_core::{Finding, FindingKind, MatchOutcome, MatchStatus, Span, Structur
 use std::path::PathBuf;
 
 #[test]
+fn receipt_projects_diff_analysis_context() {
+    let json = render_receipt_with_context(
+        "diff",
+        &[],
+        true,
+        ReportContext {
+            diff_analysis: Some(DiffAnalysisContext {
+                result_class: "base_partial",
+                base_revision: Some("origin/main"),
+                head_revision: Some("HEAD"),
+                base_inventory_complete: true,
+                base_scanner_complete: false,
+                head_inventory_complete: true,
+                head_scanner_complete: true,
+                introduced: 2,
+                retained: 3,
+                removed: 0,
+            }),
+            ..ReportContext::default()
+        },
+    );
+    assert!(json.contains("\"diff_analysis\": {"));
+    assert!(json.contains("\"base_revision\": \"origin/main\""));
+    assert!(json.contains("\"head_revision\": \"HEAD\""));
+    assert!(json.contains("\"base_scanner_complete\": false"));
+    assert!(json.contains("\"retained\": 3"));
+}
+
+#[test]
 fn receipt_exposes_v1_schema_contract() {
     let json = render_receipt_with_context(
         "check",

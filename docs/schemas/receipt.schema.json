@@ -37,6 +37,9 @@
     "failed": {
       "type": "boolean"
     },
+    "diff_analysis": {
+      "$ref": "#/$defs/diff_analysis"
+    },
     "claim_boundary": {
       "type": "array",
       "items": {
@@ -281,6 +284,32 @@
     }
   },
   "$defs": {
+    "diff_analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "result_class",
+        "base_inventory_complete",
+        "base_scanner_complete",
+        "head_inventory_complete",
+        "head_scanner_complete",
+        "introduced",
+        "retained",
+        "removed"
+      ],
+      "properties": {
+        "result_class": { "type": "string", "minLength": 1 },
+        "base_revision": { "type": "string", "minLength": 1 },
+        "head_revision": { "type": "string", "minLength": 1 },
+        "base_inventory_complete": { "type": "boolean" },
+        "base_scanner_complete": { "type": "boolean" },
+        "head_inventory_complete": { "type": "boolean" },
+        "head_scanner_complete": { "type": "boolean" },
+        "introduced": { "type": "integer", "minimum": 0 },
+        "retained": { "type": "integer", "minimum": 0 },
+        "removed": { "type": "integer", "minimum": 0 }
+      }
+    },
     "claim_boundary_flag": {
       "type": "string",
       "enum": [

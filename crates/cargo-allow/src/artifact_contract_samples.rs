@@ -380,7 +380,13 @@ pub(crate) fn core_artifact_samples() -> Vec<ArtifactSample> {
         ),
     );
     let cfg = allow_core::AllowConfig::empty();
-    let ledger = diff::DiffLedgerContext::new(&cfg, &cfg, &[], &[]);
+    let ledger = diff::DiffLedgerContext::new(
+        &cfg,
+        &cfg,
+        &[],
+        &[],
+        allow_report::DiffAnalysisContext::default(),
+    );
     let diff_json = diff::render_diff_json_with_posture(diff_base_json, 0, &[], &ledger);
     vec![
         ArtifactSample {

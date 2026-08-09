@@ -90,6 +90,22 @@ pub(crate) fn render_diff_posture_json_with_evidence_health(
     missing_evidence: usize,
     weak_evidence_references: usize,
 ) -> String {
+    render_diff_posture_json_with_evidence_health_and_context(
+        report,
+        broken_evidence_links,
+        missing_evidence,
+        weak_evidence_references,
+        crate::ReportContext::default(),
+    )
+}
+
+pub(crate) fn render_diff_posture_json_with_evidence_health_and_context(
+    report: DiffReport<'_>,
+    broken_evidence_links: usize,
+    missing_evidence: usize,
+    weak_evidence_references: usize,
+    context: crate::ReportContext<'_>,
+) -> String {
     let mut out = String::new();
     out.push_str("{\n");
     out.push_str(&format!(
@@ -100,6 +116,35 @@ pub(crate) fn render_diff_posture_json_with_evidence_health(
         "    \"reviewer_action\": \"{}\",\n",
         json_escape(report.reviewer_action)
     ));
+    if let Some(diff) = context.diff_analysis {
+        out.push_str("    \"diff_analysis\": {");
+        out.push_str(&format!(
+            "\"result_class\": \"{}\"",
+            json_escape(diff.result_class)
+        ));
+        if let Some(revision) = diff.base_revision {
+            out.push_str(&format!(
+                ", \"base_revision\": \"{}\"",
+                json_escape(revision)
+            ));
+        }
+        if let Some(revision) = diff.head_revision {
+            out.push_str(&format!(
+                ", \"head_revision\": \"{}\"",
+                json_escape(revision)
+            ));
+        }
+        out.push_str(&format!(
+            ", \"base_inventory_complete\": {}, \"base_scanner_complete\": {}, \"head_inventory_complete\": {}, \"head_scanner_complete\": {}, \"introduced\": {}, \"retained\": {}, \"removed\": {}}},\n",
+            crate::json::bool_json(diff.base_inventory_complete),
+            crate::json::bool_json(diff.base_scanner_complete),
+            crate::json::bool_json(diff.head_inventory_complete),
+            crate::json::bool_json(diff.head_scanner_complete),
+            diff.introduced,
+            diff.retained,
+            diff.removed,
+        ));
+    }
     append_movement_summary_json(&mut out, report.ledger_movement);
     out.push_str("    \"summary\": {\n");
     out.push_str(&format!(

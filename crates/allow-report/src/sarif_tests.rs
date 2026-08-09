@@ -7,6 +7,34 @@ fn context(source: &'static str) -> ReportContext<'static> {
 }
 
 #[test]
+fn sarif_report_projects_diff_analysis_context() -> Result<(), Box<dyn std::error::Error>> {
+    let context = ReportContext {
+        diff_analysis: Some(DiffAnalysisContext {
+            result_class: "head_partial",
+            base_revision: Some("origin/main"),
+            head_revision: Some("HEAD"),
+            base_inventory_complete: true,
+            base_scanner_complete: true,
+            head_inventory_complete: true,
+            head_scanner_complete: false,
+            introduced: 1,
+            retained: 2,
+            removed: 0,
+        }),
+        ..context("git_tracked")
+    };
+    let sarif = render_sarif_with_context("diff", &[], &[], true, context);
+    let _: serde_json::Value = serde_json::from_str(&sarif)?;
+    assert!(sarif.contains("\"diff_analysis\": {"));
+    assert!(sarif.contains("\"result_class\": \"head_partial\""));
+    assert!(sarif.contains("\"base_revision\": \"origin/main\""));
+    assert!(sarif.contains("\"head_revision\": \"HEAD\""));
+    assert!(sarif.contains("\"head_scanner_complete\": false"));
+    assert!(sarif.contains("\"introduced\": 1"));
+    Ok(())
+}
+
+#[test]
 fn sarif_report_emits_non_matched_results_with_locations() {
     let findings = vec![file_finding(
         FindingKind::NonRustFile,

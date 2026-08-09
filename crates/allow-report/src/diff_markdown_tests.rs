@@ -2,6 +2,24 @@ use super::*;
 use crate::diff_row_test_support::empty_ledger_movement_summary;
 
 #[test]
+fn diff_analysis_markdown_shows_revisions_and_absent_head() {
+    let text = render_diff_analysis_markdown(DiffAnalysisContext {
+        result_class: "complete",
+        base_revision: Some("origin/main"),
+        head_revision: None,
+        base_inventory_complete: true,
+        base_scanner_complete: true,
+        head_inventory_complete: true,
+        head_scanner_complete: true,
+        introduced: 1,
+        retained: 2,
+        removed: 0,
+    });
+    assert!(text.contains("Base revision: `origin/main`"));
+    assert!(text.contains("Head revision: `<none>`"));
+}
+
+#[test]
 fn diff_pr_summary_markdown_reports_net_posture() {
     let finding_changes = vec![DiffFindingChange {
         change: "removed",

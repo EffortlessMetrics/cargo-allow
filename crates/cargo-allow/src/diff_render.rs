@@ -22,7 +22,7 @@ pub(super) fn render_diff_pr_summary_markdown(
     let policy_bundles = policy_row_bundles(ledger.policy_changes, ledger.head_cfg);
     let finding_rows = finding_change_rows(&finding_bundles);
     let policy_rows = policy_change_rows(&policy_bundles);
-    allow_report::render_diff_pr_summary_markdown_with_evidence_health_counts(
+    let mut summary = allow_report::render_diff_pr_summary_markdown_with_evidence_health_counts(
         current_failures.max(current_no_new_failures(outcomes)),
         evidence.broken_evidence_links,
         evidence.policy_missing_evidence_entries,
@@ -30,7 +30,12 @@ pub(super) fn render_diff_pr_summary_markdown(
         &finding_rows,
         &policy_rows,
         ledger.ledger_movement_summary(),
-    )
+    );
+    summary.insert_str(
+        0,
+        &allow_report::render_diff_analysis_markdown(ledger.diff_analysis),
+    );
+    summary
 }
 
 #[cfg(test)]
@@ -69,6 +74,9 @@ pub(super) fn append_diff_posture_summary_styled(
     let policy_bundles = policy_row_bundles(ledger.policy_changes, ledger.head_cfg);
     let finding_rows = finding_change_rows(&finding_bundles);
     let policy_rows = policy_change_rows(&policy_bundles);
+    text.push_str(&allow_report::render_diff_analysis_human(
+        ledger.diff_analysis,
+    ));
     text.push_str(
         &allow_report::render_diff_posture_summary_human_with_evidence_health_counts_styled(
             current_failures.max(current_no_new_failures(outcomes)),
@@ -494,7 +502,13 @@ mod tests {
         )];
         let outcomes = vec![test_outcome(MatchStatus::New)];
         let cfg = AllowConfig::empty();
-        let ledger = DiffLedgerContext::new(&cfg, &cfg, &finding_changes, &policy_changes);
+        let ledger = DiffLedgerContext::new(
+            &cfg,
+            &cfg,
+            &finding_changes,
+            &policy_changes,
+            allow_report::DiffAnalysisContext::default(),
+        );
 
         let mut human = String::from("prefix");
         append_diff_posture_summary(

@@ -896,6 +896,9 @@
           "type": "string",
           "minLength": 1
         },
+        "diff_analysis": {
+          "$ref": "#/$defs/diff_analysis"
+        },
         "movement": {
           "$ref": "#/$defs/diff_movement_counts"
         },
@@ -924,6 +927,32 @@
       "additionalProperties": false,
       "required": ["introduced", "retained", "removed"],
       "properties": {
+        "introduced": { "type": "integer", "minimum": 0 },
+        "retained": { "type": "integer", "minimum": 0 },
+        "removed": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "diff_analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "result_class",
+        "base_inventory_complete",
+        "base_scanner_complete",
+        "head_inventory_complete",
+        "head_scanner_complete",
+        "introduced",
+        "retained",
+        "removed"
+      ],
+      "properties": {
+        "result_class": { "type": "string", "minLength": 1 },
+        "base_revision": { "type": "string", "minLength": 1 },
+        "head_revision": { "type": "string", "minLength": 1 },
+        "base_inventory_complete": { "type": "boolean" },
+        "base_scanner_complete": { "type": "boolean" },
+        "head_inventory_complete": { "type": "boolean" },
+        "head_scanner_complete": { "type": "boolean" },
         "introduced": { "type": "integer", "minimum": 0 },
         "retained": { "type": "integer", "minimum": 0 },
         "removed": { "type": "integer", "minimum": 0 }

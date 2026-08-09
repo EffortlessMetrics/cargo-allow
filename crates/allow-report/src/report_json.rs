@@ -160,7 +160,7 @@ fn render_json_report(
             out.push_str("\n  ],\n");
             out.push_str("  \"diff\": ");
             out.push_str(
-                &crate::diff_json::render_diff_posture_json_with_evidence_health(
+                &crate::diff_json::render_diff_posture_json_with_evidence_health_and_context(
                     diff,
                     context.broken_evidence_links.unwrap_or(0),
                     context
@@ -168,6 +168,7 @@ fn render_json_report(
                         .unwrap_or(0)
                         .max(summary.count(MatchStatus::EvidenceMissing)),
                     context.weak_evidence_references.unwrap_or(0),
+                    context,
                 ),
             );
             out.push_str("\n}\n");
