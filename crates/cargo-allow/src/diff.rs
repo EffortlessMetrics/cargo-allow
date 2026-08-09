@@ -1096,7 +1096,7 @@ mod summary_tests {
     #[test]
     fn diff_summary_preserves_each_revision_result_class() -> Result<(), String> {
         for (result_class, expected) in [
-            (DiffResultClass::Complete, ResultClassV1::Completed),
+            (DiffResultClass::Complete, ResultClassV1::Findings),
             (DiffResultClass::BasePartial, ResultClassV1::PartialData),
             (DiffResultClass::HeadPartial, ResultClassV1::PartialData),
             (DiffResultClass::BothPartial, ResultClassV1::PartialData),
@@ -1107,7 +1107,8 @@ mod summary_tests {
                 ResultClassV1::InstrumentFailure,
             ),
         ] {
-            let summary = diff_summary("base", Some("head"), result_class, 1, true)?;
+            let summary = diff_summary("base", Some("head"), result_class, 1, true)
+                .map_err(|error| error.to_string())?;
             if summary.result_class != expected {
                 return Err(format!(
                     "{result_class:?} mapped to {:?}, expected {expected:?}",
@@ -1118,7 +1119,8 @@ mod summary_tests {
                 return Err(format!("{result_class:?} must remain blocking"));
             }
         }
-        let clean = diff_summary("base", Some("head"), DiffResultClass::Complete, 0, false)?;
+        let clean = diff_summary("base", Some("head"), DiffResultClass::Complete, 0, false)
+            .map_err(|error| error.to_string())?;
         if clean.result_class != ResultClassV1::Completed
             || clean.posture != crate::core_command_summary::CoreCommandPostureV1::Satisfied
         {
