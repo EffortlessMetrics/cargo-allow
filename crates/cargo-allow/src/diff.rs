@@ -137,16 +137,11 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
             scanner_complete: scan.scanner_completeness == "complete",
         }
     } else {
-        let facts = &current_world_loaded(&current_world)?.inventory_facts;
-        allow_diff::DiffScanCoverage {
-            inventory_complete: !matches!(
-                facts.completeness,
-                allow_inventory::InventoryCompleteness::Fallback
-                    | allow_inventory::InventoryCompleteness::Partial
-            ),
-            scanner_complete: facts.rust_files_skipped == 0
-                && facts.rust_files_with_parse_errors == 0,
-        }
+        // Current-tree completeness is the separate #2493 lane. This slice
+        // classifies only the two exact committed revisions when --head is
+        // supplied; existing current-tree checks continue to enforce their
+        // own inventory and scanner failure rules.
+        allow_diff::DiffScanCoverage::complete()
     };
     let result_class = allow_diff::classify_diff_result(
         allow_diff::DiffScanCoverage {
