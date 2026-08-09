@@ -27,6 +27,7 @@ const GRAMMAR_FIELDS: [&str; 8] = [
 const EXPLAIN_ARGV: &[&str] = &["explain", "allow-0001"];
 const AUDIT_ARGV: &[&str] = &["audit"];
 const CHECK_ARGV: &[&str] = &["check", "--mode", "no-new"];
+const LIST_ARGV: &[&str] = &["list"];
 const WHY_ARGV: &[&str] = &[
     "why",
     "--kind",
@@ -39,11 +40,12 @@ const WHY_ARGV: &[&str] = &[
 const WORKLIST_ARGV: &[&str] = &["worklist"];
 
 /// Every command that projects the summary.
-const GRAMMAR_COMMANDS: [&[&str]; 7] = [
+const GRAMMAR_COMMANDS: [&[&str]; 8] = [
     &["adopt"],
     &["doctor"],
     AUDIT_ARGV,
     CHECK_ARGV,
+    LIST_ARGV,
     EXPLAIN_ARGV,
     WHY_ARGV,
     WORKLIST_ARGV,
