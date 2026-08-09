@@ -28,10 +28,10 @@ match status.
 
 ## Proof
 
-- `rtk cargo fmt --all -- --check`
-- `rtk cargo clippy -p cargo-allow --test lifecycle_corpus --locked -- -D warnings`
-- `rtk cargo test -p cargo-allow --test lifecycle_corpus --locked`
-- `rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md`
+- `cargo fmt --all -- --check`
+- `cargo clippy -p cargo-allow --test lifecycle_corpus --locked -- -D warnings`
+- `cargo test -p cargo-allow --test lifecycle_corpus --locked`
+- `cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md`
 - Hosted PR test passed on #2242; CodeRabbit, Graphite reviews, GitGuardian,
   and mergeability checks passed.
 

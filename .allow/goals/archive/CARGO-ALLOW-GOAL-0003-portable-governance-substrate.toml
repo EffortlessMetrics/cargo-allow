@@ -50,10 +50,10 @@ linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0006"
 proof_commands = [
-  "rtk cargo test -p allow-policy profile_resolution",
-  "rtk cargo test -p cargo-allow profile_resolution",
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-policy profile_resolution",
+  "cargo test -p cargo-allow profile_resolution",
+  "cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in #1748 (merge `2adb0b5e`): resolver prefers `.allow/` profile config with compatibility fallback to existing `policy/` paths.",
@@ -70,9 +70,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0007"
 proof_commands = [
-  "rtk cargo test -p cargo-allow init",
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p cargo-allow init",
+  "cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in #1750 (merge `23ac8376`): `cargo-allow init --profile spec-system` bootstraps owned profile state under `.allow/` while keeping `policy/allow.toml` as the source-exception ledger.",
@@ -89,9 +89,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0008"
 proof_commands = [
-  "rtk cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest",
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest",
+  "cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in #1752 (merge `651d9c90`): migrated dogfood profile state from legacy `policy/` profile paths and `.codex/goals/` to owned `.allow/` layout.",
@@ -108,9 +108,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0007"
 linked_plan = "plans/federation/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0009"
 proof_commands = [
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-  "rtk cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest",
+  "cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest",
 ]
 evidence_notes = [
   "F0 design-only: CARGO-ALLOW-PROP-0007, CARGO-ALLOW-SPEC-0007, CARGO-ALLOW-ADR-0001, and CARGO-ALLOW-PLAN-0007 define ledger roles, precedence, duplicate/dialect handling, drain windows, divergence reporting, and receipt provenance.",
@@ -127,10 +127,10 @@ linked_spec = "CARGO-ALLOW-SPEC-0007"
 linked_plan = "plans/federation/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0010"
 proof_commands = [
-  "rtk cargo test -p allow-policy federation",
-  "rtk cargo test -p cargo-allow doctor",
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-policy federation",
+  "cargo test -p cargo-allow doctor",
+  "cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in #1756: `allow-policy::federation` parses/validates `[[ledgers]]` in `.allow/config.toml`; doctor and spec-system report configured ledgers and diagnostics.",
@@ -147,9 +147,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0007"
 linked_plan = "plans/federation/implementation-plan.md"
 linked_closeout = "plans/federation/closeouts/f2-evaluation.md"
 proof_commands = [
-  "rtk cargo test -p allow-policy federation",
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-policy federation",
+  "cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in #1758: `allow-policy::federation::evaluate` resolves canonical ledgers with deterministic precedence; findings, work items, and receipts carry ledger provenance and `federation.ledger_contributors`.",
@@ -165,9 +165,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0007"
 linked_plan = "plans/federation/implementation-plan.md"
 linked_closeout = "plans/federation/closeouts/f3-drain-divergence.md"
 proof_commands = [
-  "rtk cargo test -p allow-policy federation",
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-policy federation",
+  "cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in #1759 (merge `f81a9d2`): `[[drain_windows]]` config, canonical-vs-mirror comparison during active drains, visible `mirror_divergence` / `mirror_stale` / blocking `drain_expired` in doctor, receipts, worklist, and advisory counts; optional `check --deny mirror_divergence`.",
@@ -183,10 +183,10 @@ linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
 linked_closeout = "plans/spec-system/closeouts/import-i1-model.md"
 proof_commands = [
-  "rtk cargo test -p allow-policy import_roots",
-  "rtk cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest",
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-policy import_roots",
+  "cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest",
+  "cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in #1761 (merge `3912baa6`): `[import_roots]` config on spec-system profile, `allow-policy::import_roots` normalization, `import_graph` in doctor/audit/worklist, and `broken_import` work items.",
@@ -202,9 +202,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
 linked_closeout = "plans/spec-system/closeouts/import-i2-generic-adapters.md"
 proof_commands = [
-  "rtk cargo test -p allow-policy import_roots",
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-policy import_roots",
+  "cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "I2 narrow start: generic `.spec`/`.rails`/repo-spec read-only adapters on I1 import graph.",
@@ -220,9 +220,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
 linked_closeout = "plans/spec-system/closeouts/import-i2-kiro-spec-kit-adapters.md"
 proof_commands = [
-  "rtk cargo test -p allow-policy import_roots",
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-policy import_roots",
+  "cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in C8–C9 PR: Kiro (`.kiro/`) and Spec Kit (`.specify/`) discovery adapters on the I1 graph model.",
@@ -238,9 +238,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
 linked_closeout = "plans/spec-system/closeouts/import-i2-xtask-adapter.md"
 proof_commands = [
-  "rtk cargo test -p allow-policy import_roots",
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-policy import_roots",
+  "cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in C11 PR: xtask command registry TOML discovery on the I1 graph model.",
@@ -256,8 +256,8 @@ linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0018"
 proof_commands = [
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed: `docs/dogfood/cargo-allow-import-graph.md` with main-repo and fixture-backed Kiro/Spec Kit/xtask import_graph audit receipts.",

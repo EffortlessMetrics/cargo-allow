@@ -29,11 +29,11 @@ coverage.
 
 ## Proof
 
-- `rtk cargo fmt --all -- --check`
-- `rtk cargo test -p allow-report occurrence_headroom_entries_count_matched_entries_below_limit --locked`
-- `rtk cargo test -p cargo-allow --bin cargo-allow occurrence_headroom_work_item_reports_remaining_capacity --locked`
-- `rtk cargo test -p cargo-allow --test lifecycle_corpus --locked`
-- `rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md`
+- `cargo fmt --all -- --check`
+- `cargo test -p allow-report occurrence_headroom_entries_count_matched_entries_below_limit --locked`
+- `cargo test -p cargo-allow --bin cargo-allow occurrence_headroom_work_item_reports_remaining_capacity --locked`
+- `cargo test -p cargo-allow --test lifecycle_corpus --locked`
+- `cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md`
 - Hosted PR test passed on #2239; CodeRabbit, GitGuardian, and mergeability checks passed.
 
 The repository UB Review check remained blocked at its known missing
