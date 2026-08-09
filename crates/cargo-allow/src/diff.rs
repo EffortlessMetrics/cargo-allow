@@ -134,7 +134,8 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     let head_coverage = if let Some(scan) = &head_revision_scan {
         allow_diff::DiffScanCoverage {
             inventory_complete: scan.inventory_completeness == "complete",
-            scanner_complete: scan.scanner_completeness == "complete",
+            scanner_complete: scan.rust_files_skipped == 0
+                && scan.rust_files_with_parse_errors == 0,
         }
     } else {
         // Current-tree completeness is the separate #2493 lane. This slice
@@ -146,7 +147,8 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     let result_class = allow_diff::classify_diff_result(
         allow_diff::DiffScanCoverage {
             inventory_complete: base_revision_scan.inventory_completeness == "complete",
-            scanner_complete: base_revision_scan.scanner_completeness == "complete",
+            scanner_complete: base_revision_scan.rust_files_skipped == 0
+                && base_revision_scan.rust_files_with_parse_errors == 0,
         },
         head_coverage,
     );
