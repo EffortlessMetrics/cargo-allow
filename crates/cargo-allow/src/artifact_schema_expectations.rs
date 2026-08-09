@@ -332,6 +332,7 @@ pub(crate) fn expected_top_level_schema_properties() -> [(&'static str, &'static
                 "command",
                 "counts",
                 "diagnostic",
+                "diff_analysis",
                 "enforcement",
                 "evidence_repair_queues",
                 "failed",
