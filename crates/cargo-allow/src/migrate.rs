@@ -91,16 +91,15 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
         cwd.join(&args.out)
     };
     let rendered = render_policy(&cfg);
-    let portable_output = portable_relative_under_root(&repository_root, &output_absolute)
-        .ok()
-        .map(|path| {
-            path.to_string_lossy()
-                .replace(std::path::MAIN_SEPARATOR, "/")
-        });
+    let output_target = portable_relative_under_root(&repository_root, &output_absolute);
+    let portable_output = output_target.as_ref().ok().map(|path| {
+        path.to_string_lossy()
+            .replace(std::path::MAIN_SEPARATOR, "/")
+    });
     let output_path = portable_output
         .clone()
         .unwrap_or_else(|| "external-output".to_string());
-    match portable_relative_under_root(&repository_root, &output_absolute) {
+    match output_target {
         Ok(target) => {
             crate::policy_config::assert_path_within_root(&repository_root, &output_absolute)?;
             let mode = if args.update {
