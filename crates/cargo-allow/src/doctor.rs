@@ -20,7 +20,11 @@ use crate::{
         policy_reference_diagnostics_for_source_tree,
     },
     federation_doctor::FederationDoctorFacts,
-    intent_provider::{IntentProviderRequest, discover_intent_provider},
+    intent_provider::{
+        INTENT_PROVIDER_CANONICAL_COMMAND, INTENT_PROVIDER_REQUIRED_PROTOCOL,
+        INTENT_PROVIDER_REQUIRED_VERSION_RANGE, INTENT_PROVIDER_SUPPORT_REFERENCE,
+        IntentProviderFailureClass, IntentProviderRequest, discover_intent_provider,
+    },
     portable_relative_under_root, spec_system,
     support_bundle::{SupportBundleFacts, write_support_bundle},
 };
@@ -427,12 +431,30 @@ fn intent_provider_doctor_section(root: &Path) -> String {
     };
     match discover_intent_provider(&request) {
         Ok(resolution) => format!(
-            "\nIntent provider: {:?} at {}\n",
+            "\nIntent provider\n  status: available\n  discovery: {:?}\n  binary: {}\n  version: not probed\n  required version range: {INTENT_PROVIDER_REQUIRED_VERSION_RANGE}\n  required protocol: {INTENT_PROVIDER_REQUIRED_PROTOCOL}\n  canonical command: {INTENT_PROVIDER_CANONICAL_COMMAND}\n  support reference: {INTENT_PROVIDER_SUPPORT_REFERENCE}\n",
             resolution.discovery_mode,
             resolution.executable.display()
         ),
-        Err(failure) => format!("\nIntent provider: unavailable ({failure})\n"),
+        Err(failure) => render_intent_provider_failure(&failure),
     }
+}
+
+fn render_intent_provider_failure(
+    failure: &crate::intent_provider::IntentProviderFailure,
+) -> String {
+    let status = if failure.class == IntentProviderFailureClass::Absent {
+        "unavailable"
+    } else {
+        "incompatible"
+    };
+    let detected = if failure.class == IntentProviderFailureClass::Absent {
+        "none detected"
+    } else {
+        "binary detected, version not probed"
+    };
+    format!(
+        "\nIntent provider\n  status: {status}\n  detected binary/version: {detected}\n  required version range: {INTENT_PROVIDER_REQUIRED_VERSION_RANGE}\n  required protocol: {INTENT_PROVIDER_REQUIRED_PROTOCOL}\n  canonical command: {INTENT_PROVIDER_CANONICAL_COMMAND}\n  support reference: {INTENT_PROVIDER_SUPPORT_REFERENCE}\n  intent evaluation: not performed\n  clean claim: not available\n  reason: {failure}\n"
+    )
 }
 
 fn load_doctor_policy(config: Option<&Path>) -> Option<CargoAllowResult<AllowConfig>> {
