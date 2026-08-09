@@ -1488,6 +1488,30 @@ fn run_report(root: &Path, name: &str, args: &[&str]) -> (PathBuf, Output) {
     (output, result)
 }
 
+fn run_report_with_common_summary(
+    root: &Path,
+    name: &str,
+    args: &[&str],
+) -> (PathBuf, PathBuf, Output) {
+    let output = root.join(format!("target/cargo-allow/{name}.json"));
+    let summary = root.join(format!("target/cargo-allow/{name}-common.json"));
+    let result = cargo_allow_command()
+        .arg("--command-summary-output")
+        .arg(&summary)
+        .args(args)
+        .arg("--root")
+        .arg(root)
+        .arg("--config")
+        .arg(root.join("policy/allow.toml"))
+        .arg("--format")
+        .arg("json")
+        .arg("--output")
+        .arg(&output)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow {args:?}: {err}")));
+    (output, summary, result)
+}
+
 fn run_command(root: &Path, args: &[&str], output: &Path) -> Output {
     cargo_allow_command()
         .args(args)
@@ -1824,8 +1848,8 @@ fn repair_routes_converge_into_refresh_and_prune_mutation_previews() {
         Some(true)
     );
 
-    let (prune_preview_path, prune_preview_result) =
-        run_report(&root, "prune-preview", &["prune", "--stale", "--dry-run"]);
+    let (prune_preview_path, prune_preview_summary_path, prune_preview_result) =
+        run_report_with_common_summary(&root, "prune-preview", &["prune", "--stale", "--dry-run"]);
     assert_status("prune preview", &prune_preview_result, true);
     assert_quiet("prune preview", &prune_preview_result);
     let prune_preview = assert_saved_json_artifact(
@@ -1852,8 +1876,39 @@ fn repair_routes_converge_into_refresh_and_prune_mutation_previews() {
         "prune receipt should retain the stale worklist subject identity"
     );
 
-    let (prune_write_path, prune_write_result) =
-        run_report(&root, "prune-write", &["prune", "--stale", "--write"]);
+    let prune_preview_summary: Value = serde_json::from_str(
+        &fs::read_to_string(&prune_preview_summary_path).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("read prune preview summary: {err}"))
+        }),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("parse prune preview summary: {err}")));
+    assert_eq!(
+        prune_preview_summary
+            .get("schema_id")
+            .and_then(Value::as_str),
+        Some("cargo-allow.core-command-summary.v1")
+    );
+    assert_eq!(
+        prune_preview_summary
+            .pointer("/operation")
+            .and_then(Value::as_str),
+        Some("prune")
+    );
+    assert_eq!(
+        prune_preview_summary
+            .pointer("/posture")
+            .and_then(Value::as_str),
+        Some("advisory")
+    );
+    assert_eq!(
+        prune_preview_summary
+            .pointer("/primary_action/args/0")
+            .and_then(Value::as_str),
+        Some("prune")
+    );
+
+    let (prune_write_path, prune_write_summary_path, prune_write_result) =
+        run_report_with_common_summary(&root, "prune-write", &["prune", "--stale", "--write"]);
     assert_status("prune write", &prune_write_result, true);
     assert_quiet("prune write", &prune_write_result);
     let prune_write = assert_saved_json_artifact(
@@ -1867,6 +1922,30 @@ fn repair_routes_converge_into_refresh_and_prune_mutation_previews() {
             .pointer("/mutation_receipt/result")
             .and_then(Value::as_str),
         Some("written")
+    );
+    let prune_write_summary: Value = serde_json::from_str(
+        &fs::read_to_string(&prune_write_summary_path).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("read prune write summary: {err}"))
+        }),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("parse prune write summary: {err}")));
+    assert_eq!(
+        prune_write_summary
+            .pointer("/posture")
+            .and_then(Value::as_str),
+        Some("satisfied")
+    );
+    assert_eq!(
+        prune_write_summary
+            .pointer("/operation_effects/writes_repository")
+            .and_then(Value::as_bool),
+        Some(true)
+    );
+    assert_eq!(
+        prune_write_summary
+            .pointer("/next_proof/args/0")
+            .and_then(Value::as_str),
+        Some("check")
     );
 
     let (final_list_path, final_list_result) = run_report(&root, "repair-final-list", &["list"]);

@@ -10,7 +10,8 @@ use crate::{
     evidence_inventory::{
         current_evidence_source_tree_files, validate_evidence_references_for_source_tree,
     },
-    git_relative_config_path, load_world_with_evidence_mode, resolve_source_tree_root,
+    git_relative_config_path, load_world_with_evidence_mode, portable_relative_under_root,
+    resolve_source_tree_root,
 };
 use effortless_repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 
@@ -162,6 +163,33 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
         inventory: source_context.inventory(),
         mutation_receipt,
     };
+    let policy_path = portable_relative_under_root(&root, &policy_path)?
+        .to_string_lossy()
+        .replace(std::path::MAIN_SEPARATOR, "/");
+    let core_summary = crate::core_command_summary::core_command_summary_from_prune(
+        crate::core_command_summary::PruneSummaryFactsV1 {
+            repository_identity: format!("local-repository:{}", inventory_facts.source.as_str()),
+            portable_identity: format!("worktree:prune:{}:{}", policy_path, candidates.len()),
+            policy_path,
+            candidate_count: candidates.len(),
+            write_requested: args.write,
+            dry_run: args.dry_run,
+            completeness: crate::core_command_router::summary_completeness(&inventory_facts),
+        },
+    )
+    .map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!("failed to build prune command summary: {error}"),
+        )
+    })?;
+    crate::core_command_router::write_summary_artifact(&root, &core_summary)?;
+    if args.format == HumanJsonFormat::Human {
+        eprint!(
+            "{}",
+            crate::core_command_summary::render_core_command_summary_human(&core_summary)
+        );
+    }
     let text = match args.format {
         HumanJsonFormat::Human => {
             let style = if args.output.is_none() {

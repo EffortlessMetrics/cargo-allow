@@ -343,6 +343,67 @@ fn core_command_summary_refresh_separates_preview_and_live_write() -> Result<(),
 }
 
 #[test]
+fn core_command_summary_prune_distinguishes_preview_write_and_noop() -> Result<(), String> {
+    let preview = core_command_summary_from_prune(PruneSummaryFactsV1 {
+        repository_identity: "local-repository:test".to_string(),
+        portable_identity: "worktree:prune:policy/allow.toml:1".to_string(),
+        policy_path: "policy/allow.toml".to_string(),
+        candidate_count: 1,
+        write_requested: false,
+        dry_run: true,
+        completeness: CompletenessV1::Complete,
+    })?;
+    ensure(
+        preview.posture == CoreCommandPostureV1::Advisory
+            && !preview.operation_effects.writes_repository
+            && preview.primary_action.as_ref().is_some_and(|action| {
+                action.args
+                    == strings(&[
+                        "prune",
+                        "--stale",
+                        "--config",
+                        "policy/allow.toml",
+                        "--write",
+                    ])
+            }),
+        "prune preview must remain advisory and name the live write target",
+    )?;
+    let live = core_command_summary_from_prune(PruneSummaryFactsV1 {
+        repository_identity: "local-repository:test".to_string(),
+        portable_identity: "worktree:prune:policy/allow.toml:1".to_string(),
+        policy_path: "policy/allow.toml".to_string(),
+        candidate_count: 1,
+        write_requested: true,
+        dry_run: false,
+        completeness: CompletenessV1::Complete,
+    })?;
+    ensure(
+        live.posture == CoreCommandPostureV1::Satisfied
+            && live.operation_effects.writes_repository
+            && live
+                .next_proof
+                .as_ref()
+                .is_some_and(|action| action.args == strings(&["check", "--mode", "no-new"])),
+        "prune write must name its policy mutation and full proof",
+    )?;
+    let noop = core_command_summary_from_prune(PruneSummaryFactsV1 {
+        repository_identity: "local-repository:test".to_string(),
+        portable_identity: "worktree:prune:policy/allow.toml:0".to_string(),
+        policy_path: "policy/allow.toml".to_string(),
+        candidate_count: 0,
+        write_requested: true,
+        dry_run: false,
+        completeness: CompletenessV1::Complete,
+    })?;
+    ensure(
+        noop.posture == CoreCommandPostureV1::Satisfied
+            && !noop.operation_effects.writes_repository
+            && noop.next_proof.is_none(),
+        "prune with no candidates must report a satisfied no-op",
+    )
+}
+
+#[test]
 fn core_command_summary_diff_preserves_revision_and_completeness_posture() -> Result<(), String> {
     let complete = core_command_summary_from_diff(DiffSummaryFactsV1 {
         repository_identity: "local-repository:test".to_string(),
