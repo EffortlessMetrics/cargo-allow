@@ -83,7 +83,6 @@ impl SnapshotDiagnostic {
 
 pub const SOURCE_FILE_READ_MAX_BYTES: usize = 10 * 1024 * 1024;
 
-#[allow(dead_code)]
 pub fn read_text_file_capped(path: &std::path::Path) -> SnapshotResult<String> {
     use std::io::Read;
     let file = std::fs::File::open(path)
@@ -103,17 +102,20 @@ pub fn sha256_v1_bytes(input: &[u8]) -> String {
     format!("sha256:v1:{hex}")
 }
 
-#[allow(dead_code)]
 pub fn source_tree_path_is_ignored(path: &str, patterns: &[String]) -> bool {
     for pattern in patterns {
         if pattern == "**" || pattern.is_empty() || path == pattern {
             return true;
         }
-        if pattern.ends_with("/**") && path.starts_with(&pattern[..pattern.len() - 3]) {
-            return true;
+        if let Some(prefix) = pattern.strip_suffix("/**") {
+            if path.starts_with(prefix) {
+                return true;
+            }
         }
-        if pattern.ends_with('*') && path.starts_with(&pattern[..pattern.len() - 1]) {
-            return true;
+        if let Some(prefix) = pattern.strip_suffix('*') {
+            if path.starts_with(prefix) {
+                return true;
+            }
         }
     }
     false
@@ -138,7 +140,6 @@ impl From<allow_core::CargoAllowError> for SnapshotError {
         SnapshotError::new(err.to_string())
     }
 }
-#[allow(dead_code)]
 pub fn read_file_capped(path: &std::path::Path) -> SnapshotResult<String> {
     read_text_file_capped(path)
 }

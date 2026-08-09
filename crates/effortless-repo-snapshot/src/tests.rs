@@ -9,6 +9,23 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 #[test]
+fn source_tree_ignore_patterns_match_without_unchecked_slicing() -> Result<(), String> {
+    let patterns = vec!["src/**".to_string(), "generated/*".to_string()];
+    let cases = [
+        ("src/lib.rs", true),
+        ("generated/schema.rs", true),
+        ("src-other/lib.rs", false),
+        ("README.md", false),
+    ];
+    for (path, expected) in cases {
+        if crate::error::source_tree_path_is_ignored(path, &patterns) != expected {
+            return Err(format!("unexpected ignore result for {path}"));
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn parity_contracts_load_from_fixtures() -> Result<(), String> {
     let root = workspace_root();
     for path in crate::parity::revision_parity_contract_paths(&root) {
