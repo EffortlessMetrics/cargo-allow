@@ -177,4 +177,23 @@ mod tests {
         assert_eq!(retained.len(), 1);
         assert_eq!(retained[0].kind, crate::FindingPostureKind::New);
     }
+
+    #[test]
+    fn exposes_coverage_and_result_labels_for_each_contract_class() {
+        assert!(!DiffScanCoverage::inventory_partial().is_complete());
+        assert!(retain_confident_finding_changes(DiffResultClass::Complete, Vec::new()).is_empty());
+
+        let labels = [
+            (DiffResultClass::Complete, "complete"),
+            (DiffResultClass::BasePartial, "base_partial"),
+            (DiffResultClass::HeadPartial, "head_partial"),
+            (DiffResultClass::BothPartial, "both_partial"),
+            (DiffResultClass::StaleInput, "stale_input"),
+            (DiffResultClass::Unsupported, "unsupported"),
+            (DiffResultClass::InstrumentFailure, "instrument_failure"),
+        ];
+        for (class, expected) in labels {
+            assert_eq!(class.as_str(), expected);
+        }
+    }
 }
