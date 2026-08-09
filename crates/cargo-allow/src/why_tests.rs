@@ -457,7 +457,7 @@ fn target_scan_renderers_report_partial_scope_without_a_finding() -> Result<(), 
     );
     let value: Value = serde_json::from_str(&json).map_err(|err| err.to_string())?;
     for (pointer, expected) in [
-        ("/evaluation/result_class", "target_scanner_partial"),
+        ("/result_class", "target_scanner_partial"),
         ("/evaluation/scanner_completeness", "partial"),
         ("/target/path", "src/large.rs"),
         ("/target/status", "skipped"),
@@ -473,7 +473,11 @@ fn target_scan_renderers_report_partial_scope_without_a_finding() -> Result<(), 
         }
     }
     let proof_plans = value.pointer("/next/proof_plans").and_then(Value::as_array);
-    if proof_plans.is_none_or(|plans| !plans.is_empty()) {
+    let proof_plans_missing_or_nonempty = match proof_plans {
+        None => true,
+        Some(plans) => !plans.is_empty(),
+    };
+    if proof_plans_missing_or_nonempty {
         return Err(format!(
             "partial target should not emit proof plans: {value}"
         ));
