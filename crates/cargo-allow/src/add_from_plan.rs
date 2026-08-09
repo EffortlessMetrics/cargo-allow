@@ -272,6 +272,36 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
         None => "no_outcome".to_string(),
     };
 
+    let full_check_argv = full_check_argv(
+        source_context.source_tree_root(),
+        &bindings.policy_path,
+        args.include_untracked,
+    );
+    let core_summary = crate::core_command_summary::core_command_summary_from_add_plan(
+        crate::core_command_summary::AddPlanSummaryFactsV1 {
+            repository_identity: bindings.repository_identity.clone(),
+            portable_identity: format!("worktree:add-from-plan:{}", bindings.policy_path),
+            policy_path: bindings.policy_path.clone(),
+            added_allow_id: added_allow_id.clone(),
+            targeted_recheck: targeted_recheck.clone(),
+            full_check_argv: full_check_argv.clone(),
+            completeness: crate::core_command_router::summary_completeness(&inventory_facts),
+        },
+    )
+    .map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!("failed to build add-from-plan command summary: {error}"),
+        )
+    })?;
+    crate::core_command_router::write_summary_artifact(&root, &core_summary)?;
+    if args.summary_output.is_none() {
+        eprint!(
+            "{}",
+            crate::core_command_summary::render_core_command_summary_human(&core_summary)
+        );
+    }
+
     let receipt = AddPlanApplicationV1 {
         tool_version: env!("CARGO_PKG_VERSION").to_string(),
         inventory: source_context.inventory(),
@@ -283,11 +313,7 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
         policy_after_digest,
         added_allow_id,
         targeted_recheck: targeted_recheck.to_string(),
-        full_check_argv: full_check_argv(
-            source_context.source_tree_root(),
-            &bindings.policy_path,
-            args.include_untracked,
-        ),
+        full_check_argv,
     };
     let receipt_json = render_add_plan_application_json(&receipt);
     emit_stderr_text(args.summary_output.as_deref(), &receipt_json)?;
