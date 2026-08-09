@@ -160,12 +160,11 @@ fn result_class_schema_binds_to_its_evidence_tuple() -> Result<(), String> {
                 ("reasons".to_string(), json!([])),
                 ("scanner_completeness".to_string(), json!("partial")),
             ]);
-        let inventory_completeness = if name == "why" { "complete" } else { "partial" };
         partial
             .get_mut("inventory")
             .and_then(Value::as_object_mut)
             .ok_or_else(|| format!("{name} sample should contain inventory"))?
-            .insert("completeness".to_string(), json!(inventory_completeness));
+            .insert("completeness".to_string(), json!("partial"));
         if name == "why" {
             partial
                 .as_object_mut()
