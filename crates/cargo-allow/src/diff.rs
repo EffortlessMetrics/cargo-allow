@@ -131,8 +131,31 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         &outcomes,
         allow_core::SimpleDate::today_utc_approx(),
     );
-    let finding_changes =
-        allow_diff::finding_posture_changes(&base_findings, &head_findings_for_diff);
+    let head_coverage = if let Some(scan) = &head_revision_scan {
+        allow_diff::DiffScanCoverage {
+            inventory_complete: scan.inventory_completeness == "complete",
+            scanner_complete: scan.rust_files_skipped == 0
+                && scan.rust_files_with_parse_errors == 0,
+        }
+    } else {
+        // Current-tree completeness is the separate #2493 lane. This slice
+        // classifies only the two exact committed revisions when --head is
+        // supplied; existing current-tree checks continue to enforce their
+        // own inventory and scanner failure rules.
+        allow_diff::DiffScanCoverage::complete()
+    };
+    let result_class = allow_diff::classify_diff_result(
+        allow_diff::DiffScanCoverage {
+            inventory_complete: base_revision_scan.inventory_completeness == "complete",
+            scanner_complete: base_revision_scan.rust_files_skipped == 0
+                && base_revision_scan.rust_files_with_parse_errors == 0,
+        },
+        head_coverage,
+    );
+    let finding_changes = allow_diff::retain_confident_finding_changes(
+        result_class,
+        allow_diff::finding_posture_changes(&base_findings, &head_findings_for_diff),
+    );
     let mut policy_changes = policy_changes_for_diff(
         Some(base_cfg.clone()),
         &head_cfg_for_diff,
@@ -185,6 +208,8 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         .filter(|outcome| CheckMode::NoNew.fails(outcome.status))
         .count()
         + evidence.broken_evidence_links;
+    let current_failures =
+        current_failures + usize::from(result_class.is_blocking() && current_failures == 0);
     // A required note is the authorization for a bounded weakening. Without
     // the flag, preserve the ordinary posture failure. With the flag, only a
     // missing or stale note keeps the diff blocked.
@@ -308,6 +333,12 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     // Suppress human-readable diagnostics on stderr when format is JSON to avoid
     // corrupting JSON pipeline scripts (#3218).
     if args.format != OutputFormat::Json {
+        if result_class.is_blocking() {
+            eprintln!(
+                "diff result: {} (non-complete evidence is non-clean; repair the indicated revision input before relying on movement)",
+                result_class.as_str()
+            );
+        }
         if !policy_changes.is_empty() {
             eprintln!(
                 "{}",
