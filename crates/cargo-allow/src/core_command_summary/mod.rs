@@ -6,11 +6,17 @@
 //! judgments, or execute a suggested action.
 
 mod adapters;
+mod adapters_query;
 mod render;
 
 pub use adapters::{
     DoctorSummaryFactsV1, core_command_summary_from_adoption_plan,
     core_command_summary_from_doctor, core_command_summary_from_error,
+};
+pub use adapters_query::{
+    ExplainSummaryFactsV1, WhySummaryFactsV1, WorklistSummaryFactsV1, WorklistSummaryItemV1,
+    core_command_summary_from_explain, core_command_summary_from_why,
+    core_command_summary_from_worklist,
 };
 pub use render::{render_core_command_summary_human, render_core_command_summary_json};
 

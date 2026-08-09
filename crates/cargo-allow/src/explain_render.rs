@@ -12,6 +12,7 @@ use allow_diff::selector_precision_score;
 use std::collections::BTreeSet;
 use std::path::Path;
 
+#[cfg(test)]
 pub(super) fn render_explain_entry_styled(
     root: &Path,
     entry: &AllowEntry,
@@ -31,6 +32,7 @@ pub(super) fn render_explain_entry_styled(
     )
 }
 
+#[cfg(test)]
 pub(super) fn render_explain_entry_json(
     root: &Path,
     entry: &AllowEntry,
@@ -50,7 +52,13 @@ pub(super) fn render_explain_entry_json(
     )
 }
 
-fn render_explain_report<R>(
+/// Build the explain report once and hand it to `render`.
+///
+/// The report construction reads evidence and traceability references from the
+/// source tree, so a caller that needs both the detailed artifact and the
+/// common command summary must derive both from a single build rather than
+/// probing the repository twice.
+pub(super) fn render_explain_report<R>(
     root: &Path,
     entry: &AllowEntry,
     findings: &[Finding],

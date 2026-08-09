@@ -2,7 +2,6 @@
 //!
 //! Replaces allow-core dependency for error/utility types.
 //! allow-inventory remains a hard dependency pending inventory type abstraction.
-
 pub type SnapshotResult<T> = Result<T, SnapshotError>;
 
 #[derive(Debug, Clone)]

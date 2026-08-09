@@ -12,10 +12,10 @@ pub(crate) struct WorklistArgs {
     pub(super) root: RootArgs,
     /// Policy config path.
     #[arg(long)]
-    pub(super) config: Option<PathBuf>,
+    pub(crate) config: Option<PathBuf>,
     /// Optional governance profile to run instead of the source-exception worklist.
     #[arg(long, value_enum)]
-    pub(super) profile: Option<ProfileArg>,
+    pub(crate) profile: Option<ProfileArg>,
     /// Filter findings by kind.
     #[arg(long, value_parser = parse_worklist_kind_filter)]
     pub(super) kind: Option<String>,
@@ -74,7 +74,7 @@ pub(crate) struct WorklistArgs {
     pub(super) format: HumanJsonFormat,
     /// Write worklist to a file instead of stdout.
     #[arg(long)]
-    pub(super) output: Option<PathBuf>,
+    pub(crate) output: Option<PathBuf>,
 }
 
 fn parse_worklist_kind_filter(value: &str) -> Result<String, String> {

@@ -116,12 +116,105 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
     } else {
         allow_report::Style::PLAIN
     };
+    // The JSON artifact is rendered for every format: it supplies the
+    // relocation-stable semantic identity the summary reports, and it is the
+    // command's own artifact when JSON was requested.
+    let detail_json = render_worklist_json_with_context(&items, context);
+    // Common operator grammar (#3149). The detailed worklist artifact remains
+    // authoritative; this projection is additive and derived from the same
+    // in-memory queue without rescanning source or re-evaluating matching.
+    let summary = worklist_summary(
+        &detail_json,
+        &root,
+        &source_context,
+        &items,
+        filters.any_active(),
+        inventory_facts,
+    )?;
+    crate::core_command_router::write_summary_artifact(&root, &summary)?;
+
     let text = match args.format {
-        HumanJsonFormat::Json => render_worklist_json_with_context(&items, context),
-        HumanJsonFormat::Human => render_worklist_human_with_context_styled(&items, context, style),
+        HumanJsonFormat::Json => detail_json,
+        HumanJsonFormat::Human => {
+            let mut rendered =
+                crate::core_command_summary::render_core_command_summary_human(&summary);
+            rendered.push('\n');
+            rendered.push_str(&render_worklist_human_with_context_styled(
+                &items, context, style,
+            ));
+            rendered
+        }
     };
     emit_text(args.output.as_deref(), &text)?;
     Ok(())
+}
+
+/// Build the common operator summary from the queue worklist already ranked.
+///
+/// The relocation-stable semantic identity comes from worklist's own JSON
+/// artifact, exactly as `audit`, `check`, and `doctor` derive theirs, so the
+/// summary never rescans source or re-evaluates matching to describe itself.
+fn worklist_summary(
+    detail_json: &str,
+    root: &std::path::Path,
+    source_context: &SourceTreeReportContext,
+    items: &[WorkItem],
+    filtered: bool,
+    inventory_facts: crate::InventoryFacts,
+) -> CargoAllowResult<crate::core_command_summary::CoreCommandSummaryV1> {
+    let semantic_identity =
+        crate::core_command_router::canonical_semantic_identity(detail_json, Some(root))?;
+    let completeness = crate::core_command_router::summary_completeness(&inventory_facts);
+    let coverage_limitation = (completeness != effortless_repo_protocol::CompletenessV1::Complete)
+        .then(|| crate::core_command_router::partial_coverage_reason(&inventory_facts));
+    let inventory_source = source_context.inventory_source();
+
+    let mut subject = crate::core_command_summary::CoreSourceSubjectV1::worktree(
+        format!("local-repository:{semantic_identity}"),
+        format!("worktree:{inventory_source}:current-unpinned"),
+    );
+    subject.limitations.push(
+        "the current worktree result is not bound to a commit, tree, or Git-index identity"
+            .to_string(),
+    );
+
+    crate::core_command_summary::core_command_summary_from_worklist(
+        crate::core_command_summary::WorklistSummaryFactsV1 {
+            tool_version: env!("CARGO_PKG_VERSION").to_string(),
+            subject,
+            completeness,
+            coverage_limitation,
+            items: items.iter().map(summary_item).collect(),
+            filtered,
+            claim_boundary: effortless_repo_protocol::ClaimBoundaryV1::new(
+                "cargo-allow queued source-exception maintenance work from current source-tree syntax and ledger posture only",
+            )
+            .with_limitations(vec![
+                "cargo metadata, rustc, Clippy, build scripts, proc macros, tests, and repository code were not invoked"
+                    .to_string(),
+                "macro expansion, type information, MIR, control flow, and data flow were not analyzed"
+                    .to_string(),
+                "an empty queue does not prove the repository passes the no-new gate".to_string(),
+            ]),
+        },
+    )
+    .map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!("failed to build core command summary: {error}"),
+        )
+    })
+}
+
+/// Project one already-ranked work item onto the fields the summary reads.
+fn summary_item(item: &WorkItem) -> crate::core_command_summary::WorklistSummaryItemV1 {
+    crate::core_command_summary::WorklistSummaryItemV1 {
+        kind: item.kind.clone(),
+        status: item.status,
+        allow_id: item.allow_id.clone(),
+        path: item.path.clone(),
+        suggested_actions: item.suggested_actions.clone(),
+    }
 }
 
 fn reject_source_exception_options_for_profile(args: &WorklistArgs) -> CargoAllowResult<()> {

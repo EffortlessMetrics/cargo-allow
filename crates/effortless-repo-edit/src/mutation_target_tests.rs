@@ -2,19 +2,68 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use super::mutation_target::{
     MutationTargetOwnership, lock_path_for_target, resolve_mutation_target,
 };
 
+/// Serializes the tests that mutate the process-wide current directory.
+///
+/// The current directory is per-process, not per-thread, so two of these
+/// tests running concurrently would resolve each other's relative spellings
+/// against the wrong repository root. Because every temp repo lays out the
+/// same `policy/allow.toml`, that misresolution succeeds silently and shows
+/// up only as a mismatched fingerprint.
+fn cwd_guard() -> CwdGuard {
+    static CWD_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    let lock = CWD_LOCK.get_or_init(|| Mutex::new(()));
+    // A panicking test poisons the lock; the guarded state is a unit value
+    // with no invariants to corrupt, so recovering keeps one failure from
+    // cascading into every other test in this module.
+    let guard = match lock.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    CwdGuard {
+        original: std::env::current_dir().ok(),
+        _lock: guard,
+    }
+}
+
+/// Holds the current-directory lock and restores the entry directory on drop.
+///
+/// Restoring matters because each of these tests deletes the temp repo it
+/// changed into; without this, every later test in the binary would inherit
+/// a current directory that no longer exists.
+struct CwdGuard {
+    original: Option<PathBuf>,
+    _lock: MutexGuard<'static, ()>,
+}
+
+impl Drop for CwdGuard {
+    fn drop(&mut self) {
+        if let Some(original) = &self.original {
+            std::env::set_current_dir(original).ok();
+        }
+    }
+}
+
 fn make_temp_repo() -> Result<PathBuf, String> {
+    // A monotonic counter, not just a timestamp: the system clock is coarse
+    // on Windows (tens of milliseconds), so two temp repos created in the
+    // same tick would otherwise collide on one directory and delete each
+    // other's fixtures on cleanup.
+    static NEXT_ID: AtomicU64 = AtomicU64::new(0);
     let dir = std::env::temp_dir().join(format!(
-        "mutation-target-test-{}-{}",
+        "mutation-target-test-{}-{}-{}",
         std::process::id(),
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_nanos())
-            .unwrap_or(0)
+            .unwrap_or(0),
+        NEXT_ID.fetch_add(1, Ordering::Relaxed)
     ));
     fs::create_dir_all(&dir).map_err(|e| format!("create temp repo: {e}"))?;
     Ok(dir)
@@ -22,6 +71,7 @@ fn make_temp_repo() -> Result<PathBuf, String> {
 
 #[test]
 fn relative_and_absolute_spellings_produce_same_fingerprint() -> Result<(), String> {
+    let _cwd = cwd_guard();
     let repo = make_temp_repo()?;
     let file_path = repo.join("policy/allow.toml");
     fs::create_dir_all(file_path.parent().unwrap_or(Path::new("."))).ok();
@@ -49,6 +99,7 @@ fn relative_and_absolute_spellings_produce_same_fingerprint() -> Result<(), Stri
 
 #[test]
 fn dot_dot_aliases_produce_same_fingerprint() -> Result<(), String> {
+    let _cwd = cwd_guard();
     let repo = make_temp_repo()?;
     let file_path = repo.join("policy/allow.toml");
     fs::create_dir_all(file_path.parent().unwrap_or(Path::new("."))).ok();
@@ -139,6 +190,7 @@ fn repo_relative_display_excludes_absolute_path() -> Result<(), String> {
 
 #[test]
 fn lock_key_matches_for_same_target() -> Result<(), String> {
+    let _cwd = cwd_guard();
     let repo = make_temp_repo()?;
     let file_path = repo.join("policy/allow.toml");
     fs::create_dir_all(file_path.parent().unwrap_or(Path::new("."))).ok();

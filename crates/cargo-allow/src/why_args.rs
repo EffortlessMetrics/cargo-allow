@@ -15,7 +15,7 @@ pub(crate) struct WhyArgs {
     pub(super) root: RootArgs,
     /// Policy config path.
     #[arg(long)]
-    pub(super) config: Option<PathBuf>,
+    pub(crate) config: Option<PathBuf>,
     /// Finding kind near the location (required to disambiguate).
     /// Same vocabulary as check/audit/diff: panic, unsafe, lint-exception,
     /// non-rust, generated, policy-exception.
@@ -35,8 +35,8 @@ pub(crate) struct WhyArgs {
     pub(super) format: HumanJsonFormat,
     /// Write explanation output to a file instead of stdout.
     #[arg(long)]
-    pub(super) output: Option<PathBuf>,
+    pub(crate) output: Option<PathBuf>,
     /// Write a versioned, non-mutating add-finding plan artifact.
     #[arg(long)]
-    pub(super) plan: Option<PathBuf>,
+    pub(crate) plan: Option<PathBuf>,
 }

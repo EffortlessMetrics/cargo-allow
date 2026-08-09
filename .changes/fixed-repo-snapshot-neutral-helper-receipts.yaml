@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  Receipt the product-neutral error and read helpers that #3295 added to
+  effortless-repo-snapshot: give the new module a move-ledger disposition and
+  replace its bare `#[allow(dead_code)]` attributes with a single policy-linked
+  `#![expect(...)]`, so the ledger completeness test and `check --mode no-new`
+  both pass. The helpers stay unreferenced until the follow-up rewires
+  `source_view` onto them.

@@ -14,14 +14,30 @@ use crate::core_command_summary::{
 use crate::reporting::{ReportRenderArgs, SourceTreeReportContext};
 use crate::{OutputFormat, emit_text, write_file};
 
+/// The base a command resolves one of its own artifact paths against.
+///
+/// Commands do not agree: `--config` is discovered under the source-tree root
+/// everywhere, `adopt` resolves `--output` under the root too, while the
+/// commands that emit through `emit_text` (and `why --plan`) write relative to
+/// the working directory. A conflict is only real when the summary sidecar and
+/// the artifact land on the same file, so each candidate must be resolved
+/// against the base its own command actually uses.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ConflictBase {
+    /// Resolved under the source-tree root (`--config`, `adopt --output`).
+    SourceTreeRoot,
+    /// Resolved under the process working directory.
+    WorkingDirectory,
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct SummaryOutputConfig {
     path: PathBuf,
-    conflicts: Vec<PathBuf>,
+    conflicts: Vec<(ConflictBase, PathBuf)>,
 }
 
 impl SummaryOutputConfig {
-    pub(crate) fn new(path: PathBuf, conflicts: Vec<PathBuf>) -> Self {
+    pub(crate) fn new(path: PathBuf, conflicts: Vec<(ConflictBase, PathBuf)>) -> Self {
         Self { path, conflicts }
     }
 }
@@ -87,12 +103,15 @@ fn write_summary_artifact_with_config(
             format!("failed to render core command summary: {error}"),
         )
     })?;
+    // `write_file` returns `RepoEditError` after the effortless-repo-edit
+    // product-neutrality refactor (#3283); `?` coerces it into the command
+    // error type, matching the other call sites.
     write_file(&path, &format!("{json}\n"))?;
     Ok(())
 }
 
 fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCommandSummaryV1> {
-    let completeness = report_completeness(args);
+    let completeness = summary_completeness(&args.inventory_facts);
     let advisory_count = report_advisory_count(args);
     let (result_class, posture, reason) = if completeness != CompletenessV1::Complete {
         (
@@ -100,7 +119,7 @@ fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCom
             CoreCommandPostureV1::Blocking,
             CoreCommandReasonV1 {
                 code: format!("{}.partial_coverage", args.command),
-                message: partial_reason(args),
+                message: partial_coverage_reason(&args.inventory_facts),
             },
         )
     } else if args.failed {
@@ -417,18 +436,23 @@ fn sort_json_keys(value: &mut Value) {
     }
 }
 
-fn report_completeness(args: &ReportRenderArgs<'_>) -> CompletenessV1 {
-    if args.inventory_facts.rust_files_skipped > 0
-        || args.inventory_facts.rust_files_with_parse_errors > 0
-        || args.inventory_facts.deleted_tracked.unwrap_or(0) > 0
-        || args.inventory_facts.empty_git_tracked
+/// Map already-computed inventory facts onto summary coverage.
+///
+/// Every command that projects the common summary reads coverage from the same
+/// facts its own report already carries, so `audit`, `check`, `explain`, `why`,
+/// and `worklist` cannot disagree about whether a run was complete.
+pub(crate) fn summary_completeness(facts: &crate::InventoryFacts) -> CompletenessV1 {
+    if facts.rust_files_skipped > 0
+        || facts.rust_files_with_parse_errors > 0
+        || facts.deleted_tracked.unwrap_or(0) > 0
+        || facts.empty_git_tracked
     {
         return CompletenessV1::Partial;
     }
     // `allow_inventory::inventory` assigns Partial before Scoped when deleted,
     // submodule, or skipped paths exist. The explicit Rust scanner checks above
     // cover later read/parse omissions.
-    match args.inventory_facts.completeness {
+    match facts.completeness {
         InventoryCompleteness::Complete | InventoryCompleteness::Scoped => CompletenessV1::Complete,
         InventoryCompleteness::Fallback | InventoryCompleteness::Partial => CompletenessV1::Partial,
     }
@@ -447,36 +471,37 @@ fn report_advisory_count(args: &ReportRenderArgs<'_>) -> usize {
         + args.evidence.occurrence_headroom_entries
 }
 
-fn partial_reason(args: &ReportRenderArgs<'_>) -> String {
+/// Explain, in the operator's own vocabulary, why coverage was not complete.
+pub(crate) fn partial_coverage_reason(facts: &crate::InventoryFacts) -> String {
     let mut reasons = Vec::new();
-    if args.inventory_facts.empty_git_tracked {
+    if facts.empty_git_tracked {
         reasons.push("Git reported no tracked files".to_string());
     }
-    if args.inventory_facts.deleted_tracked.unwrap_or(0) > 0 {
+    if facts.deleted_tracked.unwrap_or(0) > 0 {
         reasons.push(format!(
             "{} tracked path(s) are absent from the worktree",
-            args.inventory_facts.deleted_tracked.unwrap_or(0)
+            facts.deleted_tracked.unwrap_or(0)
         ));
     }
-    if args.inventory_facts.rust_files_skipped > 0 {
+    if facts.rust_files_skipped > 0 {
         reasons.push(format!(
             "{} Rust file(s) were skipped",
-            args.inventory_facts.rust_files_skipped
+            facts.rust_files_skipped
         ));
     }
-    if args.inventory_facts.rust_files_with_parse_errors > 0 {
+    if facts.rust_files_with_parse_errors > 0 {
         reasons.push(format!(
             "{} Rust file(s) contained parse errors",
-            args.inventory_facts.rust_files_with_parse_errors
+            facts.rust_files_with_parse_errors
         ));
     }
     if matches!(
-        args.inventory_facts.completeness,
+        facts.completeness,
         InventoryCompleteness::Fallback | InventoryCompleteness::Partial
     ) {
         reasons.push(format!(
             "inventory completeness is {}",
-            args.inventory_facts.completeness.as_str()
+            facts.completeness.as_str()
         ));
     }
     if reasons.is_empty() {
@@ -563,9 +588,30 @@ fn validate_summary_output_path(
 ) -> CargoAllowResult<PathBuf> {
     let path = resolve_under_root(root, &config.path);
     crate::assert_path_within_root(root, &path)?;
-    for conflict in &config.conflicts {
-        let conflict = resolve_under_root(root, conflict);
-        if same_path(&path, &conflict) {
+    // Resolve each candidate against the base its own command writes with, so a
+    // relative `--root` can neither hide a real collision nor invent one between
+    // two paths that land on different files.
+    for (base, conflict) in &config.conflicts {
+        let candidate = match base {
+            ConflictBase::SourceTreeRoot => resolve_under_root(root, conflict),
+            // An absolute conflict resolves to itself, so it needs no base at all.
+            // Only a relative one has to consult the working directory, and if that
+            // is unavailable the collision is undecidable — refuse rather than skip
+            // the check, which would let the sidecar clobber the artifact silently.
+            ConflictBase::WorkingDirectory if conflict.is_absolute() => conflict.clone(),
+            ConflictBase::WorkingDirectory => {
+                let cwd = std::env::current_dir().map_err(|error| {
+                    CargoAllowError::with_kind(
+                        CargoAllowErrorKind::Usage,
+                        format!(
+                            "cannot resolve --command-summary-output against the working directory to check for a conflict: {error}"
+                        ),
+                    )
+                })?;
+                resolve_under_root(&cwd, conflict)
+            }
+        };
+        if same_path(&path, &candidate) {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::Usage,
                 "--command-summary-output must differ from --output, --receipt, and --config",

@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  Resolve each `--command-summary-output` conflict candidate against the base
+  its own command writes with, instead of assuming the source-tree root for all
+  of them. `--config` is discovered under the root and `adopt --output` resolves
+  there too, but `why --plan` and the `emit_text` outputs are relative to the
+  working directory, so a relative `--root` could hide a real collision and let
+  the summary sidecar silently overwrite the add-finding plan.

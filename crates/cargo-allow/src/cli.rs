@@ -40,9 +40,9 @@ pub(crate) struct CargoAllowCli {
     pub(crate) quiet: bool,
     /// Write the versioned common command summary to a separate JSON file.
     ///
-    /// Supports the source-exception `adopt`, `doctor`, `audit`, and `check`
-    /// commands. Existing detailed human, JSON, Markdown, HTML, SARIF, and
-    /// receipt artifacts remain unchanged.
+    /// Supports the source-exception `adopt`, `doctor`, `audit`, `check`,
+    /// `explain`, `why`, and `worklist` commands. Existing detailed human,
+    /// JSON, Markdown, HTML, SARIF, and receipt artifacts remain unchanged.
     ///
     /// Deliberately *not* named `--summary-output`: `add`, `propose`, and
     /// `migrate` each own a per-command `--summary-output` with different
@@ -157,7 +157,7 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         if cli.command_summary_output.is_some() {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::Usage,
-                "--command-summary-output requires the adopt, doctor, audit, or check subcommand",
+                "--command-summary-output requires the adopt, doctor, audit, check, explain, why, or worklist subcommand",
             ));
         }
         CargoAllowCli::command().print_help().map_err(|e| {
@@ -202,40 +202,56 @@ fn configure_summary_output(
     let Some(path) = summary_output else {
         return Ok(());
     };
-    let conflicts = match command {
-        CargoAllowCommand::Audit(args) if args.profile.is_none() => {
-            [args.output.clone(), args.config.clone()]
-                .into_iter()
-                .flatten()
-                .collect()
+    use crate::core_command_router::ConflictBase::{SourceTreeRoot, WorkingDirectory};
+    // `--config` is discovered under the source-tree root for every command, and
+    // `adopt` resolves `--output` under the root as well. The rest write through
+    // `emit_text`/`write_file`, which are relative to the working directory.
+    let conflicts: Vec<_> = match command {
+        CargoAllowCommand::Audit(args) if args.profile.is_none() => vec![
+            (WorkingDirectory, args.output.clone()),
+            (SourceTreeRoot, args.config.clone()),
+        ],
+        CargoAllowCommand::Check(args) if args.profile.is_none() && !args.staged_identity_only => {
+            vec![
+                (WorkingDirectory, args.output.clone()),
+                (WorkingDirectory, args.receipt.clone()),
+                (SourceTreeRoot, args.config.clone()),
+            ]
         }
-        CargoAllowCommand::Check(args) if args.profile.is_none() && !args.staged_identity_only => [
-            args.output.clone(),
-            args.receipt.clone(),
-            args.config.clone(),
-        ]
-        .into_iter()
-        .flatten()
-        .collect(),
-        CargoAllowCommand::Adopt(args) => [args.output.clone(), args.config.clone()]
-            .into_iter()
-            .flatten()
-            .collect(),
-        CargoAllowCommand::Doctor(args) if args.profile.is_none() => [
-            args.output.clone(),
-            args.config.clone(),
-            args.support_bundle.clone(),
-        ]
-        .into_iter()
-        .flatten()
-        .collect(),
+        CargoAllowCommand::Adopt(args) => vec![
+            (SourceTreeRoot, args.output.clone()),
+            (SourceTreeRoot, args.config.clone()),
+        ],
+        CargoAllowCommand::Doctor(args) if args.profile.is_none() => vec![
+            (WorkingDirectory, args.output.clone()),
+            (SourceTreeRoot, args.config.clone()),
+            (WorkingDirectory, args.support_bundle.clone()),
+        ],
+        CargoAllowCommand::Explain(args) if args.profile.is_none() => vec![
+            (WorkingDirectory, args.output.clone()),
+            (SourceTreeRoot, args.config.clone()),
+        ],
+        // `why --plan` writes a candidate add-finding plan, so the summary
+        // sidecar must not be allowed to overwrite it.
+        CargoAllowCommand::Why(args) => vec![
+            (WorkingDirectory, args.output.clone()),
+            (SourceTreeRoot, args.config.clone()),
+            (WorkingDirectory, args.plan.clone()),
+        ],
+        CargoAllowCommand::Worklist(args) if args.profile.is_none() => vec![
+            (WorkingDirectory, args.output.clone()),
+            (SourceTreeRoot, args.config.clone()),
+        ],
         _ => {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::Usage,
-                "--command-summary-output currently supports the source-exception adopt, doctor, audit, and check commands only",
+                "--command-summary-output currently supports the source-exception adopt, doctor, audit, check, explain, why, and worklist commands only",
             ));
         }
-    };
+    }
+    .into_iter()
+    .filter_map(|(base, path)| path.map(|path| (base, path)))
+    .collect();
     crate::core_command_router::configure_summary_output(
         crate::core_command_router::SummaryOutputConfig::new(path, conflicts),
     )

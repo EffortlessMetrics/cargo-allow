@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Resolve each crate's declared version across the exact-candidate package set,
+  the intent and proof candidate install smokes, and the interop smoke, instead
+  of assuming every crate and installed binary carries the workspace release
+  version. Crate sets that mix inherited and independent version lines are now
+  packaged, extracted, patched, and version-checked under their real versions.
