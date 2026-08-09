@@ -67,20 +67,27 @@ fn why_schema_locks_finding_outcome_and_candidates_contract() {
         Some("why"),
         "why command const"
     );
-    assert_eq!(
-        schema
-            .pointer("/properties/finding/$ref")
-            .and_then(Value::as_str),
-        Some("#/$defs/current_finding"),
-        "why finding should reuse current_finding"
-    );
-    assert_eq!(
-        schema
-            .pointer("/properties/outcome/$ref")
-            .and_then(Value::as_str),
-        Some("#/$defs/match_outcome"),
-        "why outcome should reuse match_outcome"
-    );
+    for (field, reference) in [
+        ("finding", "#/$defs/current_finding"),
+        ("outcome", "#/$defs/match_outcome"),
+    ] {
+        let any_of = schema
+            .pointer(&format!("/properties/{field}/anyOf"))
+            .and_then(Value::as_array)
+            .expect("nullable why fields should use anyOf");
+        assert!(
+            any_of
+                .iter()
+                .any(|variant| { variant.get("$ref").and_then(Value::as_str) == Some(reference) }),
+            "why {field} should reuse {reference}"
+        );
+        assert!(
+            any_of
+                .iter()
+                .any(|variant| variant.get("type") == Some(&json!("null"))),
+            "why {field} should permit null for partial target scans"
+        );
+    }
     assert_enum_equals(
         "why match status",
         &schema,
