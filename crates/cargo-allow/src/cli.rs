@@ -41,7 +41,7 @@ pub(crate) struct CargoAllowCli {
     /// Write the versioned common command summary to a separate JSON file.
     ///
     /// Supports the source-exception `adopt`, `doctor`, `audit`, `check`, `diff`,
-    /// `explain`, `why`, and `worklist` commands. Existing detailed human,
+    /// `init`, `explain`, `why`, and `worklist` commands. Existing detailed human,
     /// JSON, Markdown, HTML, SARIF, and receipt artifacts remain unchanged.
     ///
     /// Deliberately *not* named `--summary-output`: `add`, `propose`, and
@@ -157,7 +157,7 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         if cli.command_summary_output.is_some() {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::Usage,
-                "--command-summary-output requires the adopt, doctor, audit, check, diff, explain, why, or worklist subcommand",
+                "--command-summary-output requires the adopt, doctor, audit, check, diff, init, explain, why, or worklist subcommand",
             ));
         }
         CargoAllowCli::command().print_help().map_err(|e| {
@@ -247,10 +247,13 @@ fn configure_summary_output(
             (WorkingDirectory, args.receipt.clone()),
             (SourceTreeRoot, args.config.clone()),
         ],
+        CargoAllowCommand::Init(args) if args.profile.is_none() => {
+            vec![(SourceTreeRoot, Some(args.config.clone()))]
+        }
         _ => {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::Usage,
-                "--command-summary-output currently supports the source-exception adopt, doctor, audit, check, diff, explain, why, and worklist commands only",
+                "--command-summary-output currently supports the source-exception adopt, doctor, audit, check, diff, init, explain, why, and worklist commands only",
             ));
         }
     }
