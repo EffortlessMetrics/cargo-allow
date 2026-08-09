@@ -181,8 +181,10 @@ fn diff_json_projection_includes_shared_analysis_context() -> Result<(), Box<dyn
         retained: 3,
         removed: 0,
     };
-    let mut context = ReportContext::default();
-    context.diff_analysis = Some(analysis);
+    let context = ReportContext {
+        diff_analysis: Some(analysis),
+        ..ReportContext::default()
+    };
     let json = render_json_with_context_and_diff(
         "diff",
         &[],
