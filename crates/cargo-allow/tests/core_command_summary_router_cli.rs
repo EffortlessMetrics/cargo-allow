@@ -48,7 +48,7 @@ const GRAMMAR_COMMANDS: [&[&str]; 7] = [
 ];
 
 #[test]
-fn first_hour_commands_share_one_operator_grammar() -> Result<(), String> {
+fn core_command_summary_router() -> Result<(), String> {
     let root = temp_root("summary-grammar")?;
     // `explain` and `why` need a ledger and an unreceipted finding to inspect,
     // so the fixture carries both. `adopt`, `doctor`, `audit`, and `worklist`
