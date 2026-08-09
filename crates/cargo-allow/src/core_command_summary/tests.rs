@@ -150,6 +150,62 @@ fn core_command_summary_init_distinguishes_preview_and_live_write() -> Result<()
 }
 
 #[test]
+fn core_command_summary_propose_distinguishes_candidate_output_and_write() -> Result<(), String> {
+    let stdout_candidate = core_command_summary_from_propose(ProposeSummaryFactsV1 {
+        repository_identity: "local-repository:test".to_string(),
+        portable_identity: "worktree:propose:stdout".to_string(),
+        write_path: None,
+        force: false,
+        completeness: CompletenessV1::Complete,
+        proposed_entries: 2,
+        unsafe_proposed_entries: 1,
+        truncated_new_findings: 0,
+        unreceiptable_new_findings: 0,
+    })?;
+    ensure(
+        stdout_candidate.posture == CoreCommandPostureV1::Advisory
+            && !stdout_candidate.operation_effects.writes_repository
+            && stdout_candidate
+                .primary_action
+                .as_ref()
+                .is_some_and(|action| {
+                    action.write_posture == CoreCommandWritePostureV1::ReadOnly
+                        && action.title.contains("Review")
+                })
+            && stdout_candidate.next_proof.is_none(),
+        "stdout proposal must remain candidate-only and require review",
+    )?;
+
+    let written_candidate = core_command_summary_from_propose(ProposeSummaryFactsV1 {
+        repository_identity: "local-repository:test".to_string(),
+        portable_identity: "worktree:propose:policy/allow.proposed.toml".to_string(),
+        write_path: Some("policy/allow.proposed.toml".to_string()),
+        force: true,
+        completeness: CompletenessV1::Complete,
+        proposed_entries: 1,
+        unsafe_proposed_entries: 0,
+        truncated_new_findings: 1,
+        unreceiptable_new_findings: 0,
+    })?;
+    ensure(
+        written_candidate.operation_effects.writes_repository
+            && written_candidate.operation_effects.write_paths
+                == vec!["policy/allow.proposed.toml"]
+            && written_candidate.next_proof.as_ref().is_some_and(|action| {
+                action.args
+                    == vec![
+                        "check",
+                        "--mode",
+                        "no-new",
+                        "--config",
+                        "policy/allow.proposed.toml",
+                    ]
+            }),
+        "written proposal must name its target and targeted proof",
+    )
+}
+
+#[test]
 fn core_command_summary_diff_preserves_revision_and_completeness_posture() -> Result<(), String> {
     let complete = core_command_summary_from_diff(DiffSummaryFactsV1 {
         repository_identity: "local-repository:test".to_string(),

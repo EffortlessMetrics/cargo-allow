@@ -159,6 +159,169 @@ pub fn core_command_summary_from_init(
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProposeSummaryFactsV1 {
+    pub repository_identity: String,
+    pub portable_identity: String,
+    pub write_path: Option<String>,
+    pub force: bool,
+    pub completeness: CompletenessV1,
+    pub proposed_entries: usize,
+    pub unsafe_proposed_entries: usize,
+    pub truncated_new_findings: usize,
+    pub unreceiptable_new_findings: usize,
+}
+
+pub fn core_command_summary_from_propose(
+    facts: ProposeSummaryFactsV1,
+) -> Result<CoreCommandSummaryV1, String> {
+    let ProposeSummaryFactsV1 {
+        repository_identity,
+        portable_identity,
+        write_path,
+        force,
+        completeness,
+        proposed_entries,
+        unsafe_proposed_entries,
+        truncated_new_findings,
+        unreceiptable_new_findings,
+    } = facts;
+    let complete = completeness == CompletenessV1::Complete;
+    let write_path_for_action = write_path.clone();
+    let primary_action = Some(
+        CoreCommandActionV1::decision(
+            "propose.review_candidate",
+            "Review the generated candidate policy before relying on it",
+        )
+        .with_contract(
+            "generated baseline entries are candidate policy, not human approval",
+            "a maintainer reviews ownership, expiry, evidence, and scope before adoption",
+            "the summary does not establish that any generated exception is justified",
+        ),
+    );
+    let next_proof = write_path_for_action.map(|path| {
+        CoreCommandActionV1::command(
+            "propose.targeted_no_new_check",
+            "Run the no-new check against the candidate policy",
+            "cargo-allow",
+            vec![
+                "check".to_string(),
+                "--mode".to_string(),
+                "no-new".to_string(),
+                "--config".to_string(),
+                path,
+            ],
+        )
+        .with_contract(
+            "proposal generation and candidate review do not prove policy posture",
+            "the source tree is evaluated against the written candidate policy",
+            "this remains source-syntax proof and does not establish compiled or runtime correctness",
+        )
+    });
+    let (result_class, posture) = if complete {
+        (ResultClassV1::Completed, CoreCommandPostureV1::Advisory)
+    } else {
+        (ResultClassV1::PartialData, CoreCommandPostureV1::Blocking)
+    };
+    let write_effect = write_path.clone();
+    let operation_effects = match write_effect {
+        Some(path) => CoreCommandEffectsV1 {
+            reads_repository: true,
+            writes_repository: true,
+            executes_repository_code: false,
+            invokes_network: false,
+            write_paths: vec![path],
+            explicit_non_effects: vec![
+                "does not approve or justify generated baseline entries".to_string(),
+                "does not execute repository code or external evidence tools".to_string(),
+            ],
+        },
+        None => CoreCommandEffectsV1::read_only(vec![
+            "does not write a policy file when --write is absent".to_string(),
+            "does not approve or justify generated baseline entries".to_string(),
+            "does not execute repository code or external evidence tools".to_string(),
+        ]),
+    };
+    let write_mode = if force {
+        "overwrite allowed"
+    } else {
+        "create-only"
+    };
+    let message = if let Some(path) = write_path.as_deref() {
+        format!(
+            "wrote a candidate policy with {proposed_entries} baseline_debt entr{} at {path} ({write_mode})",
+            if proposed_entries == 1 { "y" } else { "ies" }
+        )
+    } else {
+        format!(
+            "generated {proposed_entries} candidate baseline_debt entr{} for review",
+            if proposed_entries == 1 { "y" } else { "ies" }
+        )
+    };
+    let mut limitations = vec![
+        "generated entries remain subject to human ownership, evidence, expiry, and scope review"
+            .to_string(),
+        "the proposal does not approve exceptions or prove compiled/runtime correctness"
+            .to_string(),
+    ];
+    if truncated_new_findings > 0 {
+        limitations.push(format!(
+            "{truncated_new_findings} new finding(s) were outside the proposal limit"
+        ));
+    }
+    if unreceiptable_new_findings > 0 {
+        limitations.push(format!(
+            "{unreceiptable_new_findings} new finding(s) were not eligible for generated entries"
+        ));
+    }
+    if unsafe_proposed_entries > 0 {
+        limitations.push(format!(
+            "{unsafe_proposed_entries} generated entr{} concern unsafe findings and require explicit review",
+            if unsafe_proposed_entries == 1 { "y" } else { "ies" }
+        ));
+    }
+    build_core_command_summary(CoreCommandSummaryInputV1 {
+        tool_version: env!("CARGO_PKG_VERSION").to_string(),
+        operation: "propose".to_string(),
+        mode: None,
+        profile: None,
+        subject: CoreSourceSubjectV1 {
+            kind: CoreSourceSubjectKindV1::Worktree,
+            repository_identity,
+            portable_identity,
+            base: None,
+            head: None,
+            paths: write_path.into_iter().collect(),
+            limitations: vec![
+                "the current worktree result is not bound to a commit, tree, or Git-index identity"
+                    .to_string(),
+            ],
+        },
+        result_class,
+        posture,
+        completeness,
+        currentness: CurrentnessV1::Current,
+        reason: CoreCommandReasonV1 {
+            code: if complete {
+                "propose.candidate_generated".to_string()
+            } else {
+                "propose.partial_coverage".to_string()
+            },
+            message,
+        },
+        primary_action,
+        additional_action_count: 0,
+        additional_actions_ref: None,
+        operation_effects,
+        next_proof,
+        artifacts: Vec::new(),
+        claim_boundary: ClaimBoundaryV1::new(
+            "generated baseline candidate and policy write posture only",
+        )
+        .with_limitations(limitations),
+    })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiffSummaryFactsV1 {
     pub repository_identity: String,
     pub portable_identity: String,

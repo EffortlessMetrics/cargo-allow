@@ -12,7 +12,7 @@ pub(crate) struct ProposeArgs {
     pub(super) root: RootArgs,
     /// Policy config path.
     #[arg(long)]
-    pub(super) config: Option<PathBuf>,
+    pub(crate) config: Option<PathBuf>,
     /// Filter findings by kind.
     #[arg(long, value_parser = parse_kind_filter_arg)]
     pub(super) kind: Option<String>,
@@ -24,7 +24,7 @@ pub(crate) struct ProposeArgs {
     pub(super) expires: Option<String>,
     /// Write proposed policy to this path.
     #[arg(long)]
-    pub(super) write: Option<PathBuf>,
+    pub(crate) write: Option<PathBuf>,
     /// Overwrite an existing output policy file.
     #[arg(long)]
     pub(super) force: bool,
@@ -34,7 +34,7 @@ pub(crate) struct ProposeArgs {
     pub(super) summary_format: HumanJsonFormat,
     /// Write proposal summary to a file. Required with --summary-format json.
     #[arg(long)]
-    pub(super) summary_output: Option<PathBuf>,
+    pub(crate) summary_output: Option<PathBuf>,
     /// Maximum number of new findings to propose as baseline_debt entries.
     /// Default: 50. Use --max 0 for unlimited.
     #[arg(long, default_value_t = 50)]
