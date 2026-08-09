@@ -302,7 +302,6 @@ pub(crate) fn load_world(
     Vec<Finding>,
     InventoryFacts,
     FederationEvaluation,
-    Option<allow_rust::RustFileScanOutcome>,
 )> {
     load_world_with_evidence_mode(
         explicit_root,
@@ -419,6 +418,7 @@ pub(crate) fn load_world_for_path(
     Vec<Finding>,
     InventoryFacts,
     FederationEvaluation,
+    Option<allow_rust::RustFileScanOutcome>,
 )> {
     let cwd = current_dir()?;
     let root = resolve_source_tree_root(explicit_root, cwd)?;
