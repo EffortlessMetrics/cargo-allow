@@ -133,9 +133,9 @@ pub use artifacts::{
     PruneModeContext, RELEASE_BINARY_TARGETS, RELEASE_MANIFEST_CLAIM_BOUNDARY,
     RELEASE_MANIFEST_SCHEMA_ID, RELEASE_MANIFEST_SCHEMA_VERSION, RefreshModeContext, RefreshReport,
     ReleaseManifestV1, WhyCandidateEntry, WhyProofPlan, WhyReport, WhyTargetScan,
-    WhyTargetScanReport, WorklistFilters, WorklistItem,
-    WritePosture, generate_release_manifest, recommend_core_adoption_plan,
-    render_release_manifest_json, render_release_manifest_summary, validate_release_manifest,
+    WhyTargetScanReport, WorklistFilters, WorklistItem, WritePosture, generate_release_manifest,
+    recommend_core_adoption_plan, render_release_manifest_json, render_release_manifest_summary,
+    validate_release_manifest,
 };
 pub use contracts::{
     ADD_FINDING_PLAN_CLAIM_BOUNDARY, ADD_FINDING_PLAN_SCHEMA_ID, ADD_FINDING_PLAN_SCHEMA_VERSION,
@@ -230,9 +230,7 @@ pub use summary::{
     occurrence_headroom_entries, occurrence_headroom_for_entry, policy_baseline_debt_entries,
     policy_missing_evidence_entries,
 };
-pub use why::{
-    render_why_json, render_why_json_with_result_class, render_why_target_scan_json,
-};
+pub use why::{render_why_json, render_why_json_with_result_class, render_why_target_scan_json};
 pub use worklist::{render_worklist_human, render_worklist_human_styled, render_worklist_json};
 
 pub(crate) use non_rust::{FilePosture, non_rust_file_rows};

@@ -464,6 +464,7 @@ pub(crate) fn load_world_for_path(
     }
     let mut findings = Vec::new();
     let rust_scan = allow_rust::scan_rust_files(&root, &files)?;
+    let target_scan = rust_scan.status_for(&target).cloned();
     findings.extend(rust_scan.findings);
     findings.extend(allow_files::scan_files_with_options(
         &files,
@@ -492,7 +493,7 @@ pub(crate) fn load_world_for_path(
         findings,
         inventory_facts,
         federation,
-        rust_scan.status_for(&target).cloned(),
+        target_scan,
     ))
 }
 

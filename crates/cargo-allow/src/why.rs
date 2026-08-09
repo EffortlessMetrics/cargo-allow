@@ -2,8 +2,8 @@ use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding,
     MatchStatus, normalize_path,
 };
-use allow_rust::RustFileScanOutcome;
 use allow_match::{CheckMode, evaluate, explain_match_failure, score_match};
+use allow_rust::RustFileScanOutcome;
 
 use crate::{
     EvidenceValidationMode, HumanJsonFormat, SourceTreeReportContext, current_dir, emit_text,
