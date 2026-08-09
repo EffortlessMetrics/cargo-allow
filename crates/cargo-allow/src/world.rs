@@ -302,6 +302,7 @@ pub(crate) fn load_world(
     Vec<Finding>,
     InventoryFacts,
     FederationEvaluation,
+    Option<allow_rust::RustFileScanOutcome>,
 )> {
     load_world_with_evidence_mode(
         explicit_root,
@@ -424,13 +425,14 @@ pub(crate) fn load_world_for_path(
     let (policy_path, federation) = match evaluate_source_exception_policy(&root, config) {
         Ok(value) => value,
         Err(_err) if !require_config => {
-            return load_world_without_policy(
+            let (root, cfg, findings, facts, federation) = load_world_without_policy(
                 &root,
                 kind_filter,
                 include_untracked,
                 EvidenceValidationMode::ReportOnly,
                 empty_federation_evaluation(PrecedenceTier::DiscoveryFallback),
-            );
+            )?;
+            return Ok((root, cfg, findings, facts, federation, None));
         }
         Err(err) => return Err(err),
     };
@@ -484,7 +486,14 @@ pub(crate) fn load_world_for_path(
     let inventory_facts = InventoryFacts::scanned_inventory(&inventory)
         .with_rust_files_skipped(rust_scan.files_skipped)
         .with_rust_files_with_parse_errors(rust_scan.files_with_parse_errors);
-    Ok((root, cfg, findings, inventory_facts, federation))
+    Ok((
+        root,
+        cfg,
+        findings,
+        inventory_facts,
+        federation,
+        rust_scan.status_for(&target).cloned(),
+    ))
 }
 
 /// Explain why the target finding cannot safely use the one-file evaluator.

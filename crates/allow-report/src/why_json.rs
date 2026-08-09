@@ -1,5 +1,6 @@
 use crate::EvaluationResultClass;
 use crate::WhyReport;
+use crate::WhyTargetScanReport;
 use crate::contracts::WHY_ARTIFACT;
 use crate::explain_json::render_explain_finding_json;
 use crate::json::{
@@ -81,6 +82,54 @@ pub fn render_why_json_with_result_class(
     out.push_str("\n    ]\n");
     out.push_str("  }\n");
     out.push_str("}\n");
+    out
+}
+
+/// Render the non-green target-only branch of `cargo-allow.why.v1` without
+/// inventing a source finding for a file the scanner did not fully inspect.
+pub fn render_why_target_scan_json(report: WhyTargetScanReport<'_>) -> String {
+    let result_class = report
+        .evaluation
+        .result_class_kind_with_scanner_completeness(report.inventory, Some("partial"));
+    let mut out = String::new();
+    out.push_str("{\n");
+    push_json_fixed_artifact_preamble(&mut out, WHY_ARTIFACT, report.inventory);
+    out.push_str("  \"evaluation\": {\n");
+    if let Some(result_class) = result_class {
+        out.push_str(&format!(
+            "    \"result_class\": \"{}\",\n",
+            result_class.as_str()
+        ));
+    }
+    out.push_str("    \"scanner_completeness\": \"partial\",\n");
+    out.push_str(&format!(
+        "    \"scope\": \"{}\",\n    \"locality\": \"{}\",\n    \"reasons\": {}\n  }},\n",
+        json_escape(report.evaluation.scope),
+        json_escape(report.evaluation.locality),
+        json_string_array(report.evaluation.reasons),
+    ));
+    out.push_str("  \"finding\": null,\n  \"outcome\": null,\n");
+    out.push_str(&format!(
+        "  \"target\": {{\n    \"path\": \"{}\",\n    \"status\": \"{}\"",
+        json_escape(report.target.path),
+        json_escape(report.target.status),
+    ));
+    if let Some(reason) = report.target.reason {
+        out.push_str(&format!(",\n    \"reason\": \"{}\"", json_escape(reason)));
+    }
+    out.push_str("\n  },\n  \"candidate_entries\": [],\n  \"next\": {\n");
+    out.push_str(&format!(
+        "    \"suggested_actions\": {},\n    \"proof_commands\": {},\n    \"proof_plans\": [\n",
+        json_string_array(report.suggested_actions),
+        json_string_array(report.proof_commands),
+    ));
+    for (index, plan) in report.proof_plans.iter().enumerate() {
+        if index > 0 {
+            out.push_str(",\n");
+        }
+        out.push_str(&render_proof_plan_json(plan));
+    }
+    out.push_str("\n    ]\n  }\n}\n");
     out
 }
 

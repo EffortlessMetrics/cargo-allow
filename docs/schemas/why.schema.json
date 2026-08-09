@@ -49,10 +49,19 @@
       "$ref": "#/$defs/evaluation"
     },
     "finding": {
-      "$ref": "#/$defs/current_finding"
+      "anyOf": [
+        { "$ref": "#/$defs/current_finding" },
+        { "type": "null" }
+      ]
     },
     "outcome": {
-      "$ref": "#/$defs/match_outcome"
+      "anyOf": [
+        { "$ref": "#/$defs/match_outcome" },
+        { "type": "null" }
+      ]
+    },
+    "target": {
+      "$ref": "#/$defs/target_scan"
     },
     "candidate_entries": {
       "type": "array",
@@ -96,6 +105,31 @@
     }
   },
   "allOf": [
+    {
+      "if": {
+        "required": ["evaluation", "target"],
+        "properties": {
+          "evaluation": {
+            "properties": {
+              "result_class": { "const": "target_scanner_partial" }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": ["target"],
+        "properties": {
+          "finding": { "type": "null" },
+          "outcome": { "type": "null" },
+          "candidate_entries": { "maxItems": 0 },
+          "next": {
+            "properties": {
+              "proof_plans": { "maxItems": 0 }
+            }
+          }
+        }
+      }
+    },
     {
       "if": {
         "required": ["inventory", "evaluation"],
@@ -482,6 +516,16 @@
             "null"
           ]
         }
+      }
+    },
+    "target_scan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "status"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["parse_error", "skipped"] },
+        "reason": { "type": "string", "minLength": 1 }
       }
     },
     "structural_identity": {
