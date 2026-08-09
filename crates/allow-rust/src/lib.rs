@@ -38,7 +38,7 @@ pub use package::{
     SourcePackageContext, apply_source_package_context, source_package_contexts_from_sources,
 };
 pub use scan_cache::ScanCache;
-pub use scan_result::RustScanResult;
+pub use scan_result::{RustFileScanOutcome, RustFileScanStatus, RustScanResult};
 pub use syntax_tree::{RustSyntaxContainer, RustSyntaxTree, parse_rust_syntax};
 pub use test_subjects::{
     RustTestInventory, RustTestInventoryDiagnostic, RustTestInventoryDiagnosticKind,
@@ -90,6 +90,7 @@ pub fn scan_rust_files(
     let files_considered = rust_files.len();
     let mut files_skipped = 0usize;
     let mut files_with_parse_errors = 0usize;
+    let mut file_statuses = Vec::with_capacity(files_considered);
     let scanned = rust_files
         .par_iter()
         .map(|rel| {
@@ -119,6 +120,14 @@ pub fn scan_rust_files(
                 if scan.has_parse_error {
                     files_with_parse_errors += 1;
                 }
+                file_statuses.push(RustFileScanStatus {
+                    path: rel.clone(),
+                    outcome: if scan.has_parse_error {
+                        RustFileScanOutcome::ParseError
+                    } else {
+                        RustFileScanOutcome::Scanned
+                    },
+                });
                 let mut findings = scan.findings;
                 apply_source_package_context(&rel, &packages, &mut findings);
                 out.extend(findings);
@@ -126,14 +135,20 @@ pub fn scan_rust_files(
             FileScanOutcome::Skipped(error) => {
                 eprintln!("warning: skipping {} (read error: {error})", path.display());
                 files_skipped += 1;
+                file_statuses.push(RustFileScanStatus {
+                    path: rel.clone(),
+                    outcome: RustFileScanOutcome::Skipped { reason: error },
+                });
             }
         }
     }
+    file_statuses.sort_by(|left, right| left.path.cmp(&right.path));
     Ok(RustScanResult {
         findings: out,
         files_considered,
         files_skipped,
         files_with_parse_errors,
+        file_statuses,
     })
 }
 
@@ -178,6 +193,7 @@ pub fn scan_rust_files_cached(
     let mut files_considered = 0usize;
     let mut files_skipped = 0usize;
     let mut files_with_parse_errors = 0usize;
+    let mut file_statuses = Vec::new();
     for rel in files {
         if rel.extension().and_then(|e| e.to_str()) != Some("rs") {
             continue;
@@ -192,19 +208,35 @@ pub fn scan_rust_files_cached(
         if skipped {
             files_skipped += 1;
             eprintln!("warning: skipping {} (read error)", path.display());
+            file_statuses.push(RustFileScanStatus {
+                path: rel.clone(),
+                outcome: RustFileScanOutcome::Skipped {
+                    reason: "read failed, non-UTF-8, or file exceeded the scanner cap".to_string(),
+                },
+            });
             continue;
         }
         if has_parse_error {
             files_with_parse_errors += 1;
         }
+        file_statuses.push(RustFileScanStatus {
+            path: rel.clone(),
+            outcome: if has_parse_error {
+                RustFileScanOutcome::ParseError
+            } else {
+                RustFileScanOutcome::Scanned
+            },
+        });
         apply_source_package_context(rel, &packages, &mut findings);
         out.extend(findings);
     }
+    file_statuses.sort_by(|left, right| left.path.cmp(&right.path));
     Ok(RustScanResult {
         findings: out,
         files_considered,
         files_skipped,
         files_with_parse_errors,
+        file_statuses,
     })
 }
 
