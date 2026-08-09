@@ -67,10 +67,7 @@ pub fn reject_prose_as_executable(prose: &str) -> Result<(), CommandSpecError> {
     if trimmed.is_empty() {
         return Err(CommandSpecError::ProseNotExecutable);
     }
-    if trimmed.contains("cargo-allow")
-        || trimmed.contains("```")
-        || trimmed.contains(" --")
-    {
+    if trimmed.contains("cargo-allow") || trimmed.contains("```") || trimmed.contains(" --") {
         return Err(CommandSpecError::ProseNotExecutable);
     }
     Ok(())
