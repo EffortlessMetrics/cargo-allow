@@ -85,6 +85,84 @@ fn core_command_summary_router() -> Result<(), String> {
 }
 
 #[test]
+fn core_command_summary_mutation_init() -> Result<(), String> {
+    let root = temp_root("summary-init")?;
+    let sidecar = root.join("init-summary.json");
+    let sidecar_text = sidecar.to_string_lossy().to_string();
+    let output = run(
+        &root,
+        &[
+            "--command-summary-output",
+            &sidecar_text,
+            "init",
+            "--config",
+            "policy/allow.toml",
+        ],
+    )?;
+    require(
+        output.status.success(),
+        format!("init failed: {}", String::from_utf8_lossy(&output.stderr)),
+    )?;
+    require(
+        stdout(&output)?.starts_with("Result: satisfied"),
+        format!(
+            "init summary missing from human output: {}",
+            stdout(&output)?
+        ),
+    )?;
+    let summary: Value = serde_json::from_str(
+        &fs::read_to_string(&sidecar).map_err(|error| format!("read init summary: {error}"))?,
+    )
+    .map_err(|error| format!("parse init summary: {error}"))?;
+    require(
+        field(&summary, &["operation"]) == Some(&Value::from("init"))
+            && field(&summary, &["operation_effects", "writes_repository"])
+                == Some(&Value::Bool(true))
+            && field(&summary, &["operation_effects", "write_paths"])
+                == Some(&Value::from(vec!["policy/allow.toml"])),
+        format!("init summary lost live-write posture: {summary}"),
+    )?;
+
+    let preview_sidecar = root.join("init-preview-summary.json");
+    let preview_text = preview_sidecar.to_string_lossy().to_string();
+    let preview = run(
+        &root,
+        &[
+            "--command-summary-output",
+            &preview_text,
+            "init",
+            "--dry-run",
+            "--config",
+            "policy/allow.toml",
+        ],
+    )?;
+    require(
+        preview.status.success(),
+        format!(
+            "init dry-run failed: {}",
+            String::from_utf8_lossy(&preview.stderr)
+        ),
+    )?;
+    require(
+        stdout(&preview)?.starts_with("Result: completed (advisory)"),
+        format!("init preview summary missing: {}", stdout(&preview)?),
+    )?;
+    let preview_summary: Value = serde_json::from_str(
+        &fs::read_to_string(&preview_sidecar)
+            .map_err(|error| format!("read init preview summary: {error}"))?,
+    )
+    .map_err(|error| format!("parse init preview summary: {error}"))?;
+    require(
+        field(
+            &preview_summary,
+            &["operation_effects", "writes_repository"],
+        ) == Some(&Value::Bool(false)),
+        format!("init preview must remain read-only: {preview_summary}"),
+    )?;
+    remove_temp_root(root)
+}
+
+#[test]
 fn summary_commands_emit_a_read_only_summary_sidecar() -> Result<(), String> {
     let root = temp_root("summary-inspection")?;
     write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;

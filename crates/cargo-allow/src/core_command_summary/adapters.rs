@@ -8,6 +8,157 @@ use super::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InitSummaryFactsV1 {
+    pub repository_identity: String,
+    pub portable_identity: String,
+    pub config_path: String,
+    pub dry_run: bool,
+    pub force: bool,
+    pub path_existed: bool,
+}
+
+pub fn core_command_summary_from_init(
+    facts: InitSummaryFactsV1,
+) -> Result<CoreCommandSummaryV1, String> {
+    let InitSummaryFactsV1 {
+        repository_identity,
+        portable_identity,
+        config_path,
+        dry_run,
+        force,
+        path_existed,
+    } = facts;
+    let action = if dry_run {
+        if path_existed && !force {
+            "keep"
+        } else if path_existed {
+            "overwrite"
+        } else {
+            "create"
+        }
+    } else if path_existed {
+        "overwrote"
+    } else {
+        "created"
+    };
+    let mut apply_args = vec![
+        "init".to_string(),
+        "--config".to_string(),
+        config_path.clone(),
+    ];
+    if force {
+        apply_args.push("--force".to_string());
+    }
+    let (result_class, posture, effects, primary_action) = if dry_run {
+        (
+            ResultClassV1::Completed,
+            CoreCommandPostureV1::Advisory,
+            CoreCommandEffectsV1::read_only(vec![
+                "does not create, overwrite, or modify the policy file".to_string(),
+                "does not execute repository code or external evidence tools".to_string(),
+            ]),
+            Some(
+                CoreCommandActionV1::command(
+                    "init.apply",
+                    "Apply the starter policy plan",
+                    "cargo-allow",
+                    apply_args,
+                )
+                .with_write_posture(
+                    CoreCommandWritePostureV1::LiveMutation,
+                    vec![config_path.clone()],
+                )
+                .with_contract(
+                    "the dry run is only a preview of the selected policy target",
+                    "the starter source-exception policy is written to the named target",
+                    "writing a starter policy does not approve any exception or prove the repository clean",
+                ),
+            ),
+        )
+    } else {
+        (
+            ResultClassV1::Completed,
+            CoreCommandPostureV1::Satisfied,
+            CoreCommandEffectsV1 {
+                reads_repository: true,
+                writes_repository: true,
+                executes_repository_code: false,
+                invokes_network: false,
+                write_paths: vec![config_path.clone()],
+                explicit_non_effects: vec![
+                    "does not approve or receipt individual findings".to_string(),
+                    "does not execute repository code or external evidence tools".to_string(),
+                ],
+            },
+            Some(
+                CoreCommandActionV1::command(
+                    "init.full_no_new_check",
+                    "Run the enforcing no-new check",
+                    "cargo-allow",
+                    vec![
+                        "check".to_string(),
+                        "--mode".to_string(),
+                        "no-new".to_string(),
+                    ],
+                )
+                .with_contract(
+                    "initialization changes policy bytes but does not establish repository posture",
+                    "the current source tree is evaluated under the no-new gate",
+                    "source-syntax evaluation does not prove compiled or runtime correctness",
+                ),
+            ),
+        )
+    };
+    build_core_command_summary(CoreCommandSummaryInputV1 {
+        tool_version: env!("CARGO_PKG_VERSION").to_string(),
+        operation: "init".to_string(),
+        mode: None,
+        profile: None,
+        subject: CoreSourceSubjectV1 {
+            kind: CoreSourceSubjectKindV1::Worktree,
+            repository_identity,
+            portable_identity,
+            base: None,
+            head: None,
+            paths: vec![config_path.clone()],
+            limitations: vec![
+                "initialization describes the selected policy target, not the full repository posture"
+                    .to_string(),
+            ],
+        },
+        result_class,
+        posture,
+        completeness: CompletenessV1::Complete,
+        currentness: CurrentnessV1::Current,
+        reason: CoreCommandReasonV1 {
+            code: if dry_run {
+                format!("init.preview_{action}")
+            } else {
+                format!("init.{action}")
+            },
+            message: if dry_run {
+                format!("would {action} {config_path}")
+            } else {
+                format!("{action} {config_path}")
+            },
+        },
+        primary_action,
+        additional_action_count: 0,
+        additional_actions_ref: None,
+        operation_effects: effects,
+        next_proof: None,
+        artifacts: Vec::new(),
+        claim_boundary: ClaimBoundaryV1::new(
+            "starter source-exception policy target and write posture only",
+        )
+        .with_limitations(vec![
+            "the summary does not approve exceptions or establish compiled/runtime correctness"
+                .to_string(),
+        ]),
+    })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiffSummaryFactsV1 {
     pub repository_identity: String,
     pub portable_identity: String,

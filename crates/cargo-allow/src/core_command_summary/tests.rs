@@ -110,6 +110,46 @@ fn completed_summary_rejects_partial_coverage() -> Result<(), String> {
 }
 
 #[test]
+fn core_command_summary_init_distinguishes_preview_and_live_write() -> Result<(), String> {
+    let preview = core_command_summary_from_init(InitSummaryFactsV1 {
+        repository_identity: "local-repository:test".to_string(),
+        portable_identity: "worktree:init:policy/allow.toml".to_string(),
+        config_path: "policy/allow.toml".to_string(),
+        dry_run: true,
+        force: true,
+        path_existed: true,
+    })?;
+    ensure(
+        preview.posture == CoreCommandPostureV1::Advisory
+            && !preview.operation_effects.writes_repository
+            && preview.primary_action.as_ref().is_some_and(|action| {
+                action.write_posture == CoreCommandWritePostureV1::LiveMutation
+                    && action.may_write_paths == vec!["policy/allow.toml"]
+                    && action.args == vec!["init", "--config", "policy/allow.toml", "--force"]
+            }),
+        "init preview must be advisory and keep the possible write explicit",
+    )?;
+
+    let applied = core_command_summary_from_init(InitSummaryFactsV1 {
+        repository_identity: "local-repository:test".to_string(),
+        portable_identity: "worktree:init:policy/allow.toml".to_string(),
+        config_path: "policy/allow.toml".to_string(),
+        dry_run: false,
+        force: false,
+        path_existed: false,
+    })?;
+    ensure(
+        applied.operation_effects.writes_repository
+            && applied.operation_effects.write_paths == vec!["policy/allow.toml"]
+            && applied
+                .primary_action
+                .as_ref()
+                .is_some_and(|action| action.args == vec!["check", "--mode", "no-new"]),
+        "init apply must name the written path and enforcing follow-up",
+    )
+}
+
+#[test]
 fn core_command_summary_diff_preserves_revision_and_completeness_posture() -> Result<(), String> {
     let complete = core_command_summary_from_diff(DiffSummaryFactsV1 {
         repository_identity: "local-repository:test".to_string(),
