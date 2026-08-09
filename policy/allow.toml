@@ -10786,3 +10786,25 @@ glob = "policy/product-package-topology-v2.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0514"
+kind = "non_rust_file"
+family = "documentation"
+path = "CLAUDE.md"
+owner = "core/maintainers"
+classification = "agent_guidance"
+reason = "Repository entry point for Claude Code; AGENTS.md remains the operating contract."
+evidence = ["doc:AGENTS.md", "doc:docs/claim-boundaries.md"]
+created = "2026-08-09"
+review_after = "2026-11-07"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "CLAUDE.md"
+target_fingerprint = "md"
+glob = "CLAUDE.md"
+
+[allow.last_seen]
+line = 1
+column = 1
