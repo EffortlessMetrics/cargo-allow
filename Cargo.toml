@@ -24,6 +24,18 @@ members = [
   "crates/proof-engine",
   "crates/cargo-proof",
 ]
+default-members = [
+  "crates/cargo-allow",
+  "crates/allow-core",
+  "crates/allow-policy",
+  "crates/allow-inventory",
+  "crates/allow-files",
+  "crates/allow-rust",
+  "crates/allow-match",
+  "crates/allow-report",
+  "crates/allow-diff",
+  "crates/allow-policy-legacy",
+]
 
 [workspace.package]
 edition = "2024"
