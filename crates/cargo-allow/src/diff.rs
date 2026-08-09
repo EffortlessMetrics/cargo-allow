@@ -211,8 +211,8 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         .filter(|outcome| CheckMode::NoNew.fails(outcome.status))
         .count()
         + evidence.broken_evidence_links;
-    let current_failures = current_failures
-        + usize::from(result_class.is_blocking() && current_failures == 0);
+    let current_failures =
+        current_failures + usize::from(result_class.is_blocking() && current_failures == 0);
     // A required note is the authorization for a bounded weakening. Without
     // the flag, preserve the ordinary posture failure. With the flag, only a
     // missing or stale note keeps the diff blocked.
