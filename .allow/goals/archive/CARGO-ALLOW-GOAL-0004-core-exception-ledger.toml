@@ -41,9 +41,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_plan = "plans/ledger-coherence/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0019"
 proof_commands = [
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-  "rtk cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest",
+  "cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest",
 ]
 evidence_notes = [
   "Governance-only: CARGO-ALLOW-PROP-0008, CARGO-ALLOW-SPEC-0008, CARGO-ALLOW-PLAN-0009, active goal, doc-artifacts, closeout stub.",
@@ -60,9 +60,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_plan = "plans/ledger-coherence/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0020"
 proof_commands = [
-  "rtk cargo test -p allow-core",
-  "rtk cargo test -p allow-report",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-core",
+  "cargo test -p allow-report",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Add PresenceMovement, PostureDelta, LedgerPosture, NetPosture in allow-core; dedupe string mappings across artifacts.",
@@ -78,9 +78,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_plan = "plans/ledger-coherence/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0021"
 proof_commands = [
-  "rtk cargo test -p allow-diff",
-  "rtk cargo test -p cargo-allow diff_output",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-diff",
+  "cargo test -p cargo-allow diff_output",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Orthogonal movement and posture_delta on every diff row; dual summary counts; project to human/Markdown/JSON/receipt/worklist.",
@@ -96,7 +96,7 @@ linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_plan = "plans/ledger-coherence/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0022"
 proof_commands = [
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
 ]
 evidence_notes = [
   "Superseded by issue #2075; implemented directly as runtime enforcement (PR 4) rather than a separate design slice.",
@@ -112,8 +112,8 @@ linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_plan = "plans/ledger-coherence/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0022"
 proof_commands = [
-  "rtk cargo test -p cargo-allow",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p cargo-allow",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed on main via #2097 (commit bc1ae6c): diff --require-change-note + --revisions-dir; check_change_notes matches (allow_id, change_kind).",
@@ -129,9 +129,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_plan = "plans/ledger-coherence/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0041"
 proof_commands = [
-  "rtk cargo test -p allow-report",
-  "rtk cargo test -p cargo-allow",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-report",
+  "cargo test -p cargo-allow",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Shared operation envelope for add, propose, refresh, prune, migrate; split 5A-5D per plan.",
@@ -148,9 +148,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_plan = "plans/ledger-coherence/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0053"
 proof_commands = [
-  "rtk cargo test -p allow-report",
-  "rtk cargo test -p cargo-allow",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-report",
+  "cargo test -p cargo-allow",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Shared view model for list, explain, worklist, audit, check, diff.",
@@ -176,8 +176,8 @@ linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_plan = "plans/ledger-coherence/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0051"
 proof_commands = [
-  "rtk cargo test -p cargo-allow --test lifecycle_corpus --locked",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p cargo-allow --test lifecycle_corpus --locked",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Fixture corpus for matched, stale, expired, review_due, drift, headroom, evidence debt, weakening, improvement, and mirror divergence states.",
@@ -202,9 +202,9 @@ evidence_notes = [
   "Fixture-only selector change on policy/allow.toml; prove diff classification, missing note reporting, note addition, and receipt.",
 ]
 proof_commands = [
-  "rtk cargo test -p cargo-allow --test lifecycle_corpus --locked",
-  "rtk cargo test -p cargo-allow diff_change_note --locked",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p cargo-allow --test lifecycle_corpus --locked",
+  "cargo test -p cargo-allow diff_change_note --locked",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 
 [[work_item]]
@@ -216,8 +216,8 @@ linked_spec = "CARGO-ALLOW-SPEC-0008"
 linked_plan = "plans/ledger-coherence/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0053"
 proof_commands = [
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
 ]
 evidence_notes = [
   "Merged as #2310; the guide covers discovery, bounded policy decisions, evidence repair, lifecycle review, weakening rationale, pruning, and final PR verification.",

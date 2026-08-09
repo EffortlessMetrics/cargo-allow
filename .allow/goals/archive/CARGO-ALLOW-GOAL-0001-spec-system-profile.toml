@@ -34,15 +34,15 @@ linked_spec = "CARGO-ALLOW-SPEC-0001"
 linked_plan = "plans/spec-system/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0001"
 proof_commands = [
-  "rtk cargo run -p cargo-allow -- doctor --profile spec-system --format json",
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
-  "rtk cargo run -p cargo-allow -- worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json",
-  "rtk cargo run -p cargo-allow -- explain CARGO-ALLOW-SPEC-0001 --profile spec-system --format json --output target/cargo-allow/spec-system-explain.json",
-  "rtk git diff --cached --check",
-  "rtk cargo fmt --all --check",
-  "rtk cargo clippy --workspace --all-targets -- -D warnings",
-  "rtk cargo test --workspace",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo run -p cargo-allow -- doctor --profile spec-system --format json",
+  "cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "cargo run -p cargo-allow -- worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json",
+  "cargo run -p cargo-allow -- explain CARGO-ALLOW-SPEC-0001 --profile spec-system --format json --output target/cargo-allow/spec-system-explain.json",
+  "git diff --cached --check",
+  "cargo fmt --all --check",
+  "cargo clippy --workspace --all-targets -- -D warnings",
+  "cargo test --workspace",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "The opt-in spec-system profile is implemented as one governance profile alongside the default source-exception ledger.",

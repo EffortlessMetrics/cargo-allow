@@ -39,10 +39,10 @@ linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
 proof_commands = [
-  "rtk cargo run -p cargo-allow -- doctor --profile spec-system --format json",
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
-  "rtk cargo run -p cargo-allow -- worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo run -p cargo-allow -- doctor --profile spec-system --format json",
+  "cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "cargo run -p cargo-allow -- worklist --profile spec-system --format json --output target/cargo-allow/spec-system-worklist.json",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in docs(goals): register 0.2.0 migration parity execution lane (#1687).",
@@ -59,8 +59,8 @@ linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
 proof_commands = [
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Reconciled plans/migration-parity/gap-inventory.md from allow-policy-legacy characterization tests and open adoption issues.",
@@ -76,10 +76,10 @@ linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
 proof_commands = [
-  "rtk cargo test -p allow-policy-legacy no_panic_baseline",
-  "rtk cargo test -p allow-policy-legacy legacy_migration_preserves_evidence_matrix",
-  "rtk cargo test -p allow-policy-legacy legacy_migration_preserves_metadata_matrix",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-policy-legacy no_panic_baseline",
+  "cargo test -p allow-policy-legacy legacy_migration_preserves_evidence_matrix",
+  "cargo test -p allow-policy-legacy legacy_migration_preserves_metadata_matrix",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in #1691 (merge 1cd408e): preserve owner/reason/evidence/covered_by on no-panic-baseline import.",
@@ -97,9 +97,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
 proof_commands = [
-  "rtk cargo test -p allow-policy-legacy migration_fixture_matrix",
-  "rtk cargo test -p allow-policy-legacy",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-policy-legacy migration_fixture_matrix",
+  "cargo test -p allow-policy-legacy",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in #1693 (merge cd0ab7b): tests/fixtures/migration/ minimal legacy TOML inputs for all supported compat lanes.",
@@ -117,7 +117,7 @@ linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
 proof_commands = [
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in #1695 (merge 64832c5): migrate closeout routing in cargo-allow.migrate.v1 summaries and migration-evidence-cookbook.md.",
@@ -134,9 +134,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
 proof_commands = [
-  "rtk cargo run -p cargo-allow -- check --compat --kind panic --config docs/dogfood/fixtures/no-panic-baseline.toml --mode no-new",
-  "rtk cargo run -p cargo-allow -- migrate --from docs/dogfood/fixtures/no-panic-baseline.toml --out docs/dogfood/receipts/cargo-allow-panic-baseline.migrated.toml --summary-format json --summary-output docs/dogfood/receipts/cargo-allow-panic-baseline.migrate-summary.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo run -p cargo-allow -- check --compat --kind panic --config docs/dogfood/fixtures/no-panic-baseline.toml --mode no-new",
+  "cargo run -p cargo-allow -- migrate --from docs/dogfood/fixtures/no-panic-baseline.toml --out docs/dogfood/receipts/cargo-allow-panic-baseline.migrated.toml --summary-format json --summary-output docs/dogfood/receipts/cargo-allow-panic-baseline.migrate-summary.json",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in #1697 (merge 26a6873): docs/dogfood/cargo-allow-panic-baseline.md records one scoped panic-baseline side-by-side receipt for this repository.",
@@ -152,7 +152,7 @@ linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0002"
 proof_commands = [
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "#1470 foreign-dialect discovery closed in #1699 (merge 53ea19aa) and #1700; gap-inventory reconciled.",
@@ -168,9 +168,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit",
-  "rtk cargo test -p allow-policy-legacy",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo run -p cargo-allow -- check --profile spec-system --mode audit",
+  "cargo test -p allow-policy-legacy",
 ]
 evidence_notes = [
   "Landed in #1709 (merge 35e1f70a): shared migration lane descriptor table in allow-policy-legacy without migration behavior change.",
@@ -186,8 +186,8 @@ linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
-  "rtk cargo test -p allow-policy-legacy",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-policy-legacy",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in #1711 (merge 04facd42): shared evidence/lifecycle metadata helpers in allow-policy-legacy without migration behavior change.",
@@ -202,9 +202,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
-  "rtk cargo test -p allow-policy-legacy migration_closeout",
-  "rtk cargo test -p cargo-allow migrate_closeout_summary",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-policy-legacy migration_closeout",
+  "cargo test -p cargo-allow migrate_closeout_summary",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in #1712: shared closeout queue construction via migrate_closeout_queues and CloseoutQueueHints without migration behavior change beyond routing labels.",
@@ -220,8 +220,8 @@ linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Governance split only; no import implementation. Umbrella #1466 remains open.",
@@ -238,9 +238,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
-  "rtk cargo test -p allow-report receipt_advisory",
-  "rtk cargo test -p cargo-allow receipt_output",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-report receipt_advisory",
+  "cargo test -p cargo-allow receipt_output",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed receipt `advisory` counters mirroring report trend totals for ratcheting metadata.",
@@ -256,8 +256,8 @@ linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
-  "rtk cargo test -p cargo-allow check_deny deny_escalation",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p cargo-allow check_deny deny_escalation",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Second half of #1474: repeatable `check --deny <status>` promotes receipt advisory counts to exit 1.",
@@ -274,9 +274,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
-  "rtk cargo test -p allow-policy lane_validation",
-  "rtk cargo test -p cargo-allow lane_posture",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-policy lane_validation",
+  "cargo test -p cargo-allow lane_posture",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed optional [lanes.<kind>] posture with advisory/shadow/blocking modes and receipt lane_posture reporting.",
@@ -292,9 +292,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
-  "rtk cargo run -p cargo-allow -- check --compat --kind unsafe --config docs/dogfood/fixtures/unsafe-allowlist.toml --mode no-new",
-  "rtk cargo run -p cargo-allow -- migrate --from docs/dogfood/fixtures/unsafe-allowlist.toml --out docs/dogfood/receipts/cargo-allow-unsafe-allowlist.migrated.toml --summary-format json --summary-output docs/dogfood/receipts/cargo-allow-unsafe-allowlist.migrate-summary.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo run -p cargo-allow -- check --compat --kind unsafe --config docs/dogfood/fixtures/unsafe-allowlist.toml --mode no-new",
+  "cargo run -p cargo-allow -- migrate --from docs/dogfood/fixtures/unsafe-allowlist.toml --out docs/dogfood/receipts/cargo-allow-unsafe-allowlist.migrated.toml --summary-format json --summary-output docs/dogfood/receipts/cargo-allow-unsafe-allowlist.migrate-summary.json",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in #1723 (merge 3bd815fd): docs/dogfood/cargo-allow-unsafe-allowlist.md records one scoped unsafe-allowlist side-by-side receipt for this repository.",
@@ -310,8 +310,8 @@ linked_spec = "CARGO-ALLOW-SPEC-0005"
 linked_plan = "plans/structural-identity/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
-  "rtk cargo test -p allow-rust structural_identity",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-rust structural_identity",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in #1724 (merge ffc4a47): module-qualifies unqualified container names for findings inside nested modules; fixture container_same_name_sibling_modules.",
@@ -327,8 +327,8 @@ linked_spec = "CARGO-ALLOW-SPEC-0005"
 linked_plan = "plans/structural-identity/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
-  "rtk cargo test -p allow-rust structural_identity",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-rust structural_identity",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in #1726 (merge 4f19e298): parameter-slot receiver fingerprints (param:N) and index selector target fingerprints; fixtures rename_local, callee_same_receiver_diff, index_same_form_diff_targets.",
@@ -344,8 +344,8 @@ linked_spec = "CARGO-ALLOW-SPEC-0005"
 linked_plan = "plans/structural-identity/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
-  "rtk cargo test -p allow-rust structural_identity",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-rust structural_identity",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in #1728 (merge 7b2f2785): scope map records inner_attribute_item targets; lint container/module identity for same-line, cfg_attr, multiline, shared-policy, and inner module/impl attrs; fixture lint_same_different_items.",
@@ -361,8 +361,8 @@ linked_spec = "CARGO-ALLOW-SPEC-0005"
 linked_plan = "plans/structural-identity/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
-  "rtk cargo test -p allow-match",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-match",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in #1730 (merge 10e98453): allow-match selector_precision characterization over structural-identity fixtures; policy entries allow-0215..0234 and allow-0243..0246; no matcher logic changes.",
@@ -378,8 +378,8 @@ linked_spec = "CARGO-ALLOW-SPEC-0005"
 linked_plan = "plans/structural-identity/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
-  "rtk cargo test -p allow-diff",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-diff",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in #1732 (merge 1f67fd64): allow-diff structural_identity_posture characterization for selector precision weakening/improvement and finding identity loss; no diff logic changes.",
@@ -395,9 +395,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0004"
 proof_commands = [
-  "rtk cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest",
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest",
+  "cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Governance registration only; no import behavior change.",
@@ -414,9 +414,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0004"
 proof_commands = [
-  "rtk cargo test -p allow-policy-legacy semantic_selector",
-  "rtk cargo test -p allow-policy-legacy",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-policy-legacy semantic_selector",
+  "cargo test -p allow-policy-legacy",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in #1735 (merge d5983b81): preserve receiver_fingerprint, target_fingerprint, symbol, and normalized_snippet_hash from legacy nested selector tables into canonical policy entries.",
@@ -433,9 +433,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0004"
 proof_commands = [
-  "rtk cargo test -p allow-policy-legacy advisory_drift",
-  "rtk cargo test -p allow-policy-legacy",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-policy-legacy advisory_drift",
+  "cargo test -p allow-policy-legacy",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in #1737 (merge 4dffb1e7): preserve last_seen and line_hint on clippy import; emit MatchStatus::LocationDrift advisories without failing no-new.",
@@ -452,9 +452,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0004"
 proof_commands = [
-  "rtk cargo test -p allow-report refresh",
-  "rtk cargo test -p cargo-allow refresh",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-report refresh",
+  "cargo test -p cargo-allow refresh",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in #1738: cargo-allow refresh command and cargo-allow.refresh.v1 receipt for operator-approved last_seen updates after advisory drift.",
@@ -471,8 +471,8 @@ linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0004"
 proof_commands = [
-  "rtk cargo test -p allow-policy-legacy",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-policy-legacy",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in #1739: LegacyImportBatch / LegacyImportFamily policy-dir batch import with deterministic lane-descriptor ordering and per-lane metadata.",
@@ -489,8 +489,8 @@ linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0004"
 proof_commands = [
-  "rtk cargo test -p allow-policy-legacy import_parity_metadata_acceptance",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-policy-legacy import_parity_metadata_acceptance",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Landed in #1740: acceptance fixture matrix in import_parity_metadata_acceptance_tests.rs characterizes owner/reason/evidence/covered_by round-trip for semantic-selector entries across no-panic, lint, and unsafe lanes.",
@@ -506,11 +506,11 @@ linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0004"
 proof_commands = [
-  "rtk cargo run -p cargo-allow -- check --compat --kind panic --config docs/dogfood/fixtures/ripr-style/no-panic-baseline.toml --mode no-new",
-  "rtk cargo run -p cargo-allow -- check --compat --kind unsafe --config docs/dogfood/fixtures/ripr-style/unsafe-allowlist.toml --mode no-new",
-  "rtk cargo run -p cargo-allow -- check --compat --kind lint --config docs/dogfood/fixtures/ripr-style/clippy-exceptions.toml --mode no-new",
-  "rtk cargo run -p cargo-allow -- migrate --repo-policy docs/dogfood/fixtures/ripr-style --out docs/dogfood/receipts/cargo-allow-ripr-style-adoption.migrated.toml --summary-format json --summary-output docs/dogfood/receipts/cargo-allow-ripr-style-adoption.migrate-summary.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo run -p cargo-allow -- check --compat --kind panic --config docs/dogfood/fixtures/ripr-style/no-panic-baseline.toml --mode no-new",
+  "cargo run -p cargo-allow -- check --compat --kind unsafe --config docs/dogfood/fixtures/ripr-style/unsafe-allowlist.toml --mode no-new",
+  "cargo run -p cargo-allow -- check --compat --kind lint --config docs/dogfood/fixtures/ripr-style/clippy-exceptions.toml --mode no-new",
+  "cargo run -p cargo-allow -- migrate --repo-policy docs/dogfood/fixtures/ripr-style --out docs/dogfood/receipts/cargo-allow-ripr-style-adoption.migrated.toml --summary-format json --summary-output docs/dogfood/receipts/cargo-allow-ripr-style-adoption.migrate-summary.json",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "In-repo dogfood only: docs/dogfood/cargo-allow-ripr-style-adoption.md records multi-family panic+unsafe+lint compat→migrate→check→worklist→closeout for cargo-allow fixtures.",
@@ -527,9 +527,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0004"
 linked_plan = "plans/spec-system/allow-import-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0004"
 proof_commands = [
-  "rtk cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest",
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p allow-policy spec_system::tests::parses_current_repository_active_goal_manifest",
+  "cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Governance closeout only; no import behavior change.",
@@ -546,8 +546,8 @@ linked_spec = "CARGO-ALLOW-SPEC-0005"
 linked_plan = "plans/structural-identity/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
-  "rtk cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo run -p cargo-allow -- check --profile spec-system --mode audit --format json --output target/cargo-allow/spec-system.json",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Documentation-only slice from structural identity D8 PR sequence.",
@@ -565,9 +565,9 @@ linked_spec = "CARGO-ALLOW-SPEC-0002"
 linked_plan = "plans/migration-parity/implementation-plan.md"
 linked_closeout = "CARGO-ALLOW-CLOSEOUT-0003"
 proof_commands = [
-  "rtk cargo test -p cargo-allow check_deny deny_escalation e2e_occurrence_headroom",
-  "rtk cargo test -p allow-report receipt_advisory occurrence_headroom",
-  "rtk cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
+  "cargo test -p cargo-allow check_deny deny_escalation e2e_occurrence_headroom",
+  "cargo test -p allow-report receipt_advisory occurrence_headroom",
+  "cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md",
 ]
 evidence_notes = [
   "Completes deferred half of advisory ratcheting after receipt advisory counts and check --deny escalation.",
