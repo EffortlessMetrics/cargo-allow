@@ -37,10 +37,11 @@ const WHY_ARGV: &[&str] = &[
 const WORKLIST_ARGV: &[&str] = &["worklist"];
 
 /// Every command that projects the summary.
-const GRAMMAR_COMMANDS: [&[&str]; 6] = [
+const GRAMMAR_COMMANDS: [&[&str]; 7] = [
     &["adopt"],
     &["doctor"],
     &["audit"],
+    &["check", "--mode", "no-new"],
     EXPLAIN_ARGV,
     WHY_ARGV,
     WORKLIST_ARGV,
@@ -80,12 +81,14 @@ fn first_hour_commands_share_one_operator_grammar() -> Result<(), String> {
 }
 
 #[test]
-fn inspection_commands_emit_a_read_only_summary_sidecar() -> Result<(), String> {
+fn summary_commands_emit_a_read_only_summary_sidecar() -> Result<(), String> {
     let root = temp_root("summary-inspection")?;
     write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
     run(&root, &["init"])?;
 
     for (label, command) in [
+        ("audit", &["audit"][..]),
+        ("check", &["check", "--mode", "no-new"][..]),
         ("explain", EXPLAIN_ARGV),
         ("why", WHY_ARGV),
         ("worklist", WORKLIST_ARGV),
