@@ -91,6 +91,16 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
         cwd.join(&args.out)
     };
     let rendered = render_policy(&cfg);
+    let output_path = portable_relative_under_root(&repository_root, &output_absolute)
+        .map(|path| {
+            path.to_string_lossy()
+                .replace(std::path::MAIN_SEPARATOR, "/")
+        })
+        .unwrap_or_else(|_| {
+            output_absolute
+                .to_string_lossy()
+                .replace(std::path::MAIN_SEPARATOR, "/")
+        });
     match portable_relative_under_root(&repository_root, &output_absolute) {
         Ok(target) => {
             crate::policy_config::assert_path_within_root(&repository_root, &output_absolute)?;
@@ -125,6 +135,34 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
             }
             write_file_no_overwrite(&output_absolute, &rendered, args.force)?;
         }
+    }
+    let core_summary = crate::core_command_summary::core_command_summary_from_migrate(
+        crate::core_command_summary::MigrateSummaryFactsV1 {
+            repository_identity: format!(
+                "local-repository:{}",
+                migration.context.inventory_source.as_str()
+            ),
+            portable_identity: format!("worktree:migrate:{output_path}"),
+            output_path,
+            input_path: migration.context.input_path.clone(),
+            entry_count: cfg.allow.len(),
+            update: args.update,
+            force: args.force,
+            complete_inventory: migration.context.inventory_files.is_some(),
+        },
+    )
+    .map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!("failed to build migrate command summary: {error}"),
+        )
+    })?;
+    crate::core_command_router::write_summary_artifact(&repository_root, &core_summary)?;
+    if args.summary_format == HumanJsonFormat::Human {
+        eprint!(
+            "{}",
+            crate::core_command_summary::render_core_command_summary_human(&core_summary)
+        );
     }
     let summary = match args.summary_format {
         HumanJsonFormat::Human => {

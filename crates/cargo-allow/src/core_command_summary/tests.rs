@@ -404,6 +404,49 @@ fn core_command_summary_prune_distinguishes_preview_write_and_noop() -> Result<(
 }
 
 #[test]
+fn core_command_summary_migrate_distinguishes_candidate_and_update() -> Result<(), String> {
+    let candidate = core_command_summary_from_migrate(MigrateSummaryFactsV1 {
+        repository_identity: "local-repository:test".to_string(),
+        portable_identity: "worktree:migrate:policy/allow.toml".to_string(),
+        output_path: "policy/allow.toml".to_string(),
+        input_path: "legacy/allow.toml".to_string(),
+        entry_count: 2,
+        update: false,
+        force: false,
+        complete_inventory: true,
+    })?;
+    ensure(
+        candidate.mode.as_deref() == Some("candidate")
+            && candidate.posture == CoreCommandPostureV1::Advisory
+            && candidate.primary_action.as_ref().is_some_and(|action| {
+                action.args == strings(&["diff", "--config", "policy/allow.toml"])
+            })
+            && candidate.next_proof.is_none(),
+        "migrate candidate must remain advisory and reviewable",
+    )?;
+    let update = core_command_summary_from_migrate(MigrateSummaryFactsV1 {
+        repository_identity: "local-repository:test".to_string(),
+        portable_identity: "worktree:migrate:policy/allow.toml".to_string(),
+        output_path: "policy/allow.toml".to_string(),
+        input_path: "legacy/allow.toml".to_string(),
+        entry_count: 2,
+        update: true,
+        force: false,
+        complete_inventory: true,
+    })?;
+    ensure(
+        update.mode.as_deref() == Some("update")
+            && update.posture == CoreCommandPostureV1::Satisfied
+            && update.operation_effects.writes_repository
+            && update
+                .next_proof
+                .as_ref()
+                .is_some_and(|action| action.args == strings(&["check", "--mode", "no-new"])),
+        "migrate update must name its write and full proof",
+    )
+}
+
+#[test]
 fn core_command_summary_diff_preserves_revision_and_completeness_posture() -> Result<(), String> {
     let complete = core_command_summary_from_diff(DiffSummaryFactsV1 {
         repository_identity: "local-repository:test".to_string(),
