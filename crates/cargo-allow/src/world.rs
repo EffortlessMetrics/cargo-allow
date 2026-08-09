@@ -290,19 +290,30 @@ fn reject_unsupported_staged_federation(
     Ok(())
 }
 
+type WorldLoadResult = CargoAllowResult<(
+    PathBuf,
+    AllowConfig,
+    Vec<Finding>,
+    InventoryFacts,
+    FederationEvaluation,
+)>;
+
+type ScopedWorldLoadResult = CargoAllowResult<(
+    PathBuf,
+    AllowConfig,
+    Vec<Finding>,
+    InventoryFacts,
+    FederationEvaluation,
+    Option<allow_rust::RustFileScanOutcome>,
+)>;
+
 pub(crate) fn load_world(
     explicit_root: Option<&Path>,
     config: Option<&Path>,
     require_config: bool,
     kind_filter: Option<&str>,
     include_untracked: bool,
-) -> CargoAllowResult<(
-    PathBuf,
-    AllowConfig,
-    Vec<Finding>,
-    InventoryFacts,
-    FederationEvaluation,
-)> {
+) -> WorldLoadResult {
     load_world_with_evidence_mode(
         explicit_root,
         config,
@@ -320,13 +331,7 @@ pub(crate) fn load_world_with_evidence_mode(
     kind_filter: Option<&str>,
     include_untracked: bool,
     evidence_validation: EvidenceValidationMode,
-) -> CargoAllowResult<(
-    PathBuf,
-    AllowConfig,
-    Vec<Finding>,
-    InventoryFacts,
-    FederationEvaluation,
-)> {
+) -> WorldLoadResult {
     let cwd = current_dir()?;
     let root = resolve_source_tree_root(explicit_root, cwd)?;
     let (policy_path, federation) = match evaluate_source_exception_policy(&root, config) {
@@ -412,25 +417,20 @@ pub(crate) fn load_world_for_path(
     kind_filter: Option<&str>,
     include_untracked: bool,
     target_path: &Path,
-) -> CargoAllowResult<(
-    PathBuf,
-    AllowConfig,
-    Vec<Finding>,
-    InventoryFacts,
-    FederationEvaluation,
-)> {
+) -> ScopedWorldLoadResult {
     let cwd = current_dir()?;
     let root = resolve_source_tree_root(explicit_root, cwd)?;
     let (policy_path, federation) = match evaluate_source_exception_policy(&root, config) {
         Ok(value) => value,
         Err(_err) if !require_config => {
-            return load_world_without_policy(
+            let (root, cfg, findings, facts, federation) = load_world_without_policy(
                 &root,
                 kind_filter,
                 include_untracked,
                 EvidenceValidationMode::ReportOnly,
                 empty_federation_evaluation(PrecedenceTier::DiscoveryFallback),
-            );
+            )?;
+            return Ok((root, cfg, findings, facts, federation, None));
         }
         Err(err) => return Err(err),
     };
@@ -462,6 +462,7 @@ pub(crate) fn load_world_for_path(
     }
     let mut findings = Vec::new();
     let rust_scan = allow_rust::scan_rust_files(&root, &files)?;
+    let target_scan = rust_scan.status_for(&target).cloned();
     findings.extend(rust_scan.findings);
     findings.extend(allow_files::scan_files_with_options(
         &files,
@@ -484,7 +485,14 @@ pub(crate) fn load_world_for_path(
     let inventory_facts = InventoryFacts::scanned_inventory(&inventory)
         .with_rust_files_skipped(rust_scan.files_skipped)
         .with_rust_files_with_parse_errors(rust_scan.files_with_parse_errors);
-    Ok((root, cfg, findings, inventory_facts, federation))
+    Ok((
+        root,
+        cfg,
+        findings,
+        inventory_facts,
+        federation,
+        target_scan,
+    ))
 }
 
 /// Explain why the target finding cannot safely use the one-file evaluator.

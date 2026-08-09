@@ -5,7 +5,7 @@ use crate::artifact_schema_support::{
 use serde_json::{Value, json};
 
 #[test]
-fn why_schema_locks_finding_outcome_and_candidates_contract() {
+fn why_schema_locks_finding_outcome_and_candidates_contract() -> Result<(), String> {
     let schema = parse_schema("why", include_str!("../../../docs/schemas/why.schema.json"));
 
     assert_required_fields(
@@ -67,20 +67,36 @@ fn why_schema_locks_finding_outcome_and_candidates_contract() {
         Some("why"),
         "why command const"
     );
-    assert_eq!(
-        schema
-            .pointer("/properties/finding/$ref")
-            .and_then(Value::as_str),
-        Some("#/$defs/current_finding"),
-        "why finding should reuse current_finding"
-    );
-    assert_eq!(
-        schema
-            .pointer("/properties/outcome/$ref")
-            .and_then(Value::as_str),
-        Some("#/$defs/match_outcome"),
-        "why outcome should reuse match_outcome"
-    );
+    for (field, reference) in [
+        ("finding", "#/$defs/current_finding"),
+        ("outcome", "#/$defs/match_outcome"),
+    ] {
+        let Some(any_of) = schema
+            .pointer(&format!("/properties/{field}/anyOf"))
+            .and_then(Value::as_array)
+        else {
+            return Err(format!("nullable why field {field} should use anyOf"));
+        };
+        let reference_index = any_of
+            .iter()
+            .position(|variant| variant.get("$ref").and_then(Value::as_str) == Some(reference));
+        if reference_index.is_none() {
+            return Err(format!("why {field} should reuse {reference}"));
+        }
+        let null_index = any_of
+            .iter()
+            .position(|variant| variant.get("type").and_then(Value::as_str) == Some("null"));
+        if null_index.is_none() {
+            return Err(format!(
+                "why {field} should permit null for partial target scans"
+            ));
+        }
+        if reference_index == null_index {
+            return Err(format!(
+                "why {field} should use separate reference and null variants"
+            ));
+        }
+    }
     assert_enum_equals(
         "why match status",
         &schema,
@@ -109,6 +125,7 @@ fn why_schema_locks_finding_outcome_and_candidates_contract() {
     );
     let proof_plan = required_schema_pointer("why", &schema, "/$defs/proof_plan");
     assert_required_fields("why proof_plan", proof_plan, &["program", "args"]);
+    Ok(())
 }
 
 #[test]
@@ -148,10 +165,54 @@ fn result_class_schema_binds_to_its_evidence_tuple() -> Result<(), String> {
             .and_then(Value::as_object_mut)
             .ok_or_else(|| format!("{name} sample should contain inventory"))?
             .insert("completeness".to_string(), json!("partial"));
+        if name == "why" {
+            partial
+                .as_object_mut()
+                .ok_or_else(|| format!("{name} sample should be an object"))?
+                .insert(
+                    "target".to_string(),
+                    json!({
+                        "path": "src/huge.rs",
+                        "status": "skipped",
+                        "reason": "file exceeds scanner limit"
+                    }),
+                );
+            partial
+                .as_object_mut()
+                .ok_or_else(|| format!("{name} sample should be an object"))?
+                .insert("finding".to_string(), Value::Null);
+            partial
+                .as_object_mut()
+                .ok_or_else(|| format!("{name} sample should be an object"))?
+                .insert("outcome".to_string(), Value::Null);
+            partial
+                .get_mut("candidate_entries")
+                .and_then(Value::as_array_mut)
+                .ok_or_else(|| format!("{name} sample should contain candidate_entries"))?
+                .clear();
+            partial
+                .pointer_mut("/next/proof_plans")
+                .and_then(Value::as_array_mut)
+                .ok_or_else(|| format!("{name} sample should contain proof plans"))?
+                .clear();
+        }
         if validator.validate(&partial).is_err() {
             return Err(format!(
                 "{name} schema should accept target_scanner_partial"
             ));
+        }
+        if name == "why" {
+            let mut missing_target = partial.clone();
+            missing_target
+                .as_object_mut()
+                .ok_or_else(|| format!("{name} sample should be an object"))?
+                .remove("target");
+            if validator.validate(&missing_target).is_ok() {
+                return Err(
+                    "why schema must reject target_scanner_partial without target evidence"
+                        .to_string(),
+                );
+            }
         }
 
         let mut scoped_partial: Value = serde_json::from_str(&sample_text)

@@ -57,5 +57,6 @@ pub use release_manifest::{
 };
 pub use why::{
     EvaluationContext, EvaluationResultClass, WhyCandidateEntry, WhyProofPlan, WhyReport,
+    WhyTargetScan, WhyTargetScanReport,
 };
 pub use worklist::{WorklistFilters, WorklistItem};

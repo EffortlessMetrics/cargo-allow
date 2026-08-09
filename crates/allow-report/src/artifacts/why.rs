@@ -116,3 +116,22 @@ pub struct WhyReport<'a> {
     pub proof_commands: &'a [String],
     pub proof_plans: &'a [WhyProofPlan<'a>],
 }
+
+/// Typed scanner facts for a `why` query whose selected target did not produce
+/// a finding because the target scan was incomplete.
+#[derive(Debug, Clone, Copy)]
+pub struct WhyTargetScan<'a> {
+    pub path: &'a str,
+    pub status: &'a str,
+    pub reason: Option<&'a str>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct WhyTargetScanReport<'a> {
+    pub inventory: InventoryContext<'a>,
+    pub evaluation: EvaluationContext<'a>,
+    pub target: WhyTargetScan<'a>,
+    pub suggested_actions: &'a [String],
+    pub proof_commands: &'a [String],
+    pub proof_plans: &'a [WhyProofPlan<'a>],
+}

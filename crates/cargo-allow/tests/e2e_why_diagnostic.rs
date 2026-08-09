@@ -1,9 +1,11 @@
 mod support;
 
+use std::error::Error;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
 
+use allow_core::SOURCE_FILE_READ_MAX_BYTES;
 use serde_json::Value;
 use support::{
     assert_saved_json_artifact, assert_status, assert_stderr_empty, assert_stdout_empty,
@@ -408,6 +410,94 @@ callee = "unwrap"
     );
 
     remove_temp_root(root);
+}
+
+#[test]
+fn why_diagnostic_reports_skipped_target_without_inventing_a_finding() -> Result<(), Box<dyn Error>>
+{
+    let root = temp_root("e2e-why-target-skipped");
+    write_source_fixture(&root);
+    fs::write(
+        root.join("src/large.rs"),
+        vec![b' '; (SOURCE_FILE_READ_MAX_BYTES as usize).saturating_add(1)],
+    )?;
+    fs::write(
+        root.join("policy/allow.toml"),
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+stale_entries_fail = false
+allow_bare_allow_attributes = false
+lint_policy_id_required = false
+
+[requirements.unsafe]
+evidence_required = true
+safety_comment_required = false
+"#,
+    )?;
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "."]);
+    git(&root, &["commit", "-m", "fixture with skipped target"]);
+
+    let output_path = root.join("target/cargo-allow/why.json");
+    let result = cargo_allow_command()
+        .args([
+            "why",
+            "--root",
+            root.to_str().ok_or("root is not UTF-8")?,
+            "--kind",
+            "panic",
+            "--path",
+            "src/large.rs",
+            "--line",
+            "1",
+            "--format",
+            "json",
+            "--output",
+        ])
+        .arg(&output_path)
+        .output()?;
+    if !result.status.success() {
+        return Err(format!("why failed: {}", String::from_utf8_lossy(&result.stderr)).into());
+    }
+    let report: Value = serde_json::from_str(&fs::read_to_string(&output_path)?)?;
+    for (pointer, expected) in [
+        ("/evaluation/result_class", "target_scanner_partial"),
+        ("/evaluation/scanner_completeness", "partial"),
+        ("/target/status", "skipped"),
+    ] {
+        if report.pointer(pointer).and_then(Value::as_str) != Some(expected) {
+            return Err(format!("{pointer} did not equal {expected}: {report}").into());
+        }
+    }
+    for pointer in ["/finding", "/outcome"] {
+        if !report.pointer(pointer).is_some_and(Value::is_null) {
+            return Err(format!("{pointer} should be null: {report}").into());
+        }
+    }
+    let proof_plans_missing_or_nonempty = match report
+        .pointer("/next/proof_plans")
+        .and_then(Value::as_array)
+    {
+        None => true,
+        Some(plans) => !plans.is_empty(),
+    };
+    if proof_plans_missing_or_nonempty {
+        return Err(format!("skipped target should not emit proof plans: {report}").into());
+    }
+    remove_temp_root(root);
+    Ok(())
 }
 
 fn write_source_fixture(root: &Path) {

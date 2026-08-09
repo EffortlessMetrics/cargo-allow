@@ -242,6 +242,99 @@ fn render_why_json_omits_unavailable_candidate_family() -> Result<(), String> {
 }
 
 #[test]
+fn render_why_target_scan_json_reports_partial_target_without_finding() -> Result<(), String> {
+    let actions = ["Repair the target".to_string(), "Re-run why".to_string()];
+    let commands = ["cargo-allow why --path src/huge.rs".to_string()];
+    let first_args = [
+        "why".to_string(),
+        "--path".to_string(),
+        "src/huge.rs".to_string(),
+    ];
+    let second_args = [
+        "check".to_string(),
+        "--mode".to_string(),
+        "no-new".to_string(),
+    ];
+    let plans = [
+        WhyProofPlan {
+            program: "cargo-allow",
+            args: &first_args,
+        },
+        WhyProofPlan {
+            program: "cargo-allow",
+            args: &second_args,
+        },
+    ];
+    let report = WhyTargetScanReport {
+        inventory: InventoryContext::source_syntax("git_tracked", Some("H:/repo"), Some(12))
+            .with_completeness("complete"),
+        evaluation: EvaluationContext {
+            scope: "scoped",
+            locality: "proven",
+            reasons: &[],
+        },
+        target: WhyTargetScan {
+            path: "src/huge.rs",
+            status: "skipped",
+            reason: Some("file exceeds the scanner byte limit"),
+        },
+        suggested_actions: &actions,
+        proof_commands: &commands,
+        proof_plans: &plans,
+    };
+    let json = render_why_target_scan_json(report);
+    let value: serde_json::Value = serde_json::from_str(&json)
+        .map_err(|err| format!("target why JSON should deserialize: {err}\n{json}"))?;
+    for (pointer, expected) in [
+        ("/evaluation/result_class", "target_scanner_partial"),
+        ("/evaluation/scanner_completeness", "partial"),
+        ("/target/path", "src/huge.rs"),
+        ("/target/status", "skipped"),
+        ("/target/reason", "file exceeds the scanner byte limit"),
+    ] {
+        if value.pointer(pointer).and_then(serde_json::Value::as_str) != Some(expected) {
+            return Err(format!("{pointer} should equal {expected}"));
+        }
+    }
+    let Some(candidates) = value
+        .pointer("/candidate_entries")
+        .and_then(serde_json::Value::as_array)
+    else {
+        return Err("partial target scan should include candidate_entries".to_string());
+    };
+    if value.get("finding") != Some(&serde_json::Value::Null)
+        || value.get("outcome") != Some(&serde_json::Value::Null)
+        || !candidates.is_empty()
+    {
+        return Err(
+            "partial target scan should not invent finding, outcome, or candidates".to_string(),
+        );
+    }
+    if value
+        .pointer("/next/proof_plans/1/program")
+        .and_then(serde_json::Value::as_str)
+        != Some("cargo-allow")
+    {
+        return Err("all target proof plans should be rendered".to_string());
+    }
+
+    let no_reason_json = render_why_target_scan_json(WhyTargetScanReport {
+        target: WhyTargetScan {
+            path: "src/broken.rs",
+            status: "parse_error",
+            reason: None,
+        },
+        ..report
+    });
+    let no_reason: serde_json::Value = serde_json::from_str(&no_reason_json)
+        .map_err(|err| format!("target why JSON without reason should deserialize: {err}"))?;
+    if no_reason.pointer("/target/reason").is_some() {
+        return Err("target reason should be omitted when unavailable".to_string());
+    }
+    Ok(())
+}
+
+#[test]
 fn evaluation_result_class_is_optional_for_legacy_context_pairs() {
     let legacy = EvaluationContext {
         scope: "legacy",

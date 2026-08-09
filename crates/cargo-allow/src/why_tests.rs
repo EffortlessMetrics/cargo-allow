@@ -1,10 +1,11 @@
-use super::why_render::why_next_steps;
+use super::why_render::{render_why_target_scan_json, render_why_target_scan_text, why_next_steps};
 use super::*;
 use crate::{CargoAllowCli, CargoAllowCommand, HumanJsonFormat, RootArgs};
 use allow_core::{
     AllowEntry, Finding, FindingKind, Lifecycle, MatchOutcome, MatchStatus, Selector, Span,
     StructuralIdentity, normalize_path,
 };
+use allow_report::EvaluationContext;
 use clap::Parser;
 use serde_json::Value;
 use std::error::Error;
@@ -437,6 +438,71 @@ fn why_args_round_trip_through_root_args() {
     assert_eq!(args.line, 3);
     assert!(args.include_untracked);
     assert_eq!(args.plan, Some(PathBuf::from("target/add-plan.json")));
+}
+
+#[test]
+fn target_scan_renderers_report_partial_scope_without_a_finding() -> Result<(), String> {
+    let inventory = allow_report::InventoryContext::source_syntax("git_tracked", None, None)
+        .with_completeness("complete");
+    let evaluation = EvaluationContext {
+        scope: "scoped",
+        locality: "proven",
+        reasons: &[],
+    };
+    let json = render_why_target_scan_json(
+        inventory,
+        evaluation,
+        "src/large.rs",
+        "skipped",
+        Some("file exceeds scanner limit"),
+    );
+    let value: Value = serde_json::from_str(&json).map_err(|err| err.to_string())?;
+    for (pointer, expected) in [
+        ("/evaluation/result_class", "target_scanner_partial"),
+        ("/evaluation/scanner_completeness", "partial"),
+        ("/target/path", "src/large.rs"),
+        ("/target/status", "skipped"),
+        ("/target/reason", "file exceeds scanner limit"),
+    ] {
+        if value.pointer(pointer).and_then(Value::as_str) != Some(expected) {
+            return Err(format!("{pointer} did not equal {expected}: {value}"));
+        }
+    }
+    for pointer in ["/finding", "/outcome"] {
+        if !value.pointer(pointer).is_some_and(Value::is_null) {
+            return Err(format!("{pointer} should be null: {value}"));
+        }
+    }
+    let proof_plans = value.pointer("/next/proof_plans").and_then(Value::as_array);
+    let proof_plans_missing_or_nonempty = match proof_plans {
+        None => true,
+        Some(plans) => !plans.is_empty(),
+    };
+    if proof_plans_missing_or_nonempty {
+        return Err(format!(
+            "partial target should not emit proof plans: {value}"
+        ));
+    }
+
+    let text = render_why_target_scan_text(
+        evaluation,
+        inventory,
+        "src/large.rs",
+        "skipped",
+        Some("file exceeds scanner limit"),
+    );
+    for expected in [
+        "src/large.rs",
+        "status: skipped",
+        "reason: file exceeds scanner limit",
+        "result_class: target_scanner_partial",
+        "No finding was selected",
+    ] {
+        if !text.contains(expected) {
+            return Err(format!("human output missed {expected:?}: {text}"));
+        }
+    }
+    Ok(())
 }
 
 fn preflight_args(plan: Option<PathBuf>, output: Option<PathBuf>) -> WhyArgs {

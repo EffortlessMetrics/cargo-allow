@@ -3,6 +3,7 @@ use allow_core::{
     MatchStatus, normalize_path,
 };
 use allow_match::{CheckMode, evaluate, explain_match_failure, score_match};
+use allow_rust::RustFileScanOutcome;
 
 use crate::{
     EvidenceValidationMode, HumanJsonFormat, SourceTreeReportContext, current_dir, emit_text,
@@ -24,6 +25,7 @@ pub(crate) use why_args::WhyArgs;
 use why_render::render_why_text;
 use why_render::{
     WhyCandidate, render_why_json_with_evaluation_and_scanner_completeness,
+    render_why_target_scan_json, render_why_target_scan_text,
     render_why_text_styled_with_evaluation_and_scanner_completeness,
 };
 #[cfg(test)]
@@ -81,6 +83,50 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
         &target_path,
     )?;
     let target_repo_path = crate::world::normalize_to_repo_relative(&scoped_world.0, &target_path);
+    if let Some(target_scan) = scoped_world.5.as_ref()
+        && !matches!(target_scan, RustFileScanOutcome::Scanned)
+    {
+        let (status, reason) = match target_scan {
+            RustFileScanOutcome::ParseError => ("parse_error", None),
+            RustFileScanOutcome::Skipped { reason } => ("skipped", Some(reason.as_str())),
+            RustFileScanOutcome::Scanned => ("scanned", None),
+        };
+        let evaluation = allow_report::EvaluationContext {
+            scope: "scoped",
+            locality: "proven",
+            reasons: &[],
+        };
+        let source_context = SourceTreeReportContext::new(&scoped_world.0, scoped_world.3);
+        let target_path_text = normalize_path(&target_repo_path);
+        let detail_json = render_why_target_scan_json(
+            source_context.inventory(),
+            evaluation,
+            &target_path_text,
+            status,
+            reason,
+        );
+        let summary = why_target_summary(
+            &detail_json,
+            &scoped_world.0,
+            &source_context,
+            &target_path_text,
+            args.line,
+            scoped_world.3,
+        )?;
+        crate::core_command_router::write_summary_artifact(&scoped_world.0, &summary)?;
+        let text = match args.format {
+            HumanJsonFormat::Human => render_why_target_scan_text(
+                evaluation,
+                source_context.inventory(),
+                &target_path_text,
+                status,
+                reason,
+            ),
+            HumanJsonFormat::Json => detail_json,
+        };
+        emit_text(args.output.as_deref(), &text)?;
+        return Ok(());
+    }
     let scoped_finding =
         crate::add::select_add_finding(&scoped_world.2, parsed_kind, &target_repo_path, args.line)?
             .1;
@@ -100,7 +146,13 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
         }
     };
     let (root, cfg, findings, inventory_facts, _federation) = if locality_reasons.is_empty() {
-        scoped_world
+        (
+            scoped_world.0,
+            scoped_world.1,
+            scoped_world.2,
+            scoped_world.3,
+            scoped_world.4,
+        )
     } else {
         load_world_with_evidence_mode(
             args.root.root.as_deref(),
@@ -295,6 +347,73 @@ fn why_summary(
         CargoAllowError::with_kind(
             CargoAllowErrorKind::Internal,
             format!("failed to build core command summary: {error}"),
+        )
+    })
+}
+
+fn why_target_summary(
+    detail_json: &str,
+    root: &std::path::Path,
+    source_context: &SourceTreeReportContext,
+    target_path: &str,
+    queried_line: u32,
+    inventory_facts: crate::InventoryFacts,
+) -> CargoAllowResult<crate::core_command_summary::CoreCommandSummaryV1> {
+    let semantic_identity =
+        crate::core_command_router::canonical_semantic_identity(detail_json, Some(root))?;
+    let completeness = crate::core_command_router::summary_completeness(&inventory_facts);
+    let coverage_limitation = (completeness != effortless_repo_protocol::CompletenessV1::Complete)
+        .then(|| crate::core_command_router::partial_coverage_reason(&inventory_facts));
+    let location = format!("{target_path}:{queried_line}");
+    let mut subject = crate::core_command_summary::CoreSourceSubjectV1 {
+        kind: crate::core_command_summary::CoreSourceSubjectKindV1::ScopedPath,
+        repository_identity: format!("local-repository:{semantic_identity}"),
+        portable_identity: format!(
+            "scoped:target-scan:{location}:{}:current-unpinned",
+            source_context.inventory_source()
+        ),
+        base: None,
+        head: None,
+        paths: vec![target_path.to_string()],
+        limitations: vec![
+            "the current worktree result is not bound to a commit, tree, or Git-index identity"
+                .to_string(),
+        ],
+    };
+    if let Some(limitation) = coverage_limitation.as_ref() {
+        subject.limitations.push(limitation.clone());
+    }
+    let suggested_actions = vec![
+        format!("Repair or reduce the target so the Rust scanner can inspect `{target_path}`."),
+        "Re-run cargo-allow why after the target scan is complete.".to_string(),
+    ];
+    crate::core_command_summary::core_command_summary_from_why(
+        crate::core_command_summary::WhySummaryFactsV1 {
+            tool_version: env!("CARGO_PKG_VERSION").to_string(),
+            subject,
+            completeness,
+            coverage_limitation: None,
+            location,
+            outcome_status: MatchStatus::New,
+            matched_allow_id: None,
+            near_miss_candidate_count: 0,
+            suggested_actions,
+            plan_path: None,
+            claim_boundary: effortless_repo_protocol::ClaimBoundaryV1::new(
+                "cargo-allow could not fully scan the selected source target, so no finding or add-finding plan was produced",
+            )
+            .with_limitations(vec![
+                "the result is non-green and does not establish whether the target contains no findings"
+                    .to_string(),
+                "macro expansion, type information, MIR, control flow, and data flow were not analyzed"
+                    .to_string(),
+            ]),
+        },
+    )
+    .map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!("failed to build target scan summary: {error}"),
         )
     })
 }
