@@ -46,6 +46,7 @@ pub(crate) fn command_artifact_samples() -> Vec<ArtifactSample> {
                 "federation",
                 "file_families",
                 "inventory",
+                "scanner",
                 "root",
                 "scanner_limitations",
                 "schema_id",
