@@ -22,9 +22,11 @@ const GRAMMAR_FIELDS: [&str; 8] = [
     "Not proven:",
 ];
 
-/// Argv for the inspection commands, which need a subject argument to have
-/// anything to inspect.
+/// Stable argv fixtures for summary commands that need a subject or explicit
+/// mode to exercise their normal route.
 const EXPLAIN_ARGV: &[&str] = &["explain", "allow-0001"];
+const AUDIT_ARGV: &[&str] = &["audit"];
+const CHECK_ARGV: &[&str] = &["check", "--mode", "no-new"];
 const WHY_ARGV: &[&str] = &[
     "why",
     "--kind",
@@ -37,20 +39,21 @@ const WHY_ARGV: &[&str] = &[
 const WORKLIST_ARGV: &[&str] = &["worklist"];
 
 /// Every command that projects the summary.
-const GRAMMAR_COMMANDS: [&[&str]; 6] = [
+const GRAMMAR_COMMANDS: [&[&str]; 7] = [
     &["adopt"],
     &["doctor"],
-    &["audit"],
+    AUDIT_ARGV,
+    CHECK_ARGV,
     EXPLAIN_ARGV,
     WHY_ARGV,
     WORKLIST_ARGV,
 ];
 
 #[test]
-fn first_hour_commands_share_one_operator_grammar() -> Result<(), String> {
+fn core_command_summary_router() -> Result<(), String> {
     let root = temp_root("summary-grammar")?;
     // `explain` and `why` need a ledger and an unreceipted finding to inspect,
-    // so the fixture carries both. `adopt`, `doctor`, `audit`, and `worklist`
+    // so the fixture carries both. `adopt`, `doctor`, `audit`, `check`, and `worklist`
     // are unaffected by their presence.
     write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
     run(&root, &["init"])?;
@@ -80,12 +83,14 @@ fn first_hour_commands_share_one_operator_grammar() -> Result<(), String> {
 }
 
 #[test]
-fn inspection_commands_emit_a_read_only_summary_sidecar() -> Result<(), String> {
+fn summary_commands_emit_a_read_only_summary_sidecar() -> Result<(), String> {
     let root = temp_root("summary-inspection")?;
     write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
     run(&root, &["init"])?;
 
     for (label, command) in [
+        ("audit", AUDIT_ARGV),
+        ("check", CHECK_ARGV),
         ("explain", EXPLAIN_ARGV),
         ("why", WHY_ARGV),
         ("worklist", WORKLIST_ARGV),
