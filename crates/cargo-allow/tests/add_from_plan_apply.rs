@@ -77,7 +77,10 @@ fn add_from_plan_applies_a_verified_plan_and_binds_a_receipt()
         .unwrap_or_else(|error| std::panic::panic_any(format!("read policy: {error}")));
 
     let receipt_path = root.join("receipt.json");
+    let common_summary_path = root.join("common-summary.json");
     let apply = cargo_allow_command()
+        .arg("--command-summary-output")
+        .arg(&common_summary_path)
         .args(["add", "--root"])
         .arg(&root)
         .arg("--from-plan")
@@ -103,6 +106,51 @@ fn add_from_plan_applies_a_verified_plan_and_binds_a_receipt()
         "add from-plan",
         &apply,
         "the receipt goes to --summary-output, not stderr",
+    );
+
+    let common_summary: Value = serde_json::from_str(
+        &fs::read_to_string(&common_summary_path)
+            .unwrap_or_else(|error| std::panic::panic_any(format!("read common summary: {error}"))),
+    )?;
+    assert_eq!(
+        common_summary.get("schema_id").and_then(Value::as_str),
+        Some("cargo-allow.core-command-summary.v1")
+    );
+    assert_eq!(
+        common_summary.get("tool").and_then(Value::as_str),
+        Some("cargo-allow")
+    );
+    assert_eq!(
+        common_summary.pointer("/operation").and_then(Value::as_str),
+        Some("add_from_plan")
+    );
+    assert_eq!(
+        common_summary.pointer("/posture").and_then(Value::as_str),
+        Some("satisfied")
+    );
+    assert_eq!(
+        common_summary
+            .pointer("/operation_effects/writes_repository")
+            .and_then(Value::as_bool),
+        Some(true)
+    );
+    assert_eq!(
+        common_summary
+            .pointer("/operation_effects/write_paths/0")
+            .and_then(Value::as_str),
+        Some("policy/allow.toml")
+    );
+    assert_eq!(
+        common_summary
+            .pointer("/next_proof/args/0")
+            .and_then(Value::as_str),
+        Some("check")
+    );
+    assert_eq!(
+        common_summary
+            .pointer("/next_proof/args/2")
+            .and_then(Value::as_str),
+        Some("no-new")
     );
 
     let receipt = assert_saved_json_artifact(

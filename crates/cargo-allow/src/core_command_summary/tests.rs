@@ -255,6 +255,46 @@ fn core_command_summary_add_distinguishes_preview_candidate_and_live_entry() -> 
 }
 
 #[test]
+fn core_command_summary_add_from_plan_separates_targeted_and_full_proof() -> Result<(), String> {
+    let summary = core_command_summary_from_add_plan(AddPlanSummaryFactsV1 {
+        repository_identity: "sha256:v1:repo".to_string(),
+        portable_identity: "worktree:add-from-plan:policy/allow.toml".to_string(),
+        policy_path: "policy/allow.toml".to_string(),
+        added_allow_id: "allow-0001".to_string(),
+        targeted_recheck: "matched".to_string(),
+        full_check_argv: strings(&[
+            "check",
+            "--mode",
+            "no-new",
+            "--root",
+            "<root>",
+            "--config",
+            "policy/allow.toml",
+        ]),
+        completeness: CompletenessV1::Complete,
+    })?;
+    ensure(
+        summary.operation == "add_from_plan"
+            && summary.posture == CoreCommandPostureV1::Satisfied
+            && summary.operation_effects.writes_repository
+            && summary.operation_effects.write_paths == vec!["policy/allow.toml"]
+            && summary.next_proof.as_ref().is_some_and(|action| {
+                action.args
+                    == strings(&[
+                        "check",
+                        "--mode",
+                        "no-new",
+                        "--root",
+                        "<root>",
+                        "--config",
+                        "policy/allow.toml",
+                    ])
+            }),
+        "add-from-plan must retain the exact full-check argv after targeted confirmation",
+    )
+}
+
+#[test]
 fn core_command_summary_diff_preserves_revision_and_completeness_posture() -> Result<(), String> {
     let complete = core_command_summary_from_diff(DiffSummaryFactsV1 {
         repository_identity: "local-repository:test".to_string(),

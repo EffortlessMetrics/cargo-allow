@@ -255,8 +255,9 @@ fn configure_summary_output(
             (WorkingDirectory, args.summary_output.clone()),
             (SourceTreeRoot, args.config.clone()),
         ],
-        CargoAllowCommand::Add(args) if args.from_plan.is_none() => vec![
+        CargoAllowCommand::Add(args) => vec![
             (WorkingDirectory, args.write.clone()),
+            (WorkingDirectory, args.from_plan.clone()),
             (WorkingDirectory, args.summary_output.clone()),
             (SourceTreeRoot, args.config.clone()),
         ],

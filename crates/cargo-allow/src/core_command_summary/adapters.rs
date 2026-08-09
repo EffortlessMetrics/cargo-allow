@@ -514,6 +514,111 @@ pub fn core_command_summary_from_add(
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AddPlanSummaryFactsV1 {
+    pub repository_identity: String,
+    pub portable_identity: String,
+    pub policy_path: String,
+    pub added_allow_id: String,
+    pub targeted_recheck: String,
+    pub full_check_argv: Vec<String>,
+    pub completeness: CompletenessV1,
+}
+
+pub fn core_command_summary_from_add_plan(
+    facts: AddPlanSummaryFactsV1,
+) -> Result<CoreCommandSummaryV1, String> {
+    let AddPlanSummaryFactsV1 {
+        repository_identity,
+        portable_identity,
+        policy_path,
+        added_allow_id,
+        targeted_recheck,
+        full_check_argv,
+        completeness,
+    } = facts;
+    let matched = targeted_recheck == "matched";
+    let (result_class, posture) = if matched && completeness == CompletenessV1::Complete {
+        (ResultClassV1::Completed, CoreCommandPostureV1::Satisfied)
+    } else if matched {
+        (ResultClassV1::PartialData, CoreCommandPostureV1::Blocking)
+    } else {
+        (ResultClassV1::Findings, CoreCommandPostureV1::Blocking)
+    };
+    let next_proof = CoreCommandActionV1::command(
+        "add_from_plan.full_no_new_check",
+        "Run the full no-new check from the application receipt",
+        "cargo-allow",
+        full_check_argv,
+    )
+    .with_contract(
+        "the targeted recheck covers only the planned finding",
+        "the current source tree is evaluated under the exact receipt check argv",
+        "source-syntax evaluation does not prove compiled or runtime correctness",
+    );
+    let message = if matched {
+        format!("applied plan for {added_allow_id}; targeted recheck matched the selected finding")
+    } else {
+        format!(
+            "applied plan for {added_allow_id}, but targeted recheck reported {targeted_recheck}"
+        )
+    };
+    build_core_command_summary(CoreCommandSummaryInputV1 {
+        tool_version: env!("CARGO_PKG_VERSION").to_string(),
+        operation: "add_from_plan".to_string(),
+        mode: Some("update".to_string()),
+        profile: None,
+        subject: CoreSourceSubjectV1 {
+            kind: CoreSourceSubjectKindV1::Worktree,
+            repository_identity,
+            portable_identity,
+            base: None,
+            head: None,
+            paths: vec![policy_path.clone()],
+            limitations: vec![
+                "the plan and source bindings were checked for this application, not for future replays"
+                    .to_string(),
+            ],
+        },
+        result_class,
+        posture,
+        completeness,
+        currentness: CurrentnessV1::Current,
+        reason: CoreCommandReasonV1 {
+            code: if matched {
+                "add_from_plan.applied".to_string()
+            } else {
+                "add_from_plan.targeted_recheck_failed".to_string()
+            },
+            message,
+        },
+        primary_action: None,
+        additional_action_count: 0,
+        additional_actions_ref: None,
+        operation_effects: CoreCommandEffectsV1 {
+            reads_repository: true,
+            writes_repository: true,
+            executes_repository_code: false,
+            invokes_network: false,
+            write_paths: vec![policy_path],
+            explicit_non_effects: vec![
+                "does not approve human ownership, reason, or evidence claims".to_string(),
+                "does not execute repository code or external evidence tools".to_string(),
+            ],
+        },
+        next_proof: Some(next_proof),
+        artifacts: Vec::new(),
+        claim_boundary: ClaimBoundaryV1::new(
+            "one exact plan-bound policy mutation and targeted recheck only",
+        )
+        .with_limitations(vec![
+            "stale or conflicting plans are rejected without mutation before this success projection"
+                .to_string(),
+            "the full no-new check remains required for repository-wide proof".to_string(),
+        ]),
+    })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiffSummaryFactsV1 {
     pub repository_identity: String,
     pub portable_identity: String,
