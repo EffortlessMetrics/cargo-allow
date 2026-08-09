@@ -556,12 +556,22 @@ fn execute_hook_command(
     binary: &Path,
     command: &[String],
 ) -> CargoAllowResult<std::process::ExitStatus> {
-    Command::new(binary)
-        .args(command)
-        .status()
-        .map_err(|error| {
-            CargoAllowError::with_kind(CargoAllowErrorKind::InstrumentFailure, error.to_string())
-        })
+    execute_hook_command_in(binary, command, None)
+}
+
+fn execute_hook_command_in(
+    binary: &Path,
+    command: &[String],
+    current_dir: Option<&Path>,
+) -> CargoAllowResult<std::process::ExitStatus> {
+    let mut process = Command::new(binary);
+    process.args(command);
+    if let Some(current_dir) = current_dir {
+        process.current_dir(current_dir);
+    }
+    process.status().map_err(|error| {
+        CargoAllowError::with_kind(CargoAllowErrorKind::InstrumentFailure, error.to_string())
+    })
 }
 
 #[cfg_attr(test, inline(never))]
@@ -1661,18 +1671,43 @@ mod tests {
             return Ok(());
         };
         let digest = binary_digest(&binary)?;
-        let args = HookRunArgs {
-            binary,
-            digest,
-            mode: ToolSelectionMode::ExplicitToolUnderTest,
-            expected_build_source_commit: None,
-            command: vec![
-                "check".to_string(),
-                "--mode".to_string(),
-                "no-new".to_string(),
-            ],
-        };
-        cmd_run(&args).map_err(|error| error.to_string())
+        let fixture = HookFixture::new("run")?;
+        fs::create_dir_all(fixture.path.join("policy"))
+            .map_err(|error| format!("create hook policy fixture: {error}"))?;
+        fs::write(
+            fixture.path.join("policy/allow.toml"),
+            "policy = \"cargo-allow\"\n",
+        )
+        .map_err(|error| format!("write hook policy fixture: {error}"))?;
+        let git_init = Command::new("git")
+            .args(["init", "-q"])
+            .current_dir(&fixture.path)
+            .status()
+            .map_err(|error| format!("initialize hook repository fixture: {error}"))?;
+        if !git_init.success() {
+            return Err(format!("initialize hook repository fixture exited with {git_init}"));
+        }
+        let git_add = Command::new("git")
+            .args(["add", "policy/allow.toml"])
+            .current_dir(&fixture.path)
+            .status()
+            .map_err(|error| format!("stage hook repository fixture: {error}"))?;
+        if !git_add.success() {
+            return Err(format!("stage hook repository fixture exited with {git_add}"));
+        }
+        let command = vec![
+            "check".to_string(),
+            "--mode".to_string(),
+            "no-new".to_string(),
+        ];
+        run_verified_command(
+            &binary,
+            &command,
+            &digest,
+            verify_hook_binary,
+            |binary, command| execute_hook_command_in(binary, command, Some(&fixture.path)),
+        )
+        .map_err(|error| error.to_string())
     }
 
     fn status_with_exit_code(code: i32) -> Result<std::process::ExitStatus, String> {
