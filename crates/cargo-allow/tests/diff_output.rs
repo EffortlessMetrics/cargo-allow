@@ -16,6 +16,41 @@ use support::{
 };
 
 #[test]
+fn core_command_summary_installed_diff_projection() {
+    let root = temp_root("diff-summary-projection");
+    write_diff_fixture(
+        &root,
+        policy_with_scope("path = \"src/lib.rs\""),
+        policy_with_scope("glob = \"src/**\""),
+    );
+    let sidecar = root.join("diff-summary.json");
+    let output = cargo_allow_command()
+        .arg("--command-summary-output")
+        .arg(&sidecar)
+        .arg("diff")
+        .arg("--root")
+        .arg(&root)
+        .arg("--base")
+        .arg("HEAD")
+        .arg("--format")
+        .arg("human")
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run diff summary: {err}")));
+    assert_status("diff summary", &output, false);
+    let text = String::from_utf8_lossy(&output.stdout);
+    assert!(text.starts_with("Result: findings (blocking)"), "{text}");
+    let summary: Value = serde_json::from_str(
+        &fs::read_to_string(&sidecar)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read diff summary: {err}"))),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("parse diff summary: {err}")));
+    assert_eq!(summary["operation"], "diff");
+    assert_eq!(summary["subject"]["base"], "HEAD");
+    assert_eq!(summary["posture"], "blocking");
+    remove_temp_root(root);
+}
+
+#[test]
 fn diff_human_statuses_style_only_terminal_labels() {
     let root = temp_root("diff-color");
     write_diff_fixture(

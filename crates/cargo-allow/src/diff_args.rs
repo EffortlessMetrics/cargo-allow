@@ -9,7 +9,7 @@ pub(crate) struct DiffArgs {
     pub(super) root: RootArgs,
     /// Policy config path.
     #[arg(long)]
-    pub(super) config: Option<PathBuf>,
+    pub(crate) config: Option<PathBuf>,
     /// Filter source findings and allow-entry policy changes by kind.
     #[arg(long, value_parser = parse_kind_filter_arg)]
     pub(super) kind: Option<String>,
@@ -21,10 +21,10 @@ pub(crate) struct DiffArgs {
     pub(super) format: OutputFormat,
     /// Write report to a file instead of stdout.
     #[arg(long)]
-    pub(super) output: Option<PathBuf>,
+    pub(crate) output: Option<PathBuf>,
     /// Write a machine-readable diff receipt to a file.
     #[arg(long)]
-    pub(super) receipt: Option<PathBuf>,
+    pub(crate) receipt: Option<PathBuf>,
     /// Base Git revision; resolves to an exact commit before comparison.
     /// When omitted, auto-detects the merge-base of HEAD and its upstream
     /// (@{u}). If no upstream is configured, the command fails with an
