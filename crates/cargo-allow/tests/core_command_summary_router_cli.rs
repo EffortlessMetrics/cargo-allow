@@ -22,8 +22,8 @@ const GRAMMAR_FIELDS: [&str; 8] = [
     "Not proven:",
 ];
 
-/// Argv for the inspection commands, which need a subject argument to have
-/// anything to inspect.
+/// Stable argv fixtures for summary commands that need a subject or explicit
+/// mode to exercise their normal route.
 const EXPLAIN_ARGV: &[&str] = &["explain", "allow-0001"];
 const AUDIT_ARGV: &[&str] = &["audit"];
 const CHECK_ARGV: &[&str] = &["check", "--mode", "no-new"];
@@ -53,7 +53,7 @@ const GRAMMAR_COMMANDS: [&[&str]; 7] = [
 fn core_command_summary_router() -> Result<(), String> {
     let root = temp_root("summary-grammar")?;
     // `explain` and `why` need a ledger and an unreceipted finding to inspect,
-    // so the fixture carries both. `adopt`, `doctor`, `audit`, and `worklist`
+    // so the fixture carries both. `adopt`, `doctor`, `audit`, `check`, and `worklist`
     // are unaffected by their presence.
     write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
     run(&root, &["init"])?;
