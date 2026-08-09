@@ -242,6 +242,112 @@ fn core_command_summary_mutation_propose_preserves_candidate_boundary() -> Resul
 }
 
 #[test]
+fn core_command_summary_mutation_add_separates_candidate_and_live_entry() -> Result<(), String> {
+    let root = temp_root("summary-add")?;
+    write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
+    run(&root, &["init"])?;
+    git_commit_fixture(&root)?;
+
+    let candidate_sidecar = root.join("add-candidate-summary.json");
+    let candidate_sidecar_text = candidate_sidecar.to_string_lossy().to_string();
+    let candidate_target = root.join("policy/allow.proposed.toml");
+    let candidate_target_text = candidate_target.to_string_lossy().to_string();
+    let candidate = run(
+        &root,
+        &[
+            "--command-summary-output",
+            &candidate_sidecar_text,
+            "add",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "1",
+            "--owner",
+            "fixture",
+            "--reason",
+            "candidate review",
+            "--write",
+            &candidate_target_text,
+            "--force",
+        ],
+    )?;
+    require(
+        candidate.status.success(),
+        format!(
+            "add candidate failed: {}",
+            String::from_utf8_lossy(&candidate.stderr)
+        ),
+    )?;
+    require(
+        String::from_utf8_lossy(&candidate.stderr).starts_with("Result: completed (advisory)"),
+        format!(
+            "candidate add must be advisory: {}",
+            String::from_utf8_lossy(&candidate.stderr)
+        ),
+    )?;
+    let candidate_summary: Value = serde_json::from_str(
+        &fs::read_to_string(&candidate_sidecar)
+            .map_err(|error| format!("read add candidate summary: {error}"))?,
+    )
+    .map_err(|error| format!("parse add candidate summary: {error}"))?;
+    require(
+        field(
+            &candidate_summary,
+            &["operation_effects", "writes_repository"],
+        ) == Some(&Value::Bool(true))
+            && field(&candidate_summary, &["operation_effects", "write_paths"])
+                == Some(&Value::from(vec!["policy/allow.proposed.toml"])),
+        format!("candidate add lost its exact write posture: {candidate_summary}"),
+    )?;
+
+    let live_sidecar = root.join("add-live-summary.json");
+    let live_sidecar_text = live_sidecar.to_string_lossy().to_string();
+    let live = run(
+        &root,
+        &[
+            "--command-summary-output",
+            &live_sidecar_text,
+            "add",
+            "--kind",
+            "panic",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "1",
+            "--owner",
+            "fixture",
+            "--reason",
+            "live review",
+            "--update",
+        ],
+    )?;
+    require(
+        live.status.success(),
+        format!(
+            "add update failed: {}",
+            String::from_utf8_lossy(&live.stderr)
+        ),
+    )?;
+    let live_summary: Value = serde_json::from_str(
+        &fs::read_to_string(&live_sidecar)
+            .map_err(|error| format!("read add live summary: {error}"))?,
+    )
+    .map_err(|error| format!("parse add live summary: {error}"))?;
+    require(
+        field(&live_summary, &["posture"]) == Some(&Value::from("satisfied"))
+            && field(&live_summary, &["operation_effects", "writes_repository"])
+                == Some(&Value::Bool(true))
+            && field(&live_summary, &["operation_effects", "write_paths"])
+                == Some(&Value::from(vec!["policy/allow.toml"])),
+        format!("live add must name its exact ledger write: {live_summary}"),
+    )?;
+
+    remove_temp_root(root)
+}
+
+#[test]
 fn summary_commands_emit_a_read_only_summary_sidecar() -> Result<(), String> {
     let root = temp_root("summary-inspection")?;
     write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;

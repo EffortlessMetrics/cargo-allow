@@ -10,10 +10,11 @@ mod adapters_query;
 mod render;
 
 pub use adapters::{
-    DiffSummaryFactsV1, DoctorSummaryFactsV1, InitSummaryFactsV1, ProposeSummaryFactsV1,
-    core_command_summary_from_adoption_plan, core_command_summary_from_diff,
-    core_command_summary_from_doctor, core_command_summary_from_error,
-    core_command_summary_from_init, core_command_summary_from_propose,
+    AddSummaryFactsV1, DiffSummaryFactsV1, DoctorSummaryFactsV1, InitSummaryFactsV1,
+    ProposeSummaryFactsV1, core_command_summary_from_add, core_command_summary_from_adoption_plan,
+    core_command_summary_from_diff, core_command_summary_from_doctor,
+    core_command_summary_from_error, core_command_summary_from_init,
+    core_command_summary_from_propose,
 };
 pub use adapters_query::{
     ExplainSummaryFactsV1, WhySummaryFactsV1, WorklistSummaryFactsV1, WorklistSummaryItemV1,
