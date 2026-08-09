@@ -38,7 +38,7 @@ fn boundary_surface_matches_parity_contract_module() -> Result<(), String> {
 
 #[test]
 fn reject_prose_as_executable_blocks_issue_markdown() -> Result<(), String> {
-    let prose = "Run `rtk cargo run -p cargo-allow -- check --mode no-new` before merge.";
+    let prose = "Run cargo check --workspace before merge.";
     match reject_prose_as_executable(prose) {
         Err(super::command_spec::CommandSpecError::ProseNotExecutable) => Ok(()),
         other => Err(format!("expected prose_not_executable, got {other:?}")),
