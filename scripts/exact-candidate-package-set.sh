@@ -80,11 +80,28 @@ command -v cargo >/dev/null 2>&1 || fail "cargo is required"
 command -v python3 >/dev/null 2>&1 || fail "python3 is required"
 command -v tar >/dev/null 2>&1 || fail "tar is required"
 
-# shellcheck source=scripts/crate-version-lib.sh
-source "${ROOT}/scripts/crate-version-lib.sh"
-
 read_workspace_version() {
-  read_workspace_package_version "${ROOT}"
+  awk '
+    /^\[workspace\.package\]/ { in_ws = 1; next }
+    /^\[/ { if (in_ws) exit }
+    in_ws && /^version = / {
+      gsub(/^version = "/, "", $0)
+      gsub(/".*$/, "", $0)
+      print $0
+      exit
+    }
+  ' Cargo.toml
+}
+
+read_crate_version() {
+  local crate="$1"
+  local line
+  line="$(grep -m1 '^version' "crates/${crate}/Cargo.toml" 2>/dev/null)" || true
+  if [[ "${line}" == "version.workspace = true" ]]; then
+    read_workspace_version
+  else
+    echo "${line}" | sed 's/^version = "//; s/"$//'
+  fi
 }
 
 mapfile -t crates < <(
@@ -118,16 +135,6 @@ done
 version="$(read_workspace_version)"
 [[ -n "${version}" ]] || fail "could not read workspace.package.version"
 
-read_crate_version() {
-  read_crate_declared_version "${ROOT}" "$1" "${version}"
-}
-
-declare -A crate_versions=()
-for crate in "${crates[@]}"; do
-  crate_versions["${crate}"]="$(read_crate_version "${crate}")"
-  [[ -n "${crate_versions[${crate}]}" ]] || fail "could not read version for ${crate}"
-done
-
 git_head=""
 if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   git_head="$(git rev-parse HEAD 2>/dev/null || true)"
@@ -160,7 +167,8 @@ else
   fi
   cargo package "${package_flags[@]}"
   for crate in "${crates[@]}"; do
-    src="target/package/${crate}-${crate_versions[${crate}]}.crate"
+    crate_version="$(read_crate_version "${crate}")"
+    src="target/package/${crate}-${crate_version}.crate"
     [[ -f "${src}" ]] || fail "missing packaged crate ${src}"
     cp "${src}" "${packages_dir}/"
   done
@@ -193,10 +201,11 @@ assert_no_path_deps() {
 
 declare -a crate_records=()
 for crate in "${crates[@]}"; do
-  crate_file="${crate}-${crate_versions[${crate}]}.crate"
+  crate_version="$(read_crate_version "${crate}")"
+  crate_file="${crate}-${crate_version}.crate"
   src="${packages_dir}/${crate_file}"
   [[ -f "${src}" ]] || fail "missing ${src}"
-  dest="${extracted_dir}/${crate}-${crate_versions[${crate}]}"
+  dest="${extracted_dir}/${crate}-${crate_version}"
   rm -rf "${dest}"
   mkdir -p "${dest}"
   tar --force-local -xzf "${src}" -C "${extracted_dir}"
@@ -204,7 +213,7 @@ for crate in "${crates[@]}"; do
   assert_no_path_deps "${dest}" "${crate}"
   digest="$(sha256_file "${src}")"
   size="$(wc -c <"${src}" | tr -d ' \r')"
-  crate_records+=("${crate}|${crate_file}|${digest}|${size}|${crate}-${crate_versions[${crate}]}")
+  crate_records+=("${crate}|${crate_file}|${digest}|${size}|${crate}-${crate_version}")
   log "packaged ${crate_file} sha256=${digest}"
 done
 
@@ -227,7 +236,8 @@ write_patch_config() {
       if [[ -n "${omit_crate}" && "${crate}" == "${omit_crate}" ]]; then
         continue
       fi
-      path_value="$(to_cargo_path "${extracted_dir}/${crate}-${crate_versions[${crate}]}")"
+      crate_version="$(read_crate_version "${crate}")"
+      path_value="$(to_cargo_path "${extracted_dir}/${crate}-${crate_version}")"
       printf '%s = { path = "%s" }\n' "${crate}" "${path_value}"
     done
   } >"${config_path}"
@@ -294,7 +304,8 @@ if [[ "${SKIP_LOCAL_REGISTRY:-0}" == "1" && -d "${local_registry_dir}/index" ]];
 else
   candidate_args=()
   for crate in "${crates[@]}"; do
-    candidate_args+=(--candidate "${crate}=${crate_versions[${crate}]}")
+    crate_version="$(read_crate_version "${crate}")"
+    candidate_args+=(--candidate "${crate}=${crate_version}")
   done
   python3 "${ROOT}/scripts/exact-candidate-assemble-local-registry.py" \
     --lockfile "${extracted_bin_pkg}/Cargo.lock" \
@@ -578,7 +589,8 @@ PY
       if [[ "${crate}" == "allow-core" ]]; then
         path_value="$(to_cargo_path "${version_conflict_dir}")"
       else
-        path_value="$(to_cargo_path "${extracted_dir}/${crate}-${crate_versions[${crate}]}")"
+        crate_version="$(read_crate_version "${crate}")"
+        path_value="$(to_cargo_path "${extracted_dir}/${crate}-${crate_version}")"
       fi
       printf '%s = { path = "%s" }\n' "${crate}" "${path_value}"
     done

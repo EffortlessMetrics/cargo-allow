@@ -254,6 +254,7 @@ fn published_release_versions_match_workspace() {
     // in #3286 so they can ship independently of the scanner. What must hold
     // is that each crate's own declared version is the single source of truth
     // everywhere it is referenced, so a bump can never land half-applied.
+    let package_names = package_manifests.keys().cloned().collect::<BTreeSet<_>>();
     let package_versions = package_manifests
         .iter()
         .map(|(package, manifest)| {
@@ -270,7 +271,6 @@ fn published_release_versions_match_workspace() {
         "the cargo-allow package should ride the workspace release version"
     );
 
-    let package_names = package_manifests.keys().cloned().collect::<BTreeSet<_>>();
     let workspace_dependency_versions =
         workspace_internal_dependency_versions(&workspace_manifest, &package_names);
     let mut expected_workspace_dependency_names = package_names.clone();
@@ -285,9 +285,9 @@ fn published_release_versions_match_workspace() {
     );
     for (dependency, version) in workspace_dependency_versions {
         assert_eq!(
-            Some(&version),
             package_versions.get(&dependency),
-            "{dependency} workspace dependency should require the version its own manifest declares"
+            Some(&version),
+            "{dependency} workspace dependency should require its package version"
         );
     }
 
@@ -299,9 +299,9 @@ fn published_release_versions_match_workspace() {
     );
     for (package, version) in lock_versions {
         assert_eq!(
-            Some(&version),
             package_versions.get(&package),
-            "{package} lockfile entry should carry the version its own manifest declares"
+            Some(&version),
+            "{package} lockfile entry should carry its package version"
         );
     }
 }

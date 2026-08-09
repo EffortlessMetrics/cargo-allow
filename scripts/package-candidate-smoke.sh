@@ -25,6 +25,7 @@ cd "${ROOT}"
 package_dir="${PACKAGE_DIR:-${ROOT}/target/package-candidate-smoke}"
 install_root="${INSTALL_ROOT:-${package_dir}/install}"
 packages_dir="${package_dir}/packages"
+package_target_dir="${package_dir}/cargo-target"
 receipt="${package_dir}/package-candidate-smoke.receipt.txt"
 
 log() {
@@ -36,15 +37,32 @@ fail() {
   exit 1
 }
 
-# shellcheck source=scripts/crate-version-lib.sh
-source "${ROOT}/scripts/crate-version-lib.sh"
-
 read_workspace_version() {
-  read_workspace_package_version "${ROOT}"
+  awk '
+    /^\[workspace\.package\]/ { in_ws = 1; next }
+    /^\[/ { if (in_ws) exit }
+    in_ws && /^version = / {
+      gsub(/^version = "/, "", $0)
+      gsub(/".*$/, "", $0)
+      print $0
+      exit
+    }
+  ' Cargo.toml
 }
 
+# Read the version of a specific crate from its Cargo.toml.
+# Handles both `version.workspace = true` (resolves workspace version) and
+# explicit `version = "X.Y.Z"` (#2885 version split).
 read_crate_version() {
-  read_crate_declared_version "${ROOT}" "$1" "${version}"
+  local crate="$1"
+  local manifest="crates/${crate}/Cargo.toml"
+  local line
+  line="$(grep -m1 '^version' "${manifest}" 2>/dev/null)" || true
+  if [[ "${line}" == "version.workspace = true" ]]; then
+    read_workspace_version
+  else
+    echo "${line}" | sed 's/^version = "//; s/"$//'
+  fi
 }
 
 assert_no_path_deps() {
@@ -126,12 +144,10 @@ if [[ "${SKIP_PACKAGE:-0}" != "1" ]]; then
   mkdir -p "${packages_dir}"
   # cargo-intent depends on unpublished intent-* workspace crates; exclude until #2599-C / #2604 publish posture.
   # proof-engine depends on unpublished proof-protocol workspace crate; exclude until #2604 publish posture.
-  # cargo-proof absorbed the proof-adapter-* crates in #3289, so it carries their
-  # unpublished path dependencies and is excluded in their place.
-  cargo package --workspace --locked --exclude cargo-intent --exclude proof-engine --exclude cargo-proof
+  CARGO_TARGET_DIR="${package_target_dir}" cargo package --workspace --locked --exclude cargo-intent --exclude proof-engine --exclude cargo-proof
   for crate in "${crates[@]}"; do
     crate_version="$(read_crate_version "${crate}")"
-    crate_file="target/package/${crate}-${crate_version}.crate"
+    crate_file="${package_target_dir}/package/${crate}-${crate_version}.crate"
     [[ -f "${crate_file}" ]] || fail "missing packaged crate ${crate_file}"
     cp "${crate_file}" "${packages_dir}/"
     echo "packaged=${crate}-${crate_version}.crate" >>"${receipt}"
@@ -148,8 +164,6 @@ done
 
 log "assert packaged crates have no path dependencies"
 for crate in "${crates[@]}"; do
-  # Resolve per crate rather than inheriting the loop above: crates no longer
-  # share one version, so a leftover value would name the wrong archive.
   crate_version="$(read_crate_version "${crate}")"
   tmp="${package_dir}/inspect-${crate}"
   rm -rf "${tmp}"

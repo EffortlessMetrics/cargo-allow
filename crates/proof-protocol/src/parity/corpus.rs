@@ -31,7 +31,8 @@ pub fn load_proof_corpus_fixture(
     let text =
         std::fs::read_to_string(&path).map_err(|err| format!("read {}: {err}", path.display()))?;
     let corpus = crate::proof_corpus::load_proof_corpus_toml(&text)?;
-    crate::proof_corpus::validate_proof_corpus(&corpus)?;
+    // Semantic validation moved to proof-engine::corpus_semantics (#2943).
+    // Structural validation (schema_id, digest) is done by load_proof_corpus_toml.
     Ok(corpus)
 }
 

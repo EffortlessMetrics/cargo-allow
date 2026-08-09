@@ -4,7 +4,7 @@
     reason = "policy:allow-9055: git helpers via allow-diff facade (#2583-D)"
 )]
 
-use allow_core::{CargoAllowDiagnostic, CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
+use crate::error::{SnapshotDiagnostic, SnapshotError, SnapshotErrorKind, SnapshotResult};
 use std::collections::BTreeSet;
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Output};
@@ -52,7 +52,7 @@ pub fn changed_files(
     root: impl AsRef<Path>,
     base: &str,
     head: Option<&str>,
-) -> CargoAllowResult<Vec<PathBuf>> {
+) -> SnapshotResult<Vec<PathBuf>> {
     let root = root.as_ref();
     let base_oid = resolve_commit_oid(root, base)?;
     // Default to HEAD so uncommitted working-tree edits do not pollute the
@@ -83,7 +83,7 @@ pub fn changed_files(
 pub fn git_tracked_files_at_revision(
     root: impl AsRef<Path>,
     revision: &str,
-) -> CargoAllowResult<Vec<PathBuf>> {
+) -> SnapshotResult<Vec<PathBuf>> {
     Ok(git_tree_files_at_revision(root, revision)?
         .into_iter()
         .map(|entry| entry.path)
@@ -93,7 +93,7 @@ pub fn git_tracked_files_at_revision(
 pub(crate) fn git_tree_files_at_revision(
     root: impl AsRef<Path>,
     revision: &str,
-) -> CargoAllowResult<Vec<GitTreeFile>> {
+) -> SnapshotResult<Vec<GitTreeFile>> {
     let root = root.as_ref();
     let oid = resolve_commit_oid(root, revision)?;
     let mut cmd = git_command(root);
@@ -109,7 +109,7 @@ pub fn read_file_at_revision(
     root: impl AsRef<Path>,
     revision: &str,
     path: impl AsRef<Path>,
-) -> CargoAllowResult<Option<String>> {
+) -> SnapshotResult<Option<String>> {
     let root = root.as_ref();
     let oid = resolve_commit_oid(root, revision)?;
     let path_bytes = source_tree_path_bytes(path.as_ref())?;
@@ -123,7 +123,7 @@ pub fn read_file_at_revision(
         } => {
             if raw_path != path_bytes {
                 return Err(git_error(
-                    CargoAllowErrorKind::Inventory,
+                    SnapshotErrorKind::Inventory,
                     "git_output_malformed",
                     "git ls-tree returned path bytes that do not match the requested source-tree path",
                 ));
@@ -144,7 +144,7 @@ pub(crate) fn tree_blob_oid_at_commit(
     root: &Path,
     commit_oid: &str,
     path: &Path,
-) -> CargoAllowResult<Option<String>> {
+) -> SnapshotResult<Option<String>> {
     let path_bytes = source_tree_path_bytes(path)?;
     match lookup_tree_path(root, commit_oid, &path_bytes)? {
         TreePathLookup::Missing => Ok(None),
@@ -158,7 +158,7 @@ pub(crate) fn tree_blob_oid_at_commit(
     }
 }
 
-pub(crate) fn resolve_commit_oid(root: &Path, revision: &str) -> CargoAllowResult<String> {
+pub(crate) fn resolve_commit_oid(root: &Path, revision: &str) -> SnapshotResult<String> {
     validate_revision_input(revision)?;
 
     let mut cmd = git_command(root);
@@ -176,7 +176,7 @@ pub(crate) fn resolve_commit_oid(root: &Path, revision: &str) -> CargoAllowResul
             CommitPrefixResolution::One(oid) => return Ok(oid),
             CommitPrefixResolution::Ambiguous => {
                 return Err(git_error(
-                    CargoAllowErrorKind::Inventory,
+                    SnapshotErrorKind::Inventory,
                     "ambiguous_revision",
                     format!("git revision `{revision}` is ambiguous"),
                 ));
@@ -186,20 +186,20 @@ pub(crate) fn resolve_commit_oid(root: &Path, revision: &str) -> CargoAllowResul
     }
 
     Err(git_error(
-        CargoAllowErrorKind::Inventory,
+        SnapshotErrorKind::Inventory,
         "revision_not_found",
         format!("git revision `{revision}` could not be resolved to a commit"),
     ))
 }
 
-fn validate_revision_input(revision: &str) -> CargoAllowResult<()> {
+fn validate_revision_input(revision: &str) -> SnapshotResult<()> {
     let invalid = revision.is_empty()
         || revision.trim() != revision
         || revision.starts_with('-')
         || revision.chars().any(char::is_control);
     if invalid {
         return Err(git_error(
-            CargoAllowErrorKind::InvalidConfig,
+            SnapshotErrorKind::InvalidConfig,
             "invalid_revision_input",
             format!(
                 "git revision `{revision}` is invalid; revisions must be non-empty, option-safe, and free of surrounding whitespace or control characters"
@@ -223,7 +223,7 @@ fn looks_like_hex_abbreviation(revision: &str) -> bool {
 fn disambiguate_commit_prefix(
     root: &Path,
     revision: &str,
-) -> CargoAllowResult<CommitPrefixResolution> {
+) -> SnapshotResult<CommitPrefixResolution> {
     let mut cmd = git_command(root);
     cmd.arg("rev-parse")
         .arg(format!("--disambiguate={revision}"));
@@ -234,11 +234,11 @@ fn disambiguate_commit_prefix(
 
     let text = std::str::from_utf8(&output.stdout).map_err(|source| {
         git_error(
-            CargoAllowErrorKind::Inventory,
+            SnapshotErrorKind::Inventory,
             "git_output_malformed",
             "git rev-parse --disambiguate returned non-UTF-8 object IDs",
         )
-        .with_cause(&source)
+        .with_cause(source)
     })?;
 
     let mut commits = BTreeSet::new();
@@ -248,7 +248,7 @@ fn disambiguate_commit_prefix(
         }
         if !is_full_oid(candidate) {
             return Err(git_error(
-                CargoAllowErrorKind::Inventory,
+                SnapshotErrorKind::Inventory,
                 "git_output_malformed",
                 "git rev-parse --disambiguate returned a malformed object ID",
             ));
@@ -277,26 +277,26 @@ fn disambiguate_commit_prefix(
     })
 }
 
-pub(crate) fn parse_single_oid(stdout: &[u8], operation: &str) -> CargoAllowResult<String> {
+pub(crate) fn parse_single_oid(stdout: &[u8], operation: &str) -> SnapshotResult<String> {
     let text = std::str::from_utf8(stdout).map_err(|source| {
         git_error(
-            CargoAllowErrorKind::Inventory,
+            SnapshotErrorKind::Inventory,
             "git_output_malformed",
             format!("{operation} returned non-UTF-8 object identity"),
         )
-        .with_cause(&source)
+        .with_cause(source)
     })?;
     let mut values = text.split_ascii_whitespace();
     let Some(oid) = values.next() else {
         return Err(git_error(
-            CargoAllowErrorKind::Inventory,
+            SnapshotErrorKind::Inventory,
             "git_output_malformed",
             format!("{operation} returned no object identity"),
         ));
     };
     if values.next().is_some() || !is_full_oid(oid) {
         return Err(git_error(
-            CargoAllowErrorKind::Inventory,
+            SnapshotErrorKind::Inventory,
             "git_output_malformed",
             format!("{operation} returned a malformed object identity"),
         ));
@@ -316,7 +316,7 @@ pub(crate) fn is_full_oid(value: &str) -> bool {
 /// `\` separators to Git `/`. Literal backslash *filename* bytes that exist
 /// only inside a Git tree are preserved when they arrive from Git output, not
 /// from this conversion.
-pub(crate) fn source_tree_path_bytes(path: &Path) -> CargoAllowResult<Vec<u8>> {
+pub(crate) fn source_tree_path_bytes(path: &Path) -> SnapshotResult<Vec<u8>> {
     reject_host_non_relative_path(path)?;
     #[cfg(unix)]
     {
@@ -328,7 +328,7 @@ pub(crate) fn source_tree_path_bytes(path: &Path) -> CargoAllowResult<Vec<u8>> {
     {
         let Some(text) = path.to_str() else {
             return Err(git_error(
-                CargoAllowErrorKind::InvalidConfig,
+                SnapshotErrorKind::InvalidConfig,
                 "tree_path_unsupported_on_platform",
                 format!(
                     "source-tree path `{}` is not UTF-8 representable on this platform and cannot be read from a Git revision",
@@ -345,7 +345,7 @@ pub(crate) fn source_tree_path_bytes(path: &Path) -> CargoAllowResult<Vec<u8>> {
     {
         let _ = path;
         Err(git_error(
-            CargoAllowErrorKind::InvalidConfig,
+            SnapshotErrorKind::InvalidConfig,
             "tree_path_unsupported_on_platform",
             "source-tree Git path reads are unsupported on this platform",
         ))
@@ -354,7 +354,7 @@ pub(crate) fn source_tree_path_bytes(path: &Path) -> CargoAllowResult<Vec<u8>> {
 
 /// Reject host-absolute, drive-relative, UNC/device, rooted, and parent paths
 /// before any separator rewriting that would erase those platform semantics.
-fn reject_host_non_relative_path(path: &Path) -> CargoAllowResult<()> {
+fn reject_host_non_relative_path(path: &Path) -> SnapshotResult<()> {
     for component in path.components() {
         match component {
             Component::Prefix(_) | Component::RootDir | Component::ParentDir => {
@@ -366,7 +366,7 @@ fn reject_host_non_relative_path(path: &Path) -> CargoAllowResult<()> {
     Ok(())
 }
 
-fn validate_source_tree_path_bytes(bytes: &[u8], path: &Path) -> CargoAllowResult<()> {
+fn validate_source_tree_path_bytes(bytes: &[u8], path: &Path) -> SnapshotResult<()> {
     if bytes.is_empty() || bytes.contains(&0) || bytes.starts_with(b"/") {
         return Err(invalid_source_tree_path(path));
     }
@@ -378,9 +378,9 @@ fn validate_source_tree_path_bytes(bytes: &[u8], path: &Path) -> CargoAllowResul
     Ok(())
 }
 
-fn invalid_source_tree_path(path: &Path) -> CargoAllowError {
+fn invalid_source_tree_path(path: &Path) -> SnapshotError {
     git_error(
-        CargoAllowErrorKind::InvalidConfig,
+        SnapshotErrorKind::InvalidConfig,
         "invalid_source_tree_path",
         format!(
             "source-tree path `{}` cannot be read from a Git revision",
@@ -393,7 +393,7 @@ fn lookup_tree_path(
     root: &Path,
     commit_oid: &str,
     path_bytes: &[u8],
-) -> CargoAllowResult<TreePathLookup> {
+) -> SnapshotResult<TreePathLookup> {
     let mut cmd = literal_pathspec_git_command(root);
     cmd.arg("ls-tree")
         .arg("-z")
@@ -416,7 +416,7 @@ fn lookup_tree_path(
     }
     if records.len() != 1 {
         return Err(git_error(
-            CargoAllowErrorKind::Inventory,
+            SnapshotErrorKind::Inventory,
             "git_output_malformed",
             "git ls-tree returned multiple records for an exact path lookup",
         ));
@@ -424,7 +424,7 @@ fn lookup_tree_path(
 
     let record = records.first().copied().ok_or_else(|| {
         git_error(
-            CargoAllowErrorKind::Inventory,
+            SnapshotErrorKind::Inventory,
             "git_output_malformed",
             "git ls-tree returned no record for an exact path lookup",
         )
@@ -433,7 +433,7 @@ fn lookup_tree_path(
         TreeRecordParse::Entry(entry) => {
             if entry.raw_path != path_bytes {
                 return Err(git_error(
-                    CargoAllowErrorKind::Inventory,
+                    SnapshotErrorKind::Inventory,
                     "git_output_malformed",
                     format!(
                         "git ls-tree returned `{}` for the requested exact path",
@@ -448,7 +448,7 @@ fn lookup_tree_path(
             })
         }
         TreeRecordParse::UnsupportedPath { raw_path, .. } => Err(git_error(
-            CargoAllowErrorKind::InvalidConfig,
+            SnapshotErrorKind::InvalidConfig,
             "tree_path_unsupported_on_platform",
             format!(
                 "git tree path `{}` is not representable on this platform",
@@ -456,17 +456,17 @@ fn lookup_tree_path(
             ),
         )),
         TreeRecordParse::Malformed => Err(git_error(
-            CargoAllowErrorKind::Inventory,
+            SnapshotErrorKind::Inventory,
             "git_output_malformed",
             "git ls-tree returned a malformed record for an exact path lookup",
         )),
     }
 }
 
-fn read_blob_by_oid(root: &Path, blob_oid: &str) -> CargoAllowResult<String> {
+fn read_blob_by_oid(root: &Path, blob_oid: &str) -> SnapshotResult<String> {
     if !is_full_oid(blob_oid) {
         return Err(git_error(
-            CargoAllowErrorKind::Inventory,
+            SnapshotErrorKind::Inventory,
             "git_output_malformed",
             "git ls-tree returned a malformed blob object identity",
         ));
@@ -482,7 +482,7 @@ fn read_blob_by_oid(root: &Path, blob_oid: &str) -> CargoAllowResult<String> {
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
-fn append_literal_path_arg(cmd: &mut Command, path_bytes: &[u8]) -> CargoAllowResult<()> {
+fn append_literal_path_arg(cmd: &mut Command, path_bytes: &[u8]) -> SnapshotResult<()> {
     #[cfg(unix)]
     {
         cmd.arg(OsStr::from_bytes(path_bytes));
@@ -492,7 +492,7 @@ fn append_literal_path_arg(cmd: &mut Command, path_bytes: &[u8]) -> CargoAllowRe
     {
         let text = std::str::from_utf8(path_bytes).map_err(|_| {
             git_error(
-                CargoAllowErrorKind::InvalidConfig,
+                SnapshotErrorKind::InvalidConfig,
                 "tree_path_unsupported_on_platform",
                 format!(
                     "git tree path `{}` is not UTF-8 representable on this platform",
@@ -507,14 +507,14 @@ fn append_literal_path_arg(cmd: &mut Command, path_bytes: &[u8]) -> CargoAllowRe
     {
         let _ = (cmd, path_bytes);
         Err(git_error(
-            CargoAllowErrorKind::InvalidConfig,
+            SnapshotErrorKind::InvalidConfig,
             "tree_path_unsupported_on_platform",
             "source-tree Git path reads are unsupported on this platform",
         ))
     }
 }
 
-fn parse_git_ls_tree_file_entries_z_checked(stdout: &[u8]) -> CargoAllowResult<Vec<GitTreeFile>> {
+fn parse_git_ls_tree_file_entries_z_checked(stdout: &[u8]) -> SnapshotResult<Vec<GitTreeFile>> {
     let mut files = Vec::new();
     for record in stdout
         .split(|byte| *byte == 0)
@@ -527,7 +527,7 @@ fn parse_git_ls_tree_file_entries_z_checked(stdout: &[u8]) -> CargoAllowResult<V
             TreeRecordParse::Entry(_) => {}
             TreeRecordParse::UnsupportedPath { raw_path, .. } => {
                 return Err(git_error(
-                    CargoAllowErrorKind::InvalidConfig,
+                    SnapshotErrorKind::InvalidConfig,
                     "tree_path_unsupported_on_platform",
                     format!(
                         "git tree path `{}` is not representable on this platform",
@@ -537,7 +537,7 @@ fn parse_git_ls_tree_file_entries_z_checked(stdout: &[u8]) -> CargoAllowResult<V
             }
             TreeRecordParse::Malformed => {
                 return Err(git_error(
-                    CargoAllowErrorKind::Inventory,
+                    SnapshotErrorKind::Inventory,
                     "git_output_malformed",
                     "git ls-tree returned a malformed record",
                 ));
@@ -562,18 +562,18 @@ fn literal_pathspec_git_command(root: &Path) -> Command {
     cmd
 }
 
-pub(crate) fn run_git(mut command: Command, operation: &str) -> CargoAllowResult<Output> {
+pub(crate) fn run_git(mut command: Command, operation: &str) -> SnapshotResult<Output> {
     command.output().map_err(|source| {
         git_error(
-            CargoAllowErrorKind::Inventory,
+            SnapshotErrorKind::Inventory,
             "git_invocation_failed",
             format!("{operation} could not start"),
         )
-        .with_cause(&source)
+        .with_cause(source)
     })
 }
 
-pub(crate) fn git_status_error(operation: &str, output: &Output) -> CargoAllowError {
+pub(crate) fn git_status_error(operation: &str, output: &Output) -> SnapshotError {
     let stderr = bounded_stderr(&output.stderr);
     let status = output
         .status
@@ -586,7 +586,7 @@ pub(crate) fn git_status_error(operation: &str, output: &Output) -> CargoAllowEr
         format!("{operation} failed with status {status}: {stderr}")
     };
     git_error(
-        CargoAllowErrorKind::Inventory,
+        SnapshotErrorKind::Inventory,
         "git_invocation_failed",
         message,
     )
@@ -601,12 +601,12 @@ fn bounded_stderr(stderr: &[u8]) -> String {
 }
 
 pub(crate) fn git_error(
-    kind: CargoAllowErrorKind,
+    kind: SnapshotErrorKind,
     code: &str,
     message: impl Into<String>,
-) -> CargoAllowError {
+) -> SnapshotError {
     let message = message.into();
-    CargoAllowError::with_kind(kind, message.clone()).with_diagnostic(CargoAllowDiagnostic::error(
+    SnapshotError::with_kind(kind, message.clone()).with_diagnostic(SnapshotDiagnostic::error(
         code,
         GIT_DIAGNOSTIC_CATEGORY,
         None,
@@ -650,7 +650,7 @@ pub(crate) fn parse_git_ls_tree_z(stdout: &[u8]) -> Vec<PathBuf> {
         .collect()
 }
 
-fn parse_nul_paths_checked(stdout: &[u8]) -> CargoAllowResult<Vec<PathBuf>> {
+fn parse_nul_paths_checked(stdout: &[u8]) -> SnapshotResult<Vec<PathBuf>> {
     let mut paths = Vec::new();
     for bytes in stdout
         .split(|byte| *byte == 0)
@@ -660,7 +660,7 @@ fn parse_nul_paths_checked(stdout: &[u8]) -> CargoAllowResult<Vec<PathBuf>> {
             Ok(path) => paths.push(path),
             Err(()) => {
                 return Err(git_error(
-                    CargoAllowErrorKind::InvalidConfig,
+                    SnapshotErrorKind::InvalidConfig,
                     "tree_path_unsupported_on_platform",
                     format!(
                         "git diff path `{}` is not representable on this platform",
@@ -718,7 +718,7 @@ pub(crate) fn parse_git_tree_record_outcome_for_test(
 }
 
 #[cfg(test)]
-pub(crate) fn source_tree_path_bytes_for_test(path: &Path) -> CargoAllowResult<Vec<u8>> {
+pub(crate) fn source_tree_path_bytes_for_test(path: &Path) -> SnapshotResult<Vec<u8>> {
     source_tree_path_bytes(path)
 }
 

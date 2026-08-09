@@ -106,7 +106,8 @@ fn write_summary_artifact_with_config(
     // `write_file` returns `RepoEditError` after the effortless-repo-edit
     // product-neutrality refactor (#3283); `?` coerces it into the command
     // error type, matching the other call sites.
-    Ok(write_file(&path, &format!("{json}\n"))?)
+    write_file(&path, &format!("{json}\n"))?;
+    Ok(())
 }
 
 fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCommandSummaryV1> {

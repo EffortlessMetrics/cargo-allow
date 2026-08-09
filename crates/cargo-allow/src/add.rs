@@ -92,9 +92,14 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     if let Some(target) = &mutation_target {
         crate::policy_config::assert_path_within_root(&mutation_root, target)?;
     }
+    // #2487: use canonical MutationTarget identity for lock key so path
+    // aliases share one lock file.
     let _mutation_lock = mutation_target
         .as_ref()
-        .map(MutationLock::acquire)
+        .map(|target| {
+            let resolved = effortless_repo_edit::resolve_mutation_target(target, &mutation_root)?;
+            MutationLock::acquire_for_target(&resolved)
+        })
         .transpose()?;
     let (root, mut cfg, findings, inventory_facts, _federation) = load_world(
         args.root.root.as_deref(),

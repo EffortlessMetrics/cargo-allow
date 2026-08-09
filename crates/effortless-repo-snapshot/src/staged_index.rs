@@ -1,4 +1,4 @@
-use allow_core::{CargoAllowDiagnostic, CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
+use crate::error::{SnapshotDiagnostic, SnapshotError, SnapshotErrorKind, SnapshotResult};
 use sha2::{Digest, Sha256};
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Output, Stdio};
@@ -129,13 +129,13 @@ pub enum StagedPathRead {
 
 pub fn staged_repository_snapshot(
     root: impl AsRef<Path>,
-) -> CargoAllowResult<StagedRepositorySnapshot> {
+) -> SnapshotResult<StagedRepositorySnapshot> {
     let root = root.as_ref();
     let first = load_snapshot_once(root)?;
     let second = load_snapshot_once(root)?;
     if first != second {
         return Err(staged_error(
-            CargoAllowErrorKind::Inventory,
+            SnapshotErrorKind::Inventory,
             "staged_index_changed",
             "Git index or parent HEAD changed while cargo-allow was reading the staged candidate",
         ));
@@ -146,7 +146,7 @@ pub fn staged_repository_snapshot(
 pub fn read_staged_path(
     snapshot: &StagedRepositorySnapshot,
     path: impl AsRef<Path>,
-) -> CargoAllowResult<StagedPathRead> {
+) -> SnapshotResult<StagedPathRead> {
     let raw_path = source_tree_path_bytes(path.as_ref())?;
     read_staged_raw_path(snapshot, &raw_path)
 }
@@ -154,7 +154,7 @@ pub fn read_staged_path(
 pub fn read_staged_raw_path(
     snapshot: &StagedRepositorySnapshot,
     raw_path: &[u8],
-) -> CargoAllowResult<StagedPathRead> {
+) -> SnapshotResult<StagedPathRead> {
     validate_raw_git_path(raw_path)?;
     let Some(entry) = snapshot
         .entries
@@ -177,14 +177,14 @@ pub fn read_staged_raw_path(
     }
 }
 
-fn load_snapshot_once(root: &Path) -> CargoAllowResult<StagedRepositorySnapshot> {
+fn load_snapshot_once(root: &Path) -> SnapshotResult<StagedRepositorySnapshot> {
     ensure_git_worktree(root)?;
     let capabilities = probe_staged_git_capabilities(root)?;
     let parent_commit = parent_commit(root)?;
     let entries = read_index_entries(root)?;
     if entries.iter().any(|entry| entry.stage != 0) {
         return Err(staged_error(
-            CargoAllowErrorKind::Inventory,
+            SnapshotErrorKind::Inventory,
             "staged_index_unmerged",
             "Git index contains unresolved merge stages and cannot be treated as a commit candidate",
         ));
@@ -276,7 +276,7 @@ fn staged_limitations(entries: &[StagedIndexEntry], changes: &[StagedPathChange]
 /// capability so CLI and receipt layers can provide useful remediation.
 pub fn probe_staged_git_capabilities(
     root: impl AsRef<Path>,
-) -> CargoAllowResult<StagedGitCapabilities> {
+) -> SnapshotResult<StagedGitCapabilities> {
     let root = root.as_ref();
     let version_output = run_git(git_command(root).arg("--version"), "git --version")?;
     if !version_output.status.success() {
@@ -375,7 +375,7 @@ pub fn probe_staged_git_capabilities(
     }
 }
 
-fn first_staged_blob_oid(stdout: &[u8]) -> CargoAllowResult<Option<String>> {
+fn first_staged_blob_oid(stdout: &[u8]) -> SnapshotResult<Option<String>> {
     for record in stdout
         .split(|byte| *byte == 0)
         .filter(|record| !record.is_empty())
@@ -398,12 +398,12 @@ fn git_capability_command_succeeded(
     root: &Path,
     args: [&str; 2],
     operation: &str,
-) -> CargoAllowResult<bool> {
+) -> SnapshotResult<bool> {
     let output = run_git(git_command(root).args(args), operation)?;
     Ok(output.status.success())
 }
 
-fn git_partial_clone_posture(root: &Path) -> CargoAllowResult<bool> {
+fn git_partial_clone_posture(root: &Path) -> SnapshotResult<bool> {
     let output = run_git(
         git_command(root).args(["config", "--get-regexp", r"^remote\..*\.promisor$"]),
         "git config promisor capability probe",
@@ -449,7 +449,7 @@ fn staged_capability_gaps(capabilities: &StagedGitCapabilities) -> Vec<&'static 
     gaps
 }
 
-fn staged_capability_error(capabilities: &StagedGitCapabilities, gaps: &[&str]) -> CargoAllowError {
+fn staged_capability_error(capabilities: &StagedGitCapabilities, gaps: &[&str]) -> SnapshotError {
     let code = if !capabilities.supports_sparse_index {
         "git_sparse_index_unsupported"
     } else if capabilities.object_format == RepositoryObjectFormat::Unknown {
@@ -462,10 +462,10 @@ fn staged_capability_error(capabilities: &StagedGitCapabilities, gaps: &[&str]) 
         capabilities.git_version,
         gaps.join(", ")
     );
-    staged_error(CargoAllowErrorKind::Inventory, code, message)
+    staged_error(SnapshotErrorKind::Inventory, code, message)
 }
 
-fn ensure_git_worktree(root: &Path) -> CargoAllowResult<()> {
+fn ensure_git_worktree(root: &Path) -> SnapshotResult<()> {
     let output = run_git(
         git_command(root).args(["rev-parse", "--is-inside-work-tree"]),
         "git rev-parse --is-inside-work-tree",
@@ -478,7 +478,7 @@ fn ensure_git_worktree(root: &Path) -> CargoAllowResult<()> {
     }
     if output.stdout.as_slice() != b"true\n" {
         return Err(staged_error(
-            CargoAllowErrorKind::Inventory,
+            SnapshotErrorKind::Inventory,
             "not_a_git_worktree",
             "staged candidate requires a Git worktree",
         ));
@@ -486,7 +486,7 @@ fn ensure_git_worktree(root: &Path) -> CargoAllowResult<()> {
     Ok(())
 }
 
-fn parent_commit(root: &Path) -> CargoAllowResult<Option<String>> {
+fn parent_commit(root: &Path) -> SnapshotResult<Option<String>> {
     let output = run_git(
         git_command(root).args(["rev-parse", "--verify", "--quiet", "HEAD^{commit}"]),
         "git rev-parse HEAD^{commit}",
@@ -516,7 +516,7 @@ fn parent_commit(root: &Path) -> CargoAllowResult<Option<String>> {
     Err(git_status_error("git show-ref symbolic HEAD", &exists))
 }
 
-fn read_index_entries(root: &Path) -> CargoAllowResult<Vec<StagedIndexEntry>> {
+fn read_index_entries(root: &Path) -> SnapshotResult<Vec<StagedIndexEntry>> {
     let output = run_git(
         git_command(root).args(["ls-files", "--stage", "--sparse", "-z"]),
         "git ls-files --stage --sparse (requires Git 2.32+)",
@@ -533,7 +533,7 @@ fn read_index_entries(root: &Path) -> CargoAllowResult<Vec<StagedIndexEntry>> {
         .split(|byte| *byte == 0)
         .filter(|record| !record.is_empty())
         .map(parse_index_record)
-        .collect::<CargoAllowResult<Vec<_>>>()?;
+        .collect::<SnapshotResult<Vec<_>>>()?;
     entries.sort_by(|left, right| {
         left.raw_path
             .cmp(&right.raw_path)
@@ -544,7 +544,7 @@ fn read_index_entries(root: &Path) -> CargoAllowResult<Vec<StagedIndexEntry>> {
     Ok(entries)
 }
 
-fn parse_index_record(record: &[u8]) -> CargoAllowResult<StagedIndexEntry> {
+fn parse_index_record(record: &[u8]) -> SnapshotResult<StagedIndexEntry> {
     let tab = record
         .iter()
         .position(|byte| *byte == b'\t')
@@ -581,7 +581,7 @@ fn parse_index_record(record: &[u8]) -> CargoAllowResult<StagedIndexEntry> {
         "index stage",
     )?
     .parse::<u8>()
-    .map_err(|source| malformed_git("index stage is malformed").with_cause(&source))?;
+    .map_err(|source| malformed_git("index stage is malformed").with_cause(source))?;
     if fields.next().is_some() || !is_full_or_zero_oid(&object_oid) || stage > 3 {
         return Err(malformed_git(
             "git ls-files returned an invalid index entry",
@@ -598,7 +598,7 @@ fn parse_index_record(record: &[u8]) -> CargoAllowResult<StagedIndexEntry> {
     })
 }
 
-fn read_staged_changes(root: &Path) -> CargoAllowResult<Vec<StagedPathChange>> {
+fn read_staged_changes(root: &Path) -> SnapshotResult<Vec<StagedPathChange>> {
     let output = run_git(
         git_command(root).args([
             "diff",
@@ -662,7 +662,7 @@ fn read_staged_changes(root: &Path) -> CargoAllowResult<Vec<StagedPathChange>> {
     Ok(changes)
 }
 
-fn parse_change_status(text: &str) -> CargoAllowResult<(StagedPathStatus, Option<u8>, usize)> {
+fn parse_change_status(text: &str) -> SnapshotResult<(StagedPathStatus, Option<u8>, usize)> {
     let first = text
         .as_bytes()
         .first()
@@ -684,7 +684,7 @@ fn parse_change_status(text: &str) -> CargoAllowResult<(StagedPathStatus, Option
             None
         } else {
             Some(digits.parse::<u8>().map_err(|source| {
-                malformed_git("similarity score is malformed").with_cause(&source)
+                malformed_git("similarity score is malformed").with_cause(source)
             })?)
         }
     } else {
@@ -770,7 +770,7 @@ fn change_status_byte(status: StagedPathStatus) -> u8 {
     }
 }
 
-fn read_blob_by_oid(root: &Path, oid: &str) -> CargoAllowResult<Vec<u8>> {
+fn read_blob_by_oid(root: &Path, oid: &str) -> SnapshotResult<Vec<u8>> {
     if !is_full_oid(oid) {
         return Err(malformed_git("staged blob object id is invalid"));
     }
@@ -785,7 +785,7 @@ fn read_blob_by_oid(root: &Path, oid: &str) -> CargoAllowResult<Vec<u8>> {
     }
 }
 
-fn parse_single_oid(stdout: &[u8]) -> CargoAllowResult<String> {
+fn parse_single_oid(stdout: &[u8]) -> SnapshotResult<String> {
     let value = parse_single_line(stdout, "Git object id")?.to_ascii_lowercase();
     if is_full_oid(&value) {
         Ok(value)
@@ -794,9 +794,9 @@ fn parse_single_oid(stdout: &[u8]) -> CargoAllowResult<String> {
     }
 }
 
-fn parse_single_line(stdout: &[u8], label: &str) -> CargoAllowResult<String> {
+fn parse_single_line(stdout: &[u8], label: &str) -> SnapshotResult<String> {
     let text = std::str::from_utf8(stdout)
-        .map_err(|source| malformed_git(format!("{label} is not UTF-8")).with_cause(&source))?;
+        .map_err(|source| malformed_git(format!("{label} is not UTF-8")).with_cause(source))?;
     let value = text.trim();
     if value.is_empty() || value.contains('\n') || value.contains('\r') {
         return Err(malformed_git(format!("{label} is malformed")));
@@ -816,13 +816,13 @@ fn is_full_or_zero_oid(value: &str) -> bool {
     is_full_oid(value) || is_zero_oid(value)
 }
 
-fn ascii_field(bytes: &[u8], label: &str) -> CargoAllowResult<String> {
+fn ascii_field(bytes: &[u8], label: &str) -> SnapshotResult<String> {
     std::str::from_utf8(bytes)
         .map(str::to_string)
-        .map_err(|source| malformed_git(format!("{label} is not ASCII")).with_cause(&source))
+        .map_err(|source| malformed_git(format!("{label} is not ASCII")).with_cause(source))
 }
 
-fn validate_raw_git_path(raw_path: &[u8]) -> CargoAllowResult<()> {
+fn validate_raw_git_path(raw_path: &[u8]) -> SnapshotResult<()> {
     if raw_path.is_empty()
         || raw_path.contains(&0)
         || raw_path.first() == Some(&b'/')
@@ -831,7 +831,7 @@ fn validate_raw_git_path(raw_path: &[u8]) -> CargoAllowResult<()> {
             .any(|segment| segment.is_empty() || segment == b"." || segment == b"..")
     {
         return Err(staged_error(
-            CargoAllowErrorKind::InvalidConfig,
+            SnapshotErrorKind::InvalidConfig,
             "invalid_source_tree_path",
             format!(
                 "staged path `{}` is not a normalized repository-relative Git path",
@@ -842,7 +842,7 @@ fn validate_raw_git_path(raw_path: &[u8]) -> CargoAllowResult<()> {
     Ok(())
 }
 
-fn source_tree_path_bytes(path: &Path) -> CargoAllowResult<Vec<u8>> {
+fn source_tree_path_bytes(path: &Path) -> SnapshotResult<Vec<u8>> {
     let mut components = Vec::new();
     for component in path.components() {
         match component {
@@ -850,7 +850,7 @@ fn source_tree_path_bytes(path: &Path) -> CargoAllowResult<Vec<u8>> {
             Component::Normal(value) => components.push(component_bytes(value)?),
             Component::Prefix(_) | Component::RootDir | Component::ParentDir => {
                 return Err(staged_error(
-                    CargoAllowErrorKind::InvalidConfig,
+                    SnapshotErrorKind::InvalidConfig,
                     "invalid_source_tree_path",
                     format!(
                         "staged path `{}` must be repository-relative and contain no parent traversal",
@@ -862,7 +862,7 @@ fn source_tree_path_bytes(path: &Path) -> CargoAllowResult<Vec<u8>> {
     }
     if components.is_empty() {
         return Err(staged_error(
-            CargoAllowErrorKind::InvalidConfig,
+            SnapshotErrorKind::InvalidConfig,
             "invalid_source_tree_path",
             "staged path must name a repository file",
         ));
@@ -879,15 +879,15 @@ fn source_tree_path_bytes(path: &Path) -> CargoAllowResult<Vec<u8>> {
 }
 
 #[cfg(unix)]
-fn component_bytes(component: &std::ffi::OsStr) -> CargoAllowResult<Vec<u8>> {
+fn component_bytes(component: &std::ffi::OsStr) -> SnapshotResult<Vec<u8>> {
     Ok(component.as_bytes().to_vec())
 }
 
 #[cfg(windows)]
-fn component_bytes(component: &std::ffi::OsStr) -> CargoAllowResult<Vec<u8>> {
+fn component_bytes(component: &std::ffi::OsStr) -> SnapshotResult<Vec<u8>> {
     let text = component.to_str().ok_or_else(|| {
         staged_error(
-            CargoAllowErrorKind::InvalidConfig,
+            SnapshotErrorKind::InvalidConfig,
             "tree_path_unsupported_on_platform",
             "source-tree path is not UTF-8 representable on Windows",
         )
@@ -896,9 +896,9 @@ fn component_bytes(component: &std::ffi::OsStr) -> CargoAllowResult<Vec<u8>> {
 }
 
 #[cfg(not(any(unix, windows)))]
-fn component_bytes(_component: &std::ffi::OsStr) -> CargoAllowResult<Vec<u8>> {
+fn component_bytes(_component: &std::ffi::OsStr) -> SnapshotResult<Vec<u8>> {
     Err(staged_error(
-        CargoAllowErrorKind::InvalidConfig,
+        SnapshotErrorKind::InvalidConfig,
         "tree_path_unsupported_on_platform",
         "source-tree staged paths are unsupported on this platform",
     ))
@@ -939,18 +939,18 @@ fn git_command(root: &Path) -> Command {
     command
 }
 
-fn run_git(command: &mut Command, operation: &str) -> CargoAllowResult<Output> {
+fn run_git(command: &mut Command, operation: &str) -> SnapshotResult<Output> {
     command.output().map_err(|source| {
         staged_error(
-            CargoAllowErrorKind::Inventory,
+            SnapshotErrorKind::Inventory,
             "git_invocation_failed",
             format!("{operation} could not start"),
         )
-        .with_cause(&source)
+        .with_cause(source)
     })
 }
 
-fn git_status_error(operation: &str, output: &Output) -> CargoAllowError {
+fn git_status_error(operation: &str, output: &Output) -> SnapshotError {
     let stderr = bounded_stderr(&output.stderr);
     let status = output
         .status
@@ -963,7 +963,7 @@ fn git_status_error(operation: &str, output: &Output) -> CargoAllowError {
         format!("{operation} failed with status {status}: {stderr}")
     };
     staged_error(
-        CargoAllowErrorKind::Inventory,
+        SnapshotErrorKind::Inventory,
         "git_invocation_failed",
         message,
     )
@@ -977,21 +977,17 @@ fn bounded_stderr(stderr: &[u8]) -> String {
         .collect()
 }
 
-fn malformed_git(message: impl Into<String>) -> CargoAllowError {
+fn malformed_git(message: impl Into<String>) -> SnapshotError {
     staged_error(
-        CargoAllowErrorKind::Inventory,
+        SnapshotErrorKind::Inventory,
         "git_output_malformed",
         message,
     )
 }
 
-fn staged_error(
-    kind: CargoAllowErrorKind,
-    code: &str,
-    message: impl Into<String>,
-) -> CargoAllowError {
+fn staged_error(kind: SnapshotErrorKind, code: &str, message: impl Into<String>) -> SnapshotError {
     let message = message.into();
-    CargoAllowError::with_kind(kind, message.clone()).with_diagnostic(CargoAllowDiagnostic::error(
+    SnapshotError::with_kind(kind, message.clone()).with_diagnostic(SnapshotDiagnostic::error(
         code,
         STAGED_DIAGNOSTIC_CATEGORY,
         None,

@@ -56,7 +56,10 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
         let path =
             config_path(&root, args.config.as_deref()).ok_or_else(missing_policy_config_error)?;
         crate::policy_config::assert_path_within_root(&root, &path)?;
-        Some(MutationLock::acquire(path)?)
+        Some({
+            let target = effortless_repo_edit::resolve_mutation_target(&path, &root)?;
+            MutationLock::acquire_for_target(&target)?
+        })
     } else {
         None
     };
