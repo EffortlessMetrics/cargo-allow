@@ -175,30 +175,44 @@ pub(super) fn render_why_text_styled_with_evaluation_and_scanner_completeness(
     evaluation: EvaluationContext<'_>,
     scanner_completeness: Option<&str>,
 ) -> String {
+    fn terminal_text(text: &str) -> String {
+        allow_report::sanitize_terminal_text(text)
+    }
+
     let next = why_next_steps(finding, outcome, candidates);
     let proof_commands = next.proof_commands();
     let mut out = String::new();
     out.push_str("# Why this finding is unreceipted\n\n");
     out.push_str("## Finding\n\n");
-    out.push_str(&format!("- location: {}\n", finding_location(finding)));
-    out.push_str(&format!("- kind: {}\n", finding.kind.as_str()));
+    let location = finding_location(finding);
+    out.push_str(&format!("- location: {}\n", terminal_text(&location)));
+    out.push_str(&format!(
+        "- kind: {}\n",
+        terminal_text(finding.kind.as_str())
+    ));
     match &finding.family {
-        Some(family) => out.push_str(&format!("- family: {family}\n")),
+        Some(family) => out.push_str(&format!("- family: {}\n", terminal_text(family))),
         None => out.push_str("- family: <none>\n"),
     }
-    out.push_str(&format!("- message: {}\n", finding.message));
+    out.push_str(&format!("- message: {}\n", terminal_text(&finding.message)));
     out.push_str(&format!(
         "- identity.ast_kind: {}\n",
-        finding.identity.ast_kind
+        terminal_text(&finding.identity.ast_kind)
     ));
     if let Some(container) = &finding.identity.container {
-        out.push_str(&format!("- identity.container: {container}\n"));
+        out.push_str(&format!(
+            "- identity.container: {}\n",
+            terminal_text(container)
+        ));
     }
     if let Some(callee) = &finding.identity.callee {
-        out.push_str(&format!("- identity.callee: {callee}\n"));
+        out.push_str(&format!("- identity.callee: {}\n", terminal_text(callee)));
     }
     if let Some(hash) = &finding.identity.normalized_snippet_hash {
-        out.push_str(&format!("- identity.normalized_snippet_hash: {hash}\n"));
+        out.push_str(&format!(
+            "- identity.normalized_snippet_hash: {}\n",
+            terminal_text(hash)
+        ));
     }
     out.push('\n');
 
@@ -206,16 +220,22 @@ pub(super) fn render_why_text_styled_with_evaluation_and_scanner_completeness(
     if let Some(result_class) =
         evaluation.result_class_with_scanner_completeness(inventory, scanner_completeness)
     {
-        out.push_str(&format!("- result_class: {result_class}\n"));
+        out.push_str(&format!(
+            "- result_class: {}\n",
+            terminal_text(result_class)
+        ));
     }
-    out.push_str(&format!("- scope: {}\n", evaluation.scope));
-    out.push_str(&format!("- locality: {}\n", evaluation.locality));
+    out.push_str(&format!("- scope: {}\n", terminal_text(evaluation.scope)));
+    out.push_str(&format!(
+        "- locality: {}\n",
+        terminal_text(evaluation.locality)
+    ));
     if evaluation.reasons.is_empty() {
         out.push_str("- locality reasons: none\n\n");
     } else {
         out.push_str("- locality reasons:\n");
         for reason in evaluation.reasons {
-            out.push_str(&format!("  - {reason}\n"));
+            out.push_str(&format!("  - {}\n", terminal_text(reason)));
         }
         out.push('\n');
     }
@@ -226,17 +246,17 @@ pub(super) fn render_why_text_styled_with_evaluation_and_scanner_completeness(
         style.status(outcome.status.as_str(), outcome.status.as_str())
     ));
     match &outcome.allow_id {
-        Some(id) => out.push_str(&format!("- allow_id: {id}\n")),
+        Some(id) => out.push_str(&format!("- allow_id: {}\n", terminal_text(id))),
         None => out.push_str("- allow_id: <none>\n"),
     }
     if !outcome.candidate_ids.is_empty() {
         out.push_str(&format!(
             "- candidate_ids: {}\n",
-            outcome.candidate_ids.join(", ")
+            terminal_text(&outcome.candidate_ids.join(", "))
         ));
     }
     if !outcome.message.is_empty() {
-        out.push_str(&format!("- message: {}\n", outcome.message));
+        out.push_str(&format!("- message: {}\n", terminal_text(&outcome.message)));
     }
     out.push('\n');
 
@@ -253,30 +273,28 @@ The finding is unreceipted because no policy entry covers it.\n\n",
                     "Nearby same-kind entries that do not match, with selector mismatch reasons:\n\n",
                 );
                 for candidate in candidates {
-                    out.push_str(&format!("### `{}`\n\n", candidate.entry.id));
+                    out.push_str(&format!("### `{}`\n\n", terminal_text(&candidate.entry.id)));
                     out.push_str(&format!(
                         "- kind/family: {} / {}\n",
-                        candidate.entry.kind.as_str(),
-                        candidate.entry.family.as_deref().unwrap_or("<none>")
+                        terminal_text(candidate.entry.kind.as_str()),
+                        terminal_text(candidate.entry.family.as_deref().unwrap_or("<none>"))
                     ));
-                    out.push_str(&format!(
-                        "- path: {}\n",
-                        candidate
-                            .entry
-                            .path
-                            .as_ref()
-                            .map(normalize_path)
-                            .unwrap_or_else(|| "<none>".to_string())
-                    ));
+                    let path = candidate
+                        .entry
+                        .path
+                        .as_ref()
+                        .map(normalize_path)
+                        .unwrap_or_else(|| "<none>".to_string());
+                    out.push_str(&format!("- path: {}\n", terminal_text(&path)));
                     if let Some(glob) = &candidate.entry.glob {
-                        out.push_str(&format!("- glob: {glob}\n"));
+                        out.push_str(&format!("- glob: {}\n", terminal_text(glob)));
                     }
                     if let Some(glob) = &candidate.entry.selector.glob {
-                        out.push_str(&format!("- selector.glob: {glob}\n"));
+                        out.push_str(&format!("- selector.glob: {}\n", terminal_text(glob)));
                     }
                     out.push_str("- mismatch reasons:\n");
                     for reason in &candidate.reasons {
-                        out.push_str(&format!("  - {reason}\n"));
+                        out.push_str(&format!("  - {}\n", terminal_text(reason)));
                     }
                     out.push('\n');
                 }
@@ -290,8 +308,9 @@ The finding is unreceipted because no policy entry covers it.\n\n",
             out.push_str("## Already receipted\n\n");
             if let Some(id) = &outcome.allow_id {
                 out.push_str(&format!(
-                    "This finding is already linked to `{id}`. \
-Use `cargo-allow explain {id}` for the entry-facing inverse view.\n\n"
+                    "This finding is already linked to `{0}`. \
+Use `cargo-allow explain {0}` for the entry-facing inverse view.\n\n",
+                    terminal_text(id)
                 ));
             } else {
                 out.push_str(
@@ -310,7 +329,7 @@ no candidate is selected as authoritative.\n\n",
             if !outcome.candidate_ids.is_empty() {
                 out.push_str("Candidate-specific explain plans:\n\n");
                 for id in &outcome.candidate_ids {
-                    out.push_str(&format!("- `{id}`\n"));
+                    out.push_str(&format!("- `{}`\n", terminal_text(id)));
                 }
                 out.push('\n');
             }
@@ -329,7 +348,7 @@ Use `cargo-allow explain <id>` when an allow ID is present, or `cargo-allow chec
 
     out.push_str("## Suggested next steps\n\n");
     for (index, action) in next.suggested_actions.iter().enumerate() {
-        out.push_str(&format!("{}. {action}\n", index + 1));
+        out.push_str(&format!("{}. {}\n", index + 1, terminal_text(action)));
     }
     out.push('\n');
     out.push_str("## Proof commands\n\n");
@@ -338,9 +357,10 @@ Use `cargo-allow explain <id>` when an allow ID is present, or `cargo-allow chec
 Structured argv is authoritative in `cargo-allow.why.v1` `next.proof_plans`.\n\n",
     );
     for command in &proof_commands {
+        let command = terminal_text(command);
         if command.contains('\n') {
             out.push_str("- \n```\n");
-            out.push_str(command);
+            out.push_str(&command);
             out.push_str("\n```\n");
         } else {
             out.push_str(&format!("- `{command}`\n"));

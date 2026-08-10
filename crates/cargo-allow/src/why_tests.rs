@@ -150,6 +150,59 @@ fn render_why_lists_mismatch_reasons_for_new_findings() {
 }
 
 #[test]
+fn render_why_text_sanitizes_repository_control_text() {
+    let mut finding = sample_finding_at("src/\nlib.rs", 10);
+    finding.message = "message\u{1b}[31m\nforged".to_string();
+    finding.identity.container = Some("container\u{7f}".to_string());
+    let mut entry = near_miss_entry();
+    entry.id = "allow-\u{1b}[31m".to_string();
+    entry.glob = Some("src/\n*.rs".to_string());
+    let outcome = MatchOutcome {
+        status: MatchStatus::New,
+        allow_id: None,
+        candidate_ids: Vec::new(),
+        finding_index: Some(0),
+        message: "outcome\rmessage".to_string(),
+        score: 0,
+    };
+    let text = render_why_text(
+        &finding,
+        &outcome,
+        &[WhyCandidate {
+            entry: &entry,
+            reasons: vec!["reason\twith control".to_string()],
+        }],
+    );
+
+    assert!(!text.contains('\u{1b}'));
+    assert!(!text.contains('\u{7f}'));
+    assert!(text.contains("message\u{fffd}[31m\\nforged"));
+    assert!(text.contains("message\u{fffd}[31m"));
+    assert!(text.contains("src/\\nlib.rs"));
+    assert!(text.contains("reason\\twith control"));
+    assert!(text.contains("allow-\u{fffd}[31m"));
+}
+
+#[test]
+fn render_why_text_does_not_make_hostile_proof_paths_pasteable() {
+    let finding = sample_finding_at("src/\tlib.rs", 10);
+    let outcome = MatchOutcome {
+        status: MatchStatus::New,
+        allow_id: None,
+        candidate_ids: Vec::new(),
+        finding_index: Some(0),
+        message: "unreceipted panic.unwrap at src/lib.rs:10:1".to_string(),
+        score: 0,
+    };
+
+    let text = render_why_text(&finding, &outcome, &[]);
+
+    assert!(text.contains("not a pasteable shell command"));
+    assert!(text.contains("structured argv / proof_plans JSON"));
+    assert!(!text.contains("--path 'src/\\tlib.rs'") && !text.contains("--path src/\\tlib.rs"));
+}
+
+#[test]
 fn render_why_json_deserializes_and_asserts_semantic_paths() {
     let finding = sample_finding_at("src/lib.rs", 10);
     let entry = near_miss_entry();

@@ -39,7 +39,7 @@ pub(super) fn render_proof_command(plan: &ProofPlan) -> String {
 fn plan_has_unsafe_shell_chars(plan: &ProofPlan) -> bool {
     std::iter::once(plan.program.as_str())
         .chain(plan.args.iter().map(String::as_str))
-        .any(|part| part.contains('\0') || part.contains('\n') || part.contains('\r'))
+        .any(|part| part.chars().any(|character| character.is_control()))
 }
 
 fn render_non_copyable_argv(plan: &ProofPlan) -> String {
