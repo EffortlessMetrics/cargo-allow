@@ -13,6 +13,7 @@ mod currentness;
 mod repository_snapshot;
 mod result_class;
 mod source_anchor;
+mod source_view;
 
 pub use analysis_receipt::{ANALYSIS_RECEIPT_SCHEMA_ID, AnalysisReceiptEnvelopeV1};
 pub use canonical::{canonical_json_bytes, stable_digest_hex, stable_digest_json};
@@ -25,6 +26,10 @@ pub use repository_snapshot::{
 };
 pub use result_class::ResultClassV1;
 pub use source_anchor::{SourceAnchorV1, SourceIdentityV1};
+pub use source_view::{
+    REPOSITORY_SOURCE_VIEW_SCHEMA_ID, RepositorySourceViewKindV1, RepositorySourceViewV1,
+    SnapshotDiagnosticV1, SourceContentDigestV1, SourceEntryV1, SourceSelectionInputV1,
+};
 
 #[cfg(test)]
 mod tests;

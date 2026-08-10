@@ -70,6 +70,95 @@ fn partial_result_class_denies_clean_completion() {
 }
 
 #[test]
+fn source_view_contract_roundtrips_and_preserves_base_head_identity() -> Result<(), String> {
+    let mut view = crate::RepositorySourceViewV1::new(
+        crate::RepositorySourceViewKindV1::BaseHead,
+        "sha256:v1:root",
+        crate::CompletenessV1::Partial,
+    );
+    view.base_identity = Some("sha256:v1:base".to_string());
+    view.head_identity = Some("sha256:v1:head".to_string());
+    view.entries.push(crate::SourceEntryV1 {
+        path: "src/lib.rs".to_string(),
+        present: true,
+        content_digest: Some(crate::SourceContentDigestV1 {
+            algorithm: "sha256:v1".to_string(),
+            value: "abc".to_string(),
+        }),
+        executable: false,
+    });
+    view.validate()?;
+    let json =
+        serde_json::to_string(&view).map_err(|err| format!("serialize source view: {err}"))?;
+    let decoded: crate::RepositorySourceViewV1 =
+        serde_json::from_str(&json).map_err(|err| format!("deserialize source view: {err}"))?;
+    if decoded != view {
+        return Err("source-view contract changed during round-trip".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn source_view_contract_rejects_flattened_base_head_identity() {
+    let view = crate::RepositorySourceViewV1::new(
+        crate::RepositorySourceViewKindV1::BaseHead,
+        "sha256:v1:root",
+        crate::CompletenessV1::Complete,
+    );
+    assert!(view.validate().is_err());
+}
+
+#[test]
+fn source_view_contract_names_each_view_kind() -> Result<(), String> {
+    let kinds = [
+        (
+            crate::RepositorySourceViewKindV1::CommittedTree,
+            "committed_tree",
+        ),
+        (crate::RepositorySourceViewKindV1::GitIndex, "git_index"),
+        (crate::RepositorySourceViewKindV1::Worktree, "worktree"),
+        (crate::RepositorySourceViewKindV1::Overlay, "overlay"),
+        (crate::RepositorySourceViewKindV1::BaseHead, "base_head"),
+    ];
+    for (kind, expected) in kinds {
+        if kind.as_str() != expected {
+            return Err(format!("unexpected source-view kind name for {expected}"));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn source_view_contract_validates_schema_and_single_view_identity() -> Result<(), String> {
+    let mut view = crate::RepositorySourceViewV1::new(
+        crate::RepositorySourceViewKindV1::Worktree,
+        "sha256:v1:root",
+        crate::CompletenessV1::Complete,
+    );
+    view.source_identity = Some("sha256:v1:worktree".to_string());
+    view.validate()?;
+    view.base_identity = Some("sha256:v1:base".to_string());
+    if view.validate().is_ok() {
+        return Err("single-source view accepted base identity".to_string());
+    }
+    view.base_identity = None;
+    view.schema_id = "repo.source-view.v0".to_string();
+    if view.validate().is_ok() {
+        return Err("unsupported source-view schema accepted".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn source_selection_input_constructor_preserves_order() -> Result<(), String> {
+    let selection = crate::SourceSelectionInputV1::new(["src/lib.rs", "Cargo.toml"]);
+    if selection.paths != ["src/lib.rs", "Cargo.toml"] {
+        return Err("source selection constructor reordered paths".to_string());
+    }
+    Ok(())
+}
+
+#[test]
 fn allow_diff_repository_snapshot_field_parity_fixture() -> Result<(), String> {
     let snapshot = sample_snapshot();
     if snapshot.head.commit != "cccccccccccccccccccccccccccccccccccccccc" {
