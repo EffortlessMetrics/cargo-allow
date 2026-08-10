@@ -42,48 +42,48 @@ fn committed_head_parity(root: &Path) -> CargoAllowResult<RepoSnapshotParityCase
             CargoAllowError::new(format!("new RepoSnapshot authority failed: {error}"))
         })?;
 
-    let old_output = committed_canonical_output(
-        old.schema,
-        old.kind.as_str(),
-        &old.root_identity,
-        old.object_format.as_str(),
-        &old.head.requested,
-        &old.head.commit,
-        &old.head.tree,
-        old.base.as_ref().map(|identity| {
+    let old_output = committed_canonical_output(&CommittedCanonicalParts {
+        schema: old.schema,
+        kind: old.kind.as_str(),
+        root_identity: &old.root_identity,
+        object_format: old.object_format.as_str(),
+        head_requested: &old.head.requested,
+        head_commit: &old.head.commit,
+        head_tree: &old.head.tree,
+        base: old.base.as_ref().map(|identity| {
             (
                 identity.requested.as_str(),
                 identity.commit.as_str(),
                 identity.tree.as_str(),
             )
         }),
-        old.merge_base.as_deref(),
-        old.dirty_state.as_str(),
-        format!("{:?}", old.selected_paths),
-        &old.selected_source_closure,
-        &old.limitations,
-    );
-    let new_output = committed_canonical_output(
-        new.schema,
-        new.kind.as_str(),
-        &new.root_identity,
-        new.object_format.as_str(),
-        &new.head.requested,
-        &new.head.commit,
-        &new.head.tree,
-        new.base.as_ref().map(|identity| {
+        merge_base: old.merge_base.as_deref(),
+        dirty_state: old.dirty_state.as_str(),
+        selected_paths: format!("{:?}", old.selected_paths),
+        selected_source_closure: &old.selected_source_closure,
+        limitations: &old.limitations,
+    });
+    let new_output = committed_canonical_output(&CommittedCanonicalParts {
+        schema: new.schema,
+        kind: new.kind.as_str(),
+        root_identity: &new.root_identity,
+        object_format: new.object_format.as_str(),
+        head_requested: &new.head.requested,
+        head_commit: &new.head.commit,
+        head_tree: &new.head.tree,
+        base: new.base.as_ref().map(|identity| {
             (
                 identity.requested.as_str(),
                 identity.commit.as_str(),
                 identity.tree.as_str(),
             )
         }),
-        new.merge_base.as_deref(),
-        new.dirty_state.as_str(),
-        format!("{:?}", new.selected_paths),
-        &new.selected_source_closure,
-        &new.limitations,
-    );
+        merge_base: new.merge_base.as_deref(),
+        dirty_state: new.dirty_state.as_str(),
+        selected_paths: format!("{:?}", new.selected_paths),
+        selected_source_closure: &new.selected_source_closure,
+        limitations: &new.limitations,
+    });
     let source_identity = format!("commit:{}/tree:{}", old.head.commit, old.head.tree);
     Ok(parity_case(source_identity, old_output, new_output))
 }
@@ -142,26 +142,41 @@ fn parity_case(
     }
 }
 
-fn committed_canonical_output(
-    schema: &str,
-    kind: &str,
-    root_identity: &str,
-    object_format: &str,
-    head_requested: &str,
-    head_commit: &str,
-    head_tree: &str,
-    base: Option<(&str, &str, &str)>,
-    merge_base: Option<&str>,
-    dirty_state: &str,
+struct CommittedCanonicalParts<'a> {
+    schema: &'a str,
+    kind: &'a str,
+    root_identity: &'a str,
+    object_format: &'a str,
+    head_requested: &'a str,
+    head_commit: &'a str,
+    head_tree: &'a str,
+    base: Option<(&'a str, &'a str, &'a str)>,
+    merge_base: Option<&'a str>,
+    dirty_state: &'a str,
     selected_paths: String,
-    selected_source_closure: &str,
-    limitations: &[String],
-) -> String {
-    let base = base
+    selected_source_closure: &'a str,
+    limitations: &'a [String],
+}
+
+fn committed_canonical_output(parts: &CommittedCanonicalParts<'_>) -> String {
+    let base = parts
+        .base
         .map(|(requested, commit, tree)| format!("{requested}:{commit}:{tree}"))
         .unwrap_or_else(|| "none".to_string());
     format!(
-        "schema={schema}|kind={kind}|root={root_identity}|object={object_format}|head={head_requested}:{head_commit}:{head_tree}|base={base}|merge_base={merge_base:?}|dirty={dirty_state}|paths={selected_paths}|closure={selected_source_closure}|limitations={limitations:?}"
+        "schema={}|kind={}|root={}|object={}|head={}:{}:{}|base={base}|merge_base={:?}|dirty={}|paths={}|closure={}|limitations={:?}",
+        parts.schema,
+        parts.kind,
+        parts.root_identity,
+        parts.object_format,
+        parts.head_requested,
+        parts.head_commit,
+        parts.head_tree,
+        parts.merge_base,
+        parts.dirty_state,
+        parts.selected_paths,
+        parts.selected_source_closure,
+        parts.limitations,
     )
 }
 
