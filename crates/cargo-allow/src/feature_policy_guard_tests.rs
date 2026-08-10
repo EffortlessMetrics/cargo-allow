@@ -64,21 +64,14 @@ fn cargo_allow_production_deps_have_no_intent_or_proof() -> Result<(), String> {
 fn cargo_allow_has_no_features_enabling_intent_or_proof() -> Result<(), String> {
     let manifest = read_manifest("cargo-allow")?;
     // Check if there's a [features] section that references intent/proof
-    if manifest.contains("[features]") {
+    if let Some(features_start) = manifest.find("[features]") {
         // Extract features section
-        let features_start = manifest
-            .find("[features]")
-            .ok_or_else(|| "manifest contains features marker but it was not found".to_string())?;
-        let features_tail = manifest
+        let features_end = manifest
             .get(features_start..)
-            .ok_or_else(|| "features section start is not a valid UTF-8 boundary".to_string())?;
-        let features_end = features_tail
-            .find("\n[")
+            .and_then(|s| s.find("\n["))
             .map(|i| features_start + i)
             .unwrap_or(manifest.len());
-        let features_section = manifest.get(features_start..features_end).ok_or_else(|| {
-            "features section boundaries are not valid UTF-8 boundaries".to_string()
-        })?;
+        let features_section = manifest.get(features_start..features_end).unwrap_or("");
         for forbidden in &["intent", "proof"] {
             if features_section.contains(forbidden) {
                 return Err(format!(
