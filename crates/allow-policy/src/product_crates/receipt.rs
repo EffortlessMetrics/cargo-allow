@@ -400,6 +400,7 @@ mod tests {
         ];
         for (label, cargo, expected) in cases {
             let root = fixture_root(label);
+            fs::create_dir_all(&root).map_err(|err| err.to_string())?;
             fs::write(root.join("Cargo.toml"), cargo).map_err(|err| err.to_string())?;
             let error = workspace_packages_at(&root)
                 .err()
