@@ -4,7 +4,7 @@
   "tool": "cargo-intent",
   "result": "Passed",
   "claim_boundary": [
-    "six_crate_intent_package_graph",
+    "five_crate_intent_package_graph",
     "extracted_path_install_outside_workspace",
     "source_checkout_denied_during_decisive_install",
     "no_proof_or_test_invocation",
@@ -25,7 +25,6 @@
   },
   "package_set": {
     "order": [
-      "allow-core",
       "effortless-repo-protocol",
       "effortless-repo-snapshot",
       "intent-protocol",

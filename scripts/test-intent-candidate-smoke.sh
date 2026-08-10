@@ -26,7 +26,6 @@ assert receipt.get("schema_id") == "cargo-allow.intent-candidate-smoke.v1"
 assert receipt.get("result") == "Passed"
 order = receipt.get("package_set", {}).get("order", [])
 assert order == [
-    "allow-core",
     "effortless-repo-protocol",
     "effortless-repo-snapshot",
     "intent-protocol",
