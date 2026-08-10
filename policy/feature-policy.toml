@@ -1,0 +1,28 @@
+# Feature policy for three-product separation (#3364).
+# Declares feature classes and bounds for cross-product activation.
+
+schema_id = "cargo-allow.feature-policy.v1"
+schema_version = 1
+controlling_issue = 3364
+
+# Feature classes:
+#   core_default — always available, no cross-product pull
+#   experimental_product — opt-in only, not in defaults
+#   legacy_compatibility — opt-in only, explicitly selected
+#   provider_adapter — opt-in per provider
+#   test_fixture_only — never in published builds
+
+[[rule]]
+product = "cargo-allow"
+rule = "no_default_pulls_intent_or_proof"
+description = "cargo-allow default features must not pull cargo-intent or cargo-proof"
+
+[[rule]]
+product = "cargo-intent"
+rule = "no_default_pulls_proof_or_provider"
+description = "cargo-intent default features must not pull proof or provider execution"
+
+[[rule]]
+product = "cargo-proof"
+rule = "no_reverse_dependency_to_cargo_allow"
+description = "cargo-proof provider features must not create a reverse dependency to cargo-allow"
