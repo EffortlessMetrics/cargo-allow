@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct ParityContract {
     pub scenario_id: String,
-    pub allow_diff_module: String,
+    pub prior_module: String,
     pub repo_snapshot_module: String,
     pub parity_case: String,
     pub move_ledger_entry: String,

@@ -18,5 +18,4 @@ sha2.workspace = true
 toml.workspace = true
 
 [dev-dependencies]
-allow-diff = { path = "../allow-diff" }
 effortless-repo-protocol = { path = "../effortless-repo-protocol" }
