@@ -3423,7 +3423,7 @@ deletion_output = "Delete scaffold sources after parity cutover and old-path ret
 [[entry]]
 id = "INVENTORY-REPO_SNAPSHOT-SRC"
 source_kind = "RustModule"
-current_paths = ["crates/effortless-repo-snapshot/src/error.rs", "crates/effortless-repo-snapshot/src/git.rs", "crates/effortless-repo-snapshot/src/lib.rs", "crates/effortless-repo-snapshot/src/parity/mod.rs", "crates/effortless-repo-snapshot/src/protocol_adapter.rs", "crates/effortless-repo-snapshot/src/source_view_tests.rs", "crates/effortless-repo-snapshot/src/source_view.rs", "crates/effortless-repo-snapshot/src/tests.rs"]
+current_paths = ["crates/effortless-repo-snapshot/src/error.rs", "crates/effortless-repo-snapshot/src/git.rs", "crates/effortless-repo-snapshot/src/lib.rs", "crates/effortless-repo-snapshot/src/parity/mod.rs", "crates/effortless-repo-snapshot/src/protocol_adapter.rs", "crates/effortless-repo-snapshot/src/source_view_tests.rs", "crates/effortless-repo-snapshot/src/source_view.rs", "crates/effortless-repo-snapshot/src/tests.rs", "crates/effortless-repo-snapshot/src/util.rs"]
 current_refs = []
 current_identity = "Extracted repo-snapshot source tree under no-new intent/proof/shared enforcement (#2598)"
 current_product = "shared"

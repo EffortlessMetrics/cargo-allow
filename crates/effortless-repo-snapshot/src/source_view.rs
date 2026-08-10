@@ -1,13 +1,11 @@
+use crate::error::{SnapshotError, SnapshotErrorKind, SnapshotResult};
 use crate::git::{git_tracked_files_at_revision, read_file_at_revision};
 use crate::revision_identity::{ResolvedRevisionIdentity, resolve_revision_identity};
 use crate::staged_index::{
     StagedEntryKind, StagedPathRead, StagedRepositorySnapshot, StagedSnapshotCompleteness,
     read_staged_path, staged_repository_snapshot,
 };
-use allow_core::{
-    CargoAllowError, CargoAllowErrorKind, CargoAllowResult, SOURCE_FILE_READ_MAX_BYTES,
-    read_file_capped, source_tree_path_is_ignored,
-};
+use crate::util::{SOURCE_FILE_READ_MAX_BYTES, read_file_capped, source_tree_path_is_ignored};
 use allow_inventory::{
     Inventory, InventoryCompleteness, InventoryOptions, InventorySource, inventory,
 };
@@ -38,15 +36,17 @@ pub enum RepositorySourceView {
 }
 
 impl RepositorySourceView {
-    pub fn filesystem(root: impl AsRef<Path>) -> CargoAllowResult<Self> {
+    pub fn filesystem(root: impl AsRef<Path>) -> SnapshotResult<Self> {
         let root = root.as_ref();
         Ok(Self::Filesystem {
             root: root.to_path_buf(),
-            inventory: inventory(root, &InventoryOptions::default())?,
+            inventory: inventory(root, &InventoryOptions::default()).map_err(|error| {
+                SnapshotError::with_kind(SnapshotErrorKind::Inventory, error.to_string())
+            })?,
         })
     }
 
-    pub fn staged(root: impl AsRef<Path>) -> CargoAllowResult<Self> {
+    pub fn staged(root: impl AsRef<Path>) -> SnapshotResult<Self> {
         let snapshot = staged_repository_snapshot(root)?;
         let inventory = staged_inventory(&snapshot);
         Ok(Self::StagedIndex {
@@ -55,7 +55,7 @@ impl RepositorySourceView {
         })
     }
 
-    pub fn committed(root: impl AsRef<Path>, revision: &str) -> CargoAllowResult<Self> {
+    pub fn committed(root: impl AsRef<Path>, revision: &str) -> SnapshotResult<Self> {
         let root = root.as_ref();
         let identity = resolve_revision_identity(root, revision)?;
         let files = git_tracked_files_at_revision(root, &identity.commit)?;
@@ -119,18 +119,18 @@ impl RepositorySourceView {
         }
     }
 
-    pub fn read_text(&self, path: &Path) -> CargoAllowResult<String> {
+    pub fn read_text(&self, path: &Path) -> SnapshotResult<String> {
         let bytes = self.read_bytes(path)?;
         String::from_utf8(bytes).map_err(|source| {
-            CargoAllowError::with_kind(
-                CargoAllowErrorKind::Scan,
+            SnapshotError::with_kind(
+                SnapshotErrorKind::Scan,
                 format!("source file {} is not valid UTF-8", path.display()),
             )
             .with_cause(&source)
         })
     }
 
-    pub fn rust_inputs(&self) -> CargoAllowResult<RustSourceInputs> {
+    pub fn rust_inputs(&self) -> SnapshotResult<RustSourceInputs> {
         let mut manifests = Vec::new();
         let mut sources = Vec::new();
         for path in &self.inventory().files {
@@ -143,12 +143,12 @@ impl RepositorySourceView {
         Ok((manifests, sources))
     }
 
-    fn read_bytes(&self, path: &Path) -> CargoAllowResult<Vec<u8>> {
+    fn read_bytes(&self, path: &Path) -> SnapshotResult<Vec<u8>> {
         validate_relative_path(path)?;
         match self {
             Self::Filesystem { root, .. } => read_file_capped(&root.join(path)).map_err(|source| {
-                CargoAllowError::with_kind(
-                    CargoAllowErrorKind::Scan,
+                SnapshotError::with_kind(
+                    SnapshotErrorKind::Scan,
                     format!("failed to read source file {}", path.display()),
                 )
                 .with_cause(&source)
@@ -157,15 +157,15 @@ impl RepositorySourceView {
                 let read = read_staged_path(snapshot, path)?;
                 match read {
                     StagedPathRead::Regular(bytes) => capped_staged_bytes(path, bytes),
-                    StagedPathRead::Missing => Err(CargoAllowError::with_kind(
-                        CargoAllowErrorKind::Inventory,
+                    StagedPathRead::Missing => Err(SnapshotError::with_kind(
+                        SnapshotErrorKind::Inventory,
                         format!(
                             "staged source file {} is absent from the candidate",
                             path.display()
                         ),
                     )),
-                    StagedPathRead::Unsupported { kind, .. } => Err(CargoAllowError::with_kind(
-                        CargoAllowErrorKind::Inventory,
+                    StagedPathRead::Unsupported { kind, .. } => Err(SnapshotError::with_kind(
+                        SnapshotErrorKind::Inventory,
                         format!(
                             "staged source file {} has unsupported entry kind {kind:?}",
                             path.display()
@@ -176,8 +176,8 @@ impl RepositorySourceView {
             Self::CommittedTree { root, revision, .. } => {
                 match read_file_at_revision(root, revision, path)? {
                     Some(text) => capped_committed_text(path, text),
-                    None => Err(CargoAllowError::with_kind(
-                        CargoAllowErrorKind::Inventory,
+                    None => Err(SnapshotError::with_kind(
+                        SnapshotErrorKind::Inventory,
                         format!(
                             "committed source file {} is absent or unsupported in the parent tree",
                             path.display()
@@ -231,10 +231,10 @@ fn staged_inventory(snapshot: &StagedRepositorySnapshot) -> Inventory {
     }
 }
 
-fn capped_staged_bytes(path: &Path, bytes: Vec<u8>) -> CargoAllowResult<Vec<u8>> {
+fn capped_staged_bytes(path: &Path, bytes: Vec<u8>) -> SnapshotResult<Vec<u8>> {
     if (bytes.len() as u64) > SOURCE_FILE_READ_MAX_BYTES {
-        return Err(CargoAllowError::with_kind(
-            CargoAllowErrorKind::Scan,
+        return Err(SnapshotError::with_kind(
+            SnapshotErrorKind::Scan,
             format!(
                 "staged source file {} exceeds the {}-byte source-read limit",
                 path.display(),
@@ -245,10 +245,10 @@ fn capped_staged_bytes(path: &Path, bytes: Vec<u8>) -> CargoAllowResult<Vec<u8>>
     Ok(bytes)
 }
 
-fn capped_committed_text(path: &Path, text: String) -> CargoAllowResult<Vec<u8>> {
+fn capped_committed_text(path: &Path, text: String) -> SnapshotResult<Vec<u8>> {
     if (text.len() as u64) > SOURCE_FILE_READ_MAX_BYTES {
-        return Err(CargoAllowError::with_kind(
-            CargoAllowErrorKind::Scan,
+        return Err(SnapshotError::with_kind(
+            SnapshotErrorKind::Scan,
             format!(
                 "committed source file {} exceeds the {}-byte source-read limit",
                 path.display(),
@@ -259,7 +259,7 @@ fn capped_committed_text(path: &Path, text: String) -> CargoAllowResult<Vec<u8>>
     Ok(text.into_bytes())
 }
 
-fn validate_relative_path(path: &Path) -> CargoAllowResult<()> {
+fn validate_relative_path(path: &Path) -> SnapshotResult<()> {
     if path.as_os_str().is_empty()
         || path.components().any(|component| {
             matches!(
@@ -268,8 +268,8 @@ fn validate_relative_path(path: &Path) -> CargoAllowResult<()> {
             )
         })
     {
-        return Err(CargoAllowError::with_kind(
-            CargoAllowErrorKind::InvalidConfig,
+        return Err(SnapshotError::with_kind(
+            SnapshotErrorKind::InvalidConfig,
             format!(
                 "source view path must be repository-relative: {}",
                 path.display()

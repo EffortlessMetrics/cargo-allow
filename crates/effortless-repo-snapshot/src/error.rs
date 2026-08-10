@@ -8,6 +8,7 @@ pub type SnapshotResult<T> = Result<T, SnapshotError>;
 #[derive(Debug, Clone)]
 pub struct SnapshotError {
     message: String,
+    kind: SnapshotErrorKind,
     diagnostic: Option<Box<SnapshotDiagnostic>>,
 }
 
@@ -15,13 +16,15 @@ impl SnapshotError {
     pub fn new(message: impl Into<String>) -> Self {
         Self {
             message: message.into(),
+            kind: SnapshotErrorKind::Unknown,
             diagnostic: None,
         }
     }
 
-    pub fn with_kind(_kind: SnapshotErrorKind, message: impl Into<String>) -> Self {
+    pub fn with_kind(kind: SnapshotErrorKind, message: impl Into<String>) -> Self {
         Self {
             message: message.into(),
+            kind,
             diagnostic: None,
         }
     }
@@ -37,6 +40,10 @@ impl SnapshotError {
 
     pub fn as_str(&self) -> &str {
         &self.message
+    }
+
+    pub fn kind(&self) -> SnapshotErrorKind {
+        self.kind
     }
 
     pub fn diagnostics(&self) -> Vec<&SnapshotDiagnostic> {

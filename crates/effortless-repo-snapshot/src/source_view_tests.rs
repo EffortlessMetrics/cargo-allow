@@ -1,4 +1,4 @@
-use crate::RepositorySourceView;
+use crate::{RepositorySourceView, SnapshotErrorKind};
 use allow_inventory::InventorySource;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -75,6 +75,56 @@ fn staged_view_does_not_fall_back_for_deleted_candidate_path() -> Result<(), Str
         .ok_or_else(|| "deleted staged path unexpectedly read from worktree".to_string())?;
     if !error.to_string().contains("absent from the candidate") {
         return Err("unexpected error for deleted staged path".to_string());
+    }
+    let _ = fs::remove_dir_all(root);
+    Ok(())
+}
+
+#[test]
+fn filesystem_view_classifies_invalid_and_missing_reads() -> Result<(), String> {
+    let root = test_repo("filesystem-errors")?;
+    fs::write(root.join("invalid.txt"), [0xff, 0xfe]).map_err(|error| error.to_string())?;
+    let view = RepositorySourceView::filesystem(&root).map_err(|error| error.to_string())?;
+
+    let invalid = view
+        .read_text(Path::new("invalid.txt"))
+        .err()
+        .ok_or_else(|| "invalid UTF-8 unexpectedly succeeded".to_string())?;
+    if invalid.kind() != SnapshotErrorKind::Scan {
+        return Err("invalid UTF-8 was not classified as a scan error".to_string());
+    }
+    let missing = view
+        .read_text(Path::new("missing.txt"))
+        .err()
+        .ok_or_else(|| "missing filesystem path unexpectedly succeeded".to_string())?;
+    if missing.kind() != SnapshotErrorKind::Scan {
+        return Err("missing filesystem path was not classified as a scan error".to_string());
+    }
+    let invalid_path = view
+        .read_text(Path::new("../escape.txt"))
+        .err()
+        .ok_or_else(|| "escaping source path unexpectedly succeeded".to_string())?;
+    if invalid_path.kind() != SnapshotErrorKind::InvalidConfig {
+        return Err("escaping source path was not classified as invalid config".to_string());
+    }
+    let _ = fs::remove_dir_all(root);
+    Ok(())
+}
+
+#[test]
+fn committed_view_classifies_missing_tree_reads() -> Result<(), String> {
+    let root = test_repo("committed-errors")?;
+    fs::write(root.join("value.txt"), "committed\n").map_err(|error| error.to_string())?;
+    git(&root, &["add", "value.txt"])?;
+    git(&root, &["commit", "-qm", "base"])?;
+    let view = RepositorySourceView::committed(&root, "HEAD")
+        .map_err(|error| format!("committed view: {error}"))?;
+    let missing = view
+        .read_text(Path::new("missing.txt"))
+        .err()
+        .ok_or_else(|| "missing committed path unexpectedly succeeded".to_string())?;
+    if missing.kind() != SnapshotErrorKind::Inventory {
+        return Err("missing committed path was not classified as inventory".to_string());
     }
     let _ = fs::remove_dir_all(root);
     Ok(())
