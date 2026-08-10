@@ -24,6 +24,8 @@ mod exit_code;
 mod explain;
 #[cfg(test)]
 mod extraction_parity_runtime;
+#[cfg(test)]
+mod extraction_repo_edit_runtime;
 mod federation_doctor;
 mod federation_report;
 mod hooks;

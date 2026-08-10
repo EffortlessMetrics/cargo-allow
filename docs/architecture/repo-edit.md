@@ -22,6 +22,13 @@ packets.
 
 Parity fixtures live under `tests/fixtures/repo-edit/`.
 
+The extraction parity harness also executes the private cargo-allow
+compatibility forwards and the direct `effortless-repo-edit` authority against
+equivalent temporary roots for containment, atomic write, no-overwrite, and
+mutation-lock behavior. This is runtime parity evidence for the core shims;
+it does not by itself promote the stage or constitute a cutover receipt for
+command-specific apply, reachability, package ownership, or CI evidence.
+
 ## Residual (#2568)
 
 Embedded precommit evaluator and embedded spec-system CI audit are retired in
