@@ -139,7 +139,7 @@ fn segment_match_chars(pattern: &[char], text: &[char]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::{self, Read};
+    use std::io::Read;
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -236,8 +236,8 @@ mod tests {
         struct FailingReader;
 
         impl Read for FailingReader {
-            fn read(&mut self, _buffer: &mut [u8]) -> io::Result<usize> {
-                Err(io::Error::new(io::ErrorKind::Other, "fixture read failure"))
+            fn read(&mut self, _buffer: &mut [u8]) -> std::io::Result<usize> {
+                Err(std::io::Error::other("fixture read failure"))
             }
         }
 
