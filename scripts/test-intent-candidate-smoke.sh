@@ -27,7 +27,6 @@ assert receipt.get("result") == "Passed"
 order = receipt.get("package_set", {}).get("order", [])
 assert order == [
     "allow-core",
-    "allow-inventory",
     "effortless-repo-protocol",
     "effortless-repo-snapshot",
     "intent-protocol",
