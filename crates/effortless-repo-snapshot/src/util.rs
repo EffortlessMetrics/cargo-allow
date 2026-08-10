@@ -107,38 +107,27 @@ fn glob_match_tokens(pattern: &[&str], path: &[&str]) -> bool {
 }
 
 fn segment_matches(pattern: &str, text: &str) -> bool {
-    let Some((pattern_index, pattern_head)) = pattern.char_indices().next() else {
+    let pattern = pattern.chars().collect::<Vec<_>>();
+    let text = text.chars().collect::<Vec<_>>();
+    segment_match_chars(&pattern, &text)
+}
+
+fn segment_match_chars(pattern: &[char], text: &[char]) -> bool {
+    let Some((&pattern_head, pattern_tail)) = pattern.split_first() else {
         return text.is_empty();
     };
     match pattern_head {
         '*' => {
-            let pattern_tail = &pattern[pattern_index + pattern_head.len_utf8()..];
-            segment_matches(pattern_tail, text)
+            segment_match_chars(pattern_tail, text)
                 || text
-                    .char_indices()
-                    .next()
-                    .is_some_and(|(text_index, text_head)| {
-                        segment_matches(pattern, &text[text_index + text_head.len_utf8()..])
-                    })
+                    .split_first()
+                    .is_some_and(|(_, text_tail)| segment_match_chars(pattern, text_tail))
         }
         '?' => text
-            .char_indices()
-            .next()
-            .is_some_and(|(text_index, text_head)| {
-                segment_matches(
-                    &pattern[pattern_index + pattern_head.len_utf8()..],
-                    &text[text_index + text_head.len_utf8()..],
-                )
-            }),
-        ch => text
-            .char_indices()
-            .next()
-            .is_some_and(|(text_index, text_head)| {
-                text_head == ch
-                    && segment_matches(
-                        &pattern[pattern_index + pattern_head.len_utf8()..],
-                        &text[text_index + text_head.len_utf8()..],
-                    )
-            }),
+            .split_first()
+            .is_some_and(|(_, text_tail)| segment_match_chars(pattern_tail, text_tail)),
+        ch => text.split_first().is_some_and(|(&text_head, text_tail)| {
+            text_head == ch && segment_match_chars(pattern_tail, text_tail)
+        }),
     }
 }
