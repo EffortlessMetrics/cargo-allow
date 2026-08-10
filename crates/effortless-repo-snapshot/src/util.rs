@@ -56,10 +56,10 @@ fn read_limited<R: Read>(reader: R, path: &Path) -> SnapshotResult<Vec<u8>> {
     Ok(bytes)
 }
 
-pub fn source_tree_path_is_ignored(path: &Path, patterns: &[String]) -> bool {
+pub fn source_tree_path_is_ignored<T: AsRef<str>>(path: &Path, patterns: &[T]) -> bool {
     let normalized = normalize_path(path);
     patterns.iter().any(|pattern| {
-        let pattern = pattern.replace('\\', "/");
+        let pattern = pattern.as_ref().replace('\\', "/");
         glob_matches(&pattern, &normalized)
             || pattern.strip_suffix("/**").is_some_and(|prefix| {
                 normalized == prefix || normalized.starts_with(&format!("{prefix}/"))

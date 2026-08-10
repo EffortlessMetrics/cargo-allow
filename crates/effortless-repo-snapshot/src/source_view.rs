@@ -1,13 +1,15 @@
 use crate::error::{SnapshotError, SnapshotErrorKind, SnapshotResult};
 use crate::git::{git_tracked_files_at_revision, read_file_at_revision};
-use crate::inventory::{SourceInventory, SourceInventoryCompleteness, SourceInventorySource};
+use crate::inventory::{
+    SourceInventory, SourceInventoryCompleteness, SourceInventorySource, default_source_inventory,
+    source_inventory_path_is_ignored,
+};
 use crate::revision_identity::{ResolvedRevisionIdentity, resolve_revision_identity};
 use crate::staged_index::{
     StagedEntryKind, StagedPathRead, StagedRepositorySnapshot, StagedSnapshotCompleteness,
     read_staged_path, staged_repository_snapshot,
 };
-use crate::util::{SOURCE_FILE_READ_MAX_BYTES, read_file_capped, source_tree_path_is_ignored};
-use allow_inventory::{InventoryOptions, inventory};
+use crate::util::{SOURCE_FILE_READ_MAX_BYTES, read_file_capped};
 use std::path::{Component, Path, PathBuf};
 
 type RustSourceInputs = (Vec<(PathBuf, String)>, Vec<(PathBuf, String)>);
@@ -39,11 +41,7 @@ impl RepositorySourceView {
         let root = root.as_ref();
         Ok(Self::Filesystem {
             root: root.to_path_buf(),
-            inventory: inventory(root, &InventoryOptions::default())
-                .map_err(|error| {
-                    SnapshotError::with_kind(SnapshotErrorKind::Inventory, error.to_string())
-                })?
-                .into(),
+            inventory: default_source_inventory(root)?,
         })
     }
 
@@ -60,18 +58,13 @@ impl RepositorySourceView {
         let root = root.as_ref();
         let identity = resolve_revision_identity(root, revision)?;
         let files = git_tracked_files_at_revision(root, &identity.commit)?;
-        let options = InventoryOptions::default();
         let mut files = files
             .into_iter()
-            .filter(|path| !source_tree_path_is_ignored(path, &options.ignored))
+            .filter(|path| !source_inventory_path_is_ignored(path))
             .collect::<Vec<_>>();
         files.sort();
         files.dedup();
-        let completeness = if !options.ignored.is_empty() || !options.generated.is_empty() {
-            SourceInventoryCompleteness::Scoped
-        } else {
-            SourceInventoryCompleteness::Complete
-        };
+        let completeness = SourceInventoryCompleteness::Scoped;
         Ok(Self::CommittedTree {
             root: root.to_path_buf(),
             revision: identity.commit.clone(),
@@ -191,13 +184,12 @@ impl RepositorySourceView {
 }
 
 fn staged_inventory(snapshot: &StagedRepositorySnapshot) -> SourceInventory {
-    let options = InventoryOptions::default();
     let mut files = snapshot
         .entries
         .iter()
         .filter(|entry| entry.stage == 0)
         .filter_map(|entry| entry.path.clone())
-        .filter(|path| !source_tree_path_is_ignored(path, &options.ignored))
+        .filter(|path| !source_inventory_path_is_ignored(path))
         .filter(|path| {
             snapshot
                 .entries
@@ -215,10 +207,8 @@ fn staged_inventory(snapshot: &StagedRepositorySnapshot) -> SourceInventory {
     files.dedup();
     let completeness = if snapshot.completeness == StagedSnapshotCompleteness::Partial {
         SourceInventoryCompleteness::Partial
-    } else if !options.ignored.is_empty() || !options.generated.is_empty() {
-        SourceInventoryCompleteness::Scoped
     } else {
-        SourceInventoryCompleteness::Complete
+        SourceInventoryCompleteness::Scoped
     };
     SourceInventory {
         files,
