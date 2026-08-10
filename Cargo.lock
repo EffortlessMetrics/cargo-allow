@@ -450,7 +450,6 @@ dependencies = [
 name = "effortless-repo-snapshot"
 version = "0.1.0"
 dependencies = [
- "allow-core",
  "allow-diff",
  "effortless-repo-protocol",
  "serde",

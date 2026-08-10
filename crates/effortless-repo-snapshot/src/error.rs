@@ -105,17 +105,3 @@ pub fn sha256_v1_bytes(input: &[u8]) -> String {
     let hex: String = digest.iter().map(|b| format!("{b:02x}")).collect();
     format!("sha256:v1:{hex}")
 }
-
-#[cfg(feature = "allow-core-interop")]
-impl From<SnapshotError> for allow_core::CargoAllowError {
-    fn from(err: SnapshotError) -> Self {
-        allow_core::CargoAllowError::new(err.as_str())
-    }
-}
-
-#[cfg(feature = "allow-core-interop")]
-impl From<allow_core::CargoAllowError> for SnapshotError {
-    fn from(err: allow_core::CargoAllowError) -> Self {
-        SnapshotError::new(err.to_string())
-    }
-}

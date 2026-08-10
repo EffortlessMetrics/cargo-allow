@@ -17,8 +17,9 @@ use allow_rust::{
     inventory_rust_test_subjects_from_sources, resolve_rust_test_selector,
 };
 use effortless_repo_snapshot::{
-    RepositorySourceView, ResolvedRevisionIdentity, SourceInventory, SourceInventoryCompleteness,
-    SourceInventorySource, resolve_revision_identity, staged_repository_snapshot,
+    RepositorySourceView, ResolvedRevisionIdentity, SnapshotError, SnapshotErrorKind,
+    SourceInventory, SourceInventoryCompleteness, SourceInventorySource, resolve_revision_identity,
+    staged_repository_snapshot,
 };
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -77,6 +78,18 @@ fn legacy_inventory(value: &SourceInventory) -> Inventory {
         skipped_paths: value.skipped_paths.clone(),
         submodule_paths: value.submodule_paths.clone(),
     }
+}
+
+fn snapshot_error(error: SnapshotError) -> CargoAllowError {
+    let kind = match error.kind() {
+        SnapshotErrorKind::Internal => CargoAllowErrorKind::Internal,
+        SnapshotErrorKind::InvalidConfig => CargoAllowErrorKind::InvalidConfig,
+        SnapshotErrorKind::Inventory => CargoAllowErrorKind::Inventory,
+        SnapshotErrorKind::Artifact => CargoAllowErrorKind::Artifact,
+        SnapshotErrorKind::Unknown => CargoAllowErrorKind::Unknown,
+        SnapshotErrorKind::Scan => CargoAllowErrorKind::Scan,
+    };
+    CargoAllowError::with_kind(kind, error.to_string())
 }
 
 /// Evaluate a paired exact parent/staged graph through the pure policy seam.
@@ -227,14 +240,14 @@ pub struct PairedSelfHostedGraphCompilation {
 pub fn compile_self_hosted_graph(
     root: impl AsRef<Path>,
 ) -> CargoAllowResult<SelfHostedGraphCompilation> {
-    let view = RepositorySourceView::filesystem(root)?;
+    let view = RepositorySourceView::filesystem(root).map_err(snapshot_error)?;
     compile_self_hosted_graph_from_view(&view)
 }
 
 pub fn compile_self_hosted_graph_staged(
     root: impl AsRef<Path>,
 ) -> CargoAllowResult<SelfHostedGraphCompilation> {
-    let view = RepositorySourceView::staged(root)?;
+    let view = RepositorySourceView::staged(root).map_err(snapshot_error)?;
     compile_self_hosted_graph_from_view(&view)
 }
 
@@ -242,8 +255,8 @@ pub fn compile_paired_self_hosted_graph(
     root: impl AsRef<Path>,
 ) -> CargoAllowResult<PairedSelfHostedGraphCompilation> {
     let root = root.as_ref();
-    let parent_view = RepositorySourceView::committed(root, "HEAD")?;
-    let candidate_view = RepositorySourceView::staged(root)?;
+    let parent_view = RepositorySourceView::committed(root, "HEAD").map_err(snapshot_error)?;
+    let candidate_view = RepositorySourceView::staged(root).map_err(snapshot_error)?;
     let parent_identity = parent_view.revision_identity().cloned().ok_or_else(|| {
         CargoAllowError::with_kind(
             CargoAllowErrorKind::Artifact,
@@ -262,8 +275,11 @@ pub fn compile_paired_self_hosted_graph(
 
     let parent = compile_self_hosted_graph_from_view(&parent_view)?;
     let candidate = compile_self_hosted_graph_from_view(&candidate_view)?;
-    let parent_after = resolve_revision_identity(root, "HEAD")?;
-    let candidate_identity_after = staged_repository_snapshot(root)?.identity.semantic_hash;
+    let parent_after = resolve_revision_identity(root, "HEAD").map_err(snapshot_error)?;
+    let candidate_identity_after = staged_repository_snapshot(root)
+        .map_err(snapshot_error)?
+        .identity
+        .semantic_hash;
     if parent_after != parent_identity {
         return Err(stale_source_error(
             "HEAD changed while compiling the paired parent and staged candidate",
@@ -464,10 +480,18 @@ fn compile_self_hosted_graph_from_view(
     view: &RepositorySourceView,
 ) -> CargoAllowResult<SelfHostedGraphCompilation> {
     let composition = &SELF_HOSTED_RUNTIME_PROMOTION;
-    let requirement_text = view.read_text(Path::new(composition.requirement_path))?;
-    let slice_text = view.read_text(Path::new(composition.slice_path))?;
-    let seams_text = view.read_text(Path::new(composition.seams_path))?;
-    let evidence_text = view.read_text(Path::new(composition.evidence_path))?;
+    let requirement_text = view
+        .read_text(Path::new(composition.requirement_path))
+        .map_err(snapshot_error)?;
+    let slice_text = view
+        .read_text(Path::new(composition.slice_path))
+        .map_err(snapshot_error)?;
+    let seams_text = view
+        .read_text(Path::new(composition.seams_path))
+        .map_err(snapshot_error)?;
+    let evidence_text = view
+        .read_text(Path::new(composition.evidence_path))
+        .map_err(snapshot_error)?;
     let requirements = parse_requirement_blocks_at(
         Some(Path::new(composition.requirement_path)),
         &requirement_text,
@@ -479,7 +503,7 @@ fn compile_self_hosted_graph_from_view(
         parse_authored_evidence_at(Some(Path::new(composition.evidence_path)), &evidence_text)?;
     validate_authored_mapping(&requirements, &slice, &seams, &evidence)?;
 
-    let (manifests, sources) = view.rust_inputs()?;
+    let (manifests, sources) = view.rust_inputs().map_err(snapshot_error)?;
     let rust_inventory =
         inventory_rust_test_subjects_from_sources(manifests, sources, &Default::default());
     let mut diagnostics = view
@@ -763,6 +787,27 @@ mod tests {
         require_len(result.graph.evidence_claims.len(), 2, "evidence claims")?;
         require_len(result.graph.subjects.len(), 3, "subjects")?;
         Ok(())
+    }
+
+    #[test]
+    fn snapshot_error_projection_preserves_error_kind() {
+        let cases = [
+            (SnapshotErrorKind::Internal, CargoAllowErrorKind::Internal),
+            (
+                SnapshotErrorKind::InvalidConfig,
+                CargoAllowErrorKind::InvalidConfig,
+            ),
+            (SnapshotErrorKind::Inventory, CargoAllowErrorKind::Inventory),
+            (SnapshotErrorKind::Artifact, CargoAllowErrorKind::Artifact),
+            (SnapshotErrorKind::Unknown, CargoAllowErrorKind::Unknown),
+            (SnapshotErrorKind::Scan, CargoAllowErrorKind::Scan),
+        ];
+        for (source, expected) in cases {
+            assert_eq!(
+                snapshot_error(SnapshotError::with_kind(source, "error")).kind(),
+                expected
+            );
+        }
     }
 
     fn require_len(actual: usize, expected: usize, label: &str) -> Result<(), String> {
