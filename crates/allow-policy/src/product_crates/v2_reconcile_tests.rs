@@ -49,6 +49,7 @@ fn make_entry(logical: &str, package: &str, family: &str, order: u32) -> Package
         posture: PackagePosture::CargoAllowSupported,
         package_version: "0.2.0".to_string(),
         version_source: VersionSourceV2::WorkspaceProduct,
+        version_line: "test-0.1".to_string(),
         publication_state: PublicationStateV2::UnpublishedInternal,
         publish: false,
         candidate_inclusion: false,
