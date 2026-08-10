@@ -39,7 +39,7 @@ pub struct PackageTopologyEntryV2 {
     pub package_version: String,
     pub version_source: VersionSourceV2,
     /// Independent version line for non-lockstep compatibility (#3362).
-    /// Format: "<product-family>-<major>.<minor>" (e.g., "cargo-allow-0.2").
+    /// Format: `<product-family>-<major>.<minor>` (e.g., `cargo-allow-0.2`).
     pub version_line: String,
     pub publication_state: PublicationStateV2,
     pub publish: bool,
