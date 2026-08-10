@@ -1,0 +1,217 @@
+name: Apply #3440 README path fix
+
+on:
+  push:
+    branches:
+      - automation/3440-readme-fix
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - name: Patch exact implementation head
+        shell: bash
+        env:
+          EXPECTED_HEAD: 26875891ad6d83cf306e17d68a8f5a11d00e0fef
+        run: |
+          set -euo pipefail
+          git fetch origin fix/3440-package-identities
+          actual="$(git rev-parse origin/fix/3440-package-identities)"
+          if [ "${actual}" != "${EXPECTED_HEAD}" ]; then
+            echo "::error::implementation branch moved: expected ${EXPECTED_HEAD}, got ${actual}"
+            exit 1
+          fi
+          git checkout -B fix/3440-package-identities origin/fix/3440-package-identities
+
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('crates/cargo-allow/src/release_prep_tests.rs')
+          text = path.read_text(encoding='utf-8')
+
+          old_test = '''#[test]
+          fn release_packages_use_crate_local_readmes() {
+              let root = workspace_root();
+              let workspace_manifest = read_workspace_file(&root, "Cargo.toml");
+              let package_manifests = all_workspace_package_manifests(&root);
+
+              assert!(
+                  workspace_manifest_contains(
+                      &workspace_manifest,
+                      "[workspace.package]",
+                      r#"readme = "README.md""#
+                  ),
+                  "workspace package metadata should keep the root product README"
+              );
+              for (package, manifest) in package_manifests {
+                  assert!(
+                      manifest.contains(r#"readme = "README.md""#),
+                      "{package} should publish its crate-local README"
+                  );
+                  assert!(
+                      !manifest.contains("readme.workspace = true"),
+                      "{package} should not inherit the root product README as package docs"
+                  );
+                  let readme_path = format!("crates/{package}/README.md");
+                  let readme = read_workspace_file(&root, &readme_path);
+                  assert!(
+                      readme.contains(&format!("# {package}")),
+                      "{readme_path} should identify the crate"
+                  );
+                  assert!(
+                      readme.contains("Most users should"),
+                      "{readme_path} should route normal users back to the cargo-allow product"
+                  );
+              }
+          }
+          '''
+
+          new_test = '''#[test]
+          fn release_packages_use_crate_local_readmes() {
+              let root = workspace_root();
+              let workspace_manifest = read_workspace_file(&root, "Cargo.toml");
+              let package_manifests = all_workspace_package_manifest_entries(&root);
+
+              assert!(
+                  workspace_manifest_contains(
+                      &workspace_manifest,
+                      "[workspace.package]",
+                      r#"readme = "README.md""#
+                  ),
+                  "workspace package metadata should keep the root product README"
+              );
+              for (package, (manifest_path, manifest)) in package_manifests {
+                  let readme_relative = package_table_value(&manifest, "readme")
+                      .unwrap_or_else(|| std::panic::panic_any(format!(
+                          "{} should declare a crate-local readme",
+                          manifest_path.display()
+                      )));
+                  assert_eq!(
+                      readme_relative, "README.md",
+                      "{package} should publish its crate-local README"
+                  );
+                  assert!(
+                      !manifest.contains("readme.workspace = true"),
+                      "{package} should not inherit the root product README as package docs"
+                  );
+                  let readme_path = manifest_path
+                      .parent()
+                      .unwrap_or_else(|| std::panic::panic_any("crate manifest should have a parent"))
+                      .join(&readme_relative);
+                  let readme = std::fs::read_to_string(&readme_path).unwrap_or_else(|err| {
+                      std::panic::panic_any(format!("read {}: {err}", readme_path.display()))
+                  });
+                  assert!(
+                      readme.contains(&format!("# {package}")),
+                      "{} should identify the crate",
+                      readme_path.display()
+                  );
+                  assert!(
+                      readme.contains("Most users should"),
+                      "{} should route normal users back to the cargo-allow product",
+                      readme_path.display()
+                  );
+              }
+          }
+          '''
+
+          old_helper = '''fn all_workspace_package_manifests(root: &Path) -> BTreeMap<String, String> {
+              let crates_dir = root.join("crates");
+              let entries = fs::read_dir(&crates_dir)
+                  .unwrap_or_else(|err| std::panic::panic_any(format!("read crates dir: {err}")));
+              let mut manifests = BTreeMap::new();
+              for entry in entries {
+                  let entry =
+                      entry.unwrap_or_else(|err| std::panic::panic_any(format!("read crate dir: {err}")));
+                  if !entry
+                      .file_type()
+                      .unwrap_or_else(|err| std::panic::panic_any(format!("read crate file type: {err}")))
+                      .is_dir()
+                  {
+                      continue;
+                  }
+                  let manifest_path = entry.path().join("Cargo.toml");
+                  let manifest = fs::read_to_string(&manifest_path).unwrap_or_else(|err| {
+                      std::panic::panic_any(format!("read {}: {err}", manifest_path.display()))
+                  });
+                  let Some(package) = manifest_value(&manifest, "name") else {
+                      std::panic::panic_any(format!(
+                          "{} should declare package name",
+                          manifest_path.display()
+                      ));
+                  };
+                  manifests.insert(package, manifest);
+              }
+              manifests
+          }
+          '''
+
+          new_helper = '''fn all_workspace_package_manifests(root: &Path) -> BTreeMap<String, String> {
+              all_workspace_package_manifest_entries(root)
+                  .into_iter()
+                  .map(|(package, (_, manifest))| (package, manifest))
+                  .collect()
+          }
+
+          fn all_workspace_package_manifest_entries(
+              root: &Path,
+          ) -> BTreeMap<String, (PathBuf, String)> {
+              let crates_dir = root.join("crates");
+              let entries = fs::read_dir(&crates_dir)
+                  .unwrap_or_else(|err| std::panic::panic_any(format!("read crates dir: {err}")));
+              let mut manifests = BTreeMap::new();
+              for entry in entries {
+                  let entry =
+                      entry.unwrap_or_else(|err| std::panic::panic_any(format!("read crate dir: {err}")));
+                  if !entry
+                      .file_type()
+                      .unwrap_or_else(|err| std::panic::panic_any(format!("read crate file type: {err}")))
+                      .is_dir()
+                  {
+                      continue;
+                  }
+                  let manifest_path = entry.path().join("Cargo.toml");
+                  let manifest = fs::read_to_string(&manifest_path).unwrap_or_else(|err| {
+                      std::panic::panic_any(format!("read {}: {err}", manifest_path.display()))
+                  });
+                  let Some(package) = manifest_value(&manifest, "name") else {
+                      std::panic::panic_any(format!(
+                          "{} should declare package name",
+                          manifest_path.display()
+                      ));
+                  };
+                  manifests.insert(package, (manifest_path, manifest));
+              }
+              manifests
+          }
+          '''
+
+          for old, new, label in (
+              (old_test, new_test, 'README test'),
+              (old_helper, new_helper, 'manifest helper'),
+          ):
+              if text.count(old) != 1:
+                  raise SystemExit(f'expected one {label} block, found {text.count(old)}')
+              text = text.replace(old, new)
+          path.write_text(text, encoding='utf-8')
+          PY
+
+          git rm .github/workflows/patch-3440-readme-test.yml
+          cargo fmt --all
+          cargo test -p cargo-allow --bin cargo-allow --locked \
+            release_prep_tests::release_packages_use_crate_local_readmes
+          git diff --check
+
+          git config user.name "EffortlessSteven"
+          git config user.email "git@effortlesssteven.com"
+          git add crates/cargo-allow/src/release_prep_tests.rs
+          git commit -m "test(release): resolve README from each package manifest path (#3440)"
+          git push origin HEAD:fix/3440-package-identities
+          git push origin --delete automation/3440-readme-fix
