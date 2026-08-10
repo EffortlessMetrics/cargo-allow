@@ -755,6 +755,130 @@ fn why_plan_reports_the_candidate_write_it_performed() -> Result<(), String> {
     remove_temp_root(root)
 }
 
+#[test]
+fn explain_summary_preserves_stale_policy_health_and_read_only_posture() -> Result<(), String> {
+    let root = temp_root("summary-explain-stale")?;
+    write_source(&root, "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n")?;
+    run(&root, &["init"])?;
+    fs::write(
+        root.join("policy/allow.toml"),
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+stale_entries_fail = false
+allow_bare_allow_attributes = false
+lint_policy_id_required = false
+
+[requirements.unsafe]
+evidence_required = true
+safety_comment_required = false
+
+[[allow]]
+id = "allow-stale"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Entry intentionally has no current finding."
+evidence = ["test:stale"]
+created = "2026-01-01"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "removed_function"
+callee = "unwrap"
+"#,
+    )
+    .map_err(|error| format!("write stale policy: {error}"))?;
+    git_commit_fixture(&root)?;
+
+    let sidecar = root.join("explain-stale-summary.json");
+    let sidecar_text = sidecar.to_string_lossy().to_string();
+    let summary_output = run(
+        &root,
+        &[
+            "--command-summary-output",
+            &sidecar_text,
+            "explain",
+            "allow-stale",
+        ],
+    )?;
+    require(
+        summary_output.status.success(),
+        format!(
+            "stale explain should be inspectable: {}",
+            String::from_utf8_lossy(&summary_output.stderr)
+        ),
+    )?;
+    let human = stdout(&summary_output)?;
+    let summary: Value = serde_json::from_str(
+        &fs::read_to_string(&sidecar)
+            .map_err(|error| format!("read stale explain summary: {error}"))?,
+    )
+    .map_err(|error| format!("parse stale explain summary: {error}"))?;
+    let human_lines: Vec<&str> = human.lines().collect();
+    require(
+        human_lines.len() >= GRAMMAR_FIELDS.len()
+            && GRAMMAR_FIELDS
+                .iter()
+                .zip(human_lines.iter().copied())
+                .all(|(field_name, line)| line.starts_with(field_name))
+            && human.contains("stale")
+            && !human.contains('\u{1b}'),
+        format!("stale explain human summary lost policy-health context: {human}"),
+    )?;
+    require(
+        field(&summary, &["result_class"]) == Some(&Value::from("findings"))
+            && field(&summary, &["posture"]) == Some(&Value::from("advisory"))
+            && field(&summary, &["reason", "code"]) == Some(&Value::from("explain.stale"))
+            && field(&summary, &["operation_effects", "writes_repository"])
+                == Some(&Value::Bool(false))
+            && field(&summary, &["primary_action"]).is_none(),
+        format!("stale explain summary lost advisory boundaries: {summary}"),
+    )?;
+
+    let detailed = root.join("explain-stale.json");
+    let detailed_text = detailed.to_string_lossy().to_string();
+    let detailed_output = run(
+        &root,
+        &[
+            "explain",
+            "allow-stale",
+            "--format",
+            "json",
+            "--output",
+            &detailed_text,
+        ],
+    )?;
+    require(
+        detailed_output.status.success(),
+        format!(
+            "stale explain JSON should be inspectable: {}",
+            String::from_utf8_lossy(&detailed_output.stderr)
+        ),
+    )?;
+    let detailed: Value = serde_json::from_str(
+        &fs::read_to_string(&detailed)
+            .map_err(|error| format!("read stale explain detail: {error}"))?,
+    )
+    .map_err(|error| format!("parse stale explain detail: {error}"))?;
+    require(
+        field(&detailed, &["allow_entry", "id"]) == Some(&Value::from("allow-stale"))
+            && field(&detailed, &["status"]) == Some(&Value::from("stale")),
+        format!("stale explain detail lost policy-health status: {detailed}"),
+    )?;
+
+    remove_temp_root(root)
+}
+
 /// `why` writes `--plan` relative to the working directory, so resolving the
 /// summary conflict list only under `--root` let a relative `--root` hide a
 /// real collision: the sidecar then overwrote the plan it was meant to spare.
