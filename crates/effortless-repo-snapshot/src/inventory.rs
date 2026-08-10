@@ -363,6 +363,38 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn inventory_reports_missing_root_as_typed_error() -> Result<(), String> {
+        let root = temp_root("missing-root")?;
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+
+        let error = default_source_inventory(&root)
+            .err()
+            .ok_or_else(|| "missing root unexpectedly scanned".to_string())?;
+
+        assert_eq!(error.kind(), super::SnapshotErrorKind::Inventory);
+        Ok(())
+    }
+
+    #[test]
+    fn inventory_walk_limits_record_skips() -> Result<(), String> {
+        let root = temp_root("walk-limits")?;
+        let mut files = Vec::new();
+        let mut skipped = Vec::new();
+        super::visit(&root, &root, super::MAX_DEPTH + 1, &mut files, &mut skipped)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(files.len(), 0);
+        assert_eq!(skipped.len(), 1);
+
+        files.resize(super::MAX_ENTRIES, PathBuf::from("existing"));
+        skipped.clear();
+        super::visit(&root, &root, 0, &mut files, &mut skipped)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(skipped.len(), 1);
+        fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
     #[cfg(unix)]
     #[test]
     fn fallback_inventory_includes_file_symlinks_and_is_sorted() -> Result<(), String> {
