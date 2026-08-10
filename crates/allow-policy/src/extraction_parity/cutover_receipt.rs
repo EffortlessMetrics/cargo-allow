@@ -342,4 +342,44 @@ mod tests {
         }
         Ok(())
     }
+
+    #[test]
+    fn schema_and_toml_errors_fail_closed() -> Result<(), String> {
+        let serialized = toml::to_string(&receipt()).map_err(|error| error.to_string())?;
+        let wrong_schema = serialized.replace(
+            "cargo-allow.extraction-cutover-receipt.v1",
+            "cargo-allow.other-receipt.v1",
+        );
+        if parse_extraction_cutover_receipt(&wrong_schema).is_ok() {
+            return Err("wrong receipt schema was accepted".to_string());
+        }
+
+        let wrong_version = serialized.replace("schema_version = 1", "schema_version = 2");
+        if parse_extraction_cutover_receipt(&wrong_version).is_ok() {
+            return Err("wrong receipt schema version was accepted".to_string());
+        }
+
+        if parse_extraction_cutover_receipt("schema_id = [").is_ok() {
+            return Err("malformed receipt TOML was accepted".to_string());
+        }
+
+        let wrong_stage = serialized.replace("stage = \"RepoSnapshot\"", "stage = \"Unknown\"");
+        if parse_extraction_cutover_receipt(&wrong_stage).is_ok() {
+            return Err("unknown receipt stage was accepted".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn diagnostic_kind_names_are_stable() -> Result<(), String> {
+        let kinds = [
+            CutoverReceiptDiagnosticKind::MissingField,
+            CutoverReceiptDiagnosticKind::StaleSourceIdentity,
+            CutoverReceiptDiagnosticKind::MissingMoveLedgerEntry,
+        ];
+        if kinds.iter().any(|kind| kind.as_str().is_empty()) {
+            return Err("receipt diagnostic name was empty".to_string());
+        }
+        Ok(())
+    }
 }
