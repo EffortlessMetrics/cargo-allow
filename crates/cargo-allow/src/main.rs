@@ -209,5 +209,6 @@ mod spec_system_profile_tests;
 #[path = "no_new_marker_guard_tests.rs"]
 mod no_new_marker_guard_tests;
 
+#[cfg(test)]
 #[path = "delegation_results.rs"]
 mod delegation_results;

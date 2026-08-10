@@ -197,13 +197,27 @@ mod tests {
         };
         assert!(outcome.is_completed());
         assert_eq!(outcome.code(), DelegationResultCode::DelegatedFindings);
+        let finding_count = match outcome {
+            DelegationOutcome::Completed { finding_count, .. } => Some(finding_count),
+            DelegationOutcome::Failed { .. } => None,
+        };
+        assert_eq!(finding_count, Some(3));
     }
 
     #[test]
     fn error_includes_code_string() {
         let error = DelegationResultCode::ProviderIncompatible.to_error("version 0.1 vs 0.2");
-        let msg = error.to_string();
+        let expected_error = error.to_string();
+        let outcome = DelegationOutcome::Failed {
+            code: DelegationResultCode::ProviderIncompatible,
+            error,
+        };
+        let msg = match outcome {
+            DelegationOutcome::Failed { error, .. } => error.to_string(),
+            DelegationOutcome::Completed { .. } => String::new(),
+        };
         assert!(msg.contains("provider_incompatible"), "msg: {msg}");
         assert!(msg.contains("version 0.1 vs 0.2"), "msg: {msg}");
+        assert_eq!(msg, expected_error);
     }
 }
