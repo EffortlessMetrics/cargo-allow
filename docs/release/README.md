@@ -238,9 +238,9 @@ Internal crates must publish in dependency order:
 6. allow-match
 7. allow-report
 8. allow-policy-legacy
-9. allow-diff
-10. repo-protocol
-11. repo-snapshot
+9. repo-snapshot
+10. allow-diff
+11. repo-protocol
 12. repo-edit
 13. cargo-allow
 ```
@@ -258,7 +258,7 @@ Before tagging, confirm packaging and dry-run publish for the full workspace:
 ```bash
 cargo package --workspace --locked
 for crate in allow-core allow-policy allow-inventory allow-files allow-rust \
-  allow-match allow-report allow-policy-legacy allow-diff repo-protocol repo-snapshot repo-edit \
+  allow-match allow-report allow-policy-legacy repo-snapshot allow-diff repo-protocol repo-edit \
   cargo-allow; do
   cargo publish --dry-run -p "${crate}" --locked
 done
@@ -300,9 +300,9 @@ Configure Trusted Publishing on **each** published crate:
 | 6 | `allow-match` | Settings → Trusted Publishing |
 | 7 | `allow-report` | Settings → Trusted Publishing |
 | 8 | `allow-policy-legacy` | Settings → Trusted Publishing |
-| 9 | `allow-diff` | Settings → Trusted Publishing |
-| 10 | `repo-protocol` | Settings → Trusted Publishing |
-| 11 | `repo-snapshot` | Settings → Trusted Publishing |
+| 9 | `repo-snapshot` | Settings → Trusted Publishing |
+| 10 | `allow-diff` | Settings → Trusted Publishing |
+| 11 | `repo-protocol` | Settings → Trusted Publishing |
 | 12 | `repo-edit` | Settings → Trusted Publishing |
 | 13 | `cargo-allow` | Settings → Trusted Publishing |
 
