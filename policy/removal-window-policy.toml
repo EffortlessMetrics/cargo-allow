@@ -1,0 +1,235 @@
+# Per-operation removal-window policy for legacy spec-system surfaces (#3368 / #2601 step 10).
+#
+# Every legacy spec-system compatibility operation receives a removal-window
+# record: introduced release, earliest deprecation, latest supported
+# release/generation, migration docs, removal issue/condition, and rollback
+# route. Aliases are removed INDEPENDENTLY where their value differs; the
+# command tree is not retained until the last historical reader is gone.
+#
+# Each operation_id mirrors the command/surface string in
+# policy/legacy-spec-system-inventory.toml so coverage is machine-checkable.
+
+schema_id = "cargo-allow.removal-window-policy.v1"
+schema_version = 1
+controlling_issue = 2601
+generated_by = "#3368"
+
+# Disposition vocabulary (mirrors legacy-spec-system-inventory.toml):
+#   DelegateToIntentOperation — delegates to cargo-intent when available
+#   RenderMigrationOnly — renders migration guidance, never executes
+#   HistoricalReadOnly — readable for migration audit, never current authority
+#   UnsupportedAndRemoved — removed, no compatibility path
+#   AliasUntilGeneration — retained as alias until V2 cutover
+
+# ---------------------------------------------------------------------------
+# DelegateToIntentOperation (9 surfaces)
+# ---------------------------------------------------------------------------
+# These share the staged-precommit delegation family. Introduced at 0.2.0
+# alongside the one-way delegation contract. Earliest deprecation is 0.3.0
+# (posture weakening + migration parity). Latest supported release 1.0.0 /
+# generation 2 — the embedded evaluator is deleted at #2970. Each may be
+# retired independently once its parity case is receipted; rollback is always
+# disable the delegation flag, not dual authority.
+
+[[operation]]
+operation_id = "check --profile spec-system"
+disposition = "DelegateToIntentOperation"
+introduced_release = "0.2.0"
+earliest_deprecation_release = "0.3.0"
+latest_supported_release = "1.0.0"
+latest_supported_generation = 2
+migration_docs = "docs/migration/spec-system-to-cargo-intent.md"
+removal_issue = "#2970"
+removal_condition = "issue:#2970 delete embedded spec-system evaluator; cargo-intent check parity receipt"
+rollback_route = "disable delegate_spec_system in .allow/compatibility/intent-delegation.toml"
+independent_removal = true
+
+[[operation]]
+operation_id = "audit --profile spec-system"
+disposition = "DelegateToIntentOperation"
+introduced_release = "0.2.0"
+earliest_deprecation_release = "0.3.0"
+latest_supported_release = "1.0.0"
+latest_supported_generation = 2
+migration_docs = "docs/migration/spec-system-to-cargo-intent.md"
+removal_issue = "#2970"
+removal_condition = "issue:#2970 delete embedded spec-system evaluator; cargo-intent audit parity receipt"
+rollback_route = "disable delegate_spec_system in .allow/compatibility/intent-delegation.toml"
+independent_removal = true
+
+[[operation]]
+operation_id = "doctor --profile spec-system"
+disposition = "DelegateToIntentOperation"
+introduced_release = "0.2.0"
+earliest_deprecation_release = "0.3.0"
+latest_supported_release = "1.0.0"
+latest_supported_generation = 2
+migration_docs = "docs/migration/spec-system-to-cargo-intent.md"
+removal_issue = "#2970"
+removal_condition = "issue:#2970 delete embedded spec-system evaluator; cargo-intent doctor parity receipt"
+rollback_route = "disable delegate_spec_system in .allow/compatibility/intent-delegation.toml"
+independent_removal = true
+
+[[operation]]
+operation_id = "explain --profile spec-system"
+disposition = "DelegateToIntentOperation"
+introduced_release = "0.2.0"
+earliest_deprecation_release = "0.3.0"
+latest_supported_release = "1.0.0"
+latest_supported_generation = 2
+migration_docs = "docs/migration/spec-system-to-cargo-intent.md"
+removal_issue = "#2970"
+removal_condition = "issue:#2970 delete embedded spec-system evaluator; cargo-intent explain parity receipt"
+rollback_route = "disable delegate_spec_system in .allow/compatibility/intent-delegation.toml"
+independent_removal = true
+
+[[operation]]
+operation_id = "worklist --profile spec-system"
+disposition = "DelegateToIntentOperation"
+introduced_release = "0.2.0"
+earliest_deprecation_release = "0.3.0"
+latest_supported_release = "1.0.0"
+latest_supported_generation = 2
+migration_docs = "docs/migration/spec-system-to-cargo-intent.md"
+removal_issue = "#2970"
+removal_condition = "issue:#2970 delete embedded spec-system evaluator; cargo-intent worklist parity receipt"
+rollback_route = "disable delegate_spec_system in .allow/compatibility/intent-delegation.toml"
+independent_removal = true
+
+[[operation]]
+operation_id = "list --profile spec-system"
+disposition = "DelegateToIntentOperation"
+introduced_release = "0.2.0"
+earliest_deprecation_release = "0.3.0"
+latest_supported_release = "1.0.0"
+latest_supported_generation = 2
+migration_docs = "docs/migration/spec-system-to-cargo-intent.md"
+removal_issue = "#2970"
+removal_condition = "issue:#2970 delete embedded spec-system evaluator; cargo-intent list parity receipt"
+rollback_route = "disable delegate_spec_system in .allow/compatibility/intent-delegation.toml"
+independent_removal = true
+
+[[operation]]
+operation_id = "why --profile spec-system"
+disposition = "DelegateToIntentOperation"
+introduced_release = "0.2.0"
+earliest_deprecation_release = "0.3.0"
+latest_supported_release = "1.0.0"
+latest_supported_generation = 2
+migration_docs = "docs/migration/spec-system-to-cargo-intent.md"
+removal_issue = "#2970"
+removal_condition = "issue:#2970 delete embedded spec-system evaluator; cargo-intent why parity receipt"
+rollback_route = "disable delegate_spec_system in .allow/compatibility/intent-delegation.toml"
+independent_removal = true
+
+[[operation]]
+operation_id = "policy/doc-artifacts.toml (spec-system artifact ledger)"
+disposition = "DelegateToIntentOperation"
+introduced_release = "0.2.0"
+earliest_deprecation_release = "0.3.0"
+latest_supported_release = "1.0.0"
+latest_supported_generation = 2
+migration_docs = "docs/migration/spec-system-to-cargo-intent.md"
+removal_issue = "#2970"
+removal_condition = "issue:#2970 delete embedded spec-system evaluator; cargo-intent artifact validation parity receipt"
+rollback_route = "disable delegate_spec_system in .allow/compatibility/intent-delegation.toml"
+independent_removal = true
+
+# This surface has the ONLY live delegation path today (staged precommit).
+# Removal tracks the same delete-evaluator track but its parity case is
+# already receipted (parity-cargo-intent-spec-system-delegate-v1).
+[[operation]]
+operation_id = "precommit --profile spec-system --phase staged"
+disposition = "DelegateToIntentOperation"
+introduced_release = "0.2.0"
+earliest_deprecation_release = "0.3.0"
+latest_supported_release = "1.0.0"
+latest_supported_generation = 2
+migration_docs = "docs/migration/spec-system-to-cargo-intent.md"
+removal_issue = "#2568"
+removal_condition = "issue:#2568 CI audit retirement receipt; parity-cargo-intent-spec-system-delegate-v1"
+rollback_route = "disable delegate_staged_precommit in .allow/compatibility/intent-delegation.toml"
+independent_removal = true
+
+# ---------------------------------------------------------------------------
+# AliasUntilGeneration (2 surfaces)
+# ---------------------------------------------------------------------------
+# Retained as aliases until the V2 authority_generation cutover. Removed at
+# the generation gate, not by the last-reader rule.
+
+[[operation]]
+operation_id = "init --profile spec-system"
+disposition = "AliasUntilGeneration"
+introduced_release = "0.2.0"
+earliest_deprecation_release = "0.4.0"
+latest_supported_release = "1.0.0"
+latest_supported_generation = 2
+migration_docs = "docs/migration/spec-system-to-cargo-intent.md"
+removal_issue = "#2921"
+removal_condition = "issue:#2921 V2 architecture authority generation 2 cutover receipt"
+rollback_route = "keep bootstrap shim behind --profile spec-system until cutover"
+independent_removal = true
+
+[[operation]]
+operation_id = "docs/status/SUPPORT_TIERS.md (spec-system support tiers)"
+disposition = "AliasUntilGeneration"
+introduced_release = "0.2.0"
+earliest_deprecation_release = "0.4.0"
+latest_supported_release = "1.0.0"
+latest_supported_generation = 2
+migration_docs = "docs/migration/spec-system-to-cargo-intent.md"
+removal_issue = "#2921"
+removal_condition = "issue:#2921 V2 published support-tier refresh receipt"
+rollback_route = "keep published reference until cutover; never grants scan authority"
+independent_removal = true
+
+# ---------------------------------------------------------------------------
+# HistoricalReadOnly (2 surfaces)
+# ---------------------------------------------------------------------------
+# Readable for migration audit only. They NEVER grant current authority.
+# Removable independently the moment the V2 audit no longer references them.
+
+[[operation]]
+operation_id = "policy/spec-system.toml (legacy config)"
+disposition = "HistoricalReadOnly"
+introduced_release = "0.1.0"
+earliest_deprecation_release = "0.2.0"
+latest_supported_release = "1.0.0"
+latest_supported_generation = 2
+migration_docs = "docs/migration/spec-system-to-cargo-intent.md"
+removal_issue = "#2970"
+removal_condition = "issue:#2970 delete embedded spec-system evaluator; V2 owned config under .allow/ replaces legacy profile"
+rollback_route = "none — historical read-only, no current authority to restore"
+independent_removal = true
+
+[[operation]]
+operation_id = ".allow/goals/active.toml (legacy active goal)"
+disposition = "HistoricalReadOnly"
+introduced_release = "0.1.0"
+earliest_deprecation_release = "0.2.0"
+latest_supported_release = "1.0.0"
+latest_supported_generation = 2
+migration_docs = "docs/migration/spec-system-to-cargo-intent.md"
+removal_issue = "#2970"
+removal_condition = "issue:#2970 delete embedded spec-system evaluator; intent-engine authority replaces legacy goal manifest"
+rollback_route = "none — historical read-only, no current authority to restore"
+independent_removal = true
+
+# ---------------------------------------------------------------------------
+# RenderMigrationOnly (1 surface)
+# ---------------------------------------------------------------------------
+# Renders migration guidance only; never executes. Removal tracks the
+# delegate family since its only consumer is the migration path.
+
+[[operation]]
+operation_id = "tool (spec-system subcommand)"
+disposition = "RenderMigrationOnly"
+introduced_release = "0.2.0"
+earliest_deprecation_release = "0.3.0"
+latest_supported_release = "1.0.0"
+latest_supported_generation = 2
+migration_docs = "docs/migration/spec-system-to-cargo-intent.md"
+removal_issue = "#2970"
+removal_condition = "issue:#2970 delete embedded spec-system evaluator; tool selection delegates to intent-engine"
+rollback_route = "none — render-only surface, no execution path to restore"
+independent_removal = true

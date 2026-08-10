@@ -10842,6 +10842,22 @@ review_after = "2026-11-08"
 glob = "policy/feature-policy.toml"
 
 [[allow]]
+id = "allow-0519"
+kind = "non_rust_file"
+family = "configuration"
+glob = "policy/removal-window-policy.toml"
+owner = "core/governance"
+classification = "removal_window_policy_manifest"
+reason = "Per-operation removal-window policy with machine-checkable conditions for legacy spec-system compatibility operations (#3368)"
+evidence = ["issue:3368", "issue:2601"]
+occurrence_limit = 1
+created = "2026-08-10"
+review_after = "2026-11-08"
+
+[allow.selector]
+glob = "policy/removal-window-policy.toml"
+
+[[allow]]
 id = "allow-0517"
 kind = "lint_exception"
 family = "expect_attribute"

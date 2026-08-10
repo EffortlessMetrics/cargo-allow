@@ -219,3 +219,7 @@ mod feature_policy_guard_tests;
 #[cfg(test)]
 #[path = "publish_order_validation_tests.rs"]
 mod publish_order_validation_tests;
+
+#[cfg(test)]
+#[path = "removal_window_policy_tests.rs"]
+mod removal_window_policy_tests;
