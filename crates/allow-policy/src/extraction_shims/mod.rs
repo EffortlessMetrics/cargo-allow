@@ -1,7 +1,7 @@
 //! Extraction shim registry (#2607).
 //!
-//! Report-only in Wave 0 PR4: seeded shim inventory and validation without
-//! registering live re-exports yet.
+//! Report-only registry for the seeded shim inventory. Selected entries record
+//! live compatibility forwards; this module does not authorize their removal.
 
 mod config;
 mod validate;
