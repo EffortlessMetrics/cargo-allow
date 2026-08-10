@@ -10824,3 +10824,25 @@ review_after = "2026-11-08"
 
 [allow.selector]
 glob = "policy/legacy-spec-system-inventory.toml"
+
+[[allow]]
+id = "allow-9214"
+kind = "non_rust_file"
+family = "configuration"
+path = "policy/feature-policy.toml"
+owner = "core/governance"
+classification = "feature_policy_contract"
+reason = "Machine-readable feature-separation policy for three-product default and reverse-dependency guards (#3364)."
+evidence = ["issue:3364", "test:feature_policy_manifest_exists"]
+created = "2026-08-10"
+review_after = "2027-02-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "policy/feature-policy.toml"
+target_fingerprint = "toml"
+glob = "policy/feature-policy.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
