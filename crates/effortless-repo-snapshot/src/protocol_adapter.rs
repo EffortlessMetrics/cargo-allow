@@ -6,9 +6,7 @@ use effortless_repo_protocol::{
     RepositorySnapshotKindV1, RepositorySnapshotV1, ResolvedRevisionV1, SelectedPathIdentityV1,
 };
 
-pub fn repository_snapshot_v1(
-    identity: &RepositorySnapshotIdentity,
-) -> RepositorySnapshotV1 {
+pub fn repository_snapshot_v1(identity: &RepositorySnapshotIdentity) -> RepositorySnapshotV1 {
     RepositorySnapshotV1 {
         schema_id: effortless_repo_protocol::REPOSITORY_SNAPSHOT_SCHEMA_ID.to_string(),
         kind: match identity.kind {
@@ -18,10 +16,7 @@ pub fn repository_snapshot_v1(
         root_identity: identity.root_identity.clone(),
         object_format: identity.object_format.as_str().to_string(),
         head: resolved_revision_v1(&identity.head),
-        base: identity
-            .base
-            .as_ref()
-            .map(resolved_revision_v1),
+        base: identity.base.as_ref().map(resolved_revision_v1),
         merge_base: identity.merge_base.clone(),
         dirty_state: identity.dirty_state.as_str().to_string(),
         selected_paths: identity
