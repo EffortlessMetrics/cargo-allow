@@ -244,6 +244,10 @@ mod tests {
         if read_limited(FailingReader, Path::new("fixture.txt")).is_ok() {
             return Err("failing reader unexpectedly succeeded".to_string());
         }
+        let classified = SnapshotError::with_kind(SnapshotErrorKind::Scan, "fixture failure");
+        if classified.kind() != SnapshotErrorKind::Scan {
+            return Err("snapshot error kind was not retained".to_string());
+        }
         Ok(())
     }
 
