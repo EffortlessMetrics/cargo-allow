@@ -125,7 +125,7 @@ version_source = "WorkspaceProduct"
 publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = true
-release_order = 80
+release_order = 95
 
 [[package]]
 logical_id = "cargo-allow"
@@ -149,11 +149,11 @@ cargo_package_name = "effortless-repo-protocol"
 product_family = "shared"
 posture = "SharedProtocolInternalOrStabilizing"
 package_version = "0.1.0"
-version_source = "WorkspaceProduct"
+version_source = "Explicit"
 publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = true
-release_order = 95
+release_order = 80
 
 [[package]]
 logical_id = "repo-edit"
@@ -162,11 +162,11 @@ cargo_package_name = "effortless-repo-edit"
 product_family = "shared"
 posture = "SharedImplementationInternalOrExperimental"
 package_version = "0.1.0"
-version_source = "WorkspaceProduct"
+version_source = "Explicit"
 publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = true
-release_order = 98
+release_order = 90
 
 [[package]]
 logical_id = "repo-snapshot"
@@ -175,11 +175,11 @@ cargo_package_name = "effortless-repo-snapshot"
 product_family = "shared"
 posture = "SharedImplementationInternalOrExperimental"
 package_version = "0.1.0"
-version_source = "WorkspaceProduct"
+version_source = "Explicit"
 publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = true
-release_order = 97
+release_order = 85
 
 [[package]]
 logical_id = "rust-source-index"
@@ -188,7 +188,7 @@ cargo_package_name = "effortless-rust-source-index"
 product_family = "shared"
 posture = "SharedProtocolInternalOrStabilizing"
 package_version = "0.1.0"
-version_source = "WorkspaceProduct"
+version_source = "Explicit"
 publication_state = "UnpublishedInternal"
 publish = false
 candidate_inclusion = false
@@ -203,7 +203,7 @@ cargo_package_name = "intent-model"
 product_family = "cargo-intent"
 posture = "CargoIntentExperimental"
 package_version = "0.1.0"
-version_source = "WorkspaceProduct"
+version_source = "Explicit"
 publication_state = "UnpublishedInternal"
 publish = false
 candidate_inclusion = false
@@ -216,7 +216,7 @@ cargo_package_name = "intent-protocol"
 product_family = "cargo-intent"
 posture = "CargoIntentExperimental"
 package_version = "0.1.0"
-version_source = "WorkspaceProduct"
+version_source = "Explicit"
 publication_state = "UnpublishedInternal"
 publish = false
 candidate_inclusion = false
@@ -229,7 +229,7 @@ cargo_package_name = "intent-engine"
 product_family = "cargo-intent"
 posture = "CargoIntentExperimental"
 package_version = "0.1.0"
-version_source = "WorkspaceProduct"
+version_source = "Explicit"
 publication_state = "UnpublishedInternal"
 publish = false
 candidate_inclusion = false
@@ -242,7 +242,7 @@ cargo_package_name = "intent-edit"
 product_family = "cargo-intent"
 posture = "CargoIntentExperimental"
 package_version = "0.1.0"
-version_source = "WorkspaceProduct"
+version_source = "Explicit"
 publication_state = "UnpublishedInternal"
 publish = false
 candidate_inclusion = false
@@ -255,7 +255,7 @@ cargo_package_name = "cargo-intent"
 product_family = "cargo-intent"
 posture = "CargoIntentExperimental"
 package_version = "0.1.0"
-version_source = "WorkspaceProduct"
+version_source = "Explicit"
 publication_state = "UnpublishedInternal"
 publish = false
 candidate_inclusion = false
@@ -270,17 +270,11 @@ cargo_package_name = "proof-protocol"
 product_family = "cargo-proof"
 posture = "CargoProofExperimental"
 package_version = "0.1.0"
-version_source = "WorkspaceProduct"
+version_source = "Explicit"
 publication_state = "UnpublishedInternal"
 publish = false
 candidate_inclusion = false
 release_order = 410
-
-[[package]]
-
-[[package]]
-
-[[package]]
 
 [[package]]
 logical_id = "proof-engine"
@@ -289,7 +283,7 @@ cargo_package_name = "proof-engine"
 product_family = "cargo-proof"
 posture = "CargoProofExperimental"
 package_version = "0.1.0"
-version_source = "WorkspaceProduct"
+version_source = "Explicit"
 publication_state = "UnpublishedInternal"
 publish = false
 candidate_inclusion = false
@@ -302,7 +296,7 @@ cargo_package_name = "cargo-proof"
 product_family = "cargo-proof"
 posture = "CargoProofExperimental"
 package_version = "0.1.0"
-version_source = "WorkspaceProduct"
+version_source = "Explicit"
 publication_state = "UnpublishedInternal"
 publish = false
 candidate_inclusion = false

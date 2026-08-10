@@ -9,6 +9,7 @@ mod closure;
 mod config;
 mod cross_check;
 mod dependency_graph;
+mod receipt;
 mod v1_reader;
 mod v2;
 mod v2_reconcile;
@@ -32,6 +33,10 @@ pub use cross_check::{
 pub use dependency_graph::{
     CargoMetadataGraph, DependencyClass, DependencyEdge, load_workspace_dependency_graph,
     parse_cargo_metadata_graph, shortest_dependency_path,
+};
+pub use receipt::{
+    ArchitecturePackageRowV2, CARGO_ALLOW_CANDIDATE_ID_V2, CURRENT_ARCHITECTURE_RECEIPT_V2,
+    CurrentArchitectureReceiptV2, current_architecture_receipt_at,
 };
 pub use v1_reader::{HistoricalReaderDiagnostic, HistoricalV1Projection, read_v1_as_historical};
 pub use v2::{

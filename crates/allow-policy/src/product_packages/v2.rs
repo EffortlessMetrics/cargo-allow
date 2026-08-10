@@ -2,8 +2,7 @@
 //! (#2921).
 //!
 //! Extends V1 topology with per-package version, publication state, and
-//! logical_id linkage to the V2 architecture authority. Report-only — does
-//! not replace V1 enforcement.
+//! logical_id linkage to the V2 architecture authority.
 
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use serde::Deserialize;
