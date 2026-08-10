@@ -284,3 +284,219 @@ fn read_file(path: &Path) -> CargoAllowResult<String> {
     std::fs::read_to_string(path)
         .map_err(|err| CargoAllowError::new(format!("read {}: {err}", path.display())))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        ArchitecturePackageRowV2, current_architecture_receipt_at, validate_candidate_order,
+        workspace_packages_at,
+    };
+    use std::fs;
+    use std::path::{Path, PathBuf};
+
+    #[test]
+    fn current_receipt_is_deterministic_and_has_expected_denominators() -> Result<(), String> {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let receipt = current_architecture_receipt_at(&root)
+            .map_err(|err| format!("build current receipt: {err}"))?;
+        let first = receipt
+            .render_json()
+            .map_err(|err| format!("render receipt: {err}"))?;
+        let second = receipt
+            .render_json()
+            .map_err(|err| format!("render receipt: {err}"))?;
+        if first != second
+            || !first.ends_with('\n')
+            || receipt.workspace_package_count != 22
+            || receipt.candidate_package_count != 13
+        {
+            return Err("receipt is not deterministic or has unexpected denominators".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn missing_authority_root_is_rejected() -> Result<(), String> {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("does-not-exist");
+        if current_architecture_receipt_at(&root).is_ok() {
+            return Err("missing authority root unexpectedly reconciled".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn candidate_order_rejects_duplicate_and_dependency_invalid_orders() -> Result<(), String> {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let duplicate = vec![row("allow-diff", 1), row("effortless-repo-snapshot", 1)];
+        if validate_candidate_order(&root, &duplicate).is_ok() {
+            return Err("duplicate candidate release order unexpectedly accepted".to_string());
+        }
+        let invalid = vec![row("allow-diff", 1), row("effortless-repo-snapshot", 2)];
+        if validate_candidate_order(&root, &invalid).is_ok() {
+            return Err("dependency-invalid candidate order unexpectedly accepted".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn workspace_reader_preserves_explicit_and_inherited_sources() -> Result<(), String> {
+        let root = fixture_root("sources");
+        make_workspace(&root, "[\"crates/explicit\", \"crates/inherited\"]", true)?;
+        write_manifest(
+            &root,
+            "explicit",
+            "[package]\nname = \"explicit\"\nversion = \"0.1.0\"\n",
+        )?;
+        write_manifest(
+            &root,
+            "inherited",
+            "[package]\nname = \"inherited\"\nversion.workspace = true\n",
+        )?;
+        let packages = workspace_packages_at(&root).map_err(|err| err.to_string())?;
+        if packages.len() != 2
+            || packages
+                .first()
+                .map(|package| package.version_source.as_str())
+                != Some("Explicit")
+            || packages
+                .get(1)
+                .map(|package| package.version_source.as_str())
+                != Some("WorkspaceProduct")
+            || packages.get(1).map(|package| package.version.as_str()) != Some("0.2.0")
+        {
+            return Err(format!("unexpected workspace packages: {packages:?}"));
+        }
+        remove_fixture(&root)
+    }
+
+    #[test]
+    fn workspace_reader_rejects_malformed_members_and_versions() -> Result<(), String> {
+        let cases = [
+            (
+                "no-workspace",
+                "[package]\nversion = \"0.2.0\"\n",
+                "workspace",
+            ),
+            (
+                "no-package",
+                "[workspace]\nmembers = []\n",
+                "workspace.package",
+            ),
+            (
+                "no-version",
+                "[workspace]\nmembers = []\n[workspace.package]\n",
+                "version",
+            ),
+            (
+                "no-members",
+                "[workspace]\n[workspace.package]\nversion = \"0.2.0\"\n",
+                "members",
+            ),
+            (
+                "bad-member",
+                "[workspace]\nmembers = [1]\n[workspace.package]\nversion = \"0.2.0\"\n",
+                "member",
+            ),
+        ];
+        for (label, cargo, expected) in cases {
+            let root = fixture_root(label);
+            fs::write(root.join("Cargo.toml"), cargo).map_err(|err| err.to_string())?;
+            let error = workspace_packages_at(&root)
+                .err()
+                .ok_or_else(|| format!("{label} unexpectedly succeeded"))?;
+            if !error.to_string().contains(expected) {
+                return Err(format!("{label} error lacked `{expected}`: {error}"));
+            }
+            remove_fixture(&root)?;
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn workspace_reader_rejects_bad_member_manifests() -> Result<(), String> {
+        let cases = [
+            (
+                "missing-package",
+                "[workspace]\nmembers = [\"crates/member\"]\n[workspace.package]\nversion = \"0.2.0\"\n",
+                "package table",
+            ),
+            (
+                "missing-name",
+                "[package]\nversion = \"0.1.0\"\n",
+                "package.name",
+            ),
+            (
+                "missing-version",
+                "[package]\nname = \"member\"\n",
+                "declare version",
+            ),
+            (
+                "invalid-version",
+                "[package]\nname = \"member\"\nversion = 1\n",
+                "version must",
+            ),
+        ];
+        for (label, manifest, expected) in cases {
+            let root = fixture_root(label);
+            make_workspace(&root, "[\"crates/member\"]", true)?;
+            write_manifest_at(&root, "member", manifest)?;
+            let error = workspace_packages_at(&root)
+                .err()
+                .ok_or_else(|| format!("{label} unexpectedly succeeded"))?;
+            if !error.to_string().contains(expected) {
+                return Err(format!("{label} error lacked `{expected}`: {error}"));
+            }
+            remove_fixture(&root)?;
+        }
+        Ok(())
+    }
+
+    fn row(name: &str, release_order: u32) -> ArchitecturePackageRowV2 {
+        ArchitecturePackageRowV2 {
+            logical_id: name.to_string(),
+            cargo_package_name: name.to_string(),
+            workspace_path: format!("crates/{name}"),
+            product_family: "test".to_string(),
+            package_version: "0.1.0".to_string(),
+            version_source: "Explicit".to_string(),
+            publication_state: "UnpublishedInternal".to_string(),
+            candidate_inclusion: true,
+            release_order,
+        }
+    }
+
+    fn fixture_root(label: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "cargo-allow-receipt-{label}-{}",
+            std::process::id()
+        ))
+    }
+
+    fn make_workspace(root: &Path, members: &str, with_version: bool) -> Result<(), String> {
+        fs::create_dir_all(root.join("crates")).map_err(|err| err.to_string())?;
+        let version = if with_version {
+            "\n[workspace.package]\nversion = \"0.2.0\"\n"
+        } else {
+            ""
+        };
+        fs::write(
+            root.join("Cargo.toml"),
+            format!("[workspace]\nmembers = {members}{version}"),
+        )
+        .map_err(|err| err.to_string())
+    }
+
+    fn write_manifest(root: &Path, name: &str, manifest: &str) -> Result<(), String> {
+        write_manifest_at(root, name, manifest)
+    }
+
+    fn write_manifest_at(root: &Path, name: &str, manifest: &str) -> Result<(), String> {
+        let path = root.join("crates").join(name);
+        fs::create_dir_all(&path).map_err(|err| err.to_string())?;
+        fs::write(path.join("Cargo.toml"), manifest).map_err(|err| err.to_string())
+    }
+
+    fn remove_fixture(root: &Path) -> Result<(), String> {
+        fs::remove_dir_all(root).map_err(|err| err.to_string())
+    }
+}
