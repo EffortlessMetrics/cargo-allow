@@ -5,6 +5,7 @@
 mod compare;
 mod config;
 mod cutover_receipt;
+mod producer;
 mod reachability;
 mod validate;
 
@@ -20,6 +21,7 @@ pub use cutover_receipt::{
     parse_extraction_cutover_receipt, parse_extraction_cutover_receipt_at,
     validate_extraction_cutover_receipt,
 };
+pub use producer::{ExtractionCutoverReceiptEvidence, produce_extraction_cutover_receipt};
 pub use reachability::{
     AuthorityKind, AuthorityNode, OldPathCase, OldPathDisposition, ReachabilityDiagnostic,
     ReachabilityDiagnosticKind, ReachabilityReport, validate_cutover_reachability,
