@@ -14,8 +14,9 @@
 
 ### Status counts
 
+- `CutoverCurrent`: **1**
 - `RepositoryDecisionRequired`: **1**
-- `TargetRatified`: **100**
+- `TargetRatified`: **99**
 
 ### Disposition counts
 
@@ -549,11 +550,11 @@
 - Current: Filesystem, staged-index, and committed-tree source view and exact reads
 - Target: `shared / effortless-repo-snapshot::source_view`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `RepoSnapshot` / `TargetRatified`
-- Old path: `OldPathStillReachable`
+- Stage/status: `RepoSnapshot` / `CutoverCurrent`
+- Old path: `Deleted`
 - Removal: #2583 parity and caller migration
-- Next: Move generic source view into repo-snapshot.
-- Deletion output: cargo-allow private source-view implementation becomes deletable.
+- Next: Migrate remaining intent/proof consumers and then remove compatibility dependencies after parity.
+- Deletion output: cargo-allow private source-view implementation was deleted after consumer cutover.
 
 ### `MOVE-RUST-SOURCE-INDEX-SUBJECTS`
 

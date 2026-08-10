@@ -124,32 +124,6 @@ fn source_view_staged_parity_fixture() -> Result<(), String> {
     Ok(())
 }
 
-#[test]
-fn source_view_package_copy_matches_repo_snapshot() -> Result<(), String> {
-    let root = workspace_root();
-    let canonical =
-        std::fs::read_to_string(root.join("crates/effortless-repo-snapshot/src/source_view.rs"))
-            .map_err(|err| format!("read canonical source_view: {err}"))?;
-    let packaged =
-        std::fs::read_to_string(root.join("crates/cargo-allow/src/spec_system_source_view.rs"))
-            .map_err(|err| format!("read packaged source_view copy: {err}"))?;
-    let canonical_body = canonical
-        .split_once("type RustSourceInputs")
-        .map(|(_, body)| body)
-        .ok_or_else(|| "canonical source_view missing body marker".to_string())?;
-    let packaged_body = packaged
-        .split_once("type RustSourceInputs")
-        .map(|(_, body)| body)
-        .ok_or_else(|| "packaged source_view missing body marker".to_string())?;
-    if canonical_body.replace("\r\n", "\n") != packaged_body.replace("\r\n", "\n") {
-        return Err(
-            "cargo-allow spec_system_source_view.rs must match effortless-repo-snapshot source_view.rs (modulo import paths)"
-                .to_string(),
-        );
-    }
-    Ok(())
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 struct SourceViewParityContract {
     scenario_id: String,

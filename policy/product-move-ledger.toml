@@ -453,11 +453,11 @@ deletion_output = "cargo-allow spec_system application implementation becomes de
 [[entry]]
 id = "MOVE-REPO-SNAPSHOT-SOURCE-VIEW"
 source_kind = "RustModule"
-current_paths = ["crates/cargo-allow/src/spec_system_source.rs", "crates/cargo-allow/src/spec_system_source_view.rs"]
+current_paths = ["crates/effortless-repo-snapshot/src/source_view.rs"]
 current_refs = []
 current_identity = "Filesystem, staged-index, and committed-tree source view and exact reads"
-current_product = "cargo-allow"
-current_crate = "cargo-allow"
+current_product = "shared"
+current_crate = "effortless-repo-snapshot"
 current_consumers = ["spec_system_workspace", "spec_precommit"]
 posture = "PrivateImplementation"
 target_product = "shared"
@@ -469,7 +469,7 @@ schema_producer_impact = "RepositorySnapshotV1 becomes canonical identity; old p
 parity_case_ids = ["PARITY-REPO-SNAPSHOT-SOURCE-VIEW"]
 cutover_stage = "RepoSnapshot"
 expected_cutover_receipt = "CUTOVER-REPO-SNAPSHOT"
-old_path_reachability_disposition = "OldPathStillReachable"
+old_path_reachability_disposition = "Deleted"
 active_shim_ids = []
 latest_allowed_shim_stage = "IntentEngine"
 duplicate_authority_class = "BoundedParityOnly"
@@ -479,10 +479,10 @@ removal_issue_or_condition = "#2583 parity and caller migration"
 migration_owner_issue = "#2583"
 risk = "Critical"
 rollback = "Keep old private adapter until exact staged/tree semantics match."
-status = "TargetRatified"
+status = "CutoverCurrent"
 claim_boundary = "Inventory disposition only; no code movement or parity claim is made by this row."
-next_move = "Move generic source view into repo-snapshot."
-deletion_output = "cargo-allow private source-view implementation becomes deletable."
+next_move = "Migrate remaining intent/proof consumers and then remove compatibility dependencies after parity."
+deletion_output = "cargo-allow private source-view implementation was deleted after consumer cutover."
 
 [[entry]]
 id = "MOVE-INTENT-ENGINE-WORKSPACE"

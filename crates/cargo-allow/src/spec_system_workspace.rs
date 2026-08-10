@@ -1,7 +1,5 @@
-use crate::spec_system_source::RepositorySourceView;
 use crate::spec_system_workspace_composition::SELF_HOSTED_RUNTIME_PROMOTION;
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
-use allow_diff::{ResolvedRevisionIdentity, resolve_revision_identity, staged_repository_snapshot};
 use allow_inventory::Inventory;
 use allow_policy::spec_system::{
     AuthoredSubjectRole, AuthoredSubjectSelector, CompiledSpecGraph, EvidenceClaimRegistration,
@@ -17,6 +15,10 @@ use allow_rust::{
     RustTestInventory, RustTestInventoryStatus, RustTestResolution, RustTestSelector,
     RustTestSubject, RustTestTargetIdentity, RustTestTargetKind,
     inventory_rust_test_subjects_from_sources, resolve_rust_test_selector,
+};
+use effortless_repo_snapshot::{
+    RepositorySourceView, ResolvedRevisionIdentity, resolve_revision_identity,
+    staged_repository_snapshot,
 };
 use std::collections::BTreeSet;
 use std::path::Path;
