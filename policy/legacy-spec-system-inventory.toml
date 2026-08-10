@@ -1,0 +1,129 @@
+# Legacy spec-system command/input/output inventory and disposition map (#3370 / #2601 step 1).
+#
+# Every legacy spec-system surface is listed with an explicit disposition.
+# No alias remains merely because it is easy to preserve.
+
+schema_id = "cargo-allow.legacy-spec-system-inventory.v1"
+schema_version = 1
+controlling_issue = 2601
+generated_by = "#3370"
+
+# Each entry maps a legacy command surface to its disposition.
+# Dispositions:
+#   DelegateToIntentOperation — will delegate to cargo-intent when available
+#   RenderMigrationOnly — renders migration guidance, does not execute
+#   HistoricalReadOnly — readable for migration audit, not for production
+#   UnsupportedAndRemoved — removed, no compatibility path
+#   AliasUntilGeneration — retained as alias until V2 cutover
+
+[[surface]]
+command = "check --profile spec-system"
+input = "spec-system profile config + source-tree scan"
+output = "spec-system check report (human/JSON/markdown)"
+disposition = "DelegateToIntentOperation"
+move_ledger_entry = "move-cargo-allow-spec-system-app"
+rationale = "Core scan check delegates to intent-engine spec-system evaluation when installed"
+
+[[surface]]
+command = "audit --profile spec-system"
+input = "spec-system profile config + source-tree inventory"
+output = "spec-system audit report (human/JSON)"
+disposition = "DelegateToIntentOperation"
+move_ledger_entry = "move-cargo-allow-spec-system-app"
+rationale = "Audit delegates to intent-engine for compiled-graph-aware evaluation"
+
+[[surface]]
+command = "doctor --profile spec-system"
+input = "spec-system profile config + workspace state"
+output = "spec-system doctor report + support bundle"
+disposition = "DelegateToIntentOperation"
+move_ledger_entry = "move-cargo-allow-spec-system-app"
+rationale = "Doctor delegates configuration and evidence health checks to intent-engine"
+
+[[surface]]
+command = "explain --profile spec-system"
+input = "spec-system finding or allow ID"
+output = "spec-system explain report (human/JSON)"
+disposition = "DelegateToIntentOperation"
+move_ledger_entry = "move-cargo-allow-spec-system-app"
+rationale = "Explain delegates to intent-engine for graph-contextualized diagnostics"
+
+[[surface]]
+command = "worklist --profile spec-system"
+input = "spec-system profile config + finding filters"
+output = "spec-system worklist (human/JSON)"
+disposition = "DelegateToIntentOperation"
+move_ledger_entry = "move-cargo-allow-spec-system-app"
+rationale = "Worklist delegates to intent-engine for obligation-aware work item generation"
+
+[[surface]]
+command = "init --profile spec-system"
+input = "spec-system profile config paths"
+output = "spec-system bootstrap (.allow/ directory structure)"
+disposition = "AliasUntilGeneration"
+move_ledger_entry = "move-cargo-allow-spec-system-app"
+rationale = "Init retained until V2 cutover to bootstrap owned config layout"
+
+[[surface]]
+command = "list --profile spec-system"
+input = "spec-system profile config"
+output = "spec-system allow entry listing"
+disposition = "DelegateToIntentOperation"
+move_ledger_entry = "move-cargo-allow-spec-system-app"
+rationale = "List delegates to intent-engine for compiled-graph-aware entry display"
+
+[[surface]]
+command = "why --profile spec-system"
+input = "spec-system finding path/line"
+output = "spec-system diagnostic explanation"
+disposition = "DelegateToIntentOperation"
+move_ledger_entry = "move-cargo-allow-spec-system-app"
+rationale = "Why delegates to intent-engine for requirement-bound explanation"
+
+[[surface]]
+command = "precommit --profile spec-system --phase staged"
+input = "staged source diff + spec-system profile"
+output = "staged precommit gate result + delegated intent receipt"
+disposition = "DelegateToIntentOperation"
+move_ledger_entry = "MOVE-SPEC-PRECOMMIT-DELEGATION"
+rationale = "Staged precommit delegates to cargo-intent change-status operation"
+
+[[surface]]
+command = "tool (spec-system subcommand)"
+input = "spec-system tool registry and profile config"
+output = "tool compatibility report"
+disposition = "RenderMigrationOnly"
+move_ledger_entry = "move-spec-system-profile-command"
+rationale = "Tool command renders migration guidance only; tool selection delegates to intent-engine"
+
+[[surface]]
+surface = "policy/spec-system.toml (legacy config)"
+input = "legacy V1 spec-system profile config file"
+output = "parsed profile config"
+disposition = "HistoricalReadOnly"
+move_ledger_entry = "MOVE-INTENT-MODEL-REQUIREMENTS"
+rationale = "Legacy config readable for migration audit only; owned config lives under .allow/"
+
+[[surface]]
+surface = ".allow/goals/active.toml (legacy active goal)"
+input = "legacy V1 active goal manifest"
+output = "goal manifest parse result"
+disposition = "HistoricalReadOnly"
+move_ledger_entry = "move-spec-system-profile-command"
+rationale = "Legacy goal readable for migration audit; V2 uses intent-engine authority"
+
+[[surface]]
+surface = "policy/doc-artifacts.toml (spec-system artifact ledger)"
+input = "spec-system artifact ledger"
+output = "artifact validation result"
+disposition = "DelegateToIntentOperation"
+move_ledger_entry = "move-cargo-allow-spec-system-app"
+rationale = "Artifact ledger delegates to intent-engine for compiled-graph validation"
+
+[[surface]]
+surface = "docs/status/SUPPORT_TIERS.md (spec-system support tiers)"
+input = "support tier claims table"
+output = "support tier validation result"
+disposition = "AliasUntilGeneration"
+move_ledger_entry = "move-spec-system-profile-command"
+rationale = "Support tiers retained as published reference until V2 cutover"
