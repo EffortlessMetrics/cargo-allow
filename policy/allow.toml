@@ -10863,3 +10863,25 @@ normalized_snippet_hash = "fnv1a64:b5d4259d55849551"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0518"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/release-manifest-v2.schema.json"
+owner = "core/release"
+classification = "release_manifest_contract_schema"
+reason = "Defines the versioned JSON contract for the topology-derived release payload and execution envelope; it is documentation-only and does not authorize publication."
+evidence = ["issue:3393", "doc:docs/schemas/README.md"]
+created = "2026-08-10"
+review_after = "2026-11-08"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/release-manifest-v2.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/release-manifest-v2.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1

@@ -412,8 +412,18 @@ mod tests {
     fn v2_rejects_duplicate_or_reordered_candidate_rows() -> Result<(), String> {
         let mut invalid = envelope();
         invalid.payload.package_rows.swap(0, 1);
-        invalid.payload.package_rows[1].logical_id =
-            invalid.payload.package_rows[0].logical_id.clone();
+        let duplicate_logical_id = invalid
+            .payload
+            .package_rows
+            .first()
+            .map(|row| row.logical_id.clone())
+            .ok_or_else(|| "fixture lost its first package row".to_string())?;
+        invalid
+            .payload
+            .package_rows
+            .get_mut(1)
+            .ok_or_else(|| "fixture lost its second package row".to_string())?
+            .logical_id = duplicate_logical_id;
         let validation = validate_release_manifest_v2(&invalid);
         if validation.result == ReleaseManifestResultV2::Complete
             || !validation
