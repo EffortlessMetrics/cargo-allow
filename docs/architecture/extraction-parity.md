@@ -7,5 +7,7 @@ Human projection of `policy/extraction-parity.toml` (#2606 / `CARGO-ALLOW-PARITY
 Parity case and stage-receipt contracts plus a deterministic comparison kernel.
 The kernel compares adapter-provided canonical observations, rejects stale
 source identities, and emits a stable corpus digest. Surface-specific old/new
-adapters and stage cutover receipts remain separate slices.
+adapters, reachability evidence discovery, and stage cutover receipts remain
+separate slices. The reachability checker distinguishes semantic evaluators
+from bounded compatibility, historical, fixture, and generated views.
 Linked shim registry: `CARGO-ALLOW-SHIM-REGISTRY-0001`.
