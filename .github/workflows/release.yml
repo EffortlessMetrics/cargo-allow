@@ -199,6 +199,7 @@ jobs:
             allow-report
             allow-diff
             effortless-repo-protocol
+            effortless-repo-snapshot
             effortless-repo-edit
             cargo-allow
           )

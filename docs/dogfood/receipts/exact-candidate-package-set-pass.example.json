@@ -4,7 +4,7 @@
   "tool": "cargo-allow",
   "result": "Passed",
   "claim_boundary": [
-    "exact_twelve_crate_package_graph",
+    "exact_thirteen_crate_package_graph",
     "classic_transitive_local_registry_offline_install",
     "source_checkout_denied_during_decisive_install",
     "source_candidate_not_published_install_journey"
@@ -34,6 +34,7 @@
       "allow-policy-legacy",
       "allow-diff",
       "effortless-repo-protocol",
+      "effortless-repo-snapshot",
       "effortless-repo-edit",
       "cargo-allow"
     ],
@@ -126,6 +127,15 @@
         "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         "size_bytes": 1,
         "extracted_dir": "effortless-repo-protocol-0.1.10",
+        "no_path_deps": true
+      },
+      {
+        "name": "effortless-repo-snapshot",
+        "version": "0.1.10",
+        "crate_file": "effortless-repo-snapshot-0.1.10.crate",
+        "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "size_bytes": 1,
+        "extracted_dir": "effortless-repo-snapshot-0.1.10",
         "no_path_deps": true
       },
       {
