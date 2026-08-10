@@ -1,7 +1,7 @@
 //! Neutral error and utility types for effortless-repo-snapshot (#3146).
 //!
-//! Replaces allow-core dependency for error/utility types.
-//! allow-inventory remains a hard dependency pending inventory type abstraction.
+//! Replaces product-specific error, utility, and inventory types at the
+//! repository source-view boundary.
 
 pub type SnapshotResult<T> = Result<T, SnapshotError>;
 

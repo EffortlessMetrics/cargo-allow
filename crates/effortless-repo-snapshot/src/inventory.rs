@@ -1,4 +1,12 @@
-use std::path::PathBuf;
+use crate::error::{SnapshotError, SnapshotErrorKind, SnapshotResult};
+use crate::util::source_tree_path_is_ignored;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::Command;
+
+const DEFAULT_IGNORED_PATHS: &[&str] = &[".git/**", "target/**"];
+const MAX_DEPTH: usize = 64;
+const MAX_ENTRIES: usize = 250_000;
 
 /// Neutral inventory facts shared by repository source-view consumers.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -30,17 +38,6 @@ pub enum SourceInventoryCompleteness {
     Partial,
 }
 
-impl From<allow_inventory::InventoryCompleteness> for SourceInventoryCompleteness {
-    fn from(value: allow_inventory::InventoryCompleteness) -> Self {
-        match value {
-            allow_inventory::InventoryCompleteness::Complete => Self::Complete,
-            allow_inventory::InventoryCompleteness::Scoped => Self::Scoped,
-            allow_inventory::InventoryCompleteness::Fallback => Self::Fallback,
-            allow_inventory::InventoryCompleteness::Partial => Self::Partial,
-        }
-    }
-}
-
 impl SourceInventoryCompleteness {
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -61,36 +58,6 @@ pub enum SourceInventorySource {
     FilesystemIncludeUntracked,
 }
 
-impl From<allow_inventory::InventorySource> for SourceInventorySource {
-    fn from(value: allow_inventory::InventorySource) -> Self {
-        match value {
-            allow_inventory::InventorySource::GitTracked => Self::GitTracked,
-            allow_inventory::InventorySource::GitIndexStagedCandidate => {
-                Self::GitIndexStagedCandidate
-            }
-            allow_inventory::InventorySource::FilesystemFallback => Self::FilesystemFallback,
-            allow_inventory::InventorySource::FilesystemIncludeUntracked => {
-                Self::FilesystemIncludeUntracked
-            }
-        }
-    }
-}
-
-impl From<allow_inventory::Inventory> for SourceInventory {
-    fn from(value: allow_inventory::Inventory) -> Self {
-        Self {
-            files: value.files,
-            source: value.source.into(),
-            completeness: value.completeness.into(),
-            empty_git_tracked: value.empty_git_tracked,
-            deleted_tracked: value.deleted_tracked,
-            git_error: value.git_error,
-            skipped_paths: value.skipped_paths,
-            submodule_paths: value.submodule_paths,
-        }
-    }
-}
-
 impl SourceInventorySource {
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -102,90 +69,381 @@ impl SourceInventorySource {
     }
 }
 
+pub(crate) fn default_source_inventory(root: &Path) -> SnapshotResult<SourceInventory> {
+    let (
+        mut files,
+        source,
+        empty_git_tracked,
+        deleted_tracked,
+        git_error,
+        skipped_paths,
+        submodule_paths,
+    ) = match git_tracked_files(root) {
+        Ok(files) => {
+            let empty = files.is_empty();
+            let (existing, deleted, submodules) = classify_tracked_files(root, files);
+            (
+                existing,
+                SourceInventorySource::GitTracked,
+                empty,
+                deleted,
+                None,
+                Vec::new(),
+                submodules,
+            )
+        }
+        Err(error) => {
+            let (files, skipped) = recursive_files(root)?;
+            (
+                files,
+                SourceInventorySource::FilesystemFallback,
+                false,
+                Vec::new(),
+                Some(error),
+                skipped,
+                Vec::new(),
+            )
+        }
+    };
+    files.retain(|path| !source_inventory_path_is_ignored(path));
+    files.sort();
+    files.dedup();
+    let completeness = if git_error.is_some() {
+        SourceInventoryCompleteness::Fallback
+    } else if !deleted_tracked.is_empty()
+        || !submodule_paths.is_empty()
+        || !skipped_paths.is_empty()
+    {
+        SourceInventoryCompleteness::Partial
+    } else {
+        SourceInventoryCompleteness::Scoped
+    };
+    Ok(SourceInventory {
+        files,
+        source,
+        completeness,
+        empty_git_tracked,
+        deleted_tracked,
+        git_error,
+        skipped_paths,
+        submodule_paths,
+    })
+}
+
+pub(crate) fn source_inventory_path_is_ignored(path: &Path) -> bool {
+    source_tree_path_is_ignored(path, DEFAULT_IGNORED_PATHS)
+}
+
+fn git_tracked_files(root: &Path) -> Result<Vec<PathBuf>, String> {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(["ls-files", "-z"])
+        .output()
+        .map_err(|error| format!("failed to invoke git ls-files: {error}"))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let code = output.status.code().unwrap_or(-1);
+        return Err(format!("git ls-files failed (exit {code}): {stderr}"));
+    }
+    Ok(output
+        .stdout
+        .split(|byte| *byte == 0)
+        .filter(|path| !path.is_empty())
+        .map(bytes_to_path)
+        .collect())
+}
+
+#[cfg(unix)]
+fn bytes_to_path(bytes: &[u8]) -> PathBuf {
+    use std::ffi::OsStr;
+    use std::os::unix::ffi::OsStrExt;
+
+    PathBuf::from(OsStr::from_bytes(bytes))
+}
+
+#[cfg(not(unix))]
+fn bytes_to_path(bytes: &[u8]) -> PathBuf {
+    PathBuf::from(String::from_utf8_lossy(bytes).into_owned())
+}
+
+fn classify_tracked_files(
+    root: &Path,
+    files: Vec<PathBuf>,
+) -> (Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>) {
+    let mut existing = Vec::new();
+    let mut deleted = Vec::new();
+    let mut submodules = Vec::new();
+    for path in files {
+        match fs::metadata(root.join(&path)) {
+            Ok(metadata) if metadata.file_type().is_file() => existing.push(path),
+            Ok(metadata) if metadata.file_type().is_dir() => submodules.push(path),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => deleted.push(path),
+            _ => {}
+        }
+    }
+    (existing, deleted, submodules)
+}
+
+fn recursive_files(root: &Path) -> SnapshotResult<(Vec<PathBuf>, Vec<PathBuf>)> {
+    let mut files = Vec::new();
+    let mut skipped = Vec::new();
+    visit(root, root, 0, &mut files, &mut skipped)?;
+    Ok((files, skipped))
+}
+
+fn visit(
+    root: &Path,
+    directory: &Path,
+    depth: usize,
+    files: &mut Vec<PathBuf>,
+    skipped: &mut Vec<PathBuf>,
+) -> SnapshotResult<()> {
+    if depth > MAX_DEPTH {
+        skipped.push(
+            directory
+                .strip_prefix(root)
+                .unwrap_or(directory)
+                .to_path_buf(),
+        );
+        return Ok(());
+    }
+    if files.len() >= MAX_ENTRIES {
+        skipped.push(PathBuf::from(".source-inventory-entry-limit"));
+        return Ok(());
+    }
+    let entries = match fs::read_dir(directory) {
+        Ok(entries) => entries,
+        Err(error) if directory != root => {
+            skipped.push(
+                directory
+                    .strip_prefix(root)
+                    .unwrap_or(directory)
+                    .to_path_buf(),
+            );
+            let _ = error;
+            return Ok(());
+        }
+        Err(error) => {
+            return Err(SnapshotError::with_kind(
+                SnapshotErrorKind::Inventory,
+                format!("failed to read {}: {error}", directory.display()),
+            ));
+        }
+    };
+    for entry in entries {
+        if files.len() >= MAX_ENTRIES {
+            skipped.push(PathBuf::from(".source-inventory-entry-limit"));
+            return Ok(());
+        }
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(_) => {
+                skipped.push(relative_path_for_entry_error(root, directory));
+                continue;
+            }
+        };
+        let path = entry.path();
+        let relative = path.strip_prefix(root).unwrap_or(&path).to_path_buf();
+        let file_type = match entry.file_type() {
+            Ok(file_type) => file_type,
+            Err(_) => {
+                skipped.push(relative.clone());
+                continue;
+            }
+        };
+        if file_type.is_symlink() {
+            if fs::metadata(&path)
+                .map(|metadata| metadata.file_type().is_file())
+                .unwrap_or(false)
+            {
+                files.push(relative);
+            }
+        } else if file_type.is_dir() {
+            if !source_inventory_path_is_ignored(&relative) {
+                visit(root, &path, depth + 1, files, skipped)?;
+            }
+        } else if file_type.is_file() && !source_inventory_path_is_ignored(&relative) {
+            files.push(relative);
+        }
+    }
+    Ok(())
+}
+
+fn relative_path_for_entry_error(root: &Path, directory: &Path) -> PathBuf {
+    directory
+        .strip_prefix(root)
+        .unwrap_or(directory)
+        .to_path_buf()
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{SourceInventory, SourceInventoryCompleteness, SourceInventorySource};
-    use std::path::PathBuf;
+    use super::{SourceInventoryCompleteness, SourceInventorySource, default_source_inventory};
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use std::process::Command;
 
     #[test]
-    fn legacy_inventory_conversion_preserves_metadata() {
-        let inventory = allow_inventory::Inventory {
-            files: vec![PathBuf::from("src/lib.rs")],
-            source: allow_inventory::InventorySource::FilesystemFallback,
-            completeness: allow_inventory::InventoryCompleteness::Partial,
-            empty_git_tracked: true,
-            deleted_tracked: vec![PathBuf::from("src/old.rs")],
-            git_error: Some("git unavailable".to_string()),
-            skipped_paths: vec![PathBuf::from("restricted")],
-            submodule_paths: vec![PathBuf::from("vendor/module")],
-        };
-
-        let neutral: SourceInventory = inventory.into();
-
-        assert_eq!(neutral.files, [PathBuf::from("src/lib.rs")]);
-        assert_eq!(neutral.source, SourceInventorySource::FilesystemFallback);
-        assert_eq!(neutral.completeness, SourceInventoryCompleteness::Partial);
-        assert!(neutral.empty_git_tracked);
-        assert_eq!(neutral.deleted_tracked, [PathBuf::from("src/old.rs")]);
-        assert_eq!(neutral.git_error.as_deref(), Some("git unavailable"));
-        assert_eq!(neutral.skipped_paths, [PathBuf::from("restricted")]);
-        assert_eq!(neutral.submodule_paths, [PathBuf::from("vendor/module")]);
-    }
-
-    #[test]
-    fn legacy_inventory_enums_and_neutral_labels_are_total() {
+    fn neutral_inventory_labels_are_total() {
         let completeness = [
-            (
-                allow_inventory::InventoryCompleteness::Complete,
-                SourceInventoryCompleteness::Complete,
-                "complete",
-            ),
-            (
-                allow_inventory::InventoryCompleteness::Scoped,
-                SourceInventoryCompleteness::Scoped,
-                "scoped",
-            ),
-            (
-                allow_inventory::InventoryCompleteness::Fallback,
-                SourceInventoryCompleteness::Fallback,
-                "fallback",
-            ),
-            (
-                allow_inventory::InventoryCompleteness::Partial,
-                SourceInventoryCompleteness::Partial,
-                "partial",
-            ),
+            (SourceInventoryCompleteness::Complete, "complete"),
+            (SourceInventoryCompleteness::Scoped, "scoped"),
+            (SourceInventoryCompleteness::Fallback, "fallback"),
+            (SourceInventoryCompleteness::Partial, "partial"),
         ];
-        for (legacy, neutral, label) in completeness {
-            assert_eq!(SourceInventoryCompleteness::from(legacy), neutral);
-            assert_eq!(neutral.as_str(), label);
+        for (value, label) in completeness {
+            assert_eq!(value.as_str(), label);
         }
 
         let sources = [
+            (SourceInventorySource::GitTracked, "git_tracked"),
             (
-                allow_inventory::InventorySource::GitTracked,
-                SourceInventorySource::GitTracked,
-                "git_tracked",
-            ),
-            (
-                allow_inventory::InventorySource::GitIndexStagedCandidate,
                 SourceInventorySource::GitIndexStagedCandidate,
                 "git_index_staged_candidate",
             ),
             (
-                allow_inventory::InventorySource::FilesystemFallback,
                 SourceInventorySource::FilesystemFallback,
                 "filesystem_fallback",
             ),
             (
-                allow_inventory::InventorySource::FilesystemIncludeUntracked,
                 SourceInventorySource::FilesystemIncludeUntracked,
                 "filesystem_include_untracked",
             ),
         ];
-        for (legacy, neutral, label) in sources {
-            assert_eq!(SourceInventorySource::from(legacy), neutral);
-            assert_eq!(neutral.as_str(), label);
+        for (value, label) in sources {
+            assert_eq!(value.as_str(), label);
         }
+    }
+
+    #[test]
+    fn filesystem_fallback_is_scoped_and_excludes_default_build_paths() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "repo-snapshot-inventory-fallback-{}",
+            std::process::id()
+        ));
+        fs::create_dir_all(root.join("target")).map_err(|error| error.to_string())?;
+        fs::write(root.join("Cargo.toml"), "[package]\nname = \"fixture\"\n")
+            .map_err(|error| error.to_string())?;
+        fs::write(root.join("target/generated.rs"), "ignored")
+            .map_err(|error| error.to_string())?;
+
+        let inventory = default_source_inventory(&root).map_err(|error| error.to_string())?;
+
+        assert_eq!(inventory.source, SourceInventorySource::FilesystemFallback);
+        assert_eq!(
+            inventory.completeness,
+            SourceInventoryCompleteness::Fallback
+        );
+        assert_eq!(inventory.files, [PathBuf::from("Cargo.toml")]);
+        assert!(inventory.git_error.is_some());
+        fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn git_inventory_reports_existing_and_deleted_tracked_paths() -> Result<(), String> {
+        let root = temp_root("git-inventory")?;
+        git(&root, &["init", "-q"])?;
+        git(&root, &["config", "user.name", "Snapshot Tests"])?;
+        git(&root, &["config", "user.email", "snapshot@example.invalid"])?;
+        fs::write(root.join("kept.rs"), "fn kept() {}\n").map_err(|error| error.to_string())?;
+        fs::write(root.join("deleted.rs"), "fn deleted() {}\n")
+            .map_err(|error| error.to_string())?;
+        git(&root, &["add", "kept.rs", "deleted.rs"])?;
+        fs::remove_file(root.join("deleted.rs")).map_err(|error| error.to_string())?;
+
+        let inventory = default_source_inventory(&root).map_err(|error| error.to_string())?;
+
+        assert_eq!(inventory.source, SourceInventorySource::GitTracked);
+        assert_eq!(inventory.completeness, SourceInventoryCompleteness::Partial);
+        assert_eq!(inventory.files, [PathBuf::from("kept.rs")]);
+        assert_eq!(inventory.deleted_tracked, [PathBuf::from("deleted.rs")]);
+        fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn inventory_reports_missing_root_as_typed_error() -> Result<(), String> {
+        let root = temp_root("missing-root")?;
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+
+        let error = default_source_inventory(&root)
+            .err()
+            .ok_or_else(|| "missing root unexpectedly scanned".to_string())?;
+
+        assert_eq!(error.kind(), super::SnapshotErrorKind::Inventory);
+        Ok(())
+    }
+
+    #[test]
+    fn inventory_walk_limits_record_skips() -> Result<(), String> {
+        let root = temp_root("walk-limits")?;
+        let mut files = Vec::new();
+        let mut skipped = Vec::new();
+        super::visit(&root, &root, super::MAX_DEPTH + 1, &mut files, &mut skipped)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(files.len(), 0);
+        assert_eq!(skipped.len(), 1);
+
+        files.resize(super::MAX_ENTRIES, PathBuf::from("existing"));
+        skipped.clear();
+        super::visit(&root, &root, 0, &mut files, &mut skipped)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(skipped.len(), 1);
+        fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn fallback_inventory_includes_file_symlinks_and_is_sorted() -> Result<(), String> {
+        let root = temp_root("fallback-symlink")?;
+        fs::create_dir_all(root.join("nested")).map_err(|error| error.to_string())?;
+        fs::write(root.join("nested/z.rs"), "z\n").map_err(|error| error.to_string())?;
+        fs::write(root.join("a.rs"), "a\n").map_err(|error| error.to_string())?;
+        std::os::unix::fs::symlink("nested/z.rs", root.join("alias.rs"))
+            .map_err(|error| error.to_string())?;
+
+        let inventory = default_source_inventory(&root).map_err(|error| error.to_string())?;
+
+        assert_eq!(inventory.source, SourceInventorySource::FilesystemFallback);
+        assert_eq!(
+            inventory.files,
+            [
+                PathBuf::from("a.rs"),
+                PathBuf::from("alias.rs"),
+                PathBuf::from("nested/z.rs"),
+            ]
+        );
+        fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    fn git(root: &Path, args: &[&str]) -> Result<(), String> {
+        let output = Command::new("git")
+            .arg("-C")
+            .arg(root)
+            .args(args)
+            .output()
+            .map_err(|error| error.to_string())?;
+        if output.status.success() {
+            Ok(())
+        } else {
+            Err(String::from_utf8_lossy(&output.stderr).into_owned())
+        }
+    }
+
+    fn temp_root(label: &str) -> Result<PathBuf, String> {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|error| error.to_string())?
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "repo-snapshot-inventory-{label}-{}-{nonce}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(root)
     }
 }

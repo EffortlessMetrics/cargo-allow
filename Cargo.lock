@@ -452,7 +452,6 @@ version = "0.1.0"
 dependencies = [
  "allow-core",
  "allow-diff",
- "allow-inventory",
  "effortless-repo-protocol",
  "serde",
  "sha2",

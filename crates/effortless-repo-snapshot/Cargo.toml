@@ -14,7 +14,6 @@ publish = true
 
 [dependencies]
 allow-core = { workspace = true, optional = true }
-allow-inventory.workspace = true
 serde.workspace = true
 sha2.workspace = true
 toml.workspace = true

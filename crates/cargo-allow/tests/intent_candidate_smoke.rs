@@ -13,7 +13,6 @@ const CRATE_SET: &str =
 
 const EXPECTED_CRATES: &[&str] = &[
     "allow-core",
-    "allow-inventory",
     "effortless-repo-protocol",
     "effortless-repo-snapshot",
     "intent-protocol",
@@ -79,7 +78,7 @@ fn example_intent_candidate_smoke_matches_schema_constants() {
 }
 
 #[test]
-fn intent_candidate_crate_set_fixture_lists_seven_package_order_crates() {
+fn intent_candidate_crate_set_fixture_lists_six_package_order_crates() {
     for name in EXPECTED_CRATES {
         assert!(
             CRATE_SET.contains(&format!("\"{name}\"")),
