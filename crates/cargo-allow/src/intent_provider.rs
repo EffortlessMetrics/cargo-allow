@@ -59,6 +59,53 @@ impl std::fmt::Display for IntentProviderFailure {
     }
 }
 
+impl IntentProviderFailure {
+    /// Render a bounded user-facing action for provider absence/incompatibility (#3367).
+    ///
+    /// Includes all required fields: legacy-surface framing, required version range,
+    /// detected binary (if any), canonical command, support link, and explicit
+    /// "no intent evaluation was performed" statement.
+    pub(crate) fn bounded_action(&self) -> String {
+        let mut out = String::new();
+        out.push_str("This is a legacy compatibility surface.\n");
+        out.push_str(&format!(
+            "Current intent evaluation is owned by cargo-intent (required: version {}, protocol {}).\n",
+            INTENT_PROVIDER_REQUIRED_VERSION_RANGE,
+            INTENT_PROVIDER_REQUIRED_PROTOCOL
+        ));
+        match self.class {
+            IntentProviderFailureClass::Absent => {
+                out.push_str("cargo-intent was not found.\n");
+            }
+            IntentProviderFailureClass::ForbiddenWorkspaceTarget
+            | IntentProviderFailureClass::ForbiddenWorkspaceCrate => {
+                out.push_str("cargo-intent was found at a workspace path, which is forbidden.\n");
+            }
+            IntentProviderFailureClass::WrongProductName => {
+                out.push_str(&format!("Detected binary: {}\n", self.detail));
+            }
+            IntentProviderFailureClass::NotExecutable => {
+                out.push_str(&format!(
+                    "Binary found but not executable: {}\n",
+                    self.detail
+                ));
+            }
+            IntentProviderFailureClass::MalformedConfig => {
+                out.push_str(&format!("Delegation config error: {}\n", self.detail));
+            }
+        }
+        out.push_str(&format!(
+            "Canonical command: {}\n",
+            INTENT_PROVIDER_CANONICAL_COMMAND
+        ));
+        out.push_str(&format!("Support: {}\n", INTENT_PROVIDER_SUPPORT_REFERENCE));
+        out.push_str(
+            "No intent evaluation was performed — repository intent posture is NOT confirmed clean.\n",
+        );
+        out
+    }
+}
+
 impl std::error::Error for IntentProviderFailure {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -451,5 +498,73 @@ executable = "install/bin/cargo-intent"
         assert_eq!(failure.class, IntentProviderFailureClass::WrongProductName);
         let _ = fs::remove_dir_all(root);
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod absence_ux_tests {
+    use super::*;
+
+    #[test]
+    fn absent_action_includes_all_required_fields() {
+        let failure = IntentProviderFailure::new(
+            IntentProviderFailureClass::Absent,
+            "cargo-intent was not found in PATH",
+        );
+        let action = failure.bounded_action();
+        assert!(
+            action.contains("legacy compatibility surface"),
+            "missing framing"
+        );
+        assert!(action.contains("0.1.x"), "missing required version range");
+        assert!(
+            action.contains("repo.analysis-receipt.v1"),
+            "missing required protocol"
+        );
+        assert!(
+            action.contains("cargo-intent was not found"),
+            "missing absence detail"
+        );
+        assert!(
+            action.contains("cargo-intent --format json"),
+            "missing canonical command"
+        );
+        assert!(action.contains("SUPPORT_TIERS"), "missing support link");
+        assert!(
+            action.contains("NOT confirmed clean"),
+            "missing no-clean claim"
+        );
+    }
+
+    #[test]
+    fn incompatible_action_does_not_claim_clean() {
+        let failure = IntentProviderFailure::new(
+            IntentProviderFailureClass::WrongProductName,
+            "found 'other-tool' instead of 'cargo-intent'",
+        );
+        let action = failure.bounded_action();
+        assert!(!action.contains("intent is clean"), "must not claim clean");
+        assert!(
+            !action.contains("no findings"),
+            "must not claim no findings"
+        );
+        assert!(
+            action.contains("NOT confirmed clean"),
+            "missing no-clean claim"
+        );
+    }
+
+    #[test]
+    fn forbidden_workspace_action_includes_workspace_detail() {
+        let failure = IntentProviderFailure::new(
+            IntentProviderFailureClass::ForbiddenWorkspaceTarget,
+            "target/debug/cargo-intent",
+        );
+        let action = failure.bounded_action();
+        assert!(
+            action.contains("workspace path"),
+            "missing workspace framing"
+        );
+        assert!(action.contains("forbidden"), "missing forbidden detail");
     }
 }

@@ -659,7 +659,10 @@ fn map_provider_failure(
             IntentDelegateFailureClass::InstrumentFailure
         }
     };
-    IntentDelegateFailure::new(class, failure.to_string())
+    // Surface the bounded user-facing action so absent/incompatible-version
+    // failures arrive with the canonical command, version range, and the
+    // explicit "NOT confirmed clean" statement instead of a bare detail line.
+    IntentDelegateFailure::new(class, failure.bounded_action())
 }
 
 fn fail_delegated(
