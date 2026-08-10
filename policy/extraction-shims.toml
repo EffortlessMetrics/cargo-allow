@@ -4,35 +4,36 @@ controlling_issue = 2607
 linked_move_ledger = "CARGO-ALLOW-MOVE-LEDGER-0001"
 
 # ExtractionShimV1 — report-only registry for #2607 PR1.
-# Seeds planned shims for first extraction moves; no live re-exports yet.
+# Seeds planned shims for extraction moves; selected entries may be live public
+# compatibility re-exports until their exact cutover receipt is accepted.
 
 [[shim]]
 id = "shim-allow-diff-staged-index"
 old_identity = "allow-diff::staged_index"
 new_identity = "repo-snapshot::staged_index"
 kind = "ModuleFacade"
-posture = "private"
+posture = "public"
 status = "active"
 move_ledger_entry = "move-allow-diff-staged-index"
 controlling_issue = 2583
 latest_allowed_stage = 1
 removal_condition = "issue:#2606 stage-1 cutover receipt"
 parity_case = "parity-repo-snapshot-staged-index-v1"
-claim_boundary = "Identity forwarding only; allow-diff retains policy movement."
+claim_boundary = "Public compatibility re-export; allow-diff retains the legacy staged-index implementation until the #2606 cutover receipt proves deletion safe."
 
 [[shim]]
 id = "shim-allow-diff-revision-identity"
 old_identity = "allow-diff::revision_identity"
 new_identity = "repo-snapshot::revision_identity"
 kind = "ModuleFacade"
-posture = "private"
+posture = "public"
 status = "active"
 move_ledger_entry = "move-allow-diff-revision-identity"
 controlling_issue = 2583
 latest_allowed_stage = 1
 removal_condition = "issue:#2606 stage-1 cutover receipt"
 parity_case = "parity-repo-snapshot-revision-identity-v1"
-claim_boundary = "Identity forwarding only; no duplicate revision semantics."
+claim_boundary = "Public compatibility re-export; allow-diff retains the legacy revision-identity implementation until the #2606 cutover receipt proves deletion safe."
 
 [[shim]]
 id = "shim-allow-policy-spec-system-types"

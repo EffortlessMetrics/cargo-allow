@@ -51,3 +51,37 @@ fn repository_shim_registry_links_move_ledger() -> Result<(), String> {
     }
     Ok(())
 }
+
+#[test]
+fn snapshot_shims_record_live_public_compatibility_boundary() -> Result<(), String> {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let registry_path = root.join("policy/extraction-shims.toml");
+    let ledger_path = root.join("policy/product-move-ledger.toml");
+    let (registry, diagnostics, _) =
+        validate_extraction_shim_registry_at(&root, &registry_path, &ledger_path)
+            .map_err(|err| format!("validate shim registry: {err}"))?;
+    if !diagnostics.is_empty() {
+        return Err(format!("unexpected shim diagnostics: {diagnostics:?}"));
+    }
+
+    for id in [
+        "shim-allow-diff-staged-index",
+        "shim-allow-diff-revision-identity",
+    ] {
+        let shim = registry
+            .shim
+            .iter()
+            .find(|entry| entry.id == id)
+            .ok_or_else(|| format!("missing snapshot shim {id}"))?;
+        if shim.posture != super::config::ShimPosture::Public
+            || shim.status != super::config::ShimStatus::Active
+            || !shim.removal_condition.contains("#2606")
+        {
+            return Err(format!(
+                "snapshot shim {id} must remain an active public compatibility boundary until #2606"
+            ));
+        }
+    }
+
+    Ok(())
+}
