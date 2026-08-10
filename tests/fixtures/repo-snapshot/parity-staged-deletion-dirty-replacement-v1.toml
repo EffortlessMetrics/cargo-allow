@@ -1,5 +1,5 @@
 scenario_id = "parity-repo-snapshot-staged-deletion-dirty-replacement-v1"
-allow_diff_module = "allow-diff::staged_index"
+prior_module = "allow-diff::staged_index"
 repo_snapshot_module = "repo-snapshot::staged_index"
 parity_case = "parity-repo-snapshot-staged-index-v1"
 move_ledger_entry = "move-allow-diff-staged-index"

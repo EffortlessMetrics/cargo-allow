@@ -1,5 +1,5 @@
 use crate::parity::{ParityContract, load_parity_contract};
-use crate::protocol_adapter::repository_snapshot_v1_from_allow_diff;
+use crate::protocol_adapter::repository_snapshot_v1;
 use crate::{
     RepositorySnapshotRequest, StagedPathRead, read_staged_path, repository_snapshot,
     staged_repository_snapshot,
@@ -21,7 +21,7 @@ fn parity_contracts_load_from_fixtures() -> Result<(), String> {
 }
 
 #[test]
-fn revision_identity_parity_over_allow_diff() -> Result<(), String> {
+fn revision_identity_transport_contract() -> Result<(), String> {
     let root = workspace_root();
     let contract_path = root.join("tests/fixtures/repo-snapshot/parity-committed-head-v1.toml");
     let contract = load_parity_contract(&contract_path)?;
@@ -33,8 +33,8 @@ fn revision_identity_parity_over_allow_diff() -> Result<(), String> {
     let request = RepositorySnapshotRequest::committed_head("HEAD")
         .with_selected_paths([PathBuf::from("src/lib.rs")]);
     let identity = repository_snapshot(&repo, &request)
-        .map_err(|err| format!("allow-diff repository_snapshot: {err}"))?;
-    let transport = repository_snapshot_v1_from_allow_diff(&identity);
+        .map_err(|err| format!("repo-snapshot repository_snapshot: {err}"))?;
+    let transport = repository_snapshot_v1(&identity);
     validate_transport_contract(&transport, &contract)?;
     assert_eq!(
         contract.repo_snapshot_module,
@@ -44,7 +44,7 @@ fn revision_identity_parity_over_allow_diff() -> Result<(), String> {
 }
 
 #[test]
-fn staged_index_parity_over_allow_diff() -> Result<(), String> {
+fn staged_index_contract() -> Result<(), String> {
     let root = workspace_root();
     let contract_path = root.join("tests/fixtures/repo-snapshot/parity-staged-index-v1.toml");
     let contract = load_staged_contract(&contract_path)?;
@@ -56,7 +56,7 @@ fn staged_index_parity_over_allow_diff() -> Result<(), String> {
     git(&repo, &["add", "src/lib.rs"])?;
 
     let snapshot = staged_repository_snapshot(&repo)
-        .map_err(|err| format!("allow-diff staged_repository_snapshot: {err}"))?;
+        .map_err(|err| format!("repo-snapshot staged_repository_snapshot: {err}"))?;
     validate_staged_contract(&snapshot, &contract)?;
     assert_eq!(
         contract.repo_snapshot_module,
@@ -78,9 +78,9 @@ fn staged_deletion_negative_fixture_ignores_dirty_replacement() -> Result<(), St
     write_file(&repo, &contract.staged_path, "dirty replacement\n")?;
 
     let snapshot = staged_repository_snapshot(&repo)
-        .map_err(|err| format!("allow-diff staged_repository_snapshot: {err}"))?;
+        .map_err(|err| format!("repo-snapshot staged_repository_snapshot: {err}"))?;
     let read = read_staged_path(&snapshot, Path::new(&contract.staged_path))
-        .map_err(|err| format!("allow-diff read_staged_path: {err}"))?;
+        .map_err(|err| format!("repo-snapshot read_staged_path: {err}"))?;
 
     if contract.expected_read != "missing" {
         return Err(format!(
@@ -127,7 +127,7 @@ fn source_view_staged_parity_fixture() -> Result<(), String> {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 struct SourceViewParityContract {
     scenario_id: String,
-    allow_diff_module: String,
+    prior_module: String,
     repo_snapshot_module: String,
     parity_case: String,
     move_ledger_entry: String,
@@ -146,7 +146,7 @@ fn load_source_view_contract(path: &Path) -> Result<SourceViewParityContract, St
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 struct StagedDeletionParityContract {
     scenario_id: String,
-    allow_diff_module: String,
+    prior_module: String,
     repo_snapshot_module: String,
     parity_case: String,
     move_ledger_entry: String,
@@ -165,7 +165,7 @@ fn load_staged_deletion_contract(path: &Path) -> Result<StagedDeletionParityCont
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 struct StagedParityContract {
     scenario_id: String,
-    allow_diff_module: String,
+    prior_module: String,
     repo_snapshot_module: String,
     parity_case: String,
     move_ledger_entry: String,

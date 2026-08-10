@@ -1,5 +1,5 @@
 scenario_id = "parity-repo-snapshot-revision-identity-v1"
-allow_diff_module = "allow-diff::revision_identity"
+prior_module = "allow-diff::revision_identity"
 repo_snapshot_module = "repo-snapshot::revision_identity"
 parity_case = "parity-repo-snapshot-revision-identity-v1"
 move_ledger_entry = "move-allow-diff-revision-identity"

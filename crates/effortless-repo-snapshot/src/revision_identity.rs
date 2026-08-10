@@ -1,4 +1,4 @@
-//! One exact, typed repository-snapshot identity owned by `allow-diff`.
+//! One exact, typed repository-snapshot identity for shared consumers.
 //!
 //! The spec walking skeleton needs base / merge-base / head commit and tree,
 //! dirty-state, and selected-source identities in several places (spec graph,
