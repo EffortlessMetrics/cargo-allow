@@ -248,6 +248,9 @@ mod tests {
         if classified.kind() != SnapshotErrorKind::Scan {
             return Err("snapshot error kind was not retained".to_string());
         }
+        if SnapshotError::new("fixture failure").kind() != SnapshotErrorKind::Unknown {
+            return Err("new snapshot errors did not default to unknown".to_string());
+        }
         Ok(())
     }
 
