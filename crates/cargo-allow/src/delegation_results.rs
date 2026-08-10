@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 //! Typed delegation result classes for spec-system delegation (#3366).
 //!
 //! Each result class is independently testable and maps to a stable error code.
@@ -191,13 +190,20 @@ mod tests {
     }
 
     #[test]
-    fn completed_carries_finding_count() {
+    fn completed_carries_finding_count() -> Result<(), String> {
         let outcome = DelegationOutcome::Completed {
             code: DelegationResultCode::DelegatedFindings,
             finding_count: 3,
         };
         assert!(outcome.is_completed());
+        match &outcome {
+            DelegationOutcome::Completed { finding_count, .. } => {
+                assert_eq!(*finding_count, 3);
+            }
+            _ => return Err("expected Completed".to_string()),
+        }
         assert_eq!(outcome.code(), DelegationResultCode::DelegatedFindings);
+        Ok(())
     }
 
     #[test]
@@ -206,5 +212,24 @@ mod tests {
         let msg = error.to_string();
         assert!(msg.contains("provider_incompatible"), "msg: {msg}");
         assert!(msg.contains("version 0.1 vs 0.2"), "msg: {msg}");
+    }
+}
+
+#[cfg(test)]
+#[test]
+fn failed_outcome_preserves_error() -> Result<(), String> {
+    let outcome = DelegationOutcome::Failed {
+        code: DelegationResultCode::ProviderInstrumentFailure,
+        error: DelegationResultCode::ProviderInstrumentFailure.to_error("timeout after 30s"),
+    };
+    match &outcome {
+        DelegationOutcome::Failed { error, .. } => {
+            let msg = error.to_string();
+            if !msg.contains("timeout after 30s") {
+                return Err(format!("error message not preserved: {msg}"));
+            }
+            Ok(())
+        }
+        _ => Err("expected Failed".to_string()),
     }
 }

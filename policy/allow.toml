@@ -10824,3 +10824,42 @@ review_after = "2026-11-08"
 
 [allow.selector]
 glob = "policy/legacy-spec-system-inventory.toml"
+
+[[allow]]
+id = "allow-0516"
+kind = "non_rust_file"
+family = "configuration"
+glob = "policy/feature-policy.toml"
+owner = "core/governance"
+classification = "feature_policy_manifest"
+reason = "Feature policy manifest declaring cross-product activation rules (#3364)"
+evidence = ["issue:3364"]
+occurrence_limit = 1
+created = "2026-08-10"
+review_after = "2026-11-08"
+
+[allow.selector]
+glob = "policy/feature-policy.toml"
+
+[[allow]]
+id = "allow-0517"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "crates/cargo-allow/src/publish_order_validation_tests.rs"
+owner = "core/test"
+classification = "publish_order_validation"
+reason = "Focused publish-order validation test keeps the collapsible-if structure readable while checking workspace topology invariants (#3363)."
+evidence = ["issue:3363", "test:release_order_is_unique_and_acyclic"]
+created = "2026-08-10"
+review_after = "2027-02-01"
+
+[allow.selector]
+ast_kind = "attribute"
+lint = "clippy::collapsible_if"
+symbol = "#![expect( clippy::collapsible_if, reason = \"policy:allow-0517 publish-order topology test keeps invariant parsing readable\" )]"
+target_fingerprint = "policy:allow-0517"
+normalized_snippet_hash = "fnv1a64:b5d4259d55849551"
+
+[allow.last_seen]
+line = 1
+column = 1
