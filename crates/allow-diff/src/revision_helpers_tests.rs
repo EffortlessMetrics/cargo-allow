@@ -79,3 +79,43 @@ fn missing_revision_source_reports_inventory_error() {
     assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::Inventory);
     assert!(err.to_string().contains("src/lib.rs"));
 }
+
+#[test]
+fn snapshot_error_projects_every_neutral_kind() {
+    let cases = [
+        (
+            SnapshotErrorKind::Internal,
+            allow_core::CargoAllowErrorKind::Internal,
+        ),
+        (
+            SnapshotErrorKind::InvalidConfig,
+            allow_core::CargoAllowErrorKind::InvalidConfig,
+        ),
+        (
+            SnapshotErrorKind::Inventory,
+            allow_core::CargoAllowErrorKind::Inventory,
+        ),
+        (
+            SnapshotErrorKind::Artifact,
+            allow_core::CargoAllowErrorKind::Artifact,
+        ),
+        (
+            SnapshotErrorKind::Unknown,
+            allow_core::CargoAllowErrorKind::Unknown,
+        ),
+        (
+            SnapshotErrorKind::Scan,
+            allow_core::CargoAllowErrorKind::Scan,
+        ),
+    ];
+
+    for (snapshot_kind, expected_kind) in cases {
+        let err = snapshot_error(SnapshotError::with_kind(
+            snapshot_kind,
+            "snapshot unavailable",
+        ));
+
+        assert_eq!(err.kind(), expected_kind);
+        assert!(err.to_string().contains("snapshot unavailable"));
+    }
+}

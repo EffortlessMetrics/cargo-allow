@@ -6,7 +6,10 @@ use std::collections::BTreeSet;
 use std::path::Path;
 
 use crate::revision_git::{git_tree_files_at_revision, read_files_at_revision};
-use crate::{RepositorySnapshotRequest, ResolvedRevisionIdentity, repository_snapshot};
+use effortless_repo_snapshot::{
+    RepositorySnapshotRequest, ResolvedRevisionIdentity, SnapshotError, SnapshotErrorKind,
+    repository_snapshot,
+};
 
 /// Facts retained for one exact revision scan. Base and head callers receive
 /// separate values so scanner limitations cannot be collapsed across sides.
@@ -66,7 +69,8 @@ pub fn scan_at_revision(
         root,
         &RepositorySnapshotRequest::committed_head(revision)
             .with_selected_paths(source_paths.clone()),
-    )?;
+    )
+    .map_err(snapshot_error)?;
     let source_texts = read_files_at_revision(root, &all_tree_files, &source_paths)?;
     let mut manifests = Vec::new();
     for rel in files
@@ -162,6 +166,18 @@ pub fn scan_at_revision(
         scanner_completeness,
         findings,
     })
+}
+
+fn snapshot_error(error: SnapshotError) -> CargoAllowError {
+    let kind = match error.kind() {
+        SnapshotErrorKind::Internal => CargoAllowErrorKind::Internal,
+        SnapshotErrorKind::InvalidConfig => CargoAllowErrorKind::InvalidConfig,
+        SnapshotErrorKind::Inventory => CargoAllowErrorKind::Inventory,
+        SnapshotErrorKind::Artifact => CargoAllowErrorKind::Artifact,
+        SnapshotErrorKind::Unknown => CargoAllowErrorKind::Unknown,
+        SnapshotErrorKind::Scan => CargoAllowErrorKind::Scan,
+    };
+    CargoAllowError::with_kind(kind, error.to_string())
 }
 
 fn missing_revision_source(path: &Path) -> CargoAllowError {
