@@ -261,6 +261,12 @@ mod tests {
         {
             return Err("invalid glob segment match was accepted".to_string());
         }
+        if !glob_matches("", "")
+            || glob_match_tokens(&[], &["path"])
+            || glob_match_tokens(&["path"], &[])
+        {
+            return Err("empty glob token cases behaved unexpectedly".to_string());
+        }
         Ok(())
     }
 }
