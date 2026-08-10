@@ -486,6 +486,101 @@ mod tests {
     }
 
     #[test]
+    fn v2_renderers_cover_payload_and_execution_envelope_shapes() -> Result<(), String> {
+        let value = envelope();
+        if render_release_manifest_v2_payload(&value.payload)
+            .map_err(|error| error.to_string())?
+            .is_empty()
+        {
+            return Err("payload renderer returned no JSON".to_string());
+        }
+        if render_release_manifest_v2_envelope(&value)
+            .map_err(|error| error.to_string())?
+            .is_empty()
+        {
+            return Err("envelope renderer returned no JSON".to_string());
+        }
+        if render_release_manifest_v2_envelope_bytes(&value)
+            .map_err(|error| error.to_string())?
+            .is_empty()
+        {
+            return Err("envelope byte renderer returned no JSON".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn v2_rejects_empty_identity_malformed_rows_and_digests() -> Result<(), String> {
+        let mut invalid = envelope();
+        invalid.payload.repository = " ".to_string();
+        invalid.workflow_path = "".to_string();
+        invalid.payload.cargo_lock_digest = Some("sha256:short".to_string());
+        invalid.payload.architecture_digest = Some(format!("sha256:{}", "g".repeat(64)));
+        invalid.payload.candidate_digest = Some("not-a-digest".to_string());
+        let first = invalid
+            .payload
+            .package_rows
+            .first_mut()
+            .ok_or_else(|| "fixture lost its first package row".to_string())?;
+        first.package_name.clear();
+        first.package_version = "1".to_string();
+        first.release_order = 0;
+        let duplicate_name = first.package_name.clone();
+        let second = invalid
+            .payload
+            .package_rows
+            .get_mut(1)
+            .ok_or_else(|| "fixture lost its second package row".to_string())?;
+        second.package_name = duplicate_name;
+        let validation = validate_release_manifest_v2(&invalid);
+        if validation.result != ReleaseManifestResultV2::ChecksumConflict
+            || validation.gaps.len() < 5
+        {
+            return Err(format!(
+                "malformed candidate was under-reported: {validation:?}"
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn v2_classifies_missing_auth_other_auth_generation_and_incidents() -> Result<(), String> {
+        let mut missing_auth = envelope();
+        missing_auth.payload.authentication = ReleaseManifestAuthenticationV2::Missing;
+        if validate_release_manifest_v2(&missing_auth).result
+            != ReleaseManifestResultV2::MissingAuthorization
+        {
+            return Err("missing authentication was not classified".to_string());
+        }
+
+        let mut empty_other_auth = envelope();
+        empty_other_auth.payload.authentication =
+            ReleaseManifestAuthenticationV2::OtherExplicit(String::new());
+        if validate_release_manifest_v2(&empty_other_auth).result
+            != ReleaseManifestResultV2::MalformedArtifact
+        {
+            return Err("empty explicit authentication was not malformed".to_string());
+        }
+
+        let mut unsupported = envelope();
+        unsupported.payload.schema_version = 1;
+        if validate_release_manifest_v2(&unsupported).result
+            != ReleaseManifestResultV2::UnsupportedGeneration
+        {
+            return Err("unsupported schema generation was not classified".to_string());
+        }
+
+        let mut incident = envelope();
+        incident.payload.publication_posture = ReleaseManifestPublicationPostureV2::Incident;
+        if validate_release_manifest_v2(&incident).result
+            != ReleaseManifestResultV2::ReleaseIncident
+        {
+            return Err("publication incident was not retained".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
     fn v1_is_not_the_current_v2_gate() -> Result<(), String> {
         if crate::artifacts::RELEASE_MANIFEST_SCHEMA_ID == RELEASE_MANIFEST_V2_SCHEMA_ID {
             return Err("V1 and V2 schema identifiers must remain distinct".to_string());
