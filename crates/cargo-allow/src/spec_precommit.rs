@@ -108,8 +108,7 @@ pub(crate) fn cmd_staged_identity(args: &CheckArgs) -> CargoAllowResult<()> {
         ));
     }
     let root = resolve_root(&args.root)?;
-    let snapshot =
-        staged_repository_snapshot(&root).map_err(crate::command_support::snapshot_error)?;
+    let snapshot = crate::command_support::snapshot_result(staged_repository_snapshot(&root))?;
     validate_output_paths(
         &root,
         &snapshot,
@@ -146,8 +145,7 @@ fn fail_precommit_without_delegation(
     root: &Path,
     started: Instant,
 ) -> CargoAllowResult<()> {
-    let snapshot =
-        staged_repository_snapshot(root).map_err(crate::command_support::snapshot_error)?;
+    let snapshot = crate::command_support::snapshot_result(staged_repository_snapshot(root))?;
     finish_failure(
         args,
         &snapshot,
@@ -687,8 +685,9 @@ mod tests {
 
     #[test]
     fn spec_precommit_identity_handshake() -> Result<(), Box<dyn Error>> {
-        let snapshot = staged_repository_snapshot(resolve_root(&RootArgs::default())?)
-            .map_err(crate::command_support::snapshot_error)?;
+        let snapshot = crate::command_support::snapshot_result(staged_repository_snapshot(
+            resolve_root(&RootArgs::default())?,
+        ))?;
         let output = output_path("identity-handshake");
         let _ = fs::remove_file(&output);
         let mut args = check_args(Some(output.clone()), None);

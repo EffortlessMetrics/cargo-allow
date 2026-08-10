@@ -185,8 +185,7 @@ fn delegate_staged_precommit(
     settings: &IntentDelegationSettings,
     started: Instant,
 ) -> CargoAllowResult<()> {
-    let snapshot =
-        staged_repository_snapshot(root).map_err(crate::command_support::snapshot_error)?;
+    let snapshot = crate::command_support::snapshot_result(staged_repository_snapshot(root))?;
     let provider = match discover_intent_provider(&IntentProviderRequest {
         root,
         config_path: Some(&settings.config_path),

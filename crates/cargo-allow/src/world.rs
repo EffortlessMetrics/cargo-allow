@@ -59,8 +59,7 @@ pub(crate) fn load_staged_world(
 ) -> CargoAllowResult<StagedWorld> {
     let cwd = current_dir()?;
     let root = resolve_source_tree_root(explicit_root, cwd)?;
-    let snapshot =
-        staged_repository_snapshot(&root).map_err(crate::command_support::snapshot_error)?;
+    let snapshot = crate::command_support::snapshot_result(staged_repository_snapshot(&root))?;
     let (policy_path, federation) = evaluate_source_exception_policy(&root, config)?;
     reject_unsupported_staged_federation(&snapshot, &federation)?;
     let policy_relative = normalize_to_repo_relative(&root, &policy_path);
@@ -127,7 +126,7 @@ pub(crate) fn load_staged_world(
         }
     }
     let final_snapshot =
-        staged_repository_snapshot(&root).map_err(crate::command_support::snapshot_error)?;
+        crate::command_support::snapshot_result(staged_repository_snapshot(&root))?;
     if final_snapshot.identity.semantic_hash != source_identity {
         return Err(CargoAllowError::with_kind(
             CargoAllowErrorKind::Scan,
@@ -200,28 +199,27 @@ fn staged_rust_inputs(
 }
 
 fn read_staged_text(snapshot: &StagedRepositorySnapshot, path: &Path) -> CargoAllowResult<String> {
-    let bytes =
-        match read_staged_path(snapshot, path).map_err(crate::command_support::snapshot_error)? {
-            StagedPathRead::Regular(bytes) => bytes,
-            StagedPathRead::Missing => {
-                return Err(CargoAllowError::with_kind(
-                    CargoAllowErrorKind::Inventory,
-                    format!(
-                        "staged source file {} is absent from the candidate",
-                        path.display()
-                    ),
-                ));
-            }
-            StagedPathRead::Unsupported { kind, .. } => {
-                return Err(CargoAllowError::with_kind(
-                    CargoAllowErrorKind::Inventory,
-                    format!(
-                        "staged source file {} has unsupported entry kind {kind:?}",
-                        path.display()
-                    ),
-                ));
-            }
-        };
+    let bytes = match crate::command_support::snapshot_result(read_staged_path(snapshot, path))? {
+        StagedPathRead::Regular(bytes) => bytes,
+        StagedPathRead::Missing => {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Inventory,
+                format!(
+                    "staged source file {} is absent from the candidate",
+                    path.display()
+                ),
+            ));
+        }
+        StagedPathRead::Unsupported { kind, .. } => {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Inventory,
+                format!(
+                    "staged source file {} has unsupported entry kind {kind:?}",
+                    path.display()
+                ),
+            ));
+        }
+    };
     if (bytes.len() as u64) > SOURCE_FILE_READ_MAX_BYTES {
         return Err(CargoAllowError::with_kind(
             CargoAllowErrorKind::Scan,
@@ -831,8 +829,7 @@ mod tests {
         .unwrap_or_else(|err| std::panic::panic_any(format!("oversized source write: {err}")));
         git(root.as_path(), &["add", "--", "invalid.rs", "oversized.rs"]);
 
-        let snapshot = staged_repository_snapshot(&root)
-            .map_err(crate::command_support::snapshot_error)
+        let snapshot = crate::command_support::snapshot_result(staged_repository_snapshot(&root))
             .unwrap_or_else(|err| std::panic::panic_any(format!("staged snapshot: {err}")));
         let mut partial_snapshot = snapshot.clone();
         partial_snapshot.completeness =

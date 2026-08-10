@@ -44,6 +44,12 @@ pub(crate) fn snapshot_error(error: SnapshotError) -> allow_core::CargoAllowErro
     allow_core::CargoAllowError::with_kind(kind, error.to_string())
 }
 
+pub(crate) fn snapshot_result<T>(
+    result: effortless_repo_snapshot::SnapshotResult<T>,
+) -> allow_core::CargoAllowResult<T> {
+    result.map_err(snapshot_error)
+}
+
 /// Centralized current-dir reader (#2824). Replaces 20+ copy-pasted
 /// `env::current_dir().map_err(|e| CargoAllowError::new(...))` sites.
 pub(crate) fn current_dir() -> CargoAllowResult<std::path::PathBuf> {
@@ -116,6 +122,7 @@ pub(crate) fn require_json_summary_output(
 #[cfg(test)]
 mod io_tests {
     use super::*;
+    use effortless_repo_snapshot::SnapshotErrorKind;
     use std::fs;
     use std::path::{Path, PathBuf};
 
@@ -146,6 +153,18 @@ mod io_tests {
         use std::error::Error as _;
         assert!(error.source().is_some());
         Ok(())
+    }
+
+    #[test]
+    fn snapshot_result_projects_neutral_error() {
+        let result = snapshot_result::<()>(Err(SnapshotError::with_kind(
+            SnapshotErrorKind::Inventory,
+            "staged snapshot unavailable",
+        )));
+        assert_eq!(
+            result.expect_err("snapshot error should project").kind(),
+            allow_core::CargoAllowErrorKind::Inventory
+        );
     }
 
     #[test]
