@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # IntentCandidateInstallSmokeV1 (#2599-C).
 #
-# Packages the six-crate intent stack, extracts each .crate outside the
+# Packages the five-crate intent stack, extracts each .crate outside the
 # workspace, installs cargo-intent from the extracted tree via patched path
 # resolution, verifies the isolated binary surface, and denies workspace
 # source-checkout / target/debug leakage during the decisive install.
@@ -112,7 +112,7 @@ for i in "${!crates[@]}"; do
   crates[$i]="${crates[$i]//$'\r'/}"
 done
 
-[[ "${#crates[@]}" -eq 6 ]] || fail "expected 6 crates from ${crate_set_fixture}, got ${#crates[@]}"
+[[ "${#crates[@]}" -eq 5 ]] || fail "expected 5 crates from ${crate_set_fixture}, got ${#crates[@]}"
 
 version="$(read_workspace_version)"
 [[ -n "${version}" ]] || fail "could not read workspace.package.version"
@@ -353,7 +353,6 @@ log "cargo-intent identity"
 "${cargo_bin}" identity >/dev/null
 
 declare -a install_closure=(
-  allow-core
   effortless-repo-snapshot
   intent-protocol
   intent-engine
@@ -451,7 +450,7 @@ receipt = {
     "tool": "cargo-intent",
     "result": "Passed",
     "claim_boundary": [
-        "six_crate_intent_package_graph",
+        "five_crate_intent_package_graph",
         "extracted_path_install_outside_workspace",
         "source_checkout_denied_during_decisive_install",
         "no_proof_or_test_invocation",

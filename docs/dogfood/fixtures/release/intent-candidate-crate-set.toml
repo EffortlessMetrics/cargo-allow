@@ -1,4 +1,4 @@
-# Six-crate IntentCandidate package / install set (#2599-C).
+# Five-crate IntentCandidate package / install set (#2599-C).
 # Shared by intent-candidate smoke and extraction parity receipts.
 # Do not fork this list into additional independent copies without updating callers.
 
@@ -7,7 +7,6 @@ schema_version = 1
 
 # Dependency / package order (leaf → binary).
 crates = [
-  "allow-core",
   "effortless-repo-protocol",
   "effortless-repo-snapshot",
   "intent-protocol",

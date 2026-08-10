@@ -13,7 +13,6 @@ categories.workspace = true
 publish = true
 
 [dependencies]
-allow-core = { workspace = true, optional = true }
 serde.workspace = true
 sha2.workspace = true
 toml.workspace = true
@@ -21,7 +20,3 @@ toml.workspace = true
 [dev-dependencies]
 allow-diff = { path = "../allow-diff" }
 effortless-repo-protocol = { path = "../effortless-repo-protocol" }
-
-[features]
-default = ["allow-core-interop"]
-allow-core-interop = ["dep:allow-core"]
