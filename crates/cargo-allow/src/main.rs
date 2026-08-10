@@ -208,3 +208,6 @@ mod spec_system_profile_tests;
 #[cfg(test)]
 #[path = "no_new_marker_guard_tests.rs"]
 mod no_new_marker_guard_tests;
+#[cfg(test)]
+#[path = "feature_policy_guard_tests.rs"]
+mod feature_policy_guard_tests;
