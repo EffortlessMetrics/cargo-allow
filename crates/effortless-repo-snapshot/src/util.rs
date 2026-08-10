@@ -185,6 +185,9 @@ mod tests {
     #[test]
     fn ignored_paths_match_recursive_and_segment_globs() -> Result<(), String> {
         let patterns = vec!["target/**".to_string(), "src/**/*.rs".to_string()];
+        if !source_tree_path_is_ignored(Path::new("target"), &patterns) {
+            return Err("recursive target prefix did not match itself".to_string());
+        }
         if !source_tree_path_is_ignored(Path::new("./target/debug/app"), &patterns) {
             return Err("recursive target pattern did not match".to_string());
         }
@@ -194,6 +197,32 @@ mod tests {
         if source_tree_path_is_ignored(Path::new("src/bin/main.toml"), &patterns) {
             return Err("Rust pattern matched a non-Rust path".to_string());
         }
+        if !source_tree_path_is_ignored(Path::new("src\\bin\\main.rs"), &patterns)
+            || !source_tree_path_is_ignored(Path::new("src/../src/bin/main.rs"), &patterns)
+        {
+            return Err("normalized Rust path did not match".to_string());
+        }
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn bounded_read_checks_the_limit_after_opening_a_symlink() -> Result<(), String> {
+        use std::os::unix::fs::symlink;
+
+        let target = fixture_path("symlink-target")?;
+        let link = fixture_path("symlink")?;
+        std::fs::write(
+            &target,
+            vec![b'z'; (SOURCE_FILE_READ_MAX_BYTES as usize) + 1],
+        )
+        .map_err(|error| format!("write symlink target: {error}"))?;
+        symlink(&target, &link).map_err(|error| format!("create symlink fixture: {error}"))?;
+        if read_file_capped(&link).is_ok() {
+            return Err("oversized symlink read unexpectedly succeeded".to_string());
+        }
+        let _ = std::fs::remove_file(link);
+        let _ = std::fs::remove_file(target);
         Ok(())
     }
 
