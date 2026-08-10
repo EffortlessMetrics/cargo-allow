@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! Typed delegation result classes for spec-system delegation (#3366).
 //!
 //! Each result class is independently testable and maps to a stable error code.
@@ -58,10 +59,9 @@ impl DelegationResultCode {
             Self::ProviderUnavailable | Self::ProviderInstrumentFailure => {
                 allow_core::CargoAllowErrorKind::InstrumentFailure
             }
-            Self::ProviderIncompatible | Self::LegacyGenerationUnsupported
-            | Self::CompatibilityOperationRemoved => {
-                allow_core::CargoAllowErrorKind::Unsupported
-            }
+            Self::ProviderIncompatible
+            | Self::LegacyGenerationUnsupported
+            | Self::CompatibilityOperationRemoved => allow_core::CargoAllowErrorKind::Unsupported,
             Self::MalformedProviderOutput => allow_core::CargoAllowErrorKind::Artifact,
             Self::SourceIdentityMismatch | Self::StaleInput => {
                 allow_core::CargoAllowErrorKind::InvalidConfig
@@ -72,7 +72,10 @@ impl DelegationResultCode {
 
     /// Convert to a CargoAllowError with context.
     pub fn to_error(self, context: impl Into<String>) -> CargoAllowError {
-        CargoAllowError::with_kind(self.error_kind(), format!("{}: {}", self.as_str(), context.into()))
+        CargoAllowError::with_kind(
+            self.error_kind(),
+            format!("{}: {}", self.as_str(), context.into()),
+        )
     }
 }
 
