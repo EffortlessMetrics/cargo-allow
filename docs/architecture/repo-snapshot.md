@@ -13,8 +13,11 @@ Packet 2583-C moves generic `RepositorySourceView` into `repo-snapshot::source_v
 the cargo-allow self-hosted graph consumer now imports that canonical surface (3146-B).
 Remaining intent/proof consumers and compatibility-dependency removal are tracked as follow-up
 work rather than duplicated here.
-Packet 2583-D moves `git`, `revision_identity`, and `staged_index` implementations into `repo-snapshot`;
-`allow-diff` retains publish-safe ModuleFacade shims via `snapshot_package/` copies.
+Packet 2583-D moves `git`, `revision_identity`, and `staged_index` implementations into `repo-snapshot`.
+`allow-diff` still retains public compatibility re-exports backed by its
+`snapshot_package/` implementations; those are transitional duplicate
+evaluators, not deletion-complete adapters. Their removal is bounded by the
+exact parity and old-path reachability receipt in #2606.
 
 ## Module surfaces
 
