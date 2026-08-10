@@ -64,9 +64,9 @@ pub fn corpus_digest(records: &[(String, ParityComparison, String, String)]) -> 
 
 fn update_field(hasher: &mut Sha256, value: &str) {
     hasher.update(value.len().to_string().as_bytes());
-    hasher.update([b':']);
+    hasher.update(*b":");
     hasher.update(value.as_bytes());
-    hasher.update([b'|']);
+    hasher.update(*b"|");
 }
 
 fn hex_digest(bytes: &[u8]) -> String {
