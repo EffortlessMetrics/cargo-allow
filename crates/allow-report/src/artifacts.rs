@@ -12,6 +12,7 @@ mod propose;
 mod prune;
 mod refresh;
 mod release_manifest;
+mod release_manifest_v2;
 mod why;
 mod worklist;
 
@@ -54,6 +55,15 @@ pub use release_manifest::{
     RELEASE_MANIFEST_SCHEMA_ID, RELEASE_MANIFEST_SCHEMA_VERSION, ReleaseManifestV1,
     generate_release_manifest, render_release_manifest_json, render_release_manifest_summary,
     validate_release_manifest,
+};
+pub use release_manifest_v2::{
+    RELEASE_MANIFEST_V2_SCHEMA_ID, RELEASE_MANIFEST_V2_SCHEMA_VERSION,
+    ReleaseManifestAuthenticationV2, ReleaseManifestEnvelopeV2, ReleaseManifestOperationV2,
+    ReleaseManifestPackageRowV2, ReleaseManifestPayloadV2, ReleaseManifestPublicationPostureV2,
+    ReleaseManifestResultV2, ReleaseManifestSupportPostureV2, ReleaseManifestV2Validation,
+    render_release_manifest_v2_envelope, render_release_manifest_v2_envelope_bytes,
+    render_release_manifest_v2_payload, render_release_manifest_v2_payload_bytes,
+    validate_release_manifest_v2,
 };
 pub use why::{
     EvaluationContext, EvaluationResultClass, WhyCandidateEntry, WhyProofPlan, WhyReport,

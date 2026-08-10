@@ -37,6 +37,7 @@ fn schema_contract_registry_covers_every_documented_artifact_schema() {
             name != "tool-identity"
                 && name != "operator-latency"
                 && name != "release-manifest"
+                && name != "release-manifest-v2"
                 && name != "support-bundle"
         })
         .collect::<BTreeSet<_>>();

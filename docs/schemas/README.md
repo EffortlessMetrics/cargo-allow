@@ -113,6 +113,7 @@ runtime, reachability, or semantic analysis.
 | Artifact | Schema ID | Producer |
 |---|---|---|
 | Release identity and verified executable assets | `cargo-allow.release-manifest.v1` | release workflow / typed `allow-report` model |
+| Topology-derived release payload and execution envelope | `cargo-allow.release-manifest.v2` | typed `allow-report` contract; candidate wiring is a later release slice |
 
 `ReleaseManifestV1` is a release-control artifact rather than a source-tree
 scan result. Its `binary_assets` collection may be empty for crates.io-only
@@ -185,6 +186,7 @@ matrix.
 - [tool-identity.schema.json](tool-identity.schema.json) self-description contract (not a governed artifact)
 - [operator-latency.schema.json](operator-latency.schema.json) supporting hosted performance receipt (not a governed artifact)
 - [release-manifest.schema.json](release-manifest.schema.json) release-control contract (not a governed source-tree artifact)
+- [release-manifest-v2.schema.json](release-manifest-v2.schema.json) topology-derived release contract (contract-only; not a publication authorization)
 - [common.v1.json](common.v1.json) shared source-tree fragments used as the
   tested vocabulary source for future schema consolidation. Artifact schemas
   remain self-contained for consumer portability. The shared catalog includes
