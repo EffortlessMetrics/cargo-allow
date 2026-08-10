@@ -1,8 +1,8 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum ExtractionStage {
     ArchitectureInventory,
     RepoProtocol,
