@@ -100,6 +100,78 @@ fn repo_edit_core_shims_match_live_private_forwards() -> Result<(), String> {
     Ok(())
 }
 
+#[test]
+fn repo_edit_command_shims_match_live_apply_forwards() -> Result<(), String> {
+    let root = repo_root();
+    let registry_text = std::fs::read_to_string(root.join("policy/extraction-shims.toml"))
+        .map_err(|err| format!("read shim registry: {err}"))?;
+    let registry = allow_policy::extraction_shims::parse_extraction_shim_registry(&registry_text)
+        .map_err(|err| format!("parse shim registry: {err}"))?;
+
+    let expected = [
+        (
+            "shim-cargo-allow-init-apply",
+            "cargo-allow::init",
+            "crates/cargo-allow/src/init.rs",
+        ),
+        (
+            "shim-cargo-allow-refresh-apply",
+            "cargo-allow::refresh",
+            "crates/cargo-allow/src/refresh.rs",
+        ),
+        (
+            "shim-cargo-allow-prune-apply",
+            "cargo-allow::prune",
+            "crates/cargo-allow/src/prune.rs",
+        ),
+        (
+            "shim-cargo-allow-add-apply",
+            "cargo-allow::add",
+            "crates/cargo-allow/src/add.rs",
+        ),
+        (
+            "shim-cargo-allow-migrate-apply",
+            "cargo-allow::migrate",
+            "crates/cargo-allow/src/migrate.rs",
+        ),
+        (
+            "shim-cargo-allow-propose-apply",
+            "cargo-allow::propose",
+            "crates/cargo-allow/src/propose.rs",
+        ),
+    ];
+
+    for (id, old_identity, source_path) in expected {
+        let shim = registry
+            .shim
+            .iter()
+            .find(|shim| shim.id == id)
+            .ok_or_else(|| format!("missing repo-edit command shim {id}"))?;
+        if shim.posture != allow_policy::extraction_shims::ShimPosture::Private
+            || shim.status != allow_policy::extraction_shims::ShimStatus::Active
+            || shim.old_identity != old_identity
+            || shim.new_identity != "repo-edit::single_target_apply"
+            || !shim.removal_condition.contains("#2606")
+        {
+            return Err(format!(
+                "repo-edit command shim {id} has an unexpected compatibility boundary"
+            ));
+        }
+
+        let source = std::fs::read_to_string(root.join(source_path))
+            .map_err(|err| format!("read {source_path}: {err}"))?;
+        if !source.contains("effortless_repo_edit::{SingleTargetApplyMode")
+            || !source.contains("apply_single_target(SingleTargetApplyRequest")
+        {
+            return Err(format!(
+                "repo-edit command shim {id} is missing live apply forwarding in {source_path}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }

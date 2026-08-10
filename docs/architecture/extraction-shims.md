@@ -11,5 +11,6 @@ and atomic writes. These forwards preserve the cargo-allow command boundary;
 they do not prove parity acceptance or permit shim deletion before the relevant
 #2606 cutover receipt.
 
-The source checks cover the core repo-edit forwards. Command-specific apply
-forwards remain separately bounded by their own shim and cutover records.
+The source checks cover the core repo-edit forwards and the six command-specific
+apply forwards. Shim retirement remains separately bounded by its own cutover
+records.
