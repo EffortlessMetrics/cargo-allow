@@ -1,5 +1,4 @@
-use crate::{RepositorySourceView, SnapshotErrorKind};
-use allow_inventory::InventorySource;
+use crate::{RepositorySourceView, SnapshotErrorKind, SourceInventorySource};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -48,7 +47,7 @@ fn staged_view_reads_indexed_bytes_and_inventory() -> Result<(), String> {
     let view = RepositorySourceView::staged(&root).map_err(|error| error.to_string())?;
     assert_eq!(
         view.inventory().source,
-        InventorySource::GitIndexStagedCandidate
+        SourceInventorySource::GitIndexStagedCandidate
     );
     let staged_text = view
         .read_text(Path::new("value.txt"))
