@@ -106,6 +106,8 @@ pub(crate) fn default_source_inventory(root: &Path) -> SnapshotResult<SourceInve
         }
     };
     files.retain(|path| !source_inventory_path_is_ignored(path));
+    files.sort();
+    files.dedup();
     let completeness = if git_error.is_some() {
         SourceInventoryCompleteness::Fallback
     } else if !deleted_tracked.is_empty()
@@ -279,7 +281,8 @@ fn relative_path_for_entry_error(root: &Path, directory: &Path) -> PathBuf {
 mod tests {
     use super::{SourceInventoryCompleteness, SourceInventorySource, default_source_inventory};
     use std::fs;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
+    use std::process::Command;
 
     #[test]
     fn neutral_inventory_labels_are_total() {
@@ -336,5 +339,79 @@ mod tests {
         assert!(inventory.git_error.is_some());
         fs::remove_dir_all(root).map_err(|error| error.to_string())?;
         Ok(())
+    }
+
+    #[test]
+    fn git_inventory_reports_existing_and_deleted_tracked_paths() -> Result<(), String> {
+        let root = temp_root("git-inventory")?;
+        git(&root, &["init", "-q"])?;
+        git(&root, &["config", "user.name", "Snapshot Tests"])?;
+        git(&root, &["config", "user.email", "snapshot@example.invalid"])?;
+        fs::write(root.join("kept.rs"), "fn kept() {}\n").map_err(|error| error.to_string())?;
+        fs::write(root.join("deleted.rs"), "fn deleted() {}\n")
+            .map_err(|error| error.to_string())?;
+        git(&root, &["add", "kept.rs", "deleted.rs"])?;
+        fs::remove_file(root.join("deleted.rs")).map_err(|error| error.to_string())?;
+
+        let inventory = default_source_inventory(&root).map_err(|error| error.to_string())?;
+
+        assert_eq!(inventory.source, SourceInventorySource::GitTracked);
+        assert_eq!(inventory.completeness, SourceInventoryCompleteness::Partial);
+        assert_eq!(inventory.files, [PathBuf::from("kept.rs")]);
+        assert_eq!(inventory.deleted_tracked, [PathBuf::from("deleted.rs")]);
+        fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn fallback_inventory_includes_file_symlinks_and_is_sorted() -> Result<(), String> {
+        let root = temp_root("fallback-symlink")?;
+        fs::create_dir_all(root.join("nested")).map_err(|error| error.to_string())?;
+        fs::write(root.join("nested/z.rs"), "z\n").map_err(|error| error.to_string())?;
+        fs::write(root.join("a.rs"), "a\n").map_err(|error| error.to_string())?;
+        std::os::unix::fs::symlink("nested/z.rs", root.join("alias.rs"))
+            .map_err(|error| error.to_string())?;
+
+        let inventory = default_source_inventory(&root).map_err(|error| error.to_string())?;
+
+        assert_eq!(inventory.source, SourceInventorySource::FilesystemFallback);
+        assert_eq!(
+            inventory.files,
+            [
+                PathBuf::from("a.rs"),
+                PathBuf::from("alias.rs"),
+                PathBuf::from("nested/z.rs"),
+            ]
+        );
+        fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    fn git(root: &Path, args: &[&str]) -> Result<(), String> {
+        let output = Command::new("git")
+            .arg("-C")
+            .arg(root)
+            .args(args)
+            .output()
+            .map_err(|error| error.to_string())?;
+        if output.status.success() {
+            Ok(())
+        } else {
+            Err(String::from_utf8_lossy(&output.stderr).into_owned())
+        }
+    }
+
+    fn temp_root(label: &str) -> Result<PathBuf, String> {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|error| error.to_string())?
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "repo-snapshot-inventory-{label}-{}-{nonce}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(root)
     }
 }
