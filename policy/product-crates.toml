@@ -42,7 +42,21 @@ owned_crates = [
   "proof-engine",
   "cargo-proof",
 ]
-forbid_product_dependencies = []
+# cargo-proof may link only shared protocols/adapters, never cargo-allow
+# application internals (#3356). This is the reverse-edge rule: cargo-proof
+# must not reach back into the cargo-allow product family.
+forbid_product_dependencies = [
+  "cargo-allow",
+  "allow-core",
+  "allow-policy",
+  "allow-inventory",
+  "allow-files",
+  "allow-rust",
+  "allow-match",
+  "allow-report",
+  "allow-diff",
+  "allow-policy-legacy",
+]
 
 [[shared_crate]]
 name = "effortless-repo-protocol"
@@ -68,3 +82,12 @@ allowed_domain_dependencies = ["effortless-repo-protocol"]
 from = "proof-engine"
 to = "intent-engine"
 repair_hint = "intent-protocol"
+
+# Note: shared substrate crates (effortless-repo-edit, effortless-rust-source-index)
+# declare an opt-in `allow-core-interop` feature that pulls allow-core as an
+# OPTIONAL dependency. The V1 dependency-graph loader records all [dependencies]
+# keys regardless of `optional = true`, so this intended optional edge cannot be
+# expressed as a [[forbidden_crate_dependency]] here without a false positive.
+# The rule "shared protocols must not DEFAULT-depend on a product ontology" is
+# enforced by product_crate_architecture_tests.rs::shared_protocols_do_not_default_depend_on_allow_core,
+# which parses the optional flag directly (#3356).
