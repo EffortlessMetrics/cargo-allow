@@ -1,4 +1,4 @@
-//! A cargo-allow-side consumer of `allow-diff`'s repository snapshot identity.
+//! A cargo-allow-side consumer of the shared repository snapshot identity.
 //!
 //! The spec walking skeleton's downstream consumers (#2217/#2219/#2220/#2221)
 //! must read one shared snapshot identity rather than issuing their own Git
@@ -9,7 +9,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use allow_diff::{
+use effortless_repo_snapshot::{
     RepositoryDirtyState, RepositorySnapshotKind, RepositorySnapshotRequest, repository_snapshot,
 };
 

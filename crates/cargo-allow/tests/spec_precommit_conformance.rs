@@ -2,7 +2,7 @@
 //!
 //! Embedded evaluator removed; precommit requires cargo-intent delegation.
 
-use allow_diff::{StagedPathRead, read_staged_path, staged_repository_snapshot};
+use effortless_repo_snapshot::{StagedPathRead, read_staged_path, staged_repository_snapshot};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
