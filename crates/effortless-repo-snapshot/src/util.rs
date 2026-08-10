@@ -167,6 +167,22 @@ mod tests {
     }
 
     #[test]
+    fn bounded_read_reports_missing_files_and_directories() -> Result<(), String> {
+        let missing = fixture_path("missing")?;
+        if read_file_capped(&missing).is_ok() {
+            return Err("missing read unexpectedly succeeded".to_string());
+        }
+        let directory = fixture_path("directory")?;
+        std::fs::create_dir(&directory)
+            .map_err(|error| format!("create directory fixture: {error}"))?;
+        if read_file_capped(&directory).is_ok() {
+            return Err("directory read unexpectedly succeeded".to_string());
+        }
+        let _ = std::fs::remove_dir(directory);
+        Ok(())
+    }
+
+    #[test]
     fn ignored_paths_match_recursive_and_segment_globs() -> Result<(), String> {
         let patterns = vec!["target/**".to_string(), "src/**/*.rs".to_string()];
         if !source_tree_path_is_ignored(Path::new("./target/debug/app"), &patterns) {
@@ -177,6 +193,23 @@ mod tests {
         }
         if source_tree_path_is_ignored(Path::new("src/bin/main.toml"), &patterns) {
             return Err("Rust pattern matched a non-Rust path".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn glob_segments_cover_exact_single_and_multi_character_matches() -> Result<(), String> {
+        if !segment_matches("", "")
+            || !segment_matches("?", "é")
+            || !segment_matches("a?c", "abc")
+            || !segment_matches("a*c", "abééc")
+            || !segment_matches("a*c", "ac")
+        {
+            return Err("expected glob segment matches were rejected".to_string());
+        }
+        if segment_matches("?", "") || segment_matches("a?c", "ac") || segment_matches("a*c", "abé")
+        {
+            return Err("invalid glob segment match was accepted".to_string());
         }
         Ok(())
     }
