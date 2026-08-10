@@ -10,10 +10,12 @@ mod parity;
 mod revision_identity;
 mod source_view;
 mod staged_index;
+mod util;
 
 #[cfg(test)]
 mod protocol_adapter;
 
+pub use error::{SnapshotError, SnapshotErrorKind, SnapshotResult};
 pub use git::{changed_files, git_tracked_files_at_revision, read_file_at_revision};
 #[doc(hidden)]
 pub use parity::{ParityContract, load_parity_contract, parity_contract_paths};
