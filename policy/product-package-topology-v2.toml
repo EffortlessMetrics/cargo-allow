@@ -13,6 +13,7 @@ linked_architecture_manifest = "CARGO-ALLOW-ARCH-V2-0001"
 [[package]]
 logical_id = "allow-core"
 cargo_package_name = "allow-core"
+  version_line = "cargo-allow-0.2"
 product_family = "cargo-allow"
 posture = "CargoAllowSupported"
 package_version = "0.2.0"
@@ -25,6 +26,7 @@ release_order = 10
 [[package]]
 logical_id = "allow-policy"
 cargo_package_name = "allow-policy"
+  version_line = "cargo-allow-0.2"
 product_family = "cargo-allow"
 posture = "CargoAllowSupported"
 package_version = "0.2.0"
@@ -37,6 +39,7 @@ release_order = 20
 [[package]]
 logical_id = "allow-inventory"
 cargo_package_name = "allow-inventory"
+  version_line = "cargo-allow-0.2"
 product_family = "cargo-allow"
 posture = "CargoAllowSupported"
 package_version = "0.2.0"
@@ -49,6 +52,7 @@ release_order = 30
 [[package]]
 logical_id = "allow-files"
 cargo_package_name = "allow-files"
+  version_line = "cargo-allow-0.2"
 product_family = "cargo-allow"
 posture = "CargoAllowSupported"
 package_version = "0.2.0"
@@ -61,6 +65,7 @@ release_order = 40
 [[package]]
 logical_id = "allow-rust"
 cargo_package_name = "allow-rust"
+  version_line = "cargo-allow-0.2"
 product_family = "cargo-allow"
 posture = "CargoAllowSupported"
 package_version = "0.2.0"
@@ -73,6 +78,7 @@ release_order = 50
 [[package]]
 logical_id = "allow-match"
 cargo_package_name = "allow-match"
+  version_line = "cargo-allow-0.2"
 product_family = "cargo-allow"
 posture = "CargoAllowSupported"
 package_version = "0.2.0"
@@ -85,6 +91,7 @@ release_order = 60
 [[package]]
 logical_id = "allow-report"
 cargo_package_name = "allow-report"
+  version_line = "cargo-allow-0.2"
 product_family = "cargo-allow"
 posture = "CargoAllowSupported"
 package_version = "0.2.0"
@@ -97,6 +104,7 @@ release_order = 70
 [[package]]
 logical_id = "allow-policy-legacy"
 cargo_package_name = "allow-policy-legacy"
+  version_line = "cargo-allow-0.2"
 product_family = "cargo-allow"
 posture = "LegacyMigration"
 package_version = "0.2.0"
@@ -109,6 +117,7 @@ release_order = 75
 [[package]]
 logical_id = "allow-diff"
 cargo_package_name = "allow-diff"
+  version_line = "cargo-allow-0.2"
 product_family = "cargo-allow"
 posture = "CargoAllowSupported"
 package_version = "0.2.0"
@@ -121,6 +130,7 @@ release_order = 80
 [[package]]
 logical_id = "cargo-allow"
 cargo_package_name = "cargo-allow"
+  version_line = "cargo-allow-0.2"
 product_family = "cargo-allow"
 posture = "CargoAllowSupported"
 package_version = "0.2.0"
@@ -135,6 +145,7 @@ release_order = 100
 [[package]]
 logical_id = "repo-protocol"
 cargo_package_name = "effortless-repo-protocol"
+  version_line = "shared-0.1"
 product_family = "shared"
 posture = "SharedProtocolInternalOrStabilizing"
 package_version = "0.1.0"
@@ -147,6 +158,7 @@ release_order = 95
 [[package]]
 logical_id = "repo-edit"
 cargo_package_name = "effortless-repo-edit"
+  version_line = "shared-0.1"
 product_family = "shared"
 posture = "SharedImplementationInternalOrExperimental"
 package_version = "0.1.0"
@@ -159,6 +171,7 @@ release_order = 98
 [[package]]
 logical_id = "repo-snapshot"
 cargo_package_name = "effortless-repo-snapshot"
+  version_line = "shared-0.1"
 product_family = "shared"
 posture = "SharedImplementationInternalOrExperimental"
 package_version = "0.1.0"
@@ -171,6 +184,7 @@ release_order = 220
 [[package]]
 logical_id = "rust-source-index"
 cargo_package_name = "effortless-rust-source-index"
+  version_line = "shared-0.1"
 product_family = "shared"
 posture = "SharedProtocolInternalOrStabilizing"
 package_version = "0.1.0"
@@ -185,6 +199,7 @@ release_order = 230
 [[package]]
 logical_id = "intent-model"
 cargo_package_name = "intent-model"
+  version_line = "cargo-intent-0.1"
 product_family = "cargo-intent"
 posture = "CargoIntentExperimental"
 package_version = "0.1.0"
@@ -197,6 +212,7 @@ release_order = 310
 [[package]]
 logical_id = "intent-protocol"
 cargo_package_name = "intent-protocol"
+  version_line = "cargo-intent-0.1"
 product_family = "cargo-intent"
 posture = "CargoIntentExperimental"
 package_version = "0.1.0"
@@ -209,6 +225,7 @@ release_order = 320
 [[package]]
 logical_id = "intent-engine"
 cargo_package_name = "intent-engine"
+  version_line = "cargo-intent-0.1"
 product_family = "cargo-intent"
 posture = "CargoIntentExperimental"
 package_version = "0.1.0"
@@ -221,6 +238,7 @@ release_order = 330
 [[package]]
 logical_id = "intent-edit"
 cargo_package_name = "intent-edit"
+  version_line = "cargo-intent-0.1"
 product_family = "cargo-intent"
 posture = "CargoIntentExperimental"
 package_version = "0.1.0"
@@ -233,6 +251,7 @@ release_order = 340
 [[package]]
 logical_id = "cargo-intent"
 cargo_package_name = "cargo-intent"
+  version_line = "cargo-intent-0.1"
 product_family = "cargo-intent"
 posture = "CargoIntentExperimental"
 package_version = "0.1.0"
@@ -247,6 +266,7 @@ release_order = 360
 [[package]]
 logical_id = "proof-protocol"
 cargo_package_name = "proof-protocol"
+  version_line = "cargo-proof-0.1"
 product_family = "cargo-proof"
 posture = "CargoProofExperimental"
 package_version = "0.1.0"
@@ -265,6 +285,7 @@ release_order = 410
 [[package]]
 logical_id = "proof-engine"
 cargo_package_name = "proof-engine"
+  version_line = "cargo-proof-0.1"
 product_family = "cargo-proof"
 posture = "CargoProofExperimental"
 package_version = "0.1.0"
@@ -277,6 +298,7 @@ release_order = 430
 [[package]]
 logical_id = "cargo-proof"
 cargo_package_name = "cargo-proof"
+  version_line = "cargo-proof-0.1"
 product_family = "cargo-proof"
 posture = "CargoProofExperimental"
 package_version = "0.1.0"

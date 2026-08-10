@@ -38,6 +38,9 @@ pub struct PackageTopologyEntryV2 {
     pub posture: PackagePosture,
     pub package_version: String,
     pub version_source: VersionSourceV2,
+    /// Independent version line for non-lockstep compatibility (#3362).
+    /// Format: "<product-family>-<major>.<minor>" (e.g., "cargo-allow-0.2").
+    pub version_line: String,
     pub publication_state: PublicationStateV2,
     pub publish: bool,
     pub candidate_inclusion: bool,
@@ -124,6 +127,7 @@ struct PackageTopologyEntryV2Toml {
     posture: String,
     package_version: String,
     version_source: String,
+    version_line: String,
     publication_state: String,
     publish: bool,
     candidate_inclusion: bool,
@@ -190,6 +194,7 @@ impl ProductPackageTopologyV2Toml {
                 posture: PackagePosture::parse(&entry.posture)?,
                 package_version: entry.package_version,
                 version_source: VersionSourceV2::parse(&entry.version_source)?,
+                version_line: entry.version_line,
                 publication_state: PublicationStateV2::parse(&entry.publication_state)?,
                 publish: entry.publish,
                 candidate_inclusion: entry.candidate_inclusion,
