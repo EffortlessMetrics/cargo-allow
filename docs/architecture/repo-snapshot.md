@@ -10,7 +10,9 @@ skeleton and parity fixtures over current `allow-diff` revision/staged APIs.
 Parity fixtures live under `tests/fixtures/repo-snapshot/`. Packet 2583-B adds the
 staged-deletion negative fixture (staged delete + dirty worktree replacement → path absent).
 Packet 2583-C moves generic `RepositorySourceView` into `repo-snapshot::source_view`;
-`cargo-allow` keeps a package-local copy (`spec_system_source_view.rs`) in sync until publish cutover (#2601).
+the cargo-allow self-hosted graph consumer now imports that canonical surface (3146-B).
+Remaining intent/proof consumers and compatibility-dependency removal are tracked as follow-up
+work rather than duplicated here.
 Packet 2583-D moves `git`, `revision_identity`, and `staged_index` implementations into `repo-snapshot`;
 `allow-diff` retains publish-safe ModuleFacade shims via `snapshot_package/` copies.
 

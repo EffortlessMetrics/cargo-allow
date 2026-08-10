@@ -105,9 +105,9 @@ release_order = 100
 package = "effortless-repo-snapshot"
 product_family = "shared"
 posture = "SharedImplementationInternalOrExperimental"
-publish = false
-candidate_inclusion = false
-release_order = 220
+publish = true
+candidate_inclusion = true
+release_order = 97
 
 [[package]]
 package = "effortless-rust-source-index"

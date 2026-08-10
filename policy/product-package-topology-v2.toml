@@ -177,9 +177,9 @@ posture = "SharedImplementationInternalOrExperimental"
 package_version = "0.1.0"
 version_source = "WorkspaceProduct"
 publication_state = "UnpublishedInternal"
-publish = false
-candidate_inclusion = false
-release_order = 220
+publish = true
+candidate_inclusion = true
+release_order = 97
 
 [[package]]
 logical_id = "rust-source-index"

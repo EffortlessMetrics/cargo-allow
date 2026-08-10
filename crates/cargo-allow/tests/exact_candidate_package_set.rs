@@ -25,6 +25,7 @@ const EXPECTED_CRATES: &[&str] = &[
     "allow-policy-legacy",
     "allow-diff",
     "effortless-repo-protocol",
+    "effortless-repo-snapshot",
     "effortless-repo-edit",
     "cargo-allow",
 ];
@@ -175,7 +176,7 @@ fn example_exact_candidate_package_set_matches_schema_constants() {
 }
 
 #[test]
-fn candidate_crate_set_fixture_lists_twelve_publish_order_crates() {
+fn candidate_crate_set_fixture_lists_thirteen_publish_order_crates() {
     for name in EXPECTED_CRATES {
         assert!(
             CRATE_SET.contains(&format!("\"{name}\"")),

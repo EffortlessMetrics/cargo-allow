@@ -14,6 +14,7 @@ Crate skeleton and parity fixtures over current `allow-diff` revision/staged API
 
 ## PR3 (#2583-C)
 
-`repo-snapshot::source_view` owns generic `RepositorySourceView`. `cargo-allow` keeps a
-package-local copy in sync until publish cutover (#2601). Reader cutover from `allow-diff`
+`repo-snapshot::source_view` owns generic `RepositorySourceView`. The cargo-allow self-hosted
+graph consumer imports this canonical surface after #3146-B; remaining intent/proof consumers
+and compatibility-dependency removal are follow-up work. Reader cutover from `allow-diff`
 lands in #2583-D.
