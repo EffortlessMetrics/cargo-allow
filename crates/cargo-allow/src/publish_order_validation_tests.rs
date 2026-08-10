@@ -1,4 +1,7 @@
-#![allow(clippy::collapsible_if)]
+#![expect(
+    clippy::collapsible_if,
+    reason = "policy:allow-0517 publish-order topology test keeps invariant parsing readable"
+)]
 //! Publish order validation: proves V2 topology release_order is a valid
 //! topological sort of the actual workspace dependency graph (#3363).
 //!
