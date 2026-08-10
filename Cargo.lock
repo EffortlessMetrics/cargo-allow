@@ -49,6 +49,7 @@ dependencies = [
  "allow-policy",
  "allow-policy-legacy",
  "allow-rust",
+ "effortless-repo-snapshot",
  "sha2",
 ]
 

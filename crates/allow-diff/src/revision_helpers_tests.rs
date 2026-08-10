@@ -79,3 +79,14 @@ fn missing_revision_source_reports_inventory_error() {
     assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::Inventory);
     assert!(err.to_string().contains("src/lib.rs"));
 }
+
+#[test]
+fn snapshot_error_projects_neutral_inventory_kind() {
+    let err = snapshot_error(SnapshotError::with_kind(
+        SnapshotErrorKind::Inventory,
+        "snapshot unavailable",
+    ));
+
+    assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::Inventory);
+    assert!(err.to_string().contains("snapshot unavailable"));
+}
