@@ -70,6 +70,45 @@ fn partial_result_class_denies_clean_completion() {
 }
 
 #[test]
+fn source_view_contract_roundtrips_and_preserves_base_head_identity() -> Result<(), String> {
+    let mut view = crate::RepositorySourceViewV1::new(
+        crate::RepositorySourceViewKindV1::BaseHead,
+        "sha256:v1:root",
+        crate::CompletenessV1::Partial,
+    );
+    view.base_identity = Some("sha256:v1:base".to_string());
+    view.head_identity = Some("sha256:v1:head".to_string());
+    view.entries.push(crate::SourceEntryV1 {
+        path: "src/lib.rs".to_string(),
+        present: true,
+        content_digest: Some(crate::SourceContentDigestV1 {
+            algorithm: "sha256:v1".to_string(),
+            value: "abc".to_string(),
+        }),
+        executable: false,
+    });
+    view.validate()?;
+    let json =
+        serde_json::to_string(&view).map_err(|err| format!("serialize source view: {err}"))?;
+    let decoded: crate::RepositorySourceViewV1 =
+        serde_json::from_str(&json).map_err(|err| format!("deserialize source view: {err}"))?;
+    if decoded != view {
+        return Err("source-view contract changed during round-trip".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn source_view_contract_rejects_flattened_base_head_identity() {
+    let view = crate::RepositorySourceViewV1::new(
+        crate::RepositorySourceViewKindV1::BaseHead,
+        "sha256:v1:root",
+        crate::CompletenessV1::Complete,
+    );
+    assert!(view.validate().is_err());
+}
+
+#[test]
 fn allow_diff_repository_snapshot_field_parity_fixture() -> Result<(), String> {
     let snapshot = sample_snapshot();
     if snapshot.head.commit != "cccccccccccccccccccccccccccccccccccccccc" {
