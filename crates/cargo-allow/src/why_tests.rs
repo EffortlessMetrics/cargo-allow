@@ -184,6 +184,25 @@ fn render_why_text_sanitizes_repository_control_text() {
 }
 
 #[test]
+fn render_why_text_does_not_make_hostile_proof_paths_pasteable() {
+    let finding = sample_finding_at("src/\tlib.rs", 10);
+    let outcome = MatchOutcome {
+        status: MatchStatus::New,
+        allow_id: None,
+        candidate_ids: Vec::new(),
+        finding_index: Some(0),
+        message: "unreceipted panic.unwrap at src/lib.rs:10:1".to_string(),
+        score: 0,
+    };
+
+    let text = render_why_text(&finding, &outcome, &[]);
+
+    assert!(text.contains("not a pasteable shell command"));
+    assert!(text.contains("structured argv / proof_plans JSON"));
+    assert!(!text.contains("--path 'src/\\tlib.rs'") && !text.contains("--path src/\\tlib.rs"));
+}
+
+#[test]
 fn render_why_json_deserializes_and_asserts_semantic_paths() {
     let finding = sample_finding_at("src/lib.rs", 10);
     let entry = near_miss_entry();
