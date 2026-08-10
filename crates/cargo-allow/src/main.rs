@@ -22,6 +22,8 @@ mod evidence_inventory;
 mod evidence_render;
 mod exit_code;
 mod explain;
+#[cfg(test)]
+mod extraction_parity_runtime;
 mod federation_doctor;
 mod federation_report;
 mod hooks;
