@@ -15,6 +15,7 @@ mod staged_index;
 mod protocol_adapter;
 
 pub use git::{changed_files, git_tracked_files_at_revision, read_file_at_revision};
+#[doc(hidden)]
 pub use parity::{ParityContract, load_parity_contract, parity_contract_paths};
 pub use revision_identity::RevisionIdentitySurface;
 pub use revision_identity::{

@@ -33,6 +33,7 @@ pub use mutation_lock::MutationLock;
 pub use mutation_target::{
     MutationTarget, MutationTargetOwnership, lock_path_for_target, resolve_mutation_target,
 };
+#[doc(hidden)]
 pub use parity::parity_contract_paths;
 pub use single_target_apply::{
     SingleTargetApplyMode, SingleTargetApplyRequest, SingleTargetApplyResponse, apply_single_target,
