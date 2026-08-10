@@ -64,14 +64,14 @@ fn cargo_allow_production_deps_have_no_intent_or_proof() -> Result<(), String> {
 fn cargo_allow_has_no_features_enabling_intent_or_proof() -> Result<(), String> {
     let manifest = read_manifest("cargo-allow")?;
     // Check if there's a [features] section that references intent/proof
-    if manifest.contains("[features]") {
+    if let Some(features_start) = manifest.find("[features]") {
         // Extract features section
-        let features_start = manifest.find("[features]").unwrap();
-        let features_end = manifest[features_start..]
-            .find("\n[")
+        let features_end = manifest
+            .get(features_start..)
+            .and_then(|s| s.find("\n["))
             .map(|i| features_start + i)
             .unwrap_or(manifest.len());
-        let features_section = &manifest[features_start..features_end];
+        let features_section = manifest.get(features_start..features_end).unwrap_or("");
         for forbidden in &["intent", "proof"] {
             if features_section.contains(forbidden) {
                 return Err(format!(
