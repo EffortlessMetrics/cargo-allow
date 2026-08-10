@@ -841,7 +841,7 @@ callee = "unwrap"
             && field(&summary, &["reason", "code"]) == Some(&Value::from("explain.stale"))
             && field(&summary, &["operation_effects", "writes_repository"])
                 == Some(&Value::Bool(false))
-            && field(&summary, &["primary_action"]).is_none(),
+            && field(&summary, &["primary_action", "kind"]) == Some(&Value::from("decision")),
         format!("stale explain summary lost advisory boundaries: {summary}"),
     )?;
 
@@ -872,7 +872,8 @@ callee = "unwrap"
     .map_err(|error| format!("parse stale explain detail: {error}"))?;
     require(
         field(&detailed, &["allow_entry", "id"]) == Some(&Value::from("allow-stale"))
-            && field(&detailed, &["status"]) == Some(&Value::from("stale")),
+            && field(&detailed, &["summary", "current_status"]) == Some(&Value::from("stale"))
+            && detailed.pointer("/match_outcomes/0/status") == Some(&Value::from("stale")),
         format!("stale explain detail lost policy-health status: {detailed}"),
     )?;
 
