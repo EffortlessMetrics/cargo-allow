@@ -199,6 +199,39 @@ fn repository_move_ledger_is_complete_and_projection_is_current() -> Result<(), 
 }
 
 #[test]
+fn snapshot_move_rows_track_live_public_compatibility_shims() -> Result<(), String> {
+    let ledger = current_ledger()?;
+    let expected = [
+        (
+            "move-allow-diff-revision-identity",
+            "shim-allow-diff-revision-identity",
+        ),
+        (
+            "move-allow-diff-staged-index",
+            "shim-allow-diff-staged-index",
+        ),
+    ];
+
+    for (entry_id, shim_id) in expected {
+        let entry = ledger
+            .entry
+            .iter()
+            .find(|entry| entry.id == entry_id)
+            .ok_or_else(|| format!("missing snapshot move row {entry_id}"))?;
+        if entry.active_shim_ids != [shim_id.to_string()]
+            || entry.old_path_reachability_disposition != "OldPathStillReachable"
+            || !entry.removal_issue_or_condition.contains("#2606 stage-1")
+        {
+            return Err(format!(
+                "snapshot move row {entry_id} must retain its active public compatibility shim until #2606"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
 fn explicit_root_validation_detects_unledgered_selected_source() -> Result<(), String> {
     let root = std::env::temp_dir().join(format!(
         "cargo-allow-product-move-unledgered-{}",

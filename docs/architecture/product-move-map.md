@@ -1037,7 +1037,7 @@
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
 - Removal: issue:#2606 stage-1 cutover receipt
-- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Next: Keep the public compatibility shim active while #2606 stage-1 parity and old-path reachability receipts establish whether the legacy evaluator can be deleted.
 - Deletion output: Deferred to extraction cutover and parity receipts.
 
 ### `move-allow-diff-staged-index`
@@ -1048,7 +1048,7 @@
 - Stage/status: `ArchitectureInventory` / `TargetRatified`
 - Old path: `OldPathStillReachable`
 - Removal: issue:#2606 stage-1 cutover receipt
-- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Next: Keep the public compatibility shim active while #2606 stage-1 parity and old-path reachability receipts establish whether the legacy evaluator can be deleted.
 - Deletion output: Deferred to extraction cutover and parity receipts.
 
 ### `move-allow-policy-spec-system`
