@@ -10808,3 +10808,19 @@ glob = "CLAUDE.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0515"
+kind = "non_rust_file"
+family = "configuration"
+glob = "policy/legacy-spec-system-inventory.toml"
+owner = "core/governance"
+classification = "legacy_spec_system_inventory"
+reason = "Legacy spec-system command/input/output inventory and disposition map (#3370)"
+evidence = ["issue:3370", "issue:2601"]
+occurrence_limit = 1
+created = "2026-08-10"
+review_after = "2026-11-08"
+
+[allow.selector]
+glob = "policy/legacy-spec-system-inventory.toml"
