@@ -17,8 +17,8 @@ use allow_rust::{
     inventory_rust_test_subjects_from_sources, resolve_rust_test_selector,
 };
 use effortless_repo_snapshot::{
-    RepositorySourceView, ResolvedRevisionIdentity, resolve_revision_identity,
-    staged_repository_snapshot,
+    RepositorySourceView, ResolvedRevisionIdentity, SourceInventory, SourceInventoryCompleteness,
+    SourceInventorySource, resolve_revision_identity, staged_repository_snapshot,
 };
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -44,6 +44,39 @@ pub struct SelfHostedGraphCompilation {
     pub inventory: RustTestInventory,
     pub diagnostics: Vec<SelfHostedGraphDiagnostic>,
     pub source_identity: Option<String>,
+}
+
+fn legacy_inventory(value: &SourceInventory) -> Inventory {
+    Inventory {
+        files: value.files.clone(),
+        source: match value.source {
+            SourceInventorySource::GitTracked => allow_inventory::InventorySource::GitTracked,
+            SourceInventorySource::GitIndexStagedCandidate => {
+                allow_inventory::InventorySource::GitIndexStagedCandidate
+            }
+            SourceInventorySource::FilesystemFallback => {
+                allow_inventory::InventorySource::FilesystemFallback
+            }
+            SourceInventorySource::FilesystemIncludeUntracked => {
+                allow_inventory::InventorySource::FilesystemIncludeUntracked
+            }
+        },
+        completeness: match value.completeness {
+            SourceInventoryCompleteness::Complete => {
+                allow_inventory::InventoryCompleteness::Complete
+            }
+            SourceInventoryCompleteness::Scoped => allow_inventory::InventoryCompleteness::Scoped,
+            SourceInventoryCompleteness::Fallback => {
+                allow_inventory::InventoryCompleteness::Fallback
+            }
+            SourceInventoryCompleteness::Partial => allow_inventory::InventoryCompleteness::Partial,
+        },
+        empty_git_tracked: value.empty_git_tracked,
+        deleted_tracked: value.deleted_tracked.clone(),
+        git_error: value.git_error.clone(),
+        skipped_paths: value.skipped_paths.clone(),
+        submodule_paths: value.submodule_paths.clone(),
+    }
 }
 
 /// Evaluate a paired exact parent/staged graph through the pure policy seam.
@@ -529,7 +562,7 @@ fn compile_self_hosted_graph_from_view(
         graph,
         slice,
         slice_source: SourceLocation::new(composition.slice_path),
-        file_inventory: view.inventory().clone(),
+        file_inventory: legacy_inventory(view.inventory()),
         inventory: rust_inventory,
         diagnostics,
         source_identity: view.source_identity().map(str::to_string),

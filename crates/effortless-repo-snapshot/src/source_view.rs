@@ -1,14 +1,13 @@
 use crate::error::{SnapshotError, SnapshotErrorKind, SnapshotResult};
 use crate::git::{git_tracked_files_at_revision, read_file_at_revision};
+use crate::inventory::{SourceInventory, SourceInventoryCompleteness, SourceInventorySource};
 use crate::revision_identity::{ResolvedRevisionIdentity, resolve_revision_identity};
 use crate::staged_index::{
     StagedEntryKind, StagedPathRead, StagedRepositorySnapshot, StagedSnapshotCompleteness,
     read_staged_path, staged_repository_snapshot,
 };
 use crate::util::{SOURCE_FILE_READ_MAX_BYTES, read_file_capped, source_tree_path_is_ignored};
-use allow_inventory::{
-    Inventory, InventoryCompleteness, InventoryOptions, InventorySource, inventory,
-};
+use allow_inventory::{InventoryOptions, inventory};
 use std::path::{Component, Path, PathBuf};
 
 type RustSourceInputs = (Vec<(PathBuf, String)>, Vec<(PathBuf, String)>);
@@ -21,17 +20,17 @@ type RustSourceInputs = (Vec<(PathBuf, String)>, Vec<(PathBuf, String)>);
 pub enum RepositorySourceView {
     Filesystem {
         root: PathBuf,
-        inventory: Inventory,
+        inventory: SourceInventory,
     },
     StagedIndex {
         snapshot: StagedRepositorySnapshot,
-        inventory: Inventory,
+        inventory: SourceInventory,
     },
     CommittedTree {
         root: PathBuf,
         revision: String,
         identity: ResolvedRevisionIdentity,
-        inventory: Inventory,
+        inventory: SourceInventory,
     },
 }
 
@@ -40,9 +39,11 @@ impl RepositorySourceView {
         let root = root.as_ref();
         Ok(Self::Filesystem {
             root: root.to_path_buf(),
-            inventory: inventory(root, &InventoryOptions::default()).map_err(|error| {
-                SnapshotError::with_kind(SnapshotErrorKind::Inventory, error.to_string())
-            })?,
+            inventory: inventory(root, &InventoryOptions::default())
+                .map_err(|error| {
+                    SnapshotError::with_kind(SnapshotErrorKind::Inventory, error.to_string())
+                })?
+                .into(),
         })
     }
 
@@ -67,18 +68,18 @@ impl RepositorySourceView {
         files.sort();
         files.dedup();
         let completeness = if !options.ignored.is_empty() || !options.generated.is_empty() {
-            InventoryCompleteness::Scoped
+            SourceInventoryCompleteness::Scoped
         } else {
-            InventoryCompleteness::Complete
+            SourceInventoryCompleteness::Complete
         };
         Ok(Self::CommittedTree {
             root: root.to_path_buf(),
             revision: identity.commit.clone(),
             identity,
-            inventory: Inventory {
+            inventory: SourceInventory {
                 empty_git_tracked: files.is_empty(),
                 files,
-                source: InventorySource::GitTracked,
+                source: SourceInventorySource::GitTracked,
                 completeness,
                 deleted_tracked: Vec::new(),
                 git_error: None,
@@ -88,7 +89,7 @@ impl RepositorySourceView {
         })
     }
 
-    pub fn inventory(&self) -> &Inventory {
+    pub fn inventory(&self) -> &SourceInventory {
         match self {
             Self::Filesystem { inventory, .. }
             | Self::StagedIndex { inventory, .. }
@@ -189,7 +190,7 @@ impl RepositorySourceView {
     }
 }
 
-fn staged_inventory(snapshot: &StagedRepositorySnapshot) -> Inventory {
+fn staged_inventory(snapshot: &StagedRepositorySnapshot) -> SourceInventory {
     let options = InventoryOptions::default();
     let mut files = snapshot
         .entries
@@ -213,15 +214,15 @@ fn staged_inventory(snapshot: &StagedRepositorySnapshot) -> Inventory {
     files.sort();
     files.dedup();
     let completeness = if snapshot.completeness == StagedSnapshotCompleteness::Partial {
-        InventoryCompleteness::Partial
+        SourceInventoryCompleteness::Partial
     } else if !options.ignored.is_empty() || !options.generated.is_empty() {
-        InventoryCompleteness::Scoped
+        SourceInventoryCompleteness::Scoped
     } else {
-        InventoryCompleteness::Complete
+        SourceInventoryCompleteness::Complete
     };
-    Inventory {
+    SourceInventory {
         files,
-        source: InventorySource::GitIndexStagedCandidate,
+        source: SourceInventorySource::GitIndexStagedCandidate,
         completeness,
         empty_git_tracked: snapshot.entries.is_empty(),
         deleted_tracked: Vec::new(),

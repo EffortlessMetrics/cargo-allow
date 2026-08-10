@@ -6,6 +6,7 @@
 
 mod error;
 mod git;
+mod inventory;
 mod parity;
 mod revision_identity;
 mod source_view;
@@ -17,6 +18,7 @@ mod protocol_adapter;
 
 pub use error::{SnapshotError, SnapshotErrorKind, SnapshotResult};
 pub use git::{changed_files, git_tracked_files_at_revision, read_file_at_revision};
+pub use inventory::{SourceInventory, SourceInventoryCompleteness, SourceInventorySource};
 #[doc(hidden)]
 pub use parity::{ParityContract, load_parity_contract, parity_contract_paths};
 pub use revision_identity::RevisionIdentitySurface;
