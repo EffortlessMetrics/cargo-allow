@@ -199,12 +199,6 @@ product_or_shared_owner = "cargo-proof"
 crate_role = "CargoProof"
 
 [[crate_identity]]
-
-[[crate_identity]]
-
-[[crate_identity]]
-
-[[crate_identity]]
 logical_id = "proof-engine"
 workspace_path = "crates/proof-engine"
 workspace_dependency_aliases = ["proof-engine"]

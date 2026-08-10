@@ -2,8 +2,8 @@
 //!
 //! Strict source-controlled identity authority where logical_id, Cargo package
 //! name, and Rust library name are independently represented. This is a
-//! report-only schema layer — it does not replace V1 enforcement until the
-//! #2884-C cutover lands.
+//! Current V2 architecture authority. V1 remains available only through its
+//! named historical reader.
 
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use serde::Deserialize;
