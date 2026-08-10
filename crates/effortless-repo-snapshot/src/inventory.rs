@@ -101,3 +101,91 @@ impl SourceInventorySource {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{SourceInventory, SourceInventoryCompleteness, SourceInventorySource};
+    use std::path::PathBuf;
+
+    #[test]
+    fn legacy_inventory_conversion_preserves_metadata() {
+        let inventory = allow_inventory::Inventory {
+            files: vec![PathBuf::from("src/lib.rs")],
+            source: allow_inventory::InventorySource::FilesystemFallback,
+            completeness: allow_inventory::InventoryCompleteness::Partial,
+            empty_git_tracked: true,
+            deleted_tracked: vec![PathBuf::from("src/old.rs")],
+            git_error: Some("git unavailable".to_string()),
+            skipped_paths: vec![PathBuf::from("restricted")],
+            submodule_paths: vec![PathBuf::from("vendor/module")],
+        };
+
+        let neutral: SourceInventory = inventory.into();
+
+        assert_eq!(neutral.files, [PathBuf::from("src/lib.rs")]);
+        assert_eq!(neutral.source, SourceInventorySource::FilesystemFallback);
+        assert_eq!(neutral.completeness, SourceInventoryCompleteness::Partial);
+        assert!(neutral.empty_git_tracked);
+        assert_eq!(neutral.deleted_tracked, [PathBuf::from("src/old.rs")]);
+        assert_eq!(neutral.git_error.as_deref(), Some("git unavailable"));
+        assert_eq!(neutral.skipped_paths, [PathBuf::from("restricted")]);
+        assert_eq!(neutral.submodule_paths, [PathBuf::from("vendor/module")]);
+    }
+
+    #[test]
+    fn legacy_inventory_enums_and_neutral_labels_are_total() {
+        let completeness = [
+            (
+                allow_inventory::InventoryCompleteness::Complete,
+                SourceInventoryCompleteness::Complete,
+                "complete",
+            ),
+            (
+                allow_inventory::InventoryCompleteness::Scoped,
+                SourceInventoryCompleteness::Scoped,
+                "scoped",
+            ),
+            (
+                allow_inventory::InventoryCompleteness::Fallback,
+                SourceInventoryCompleteness::Fallback,
+                "fallback",
+            ),
+            (
+                allow_inventory::InventoryCompleteness::Partial,
+                SourceInventoryCompleteness::Partial,
+                "partial",
+            ),
+        ];
+        for (legacy, neutral, label) in completeness {
+            assert_eq!(SourceInventoryCompleteness::from(legacy), neutral);
+            assert_eq!(neutral.as_str(), label);
+        }
+
+        let sources = [
+            (
+                allow_inventory::InventorySource::GitTracked,
+                SourceInventorySource::GitTracked,
+                "git_tracked",
+            ),
+            (
+                allow_inventory::InventorySource::GitIndexStagedCandidate,
+                SourceInventorySource::GitIndexStagedCandidate,
+                "git_index_staged_candidate",
+            ),
+            (
+                allow_inventory::InventorySource::FilesystemFallback,
+                SourceInventorySource::FilesystemFallback,
+                "filesystem_fallback",
+            ),
+            (
+                allow_inventory::InventorySource::FilesystemIncludeUntracked,
+                SourceInventorySource::FilesystemIncludeUntracked,
+                "filesystem_include_untracked",
+            ),
+        ];
+        for (legacy, neutral, label) in sources {
+            assert_eq!(SourceInventorySource::from(legacy), neutral);
+            assert_eq!(neutral.as_str(), label);
+        }
+    }
+}
