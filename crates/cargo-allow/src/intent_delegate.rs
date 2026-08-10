@@ -8,10 +8,10 @@ use crate::intent_provider::{
 use crate::spec_precommit::{DelegatedPrecommitOutcome, complete_delegated_precommit};
 use crate::{current_dir, resolve_source_tree_root};
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult, sha256_v1_bytes};
-use allow_diff::staged_repository_snapshot;
 use effortless_repo_protocol::{
     ANALYSIS_RECEIPT_SCHEMA_ID, AnalysisReceiptEnvelopeV1, REPOSITORY_SNAPSHOT_SCHEMA_ID,
 };
+use effortless_repo_snapshot::{StagedRepositorySnapshot, staged_repository_snapshot};
 use std::fs;
 use std::io::Read;
 use std::path::Path;
@@ -185,7 +185,7 @@ fn delegate_staged_precommit(
     settings: &IntentDelegationSettings,
     started: Instant,
 ) -> CargoAllowResult<()> {
-    let snapshot = staged_repository_snapshot(root)?;
+    let snapshot = crate::command_support::snapshot_result(staged_repository_snapshot(root))?;
     let provider = match discover_intent_provider(&IntentProviderRequest {
         root,
         config_path: Some(&settings.config_path),
@@ -668,7 +668,7 @@ fn map_provider_failure(
 fn fail_delegated(
     args: &CheckArgs,
     root: &Path,
-    snapshot: &allow_diff::StagedRepositorySnapshot,
+    snapshot: &StagedRepositorySnapshot,
     failure: IntentDelegateFailure,
     started: Instant,
 ) -> CargoAllowResult<()> {

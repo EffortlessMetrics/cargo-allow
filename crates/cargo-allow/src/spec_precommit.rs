@@ -10,7 +10,7 @@ use crate::{
     resolve_source_tree_root, root_relative_path, write_file,
 };
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
-use allow_diff::{
+use effortless_repo_snapshot::{
     StagedPathChange, StagedPathStatus, StagedRepositorySnapshot, StagedSnapshotCompleteness,
     staged_repository_snapshot,
 };
@@ -108,7 +108,7 @@ pub(crate) fn cmd_staged_identity(args: &CheckArgs) -> CargoAllowResult<()> {
         ));
     }
     let root = resolve_root(&args.root)?;
-    let snapshot = staged_repository_snapshot(&root)?;
+    let snapshot = crate::command_support::snapshot_result(staged_repository_snapshot(&root))?;
     validate_output_paths(
         &root,
         &snapshot,
@@ -145,7 +145,7 @@ fn fail_precommit_without_delegation(
     root: &Path,
     started: Instant,
 ) -> CargoAllowResult<()> {
-    let snapshot = staged_repository_snapshot(root)?;
+    let snapshot = crate::command_support::snapshot_result(staged_repository_snapshot(root))?;
     finish_failure(
         args,
         &snapshot,
@@ -685,7 +685,9 @@ mod tests {
 
     #[test]
     fn spec_precommit_identity_handshake() -> Result<(), Box<dyn Error>> {
-        let snapshot = staged_repository_snapshot(resolve_root(&RootArgs::default())?)?;
+        let snapshot = crate::command_support::snapshot_result(staged_repository_snapshot(
+            resolve_root(&RootArgs::default())?,
+        ))?;
         let output = output_path("identity-handshake");
         let _ = fs::remove_file(&output);
         let mut args = check_args(Some(output.clone()), None);
