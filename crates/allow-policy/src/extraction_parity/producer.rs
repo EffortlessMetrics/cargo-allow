@@ -60,7 +60,6 @@ pub fn produce_extraction_cutover_receipt(
 
     let mut selected_entries = BTreeSet::new();
     let mut transitional_shims = BTreeSet::new();
-    let ledger_ids: BTreeSet<&str> = ledger.entry.iter().map(|entry| entry.id.as_str()).collect();
 
     for case in stage_cases {
         if case.disposition != ParityDisposition::Proven {
@@ -73,28 +72,19 @@ pub fn produce_extraction_cutover_receipt(
                 ),
             ));
         }
-        if !ledger_ids.contains(case.move_ledger_entry.as_str()) {
-            return Err(CargoAllowError::with_kind(
-                CargoAllowErrorKind::InvalidConfig,
-                format!(
-                    "parity case `{}` references missing move-ledger entry `{}`",
-                    case.id, case.move_ledger_entry
-                ),
-            ));
-        }
-        let Some(entry) = ledger
+        let entry = ledger
             .entry
             .iter()
             .find(|entry| entry.id == case.move_ledger_entry)
-        else {
-            return Err(CargoAllowError::with_kind(
-                CargoAllowErrorKind::InvalidConfig,
-                format!(
-                    "move-ledger entry `{}` disappeared during receipt assembly",
-                    case.move_ledger_entry
-                ),
-            ));
-        };
+            .ok_or_else(|| {
+                CargoAllowError::with_kind(
+                    CargoAllowErrorKind::InvalidConfig,
+                    format!(
+                        "move-ledger entry `{}` disappeared during receipt assembly",
+                        case.move_ledger_entry
+                    ),
+                )
+            })?;
         if entry.cutover_stage != stage.as_str() {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::InvalidConfig,
@@ -305,6 +295,55 @@ mod tests {
         .is_ok()
         {
             return Err("cross-stage move entry was accepted".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn producer_rejects_missing_stage_and_ledger_inputs() -> Result<(), String> {
+        let mut empty_registry = registry(ParityDisposition::Proven);
+        empty_registry.case.clear();
+        if produce_extraction_cutover_receipt(
+            &empty_registry,
+            &ledger("RepoSnapshot"),
+            ExtractionStage::RepoSnapshot,
+            evidence(),
+        )
+        .is_ok()
+        {
+            return Err("empty stage was accepted".to_string());
+        }
+
+        let mut missing_entry_ledger = ledger("RepoSnapshot");
+        if let Some(entry) = missing_entry_ledger.entry.first_mut() {
+            entry.id = "other-entry".to_string();
+        }
+        if produce_extraction_cutover_receipt(
+            &registry(ParityDisposition::Proven),
+            &missing_entry_ledger,
+            ExtractionStage::RepoSnapshot,
+            evidence(),
+        )
+        .is_ok()
+        {
+            return Err("missing ledger entry was accepted".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn producer_rejects_incomplete_runtime_evidence() -> Result<(), String> {
+        let mut incomplete = evidence();
+        incomplete.claim_boundary.clear();
+        if produce_extraction_cutover_receipt(
+            &registry(ParityDisposition::Proven),
+            &ledger("RepoSnapshot"),
+            ExtractionStage::RepoSnapshot,
+            incomplete,
+        )
+        .is_ok()
+        {
+            return Err("incomplete runtime evidence was accepted".to_string());
         }
         Ok(())
     }
