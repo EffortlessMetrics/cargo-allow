@@ -1,0 +1,43 @@
+name: Apply #3440 README path fix
+
+on:
+  push:
+    branches:
+      - automation/3440-readme-fix-2
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - name: Apply exact source edit
+        shell: bash
+        env:
+          EXPECTED_HEAD: 097d73bb201cce39f9b00fbdfc13a72b118ff01d
+        run: |
+          set -euo pipefail
+          cp .automation/apply_3440_readme_fix.py /tmp/apply_3440_readme_fix.py
+          git fetch origin fix/3440-package-identities
+          actual="$(git rev-parse origin/fix/3440-package-identities)"
+          if [ "${actual}" != "${EXPECTED_HEAD}" ]; then
+            echo "::error::implementation branch moved: expected ${EXPECTED_HEAD}, got ${actual}"
+            exit 1
+          fi
+          git checkout -B fix/3440-package-identities origin/fix/3440-package-identities
+          python /tmp/apply_3440_readme_fix.py
+          cargo fmt --all
+          cargo test -p cargo-allow --bin cargo-allow --locked \
+            release_prep_tests::release_packages_use_crate_local_readmes
+          git diff --check
+          git config user.name "EffortlessSteven"
+          git config user.email "git@effortlesssteven.com"
+          git add crates/cargo-allow/src/release_prep_tests.rs
+          git commit -m "test(release): resolve README from each package manifest path (#3440)"
+          git push origin HEAD:fix/3440-package-identities
+          git push origin --delete automation/3440-readme-fix-2
