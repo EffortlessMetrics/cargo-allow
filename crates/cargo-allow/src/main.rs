@@ -211,3 +211,7 @@ mod no_new_marker_guard_tests;
 #[cfg(test)]
 #[path = "feature_policy_guard_tests.rs"]
 mod feature_policy_guard_tests;
+
+#[cfg(test)]
+#[path = "publish_order_validation_tests.rs"]
+mod publish_order_validation_tests;
