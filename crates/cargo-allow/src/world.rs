@@ -13,7 +13,7 @@ use std::cell::RefCell;
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-use allow_diff::{
+use effortless_repo_snapshot::{
     StagedEntryKind, StagedPathRead, StagedRepositorySnapshot, read_staged_path,
     staged_repository_snapshot,
 };
@@ -59,7 +59,8 @@ pub(crate) fn load_staged_world(
 ) -> CargoAllowResult<StagedWorld> {
     let cwd = current_dir()?;
     let root = resolve_source_tree_root(explicit_root, cwd)?;
-    let snapshot = staged_repository_snapshot(&root)?;
+    let snapshot =
+        staged_repository_snapshot(&root).map_err(crate::command_support::snapshot_error)?;
     let (policy_path, federation) = evaluate_source_exception_policy(&root, config)?;
     reject_unsupported_staged_federation(&snapshot, &federation)?;
     let policy_relative = normalize_to_repo_relative(&root, &policy_path);
@@ -125,7 +126,8 @@ pub(crate) fn load_staged_world(
             finding.ledger = Some(provenance.clone());
         }
     }
-    let final_snapshot = staged_repository_snapshot(&root)?;
+    let final_snapshot =
+        staged_repository_snapshot(&root).map_err(crate::command_support::snapshot_error)?;
     if final_snapshot.identity.semantic_hash != source_identity {
         return Err(CargoAllowError::with_kind(
             CargoAllowErrorKind::Scan,
@@ -161,13 +163,14 @@ fn staged_inventory(snapshot: &StagedRepositorySnapshot, options: &InventoryOpti
         .collect::<Vec<_>>();
     files.sort();
     files.dedup();
-    let completeness = if snapshot.completeness == allow_diff::StagedSnapshotCompleteness::Partial {
-        InventoryCompleteness::Partial
-    } else if !options.ignored.is_empty() || !options.generated.is_empty() {
-        InventoryCompleteness::Scoped
-    } else {
-        InventoryCompleteness::Complete
-    };
+    let completeness =
+        if snapshot.completeness == effortless_repo_snapshot::StagedSnapshotCompleteness::Partial {
+            InventoryCompleteness::Partial
+        } else if !options.ignored.is_empty() || !options.generated.is_empty() {
+            InventoryCompleteness::Scoped
+        } else {
+            InventoryCompleteness::Complete
+        };
     Inventory {
         files,
         source: InventorySource::GitIndexStagedCandidate,
@@ -197,27 +200,28 @@ fn staged_rust_inputs(
 }
 
 fn read_staged_text(snapshot: &StagedRepositorySnapshot, path: &Path) -> CargoAllowResult<String> {
-    let bytes = match read_staged_path(snapshot, path)? {
-        StagedPathRead::Regular(bytes) => bytes,
-        StagedPathRead::Missing => {
-            return Err(CargoAllowError::with_kind(
-                CargoAllowErrorKind::Inventory,
-                format!(
-                    "staged source file {} is absent from the candidate",
-                    path.display()
-                ),
-            ));
-        }
-        StagedPathRead::Unsupported { kind, .. } => {
-            return Err(CargoAllowError::with_kind(
-                CargoAllowErrorKind::Inventory,
-                format!(
-                    "staged source file {} has unsupported entry kind {kind:?}",
-                    path.display()
-                ),
-            ));
-        }
-    };
+    let bytes =
+        match read_staged_path(snapshot, path).map_err(crate::command_support::snapshot_error)? {
+            StagedPathRead::Regular(bytes) => bytes,
+            StagedPathRead::Missing => {
+                return Err(CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Inventory,
+                    format!(
+                        "staged source file {} is absent from the candidate",
+                        path.display()
+                    ),
+                ));
+            }
+            StagedPathRead::Unsupported { kind, .. } => {
+                return Err(CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Inventory,
+                    format!(
+                        "staged source file {} has unsupported entry kind {kind:?}",
+                        path.display()
+                    ),
+                ));
+            }
+        };
     if (bytes.len() as u64) > SOURCE_FILE_READ_MAX_BYTES {
         return Err(CargoAllowError::with_kind(
             CargoAllowErrorKind::Scan,
@@ -828,9 +832,11 @@ mod tests {
         git(root.as_path(), &["add", "--", "invalid.rs", "oversized.rs"]);
 
         let snapshot = staged_repository_snapshot(&root)
+            .map_err(crate::command_support::snapshot_error)
             .unwrap_or_else(|err| std::panic::panic_any(format!("staged snapshot: {err}")));
         let mut partial_snapshot = snapshot.clone();
-        partial_snapshot.completeness = allow_diff::StagedSnapshotCompleteness::Partial;
+        partial_snapshot.completeness =
+            effortless_repo_snapshot::StagedSnapshotCompleteness::Partial;
         let partial_inventory = staged_inventory(&partial_snapshot, &InventoryOptions::default());
         assert_eq!(
             partial_inventory.completeness,

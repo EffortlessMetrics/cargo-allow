@@ -17,8 +17,8 @@ use allow_rust::{
     inventory_rust_test_subjects_from_sources, resolve_rust_test_selector,
 };
 use effortless_repo_snapshot::{
-    RepositorySourceView, ResolvedRevisionIdentity, SnapshotError, SnapshotErrorKind,
-    SourceInventory, SourceInventoryCompleteness, SourceInventorySource, resolve_revision_identity,
+    RepositorySourceView, ResolvedRevisionIdentity, SnapshotError, SourceInventory,
+    SourceInventoryCompleteness, SourceInventorySource, resolve_revision_identity,
     staged_repository_snapshot,
 };
 use std::collections::BTreeSet;
@@ -81,15 +81,7 @@ fn legacy_inventory(value: &SourceInventory) -> Inventory {
 }
 
 fn snapshot_error(error: SnapshotError) -> CargoAllowError {
-    let kind = match error.kind() {
-        SnapshotErrorKind::Internal => CargoAllowErrorKind::Internal,
-        SnapshotErrorKind::InvalidConfig => CargoAllowErrorKind::InvalidConfig,
-        SnapshotErrorKind::Inventory => CargoAllowErrorKind::Inventory,
-        SnapshotErrorKind::Artifact => CargoAllowErrorKind::Artifact,
-        SnapshotErrorKind::Unknown => CargoAllowErrorKind::Unknown,
-        SnapshotErrorKind::Scan => CargoAllowErrorKind::Scan,
-    };
-    CargoAllowError::with_kind(kind, error.to_string())
+    crate::command_support::snapshot_error(error)
 }
 
 /// Evaluate a paired exact parent/staged graph through the pure policy seam.
@@ -726,6 +718,7 @@ fn resolution_diagnostic(
 mod tests {
     use super::*;
     use crate::spec_system_workspace_composition::SELF_HOSTED_RUNTIME_PROMOTION;
+    use effortless_repo_snapshot::SnapshotErrorKind;
     use std::fs;
     use std::process::Command;
     use std::time::{SystemTime, UNIX_EPOCH};

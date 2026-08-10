@@ -19,6 +19,7 @@ pub(crate) use crate::policy_config::{
 };
 pub(crate) use allow_core::CargoAllowResult;
 pub(crate) use effortless_repo_edit::{write_file, write_file_no_overwrite};
+use effortless_repo_snapshot::{SnapshotError, SnapshotErrorKind};
 pub(crate) use std::path::Path;
 
 pub(crate) use crate::reporting::{
@@ -30,6 +31,18 @@ pub(crate) use crate::world::{
 };
 pub(crate) use allow_inventory::resolve_source_tree_root;
 pub(crate) use allow_report::policy_baseline_debt_entries;
+
+pub(crate) fn snapshot_error(error: SnapshotError) -> allow_core::CargoAllowError {
+    let kind = match error.kind() {
+        SnapshotErrorKind::Internal => allow_core::CargoAllowErrorKind::Internal,
+        SnapshotErrorKind::InvalidConfig => allow_core::CargoAllowErrorKind::InvalidConfig,
+        SnapshotErrorKind::Inventory => allow_core::CargoAllowErrorKind::Inventory,
+        SnapshotErrorKind::Artifact => allow_core::CargoAllowErrorKind::Artifact,
+        SnapshotErrorKind::Unknown => allow_core::CargoAllowErrorKind::Unknown,
+        SnapshotErrorKind::Scan => allow_core::CargoAllowErrorKind::Scan,
+    };
+    allow_core::CargoAllowError::with_kind(kind, error.to_string())
+}
 
 /// Centralized current-dir reader (#2824). Replaces 20+ copy-pasted
 /// `env::current_dir().map_err(|e| CargoAllowError::new(...))` sites.
