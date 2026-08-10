@@ -131,3 +131,53 @@ fn segment_match_chars(pattern: &[char], text: &[char]) -> bool {
         }),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn fixture_path(label: &str) -> Result<PathBuf, String> {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|error| format!("clock before epoch: {error}"))?
+            .as_nanos();
+        Ok(std::env::temp_dir().join(format!(
+            "effortless-repo-snapshot-util-{label}-{}-{nanos}",
+            std::process::id()
+        )))
+    }
+
+    #[test]
+    fn bounded_read_accepts_limit_and_rejects_oversized_files() -> Result<(), String> {
+        let path = fixture_path("bounded")?;
+        std::fs::write(&path, b"hello").map_err(|error| format!("write fixture: {error}"))?;
+        let bytes = read_file_capped(&path).map_err(|error| error.to_string())?;
+        if bytes != b"hello" {
+            return Err("bounded read returned unexpected bytes".to_string());
+        }
+        std::fs::write(&path, vec![b'x'; (SOURCE_FILE_READ_MAX_BYTES as usize) + 1])
+            .map_err(|error| format!("write oversized fixture: {error}"))?;
+        if read_file_capped(&path).is_ok() {
+            return Err("oversized read unexpectedly succeeded".to_string());
+        }
+        let _ = std::fs::remove_file(path);
+        Ok(())
+    }
+
+    #[test]
+    fn ignored_paths_match_recursive_and_segment_globs() -> Result<(), String> {
+        let patterns = vec!["target/**".to_string(), "src/**/*.rs".to_string()];
+        if !source_tree_path_is_ignored(Path::new("./target/debug/app"), &patterns) {
+            return Err("recursive target pattern did not match".to_string());
+        }
+        if !source_tree_path_is_ignored(Path::new("src/bin/main.rs"), &patterns) {
+            return Err("recursive Rust pattern did not match".to_string());
+        }
+        if source_tree_path_is_ignored(Path::new("src/bin/main.toml"), &patterns) {
+            return Err("Rust pattern matched a non-Rust path".to_string());
+        }
+        Ok(())
+    }
+}
