@@ -25,31 +25,35 @@ pub fn read_file_capped(path: &Path) -> SnapshotResult<Vec<u8>> {
                     format!("failed to open source file {}: {source}", path.display()),
                 )
             })?;
-            let mut limited: Take<File> = file.take(SOURCE_FILE_READ_MAX_BYTES.saturating_add(1));
-            let mut bytes = Vec::new();
-            limited.read_to_end(&mut bytes).map_err(|source| {
-                SnapshotError::with_kind(
-                    SnapshotErrorKind::Scan,
-                    format!("failed to read source file {}: {source}", path.display()),
-                )
-            })?;
-            if (bytes.len() as u64) > SOURCE_FILE_READ_MAX_BYTES {
-                return Err(SnapshotError::with_kind(
-                    SnapshotErrorKind::Scan,
-                    format!(
-                        "file {} exceeds the {}-byte source-read limit",
-                        path.display(),
-                        SOURCE_FILE_READ_MAX_BYTES
-                    ),
-                ));
-            }
-            Ok(bytes)
+            read_limited(file, path)
         }
         Err(source) => Err(SnapshotError::with_kind(
             SnapshotErrorKind::Scan,
             format!("failed to inspect source file {}: {source}", path.display()),
         )),
     }
+}
+
+fn read_limited<R: Read>(reader: R, path: &Path) -> SnapshotResult<Vec<u8>> {
+    let mut limited: Take<R> = reader.take(SOURCE_FILE_READ_MAX_BYTES.saturating_add(1));
+    let mut bytes = Vec::new();
+    limited.read_to_end(&mut bytes).map_err(|source| {
+        SnapshotError::with_kind(
+            SnapshotErrorKind::Scan,
+            format!("failed to read source file {}: {source}", path.display()),
+        )
+    })?;
+    if (bytes.len() as u64) > SOURCE_FILE_READ_MAX_BYTES {
+        return Err(SnapshotError::with_kind(
+            SnapshotErrorKind::Scan,
+            format!(
+                "file {} exceeds the {}-byte source-read limit",
+                path.display(),
+                SOURCE_FILE_READ_MAX_BYTES
+            ),
+        ));
+    }
+    Ok(bytes)
 }
 
 pub fn source_tree_path_is_ignored(path: &Path, patterns: &[String]) -> bool {
@@ -135,6 +139,7 @@ fn segment_match_chars(pattern: &[char], text: &[char]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::{self, Read};
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -223,6 +228,22 @@ mod tests {
         }
         let _ = std::fs::remove_file(link);
         let _ = std::fs::remove_file(target);
+        Ok(())
+    }
+
+    #[test]
+    fn bounded_reader_reports_read_failures() -> Result<(), String> {
+        struct FailingReader;
+
+        impl Read for FailingReader {
+            fn read(&mut self, _buffer: &mut [u8]) -> io::Result<usize> {
+                Err(io::Error::new(io::ErrorKind::Other, "fixture read failure"))
+            }
+        }
+
+        if read_limited(FailingReader, Path::new("fixture.txt")).is_ok() {
+            return Err("failing reader unexpectedly succeeded".to_string());
+        }
         Ok(())
     }
 
