@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Pre-publication SourceCandidateSmoke for the cargo-allow workspace (#2256 Stage A).
+# Pre-publication SourceCandidateSmoke for the cargo-allow candidate (#2256 Stage A).
 #
 # Proves the exact reviewed source candidate can:
-#   1. package every workspace crate under --locked verification
+#   1. package every topology-selected cargo-allow candidate crate under --locked verification
 #   2. assert packaged Cargo.toml files have no workspace path dependencies
 #   3. install cargo-allow from the workspace path after packaging succeeded
 #   4. run the core first-hour CLI surface from that install root
@@ -95,9 +95,10 @@ crates=(
   allow-match
   allow-report
   allow-policy-legacy
-  allow-diff
   effortless-repo-protocol
+  effortless-repo-snapshot
   effortless-repo-edit
+  allow-diff
   cargo-allow
 )
 
@@ -139,12 +140,22 @@ mkdir -p "${package_dir}"
 } >>"${receipt}"
 
 if [[ "${SKIP_PACKAGE:-0}" != "1" ]]; then
-  log "packaging workspace crates with cargo package --workspace --locked"
+  log "packaging exact cargo-allow candidate with cargo package --workspace --locked"
   rm -rf "${packages_dir}"
   mkdir -p "${packages_dir}"
-  # cargo-intent depends on unpublished intent-* workspace crates; exclude until #2599-C / #2604 publish posture.
-  # proof-engine depends on unpublished proof-protocol workspace crate; exclude until #2604 publish posture.
-  CARGO_TARGET_DIR="${package_target_dir}" cargo package --workspace --locked --exclude cargo-intent --exclude proof-engine --exclude cargo-proof
+  # Package the V2-selected cargo-allow graph together so its unpublished
+  # internal versions verify against one another without pulling sibling
+  # experimental products or accidentally resolving same-named public crates.
+  CARGO_TARGET_DIR="${package_target_dir}" cargo package --workspace --locked \
+    --exclude effortless-rust-source-index \
+    --exclude intent-model \
+    --exclude intent-protocol \
+    --exclude intent-compiler \
+    --exclude intent-edit \
+    --exclude cargo-intent \
+    --exclude proof-protocol \
+    --exclude proof-orchestrator \
+    --exclude cargo-proof
   for crate in "${crates[@]}"; do
     crate_version="$(read_crate_version "${crate}")"
     crate_file="${package_target_dir}/package/${crate}-${crate_version}.crate"

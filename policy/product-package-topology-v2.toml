@@ -224,7 +224,7 @@ release_order = 320
 
 [[package]]
 logical_id = "intent-engine"
-cargo_package_name = "intent-engine"
+cargo_package_name = "intent-compiler"
   version_line = "cargo-intent-0.1"
 product_family = "cargo-intent"
 posture = "CargoIntentExperimental"
@@ -278,7 +278,7 @@ release_order = 410
 
 [[package]]
 logical_id = "proof-engine"
-cargo_package_name = "proof-engine"
+cargo_package_name = "proof-orchestrator"
   version_line = "cargo-proof-0.1"
 product_family = "cargo-proof"
 posture = "CargoProofExperimental"

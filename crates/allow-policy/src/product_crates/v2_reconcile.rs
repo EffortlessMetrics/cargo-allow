@@ -4,12 +4,12 @@
 //! A member, identity, or package row that exists in only one authority fails.
 //! This is the current-workspace validation that the V2 cutover requires.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use allow_core::CargoAllowResult;
 
-use crate::product_crates::v2::ArchitectureManifestV2;
+use crate::product_crates::v2::{ArchitectureManifestV2, CrateIdentityV2};
 use crate::product_packages::{PackageTopologyEntryV2, ProductPackageTopologyV2};
 
 /// Diagnostic kind for V2 denominator reconciliation failures.
@@ -67,9 +67,9 @@ impl ReconcileReport {
 
 /// Reconcile workspace members, V2 architecture, and V2 package topology (#2923).
 ///
-/// Proves that every workspace Cargo.toml member has exactly one architecture
-/// identity and one topology entry, and that architecture and topology agree
-/// on logical_id ↔ cargo_package_name.
+/// Workspace membership is a path fact. Cargo package identity is a manifest
+/// fact. The architecture authority binds those two facts explicitly, so this
+/// reconciliation must not infer a package name from a directory basename.
 pub fn reconcile_v2_denominators(
     workspace_members: &[String],
     architecture: &ArchitectureManifestV2,
@@ -77,59 +77,66 @@ pub fn reconcile_v2_denominators(
 ) -> ReconcileReport {
     let mut diagnostics = Vec::new();
 
-    let arch_by_package: std::collections::BTreeMap<
-        &str,
-        &crate::product_crates::v2::CrateIdentityV2,
-    > = architecture
+    let arch_by_package: BTreeMap<&str, &CrateIdentityV2> = architecture
         .crate_identity
         .iter()
-        .map(|e| (e.cargo_package_name.as_str(), e))
+        .map(|entry| (entry.cargo_package_name.as_str(), entry))
         .collect();
-
-    let topo_by_package: std::collections::BTreeMap<&str, &PackageTopologyEntryV2> = topology
+    let arch_by_workspace_path: BTreeMap<&str, &CrateIdentityV2> = architecture
+        .crate_identity
+        .iter()
+        .map(|entry| (entry.workspace_path.as_str(), entry))
+        .collect();
+    let topo_by_package: BTreeMap<&str, &PackageTopologyEntryV2> = topology
         .package
         .iter()
-        .map(|e| (e.cargo_package_name.as_str(), e))
+        .map(|entry| (entry.cargo_package_name.as_str(), entry))
         .collect();
 
     let arch_packages: BTreeSet<&str> = arch_by_package.keys().copied().collect();
     let topo_packages: BTreeSet<&str> = topo_by_package.keys().copied().collect();
-    let workspace_set: BTreeSet<&str> = workspace_members.iter().map(|s| s.as_str()).collect();
+    let workspace_set: BTreeSet<&str> = workspace_members.iter().map(String::as_str).collect();
 
-    // 1. Every workspace member must be in architecture
+    // Unit callers may pass package identities directly; repository callers
+    // pass exact workspace paths from Cargo.toml.
+    let identity_for_member = |member: &str| {
+        arch_by_workspace_path
+            .get(member)
+            .copied()
+            .or_else(|| arch_by_package.get(member).copied())
+    };
+
+    // 1. Every workspace member path/package must bind to one architecture row.
     for member in &workspace_set {
-        if !arch_packages.contains(member) {
-            // Try matching by workspace path → derive package name
-            let last_segment = member.rsplit('/').next().unwrap_or(member);
-            if !arch_packages.contains(last_segment) {
-                diagnostics.push(ReconcileDiagnostic {
-                    kind: ReconcileDiagnosticKind::WorkspaceMemberMissingFromArchitecture,
-                    message: format!(
-                        "workspace member `{member}` is missing from V2 architecture authority"
-                    ),
-                    logical_ids: vec![member.to_string()],
-                });
-            }
+        if identity_for_member(member).is_none() {
+            diagnostics.push(ReconcileDiagnostic {
+                kind: ReconcileDiagnosticKind::WorkspaceMemberMissingFromArchitecture,
+                message: format!(
+                    "workspace member `{member}` is missing from V2 architecture authority"
+                ),
+                logical_ids: vec![member.to_string()],
+            });
         }
     }
 
-    // 2. Every workspace member must be in topology
+    // 2. Every workspace member's architecture-bound Cargo package must have
+    // one topology row. Never substitute the path basename for package name.
     for member in &workspace_set {
-        if !topo_packages.contains(member) {
-            let last_segment = member.rsplit('/').next().unwrap_or(member);
-            if !topo_packages.contains(last_segment) {
-                diagnostics.push(ReconcileDiagnostic {
-                    kind: ReconcileDiagnosticKind::WorkspaceMemberMissingFromTopology,
-                    message: format!(
-                        "workspace member `{member}` is missing from V2 package topology"
-                    ),
-                    logical_ids: vec![member.to_string()],
-                });
-            }
+        let package = identity_for_member(member)
+            .map(|identity| identity.cargo_package_name.as_str())
+            .unwrap_or(member);
+        if !topo_packages.contains(package) {
+            diagnostics.push(ReconcileDiagnostic {
+                kind: ReconcileDiagnosticKind::WorkspaceMemberMissingFromTopology,
+                message: format!(
+                    "workspace member `{member}` (package `{package}`) is missing from V2 package topology"
+                ),
+                logical_ids: vec![member.to_string()],
+            });
         }
     }
 
-    // 3. Every architecture identity must have a topology entry
+    // 3. Every architecture identity must have a topology entry.
     for (package, identity) in &arch_by_package {
         if !topo_packages.contains(package) {
             diagnostics.push(ReconcileDiagnostic {
@@ -143,7 +150,7 @@ pub fn reconcile_v2_denominators(
         }
     }
 
-    // 4. Every topology entry must have an architecture identity
+    // 4. Every topology entry must have an architecture identity.
     for (package, entry) in &topo_by_package {
         if !arch_packages.contains(package) {
             diagnostics.push(ReconcileDiagnostic {
@@ -157,7 +164,7 @@ pub fn reconcile_v2_denominators(
         }
     }
 
-    // 5. logical_id must match between architecture and topology for same package
+    // 5. logical_id must match between architecture and topology for the same package.
     for (package, arch_entry) in &arch_by_package {
         if let Some(topo_entry) = topo_by_package.get(package)
             && arch_entry.logical_id != topo_entry.logical_id

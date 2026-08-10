@@ -245,7 +245,7 @@ dependencies = [
  "effortless-repo-protocol",
  "effortless-repo-snapshot",
  "effortless-rust-source-index",
- "intent-engine",
+ "intent-compiler",
  "intent-model",
  "intent-protocol",
  "jsonschema",
@@ -262,7 +262,7 @@ dependencies = [
  "clap",
  "effortless-repo-protocol",
  "effortless-repo-snapshot",
- "intent-engine",
+ "intent-compiler",
  "intent-protocol",
  "serde",
  "serde_json",
@@ -275,7 +275,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "effortless-repo-protocol",
- "proof-engine",
+ "proof-orchestrator",
  "proof-protocol",
  "serde",
  "serde_json",
@@ -726,14 +726,14 @@ version = "0.1.0"
 dependencies = [
  "effortless-repo-edit",
  "effortless-repo-protocol",
- "intent-engine",
+ "intent-compiler",
  "serde",
  "serde_json",
  "toml",
 ]
 
 [[package]]
-name = "intent-engine"
+name = "intent-compiler"
 version = "0.1.0"
 dependencies = [
  "intent-protocol",
@@ -1033,7 +1033,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "proof-engine"
+name = "proof-orchestrator"
 version = "0.1.0"
 dependencies = [
  "effortless-repo-protocol",

@@ -367,7 +367,7 @@ fn install_examples_use_published_release() {
 fn release_packages_use_crate_local_readmes() {
     let root = workspace_root();
     let workspace_manifest = read_workspace_file(&root, "Cargo.toml");
-    let package_manifests = all_workspace_package_manifests(&root);
+    let package_manifests = all_workspace_package_manifest_entries(&root);
 
     assert!(
         workspace_manifest_contains(
@@ -377,24 +377,37 @@ fn release_packages_use_crate_local_readmes() {
         ),
         "workspace package metadata should keep the root product README"
     );
-    for (package, manifest) in package_manifests {
-        assert!(
-            manifest.contains(r#"readme = "README.md""#),
+    for (package, (manifest_path, manifest)) in package_manifests {
+        let readme_relative = package_table_value(&manifest, "readme").unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "{} should declare a crate-local readme",
+                manifest_path.display()
+            ))
+        });
+        assert_eq!(
+            readme_relative, "README.md",
             "{package} should publish its crate-local README"
         );
         assert!(
             !manifest.contains("readme.workspace = true"),
             "{package} should not inherit the root product README as package docs"
         );
-        let readme_path = format!("crates/{package}/README.md");
-        let readme = read_workspace_file(&root, &readme_path);
+        let readme_path = manifest_path
+            .parent()
+            .unwrap_or_else(|| std::panic::panic_any("crate manifest should have a parent"))
+            .join(&readme_relative);
+        let readme = fs::read_to_string(&readme_path).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("read {}: {err}", readme_path.display()))
+        });
         assert!(
             readme.contains(&format!("# {package}")),
-            "{readme_path} should identify the crate"
+            "{} should identify the crate",
+            readme_path.display()
         );
         assert!(
             readme.contains("Most users should"),
-            "{readme_path} should route normal users back to the cargo-allow product"
+            "{} should route normal users back to the cargo-allow product",
+            readme_path.display()
         );
     }
 }
@@ -514,6 +527,13 @@ fn workspace_package_manifests(root: &Path) -> BTreeMap<String, String> {
 }
 
 fn all_workspace_package_manifests(root: &Path) -> BTreeMap<String, String> {
+    all_workspace_package_manifest_entries(root)
+        .into_iter()
+        .map(|(package, (_, manifest))| (package, manifest))
+        .collect()
+}
+
+fn all_workspace_package_manifest_entries(root: &Path) -> BTreeMap<String, (PathBuf, String)> {
     let crates_dir = root.join("crates");
     let entries = fs::read_dir(&crates_dir)
         .unwrap_or_else(|err| std::panic::panic_any(format!("read crates dir: {err}")));
@@ -538,7 +558,7 @@ fn all_workspace_package_manifests(root: &Path) -> BTreeMap<String, String> {
                 manifest_path.display()
             ));
         };
-        manifests.insert(package, manifest);
+        manifests.insert(package, (manifest_path, manifest));
     }
     manifests
 }

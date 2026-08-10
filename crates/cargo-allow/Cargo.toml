@@ -60,4 +60,4 @@ jsonschema = { version = "0.49.2", default-features = false }
 effortless-rust-source-index = { path = "../effortless-rust-source-index" }
 intent-model = { path = "../intent-model" }
 intent-protocol = { path = "../intent-protocol" }
-intent-engine = { path = "../intent-engine" }
+intent-compiler = { path = "../intent-engine" }

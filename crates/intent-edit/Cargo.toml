@@ -19,6 +19,6 @@ serde = { workspace = true, features = ["derive"] }
 toml.workspace = true
 
 [dev-dependencies]
-intent-engine.workspace = true
+intent-compiler.workspace = true
 serde_json.workspace = true
 toml.workspace = true
