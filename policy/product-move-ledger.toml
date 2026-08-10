@@ -3389,7 +3389,7 @@ deletion_output = "Delete scaffold sources after parity cutover and old-path ret
 [[entry]]
 id = "INVENTORY-REPO_PROTOCOL-SRC"
 source_kind = "RustModule"
-current_paths = ["crates/effortless-repo-protocol/src/analysis_receipt.rs", "crates/effortless-repo-protocol/src/canonical.rs", "crates/effortless-repo-protocol/src/claim_boundary.rs", "crates/effortless-repo-protocol/src/completeness.rs", "crates/effortless-repo-protocol/src/currentness.rs", "crates/effortless-repo-protocol/src/lib.rs", "crates/effortless-repo-protocol/src/repository_snapshot.rs", "crates/effortless-repo-protocol/src/result_class.rs", "crates/effortless-repo-protocol/src/source_anchor.rs", "crates/effortless-repo-protocol/src/tests.rs"]
+current_paths = ["crates/effortless-repo-protocol/src/analysis_receipt.rs", "crates/effortless-repo-protocol/src/canonical.rs", "crates/effortless-repo-protocol/src/claim_boundary.rs", "crates/effortless-repo-protocol/src/completeness.rs", "crates/effortless-repo-protocol/src/currentness.rs", "crates/effortless-repo-protocol/src/lib.rs", "crates/effortless-repo-protocol/src/repository_snapshot.rs", "crates/effortless-repo-protocol/src/result_class.rs", "crates/effortless-repo-protocol/src/source_anchor.rs", "crates/effortless-repo-protocol/src/source_view.rs", "crates/effortless-repo-protocol/src/tests.rs"]
 current_refs = []
 current_identity = "Extracted repo-protocol source tree under no-new intent/proof/shared enforcement (#2598)"
 current_product = "shared"
