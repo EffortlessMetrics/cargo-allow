@@ -423,4 +423,94 @@ mod tests {
         }
         Ok(())
     }
+
+    #[test]
+    fn invalid_and_missing_old_path_evidence_fails_closed() -> Result<(), String> {
+        let (report, diagnostics) = validate_cutover_reachability(
+            &[
+                case("move-a", "OldPathStillReachable"),
+                case("move-b", "Deleted"),
+            ],
+            &[],
+        );
+        if report.is_clean(&diagnostics) {
+            return Err("invalid or missing evidence was reported clean".to_string());
+        }
+        if !diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.kind == ReachabilityDiagnosticKind::InvalidDisposition)
+        {
+            return Err("invalid disposition was not diagnosed".to_string());
+        }
+        if !diagnostics.iter().any(|diagnostic| {
+            diagnostic.kind == ReachabilityDiagnosticKind::MissingDeleteAfterParityEvidence
+        }) {
+            return Err("missing evidence was not diagnosed".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn reachable_bounded_evaluator_with_non_deferred_disposition_is_contradictory()
+    -> Result<(), String> {
+        let (diagnostics, _) = validate_old_path_reachability(
+            &[case("move-a", "Deleted")],
+            &[node(
+                "old-evaluator",
+                "move-a",
+                AuthorityKind::SemanticEvaluator,
+                true,
+                Some("parity-harness"),
+            )],
+        );
+        if !diagnostics.iter().any(|diagnostic| {
+            diagnostic.kind == ReachabilityDiagnosticKind::ContradictoryReachabilityDisposition
+        }) {
+            return Err(format!(
+                "missing contradictory disposition: {diagnostics:?}"
+            ));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn closed_enum_strings_round_trip() -> Result<(), String> {
+        let authorities = [
+            AuthorityKind::SemanticEvaluator,
+            AuthorityKind::CompatibilityProjection,
+            AuthorityKind::HistoricalReader,
+            AuthorityKind::TestFixtureOnly,
+            AuthorityKind::GeneratedView,
+        ];
+        if authorities.iter().any(|kind| kind.as_str().is_empty()) {
+            return Err("authority kind string was empty".to_string());
+        }
+
+        let dispositions = [
+            OldPathDisposition::Deleted,
+            OldPathDisposition::CompileUnreachable,
+            OldPathDisposition::FeatureUnreachableInSupportedCandidate,
+            OldPathDisposition::CompatibilityProjectionOnly,
+            OldPathDisposition::HistoricalReaderOnly,
+            OldPathDisposition::ExplicitlyDeferredWithinBound,
+        ];
+        for disposition in dispositions {
+            match OldPathDisposition::parse(disposition.as_str()) {
+                Ok(parsed) if parsed == disposition => {}
+                _ => return Err(format!("disposition did not round-trip: {:?}", disposition)),
+            }
+        }
+
+        let diagnostic_kinds = [
+            ReachabilityDiagnosticKind::DuplicateSemanticAuthority,
+            ReachabilityDiagnosticKind::UnboundedOldSemanticEvaluator,
+            ReachabilityDiagnosticKind::InvalidDisposition,
+            ReachabilityDiagnosticKind::MissingDeleteAfterParityEvidence,
+            ReachabilityDiagnosticKind::ContradictoryReachabilityDisposition,
+        ];
+        if diagnostic_kinds.iter().any(|kind| kind.as_str().is_empty()) {
+            return Err("diagnostic kind string was empty".to_string());
+        }
+        Ok(())
+    }
 }
