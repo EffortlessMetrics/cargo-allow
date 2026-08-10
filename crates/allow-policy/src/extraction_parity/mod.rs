@@ -4,6 +4,7 @@
 
 mod compare;
 mod config;
+mod cutover_receipt;
 mod reachability;
 mod validate;
 
@@ -12,6 +13,12 @@ pub use config::{
     ExtractionParityCase, ExtractionParityRegistry, ExtractionStage, ParityComparisonResult,
     ParityDisposition, StageReceiptTemplate, parse_extraction_parity_registry,
     parse_extraction_parity_registry_at,
+};
+pub use cutover_receipt::{
+    CutoverReceiptDiagnostic, CutoverReceiptDiagnosticKind, EXTRACTION_CUTOVER_RECEIPT_SCHEMA_ID,
+    EXTRACTION_CUTOVER_RECEIPT_SCHEMA_VERSION, ExtractionCutoverReceipt,
+    parse_extraction_cutover_receipt, parse_extraction_cutover_receipt_at,
+    validate_extraction_cutover_receipt,
 };
 pub use reachability::{
     AuthorityKind, AuthorityNode, OldPathCase, OldPathDisposition, ReachabilityDiagnostic,
