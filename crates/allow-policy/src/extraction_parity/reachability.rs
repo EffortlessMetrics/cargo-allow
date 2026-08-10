@@ -290,7 +290,10 @@ mod tests {
         if count != 2 || diagnostics.len() != 1 {
             return Err(format!("unexpected duplicate report: {diagnostics:?}"));
         }
-        if diagnostics[0].kind != ReachabilityDiagnosticKind::DuplicateSemanticAuthority {
+        let Some(first_diagnostic) = diagnostics.first() else {
+            return Err("duplicate diagnostic was missing".to_string());
+        };
+        if first_diagnostic.kind != ReachabilityDiagnosticKind::DuplicateSemanticAuthority {
             return Err("wrong duplicate diagnostic".to_string());
         }
         Ok(())
