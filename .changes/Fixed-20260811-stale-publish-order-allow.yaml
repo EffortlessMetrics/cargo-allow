@@ -1,0 +1,4 @@
+kind: Fixed
+body: >-
+  Remove the stale publish-order lint receipt after its source test
+  moved into the current V2 topology authority.
