@@ -323,6 +323,10 @@ fn parse_changed_files_z_preserves_embedded_newline_path() {
 
 #[test]
 fn revision_git_commands_report_changed_tracked_and_missing_files() {
+    if !git_available() {
+        eprintln!("skipped: git not available");
+        return;
+    }
     let repo = TempGitRepo::new("revision-git-commands");
     repo.git(&["init"]);
     repo.git(&["config", "user.email", "cargo-allow@example.invalid"]);
@@ -373,6 +377,10 @@ fn revision_git_commands_report_changed_tracked_and_missing_files() {
 
 #[test]
 fn read_file_at_revision_treats_leading_dash_space_and_unicode_paths_literally() {
+    if !git_available() {
+        eprintln!("skipped: git not available");
+        return;
+    }
     let repo = TempGitRepo::new("revision-git-literal-paths");
     repo.git(&["init"]);
     repo.git(&["config", "user.email", "cargo-allow@example.invalid"]);
@@ -396,6 +404,10 @@ fn read_file_at_revision_treats_leading_dash_space_and_unicode_paths_literally()
 
 #[test]
 fn option_like_revision_is_rejected_before_git_can_create_output() {
+    if !git_available() {
+        eprintln!("skipped: git not available");
+        return;
+    }
     let repo = TempGitRepo::new("revision-git-option-like");
     repo.git(&["init"]);
     repo.git(&["config", "user.email", "cargo-allow@example.invalid"]);
@@ -421,6 +433,10 @@ fn option_like_revision_is_rejected_before_git_can_create_output() {
 
 #[test]
 fn revision_git_commands_report_unresolved_revision_without_clean_fallback() {
+    if !git_available() {
+        eprintln!("skipped: git not available");
+        return;
+    }
     let repo = TempGitRepo::new("revision-git-failures");
     repo.git(&["init"]);
 
@@ -464,6 +480,10 @@ fn assert_diagnostic_code(err: &CargoAllowError, code: &str) {
 #[cfg(unix)]
 #[test]
 fn read_file_at_revision_uses_blob_oid_for_colon_paths() {
+    if !git_available() {
+        eprintln!("skipped: git not available");
+        return;
+    }
     let repo = TempGitRepo::new("revision-git-colon-blob");
     repo.git(&["init"]);
     repo.git(&["config", "user.email", "cargo-allow@example.invalid"]);
@@ -492,6 +512,10 @@ fn read_file_at_revision_no_longer_rejects_colon_in_normalize() {
     // Even when the host Git index cannot store colon paths, caller path
     // validation must not reject `:` merely because `commit:path` syntax once
     // required disambiguation. A missing tree entry returns None.
+    if !git_available() {
+        eprintln!("skipped: git not available");
+        return;
+    }
     let repo = TempGitRepo::new("revision-git-colon-normalize");
     repo.git(&["init"]);
     repo.git(&["config", "user.email", "cargo-allow@example.invalid"]);
@@ -512,6 +536,10 @@ fn read_file_at_revision_no_longer_rejects_colon_in_normalize() {
 
 #[test]
 fn read_file_at_revision_distinguishes_symlink_directory_and_missing_paths() {
+    if !git_available() {
+        eprintln!("skipped: git not available");
+        return;
+    }
     let repo = TempGitRepo::new("revision-git-mode-discrimination");
     repo.git(&["init"]);
     repo.git(&["config", "user.email", "cargo-allow@example.invalid"]);
@@ -565,6 +593,10 @@ fn read_file_at_revision_distinguishes_symlink_directory_and_missing_paths() {
 
 #[test]
 fn read_file_at_revision_rejects_parent_and_absolute_paths() {
+    if !git_available() {
+        eprintln!("skipped: git not available");
+        return;
+    }
     let repo = TempGitRepo::new("revision-git-invalid-paths");
     repo.git(&["init"]);
     repo.git(&["config", "user.email", "cargo-allow@example.invalid"]);
@@ -634,6 +666,10 @@ fn source_tree_path_bytes_rejects_windows_drive_unc_and_rooted_host_paths() {
 #[cfg(windows)]
 #[test]
 fn read_file_at_revision_rejects_windows_drive_prefixed_caller_paths() {
+    if !git_available() {
+        eprintln!("skipped: git not available");
+        return;
+    }
     let repo = TempGitRepo::new("revision-git-windows-drive");
     repo.git(&["init"]);
     repo.git(&["config", "user.email", "cargo-allow@example.invalid"]);
@@ -652,6 +688,10 @@ fn read_file_at_revision_rejects_windows_drive_prefixed_caller_paths() {
 
 #[test]
 fn read_file_at_revision_keeps_literal_pathspec_from_selecting_neighbors() {
+    if !git_available() {
+        eprintln!("skipped: git not available");
+        return;
+    }
     let repo = TempGitRepo::new("revision-git-literal-pathspec");
     repo.git(&["init"]);
     repo.git(&["config", "user.email", "cargo-allow@example.invalid"]);
@@ -731,6 +771,14 @@ fn parse_git_ls_tree_record_preserves_embedded_newline_raw_path() {
 
 struct TempGitRepo {
     path: PathBuf,
+}
+
+/// Whether the system `git` binary is available (#1908).
+fn git_available() -> bool {
+    Command::new("git")
+        .arg("--version")
+        .status()
+        .is_ok_and(|s| s.success())
 }
 
 impl TempGitRepo {
