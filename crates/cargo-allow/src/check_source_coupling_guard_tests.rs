@@ -1,4 +1,7 @@
-use super::{source_coupling_diagnostics_for_sources, source_coupling_fails_check};
+use super::{
+    source_coupling_diagnostics_at, source_coupling_diagnostics_for_check,
+    source_coupling_diagnostics_for_sources, source_coupling_fails_check,
+};
 use allow_match::CheckMode;
 use allow_policy::product_crates::parse_architecture_manifest_v2;
 use std::collections::{BTreeMap, BTreeSet};
@@ -81,6 +84,32 @@ fn audit_mode_remains_advisory() -> Result<(), String> {
         .map_err(|error| format!("audit guard: {error}"))?
     {
         return Err("audit mode unexpectedly enforced source coupling".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn strict_mode_checks_architecture_repositories() -> Result<(), String> {
+    let diagnostics =
+        source_coupling_diagnostics_for_check(PathBuf::from(".").as_path(), CheckMode::Strict)
+            .map_err(|error| format!("strict guard: {error}"))?;
+    if !diagnostics.is_empty() {
+        return Err(format!(
+            "unexpected tracked source coupling: {diagnostics:?}"
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn consumer_trees_without_architecture_manifests_are_outside_scope() -> Result<(), String> {
+    let root = PathBuf::from("target/cargo-allow/source-coupling-consumer-without-policy");
+    let diagnostics = source_coupling_diagnostics_at(&root)
+        .map_err(|error| format!("consumer tree guard: {error}"))?;
+    if !diagnostics.is_empty() {
+        return Err(format!(
+            "unexpected consumer-tree diagnostics: {diagnostics:?}"
+        ));
     }
     Ok(())
 }
