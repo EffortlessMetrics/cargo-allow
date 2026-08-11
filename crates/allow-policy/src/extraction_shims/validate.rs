@@ -1,6 +1,7 @@
-use super::config::{ExtractionShimRegistry, parse_extraction_shim_registry_at};
+use super::config::{ExtractionShimRegistry, ShimStatus, parse_extraction_shim_registry_at};
+use crate::product_move::{MoveEntry, ProductMoveLedger};
 use allow_core::CargoAllowResult;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 pub const EXTRACTION_SHIM_REGISTRY_RELATIVE_PATH: &str = "policy/extraction-shims.toml";
@@ -11,6 +12,9 @@ pub enum ShimDiagnosticKind {
     MissingMoveLedgerEntry,
     EmptyRegistry,
     MissingParityCase,
+    Expired,
+    DuplicateDto,
+    SupportAmbiguous,
 }
 
 impl ShimDiagnosticKind {
@@ -20,6 +24,9 @@ impl ShimDiagnosticKind {
             Self::MissingMoveLedgerEntry => "missing_move_ledger_entry",
             Self::EmptyRegistry => "empty_registry",
             Self::MissingParityCase => "missing_parity_case",
+            Self::Expired => "extraction_shim_expired",
+            Self::DuplicateDto => "extraction_shim_duplicate_dto",
+            Self::SupportAmbiguous => "extraction_shim_support_ambiguous",
         }
     }
 }
@@ -42,6 +49,21 @@ pub fn validate_extraction_shim_registry(
     registry: ExtractionShimRegistry,
     move_ledger_entry_ids: &[String],
 ) -> (ExtractionShimRegistry, Vec<ShimDiagnostic>, ShimReport) {
+    validate_extraction_shim_registry_with_ledger_inner(&registry, None, move_ledger_entry_ids)
+}
+
+pub(crate) fn validate_extraction_shim_registry_with_ledger(
+    registry: ExtractionShimRegistry,
+    move_ledger: &ProductMoveLedger,
+) -> (ExtractionShimRegistry, Vec<ShimDiagnostic>, ShimReport) {
+    validate_extraction_shim_registry_with_ledger_inner(&registry, Some(move_ledger), &[])
+}
+
+fn validate_extraction_shim_registry_with_ledger_inner(
+    registry: &ExtractionShimRegistry,
+    move_ledger: Option<&ProductMoveLedger>,
+    move_ledger_entry_ids: &[String],
+) -> (ExtractionShimRegistry, Vec<ShimDiagnostic>, ShimReport) {
     let mut diagnostics = Vec::new();
     if registry.shim.is_empty() {
         diagnostics.push(ShimDiagnostic {
@@ -51,6 +73,15 @@ pub fn validate_extraction_shim_registry(
         });
     }
 
+    let ledger_entries: BTreeMap<&str, &MoveEntry> = move_ledger
+        .map(|ledger| {
+            ledger
+                .entry
+                .iter()
+                .map(|entry| (entry.id.as_str(), entry))
+                .collect()
+        })
+        .unwrap_or_default();
     let ledger_ids: BTreeSet<&str> = move_ledger_entry_ids.iter().map(String::as_str).collect();
 
     let mut seen = BTreeSet::new();
@@ -66,7 +97,10 @@ pub fn validate_extraction_shim_registry(
             });
         }
 
-        if !ledger_ids.contains(entry.move_ledger_entry.as_str()) {
+        let ledger_entry = ledger_entries
+            .get(entry.move_ledger_entry.as_str())
+            .copied();
+        if ledger_entry.is_none() && !ledger_ids.contains(entry.move_ledger_entry.as_str()) {
             diagnostics.push(ShimDiagnostic {
                 kind: ShimDiagnosticKind::MissingMoveLedgerEntry,
                 message: format!(
@@ -77,12 +111,67 @@ pub fn validate_extraction_shim_registry(
             });
         }
 
-        if entry.parity_case.is_none() {
+        if entry
+            .parity_case
+            .as_deref()
+            .is_none_or(|parity_case| parity_case.trim().is_empty())
+        {
             diagnostics.push(ShimDiagnostic {
                 kind: ShimDiagnosticKind::MissingParityCase,
                 message: format!("shim `{}` missing parity_case reference", entry.id),
                 shim_ids: vec![entry.id.clone()],
             });
+        }
+
+        if entry.latest_allowed_stage == 0
+            || removal_stage_bound(&entry.removal_condition)
+                .is_some_and(|bound| bound > entry.latest_allowed_stage)
+        {
+            diagnostics.push(ShimDiagnostic {
+                kind: ShimDiagnosticKind::Expired,
+                message: format!(
+                    "shim `{}` has an expired or inconsistent latest stage bound",
+                    entry.id
+                ),
+                shim_ids: vec![entry.id.clone()],
+            });
+        }
+
+        if entry.claim_boundary.trim().is_empty()
+            || entry.removal_condition.trim().is_empty()
+            || (matches!(entry.status, ShimStatus::Active | ShimStatus::Planned)
+                && entry
+                    .parity_case
+                    .as_deref()
+                    .is_none_or(|parity_case| parity_case.trim().is_empty()))
+        {
+            diagnostics.push(ShimDiagnostic {
+                kind: ShimDiagnosticKind::SupportAmbiguous,
+                message: format!("shim `{}` has an ambiguous support posture", entry.id),
+                shim_ids: vec![entry.id.clone()],
+            });
+        }
+
+        if let Some(ledger_entry) = ledger_entry
+            && ledger_entry.duplicate_authority_class == "None"
+            && entry.status != ShimStatus::Removed
+        {
+            let duplicate_new_identity = registry
+                .shim
+                .iter()
+                .filter(|candidate| candidate.new_identity == entry.new_identity)
+                .count()
+                > 1;
+            if duplicate_new_identity {
+                diagnostics.push(ShimDiagnostic {
+                    kind: ShimDiagnosticKind::DuplicateDto,
+                    message: format!(
+                        "shim `{}` duplicates new identity `{}` without bounded authority",
+                        entry.id, entry.new_identity
+                    ),
+                    shim_ids: vec![entry.id.clone()],
+                });
+            }
         }
 
         match entry.status {
@@ -98,7 +187,7 @@ pub fn validate_extraction_shim_registry(
         active_count,
     };
 
-    (registry, diagnostics, report)
+    (registry.clone(), diagnostics, report)
 }
 
 pub fn validate_extraction_shim_registry_at(
@@ -122,9 +211,18 @@ pub fn validate_extraction_shim_registry_at(
     })?;
     let ledger =
         crate::product_move::parse_product_move_ledger_at(Some(move_ledger_path), &ledger_text)?;
-    let move_ids: Vec<String> = ledger.entry.iter().map(|entry| entry.id.clone()).collect();
+    Ok(validate_extraction_shim_registry_with_ledger(
+        registry, &ledger,
+    ))
+}
 
-    Ok(validate_extraction_shim_registry(registry, &move_ids))
+fn removal_stage_bound(removal_condition: &str) -> Option<u32> {
+    let (_, suffix) = removal_condition.rsplit_once("stage-")?;
+    suffix
+        .split(|character: char| !character.is_ascii_digit())
+        .next()
+        .filter(|value| !value.is_empty())
+        .and_then(|value| value.parse().ok())
 }
 
 pub fn extraction_shim_registry_blocks_enforced_check(root: &Path) -> CargoAllowResult<bool> {
