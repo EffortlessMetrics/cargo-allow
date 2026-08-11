@@ -83,11 +83,8 @@ from = "proof-engine"
 to = "intent-engine"
 repair_hint = "intent-protocol"
 
-# Note: shared substrate crates (effortless-repo-edit, effortless-rust-source-index)
-# declare an opt-in `allow-core-interop` feature that pulls allow-core as an
-# OPTIONAL dependency. The V1 dependency-graph loader records all [dependencies]
-# keys regardless of `optional = true`, so this intended optional edge cannot be
-# expressed as a [[forbidden_crate_dependency]] here without a false positive.
-# The rule "shared protocols must not DEFAULT-depend on a product ontology" is
-# enforced by product_crate_architecture_tests.rs::shared_protocols_do_not_default_depend_on_allow_core,
-# which parses the optional flag directly (#3356).
+# Shared substrate manifests currently have no allow-core dependency or
+# allow-core-interop feature. Product adapters own conversion into cargo-allow
+# error and finding types. The source-index package test and the workspace
+# dependency-boundary matrix fail if a shared crate regains a default product
+# dependency (#3356 / #3147).
