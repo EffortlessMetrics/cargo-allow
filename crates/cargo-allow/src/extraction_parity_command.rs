@@ -1,10 +1,10 @@
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_inventory::resolve_source_tree_root;
 use allow_policy::extraction_parity::{
-    corpus_digest, produce_extraction_cutover_receipt, validate_cutover_reachability,
     AuthorityKind, AuthorityNode, ExtractionCutoverReceipt, ExtractionCutoverReceiptEvidence,
     ExtractionParityRegistry, ExtractionStage, OldPathCase, ParityComparison,
-    ParityComparisonResult,
+    ParityComparisonResult, corpus_digest, produce_extraction_cutover_receipt,
+    validate_cutover_reachability,
 };
 use allow_policy::product_move::{ProductMoveLedger, parse_product_move_ledger_at};
 use clap::{Args, ValueEnum};
@@ -15,7 +15,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use crate::{current_dir, emit_text, RootArgs};
+use crate::{RootArgs, current_dir, emit_text};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub(crate) enum ParityStageArg {
@@ -461,7 +461,9 @@ fn ensure_cutover_inputs_clean(root: &Path) -> CargoAllowResult<()> {
             "policy/product-move-ledger.toml",
         ])
         .output()
-        .map_err(|error| CargoAllowError::new(format!("run git status for cutover inputs: {error}")))?;
+        .map_err(|error| {
+            CargoAllowError::new(format!("run git status for cutover inputs: {error}"))
+        })?;
     if !output.status.success() {
         return Err(CargoAllowError::new(format!(
             "git status for cutover inputs failed: {}",
