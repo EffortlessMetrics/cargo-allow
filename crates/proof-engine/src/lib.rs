@@ -26,6 +26,7 @@ mod planner;
 mod provider_api;
 mod provider_registry;
 mod ripr_routing;
+mod subject_reconciliation;
 
 #[cfg(test)]
 mod tests;
@@ -105,4 +106,8 @@ pub use ripr_routing::{
     RiprRouteClaimInputV1, RiprRouteReceiptV1, RiprRoutingAggregateV1, RiprRoutingError,
     compose_preflight_receipt, compose_route_receipt, compose_routing_aggregate,
     preflight_claim_result_state, route_claim_result_state,
+};
+pub use subject_reconciliation::{
+    ObservedRustSubjectV1, ProofSubjectReconciliationClassV1, ProofSubjectReconciliationV1,
+    reconcile_rust_subject_binding,
 };
