@@ -70,7 +70,7 @@ fn refresh_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase
     let new_root = workspace.join("refresh-new");
     let old_policy = old_root.join("policy").join("allow.toml");
     let new_policy = new_root.join("policy").join("allow.toml");
-    let source = "pub fn fixture_refresh_drift() -> u32 {\n    // padding\n    // padding\n    // padding\n    // padding\n    #[expect(clippy::unwrap_used, reason = \"policy:allow-0250: refresh receipt fixture\")]\n    let value = Some(1).unwrap();\n    value\n}\n";
+    let source = "pub fn fixture_refresh_drift() -> u32 {\n    // Padding lines so the expect attribute drifts beyond the\n    // DRIFT_LINE_TOLERANCE (3) relative to last_seen (line 2).\n    //\n    //\n    //\n    #[expect(clippy::unwrap_used, reason = \"policy:allow-0250: refresh receipt fixture\")]\n    let value = Some(1).unwrap();\n    value\n}\n";
     let initial = r#"schema_version = 1
 
 [workspace]
