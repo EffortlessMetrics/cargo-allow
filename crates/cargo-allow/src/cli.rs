@@ -5,8 +5,9 @@ use std::ffi::OsStr;
 use std::path::PathBuf;
 
 use crate::{
-    add, adoption, audit, capabilities, check, completions, diff, doctor, explain, hooks, init,
-    list, migrate, precommit_tool, propose, prune, reference, refresh, vocabulary, why, worklist,
+    add, adoption, audit, capabilities, check, completions, diff, doctor, explain,
+    extraction_parity_command, hooks, init, list, migrate, precommit_tool, propose, prune,
+    reference, refresh, vocabulary, why, worklist,
 };
 
 #[derive(Debug, Parser)]
@@ -104,6 +105,8 @@ pub(crate) enum CargoAllowCommand {
     Reference(reference::ReferenceArgs),
     /// Preview checked local hook plans without changing the repository.
     Hooks(hooks::HooksArgs),
+    /// Emit runtime parity evidence for extraction stages.
+    ExtractionParity(extraction_parity_command::ParityArgs),
 }
 
 /// Resolve the process output style from the flag, the environment, and
@@ -192,6 +195,7 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::Completions(args) => completions::cmd_completions(&args),
         CargoAllowCommand::Reference(args) => reference::cmd_reference(&args),
         CargoAllowCommand::Hooks(args) => hooks::cmd_hooks(&args),
+        CargoAllowCommand::ExtractionParity(args) => extraction_parity_command::cmd_parity(&args),
     }
 }
 
@@ -385,5 +389,6 @@ impl CargoAllowCommand {
         "completions",
         "reference",
         "hooks",
+        "extraction-parity",
     ];
 }

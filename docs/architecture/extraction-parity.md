@@ -15,3 +15,14 @@ kernel. CLI generation and CI artifact upload remain separate slices. The
 reachability checker distinguishes semantic evaluators from bounded
 compatibility, historical, fixture, and generated views.
 Linked shim registry: `CARGO-ALLOW-SHIM-REGISTRY-0001`.
+
+## Runtime evidence command
+
+`cargo allow extraction-parity --stage all --output
+target/extraction-parity/runtime-evidence.json` executes the current
+RepoSnapshot and RepoEdit runtime adapters, binds the artifact to the current
+Git commit and tree, and records a deterministic parity corpus digest. The
+command fails closed when any executed case is not semantically equivalent.
+This artifact is runtime parity evidence only; it does not promote policy
+dispositions, prove reachability or package ownership, or constitute an
+`ExtractionCutoverReceiptV1`.
