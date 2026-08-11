@@ -42,7 +42,7 @@ FAMILY_MODES = {
 }
 
 
-def fail(message: str) -> "NoReturn":
+def fail(message: str) -> NoReturn:
     raise SystemExit(f"release-topology-publisher: error: {message}")
 
 
@@ -136,6 +136,16 @@ def validate_rows(rows: list[dict[str, Any]], packages: dict[str, dict[str, Any]
             if dependency.get("kind") == "dev":
                 continue
             dependency_name = dependency["name"]
+            dependency_package = packages.get(dependency_name)
+            if (
+                dependency_package is not None
+                and dependency_package.get("source") is None
+                and dependency_name not in selected
+            ):
+                fail(
+                    f"publication selection for {name} is not closed: "
+                    f"workspace dependency {dependency_name} is not selected"
+                )
             if dependency_name not in selected:
                 continue
             if order[dependency_name] >= order[name]:
