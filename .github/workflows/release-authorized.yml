@@ -7,6 +7,7 @@ on:
       - release/authorize-v0.2.0.json
 
 permissions:
+  actions: write
   contents: write
 
 concurrency:
@@ -25,6 +26,7 @@ jobs:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
       - name: Verify exact release authorization
+        id: authorization
         shell: bash
         run: |
           set -euo pipefail
@@ -79,9 +81,15 @@ jobs:
               raise SystemExit('authorization reference is not a bounded token')
           print(json.dumps(authorization, indent=2, sort_keys=True))
           PY
+          echo "candidate_commit=$(jq -r .candidate_parent_commit release/authorize-v0.2.0.json)" >> "${GITHUB_OUTPUT}"
+          echo "candidate_tree=$(jq -r .candidate_parent_tree release/authorize-v0.2.0.json)" >> "${GITHUB_OUTPUT}"
+          echo "authorization=$(jq -r .authorization release/authorize-v0.2.0.json)" >> "${GITHUB_OUTPUT}"
+      - name: Check out the exact authorized candidate
+        run: git checkout --detach "${{ steps.authorization.outputs.candidate_commit }}"
       - name: Reject an existing v0.2.0 tag before first publication
         run: |
           set -euo pipefail
+          git fetch --tags origin
           if git rev-parse refs/tags/v0.2.0 >/dev/null 2>&1; then
             echo '::error::v0.2.0 already exists; use the guarded recovery path' >&2
             exit 1
@@ -128,5 +136,17 @@ jobs:
           set -euo pipefail
           git config user.name "EffortlessSteven"
           git config user.email "git@effortlesssteven.com"
-          git tag -a v0.2.0 "${GITHUB_SHA}" -m "cargo-allow v0.2.0"
+          git tag -a v0.2.0 "${{ steps.authorization.outputs.candidate_commit }}" -m "cargo-allow v0.2.0"
           git push origin refs/tags/v0.2.0
+      - name: Dispatch guarded cargo-allow publication and release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run release.yml \
+            --ref v0.2.0 \
+            -f publish_recovery=true \
+            -f recovery_version=0.2.0 \
+            -f recovery_commit="${{ steps.authorization.outputs.candidate_commit }}" \
+            -f recovery_tree="${{ steps.authorization.outputs.candidate_tree }}" \
+            -f recovery_authorization="${{ steps.authorization.outputs.authorization }}"
