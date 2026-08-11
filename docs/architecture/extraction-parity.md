@@ -11,10 +11,17 @@ receipt producer derives stage coverage from proven parity cases and the move
 ledger; runtime adapters still supply exact source, reachability, ownership,
 and build evidence. The RepoSnapshot parity harness now executes both the
 committed-head and staged-index old/new authorities through the comparison
-kernel. CLI generation and CI artifact upload remain separate slices. The
-reachability checker distinguishes semantic evaluators from bounded
+kernel. CLI generation and CI artifact upload are separate, fail-closed slices.
+The reachability checker distinguishes semantic evaluators from bounded
 compatibility, historical, fixture, and generated views.
 Linked shim registry: `CARGO-ALLOW-SHIM-REGISTRY-0001`.
+
+The CI extraction lane runs both stage-specific runtime commands through
+`scripts/extraction-cutover-status.sh` and uploads their parity artifacts plus
+`target/extraction-cutover/extraction-cutover-status.json`. The status artifact
+is intentionally fail-closed: the current `contract_only` dispositions,
+reachable old paths, and missing package/build evidence are reported as
+`Blocked` rather than being presented as a cutover receipt.
 
 ## Runtime evidence command
 

@@ -36,6 +36,7 @@ mod intent_provider;
 mod kind_filter;
 mod list;
 mod migrate;
+mod mutation_apply;
 mod mutation_lock;
 mod plan_bindings;
 mod policy_config;

@@ -47,7 +47,8 @@ pub(crate) fn cmd_spec_system(args: SpecSystemCommandArgs<'_>) -> CargoAllowResu
     let rendered = render_spec_system_report(&report, args.format);
     emit_text(args.output, &rendered)?;
     if let Some(path) = args.receipt {
-        write_file(path, &render_spec_system_json(&report))?;
+        write_file(path, &render_spec_system_json(&report))
+            .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     }
     if spec_system_command_failed(&report) {
         return Err(CargoAllowError::with_kind(

@@ -38,7 +38,10 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
             let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;
             // Lock the spec-system profile config path, not a sidecar (#3224).
             let lock_target = root.join(".allow/profiles/spec-system.toml");
-            Some(MutationLock::acquire(&lock_target)?)
+            Some(
+                MutationLock::acquire(&lock_target)
+                    .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?,
+            )
         };
         let config = spec_system_config_arg(&args.config);
         return spec_system::cmd_spec_system_init(spec_system::SpecSystemInitCommandArgs {
@@ -78,7 +81,8 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
     // Lock the actual target file path, not a sidecar lock file (#3224).
     // This matches add/propose/refresh/prune, which lock the mutation target
     // directly so that concurrent mutations on the same file are serialized.
-    let _mutation_lock = MutationLock::acquire(&path)?;
+    let _mutation_lock = MutationLock::acquire(&path)
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     // #2490: assert the write target is within the source-tree root.
     crate::policy_config::assert_path_within_root(&root, &path)?;
     let path_existed = path.exists();
@@ -104,7 +108,8 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
         lock_identity: Some(created_path_display(&root, &path)),
         mode: init_policy_apply_mode(args.force),
     })
-    .into_result()?;
+    .into_result()
+    .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     // #2778: report the correct action word — "overwrote" for --force on
     // an existing file, "created" for a new file.
     let action = if path_existed { "overwrote" } else { "created" };

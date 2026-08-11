@@ -11,7 +11,8 @@ pub use config::{
     parse_extraction_shim_registry, parse_extraction_shim_registry_at,
 };
 pub use validate::{
-    ShimDiagnostic, ShimDiagnosticKind, ShimReport, validate_extraction_shim_registry,
+    EXTRACTION_SHIM_REGISTRY_RELATIVE_PATH, ShimDiagnostic, ShimDiagnosticKind, ShimReport,
+    extraction_shim_registry_blocks_enforced_check, validate_extraction_shim_registry,
     validate_extraction_shim_registry_at,
 };
 

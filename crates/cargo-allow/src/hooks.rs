@@ -735,7 +735,8 @@ fn cmd_apply(args: &HookApplyArgs) -> CargoAllowResult<()> {
         root.join("target/cargo-allow/hooks")
             .join(format!("{}.apply.receipt.json", plan.stage))
     });
-    assert_path_within_root(&root, &receipt_path)?;
+    assert_path_within_root(&root, &receipt_path)
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
 
     let disposition = hook_disposition(&hook_path, &plan)?;
     if matches!(disposition, "AlreadyPresent" | "Composed") {
@@ -778,7 +779,8 @@ fn cmd_apply(args: &HookApplyArgs) -> CargoAllowResult<()> {
     }
 
     let contents = render_managed_hook(&plan);
-    write_file_create_new_atomic_with_permissions(&hook_path, &contents, hook_permissions())?;
+    write_file_create_new_atomic_with_permissions(&hook_path, &contents, hook_permissions())
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     let receipt = HookApplyReceiptV1 {
         schema: HOOK_APPLY_RECEIPT_SCHEMA,
         stage: plan.stage.clone(),
@@ -845,7 +847,8 @@ fn cmd_remove(args: &HookRemoveArgs) -> CargoAllowResult<()> {
         root.join("target/cargo-allow/hooks")
             .join(format!("{}.remove.receipt.json", plan.stage))
     });
-    assert_path_within_root(&root, &result_receipt)?;
+    assert_path_within_root(&root, &result_receipt)
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
 
     let metadata = match fs::symlink_metadata(&hook_path) {
         Ok(metadata) => metadata,
@@ -929,7 +932,8 @@ fn cmd_remove(args: &HookRemoveArgs) -> CargoAllowResult<()> {
             })?;
             retained.push_str(prefix);
             retained.push_str(suffix);
-            write_file(&hook_path, &retained)?;
+            write_file(&hook_path, &retained)
+                .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
             let receipt = HookRemoveReceiptV1 {
                 schema: HOOK_REMOVE_RECEIPT_SCHEMA,
                 stage: plan.stage,
@@ -1140,7 +1144,8 @@ fn hook_path(root: &Path, stage: HookStage) -> CargoAllowResult<PathBuf> {
     } else {
         root.join(hooks_dir)
     };
-    assert_path_within_root(&git_common_dir, &hooks_dir)?;
+    assert_path_within_root(&git_common_dir, &hooks_dir)
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     Ok(hooks_dir.join(stage.as_str()))
 }
 
@@ -1323,7 +1328,8 @@ fn write_json_receipt<T: Serialize>(path: &Path, receipt: &T) -> CargoAllowResul
             format!("failed to render hook receipt: {error}"),
         )
     })?;
-    Ok(write_file(path, &format!("{rendered}\n"))?)
+    write_file(path, &format!("{rendered}\n"))
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)
 }
 
 fn render_status(status: &HookStatusV1) -> String {

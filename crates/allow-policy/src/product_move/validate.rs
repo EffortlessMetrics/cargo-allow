@@ -361,6 +361,7 @@ fn collect_structural_diagnostics(ledger: &ProductMoveLedger) -> Vec<MoveLedgerD
         "ArchitectureInventory",
         "RepoProtocol",
         "RepoSnapshot",
+        "RepoEdit",
         "IntentModel",
         "IntentProtocol",
         "IntentEngine",

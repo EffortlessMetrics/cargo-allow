@@ -422,7 +422,8 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
             failed,
             receipt_context,
         );
-        write_file(path, &receipt)?;
+        write_file(path, &receipt)
+            .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     }
     if failed {
         process::exit(1);
