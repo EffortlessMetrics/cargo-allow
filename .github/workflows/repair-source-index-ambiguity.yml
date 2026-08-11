@@ -1,0 +1,138 @@
+name: Repair source-index ambiguity contract
+
+on:
+  push:
+    branches:
+      - feat/intent-compiler-subject-resolution-3147
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: ${{ !contains(github.event.head_commit.message, '[ambiguity-contract-complete]') }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out candidate branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          ref: feat/intent-compiler-subject-resolution-3147
+
+      - name: Preserve ambiguous subject evidence and self-remove
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "EffortlessSteven"
+          git config user.email "git@effortlesssteven.com"
+
+          python3 <<'PY'
+          from pathlib import Path
+
+          dto = Path("crates/effortless-rust-source-index/src/test_subjects.rs")
+          text = dto.read_text(encoding="utf-8")
+          old = "    Ambiguous(Vec<RustTestSelector>),"
+          new = "    Ambiguous(Vec<RustTestSubject>),"
+          if old not in text:
+              raise SystemExit("RustTestResolution ambiguity payload anchor missing")
+          dto.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          inventory = Path("crates/effortless-rust-source-index/src/inventory.rs")
+          text = inventory.read_text(encoding="utf-8")
+          old = '''    let mut subjects = matches.into_iter();
+    let Some(subject) = subjects.next() else {
+        return RustTestResolution::NotFound;
+    };
+    if subjects.next().is_some() {
+        let mut selectors = inventory
+            .subjects
+            .iter()
+            .filter(|candidate| &candidate.selector == selector)
+            .map(|candidate| candidate.selector.clone())
+            .collect::<Vec<_>>();
+        selectors.sort();
+        return RustTestResolution::Ambiguous(selectors);
+    }
+'''
+          new = '''    if matches.is_empty() {
+        return RustTestResolution::NotFound;
+    }
+    if matches.len() > 1 {
+        return RustTestResolution::Ambiguous(matches);
+    }
+    let Some(subject) = matches.into_iter().next() else {
+        return RustTestResolution::NotFound;
+    };
+'''
+          if old not in text:
+              raise SystemExit("resolver ambiguity block anchor missing")
+          inventory.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          intent = Path("crates/intent-engine/src/subject_resolution.rs")
+          text = intent.read_text(encoding="utf-8")
+          old = "    let selector = candidate.display_name();"
+          new = "    let selector = candidate.selector.display_name();"
+          if old not in text:
+              raise SystemExit("intent ambiguity display anchor missing")
+          intent.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          tests = Path("crates/effortless-rust-source-index/src/inventory_tests.rs")
+          text = tests.read_text(encoding="utf-8")
+          test_name = "fn ambiguous_resolution_preserves_subject_locations()"
+          if test_name not in text:
+              text += r'''
+
+#[test]
+fn ambiguous_resolution_preserves_subject_locations() -> Result<(), String> {
+    let inventory = inventory_rust_test_subjects_from_sources(
+        manifest(),
+        vec![(
+            PathBuf::from("crates/demo/src/lib.rs"),
+            "#[test]\nfn exact() {}".into(),
+        )],
+        &RustTestInventoryOptions::default(),
+    );
+    let selector = only_subject(&inventory)?.selector.clone();
+    let mut duplicate = only_subject(&inventory)?.clone();
+    duplicate.source_path = "crates/demo/src/other.rs".to_string();
+    duplicate.source_range = crate::RustTestSourceRange {
+        start_line: 10,
+        start_column: 2,
+        end_line: 12,
+        end_column: 3,
+    };
+    let mut ambiguous = inventory;
+    ambiguous.subjects.push(duplicate);
+
+    let RustTestResolution::Ambiguous(candidates) =
+        resolve_rust_test_selector(&ambiguous, &selector)
+    else {
+        return Err("duplicate selector did not resolve as ambiguous".to_string());
+    };
+    assert_eq!(candidates.len(), 2);
+    let paths = candidates
+        .iter()
+        .map(|candidate| candidate.source_path.as_str())
+        .collect::<BTreeSet<_>>();
+    assert_eq!(
+        paths,
+        BTreeSet::from(["crates/demo/src/lib.rs", "crates/demo/src/other.rs"])
+    );
+    Ok(())
+}
+'''
+              tests.write_text(text, encoding="utf-8")
+          PY
+
+          cargo fmt --all
+          cargo check -p effortless-rust-source-index -p intent-compiler --locked
+          cargo test -p effortless-rust-source-index --locked
+          cargo test -p intent-compiler --locked
+
+          git rm .github/workflows/repair-source-index-ambiguity.yml
+          git add crates/effortless-rust-source-index/src/test_subjects.rs \
+            crates/effortless-rust-source-index/src/inventory.rs \
+            crates/effortless-rust-source-index/src/inventory_tests.rs \
+            crates/intent-engine/src/subject_resolution.rs
+          git commit -m "fix(source-index): retain ambiguous subject locations [ambiguity-contract-complete]"
+          git push origin HEAD:feat/intent-compiler-subject-resolution-3147
