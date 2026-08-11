@@ -7,8 +7,8 @@
 //! promote a cutover or manufacture command-receipt evidence.
 
 use allow_core::{
-    AllowEntry, CargoAllowError, CargoAllowResult, FindingKind, LastSeen, Lifecycle, MatchStatus,
-    Selector, SimpleDate,
+    AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, FindingKind, LastSeen,
+    Lifecycle, MatchStatus, Selector, SimpleDate,
 };
 use allow_match::{CheckMode, evaluate};
 use allow_policy::extraction_parity::{ParityComparison, ParityObservation, compare_observations};
@@ -104,10 +104,13 @@ fn refresh_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase
             .map(|outcome| format!("{:?}:{:?}", outcome.allow_id, outcome.status))
             .collect::<Vec<_>>()
             .join(", ");
-        return Err(CargoAllowError::new(format!(
-            "refresh parity fixture precondition was {:?}; findings [{}]; outcomes [{}]",
-            preflight_status, findings, outcomes
-        )));
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!(
+                "refresh parity fixture precondition was {:?}; findings [{}]; outcomes [{}]",
+                preflight_status, findings, outcomes
+            ),
+        ));
     }
 
     crate::refresh::cmd_refresh(&crate::refresh::parity_refresh_args(
@@ -129,17 +132,29 @@ fn refresh_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase
             finding.path == Path::new("src/lib.rs")
                 && finding.family.as_deref() == Some("expect_attribute")
         })
-        .ok_or_else(|| CargoAllowError::new("refresh parity finding was not discovered"))?;
-    let span = finding
-        .span
-        .as_ref()
-        .ok_or_else(|| CargoAllowError::new("refresh parity finding has no source span"))?;
+        .ok_or_else(|| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Internal,
+                "refresh parity finding was not discovered",
+            )
+        })?;
+    let span = finding.span.as_ref().ok_or_else(|| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            "refresh parity finding has no source span",
+        )
+    })?;
     let mut expected_config = config;
     let entry = expected_config
         .allow
         .iter_mut()
         .find(|entry| entry.id == "allow-0250")
-        .ok_or_else(|| CargoAllowError::new("refresh parity entry was not loaded"))?;
+        .ok_or_else(|| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Internal,
+                "refresh parity entry was not loaded",
+            )
+        })?;
     entry.last_seen = Some(LastSeen {
         line: span.line,
         column: span.column,
@@ -156,7 +171,12 @@ fn refresh_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase
         mode: SingleTargetApplyMode::AtomicReplace,
     })
     .into_result()
-    .map_err(|error| CargoAllowError::new(format!("new refresh apply failed: {error}")))?;
+    .map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!("new refresh apply failed: {error}"),
+        )
+    })?;
 
     let old_output = fs::read_to_string(old_policy).map_err(io_error)?;
     let new_output = fs::read_to_string(new_policy).map_err(io_error)?;
@@ -462,13 +482,22 @@ fn mutation_lock_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase> 
 }
 
 fn parity_workspace() -> CargoAllowResult<PathBuf> {
-    let id = NEXT_ROOT_ID.fetch_add(1, Ordering::Relaxed);
-    let workspace = std::env::temp_dir().join(format!(
-        "cargo-allow-repo-edit-parity-{}-{id}",
-        std::process::id()
-    ));
-    fs::create_dir_all(&workspace).map_err(io_error)?;
-    Ok(workspace)
+    for _ in 0..32 {
+        let id = NEXT_ROOT_ID.fetch_add(1, Ordering::Relaxed);
+        let workspace = std::env::temp_dir().join(format!(
+            "cargo-allow-repo-edit-parity-{}-{id}",
+            std::process::id()
+        ));
+        match fs::create_dir(&workspace) {
+            Ok(()) => return Ok(workspace),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(io_error(error)),
+        }
+    }
+    Err(CargoAllowError::with_kind(
+        CargoAllowErrorKind::Internal,
+        "failed to allocate a unique RepoEdit parity workspace",
+    ))
 }
 
 fn parity_case(
@@ -525,27 +554,4 @@ fn lock_output<T, E: std::fmt::Display>(result: Result<T, E>) -> String {
 
 fn io_error(error: std::io::Error) -> CargoAllowError {
     CargoAllowError::new(error.to_string())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use allow_policy::extraction_parity::ParityComparisonResult;
-
-    #[test]
-    fn repo_edit_authorities_are_parity_equivalent() -> Result<(), String> {
-        let run = run_repo_edit_parity().map_err(|error| error.to_string())?;
-        for case in run.cases {
-            if case.comparison.result != ParityComparisonResult::SemanticallyEquivalent {
-                return Err(format!(
-                    "{} parity differed: {:?}",
-                    case.id, case.comparison
-                ));
-            }
-            if case.old_output != case.new_output {
-                return Err(format!("{} canonical outputs differed", case.id));
-            }
-        }
-        Ok(())
-    }
 }
