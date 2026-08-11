@@ -79,14 +79,20 @@ pub fn resolve_authored_rust_subject(
         RustTestResolution::ResolvedExact(subject) => {
             exact_resolution(anchor, subject_id, display, subject)
         }
-        RustTestResolution::Ambiguous(candidates) => IntentSubjectResolutionV1 {
+        RustTestResolution::Ambiguous(candidate_selectors) => IntentSubjectResolutionV1 {
             subject_id,
             class: IntentSubjectResolutionClassV1::Ambiguous,
             selector: Some(display),
             source_path: None,
             observed_body_identity: None,
-            candidates: candidates
-                .into_iter()
+            candidates: inventory
+                .subjects
+                .iter()
+                .filter(|subject| {
+                    candidate_selectors
+                        .iter()
+                        .any(|candidate| candidate == &subject.selector)
+                })
                 .map(ambiguous_candidate_display)
                 .collect(),
             limitations: Vec::new(),
@@ -139,9 +145,9 @@ pub fn resolve_authored_rust_subject(
     }
 }
 
-fn ambiguous_candidate_display(candidate: RustTestSubject) -> String {
-    let selector = candidate.display_name();
-    let range = candidate.source_range;
+fn ambiguous_candidate_display(candidate: &RustTestSubject) -> String {
+    let selector = candidate.selector.display_name();
+    let range = &candidate.source_range;
     format!(
         "{selector} @ {}:{}:{}-{}:{}",
         candidate.source_path,
