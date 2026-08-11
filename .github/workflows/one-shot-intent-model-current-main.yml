@@ -1,3 +1,4 @@
+# Trigger the registered one-shot after its definition exists on the branch.
 name: One-shot intent-model current-main generated state
 
 on:
