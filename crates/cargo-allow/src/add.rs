@@ -39,8 +39,35 @@ use effortless_repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, appl
 
 const ADD_REVIEW_AFTER_DEFAULT_DAYS: i64 = 90;
 
-#[cfg(test)]
 use std::path::PathBuf;
+
+pub(crate) fn parity_add_args(root: PathBuf, config: PathBuf) -> AddArgs {
+    AddArgs {
+        root: crate::RootArgs { root: Some(root) },
+        config: Some(config),
+        kind: Some("panic".to_string()),
+        path: None,
+        line: None,
+        glob: Some("src/lib.rs".to_string()),
+        family: Some("unwrap".to_string()),
+        callee: Some("unwrap".to_string()),
+        owner: "parity".to_string(),
+        reason: "RepoEdit parity fixture exception".to_string(),
+        classification: "reviewed_exception".to_string(),
+        review_after: Some("2026-11-01".to_string()),
+        expires: None,
+        evidence: Vec::new(),
+        id: None,
+        include_untracked: false,
+        write: None,
+        force: false,
+        update: true,
+        dry_run: false,
+        from_plan: None,
+        summary_format: HumanJsonFormat::Human,
+        summary_output: None,
+    }
+}
 
 pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     require_json_summary_output(args.summary_format, args.summary_output.as_deref())?;

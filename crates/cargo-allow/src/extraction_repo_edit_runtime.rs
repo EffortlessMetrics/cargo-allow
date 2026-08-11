@@ -6,12 +6,15 @@
 //! core containment, atomic-write, and mutation-lock contracts. It does not
 //! promote a cutover or manufacture command-receipt evidence.
 
-use allow_core::{CargoAllowError, CargoAllowResult};
+use allow_core::{
+    AllowEntry, CargoAllowError, CargoAllowResult, FindingKind, Lifecycle, Selector, SimpleDate,
+};
 use allow_policy::extraction_parity::{ParityComparison, ParityObservation, compare_observations};
-use allow_policy::starter_policy;
+use allow_policy::{parse_policy, render_policy, starter_policy};
 use effortless_repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 static NEXT_ROOT_ID: AtomicU64 = AtomicU64::new(0);
@@ -53,10 +56,104 @@ fn run_cases(workspace: &Path) -> CargoAllowResult<RepoEditParityRun> {
         mutation_lock_case(workspace),
         init_command_case(workspace),
         migrate_command_case(workspace),
+        add_command_case(workspace),
     ]
     .into_iter()
     .collect::<CargoAllowResult<Vec<_>>>()?;
     Ok(RepoEditParityRun { cases })
+}
+
+fn add_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase> {
+    let old_root = workspace.join("add-old");
+    let new_root = workspace.join("add-new");
+    let old_policy = old_root.join("policy").join("allow.toml");
+    let new_policy = new_root.join("policy").join("allow.toml");
+    let initial = starter_policy(false, "policy/allow.toml");
+    fs::create_dir_all(old_root.join("policy")).map_err(io_error)?;
+    fs::create_dir_all(old_root.join("src")).map_err(io_error)?;
+    fs::create_dir_all(new_root.join("policy")).map_err(io_error)?;
+    fs::write(
+        old_root.join("src/lib.rs"),
+        "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
+    )
+    .map_err(io_error)?;
+    fs::write(&old_policy, &initial).map_err(io_error)?;
+    git_fixture(&old_root, &["init"])?;
+    git_fixture(
+        &old_root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    )?;
+    git_fixture(&old_root, &["config", "user.name", "cargo-allow parity"])?;
+    git_fixture(&old_root, &["add", "policy/allow.toml", "src/lib.rs"])?;
+    git_fixture(&old_root, &["commit", "-m", "parity fixture"])?;
+
+    crate::add::cmd_add(&crate::add::parity_add_args(old_root.clone(), old_policy))?;
+    let expected = expected_add_policy(&initial)?;
+    apply_single_target(SingleTargetApplyRequest {
+        repository_root: &new_root,
+        target: &new_policy,
+        contents: &expected,
+        caller_reference: Some("cargo-allow:add"),
+        lock_identity: Some("policy/allow.toml".to_string()),
+        mode: SingleTargetApplyMode::AtomicReplace,
+    })
+    .into_result()
+    .map_err(|error| CargoAllowError::new(format!("new add apply failed: {error}")))?;
+
+    let old_output = fs::read_to_string(old_root.join("policy/allow.toml")).map_err(io_error)?;
+    let new_output = fs::read_to_string(new_policy).map_err(io_error)?;
+    Ok(parity_case(
+        "parity-repo-edit-add-command-v1",
+        "add:policy/allow.toml",
+        old_output,
+        new_output,
+    ))
+}
+
+fn expected_add_policy(initial: &str) -> CargoAllowResult<String> {
+    let mut config = parse_policy(initial)?;
+    config.allow.push(AllowEntry {
+        id: "allow-0002".to_string(),
+        kind: FindingKind::Panic,
+        family: Some("unwrap".to_string()),
+        path: None,
+        glob: Some("src/lib.rs".to_string()),
+        owner: "parity".to_string(),
+        classification: "reviewed_exception".to_string(),
+        reason: "RepoEdit parity fixture exception".to_string(),
+        evidence: Vec::new(),
+        links: Vec::new(),
+        occurrence_limit: Some(1),
+        lifecycle: Lifecycle {
+            created: Some(SimpleDate::today_utc_approx().to_string()),
+            review_after: Some("2026-11-01".to_string()),
+            expires: None,
+        },
+        selector: Selector {
+            callee: Some("unwrap".to_string()),
+            glob: Some("src/lib.rs".to_string()),
+            ..Selector::default()
+        },
+        last_seen: None,
+    });
+    Ok(render_policy(&config))
+}
+
+fn git_fixture(root: &Path, args: &[&str]) -> CargoAllowResult<()> {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(args)
+        .output()
+        .map_err(|error| CargoAllowError::new(format!("git fixture command failed: {error}")))?;
+    if output.status.success() {
+        return Ok(());
+    }
+    Err(CargoAllowError::new(format!(
+        "git fixture command {:?} failed: {}",
+        args,
+        String::from_utf8_lossy(&output.stderr)
+    )))
 }
 
 fn migrate_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase> {
