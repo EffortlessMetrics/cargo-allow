@@ -7,12 +7,18 @@ on:
       - fix/remove-stale-publish-order-allow-0517
     paths:
       - .github/workflows/one-shot-remove-stale-publish-order-allow.yml
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+    paths:
+      - .github/workflows/one-shot-remove-stale-publish-order-allow.yml
 
 permissions:
   contents: write
 
 jobs:
   repair:
+    if: github.event_name == 'push' || github.head_ref == 'fix/remove-stale-publish-order-allow-0517'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
