@@ -188,9 +188,13 @@ pub(crate) fn cmd_parity(args: &ParityArgs) -> CargoAllowResult<()> {
             evidence_path,
             passed,
         )?;
-        payload["cutover_receipt"] = serde_json::to_value(receipt).map_err(|error| {
+        let receipt_value = serde_json::to_value(receipt).map_err(|error| {
             CargoAllowError::new(format!("render extraction cutover receipt: {error}"))
         })?;
+        let object = payload.as_object_mut().ok_or_else(|| {
+            CargoAllowError::new("render extraction cutover receipt requires JSON object payload")
+        })?;
+        object.insert("cutover_receipt".to_string(), receipt_value);
     }
     let rendered = serde_json::to_string_pretty(&payload)
         .map_err(|error| CargoAllowError::new(format!("render parity evidence: {error}")))?
