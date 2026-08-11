@@ -3,6 +3,9 @@ set -euo pipefail
 
 branch="refactor/repo-edit-product-edge-2969"
 
+git config user.name "EffortlessSteven"
+git config user.email "git@effortlesssteven.com"
+
 git fetch origin "${branch}" main
 git checkout -B one-shot-repo-edit "origin/${branch}"
 git merge --no-edit -X theirs origin/main
@@ -142,9 +145,6 @@ git diff --check
 
 git add -A
 git diff --cached --check
-
-git config user.name "EffortlessSteven"
-git config user.email "git@effortlesssteven.com"
 
 git commit -m "refactor(repo-edit): project errors at cargo-allow boundary"
 git push origin HEAD:"${branch}"
