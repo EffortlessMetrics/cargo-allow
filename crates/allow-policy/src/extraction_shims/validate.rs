@@ -104,7 +104,11 @@ fn validate_extraction_shim_registry_with_ledger(
             });
         }
 
-        if entry.parity_case.is_none() {
+        if entry
+            .parity_case
+            .as_deref()
+            .is_none_or(|parity_case| parity_case.trim().is_empty())
+        {
             diagnostics.push(ShimDiagnostic {
                 kind: ShimDiagnosticKind::MissingParityCase,
                 message: format!("shim `{}` missing parity_case reference", entry.id),
@@ -129,7 +133,10 @@ fn validate_extraction_shim_registry_with_ledger(
         if entry.claim_boundary.trim().is_empty()
             || entry.removal_condition.trim().is_empty()
             || (matches!(entry.status, ShimStatus::Active | ShimStatus::Planned)
-                && entry.parity_case.as_deref().is_none_or(str::is_empty))
+                && entry
+                    .parity_case
+                    .as_deref()
+                    .is_none_or(|parity_case| parity_case.trim().is_empty()))
         {
             diagnostics.push(ShimDiagnostic {
                 kind: ShimDiagnosticKind::SupportAmbiguous,

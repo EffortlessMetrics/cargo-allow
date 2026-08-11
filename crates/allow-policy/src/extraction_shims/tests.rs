@@ -91,8 +91,7 @@ fn snapshot_shims_record_live_public_compatibility_boundary() -> Result<(), Stri
 
 #[test]
 fn lifecycle_bounds_fail_closed() -> Result<(), String> {
-    let registry = parse_extraction_shim_registry(
-        r#"
+    let registry_text = r#"
 registry_id = "test"
 controlling_issue = 2607
 linked_move_ledger = "test"
@@ -110,9 +109,9 @@ latest_allowed_stage = 0
 removal_condition = "issue:#2606 stage-1 cutover receipt"
 parity_case = "parity-test"
 claim_boundary = "test boundary"
-"#,
-    )
-    .map_err(|err| format!("parse registry: {err}"))?;
+"#;
+    let registry = parse_extraction_shim_registry(registry_text)
+        .map_err(|err| format!("parse registry: {err}"))?;
     let ledger = parse_product_move_ledger(
         &std::fs::read_to_string(
             std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -133,6 +132,25 @@ claim_boundary = "test boundary"
         .any(|diagnostic| diagnostic.kind == ShimDiagnosticKind::Expired)
     {
         return Err(format!("expected expired diagnostic, got {diagnostics:?}"));
+    }
+
+    let inconsistent_registry = parse_extraction_shim_registry(
+        &registry_text
+            .replace("latest_allowed_stage = 0", "latest_allowed_stage = 1")
+            .replace(
+                "removal_condition = \"issue:#2606 stage-1 cutover receipt\"",
+                "removal_condition = \"issue:#2606 stage-2 cutover receipt\"",
+            ),
+    )
+    .map_err(|err| format!("parse inconsistent registry: {err}"))?;
+    let (_, diagnostics, _) = validate_extraction_shim_registry(inconsistent_registry, &move_ids);
+    if !diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.kind == ShimDiagnosticKind::Expired)
+    {
+        return Err(format!(
+            "expected inconsistent stage diagnostic, got {diagnostics:?}"
+        ));
     }
     Ok(())
 }
