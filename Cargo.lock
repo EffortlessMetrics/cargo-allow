@@ -115,6 +115,7 @@ name = "allow-rust"
 version = "0.2.0"
 dependencies = [
  "allow-core",
+ "proptest",
  "rayon",
  "toml",
  "tree-sitter",
