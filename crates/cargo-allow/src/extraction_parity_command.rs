@@ -51,7 +51,7 @@ pub(crate) fn cmd_parity(args: &ParityArgs) -> CargoAllowResult<()> {
         );
     }
     if matches!(args.stage, ParityStageArg::All | ParityStageArg::RepoEdit) {
-        let run = crate::extraction_repo_edit_runtime::run_repo_edit_parity(&root)?;
+        let run = crate::extraction_repo_edit_runtime::run_repo_edit_parity()?;
         for case in run.cases {
             append_record(
                 &mut records,
