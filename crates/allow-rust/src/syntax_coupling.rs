@@ -47,17 +47,34 @@ fn collect_coupling_facts(
         _ => None,
     };
     if let Some(kind) = kind
-        && let Some(path) = coupling_path(node, source, kind)
+        && (kind != RustSourceCouplingKind::InlineModule
+            || node.child_by_field_name("body").is_some())
         && let Some(text) = node_text(source, node)
     {
+        let paths = match kind {
+            RustSourceCouplingKind::UseDeclaration => node
+                .child_by_field_name("argument")
+                .map(|argument| use_clause_paths(argument, source))
+                .unwrap_or_default(),
+            RustSourceCouplingKind::InlineModule => node
+                .child_by_field_name("name")
+                .and_then(|name| node_text(source, name))
+                .map(|path| vec![path.trim().to_string()])
+                .unwrap_or_default(),
+        };
         let start = node.start_position();
-        facts.push(RustSourceCoupling {
-            kind,
-            path,
-            text: text.trim().to_string(),
-            start_line: start.row as u32 + 1,
-            start_column: source_column(line_index, source, start.row, start.column),
-        });
+        for path in paths {
+            if path.is_empty() {
+                continue;
+            }
+            facts.push(RustSourceCoupling {
+                kind,
+                path,
+                text: text.trim().to_string(),
+                start_line: start.row as u32 + 1,
+                start_column: source_column(line_index, source, start.row, start.column),
+            });
+        }
     }
 
     let mut cursor = node.walk();
@@ -66,15 +83,41 @@ fn collect_coupling_facts(
     }
 }
 
-fn coupling_path(node: Node<'_>, source: &str, kind: RustSourceCouplingKind) -> Option<String> {
-    let path_node = match kind {
-        RustSourceCouplingKind::UseDeclaration => node
-            .child_by_field_name("argument")
-            .or_else(|| node.child_by_field_name("path"))?,
-        RustSourceCouplingKind::InlineModule => node.child_by_field_name("name")?,
-    };
-    node_text(source, path_node)
-        .map(str::trim)
-        .filter(|path| !path.is_empty())
-        .map(str::to_string)
+fn use_clause_paths(node: Node<'_>, source: &str) -> Vec<String> {
+    match node.kind() {
+        "use_list" => {
+            let mut cursor = node.walk();
+            node.named_children(&mut cursor)
+                .flat_map(|child| use_clause_paths(child, source))
+                .collect()
+        }
+        "scoped_use_list" => {
+            let prefix = node
+                .child_by_field_name("path")
+                .and_then(|path| node_text(source, path))
+                .map(str::trim)
+                .filter(|path| !path.is_empty());
+            let Some(list) = node.child_by_field_name("list") else {
+                return prefix.into_iter().map(str::to_string).collect();
+            };
+            let paths = use_clause_paths(list, source);
+            match prefix {
+                Some(prefix) => paths
+                    .into_iter()
+                    .map(|path| format!("{prefix}::{path}"))
+                    .collect(),
+                None => paths,
+            }
+        }
+        "use_as_clause" => node
+            .child_by_field_name("path")
+            .and_then(|path| node_text(source, path))
+            .map(|path| vec![path.trim().to_string()])
+            .unwrap_or_default(),
+        _ => node_text(source, node)
+            .map(str::trim)
+            .filter(|path| !path.is_empty())
+            .map(|path| vec![path.to_string()])
+            .unwrap_or_default(),
+    }
 }

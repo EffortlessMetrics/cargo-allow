@@ -19,17 +19,29 @@ pub(crate) struct SourceCouplingDiagnostic {
     pub(crate) import_text: String,
 }
 
+#[cfg(test)]
 pub(crate) fn source_coupling_fails_check(root: &Path, mode: CheckMode) -> CargoAllowResult<bool> {
+    Ok(!source_coupling_diagnostics_for_check(root, mode)?.is_empty())
+}
+
+pub(crate) fn source_coupling_diagnostics_for_check(
+    root: &Path,
+    mode: CheckMode,
+) -> CargoAllowResult<Vec<SourceCouplingDiagnostic>> {
     if mode != CheckMode::NoNew && mode != CheckMode::Strict {
-        return Ok(false);
+        return Ok(Vec::new());
     }
-    Ok(!source_coupling_diagnostics_at(root)?.is_empty())
+    source_coupling_diagnostics_at(root)
 }
 
 pub(crate) fn source_coupling_diagnostics_at(
     root: &Path,
 ) -> CargoAllowResult<Vec<SourceCouplingDiagnostic>> {
     let manifest_path = root.join("policy/product-crates-v2.toml");
+    let forbidden_path = root.join("policy/product-crates.toml");
+    if !manifest_path.is_file() || !forbidden_path.is_file() {
+        return Ok(Vec::new());
+    }
     let manifest_text = std::fs::read_to_string(&manifest_path).map_err(|error| {
         CargoAllowError::new(format!(
             "source coupling ownership manifest unreadable at {}: {error}",
@@ -37,7 +49,6 @@ pub(crate) fn source_coupling_diagnostics_at(
         ))
     })?;
     let manifest = parse_architecture_manifest_v2_at(Some(&manifest_path), &manifest_text)?;
-    let forbidden_path = root.join("policy/product-crates.toml");
     let forbidden_text = std::fs::read_to_string(&forbidden_path).map_err(|error| {
         CargoAllowError::new(format!(
             "source coupling dependency policy unreadable at {}: {error}",

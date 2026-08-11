@@ -62,7 +62,9 @@ fn rejects_only_known_cross_product_imports() -> Result<(), String> {
             "expected one cross-product diagnostic, got {diagnostics:?}"
         ));
     }
-    let diagnostic = &diagnostics[0];
+    let diagnostic = diagnostics
+        .first()
+        .ok_or_else(|| "missing cross-product diagnostic".to_string())?;
     if diagnostic.target_crate != "product-b"
         || diagnostic.source_owner != "product-a"
         || diagnostic.target_owner != "product-b"

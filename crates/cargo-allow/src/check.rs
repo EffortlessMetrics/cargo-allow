@@ -26,7 +26,7 @@ mod check_extraction_shim_guard;
 use check_extraction_shim_guard::extraction_shim_registry_fails_check;
 #[path = "check_source_coupling_guard.rs"]
 mod check_source_coupling_guard;
-use check_source_coupling_guard::source_coupling_fails_check;
+use check_source_coupling_guard::source_coupling_diagnostics_for_check;
 
 use crate::federation_report::FederationReportBundle;
 use crate::{
@@ -216,7 +216,19 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
     }
     let product_move_ledger_failed = product_move_ledger_fails_check(&root, mode)?;
     let extraction_shim_registry_failed = extraction_shim_registry_fails_check(&root, mode)?;
-    let source_coupling_failed = source_coupling_fails_check(&root, mode)?;
+    let source_coupling_diagnostics = source_coupling_diagnostics_for_check(&root, mode)?;
+    for diagnostic in &source_coupling_diagnostics {
+        eprintln!(
+            "source coupling: {}:{}:{}: {} imports {} ({})",
+            diagnostic.path.display(),
+            diagnostic.line,
+            diagnostic.column,
+            diagnostic.source_owner,
+            diagnostic.target_crate,
+            diagnostic.import_text,
+        );
+    }
+    let source_coupling_failed = !source_coupling_diagnostics.is_empty();
     let failed = check_failed_for_outcomes(&outcomes, &findings, &report_cfg, mode)
         || evidence.has_broken_evidence_links()
         || federation_bundle.has_blocking_divergence()
