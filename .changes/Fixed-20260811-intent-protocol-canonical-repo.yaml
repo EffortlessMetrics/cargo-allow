@@ -1,5 +1,5 @@
 kind: Fixed
 body: >-
   Make intent-protocol depend on the canonical effortless-repo-protocol
-  repository snapshot and result contracts instead of packaging a private
-  implementation copy.
+  repository snapshot and result contracts, delete its copied repository
+  implementation, and retire the copied paths from movement authority.
