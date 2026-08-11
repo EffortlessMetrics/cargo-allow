@@ -52,10 +52,48 @@ fn run_cases(workspace: &Path) -> CargoAllowResult<RepoEditParityRun> {
         no_overwrite_case(workspace),
         mutation_lock_case(workspace),
         init_command_case(workspace),
+        migrate_command_case(workspace),
     ]
     .into_iter()
     .collect::<CargoAllowResult<Vec<_>>>()?;
     Ok(RepoEditParityRun { cases })
+}
+
+fn migrate_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase> {
+    let old_root = workspace.join("migrate-old");
+    let new_root = workspace.join("migrate-new");
+    let old_source = old_root.join("legacy-policy.toml");
+    let old_output = old_root.join("policy").join("migrated.toml");
+    let new_output = new_root.join("policy").join("migrated.toml");
+    fs::create_dir_all(&old_root).map_err(io_error)?;
+    fs::create_dir_all(&new_root).map_err(io_error)?;
+    let contents = starter_policy(false, "policy/migrated.toml");
+    fs::write(&old_source, &contents).map_err(io_error)?;
+
+    crate::migrate::cmd_migrate(&crate::migrate::parity_migrate_args(
+        old_root.clone(),
+        old_source.clone(),
+        old_output,
+    ))?;
+    apply_single_target(SingleTargetApplyRequest {
+        repository_root: &new_root,
+        target: &new_output,
+        contents: &contents,
+        caller_reference: Some("cargo-allow:migrate:out"),
+        lock_identity: Some("policy/migrated.toml".to_string()),
+        mode: SingleTargetApplyMode::CreateNewOnly,
+    })
+    .into_result()
+    .map_err(|error| CargoAllowError::new(format!("new migrate apply failed: {error}")))?;
+
+    let old_output = fs::read_to_string(old_root.join("policy/migrated.toml")).map_err(io_error)?;
+    let new_output = fs::read_to_string(new_output).map_err(io_error)?;
+    Ok(parity_case(
+        "parity-repo-edit-migrate-command-v1",
+        "migrate:policy/migrated.toml",
+        old_output,
+        new_output,
+    ))
 }
 
 fn init_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase> {
