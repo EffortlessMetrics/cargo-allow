@@ -7,8 +7,8 @@ on:
       - release/authorize-v0.2.0.json
 
 permissions:
-  actions: write
-  contents: write
+  actions: read
+  contents: read
 
 concurrency:
   group: authorized-release-v0.2.0
@@ -18,13 +18,23 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  publish-namespace-and-tag:
+  publish-namespace:
     runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      candidate_commit: ${{ steps.authorization.outputs.candidate_commit }}
+      candidate_tree: ${{ steps.authorization.outputs.candidate_tree }}
+      authorization: ${{ steps.authorization.outputs.authorization }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772
+        with:
+          toolchain: stable
       - name: Verify exact release authorization
         id: authorization
         shell: bash
@@ -130,13 +140,35 @@ jobs:
             target/cargo-allow/namespace-publish.receipt.json
             target/cargo-allow/check.receipt.json
             target/cargo-allow/check.md
+  tag-and-dispatch:
+    needs: publish-namespace
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      # Required only here to push the exact authorized release tag.
+      actions: write
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - name: Check out the exact authorized candidate
+        run: git checkout --detach "${{ needs.publish-namespace.outputs.candidate_commit }}"
+      - name: Reject an existing v0.2.0 tag before first publication
+        run: |
+          set -euo pipefail
+          git fetch --tags origin
+          if git rev-parse refs/tags/v0.2.0 >/dev/null 2>&1; then
+            echo '::error::v0.2.0 already exists; use the guarded recovery path' >&2
+            exit 1
+          fi
       - name: Push exact v0.2.0 tag after namespace verification
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "EffortlessSteven"
           git config user.email "git@effortlesssteven.com"
-          git tag -a v0.2.0 "${{ steps.authorization.outputs.candidate_commit }}" -m "cargo-allow v0.2.0"
+          git tag -a v0.2.0 "${{ needs.publish-namespace.outputs.candidate_commit }}" -m "cargo-allow v0.2.0"
           git push origin refs/tags/v0.2.0
       - name: Dispatch guarded cargo-allow publication and release
         env:
@@ -147,6 +179,6 @@ jobs:
             --ref v0.2.0 \
             -f publish_recovery=true \
             -f recovery_version=0.2.0 \
-            -f recovery_commit="${{ steps.authorization.outputs.candidate_commit }}" \
-            -f recovery_tree="${{ steps.authorization.outputs.candidate_tree }}" \
-            -f recovery_authorization="${{ steps.authorization.outputs.authorization }}"
+            -f recovery_commit="${{ needs.publish-namespace.outputs.candidate_commit }}" \
+            -f recovery_tree="${{ needs.publish-namespace.outputs.candidate_tree }}" \
+            -f recovery_authorization="${{ needs.publish-namespace.outputs.authorization }}"

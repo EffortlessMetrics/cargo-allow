@@ -122,9 +122,11 @@ def validate_rows(rows: list[dict[str, Any]], packages: dict[str, dict[str, Any]
                 f"{name} topology version {row['package_version']} differs from Cargo metadata {package['version']}"
             )
         publish = package.get("publish")
-        if publish == []:
+        if isinstance(publish, list) and "crates-io" not in publish:
             fail(f"{name} is selected for publication but its manifest sets publish = false")
         for dependency in package.get("dependencies", []):
+            if dependency.get("kind") == "dev":
+                continue
             dependency_name = dependency["name"]
             if dependency_name not in selected:
                 continue
@@ -138,15 +140,31 @@ def validate_rows(rows: list[dict[str, Any]], packages: dict[str, dict[str, Any]
 def crate_api(name: str, version: str) -> dict[str, Any] | None:
     url = f"https://crates.io/api/v1/crates/{quote(name, safe='')}/{quote(version, safe='')}"
     request = Request(url, headers={"User-Agent": "cargo-allow-release-controller/0.2"})
-    try:
-        with urlopen(request, timeout=30) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except HTTPError as error:
-        if error.code == 404:
-            return None
-        fail(f"crates.io returned HTTP {error.code} for {name} {version}")
-    except URLError as error:
-        fail(f"crates.io lookup failed for {name} {version}: {error}")
+    for attempt in range(1, 4):
+        try:
+            with urlopen(request, timeout=30) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except HTTPError as error:
+            if error.code == 404:
+                return None
+            transient = error.code == 429 or 500 <= error.code <= 599
+            if not transient or attempt == 3:
+                fail(f"crates.io returned HTTP {error.code} for {name} {version}")
+            print(
+                f"transient crates.io HTTP {error.code} for {name} {version}; "
+                f"retrying ({attempt}/3)",
+                file=sys.stderr,
+            )
+        except URLError as error:
+            if attempt == 3:
+                fail(f"crates.io lookup failed for {name} {version}: {error}")
+            print(
+                f"transient crates.io lookup failure for {name} {version}; "
+                f"retrying ({attempt}/3): {error}",
+                file=sys.stderr,
+            )
+        time.sleep(attempt * 2)
+    fail(f"crates.io lookup exhausted retries for {name} {version}")
 
 
 def registry_checksum(name: str, version: str) -> str | None:
@@ -267,10 +285,11 @@ def main() -> int:
 
         run(["cargo", "publish", "--dry-run", "-p", name, "--locked"], env=publish_env)
         run(["cargo", "publish", "-p", name, "--locked"], env=publish_env)
+        published_checksum = sha256_file(crate_path)
         row_receipt["state"] = "uploaded_waiting_for_registry"
         write_receipt(args.receipt, receipt)
-        wait_for_checksum(name, version, local_checksum)
-        row_receipt["registry_checksum"] = local_checksum
+        wait_for_checksum(name, version, published_checksum)
+        row_receipt["registry_checksum"] = published_checksum
         row_receipt["state"] = "published_verified"
         write_receipt(args.receipt, receipt)
 
