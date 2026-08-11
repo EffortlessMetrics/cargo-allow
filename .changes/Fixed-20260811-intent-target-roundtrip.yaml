@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  Round-trip authored Rust target identities through intent-compiler by
+  accepting the canonical integration_test target kind and resolving legacy
+  self-hosted registrations that retain only a target name against the supplied
+  exact inventory.
