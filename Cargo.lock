@@ -722,6 +722,8 @@ dependencies = [
 name = "intent-compiler"
 version = "0.1.0"
 dependencies = [
+ "effortless-rust-source-index",
+ "intent-model",
  "intent-protocol",
  "serde",
  "serde_json",
