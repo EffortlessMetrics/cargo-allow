@@ -218,14 +218,15 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
     let extraction_shim_registry_failed = extraction_shim_registry_fails_check(&root, mode)?;
     let source_coupling_diagnostics = source_coupling_diagnostics_for_check(&root, mode)?;
     for diagnostic in &source_coupling_diagnostics {
+        let path = allow_report::sanitize_terminal_text(&diagnostic.path.display().to_string());
+        let line = allow_report::sanitize_terminal_text(&diagnostic.line.to_string());
+        let column = allow_report::sanitize_terminal_text(&diagnostic.column.to_string());
+        let source_owner = allow_report::sanitize_terminal_text(&diagnostic.source_owner);
+        let target_crate = allow_report::sanitize_terminal_text(&diagnostic.target_crate);
+        let import_text = allow_report::sanitize_terminal_text(&diagnostic.import_text);
         eprintln!(
             "source coupling: {}:{}:{}: {} imports {} ({})",
-            diagnostic.path.display(),
-            diagnostic.line,
-            diagnostic.column,
-            diagnostic.source_owner,
-            diagnostic.target_crate,
-            diagnostic.import_text,
+            path, line, column, source_owner, target_crate, import_text,
         );
     }
     let source_coupling_failed = !source_coupling_diagnostics.is_empty();

@@ -7,6 +7,10 @@ use allow_policy::product_crates::parse_architecture_manifest_v2;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
+fn repo_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
 fn fixture_manifest() -> Result<allow_policy::product_crates::ArchitectureManifestV2, String> {
     parse_architecture_manifest_v2(
         r#"
@@ -80,7 +84,7 @@ fn rejects_only_known_cross_product_imports() -> Result<(), String> {
 
 #[test]
 fn audit_mode_remains_advisory() -> Result<(), String> {
-    if source_coupling_fails_check(PathBuf::from(".").as_path(), CheckMode::Audit)
+    if source_coupling_fails_check(repo_root().as_path(), CheckMode::Audit)
         .map_err(|error| format!("audit guard: {error}"))?
     {
         return Err("audit mode unexpectedly enforced source coupling".to_string());
@@ -90,9 +94,14 @@ fn audit_mode_remains_advisory() -> Result<(), String> {
 
 #[test]
 fn strict_mode_checks_architecture_repositories() -> Result<(), String> {
-    let diagnostics =
-        source_coupling_diagnostics_for_check(PathBuf::from(".").as_path(), CheckMode::Strict)
-            .map_err(|error| format!("strict guard: {error}"))?;
+    let root = repo_root();
+    if !root.join("policy/product-crates-v2.toml").is_file()
+        || !root.join("policy/product-crates.toml").is_file()
+    {
+        return Err("architecture repository fixture is missing policy manifests".to_string());
+    }
+    let diagnostics = source_coupling_diagnostics_for_check(&root, CheckMode::Strict)
+        .map_err(|error| format!("strict guard: {error}"))?;
     if !diagnostics.is_empty() {
         return Err(format!(
             "unexpected tracked source coupling: {diagnostics:?}"
@@ -103,9 +112,26 @@ fn strict_mode_checks_architecture_repositories() -> Result<(), String> {
 
 #[test]
 fn consumer_trees_without_architecture_manifests_are_outside_scope() -> Result<(), String> {
-    let root = PathBuf::from("target/cargo-allow/source-coupling-consumer-without-policy");
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-source-coupling-consumer-{}",
+        std::process::id()
+    ));
+    if root.exists() {
+        std::fs::remove_dir_all(&root)
+            .map_err(|error| format!("clean consumer fixture: {error}"))?;
+    }
+    std::fs::create_dir_all(root.join("src"))
+        .map_err(|error| format!("create consumer fixture: {error}"))?;
+    std::fs::write(root.join("src/lib.rs"), "use external::Thing;\n")
+        .map_err(|error| format!("write consumer fixture: {error}"))?;
+    if root.join("policy/product-crates-v2.toml").exists()
+        || root.join("policy/product-crates.toml").exists()
+    {
+        return Err("consumer fixture unexpectedly contains architecture manifests".to_string());
+    }
     let diagnostics = source_coupling_diagnostics_at(&root)
         .map_err(|error| format!("consumer tree guard: {error}"))?;
+    std::fs::remove_dir_all(&root).map_err(|error| format!("remove consumer fixture: {error}"))?;
     if !diagnostics.is_empty() {
         return Err(format!(
             "unexpected consumer-tree diagnostics: {diagnostics:?}"
