@@ -25,6 +25,7 @@ mod package;
 mod safety_comments;
 mod scan_cache;
 mod scan_result;
+mod syntax_coupling;
 mod syntax_facts;
 mod syntax_kinds;
 mod syntax_tree;
@@ -39,6 +40,9 @@ pub use package::{
 };
 pub use scan_cache::ScanCache;
 pub use scan_result::{RustFileScanOutcome, RustFileScanStatus, RustScanResult};
+pub use syntax_coupling::{
+    RustSourceCoupling, RustSourceCouplingKind, RustSourceCouplingScan, scan_rust_source_coupling,
+};
 pub use syntax_tree::{RustSyntaxContainer, RustSyntaxTree, parse_rust_syntax};
 pub use test_subjects::{
     RustTestInventory, RustTestInventoryDiagnostic, RustTestInventoryDiagnosticKind,

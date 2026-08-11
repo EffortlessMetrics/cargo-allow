@@ -50,6 +50,7 @@ dependencies = [
  "allow-policy-legacy",
  "allow-rust",
  "effortless-repo-snapshot",
+ "proptest",
  "sha2",
 ]
 
@@ -83,6 +84,7 @@ name = "allow-policy"
 version = "0.2.0"
 dependencies = [
  "allow-core",
+ "proptest",
  "serde",
  "serde_json",
  "sha2",
@@ -115,6 +117,7 @@ name = "allow-rust"
 version = "0.2.0"
 dependencies = [
  "allow-core",
+ "proptest",
  "rayon",
  "toml",
  "tree-sitter",

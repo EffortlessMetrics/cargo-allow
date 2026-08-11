@@ -248,6 +248,14 @@ jobs:
           name: extraction-readiness-receipt
           path: target/extraction-readiness/extraction-readiness.receipt.json
           if-no-files-found: warn
+      - name: Extraction parity cutover status (#3469)
+        run: bash scripts/extraction-cutover-status.sh
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: extraction-cutover-status
+          path: target/extraction-cutover/
+          if-no-files-found: warn
       - name: Verify cargo-allow proof classes are non-empty
         shell: bash
         run: |

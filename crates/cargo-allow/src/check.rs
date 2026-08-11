@@ -21,6 +21,12 @@ use check_deny::{deny_escalation_failed, validate_deny_statuses};
 #[path = "check_product_move_guard.rs"]
 mod check_product_move_guard;
 use check_product_move_guard::product_move_ledger_fails_check;
+#[path = "check_extraction_shim_guard.rs"]
+mod check_extraction_shim_guard;
+use check_extraction_shim_guard::extraction_shim_registry_fails_check;
+#[path = "check_source_coupling_guard.rs"]
+mod check_source_coupling_guard;
+use check_source_coupling_guard::source_coupling_diagnostics_for_check;
 
 use crate::federation_report::FederationReportBundle;
 use crate::{
@@ -209,13 +215,30 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
         validate_deny_statuses(&args.deny, &summary, context)?;
     }
     let product_move_ledger_failed = product_move_ledger_fails_check(&root, mode)?;
+    let extraction_shim_registry_failed = extraction_shim_registry_fails_check(&root, mode)?;
+    let source_coupling_diagnostics = source_coupling_diagnostics_for_check(&root, mode)?;
+    for diagnostic in &source_coupling_diagnostics {
+        let path = allow_report::sanitize_terminal_text(&diagnostic.path.display().to_string());
+        let line = allow_report::sanitize_terminal_text(&diagnostic.line.to_string());
+        let column = allow_report::sanitize_terminal_text(&diagnostic.column.to_string());
+        let source_owner = allow_report::sanitize_terminal_text(&diagnostic.source_owner);
+        let target_crate = allow_report::sanitize_terminal_text(&diagnostic.target_crate);
+        let import_text = allow_report::sanitize_terminal_text(&diagnostic.import_text);
+        eprintln!(
+            "source coupling: {}:{}:{}: {} imports {} ({})",
+            path, line, column, source_owner, target_crate, import_text,
+        );
+    }
+    let source_coupling_failed = !source_coupling_diagnostics.is_empty();
     let failed = check_failed_for_outcomes(&outcomes, &findings, &report_cfg, mode)
         || evidence.has_broken_evidence_links()
         || federation_bundle.has_blocking_divergence()
         || (!args.deny.is_empty() && deny_escalation_failed(&args.deny, &summary, context))
         || (inventory_facts.rust_files_skipped > 0 && mode == CheckMode::NoNew)
         || (inventory_facts.rust_files_with_parse_errors > 0 && mode == CheckMode::NoNew)
-        || product_move_ledger_failed;
+        || product_move_ledger_failed
+        || extraction_shim_registry_failed
+        || source_coupling_failed;
     if should_emit_report_stdout(
         args.output.as_deref(),
         args.receipt.as_deref(),
