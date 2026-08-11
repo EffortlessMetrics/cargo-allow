@@ -145,26 +145,25 @@ fn validate_extraction_shim_registry_with_ledger(
             });
         }
 
-        if let Some(ledger_entry) = ledger_entry {
-            if ledger_entry.duplicate_authority_class == "None"
-                && entry.status != ShimStatus::Removed
-            {
-                let duplicate_new_identity = registry
-                    .shim
-                    .iter()
-                    .filter(|candidate| candidate.new_identity == entry.new_identity)
-                    .count()
-                    > 1;
-                if duplicate_new_identity {
-                    diagnostics.push(ShimDiagnostic {
-                        kind: ShimDiagnosticKind::DuplicateDto,
-                        message: format!(
-                            "shim `{}` duplicates new identity `{}` without bounded authority",
-                            entry.id, entry.new_identity
-                        ),
-                        shim_ids: vec![entry.id.clone()],
-                    });
-                }
+        if let Some(ledger_entry) = ledger_entry
+            && ledger_entry.duplicate_authority_class == "None"
+            && entry.status != ShimStatus::Removed
+        {
+            let duplicate_new_identity = registry
+                .shim
+                .iter()
+                .filter(|candidate| candidate.new_identity == entry.new_identity)
+                .count()
+                > 1;
+            if duplicate_new_identity {
+                diagnostics.push(ShimDiagnostic {
+                    kind: ShimDiagnosticKind::DuplicateDto,
+                    message: format!(
+                        "shim `{}` duplicates new identity `{}` without bounded authority",
+                        entry.id, entry.new_identity
+                    ),
+                    shim_ids: vec![entry.id.clone()],
+                });
             }
         }
 
