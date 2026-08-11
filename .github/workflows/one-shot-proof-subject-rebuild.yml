@@ -1,3 +1,4 @@
+# Trigger after workflow registration.
 name: One-shot proof subject consumer rebuild
 
 on:
