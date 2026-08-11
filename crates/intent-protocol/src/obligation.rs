@@ -4,7 +4,7 @@
 //! argv, proof programs, RIPR/Hawk dialect enums, or execution receipts.
 
 use crate::identity::IntentIdentityEnvelopeV1;
-use crate::snapshot_package::repo_protocol::ResultClassV1;
+use effortless_repo_protocol::ResultClassV1;
 use serde::{Deserialize, Serialize};
 
 pub const INTENT_OBLIGATION_PLAN_SCHEMA_ID: &str = "intent.obligation-plan.v1";
