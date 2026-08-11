@@ -298,14 +298,18 @@ mod tests {
             resolution.class,
             IntentSubjectResolutionClassV1::PartialInventory
         );
-        assert!(resolution
-            .limitations
-            .iter()
-            .any(|limitation| limitation == "structural inventory is partial"));
-        assert!(resolution
-            .limitations
-            .iter()
-            .any(|limitation| limitation == "src/lib.rs: parse error"));
+        assert!(
+            resolution
+                .limitations
+                .iter()
+                .any(|limitation| limitation == "structural inventory is partial")
+        );
+        assert!(
+            resolution
+                .limitations
+                .iter()
+                .any(|limitation| limitation == "src/lib.rs: parse error")
+        );
     }
 
     #[test]
