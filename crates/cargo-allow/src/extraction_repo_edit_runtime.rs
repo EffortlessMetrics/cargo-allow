@@ -814,6 +814,55 @@ fn io_error(error: std::io::Error) -> CargoAllowError {
     CargoAllowError::new(error.to_string())
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use allow_policy::extraction_parity::{
+        ExtractionStage, ParityComparisonResult, parse_extraction_parity_registry_at,
+    };
+
+    #[test]
+    fn repo_edit_runtime_covers_current_policy_cases() -> Result<(), String> {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let registry_path = root.join("policy/extraction-parity.toml");
+        let registry_text = fs::read_to_string(&registry_path)
+            .map_err(|error| format!("read parity registry: {error}"))?;
+        let registry = parse_extraction_parity_registry_at(Some(&registry_path), &registry_text)
+            .map_err(|error| format!("parse parity registry: {error}"))?;
+        let mut expected: Vec<_> = registry
+            .case
+            .iter()
+            .filter(|case| case.stage == ExtractionStage::RepoEdit)
+            .map(|case| case.id.clone())
+            .collect();
+        expected.sort();
+
+        let run = run_repo_edit_parity().map_err(|error| error.to_string())?;
+        let mut actual: Vec<_> = run.cases.iter().map(|case| case.id.clone()).collect();
+        actual.sort();
+        if actual != expected {
+            return Err(format!(
+                "RepoEdit runtime case ids differ from policy: expected {expected:?}, actual {actual:?}"
+            ));
+        }
+        for case in run.cases {
+            if case.comparison.result != ParityComparisonResult::SemanticallyEquivalent {
+                return Err(format!(
+                    "RepoEdit case `{}` was not semantically equivalent: {:?}",
+                    case.id, case.comparison
+                ));
+            }
+            if case.old_output != case.new_output {
+                return Err(format!(
+                    "RepoEdit case `{}` emitted different canonical outputs",
+                    case.id
+                ));
+            }
+        }
+        Ok(())
+    }
+}
+
 /// Project a neutral repository-edit failure into cargo-allow's product error surface.
 pub(crate) fn map_repo_edit_error(error: effortless_repo_edit::RepoEditError) -> CargoAllowError {
     let message = error.to_string();
