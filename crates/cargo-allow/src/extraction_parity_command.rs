@@ -6,10 +6,10 @@ use allow_policy::extraction_parity::{
     ExtractionParityRegistry, ExtractionStage, OldPathCase, ParityComparison,
     ParityComparisonResult,
 };
-use allow_policy::product_move::{parse_product_move_ledger_at, ProductMoveLedger};
+use allow_policy::product_move::{ProductMoveLedger, parse_product_move_ledger_at};
 use clap::{Args, ValueEnum};
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
