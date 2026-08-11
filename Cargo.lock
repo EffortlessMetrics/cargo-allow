@@ -462,7 +462,6 @@ dependencies = [
 name = "effortless-rust-source-index"
 version = "0.1.0"
 dependencies = [
- "allow-core",
  "serde",
  "toml",
  "tree-sitter",
