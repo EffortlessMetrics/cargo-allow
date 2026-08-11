@@ -7,12 +7,18 @@ on:
       - refactor/repo-edit-product-edge-2969
     paths:
       - .github/workflows/one-shot-repo-edit-product-adapter.yml
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+    paths:
+      - .github/workflows/one-shot-repo-edit-product-adapter.yml
 
 permissions:
   contents: write
 
 jobs:
   converge:
+    if: github.event_name == 'push' || github.head_ref == 'refactor/repo-edit-product-edge-2969'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
