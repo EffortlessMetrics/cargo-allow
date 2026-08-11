@@ -235,6 +235,7 @@ fn load_ledger(root: &Path) -> CargoAllowResult<ProductMoveLedger> {
 struct CutoverEvidenceInput {
     schema_id: String,
     schema_version: u32,
+    source_identity: String,
     architecture_manifest_digest: String,
     old_tool_identity: String,
     new_tool_identity: String,
@@ -303,6 +304,25 @@ fn assemble_cutover_receipt(
             "unsupported extraction cutover evidence schema",
         ));
     }
+    if evidence.source_identity != source_identity {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!(
+                "cutover evidence source identity `{}` does not match current `{source_identity}`",
+                evidence.source_identity
+            ),
+        ));
+    }
+    ensure_cutover_inputs_clean(root)?;
+    require_positive_outcome(
+        "package_assets_docs_ci_ownership_result",
+        &evidence.package_assets_docs_ci_ownership_result,
+    )?;
+    require_positive_outcome(
+        "independent_build_package_result",
+        &evidence.independent_build_package_result,
+    )?;
+    require_positive_outcome("completeness", &evidence.completeness)?;
 
     let ledger = load_ledger(root)?;
     let stage_cases: Vec<_> = registry
@@ -312,6 +332,7 @@ fn assemble_cutover_receipt(
         .collect();
     let mut old_path_cases = Vec::new();
     let mut authority_nodes = Vec::new();
+    let mut shim_stages = BTreeSet::new();
     for case in stage_cases {
         let entry = ledger
             .entry
@@ -349,6 +370,9 @@ fn assemble_cutover_receipt(
             bound: (!entry.active_shim_ids.is_empty())
                 .then(|| entry.latest_allowed_shim_stage.clone()),
         });
+        if !entry.active_shim_ids.is_empty() {
+            shim_stages.insert(entry.latest_allowed_shim_stage.clone());
+        }
     }
     let (reachability_report, reachability_diagnostics) =
         validate_cutover_reachability(&old_path_cases, &authority_nodes);
@@ -366,6 +390,25 @@ fn assemble_cutover_receipt(
         "semantic_authorities={}",
         reachability_report.production_semantic_authority_count
     );
+    if shim_stages.len() > 1 {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!("selected ledger entries have conflicting shim deadlines: {shim_stages:?}"),
+        ));
+    }
+    let derived_shim_stage = match shim_stages.into_iter().next() {
+        Some(stage) => stage,
+        None => String::new(),
+    };
+    if evidence.latest_allowed_shim_stage != derived_shim_stage {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!(
+                "evidence shim deadline `{}` does not match policy-derived `{derived_shim_stage}`",
+                evidence.latest_allowed_shim_stage
+            ),
+        ));
+    }
     let evidence = ExtractionCutoverReceiptEvidence {
         source_identity: source_identity.to_string(),
         architecture_manifest_digest: evidence.architecture_manifest_digest,
@@ -374,7 +417,7 @@ fn assemble_cutover_receipt(
         parity_corpus_generation: format!("runtime:extraction-parity-v1:stage={}", stage.as_str()),
         parity_result_digest: parity_digest.to_string(),
         accepted_intentional_differences: evidence.accepted_intentional_differences,
-        latest_allowed_shim_stage: evidence.latest_allowed_shim_stage,
+        latest_allowed_shim_stage: derived_shim_stage,
         old_path_reachability_result: old_path_result,
         duplicate_semantic_implementation_result: duplicate_result,
         package_assets_docs_ci_ownership_result: evidence.package_assets_docs_ci_ownership_result,
@@ -386,6 +429,53 @@ fn assemble_cutover_receipt(
         claim_boundary: evidence.claim_boundary,
     };
     produce_extraction_cutover_receipt(registry, &ledger, stage, evidence)
+}
+
+fn require_positive_outcome(field: &str, value: &str) -> CargoAllowResult<()> {
+    let normalized = value.trim().to_ascii_lowercase();
+    if matches!(
+        normalized.as_str(),
+        "pass" | "passed" | "proven" | "success" | "successful" | "complete" | "completed"
+    ) {
+        Ok(())
+    } else {
+        Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!("{field} must be a positive complete outcome, got `{value}`"),
+        ))
+    }
+}
+
+fn ensure_cutover_inputs_clean(root: &Path) -> CargoAllowResult<()> {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args([
+            "status",
+            "--porcelain",
+            "--untracked-files=all",
+            "--",
+            "crates/cargo-allow/src/extraction_parity_command.rs",
+            "crates/allow-policy/src/extraction_parity",
+            "policy/extraction-parity.toml",
+            "policy/product-move-ledger.toml",
+        ])
+        .output()
+        .map_err(|error| CargoAllowError::new(format!("run git status for cutover inputs: {error}")))?;
+    if !output.status.success() {
+        return Err(CargoAllowError::new(format!(
+            "git status for cutover inputs failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        )));
+    }
+    let changed = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if !changed.is_empty() {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!("cutover receipt requires clean source inputs; changed paths:\n{changed}"),
+        ));
+    }
+    Ok(())
 }
 
 fn authority_kind(value: &str) -> AuthorityKind {
