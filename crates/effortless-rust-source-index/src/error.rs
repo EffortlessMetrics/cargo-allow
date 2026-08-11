@@ -63,11 +63,3 @@ pub fn read_text_file_capped(path: &std::path::Path) -> IndexResult<String> {
     String::from_utf8(buf)
         .map_err(|e| IndexError::new(format!("file {} is not valid UTF-8: {e}", path.display())))
 }
-
-/// Feature-gated conversion for product consumers.
-#[cfg(feature = "allow-core-interop")]
-impl From<IndexError> for allow_core::CargoAllowError {
-    fn from(err: IndexError) -> Self {
-        allow_core::CargoAllowError::new(err.as_str())
-    }
-}
