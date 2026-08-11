@@ -1,5 +1,5 @@
-use super::config::{MoveDiscovery, MoveEntry, ProductMoveLedger, parse_product_move_ledger_at};
-use allow_core::{CargoAllowError, CargoAllowResult, normalize_path};
+use super::config::{parse_product_move_ledger_at, MoveDiscovery, MoveEntry, ProductMoveLedger};
+use allow_core::{normalize_path, CargoAllowError, CargoAllowResult};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Component, Path};
 
@@ -361,6 +361,7 @@ fn collect_structural_diagnostics(ledger: &ProductMoveLedger) -> Vec<MoveLedgerD
         "ArchitectureInventory",
         "RepoProtocol",
         "RepoSnapshot",
+        "RepoEdit",
         "IntentModel",
         "IntentProtocol",
         "IntentEngine",
