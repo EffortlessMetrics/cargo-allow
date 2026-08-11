@@ -12,7 +12,9 @@ use allow_core::{
 };
 use allow_match::{CheckMode, evaluate};
 use allow_policy::extraction_parity::{ParityComparison, ParityObservation, compare_observations};
-use allow_policy::{parse_policy, render_policy, starter_policy, validate_policy};
+use allow_policy::{
+    ledger_self_receipt, parse_policy, render_policy, starter_policy, validate_policy,
+};
 use effortless_repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -332,6 +334,11 @@ fn propose_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase
             column: span.column,
         }),
     });
+    expected_config.allow.push(ledger_self_receipt(
+        "allow-0002",
+        "policy/proposed.toml",
+        "core/policy",
+    ));
     validate_policy(&expected_config)?;
     let expected = render_policy(&expected_config);
     apply_single_target(SingleTargetApplyRequest {
