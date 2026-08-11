@@ -1,0 +1,4 @@
+kind: Fixed
+body: >-
+  Remove the stale lint receipt for the retired publish-order test now that
+  the current V2 topology authority owns the invariant.
