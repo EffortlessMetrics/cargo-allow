@@ -1,6 +1,6 @@
 //! Intent artifact identity envelopes (#2585-A).
 
-use crate::snapshot_package::repo_protocol::RepositorySnapshotV1;
+use effortless_repo_protocol::RepositorySnapshotV1;
 use serde::{Deserialize, Serialize};
 
 pub const INTENT_IDENTITY_SCHEMA_ID: &str = "intent.identity.v1";
