@@ -1,4 +1,4 @@
-# Trigger after workflow registration.
+# Temporary convergence workflow. Removed after it pushes the repaired branch.
 name: One-shot repo-edit product adapter convergence
 
 on:
@@ -7,18 +7,16 @@ on:
       - refactor/repo-edit-product-edge-2969
     paths:
       - .github/workflows/one-shot-repo-edit-product-adapter.yml
-  pull_request:
-    types: [opened, synchronize, reopened]
-    branches: [main]
-    paths:
-      - .github/workflows/one-shot-repo-edit-product-adapter.yml
+
+concurrency:
+  group: one-shot-repo-edit-product-adapter
+  cancel-in-progress: false
 
 permissions:
   contents: write
 
 jobs:
   converge:
-    if: github.event_name == 'push' || github.head_ref == 'refactor/repo-edit-product-edge-2969'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -29,11 +27,15 @@ jobs:
         with:
           toolchain: 1.95.0
           components: rustfmt, clippy
-      - name: Move neutral error projection to cargo-allow call sites
+      - name: Converge neutral errors at the cargo-allow boundary
         shell: bash
         run: |
           set -euo pipefail
+
+          git fetch origin main
+          git merge --no-edit -X theirs origin/main
           cargo metadata --format-version 1 >/dev/null
+
           python3 - <<'PY'
           import json
           import subprocess
@@ -43,7 +45,6 @@ jobs:
           adapter = Path("crates/cargo-allow/src/extraction_repo_edit_runtime.rs")
           text = adapter.read_text(encoding="utf-8")
           function = '''
-
           /// Project a neutral repository-edit failure into cargo-allow's product error surface.
           pub(crate) fn map_repo_edit_error(
               error: effortless_repo_edit::RepoEditError,
@@ -59,9 +60,16 @@ jobs:
               };
               CargoAllowError::with_kind(kind, message)
           }
+
           '''
           if "fn map_repo_edit_error(" not in text:
-              adapter.write_text(text.rstrip() + function + "\n", encoding="utf-8")
+              insertion = text.find("#[cfg(test)]")
+              if insertion < 0:
+                  insertion = text.find("mod tests {")
+              if insertion < 0:
+                  insertion = len(text)
+              text = text[:insertion] + function + text[insertion:]
+              adapter.write_text(text, encoding="utf-8")
 
           projection = ".map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)"
           command = [
@@ -69,7 +77,7 @@ jobs:
               "--message-format=json",
           ]
 
-          for attempt in range(12):
+          for _attempt in range(20):
               result = subprocess.run(command, capture_output=True, text=True)
               if result.returncode == 0:
                   break
@@ -109,7 +117,9 @@ jobs:
               if not sites:
                   print(result.stderr)
                   print("\n".join(other_errors))
-                  raise SystemExit("workspace check failed without a mappable RepoEditError diagnostic")
+                  raise SystemExit(
+                      "workspace check failed without a mappable RepoEditError diagnostic"
+                  )
 
               for file_name, file_sites in sites.items():
                   path = Path(file_name)
@@ -121,7 +131,9 @@ jobs:
                           continue
                       candidates = [position for position, char in enumerate(line) if char == "?"]
                       if not candidates:
-                          raise SystemExit(f"no ? found at {file_name}:{line_no}: {line.rstrip()}")
+                          raise SystemExit(
+                              f"no ? found at {file_name}:{line_no}: {line.rstrip()}"
+                          )
                       target = max(column_start - 1, column_end - 1)
                       position = min(candidates, key=lambda value: abs(value - target))
                       lines[index] = line[:position] + projection + line[position:]
@@ -135,13 +147,19 @@ jobs:
           if final.returncode != 0:
               raise SystemExit(final.returncode)
           PY
+
+          cargo clippy --fix --workspace --all-targets --locked --allow-dirty --allow-staged -- -D warnings
+          cargo fmt --all
           cargo fmt --all -- --check
           cargo clippy --workspace --all-targets --locked -- -D warnings
           cargo test -p effortless-repo-edit --locked
           cargo test -p cargo-allow --bins --locked
-          git rm .github/workflows/one-shot-repo-edit-product-adapter.yml
-          git add Cargo.lock .changes/Fixed-20260811-repo-edit-product-edge.yaml crates/effortless-repo-edit crates/cargo-allow
-          git diff --cached --check
+          cargo run -p cargo-allow -- check --mode no-new --format markdown \
+            --receipt target/cargo-allow/check.receipt.json \
+            --output target/cargo-allow/check.md
+          git diff --check
+
+          git add -A
           git config user.name "EffortlessSteven"
           git config user.email "git@effortlesssteven.com"
           git commit -m "refactor(repo-edit): project errors at cargo-allow boundary"
