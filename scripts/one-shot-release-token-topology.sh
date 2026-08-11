@@ -134,7 +134,7 @@ workflow_path.write_text(workflow, encoding="utf-8")
 
 release_test_path = Path("crates/cargo-allow/src/release_prep_tests.rs")
 release_test = release_test_path.read_text(encoding="utf-8")
-new_test = '''#[test]
+new_workflow_test = '''#[test]
 fn release_workflow_uses_token_backed_topology_publication() {
     let root = workspace_root();
     let workflow = read_workspace_file(&root, RELEASE_WORKFLOW);
@@ -172,13 +172,112 @@ fn release_workflow_uses_token_backed_topology_publication() {
 '''
 release_test, count = re.subn(
     r'#\[test\]\nfn release_workflow_exists_and_lists_publish_order\(\) \{.*?\n\}\n\n(?=#\[test\])',
-    new_test,
+    new_workflow_test,
     release_test,
     count=1,
     flags=re.DOTALL,
 )
 if count != 1:
     raise SystemExit("release workflow contract test did not match")
+
+new_order_test = '''#[test]
+fn release_publish_order_matches_internal_dependency_graph() {
+    let root = workspace_root();
+    let topology = read_workspace_file(&root, PACKAGE_TOPOLOGY);
+    let publish_order = topology_publish_order(&topology);
+    let package_manifests = workspace_package_manifests(&root)
+        .into_iter()
+        .filter(|(_, (_, manifest))| is_publishable_workspace_package(manifest))
+        .collect::<BTreeMap<_, _>>();
+    let package_names = package_manifests.keys().cloned().collect::<BTreeSet<_>>();
+
+    assert_eq!(
+        publish_order.iter().cloned().collect::<BTreeSet<_>>(),
+        package_names,
+        "{PACKAGE_TOPOLOGY} publish rows should include every publishable workspace package exactly once"
+    );
+    assert_eq!(
+        publish_order.len(),
+        package_names.len(),
+        "{PACKAGE_TOPOLOGY} publish order should not contain duplicate packages"
+    );
+
+    let order_index = publish_order
+        .iter()
+        .enumerate()
+        .map(|(index, package)| (package.as_str(), index))
+        .collect::<BTreeMap<_, _>>();
+
+    for (package, (_, manifest)) in package_manifests {
+        let package_index = release_order_index(&order_index, package.as_str());
+        for dependency in internal_workspace_dependencies(&manifest, &package_names) {
+            let dependency_index = release_order_index(&order_index, dependency.as_str());
+            assert!(
+                dependency_index < package_index,
+                "{package} depends on {dependency}, so {dependency} must be published first"
+            );
+        }
+    }
+}
+
+'''
+release_test, count = re.subn(
+    r'#\[test\]\nfn release_publish_order_matches_internal_dependency_graph\(\) \{.*?\n\}\n\n(?=#\[test\])',
+    new_order_test,
+    release_test,
+    count=1,
+    flags=re.DOTALL,
+)
+if count != 1:
+    raise SystemExit("release publish-order test did not match")
+
+order_helper = '''
+fn topology_publish_order(topology: &str) -> Vec<String> {
+    let value: toml::Value = toml::from_str(topology)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("parse {PACKAGE_TOPOLOGY}: {err}")));
+    let packages = value
+        .get("package")
+        .and_then(toml::Value::as_array)
+        .unwrap_or_else(|| std::panic::panic_any(format!("{PACKAGE_TOPOLOGY} has no package rows")));
+    let mut rows = packages
+        .iter()
+        .filter_map(|package| {
+            let table = package.as_table().unwrap_or_else(|| {
+                std::panic::panic_any(format!("{PACKAGE_TOPOLOGY} package row is not a table"))
+            });
+            if table.get("publish").and_then(toml::Value::as_bool) != Some(true) {
+                return None;
+            }
+            let name = table
+                .get("cargo_package_name")
+                .and_then(toml::Value::as_str)
+                .unwrap_or_else(|| {
+                    std::panic::panic_any(format!(
+                        "{PACKAGE_TOPOLOGY} publish row has no cargo_package_name"
+                    ))
+                })
+                .to_string();
+            let order = table
+                .get("release_order")
+                .and_then(toml::Value::as_integer)
+                .unwrap_or_else(|| {
+                    std::panic::panic_any(format!(
+                        "{PACKAGE_TOPOLOGY} publish row {name} has no release_order"
+                    ))
+                });
+            Some((order, name))
+        })
+        .collect::<Vec<_>>();
+    rows.sort_by(|left, right| left.cmp(right));
+    rows.into_iter().map(|(_, name)| name).collect()
+}
+
+'''
+marker = "fn expected_package_version<'a>("
+if "fn topology_publish_order(" not in release_test:
+    if marker not in release_test:
+        raise SystemExit("expected_package_version marker missing")
+    release_test = release_test.replace(marker, order_helper + marker, 1)
 release_test_path.write_text(release_test, encoding="utf-8")
 
 fragment = Path(".changes/Changed-20260811-token-topology-publication.yaml")
