@@ -18,8 +18,16 @@ import subprocess
 import sys
 import tempfile
 import time
-import tomllib
-from typing import Any
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - supported by Python 3.11+
+    try:
+        import tomli as tomllib
+    except ModuleNotFoundError as error:
+        raise SystemExit(
+            "release-topology-publisher requires Python 3.11+ or the tomli package"
+        ) from error
+from typing import Any, NoReturn
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
@@ -112,7 +120,7 @@ def cargo_packages() -> dict[str, dict[str, Any]]:
 
 def validate_rows(rows: list[dict[str, Any]], packages: dict[str, dict[str, Any]]) -> None:
     selected = {row["cargo_package_name"]: row for row in rows}
-    order = {name: int(row["release_order"]) for name, row in selected.items()}
+    order = {name: row["release_order"] for name, row in selected.items()}
     for name, row in selected.items():
         package = packages.get(name)
         if package is None:
@@ -123,7 +131,7 @@ def validate_rows(rows: list[dict[str, Any]], packages: dict[str, dict[str, Any]
             )
         publish = package.get("publish")
         if isinstance(publish, list) and "crates-io" not in publish:
-            fail(f"{name} is selected for publication but its manifest sets publish = false")
+            fail(f"{name} is selected for publication but its manifest does not allow crates.io")
         for dependency in package.get("dependencies", []):
             if dependency.get("kind") == "dev":
                 continue

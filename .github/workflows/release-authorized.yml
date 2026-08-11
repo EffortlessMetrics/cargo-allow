@@ -32,6 +32,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772
         with:
           toolchain: stable
@@ -152,6 +153,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
+          # The final job needs the checkout token only to push the exact tag.
+          persist-credentials: true
       - name: Check out the exact authorized candidate
         run: git checkout --detach "${{ needs.publish-namespace.outputs.candidate_commit }}"
       - name: Reject an existing v0.2.0 tag before first publication
