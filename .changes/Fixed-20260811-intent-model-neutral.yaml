@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  Remove intent-model's normal dependency on cargo-allow product types while
+  preserving authored parse classifications, bounded source reads, normalized
+  paths, and stable content identities inside the intent package boundary, and
+  receipt the new neutral source in the generated movement authority.
