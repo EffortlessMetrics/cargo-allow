@@ -56,6 +56,7 @@ fn run_cases(workspace: &Path) -> CargoAllowResult<RepoEditParityRun> {
     let cases = vec![
         containment_case(workspace),
         atomic_write_case(workspace),
+        apply_receipt_case(workspace),
         no_overwrite_case(workspace),
         mutation_lock_case(workspace),
         init_command_case(workspace),
@@ -569,6 +570,87 @@ fn atomic_write_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase> {
     Ok(parity_case(
         "parity-repo-edit-atomic-write-v1",
         "atomic_write",
+        old_output,
+        new_output,
+    ))
+}
+
+fn apply_receipt_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase> {
+    let old_root = workspace.join("apply-receipt-old");
+    let new_root = workspace.join("apply-receipt-new");
+    let target = Path::new("policy/allow.toml");
+    for root in [&old_root, &new_root] {
+        fs::create_dir_all(root.join("policy")).map_err(io_error)?;
+    }
+
+    let old_success = crate::mutation_apply::apply_target(SingleTargetApplyRequest {
+        repository_root: &old_root,
+        target,
+        contents: "schema_version = 1\n",
+        caller_reference: Some("cargo-allow:parity-apply"),
+        lock_identity: Some("policy/allow.toml".to_string()),
+        mode: SingleTargetApplyMode::CreateNewOnly,
+    });
+    let new_success = apply_single_target(SingleTargetApplyRequest {
+        repository_root: &new_root,
+        target,
+        contents: "schema_version = 1\n",
+        caller_reference: Some("cargo-allow:parity-apply"),
+        lock_identity: Some("policy/allow.toml".to_string()),
+        mode: SingleTargetApplyMode::CreateNewOnly,
+    });
+    old_success.result.map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!("legacy apply-receipt success fixture failed: {error}"),
+        )
+    })?;
+    if !new_success.receipt.applied() {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            "repo-edit apply-receipt success fixture failed",
+        ));
+    }
+
+    for root in [&old_root, &new_root] {
+        fs::write(root.join(target), "existing\n").map_err(io_error)?;
+    }
+    let old_failure = crate::mutation_apply::apply_target(SingleTargetApplyRequest {
+        repository_root: &old_root,
+        target,
+        contents: "replacement\n",
+        caller_reference: Some("cargo-allow:parity-apply"),
+        lock_identity: Some("policy/allow.toml".to_string()),
+        mode: SingleTargetApplyMode::CreateNewOnly,
+    });
+    let new_failure = apply_single_target(SingleTargetApplyRequest {
+        repository_root: &new_root,
+        target,
+        contents: "replacement\n",
+        caller_reference: Some("cargo-allow:parity-apply"),
+        lock_identity: Some("policy/allow.toml".to_string()),
+        mode: SingleTargetApplyMode::CreateNewOnly,
+    });
+    if old_failure.result.is_ok() || new_failure.receipt.applied() {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            "apply-receipt failure fixture unexpectedly applied",
+        ));
+    }
+
+    let old_output = format!(
+        "success={}\nfailure={}",
+        effortless_repo_edit::render_apply_receipt_json(&old_success.receipt, ""),
+        effortless_repo_edit::render_apply_receipt_json(&old_failure.receipt, "")
+    );
+    let new_output = format!(
+        "success={}\nfailure={}",
+        effortless_repo_edit::render_apply_receipt_json(&new_success.receipt, ""),
+        effortless_repo_edit::render_apply_receipt_json(&new_failure.receipt, "")
+    );
+    Ok(parity_case(
+        "parity-repo-edit-apply-receipt-v1",
+        "apply-receipt:policy/allow.toml",
         old_output,
         new_output,
     ))
