@@ -396,10 +396,7 @@ fn assemble_cutover_receipt(
             format!("selected ledger entries have conflicting shim deadlines: {shim_stages:?}"),
         ));
     }
-    let derived_shim_stage = match shim_stages.into_iter().next() {
-        Some(stage) => stage,
-        None => String::new(),
-    };
+    let derived_shim_stage = shim_stages.into_iter().next().unwrap_or_default();
     if evidence.latest_allowed_shim_stage != derived_shim_stage {
         return Err(CargoAllowError::with_kind(
             CargoAllowErrorKind::InvalidConfig,
