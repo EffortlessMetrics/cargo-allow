@@ -8,6 +8,7 @@ on:
     paths:
       - .github/workflows/one-shot-repo-edit-product-adapter.yml
       - scripts/one-shot-repo-edit-product-boundary.sh
+      - crates/cargo-allow/src/extraction_shim_registry_tests.rs
 
 concurrency:
   group: one-shot-repo-edit-product-adapter
