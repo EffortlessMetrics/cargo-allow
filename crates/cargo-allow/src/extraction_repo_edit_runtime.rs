@@ -36,7 +36,7 @@ pub(crate) struct RepoEditParityCase {
 
 /// Execute the live compatibility and direct authorities on equivalent roots.
 pub(crate) fn run_repo_edit_parity(root: &Path) -> CargoAllowResult<RepoEditParityRun> {
-    let workspace = parity_workspace(root)?;
+    let workspace = parity_workspace()?;
     let result = run_cases(&workspace);
     let cleanup = fs::remove_dir_all(&workspace);
     result.and_then(|run| {
@@ -461,9 +461,9 @@ fn mutation_lock_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase> 
     ))
 }
 
-fn parity_workspace(root: &Path) -> CargoAllowResult<PathBuf> {
+fn parity_workspace() -> CargoAllowResult<PathBuf> {
     let id = NEXT_ROOT_ID.fetch_add(1, Ordering::Relaxed);
-    let workspace = root.join("target").join(format!(
+    let workspace = std::env::temp_dir().join(format!(
         "cargo-allow-repo-edit-parity-{}-{id}",
         std::process::id()
     ));
