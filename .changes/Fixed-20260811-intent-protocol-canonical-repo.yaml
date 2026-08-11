@@ -1,0 +1,5 @@
+kind: Fixed
+body: >-
+  Make intent-protocol consume the canonical effortless-repo-protocol
+  repository snapshot and result contracts instead of packaging a private
+  copy.
