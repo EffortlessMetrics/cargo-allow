@@ -48,13 +48,21 @@ fn release_workflow_exists_and_lists_publish_order() {
         workflow.contains(RELEASE_TOPOLOGY_PUBLISHER),
         "{RELEASE_WORKFLOW} should delegate publication to the topology publisher"
     );
+    assert!(
+        workflow.contains("--mode cargo-allow"),
+        "{RELEASE_WORKFLOW} should select the cargo-allow topology family"
+    );
+    assert!(
+        topology_publisher.contains("DEFAULT_TOPOLOGY")
+            && topology_publisher.contains("load_rows")
+            && topology_publisher.contains("release_order"),
+        "{RELEASE_TOPOLOGY_PUBLISHER} should derive publication order from the V2 topology"
+    );
 
-    for package in publish_order {
-        assert!(
-            topology_publisher.contains(&package),
-            "{RELEASE_TOPOLOGY_PUBLISHER} should publish {package} in documented order"
-        );
-    }
+    assert!(
+        !publish_order.is_empty(),
+        "the active release document should define a non-empty publish order"
+    );
 }
 
 #[test]
