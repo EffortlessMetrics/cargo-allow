@@ -16,6 +16,7 @@ mod policy_scope;
 mod policy_selector;
 mod policy_strings;
 mod policy_workspace;
+mod proptest_diff;
 mod revision_companions;
 mod revision_findings;
 mod revision_git_parser;

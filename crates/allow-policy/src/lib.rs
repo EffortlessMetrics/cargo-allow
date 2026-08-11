@@ -162,6 +162,8 @@ pub fn parse_policy_with_reportable_evidence_at(
 #[cfg(test)]
 mod evidence_tests;
 #[cfg(test)]
+mod proptest_policy;
+#[cfg(test)]
 mod render_tests;
 #[cfg(test)]
 mod starter_tests;
