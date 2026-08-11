@@ -364,12 +364,7 @@ log "cargo-intent --help"
 log "cargo-intent identity"
 "${cargo_bin}" identity >/dev/null
 
-declare -a install_closure=(
-  effortless-repo-snapshot
-  intent-protocol
-  intent-engine
-  cargo-intent
-)
+declare -a install_closure=("${crates[@]}")
 
 log "confirming internal deps resolve from extracted/patched graph (not workspace crates/)"
 resolve_meta_path="${offline_root}/resolve-metadata.json"
