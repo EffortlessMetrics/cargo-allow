@@ -53,6 +53,31 @@ fn current_v2_architecture_receipt_drives_package_candidate() -> Result<(), Stri
     Ok(())
 }
 
+#[test]
+fn current_v2_package_names_exclude_colliding_engine_identities() -> Result<(), String> {
+    let receipt = current_architecture_receipt_at(&repo_root())
+        .map_err(|err| format!("build current V2 architecture receipt: {err}"))?;
+    let package_names: Vec<_> = receipt
+        .workspace_packages
+        .iter()
+        .map(|row| row.cargo_package_name.as_str())
+        .collect();
+
+    for current in ["intent-compiler", "proof-orchestrator"] {
+        if !package_names.contains(&current) {
+            return Err(format!("current V2 package authority omitted `{current}`"));
+        }
+    }
+    for occupied in ["intent-engine", "proof-engine"] {
+        if package_names.contains(&occupied) {
+            return Err(format!(
+                "occupied crates.io identity `{occupied}` re-entered the current package authority"
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }

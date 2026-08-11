@@ -163,8 +163,8 @@ crate_role = "CargoIntent"
 [[crate_identity]]
 logical_id = "intent-engine"
 workspace_path = "crates/intent-engine"
-workspace_dependency_aliases = ["intent-engine"]
-cargo_package_name = "intent-engine"
+workspace_dependency_aliases = ["intent-compiler"]
+cargo_package_name = "intent-compiler"
 rust_library_name = "intent_engine"
 product_or_shared_owner = "cargo-intent"
 crate_role = "CargoIntent"
@@ -201,8 +201,8 @@ crate_role = "CargoProof"
 [[crate_identity]]
 logical_id = "proof-engine"
 workspace_path = "crates/proof-engine"
-workspace_dependency_aliases = ["proof-engine"]
-cargo_package_name = "proof-engine"
+workspace_dependency_aliases = ["proof-orchestrator"]
+cargo_package_name = "proof-orchestrator"
 rust_library_name = "proof_engine"
 product_or_shared_owner = "cargo-proof"
 crate_role = "CargoProof"

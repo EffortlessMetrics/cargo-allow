@@ -28,7 +28,7 @@
       "effortless-repo-protocol",
       "effortless-repo-snapshot",
       "intent-protocol",
-      "intent-engine",
+      "intent-compiler",
       "cargo-intent"
     ],
     "crates": []
@@ -42,7 +42,7 @@
   },
   "install": {
     "method": "cargo_install_path_extracted_with_patch",
-    "version_output": "cargo-intent 0.2.0",
+    "version_output": "cargo-intent 0.1.0",
     "exit_code": 0
   },
   "limitations": [

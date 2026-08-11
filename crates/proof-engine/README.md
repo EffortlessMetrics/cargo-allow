@@ -1,11 +1,13 @@
-# proof-engine
+# proof-orchestrator
 
-Most users should use [cargo-allow](https://github.com/EffortlessMetrics/cargo-allow) or downstream cargo-proof products; `proof-engine` orchestrates provider registry, captured receipts, obligation planning, currentness, dry-run projection, explicit execution gates, cache, contradiction detection, and phase gates. It does not scan source files, does not invoke Cargo, compile code, execute repository code, spawn processes, or depend on intent crates.
+Most users should use [cargo-allow](https://github.com/EffortlessMetrics/cargo-allow) or the `cargo-proof` CLI. `proof-orchestrator` is the experimental provider-neutral package for obligation planning, currentness, captured-receipt validation, cache identity, contradiction detection, and gate composition.
+
+The first-publication package rename preserves the Rust library import `proof_engine` and the current workspace path `crates/proof-engine`; those source identities may move only through a separate reviewed migration.
 
 ## Claim boundary
 
-Packet 2589-A lands engine scaffold and orchestration contracts only. Process execution and the thin `cargo-proof` CLI land in follow-on packets.
+The package does not scan source files, invoke Cargo, compile or execute repository code, or spawn provider processes. Provider-specific application wiring and process execution remain in `cargo-proof`; saved plans and receipt DTOs remain in `proof-protocol`.
 
 ## Packet 2713
 
-- `proof-engine::ripr_routing` — route/preflight composition consuming the external RIPR proof corpus (#2708) with stable claim IDs and fail-closed required aggregates; does not execute live ripr-swarm providers
+- `proof_engine::ripr_routing` — route/preflight composition consuming the external RIPR proof corpus (#2708) with stable claim IDs and fail-closed required aggregates; does not execute live ripr-swarm providers

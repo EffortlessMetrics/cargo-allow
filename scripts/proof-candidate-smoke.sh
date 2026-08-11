@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ProofCandidateInstallSmokeV1 (#2589-B).
 #
-# Packages the six-crate proof stack, extracts each .crate outside the
+# Packages the four-crate proof stack, extracts each .crate outside the
 # workspace, installs cargo-proof from the extracted tree via patched path
 # resolution, verifies the isolated binary surface, and denies workspace
 # source-checkout / target/debug leakage during the decisive install.
@@ -75,11 +75,23 @@ read_workspace_version() {
   ' Cargo.toml
 }
 
+# Resolve the current workspace directory for a Cargo package identity.
+# The first-publication name correction keeps source paths stable (#3440).
+workspace_dir_for_package() {
+  case "$1" in
+    intent-compiler) printf '%s\n' "intent-engine" ;;
+    proof-orchestrator) printf '%s\n' "proof-engine" ;;
+    *) printf '%s\n' "$1" ;;
+  esac
+}
+
 # Resolve package versions after the workspace package split.
 read_crate_version() {
   local crate="$1"
+  local workspace_dir
   local line
-  line="$(grep -m1 '^version' "crates/${crate}/Cargo.toml" 2>/dev/null)" || true
+  workspace_dir="$(workspace_dir_for_package "${crate}")"
+  line="$(grep -m1 '^version' "crates/${workspace_dir}/Cargo.toml" 2>/dev/null)" || true
   if [[ "${line}" == "version.workspace = true" ]]; then
     read_workspace_version
   else
@@ -352,12 +364,7 @@ log "cargo-proof --help"
 log "cargo-proof identity"
 "${cargo_bin}" identity >/dev/null
 
-declare -a install_closure=(
-  effortless-repo-protocol
-  proof-protocol
-  proof-engine
-  cargo-proof
-)
+declare -a install_closure=("${crates[@]}")
 
 log "confirming internal deps resolve from extracted/patched graph (not workspace crates/)"
 resolve_meta_path="${offline_root}/resolve-metadata.json"
@@ -450,7 +457,7 @@ receipt = {
     "tool": "cargo-proof",
     "result": "Passed",
     "claim_boundary": [
-        "six_crate_proof_package_graph",
+        "four_crate_proof_package_graph",
         "extracted_path_install_outside_workspace",
         "source_checkout_denied_during_decisive_install",
         "no_proof_or_test_invocation",

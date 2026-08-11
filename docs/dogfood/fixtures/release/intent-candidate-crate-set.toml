@@ -10,6 +10,6 @@ crates = [
   "effortless-repo-protocol",
   "effortless-repo-snapshot",
   "intent-protocol",
-  "intent-engine",
+  "intent-compiler",
   "cargo-intent",
 ]

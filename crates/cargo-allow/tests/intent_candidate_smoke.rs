@@ -15,7 +15,7 @@ const EXPECTED_CRATES: &[&str] = &[
     "effortless-repo-protocol",
     "effortless-repo-snapshot",
     "intent-protocol",
-    "intent-engine",
+    "intent-compiler",
     "cargo-intent",
 ];
 

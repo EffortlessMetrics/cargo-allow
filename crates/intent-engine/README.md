@@ -1,12 +1,14 @@
-# intent-engine
+# intent-compiler
 
-Intent evaluator packets for three-product extraction (#2586).
+Intent compilation, workspace composition, graph comparison, phase-obligation, and bounded-query implementation for cargo-intent.
 
-Most users should use [cargo-allow](https://github.com/EffortlessMetrics/cargo-allow) or downstream cargo-intent products; `intent-engine` is an internal cargo-intent crate for spec-system evaluation orchestration.
+Most users should use [cargo-allow](https://github.com/EffortlessMetrics/cargo-allow) or the `cargo-intent` CLI. `intent-compiler` is an experimental internal cargo-intent package, not a separately supported end-user product.
+
+The first-publication package rename preserves the Rust library import `intent_engine` and the current workspace path `crates/intent-engine`; those source identities may move only through a separate reviewed migration.
 
 ## Claim boundary
 
-Evaluator packet envelopes and surface markers only. Graph compilation, precommit evaluation, and proof execution remain in bounded parity windows until later packets land.
+The package owns selected intent compilation and evaluation mechanics. Authored contracts remain in `intent-model`, stable operation envelopes remain in `intent-protocol`, source-bound settlement remains in `intent-edit`, and proof planning or provider execution remains outside this package.
 
 ## PR1 (#2586-A)
 
@@ -22,7 +24,7 @@ Graph comparison movement taxonomy and phase obligation compile plans. `cargo-al
 
 ## PR4 (#2586-D)
 
-Bounded domain query catalog returning intent-protocol-shaped responses without graph compilation or proof execution.
+Bounded domain query catalog returning intent-protocol-shaped responses without proof execution.
 
 ## PR5 (#2586-E)
 
