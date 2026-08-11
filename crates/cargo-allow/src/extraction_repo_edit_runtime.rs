@@ -7,9 +7,10 @@
 //! promote a cutover or manufacture command-receipt evidence.
 
 use allow_core::{
-    AllowEntry, CargoAllowError, CargoAllowResult, FindingKind, LastSeen, Lifecycle, Selector,
-    SimpleDate,
+    AllowEntry, CargoAllowError, CargoAllowResult, FindingKind, LastSeen, Lifecycle, MatchStatus,
+    Selector, SimpleDate,
 };
+use allow_match::{CheckMode, evaluate};
 use allow_policy::extraction_parity::{ParityComparison, ParityObservation, compare_observations};
 use allow_policy::{parse_policy, render_policy, starter_policy, validate_policy};
 use effortless_repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
@@ -79,6 +80,31 @@ fn refresh_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase
         fs::write(root.join("policy/allow.toml"), initial).map_err(io_error)?;
     }
 
+    let (_, preflight_config, preflight_findings, _, _) = crate::load_world_with_evidence_mode(
+        Some(&old_root),
+        Some(&PathBuf::from("policy/allow.toml")),
+        true,
+        None,
+        true,
+        crate::EvidenceValidationMode::ReportOnly,
+    )?;
+    let preflight_outcomes = evaluate(&preflight_config, &preflight_findings, CheckMode::NoNew);
+    let preflight_status = preflight_outcomes
+        .iter()
+        .find(|outcome| outcome.allow_id.as_deref() == Some("allow-0250"))
+        .map(|outcome| outcome.status);
+    if preflight_status != Some(MatchStatus::LocationDrift) {
+        let identity = preflight_findings
+            .iter()
+            .find(|finding| finding.path == Path::new("src/lib.rs"))
+            .map(|finding| format!("{:?}", finding.identity));
+        return Err(CargoAllowError::new(format!(
+            "refresh parity fixture precondition was {:?}; finding identity was {}",
+            preflight_status,
+            identity.as_deref().unwrap_or("missing")
+        )));
+    }
+
     crate::refresh::cmd_refresh(&crate::refresh::parity_refresh_args(
         old_root.clone(),
         PathBuf::from("policy/allow.toml"),
@@ -113,6 +139,7 @@ fn refresh_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase
         line: span.line,
         column: span.column,
     });
+    entry.selector.line_hint = Some(span.line);
     validate_policy(&expected_config)?;
     let expected = render_policy(&expected_config);
     apply_single_target(SingleTargetApplyRequest {
