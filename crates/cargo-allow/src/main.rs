@@ -230,3 +230,7 @@ mod removal_window_policy_tests;
 #[cfg(test)]
 #[path = "product_support_matrix_tests.rs"]
 mod product_support_matrix_tests;
+
+#[cfg(test)]
+#[path = "governance_authority_guard_tests.rs"]
+mod governance_authority_guard_tests;
