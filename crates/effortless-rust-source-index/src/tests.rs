@@ -85,6 +85,26 @@ fn inventory_package_copy_matches_rust_source_index() -> Result<(), String> {
     Ok(())
 }
 
+#[test]
+fn manifest_has_no_product_dependency_or_interop_feature() -> Result<(), String> {
+    let manifest = std::fs::read_to_string(
+        workspace_root().join("crates/effortless-rust-source-index/Cargo.toml"),
+    )
+    .map_err(|err| format!("read rust-source-index manifest: {err}"))?;
+    let dependencies = manifest
+        .split("[dependencies]")
+        .nth(1)
+        .and_then(|rest| rest.split("\n[").next())
+        .ok_or_else(|| "rust-source-index dependencies table missing".to_string())?;
+    if dependencies.contains("allow-core") || dependencies.contains("allow_core") {
+        return Err("rust-source-index retains a cargo-allow product dependency".to_string());
+    }
+    if manifest.contains("allow-core-interop") {
+        return Err("rust-source-index retains a product interop feature".to_string());
+    }
+    Ok(())
+}
+
 fn validate_contract(contract: &TestSubjectsParityContract) -> Result<(), String> {
     if contract.scenario_id.is_empty() {
         return Err("empty scenario_id".to_string());
