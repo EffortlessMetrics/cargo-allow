@@ -134,7 +134,7 @@ pub fn resolve_authored_rust_subject(
             source_path: None,
             observed_body_identity: None,
             candidates: Vec::new(),
-            limitations: vec!["structural inventory is partial".to_string()],
+            limitations: partial_inventory_limitations(inventory),
         },
         RustTestResolution::MalformedSelector => IntentSubjectResolutionV1 {
             subject_id,
@@ -242,6 +242,17 @@ fn classified_subject(
     }
 }
 
+fn partial_inventory_limitations(inventory: &RustTestInventory) -> Vec<String> {
+    let mut limitations = vec!["structural inventory is partial".to_string()];
+    limitations.extend(inventory.diagnostics.iter().map(|diagnostic| {
+        diagnostic.path.as_deref().map_or_else(
+            || diagnostic.message.clone(),
+            |path| format!("{path}: {}", diagnostic.message),
+        )
+    }));
+    limitations
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -287,6 +298,14 @@ mod tests {
             resolution.class,
             IntentSubjectResolutionClassV1::PartialInventory
         );
+        assert!(resolution
+            .limitations
+            .iter()
+            .any(|limitation| limitation == "structural inventory is partial"));
+        assert!(resolution
+            .limitations
+            .iter()
+            .any(|limitation| limitation == "src/lib.rs: parse error"));
     }
 
     #[test]
