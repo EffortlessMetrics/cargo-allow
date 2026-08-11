@@ -1035,6 +1035,7 @@ name = "proof-orchestrator"
 version = "0.1.0"
 dependencies = [
  "effortless-repo-protocol",
+ "effortless-rust-source-index",
  "proof-protocol",
  "serde",
  "toml",
