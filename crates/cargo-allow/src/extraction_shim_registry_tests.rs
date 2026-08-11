@@ -60,7 +60,7 @@ fn repo_edit_core_shims_match_live_private_forwards() -> Result<(), String> {
             "cargo-allow::policy_config::assert_path_within_root",
             "repo-edit::containment",
             "crates/cargo-allow/src/policy_config.rs",
-            "effortless_repo_edit::assert_path_within_root(root, path).map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)",
+            "map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)",
         ),
         (
             "shim-cargo-allow-atomic-write",
