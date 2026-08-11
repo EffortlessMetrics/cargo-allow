@@ -113,25 +113,25 @@ fn view_and_closure_envelopes_roundtrip() -> Result<(), String> {
     Ok(())
 }
 
-const REPO_PROTOCOL_SNAPSHOT_FILES: &[&str] = &["repository_snapshot.rs", "result_class.rs"];
-
 #[test]
-fn repo_protocol_snapshot_matches_canonical() -> Result<(), String> {
+fn repository_protocol_uses_canonical_package_without_private_copy() -> Result<(), String> {
     let root = workspace_root();
-    for file in REPO_PROTOCOL_SNAPSHOT_FILES {
-        let canonical = std::fs::read_to_string(
-            root.join(format!("crates/effortless-repo-protocol/src/{file}")),
-        )
-        .map_err(|err| format!("read canonical effortless-repo-protocol/{file}: {err}"))?;
-        let packaged = std::fs::read_to_string(root.join(format!(
-            "crates/intent-protocol/src/snapshot_package/repo_protocol/{file}"
-        )))
-        .map_err(|err| format!("read intent-protocol snapshot repo_protocol/{file}: {err}"))?;
-        if canonical.replace("\r\n", "\n") != packaged.replace("\r\n", "\n") {
-            return Err(format!(
-                "intent-protocol snapshot_package/repo_protocol/{file} must match effortless-repo-protocol/{file}"
-            ));
-        }
+    let manifest = std::fs::read_to_string(root.join("crates/intent-protocol/Cargo.toml"))
+        .map_err(|err| format!("read intent-protocol manifest: {err}"))?;
+    let dependencies = manifest
+        .split("[dependencies]")
+        .nth(1)
+        .and_then(|rest| rest.split("\n[").next())
+        .ok_or_else(|| "intent-protocol dependencies table missing".to_string())?;
+    if !dependencies.contains("effortless-repo-protocol.workspace = true") {
+        return Err("intent-protocol does not use effortless-repo-protocol".to_string());
+    }
+    let copied_root = root.join("crates/intent-protocol/src/snapshot_package/repo_protocol");
+    if copied_root.exists() {
+        return Err(format!(
+            "private repository protocol copy remains at {}",
+            copied_root.display()
+        ));
     }
     Ok(())
 }
