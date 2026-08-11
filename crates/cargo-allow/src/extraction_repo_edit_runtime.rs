@@ -71,8 +71,8 @@ fn refresh_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase
     let new_root = workspace.join("refresh-new");
     let old_policy = old_root.join("policy").join("allow.toml");
     let new_policy = new_root.join("policy").join("allow.toml");
-    let source = include_str!("../../../tests/fixtures/refresh/advisory-drift/src/lib.rs");
-    let initial = include_str!("../../../tests/fixtures/refresh/advisory-drift/policy/allow.toml");
+    let source = "pub fn fixture_refresh_drift() -> u32 {\n    // Padding lines so the expect attribute drifts beyond the\n    // DRIFT_LINE_TOLERANCE (3) relative to last_seen (line 2).\n    //\n    //\n    //\n    #[expect(clippy::unwrap_used, reason = \"policy:allow-0250: refresh receipt fixture\")]\n    let value = Some(1).unwrap();\n    value\n}\n";
+    let initial = "schema_version = 1\n\n[workspace]\nignored = []\ngenerated = []\n\n[[allow]]\nid = \"allow-0250\"\nkind = \"lint_exception\"\nfamily = \"expect_attribute\"\npath = \"src/lib.rs\"\nowner = \"lint\"\nclassification = \"reviewed_lint_exception\"\nreason = \"Fixture keeps lint suppression with stale last_seen for refresh receipt proof.\"\nevidence = [\"test:refresh-receipt-fixture\"]\ncreated = \"2026-05-09\"\nreview_after = \"2026-09-09\"\nexpires = \"2026-12-31\"\n\n[allow.selector]\nast_kind = \"attribute\"\nlint = \"clippy::unwrap_used\"\ntarget_fingerprint = \"policy:allow-0250\"\ncontainer = \"fixture_refresh_drift\"\nline_hint = 1\n\n[allow.last_seen]\nline = 1\ncolumn = 1\n";
     for root in [&old_root, &new_root] {
         fs::create_dir_all(root.join("policy")).map_err(io_error)?;
         fs::create_dir_all(root.join("src")).map_err(io_error)?;
