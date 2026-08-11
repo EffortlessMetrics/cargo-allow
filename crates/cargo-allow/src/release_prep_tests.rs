@@ -13,6 +13,7 @@ const PACKAGE_TOPOLOGY: &str = "policy/product-package-topology-v2.toml";
 
 const RELEASE_WORKFLOW: &str = ".github/workflows/release.yml";
 const RELEASE_DOC: &str = "docs/release/README.md";
+const RELEASE_TOPOLOGY_PUBLISHER: &str = "scripts/release-topology-publisher.py";
 
 const CANDIDATE_RELEASE_DOC: &str = "docs/release/0.2.0.md";
 const CANDIDATE_RELEASE_RECORD: &str = include_str!("../../../docs/release/0.2.0.md");
@@ -23,6 +24,7 @@ fn release_workflow_exists_and_lists_publish_order() {
     let root = workspace_root();
     let workflow = read_workspace_file(&root, RELEASE_WORKFLOW);
     let release_doc = read_workspace_file(&root, RELEASE_DOC);
+    let topology_publisher = read_workspace_file(&root, RELEASE_TOPOLOGY_PUBLISHER);
     let workspace_manifest = read_workspace_file(&root, "Cargo.toml");
     let workspace_version = workspace_package_version(&workspace_manifest);
     let publish_order = parse_publish_order(&read_workspace_file(
@@ -42,11 +44,15 @@ fn release_workflow_exists_and_lists_publish_order() {
         release_doc.contains(RELEASE_WORKFLOW),
         "{RELEASE_DOC} should document the release workflow"
     );
+    assert!(
+        workflow.contains(RELEASE_TOPOLOGY_PUBLISHER),
+        "{RELEASE_WORKFLOW} should delegate publication to the topology publisher"
+    );
 
     for package in publish_order {
         assert!(
-            workflow.contains(&package),
-            "{RELEASE_WORKFLOW} should publish {package} in documented order"
+            topology_publisher.contains(&package),
+            "{RELEASE_TOPOLOGY_PUBLISHER} should publish {package} in documented order"
         );
     }
 }
