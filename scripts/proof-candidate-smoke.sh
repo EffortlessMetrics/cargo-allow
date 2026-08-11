@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ProofCandidateInstallSmokeV1 (#2589-B).
 #
-# Packages the six-crate proof stack, extracts each .crate outside the
+# Packages the four-crate proof stack, extracts each .crate outside the
 # workspace, installs cargo-proof from the extracted tree via patched path
 # resolution, verifies the isolated binary surface, and denies workspace
 # source-checkout / target/debug leakage during the decisive install.
@@ -364,12 +364,7 @@ log "cargo-proof --help"
 log "cargo-proof identity"
 "${cargo_bin}" identity >/dev/null
 
-declare -a install_closure=(
-  effortless-repo-protocol
-  proof-protocol
-  proof-engine
-  cargo-proof
-)
+declare -a install_closure=("${crates[@]}")
 
 log "confirming internal deps resolve from extracted/patched graph (not workspace crates/)"
 resolve_meta_path="${offline_root}/resolve-metadata.json"
@@ -462,7 +457,7 @@ receipt = {
     "tool": "cargo-proof",
     "result": "Passed",
     "claim_boundary": [
-        "six_crate_proof_package_graph",
+        "four_crate_proof_package_graph",
         "extracted_path_install_outside_workspace",
         "source_checkout_denied_during_decisive_install",
         "no_proof_or_test_invocation",
