@@ -10858,6 +10858,22 @@ review_after = "2026-11-08"
 glob = "policy/removal-window-policy.toml"
 
 [[allow]]
+id = "allow-0520"
+kind = "non_rust_file"
+family = "configuration"
+glob = "policy/product-support-matrix.toml"
+owner = "core/governance"
+classification = "product_support_matrix_manifest"
+reason = "Per-product support matrix with postures, support tiers, and cross-product-implication checks (#3359)"
+evidence = ["issue:3359", "issue:2559"]
+occurrence_limit = 1
+created = "2026-08-10"
+review_after = "2026-11-08"
+
+[allow.selector]
+glob = "policy/product-support-matrix.toml"
+
+[[allow]]
 id = "allow-0517"
 kind = "lint_exception"
 family = "expect_attribute"
