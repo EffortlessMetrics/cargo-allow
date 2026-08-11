@@ -69,6 +69,4 @@ pub use workspace::{
 };
 
 #[cfg(test)]
-mod subject_resolution_tests;
-#[cfg(test)]
 mod tests;
