@@ -3083,7 +3083,7 @@ deletion_output = "Delete scaffold sources after parity cutover and old-path ret
 [[entry]]
 id = "INVENTORY-INTENT_PROTOCOL-SRC"
 source_kind = "RustModule"
-current_paths = ["crates/intent-protocol/src/closure.rs", "crates/intent-protocol/src/diff.rs", "crates/intent-protocol/src/identity.rs", "crates/intent-protocol/src/lib.rs", "crates/intent-protocol/src/obligation.rs", "crates/intent-protocol/src/parity/mod.rs", "crates/intent-protocol/src/query.rs", "crates/intent-protocol/src/snapshot_package/mod.rs", "crates/intent-protocol/src/snapshot_package/repo_protocol/mod.rs", "crates/intent-protocol/src/snapshot_package/repo_protocol/repository_snapshot.rs", "crates/intent-protocol/src/snapshot_package/repo_protocol/result_class.rs", "crates/intent-protocol/src/tests.rs", "crates/intent-protocol/src/view.rs"]
+current_paths = ["crates/intent-protocol/src/closure.rs", "crates/intent-protocol/src/diff.rs", "crates/intent-protocol/src/identity.rs", "crates/intent-protocol/src/lib.rs", "crates/intent-protocol/src/obligation.rs", "crates/intent-protocol/src/parity/mod.rs", "crates/intent-protocol/src/query.rs", "crates/intent-protocol/src/tests.rs", "crates/intent-protocol/src/view.rs"]
 current_refs = []
 current_identity = "Extracted intent-protocol source tree under no-new intent/proof/shared enforcement (#2598)"
 current_product = "cargo-intent"
