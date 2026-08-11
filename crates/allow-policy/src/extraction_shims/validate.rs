@@ -1,4 +1,4 @@
-use super::config::{parse_extraction_shim_registry_at, ExtractionShimRegistry, ShimStatus};
+use super::config::{ExtractionShimRegistry, ShimStatus, parse_extraction_shim_registry_at};
 use crate::product_move::{MoveEntry, ProductMoveLedger};
 use allow_core::CargoAllowResult;
 use std::collections::{BTreeMap, BTreeSet};

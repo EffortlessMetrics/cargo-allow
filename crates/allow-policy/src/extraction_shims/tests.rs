@@ -1,6 +1,6 @@
 use super::config::parse_extraction_shim_registry;
 use super::validate::{
-    validate_extraction_shim_registry, validate_extraction_shim_registry_at, ShimDiagnosticKind,
+    ShimDiagnosticKind, validate_extraction_shim_registry, validate_extraction_shim_registry_at,
 };
 use crate::product_move::parse_product_move_ledger;
 use std::path::PathBuf;
