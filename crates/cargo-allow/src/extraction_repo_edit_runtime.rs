@@ -94,14 +94,19 @@ fn refresh_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase
         .find(|outcome| outcome.allow_id.as_deref() == Some("allow-0250"))
         .map(|outcome| outcome.status);
     if preflight_status != Some(MatchStatus::LocationDrift) {
-        let identity = preflight_findings
+        let findings = preflight_findings
             .iter()
-            .find(|finding| finding.path == Path::new("src/lib.rs"))
-            .map(|finding| format!("{:?}", finding.identity));
+            .map(|finding| format!("{}:{:?}", finding.path.display(), finding.identity))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let outcomes = preflight_outcomes
+            .iter()
+            .map(|outcome| format!("{:?}:{:?}", outcome.allow_id, outcome.status))
+            .collect::<Vec<_>>()
+            .join(", ");
         return Err(CargoAllowError::new(format!(
-            "refresh parity fixture precondition was {:?}; finding identity was {}",
-            preflight_status,
-            identity.as_deref().unwrap_or("missing")
+            "refresh parity fixture precondition was {:?}; findings [{}]; outcomes [{}]",
+            preflight_status, findings, outcomes
         )));
     }
 
