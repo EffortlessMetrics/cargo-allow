@@ -62,7 +62,7 @@ pub fn resolve_authored_rust_subject(
     inventory: &RustTestInventory,
 ) -> IntentSubjectResolutionV1 {
     let subject_id = anchor.id.as_str().to_string();
-    let Some(selector) = selector_from_anchor(anchor) else {
+    let Some(selector) = selector_from_anchor(anchor, inventory) else {
         return IntentSubjectResolutionV1 {
             subject_id,
             class: IntentSubjectResolutionClassV1::MalformedAnchor,
@@ -70,7 +70,10 @@ pub fn resolve_authored_rust_subject(
             source_path: None,
             observed_body_identity: None,
             candidates: Vec::new(),
-            limitations: vec!["authored target must use lib:, bin:, or test: identity".to_string()],
+            limitations: vec![
+                "authored target must use lib:, bin:, or integration_test: identity, or match one exact inventory target"
+                    .to_string(),
+            ],
         };
     };
     let display = selector.display_name();
@@ -158,26 +161,50 @@ fn ambiguous_candidate_display(candidate: &RustTestSubject) -> String {
     )
 }
 
-fn selector_from_anchor(anchor: &EvidenceSubjectRegistration) -> Option<RustTestSelector> {
-    let (kind, target_name) = anchor.target.split_once(':')?;
-    let kind = match kind {
-        "lib" => RustTestTargetKind::Library,
-        "bin" => RustTestTargetKind::Binary,
-        "test" => RustTestTargetKind::IntegrationTest,
-        _ => return None,
-    };
+fn selector_from_anchor(
+    anchor: &EvidenceSubjectRegistration,
+    inventory: &RustTestInventory,
+) -> Option<RustTestSelector> {
     let module_path = anchor
         .module_path
         .split("::")
         .filter(|segment| !segment.is_empty())
         .map(str::to_string)
-        .collect();
+        .collect::<Vec<_>>();
+    let target = match anchor.target.split_once(':') {
+        Some((kind, target_name)) => {
+            let kind = match kind {
+                "lib" => RustTestTargetKind::Library,
+                "bin" => RustTestTargetKind::Binary,
+                "integration_test" | "test" => RustTestTargetKind::IntegrationTest,
+                _ => return None,
+            };
+            RustTestTargetIdentity {
+                kind,
+                name: target_name.to_string(),
+            }
+        }
+        None => {
+            let mut targets = inventory
+                .subjects
+                .iter()
+                .filter(|subject| {
+                    subject.selector.package == anchor.package
+                        && subject.selector.target.name == anchor.target
+                        && subject.selector.module_path == module_path
+                        && subject.selector.function == anchor.test_name
+                })
+                .map(|subject| subject.selector.target.clone());
+            let target = targets.next()?;
+            if targets.any(|candidate| candidate != target) {
+                return None;
+            }
+            target
+        }
+    };
     let selector = RustTestSelector {
         package: anchor.package.clone(),
-        target: RustTestTargetIdentity {
-            kind,
-            name: target_name.to_string(),
-        },
+        target,
         module_path,
         function: anchor.test_name.clone(),
     };
@@ -311,6 +338,19 @@ mod tests {
     }
 
     #[test]
+    fn bare_target_name_from_self_hosted_registration_resolves_exactly() {
+        let inventory = inventory(false, false, false);
+        let resolution = resolve_authored_rust_subject(
+            &anchor_for_target("demo", "fnv1a64:current"),
+            &inventory,
+        );
+        assert_eq!(
+            resolution.class,
+            IntentSubjectResolutionClassV1::ExactCurrent
+        );
+    }
+
+    #[test]
     fn subject_postures_are_projected_without_becoming_current() {
         for (ignored, generated, conditional, expected) in [
             (true, false, false, IntentSubjectResolutionClassV1::Ignored),
@@ -352,6 +392,11 @@ mod tests {
     fn binary_and_integration_test_targets_resolve_exactly() {
         for (target, kind, name) in [
             ("bin:runner", RustTestTargetKind::Binary, "runner"),
+            (
+                "integration_test:api",
+                RustTestTargetKind::IntegrationTest,
+                "api",
+            ),
             ("test:api", RustTestTargetKind::IntegrationTest, "api"),
         ] {
             let selector = selector(kind, name, "alpha");
