@@ -1,4 +1,4 @@
-# Five-crate IntentCandidate package / install set (#2599-C).
+# Seven-crate IntentCandidate package / install set (#2599-C, #3147).
 # Shared by intent-candidate smoke and extraction parity receipts.
 # Do not fork this list into additional independent copies without updating callers.
 
@@ -9,6 +9,8 @@ schema_version = 1
 crates = [
   "effortless-repo-protocol",
   "effortless-repo-snapshot",
+  "effortless-rust-source-index",
+  "intent-model",
   "intent-protocol",
   "intent-compiler",
   "cargo-intent",
