@@ -18,6 +18,23 @@ use refresh_render::{render_refresh_json, render_refresh_result_styled};
 use refresh_select::{apply_last_seen_refresh, select_location_drift_refresh};
 use refresh_types::{RefreshContext, RefreshEmitInput, RefreshRenderInput};
 
+pub(crate) fn parity_refresh_args(
+    root: std::path::PathBuf,
+    config: std::path::PathBuf,
+) -> RefreshArgs {
+    RefreshArgs {
+        root: crate::RootArgs { root: Some(root) },
+        config: Some(config),
+        allow_id: Some("allow-0250".to_string()),
+        all: false,
+        dry_run: false,
+        write: true,
+        include_untracked: true,
+        format: HumanJsonFormat::Human,
+        output: None,
+    }
+}
+
 use crate::policy_config::missing_policy_config_error;
 use crate::{
     EvidenceValidationMode, HumanJsonFormat, MutationLock, SourceTreeReportContext, config_path,

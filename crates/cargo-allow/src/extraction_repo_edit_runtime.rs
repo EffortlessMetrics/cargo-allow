@@ -7,10 +7,11 @@
 //! promote a cutover or manufacture command-receipt evidence.
 
 use allow_core::{
-    AllowEntry, CargoAllowError, CargoAllowResult, FindingKind, Lifecycle, Selector, SimpleDate,
+    AllowEntry, CargoAllowError, CargoAllowResult, FindingKind, LastSeen, Lifecycle, Selector,
+    SimpleDate,
 };
 use allow_policy::extraction_parity::{ParityComparison, ParityObservation, compare_observations};
-use allow_policy::{parse_policy, render_policy, starter_policy};
+use allow_policy::{parse_policy, render_policy, starter_policy, validate_policy};
 use effortless_repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -57,10 +58,111 @@ fn run_cases(workspace: &Path) -> CargoAllowResult<RepoEditParityRun> {
         init_command_case(workspace),
         migrate_command_case(workspace),
         add_command_case(workspace),
+        refresh_command_case(workspace),
     ]
     .into_iter()
     .collect::<CargoAllowResult<Vec<_>>>()?;
     Ok(RepoEditParityRun { cases })
+}
+
+fn refresh_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase> {
+    let old_root = workspace.join("refresh-old");
+    let new_root = workspace.join("refresh-new");
+    let old_policy = old_root.join("policy").join("allow.toml");
+    let new_policy = new_root.join("policy").join("allow.toml");
+    let source = "pub fn fixture_refresh_drift() -> u32 {\n    // padding\n    // padding\n    // padding\n    // padding\n    #[expect(clippy::unwrap_used, reason = \"policy:allow-0250: refresh receipt fixture\")]\n    let value = Some(1).unwrap();\n    value\n}\n";
+    let initial = r#"schema_version = 1
+
+[workspace]
+ignored = []
+generated = []
+
+[[allow]]
+id = "allow-0250"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "src/lib.rs"
+owner = "lint"
+classification = "reviewed_lint_exception"
+reason = "Fixture keeps lint suppression with stale last_seen for refresh receipt proof."
+evidence = ["test:refresh-receipt-fixture"]
+created = "2026-05-09"
+review_after = "2026-09-09"
+expires = "2026-12-31"
+
+[allow.selector]
+ast_kind = "attribute"
+lint = "clippy::unwrap_used"
+target_fingerprint = "policy:allow-0250"
+container = "fixture_refresh_drift"
+line_hint = 1
+
+[allow.last_seen]
+line = 1
+column = 1
+"#;
+    for root in [&old_root, &new_root] {
+        fs::create_dir_all(root.join("policy")).map_err(io_error)?;
+        fs::create_dir_all(root.join("src")).map_err(io_error)?;
+        fs::write(root.join("src/lib.rs"), source).map_err(io_error)?;
+        fs::write(root.join("policy/allow.toml"), initial).map_err(io_error)?;
+    }
+
+    crate::refresh::cmd_refresh(&crate::refresh::parity_refresh_args(
+        old_root.clone(),
+        PathBuf::from("policy/allow.toml"),
+    ))?;
+
+    let (_, config, findings, _, _) = crate::load_world_with_evidence_mode(
+        Some(&new_root),
+        Some(&PathBuf::from("policy/allow.toml")),
+        true,
+        None,
+        true,
+        crate::EvidenceValidationMode::ReportOnly,
+    )?;
+    let finding = findings
+        .iter()
+        .find(|finding| {
+            finding.path == PathBuf::from("src/lib.rs")
+                && finding.family.as_deref() == Some("expect_attribute")
+        })
+        .ok_or_else(|| CargoAllowError::new("refresh parity finding was not discovered"))?;
+    let span = finding
+        .span
+        .as_ref()
+        .ok_or_else(|| CargoAllowError::new("refresh parity finding has no source span"))?;
+    let mut expected_config = config;
+    let entry = expected_config
+        .allow
+        .iter_mut()
+        .find(|entry| entry.id == "allow-0250")
+        .ok_or_else(|| CargoAllowError::new("refresh parity entry was not loaded"))?;
+    entry.last_seen = Some(LastSeen {
+        line: span.line,
+        column: span.column,
+    });
+    validate_policy(&expected_config)?;
+    let expected = render_policy(&expected_config);
+    apply_single_target(SingleTargetApplyRequest {
+        repository_root: &new_root,
+        target: &new_policy,
+        contents: &expected,
+        caller_reference: Some("cargo-allow:refresh"),
+        lock_identity: Some("policy/allow.toml".to_string()),
+        mode: SingleTargetApplyMode::AtomicReplace,
+    })
+    .into_result()
+    .map_err(|error| CargoAllowError::new(format!("new refresh apply failed: {error}")))?;
+
+    let old_output = fs::read_to_string(old_policy).map_err(io_error)?;
+    let new_output = fs::read_to_string(new_policy).map_err(io_error)?;
+    Ok(parity_case(
+        "parity-repo-edit-refresh-command-v1",
+        "refresh:policy/allow.toml",
+        old_output,
+        new_output,
+    ))
 }
 
 fn add_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase> {
