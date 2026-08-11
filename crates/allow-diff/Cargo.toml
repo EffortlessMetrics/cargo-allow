@@ -19,3 +19,6 @@ allow-policy.workspace = true
 allow-rust.workspace = true
 effortless-repo-snapshot.workspace = true
 sha2.workspace = true
+
+[dev-dependencies]
+proptest = { version = "1.11.0", default-features = false, features = ["std"] }
