@@ -435,7 +435,6 @@ dependencies = [
 name = "effortless-repo-edit"
 version = "0.1.0"
 dependencies = [
- "allow-core",
  "sha2",
 ]
 

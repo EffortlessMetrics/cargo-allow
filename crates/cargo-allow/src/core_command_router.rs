@@ -106,7 +106,8 @@ fn write_summary_artifact_with_config(
     // `write_file` returns `RepoEditError` after the effortless-repo-edit
     // product-neutrality refactor (#3283); `?` coerces it into the command
     // error type, matching the other call sites.
-    write_file(&path, &format!("{json}\n"))?;
+    write_file(&path, &format!("{json}\n"))
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     Ok(())
 }
 

@@ -244,7 +244,8 @@ fn emit_identity(args: &CheckArgs, identity: &StagedIdentityV1) -> CargoAllowRes
                     format!("failed to render staged identity receipt: {error}"),
                 )
             })?,
-        )?;
+        )
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     }
     Ok(())
 }
@@ -277,7 +278,8 @@ fn emit_report(
     }
     if let Some(receipt) = &args.receipt {
         assert_path_within_root(root, receipt)?;
-        write_file(receipt, &json)?;
+        write_file(receipt, &json)
+            .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     }
     Ok(())
 }

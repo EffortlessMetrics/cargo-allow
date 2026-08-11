@@ -28,12 +28,6 @@
 #   RELEASE_WORKFLOW=<path>   release workflow (default: .github/workflows/release.yml)
 set -euo pipefail
 
-if [[ "${GITHUB_HEAD_REF:-}" == "refactor/repo-edit-product-edge-2969" \
-  && -f scripts/one-shot-repo-edit-product-boundary.sh ]]; then
-  bash scripts/one-shot-repo-edit-product-boundary.sh
-  exit 0
-fi
-
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
 

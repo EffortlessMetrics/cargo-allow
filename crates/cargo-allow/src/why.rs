@@ -199,7 +199,8 @@ pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
             outcome: &outcome,
             candidates: &candidates,
         })?;
-        crate::write_file_no_overwrite(plan_path, &plan, false)?;
+        crate::write_file_no_overwrite(plan_path, &plan, false)
+            .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
         written_plan_path = Some(plan_write_path(&root, plan_path));
     }
     let style = if matches!(args.format, HumanJsonFormat::Human) && args.output.is_none() {

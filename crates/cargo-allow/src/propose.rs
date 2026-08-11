@@ -91,7 +91,8 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
             let resolved = effortless_repo_edit::resolve_mutation_target(target, &mutation_root)?;
             MutationLock::acquire_for_target(&resolved)
         })
-        .transpose()?;
+        .transpose()
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     let (root, cfg, findings, inventory_facts, _federation) = load_world_with_evidence_mode(
         args.root.root.as_deref(),
         args.config.as_deref(),
@@ -273,7 +274,8 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
             ),
             mode,
         })
-        .into_result()?;
+        .into_result()
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
         let _ = path;
     } else {
         // When printing the full policy TOML to stdout, warn interactive
