@@ -32,6 +32,8 @@ jobs:
         run: |
           set -euo pipefail
 
+          git config user.name "EffortlessMetrics CI"
+          git config user.email "ci@effortlessmetrics.invalid"
           git fetch origin main
           git merge --no-edit -X theirs origin/main
           cargo metadata --format-version 1 >/dev/null
