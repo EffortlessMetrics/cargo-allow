@@ -1,6 +1,6 @@
 //! Intent selected-source closure transport envelopes (#2585-B).
 
-use crate::snapshot_package::repo_protocol::{
+use effortless_repo_protocol::{
     RepositorySnapshotV1, ResultClassV1, SelectedPathIdentityV1,
 };
 use serde::{Deserialize, Serialize};
