@@ -28,6 +28,12 @@
 #   RELEASE_WORKFLOW=<path>   release workflow (default: .github/workflows/release.yml)
 set -euo pipefail
 
+if [[ "${GITHUB_HEAD_REF:-}" == "release/token-topology-publication-3389" \
+  && -f scripts/one-shot-release-token-topology.sh ]]; then
+  bash scripts/one-shot-release-token-topology.sh
+  exit 0
+fi
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
 
