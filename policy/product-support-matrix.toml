@@ -1,0 +1,57 @@
+# Per-product support matrix (#3359 / #2559).
+#
+# One checked support matrix covering every product family with its posture,
+# support tier, default-install status, and claim boundary. Postures mirror
+# policy/product-package-topology-v2.toml so the matrix cannot drift from the
+# package-level source of truth.
+#
+# Core invariant: only cargo-allow is installed_by_default = true. Installing
+# cargo-allow must not imply cargo-intent or cargo-proof are present, supported,
+# or stable. Those are opt-in experimental products selected explicitly.
+
+schema_id = "cargo-allow.product-support-matrix.v1"
+schema_version = 1
+controlling_issue = 2559
+generated_by = "#3359"
+
+# Posture vocabulary mirrors policy/product-package-topology-v2.toml.
+
+[[product]]
+product_id = "cargo-allow"
+posture = "CargoAllowSupported"
+support_tier = "supported"
+installed_by_default = true
+stability_claim = "The only product a user installs by default. Source-tree policy linter and durable exception ledger with a published 0.1.x line and a 0.2.0 candidate."
+claim_boundary = "Scans repository files without executing project code. No Cargo metadata, cargo check, rustc, Clippy, build scripts, proc macros, dependency resolution, or network access for its own scan."
+
+[[product]]
+product_id = "cargo-intent"
+posture = "CargoIntentExperimental"
+support_tier = "experimental-opt-in"
+installed_by_default = false
+stability_claim = "Opt-in experimental product. Not implied by installing cargo-allow. Selected explicitly via the cargo-intent binary when a user wants compiled-graph-aware intent evaluation."
+claim_boundary = "Compiled-graph-aware intent evaluation. Invoked as a separate process by cargo-allow only when the user explicitly configures delegation in .allow/compatibility/intent-delegation.toml."
+
+[[product]]
+product_id = "cargo-proof"
+posture = "CargoProofExperimental"
+support_tier = "experimental-opt-in"
+installed_by_default = false
+stability_claim = "Opt-in experimental product. Deferred for 0.2 per the product decision (#2939 closure deferred to #2968). Not implied by installing cargo-allow or cargo-intent."
+claim_boundary = "Exact-snapshot evidence orchestration shell. No published release on the 0.2 line."
+
+[[product]]
+product_id = "shared-protocols"
+posture = "SharedProtocolInternalOrStabilizing"
+support_tier = "internal-stabilizing"
+installed_by_default = true
+stability_claim = "Shared substrate crates (repo-protocol, repo-snapshot, repo-edit, rust-source-index) used by all three products. Product-neutral; the default build depends on no product ontology."
+claim_boundary = "Product-neutral shared protocols. The allow-core interop edge is optional and gated behind the non-default allow-core-interop feature; the default build remains neutral."
+
+[[product]]
+product_id = "legacy-migration"
+posture = "LegacyMigration"
+support_tier = "legacy"
+installed_by_default = false
+stability_claim = "Legacy migration surfaces retained for the V1-to-V2 cutover. Readable for migration audit; never grants current authority."
+claim_boundary = "Historical read-only surfaces. Removal windows are tracked in policy/removal-window-policy.toml."

@@ -226,3 +226,7 @@ mod publish_order_validation_tests;
 #[cfg(test)]
 #[path = "removal_window_policy_tests.rs"]
 mod removal_window_policy_tests;
+
+#[cfg(test)]
+#[path = "product_support_matrix_tests.rs"]
+mod product_support_matrix_tests;
