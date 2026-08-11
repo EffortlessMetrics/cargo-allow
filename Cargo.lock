@@ -278,6 +278,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "effortless-repo-protocol",
+ "effortless-rust-source-index",
  "proof-orchestrator",
  "proof-protocol",
  "serde",
