@@ -172,14 +172,16 @@ mod tests {
     fn exact_requested_and_observed_subject_is_current() {
         let selector = selector("alpha");
         let inventory = inventory(selector.clone(), "fnv1a64:current");
-        let observed = ObservedRustSubjectV1 {
-            selector: selector.clone(),
-            body_identity: "fnv1a64:current".to_string(),
-        };
+        let observed = observed(selector.clone(), "fnv1a64:current");
         let result = reconcile_rust_subject_binding(&inventory, &selector, &observed);
         assert_eq!(
             result.class,
             ProofSubjectReconciliationClassV1::ExactCurrent
+        );
+        assert_eq!(result.resolved_source_path.as_deref(), Some("src/lib.rs"));
+        assert_eq!(
+            result.resolved_body_identity.as_deref(),
+            Some("fnv1a64:current")
         );
     }
 
@@ -187,10 +189,7 @@ mod tests {
     fn observed_body_drift_is_not_current() {
         let selector = selector("alpha");
         let inventory = inventory(selector.clone(), "fnv1a64:current");
-        let observed = ObservedRustSubjectV1 {
-            selector: selector.clone(),
-            body_identity: "fnv1a64:old".to_string(),
-        };
+        let observed = observed(selector.clone(), "fnv1a64:old");
         let result = reconcile_rust_subject_binding(&inventory, &selector, &observed);
         assert_eq!(
             result.class,
@@ -203,18 +202,188 @@ mod tests {
         let requested = selector("alpha");
         let observed_selector = selector("beta");
         let mut inventory = inventory(requested.clone(), "fnv1a64:alpha");
-        inventory
-            .subjects
-            .push(subject(observed_selector.clone(), "fnv1a64:beta"));
-        let observed = ObservedRustSubjectV1 {
-            selector: observed_selector,
-            body_identity: "fnv1a64:beta".to_string(),
-        };
+        let mut substituted = subject(observed_selector.clone(), "fnv1a64:beta");
+        substituted.limitations = vec!["provider-observed limitation".to_string()];
+        inventory.subjects.push(substituted);
+        let observed = observed(observed_selector, "fnv1a64:beta");
         let result = reconcile_rust_subject_binding(&inventory, &requested, &observed);
         assert_eq!(
             result.class,
             ProofSubjectReconciliationClassV1::SelectorMismatch
         );
+        assert_eq!(
+            result.limitations,
+            vec!["provider-observed limitation".to_string()]
+        );
+    }
+
+    #[test]
+    fn requested_and_observed_missing_are_distinct() {
+        let requested = selector("alpha");
+        let requested_missing = reconcile_rust_subject_binding(
+            &empty_inventory(),
+            &requested,
+            &observed(requested.clone(), "fnv1a64:alpha"),
+        );
+        assert_eq!(
+            requested_missing.class,
+            ProofSubjectReconciliationClassV1::RequestedMissing
+        );
+
+        let observed_selector = selector("beta");
+        let observed_missing = reconcile_rust_subject_binding(
+            &inventory(requested.clone(), "fnv1a64:alpha"),
+            &requested,
+            &observed(observed_selector, "fnv1a64:beta"),
+        );
+        assert_eq!(
+            observed_missing.class,
+            ProofSubjectReconciliationClassV1::ObservedMissing
+        );
+    }
+
+    #[test]
+    fn requested_and_observed_ambiguity_are_distinct() {
+        let requested = selector("alpha");
+        let duplicate_requested = RustTestInventory {
+            subjects: vec![
+                subject(requested.clone(), "fnv1a64:alpha"),
+                subject(requested.clone(), "fnv1a64:alpha-duplicate"),
+            ],
+            status: RustTestInventoryStatus::Complete,
+            diagnostics: Vec::new(),
+        };
+        let requested_ambiguous = reconcile_rust_subject_binding(
+            &duplicate_requested,
+            &requested,
+            &observed(requested.clone(), "fnv1a64:alpha"),
+        );
+        assert_eq!(
+            requested_ambiguous.class,
+            ProofSubjectReconciliationClassV1::RequestedAmbiguous
+        );
+
+        let observed_selector = selector("beta");
+        let observed_inventory = RustTestInventory {
+            subjects: vec![
+                subject(requested.clone(), "fnv1a64:alpha"),
+                subject(observed_selector.clone(), "fnv1a64:beta"),
+                subject(observed_selector.clone(), "fnv1a64:beta-duplicate"),
+            ],
+            status: RustTestInventoryStatus::Complete,
+            diagnostics: Vec::new(),
+        };
+        let observed_ambiguous = reconcile_rust_subject_binding(
+            &observed_inventory,
+            &requested,
+            &observed(observed_selector, "fnv1a64:beta"),
+        );
+        assert_eq!(
+            observed_ambiguous.class,
+            ProofSubjectReconciliationClassV1::ObservedAmbiguous
+        );
+    }
+
+    #[test]
+    fn partial_and_malformed_selectors_fail_closed() {
+        let requested = selector("alpha");
+        let mut partial = inventory(requested.clone(), "fnv1a64:alpha");
+        partial.status = RustTestInventoryStatus::Partial;
+        let partial_result = reconcile_rust_subject_binding(
+            &partial,
+            &requested,
+            &observed(requested.clone(), "fnv1a64:alpha"),
+        );
+        assert_eq!(
+            partial_result.class,
+            ProofSubjectReconciliationClassV1::PartialInventory
+        );
+
+        let mut malformed = selector("alpha");
+        malformed.function.clear();
+        let malformed_result = reconcile_rust_subject_binding(
+            &empty_inventory(),
+            &malformed,
+            &observed(malformed.clone(), "fnv1a64:alpha"),
+        );
+        assert_eq!(
+            malformed_result.class,
+            ProofSubjectReconciliationClassV1::MalformedSelector
+        );
+    }
+
+    #[test]
+    fn unsupported_subject_postures_are_not_promoted() {
+        for (ignored, generated, conditional) in [
+            (true, false, false),
+            (false, true, false),
+            (false, false, true),
+        ] {
+            let requested = selector("alpha");
+            let mut indexed = subject(requested.clone(), "fnv1a64:alpha");
+            indexed.ignored = ignored;
+            indexed.generated_or_parameterized = generated;
+            indexed.cfg_or_feature_unknown = conditional;
+            let inventory = RustTestInventory {
+                subjects: vec![indexed],
+                status: RustTestInventoryStatus::Complete,
+                diagnostics: Vec::new(),
+            };
+            let reconciliation = reconcile_rust_subject_binding(
+                &inventory,
+                &requested,
+                &observed(requested.clone(), "fnv1a64:alpha"),
+            );
+            assert_eq!(
+                reconciliation.class,
+                ProofSubjectReconciliationClassV1::UnsupportedSubject
+            );
+        }
+    }
+
+    #[test]
+    fn reconciliation_class_strings_are_stable() {
+        for (class, expected) in [
+            (ProofSubjectReconciliationClassV1::ExactCurrent, "exact_current"),
+            (
+                ProofSubjectReconciliationClassV1::RequestedMissing,
+                "requested_missing",
+            ),
+            (
+                ProofSubjectReconciliationClassV1::ObservedMissing,
+                "observed_missing",
+            ),
+            (
+                ProofSubjectReconciliationClassV1::RequestedAmbiguous,
+                "requested_ambiguous",
+            ),
+            (
+                ProofSubjectReconciliationClassV1::ObservedAmbiguous,
+                "observed_ambiguous",
+            ),
+            (
+                ProofSubjectReconciliationClassV1::SelectorMismatch,
+                "selector_mismatch",
+            ),
+            (
+                ProofSubjectReconciliationClassV1::BodyIdentityMismatch,
+                "body_identity_mismatch",
+            ),
+            (
+                ProofSubjectReconciliationClassV1::PartialInventory,
+                "partial_inventory",
+            ),
+            (
+                ProofSubjectReconciliationClassV1::UnsupportedSubject,
+                "unsupported_subject",
+            ),
+            (
+                ProofSubjectReconciliationClassV1::MalformedSelector,
+                "malformed_selector",
+            ),
+        ] {
+            assert_eq!(class.as_str(), expected);
+        }
     }
 
     fn selector(function: &str) -> RustTestSelector {
@@ -245,6 +414,21 @@ mod tests {
             cfg_or_feature_unknown: false,
             ignored: false,
             limitations: Vec::new(),
+        }
+    }
+
+    fn observed(selector: RustTestSelector, identity: &str) -> ObservedRustSubjectV1 {
+        ObservedRustSubjectV1 {
+            selector,
+            body_identity: identity.to_string(),
+        }
+    }
+
+    fn empty_inventory() -> RustTestInventory {
+        RustTestInventory {
+            subjects: Vec::new(),
+            status: RustTestInventoryStatus::Complete,
+            diagnostics: Vec::new(),
         }
     }
 
