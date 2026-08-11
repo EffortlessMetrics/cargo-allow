@@ -2,4 +2,5 @@ kind: Fixed
 body: >-
   Remove effortless-repo-edit's optional normal dependency on cargo-allow
   product errors and project neutral repository-edit failures only at the
-  cargo-allow application boundary.
+  cargo-allow application boundary, preserving containment failures as invalid
+  configuration and other edit failures as artifact errors.
