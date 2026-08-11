@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  Remove the retired allow-core-interop capability from the checked shared
+  architecture and support policies, and make the cargo-intent and cargo-proof
+  experimental 0.1.0 support boundaries match the packages prepared for this
+  release.
