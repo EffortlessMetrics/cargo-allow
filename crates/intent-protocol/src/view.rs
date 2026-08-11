@@ -1,6 +1,6 @@
 //! Intent source-view transport envelopes (#2585-B).
 
-use crate::snapshot_package::repo_protocol::RepositorySnapshotV1;
+use effortless_repo_protocol::{RepositorySnapshotV1, ResultClassV1};
 use serde::{Deserialize, Serialize};
 
 pub const INTENT_VIEW_SCHEMA_ID: &str = "intent.view.v1";
@@ -53,7 +53,7 @@ impl IntentViewEnvelopeV1 {
 pub struct IntentViewResponseV1 {
     pub schema_id: String,
     pub view: IntentViewEnvelopeV1,
-    pub result_class: crate::snapshot_package::repo_protocol::ResultClassV1,
+    pub result_class: ResultClassV1,
     pub inventory_path_count: u32,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub limitations: Vec<String>,
@@ -62,7 +62,7 @@ pub struct IntentViewResponseV1 {
 impl IntentViewResponseV1 {
     pub fn new(
         view: IntentViewEnvelopeV1,
-        result_class: crate::snapshot_package::repo_protocol::ResultClassV1,
+        result_class: ResultClassV1,
         inventory_path_count: u32,
     ) -> Self {
         Self {
