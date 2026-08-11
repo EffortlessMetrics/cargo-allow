@@ -1,7 +1,7 @@
 //! Intent query transport envelopes (#2585-A).
 
 use crate::identity::{IntentArtifactKindV1, IntentIdentityEnvelopeV1};
-use crate::snapshot_package::repo_protocol::ResultClassV1;
+use effortless_repo_protocol::ResultClassV1;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
