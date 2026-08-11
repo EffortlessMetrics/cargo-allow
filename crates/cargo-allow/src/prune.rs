@@ -24,6 +24,20 @@ mod prune_stale;
 #[path = "prune_types.rs"]
 mod prune_types;
 pub(crate) use prune_args::PruneArgs;
+
+pub(crate) fn parity_prune_args(root: std::path::PathBuf, config: std::path::PathBuf) -> PruneArgs {
+    PruneArgs {
+        root: crate::RootArgs { root: Some(root) },
+        config: Some(config),
+        stale: true,
+        allow_id: None,
+        dry_run: false,
+        write: true,
+        include_untracked: true,
+        format: HumanJsonFormat::Human,
+        output: None,
+    }
+}
 #[cfg(test)]
 use prune_render::render_prune_stale_result;
 use prune_render::{

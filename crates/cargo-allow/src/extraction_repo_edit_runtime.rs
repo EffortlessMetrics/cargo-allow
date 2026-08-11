@@ -7,8 +7,8 @@
 //! promote a cutover or manufacture command-receipt evidence.
 
 use allow_core::{
-    AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, FindingKind, LastSeen,
-    Lifecycle, MatchStatus, Selector, SimpleDate,
+    AllowConfig, AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, FindingKind,
+    LastSeen, Lifecycle, MatchStatus, Selector, SimpleDate,
 };
 use allow_match::{CheckMode, evaluate};
 use allow_policy::extraction_parity::{ParityComparison, ParityObservation, compare_observations};
@@ -60,6 +60,7 @@ fn run_cases(workspace: &Path) -> CargoAllowResult<RepoEditParityRun> {
         migrate_command_case(workspace),
         add_command_case(workspace),
         refresh_command_case(workspace),
+        prune_command_case(workspace),
     ]
     .into_iter()
     .collect::<CargoAllowResult<Vec<_>>>()?;
@@ -186,6 +187,90 @@ fn refresh_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase
         old_output,
         new_output,
     ))
+}
+
+fn prune_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase> {
+    let old_root = workspace.join("prune-old");
+    let new_root = workspace.join("prune-new");
+    let old_policy = old_root.join("policy").join("allow.toml");
+    let new_policy = new_root.join("policy").join("allow.toml");
+    let initial = parity_prune_policy();
+    for root in [&old_root, &new_root] {
+        fs::create_dir_all(root.join("policy")).map_err(io_error)?;
+        fs::create_dir_all(root.join("docs")).map_err(io_error)?;
+        fs::write(root.join("docs/live.md"), "# live\n").map_err(io_error)?;
+        fs::write(root.join("policy/allow.toml"), &initial).map_err(io_error)?;
+    }
+
+    crate::prune::cmd_prune(&crate::prune::parity_prune_args(
+        old_root.clone(),
+        PathBuf::from("policy/allow.toml"),
+    ))?;
+
+    let mut expected_config = parse_policy(&initial)?;
+    expected_config
+        .allow
+        .retain(|entry| entry.id != "allow-stale");
+    validate_policy(&expected_config)?;
+    let expected = render_policy(&expected_config);
+    apply_single_target(SingleTargetApplyRequest {
+        repository_root: &new_root,
+        target: &new_policy,
+        contents: &expected,
+        caller_reference: Some("cargo-allow:prune"),
+        lock_identity: Some("policy/allow.toml".to_string()),
+        mode: SingleTargetApplyMode::AtomicReplace,
+    })
+    .into_result()
+    .map_err(|error| {
+        CargoAllowError::with_kind(CargoAllowErrorKind::Internal, error.to_string())
+    })?;
+
+    let old_output = fs::read_to_string(old_policy).map_err(io_error)?;
+    let new_output = fs::read_to_string(new_policy).map_err(io_error)?;
+    Ok(parity_case(
+        "parity-repo-edit-prune-command-v1",
+        "prune:policy/allow.toml",
+        old_output,
+        new_output,
+    ))
+}
+
+fn parity_prune_policy() -> String {
+    let mut config = AllowConfig::empty();
+    config
+        .allow
+        .push(parity_prune_entry("allow-live", "docs/live.md"));
+    config
+        .allow
+        .push(parity_prune_entry("allow-stale", "docs/stale.md"));
+    render_policy(&config)
+}
+
+fn parity_prune_entry(id: &str, path: &str) -> AllowEntry {
+    AllowEntry {
+        id: id.to_string(),
+        kind: FindingKind::NonRustFile,
+        family: Some("documentation".to_string()),
+        path: Some(PathBuf::from(path)),
+        glob: None,
+        owner: "parity".to_string(),
+        classification: "reviewed_lint_exception".to_string(),
+        reason: "RepoEdit prune parity fixture.".to_string(),
+        evidence: Vec::new(),
+        links: Vec::new(),
+        occurrence_limit: None,
+        lifecycle: Lifecycle {
+            created: Some("2026-05-09".to_string()),
+            review_after: Some("2026-11-01".to_string()),
+            expires: None,
+        },
+        selector: Selector {
+            ast_kind: Some("tracked_file".to_string()),
+            ..Selector::default()
+        },
+        last_seen: None,
+    }
 }
 
 fn add_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase> {
