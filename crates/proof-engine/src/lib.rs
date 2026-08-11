@@ -61,8 +61,8 @@ pub use contradiction::{
     ContradictionError, detect_contradictions, validate_engine_contradiction_report,
 };
 pub use currentness::{
-    CURRENTNESS_REPORT_SCHEMA_ID, CurrentnessError, CurrentnessReportV1, CurrentnessStatusV1,
-    evaluate_currentness, receipt_set_digest,
+    CURRENTNESS_REPORT_SCHEMA_ID, CurrentnessError, CurrentnessReportV1, evaluate_currentness,
+    receipt_set_digest,
 };
 pub use dry_run::{
     DRY_RUN_PLAN_REPORT_SCHEMA_ID, DryRunError, DryRunPlanLineV1, DryRunPlanReportV1,

@@ -1,33 +1,23 @@
 //! Currentness evaluation for captured receipts (#2589-A).
+//!
+//! Currentness vocabulary is owned by proof-protocol as `BindingCurrentnessV1`
+//! (#3319 reconciliation). proof-engine previously declared a duplicate
+//! `CurrentnessStatusV1` (Current/Stale/Missing) that was a strict subset of
+//! the protocol's `BindingCurrentnessV1` (Current/Stale/Missing/Incomparable).
+//! The engine now reuses the protocol type directly so there is a single
+//! currentness vocabulary across the proof family.
 
-use proof_protocol::ProofReceiptSetV1;
+use proof_protocol::{BindingCurrentnessV1, ProofReceiptSetV1};
 
 use crate::captured_receipts::{CapturedReceiptStoreV1, validate_captured_receipt_store};
 
 pub const CURRENTNESS_REPORT_SCHEMA_ID: &str = "proof.currentness-report.v1";
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CurrentnessStatusV1 {
-    Current,
-    Stale,
-    Missing,
-}
-
-impl CurrentnessStatusV1 {
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Current => "current",
-            Self::Stale => "stale",
-            Self::Missing => "missing",
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CurrentnessReportV1 {
     pub schema_id: String,
     pub plan_id: String,
-    pub status: CurrentnessStatusV1,
+    pub status: BindingCurrentnessV1,
     pub observed_digest: Option<String>,
     pub expected_digest: Option<String>,
 }
@@ -42,16 +32,16 @@ pub fn evaluate_currentness(
         return Ok(CurrentnessReportV1 {
             schema_id: CURRENTNESS_REPORT_SCHEMA_ID.to_string(),
             plan_id: plan_id.to_string(),
-            status: CurrentnessStatusV1::Missing,
+            status: BindingCurrentnessV1::Missing,
             observed_digest: None,
             expected_digest: expected_digest.map(str::to_string),
         });
     };
     let observed_digest = receipt_set_digest(set);
     let status = match expected_digest {
-        Some(expected) if expected == observed_digest => CurrentnessStatusV1::Current,
-        Some(_) => CurrentnessStatusV1::Stale,
-        None => CurrentnessStatusV1::Current,
+        Some(expected) if expected == observed_digest => BindingCurrentnessV1::Current,
+        Some(_) => BindingCurrentnessV1::Stale,
+        None => BindingCurrentnessV1::Current,
     };
     Ok(CurrentnessReportV1 {
         schema_id: CURRENTNESS_REPORT_SCHEMA_ID.to_string(),
