@@ -3,6 +3,8 @@ use allow_core::CargoAllowResult;
 use std::collections::BTreeSet;
 use std::path::Path;
 
+pub const EXTRACTION_SHIM_REGISTRY_RELATIVE_PATH: &str = "policy/extraction-shims.toml";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ShimDiagnosticKind {
     DuplicateShimId,
@@ -100,7 +102,7 @@ pub fn validate_extraction_shim_registry(
 }
 
 pub fn validate_extraction_shim_registry_at(
-    root: &Path,
+    _root: &Path,
     registry_path: &Path,
     move_ledger_path: &Path,
 ) -> CargoAllowResult<(ExtractionShimRegistry, Vec<ShimDiagnostic>, ShimReport)> {
@@ -122,6 +124,17 @@ pub fn validate_extraction_shim_registry_at(
         crate::product_move::parse_product_move_ledger_at(Some(move_ledger_path), &ledger_text)?;
     let move_ids: Vec<String> = ledger.entry.iter().map(|entry| entry.id.clone()).collect();
 
-    let _ = root;
     Ok(validate_extraction_shim_registry(registry, &move_ids))
+}
+
+pub fn extraction_shim_registry_blocks_enforced_check(root: &Path) -> CargoAllowResult<bool> {
+    let registry_path = root.join(EXTRACTION_SHIM_REGISTRY_RELATIVE_PATH);
+    if !registry_path.is_file() {
+        return Ok(false);
+    }
+
+    let move_ledger_path = root.join(crate::product_move::PRODUCT_MOVE_LEDGER_RELATIVE_PATH);
+    let (_, diagnostics, _) =
+        validate_extraction_shim_registry_at(root, &registry_path, &move_ledger_path)?;
+    Ok(!diagnostics.is_empty())
 }

@@ -21,6 +21,9 @@ use check_deny::{deny_escalation_failed, validate_deny_statuses};
 #[path = "check_product_move_guard.rs"]
 mod check_product_move_guard;
 use check_product_move_guard::product_move_ledger_fails_check;
+#[path = "check_extraction_shim_guard.rs"]
+mod check_extraction_shim_guard;
+use check_extraction_shim_guard::extraction_shim_registry_fails_check;
 
 use crate::federation_report::FederationReportBundle;
 use crate::{
@@ -209,13 +212,15 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
         validate_deny_statuses(&args.deny, &summary, context)?;
     }
     let product_move_ledger_failed = product_move_ledger_fails_check(&root, mode)?;
+    let extraction_shim_registry_failed = extraction_shim_registry_fails_check(&root, mode)?;
     let failed = check_failed_for_outcomes(&outcomes, &findings, &report_cfg, mode)
         || evidence.has_broken_evidence_links()
         || federation_bundle.has_blocking_divergence()
         || (!args.deny.is_empty() && deny_escalation_failed(&args.deny, &summary, context))
         || (inventory_facts.rust_files_skipped > 0 && mode == CheckMode::NoNew)
         || (inventory_facts.rust_files_with_parse_errors > 0 && mode == CheckMode::NoNew)
-        || product_move_ledger_failed;
+        || product_move_ledger_failed
+        || extraction_shim_registry_failed;
     if should_emit_report_stdout(
         args.output.as_deref(),
         args.receipt.as_deref(),
