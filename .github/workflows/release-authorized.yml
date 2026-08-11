@@ -1,0 +1,132 @@
+name: Authorized namespace publication
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - release/authorize-v0.2.0.json
+
+permissions:
+  contents: write
+
+concurrency:
+  group: authorized-release-v0.2.0
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  publish-namespace-and-tag:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Verify exact release authorization
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          import subprocess
+
+          root = Path('.')
+          authorization_path = root / 'release/authorize-v0.2.0.json'
+          authorization = json.loads(authorization_path.read_text(encoding='utf-8'))
+          required = {
+              'schema_id', 'release', 'candidate_parent_commit',
+              'candidate_parent_tree', 'cargo_lock_sha256',
+              'topology_sha256', 'authorization',
+          }
+          missing = sorted(required - authorization.keys())
+          if missing:
+              raise SystemExit(f'authorization missing fields: {missing}')
+          if authorization['schema_id'] != 'cargo-allow.release-authorization.v1':
+              raise SystemExit('unexpected authorization schema')
+          if authorization['release'] != 'v0.2.0':
+              raise SystemExit('authorization is not for v0.2.0')
+          parent_commit = subprocess.check_output(
+              ['git', 'rev-parse', 'HEAD^1^{commit}'], text=True
+          ).strip()
+          parent_tree = subprocess.check_output(
+              ['git', 'rev-parse', 'HEAD^1^{tree}'], text=True
+          ).strip()
+          if parent_commit != authorization['candidate_parent_commit']:
+              raise SystemExit('authorization parent commit differs from the selected candidate')
+          if parent_tree != authorization['candidate_parent_tree']:
+              raise SystemExit('authorization parent tree differs from the selected candidate')
+          changed = subprocess.check_output(
+              ['git', 'diff', '--name-only', 'HEAD^1', 'HEAD'], text=True
+          ).splitlines()
+          if changed != ['release/authorize-v0.2.0.json']:
+              raise SystemExit(f'authorization commit changed unexpected paths: {changed}')
+          for path, field in [
+              (Path('Cargo.lock'), 'cargo_lock_sha256'),
+              (Path('policy/product-package-topology-v2.toml'), 'topology_sha256'),
+          ]:
+              observed = hashlib.sha256(path.read_bytes()).hexdigest()
+              if observed != authorization[field]:
+                  raise SystemExit(f'{path} digest differs from authorization')
+          token = authorization['authorization']
+          if not isinstance(token, str) or not token or any(
+              character not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._:/#-'
+              for character in token
+          ):
+              raise SystemExit('authorization reference is not a bounded token')
+          print(json.dumps(authorization, indent=2, sort_keys=True))
+          PY
+      - name: Reject an existing v0.2.0 tag before first publication
+        run: |
+          set -euo pipefail
+          if git rev-parse refs/tags/v0.2.0 >/dev/null 2>&1; then
+            echo '::error::v0.2.0 already exists; use the guarded recovery path' >&2
+            exit 1
+          fi
+      - name: Require token-backed crates.io authentication
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          set -euo pipefail
+          [ -n "${CARGO_REGISTRY_TOKEN}" ] || {
+            echo '::error::CARGO_REGISTRY_TOKEN is absent; no upload was attempted' >&2
+            exit 1
+          }
+      - name: Re-prove exact candidate before upload
+        run: |
+          set -euo pipefail
+          cargo fmt --all --check
+          cargo clippy --workspace --all-targets --locked -- -D warnings
+          cargo test --workspace --locked
+          cargo run -p cargo-allow -- check --mode no-new --format markdown \
+            --receipt target/cargo-allow/check.receipt.json \
+            --output target/cargo-allow/check.md
+      - name: Publish and verify shared, intent, and proof 0.1.0 rows
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release-topology-publisher.py \
+            --mode namespace \
+            --publish \
+            --receipt target/cargo-allow/namespace-publish.receipt.json
+      - name: Upload namespace publication receipt
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: namespace-publication-receipt
+          path: |
+            target/cargo-allow/namespace-publish.receipt.json
+            target/cargo-allow/check.receipt.json
+            target/cargo-allow/check.md
+      - name: Push exact v0.2.0 tag after namespace verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "EffortlessSteven"
+          git config user.email "git@effortlesssteven.com"
+          git tag -a v0.2.0 "${GITHUB_SHA}" -m "cargo-allow v0.2.0"
+          git push origin refs/tags/v0.2.0
