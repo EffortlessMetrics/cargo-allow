@@ -3,6 +3,8 @@ use allow_inventory::resolve_source_tree_root;
 use allow_policy::extraction_parity::{ParityComparison, ParityComparisonResult, corpus_digest};
 use clap::{Args, ValueEnum};
 use serde_json::{Value, json};
+use std::collections::BTreeSet;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -29,7 +31,7 @@ pub(crate) struct ParityArgs {
 
 pub(crate) fn cmd_parity(args: &ParityArgs) -> CargoAllowResult<()> {
     let root = resolve_source_tree_root(args.root.root.as_deref(), current_dir()?)?;
-    let source_identity = source_identity(&root)?;
+    let initial_source_identity = source_identity(&root)?;
     let mut records = Vec::new();
 
     if matches!(
@@ -37,8 +39,16 @@ pub(crate) fn cmd_parity(args: &ParityArgs) -> CargoAllowResult<()> {
         ParityStageArg::All | ParityStageArg::RepoSnapshot
     ) {
         let run = crate::extraction_parity_runtime::run_repo_snapshot_parity(&root)?;
-        append_snapshot_case(&mut records, "repo-snapshot-committed", run.committed);
-        append_snapshot_case(&mut records, "repo-snapshot-staged", run.staged);
+        append_snapshot_case(
+            &mut records,
+            "parity-repo-snapshot-revision-identity-v1",
+            run.committed,
+        );
+        append_snapshot_case(
+            &mut records,
+            "parity-repo-snapshot-staged-index-v1",
+            run.staged,
+        );
     }
     if matches!(args.stage, ParityStageArg::All | ParityStageArg::RepoEdit) {
         let run = crate::extraction_repo_edit_runtime::run_repo_edit_parity(&root)?;
@@ -52,6 +62,34 @@ pub(crate) fn cmd_parity(args: &ParityArgs) -> CargoAllowResult<()> {
             );
         }
     }
+
+    if source_identity(&root)? != initial_source_identity {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            "source Git commit/tree changed during parity execution",
+        ));
+    }
+
+    let registry = load_registry(&root)?;
+    let expected_case_ids: BTreeSet<_> = registry
+        .case
+        .iter()
+        .filter(|case| stage_matches(case.stage.as_str(), args.stage))
+        .map(|case| case.id.as_str())
+        .collect();
+    let actual_case_ids: BTreeSet<_> = records
+        .iter()
+        .filter_map(|record| record.get("case_id").and_then(Value::as_str))
+        .collect();
+    let missing_case_ids: Vec<_> = expected_case_ids
+        .difference(&actual_case_ids)
+        .copied()
+        .collect();
+    let unexpected_case_ids: Vec<_> = actual_case_ids
+        .difference(&expected_case_ids)
+        .copied()
+        .collect();
+    let complete = missing_case_ids.is_empty() && unexpected_case_ids.is_empty();
 
     let digest_records = records
         .iter()
@@ -89,23 +127,25 @@ pub(crate) fn cmd_parity(args: &ParityArgs) -> CargoAllowResult<()> {
         })
         .collect::<CargoAllowResult<Vec<_>>>()?;
     let digest = corpus_digest(&digest_records);
-    let passed = records.iter().all(|record| {
+    let equivalent = records.iter().all(|record| {
         record.get("result").and_then(Value::as_str)
             == Some(ParityComparisonResult::SemanticallyEquivalent.as_str())
     });
+    let passed = complete && equivalent;
     let payload = json!({
         "schema_id": "cargo-allow.extraction-parity-runtime.v1",
         "schema_version": 1,
         "tool": "cargo-allow extraction-parity",
-        "result": if passed { "Passed" } else { "Failed" },
-        "source_identity": source_identity,
-        "stage": match args.stage {
-            ParityStageArg::All => "All",
-            ParityStageArg::RepoSnapshot => "RepoSnapshot",
-            ParityStageArg::RepoEdit => "RepoEdit",
-        },
+        "result": if passed { "Passed" } else if !complete { "Incomplete" } else { "Failed" },
+        "completeness": if complete { "Complete" } else { "Partial" },
+        "source_identity": initial_source_identity,
+        "stage": stage_name(args.stage),
         "parity_result_digest": digest,
         "records": records,
+        "expected_case_count": expected_case_ids.len(),
+        "emitted_case_count": actual_case_ids.len(),
+        "missing_case_ids": missing_case_ids,
+        "unexpected_case_ids": unexpected_case_ids,
         "claim_boundary": [
             "runtime_old_new_parity_only",
             "exact_git_commit_and_tree_identity",
@@ -125,6 +165,35 @@ pub(crate) fn cmd_parity(args: &ParityArgs) -> CargoAllowResult<()> {
             CargoAllowErrorKind::InvalidConfig,
             "runtime parity evidence contains a non-equivalent case",
         ))
+    }
+}
+
+fn load_registry(
+    root: &Path,
+) -> CargoAllowResult<allow_policy::extraction_parity::ExtractionParityRegistry> {
+    let path = root.join("policy/extraction-parity.toml");
+    let input = fs::read_to_string(&path).map_err(|error| {
+        CargoAllowError::new(format!(
+            "read extraction parity registry {}: {error}",
+            path.display()
+        ))
+    })?;
+    allow_policy::extraction_parity::parse_extraction_parity_registry_at(Some(&path), &input)
+}
+
+fn stage_name(stage: ParityStageArg) -> &'static str {
+    match stage {
+        ParityStageArg::All => "All",
+        ParityStageArg::RepoSnapshot => "RepoSnapshot",
+        ParityStageArg::RepoEdit => "RepoEdit",
+    }
+}
+
+fn stage_matches(registered: &str, requested: ParityStageArg) -> bool {
+    match requested {
+        ParityStageArg::All => matches!(registered, "RepoSnapshot" | "RepoEdit"),
+        ParityStageArg::RepoSnapshot => registered == "RepoSnapshot",
+        ParityStageArg::RepoEdit => registered == "RepoEdit",
     }
 }
 

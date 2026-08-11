@@ -8,6 +8,7 @@
 
 use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_policy::extraction_parity::{ParityComparison, ParityObservation, compare_observations};
+use effortless_repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -111,17 +112,56 @@ fn no_overwrite_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase> {
     fs::write(&old_path, "original\n").map_err(io_error)?;
     fs::write(&new_path, "original\n").map_err(io_error)?;
     let old_result =
-        crate::command_support::write_file_no_overwrite(&old_path, "replacement\n", false);
-    let new_result =
-        effortless_repo_edit::write_file_no_overwrite(&new_path, "replacement\n", false);
-    let old_output = write_output(old_result, &old_path);
-    let new_output = write_output(new_result, &new_path);
+        crate::command_support::write_file_no_overwrite(&old_path, "replacement\n", true);
+    let new_result = apply_single_target(SingleTargetApplyRequest {
+        repository_root: &new_root,
+        target: &new_path,
+        contents: "replacement\n",
+        caller_reference: Some("extraction-parity"),
+        lock_identity: None,
+        mode: SingleTargetApplyMode::ReplaceWithBackup,
+    });
+    let old_output = backup_output(old_result, &old_path);
+    let new_output = backup_receipt_output(new_result, &new_path);
     Ok(parity_case(
         "parity-repo-edit-apply-backup-mode-v1",
         "no_overwrite",
         old_output,
         new_output,
     ))
+}
+
+fn backup_output<E: std::fmt::Display>(result: Result<(), E>, path: &Path) -> String {
+    match result {
+        Ok(()) => file_and_backup_output(path),
+        Err(error) => format!("error:{error}"),
+    }
+}
+
+fn backup_receipt_output(
+    response: effortless_repo_edit::SingleTargetApplyResponse,
+    path: &Path,
+) -> String {
+    if response.receipt.applied() {
+        file_and_backup_output(path)
+    } else {
+        format!(
+            "error:{}",
+            response
+                .receipt
+                .error_detail
+                .as_deref()
+                .unwrap_or("single-target apply failed")
+        )
+    }
+}
+
+fn file_and_backup_output(path: &Path) -> String {
+    let backup = path.with_extension("toml.bak");
+    match (fs::read_to_string(path), fs::read_to_string(backup)) {
+        (Ok(contents), Ok(backup)) => format!("target={contents}|backup={backup}"),
+        (target, backup) => format!("target={target:?}|backup={backup:?}"),
+    }
 }
 
 fn mutation_lock_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase> {
