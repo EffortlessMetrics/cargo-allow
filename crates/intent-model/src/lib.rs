@@ -3,14 +3,25 @@
 //! Most users should use [cargo-allow](https://github.com/EffortlessMetrics/cargo-allow);
 //! `intent-model` is an internal cargo-intent crate for spec-system domain facts.
 //!
-//! This crate will own spec-system configuration and domain DTOs from
-//! `allow-policy::spec_system`. It parses source-tree artifact bytes without
-//! executing repository code and does not invoke Cargo, rustc, Clippy, build
-//! scripts, proc macros, or proof commands.
+//! This crate owns authored spec-system configuration and domain DTOs. It
+//! parses source-tree artifact bytes without executing repository code and does
+//! not invoke Cargo, rustc, Clippy, build scripts, proc macros, or proof
+//! commands.
 
+extern crate self as allow_core;
+
+mod error;
 mod parity;
 mod spec_system;
 
+pub use error::{
+    IntentModelError, IntentModelErrorKind, IntentModelErrorLocation, IntentModelResult,
+    normalize_path, read_text_file_capped, stable_hash_hex,
+};
+pub use error::{
+    IntentModelError as CargoAllowError, IntentModelErrorKind as CargoAllowErrorKind,
+    IntentModelResult as CargoAllowResult,
+};
 pub use parity::{
     SpecSystemParityContract, load_spec_system_parity_contract, spec_system_parity_contract_path,
     spec_system_parity_contract_paths,

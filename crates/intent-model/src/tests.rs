@@ -1,5 +1,6 @@
 use crate::parity::{SpecSystemParityContract, load_spec_system_parity_contract};
-use std::path::PathBuf;
+use crate::{IntentModelError, IntentModelErrorKind};
+use std::path::{Path, PathBuf};
 
 #[test]
 fn parity_contracts_load_from_fixtures() -> Result<(), String> {
@@ -43,6 +44,52 @@ fn spec_system_snapshot_matches_intent_model() -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+#[test]
+fn intent_error_retains_kind_and_toml_location() -> Result<(), String> {
+    let source = "mode = \"blocking\"\nunknown = true\n";
+    let start = source
+        .find("unknown")
+        .ok_or_else(|| "fixture token missing".to_string())?;
+    let error = IntentModelError::with_kind(IntentModelErrorKind::InvalidConfig, "invalid config")
+        .with_toml_span(
+            Some(Path::new("intent.toml")),
+            source,
+            Some(start..start + 7),
+        );
+
+    if error.kind() != IntentModelErrorKind::InvalidConfig {
+        return Err(format!("unexpected error kind: {:?}", error.kind()));
+    }
+    let location = error
+        .location()
+        .ok_or_else(|| "TOML location missing".to_string())?;
+    if location.path.as_deref() != Some("intent.toml") || location.line != 2 || location.column != 1
+    {
+        return Err(format!("unexpected TOML location: {location:?}"));
+    }
+    Ok(())
+}
+
+#[test]
+fn intent_model_has_no_cargo_allow_product_dependency() -> Result<(), String> {
+    let manifest = std::fs::read_to_string(workspace_root().join("crates/intent-model/Cargo.toml"))
+        .map_err(|error| format!("read intent-model manifest: {error}"))?;
+    let dependencies = manifest
+        .split("[dependencies]")
+        .nth(1)
+        .and_then(|rest| rest.split("\n[").next())
+        .ok_or_else(|| "intent-model dependencies table missing".to_string())?;
+    if dependencies.contains("allow-core") || dependencies.contains("allow_core") {
+        return Err("intent-model retains a cargo-allow product dependency".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn intent_content_identity_remains_compatible() {
+    assert_eq!(crate::stable_hash_hex("abc"), "fnv1a64:e71fa2190541574b");
 }
 
 fn validate_contract(contract: &SpecSystemParityContract) -> Result<(), String> {

@@ -721,6 +721,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "intent-compiler"
+version = "0.1.0"
+dependencies = [
+ "intent-protocol",
+ "serde",
+ "serde_json",
+ "toml",
+]
+
+[[package]]
 name = "intent-edit"
 version = "0.1.0"
 dependencies = [
@@ -733,20 +743,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "intent-compiler"
-version = "0.1.0"
-dependencies = [
- "intent-protocol",
- "serde",
- "serde_json",
- "toml",
-]
-
-[[package]]
 name = "intent-model"
 version = "0.1.0"
 dependencies = [
- "allow-core",
  "serde",
  "serde_json",
  "toml",
