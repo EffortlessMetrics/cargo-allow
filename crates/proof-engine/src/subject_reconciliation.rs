@@ -344,7 +344,10 @@ mod tests {
     #[test]
     fn reconciliation_class_strings_are_stable() {
         for (class, expected) in [
-            (ProofSubjectReconciliationClassV1::ExactCurrent, "exact_current"),
+            (
+                ProofSubjectReconciliationClassV1::ExactCurrent,
+                "exact_current",
+            ),
             (
                 ProofSubjectReconciliationClassV1::RequestedMissing,
                 "requested_missing",
