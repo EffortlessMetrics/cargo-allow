@@ -66,6 +66,16 @@ fn ignores_out_of_line_modules_when_extracting_inline_modules() -> Result<(), St
 }
 
 #[test]
+fn handles_empty_and_unscoped_use_lists() -> Result<(), String> {
+    let scan = scan_rust_source_coupling("use broken::{,};\nuse {product_b::item};\n")
+        .map_err(|error| format!("scan edge-case use lists: {error}"))?;
+    if scan.facts.is_empty() {
+        return Err("edge-case use lists produced no facts".to_string());
+    }
+    Ok(())
+}
+
+#[test]
 fn preserves_parse_error_signal() -> Result<(), String> {
     let scan = scan_rust_source_coupling("use broken::{\n")
         .map_err(|error| format!("scan malformed source: {error}"))?;

@@ -52,7 +52,7 @@ fn rejects_only_known_cross_product_imports() -> Result<(), String> {
     let manifest = fixture_manifest()?;
     let sources = vec![(
         PathBuf::from("crates/product-a/src/lib.rs"),
-        "use product_b::private_api;\nuse product_a::own_api;\nuse shared_protocol::Wire;\nuse external::Thing;\nuse crate::local;\n".to_string(),
+        "use product_b::private_api;\nuse product_b::another_api;\nuse product_a::own_api;\nuse shared_protocol::Wire;\nuse external::Thing;\nuse crate::local;\n".to_string(),
     )];
     let forbidden = BTreeMap::from([(
         "product-a".to_string(),
@@ -60,9 +60,9 @@ fn rejects_only_known_cross_product_imports() -> Result<(), String> {
     )]);
     let diagnostics = source_coupling_diagnostics_for_sources(&manifest, &forbidden, &sources)
         .map_err(|error| format!("scan coupling fixture: {error}"))?;
-    if diagnostics.len() != 1 {
+    if diagnostics.len() != 2 {
         return Err(format!(
-            "expected one cross-product diagnostic, got {diagnostics:?}"
+            "expected two cross-product diagnostics, got {diagnostics:?}"
         ));
     }
     let diagnostic = diagnostics
