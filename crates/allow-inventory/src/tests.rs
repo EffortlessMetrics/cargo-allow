@@ -33,6 +33,10 @@ fn dot_git_ignore_does_not_swallow_dot_github() {
 
 #[test]
 fn inventory_defaults_to_git_tracked_and_can_include_untracked() {
+    if !git_available() {
+        eprintln!("skipped: git not available");
+        return;
+    }
     let root = temp_root("include-untracked");
     write_file(root.join("tracked.txt"), "tracked");
     write_file(root.join("untracked.txt"), "untracked");
@@ -67,6 +71,10 @@ fn inventory_defaults_to_git_tracked_and_can_include_untracked() {
 
 #[test]
 fn inventory_without_scope_reports_complete() {
+    if !git_available() {
+        eprintln!("skipped: git not available");
+        return;
+    }
     let root = temp_root("complete-inventory");
     write_file(root.join("tracked.txt"), "tracked");
     run_git(&root, &["init"]);
@@ -88,6 +96,10 @@ fn inventory_without_scope_reports_complete() {
 
 #[test]
 fn git_tracked_inventory_reports_empty_tracked_set() {
+    if !git_available() {
+        eprintln!("skipped: git not available");
+        return;
+    }
     let root = temp_root("empty-git-tracked");
     write_file(root.join("untracked.txt"), "untracked");
     run_git(&root, &["init"]);
@@ -120,6 +132,10 @@ fn git_ls_files_z_parser_preserves_newlines_inside_paths() {
 
 #[test]
 fn git_tracked_inventory_skips_deleted_worktree_files() {
+    if !git_available() {
+        eprintln!("skipped: git not available");
+        return;
+    }
     let root = temp_root("deleted-tracked-file");
     write_file(root.join("kept.txt"), "kept");
     write_file(root.join("deleted.txt"), "deleted");
@@ -217,6 +233,10 @@ fn visit_call_presence_observer() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 fn nested_target_is_inventoried_in_all_sources() -> Result<(), Box<dyn std::error::Error>> {
+    if !git_available() {
+        eprintln!("skipped: git not available");
+        return Ok(());
+    }
     let git_root = temp_root("nested-target-git");
     fs::create_dir_all(git_root.join("src").join("target"))?;
     fs::create_dir_all(git_root.join("target"))?;
@@ -353,6 +373,10 @@ fn inventory_applies_custom_ignored_globs() {
 
 #[test]
 fn source_tree_root_uses_nearest_git_root_without_cargo_manifest() {
+    if !git_available() {
+        eprintln!("skipped: git not available");
+        return;
+    }
     let root = temp_root("git-root-no-cargo");
     let nested = root.join("src").join("nested");
     fs::create_dir_all(&nested)
@@ -389,6 +413,10 @@ fn source_tree_root_accepts_gitfile_worktree_marker_without_cargo_manifest() {
 
 #[test]
 fn source_tree_root_ignores_broken_cargo_manifest() {
+    if !git_available() {
+        eprintln!("skipped: git not available");
+        return;
+    }
     let root = temp_root("broken-cargo");
     let nested = root.join("crates").join("demo");
     fs::create_dir_all(&nested)
@@ -562,6 +590,18 @@ fn run_git(root: &Path, args: &[&str]) {
         .status()
         .unwrap_or_else(|err| std::panic::panic_any(format!("invoke git: {err}")));
     assert!(status.success(), "git command failed: {args:?}");
+}
+
+/// Whether the system `git` binary is available (#1908).
+///
+/// Git-spawning tests call this at the top and return early (with a skip
+/// message) when git is absent, so they do not hard-panic in gitless
+/// sandboxes. Pure-parser tests do not call git and remain always-on.
+fn git_available() -> bool {
+    Command::new("git")
+        .arg("--version")
+        .status()
+        .is_ok_and(|s| s.success())
 }
 
 fn remove_dir(path: &Path) {
