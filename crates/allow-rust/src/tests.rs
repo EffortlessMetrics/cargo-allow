@@ -11,6 +11,7 @@ mod lint;
 mod package;
 mod panic;
 mod parse_error;
+mod proptest_parser;
 mod safety_comment_nodes;
 mod scope;
 mod structural_identity;
