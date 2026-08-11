@@ -208,7 +208,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn structural_subject_mismatch_blocks_grip_comparison() {
+    fn structural_subject_mismatch_blocks_grip_comparison() -> Result<(), String> {
         let requested = selector("alpha");
         let observed_selector = selector("beta");
         let inventory = RustTestInventory {
@@ -255,12 +255,15 @@ mod tests {
             expected_snapshot_digest: "sha256:v1:snapshot",
             subject_binding: Some(&binding),
         })
-        .expect("valid receipt and purpose should compare");
+        .map_err(|error| format!("valid receipt and purpose should compare: {error:?}"))?;
 
-        assert_eq!(
-            comparison.disposition,
-            GripComparisonDispositionV1::StaleOrInvalidSummary
-        );
+        if comparison.disposition != GripComparisonDispositionV1::StaleOrInvalidSummary {
+            return Err(format!(
+                "structural mismatch must block comparison, got {:?}",
+                comparison.disposition
+            ));
+        }
+        Ok(())
     }
 
     fn selector(function: &str) -> RustTestSelector {
