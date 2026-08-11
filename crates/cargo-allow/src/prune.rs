@@ -72,8 +72,10 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             config_path(&root, args.config.as_deref()).ok_or_else(missing_policy_config_error)?;
         crate::policy_config::assert_path_within_root(&root, &path)?;
         Some({
-            let target = effortless_repo_edit::resolve_mutation_target(&path, &root)?;
-            MutationLock::acquire_for_target(&target)?
+            let target = effortless_repo_edit::resolve_mutation_target(&path, &root)
+                .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+            MutationLock::acquire_for_target(&target)
+                .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?
         })
     } else {
         None
@@ -167,7 +169,8 @@ pub(crate) fn cmd_prune(args: &PruneArgs) -> CargoAllowResult<()> {
             ),
             mode: SingleTargetApplyMode::AtomicReplace,
         })
-        .into_result()?;
+        .into_result()
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
         Some(policy_path.clone())
     } else {
         None

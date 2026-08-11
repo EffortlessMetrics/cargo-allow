@@ -292,7 +292,8 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
                 receipt_context,
             )
         });
-        write_file(path, &receipt)?;
+        write_file(path, &receipt)
+            .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     }
     if failed {
         process::exit(1);
@@ -442,7 +443,8 @@ fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
                 receipt_context,
             )
         });
-        write_file(path, &receipt)?;
+        write_file(path, &receipt)
+            .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     }
     if failed {
         process::exit(1);
@@ -486,10 +488,8 @@ fn write_check_error_receipt(
         &provenance.started_at,
         &provenance.run_id,
     );
-    Ok(write_file(
-        path,
-        &render_error_receipt(&err.to_string(), context),
-    )?)
+    write_file(path, &render_error_receipt(&err.to_string(), context))
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)
 }
 
 fn should_emit_report_stdout(
