@@ -124,7 +124,7 @@ column = 1
     let finding = findings
         .iter()
         .find(|finding| {
-            finding.path == PathBuf::from("src/lib.rs")
+            finding.path == Path::new("src/lib.rs")
                 && finding.family.as_deref() == Some("expect_attribute")
         })
         .ok_or_else(|| CargoAllowError::new("refresh parity finding was not discovered"))?;
