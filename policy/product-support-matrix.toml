@@ -29,7 +29,7 @@ product_id = "cargo-intent"
 posture = "CargoIntentExperimental"
 support_tier = "experimental-opt-in"
 installed_by_default = false
-stability_claim = "Opt-in experimental product. Not implied by installing cargo-allow. Selected explicitly via the cargo-intent binary when a user wants compiled-graph-aware intent evaluation."
+stability_claim = "Opt-in experimental 0.1.0 product. Not implied by installing cargo-allow. Selected explicitly via the cargo-intent binary when a user wants compiled-graph-aware intent evaluation."
 claim_boundary = "Compiled-graph-aware intent evaluation. Invoked as a separate process by cargo-allow only when the user explicitly configures delegation in .allow/compatibility/intent-delegation.toml."
 
 [[product]]
@@ -37,16 +37,16 @@ product_id = "cargo-proof"
 posture = "CargoProofExperimental"
 support_tier = "experimental-opt-in"
 installed_by_default = false
-stability_claim = "Opt-in experimental product. Deferred for 0.2 per the product decision (#2939 closure deferred to #2968). Not implied by installing cargo-allow or cargo-intent."
-claim_boundary = "Exact-snapshot evidence orchestration shell. No published release on the 0.2 line."
+stability_claim = "Opt-in experimental 0.1.0 product. Not implied by installing cargo-allow or cargo-intent. Selected explicitly when a user wants exact-snapshot evidence orchestration."
+claim_boundary = "Exact-snapshot evidence orchestration shell. Structural subject matches do not become completed proof without execution and current receipt evidence."
 
 [[product]]
 product_id = "shared-protocols"
 posture = "SharedProtocolInternalOrStabilizing"
 support_tier = "internal-stabilizing"
 installed_by_default = true
-stability_claim = "Shared substrate crates (repo-protocol, repo-snapshot, repo-edit, rust-source-index) used by all three products. Product-neutral; the default build depends on no product ontology."
-claim_boundary = "Product-neutral shared protocols. The allow-core interop edge is optional and gated behind the non-default allow-core-interop feature; the default build remains neutral."
+stability_claim = "Shared substrate crates (effortless-repo-protocol, effortless-repo-snapshot, effortless-repo-edit, effortless-rust-source-index) used by the three products. Product-neutral; the default build depends on no product ontology."
+claim_boundary = "Product-neutral shared protocols. Current shared manifests have no allow-core product dependency or allow-core-interop feature; product adapters own any conversion into cargo-allow types."
 
 [[product]]
 product_id = "legacy-migration"

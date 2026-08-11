@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  Package and install the complete seven-crate cargo-intent candidate closure,
+  including intent-model and effortless-rust-source-index, so isolated release
+  verification cannot resolve new internal dependencies from the workspace or
+  from an unrelated registry version.
