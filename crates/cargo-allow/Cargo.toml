@@ -45,7 +45,7 @@ allow-report.workspace = true
 allow-diff.workspace = true
 allow-policy-legacy.workspace = true
 effortless-repo-protocol.workspace = true
-effortless-repo-edit = { workspace = true, features = ["allow-core-interop"] }
+effortless-repo-edit.workspace = true
 effortless-repo-snapshot.workspace = true
 clap.workspace = true
 clap_complete.workspace = true
