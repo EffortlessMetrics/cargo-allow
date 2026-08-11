@@ -15,10 +15,11 @@ Product identity, config entrypoint, renderer framework, and exit mapping. `chan
 
 ## Install smoke (#2599-C)
 
-`scripts/intent-candidate-smoke.sh` packages the five-crate intent stack from
-`docs/dogfood/fixtures/release/intent-candidate-crate-set.toml`, installs
-`cargo-intent` from extracted packages outside the workspace, and emits
-`cargo-allow.intent-candidate-smoke.v1`. The harness denies workspace
-`crates/` reads during decisive install and rejects accidental
+`scripts/intent-candidate-smoke.sh` packages the seven-crate intent stack from
+`docs/dogfood/fixtures/release/intent-candidate-crate-set.toml`, including the
+neutral Rust source index and authored intent model consumed by
+`intent-compiler`. It installs `cargo-intent` from extracted packages outside
+the workspace and emits `cargo-allow.intent-candidate-smoke.v1`. The harness
+denies workspace `crates/` reads during decisive install and rejects accidental
 `target/debug/cargo-intent` usage. It does not invoke proof runners or
 `cargo test`.

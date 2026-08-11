@@ -1,11 +1,29 @@
 //! RIPR ProofProviderV1 implementation (#2556).
 
-use proof_engine::{ProofProviderV1, ProviderApiError};
+use effortless_rust_source_index::{RustTestInventory, RustTestSelector};
+use proof_engine::{
+    ObservedRustSubjectV1, ProofProviderV1, ProofSubjectReconciliationV1, ProviderApiError,
+    reconcile_rust_subject_binding,
+};
 use proof_protocol::{
     ProofCapabilityCatalogV1, ProofCapabilityKindV1, ProofCapabilityV1, ProofPlanV1,
 };
 
 pub const RIPR_PROOF_PROVIDER_ID: &str = "proof.ripr.v1";
+
+/// Structural subject evidence supplied by the RIPR adapter before receipt
+/// currentness is evaluated.
+pub struct RiprSubjectBindingRequest<'a> {
+    pub inventory: &'a RustTestInventory,
+    pub requested: &'a RustTestSelector,
+    pub observed: &'a ObservedRustSubjectV1,
+}
+
+pub fn reconcile_ripr_subject_binding(
+    request: &RiprSubjectBindingRequest<'_>,
+) -> ProofSubjectReconciliationV1 {
+    reconcile_rust_subject_binding(request.inventory, request.requested, request.observed)
+}
 
 pub struct RiprProofProviderV1 {
     catalog: ProofCapabilityCatalogV1,

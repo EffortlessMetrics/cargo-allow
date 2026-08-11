@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  Reconcile proof-orchestrator's checked-in upstream boundary receipt with its
+  actual internal manifest dependencies, and derive a unit-test assertion from
+  the manifest so future dependency additions cannot leave both authorities
+  falsely green.

@@ -278,6 +278,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "effortless-repo-protocol",
+ "effortless-rust-source-index",
  "proof-orchestrator",
  "proof-protocol",
  "serde",
@@ -725,6 +726,8 @@ dependencies = [
 name = "intent-compiler"
 version = "0.1.0"
 dependencies = [
+ "effortless-rust-source-index",
+ "intent-model",
  "intent-protocol",
  "serde",
  "serde_json",
@@ -1038,6 +1041,7 @@ name = "proof-orchestrator"
 version = "0.1.0"
 dependencies = [
  "effortless-repo-protocol",
+ "effortless-rust-source-index",
  "proof-protocol",
  "serde",
  "toml",

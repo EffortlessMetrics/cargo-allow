@@ -12,6 +12,7 @@ mod packet;
 mod parity;
 mod parity_corpus;
 mod phase_obligations;
+mod subject_resolution;
 mod workspace;
 
 pub use domain_queries::{
@@ -57,6 +58,9 @@ pub use phase_obligations::{
     InventoryPostureV1, ObligationPostureV1, PHASE_OBLIGATION_PLAN_SCHEMA_ID, PRECOMMIT_PHASE_ID,
     PhaseObligationCompileInputV1, PhaseObligationItemV1, PhaseObligationKindV1,
     PhaseObligationPlanV1, compile_phase_obligation_plan, load_phase_obligation_plan_toml,
+};
+pub use subject_resolution::{
+    IntentSubjectResolutionClassV1, IntentSubjectResolutionV1, resolve_authored_rust_subject,
 };
 pub use workspace::{
     AUTHORITY_COMPILE_PLAN_SCHEMA_ID, AuthorityCompilePlanV1, AuthoritySourceRoleV1,

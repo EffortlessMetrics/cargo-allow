@@ -14,8 +14,7 @@ forbidden_dependency_edges = [
   "cargo-allow product -> proof-engine",
 ]
 allowed_upstream_crates = [
+  "effortless-repo-protocol",
+  "effortless-rust-source-index",
   "proof-protocol",
-  "proof-provider-api",
-  "proof-adapter-command",
-  "repo-protocol",
 ]

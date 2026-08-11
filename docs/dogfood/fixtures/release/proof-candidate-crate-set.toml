@@ -1,4 +1,4 @@
-# Four-crate ProofCandidate package / install set (#2589-B, #2937).
+# Five-crate ProofCandidate package / install set (#2589-B, #2937, #3147).
 # Shared by proof-candidate smoke and extraction parity receipts.
 # proof-provider-api and proof-adapter-command were absorbed into proof-orchestrator.
 
@@ -8,6 +8,7 @@ schema_version = 1
 # Dependency / package order (leaf → binary).
 crates = [
   "effortless-repo-protocol",
+  "effortless-rust-source-index",
   "proof-protocol",
   "proof-orchestrator",
   "cargo-proof",

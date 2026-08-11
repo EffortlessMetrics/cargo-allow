@@ -28,12 +28,15 @@ order = receipt.get("package_set", {}).get("order", [])
 assert order == [
     "effortless-repo-protocol",
     "effortless-repo-snapshot",
+    "effortless-rust-source-index",
+    "intent-model",
     "intent-protocol",
-    "intent-engine",
+    "intent-compiler",
     "cargo-intent",
 ]
 boundary = receipt.get("claim_boundary", [])
 for required in (
+    "seven_crate_intent_package_graph",
     "no_proof_or_test_invocation",
     "no_workspace_target_debug_binary",
     "source_checkout_denied_during_decisive_install",

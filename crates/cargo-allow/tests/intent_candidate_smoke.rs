@@ -14,6 +14,8 @@ const CRATE_SET: &str =
 const EXPECTED_CRATES: &[&str] = &[
     "effortless-repo-protocol",
     "effortless-repo-snapshot",
+    "effortless-rust-source-index",
+    "intent-model",
     "intent-protocol",
     "intent-compiler",
     "cargo-intent",
@@ -53,6 +55,7 @@ fn example_intent_candidate_smoke_matches_schema_constants() {
         .and_then(serde_json::Value::as_array)
         .unwrap_or_else(|| std::panic::panic_any("claim_boundary missing"));
     for required in [
+        "seven_crate_intent_package_graph",
         "no_proof_or_test_invocation",
         "no_workspace_target_debug_binary",
         "source_checkout_denied_during_decisive_install",
@@ -77,7 +80,7 @@ fn example_intent_candidate_smoke_matches_schema_constants() {
 }
 
 #[test]
-fn intent_candidate_crate_set_fixture_lists_five_package_order_crates() {
+fn intent_candidate_crate_set_fixture_lists_seven_package_order_crates() {
     for name in EXPECTED_CRATES {
         assert!(
             CRATE_SET.contains(&format!("\"{name}\"")),
