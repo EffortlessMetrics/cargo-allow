@@ -87,7 +87,7 @@ pub fn resolve_authored_rust_subject(
             observed_body_identity: None,
             candidates: candidates
                 .into_iter()
-                .map(|candidate| candidate.display_name())
+                .map(ambiguous_candidate_display)
                 .collect(),
             limitations: Vec::new(),
         },
@@ -137,6 +137,19 @@ pub fn resolve_authored_rust_subject(
             limitations: vec!["authored structural selector is malformed".to_string()],
         },
     }
+}
+
+fn ambiguous_candidate_display(candidate: RustTestSubject) -> String {
+    let selector = candidate.display_name();
+    let range = candidate.source_range;
+    format!(
+        "{selector} @ {}:{}:{}-{}:{}",
+        candidate.source_path,
+        range.start_line,
+        range.start_column,
+        range.end_line,
+        range.end_column
+    )
 }
 
 fn selector_from_anchor(anchor: &EvidenceSubjectRegistration) -> Option<RustTestSelector> {
@@ -267,10 +280,17 @@ mod tests {
     #[test]
     fn ambiguous_authored_subject_preserves_candidates() {
         let selector = selector(RustTestTargetKind::Library, "demo", "alpha");
+        let first = subject(selector.clone());
         let mut second = subject(selector.clone());
         second.source_path = "src/other.rs".to_string();
+        second.source_range = RustTestSourceRange {
+            start_line: 10,
+            start_column: 2,
+            end_line: 12,
+            end_column: 3,
+        };
         let inventory = RustTestInventory {
-            subjects: vec![subject(selector), second],
+            subjects: vec![first, second],
             status: RustTestInventoryStatus::Complete,
             diagnostics: Vec::new(),
         };
@@ -278,6 +298,9 @@ mod tests {
         let resolution = resolve_authored_rust_subject(&anchor("fnv1a64:current"), &inventory);
         assert_eq!(resolution.class, IntentSubjectResolutionClassV1::Ambiguous);
         assert_eq!(resolution.candidates.len(), 2);
+        assert_ne!(resolution.candidates[0], resolution.candidates[1]);
+        assert!(resolution.candidates[0].contains("src/lib.rs:1:1-3:2"));
+        assert!(resolution.candidates[1].contains("src/other.rs:10:2-12:3"));
         assert!(resolution.source_path.is_none());
     }
 
