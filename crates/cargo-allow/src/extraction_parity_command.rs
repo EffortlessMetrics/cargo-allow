@@ -57,22 +57,32 @@ pub(crate) fn cmd_parity(args: &ParityArgs) -> CargoAllowResult<()> {
         .iter()
         .map(|record| -> CargoAllowResult<_> {
             Ok((
-                record["case_id"].as_str().unwrap_or_default().to_string(),
+                record
+                    .get("case_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string(),
                 ParityComparison {
                     result: ParityComparisonResult::parse(
-                        record["result"].as_str().unwrap_or_default(),
+                        record
+                            .get("result")
+                            .and_then(Value::as_str)
+                            .unwrap_or_default(),
                     )?,
-                    source_identity: record["source_identity"]
-                        .as_str()
+                    source_identity: record
+                        .get("source_identity")
+                        .and_then(Value::as_str)
                         .unwrap_or_default()
                         .to_string(),
                 },
-                record["old_output"]
-                    .as_str()
+                record
+                    .get("old_output")
+                    .and_then(Value::as_str)
                     .unwrap_or_default()
                     .to_string(),
-                record["new_output"]
-                    .as_str()
+                record
+                    .get("new_output")
+                    .and_then(Value::as_str)
                     .unwrap_or_default()
                     .to_string(),
             ))
@@ -80,7 +90,8 @@ pub(crate) fn cmd_parity(args: &ParityArgs) -> CargoAllowResult<()> {
         .collect::<CargoAllowResult<Vec<_>>>()?;
     let digest = corpus_digest(&digest_records);
     let passed = records.iter().all(|record| {
-        record["result"].as_str() == Some(ParityComparisonResult::SemanticallyEquivalent.as_str())
+        record.get("result").and_then(Value::as_str)
+            == Some(ParityComparisonResult::SemanticallyEquivalent.as_str())
     });
     let payload = json!({
         "schema_id": "cargo-allow.extraction-parity-runtime.v1",

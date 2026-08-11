@@ -389,5 +389,6 @@ impl CargoAllowCommand {
         "completions",
         "reference",
         "hooks",
+        "extraction-parity",
     ];
 }
