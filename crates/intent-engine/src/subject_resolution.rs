@@ -245,8 +245,10 @@ mod tests {
 
     #[test]
     fn missing_and_malformed_authored_subjects_remain_distinct() {
-        let missing =
-            resolve_authored_rust_subject(&anchor_for_target("lib:demo", "fnv1a64:current"), &empty_inventory());
+        let missing = resolve_authored_rust_subject(
+            &anchor_for_target("lib:demo", "fnv1a64:current"),
+            &empty_inventory(),
+        );
         assert_eq!(missing.class, IntentSubjectResolutionClassV1::Missing);
         assert!(missing.selector.is_some());
 
@@ -282,12 +284,7 @@ mod tests {
     #[test]
     fn subject_postures_are_projected_without_becoming_current() {
         for (ignored, generated, conditional, expected) in [
-            (
-                true,
-                false,
-                false,
-                IntentSubjectResolutionClassV1::Ignored,
-            ),
+            (true, false, false, IntentSubjectResolutionClassV1::Ignored),
             (
                 false,
                 true,
@@ -326,11 +323,7 @@ mod tests {
     fn binary_and_integration_test_targets_resolve_exactly() {
         for (target, kind, name) in [
             ("bin:runner", RustTestTargetKind::Binary, "runner"),
-            (
-                "test:api",
-                RustTestTargetKind::IntegrationTest,
-                "api",
-            ),
+            ("test:api", RustTestTargetKind::IntegrationTest, "api"),
         ] {
             let selector = selector(kind, name, "alpha");
             let inventory = RustTestInventory {
@@ -352,7 +345,10 @@ mod tests {
     #[test]
     fn resolution_class_strings_are_stable() {
         for (class, expected) in [
-            (IntentSubjectResolutionClassV1::ExactCurrent, "exact_current"),
+            (
+                IntentSubjectResolutionClassV1::ExactCurrent,
+                "exact_current",
+            ),
             (
                 IntentSubjectResolutionClassV1::ExactBodyChanged,
                 "exact_body_changed",
