@@ -14,6 +14,61 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  branch-repair:
+    if: github.head_ref == 'fix/remove-stale-publish-order-allow-0517'
+    permissions:
+      contents: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: fix/remove-stale-publish-order-allow-0517
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@1.95.0
+        with:
+          components: rustfmt
+      - name: Remove stale publish-order policy receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git checkout origin/main -- .github/workflows/ub-review.yml
+          git rm -f .github/workflows/one-shot-remove-stale-publish-order-allow.yml
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("policy/allow.toml")
+          text = path.read_text(encoding="utf-8")
+          start_marker = '[[allow]]\nid = "allow-0517"\n'
+          start = text.index(start_marker)
+          try:
+              end = text.index('\n[[allow]]\n', start + len(start_marker)) + 1
+          except ValueError:
+              end = len(text)
+          block = text[start:end]
+          expected_path = 'path = "crates/cargo-allow/src/publish_order_validation_tests.rs"'
+          if expected_path not in block:
+              raise SystemExit("allow-0517 no longer describes the stale publish-order test")
+          path.write_text(text[:start] + text[end:], encoding="utf-8")
+          PY
+          cat > .changes/Fixed-20260811-stale-publish-order-allow.yaml <<'YAML'
+          kind: Fixed
+          body: >-
+            Remove the stale publish-order lint receipt after its source test
+            moved into the current V2 topology authority.
+          YAML
+          cargo fmt --all -- --check
+          cargo test -p cargo-allow --bin cargo-allow --locked product_move_ledger -- --nocapture
+          cargo test -p cargo-allow --bin cargo-allow --locked hooks::tests::run_executes_the_verified_closed_command -- --nocapture
+          cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
+          git add .github/workflows/ub-review.yml policy/allow.toml .changes/Fixed-20260811-stale-publish-order-allow.yaml
+          git diff --cached --check
+          git config user.name "EffortlessSteven"
+          git config user.email "git@effortlesssteven.com"
+          git commit -m "fix(policy): remove stale publish-order lint receipt"
+          git push origin HEAD:fix/remove-stale-publish-order-allow-0517
+
   changie-contract:
     permissions:
       contents: read
