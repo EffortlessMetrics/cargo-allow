@@ -50,6 +50,7 @@ dependencies = [
  "allow-policy-legacy",
  "allow-rust",
  "effortless-repo-snapshot",
+ "proptest",
  "sha2",
 ]
 
@@ -83,6 +84,7 @@ name = "allow-policy"
 version = "0.2.0"
 dependencies = [
  "allow-core",
+ "proptest",
  "serde",
  "serde_json",
  "sha2",
@@ -115,6 +117,7 @@ name = "allow-rust"
 version = "0.2.0"
 dependencies = [
  "allow-core",
+ "proptest",
  "rayon",
  "toml",
  "tree-sitter",
@@ -435,7 +438,6 @@ dependencies = [
 name = "effortless-repo-edit"
 version = "0.1.0"
 dependencies = [
- "allow-core",
  "sha2",
 ]
 
@@ -723,6 +725,8 @@ dependencies = [
 name = "intent-compiler"
 version = "0.1.0"
 dependencies = [
+ "effortless-rust-source-index",
+ "intent-model",
  "intent-protocol",
  "serde",
  "serde_json",
@@ -754,6 +758,7 @@ dependencies = [
 name = "intent-protocol"
 version = "0.1.0"
 dependencies = [
+ "effortless-repo-protocol",
  "serde",
  "serde_json",
  "toml",

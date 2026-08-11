@@ -34,24 +34,6 @@ impl std::fmt::Display for RepoEditError {
 
 impl std::error::Error for RepoEditError {}
 
-/// Product-boundary conversion: allows `?` to work at cargo-allow call sites
-/// when the `allow-core-interop` feature is enabled (#2969).
-#[cfg(feature = "allow-core-interop")]
-impl From<RepoEditError> for allow_core::CargoAllowError {
-    fn from(err: RepoEditError) -> Self {
-        // Classify containment/path errors as InvalidConfig since that's
-        // the most common caller context for repo-edit operations.
-        let msg = err.as_str();
-        let kind =
-            if msg.contains("outside") || msg.contains("not inside") || msg.contains("escape") {
-                allow_core::CargoAllowErrorKind::InvalidConfig
-            } else {
-                allow_core::CargoAllowErrorKind::Artifact
-            };
-        allow_core::CargoAllowError::with_kind(kind, msg)
-    }
-}
-
 /// FNV-1a 64-bit hash for stable lock-key derivation.
 ///
 /// Not cryptographic; stable across platforms. Byte-for-byte compatible with

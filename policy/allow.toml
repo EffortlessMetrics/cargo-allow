@@ -10052,6 +10052,27 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9214"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/extraction-cutover-status.sh"
+owner = "core/ci"
+classification = "extraction_cutover_status"
+reason = "Runs both extraction parity stages and emits a fail-closed cutover status artifact without promoting policy (#3469)."
+evidence = ["issue:3469", "workflow:.github/workflows/ci.yml", "doc:docs/architecture/extraction-parity.md"]
+created = "2026-08-11"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "sh"
+glob = "scripts/extraction-cutover-status.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9194"
 kind = "non_rust_file"
 family = "configuration"
@@ -10872,29 +10893,6 @@ review_after = "2026-11-08"
 
 [allow.selector]
 glob = "policy/product-support-matrix.toml"
-
-[[allow]]
-id = "allow-0517"
-kind = "lint_exception"
-family = "expect_attribute"
-path = "crates/cargo-allow/src/publish_order_validation_tests.rs"
-owner = "core/test"
-classification = "publish_order_validation"
-reason = "Focused publish-order validation test keeps the collapsible-if structure readable while checking workspace topology invariants (#3363)."
-evidence = ["issue:3363", "test:release_order_is_unique_and_acyclic"]
-created = "2026-08-10"
-review_after = "2027-02-01"
-
-[allow.selector]
-ast_kind = "attribute"
-lint = "clippy::collapsible_if"
-symbol = "#![expect( clippy::collapsible_if, reason = \"policy:allow-0517 publish-order topology test keeps invariant parsing readable\" )]"
-target_fingerprint = "policy:allow-0517"
-normalized_snippet_hash = "fnv1a64:b5d4259d55849551"
-
-[allow.last_seen]
-line = 1
-column = 1
 
 [[allow]]
 id = "allow-0518"

@@ -7,10 +7,14 @@
 //! promote a cutover or manufacture command-receipt evidence.
 
 use allow_core::{
-    AllowEntry, CargoAllowError, CargoAllowResult, FindingKind, Lifecycle, Selector, SimpleDate,
+    AllowConfig, AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, FindingKind,
+    LastSeen, Lifecycle, MatchStatus, Selector, SimpleDate,
 };
+use allow_match::{CheckMode, evaluate};
 use allow_policy::extraction_parity::{ParityComparison, ParityObservation, compare_observations};
-use allow_policy::{parse_policy, render_policy, starter_policy};
+use allow_policy::{
+    ledger_self_receipt, parse_policy, render_policy, starter_policy, validate_policy,
+};
 use effortless_repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -33,8 +37,8 @@ pub(crate) struct RepoEditParityCase {
 }
 
 /// Execute the live compatibility and direct authorities on equivalent roots.
-pub(crate) fn run_repo_edit_parity(root: &Path) -> CargoAllowResult<RepoEditParityRun> {
-    let workspace = parity_workspace(root)?;
+pub(crate) fn run_repo_edit_parity() -> CargoAllowResult<RepoEditParityRun> {
+    let workspace = parity_workspace()?;
     let result = run_cases(&workspace);
     let cleanup = fs::remove_dir_all(&workspace);
     result.and_then(|run| {
@@ -52,15 +56,313 @@ fn run_cases(workspace: &Path) -> CargoAllowResult<RepoEditParityRun> {
     let cases = vec![
         containment_case(workspace),
         atomic_write_case(workspace),
+        apply_receipt_case(workspace),
         no_overwrite_case(workspace),
         mutation_lock_case(workspace),
         init_command_case(workspace),
         migrate_command_case(workspace),
         add_command_case(workspace),
+        refresh_command_case(workspace),
+        prune_command_case(workspace),
+        propose_command_case(workspace),
     ]
     .into_iter()
     .collect::<CargoAllowResult<Vec<_>>>()?;
     Ok(RepoEditParityRun { cases })
+}
+
+fn refresh_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase> {
+    let old_root = workspace.join("refresh-old");
+    let new_root = workspace.join("refresh-new");
+    let old_policy = old_root.join("policy").join("allow.toml");
+    let new_policy = new_root.join("policy").join("allow.toml");
+    let source = "pub fn fixture_refresh_drift() -> u32 {\n    // Padding lines so the expect attribute drifts beyond the\n    // DRIFT_LINE_TOLERANCE (3) relative to last_seen (line 2).\n    //\n    //\n    //\n    #[expect(clippy::unwrap_used, reason = \"policy:allow-0250: refresh receipt fixture\")]\n    let value = Some(1).unwrap();\n    value\n}\n";
+    let initial = "schema_version = 1\n\n[workspace]\nignored = []\ngenerated = []\n\n[[allow]]\nid = \"allow-0250\"\nkind = \"lint_exception\"\nfamily = \"expect_attribute\"\npath = \"src/lib.rs\"\nowner = \"lint\"\nclassification = \"reviewed_lint_exception\"\nreason = \"Fixture keeps lint suppression with stale last_seen for refresh receipt proof.\"\nevidence = [\"test:refresh-receipt-fixture\"]\ncreated = \"2026-05-09\"\nreview_after = \"2026-09-09\"\nexpires = \"2026-12-31\"\n\n[allow.selector]\nast_kind = \"attribute\"\nlint = \"clippy::unwrap_used\"\ntarget_fingerprint = \"policy:allow-0250\"\ncontainer = \"fixture_refresh_drift\"\nline_hint = 1\n\n[allow.last_seen]\nline = 1\ncolumn = 1\n";
+    for root in [&old_root, &new_root] {
+        fs::create_dir_all(root.join("policy")).map_err(io_error)?;
+        fs::create_dir_all(root.join("src")).map_err(io_error)?;
+        fs::write(root.join("src/lib.rs"), source).map_err(io_error)?;
+        fs::write(root.join("policy/allow.toml"), initial).map_err(io_error)?;
+    }
+
+    let (_, preflight_config, preflight_findings, _, _) = crate::load_world_with_evidence_mode(
+        Some(&old_root),
+        Some(&PathBuf::from("policy/allow.toml")),
+        true,
+        None,
+        true,
+        crate::EvidenceValidationMode::ReportOnly,
+    )?;
+    let preflight_outcomes = evaluate(&preflight_config, &preflight_findings, CheckMode::NoNew);
+    let preflight_status = preflight_outcomes
+        .iter()
+        .find(|outcome| outcome.allow_id.as_deref() == Some("allow-0250"))
+        .map(|outcome| outcome.status);
+    if preflight_status != Some(MatchStatus::LocationDrift) {
+        let findings = preflight_findings
+            .iter()
+            .map(|finding| format!("{}:{:?}", finding.path.display(), finding.identity))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let outcomes = preflight_outcomes
+            .iter()
+            .map(|outcome| format!("{:?}:{:?}", outcome.allow_id, outcome.status))
+            .collect::<Vec<_>>()
+            .join(", ");
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!(
+                "refresh parity fixture precondition was {:?}; findings [{}]; outcomes [{}]",
+                preflight_status, findings, outcomes
+            ),
+        ));
+    }
+
+    crate::refresh::cmd_refresh(&crate::refresh::parity_refresh_args(
+        old_root.clone(),
+        PathBuf::from("policy/allow.toml"),
+    ))?;
+
+    let (_, config, findings, _, _) = crate::load_world_with_evidence_mode(
+        Some(&new_root),
+        Some(&PathBuf::from("policy/allow.toml")),
+        true,
+        None,
+        true,
+        crate::EvidenceValidationMode::ReportOnly,
+    )?;
+    let finding = findings
+        .iter()
+        .find(|finding| {
+            finding.path == Path::new("src/lib.rs")
+                && finding.family.as_deref() == Some("expect_attribute")
+        })
+        .ok_or_else(|| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Internal,
+                "refresh parity finding was not discovered",
+            )
+        })?;
+    let span = finding.span.as_ref().ok_or_else(|| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            "refresh parity finding has no source span",
+        )
+    })?;
+    let mut expected_config = config;
+    let entry = expected_config
+        .allow
+        .iter_mut()
+        .find(|entry| entry.id == "allow-0250")
+        .ok_or_else(|| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Internal,
+                "refresh parity entry was not loaded",
+            )
+        })?;
+    entry.last_seen = Some(LastSeen {
+        line: span.line,
+        column: span.column,
+    });
+    entry.selector.line_hint = Some(span.line);
+    validate_policy(&expected_config)?;
+    let expected = render_policy(&expected_config);
+    apply_single_target(SingleTargetApplyRequest {
+        repository_root: &new_root,
+        target: &new_policy,
+        contents: &expected,
+        caller_reference: Some("cargo-allow:refresh"),
+        lock_identity: Some("policy/allow.toml".to_string()),
+        mode: SingleTargetApplyMode::AtomicReplace,
+    })
+    .into_result()
+    .map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!("new refresh apply failed: {error}"),
+        )
+    })?;
+
+    let old_output = fs::read_to_string(old_policy).map_err(io_error)?;
+    let new_output = fs::read_to_string(new_policy).map_err(io_error)?;
+    Ok(parity_case(
+        "parity-repo-edit-refresh-command-v1",
+        "refresh:policy/allow.toml",
+        old_output,
+        new_output,
+    ))
+}
+
+fn prune_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase> {
+    let old_root = workspace.join("prune-old");
+    let new_root = workspace.join("prune-new");
+    let old_policy = old_root.join("policy").join("allow.toml");
+    let new_policy = new_root.join("policy").join("allow.toml");
+    let initial = parity_prune_policy();
+    for root in [&old_root, &new_root] {
+        fs::create_dir_all(root.join("policy")).map_err(io_error)?;
+        fs::create_dir_all(root.join("docs")).map_err(io_error)?;
+        fs::write(root.join("docs/live.md"), "# live\n").map_err(io_error)?;
+        fs::write(root.join("policy/allow.toml"), &initial).map_err(io_error)?;
+    }
+
+    crate::prune::cmd_prune(&crate::prune::parity_prune_args(
+        old_root.clone(),
+        PathBuf::from("policy/allow.toml"),
+    ))?;
+
+    let mut expected_config = parse_policy(&initial)?;
+    expected_config
+        .allow
+        .retain(|entry| entry.id != "allow-stale");
+    validate_policy(&expected_config)?;
+    let expected = render_policy(&expected_config);
+    apply_single_target(SingleTargetApplyRequest {
+        repository_root: &new_root,
+        target: &new_policy,
+        contents: &expected,
+        caller_reference: Some("cargo-allow:prune"),
+        lock_identity: Some("policy/allow.toml".to_string()),
+        mode: SingleTargetApplyMode::AtomicReplace,
+    })
+    .into_result()
+    .map_err(|error| {
+        CargoAllowError::with_kind(CargoAllowErrorKind::Internal, error.to_string())
+    })?;
+
+    let old_output = fs::read_to_string(old_policy).map_err(io_error)?;
+    let new_output = fs::read_to_string(new_policy).map_err(io_error)?;
+    Ok(parity_case(
+        "parity-repo-edit-prune-command-v1",
+        "prune:policy/allow.toml",
+        old_output,
+        new_output,
+    ))
+}
+
+fn parity_prune_policy() -> String {
+    let mut config = AllowConfig::empty();
+    config
+        .allow
+        .push(parity_prune_entry("allow-live", "docs/live.md"));
+    config
+        .allow
+        .push(parity_prune_entry("allow-stale", "docs/stale.md"));
+    render_policy(&config)
+}
+
+fn parity_prune_entry(id: &str, path: &str) -> AllowEntry {
+    AllowEntry {
+        id: id.to_string(),
+        kind: FindingKind::NonRustFile,
+        family: Some("documentation".to_string()),
+        path: Some(PathBuf::from(path)),
+        glob: None,
+        owner: "parity".to_string(),
+        classification: "reviewed_lint_exception".to_string(),
+        reason: "RepoEdit prune parity fixture.".to_string(),
+        evidence: Vec::new(),
+        links: Vec::new(),
+        occurrence_limit: None,
+        lifecycle: Lifecycle {
+            created: Some("2026-05-09".to_string()),
+            review_after: Some("2026-11-01".to_string()),
+            expires: None,
+        },
+        selector: Selector {
+            ast_kind: Some("tracked_file".to_string()),
+            ..Selector::default()
+        },
+        last_seen: None,
+    }
+}
+
+fn propose_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase> {
+    let old_root = workspace.join("propose-old");
+    let new_root = workspace.join("propose-new");
+    let old_policy = old_root.join("policy").join("proposed.toml");
+    let new_policy = new_root.join("policy").join("proposed.toml");
+    for root in [&old_root, &new_root] {
+        fs::create_dir_all(root.join("policy")).map_err(io_error)?;
+        fs::create_dir_all(root.join("docs")).map_err(io_error)?;
+        fs::write(root.join("docs/new.md"), "# new\n").map_err(io_error)?;
+    }
+
+    crate::propose::cmd_propose(&crate::propose::parity_propose_args(
+        old_root.clone(),
+        old_policy.clone(),
+    ))?;
+
+    let (_, _, findings, _, _) = crate::load_world_with_evidence_mode(
+        Some(&new_root),
+        None,
+        false,
+        None,
+        true,
+        crate::EvidenceValidationMode::ReportOnly,
+    )?;
+    let finding = findings
+        .iter()
+        .find(|finding| finding.path == Path::new("docs/new.md"))
+        .ok_or_else(|| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Internal,
+                "propose parity finding was not discovered",
+            )
+        })?;
+    let expiry = SimpleDate::today_utc_approx().add_days(30).to_string();
+    let mut expected_config = AllowConfig::empty();
+    expected_config.allow.push(AllowEntry {
+        id: "allow-0001".to_string(),
+        kind: finding.kind,
+        family: finding.family.clone(),
+        path: Some(finding.path.clone()),
+        glob: None,
+        owner: "unowned".to_string(),
+        classification: "baseline_debt".to_string(),
+        reason: "Generated by cargo-allow propose; requires human review.".to_string(),
+        evidence: Vec::new(),
+        links: Vec::new(),
+        occurrence_limit: None,
+        lifecycle: Lifecycle {
+            created: Some(SimpleDate::today_utc_approx().to_string()),
+            review_after: None,
+            expires: Some(expiry),
+        },
+        selector: crate::selector_from_finding(finding),
+        last_seen: finding.span.as_ref().map(|span| LastSeen {
+            line: span.line,
+            column: span.column,
+        }),
+    });
+    expected_config.allow.push(ledger_self_receipt(
+        "allow-0002",
+        "policy/proposed.toml",
+        "core/policy",
+    ));
+    validate_policy(&expected_config)?;
+    let expected = render_policy(&expected_config);
+    apply_single_target(SingleTargetApplyRequest {
+        repository_root: &new_root,
+        target: &new_policy,
+        contents: &expected,
+        caller_reference: Some("cargo-allow:propose"),
+        lock_identity: Some("policy/proposed.toml".to_string()),
+        mode: SingleTargetApplyMode::CreateNewOnly,
+    })
+    .into_result()
+    .map_err(|error| {
+        CargoAllowError::with_kind(CargoAllowErrorKind::Internal, error.to_string())
+    })?;
+
+    let old_output = fs::read_to_string(old_policy).map_err(io_error)?;
+    let new_output = fs::read_to_string(new_policy).map_err(io_error)?;
+    Ok(parity_case(
+        "parity-repo-edit-propose-command-v1",
+        "propose:policy/proposed.toml",
+        old_output,
+        new_output,
+    ))
 }
 
 fn add_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase> {
@@ -273,6 +575,87 @@ fn atomic_write_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase> {
     ))
 }
 
+fn apply_receipt_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase> {
+    let old_root = workspace.join("apply-receipt-old");
+    let new_root = workspace.join("apply-receipt-new");
+    let target = Path::new("policy/allow.toml");
+    for root in [&old_root, &new_root] {
+        fs::create_dir_all(root.join("policy")).map_err(io_error)?;
+    }
+
+    let old_success = crate::mutation_apply::apply_target(SingleTargetApplyRequest {
+        repository_root: &old_root,
+        target,
+        contents: "schema_version = 1\n",
+        caller_reference: Some("cargo-allow:parity-apply"),
+        lock_identity: Some("policy/allow.toml".to_string()),
+        mode: SingleTargetApplyMode::CreateNewOnly,
+    });
+    let new_success = apply_single_target(SingleTargetApplyRequest {
+        repository_root: &new_root,
+        target,
+        contents: "schema_version = 1\n",
+        caller_reference: Some("cargo-allow:parity-apply"),
+        lock_identity: Some("policy/allow.toml".to_string()),
+        mode: SingleTargetApplyMode::CreateNewOnly,
+    });
+    old_success.result.map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!("legacy apply-receipt success fixture failed: {error}"),
+        )
+    })?;
+    if !new_success.receipt.applied() {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            "repo-edit apply-receipt success fixture failed",
+        ));
+    }
+
+    for root in [&old_root, &new_root] {
+        fs::write(root.join(target), "existing\n").map_err(io_error)?;
+    }
+    let old_failure = crate::mutation_apply::apply_target(SingleTargetApplyRequest {
+        repository_root: &old_root,
+        target,
+        contents: "replacement\n",
+        caller_reference: Some("cargo-allow:parity-apply"),
+        lock_identity: Some("policy/allow.toml".to_string()),
+        mode: SingleTargetApplyMode::CreateNewOnly,
+    });
+    let new_failure = apply_single_target(SingleTargetApplyRequest {
+        repository_root: &new_root,
+        target,
+        contents: "replacement\n",
+        caller_reference: Some("cargo-allow:parity-apply"),
+        lock_identity: Some("policy/allow.toml".to_string()),
+        mode: SingleTargetApplyMode::CreateNewOnly,
+    });
+    if old_failure.result.is_ok() || new_failure.receipt.applied() {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            "apply-receipt failure fixture unexpectedly applied",
+        ));
+    }
+
+    let old_output = format!(
+        "success={}\nfailure={}",
+        effortless_repo_edit::render_apply_receipt_json(&old_success.receipt, ""),
+        effortless_repo_edit::render_apply_receipt_json(&old_failure.receipt, "")
+    );
+    let new_output = format!(
+        "success={}\nfailure={}",
+        effortless_repo_edit::render_apply_receipt_json(&new_success.receipt, ""),
+        effortless_repo_edit::render_apply_receipt_json(&new_failure.receipt, "")
+    );
+    Ok(parity_case(
+        "parity-repo-edit-apply-receipt-v1",
+        "apply-receipt:policy/allow.toml",
+        old_output,
+        new_output,
+    ))
+}
+
 fn no_overwrite_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase> {
     let old_root = workspace.join("no-overwrite-old");
     let new_root = workspace.join("no-overwrite-new");
@@ -356,14 +739,23 @@ fn mutation_lock_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase> 
     ))
 }
 
-fn parity_workspace(root: &Path) -> CargoAllowResult<PathBuf> {
-    let id = NEXT_ROOT_ID.fetch_add(1, Ordering::Relaxed);
-    let workspace = root.join("target").join(format!(
-        "cargo-allow-repo-edit-parity-{}-{id}",
-        std::process::id()
-    ));
-    fs::create_dir_all(&workspace).map_err(io_error)?;
-    Ok(workspace)
+fn parity_workspace() -> CargoAllowResult<PathBuf> {
+    for _ in 0..32 {
+        let id = NEXT_ROOT_ID.fetch_add(1, Ordering::Relaxed);
+        let workspace = std::env::temp_dir().join(format!(
+            "cargo-allow-repo-edit-parity-{}-{id}",
+            std::process::id()
+        ));
+        match fs::create_dir(&workspace) {
+            Ok(()) => return Ok(workspace),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(io_error(error)),
+        }
+    }
+    Err(CargoAllowError::with_kind(
+        CargoAllowErrorKind::Internal,
+        "failed to allocate a unique RepoEdit parity workspace",
+    ))
 }
 
 fn parity_case(
@@ -422,24 +814,63 @@ fn io_error(error: std::io::Error) -> CargoAllowError {
     CargoAllowError::new(error.to_string())
 }
 
+/// Project a neutral repository-edit failure into cargo-allow's product error surface.
+pub(crate) fn map_repo_edit_error(error: effortless_repo_edit::RepoEditError) -> CargoAllowError {
+    let message = error.to_string();
+    let kind = if message.contains("outside")
+        || message.contains("not inside")
+        || message.contains("escape")
+    {
+        allow_core::CargoAllowErrorKind::InvalidConfig
+    } else {
+        allow_core::CargoAllowErrorKind::Artifact
+    };
+    CargoAllowError::with_kind(kind, message)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use allow_policy::extraction_parity::ParityComparisonResult;
+    use allow_policy::extraction_parity::{
+        ExtractionStage, ParityComparisonResult, parse_extraction_parity_registry_at,
+    };
 
     #[test]
-    fn repo_edit_authorities_are_parity_equivalent() -> Result<(), String> {
+    fn repo_edit_runtime_covers_current_policy_cases() -> Result<(), String> {
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-        let run = run_repo_edit_parity(&root).map_err(|error| error.to_string())?;
+        let registry_path = root.join("policy/extraction-parity.toml");
+        let registry_text = fs::read_to_string(&registry_path)
+            .map_err(|error| format!("read parity registry: {error}"))?;
+        let registry = parse_extraction_parity_registry_at(Some(&registry_path), &registry_text)
+            .map_err(|error| format!("parse parity registry: {error}"))?;
+        let mut expected: Vec<_> = registry
+            .case
+            .iter()
+            .filter(|case| case.stage == ExtractionStage::RepoEdit)
+            .map(|case| case.id.clone())
+            .collect();
+        expected.sort();
+
+        let run = run_repo_edit_parity().map_err(|error| error.to_string())?;
+        let mut actual: Vec<_> = run.cases.iter().map(|case| case.id.clone()).collect();
+        actual.sort();
+        if actual != expected {
+            return Err(format!(
+                "RepoEdit runtime case ids differ from policy: expected {expected:?}, actual {actual:?}"
+            ));
+        }
         for case in run.cases {
             if case.comparison.result != ParityComparisonResult::SemanticallyEquivalent {
                 return Err(format!(
-                    "{} parity differed: {:?}",
+                    "RepoEdit case `{}` was not semantically equivalent: {:?}",
                     case.id, case.comparison
                 ));
             }
             if case.old_output != case.new_output {
-                return Err(format!("{} canonical outputs differed", case.id));
+                return Err(format!(
+                    "RepoEdit case `{}` emitted different canonical outputs",
+                    case.id
+                ));
             }
         }
         Ok(())

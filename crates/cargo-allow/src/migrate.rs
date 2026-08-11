@@ -52,7 +52,8 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
             "pass either --update or --force, not both",
         ));
     }
-    let _mutation_lock = MutationLock::acquire(&args.out)?;
+    let _mutation_lock = MutationLock::acquire(&args.out)
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     let migration = match (&args.from, &args.repo_policy) {
         (Some(from), None) => load_single_file_migration_config(args.root.root.as_deref(), from)?,
         (None, Some(repo_policy)) => {
@@ -139,13 +140,15 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
                 ),
                 mode,
             })
-            .into_result()?;
+            .into_result()
+            .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
         }
         Err(error) => {
             if args.update {
                 return Err(error);
             }
-            write_file_no_overwrite(&output_absolute, &rendered, args.force)?;
+            write_file_no_overwrite(&output_absolute, &rendered, args.force)
+                .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
         }
     }
     let core_summary = crate::core_command_summary::core_command_summary_from_migrate(

@@ -17,6 +17,8 @@ name = "intent_engine"
 path = "src/lib.rs"
 
 [dependencies]
+effortless-rust-source-index.workspace = true
+intent-model.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 toml.workspace = true

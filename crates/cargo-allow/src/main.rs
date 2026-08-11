@@ -25,6 +25,8 @@ mod explain;
 mod extraction_parity_command;
 mod extraction_parity_runtime;
 mod extraction_repo_edit_runtime;
+#[cfg(test)]
+mod extraction_repo_edit_runtime_tests;
 mod federation_doctor;
 mod federation_report;
 mod hooks;
@@ -34,6 +36,7 @@ mod intent_provider;
 mod kind_filter;
 mod list;
 mod migrate;
+mod mutation_apply;
 mod mutation_lock;
 mod plan_bindings;
 mod policy_config;

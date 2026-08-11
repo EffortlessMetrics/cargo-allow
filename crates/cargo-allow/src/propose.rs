@@ -21,6 +21,28 @@ mod propose_render;
 #[path = "propose_types.rs"]
 mod propose_types;
 pub(crate) use propose_args::ProposeArgs;
+
+pub(crate) fn parity_propose_args(
+    root: std::path::PathBuf,
+    write: std::path::PathBuf,
+) -> ProposeArgs {
+    ProposeArgs {
+        root: crate::RootArgs { root: Some(root) },
+        config: None,
+        kind: None,
+        include_untracked: true,
+        expires: Some(
+            allow_core::SimpleDate::today_utc_approx()
+                .add_days(30)
+                .to_string(),
+        ),
+        write: Some(write),
+        force: false,
+        summary_format: HumanJsonFormat::Human,
+        summary_output: None,
+        max: 50,
+    }
+}
 use propose_baseline::{default_baseline_expiry, entry_from_finding};
 #[cfg(test)]
 use propose_render::render_propose_summary;
@@ -69,7 +91,8 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
             let resolved = effortless_repo_edit::resolve_mutation_target(target, &mutation_root)?;
             MutationLock::acquire_for_target(&resolved)
         })
-        .transpose()?;
+        .transpose()
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     let (root, cfg, findings, inventory_facts, _federation) = load_world_with_evidence_mode(
         args.root.root.as_deref(),
         args.config.as_deref(),
@@ -251,7 +274,8 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
             ),
             mode,
         })
-        .into_result()?;
+        .into_result()
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
         let _ = path;
     } else {
         // When printing the full policy TOML to stdout, warn interactive

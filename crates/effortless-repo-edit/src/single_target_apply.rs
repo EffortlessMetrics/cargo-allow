@@ -79,6 +79,7 @@ pub fn apply_single_target(request: SingleTargetApplyRequest<'_>) -> SingleTarge
         Err(error) => {
             return failed_response(FailedApplyContext {
                 tool_version,
+                repository_root_path: request.repository_root.to_string_lossy().into_owned(),
                 repository_root,
                 target_requested,
                 target_canonical,
@@ -109,6 +110,10 @@ pub fn apply_single_target(request: SingleTargetApplyRequest<'_>) -> SingleTarge
                 if meta.file_type().is_symlink() {
                     return failed_response(FailedApplyContext {
                         tool_version,
+                        repository_root_path: request
+                            .repository_root
+                            .to_string_lossy()
+                            .into_owned(),
                         repository_root,
                         target_requested,
                         target_canonical,
@@ -128,6 +133,7 @@ pub fn apply_single_target(request: SingleTargetApplyRequest<'_>) -> SingleTarge
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
                 return failed_response(FailedApplyContext {
                     tool_version,
+                    repository_root_path: request.repository_root.to_string_lossy().into_owned(),
                     repository_root,
                     target_requested,
                     target_canonical,
@@ -146,6 +152,7 @@ pub fn apply_single_target(request: SingleTargetApplyRequest<'_>) -> SingleTarge
             Err(error) => {
                 return failed_response(FailedApplyContext {
                     tool_version,
+                    repository_root_path: request.repository_root.to_string_lossy().into_owned(),
                     repository_root,
                     target_requested,
                     target_canonical,
@@ -172,6 +179,7 @@ pub fn apply_single_target(request: SingleTargetApplyRequest<'_>) -> SingleTarge
         Err(error) => {
             return failed_response(FailedApplyContext {
                 tool_version,
+                repository_root_path: request.repository_root.to_string_lossy().into_owned(),
                 repository_root,
                 target_requested,
                 target_canonical,
@@ -217,6 +225,7 @@ pub fn apply_single_target(request: SingleTargetApplyRequest<'_>) -> SingleTarge
         },
         Err(error) => failed_response(FailedApplyContext {
             tool_version,
+            repository_root_path: request.repository_root.to_string_lossy().into_owned(),
             repository_root,
             target_requested,
             target_canonical,
@@ -233,6 +242,7 @@ pub fn apply_single_target(request: SingleTargetApplyRequest<'_>) -> SingleTarge
 
 struct FailedApplyContext {
     tool_version: String,
+    repository_root_path: String,
     repository_root: String,
     target_requested: String,
     target_canonical: String,
@@ -246,6 +256,9 @@ struct FailedApplyContext {
 }
 
 fn failed_response(context: FailedApplyContext) -> SingleTargetApplyResponse {
+    let error_detail = context
+        .error_detail
+        .replace(&context.repository_root_path, "<repository-root>");
     SingleTargetApplyResponse {
         receipt: ApplyReceiptV1 {
             tool_version: context.tool_version,
@@ -261,7 +274,7 @@ fn failed_response(context: FailedApplyContext) -> SingleTargetApplyResponse {
             outcome: TargetOutcome::Failed,
             caller_reference: context.caller_reference,
             limitations: context.limitations,
-            error_detail: Some(context.error_detail),
+            error_detail: Some(error_detail),
         },
     }
 }
@@ -410,6 +423,8 @@ mod tests {
                 .as_deref()
                 .is_some_and(|detail| detail.contains("already exists"))
         );
+        let json = crate::apply_receipt::render_apply_receipt_json(&response.receipt, "");
+        assert!(!json.contains(&root.path().to_string_lossy().to_string()));
         assert_eq!(fs::read_to_string(&target)?, "existing\n");
         Ok(())
     }

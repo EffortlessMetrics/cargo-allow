@@ -154,7 +154,8 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
             let resolved = effortless_repo_edit::resolve_mutation_target(target, &mutation_root)?;
             MutationLock::acquire_for_target(&resolved)
         })
-        .transpose()?;
+        .transpose()
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
 
     let kind_filter = parse_kind_filter(&plan.finding.kind)?;
     let (root, mut cfg, findings, inventory_facts, _federation) = load_world(
@@ -250,7 +251,8 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
         ),
         mode: SingleTargetApplyMode::AtomicReplace,
     })
-    .into_result()?;
+    .into_result()
+    .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     let policy_after_digest = sha256_v1_bytes(rendered.as_bytes());
 
     // Targeted recheck: re-evaluate the target finding against the mutated

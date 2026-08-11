@@ -113,26 +113,35 @@ fn view_and_closure_envelopes_roundtrip() -> Result<(), String> {
     Ok(())
 }
 
-const REPO_PROTOCOL_SNAPSHOT_FILES: &[&str] = &["repository_snapshot.rs", "result_class.rs"];
-
 #[test]
-fn repo_protocol_snapshot_matches_canonical() -> Result<(), String> {
-    let root = workspace_root();
-    for file in REPO_PROTOCOL_SNAPSHOT_FILES {
-        let canonical = std::fs::read_to_string(
-            root.join(format!("crates/effortless-repo-protocol/src/{file}")),
-        )
-        .map_err(|err| format!("read canonical effortless-repo-protocol/{file}: {err}"))?;
-        let packaged = std::fs::read_to_string(root.join(format!(
-            "crates/intent-protocol/src/snapshot_package/repo_protocol/{file}"
-        )))
-        .map_err(|err| format!("read intent-protocol snapshot repo_protocol/{file}: {err}"))?;
-        if canonical.replace("\r\n", "\n") != packaged.replace("\r\n", "\n") {
-            return Err(format!(
-                "intent-protocol snapshot_package/repo_protocol/{file} must match effortless-repo-protocol/{file}"
-            ));
-        }
-    }
+fn repo_protocol_snapshot_reexports_canonical() -> Result<(), String> {
+    // #3308: the copied repo-protocol files were deleted in favor of a
+    // direct re-export from effortless-repo-protocol. This test verifies
+    // the re-export produces the canonical types, not file copies.
+    use crate::snapshot_package::repo_protocol::{
+        REPOSITORY_SNAPSHOT_SCHEMA_ID, RepositorySnapshotV1, ResultClassV1,
+    };
+    // The re-exported schema id must match the canonical crate's constant.
+    assert_eq!(
+        REPOSITORY_SNAPSHOT_SCHEMA_ID,
+        effortless_repo_protocol::REPOSITORY_SNAPSHOT_SCHEMA_ID,
+        "re-exported schema id must match effortless-repo-protocol"
+    );
+    // Type identity: the re-exported types ARE the canonical types.
+    // A RepositorySnapshotV1 constructed from the re-export must be usable
+    // where the canonical type is expected without any conversion.
+    let snapshot = RepositorySnapshotV1::new_committed_head(
+        "identity",
+        "sha1",
+        effortless_repo_protocol::ResolvedRevisionV1 {
+            requested: "HEAD".to_string(),
+            commit: "abc".to_string(),
+            tree: String::new(),
+        },
+    );
+    let _: &effortless_repo_protocol::RepositorySnapshotV1 = &snapshot;
+    let class = ResultClassV1::Completed;
+    let _: effortless_repo_protocol::ResultClassV1 = class;
     Ok(())
 }
 

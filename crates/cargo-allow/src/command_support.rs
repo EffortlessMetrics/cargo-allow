@@ -87,7 +87,8 @@ fn should_emit_scan_status(
 
 pub(crate) fn emit_text(output: Option<&Path>, contents: &str) -> CargoAllowResult<()> {
     if let Some(path) = output {
-        write_file(path, contents)?;
+        write_file(path, contents)
+            .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     } else {
         println!("{contents}");
     }
@@ -96,7 +97,8 @@ pub(crate) fn emit_text(output: Option<&Path>, contents: &str) -> CargoAllowResu
 
 pub(crate) fn emit_stderr_text(output: Option<&Path>, contents: &str) -> CargoAllowResult<()> {
     if let Some(path) = output {
-        write_file(path, contents)?;
+        write_file(path, contents)
+            .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     } else {
         eprintln!("{contents}");
     }
