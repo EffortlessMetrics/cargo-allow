@@ -172,6 +172,62 @@ fn repo_edit_command_shims_match_live_apply_forwards() -> Result<(), String> {
     Ok(())
 }
 
+#[test]
+fn repo_snapshot_shims_match_live_forwarding_surfaces() -> Result<(), String> {
+    let root = repo_root();
+    let registry_text = std::fs::read_to_string(root.join("policy/extraction-shims.toml"))
+        .map_err(|err| format!("read shim registry: {err}"))?;
+    let registry = allow_policy::extraction_shims::parse_extraction_shim_registry(&registry_text)
+        .map_err(|err| format!("parse shim registry: {err}"))?;
+
+    let expected = [
+        (
+            "shim-allow-diff-staged-index",
+            "allow-diff::staged_index",
+            "repo-snapshot::staged_index",
+            "crates/allow-diff/src/staged_index.rs",
+            "#[path = \"snapshot_package/staged_index.rs\"]",
+            "pub use staged_index_impl::*;",
+        ),
+        (
+            "shim-allow-diff-revision-identity",
+            "allow-diff::revision_identity",
+            "repo-snapshot::revision_identity",
+            "crates/allow-diff/src/revision_identity.rs",
+            "#[path = \"snapshot_package/revision_identity.rs\"]",
+            "pub use revision_identity_impl::*;",
+        ),
+    ];
+
+    for (id, old_identity, new_identity, source_path, path_marker, reexport_marker) in expected {
+        let shim = registry
+            .shim
+            .iter()
+            .find(|shim| shim.id == id)
+            .ok_or_else(|| format!("missing repo-snapshot shim {id}"))?;
+        if shim.posture != allow_policy::extraction_shims::ShimPosture::Public
+            || shim.status != allow_policy::extraction_shims::ShimStatus::Active
+            || shim.old_identity != old_identity
+            || shim.new_identity != new_identity
+            || !shim.removal_condition.contains("#2606")
+        {
+            return Err(format!(
+                "repo-snapshot shim {id} does not match its live compatibility contract"
+            ));
+        }
+
+        let source = std::fs::read_to_string(root.join(source_path))
+            .map_err(|err| format!("read {source_path}: {err}"))?;
+        if !source.contains(path_marker) || !source.contains(reexport_marker) {
+            return Err(format!(
+                "repo-snapshot shim {id} is missing identity-only forwarding in {source_path}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
