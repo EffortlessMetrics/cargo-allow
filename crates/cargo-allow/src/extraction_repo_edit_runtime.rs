@@ -814,6 +814,20 @@ fn io_error(error: std::io::Error) -> CargoAllowError {
     CargoAllowError::new(error.to_string())
 }
 
+/// Project a neutral repository-edit failure into cargo-allow's product error surface.
+pub(crate) fn map_repo_edit_error(error: effortless_repo_edit::RepoEditError) -> CargoAllowError {
+    let message = error.to_string();
+    let kind = if message.contains("outside")
+        || message.contains("not inside")
+        || message.contains("escape")
+    {
+        allow_core::CargoAllowErrorKind::InvalidConfig
+    } else {
+        allow_core::CargoAllowErrorKind::Artifact
+    };
+    CargoAllowError::with_kind(kind, message)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -861,18 +875,4 @@ mod tests {
         }
         Ok(())
     }
-}
-
-/// Project a neutral repository-edit failure into cargo-allow's product error surface.
-pub(crate) fn map_repo_edit_error(error: effortless_repo_edit::RepoEditError) -> CargoAllowError {
-    let message = error.to_string();
-    let kind = if message.contains("outside")
-        || message.contains("not inside")
-        || message.contains("escape")
-    {
-        allow_core::CargoAllowErrorKind::InvalidConfig
-    } else {
-        allow_core::CargoAllowErrorKind::Artifact
-    };
-    CargoAllowError::with_kind(kind, message)
 }
