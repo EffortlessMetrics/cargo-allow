@@ -118,8 +118,8 @@ fn repository_protocol_uses_canonical_package_without_private_copy() -> Result<(
     let root = workspace_root();
     let manifest = std::fs::read_to_string(root.join("crates/intent-protocol/Cargo.toml"))
         .map_err(|err| format!("read intent-protocol manifest: {err}"))?;
-    let manifest: toml::Value =
-        toml::from_str(&manifest).map_err(|err| format!("parse intent-protocol manifest: {err}"))?;
+    let manifest: toml::Value = toml::from_str(&manifest)
+        .map_err(|err| format!("parse intent-protocol manifest: {err}"))?;
     let dependencies = manifest
         .get("dependencies")
         .and_then(toml::Value::as_table)
@@ -127,13 +127,10 @@ fn repository_protocol_uses_canonical_package_without_private_copy() -> Result<(
     let dependency = dependencies
         .get("effortless-repo-protocol")
         .ok_or_else(|| "intent-protocol does not use effortless-repo-protocol".to_string())?;
-    if dependency
-        .get("workspace")
-        .and_then(toml::Value::as_bool)
-        != Some(true)
-    {
+    if dependency.get("workspace").and_then(toml::Value::as_bool) != Some(true) {
         return Err(
-            "intent-protocol effortless-repo-protocol dependency is not workspace-owned".to_string(),
+            "intent-protocol effortless-repo-protocol dependency is not workspace-owned"
+                .to_string(),
         );
     }
     let copied_root = root.join("crates/intent-protocol/src/snapshot_package/repo_protocol");
