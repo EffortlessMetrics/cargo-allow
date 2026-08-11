@@ -1,0 +1,54 @@
+name: One-shot proof subject ledger receipt
+
+on:
+  push:
+    branches:
+      - feat/proof-orchestrator-subject-reconciliation-3147
+    paths:
+      - .github/workflows/one-shot-proof-subject-ledger.yml
+
+permissions:
+  contents: write
+
+jobs:
+  receipt:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: feat/proof-orchestrator-subject-reconciliation-3147
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@a5f673d0ba8626c3977bb416a1612774bc82181b
+        with:
+          toolchain: 1.95.0
+          components: rustfmt
+      - name: Extend existing proof-engine inventory authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("policy/product-move-ledger.toml")
+          text = path.read_text(encoding="utf-8")
+          marker = 'id = "INVENTORY-PROOF_ENGINE-SRC"'
+          start = text.index(marker)
+          line_start = text.index('current_paths = [', start)
+          line_end = text.index('\n', line_start)
+          line = text[line_start:line_end]
+          old = '"crates/proof-engine/src/provider_registry.rs", "crates/proof-engine/src/tests.rs"'
+          new = '"crates/proof-engine/src/provider_registry.rs", "crates/proof-engine/src/subject_reconciliation.rs", "crates/proof-engine/src/tests.rs"'
+          if line.count(old) != 1:
+              raise SystemExit("unexpected proof-engine inventory row")
+          path.write_text(text[:line_start] + line.replace(old, new) + text[line_end:], encoding="utf-8")
+          PY
+          cargo test -p allow-policy regenerate_product_move_map_projection -- --ignored
+          cargo test -p allow-policy --locked repository_move_ledger_is_complete_and_projection_is_current
+          cargo test -p cargo-allow --bin cargo-allow --locked product_move_ledger -- --nocapture
+          git rm .github/workflows/one-shot-proof-subject-ledger.yml
+          git add policy/product-move-ledger.toml docs/architecture/product-move-map.md
+          git diff --cached --check
+          git config user.name "EffortlessSteven"
+          git config user.email "git@effortlesssteven.com"
+          git commit -m "docs(architecture): receipt proof subject reconciler"
+          git push origin HEAD:feat/proof-orchestrator-subject-reconciliation-3147
