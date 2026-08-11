@@ -12,7 +12,6 @@ mod identity;
 mod obligation;
 mod parity;
 mod query;
-mod snapshot_package;
 mod view;
 
 pub use closure::{
@@ -22,6 +21,10 @@ pub use closure::{
 pub use diff::{
     INTENT_DIFF_RESPONSE_SCHEMA_ID, INTENT_DIFF_SCHEMA_ID, IntentDiffEnvelopeV1, IntentDiffKindV1,
     IntentDiffResponseV1,
+};
+pub use effortless_repo_protocol::{
+    REPOSITORY_SNAPSHOT_SCHEMA_ID, RepositorySnapshotKindV1, RepositorySnapshotV1,
+    ResolvedRevisionV1, ResultClassV1, SelectedPathIdentityV1,
 };
 pub use identity::{INTENT_IDENTITY_SCHEMA_ID, IntentArtifactKindV1, IntentIdentityEnvelopeV1};
 pub use obligation::{
@@ -40,10 +43,6 @@ pub use parity::{
 pub use query::{
     INTENT_QUERY_RESPONSE_SCHEMA_ID, INTENT_QUERY_SCHEMA_ID, IntentQueryEnvelopeV1,
     IntentQueryKindV1, IntentQueryResponseV1,
-};
-pub use snapshot_package::repo_protocol::{
-    REPOSITORY_SNAPSHOT_SCHEMA_ID, RepositorySnapshotKindV1, RepositorySnapshotV1,
-    ResolvedRevisionV1, ResultClassV1, SelectedPathIdentityV1,
 };
 pub use view::{
     INTENT_VIEW_RESPONSE_SCHEMA_ID, INTENT_VIEW_SCHEMA_ID, IntentViewEnvelopeV1, IntentViewKindV1,
