@@ -24,6 +24,9 @@ use check_product_move_guard::product_move_ledger_fails_check;
 #[path = "check_extraction_shim_guard.rs"]
 mod check_extraction_shim_guard;
 use check_extraction_shim_guard::extraction_shim_registry_fails_check;
+#[path = "check_source_coupling_guard.rs"]
+mod check_source_coupling_guard;
+use check_source_coupling_guard::source_coupling_fails_check;
 
 use crate::federation_report::FederationReportBundle;
 use crate::{
@@ -213,6 +216,7 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
     }
     let product_move_ledger_failed = product_move_ledger_fails_check(&root, mode)?;
     let extraction_shim_registry_failed = extraction_shim_registry_fails_check(&root, mode)?;
+    let source_coupling_failed = source_coupling_fails_check(&root, mode)?;
     let failed = check_failed_for_outcomes(&outcomes, &findings, &report_cfg, mode)
         || evidence.has_broken_evidence_links()
         || federation_bundle.has_blocking_divergence()
@@ -220,7 +224,8 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
         || (inventory_facts.rust_files_skipped > 0 && mode == CheckMode::NoNew)
         || (inventory_facts.rust_files_with_parse_errors > 0 && mode == CheckMode::NoNew)
         || product_move_ledger_failed
-        || extraction_shim_registry_failed;
+        || extraction_shim_registry_failed
+        || source_coupling_failed;
     if should_emit_report_stdout(
         args.output.as_deref(),
         args.receipt.as_deref(),

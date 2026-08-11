@@ -15,6 +15,7 @@ mod proptest_parser;
 mod safety_comment_nodes;
 mod scope;
 mod structural_identity;
+mod syntax_coupling;
 mod syntax_tree;
 mod text;
 mod unsafe_scan;
