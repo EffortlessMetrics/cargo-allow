@@ -12,6 +12,17 @@ use crate::{MutationLock, ProfileArg, current_dir, root_relative_path, spec_syst
 
 const DEFAULT_SOURCE_EXCEPTION_CONFIG: &str = "policy/allow.toml";
 
+pub(crate) fn parity_init_args(root: PathBuf, config: PathBuf) -> InitArgs {
+    InitArgs {
+        root: crate::RootArgs { root: Some(root) },
+        strict: false,
+        profile: None,
+        dry_run: false,
+        force: false,
+        config,
+    }
+}
+
 pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
     if matches!(args.profile, Some(ProfileArg::SpecSystem)) {
         if args.strict {

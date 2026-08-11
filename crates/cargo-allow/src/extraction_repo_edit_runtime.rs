@@ -8,6 +8,7 @@
 
 use allow_core::{CargoAllowError, CargoAllowResult};
 use allow_policy::extraction_parity::{ParityComparison, ParityObservation, compare_observations};
+use allow_policy::starter_policy;
 use effortless_repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -50,10 +51,45 @@ fn run_cases(workspace: &Path) -> CargoAllowResult<RepoEditParityRun> {
         atomic_write_case(workspace),
         no_overwrite_case(workspace),
         mutation_lock_case(workspace),
+        init_command_case(workspace),
     ]
     .into_iter()
     .collect::<CargoAllowResult<Vec<_>>>()?;
     Ok(RepoEditParityRun { cases })
+}
+
+fn init_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase> {
+    let old_root = workspace.join("init-old");
+    let new_root = workspace.join("init-new");
+    fs::create_dir_all(&old_root).map_err(io_error)?;
+    fs::create_dir_all(&new_root).map_err(io_error)?;
+    let config = PathBuf::from("policy/allow.toml");
+    let contents = starter_policy(false, "policy/allow.toml");
+
+    crate::init::cmd_init(&crate::init::parity_init_args(
+        old_root.clone(),
+        config.clone(),
+    ))?;
+    let new_path = new_root.join(&config);
+    apply_single_target(SingleTargetApplyRequest {
+        repository_root: &new_root,
+        target: &new_path,
+        contents: &contents,
+        caller_reference: Some("cargo-allow:init"),
+        lock_identity: Some("policy/allow.toml".to_string()),
+        mode: SingleTargetApplyMode::CreateNewOnly,
+    })
+    .into_result()
+    .map_err(|error| CargoAllowError::new(format!("new init apply failed: {error}")))?;
+
+    let old_output = fs::read_to_string(old_root.join(&config)).map_err(io_error)?;
+    let new_output = fs::read_to_string(new_path).map_err(io_error)?;
+    Ok(parity_case(
+        "parity-repo-edit-init-command-v1",
+        "init:policy/allow.toml",
+        old_output,
+        new_output,
+    ))
 }
 
 fn containment_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase> {
