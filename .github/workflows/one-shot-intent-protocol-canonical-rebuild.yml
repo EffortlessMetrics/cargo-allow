@@ -1,3 +1,4 @@
+# Trigger after workflow registration.
 name: One-shot canonical intent-protocol rebuild
 
 on:
