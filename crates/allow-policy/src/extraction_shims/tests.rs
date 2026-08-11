@@ -1,5 +1,8 @@
 use super::config::parse_extraction_shim_registry;
-use super::validate::{ShimDiagnosticKind, validate_extraction_shim_registry_at};
+use super::validate::{
+    validate_extraction_shim_registry, validate_extraction_shim_registry_at, ShimDiagnosticKind,
+};
+use crate::product_move::parse_product_move_ledger;
 use std::path::PathBuf;
 
 #[test]
@@ -83,5 +86,53 @@ fn snapshot_shims_record_live_public_compatibility_boundary() -> Result<(), Stri
         }
     }
 
+    Ok(())
+}
+
+#[test]
+fn lifecycle_bounds_fail_closed() -> Result<(), String> {
+    let registry = parse_extraction_shim_registry(
+        r#"
+registry_id = "test"
+controlling_issue = 2607
+linked_move_ledger = "test"
+
+[[shim]]
+id = "shim-test"
+old_identity = "old"
+new_identity = "new"
+kind = "ModuleFacade"
+posture = "private"
+status = "planned"
+move_ledger_entry = "move-test"
+controlling_issue = 2607
+latest_allowed_stage = 0
+removal_condition = "issue:#2606 stage-1 cutover receipt"
+parity_case = "parity-test"
+claim_boundary = "test boundary"
+"#,
+    )
+    .map_err(|err| format!("parse registry: {err}"))?;
+    let ledger = parse_product_move_ledger(
+        &std::fs::read_to_string(
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../policy/product-move-ledger.toml"),
+        )
+        .map_err(|err| format!("read ledger: {err}"))?,
+    )
+    .map_err(|err| format!("parse ledger: {err}"))?;
+
+    let move_ids = ledger
+        .entry
+        .iter()
+        .map(|entry| entry.id.clone())
+        .collect::<Vec<_>>();
+    let (_, diagnostics, _) = validate_extraction_shim_registry(registry, &move_ids);
+    if !diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.kind == ShimDiagnosticKind::Expired)
+    {
+        return Err(format!("expected expired diagnostic, got {diagnostics:?}"));
+    }
     Ok(())
 }
