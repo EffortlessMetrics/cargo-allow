@@ -1,0 +1,5 @@
+kind: Fixed
+body: >-
+  Remove effortless-rust-source-index's optional normal dependency on
+  cargo-allow product errors so its structural index package boundary remains
+  product-neutral.
