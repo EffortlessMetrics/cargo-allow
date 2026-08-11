@@ -1,8 +1,6 @@
 //! Intent selected-source closure transport envelopes (#2585-B).
 
-use effortless_repo_protocol::{
-    RepositorySnapshotV1, ResultClassV1, SelectedPathIdentityV1,
-};
+use effortless_repo_protocol::{RepositorySnapshotV1, ResultClassV1, SelectedPathIdentityV1};
 use serde::{Deserialize, Serialize};
 
 pub const INTENT_SOURCE_CLOSURE_SCHEMA_ID: &str = "intent.source-closure.v1";

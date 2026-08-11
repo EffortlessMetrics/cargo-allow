@@ -28,12 +28,6 @@
 #   RELEASE_WORKFLOW=<path>   release workflow (default: .github/workflows/release.yml)
 set -euo pipefail
 
-if [[ "${GITHUB_HEAD_REF:-}" == "refactor/intent-protocol-canonical-repo-3387" \
-  && -f scripts/one-shot-intent-protocol-finish.sh ]]; then
-  bash scripts/one-shot-intent-protocol-finish.sh
-  exit 0
-fi
-
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
 

@@ -754,6 +754,7 @@ dependencies = [
 name = "intent-protocol"
 version = "0.1.0"
 dependencies = [
+ "effortless-repo-protocol",
  "serde",
  "serde_json",
  "toml",
