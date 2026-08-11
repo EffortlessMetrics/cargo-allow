@@ -1,5 +1,6 @@
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_policy::{render_policy, validate_policy};
+use std::path::PathBuf;
 
 use crate::{
     HumanJsonFormat, MutationLock, current_dir, emit_stderr_text,
@@ -23,12 +24,25 @@ use migrate_load::{load_repo_policy_migration_config, load_single_file_migration
 use migrate_render::{render_migrate_summary_json, render_migrate_summary_styled};
 use migrate_types::MigrateContext;
 
+pub(crate) fn parity_migrate_args(root: PathBuf, from: PathBuf, out: PathBuf) -> MigrateArgs {
+    MigrateArgs {
+        root: crate::RootArgs { root: Some(root) },
+        from: Some(from),
+        repo_policy: None,
+        out,
+        force: false,
+        update: false,
+        summary_format: HumanJsonFormat::Human,
+        summary_output: None,
+    }
+}
+
 #[cfg(test)]
 use crate::RootArgs;
 #[cfg(test)]
 use allow_core::{AllowConfig, FindingKind};
 #[cfg(test)]
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
     require_json_summary_output(args.summary_format, args.summary_output.as_deref())?;
