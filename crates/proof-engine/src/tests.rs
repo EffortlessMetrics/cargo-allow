@@ -240,7 +240,7 @@ fn ripr_routing_non_execution_cannot_compose_to_passed() -> Result<(), String> {
             claim_id: "claim-preflight-1".to_string(),
             proof_reference_id: "crates/ripr/src/lib.rs::tests::proof_smoke".to_string(),
             posture: ProofClaimPostureV1::Required,
-            currentness: crate::currentness::CurrentnessStatusV1::Current,
+            currentness: proof_protocol::BindingCurrentnessV1::Current,
             gate_outcome: crate::phase_gate::PhaseGateOutcomeV1::Open,
         }],
     )
@@ -285,7 +285,7 @@ fn ripr_routing_missing_required_claim_blocks_aggregate() -> Result<(), String> 
             claim_id: "claim-preflight-1".to_string(),
             proof_reference_id: "crates/ripr/src/lib.rs::tests::proof_smoke".to_string(),
             posture: ProofClaimPostureV1::Required,
-            currentness: crate::currentness::CurrentnessStatusV1::Missing,
+            currentness: proof_protocol::BindingCurrentnessV1::Missing,
             gate_outcome: crate::phase_gate::PhaseGateOutcomeV1::Blocked,
         }],
     )
@@ -342,7 +342,7 @@ fn ripr_routing_advisory_gap_does_not_block_required_aggregate() -> Result<(), S
             claim_id: "claim-preflight-required".to_string(),
             proof_reference_id: "crates/ripr/src/lib.rs::tests::proof_smoke".to_string(),
             posture: ProofClaimPostureV1::Required,
-            currentness: crate::currentness::CurrentnessStatusV1::Current,
+            currentness: proof_protocol::BindingCurrentnessV1::Current,
             gate_outcome: crate::phase_gate::PhaseGateOutcomeV1::Open,
         }],
     )

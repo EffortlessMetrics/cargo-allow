@@ -8,9 +8,9 @@ use proof_protocol::{PROOF_CORPUS_DIGEST_V1, ProofResultStateV1, RIPR_EXTERNAL_P
 
 use crate::corpus_semantics::compose_blocking_aggregate;
 
-use crate::currentness::CurrentnessStatusV1;
 use crate::execution::ExecutionApprovalV1;
 use crate::phase_gate::PhaseGateOutcomeV1;
+use proof_protocol::BindingCurrentnessV1;
 
 pub const RIPR_ROUTE_RECEIPT_SCHEMA_ID: &str = "proof.ripr-route-receipt.v1";
 pub const RIPR_PREFLIGHT_RECEIPT_SCHEMA_ID: &str = "proof.ripr-preflight-receipt.v1";
@@ -70,7 +70,7 @@ pub struct RiprPreflightClaimInputV1 {
     pub claim_id: String,
     pub proof_reference_id: String,
     pub posture: ProofClaimPostureV1,
-    pub currentness: CurrentnessStatusV1,
+    pub currentness: BindingCurrentnessV1,
     pub gate_outcome: PhaseGateOutcomeV1,
 }
 
@@ -144,9 +144,10 @@ pub fn route_claim_result_state(input: &RiprRouteClaimInputV1) -> ProofResultSta
 
 pub fn preflight_claim_result_state(input: &RiprPreflightClaimInputV1) -> ProofResultStateV1 {
     match input.currentness {
-        CurrentnessStatusV1::Missing => ProofResultStateV1::Missing,
-        CurrentnessStatusV1::Stale => ProofResultStateV1::Stale,
-        CurrentnessStatusV1::Current => match input.gate_outcome {
+        BindingCurrentnessV1::Missing => ProofResultStateV1::Missing,
+        BindingCurrentnessV1::Stale => ProofResultStateV1::Stale,
+        BindingCurrentnessV1::Incomparable => ProofResultStateV1::Incomparable,
+        BindingCurrentnessV1::Current => match input.gate_outcome {
             PhaseGateOutcomeV1::Open => ProofResultStateV1::ProofPassed,
             PhaseGateOutcomeV1::Blocked => ProofResultStateV1::Missing,
             PhaseGateOutcomeV1::Advisory => ProofResultStateV1::ProofPassed,
