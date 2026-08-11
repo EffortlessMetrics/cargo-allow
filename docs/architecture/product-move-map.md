@@ -616,7 +616,7 @@
 - Current: crates/effortless-repo-edit/src/single_target_apply.rs
 - Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Stage/status: `RepoEdit` / `TargetRatified`
 - Old path: `OldPathStillReachable`
 - Removal: issue:#2606 stage-7 cutover receipt
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
@@ -957,7 +957,7 @@
 - Current: crates/effortless-repo-edit/src/single_target_apply.rs
 - Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Stage/status: `RepoEdit` / `TargetRatified`
 - Old path: `OldPathStillReachable`
 - Removal: issue:#2606 stage-3 cutover receipt
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
@@ -968,7 +968,7 @@
 - Current: crates/cargo-allow/src/add.rs
 - Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Stage/status: `RepoEdit` / `TargetRatified`
 - Old path: `OldPathStillReachable`
 - Removal: issue:#2606 stage-8 cutover receipt
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
@@ -979,7 +979,7 @@
 - Current: crates/cargo-allow/src/init.rs
 - Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Stage/status: `RepoEdit` / `TargetRatified`
 - Old path: `OldPathStillReachable`
 - Removal: issue:#2606 stage-4 cutover receipt
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
@@ -990,7 +990,7 @@
 - Current: crates/cargo-allow/src/migrate.rs
 - Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Stage/status: `RepoEdit` / `TargetRatified`
 - Old path: `OldPathStillReachable`
 - Removal: issue:#2606 stage-9 cutover receipt
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
@@ -1001,7 +1001,7 @@
 - Current: crates/cargo-allow/src/propose.rs
 - Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Stage/status: `RepoEdit` / `TargetRatified`
 - Old path: `OldPathStillReachable`
 - Removal: issue:#2606 stage-10 cutover receipt
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
@@ -1012,7 +1012,7 @@
 - Current: crates/cargo-allow/src/prune.rs
 - Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Stage/status: `RepoEdit` / `TargetRatified`
 - Old path: `OldPathStillReachable`
 - Removal: issue:#2606 stage-6 cutover receipt
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
@@ -1023,7 +1023,7 @@
 - Current: crates/cargo-allow/src/refresh.rs
 - Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Stage/status: `RepoEdit` / `TargetRatified`
 - Old path: `OldPathStillReachable`
 - Removal: issue:#2606 stage-5 cutover receipt
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
@@ -1034,7 +1034,7 @@
 - Current: crates/effortless-repo-snapshot/src/revision_identity.rs
 - Target: `shared / effortless-repo-snapshot::repo_snapshot`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Stage/status: `RepoSnapshot` / `TargetRatified`
 - Old path: `OldPathStillReachable`
 - Removal: issue:#2606 stage-1 cutover receipt
 - Next: Keep the public compatibility shim active while #2606 stage-1 parity and old-path reachability receipts establish whether the legacy evaluator can be deleted.
@@ -1045,7 +1045,7 @@
 - Current: crates/effortless-repo-snapshot/src/staged_index.rs
 - Target: `shared / effortless-repo-snapshot::repo_snapshot`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Stage/status: `RepoSnapshot` / `TargetRatified`
 - Old path: `OldPathStillReachable`
 - Removal: issue:#2606 stage-1 cutover receipt
 - Next: Keep the public compatibility shim active while #2606 stage-1 parity and old-path reachability receipts establish whether the legacy evaluator can be deleted.
@@ -1089,7 +1089,7 @@
 - Current: crates/cargo-allow/src/command_support.rs
 - Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Stage/status: `RepoEdit` / `TargetRatified`
 - Old path: `OldPathStillReachable`
 - Removal: issue:#2606 stage-2 cutover receipt
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
@@ -1100,7 +1100,7 @@
 - Current: crates/cargo-allow/src/mutation_lock.rs
 - Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Stage/status: `RepoEdit` / `TargetRatified`
 - Old path: `OldPathStillReachable`
 - Removal: issue:#2606 stage-1 cutover receipt
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
@@ -1111,7 +1111,7 @@
 - Current: crates/cargo-allow/src/policy_config.rs
 - Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `ArchitectureInventory` / `TargetRatified`
+- Stage/status: `RepoEdit` / `TargetRatified`
 - Old path: `OldPathStillReachable`
 - Removal: issue:#2606 stage-1 cutover receipt
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
