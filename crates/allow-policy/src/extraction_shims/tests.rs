@@ -1,6 +1,7 @@
 use super::config::parse_extraction_shim_registry;
 use super::validate::{
     ShimDiagnosticKind, validate_extraction_shim_registry, validate_extraction_shim_registry_at,
+    validate_extraction_shim_registry_with_ledger,
 };
 use crate::product_move::parse_product_move_ledger;
 use std::path::PathBuf;
@@ -150,6 +151,75 @@ claim_boundary = "test boundary"
     {
         return Err(format!(
             "expected inconsistent stage diagnostic, got {diagnostics:?}"
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn whitespace_support_and_unbounded_duplicate_identity_fail_closed() -> Result<(), String> {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let registry_text = std::fs::read_to_string(root.join("policy/extraction-shims.toml"))
+        .map_err(|err| format!("read registry: {err}"))?;
+    let ledger = parse_product_move_ledger(
+        &std::fs::read_to_string(root.join("policy/product-move-ledger.toml"))
+            .map_err(|err| format!("read ledger: {err}"))?,
+    )
+    .map_err(|err| format!("parse ledger: {err}"))?;
+    let mut registry = super::config::parse_extraction_shim_registry(&registry_text)
+        .map_err(|err| format!("parse registry: {err}"))?;
+    let unbounded_move = ledger
+        .entry
+        .iter()
+        .find(|entry| entry.duplicate_authority_class == "None")
+        .ok_or_else(|| "fixture ledger has no unbounded move entry".to_string())?;
+    let mut first = registry
+        .shim
+        .first()
+        .cloned()
+        .ok_or_else(|| "fixture registry has no shim entry".to_string())?;
+    first.move_ledger_entry = unbounded_move.id.clone();
+    first.new_identity = "duplicate::identity".to_string();
+    first.parity_case = Some("parity::duplicate".to_string());
+    first.claim_boundary = "bounded test fixture".to_string();
+    let mut second = first.clone();
+    second.id = "shim-test-duplicate".to_string();
+    registry.shim = vec![first, second];
+
+    let (_, diagnostics, _) = validate_extraction_shim_registry_with_ledger(registry, &ledger);
+    if !diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.kind == ShimDiagnosticKind::DuplicateDto)
+    {
+        return Err(format!(
+            "expected duplicate DTO diagnostic, got {diagnostics:?}"
+        ));
+    }
+
+    let whitespace_registry = super::config::parse_extraction_shim_registry(
+        &registry_text
+            .replace(
+                "parity_case = \"parity-repo-snapshot-staged-index-v1\"",
+                "parity_case = \"   \"",
+            )
+            .replace(
+                "id = \"shim-allow-diff-revision-identity\"",
+                "id = \"shim-allow-diff-revision-identity-whitespace-test\"",
+            ),
+    )
+    .map_err(|err| format!("parse whitespace registry: {err}"))?;
+    let move_ids = ledger
+        .entry
+        .iter()
+        .map(|entry| entry.id.clone())
+        .collect::<Vec<_>>();
+    let (_, diagnostics, _) = validate_extraction_shim_registry(whitespace_registry, &move_ids);
+    if !diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.kind == ShimDiagnosticKind::MissingParityCase)
+    {
+        return Err(format!(
+            "expected whitespace parity diagnostic, got {diagnostics:?}"
         ));
     }
     Ok(())

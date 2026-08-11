@@ -49,10 +49,17 @@ pub fn validate_extraction_shim_registry(
     registry: ExtractionShimRegistry,
     move_ledger_entry_ids: &[String],
 ) -> (ExtractionShimRegistry, Vec<ShimDiagnostic>, ShimReport) {
-    validate_extraction_shim_registry_with_ledger(&registry, None, move_ledger_entry_ids)
+    validate_extraction_shim_registry_with_ledger_inner(&registry, None, move_ledger_entry_ids)
 }
 
-fn validate_extraction_shim_registry_with_ledger(
+pub(crate) fn validate_extraction_shim_registry_with_ledger(
+    registry: ExtractionShimRegistry,
+    move_ledger: &ProductMoveLedger,
+) -> (ExtractionShimRegistry, Vec<ShimDiagnostic>, ShimReport) {
+    validate_extraction_shim_registry_with_ledger_inner(&registry, Some(move_ledger), &[])
+}
+
+fn validate_extraction_shim_registry_with_ledger_inner(
     registry: &ExtractionShimRegistry,
     move_ledger: Option<&ProductMoveLedger>,
     move_ledger_entry_ids: &[String],
@@ -205,9 +212,7 @@ pub fn validate_extraction_shim_registry_at(
     let ledger =
         crate::product_move::parse_product_move_ledger_at(Some(move_ledger_path), &ledger_text)?;
     Ok(validate_extraction_shim_registry_with_ledger(
-        &registry,
-        Some(&ledger),
-        &[],
+        registry, &ledger,
     ))
 }
 
