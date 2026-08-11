@@ -35,7 +35,7 @@ pub(crate) struct RepoEditParityCase {
 }
 
 /// Execute the live compatibility and direct authorities on equivalent roots.
-pub(crate) fn run_repo_edit_parity(root: &Path) -> CargoAllowResult<RepoEditParityRun> {
+pub(crate) fn run_repo_edit_parity() -> CargoAllowResult<RepoEditParityRun> {
     let workspace = parity_workspace()?;
     let result = run_cases(&workspace);
     let cleanup = fs::remove_dir_all(&workspace);
@@ -534,8 +534,7 @@ mod tests {
 
     #[test]
     fn repo_edit_authorities_are_parity_equivalent() -> Result<(), String> {
-        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-        let run = run_repo_edit_parity(&root).map_err(|error| error.to_string())?;
+        let run = run_repo_edit_parity().map_err(|error| error.to_string())?;
         for case in run.cases {
             if case.comparison.result != ParityComparisonResult::SemanticallyEquivalent {
                 return Err(format!(
