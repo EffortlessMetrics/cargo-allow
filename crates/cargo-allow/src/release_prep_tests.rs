@@ -56,6 +56,13 @@ fn release_workflow_exists_and_lists_publish_order() {
         "{RELEASE_WORKFLOW} should select the cargo-allow topology family"
     );
     assert!(
+        workflow.contains("TOPOLOGY_RECEIPT: target/cargo-allow/topology-publish.receipt.json")
+            && workflow.contains("release-manifest-v2.json")
+            && !workflow.contains("release-manifest-v1.json")
+            && !workflow.contains("ReleaseManifestV1"),
+        "{RELEASE_WORKFLOW} should attach the topology-derived V2 manifest only"
+    );
+    assert!(
         topology_publisher.contains("DEFAULT_TOPOLOGY")
             && topology_publisher.contains("load_rows")
             && topology_publisher.contains("release_order"),

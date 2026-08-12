@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generate a cargo-allow.release-manifest.v1 JSON manifest from release
+# Generate a cargo-allow.release-manifest.v2 envelope from release
 # workflow context. Runs after publish + install-smoke succeed.
 #
 # Inputs (environment / arguments):
@@ -8,7 +8,7 @@
 #   TAG            git tag ref (e.g. v0.2.0)
 #   COMMIT         commit SHA
 #   TREE           tree SHA (optional; derived from commit if absent)
-#   AUTH_SOURCE    "oidc" or "secret"
+#   AUTH_SOURCE    "crates_io_api_token"
 #   WORKFLOW_RUN_ID  GitHub Actions run ID (optional)
 #   MSRV           minimum supported Rust version
 #   PLATFORMS      space-separated proven platforms (e.g. "linux")
@@ -16,11 +16,12 @@
 #   BINARY_INSTALL_RECEIPT  clean-install receipt (optional)
 #   RUST_TOOLCHAIN  toolchain used for the binary (default: stable)
 #   RUNNER          runner used for the binary (default: ubuntu-latest)
-#   OUTPUT         output path (default: target/cargo-allow/release-manifest-v1.json)
+#   TOPOLOGY_RECEIPT  exact topology publisher receipt
+#   OUTPUT         output path (default: target/cargo-allow/release-manifest-v2.json)
 #
 # Outputs:
-#   release-manifest-v1.json — the typed manifest
-#   release-manifest-v1.sha256 — SHA-256 of the manifest bytes
+#   release-manifest-v2.json — the typed manifest envelope
+#   release-manifest-v2.sha256 — SHA-256 of the manifest bytes
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -39,7 +40,8 @@ binary_package_receipt="${BINARY_PACKAGE_RECEIPT:-}"
 binary_install_receipt="${BINARY_INSTALL_RECEIPT:-}"
 rust_toolchain="${RUST_TOOLCHAIN:-stable}"
 runner="${RUNNER:-ubuntu-latest}"
-output="${OUTPUT:-target/cargo-allow/release-manifest-v1.json}"
+topology_receipt="${TOPOLOGY_RECEIPT:-target/cargo-allow/topology-publish.receipt.json}"
+output="${OUTPUT:-target/cargo-allow/release-manifest-v2.json}"
 generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 if [[ -n "${binary_package_receipt}" && -z "${binary_install_receipt}" ]] || \
@@ -60,7 +62,7 @@ mkdir -p "$(dirname "${output}")"
 python3 - "${output}" "${version}" "${repository}" "${tag}" "${commit}" \
   "${tree}" "${auth_source}" "${workflow_run_id}" "${msrv}" "${platforms}" \
   "${generated_at}" "${binary_package_receipt}" "${binary_install_receipt}" \
-  "${rust_toolchain}" "${runner}" <<'PY'
+  "${rust_toolchain}" "${runner}" "${topology_receipt}" <<'PY'
 import hashlib
 import json
 import pathlib
@@ -69,25 +71,10 @@ import sys
 (
     output, version, repository, tag, commit, tree, auth_source, workflow_run_id,
     msrv, platforms_text, generated_at, package_path, install_path,
-    rust_toolchain, runner,
+    rust_toolchain, runner, topology_receipt_path,
 ) = sys.argv[1:]
-
-PUBLISH_ORDER = [
-    "allow-core", "allow-policy", "allow-inventory", "allow-files",
-    "allow-rust", "allow-match", "allow-policy-legacy", "allow-report",
-    "allow-diff", "cargo-allow",
-]
-CLAIM_BOUNDARY = (
-    "scanned source-tree/source syntax only; cargo-allow did not invoke Cargo "
-    "metadata, Cargo commands, rustc, Clippy, build scripts, proc macros, "
-    "external evidence tools, or repository code. Macro expansion, macro "
-    "token-tree contents, type information, MIR, build output, control flow, "
-    "and data flow were not analyzed."
-)
-LIMITATIONS = [
-    "source-tree-only scan; cargo-allow does not execute repository code",
-    "macro-expanded, type-aware, MIR-level, build-aware, control-flow, data-flow, unsafe-proof, test-adequacy, and coverage-proof behavior were not analyzed",
-]
+CLAIM_BOUNDARY = "topology-derived package identity and release evidence only; this manifest does not authorize publication or claim source, runtime, platform, or support completeness"
+LIMITATIONS = ["candidate rows come from the exact topology publisher receipt", "binary evidence is limited to the referenced receipt and verified target"]
 
 
 def file_digest(path):
@@ -111,6 +98,17 @@ def receipt(path, schema):
     return receipt_path, payload
 
 
+topology_file, topology = receipt(topology_receipt_path, "cargo-allow.topology-publish-receipt.v1")
+topology_file = topology_file.resolve()
+if topology.get("commit") != commit or topology.get("tree") != tree:
+    raise SystemExit("release-manifest: topology receipt identity disagrees with release")
+if topology.get("mode") != "cargo-allow" or topology.get("complete") is not True:
+    raise SystemExit("release-manifest: topology receipt is not a complete cargo-allow candidate")
+raw_rows = topology.get("rows")
+if not isinstance(raw_rows, list) or not raw_rows:
+    raise SystemExit("release-manifest: topology receipt has no package rows")
+
+
 def valid_digest(value):
     return (
         isinstance(value, str)
@@ -120,16 +118,36 @@ def valid_digest(value):
     )
 
 
-crates = []
-all_crate_checksums = True
-for name in PUBLISH_ORDER:
-    path = pathlib.Path("target/package") / f"{name}-{version}.crate"
-    item = {"name": name, "version": version}
-    if path.is_file():
-        item["crate_checksum"] = file_digest(path)
-    else:
-        all_crate_checksums = False
-    crates.append(item)
+rows = []
+seen_names = set()
+seen_orders = set()
+for raw in raw_rows:
+    required = ("logical_id", "name", "version", "release_order", "local_checksum")
+    if any(not isinstance(raw.get(field), (str, int)) or str(raw.get(field)).strip() == "" for field in required):
+        raise SystemExit("release-manifest: topology receipt row is incomplete")
+    name = raw["name"]
+    order = int(raw["release_order"])
+    if name in seen_names or order in seen_orders:
+        raise SystemExit("release-manifest: topology receipt contains duplicate package identity")
+    seen_names.add(name)
+    seen_orders.add(order)
+    if not valid_digest(raw["local_checksum"]):
+        raise SystemExit(f"release-manifest: malformed crate digest for {name}")
+    row = {
+        "logical_id": raw["logical_id"],
+        "package_name": name,
+        "package_version": raw["version"],
+        "release_order": order,
+        "crate_digest": raw["local_checksum"],
+    }
+    registry_checksum = raw.get("registry_checksum")
+    if registry_checksum is not None:
+        if not isinstance(registry_checksum, str) or len(registry_checksum) != 64 or \
+                any(char not in "0123456789abcdef" for char in registry_checksum):
+            raise SystemExit(f"release-manifest: malformed registry checksum for {name}")
+        row["registry_checksum"] = "sha256:" + registry_checksum
+    rows.append(row)
+rows.sort(key=lambda row: row["release_order"])
 
 platforms = platforms_text.split()
 binary_assets = []
@@ -201,33 +219,45 @@ if package_path and install_path:
         ],
     })
 
+if auth_source != "crates_io_api_token":
+    raise SystemExit("release-manifest: only crates_io_api_token is supported")
 manifest = {
-    "schema_id": "cargo-allow.release-manifest.v1",
-    "schema_version": 1,
-    "tool_version": version,
-    "repository": repository,
-    "tag": tag,
-    "commit": commit,
-    "tree": tree,
-    "version": version,
-    "crates": crates,
-    "auth_source": auth_source,
-    "msrv": msrv,
-    "platforms_proven": platforms,
-    "binary_assets": binary_assets,
-    "generations": {"release_manifest": 1, "add_finding_plan": 1, "mutation_receipt": 1},
-    "limitations": LIMITATIONS,
-    "claim_boundary": CLAIM_BOUNDARY,
-    "result": (
-        "Complete"
-        if all_crate_checksums
-        and auth_source == "oidc"
-        and binary_attestation_verified
-        and (not binary_assets or binary_assets[0]["platform"] in platforms)
-        else "Incomplete"
-    ),
+    "payload": {
+        "schema_id": "cargo-allow.release-manifest.v2",
+        "schema_version": 2,
+        "operation": "cargo_allow_release",
+        "repository": repository,
+        "tag_or_authorization": tag,
+        "commit": commit,
+        "tree": tree,
+        "cargo_lock_digest": "sha256:" + topology["cargo_lock_sha256"],
+        "architecture_digest": "sha256:" + topology["topology_sha256"],
+        "candidate_digest": file_digest(topology_file),
+        "package_rows": rows,
+        "authentication": "crates_io_api_token",
+        "publication_posture": "published" if topology["publish"] else "unpublished",
+        "support_posture": "experimental",
+        "limitations": LIMITATIONS,
+        "claim_boundary": CLAIM_BOUNDARY,
+    },
     "generated_at": generated_at,
+    "workflow_path": ".github/workflows/release.yml",
+    "workflow_run_id": int(workflow_run_id) if workflow_run_id else None,
+    "event": "release",
+    "github_ref": tag,
+    "artifact_references": [
+        str(topology_file.relative_to(pathlib.Path.cwd())),
+        *(
+            [str(pathlib.Path(package_path).resolve().relative_to(pathlib.Path.cwd())),
+             str(pathlib.Path(install_path).resolve().relative_to(pathlib.Path.cwd()))]
+            if package_path and install_path
+            else []
+        ),
+    ],
+    "authorization_reference": f"workflow/{workflow_run_id}/crates-io" if workflow_run_id else "workflow/crates-io",
+    "instrument_diagnostics": [] if binary_attestation_verified else ["binary attestation is not verified"],
 }
+manifest = {key: value for key, value in manifest.items() if value is not None}
 if workflow_run_id:
     try:
         manifest["workflow_run_id"] = int(workflow_run_id)

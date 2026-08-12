@@ -112,12 +112,15 @@ runtime, reachability, or semantic analysis.
 
 | Artifact | Schema ID | Producer |
 |---|---|---|
-| Release identity and verified executable assets | `cargo-allow.release-manifest.v1` | release workflow / typed `allow-report` model |
-| Topology-derived release payload and execution envelope | `cargo-allow.release-manifest.v2` | typed `allow-report` contract; candidate wiring is a later release slice |
+| Historical release identity and verified executable assets | `cargo-allow.release-manifest.v1` | historical reader / typed `allow-report` model |
+| Current topology-derived release payload and execution envelope | `cargo-allow.release-manifest.v2` | release workflow / topology receipt / typed `allow-report` contract |
 
-`ReleaseManifestV1` is a release-control artifact rather than a source-tree
-scan result. Its `binary_assets` collection may be empty for crates.io-only
-releases. When populated, each asset is bound to the manifest's
+`ReleaseManifestV1` remains readable as a historical release-control artifact
+but cannot satisfy the current release gate. The current workflow emits
+`ReleaseManifestV2`, whose package rows come from the exact topology publisher
+receipt and whose authentication class is token-backed. Neither artifact is a
+source-tree scan result. In the historical V1 reader, `binary_assets` may be
+empty for crates.io-only releases. When populated, each asset is bound to the manifest's
 tag, commit, tree, version, proven platform, executable digest, archive digest,
 candidate/install evidence digests, and attestation subject. The Rust validator
 rejects duplicate or non-canonical assets, unsupported targets, identity

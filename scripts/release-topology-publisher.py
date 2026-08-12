@@ -255,6 +255,7 @@ def main() -> int:
     validate_rows(rows, packages)
     receipt: dict[str, Any] = {
         "schema_id": "cargo-allow.topology-publish-receipt.v1",
+        "schema_version": 1,
         "mode": args.mode,
         "publish": args.publish,
         "topology_id": topology["topology_id"],
@@ -274,6 +275,7 @@ def main() -> int:
         crate_path, local_checksum = package_crate(name, version)
         observed = registry_checksum(name, version)
         row_receipt: dict[str, Any] = {
+            "logical_id": row["logical_id"],
             "name": name,
             "version": version,
             "family": row["product_family"],
