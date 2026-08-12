@@ -115,9 +115,10 @@ if publish:
         raise SystemExit("release-manifest: published topology receipt is not complete")
     if topology.get("incident_state") != "none":
         raise SystemExit("release-manifest: published topology receipt records an incident")
-    if topology.get("first_irreversible_row") is not None:
+    first_irreversible_row = topology.get("first_irreversible_row")
+    if not isinstance(first_irreversible_row, int) or first_irreversible_row <= 0:
         raise SystemExit(
-            "release-manifest: published topology receipt retains an irreversible-row marker"
+            "release-manifest: published topology receipt lacks an irreversible-row marker"
         )
 
 
@@ -183,10 +184,16 @@ for raw in raw_rows:
     seen_orders.add(order)
     if not valid_digest(raw["local_checksum"]):
         raise SystemExit(f"release-manifest: malformed crate digest for {name}")
-    if publish and raw.get("state") not in {"published_verified", "verified_existing"}:
-        raise SystemExit(
-            f"release-manifest: published topology row {name} is not registry-verified"
-        )
+    if publish:
+        if raw.get("state") not in {"published_verified", "verified_existing"}:
+            raise SystemExit(
+                f"release-manifest: published topology row {name} is not registry-verified"
+            )
+        registry_checksum = raw.get("registry_checksum")
+        if registry_checksum != raw["local_checksum"]:
+            raise SystemExit(
+                f"release-manifest: registry checksum disagrees for published row {name}"
+            )
     row = {
         "logical_id": raw["logical_id"],
         "package_name": name,

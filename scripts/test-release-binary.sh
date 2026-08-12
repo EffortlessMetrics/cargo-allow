@@ -142,7 +142,7 @@ receipt = json.loads(path.read_text(encoding="utf-8"))
 receipt["publish"] = True
 receipt["complete"] = True
 receipt["incident_state"] = "none"
-receipt["first_irreversible_row"] = None
+receipt["first_irreversible_row"] = receipt["rows"][0]["release_order"]
 for row in receipt["rows"]:
     row["state"] = "published_verified"
     if not row["local_checksum"].startswith("sha256:"):
@@ -161,6 +161,23 @@ import sys
 manifest = json.loads(open(sys.argv[1], encoding="utf-8").read())
 assert manifest["payload"]["publication_posture"] == "published"
 PY
+
+checksum_conflict_receipt="${work}/checksum-conflict-topology.receipt.json"
+cp "${published_receipt}" "${checksum_conflict_receipt}"
+python3 - "${checksum_conflict_receipt}" <<'PY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+receipt = json.loads(path.read_text(encoding="utf-8"))
+receipt["rows"][0]["registry_checksum"] = "sha256:" + ("0" * 64)
+path.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+PY
+expect_failure env VERSION=9.9.9 REPOSITORY=EffortlessMetrics/cargo-allow \
+  TAG=v9.9.9 COMMIT=fixture-commit TREE=fixture-tree AUTH_SOURCE=crates_io_api_token MSRV=1.95 \
+  TOPOLOGY_RECEIPT="${checksum_conflict_receipt}" OUTPUT="${work}/checksum-conflict-manifest.json" \
+  bash scripts/generate-release-manifest.sh
 
 partial_receipt="${work}/partial-topology.receipt.json"
 cp "${published_receipt}" "${partial_receipt}"
