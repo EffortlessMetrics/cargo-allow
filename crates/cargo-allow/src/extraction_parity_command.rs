@@ -210,17 +210,26 @@ pub(crate) fn cmd_parity(args: &ParityArgs) -> CargoAllowResult<()> {
             passed,
         )?;
         let receipt_value = serde_json::to_value(assembly.receipt).map_err(|error| {
-            CargoAllowError::new(format!("render extraction cutover receipt: {error}"))
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                format!("render extraction cutover receipt: {error}"),
+            )
         })?;
         let object = payload.as_object_mut().ok_or_else(|| {
-            CargoAllowError::new("render extraction cutover receipt requires JSON object payload")
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                "render extraction cutover receipt requires JSON object payload",
+            )
         })?;
         object.insert("cutover_receipt".to_string(), receipt_value);
         cutover_source_input_paths = Some(assembly.source_input_paths);
     }
-    let rendered = serde_json::to_string_pretty(&payload)
-        .map_err(|error| CargoAllowError::new(format!("render parity evidence: {error}")))?
-        + "\n";
+    let rendered = serde_json::to_string_pretty(&payload).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            format!("render parity evidence: {error}"),
+        )
+    })? + "\n";
     if let Some(source_input_paths) = cutover_source_input_paths.as_deref() {
         ensure_cutover_inputs_clean(&root, source_input_paths)?;
     }
@@ -1988,32 +1997,47 @@ PY
                 })
                 .ok_or_else(|| format!("configured status omitted {stage}"))?;
             let expected_log = format!("target/configured/{stage}/cutover-receipt.log");
-            if !configured_output
-                .join(stage)
-                .join("cutover-evidence.json")
-                .is_file()
-                || configured_output
-                    .join(stage)
-                    .join("cutover-receipt.json")
-                    .exists()
-                || !configured_blockers
-                    .iter()
-                    .any(|item| *item == format!("cutover_receipt_rejected:{stage}:17"))
-                || ownership.package_paths.iter().collect::<BTreeSet<_>>()
-                    != expected.package_paths.iter().collect::<BTreeSet<_>>()
-                || ownership.asset_paths.iter().collect::<BTreeSet<_>>()
-                    != expected.asset_paths.iter().collect::<BTreeSet<_>>()
-                || ownership.docs_paths.iter().collect::<BTreeSet<_>>()
-                    != expected.docs_paths.iter().collect::<BTreeSet<_>>()
-                || ownership.ci_paths.iter().collect::<BTreeSet<_>>()
-                    != expected.ci_paths.iter().collect::<BTreeSet<_>>()
-                || stage_status
-                    .get("cutover_receipt_log")
-                    .and_then(Value::as_str)
-                    != Some(expected_log.as_str())
-            {
+            let stage_dir = configured_output.join(stage);
+            if !stage_dir.join("cutover-evidence.json").is_file() {
                 return Err(format!(
-                    "configured/default receipt lifecycle was not fail-closed for {stage}"
+                    "configured status omitted evidence manifest for {stage}"
+                ));
+            }
+            if stage_dir.join("cutover-receipt.json").exists() {
+                return Err(format!(
+                    "rejected configured status retained receipt for {stage}"
+                ));
+            }
+            let expected_blocker = format!("cutover_receipt_rejected:{stage}:17");
+            if !configured_blockers.contains(&expected_blocker.as_str()) {
+                return Err(format!(
+                    "configured status omitted blocker `{expected_blocker}`; actual={configured_blockers:?}"
+                ));
+            }
+            for (field, actual, expected) in [
+                (
+                    "package_paths",
+                    &ownership.package_paths,
+                    &expected.package_paths,
+                ),
+                ("asset_paths", &ownership.asset_paths, &expected.asset_paths),
+                ("docs_paths", &ownership.docs_paths, &expected.docs_paths),
+                ("ci_paths", &ownership.ci_paths, &expected.ci_paths),
+            ] {
+                if actual.iter().collect::<BTreeSet<_>>()
+                    != expected.iter().collect::<BTreeSet<_>>()
+                {
+                    return Err(format!(
+                        "configured ownership `{field}` mismatch for {stage}: actual={actual:?}, expected={expected:?}"
+                    ));
+                }
+            }
+            let actual_log = stage_status
+                .get("cutover_receipt_log")
+                .and_then(Value::as_str);
+            if actual_log != Some(expected_log.as_str()) {
+                return Err(format!(
+                    "configured receipt log mismatch for {stage}: actual={actual_log:?}, expected={expected_log:?}"
                 ));
             }
         }
