@@ -118,6 +118,19 @@ def valid_digest(value):
     )
 
 
+def artifact_reference(path):
+    candidate = pathlib.Path(path)
+    if not candidate.is_absolute():
+        return candidate.as_posix()
+    try:
+        return candidate.resolve().relative_to(pathlib.Path.cwd()).as_posix()
+    except ValueError:
+        # Fixture and downloaded-artifact callers may stage the receipt outside
+        # the checkout. Keep the envelope repository/artifact-relative without
+        # leaking an absolute runner path.
+        return f"artifact/{candidate.name}"
+
+
 rows = []
 seen_names = set()
 seen_orders = set()
@@ -246,10 +259,9 @@ manifest = {
     "event": "release",
     "github_ref": tag,
     "artifact_references": [
-        str(topology_file.relative_to(pathlib.Path.cwd())),
+        artifact_reference(topology_file),
         *(
-            [str(pathlib.Path(package_path).resolve().relative_to(pathlib.Path.cwd())),
-             str(pathlib.Path(install_path).resolve().relative_to(pathlib.Path.cwd()))]
+            [artifact_reference(package_path), artifact_reference(install_path)]
             if package_path and install_path
             else []
         ),
