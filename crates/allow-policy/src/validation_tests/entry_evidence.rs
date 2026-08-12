@@ -107,6 +107,67 @@ fn keeps_unsafe_evidence_requirement_specific() {
 }
 
 #[test]
+fn unsafe_verified_evidence_requirement_rejects_traceability_only_policy() {
+    let err = parse_err(
+        r#"
+                policy = "cargo-allow"
+
+                [requirements.unsafe]
+                verified_evidence_required = true
+
+                [[allow]]
+                id = "allow-unsafe"
+                kind = "unsafe"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                evidence = ["test:unsafe_boundary"]
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "unsafe_block"
+                container = "load"
+            "#,
+    );
+
+    assert!(err.contains("requires at least one verified local-file evidence reference"));
+}
+
+#[test]
+fn unsafe_verified_evidence_requirement_accepts_local_and_mixed_policies() {
+    for evidence in [
+        r#"["doc:docs/safety.md"]"#,
+        r#"["test:unsafe_boundary", "adr:docs/adr/0001.md"]"#,
+    ] {
+        let policy = format!(
+            r#"
+                policy = "cargo-allow"
+
+                [requirements.unsafe]
+                verified_evidence_required = true
+
+                [[allow]]
+                id = "allow-unsafe"
+                kind = "unsafe"
+                path = "src/lib.rs"
+                owner = "core"
+                classification = "reviewed"
+                reason = "fixture"
+                evidence = {evidence}
+                expires = "2026-08-01"
+                [allow.selector]
+                ast_kind = "unsafe_block"
+                container = "load"
+            "#,
+        );
+
+        parse_policy(&policy).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("verified local evidence should parse: {err}"))
+        });
+    }
+}
+
+#[test]
 fn rejects_reviewed_unsafe_entry_with_only_weak_evidence() {
     let err = parse_err(
         r#"

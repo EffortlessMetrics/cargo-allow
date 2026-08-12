@@ -32,6 +32,8 @@ struct UnsafeRequirementsToml {
     #[serde(default, deserialize_with = "option_bool_or_string")]
     evidence_required: Option<bool>,
     #[serde(default, deserialize_with = "option_bool_or_string")]
+    verified_evidence_required: Option<bool>,
+    #[serde(default, deserialize_with = "option_bool_or_string")]
     safety_comment_required: Option<bool>,
 }
 
@@ -65,7 +67,10 @@ impl RequirementsToml {
                 .unsafe_requirements
                 .safety_comment_required
                 .unwrap_or(default.unsafe_safety_comment_required),
-            unsafe_verified_evidence_required: default.unsafe_verified_evidence_required,
+            unsafe_verified_evidence_required: self
+                .unsafe_requirements
+                .verified_evidence_required
+                .unwrap_or(default.unsafe_verified_evidence_required),
         }
     }
 }
@@ -94,6 +99,7 @@ mod tests {
             stale_entries_fail: Some(true),
             unsafe_requirements: UnsafeRequirementsToml {
                 evidence_required: Some(false),
+                verified_evidence_required: Some(true),
                 safety_comment_required: Some(true),
             },
         }
@@ -112,7 +118,7 @@ mod tests {
                 stale_entries_fail: true,
                 unsafe_evidence_required: false,
                 unsafe_safety_comment_required: true,
-                unsafe_verified_evidence_required: false,
+                unsafe_verified_evidence_required: true,
             }
         );
     }

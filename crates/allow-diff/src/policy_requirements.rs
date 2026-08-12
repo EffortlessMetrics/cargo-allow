@@ -120,6 +120,12 @@ fn requirement_fields(base: &Requirements, head: &Requirements) -> Vec<Requireme
             true,
         ),
         field(
+            RequirementChangeField::UnsafeVerifiedEvidenceRequired,
+            base.unsafe_verified_evidence_required,
+            head.unsafe_verified_evidence_required,
+            true,
+        ),
+        field(
             RequirementChangeField::UnsafeSafetyCommentRequired,
             base.unsafe_safety_comment_required,
             head.unsafe_safety_comment_required,

@@ -36,6 +36,16 @@ fn clap_parses_propose_force() {
 }
 
 #[test]
+fn proposal_summary_preserves_distinct_rejection_reasons() {
+    let mut reason = None;
+    record_unreceiptable_reason(&mut reason, "bare allow forbidden");
+    record_unreceiptable_reason(&mut reason, "verified unsafe evidence required");
+
+    assert_eq!(reason, Some(MULTIPLE_UNRECEIPTABLE_REASONS));
+    assert!(reason.is_some_and(|value| value.contains("multiple policy requirements")));
+}
+
+#[test]
 fn write_target_after_containment_errors_as_internal_when_missing() {
     let err = write_target_after_containment(None)
         .expect_err("a missing --write target should fail closed");

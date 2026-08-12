@@ -98,6 +98,11 @@ pub(crate) fn render_requirements(out: &mut String, requirements: &Requirements)
     );
     render_bool_field(
         out,
+        "verified_evidence_required",
+        requirements.unsafe_verified_evidence_required,
+    );
+    render_bool_field(
+        out,
         "safety_comment_required",
         requirements.unsafe_safety_comment_required,
     );

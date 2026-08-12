@@ -62,6 +62,21 @@ fn parses_unsafe_safety_comment_requirement() {
 }
 
 #[test]
+fn parses_unsafe_verified_evidence_requirement() {
+    let cfg = parse_policy(
+        r#"
+                policy = "cargo-allow"
+
+                [requirements.unsafe]
+                verified_evidence_required = true
+            "#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("policy should parse: {err}")));
+
+    assert!(cfg.requirements.unsafe_verified_evidence_required);
+}
+
+#[test]
 fn parses_general_evidence_requirement() {
     let cfg = parse_policy(
         r#"

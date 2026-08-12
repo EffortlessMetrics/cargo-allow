@@ -106,6 +106,7 @@ pub enum RequirementChangeField {
     LintPolicyIdRequired,
     StaleEntriesFail,
     UnsafeEvidenceRequired,
+    UnsafeVerifiedEvidenceRequired,
     UnsafeSafetyCommentRequired,
 }
 
@@ -120,6 +121,7 @@ impl RequirementChangeField {
         Self::LintPolicyIdRequired,
         Self::StaleEntriesFail,
         Self::UnsafeEvidenceRequired,
+        Self::UnsafeVerifiedEvidenceRequired,
         Self::UnsafeSafetyCommentRequired,
     ];
 
@@ -134,6 +136,7 @@ impl RequirementChangeField {
             Self::LintPolicyIdRequired => "lint_policy_id_required",
             Self::StaleEntriesFail => "stale_entries_fail",
             Self::UnsafeEvidenceRequired => "unsafe.evidence_required",
+            Self::UnsafeVerifiedEvidenceRequired => "unsafe.verified_evidence_required",
             Self::UnsafeSafetyCommentRequired => "unsafe.safety_comment_required",
         }
     }

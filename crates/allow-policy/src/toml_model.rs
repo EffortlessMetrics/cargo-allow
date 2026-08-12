@@ -112,6 +112,7 @@ mod tests {
         assert!(!cfg.requirements.lint_policy_id_required);
         assert!(!cfg.requirements.stale_entries_fail);
         assert!(cfg.requirements.unsafe_evidence_required);
+        assert!(!cfg.requirements.unsafe_verified_evidence_required);
         assert!(!cfg.requirements.unsafe_safety_comment_required);
         assert!(cfg.allow.is_empty());
     }
