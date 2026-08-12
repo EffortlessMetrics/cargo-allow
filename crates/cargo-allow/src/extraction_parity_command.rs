@@ -336,7 +336,7 @@ fn assemble_cutover_receipt(
         ));
     }
 
-    relative_file(root, evidence_path)?;
+    let evidence_path = resolve_evidence_path(root, evidence_path)?;
 
     let input_text = fs::read_to_string(evidence_path).map_err(|error| {
         CargoAllowError::new(format!(
@@ -612,7 +612,15 @@ fn derive_ownership(
     let asset_paths = match stage {
         ExtractionStage::RepoSnapshot => effortless_repo_snapshot::parity_contract_paths(root),
         ExtractionStage::RepoEdit => effortless_repo_edit::parity_contract_paths(root),
-        _ => Vec::new(),
+        other => {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::InvalidConfig,
+                format!(
+                    "unsupported ownership derivation stage `{}`",
+                    other.as_str()
+                ),
+            ));
+        }
     }
     .into_iter()
     .map(|path| relative_file(root, &path))
@@ -622,7 +630,15 @@ fn derive_ownership(
         match stage {
             ExtractionStage::RepoSnapshot => "docs/architecture/repo-snapshot.md",
             ExtractionStage::RepoEdit => "docs/architecture/repo-edit.md",
-            _ => "docs/architecture/extraction-parity.md",
+            other => {
+                return Err(CargoAllowError::with_kind(
+                    CargoAllowErrorKind::InvalidConfig,
+                    format!(
+                        "unsupported ownership documentation stage `{}`",
+                        other.as_str()
+                    ),
+                ));
+            }
         },
         "policy/extraction-parity.toml",
         "policy/product-move-ledger.toml",
@@ -867,6 +883,15 @@ fn resolve_receipt_path(root: &Path, relative: &Path) -> CargoAllowResult<PathBu
     relative_file(root, &path).map(|_| path)
 }
 
+fn resolve_evidence_path(root: &Path, path: &Path) -> CargoAllowResult<PathBuf> {
+    let resolved = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        root.join(path)
+    };
+    relative_file(root, &resolved).map(|_| resolved)
+}
+
 fn relative_file(root: &Path, path: &Path) -> CargoAllowResult<String> {
     let relative = path.strip_prefix(root).map_err(|_| {
         CargoAllowError::with_kind(
@@ -931,7 +956,12 @@ fn ensure_cutover_inputs_clean(root: &Path) -> CargoAllowResult<()> {
             "--porcelain",
             "--untracked-files=all",
             "--",
+            "Cargo.toml",
+            "crates/*/Cargo.toml",
             "crates/allow-policy/src/extraction_parity",
+            "crates/cargo-allow/src/extraction_parity_command.rs",
+            "policy/product-crates-v2.toml",
+            "policy/product-package-topology-v2.toml",
             "policy/extraction-parity.toml",
             "policy/product-move-ledger.toml",
         ])
@@ -1359,16 +1389,16 @@ mod tests {
             "Passed",
         )
         .map_err(|error| error.to_string())?;
-        let result = validate_build_package_receipt(
+        let validation = validate_build_package_receipt(
             &root,
             &receipt,
             stage,
             &source,
             "sha256:parity",
             &ownership,
-        )
-        .map_err(|error| error.to_string())?;
+        );
         remove_fixture(&fixture);
+        let result = validation.map_err(|error| error.to_string())?;
         if !result.contains("build_package_receipt:") {
             return Err(format!("unexpected build/package result: {result}"));
         }
@@ -1395,17 +1425,18 @@ mod tests {
         if let Some(record) = receipt.package_records.first_mut() {
             record.sha256 = "sha256:v1:stale".to_string();
         }
-        let error = validate_build_package_receipt(
+        let validation = validate_build_package_receipt(
             &root,
             &receipt,
             stage,
             &source,
             "sha256:parity",
             &ownership,
-        )
-        .err()
-        .ok_or_else(|| "stale package digest was accepted".to_string())?;
+        );
         remove_fixture(&fixture);
+        let error = validation
+            .err()
+            .ok_or_else(|| "stale package digest was accepted".to_string())?;
         if !error
             .to_string()
             .contains("package receipt digest mismatch")
@@ -1433,17 +1464,18 @@ mod tests {
         )
         .map_err(|error| error.to_string())?;
         receipt.architecture_manifest_digest = "sha256:v1:stale-architecture".to_string();
-        let error = validate_build_package_receipt(
+        let validation = validate_build_package_receipt(
             &root,
             &receipt,
             stage,
             &source,
             "sha256:parity",
             &ownership,
-        )
-        .err()
-        .ok_or_else(|| "stale architecture digest was accepted".to_string())?;
+        );
         remove_fixture(&fixture);
+        let error = validation
+            .err()
+            .ok_or_else(|| "stale architecture digest was accepted".to_string())?;
         if !error.to_string().contains("stale or for another stage") {
             return Err(format!("wrong stale architecture error: {error}"));
         }

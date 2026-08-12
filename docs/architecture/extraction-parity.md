@@ -25,6 +25,7 @@ reachable old paths, and missing package/build evidence are reported as
 
 When a stage has complete prerequisites, the status lane also supplies the
 cutover adapter with a repository-relative evidence manifest. The manifest
+uses schema `cargo-allow.extraction-cutover-evidence.v2` (version 2) and
 contains only paths to two receipts; it does not accept caller-provided
 ownership summaries, source identities, or digests. The adapter derives the
 package set from the current V2 architecture receipt and move ledger, derives

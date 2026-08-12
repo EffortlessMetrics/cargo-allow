@@ -10,6 +10,20 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
 
 output_dir="${EXTRACTION_CUTOVER_DIR:-${ROOT}/target/extraction-cutover}"
+python3 - "${ROOT}" "${output_dir}" <<'PY'
+from pathlib import Path
+import sys
+
+root = Path(sys.argv[1]).resolve()
+output_dir = Path(sys.argv[2]).resolve()
+try:
+    output_dir.relative_to(root)
+except ValueError:
+    raise SystemExit(
+        "EXTRACTION_CUTOVER_DIR must be inside the repository root; "
+        "cutover evidence paths are repository-relative"
+    )
+PY
 mkdir -p "${output_dir}"
 
 snapshot_exit=0
@@ -30,8 +44,8 @@ import sys
 import tomllib
 from pathlib import Path
 
-root = Path(sys.argv[1])
-output_dir = Path(sys.argv[2])
+root = Path(sys.argv[1]).resolve()
+output_dir = Path(sys.argv[2]).resolve()
 exit_codes = {"RepoSnapshot": int(sys.argv[3]), "RepoEdit": int(sys.argv[4])}
 stage_paths = {
     "RepoSnapshot": output_dir / "repo-snapshot-parity.json",
@@ -223,6 +237,7 @@ for stage, path in stage_paths.items():
     else:
         blockers.append(f"independent_build_package_receipt_missing:{stage}")
     manifest_path = stage_dir / "cutover-evidence.json"
+    receipt_path = stage_dir / "cutover-receipt.json"
     if build_receipt_relative is not None:
         manifest_path.write_text(
             json.dumps(
@@ -241,6 +256,7 @@ for stage, path in stage_paths.items():
         )
     else:
         manifest_path.unlink(missing_ok=True)
+        receipt_path.unlink(missing_ok=True)
     stages.append(
         {
             "stage": stage,
@@ -304,10 +320,39 @@ PY
 for stage in repo-snapshot repo-edit; do
   manifest="${output_dir}/${stage}/cutover-evidence.json"
   receipt="${output_dir}/${stage}/cutover-receipt.json"
+  log="${output_dir}/${stage}/cutover-receipt.log"
+  rm -f "${receipt}" "${log}"
   if [[ -f "${manifest}" ]]; then
+    adapter_exit=0
     cargo run -p cargo-allow --locked -- extraction-parity \
       --stage "${stage}" \
       --cutover-evidence "${manifest}" \
-      --output "${receipt}" || rm -f "${receipt}"
+      --output "${receipt}" >"${log}" 2>&1 || adapter_exit=$?
+    if [[ "${adapter_exit}" -ne 0 ]]; then
+      rm -f "${receipt}"
+    fi
+    python3 - "${output_dir}/extraction-cutover-status.json" "${stage}" "${adapter_exit}" "${log#${ROOT}/}" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+status_path = Path(sys.argv[1])
+stage_name = sys.argv[2]
+adapter_exit = int(sys.argv[3])
+log_path = sys.argv[4].replace("\\", "/")
+status = json.loads(status_path.read_text(encoding="utf-8"))
+for stage in status["stages"]:
+    if stage["stage"] == stage_name.title().replace("-", ""):
+        stage["cutover_receipt_exit_code"] = adapter_exit
+        stage["cutover_receipt_log"] = log_path
+        break
+if adapter_exit:
+    status["result"] = "Blocked"
+    status.setdefault("blockers", []).append(
+        f"cutover_receipt_rejected:{stage_name}:{adapter_exit}"
+    )
+    status["blockers"] = sorted(set(status["blockers"]))
+status_path.write_text(json.dumps(status, indent=2) + "\n", encoding="utf-8")
+PY
   fi
 done
