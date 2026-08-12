@@ -70,6 +70,10 @@ fn release_workflow_exists_and_lists_publish_order() {
             && topology_publisher.contains("logical_id"),
         "{RELEASE_TOPOLOGY_PUBLISHER} should derive publication order from the V2 topology"
     );
+    assert!(
+        topology_publisher.contains("\"cargo-allow\": {\"shared\", \"cargo-allow\"}"),
+        "cargo-allow release mode should include its topology-approved shared dependencies"
+    );
     let receipt_schema =
         read_workspace_file(&root, "docs/schemas/topology-publish-receipt.schema.json");
     assert!(
