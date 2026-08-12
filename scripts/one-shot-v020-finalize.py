@@ -35,7 +35,7 @@ def patch_release_tests() -> None:
     );''',
         ),
         (
-            'publish.contains("ref: ${{ needs.preflight.outputs.tag }}")',
+            'publish.contains("refs/tags/{0}")',
             'publish.contains("needs.preflight.outputs.tag")',
         ),
         (
