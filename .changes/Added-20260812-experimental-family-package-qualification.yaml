@@ -1,0 +1,5 @@
+kind: Added
+body: >-
+  Qualify the retained shared, cargo-intent, and cargo-proof package rows for
+  experimental 0.1.0 publication while keeping cargo-allow candidate
+  membership topology-derived and separate.
