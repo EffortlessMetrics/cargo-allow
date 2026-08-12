@@ -216,6 +216,7 @@ jobs:
           RELEASE_COMMIT: ${{ needs.preflight.outputs.commit }}
           RELEASE_TREE: ${{ needs.preflight.outputs.tree }}
           RECOVERY: ${{ needs.preflight.outputs.recovery }}
+          RECOVERY_RECEIPT: target/cargo-allow/recovery-receipt/topology-publish.receipt.json
         run: |
           set -euo pipefail
           version="${RELEASE_VERSION}"

@@ -123,6 +123,7 @@ fn topology_publish_receipt_preserves_incident_recovery_boundary() {
             && workflow.contains("run-id: ${{ needs.preflight.outputs.recovery_receipt_run_id }}")
             && workflow.contains("--recovery-receipt")
             && workflow.contains("--authorization")
+            && workflow.contains("RECOVERY_RECEIPT: target/cargo-allow/recovery-receipt/topology-publish.receipt.json")
             && workflow.contains("actions: read"),
         "recovery should consume the original run receipt through a bounded artifact identity"
     );
