@@ -1,4 +1,4 @@
-# Diagnose Changie 1.25.2's generated version-file path before merge.
+# Remove the empty legacy v0.2.0 placeholder before native Changie merge.
 # Self-removing release candidate convergence. The resulting branch contains
 # only the durable v0.2.0 implementation, documentation, and Changie batch.
 name: One-shot v0.2.0 release closeout
@@ -68,11 +68,11 @@ jobs:
           mkdir -p "${GOBIN}"
           go install github.com/miniscruff/changie@v1.25.2
           go version -m "${GOBIN}/changie" | grep -Eq $'^\tmod\tgithub\.com/miniscruff/changie\tv1\.25\.2(\t|$)'
-          echo 'changie: batching v0.2.0'
+          if [ -e .changes/v0.2.0 ]; then
+            test ! -s .changes/v0.2.0
+            rm .changes/v0.2.0
+          fi
           "${GOBIN}/changie" batch v0.2.0
-          echo 'changie: root files after batch'
-          find .changes -maxdepth 1 -type f -printf '%f\n' | sort
-          echo 'changie: merging version files'
           "${GOBIN}/changie" merge
           test "$(grep -c '^## \[0\.2\.0\] - ' CHANGELOG.md)" -eq 1
           grep -q '^## \[Unreleased\]$' CHANGELOG.md
