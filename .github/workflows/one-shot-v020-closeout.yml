@@ -44,20 +44,21 @@ jobs:
 
           path = Path('crates/cargo-allow/src/release_prep_tests.rs')
           text = path.read_text(encoding='utf-8')
-          replacements = [
-              (
-                  '''    assert!(
+          old_version = '''    assert!(
                   publish.contains(r#"version="${RELEASE_VERSION}""#),
                   "publish should consume the preflight-resolved version"
-              );''',
-                  '''    assert!(
+              );'''
+          new_version = '''    assert!(
                   publish.contains("needs.preflight.outputs.version"),
                   "publish should consume the preflight-resolved version"
-              );''',
-              ),
+              );'''
+          old_archive = '"cargo-allow-' + '$' + '{{ github.ref_name }}' + '-x86_64-unknown-linux-gnu.tar.gz",'
+          new_archive = '"cargo-allow-' + '$' + '{{ needs.preflight.outputs.tag }}' + '-x86_64-unknown-linux-gnu.tar.gz",'
+          replacements = [
+              (old_version, new_version),
               ('"Generate release manifest"', '"Generate exact mixed-version release manifest"'),
               ('"Attach release manifest to GitHub Release"', '"Attach verified release evidence and Linux archive"'),
-              ('"cargo-allow-${{ github.ref_name }}-x86_64-unknown-linux-gnu.tar.gz",', '"cargo-allow-${{ needs.preflight.outputs.tag }}-x86_64-unknown-linux-gnu.tar.gz",'),
+              (old_archive, new_archive),
               ('workflow.contains("needs: [install-smoke, publish]")', 'workflow.contains("needs: [preflight, install-smoke, publish]")'),
           ]
           for old, new in replacements:
@@ -96,16 +97,22 @@ behavior, or test adequacy. Its checked source of truth remains #2570 and
 
           release = Path('.github/workflows/release.yml')
           text = release.read_text(encoding='utf-8')
-          old = '''          test "$(git rev-parse HEAD^{commit})" = "${{ needs.preflight.outputs.commit }}"
-          test "$(git rev-parse HEAD^{tree})" = "${{ needs.preflight.outputs.tree }}"'''
-          new = '''          if [ "$(git rev-parse HEAD^{commit})" != "${{ needs.preflight.outputs.commit }}" ]; then
-            echo "::error::publish checkout commit differs from preflight"
-            exit 1
-          fi
-          if [ "$(git rev-parse HEAD^{tree})" != "${{ needs.preflight.outputs.tree }}" ]; then
-            echo "::error::publish checkout tree differs from preflight"
-            exit 1
-          fi'''
+          commit_ref = '$' + '{{ needs.preflight.outputs.commit }}'
+          tree_ref = '$' + '{{ needs.preflight.outputs.tree }}'
+          old = (
+              '          test "$(git rev-parse HEAD^{commit})" = "' + commit_ref + '"\n'
+              '          test "$(git rev-parse HEAD^{tree})" = "' + tree_ref + '"'
+          )
+          new = (
+              '          if [ "$(git rev-parse HEAD^{commit})" != "' + commit_ref + '" ]; then\n'
+              '            echo "::error::publish checkout commit differs from preflight"\n'
+              '            exit 1\n'
+              '          fi\n'
+              '          if [ "$(git rev-parse HEAD^{tree})" != "' + tree_ref + '" ]; then\n'
+              '            echo "::error::publish checkout tree differs from preflight"\n'
+              '            exit 1\n'
+              '          fi'
+          )
           if old not in text:
               raise SystemExit('publish identity recheck seam changed')
           release.write_text(text.replace(old, new, 1), encoding='utf-8')
