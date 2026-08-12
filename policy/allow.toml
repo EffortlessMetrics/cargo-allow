@@ -10961,7 +10961,7 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-0521"
+id = "allow-0523"
 kind = "non_rust_file"
 family = "documentation"
 path = "docs/schemas/topology-publish-receipt.schema.json"
