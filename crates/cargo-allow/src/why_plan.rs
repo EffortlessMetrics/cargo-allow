@@ -175,7 +175,8 @@ fn required_human_fields(cfg: &AllowConfig, finding: &Finding) -> Vec<String> {
     }
     if requirements.evidence_required
         || (finding.kind == allow_core::FindingKind::Unsafe
-            && requirements.unsafe_evidence_required)
+            && (requirements.unsafe_evidence_required
+                || requirements.unsafe_verified_evidence_required))
     {
         fields.push("evidence".to_string());
     }
@@ -268,8 +269,10 @@ pub(crate) fn sample_add_finding_plan_json_for_contract_test() -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{ensure_exact_plan_evaluation, ensure_plan_outcome_is_new};
-    use allow_core::{CargoAllowErrorKind, MatchStatus};
+    use super::{ensure_exact_plan_evaluation, ensure_plan_outcome_is_new, required_human_fields};
+    use allow_core::{
+        AllowConfig, CargoAllowErrorKind, Finding, FindingKind, MatchStatus, StructuralIdentity,
+    };
     use allow_report::{EvaluationContext, InventoryContext};
 
     #[test]
@@ -342,6 +345,28 @@ mod tests {
         assert!(
             result.is_ok(),
             "a complete target scan may produce a scoped plan despite unrelated inventory partiality"
+        );
+    }
+
+    #[test]
+    fn verified_unsafe_evidence_is_a_required_human_field() {
+        let mut cfg = AllowConfig::empty();
+        cfg.requirements.evidence_required = false;
+        cfg.requirements.unsafe_evidence_required = false;
+        cfg.requirements.unsafe_verified_evidence_required = true;
+        let finding = Finding {
+            kind: FindingKind::Unsafe,
+            family: Some("unsafe_block".to_string()),
+            path: "src/lib.rs".into(),
+            span: None,
+            identity: StructuralIdentity::new("rust", "unsafe_block"),
+            message: "unsafe block".to_string(),
+            ledger: None,
+        };
+
+        assert!(
+            required_human_fields(&cfg, &finding).contains(&"evidence".to_string()),
+            "an add-finding plan must request evidence that can satisfy the verified mandate"
         );
     }
 }
