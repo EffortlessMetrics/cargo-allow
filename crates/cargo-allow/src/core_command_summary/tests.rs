@@ -535,6 +535,39 @@ fn core_command_summary_diff_preserves_revision_and_completeness_posture() -> Re
             && partial.primary_action.is_some()
             && partial.next_proof.is_none(),
         "partial diff must block and avoid a clean-proof claim",
+    )?;
+    let scanner_action = partial
+        .primary_action
+        .as_ref()
+        .ok_or_else(|| "partial diff missing scanner-repair action".to_string())?;
+    ensure(
+        scanner_action.id == "diff.inspect_scanner_repair"
+            && scanner_action.args == ["diff", "--base", "base", "--format", "json"],
+        "partial diff must route scanner repair inspection with deterministic revision-relative argv",
+    )?;
+
+    let policy = core_command_summary_from_diff(DiffSummaryFactsV1 {
+        repository_identity: "local-repository:test".to_string(),
+        portable_identity: "diff:base:head".to_string(),
+        base: "base".to_string(),
+        head: Some("head".to_string()),
+        result_class: ResultClassV1::Completed,
+        completeness: CompletenessV1::Complete,
+        currentness: CurrentnessV1::Current,
+        current_failures: 1,
+        failed: true,
+    })?;
+    let policy_action = policy
+        .primary_action
+        .as_ref()
+        .ok_or_else(|| "blocking complete diff missing policy-repair action".to_string())?;
+    ensure(
+        policy_action.id == "diff.inspect_policy_repairs"
+            && policy_action.args
+                == [
+                    "diff", "--base", "base", "--head", "head", "--format", "json",
+                ],
+        "complete blocking diff must route policy repair separately and preserve the exact pair",
     )
 }
 
