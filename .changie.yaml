@@ -1,6 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/miniscruff/changie/v1.25.2/docs/schema.json
 changesDir: .changes
 unreleasedDir: .
+headerPath: header.md
 changelogPath: CHANGELOG.md
 versionExt: md
 versionFileFormat: '{{.Version}}.md'
