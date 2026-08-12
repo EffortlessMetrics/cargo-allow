@@ -180,10 +180,9 @@ for raw in raw_rows:
     }
     registry_checksum = raw.get("registry_checksum")
     if registry_checksum is not None:
-        if not isinstance(registry_checksum, str) or len(registry_checksum) != 64 or \
-                any(char not in "0123456789abcdef" for char in registry_checksum):
+        if not valid_digest(registry_checksum):
             raise SystemExit(f"release-manifest: malformed registry checksum for {name}")
-        row["registry_checksum"] = "sha256:" + registry_checksum
+        row["registry_checksum"] = registry_checksum
     rows.append(row)
 rows.sort(key=lambda row: row["release_order"])
 
@@ -259,6 +258,8 @@ if package_path and install_path:
 
 if auth_source != "crates_io_api_token":
     raise SystemExit("release-manifest: only crates_io_api_token is supported")
+if not isinstance(topology.get("publish"), bool):
+    raise SystemExit("release-manifest: topology receipt publish field must be a Boolean")
 manifest = {
     "payload": {
         "schema_id": "cargo-allow.release-manifest.v2",

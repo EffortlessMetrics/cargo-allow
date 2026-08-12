@@ -131,6 +131,23 @@ expect_failure env VERSION=9.9.9 REPOSITORY=EffortlessMetrics/cargo-allow \
   OUTPUT="${work}/identity-conflict-manifest.json" \
   bash scripts/generate-release-manifest.sh
 
+bad_publish_receipt="${work}/bad-publish.receipt.json"
+cp "${topology_receipt}" "${bad_publish_receipt}"
+python3 - "${bad_publish_receipt}" <<'PY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+receipt = json.loads(path.read_text(encoding="utf-8"))
+receipt["publish"] = "false"
+path.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+PY
+expect_failure env VERSION=9.9.9 REPOSITORY=EffortlessMetrics/cargo-allow \
+  TAG=v9.9.9 COMMIT=fixture-commit TREE=fixture-tree AUTH_SOURCE=crates_io_api_token MSRV=1.95 \
+  TOPOLOGY_RECEIPT="${bad_publish_receipt}" OUTPUT="${work}/bad-publish-manifest.json" \
+  bash scripts/generate-release-manifest.sh
+
 ATTESTATION_VERIFIED=true RELEASE_TAG=v9.9.9 RELEASE_COMMIT=fixture-commit \
   RELEASE_TREE=fixture-tree \
   bash scripts/verify-release-binary.sh --version 9.9.9 --receipt "${receipt_path}" "${archive}" >/dev/null

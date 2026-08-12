@@ -196,6 +196,10 @@ def registry_checksum(name: str, version: str) -> str | None:
     return checksum
 
 
+def receipt_checksum(value: str | None) -> str | None:
+    return None if value is None else f"sha256:{value}"
+
+
 def package_crate(name: str, version: str) -> tuple[Path, str]:
     run(["cargo", "package", "-p", name, "--locked", "--no-verify"])
     crate_path = ROOT / "target/package" / f"{name}-{version}.crate"
@@ -282,7 +286,7 @@ def main() -> int:
             "release_order": row["release_order"],
             "crate": str(crate_path.relative_to(ROOT)),
             "local_checksum": local_checksum,
-            "registry_checksum": observed,
+            "registry_checksum": receipt_checksum(observed),
             "state": "missing" if observed is None else "already_visible",
         }
         receipt["rows"].append(row_receipt)
@@ -309,7 +313,7 @@ def main() -> int:
         row_receipt["state"] = "uploaded_waiting_for_registry"
         write_receipt(args.receipt, receipt)
         wait_for_checksum(name, version, published_checksum)
-        row_receipt["registry_checksum"] = published_checksum
+        row_receipt["registry_checksum"] = receipt_checksum(published_checksum)
         row_receipt["state"] = "published_verified"
         write_receipt(args.receipt, receipt)
 
