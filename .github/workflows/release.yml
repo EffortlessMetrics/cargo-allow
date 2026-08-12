@@ -324,7 +324,10 @@ jobs:
           name: release-publish-receipt
           path: target/cargo-allow
       - name: Package crates for manifest checksums
-        run: cargo package --workspace --locked
+        run: |
+          python3 scripts/release-topology-publisher.py \
+            --mode cargo-allow \
+            --package-only
       - name: Build tagged Linux release binary
         run: cargo build -p cargo-allow --bin cargo-allow --release --locked --target x86_64-unknown-linux-gnu
       - name: Package tagged Linux executable archive

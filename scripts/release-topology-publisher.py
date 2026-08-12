@@ -309,6 +309,11 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", choices=sorted(FAMILY_MODES), required=True)
     parser.add_argument("--publish", action="store_true")
+    parser.add_argument(
+        "--package-only",
+        action="store_true",
+        help="package the selected workspace candidate without registry checks or publication",
+    )
     parser.add_argument("--list", action="store_true")
     parser.add_argument("--topology", type=Path, default=DEFAULT_TOPOLOGY)
     parser.add_argument("--receipt", type=Path, default=DEFAULT_RECEIPT)
@@ -319,6 +324,9 @@ def main() -> int:
         help="incomplete incident receipt from the exact candidate run",
     )
     args = parser.parse_args()
+
+    if args.package_only and args.publish:
+        fail("--package-only cannot be combined with --publish")
 
     topology_path = args.topology.resolve()
     topology, rows = load_rows(topology_path, args.mode)
@@ -353,6 +361,8 @@ def main() -> int:
     packages = cargo_packages()
     validate_rows(rows, packages)
     package_workspace({row["cargo_package_name"] for row in rows}, packages)
+    if args.package_only:
+        return 0
     receipt: dict[str, Any] = {
         "schema_id": "cargo-allow.topology-publish-receipt.v1",
         "schema_version": 1,

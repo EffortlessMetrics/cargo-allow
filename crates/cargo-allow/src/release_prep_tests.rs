@@ -89,6 +89,12 @@ fn release_workflow_exists_and_lists_publish_order() {
         topology_publisher.contains("\"cargo-allow\": {\"shared\", \"cargo-allow\"}"),
         "cargo-allow release mode should include its topology-approved shared dependencies"
     );
+    assert!(
+        workflow.contains("--package-only")
+            && !workflow.contains("--exclude effortless-rust-source-index")
+            && !workflow.contains("--exclude cargo-proof"),
+        "tagged manifest packaging should use the topology-selected candidate complement"
+    );
     let receipt_schema =
         read_workspace_file(&root, "docs/schemas/topology-publish-receipt.schema.json");
     assert!(
