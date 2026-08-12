@@ -1,0 +1,5 @@
+kind: Added
+body: >-
+  Add a non-publishing SharedPackageCandidateV1 rehearsal for the four
+  effortless-* 0.1.0 packages, including exact topology, lockfile, and crate
+  byte evidence.
