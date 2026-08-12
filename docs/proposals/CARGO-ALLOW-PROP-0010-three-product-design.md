@@ -32,11 +32,11 @@ cargo-intent  = durable authored intent and obligation compiler
 cargo-proof   = exact-snapshot evidence orchestration
 ```
 
-The extraction scaffold now exists. The remaining work is convergence rather
-than crate creation: select one semantic owner for every concept, remove reverse
-dependencies and duplicate evaluators, collapse package boundaries that did not
-earn independent compatibility, apply final package identities and versions,
-and qualify each product from its own exact package closure.
+The maximum extraction scaffold has converged to the retained package topology,
+and final shared package identities and versions are applied. Remaining work is
+semantic and release convergence: select one semantic owner for every concept,
+remove reverse dependencies and duplicate evaluators, and qualify each product
+from its own exact package closure.
 
 This proposal distinguishes three facts that earlier retained authority blurred:
 
