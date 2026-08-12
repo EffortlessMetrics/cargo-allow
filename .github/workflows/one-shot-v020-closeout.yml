@@ -1,5 +1,6 @@
-# Clean rerun: the durable candidate already passed every proof; only its final
-# push raced an earlier branch edit. Do not mutate this branch while this runs.
+# Fail-closed branch handoff: the durable candidate already passed every proof;
+# force-with-lease is bound to the exact triggering SHA and cannot overwrite
+# unrelated branch movement.
 # Bootstrap the historical changelog into Changie-owned version files before
 # the final native batch/merge. This workflow removes itself before commit.
 name: One-shot v0.2.0 release closeout
@@ -99,4 +100,11 @@ jobs:
           git config user.name "EffortlessSteven"
           git config user.email "git@effortlesssteven.com"
           git commit -m "build(release): close out the token-backed v0.2.0 candidate"
-          git push origin HEAD:release/v0.2.0-closeout
+          remote_sha="$(git ls-remote origin refs/heads/release/v0.2.0-closeout | cut -f1)"
+          if [ "${remote_sha}" != "${GITHUB_SHA}" ]; then
+            echo "::error::closeout branch moved from triggering SHA ${GITHUB_SHA} to ${remote_sha}"
+            exit 1
+          fi
+          git push \
+            --force-with-lease=refs/heads/release/v0.2.0-closeout:${GITHUB_SHA} \
+            origin HEAD:release/v0.2.0-closeout
