@@ -169,10 +169,17 @@ For adoption details, see
 
 Tag pushes matching `v*` trigger the [Release
 workflow](../.github/workflows/release.yml). The workflow runs preflight checks,
-publishes the twelve workspace crates to crates.io in dependency order, and creates
-a GitHub Release from `docs/release/github/vX.Y.Z.md` when that file exists.
+processes and verifies the topology-derived thirteen-row cargo-allow candidate,
+and creates a GitHub Release from `docs/release/github/vX.Y.Z.md` when that file
+exists. Before the tag is pushed, an external operator receipt must prove the
+three selected shared rows are `AlreadyPublishedExact`; the workflow does not
+enforce shared-first registry preflight. With that precondition satisfied, the
+expected missing uploads are the ten cargo-allow-family rows. The separate
+[authorized namespace workflow](../.github/workflows/release-authorized.yml)
+publishes twelve `0.1.0` namespace rows and deliberately does not trigger the
+cargo-allow tag rail.
 
-See [Release on Tag](release/README.md) for Trusted Publishing setup, manual
+See [Release Operations](release/README.md) for Trusted Publishing setup, manual
 dry-run via workflow dispatch, and the manual publish fallback.
 
 Copy-paste shape for an optional profile artifact:
