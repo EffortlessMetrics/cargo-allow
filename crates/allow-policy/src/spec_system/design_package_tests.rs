@@ -3,8 +3,8 @@ use std::path::PathBuf;
 #[derive(Debug, serde::Deserialize)]
 struct ProductRow {
     id: String,
-    observed_package_count: usize,
-    target_package_count: usize,
+    current_package_count: usize,
+    retained_package_count: usize,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -17,10 +17,11 @@ struct CollapseRow {
 struct ReconstructionFixture {
     schema_version: String,
     authority_generation: u32,
-    observed_package_count: usize,
-    target_package_count: usize,
-    observed_shared_package_count: usize,
-    target_shared_package_count: usize,
+    historical_scaffold_package_count: usize,
+    current_package_count: usize,
+    retained_package_count: usize,
+    current_shared_package_count: usize,
+    retained_shared_package_count: usize,
     repository_extraction_authorized: bool,
     release_authorized: bool,
     product: Vec<ProductRow>,
@@ -44,25 +45,28 @@ fn three_product_fixture_has_exact_generation_two_denominators() -> Result<(), S
         return Err("reconstruction fixture must not authorize extraction or release".to_string());
     }
 
-    let observed = fixture
+    let current = fixture
         .product
         .iter()
-        .map(|row| row.observed_package_count)
+        .map(|row| row.current_package_count)
         .sum::<usize>()
-        + fixture.observed_shared_package_count;
-    let target = fixture
+        + fixture.current_shared_package_count;
+    let retained = fixture
         .product
         .iter()
-        .map(|row| row.target_package_count)
+        .map(|row| row.retained_package_count)
         .sum::<usize>()
-        + fixture.target_shared_package_count;
-    if observed != fixture.observed_package_count || observed != 27 {
-        return Err(format!(
-            "unexpected observed package denominator {observed}"
-        ));
+        + fixture.retained_shared_package_count;
+    if fixture.historical_scaffold_package_count != 27 {
+        return Err("unexpected historical scaffold denominator".to_string());
     }
-    if target != fixture.target_package_count || target != 22 {
-        return Err(format!("unexpected target package denominator {target}"));
+    if current != fixture.current_package_count || current != 22 {
+        return Err(format!("unexpected current package denominator {current}"));
+    }
+    if retained != fixture.retained_package_count || retained != 22 {
+        return Err(format!(
+            "unexpected retained package denominator {retained}"
+        ));
     }
 
     let mut product_ids = fixture
@@ -76,10 +80,10 @@ fn three_product_fixture_has_exact_generation_two_denominators() -> Result<(), S
     }
     if fixture.collapse.len() != 5
         || fixture.collapse.iter().any(|row| {
-            row.target_module.trim().is_empty() || row.disposition != "CollapseIntoPackage"
+            row.target_module.trim().is_empty() || row.disposition != "CompletedAbsorption"
         })
     {
-        return Err("fixture must contain five complete package collapses".to_string());
+        return Err("fixture must contain five completed package absorptions".to_string());
     }
 
     Ok(())

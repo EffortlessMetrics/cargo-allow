@@ -4,6 +4,7 @@ kind: adr
 status: accepted
 owner: repo-infra
 created: 2026-07-29
+updated: 2026-08-12
 linked_proposal: CARGO-ALLOW-PROP-0010
 linked_spec: CARGO-ALLOW-SPEC-0011
 supersedes: none
@@ -19,8 +20,9 @@ policy_impact:
 
 ## Context
 
-The repository contains an observed 27-package extraction scaffold across
-cargo-allow, shared substrate, cargo-intent and cargo-proof. The first
+The repository previously contained a 27-package extraction scaffold across
+cargo-allow, shared substrate, cargo-intent and cargo-proof. It now contains the
+retained 22-package topology. The first
 architecture and package manifests were created while workspace directory,
 dependency alias, Cargo package name, Rust library name and workspace version
 often used the same short string.
@@ -30,8 +32,8 @@ That coincidence is not the intended registry or release contract:
 - the four shared packages need owned `effortless-*` registry identities;
 - the three product families have different maturity and release posture;
 - workspace paths are current physical facts, not permanent semantic identity;
-- five proof packages are scheduled to collapse into modules before first
-  publication; and
+- five proof packages were absorbed into retained modules without receiving
+  publication identities; and
 - cargo-allow must qualify a mixed-version selected package graph rather than
   treating the entire workspace as one release unit.
 
@@ -66,14 +68,15 @@ syntax and are not serialized as though they were registry package names.
 
 ## Shared package identities
 
-| Logical ID | Current path | Target path | Cargo package | Rust library |
+| Logical ID | Historical path | Current path | Cargo package | Rust library |
 | --- | --- | --- | --- | --- |
-| `repo-protocol` | `crates/repo-protocol` | `crates/effortless-repo-protocol` | `effortless-repo-protocol` | `repo_protocol` |
-| `repo-snapshot` | `crates/repo-snapshot` | `crates/effortless-repo-snapshot` | `effortless-repo-snapshot` | `repo_snapshot` |
-| `repo-edit` | `crates/repo-edit` | `crates/effortless-repo-edit` | `effortless-repo-edit` | `repo_edit` |
-| `rust-source-index` | `crates/rust-source-index` | `crates/effortless-rust-source-index` | `effortless-rust-source-index` | `rust_source_index` |
+| `repo-protocol` | `crates/repo-protocol` | `crates/effortless-repo-protocol` | `effortless-repo-protocol` | `effortless_repo_protocol` |
+| `repo-snapshot` | `crates/repo-snapshot` | `crates/effortless-repo-snapshot` | `effortless-repo-snapshot` | `effortless_repo_snapshot` |
+| `repo-edit` | `crates/repo-edit` | `crates/effortless-repo-edit` | `effortless-repo-edit` | `effortless_repo_edit` |
+| `rust-source-index` | `crates/rust-source-index` | `crates/effortless-rust-source-index` | `effortless-rust-source-index` | `effortless_rust_source_index` |
 
-The workspace may retain concise dependency aliases:
+The former concise dependency aliases remain historical migration evidence, not
+current workspace identities:
 
 ```toml
 [workspace.dependencies]
@@ -84,7 +87,7 @@ repo-protocol = {
 }
 ```
 
-The alias does not reserve or publish the generic package name.
+The historical alias did not reserve or publish the generic package name.
 
 ## Product package identities
 
@@ -102,15 +105,15 @@ packages.
 
 ## Package-to-module dispositions
 
-The following observed packages receive no final publication/version identity:
+The following historical packages received no final publication/version identity:
 
-| Observed package | Target container/module | Disposition |
+| Historical package | Current container/module | Disposition |
 | --- | --- | --- |
-| `proof-provider-api` | `proof_engine::provider` | `CollapseIntoPackage` |
-| `proof-adapter-command` | `cargo_proof::providers::command` | `CollapseIntoPackage` |
-| `proof-adapter-cargo-allow` | `cargo_proof::providers::cargo_allow` | `CollapseIntoPackage` |
-| `proof-adapter-ripr` | `cargo_proof::providers::ripr` | `CollapseIntoPackage` |
-| `proof-adapter-hawk` | `cargo_proof::providers::hawk` | `CollapseIntoPackage` |
+| `proof-provider-api` | `proof_engine::provider_api` | `CompletedAbsorption` |
+| `proof-adapter-command` | `proof_engine::command_adapter` | `CompletedAbsorption` |
+| `proof-adapter-cargo-allow` | `cargo_proof::providers::cargo_allow` | `CompletedAbsorption` |
+| `proof-adapter-ripr` | `cargo_proof::providers::ripr` | `CompletedAbsorption` |
+| `proof-adapter-hawk` | `cargo_proof::providers::hawk` | `CompletedAbsorption` |
 
 No empty forwarding package, symlinked package, compatibility placeholder or
 crates.io reservation is created under those names. Git and retained move/parity
@@ -230,8 +233,8 @@ After cutover:
 ## Required evidence
 
 - strict current/target logical/path/alias/package/lib identity validation;
-- observed 27 and target 22 closure reconciliation;
-- package-to-module collapse and stale-package negative fixtures;
+- current 22-package closure reconciliation against the retained topology;
+- completed package-to-module absorption and stale-package negative fixtures;
 - clean selected cargo-allow shared closure;
 - mixed-version package and isolated local-registry installation evidence;
 - no publication side effect during migration.
@@ -239,6 +242,6 @@ After cutover:
 ## Claim boundary
 
 This ADR defines package, path, version-source, publication, support and
-package-survival law. It does not perform the collapse, move or rename; prove
-dependency neutrality; publish packages; authorize cargo-allow 0.2; or authorize
+package-survival law. It does not prove remaining semantic-owner or dependency-
+neutrality convergence, publish packages, authorize cargo-allow 0.2, or authorize
 physical repository extraction.

@@ -38,7 +38,7 @@ pub struct ArchitectureManifestV2 {
 /// `cargo_package_name` is the registry/package-selector identity.
 /// `rust_library_name` is the import identity.
 /// These may all differ (e.g., logical `repo-protocol` → package
-/// `effortless-repo-protocol` → library `repo_protocol`).
+/// `effortless-repo-protocol` → library `effortless_repo_protocol`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CrateIdentityV2 {
     pub logical_id: String,
