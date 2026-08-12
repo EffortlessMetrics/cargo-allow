@@ -258,6 +258,21 @@ true`. It is opt-in so generated `baseline_debt` ledgers can remain adoption
 scaffolding until reviewed. Unsafe entries and high-risk process/network policy
 exceptions keep their separate typed-evidence guard for reviewed receipts.
 
+Repositories that require a locally checked evidence file for every unsafe
+receipt can opt into the stricter nested requirement:
+
+```toml
+[requirements.unsafe]
+verified_evidence_required = true
+```
+
+With that setting, at least one `doc:`, `spec:`, `adr:`, `ripr:`,
+`unsafe-review:`, or `coverage:` reference is required. Traceability-only
+references remain valid supplementary context, but cannot satisfy the stricter
+unsafe mandate by themselves. Omitting the setting preserves the default
+`false` behavior for existing policies. Diff mode treats disabling this
+requirement as policy weakening and enabling it as an improvement.
+
 When general evidence is not required, matched non-baseline entries with no
 evidence references still remain visible as policy-health debt. JSON reports
 may include `summary.policy_missing_evidence` and

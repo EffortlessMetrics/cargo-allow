@@ -1405,6 +1405,7 @@
         "lint_policy_id_required",
         "stale_entries_fail",
         "unsafe.evidence_required",
+        "unsafe.verified_evidence_required",
         "unsafe.safety_comment_required"
       ]
     },

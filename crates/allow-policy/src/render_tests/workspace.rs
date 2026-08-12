@@ -90,6 +90,7 @@ fn render_requirements_call_presence_observer() {
     cfg.requirements.lint_policy_id_required = true;
     cfg.requirements.stale_entries_fail = true;
     cfg.requirements.unsafe_evidence_required = true;
+    cfg.requirements.unsafe_verified_evidence_required = true;
     cfg.requirements.unsafe_safety_comment_required = true;
     let mut rendered = String::new();
 
@@ -108,6 +109,7 @@ lint_policy_id_required = true\n\
 stale_entries_fail = true\n\n\
 [requirements.unsafe]\n\
 evidence_required = true\n\
+verified_evidence_required = true\n\
 safety_comment_required = true\n"
     );
 }
@@ -137,6 +139,7 @@ fn renders_and_parses_source_tree_settings() {
     cfg.requirements.allow_bare_allow_attributes = true;
     cfg.requirements.lint_policy_id_required = true;
     cfg.requirements.stale_entries_fail = true;
+    cfg.requirements.unsafe_verified_evidence_required = true;
     cfg.requirements.unsafe_safety_comment_required = true;
 
     let rendered = render_policy(&cfg);
@@ -152,6 +155,7 @@ fn renders_and_parses_source_tree_settings() {
         "lint_policy_id_required = true",
         "stale_entries_fail = true",
         "[requirements.unsafe]",
+        "verified_evidence_required = true",
         "safety_comment_required = true",
     ] {
         assert!(
@@ -173,5 +177,6 @@ fn renders_and_parses_source_tree_settings() {
     assert!(reparsed.requirements.lint_policy_id_required);
     assert!(reparsed.requirements.stale_entries_fail);
     assert!(reparsed.requirements.unsafe_evidence_required);
+    assert!(reparsed.requirements.unsafe_verified_evidence_required);
     assert!(reparsed.requirements.unsafe_safety_comment_required);
 }

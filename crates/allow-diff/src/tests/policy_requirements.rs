@@ -80,3 +80,31 @@ fn detects_allow_bare_allow_attributes_polarity() {
             && change.message.contains("true -> false")
     }));
 }
+
+#[test]
+fn detects_unsafe_verified_evidence_requirement_polarity() {
+    let base = config_with(entry("allow-1"));
+    let mut head = base.clone();
+    head.requirements.unsafe_verified_evidence_required = true;
+
+    let tightened = policy_changes(&base, &head);
+    assert!(tightened.iter().any(|change| {
+        change.kind == PolicyChangeKind::RequirementTightened
+            && change.severity == PolicyChangeSeverity::Improvement
+            && change.allow_id == "requirements.unsafe.verified_evidence_required"
+            && change.message.contains("false -> true")
+            && change.requirement.as_ref().is_some_and(|requirement| {
+                requirement.field == RequirementChangeField::UnsafeVerifiedEvidenceRequired
+                    && !requirement.before
+                    && requirement.after
+            })
+    }));
+
+    let loosened = policy_changes(&head, &base);
+    assert!(loosened.iter().any(|change| {
+        change.kind == PolicyChangeKind::RequirementLoosened
+            && change.severity == PolicyChangeSeverity::Fail
+            && change.allow_id == "requirements.unsafe.verified_evidence_required"
+            && change.message.contains("true -> false")
+    }));
+}
