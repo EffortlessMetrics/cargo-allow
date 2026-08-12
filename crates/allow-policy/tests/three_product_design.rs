@@ -1,3 +1,4 @@
+use allow_policy::product_crates::current_architecture_receipt_at;
 use allow_policy::spec_system::{
     ArtifactStatus, SpecSystemRoots, SupportTierLevel, load_doc_artifacts,
     validate_doc_artifact_files, validate_doc_artifact_links, validate_support_tier_claims,
@@ -23,10 +24,11 @@ struct ReconstructionFixture {
     shim_owner_issue: u32,
     parity_owner_issue: u32,
     release_controller_issue: u32,
-    observed_package_count: usize,
-    target_package_count: usize,
-    observed_shared_package_count: usize,
-    target_shared_package_count: usize,
+    historical_scaffold_package_count: usize,
+    current_package_count: usize,
+    retained_package_count: usize,
+    current_shared_package_count: usize,
+    retained_shared_package_count: usize,
     governance_model_owner: String,
     governance_validation_owner: String,
     governance_receipt_owner: String,
@@ -51,8 +53,8 @@ struct ProductRow {
     #[serde(default)]
     published_version: Option<String>,
     claim: String,
-    observed_package_count: usize,
-    target_package_count: usize,
+    current_package_count: usize,
+    retained_package_count: usize,
     release_blocked: bool,
 }
 
@@ -73,8 +75,8 @@ struct SharedRow {
 #[serde(deny_unknown_fields)]
 struct CollapseRow {
     logical_id: String,
-    current_workspace_path: String,
-    current_package: String,
+    historical_workspace_path: String,
+    historical_package: String,
     target_container: String,
     target_module: String,
     disposition: String,
@@ -112,6 +114,8 @@ fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
     )?;
     let fixture = toml::from_str::<ReconstructionFixture>(&fixture_text)
         .map_err(|error| format!("parse generation-2 reconstruction fixture: {error}"))?;
+    let current_receipt = current_architecture_receipt_at(&root)
+        .map_err(|error| format!("read current architecture receipt: {error}"))?;
 
     if fixture.schema_version != "2.0" || fixture.authority_generation != 2 {
         return Err("fixture does not select exact generation 2".to_string());
@@ -177,7 +181,7 @@ fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
         (
             "cargo-intent",
             "LandedExperimental",
-            "0.2.0-workspace-transitional",
+            "0.1.0",
             "0.1.0",
             None,
             "durable authored intent and obligation compiler",
@@ -187,11 +191,11 @@ fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
         (
             "cargo-proof",
             "LandedExperimental",
-            "0.2.0-workspace-transitional",
+            "0.1.0",
             "0.1.0",
             None,
             "exact-snapshot evidence orchestration",
-            8_usize,
+            3_usize,
             3_usize,
         ),
     ];
@@ -202,7 +206,7 @@ fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
         ));
     }
     let mut seen_products = BTreeSet::new();
-    for (id, status, current, target, published, claim, observed_count, target_count) in
+    for (id, status, current, target, published, claim, current_count, retained_count) in
         expected_products
     {
         let row = fixture
@@ -218,67 +222,75 @@ fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
             || row.target_version != target
             || row.published_version.as_deref() != published
             || row.claim != claim
-            || row.observed_package_count != observed_count
-            || row.target_package_count != target_count
+            || row.current_package_count != current_count
+            || row.retained_package_count != retained_count
             || !row.release_blocked
         {
             return Err(format!("unexpected product row {id}: {row:?}"));
         }
     }
 
-    let observed_total = fixture
+    let current_total = fixture
         .product
         .iter()
-        .map(|row| row.observed_package_count)
+        .map(|row| row.current_package_count)
         .sum::<usize>()
-        + fixture.observed_shared_package_count;
-    let target_total = fixture
+        + fixture.current_shared_package_count;
+    let retained_total = fixture
         .product
         .iter()
-        .map(|row| row.target_package_count)
+        .map(|row| row.retained_package_count)
         .sum::<usize>()
-        + fixture.target_shared_package_count;
-    if observed_total != 27 || observed_total != fixture.observed_package_count {
+        + fixture.retained_shared_package_count;
+    if fixture.historical_scaffold_package_count != 27 {
+        return Err("historical extraction scaffold denominator must remain 27".to_string());
+    }
+    if current_total != 22
+        || current_total != fixture.current_package_count
+        || current_total != current_receipt.workspace_package_count
+        || current_total != current_receipt.architecture_identity_count
+        || current_total != current_receipt.topology_package_count
+    {
         return Err(format!(
-            "unexpected observed topology denominator {observed_total}"
+            "current topology projection does not match the V2 receipt: fixture={current_total}, receipt={current_receipt:?}"
         ));
     }
-    if target_total != 22 || target_total != fixture.target_package_count {
+    if retained_total != 22 || retained_total != fixture.retained_package_count {
         return Err(format!(
-            "unexpected target topology denominator {target_total}"
+            "unexpected retained topology denominator {retained_total}"
         ));
     }
 
     let expected_shared = [
         (
             "repo-protocol",
-            "crates/repo-protocol",
             "crates/effortless-repo-protocol",
-            "repo-protocol",
+            "crates/effortless-repo-protocol",
+            "effortless-repo-protocol",
             "effortless-repo-protocol",
             "repo_protocol",
         ),
         (
             "repo-snapshot",
-            "crates/repo-snapshot",
             "crates/effortless-repo-snapshot",
-            "repo-snapshot",
+            "crates/effortless-repo-snapshot",
+            "effortless-repo-snapshot",
             "effortless-repo-snapshot",
             "repo_snapshot",
         ),
         (
             "repo-edit",
-            "crates/repo-edit",
             "crates/effortless-repo-edit",
-            "repo-edit",
+            "crates/effortless-repo-edit",
+            "effortless-repo-edit",
             "effortless-repo-edit",
             "repo_edit",
         ),
         (
             "rust-source-index",
-            "crates/rust-source-index",
             "crates/effortless-rust-source-index",
-            "rust-source-index",
+            "crates/effortless-rust-source-index",
+            "effortless-rust-source-index",
             "effortless-rust-source-index",
             "rust_source_index",
         ),
@@ -306,7 +318,7 @@ fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
             || row.current_package != current_package
             || row.target_package != target_package
             || row.lib_name != lib_name
-            || row.status != "LandedTransitional"
+            || row.status != "LandedExperimental"
             || row.target_disposition != "RetainPackage"
             || row.logical_id == row.target_package
         {
@@ -317,11 +329,11 @@ fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
     let expected_collapses = BTreeMap::from([
         (
             "proof-provider-api",
-            ("proof-engine", "proof_engine::provider"),
+            ("proof-engine", "proof_engine::provider_api"),
         ),
         (
             "proof-adapter-command",
-            ("cargo-proof", "cargo_proof::providers::command"),
+            ("proof-engine", "proof_engine::command_adapter"),
         ),
         (
             "proof-adapter-cargo-allow",
@@ -350,12 +362,14 @@ fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
         let Some((container, module)) = expected_collapses.get(row.logical_id.as_str()) else {
             return Err(format!("unexpected collapsed package {}", row.logical_id));
         };
-        if row.current_package != row.logical_id
-            || row.current_workspace_path != format!("crates/{}", row.logical_id)
+        if row.historical_package != row.logical_id
+            || row.historical_workspace_path != format!("crates/{}", row.logical_id)
+            || root.join(&row.historical_workspace_path).exists()
+            || !root.join(format!("crates/{container}")).exists()
             || row.target_container != *container
             || row.target_module != *module
             || row.target_module.trim().is_empty()
-            || row.disposition != "CollapseIntoPackage"
+            || row.disposition != "CompletedAbsorption"
         {
             return Err(format!(
                 "unexpected collapse row {}: {row:?}",
@@ -489,7 +503,14 @@ fn validate_support_contract(root: &Path) -> Result<(), String> {
             "Historical spec-system artifacts",
             SupportTierLevel::Compatibility,
         ),
-        ("target 22-package topology", SupportTierLevel::Advisory),
+        (
+            "current 22-package workspace topology",
+            SupportTierLevel::Advisory,
+        ),
+        (
+            "historical 27-package extraction scaffold",
+            SupportTierLevel::Compatibility,
+        ),
         (
             "physical repository extraction",
             SupportTierLevel::NotIncluded,

@@ -15,10 +15,11 @@ move_ledger_owner_issue = 2598
 shim_owner_issue = 2607
 parity_owner_issue = 2606
 release_controller_issue = 2371
-observed_package_count = 27
-target_package_count = 22
-observed_shared_package_count = 4
-target_shared_package_count = 4
+historical_scaffold_package_count = 27
+current_package_count = 22
+retained_package_count = 22
+current_shared_package_count = 4
+retained_shared_package_count = 4
 governance_model_owner = "intent-model"
 governance_validation_owner = "intent-engine"
 governance_receipt_owner = "cargo-intent/repository-ci"
@@ -35,109 +36,109 @@ current_version = "0.2.0"
 target_version = "0.2.0"
 published_version = "0.1.11"
 claim = "source-exception ledger"
-observed_package_count = 10
-target_package_count = 10
+current_package_count = 10
+retained_package_count = 10
 release_blocked = true
 
 [[product]]
 id = "cargo-intent"
 status = "LandedExperimental"
-current_version = "0.2.0-workspace-transitional"
+current_version = "0.1.0"
 target_version = "0.1.0"
 claim = "durable authored intent and obligation compiler"
-observed_package_count = 5
-target_package_count = 5
+current_package_count = 5
+retained_package_count = 5
 release_blocked = true
 
 [[product]]
 id = "cargo-proof"
 status = "LandedExperimental"
-current_version = "0.2.0-workspace-transitional"
+current_version = "0.1.0"
 target_version = "0.1.0"
 claim = "exact-snapshot evidence orchestration"
-observed_package_count = 8
-target_package_count = 3
+current_package_count = 3
+retained_package_count = 3
 release_blocked = true
 
 [[shared]]
 logical_id = "repo-protocol"
-current_workspace_path = "crates/repo-protocol"
+current_workspace_path = "crates/effortless-repo-protocol"
 target_workspace_path = "crates/effortless-repo-protocol"
-current_package = "repo-protocol"
+current_package = "effortless-repo-protocol"
 target_package = "effortless-repo-protocol"
 lib_name = "repo_protocol"
-status = "LandedTransitional"
+status = "LandedExperimental"
 target_disposition = "RetainPackage"
 
 [[shared]]
 logical_id = "repo-snapshot"
-current_workspace_path = "crates/repo-snapshot"
+current_workspace_path = "crates/effortless-repo-snapshot"
 target_workspace_path = "crates/effortless-repo-snapshot"
-current_package = "repo-snapshot"
+current_package = "effortless-repo-snapshot"
 target_package = "effortless-repo-snapshot"
 lib_name = "repo_snapshot"
-status = "LandedTransitional"
+status = "LandedExperimental"
 target_disposition = "RetainPackage"
 
 [[shared]]
 logical_id = "repo-edit"
-current_workspace_path = "crates/repo-edit"
+current_workspace_path = "crates/effortless-repo-edit"
 target_workspace_path = "crates/effortless-repo-edit"
-current_package = "repo-edit"
+current_package = "effortless-repo-edit"
 target_package = "effortless-repo-edit"
 lib_name = "repo_edit"
-status = "LandedTransitional"
+status = "LandedExperimental"
 target_disposition = "RetainPackage"
 
 [[shared]]
 logical_id = "rust-source-index"
-current_workspace_path = "crates/rust-source-index"
+current_workspace_path = "crates/effortless-rust-source-index"
 target_workspace_path = "crates/effortless-rust-source-index"
-current_package = "rust-source-index"
+current_package = "effortless-rust-source-index"
 target_package = "effortless-rust-source-index"
 lib_name = "rust_source_index"
-status = "LandedTransitional"
+status = "LandedExperimental"
 target_disposition = "RetainPackage"
 
 [[collapse]]
 logical_id = "proof-provider-api"
-current_workspace_path = "crates/proof-provider-api"
-current_package = "proof-provider-api"
+historical_workspace_path = "crates/proof-provider-api"
+historical_package = "proof-provider-api"
 target_container = "proof-engine"
-target_module = "proof_engine::provider"
-disposition = "CollapseIntoPackage"
+target_module = "proof_engine::provider_api"
+disposition = "CompletedAbsorption"
 
 [[collapse]]
 logical_id = "proof-adapter-command"
-current_workspace_path = "crates/proof-adapter-command"
-current_package = "proof-adapter-command"
-target_container = "cargo-proof"
-target_module = "cargo_proof::providers::command"
-disposition = "CollapseIntoPackage"
+historical_workspace_path = "crates/proof-adapter-command"
+historical_package = "proof-adapter-command"
+target_container = "proof-engine"
+target_module = "proof_engine::command_adapter"
+disposition = "CompletedAbsorption"
 
 [[collapse]]
 logical_id = "proof-adapter-cargo-allow"
-current_workspace_path = "crates/proof-adapter-cargo-allow"
-current_package = "proof-adapter-cargo-allow"
+historical_workspace_path = "crates/proof-adapter-cargo-allow"
+historical_package = "proof-adapter-cargo-allow"
 target_container = "cargo-proof"
 target_module = "cargo_proof::providers::cargo_allow"
-disposition = "CollapseIntoPackage"
+disposition = "CompletedAbsorption"
 
 [[collapse]]
 logical_id = "proof-adapter-ripr"
-current_workspace_path = "crates/proof-adapter-ripr"
-current_package = "proof-adapter-ripr"
+historical_workspace_path = "crates/proof-adapter-ripr"
+historical_package = "proof-adapter-ripr"
 target_container = "cargo-proof"
 target_module = "cargo_proof::providers::ripr"
-disposition = "CollapseIntoPackage"
+disposition = "CompletedAbsorption"
 
 [[collapse]]
 logical_id = "proof-adapter-hawk"
-current_workspace_path = "crates/proof-adapter-hawk"
-current_package = "proof-adapter-hawk"
+historical_workspace_path = "crates/proof-adapter-hawk"
+historical_package = "proof-adapter-hawk"
 target_container = "cargo-proof"
 target_module = "cargo_proof::providers::hawk"
-disposition = "CollapseIntoPackage"
+disposition = "CompletedAbsorption"
 
 [[entry]]
 artifact = "CARGO-ALLOW-PROP-0001"

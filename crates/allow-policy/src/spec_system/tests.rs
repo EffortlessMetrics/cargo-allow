@@ -2889,8 +2889,9 @@ struct ThreeProductDispositionMap {
     historical_spec: String,
     current_spec: String,
     design_package_plan: String,
-    observed_package_count: usize,
-    target_package_count: usize,
+    historical_scaffold_package_count: usize,
+    current_package_count: usize,
+    retained_package_count: usize,
     repository_extraction_authorized: bool,
     release_authorized: bool,
     collapse: Vec<ThreeProductCollapseRow>,
@@ -2919,8 +2920,9 @@ fn spec_system_design_package() -> Result<(), String> {
         || disposition.historical_spec != "CARGO-ALLOW-SPEC-0010"
         || disposition.current_spec != "CARGO-ALLOW-SPEC-0011"
         || disposition.design_package_plan != "CARGO-ALLOW-PLAN-0010"
-        || disposition.observed_package_count != 27
-        || disposition.target_package_count != 22
+        || disposition.historical_scaffold_package_count != 27
+        || disposition.current_package_count != 22
+        || disposition.retained_package_count != 22
         || disposition.repository_extraction_authorized
         || disposition.release_authorized
     {
@@ -2928,10 +2930,10 @@ fn spec_system_design_package() -> Result<(), String> {
     }
     if disposition.collapse.len() != 5
         || disposition.collapse.iter().any(|row| {
-            row.target_module.trim().is_empty() || row.disposition != "CollapseIntoPackage"
+            row.target_module.trim().is_empty() || row.disposition != "CompletedAbsorption"
         })
     {
-        return Err("generation-2 collapse projection is incomplete".to_string());
+        return Err("generation-2 absorption projection is incomplete".to_string());
     }
 
     let ledger = parse_doc_artifact_ledger(include_str!(

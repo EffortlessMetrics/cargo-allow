@@ -4,7 +4,7 @@ kind: implementation_plan
 status: active
 owner: repo-infra
 created: 2026-07-22
-updated: 2026-07-29
+updated: 2026-08-12
 linked_proposal: CARGO-ALLOW-PROP-0010
 linked_spec: CARGO-ALLOW-SPEC-0011
 linked_adr: CARGO-ALLOW-ADR-0002
@@ -16,8 +16,10 @@ linked_support_tier: CARGO-ALLOW-SUPPORT-0001
 
 ## Purpose
 
-Move the landed monorepo from the observed 27-package extraction scaffold to a
-22-package architecture with independently qualifiable products:
+Record the completed physical convergence from the historical 27-package
+extraction scaffold to the current 22-package architecture, then sequence the
+remaining semantic and release qualification for independently qualifiable
+products:
 
 ```text
 cargo-allow
@@ -39,11 +41,11 @@ that test consumes the generation-2 contract semantically.
 | Area | Starting posture |
 | --- | --- |
 | cargo-allow | published `0.1.11`; source workspace on unreleased `0.2.0` |
-| observed topology | 27 packages across four families |
-| target topology | 22 packages: 10 allow, 4 shared, 5 intent, 3 proof |
-| shared substrate | landed but package/path/version and dependency neutrality remain transitional |
+| current topology | 22 packages: 10 allow, 4 shared, 5 intent, 3 proof |
+| historical scaffold | maximum 27-package graph retained as migration provenance |
+| shared substrate | `effortless-*` package/path/version migration landed; dependency neutrality remains incomplete |
 | cargo-intent | experimental staged-precommit vertical; canonical graph cutover incomplete |
-| cargo-proof | experimental scaffold; five packages scheduled to become modules |
+| cargo-proof | experimental three-package family; five former packages were absorbed into modules |
 | compatibility | bounded process transport exists; embedded semantic authority remains |
 | candidate packaging | ambient-workspace assumptions remain |
 | release | no exact candidate authorization, tag or publication |
@@ -77,9 +79,10 @@ must not outrun merged authority.
 
 **Owner:** #2966
 
-Record the observed 27 and target 22 package topologies, five package-to-module
-destinations, final semantic owners, current/target shared paths and package
-identities, independent release boundaries and the current convergence train.
+Record the historical 27-package scaffold, current retained 22-package topology,
+five completed package-to-module destinations, final semantic owners, shared
+paths and package identities, independent release boundaries and the current
+convergence train.
 This PR contains retained documentation, artifact registration and exact
 source-policy receipts only.
 
@@ -124,8 +127,8 @@ fail deterministically.
 intent-engine
   bounded Cargo metadata input
   exact package/version/source/feature/target facts
-  observed 27-package closure
-  target 22-package convergence closure
+  historical 27-package scaffold provenance
+  current retained 22-package closure
   shortest dependency and transition diagnostics
 ```
 
@@ -140,8 +143,9 @@ cargo-intent / repository CI
   emit deterministic typed receipt
 ```
 
-Select V2 while the observed workspace remains 27 and target remains 22. V1 is
-historical input only. Register only exact current transitions.
+V2 is selected with the current workspace and retained topology both at 22.
+V1 and the former 27-package scaffold are historical input only. Register only
+exact current transitions.
 
 ### Exit
 
@@ -193,24 +197,25 @@ behavior requires it.
 Cargo-allow no longer owns current intent semantics and its selected shared
 packages contain no product-domain reverse dependency.
 
-## Stage D — proof semantic and package convergence
+## Stage D — proof semantic convergence after package convergence
 
-These stages make the architecture physically true before cargo-allow release;
-they do not require full cargo-proof support qualification.
+The physical package convergence landed through absorption in #2937 and #2938;
+#2939's deletion-only alternative was superseded. Remaining semantic-owner work
+does not require full cargo-proof support qualification.
 
 ```text
 #2936  consume canonical intent-protocol obligations
 #2943  keep proof-protocol data-oriented; proof-engine owns semantics
-#2937  move provider host/command implementation into retained packages
-#2938  move cargo-allow/RIPR/Hawk providers into cargo-proof modules
-#2939  retire five obsolete package identities; observed topology becomes 22
+#2937  completed: provider host/command absorbed into retained packages
+#2938  completed: cargo-allow/RIPR/Hawk providers absorbed into cargo-proof modules
+#2939  superseded: deletion-only alternative was not used
 ```
 
-After #2939:
+Current package state:
 
 ```text
-observed packages = 22
-target packages   = 22
+current packages  = 22
+retained packages = 22
 ```
 
 The full isolated cargo-proof candidate belongs to #2968 and does not block
@@ -299,7 +304,8 @@ A failure after first registry upload remains a release incident.
 
 ## Claim boundary
 
-This plan sequences convergence from the observed 27-package scaffold through a
-22-package architecture and exact cargo-allow `0.2.x` qualification while
-preserving independent sibling-product release gates. It does not prove a stage
-complete, publish a package, authorize a tag or authorize repository extraction.
+This plan records physical convergence from the historical 27-package scaffold
+to the current 22-package architecture and sequences remaining semantic and exact
+cargo-allow `0.2.x` qualification while preserving independent sibling-product
+release gates. It does not claim remaining semantic stages complete, publish a
+package, authorize a tag, or authorize repository extraction.

@@ -4,7 +4,7 @@ kind: proposal
 status: accepted
 owner: repo-infra
 created: 2026-07-22
-updated: 2026-07-29
+updated: 2026-08-12
 linked_specs:
   - CARGO-ALLOW-SPEC-0010
   - CARGO-ALLOW-SPEC-0011
@@ -41,14 +41,14 @@ and qualify each product from its own exact package closure.
 This proposal distinguishes three facts that earlier retained authority blurred:
 
 ```text
-ObservedTopologyV1
-  the 27 packages that exist on the selected current source
+HistoricalObservedTopologyV1
+  the maximum 27-package scaffold that formerly existed
 
 ExtractionScaffoldHistory
   the maximum package graph used to expose and test candidate seams
 
-RatifiedConvergenceTopologyV1
-  the 22 package boundaries that should survive convergence
+CurrentTopologyV2
+  the 22 retained package boundaries selected on current source
 ```
 
 Current existence is not permanent package ratification.
@@ -72,25 +72,16 @@ semantic authority, one support tier or one release unit.
 | cargo-allow source candidate | `SupportedSourceCandidate` | workspace source is versioned `0.2.0`; no tag or publication is authorized |
 | cargo-intent | `LandedExperimental` | identity and staged-precommit change-status vertical exist; canonical graph/compiler cutover is incomplete |
 | cargo-proof | `LandedExperimental` | protocol, planning, dry-run, provider contracts and captured-report adapters exist; real product composition remains incomplete |
-| shared substrate | `LandedTransitional` | all four logical crates exist; package identity, independent versions and dependency neutrality are incomplete |
+| shared substrate | `LandedExperimental` | all four `effortless-*` crates and independent versions exist; dependency neutrality remains incomplete |
 | legacy intent compatibility | `CompatibilityOnly` / `BlockedOnParity` | one bounded process route exists; embedded current semantic authority remains to be removed |
 | physical repository extraction | `NotStarted` | not authorized by crate existence, package smoke or integrated dogfood |
 
 A crate, binary, fixture or local package smoke does not by itself promote
 support, complete an authority move or justify a permanent package boundary.
 
-## Observed and target package topology
+## Current and historical package topology
 
-The selected current source contains 27 Cargo packages:
-
-```text
-cargo-allow family   10
-shared substrate      4
-cargo-intent family   5
-cargo-proof scaffold  8
-```
-
-The retained target contains 22 packages:
+The selected current source contains 22 Cargo packages:
 
 ```text
 cargo-allow family   10
@@ -99,14 +90,23 @@ cargo-intent family   5
 cargo-proof family    3
 ```
 
-The five proof packages scheduled for package-to-module collapse are:
+The historical maximum extraction scaffold contained 27 packages, including
+eight proof packages. The five extra proof boundaries were absorbed into the
+retained three-package proof family:
+
+```text
+historical total     27
+current total        22
+```
+
+The completed package-to-module absorptions are:
 
 ```text
 proof-provider-api
-  → proof_engine::provider
+  → proof_engine::provider_api
 
 proof-adapter-command
-  → cargo_proof::providers::command
+  → proof_engine::command_adapter
 
 proof-adapter-cargo-allow
   → cargo_proof::providers::cargo_allow
@@ -234,8 +234,8 @@ cargo-proof family      explicit 0.1.0 experimental lines
 ```
 
 Equal experimental versions are a development cohort, not a lockstep
-compatibility promise. The five proof packages scheduled for deletion receive
-no final version, publication row or compatibility placeholder.
+compatibility promise. The five absorbed proof packages received no final
+version, publication row, or compatibility placeholder.
 
 Registry visibility, direct-library support, product support and physical
 repository extraction remain separate decisions. The external `effortless`
@@ -287,8 +287,8 @@ C  select strict generation-2 identities and current/target Cargo closures
 D  converge one canonical intent model/compiler/evaluator and remove fallback
 E  make selected shared packages product-neutral
 F  converge proof semantics and providers into the retained three-package family
-G  delete the five obsolete proof packages; observed topology becomes 22
-H  physically move/rename shared packages and split survivor version lines
+G  completed via #2937/#2938: absorb five obsolete proof package boundaries
+H  completed via #2885: move/rename shared packages and split survivor version lines
 I  qualify the exact cargo-allow package/install/journey candidate
 J  close mutation, scanner, release-evidence, provenance and registry trust
 K  exact refreeze, explicit maintainer authorization and publication
@@ -304,7 +304,7 @@ for review” or obtaining one green job is not completion.
 ### cargo-allow 0.2.x
 
 The architecture gate requires truthful V2 authority, one canonical intent
-evaluator with no embedded fallback, observed topology converged to 22, a clean
+evaluator with no embedded fallback, current topology fixed at 22, a clean
 selected shared closure, final survivor identities, and the exact cargo-allow
 candidate/release-trust train.
 
@@ -340,13 +340,13 @@ naming the repositories and exact source state to move.
 | Concern | Canonical source |
 | --- | --- |
 | retained semantic decision | this proposal, ADR-0002, ADR-0003 and SPEC-0011 |
-| current/target logical topology and roles | generation-2 architecture authority under #2921/#2942 |
-| exact Cargo closure and transition diagnostics | intent-engine validation under #2922 |
+| current logical topology and roles | `policy/product-crates-v2.toml` under #2923/#3391 |
+| exact Cargo closure and candidate posture | `policy/product-package-topology-v2.toml` under #2923/#3391 |
 | selected current enforcement and typed receipt | #2923 via cargo-intent/repository CI |
 | current source disposition and deletion output | `policy/product-move-ledger.toml` / #2598 |
 | temporary compatibility | `policy/extraction-shims.toml` / #2607 |
 | parity and cutover evidence | `policy/extraction-parity.toml` / #2606 |
-| package/version/publication/candidate posture | `policy/product-package-topology.toml` / #2604 |
+| historical generation-1 package posture | `policy/product-package-topology.toml` / #2604 |
 | release authorization | #2371, #2501 and #2502 |
 
 Human diagrams and tables are generated or contract-checked projections. A new
@@ -356,8 +356,8 @@ reviewed migration.
 
 ## Success criteria
 
-- A fresh builder can distinguish observed 27 from target 22 and identify every
-  collapse destination.
+- A fresh builder can distinguish the historical 27-package scaffold from the
+  current retained 22 and identify every completed absorption destination.
 - One concept has one semantic owner.
 - Shared substrate has no production dependency on product ontology.
 - One intent compiler and phase evaluator remain after cutover.

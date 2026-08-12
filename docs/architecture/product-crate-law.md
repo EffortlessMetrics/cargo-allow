@@ -11,29 +11,20 @@ how the observed extraction scaffold differs from the retained target.
 | Product ownership and dependency direction | `docs/adr/CARGO-ALLOW-ADR-0002-three-product-ownership.md` |
 | Package, path and independent version law | `docs/adr/CARGO-ALLOW-ADR-0003-package-identity-and-versioning.md` |
 | Current convergence requirements | `docs/specs/CARGO-ALLOW-SPEC-0011-three-product-convergence.md` |
-| Current and target logical/package identities | generation-2 authority under #2921/#2942 |
-| Exact observed/target Cargo closures | intent-engine validation under #2922 |
+| Current logical/package identities | `policy/product-crates-v2.toml` under #2923/#3391 |
+| Exact current Cargo closure and candidate posture | `policy/product-package-topology-v2.toml` under #2923/#3391 |
 | Selected current enforcement and receipt | #2923 through cargo-intent/repository CI |
 | Source disposition and retirement output | `policy/product-move-ledger.toml` / #2598 |
 | Temporary compatibility | `policy/extraction-shims.toml` / #2607 |
 | Parity and cutover evidence | `policy/extraction-parity.toml` / #2606 |
-| Package/version/publication/candidate/CI posture | `policy/product-package-topology.toml` / #2604 |
+| Historical generation-1 package posture | `policy/product-package-topology.toml` / #2604 |
 
 Human tables and diagrams are generated or contract-checked projections. They do
 not become competing ownership or package manifests.
 
-## Observed and target topology
+## Current and historical topology
 
-The selected current source contains the full 27-package extraction scaffold:
-
-```text
-cargo-allow family   10
-shared substrate      4
-cargo-intent family   5
-cargo-proof scaffold  8
-```
-
-The retained target contains 22 packages:
+The selected current source contains the retained 22-package topology:
 
 ```text
 cargo-allow family   10
@@ -42,19 +33,19 @@ cargo-intent family   5
 cargo-proof family    3
 ```
 
-The following package boundaries collapse into modules:
+The former maximum extraction scaffold contained 27 packages. Its five extra
+proof boundaries were absorbed into retained modules:
 
-| Current package | Target module |
+| Historical package | Current module |
 | --- | --- |
-| `proof-provider-api` | `proof_engine::provider` |
-| `proof-adapter-command` | `cargo_proof::providers::command` |
+| `proof-provider-api` | `proof_engine::provider_api` |
+| `proof-adapter-command` | `proof_engine::command_adapter` |
 | `proof-adapter-cargo-allow` | `cargo_proof::providers::cargo_allow` |
 | `proof-adapter-ripr` | `cargo_proof::providers::ripr` |
 | `proof-adapter-hawk` | `cargo_proof::providers::hawk` |
 
-“Landed” means the observed package and selected walking-skeleton surface exist.
-It does not establish final authority, dependency neutrality, support,
-publication or permanent package survival.
+Current package-count convergence does not establish final semantic authority,
+dependency neutrality, support, publication, or physical repository extraction.
 
 ## Identity law
 
@@ -171,13 +162,14 @@ explicitly includes that compatibility or integration claim.
 #2921  strict current/target identities
 #2922  exact observed/target closures
 #2923  current V2 enforcement
-#2939  observed topology converges from 27 to 22
+#2937/#2938  proof packages absorbed; current topology converged to 22
+#2939  deletion-only alternative superseded by absorption
 #2885  survivor package/path/version migration
 ```
 
 ## Claim boundary
 
-This page explains current and target architecture authority. It does not make
-generation-1 manifests V2, apply package collapse, rename packages, prove
-dependency neutrality, authorize cargo-allow `0.2.x`, promote sibling products
-or authorize physical repository extraction.
+This page explains current architecture authority and historical convergence.
+It does not claim semantic-owner or dependency-neutrality completion, authorize
+cargo-allow `0.2.x`, promote sibling products, or authorize physical repository
+extraction.

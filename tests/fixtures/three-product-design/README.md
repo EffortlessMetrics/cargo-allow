@@ -26,18 +26,19 @@ second architecture, package, move, shim, or parity authority.
 ## Contract reconstructed
 
 ```text
-observed source packages = 27
-retained target packages = 22
+historical maximum scaffold packages = 27
+current source packages             = 22
+retained topology packages          = 22
 
-cargo-allow   10 → 10
-shared         4 → 4
-cargo-intent   5 → 5
-cargo-proof    8 → 3
+cargo-allow   10 current / 10 retained
+shared         4 current /  4 retained
+cargo-intent   5 current /  5 retained
+cargo-proof    3 current /  3 retained
 ```
 
-The five removed package identities become modules under `proof-engine` or
-`cargo-proof`. The four shared logical IDs retain concise Rust imports while
-moving to `crates/effortless-*` paths and `effortless-*` Cargo package names:
+The five historical package identities were absorbed into modules under
+`proof-engine` or `cargo-proof`. The four shared logical IDs retain concise Rust
+imports at `crates/effortless-*` paths and `effortless-*` Cargo package names:
 
 ```text
 effortless-repo-protocol

@@ -4,6 +4,7 @@ kind: adr
 status: accepted
 owner: repo-infra
 created: 2026-07-29
+updated: 2026-08-12
 linked_proposal: CARGO-ALLOW-PROP-0010
 linked_spec: CARGO-ALLOW-SPEC-0011
 supersedes: none
@@ -19,8 +20,9 @@ policy_impact:
 
 ## Context
 
-The repository contains an observed 27-package extraction scaffold across
-cargo-allow, shared substrate, cargo-intent and cargo-proof. The first
+The repository previously contained a 27-package extraction scaffold across
+cargo-allow, shared substrate, cargo-intent and cargo-proof. It now contains the
+retained 22-package topology. The first
 architecture and package manifests were created while workspace directory,
 dependency alias, Cargo package name, Rust library name and workspace version
 often used the same short string.
@@ -30,8 +32,8 @@ That coincidence is not the intended registry or release contract:
 - the four shared packages need owned `effortless-*` registry identities;
 - the three product families have different maturity and release posture;
 - workspace paths are current physical facts, not permanent semantic identity;
-- five proof packages are scheduled to collapse into modules before first
-  publication; and
+- five proof packages were absorbed into retained modules without receiving
+  publication identities; and
 - cargo-allow must qualify a mixed-version selected package graph rather than
   treating the entire workspace as one release unit.
 
@@ -102,15 +104,15 @@ packages.
 
 ## Package-to-module dispositions
 
-The following observed packages receive no final publication/version identity:
+The following historical packages received no final publication/version identity:
 
-| Observed package | Target container/module | Disposition |
+| Historical package | Current container/module | Disposition |
 | --- | --- | --- |
-| `proof-provider-api` | `proof_engine::provider` | `CollapseIntoPackage` |
-| `proof-adapter-command` | `cargo_proof::providers::command` | `CollapseIntoPackage` |
-| `proof-adapter-cargo-allow` | `cargo_proof::providers::cargo_allow` | `CollapseIntoPackage` |
-| `proof-adapter-ripr` | `cargo_proof::providers::ripr` | `CollapseIntoPackage` |
-| `proof-adapter-hawk` | `cargo_proof::providers::hawk` | `CollapseIntoPackage` |
+| `proof-provider-api` | `proof_engine::provider_api` | `CompletedAbsorption` |
+| `proof-adapter-command` | `proof_engine::command_adapter` | `CompletedAbsorption` |
+| `proof-adapter-cargo-allow` | `cargo_proof::providers::cargo_allow` | `CompletedAbsorption` |
+| `proof-adapter-ripr` | `cargo_proof::providers::ripr` | `CompletedAbsorption` |
+| `proof-adapter-hawk` | `cargo_proof::providers::hawk` | `CompletedAbsorption` |
 
 No empty forwarding package, symlinked package, compatibility placeholder or
 crates.io reservation is created under those names. Git and retained move/parity
@@ -230,8 +232,8 @@ After cutover:
 ## Required evidence
 
 - strict current/target logical/path/alias/package/lib identity validation;
-- observed 27 and target 22 closure reconciliation;
-- package-to-module collapse and stale-package negative fixtures;
+- current 22-package closure reconciliation against the retained topology;
+- completed package-to-module absorption and stale-package negative fixtures;
 - clean selected cargo-allow shared closure;
 - mixed-version package and isolated local-registry installation evidence;
 - no publication side effect during migration.
@@ -239,6 +241,6 @@ After cutover:
 ## Claim boundary
 
 This ADR defines package, path, version-source, publication, support and
-package-survival law. It does not perform the collapse, move or rename; prove
-dependency neutrality; publish packages; authorize cargo-allow 0.2; or authorize
+package-survival law. It does not prove remaining semantic-owner or dependency-
+neutrality convergence, publish packages, authorize cargo-allow 0.2, or authorize
 physical repository extraction.

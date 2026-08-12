@@ -4,6 +4,7 @@ kind: spec
 status: accepted
 owner: repo-infra
 created: 2026-07-29
+updated: 2026-08-12
 linked_proposal: CARGO-ALLOW-PROP-0010
 linked_adr: CARGO-ALLOW-ADR-0002
 supersedes_requirement_ids:
@@ -52,12 +53,13 @@ cargo-proof
   real product qualification: independent and incomplete
 
 shared substrate
-  all four logical crates landed
-  package paths/names/versions and dependency neutrality: incomplete
+  all four effortless-* crates landed on independent 0.1.0 lines
+  dependency neutrality: incomplete
 
 workspace topology
-  observed packages: 27
-  target retained packages: 22
+  current packages: 22 (10 allow + 4 shared + 5 intent + 3 proof)
+  retained packages: 22
+  historical maximum extraction scaffold: 27
 ```
 
 The existence of a crate, binary, fixture or package smoke does not promote
@@ -72,7 +74,7 @@ schema_version = "1.0"
 id = "observed-and-target-topologies-distinct"
 generation = 1
 status = "accepted"
-statement = "Current observed packages and retained target packages are represented independently; the selected current source contains 27 packages while the ratified convergence target contains 22 until the five package-to-module collapses are physically applied."
+statement = "Historical observed packages and the retained topology are represented independently; after the five package-to-module absorptions, the selected current source and ratified retained topology each contain 22 packages: 10 cargo-allow, 4 shared, 5 cargo-intent, and 3 cargo-proof."
 claim_class = "runtime_behavior"
 
 [[requirement]]
@@ -244,7 +246,7 @@ D1  #2936 canonical intent obligation input
 D2  #2943 proof protocol/engine semantic boundary
 D3  #2937 provider API and command-provider absorption
 D4  #2938 built-in provider absorption
-D5  #2939 retire five packages; observed topology becomes 22
+D5  #2937/#2938 absorb five packages; #2939 deletion-only alternative superseded
 E   #2885 move/rename shared survivors and split independent versions
 F   #2886 exact cargo-allow package/install/journey candidate
 G   mutation, scanner, release-evidence, provenance, registry and support closeout
@@ -265,8 +267,8 @@ green job is not completion.
 - Compatibility has no semantic fallback.
 - Shared selected packages are product-neutral.
 - Proof protocol cannot decide semantic satisfaction.
-- The observed workspace and target package denominator both equal 22 after the
-  package-collapse gate.
+- The current workspace and retained package denominator both equal 22 after the
+  completed package-to-module absorptions.
 - Cargo-allow packages and runs with intent/proof source trees unavailable.
 - Experimental sibling-product failures do not block cargo-allow unless its
   selected support matrix includes that integrated surface.
@@ -301,8 +303,8 @@ candidate proof. A stage may not inherit a stronger claim from a narrower one.
 
 ## Non-goals
 
-- Applying package collapse, path moves, package renames or version changes in
-  this documentation PR.
+- Changing the current package topology, paths, names, or versions in this
+  documentation reconciliation.
 - Publishing cargo-allow, cargo-intent, cargo-proof or shared packages.
 - Making experimental sibling products stable because their scaffolds exist.
 - Defining a public raw graph API.
