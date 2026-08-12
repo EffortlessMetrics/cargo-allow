@@ -71,10 +71,9 @@ fn release_workflow_exists_and_lists_publish_order() {
         "{RELEASE_TOPOLOGY_PUBLISHER} should derive publication order from the V2 topology"
     );
     assert!(
-        topology_publisher
-            .contains("[\"cargo\", \"package\", \"--workspace\", \"--locked\", \"--no-verify\"]")
-            && topology_publisher.contains("def package_workspace"),
-        "publisher should package the coherent workspace candidate before row processing"
+        topology_publisher.contains("def package_workspace(selected: set[str]")
+            && topology_publisher.contains("\"--exclude\", name"),
+        "publisher should exclude non-selected workspace members before row processing"
     );
     assert!(
         topology_publisher.contains("\"cargo-allow\": {\"shared\", \"cargo-allow\"}"),

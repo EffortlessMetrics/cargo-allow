@@ -209,8 +209,11 @@ def receipt_checksum(value: str | None) -> str | None:
     return None if value is None else f"sha256:{value}"
 
 
-def package_workspace() -> None:
-    run(["cargo", "package", "--workspace", "--locked", "--no-verify"])
+def package_workspace(selected: set[str], packages: dict[str, dict[str, Any]]) -> None:
+    command = ["cargo", "package", "--workspace", "--locked", "--no-verify"]
+    for name in sorted(set(packages) - selected):
+        command.extend(["--exclude", name])
+    run(command)
 
 
 def package_crate(name: str, version: str) -> tuple[Path, str]:
@@ -347,7 +350,7 @@ def main() -> int:
 
     packages = cargo_packages()
     validate_rows(rows, packages)
-    package_workspace()
+    package_workspace({row["cargo_package_name"] for row in rows}, packages)
     receipt: dict[str, Any] = {
         "schema_id": "cargo-allow.topology-publish-receipt.v1",
         "schema_version": 1,
