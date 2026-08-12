@@ -4,33 +4,58 @@
 # Runs both current runtime parity stages and emits a truthful, fail-closed
 # status artifact. This lane is observational: a blocked status is expected
 # until parity, old-path, ownership, and package/build prerequisites are proven.
-set -uo pipefail
+set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
 
 output_dir="${EXTRACTION_CUTOVER_DIR:-${ROOT}/target/extraction-cutover}"
+
+cargo_allow() {
+  if [[ -n "${EXTRACTION_CARGO_ALLOW_BIN:-}" ]]; then
+    "${EXTRACTION_CARGO_ALLOW_BIN}" "$@"
+  else
+    cargo run -p cargo-allow --locked -- "$@"
+  fi
+}
+python3 - "${ROOT}" "${output_dir}" <<'PY'
+from pathlib import Path
+import sys
+
+root = Path(sys.argv[1]).resolve()
+output_dir = Path(sys.argv[2]).resolve()
+try:
+    output_dir.relative_to(root)
+except ValueError:
+    raise SystemExit(
+        "EXTRACTION_CUTOVER_DIR must be inside the repository root; "
+        "cutover evidence paths are repository-relative"
+    )
+PY
 mkdir -p "${output_dir}"
+output_dir="$(cd "${output_dir}" && pwd)"
 
 snapshot_exit=0
-cargo run -p cargo-allow --locked -- extraction-parity \
+cargo_allow extraction-parity \
   --stage repo-snapshot \
   --output "${output_dir}/repo-snapshot-parity.json" || snapshot_exit=$?
 
 edit_exit=0
-cargo run -p cargo-allow --locked -- extraction-parity \
+cargo_allow extraction-parity \
   --stage repo-edit \
   --output "${output_dir}/repo-edit-parity.json" || edit_exit=$?
 
 python3 - "${ROOT}" "${output_dir}" "${snapshot_exit}" "${edit_exit}" <<'PY'
 import json
+import os
+import re
 import subprocess
 import sys
 import tomllib
 from pathlib import Path
 
-root = Path(sys.argv[1])
-output_dir = Path(sys.argv[2])
+root = Path(sys.argv[1]).resolve()
+output_dir = Path(sys.argv[2]).resolve()
 exit_codes = {"RepoSnapshot": int(sys.argv[3]), "RepoEdit": int(sys.argv[4])}
 stage_paths = {
     "RepoSnapshot": output_dir / "repo-snapshot-parity.json",
@@ -46,35 +71,147 @@ source_identity = {
     "commit": git_value("rev-parse", "HEAD"),
     "tree": git_value("rev-parse", "HEAD^{tree}"),
 }
+source_identity_value = (
+    f"commit:{source_identity['commit']}/tree:{source_identity['tree']}"
+)
 registry = tomllib.loads(
     (root / "policy/extraction-parity.toml").read_text(encoding="utf-8")
 )
 ledger = tomllib.loads(
     (root / "policy/product-move-ledger.toml").read_text(encoding="utf-8")
 )
+architecture = tomllib.loads(
+    (root / "policy/product-crates-v2.toml").read_text(encoding="utf-8")
+)
+architecture_paths = {
+    item["cargo_package_name"]: item["workspace_path"]
+    for item in architecture.get("crate_identity", [])
+}
 cases = registry.get("case", [])
 entries = {entry["id"]: entry for entry in ledger.get("entry", [])}
-blockers = [
-    "package_and_build_evidence_not_supplied",
-    "cutover_receipt_not_requested_until_prerequisites_are_proven",
-]
+blockers = []
 stages = []
+
+
+def expected_ownership(stage: str, selected_entries: list[dict]) -> dict[str, list[str]]:
+    package_names = sorted(
+        {
+            package
+            for entry in selected_entries
+            for package in (entry.get("current_crate"), entry.get("target_crate"))
+            if package
+        }
+    )
+    package_paths = [
+        f"{architecture_paths[package]}/Cargo.toml"
+        for package in package_names
+        if package in architecture_paths
+    ]
+    missing_package_names = sorted(
+        package for package in package_names if package not in architecture_paths
+    )
+    if stage == "RepoSnapshot":
+        asset_paths = [
+            "tests/fixtures/repo-snapshot/parity-committed-head-v1.toml",
+            "tests/fixtures/repo-snapshot/parity-staged-index-v1.toml",
+            "tests/fixtures/repo-snapshot/parity-staged-deletion-dirty-replacement-v1.toml",
+            "tests/fixtures/repo-snapshot/parity-source-view-staged-v1.toml",
+        ]
+        stage_doc = "docs/architecture/repo-snapshot.md"
+    else:
+        asset_paths = [
+            "tests/fixtures/repo-edit/parity-mutation-lock-alias-v1.toml",
+            "tests/fixtures/repo-edit/parity-path-containment-v1.toml",
+            "tests/fixtures/repo-edit/parity-atomic-write-v1.toml",
+            "tests/fixtures/repo-edit/parity-apply-receipt-v1.toml",
+            "tests/fixtures/repo-edit/parity-init-command-v1.toml",
+            "tests/fixtures/repo-edit/parity-refresh-command-v1.toml",
+            "tests/fixtures/repo-edit/parity-prune-command-v1.toml",
+            "tests/fixtures/repo-edit/parity-apply-backup-mode-v1.toml",
+            "tests/fixtures/repo-edit/parity-add-command-v1.toml",
+            "tests/fixtures/repo-edit/parity-migrate-command-v1.toml",
+            "tests/fixtures/repo-edit/parity-propose-command-v1.toml",
+        ]
+        stage_doc = "docs/architecture/repo-edit.md"
+    return {
+        "package_paths": sorted(package_paths),
+        "asset_paths": sorted(asset_paths),
+        "docs_paths": sorted(
+            [
+                "docs/architecture/extraction-parity.md",
+                stage_doc,
+                "policy/extraction-parity.toml",
+                "policy/product-move-ledger.toml",
+            ]
+        ),
+        "ci_paths": [
+            ".github/workflows/ci.yml",
+            "scripts/extraction-cutover-status.sh",
+            "scripts/test-extraction-cutover-status.sh",
+        ],
+        "package_names": package_names,
+        "missing_package_names": missing_package_names,
+    }
+
+
+def missing_paths(paths: list[str]) -> list[str]:
+    return [path for path in paths if not (root / path).is_file()]
+
+
+def validate_runtime_payload(stage: str, payload: object, stage_ids: set[str]) -> list[str]:
+    errors = []
+    if not isinstance(payload, dict):
+        return ["not_an_object"]
+    expected_identity = source_identity_value
+    records = payload.get("records")
+    record_ids = {
+        record.get("case_id")
+        for record in records
+        if isinstance(record, dict) and isinstance(record.get("case_id"), str)
+    } if isinstance(records, list) else set()
+    checks = {
+        "schema": payload.get("schema_id") == "cargo-allow.extraction-parity-runtime.v1"
+            and payload.get("schema_version") == 1,
+        "stage": payload.get("stage") == stage,
+        "result": payload.get("result") == "Passed",
+        "completeness": payload.get("completeness") == "Complete",
+        "source_identity": payload.get("source_identity") == expected_identity,
+        "case_counts": payload.get("expected_case_count") == len(stage_ids)
+            and payload.get("emitted_case_count") == len(stage_ids),
+        "case_ids": record_ids == stage_ids and len(records) == len(stage_ids)
+            if isinstance(records, list) else False,
+        "missing_cases": payload.get("missing_case_ids") == [],
+        "unexpected_cases": payload.get("unexpected_case_ids") == [],
+        "digest": isinstance(payload.get("parity_result_digest"), str)
+            and re.fullmatch(r"sha256:v1:[0-9a-f]{64}", payload["parity_result_digest"])
+            is not None,
+    }
+    for name, passed in checks.items():
+        if not passed:
+            errors.append(name)
+    if isinstance(records, list) and any(
+        not isinstance(record, dict)
+        or record.get("source_identity") != expected_identity
+        or record.get("result") != "SemanticallyEquivalent"
+        for record in records
+    ):
+        errors.append("records")
+    return errors
 
 for stage, path in stage_paths.items():
     payload = None
     if path.is_file():
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            payload = None
     stage_cases = [case for case in cases if case.get("stage") == stage]
     stage_ids = {case.get("id") for case in stage_cases}
-    if exit_codes[stage] != 0 or not payload:
+    runtime_errors = validate_runtime_payload(stage, payload, stage_ids)
+    payload_dict = payload if isinstance(payload, dict) else {}
+    if exit_codes[stage] != 0 or runtime_errors:
         blockers.append(f"runtime_parity_not_complete:{stage}")
-    else:
-        if (
-            payload.get("result") != "Passed"
-            or payload.get("expected_case_count")
-            != payload.get("emitted_case_count")
-        ):
-            blockers.append(f"runtime_parity_not_complete:{stage}")
+        blockers.extend(f"runtime_parity_invalid:{stage}:{error}" for error in runtime_errors)
     contract_only = [
         case.get("id") for case in stage_cases if case.get("disposition") != "Proven"
     ]
@@ -99,6 +236,81 @@ for stage, path in stage_paths.items():
     ]
     if old_path_not_closed:
         blockers.append(f"old_path_still_reachable:{stage}")
+    ownership = expected_ownership(stage, selected_entries)
+    missing_ownership = sorted(
+        {
+            path
+            for field in ("package_paths", "asset_paths", "docs_paths", "ci_paths")
+            for path in missing_paths(ownership[field])
+        }
+    )
+    if ownership["missing_package_names"]:
+        blockers.append(
+            f"missing_package_identity:{stage}:{','.join(ownership['missing_package_names'])}"
+        )
+    stage_dir = output_dir / stage.lower().replace("repo", "repo-")
+    stage_dir.mkdir(parents=True, exist_ok=True)
+    ownership_receipt_path = stage_dir / "ownership.json"
+    ownership_result = "Passed" if (
+        not runtime_errors
+        and exit_codes[stage] == 0
+        and not missing_ownership
+        and not ownership["missing_package_names"]
+    ) else "Blocked"
+    ownership_receipt = {
+        "schema_id": "cargo-allow.extraction-cutover-ownership.v1",
+        "schema_version": 1,
+        "stage": stage,
+        "source_identity": source_identity_value,
+        "parity_result_digest": payload_dict.get("parity_result_digest", "unavailable"),
+        "result": ownership_result,
+        "package_paths": ownership["package_paths"],
+        "asset_paths": ownership["asset_paths"],
+        "docs_paths": ownership["docs_paths"],
+        "ci_paths": ownership["ci_paths"],
+        "claim_boundary": "Current topology-derived package/assets/docs/CI ownership paths",
+    }
+    ownership_receipt_path.write_text(
+        json.dumps(ownership_receipt, indent=2) + "\n", encoding="utf-8"
+    )
+    if missing_ownership:
+        blockers.append(f"ownership_not_complete:{stage}")
+    env_suffix = stage.replace("Repo", "Repo_").upper().strip("_")
+    build_env = os.environ.get(f"EXTRACTION_BUILD_PACKAGE_RECEIPT_{env_suffix}")
+    build_receipt_path = Path(build_env) if build_env else stage_dir / "build-package.json"
+    if not build_receipt_path.is_absolute():
+        build_receipt_path = root / build_receipt_path
+    build_receipt_relative = None
+    try:
+        build_receipt_path = build_receipt_path.resolve()
+        build_receipt_relative = str(build_receipt_path.relative_to(root)).replace("\\", "/")
+    except (OSError, ValueError):
+        blockers.append(f"build_package_receipt_outside_repo:{stage}")
+    else:
+        if not build_receipt_path.is_file():
+            build_receipt_relative = None
+            blockers.append(f"independent_build_package_receipt_missing:{stage}")
+    manifest_path = stage_dir / "cutover-evidence.json"
+    receipt_path = stage_dir / "cutover-receipt.json"
+    if build_receipt_relative is not None and ownership_result == "Passed":
+        manifest_path.write_text(
+            json.dumps(
+                {
+                    "schema_id": "cargo-allow.extraction-cutover-evidence.v2",
+                    "schema_version": 2,
+                    "ownership_receipt": str(ownership_receipt_path.relative_to(root)).replace(
+                        "\\", "/"
+                    ),
+                    "independent_build_package_receipt": build_receipt_relative,
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+    else:
+        manifest_path.unlink(missing_ok=True)
+        receipt_path.unlink(missing_ok=True)
     stages.append(
         {
             "stage": stage,
@@ -108,10 +320,22 @@ for stage, path in stage_paths.items():
             ),
             "registered_case_count": len(stage_cases),
             "registered_case_ids": sorted(stage_ids),
-            "runtime_result": payload.get("result") if payload else None,
+            "runtime_result": payload_dict.get("result"),
             "policy_disposition": "Proven" if not contract_only else "contract_only",
             "old_path_reachability": (
                 "closed" if not old_path_not_closed else "OldPathStillReachable"
+            ),
+            "ownership_receipt": str(ownership_receipt_path.relative_to(root)).replace(
+                "\\", "/"
+            ),
+            "ownership_result": ownership_result,
+            "missing_ownership_paths": missing_ownership,
+            "missing_package_identities": ownership["missing_package_names"],
+            "independent_build_package_receipt": build_receipt_relative,
+            "cutover_evidence_manifest": (
+                str(manifest_path.relative_to(root)).replace("\\", "/")
+                if manifest_path.is_file()
+                else None
             ),
         }
     )
@@ -128,11 +352,12 @@ status = {
         "fail_closed_cutover_readiness_status",
         "exact_source_identity",
         "policy_derived_stage_inventory",
-        "no_cutover_receipt_or_policy_promotion",
+        "source-derived-package-assets-docs-ci-ownership",
+        "receipt-inputs-bound-to-source-and-parity-identity",
+        "no-policy-promotion-publication-tagging-or-release-execution",
     ],
     "limitations": [
-        "package_assets_docs_ci_ownership_not_proven",
-        "independent_build_package_evidence_not_proven",
+        "independent_build_package_receipt_is-required-and-validated-by-the-cli",
         "old_paths_and_contract_only_policy_remain_until_follow_up_lanes_land",
     ],
 }
@@ -141,3 +366,47 @@ status = {
 )
 print(json.dumps(status, indent=2))
 PY
+
+# The adapter is the final gate. A stage-specific cutover receipt is written
+# only when exact source identity, runtime parity, topology-derived ownership,
+# independent artifact digests, and policy prerequisites all pass. The current
+# contract_only/old-path state therefore emits only status and evidence inputs.
+for stage in repo-snapshot repo-edit; do
+  manifest="${output_dir}/${stage}/cutover-evidence.json"
+  receipt="${output_dir}/${stage}/cutover-receipt.json"
+  log="${output_dir}/${stage}/cutover-receipt.log"
+  rm -f "${receipt}" "${log}"
+  if [[ -f "${manifest}" ]]; then
+    adapter_exit=0
+    cargo_allow extraction-parity \
+      --stage "${stage}" \
+      --cutover-evidence "${manifest}" \
+      --output "${receipt}" >"${log}" 2>&1 || adapter_exit=$?
+    if [[ "${adapter_exit}" -ne 0 ]]; then
+      rm -f "${receipt}"
+    fi
+    python3 - "${output_dir}/extraction-cutover-status.json" "${stage}" "${adapter_exit}" "${log#"${ROOT}"/}" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+status_path = Path(sys.argv[1])
+stage_name = sys.argv[2]
+adapter_exit = int(sys.argv[3])
+log_path = sys.argv[4].replace("\\", "/")
+status = json.loads(status_path.read_text(encoding="utf-8"))
+for stage in status["stages"]:
+    if stage["stage"] == stage_name.title().replace("-", ""):
+        stage["cutover_receipt_exit_code"] = adapter_exit
+        stage["cutover_receipt_log"] = log_path
+        break
+if adapter_exit:
+    status["result"] = "Blocked"
+    status.setdefault("blockers", []).append(
+        f"cutover_receipt_rejected:{stage_name}:{adapter_exit}"
+    )
+    status["blockers"] = sorted(set(status["blockers"]))
+status_path.write_text(json.dumps(status, indent=2) + "\n", encoding="utf-8")
+PY
+  fi
+done

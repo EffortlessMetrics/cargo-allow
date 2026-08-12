@@ -70,6 +70,72 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9220"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/extraction-cutover-evidence.schema.json"
+owner = "core/architecture"
+classification = "extraction_cutover_evidence_schema"
+reason = "Defines the closed evidence-manifest input consumed by the exact-source extraction cutover adapter; it does not promote policy or authorize release."
+evidence = ["issue:3469", "doc:docs/architecture/extraction-parity.md"]
+created = "2026-08-12"
+review_after = "2026-11-10"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/extraction-cutover-evidence.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/extraction-cutover-evidence.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9221"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/extraction-cutover-ownership.schema.json"
+owner = "core/architecture"
+classification = "extraction_cutover_ownership_schema"
+reason = "Defines the closed topology-derived ownership receipt consumed by the extraction cutover adapter; it does not promote policy or authorize release."
+evidence = ["issue:3469", "doc:docs/architecture/extraction-parity.md"]
+created = "2026-08-12"
+review_after = "2026-11-10"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/extraction-cutover-ownership.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/extraction-cutover-ownership.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9222"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/extraction-cutover-build-package.schema.json"
+owner = "core/architecture"
+classification = "extraction_cutover_build_package_schema"
+reason = "Defines the closed independent build/package receipt consumed by the extraction cutover adapter; it does not promote policy or authorize release."
+evidence = ["issue:3469", "doc:docs/architecture/extraction-parity.md"]
+created = "2026-08-12"
+review_after = "2026-11-10"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/extraction-cutover-build-package.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/extraction-cutover-build-package.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0526"
 kind = "non_rust_file"
 family = "documentation"
@@ -10154,6 +10220,27 @@ review_after = "2027-01-01"
 ast_kind = "tracked_file"
 target_fingerprint = "sh"
 glob = "scripts/extraction-cutover-status.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-9215"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/test-extraction-cutover-status.sh"
+owner = "core/ci"
+classification = "ci_characterization_script"
+reason = "Deterministic characterization for extraction cutover status evidence and stale receipt cleanup (#3469)."
+evidence = ["issue:3469", "workflow:.github/workflows/ci.yml", "doc:docs/architecture/extraction-parity.md"]
+created = "2026-08-12"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "sh"
+glob = "scripts/test-extraction-cutover-status.sh"
 
 [allow.last_seen]
 line = 1

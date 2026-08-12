@@ -41,6 +41,9 @@ fn schema_contract_registry_covers_every_documented_artifact_schema() {
                 && name != "topology-publish-receipt"
                 && name != "shared-package-candidate.v1"
                 && name != "support-bundle"
+                && name != "extraction-cutover-evidence"
+                && name != "extraction-cutover-ownership"
+                && name != "extraction-cutover-build-package"
         })
         .collect::<BTreeSet<_>>();
     let registered = schema_contracts()
