@@ -150,6 +150,7 @@ assert len(manifest["payload"]["package_rows"]) == 10
 PY
 
 manifest_checksum="${work}/complete-manifest.sha256"
+sha256sum "${work}/complete-manifest.json" | awk '{print $1 "  complete-manifest.json"}' >"${manifest_checksum}"
 (
   cd "${work}"
   sha256sum -c "$(basename "${manifest_checksum}")" >/dev/null
