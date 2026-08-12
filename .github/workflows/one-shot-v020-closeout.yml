@@ -1,6 +1,5 @@
-# Remove the empty legacy v0.2.0 placeholder before native Changie merge.
-# Self-removing release candidate convergence. The resulting branch contains
-# only the durable v0.2.0 implementation, documentation, and Changie batch.
+# Bootstrap the historical changelog into Changie-owned version files before
+# the final native batch/merge. This workflow removes itself before commit.
 name: One-shot v0.2.0 release closeout
 
 on:
@@ -39,6 +38,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 scripts/one-shot-v020-closeout.py
+          python3 scripts/one-shot-changie-bootstrap.py
           python3 - <<'PY'
           from pathlib import Path
           path = Path('crates/cargo-allow/src/release_prep_tests.rs')
@@ -68,18 +68,16 @@ jobs:
           mkdir -p "${GOBIN}"
           go install github.com/miniscruff/changie@v1.25.2
           go version -m "${GOBIN}/changie" | grep -Eq $'^\tmod\tgithub\.com/miniscruff/changie\tv1\.25\.2(\t|$)'
-          if [ -e .changes/v0.2.0 ]; then
-            test ! -s .changes/v0.2.0
-            rm .changes/v0.2.0
-          fi
           "${GOBIN}/changie" batch v0.2.0
           "${GOBIN}/changie" merge
           test "$(grep -c '^## \[0\.2\.0\] - ' CHANGELOG.md)" -eq 1
+          test "$(grep -c '^## \[0\.1\.11\] - ' CHANGELOG.md)" -eq 1
           grep -q '^## \[Unreleased\]$' CHANGELOG.md
       - name: Remove temporary migration surfaces
         run: |
           git rm .github/workflows/one-shot-v020-closeout.yml
           git rm scripts/one-shot-v020-closeout.py
+          git rm scripts/one-shot-changie-bootstrap.py
       - name: Prove release controller and package graph
         shell: bash
         run: |
