@@ -47,6 +47,7 @@ cargo_allow extraction-parity \
 python3 - "${ROOT}" "${output_dir}" "${snapshot_exit}" "${edit_exit}" <<'PY'
 import json
 import os
+import re
 import subprocess
 import sys
 import tomllib
@@ -145,6 +146,7 @@ def expected_ownership(stage: str, selected_entries: list[dict]) -> dict[str, li
         "ci_paths": [
             ".github/workflows/ci.yml",
             "scripts/extraction-cutover-status.sh",
+            "scripts/test-extraction-cutover-status.sh",
         ],
         "package_names": package_names,
         "missing_package_names": missing_package_names,
@@ -154,21 +156,60 @@ def expected_ownership(stage: str, selected_entries: list[dict]) -> dict[str, li
 def missing_paths(paths: list[str]) -> list[str]:
     return [path for path in paths if not (root / path).is_file()]
 
+
+def validate_runtime_payload(stage: str, payload: object, stage_ids: set[str]) -> list[str]:
+    errors = []
+    if not isinstance(payload, dict):
+        return ["not_an_object"]
+    expected_identity = source_identity_value
+    records = payload.get("records")
+    record_ids = {
+        record.get("case_id")
+        for record in records
+        if isinstance(record, dict) and isinstance(record.get("case_id"), str)
+    } if isinstance(records, list) else set()
+    checks = {
+        "schema": payload.get("schema_id") == "cargo-allow.extraction-parity-runtime.v1"
+            and payload.get("schema_version") == 1,
+        "stage": payload.get("stage") == stage,
+        "result": payload.get("result") == "Passed",
+        "completeness": payload.get("completeness") == "Complete",
+        "source_identity": payload.get("source_identity") == expected_identity,
+        "case_counts": payload.get("expected_case_count") == len(stage_ids)
+            and payload.get("emitted_case_count") == len(stage_ids),
+        "case_ids": record_ids == stage_ids and len(records) == len(stage_ids)
+            if isinstance(records, list) else False,
+        "missing_cases": payload.get("missing_case_ids") == [],
+        "unexpected_cases": payload.get("unexpected_case_ids") == [],
+        "digest": isinstance(payload.get("parity_result_digest"), str)
+            and re.fullmatch(r"sha256:v1:[0-9a-f]{64}", payload["parity_result_digest"])
+            is not None,
+    }
+    for name, passed in checks.items():
+        if not passed:
+            errors.append(name)
+    if isinstance(records, list) and any(
+        not isinstance(record, dict)
+        or record.get("source_identity") != expected_identity
+        or record.get("result") != "SemanticallyEquivalent"
+        for record in records
+    ):
+        errors.append("records")
+    return errors
+
 for stage, path in stage_paths.items():
     payload = None
     if path.is_file():
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            payload = None
     stage_cases = [case for case in cases if case.get("stage") == stage]
     stage_ids = {case.get("id") for case in stage_cases}
-    if exit_codes[stage] != 0 or not payload:
+    runtime_errors = validate_runtime_payload(stage, payload, stage_ids)
+    if exit_codes[stage] != 0 or runtime_errors:
         blockers.append(f"runtime_parity_not_complete:{stage}")
-    else:
-        if (
-            payload.get("result") != "Passed"
-            or payload.get("expected_case_count")
-            != payload.get("emitted_case_count")
-        ):
-            blockers.append(f"runtime_parity_not_complete:{stage}")
+        blockers.extend(f"runtime_parity_invalid:{stage}:{error}" for error in runtime_errors)
     contract_only = [
         case.get("id") for case in stage_cases if case.get("disposition") != "Proven"
     ]
@@ -208,11 +249,12 @@ for stage, path in stage_paths.items():
     stage_dir = output_dir / stage.lower().replace("repo", "repo-")
     stage_dir.mkdir(parents=True, exist_ok=True)
     ownership_receipt_path = stage_dir / "ownership.json"
-    ownership_result = (
-        "Passed"
-        if not missing_ownership and not ownership["missing_package_names"]
-        else "Blocked"
-    )
+    ownership_result = "Passed" if (
+        not runtime_errors
+        and exit_codes[stage] == 0
+        and not missing_ownership
+        and not ownership["missing_package_names"]
+    ) else "Blocked"
     ownership_receipt = {
         "schema_id": "cargo-allow.extraction-cutover-ownership.v1",
         "schema_version": 1,
@@ -246,7 +288,7 @@ for stage, path in stage_paths.items():
         blockers.append(f"independent_build_package_receipt_missing:{stage}")
     manifest_path = stage_dir / "cutover-evidence.json"
     receipt_path = stage_dir / "cutover-receipt.json"
-    if build_receipt_relative is not None:
+    if build_receipt_relative is not None and ownership_result == "Passed":
         manifest_path.write_text(
             json.dumps(
                 {

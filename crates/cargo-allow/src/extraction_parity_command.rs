@@ -700,6 +700,7 @@ fn derive_ownership(
     let ci_paths = [
         ".github/workflows/ci.yml",
         "scripts/extraction-cutover-status.sh",
+        "scripts/test-extraction-cutover-status.sh",
     ]
     .into_iter()
     .map(|path| relative_file(root, &root.join(path)))
@@ -744,6 +745,7 @@ fn cutover_source_input_paths(
         "crates/allow-policy/src/product_move".to_string(),
         "crates/cargo-allow/src/extraction_parity_command.rs".to_string(),
         "scripts/extraction-cutover-status.sh".to_string(),
+        "scripts/test-extraction-cutover-status.sh".to_string(),
     ]);
     let runtime_path = match stage {
         ExtractionStage::RepoSnapshot => {
@@ -766,6 +768,14 @@ fn cutover_source_input_paths(
         }
     };
     paths.insert(runtime_path);
+    for path in &paths {
+        if !root.join(path).exists() {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::InvalidConfig,
+                format!("cutover source input `{path}` no longer exists in the source tree"),
+            ));
+        }
+    }
     for package in &architecture.workspace_packages {
         paths.insert(relative_file(
             root,
@@ -1732,7 +1742,6 @@ mod tests {
     fn cutover_status_adapter_fails_closed_for_receipt_location_and_lifecycle() -> Result<(), String>
     {
         use std::os::unix::fs::PermissionsExt;
-
         struct FixtureGuard(PathBuf);
 
         impl Drop for FixtureGuard {
@@ -1750,6 +1759,8 @@ mod tests {
                 .arg("scripts/extraction-cutover-status.sh")
                 .current_dir(root)
                 .env("PATH", joined)
+                .env("GIT_CONFIG_NOSYSTEM", "1")
+                .env("GIT_CONFIG_GLOBAL", "/dev/null")
                 .env("EXTRACTION_CUTOVER_DIR", output)
                 .output()
                 .map_err(|error| format!("run extraction cutover status: {error}"))?;
@@ -1852,7 +1863,29 @@ case "$stage" in
   repo-edit) stage_name=RepoEdit ;;
   *) exit 19 ;;
 esac
-printf '{"result":"Passed","expected_case_count":1,"emitted_case_count":1,"parity_result_digest":"sha256:v1:%s","stage":"%s"}\n' "$stage" "$stage_name" >"$output"
+python3 - "$output" "$stage_name" <<'PY'
+import json
+import subprocess
+import sys
+import tomllib
+from pathlib import Path
+output, stage = sys.argv[1:]
+source = "commit:{}/tree:{}".format(
+    subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+    subprocess.check_output(["git", "rev-parse", "HEAD^{tree}"], text=True).strip(),
+)
+registry = tomllib.loads(Path("policy/extraction-parity.toml").read_text())
+case_ids = sorted(case["id"] for case in registry["case"] if case["stage"] == stage)
+records = [{"case_id": case_id, "result": "SemanticallyEquivalent", "source_identity": source,
+            "old_output": "fixture-old", "new_output": "fixture-new"} for case_id in case_ids]
+Path(output).write_text(json.dumps({
+    "schema_id": "cargo-allow.extraction-parity-runtime.v1", "schema_version": 1,
+    "tool": "cargo-allow extraction-parity", "result": "Passed", "completeness": "Complete",
+    "source_identity": source, "stage": stage, "parity_result_digest": "sha256:v1:" + "a" * 64,
+    "records": records, "expected_case_count": len(case_ids), "emitted_case_count": len(case_ids),
+    "missing_case_ids": [], "unexpected_case_ids": [], "claim_boundary": ["fixture-runtime-parity"],
+}) + "\n")
+PY
 "#,
         )
         .map_err(|error| error.to_string())?;
@@ -1886,6 +1919,8 @@ printf '{"result":"Passed","expected_case_count":1,"emitted_case_count":1,"parit
         let outside_status = Command::new("bash")
             .arg("scripts/extraction-cutover-status.sh")
             .current_dir(&root)
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
             .env("PATH", {
                 let mut paths = vec![bin.clone()];
                 paths.extend(std::env::split_paths(
