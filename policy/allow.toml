@@ -114,6 +114,28 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-0524"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/test-release-topology-publisher.py"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Deterministic release-topology checksum contract harness that exercises fresh, published, and recovered receipt rows without publishing or mutating release state."
+evidence = ["issue:3393", "doc:docs/release/README.md", "workflow:.github/workflows/ci.yml", "test:topology_publisher_checksum_contract"]
+created = "2026-08-12"
+review_after = "2027-02-12"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-release-topology-publisher.py"
+target_fingerprint = "py"
+glob = "scripts/test-release-topology-publisher.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9200"
 kind = "non_rust_file"
 family = "documentation"
