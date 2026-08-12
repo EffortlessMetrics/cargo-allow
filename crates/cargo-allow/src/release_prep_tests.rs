@@ -70,7 +70,10 @@ fn release_workflow_exists_and_lists_publish_order() {
             && topology_publisher.contains("logical_id"),
         "{RELEASE_TOPOLOGY_PUBLISHER} should derive publication order from the V2 topology"
     );
-    let receipt_schema = read_workspace_file(&root, "docs/schemas/topology-publish-receipt.schema.json");
+    let receipt_schema = read_workspace_file(
+        &root,
+        "docs/schemas/topology-publish-receipt.schema.json",
+    );
     assert!(
         receipt_schema.contains("cargo-allow.topology-publish-receipt.v1")
             && receipt_schema.contains("logical_id")
