@@ -1,0 +1,32 @@
+# Documented negative fixture for #3302. This is not a recommended workflow;
+# it records the expected PR-workflow result law without invoking cargo-allow.
+name: cargo-allow partial diff artifact contract
+
+on:
+  workflow_dispatch:
+
+jobs:
+  partial-diff-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - name: Record expected partial posture
+        run: |
+          mkdir -p target/cargo-allow
+          printf '%s\n' 'result_class: head_partial' > target/cargo-allow/fixture.txt
+          printf '%s\n' 'expected_diff_exit: 1' >> target/cargo-allow/fixture.txt
+          printf '%s\n' 'expected_job_posture: failure' >> target/cargo-allow/fixture.txt
+          printf '%s\n' 'expected_upload_condition: always' >> target/cargo-allow/fixture.txt
+          printf '%s\n' 'improvements: 0' >> target/cargo-allow/fixture.txt
+          printf '%s\n' 'removed: 0' >> target/cargo-allow/fixture.txt
+          printf '%s\n' 'expected_artifact: pr-summary.md' >> target/cargo-allow/fixture.txt
+          printf '%s\n' 'expected_artifact: diff.json' >> target/cargo-allow/fixture.txt
+          printf '%s\n' 'expected_artifact: diff.receipt.json' >> target/cargo-allow/fixture.txt
+          printf '%s\n' 'expected_artifact: diff.sarif' >> target/cargo-allow/fixture.txt
+          exit 1
+      - uses: actions/upload-artifact@v7.0.1
+        if: always()
+        with:
+          name: cargo-allow-partial-diff
+          path: target/cargo-allow/fixture.txt
+          if-no-files-found: error

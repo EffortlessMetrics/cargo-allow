@@ -1181,6 +1181,7 @@ pub fn core_command_summary_from_diff(
         failed,
     } = facts;
     let comparison_complete = result_class == ResultClassV1::Completed;
+    let scanner_partial = result_class == ResultClassV1::PartialData;
     let result_class = if failed && comparison_complete {
         ResultClassV1::Findings
     } else {
@@ -1214,21 +1215,43 @@ pub fn core_command_summary_from_diff(
         }
     };
     let primary_action = failed.then(|| {
-        CoreCommandActionV1::command(
-            "diff.inspect_report",
-            "Inspect the diff report",
-            "cargo-allow",
-            vec![
-                "diff".to_string(),
-                "--format".to_string(),
-                "json".to_string(),
-            ],
-        )
-        .with_contract(
-            "the diff summary is a compact posture projection",
-            "the detailed diff report exposes the exact finding and policy changes",
-            "the report does not prove compiled or runtime behavior",
-        )
+        if comparison_complete {
+            CoreCommandActionV1::command(
+                "diff.inspect_policy_repairs",
+                "Inspect the exact policy and finding repairs",
+                "cargo-allow",
+                exact_diff_args(&base, head.as_deref()),
+            )
+            .with_contract(
+                "the complete diff found policy or source-exception posture that blocks the gate",
+                "the exact revision report exposes the policy and finding repairs to review",
+                "the report does not apply policy changes or prove compiled/runtime behavior",
+            )
+        } else if scanner_partial {
+            CoreCommandActionV1::command(
+                "diff.inspect_scanner_repair",
+                "Inspect revision scanner coverage before policy repair",
+                "cargo-allow",
+                exact_diff_args(&base, head.as_deref()),
+            )
+            .with_contract(
+                "one or both revision scans are partial, so apparent movement is not policy-repair evidence",
+                "the exact revision report identifies which side lacks complete scanner coverage",
+                "rerunning a partial scan does not convert indeterminate movement into an improvement",
+            )
+        } else {
+            CoreCommandActionV1::command(
+                "diff.inspect_incomplete_report",
+                "Inspect the incomplete revision comparison",
+                "cargo-allow",
+                exact_diff_args(&base, head.as_deref()),
+            )
+            .with_contract(
+                "the revision comparison did not produce complete posture evidence",
+                "the exact revision report preserves the incomplete result classification",
+                "an incomplete report does not establish policy movement or repository cleanliness",
+            )
+        }
     });
     let next_proof = (!failed && result_class == ResultClassV1::Completed).then(|| {
         CoreCommandActionV1::command(
@@ -1292,6 +1315,15 @@ pub fn core_command_summary_from_diff(
                 .to_string(),
         ]),
     })
+}
+
+fn exact_diff_args(base: &str, head: Option<&str>) -> Vec<String> {
+    let mut args = vec!["diff".to_string(), "--base".to_string(), base.to_string()];
+    if let Some(head) = head {
+        args.extend(["--head".to_string(), head.to_string()]);
+    }
+    args.extend(["--format".to_string(), "json".to_string()]);
+    args
 }
 
 pub fn core_command_summary_from_adoption_plan(

@@ -14,6 +14,8 @@ const DIFF_WORKFLOW: &str = include_str!("../../../examples/github-actions/cargo
 const CHECK_WORKFLOW: &str = include_str!("../../../examples/github-actions/cargo-allow-check.yml");
 const SHALLOW_NEGATIVE: &str =
     include_str!("../../../docs/dogfood/fixtures/ci/shallow-checkout-missing-base.yml");
+const PARTIAL_DIFF_ARTIFACTS: &str =
+    include_str!("../../../docs/dogfood/fixtures/ci/partial-diff-artifacts.yml");
 const PUBLISHED_REGISTRY: &str =
     include_str!("../../../docs/dogfood/fixtures/getting-started/published-command-registry.toml");
 
@@ -160,6 +162,7 @@ fn committed_workflow_examples_parse_and_meet_semantic_contract() {
     assert_yaml_workflow_shape("cargo-allow-diff.yml", DIFF_WORKFLOW);
     assert_yaml_workflow_shape("cargo-allow-check.yml", CHECK_WORKFLOW);
     assert_yaml_workflow_shape("shallow-checkout-missing-base.yml", SHALLOW_NEGATIVE);
+    assert_yaml_workflow_shape("partial-diff-artifacts.yml", PARTIAL_DIFF_ARTIFACTS);
 
     assert!(
         DIFF_WORKFLOW.contains("fetch-depth: 0"),
@@ -209,6 +212,46 @@ fn committed_workflow_examples_parse_and_meet_semantic_contract() {
         DIFF_WORKFLOW.contains("target/cargo-allow/"),
         "PR example must write under target/cargo-allow/"
     );
+    for artifact in [
+        "pr-summary.md",
+        "diff.json",
+        "diff.receipt.json",
+        "diff.sarif",
+    ] {
+        assert!(
+            DIFF_WORKFLOW.contains(artifact),
+            "PR example must retain `{artifact}` when diff is non-clean"
+        );
+        assert!(
+            PARTIAL_DIFF_ARTIFACTS.contains(artifact),
+            "partial workflow fixture must declare `{artifact}`"
+        );
+    }
+    for required in [
+        "set +e",
+        "markdown_status=$?",
+        "json_status=$?",
+        "sarif_status=$?",
+        "set -e",
+        "exit \"$final_status\"",
+    ] {
+        assert!(
+            DIFF_WORKFLOW.contains(required),
+            "PR example must preserve the blocking artifact sequence `{required}`"
+        );
+    }
+    for required in [
+        "expected_diff_exit: 1",
+        "expected_job_posture: failure",
+        "expected_upload_condition: always",
+        "improvements: 0",
+        "removed: 0",
+    ] {
+        assert!(
+            PARTIAL_DIFF_ARTIFACTS.contains(required),
+            "partial workflow fixture must preserve `{required}`"
+        );
+    }
 }
 
 #[test]
@@ -221,6 +264,7 @@ fn ci_surfaces_exist_on_disk_and_stay_in_published_command_set() {
         "docs/how-to/troubleshoot-cargo-allow.md",
         "docs/how-to/rollback-cargo-allow-adoption.md",
         "docs/dogfood/fixtures/ci/shallow-checkout-missing-base.yml",
+        "docs/dogfood/fixtures/ci/partial-diff-artifacts.yml",
     ] {
         assert!(
             root.join(relative).is_file(),

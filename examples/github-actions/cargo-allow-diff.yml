@@ -23,10 +23,31 @@ jobs:
         run: |
           base_ref="origin/${GITHUB_BASE_REF:-main}"
           mkdir -p target/cargo-allow
+          set +e
           cargo-allow diff \
             --base "$base_ref" \
             --format markdown \
+            --receipt target/cargo-allow/diff.receipt.json \
             --output target/cargo-allow/pr-summary.md
+          markdown_status=$?
+          cargo-allow diff \
+            --base "$base_ref" \
+            --format json \
+            --output target/cargo-allow/diff.json
+          json_status=$?
+          cargo-allow diff \
+            --base "$base_ref" \
+            --format sarif \
+            --output target/cargo-allow/diff.sarif
+          sarif_status=$?
+          set -e
+          final_status=$markdown_status
+          if (( final_status == 0 && json_status != 0 )); then final_status=$json_status; fi
+          if (( final_status == 0 && sarif_status != 0 )); then final_status=$sarif_status; fi
+          if (( final_status != 0 )); then
+            echo "cargo-allow diff remained non-clean; uploading partial evidence" >&2
+            exit "$final_status"
+          fi
       - name: Publish cargo-allow summary
         if: always()
         shell: bash
