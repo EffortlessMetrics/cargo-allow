@@ -77,6 +77,12 @@ elif mode == "stale-identity":
 elif mode == "malformed":
     Path(output).write_text("{not-json\n", encoding="utf-8")
     raise SystemExit(0)
+elif mode == "non-object":
+    Path(output).write_text("[{}]\n", encoding="utf-8")
+    raise SystemExit(0)
+elif mode == "invalid-utf8":
+    Path(output).write_bytes(b"\xff\xfe\n")
+    raise SystemExit(0)
 Path(output).write_text(json.dumps(payload) + "\n", encoding="utf-8")
 PY
 SH
@@ -155,7 +161,7 @@ if EXTRACTION_CARGO_ALLOW_BIN="${fake}" EXTRACTION_CUTOVER_DIR="${outside}" \
 fi
 grep -q 'must be inside the repository root' "${work}/outside.log"
 
-for mode in wrong-stage missing-records stale-identity malformed; do
+for mode in wrong-stage missing-records stale-identity malformed non-object invalid-utf8; do
   negative_dir="${work}/${mode}"
   FAKE_PARITY_MODE="${mode}" EXTRACTION_CARGO_ALLOW_BIN="${fake}" \
     EXTRACTION_CUTOVER_DIR="${negative_dir}" \

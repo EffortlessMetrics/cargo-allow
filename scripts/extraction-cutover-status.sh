@@ -202,11 +202,12 @@ for stage, path in stage_paths.items():
     if path.is_file():
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
             payload = None
     stage_cases = [case for case in cases if case.get("stage") == stage]
     stage_ids = {case.get("id") for case in stage_cases}
     runtime_errors = validate_runtime_payload(stage, payload, stage_ids)
+    payload_dict = payload if isinstance(payload, dict) else {}
     if exit_codes[stage] != 0 or runtime_errors:
         blockers.append(f"runtime_parity_not_complete:{stage}")
         blockers.extend(f"runtime_parity_invalid:{stage}:{error}" for error in runtime_errors)
@@ -260,7 +261,7 @@ for stage, path in stage_paths.items():
         "schema_version": 1,
         "stage": stage,
         "source_identity": source_identity_value,
-        "parity_result_digest": (payload or {}).get("parity_result_digest", "unavailable"),
+        "parity_result_digest": payload_dict.get("parity_result_digest", "unavailable"),
         "result": ownership_result,
         "package_paths": ownership["package_paths"],
         "asset_paths": ownership["asset_paths"],
@@ -316,7 +317,7 @@ for stage, path in stage_paths.items():
             ),
             "registered_case_count": len(stage_cases),
             "registered_case_ids": sorted(stage_ids),
-            "runtime_result": payload.get("result") if payload else None,
+            "runtime_result": payload_dict.get("result"),
             "policy_disposition": "Proven" if not contract_only else "contract_only",
             "old_path_reachability": (
                 "closed" if not old_path_not_closed else "OldPathStillReachable"

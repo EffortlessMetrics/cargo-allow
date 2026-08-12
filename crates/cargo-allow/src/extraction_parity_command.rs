@@ -2013,7 +2013,7 @@ PY
                     != Some(expected_log.as_str())
             {
                 return Err(format!(
-                    "configured/default receipt lifecycle was not fail-closed for {stage}"
+                    "configured/default receipt lifecycle was not fail-closed for {stage}: blockers={configured_blockers:?}, status={stage_status}, ownership={ownership:?}"
                 ));
             }
         }
