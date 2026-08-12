@@ -212,6 +212,16 @@ def receipt_checksum(value: str | None) -> str | None:
     return None if value is None else f"sha256:{value}"
 
 
+def package_only_claim_boundary(mode: str) -> str:
+    if mode == "shared":
+        return "Exact shared package bytes and metadata only; no registry, support, or publication claim."
+    if mode == "namespace":
+        return "Exact shared, cargo-intent, and cargo-proof package bytes and metadata only; no registry, support, or publication claim."
+    if mode == "cargo-allow":
+        return "Exact cargo-allow candidate package bytes and metadata only; no registry, support, or publication claim."
+    return "Exact topology-selected package bytes and metadata only; no registry, support, or publication claim."
+
+
 def package_workspace(selected: set[str], packages: dict[str, dict[str, Any]]) -> None:
     command = ["cargo", "package", "--workspace", "--locked", "--no-verify"]
     for name in sorted(packages.keys() - selected):
@@ -383,7 +393,7 @@ def main() -> int:
         "incident_state": "none",
         "first_irreversible_row": None,
         "claim_boundary": (
-            "Exact shared package bytes and metadata only; no registry, support, or publication claim."
+            package_only_claim_boundary(args.mode)
             if args.package_only
             else "Topology-derived publication evidence; no publication occurs unless --publish is set."
         ),
