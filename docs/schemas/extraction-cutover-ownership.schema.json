@@ -19,6 +19,6 @@
     "claim_boundary": { "type": "string", "minLength": 1 }
   },
   "$defs": {
-    "paths": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+    "paths": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1, "uniqueItems": true }
   }
 }

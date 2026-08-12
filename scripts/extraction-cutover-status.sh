@@ -339,7 +339,7 @@ for stage in repo-snapshot repo-edit; do
     if [[ "${adapter_exit}" -ne 0 ]]; then
       rm -f "${receipt}"
     fi
-    python3 - "${output_dir}/extraction-cutover-status.json" "${stage}" "${adapter_exit}" "${log#${ROOT}/}" <<'PY'
+    python3 - "${output_dir}/extraction-cutover-status.json" "${stage}" "${adapter_exit}" "${log#"${ROOT}"/}" <<'PY'
 import json
 import sys
 from pathlib import Path
