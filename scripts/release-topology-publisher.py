@@ -247,6 +247,12 @@ def receipt_row(
     }
 
 
+def recovery_row_is_exact(prior: dict[str, Any], local_checksum: str) -> bool:
+    return prior.get("state") in {"verified_existing", "published_verified"} and prior.get(
+        "registry_checksum"
+    ) == local_checksum
+
+
 def registry_checksum(name: str, version: str) -> str | None:
     payload = crate_api(name, version)
     if payload is None:
@@ -446,8 +452,7 @@ def main() -> int:
         if prior is not None:
             if prior.get("local_checksum") != local_receipt_checksum:
                 fail(f"recovery candidate bytes differ for {name} {version}")
-            prior_state = prior.get("state")
-            if prior_state in {"verified_existing", "published_verified"}:
+            if recovery_row_is_exact(prior, local_receipt_checksum):
                 row_receipt = receipt_row(
                     row,
                     crate_path=crate_path,

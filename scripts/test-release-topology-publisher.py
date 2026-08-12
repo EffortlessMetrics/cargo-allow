@@ -59,6 +59,14 @@ def main() -> None:
 
     accepted = PUBLISHER.recovery_rows({"rows": [recovered]})
     assert accepted[("fixture-package", "9.9.9")]["local_checksum"] == CANONICAL
+    prior = dict(recovered)
+    prior["state"] = "published_verified"
+    assert PUBLISHER.recovery_row_is_exact(prior, CANONICAL)
+
+    for registry_checksum in (None, "sha256:" + ("b" * 64)):
+        incomplete = dict(prior)
+        incomplete["registry_checksum"] = registry_checksum
+        assert not PUBLISHER.recovery_row_is_exact(incomplete, CANONICAL)
 
     for malformed in (
         DIGEST,
