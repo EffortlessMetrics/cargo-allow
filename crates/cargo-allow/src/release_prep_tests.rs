@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use allow_policy::extraction_parity::{ParityDisposition, parse_extraction_parity_registry};
 use allow_policy::product_packages::parse_product_package_topology_v2;
 
 const PUBLISHED_RELEASE_VERSION: &str = "0.1.11";
@@ -17,6 +18,7 @@ const RELEASE_WORKFLOW: &str = ".github/workflows/release.yml";
 const AUTHORIZED_RELEASE_WORKFLOW: &str = ".github/workflows/release-authorized.yml";
 const RELEASE_AUTHORIZATION_ARTIFACT: &str = "release/authorize-v0.2.0.json";
 const RELEASE_DOC: &str = "docs/release/README.md";
+const CI_DOC: &str = "docs/ci.md";
 const RELEASE_TOPOLOGY_PUBLISHER: &str = "scripts/release-topology-publisher.py";
 const RELEASE_TOPOLOGY_CHECKSUM_TEST: &str = "scripts/test-release-topology-publisher.py";
 
@@ -38,6 +40,38 @@ fn release_workflow_exists_and_lists_publish_order() {
         &root,
         active_publish_order_doc(&workspace_version),
     ));
+    let topology = parse_product_package_topology_v2(&read_workspace_file(&root, PACKAGE_TOPOLOGY))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("parse {PACKAGE_TOPOLOGY}: {err}")));
+    let namespace_rows = topology
+        .package
+        .iter()
+        .filter(|row| {
+            row.publish
+                && matches!(
+                    row.product_family.as_str(),
+                    "shared" | "cargo-intent" | "cargo-proof"
+                )
+        })
+        .map(|row| row.cargo_package_name.as_str())
+        .collect::<BTreeSet<_>>();
+    let cargo_candidate_rows = topology
+        .package
+        .iter()
+        .filter(|row| {
+            row.publish
+                && row.candidate_inclusion
+                && matches!(row.product_family.as_str(), "shared" | "cargo-allow")
+        })
+        .map(|row| row.cargo_package_name.as_str())
+        .collect::<BTreeSet<_>>();
+    let shared_candidate_rows = namespace_rows
+        .intersection(&cargo_candidate_rows)
+        .copied()
+        .collect::<BTreeSet<_>>();
+    let cargo_only_rows = cargo_candidate_rows
+        .difference(&namespace_rows)
+        .copied()
+        .collect::<BTreeSet<_>>();
 
     assert!(
         workflow.contains("on:") && workflow.contains("tags:") && workflow.contains("v*"),
@@ -145,6 +179,36 @@ fn release_workflow_exists_and_lists_publish_order() {
             && !authorized.contains("gh workflow run release.yml"),
         "{AUTHORIZED_RELEASE_WORKFLOW} must stop after namespace publication"
     );
+    assert_eq!(
+        (namespace_rows.len(), cargo_candidate_rows.len()),
+        (12, 13),
+        "{PACKAGE_TOPOLOGY} should preserve the distinct namespace and cargo-allow release sets"
+    );
+    assert_eq!(
+        (shared_candidate_rows.len(), cargo_only_rows.len()),
+        (3, 10),
+        "the cargo-allow candidate should overlap three namespace rows and differ by ten rows"
+    );
+    assert!(
+        release_doc.contains("exactly twelve `0.1.0` namespace rows")
+            && release_doc.contains("topology-selected candidate has thirteen rows"),
+        "{RELEASE_DOC} should bind both release phase counts to {PACKAGE_TOPOLOGY}"
+    );
+    let ci_doc = read_workspace_file(&root, CI_DOC);
+    assert!(
+        ci_doc.contains("thirteen-row cargo-allow candidate")
+            && ci_doc.contains("three selected shared rows")
+            && ci_doc.contains("expected missing uploads are the ten cargo-allow-family rows")
+            && ci_doc.contains("twelve `0.1.0` namespace rows"),
+        "{CI_DOC} should distinguish the topology-derived 12/13/3/10 release sets"
+    );
+    for operator_doc in [&release_doc, &ci_doc] {
+        assert!(
+            operator_doc.contains("does not")
+                && operator_doc.contains("enforce shared-first registry preflight"),
+            "operator docs must disclose the current tag workflow's shared-preflight limitation"
+        );
+    }
 
     assert!(
         !publish_order.is_empty(),
@@ -297,28 +361,52 @@ fn candidate_release_record_exposes_the_checked_capability_contract() {
 #[test]
 fn candidate_release_docs_preserve_unpublished_extraction_posture() {
     let root = workspace_root();
-    let extraction_policy = read_workspace_file(&root, EXTRACTION_PARITY_POLICY);
-    if !extraction_policy.contains("disposition = \"contract_only\"") {
+    let extraction_registry =
+        parse_extraction_parity_registry(&read_workspace_file(&root, EXTRACTION_PARITY_POLICY))
+            .unwrap_or_else(|err| {
+                std::panic::panic_any(format!("parse {EXTRACTION_PARITY_POLICY}: {err}"))
+            });
+    if extraction_registry
+        .case
+        .iter()
+        .all(|case| case.disposition == ParityDisposition::Proven)
+    {
         return;
     }
 
     for candidate_doc in [CANDIDATE_RELEASE_DOC, CANDIDATE_GITHUB_RELEASE_DOC] {
         let contents = read_workspace_file(&root, candidate_doc);
-        for required_marker in [
-            "not published",
-            "contract_only",
-            "Blocked",
-            "OldPathStillReachable",
-        ] {
+        let claim_section = contents
+            .split_once("## Version and Install")
+            .map_or(contents.as_str(), |(section, _)| section);
+        let claim_section = claim_section
+            .split_once("## Install")
+            .map_or(claim_section, |(section, _)| section);
+        let status_line = claim_section
+            .lines()
+            .find(|line| line.starts_with("> **"))
+            .unwrap_or_else(|| {
+                std::panic::panic_any(format!("read draft status in {candidate_doc}"))
+            });
+        assert!(
+            status_line.contains("Draft") && status_line.contains("not published"),
+            "{candidate_doc} should carry an explicit unpublished draft status"
+        );
+        assert!(
+            claim_section.contains("three-product extraction remains"),
+            "{candidate_doc} should scope the blocking posture to three-product extraction"
+        );
+        for required_marker in ["Blocked", "OldPathStillReachable"] {
             assert!(
-                contents.contains(required_marker),
-                "{candidate_doc} should preserve current candidate marker `{required_marker}`"
+                claim_section.contains(required_marker),
+                "{candidate_doc} claim section should preserve current marker `{required_marker}`"
             );
         }
         assert!(
-            !contents.contains("closes all migration-parity compat lanes")
-                && !contents.contains("All 11 migration-parity compat lanes at `complete`"),
-            "{candidate_doc} must not present extraction cutover as complete while policy remains contract_only"
+            !claim_section.contains("migration-parity compat lanes")
+                && !claim_section.contains("three-product extraction complete")
+                && !claim_section.contains("extraction cutover complete"),
+            "{candidate_doc} must not present extraction cutover as complete while policy is not fully proven"
         );
     }
 }

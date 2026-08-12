@@ -42,11 +42,17 @@ Run them in this order:
    [`.github/workflows/release.yml`](../../.github/workflows/release.yml). Its
    topology-selected candidate has thirteen rows: ten cargo-allow packages plus
    `effortless-repo-protocol`, `effortless-repo-snapshot`, and
-   `effortless-repo-edit`. The selected shared rows must already be
-   `AlreadyPublishedExact` with checksum equality before the workflow publishes
-   the remaining cargo-allow rows. `effortless-rust-source-index` belongs only
-   to the namespace rail; cargo-intent and cargo-proof packages are not part of
-   the cargo-allow candidate.
+   `effortless-repo-edit`. Before pushing the tag, the operator must preserve a
+   receipt proving those three selected shared rows are `AlreadyPublishedExact`
+   with checksum equality. The current tag workflow follows topology release
+   order and **does not enforce shared-first registry preflight**, so tag
+   publication is prohibited without that external precondition receipt. Once
+   it is satisfied, the expected missing uploads are the ten cargo-allow rows.
+   Fail-closed workflow enforcement is tracked in
+   [#3505](https://github.com/EffortlessMetrics/cargo-allow/issues/3505).
+   `effortless-rust-source-index` belongs only to the namespace rail;
+   cargo-intent and cargo-proof packages are not part of the cargo-allow
+   candidate.
 
 When a release may be incomplete, unsafe, or unsupported after publication,
 follow the [release incident and recovery runbook](incident-recovery.md). It
