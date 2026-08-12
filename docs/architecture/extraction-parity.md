@@ -23,6 +23,20 @@ is intentionally fail-closed: the current `contract_only` dispositions,
 reachable old paths, and missing package/build evidence are reported as
 `Blocked` rather than being presented as a cutover receipt.
 
+When a stage has complete prerequisites, the status lane also supplies the
+cutover adapter with a repository-relative evidence manifest. The manifest
+contains only paths to two receipts; it does not accept caller-provided
+ownership summaries, source identities, or digests. The adapter derives the
+package set from the current V2 architecture receipt and move ledger, derives
+parity fixtures/docs/CI ownership from the stage sources, and verifies every
+receipt against the exact Git commit/tree and runtime parity digest. The
+ownership receipt (`cargo-allow.extraction-cutover-ownership.v1`) must enumerate
+the exact topology-derived package/assets/docs/CI paths. The independent
+build/package receipt (`cargo-allow.extraction-cutover-build-package.v1`) must
+bind every package and build artifact by digest and prove source-checkout
+isolation. Missing, stale, contradictory, or incomplete evidence prevents a
+stage-specific receipt from being written.
+
 ## Runtime evidence command
 
 `cargo allow extraction-parity --stage all --output
