@@ -566,3 +566,149 @@ fn git_value(root: &Path, args: &[&str]) -> CargoAllowResult<String> {
     }
     Ok(value)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn workspace_root() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
+    }
+
+    fn evidence_json(source_identity: &str, ownership: &str, build: &str) -> Value {
+        json!({
+            "schema_id": CUTOVER_EVIDENCE_SCHEMA_ID,
+            "schema_version": CUTOVER_EVIDENCE_SCHEMA_VERSION,
+            "source_identity": source_identity,
+            "architecture_manifest_digest": "sha256:architecture",
+            "old_tool_identity": "old-tool-v1",
+            "new_tool_identity": "new-tool-v1",
+            "accepted_intentional_differences": [],
+            "latest_allowed_shim_stage": "",
+            "package_assets_docs_ci_ownership_result": ownership,
+            "independent_build_package_result": build,
+            "rollback_route": "revert adapter commit",
+            "result_class": "Blocked",
+            "completeness": "complete",
+            "limitations": ["policy remains contract_only"],
+            "claim_boundary": "bounded extraction parity evidence"
+        })
+    }
+
+    fn write_evidence(name: &str, value: Value) -> CargoAllowResult<PathBuf> {
+        let path = std::env::temp_dir().join(format!(
+            "cargo-allow-extraction-cutover-{name}-{}.json",
+            std::process::id()
+        ));
+        let contents = serde_json::to_vec_pretty(&value)
+            .map_err(|error| CargoAllowError::new(format!("render test evidence: {error}")))?;
+        fs::write(&path, contents).map_err(|error| {
+            CargoAllowError::new(format!("write test evidence {}: {error}", path.display()))
+        })?;
+        Ok(path)
+    }
+
+    fn expect_error(result: CargoAllowResult<ExtractionCutoverReceipt>) -> CargoAllowError {
+        match result {
+            Ok(_) => CargoAllowError::new("expected cutover evidence rejection"),
+            Err(error) => error,
+        }
+    }
+
+    #[test]
+    fn cutover_evidence_rejects_stale_source_identity() -> Result<(), String> {
+        let root = workspace_root();
+        let registry = load_registry(&root).map_err(|error| error.to_string())?;
+        let current = source_identity(&root).map_err(|error| error.to_string())?;
+        let path = write_evidence(
+            "stale-source",
+            evidence_json("commit:stale/tree:stale", "passed", "passed"),
+        )
+        .map_err(|error| error.to_string())?;
+        let result = assemble_cutover_receipt(
+            &root,
+            &registry,
+            ParityStageArg::RepoSnapshot,
+            "sha256:parity",
+            &current,
+            &path,
+            true,
+        );
+        let _ = fs::remove_file(&path);
+        let message = expect_error(result).to_string();
+        if !message.contains("source identity") {
+            return Err(format!("stale identity was not reported: {message}"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn cutover_evidence_rejects_all_stage_before_reading_input() -> Result<(), String> {
+        let root = workspace_root();
+        let registry = load_registry(&root).map_err(|error| error.to_string())?;
+        let current = source_identity(&root).map_err(|error| error.to_string())?;
+        let result = assemble_cutover_receipt(
+            &root,
+            &registry,
+            ParityStageArg::All,
+            "sha256:parity",
+            &current,
+            Path::new("missing-cutover-evidence.json"),
+            true,
+        );
+        let message = expect_error(result).to_string();
+        if !message.contains("one extraction stage") {
+            return Err(format!("all-stage rejection was not reported: {message}"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn cutover_evidence_rejects_incomplete_ownership_and_build_results() -> Result<(), String> {
+        let root = workspace_root();
+        let registry = load_registry(&root).map_err(|error| error.to_string())?;
+        let current = source_identity(&root).map_err(|error| error.to_string())?;
+        for (name, ownership, build, expected) in [
+            (
+                "ownership",
+                "missing",
+                "passed",
+                "package_assets_docs_ci_ownership_result",
+            ),
+            (
+                "build",
+                "passed",
+                "missing",
+                "independent_build_package_result",
+            ),
+        ] {
+            let path = write_evidence(name, evidence_json(&current, ownership, build))
+                .map_err(|error| error.to_string())?;
+            let result = assemble_cutover_receipt(
+                &root,
+                &registry,
+                ParityStageArg::RepoSnapshot,
+                "sha256:parity",
+                &current,
+                &path,
+                true,
+            );
+            let _ = fs::remove_file(&path);
+            let message = expect_error(result).to_string();
+            if !message.contains(expected) {
+                return Err(format!("{name} rejection was not reported: {message}"));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn negative_cutover_outcomes_are_not_positive_evidence() -> Result<(), String> {
+        for value in ["", "missing", "failed", "blocked", "unknown"] {
+            if require_positive_outcome("evidence", value).is_ok() {
+                return Err(format!("negative outcome `{value}` was accepted"));
+            }
+        }
+        Ok(())
+    }
+}
