@@ -114,7 +114,10 @@ assert manifest["payload"]["schema_id"] == "cargo-allow.release-manifest.v2"
 assert manifest["payload"]["authentication"] == "crates_io_api_token"
 rows = manifest["payload"]["package_rows"]
 assert [row["logical_id"] for row in rows] == candidate
-assert [row["package_version"] for row in rows][9:12] == ["0.1.0"] * 3
+assert [row["package_version"] for row in rows] == [
+    "0.1.0" if name.startswith("effortless-") else "9.9.9"
+    for name in candidate
+]
 assert manifest["instrument_diagnostics"]
 PY
 
