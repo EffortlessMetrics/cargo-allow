@@ -62,20 +62,19 @@ expect_failure() {
 }
 
 topology_receipt="${work}/topology-publish.receipt.json"
-python3 - "${topology_receipt}" <<'PY'
+python3 - "${topology_receipt}" "${ROOT}/docs/dogfood/fixtures/release/candidate-crate-set.toml" <<'PY'
 import json
 import sys
+import tomllib
 
 rows = []
-for order, name in enumerate([
-    "allow-core", "allow-policy", "allow-inventory", "allow-files",
-    "allow-rust", "allow-match", "allow-policy-legacy", "allow-report",
-    "allow-diff", "cargo-allow",
-], 1):
+with open(sys.argv[2], "rb") as source:
+    candidate = tomllib.load(source)["crates"]
+for order, name in enumerate(candidate, 1):
     rows.append({
         "logical_id": name,
         "name": name,
-        "version": "9.9.9",
+        "version": "0.1.0" if name.startswith("effortless-") else "9.9.9",
         "release_order": order,
         "local_checksum": "sha256:" + ("a" * 64),
         "registry_checksum": None,
@@ -103,15 +102,19 @@ VERSION=9.9.9 REPOSITORY=EffortlessMetrics/cargo-allow TAG=v9.9.9 \
   BINARY_PACKAGE_RECEIPT="${output}/release-binary.receipt.json" \
   BINARY_INSTALL_RECEIPT="${receipt_path}" TOPOLOGY_RECEIPT="${topology_receipt}" OUTPUT="${manifest_output}" \
   bash scripts/generate-release-manifest.sh >/dev/null
-python3 - "${manifest_output}" <<'PY'
+python3 - "${manifest_output}" "${ROOT}/docs/dogfood/fixtures/release/candidate-crate-set.toml" <<'PY'
 import json
 import sys
+import tomllib
 
 manifest = json.loads(open(sys.argv[1], encoding="utf-8").read())
+with open(sys.argv[2], "rb") as source:
+    candidate = tomllib.load(source)["crates"]
 assert manifest["payload"]["schema_id"] == "cargo-allow.release-manifest.v2"
 assert manifest["payload"]["authentication"] == "crates_io_api_token"
-assert len(manifest["payload"]["package_rows"]) == 10
-assert manifest["payload"]["package_rows"][0]["logical_id"] == "allow-core"
+rows = manifest["payload"]["package_rows"]
+assert [row["logical_id"] for row in rows] == candidate
+assert [row["package_version"] for row in rows][9:12] == ["0.1.0"] * 3
 assert manifest["instrument_diagnostics"]
 PY
 
@@ -160,13 +163,16 @@ VERSION=9.9.9 REPOSITORY=EffortlessMetrics/cargo-allow TAG=v9.9.9 \
   BINARY_PACKAGE_RECEIPT="${output}/release-binary.receipt.json" \
   BINARY_INSTALL_RECEIPT="${receipt_path}" TOPOLOGY_RECEIPT="${topology_receipt}" OUTPUT="${work}/complete-manifest.json" \
   bash scripts/generate-release-manifest.sh >/dev/null
-python3 - "${work}/complete-manifest.json" <<'PY'
+python3 - "${work}/complete-manifest.json" "${ROOT}/docs/dogfood/fixtures/release/candidate-crate-set.toml" <<'PY'
 import json
 import sys
+import tomllib
 
 manifest = json.loads(open(sys.argv[1], encoding="utf-8").read())
+with open(sys.argv[2], "rb") as source:
+    candidate = tomllib.load(source)["crates"]
 assert manifest["payload"]["publication_posture"] == "unpublished"
-assert len(manifest["payload"]["package_rows"]) == 10
+assert len(manifest["payload"]["package_rows"]) == len(candidate)
 PY
 
 manifest_checksum="${work}/complete-manifest.sha256"
