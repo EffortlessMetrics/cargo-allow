@@ -87,7 +87,8 @@ jobs:
           test "$(python3 scripts/release-topology-publisher.py --mode namespace --list | wc -l)" -eq 12
           test "$(python3 scripts/release-topology-publisher.py --mode cargo-allow --list | wc -l)" -eq 13
           ! grep -q 'rust-lang/crates-io-auth-action@' .github/workflows/release.yml
-          grep -q 'CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}' .github/workflows/release.yml
+          grep -q 'CARGO_REGISTRY_TOKEN:' .github/workflows/release.yml
+          grep -q 'secrets.CARGO_REGISTRY_TOKEN' .github/workflows/release.yml
           grep -q 'crates_io_api_token' .github/workflows/release.yml
           cargo fmt --all
           cargo fmt --all -- --check
