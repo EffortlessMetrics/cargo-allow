@@ -319,6 +319,27 @@ fn assemble_cutover_receipt(
     evidence_path: &Path,
     parity_passed: bool,
 ) -> CargoAllowResult<ExtractionCutoverReceipt> {
+    ensure_cutover_inputs_clean(root)?;
+    assemble_cutover_receipt_from_clean_inputs(
+        root,
+        registry,
+        requested_stage,
+        parity_digest,
+        source_identity,
+        evidence_path,
+        parity_passed,
+    )
+}
+
+fn assemble_cutover_receipt_from_clean_inputs(
+    root: &Path,
+    registry: &ExtractionParityRegistry,
+    requested_stage: ParityStageArg,
+    parity_digest: &str,
+    source_identity: &str,
+    evidence_path: &Path,
+    parity_passed: bool,
+) -> CargoAllowResult<ExtractionCutoverReceipt> {
     let stage = match requested_stage {
         ParityStageArg::RepoSnapshot => ExtractionStage::RepoSnapshot,
         ParityStageArg::RepoEdit => ExtractionStage::RepoEdit,
@@ -338,7 +359,7 @@ fn assemble_cutover_receipt(
 
     let evidence_path = resolve_evidence_path(root, evidence_path)?;
 
-    let input_text = fs::read_to_string(evidence_path).map_err(|error| {
+    let input_text = fs::read_to_string(&evidence_path).map_err(|error| {
         CargoAllowError::new(format!(
             "read cutover evidence {}: {error}",
             evidence_path.display()
@@ -361,8 +382,6 @@ fn assemble_cutover_receipt(
             "unsupported extraction cutover evidence schema",
         ));
     }
-    ensure_cutover_inputs_clean(root)?;
-
     let ledger = load_ledger(root)?;
     let derived_ownership = derive_ownership(root, registry, &ledger, stage)?;
     let ownership_path = resolve_receipt_path(root, &evidence.ownership_receipt)?;
@@ -1259,7 +1278,7 @@ mod tests {
             "passed",
         )
         .map_err(|error| error.to_string())?;
-        let result = assemble_cutover_receipt(
+        let result = assemble_cutover_receipt_from_clean_inputs(
             &root,
             &registry,
             ParityStageArg::RepoSnapshot,
@@ -1281,7 +1300,7 @@ mod tests {
         let root = workspace_root();
         let registry = load_registry(&root).map_err(|error| error.to_string())?;
         let current = source_identity(&root).map_err(|error| error.to_string())?;
-        let result = assemble_cutover_receipt(
+        let result = assemble_cutover_receipt_from_clean_inputs(
             &root,
             &registry,
             ParityStageArg::All,
@@ -1308,7 +1327,7 @@ mod tests {
         ] {
             let (path, fixture) = write_bundle(name, &current, "sha256:parity", ownership, build)
                 .map_err(|error| error.to_string())?;
-            let result = assemble_cutover_receipt(
+            let result = assemble_cutover_receipt_from_clean_inputs(
                 &root,
                 &registry,
                 ParityStageArg::RepoSnapshot,
