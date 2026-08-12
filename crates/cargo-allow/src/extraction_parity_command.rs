@@ -1450,6 +1450,20 @@ mod tests {
         }
     }
 
+    fn assert_invalid<T>(
+        case: &str,
+        result: CargoAllowResult<T>,
+        expected: &str,
+    ) -> Result<(), String> {
+        let error = result.err().ok_or_else(|| format!("{case} was accepted"))?;
+        if !error.to_string().contains(expected) {
+            return Err(format!(
+                "{case} returned the wrong diagnostic: expected `{expected}`, got `{error}`"
+            ));
+        }
+        Ok(())
+    }
+
     fn assert_schema_accepts_and_rejects_shape(
         name: &str,
         schema_text: &str,
@@ -1567,6 +1581,35 @@ mod tests {
                 "claim_boundary": "isolated build/package evidence"
             }),
         )
+    }
+
+    #[test]
+    fn parity_command_emits_complete_repo_edit_runtime_evidence() -> Result<(), String> {
+        let root = workspace_root();
+        let fixture = fixture_root("command-repo-edit");
+        fs::create_dir_all(&fixture).map_err(|error| error.to_string())?;
+        let output = fixture.join("runtime.json");
+        let args = ParityArgs {
+            root: RootArgs {
+                root: Some(root.clone()),
+            },
+            stage: ParityStageArg::RepoEdit,
+            output: Some(output.clone()),
+            cutover_evidence: None,
+        };
+        let result = cmd_parity(&args);
+        let payload = fs::read_to_string(&output)
+            .map_err(|error| format!("read command runtime evidence: {error}"))?;
+        remove_fixture(&fixture);
+        result.map_err(|error| error.to_string())?;
+        let payload: Value = serde_json::from_str(&payload).map_err(|error| error.to_string())?;
+        if payload.get("result").and_then(Value::as_str) != Some("Passed")
+            || payload.get("completeness").and_then(Value::as_str) != Some("Complete")
+            || payload.get("stage").and_then(Value::as_str) != Some("RepoEdit")
+        {
+            return Err(format!("unexpected repo-edit runtime evidence: {payload}"));
+        }
+        Ok(())
     }
 
     fn run_test_git(root: &Path, args: &[&str]) -> Result<(), String> {
@@ -2096,6 +2139,113 @@ PY
     }
 
     #[test]
+    fn cutover_evidence_rejects_incomplete_manifest_and_receipt_paths() -> Result<(), String> {
+        let root = workspace_root();
+        let registry = load_registry(&root).map_err(|error| error.to_string())?;
+        let current = source_identity(&root).map_err(|error| error.to_string())?;
+
+        assert_invalid(
+            "failed parity",
+            assemble_cutover_receipt_from_clean_inputs(
+                &root,
+                &registry,
+                ParityStageArg::RepoSnapshot,
+                "sha256:parity",
+                &current,
+                Path::new("missing-cutover-evidence.json"),
+                false,
+            ),
+            "requires complete, equivalent runtime parity",
+        )?;
+
+        for (case, value, expected) in [
+            ("malformed", None, "parse cutover evidence"),
+            (
+                "unsupported-schema",
+                Some(json!({
+                    "schema_id": "wrong.schema",
+                    "schema_version": CUTOVER_EVIDENCE_SCHEMA_VERSION,
+                    "ownership_receipt": "ownership.json",
+                    "independent_build_package_receipt": "build.json"
+                })),
+                "unsupported extraction cutover evidence schema",
+            ),
+            (
+                "absolute-ownership",
+                Some(json!({
+                    "schema_id": CUTOVER_EVIDENCE_SCHEMA_ID,
+                    "schema_version": CUTOVER_EVIDENCE_SCHEMA_VERSION,
+                    "ownership_receipt": root.join("README.md"),
+                    "independent_build_package_receipt": "build.json"
+                })),
+                "must be repository-relative",
+            ),
+            (
+                "escaping-ownership",
+                Some(json!({
+                    "schema_id": CUTOVER_EVIDENCE_SCHEMA_ID,
+                    "schema_version": CUTOVER_EVIDENCE_SCHEMA_VERSION,
+                    "ownership_receipt": "../outside.json",
+                    "independent_build_package_receipt": "build.json"
+                })),
+                "missing or not a file",
+            ),
+            (
+                "missing-ownership",
+                Some(json!({
+                    "schema_id": CUTOVER_EVIDENCE_SCHEMA_ID,
+                    "schema_version": CUTOVER_EVIDENCE_SCHEMA_VERSION,
+                    "ownership_receipt": "target/missing-ownership.json",
+                    "independent_build_package_receipt": "target/missing-build.json"
+                })),
+                "missing or not a file",
+            ),
+        ] {
+            let dir = fixture_root(case);
+            fs::create_dir_all(&dir).map_err(|error| error.to_string())?;
+            let manifest = dir.join("manifest.json");
+            if let Some(value) = value {
+                write_json(&manifest, &value).map_err(|error| error.to_string())?;
+            } else {
+                fs::write(&manifest, "{not-json\n").map_err(|error| error.to_string())?;
+            }
+            let result = assemble_cutover_receipt_from_clean_inputs(
+                &root,
+                &registry,
+                ParityStageArg::RepoSnapshot,
+                "sha256:parity",
+                &current,
+                &manifest,
+                true,
+            );
+            remove_fixture(&dir);
+            assert_invalid(case, result, expected)?;
+        }
+
+        let (manifest, dir) = write_bundle(
+            "missing-build-receipt",
+            &current,
+            "sha256:parity",
+            "Passed",
+            "Passed",
+        )
+        .map_err(|error| error.to_string())?;
+        fs::remove_file(dir.join("build-package.json")).map_err(|error| error.to_string())?;
+        let result = assemble_cutover_receipt_from_clean_inputs(
+            &root,
+            &registry,
+            ParityStageArg::RepoSnapshot,
+            "sha256:parity",
+            &current,
+            &manifest,
+            true,
+        );
+        remove_fixture(&dir);
+        assert_invalid("missing build receipt", result, "missing or not a file")?;
+        Ok(())
+    }
+
+    #[test]
     fn cutover_evidence_rejects_incomplete_ownership_and_build_results() -> Result<(), String> {
         let root = workspace_root();
         let registry = load_registry(&root).map_err(|error| error.to_string())?;
@@ -2166,6 +2316,56 @@ PY
         .ok_or_else(|| "contradictory ownership paths were accepted".to_string())?;
         if !error.to_string().contains("package_paths") {
             return Err(format!("wrong ownership contradiction: {error}"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn ownership_receipt_rejects_each_stale_or_incomplete_binding() -> Result<(), String> {
+        let root = workspace_root();
+        let (stage, _registry, _ledger, source, ownership) =
+            stage_inputs(ParityStageArg::RepoSnapshot).map_err(|error| error.to_string())?;
+        for (case, expected) in [
+            ("schema", "unsupported extraction ownership receipt schema"),
+            ("version", "unsupported extraction ownership receipt schema"),
+            ("stage", "does not match"),
+            ("source", "source identity"),
+            ("parity", "parity digest"),
+            ("result", "must be a positive complete outcome"),
+            ("claim", "claim_boundary is empty"),
+            ("package_paths", "package_paths"),
+            ("asset_paths", "asset_paths"),
+            ("docs_paths", "docs_paths"),
+            ("ci_paths", "ci_paths"),
+        ] {
+            let mut receipt =
+                ownership_receipt(stage, &source, "sha256:parity", &ownership, "Passed");
+            match case {
+                "schema" => receipt.schema_id = "wrong.schema".to_string(),
+                "version" => receipt.schema_version = 2,
+                "stage" => receipt.stage = "RepoEdit".to_string(),
+                "source" => receipt.source_identity = "commit:stale/tree:stale".to_string(),
+                "parity" => receipt.parity_result_digest = "sha256:stale".to_string(),
+                "result" => receipt.result = "Blocked".to_string(),
+                "claim" => receipt.claim_boundary = "  ".to_string(),
+                "package_paths" => receipt.package_paths.push("README.md".to_string()),
+                "asset_paths" => receipt.asset_paths.push("README.md".to_string()),
+                "docs_paths" => receipt.docs_paths.push("README.md".to_string()),
+                "ci_paths" => receipt.ci_paths.push("README.md".to_string()),
+                _ => return Err(format!("unknown ownership mutation `{case}`")),
+            }
+            assert_invalid(
+                case,
+                validate_ownership_receipt(
+                    &root,
+                    &receipt,
+                    stage,
+                    &source,
+                    "sha256:parity",
+                    &ownership,
+                ),
+                expected,
+            )?;
         }
         Ok(())
     }
@@ -2277,6 +2477,175 @@ PY
         if !error.to_string().contains("stale or for another stage") {
             return Err(format!("wrong stale architecture error: {error}"));
         }
+        Ok(())
+    }
+
+    #[test]
+    fn build_package_receipt_rejects_each_stale_or_incomplete_binding() -> Result<(), String> {
+        let root = workspace_root();
+        let (stage, _registry, _ledger, source, ownership) =
+            stage_inputs(ParityStageArg::RepoSnapshot).map_err(|error| error.to_string())?;
+        let fixture = fixture_root("build-negative-table");
+        fs::create_dir_all(&fixture).map_err(|error| error.to_string())?;
+        for (case, expected) in [
+            (
+                "schema",
+                "unsupported extraction build/package receipt schema",
+            ),
+            (
+                "version",
+                "unsupported extraction build/package receipt schema",
+            ),
+            ("stage", "stale or for another stage"),
+            ("source", "stale or for another stage"),
+            ("architecture", "stale or for another stage"),
+            ("parity", "stale or for another stage"),
+            ("not-independent", "source-checkout isolation"),
+            ("checkout-not-denied", "source-checkout isolation"),
+            ("result", "must be a positive complete outcome"),
+            ("claim", "claim_boundary is empty"),
+            ("duplicate-package", "duplicate package receipt"),
+            ("negative-package", "package receipt result"),
+            ("missing-package", "does not match topology"),
+            ("unexpected-package", "does not match topology"),
+            ("noncanonical-package", "not canonical"),
+            ("missing-package-file", "missing or not a file"),
+            ("stale-package-digest", "package receipt digest mismatch"),
+            ("no-builds", "has no build records"),
+            ("duplicate-build", "duplicate build receipt"),
+            ("negative-build", "build receipt result"),
+            ("noncanonical-build", "not canonical"),
+            ("missing-build-file", "missing or not a file"),
+            ("stale-build-digest", "build receipt digest mismatch"),
+        ] {
+            let mut receipt = build_receipt(
+                &root,
+                &fixture,
+                stage,
+                &source,
+                "sha256:parity",
+                &ownership,
+                "Passed",
+            )
+            .map_err(|error| error.to_string())?;
+            match case {
+                "schema" => receipt.schema_id = "wrong.schema".to_string(),
+                "version" => receipt.schema_version = 2,
+                "stage" => receipt.stage = "RepoEdit".to_string(),
+                "source" => receipt.source_identity = "commit:stale/tree:stale".to_string(),
+                "architecture" => receipt.architecture_manifest_digest = "sha256:stale".to_string(),
+                "parity" => receipt.parity_result_digest = "sha256:stale".to_string(),
+                "not-independent" => receipt.independent = false,
+                "checkout-not-denied" => receipt.source_checkout_denied = false,
+                "result" => receipt.result = "Blocked".to_string(),
+                "claim" => receipt.claim_boundary = "  ".to_string(),
+                "duplicate-package" => {
+                    let duplicate = receipt
+                        .package_records
+                        .first()
+                        .ok_or_else(|| "missing package fixture".to_string())?;
+                    receipt.package_records.push(PackageEvidenceRecord {
+                        package_name: duplicate.package_name.clone(),
+                        path: duplicate.path.clone(),
+                        sha256: duplicate.sha256.clone(),
+                        result: duplicate.result.clone(),
+                    });
+                }
+                "negative-package" => {
+                    receipt
+                        .package_records
+                        .first_mut()
+                        .ok_or_else(|| "missing package fixture".to_string())?
+                        .result = "Blocked".to_string();
+                }
+                "missing-package" => {
+                    receipt.package_records.pop();
+                }
+                "unexpected-package" => {
+                    receipt
+                        .package_records
+                        .first_mut()
+                        .ok_or_else(|| "missing package fixture".to_string())?
+                        .package_name = "unexpected-package".to_string();
+                }
+                "noncanonical-package" => {
+                    let record = receipt
+                        .package_records
+                        .first_mut()
+                        .ok_or_else(|| "missing package fixture".to_string())?;
+                    record.path = format!("./{}", record.path);
+                }
+                "missing-package-file" => {
+                    receipt
+                        .package_records
+                        .first_mut()
+                        .ok_or_else(|| "missing package fixture".to_string())?
+                        .path = "target/missing-package.crate".to_string();
+                }
+                "stale-package-digest" => {
+                    receipt
+                        .package_records
+                        .first_mut()
+                        .ok_or_else(|| "missing package fixture".to_string())?
+                        .sha256 = "sha256:v1:stale".to_string();
+                }
+                "no-builds" => receipt.build_records.clear(),
+                "duplicate-build" => {
+                    let duplicate = receipt
+                        .build_records
+                        .first()
+                        .ok_or_else(|| "missing build fixture".to_string())?;
+                    receipt.build_records.push(BuildEvidenceRecord {
+                        artifact_name: duplicate.artifact_name.clone(),
+                        path: duplicate.path.clone(),
+                        sha256: duplicate.sha256.clone(),
+                        result: duplicate.result.clone(),
+                    });
+                }
+                "negative-build" => {
+                    receipt
+                        .build_records
+                        .first_mut()
+                        .ok_or_else(|| "missing build fixture".to_string())?
+                        .result = "Blocked".to_string();
+                }
+                "noncanonical-build" => {
+                    let record = receipt
+                        .build_records
+                        .first_mut()
+                        .ok_or_else(|| "missing build fixture".to_string())?;
+                    record.path = format!("./{}", record.path);
+                }
+                "missing-build-file" => {
+                    receipt
+                        .build_records
+                        .first_mut()
+                        .ok_or_else(|| "missing build fixture".to_string())?
+                        .path = "target/missing-build.bin".to_string();
+                }
+                "stale-build-digest" => {
+                    receipt
+                        .build_records
+                        .first_mut()
+                        .ok_or_else(|| "missing build fixture".to_string())?
+                        .sha256 = "sha256:v1:stale".to_string();
+                }
+                _ => return Err(format!("unknown build mutation `{case}`")),
+            }
+            assert_invalid(
+                case,
+                validate_build_package_receipt(
+                    &root,
+                    &receipt,
+                    stage,
+                    &source,
+                    "sha256:parity",
+                    &ownership,
+                ),
+                expected,
+            )?;
+        }
+        remove_fixture(&fixture);
         Ok(())
     }
 
