@@ -427,7 +427,6 @@ def main() -> int:
         "schema_version": 1,
         "mode": args.mode,
         "publish": args.publish,
-        "package_only": args.package_only,
         "authorization": authorization,
         "topology_id": topology["topology_id"],
         "topology_sha256": sha256_text(topology_path),
@@ -438,12 +437,13 @@ def main() -> int:
         "complete": False,
         "incident_state": "none",
         "first_irreversible_row": None,
-        "claim_boundary": (
-            "Exact shared package bytes and metadata only; no registry, support, or publication claim."
-            if args.package_only
-            else "Topology-derived publication evidence; no publication occurs unless --publish is set."
-        ),
     }
+    if args.mode == "shared" and args.package_only:
+        receipt["package_only"] = True
+        receipt["claim_boundary"] = (
+            "Exact shared package bytes and metadata only; "
+            "no registry, support, or publication claim."
+        )
     if recovery_receipt is not None:
         receipt["recovery_receipt"] = "validated"
         receipt["incident_state"] = "partial"
