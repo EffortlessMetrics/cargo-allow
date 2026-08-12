@@ -189,6 +189,44 @@ fn release_workflow_exists_and_lists_publish_order() {
         (3, 10),
         "the cargo-allow candidate should overlap three namespace rows and differ by ten rows"
     );
+    let candidate_release_doc = read_workspace_file(&root, CANDIDATE_RELEASE_DOC);
+    let prerequisite_marker = "Namespace-rail prerequisites";
+    let upload_marker = "Tag-phase upload candidates (ten)";
+    let prerequisite_section = candidate_release_doc
+        .split_once(prerequisite_marker)
+        .and_then(|(_, remainder)| remainder.split_once(upload_marker))
+        .map(|(section, _)| section)
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "{CANDIDATE_RELEASE_DOC} should classify namespace prerequisites before tag uploads"
+            ))
+        });
+    let upload_section = candidate_release_doc
+        .split_once(upload_marker)
+        .map(|(_, section)| section)
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "{CANDIDATE_RELEASE_DOC} should classify tag-phase upload candidates"
+            ))
+        });
+    for package in &shared_candidate_rows {
+        assert!(
+            prerequisite_section.contains(package),
+            "{CANDIDATE_RELEASE_DOC} should classify {package} as a namespace prerequisite"
+        );
+    }
+    for package in &cargo_only_rows {
+        assert!(
+            upload_section.contains(package),
+            "{CANDIDATE_RELEASE_DOC} should classify {package} as a tag-phase upload candidate"
+        );
+    }
+    assert!(
+        candidate_release_doc.contains("not an instruction to upload all thirteen rows")
+            && candidate_release_doc.contains("does not")
+            && candidate_release_doc.contains("enforce shared-first registry preflight"),
+        "{CANDIDATE_RELEASE_DOC} should separate dependency order from the unenforced upload precondition"
+    );
     assert!(
         release_doc.contains("exactly twelve `0.1.0` namespace rows")
             && release_doc.contains("topology-selected candidate has thirteen rows"),
@@ -209,6 +247,11 @@ fn release_workflow_exists_and_lists_publish_order() {
             "operator docs must disclose the current tag workflow's shared-preflight limitation"
         );
     }
+    assert!(
+        release_doc.contains("Manual fallback does not bypass either release authorization")
+            && release_doc.contains("publish only the rows authorized for that rail"),
+        "{RELEASE_DOC} should subordinate manual publication to both release authorizations"
+    );
 
     assert!(
         !publish_order.is_empty(),

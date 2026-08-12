@@ -364,8 +364,12 @@ runbook](incident-recovery.md).
 
 ## Manual Publish Fallback
 
-When automation cannot run, follow the per-release record (for example
-[0.1.9.md](0.1.9.md)):
+Manual fallback does not bypass either release authorization. For `0.2.0`, use
+it only after the twelve-row namespace rail has separate explicit authorization
+and a reconciled receipt, and after the cargo-allow rail receives separate
+explicit authorization for the exact candidate. When automation cannot run
+after those gates are satisfied, follow the per-release record (for example
+[0.1.9.md](0.1.9.md) for the historical patch-release shape):
 
 ```bash
 cargo fmt --all --check
@@ -374,7 +378,7 @@ cargo test --workspace
 cargo package --workspace --locked
 ```
 
-Then publish each crate in order:
+Then publish only the rows authorized for that rail in dependency order:
 
 ```bash
 cargo publish --dry-run -p <crate> --locked
