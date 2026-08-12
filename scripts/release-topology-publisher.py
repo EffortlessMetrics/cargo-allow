@@ -37,7 +37,7 @@ DEFAULT_TOPOLOGY = ROOT / "policy/product-package-topology-v2.toml"
 DEFAULT_RECEIPT = ROOT / "target/cargo-allow/topology-publish.receipt.json"
 FAMILY_MODES = {
     "namespace": {"shared", "cargo-intent", "cargo-proof"},
-    "cargo-allow": {"cargo-allow"},
+    "cargo-allow": {"shared", "cargo-allow"},
     "all": {"shared", "cargo-intent", "cargo-proof", "cargo-allow"},
 }
 
