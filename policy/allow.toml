@@ -70,6 +70,27 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-0526"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/receipts/proof-candidate-smoke-pass.example.json"
+owner = "core/release"
+classification = "docs_executable_contract"
+reason = "Example receipt for ProofCandidateInstallSmokeV1 (#2589-B)."
+evidence = ["test:example_proof_candidate_smoke_matches_contract", "issue:2589", "workflow:.github/workflows/ci.yml"]
+created = "2026-08-12"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "json"
+glob = "docs/dogfood/receipts/proof-candidate-smoke-pass.example.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0521"
 kind = "non_rust_file"
 family = "ci_declarative"
