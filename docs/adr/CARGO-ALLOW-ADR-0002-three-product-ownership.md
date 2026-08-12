@@ -4,7 +4,7 @@ kind: adr
 status: accepted
 owner: repo-infra
 created: 2026-07-22
-updated: 2026-07-29
+updated: 2026-08-12
 linked_proposal: CARGO-ALLOW-PROP-0010
 linked_spec: CARGO-ALLOW-SPEC-0011
 supersedes: none
@@ -19,9 +19,10 @@ policy_impact:
 ## Context
 
 Cargo-allow began with source-exception policy, repository-intent compilation
-and proof-oriented governance in one implementation tree. The monorepo now
-contains all 27 packages from the maximum extraction scaffold, but source
-location and package existence do not establish permanent semantic ownership.
+and proof-oriented governance in one implementation tree. The monorepo reached
+a maximum 27-package extraction scaffold and has since converged physically to
+the retained 22 packages. Package survival does not by itself establish final
+semantic ownership.
 
 The failure modes to prevent are:
 
@@ -162,11 +163,12 @@ cargo-proof family
   proof-protocol, proof-engine, cargo-proof
 ```
 
-Five proof packages in the observed 27-package scaffold collapse into modules:
+Five proof packages from the historical 27-package scaffold were absorbed into
+modules:
 
 ```text
-proof-provider-api        → proof_engine::provider
-proof-adapter-command     → cargo_proof::providers::command
+proof-provider-api        → proof_engine::provider_api
+proof-adapter-command     → proof_engine::command_adapter
 proof-adapter-cargo-allow → cargo_proof::providers::cargo_allow
 proof-adapter-ripr        → cargo_proof::providers::ripr
 proof-adapter-hawk        → cargo_proof::providers::hawk
@@ -274,14 +276,14 @@ Historical generations may remain readable but cannot become current authority.
 
 ## Current implementation appendix
 
-| Boundary | Status on 2026-07-29 |
+| Boundary | Status on 2026-08-12 |
 | --- | --- |
-| observed 27-package extraction scaffold | landed |
-| retained 22-package target | accepted; package collapse not yet applied |
+| historical 27-package extraction scaffold | preserved as migration provenance |
+| retained 22-package topology | current in Cargo and generation-2 machine authority |
 | cargo-allow core | published `0.1.11`; source candidate `0.2.0` |
 | cargo-intent | landed experimental staged-precommit vertical; canonical cutover incomplete |
-| cargo-proof | landed experimental scaffold; real composition incomplete |
-| shared substrate | landed transitional; package/version/dependency convergence incomplete |
+| cargo-proof | landed experimental three-package family; real composition incomplete |
+| shared substrate | `effortless-*` package/path/version migration landed; dependency neutrality remains incomplete |
 | bounded process transport | landed through #2901 |
 | embedded current intent deletion | incomplete |
 | independent exact product candidates | incomplete |
@@ -331,6 +333,6 @@ This appendix reports implementation state; it does not change ownership law.
 ## Claim boundary
 
 This ADR records semantic ownership, dependency direction, package-survival,
-side-effect boundaries and compatibility law. It does not prove current code
-compliance, apply the package collapse, publish products, authorize cargo-allow
-0.2 or authorize physical repository extraction.
+side-effect boundaries and compatibility law. It does not prove remaining
+semantic-owner compliance, publish products, authorize cargo-allow 0.2, or
+authorize physical repository extraction.
