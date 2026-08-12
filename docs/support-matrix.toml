@@ -91,9 +91,9 @@ evidence = "release.yml publishes via Trusted Publishing; scripts/release-instal
 
 [[channel]]
 name = "prebuilt-binary-archive"
-available = false
-evidence = "release.yml attaches a ReleaseManifestV1 and its attestation, not binary archives"
-note = "Tracked by #2464 (Linux) and #2474 (Windows)."
+available = true
+evidence = "release.yml github-release job builds, verifies, and attests cargo-allow-v*version*-x86_64-unknown-linux-gnu.tar.gz (#2464)"
+note = "Linux x86_64 only. Windows tracked by #2474."
 
 [[channel]]
 name = "cargo-binstall"
