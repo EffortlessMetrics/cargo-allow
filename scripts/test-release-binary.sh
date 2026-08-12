@@ -130,6 +130,57 @@ assert [row["package_version"] for row in rows] == [
 assert manifest["instrument_diagnostics"]
 PY
 
+published_receipt="${work}/published-topology.receipt.json"
+cp "${topology_receipt}" "${published_receipt}"
+python3 - "${published_receipt}" <<'PY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+receipt = json.loads(path.read_text(encoding="utf-8"))
+receipt["publish"] = True
+receipt["complete"] = True
+receipt["incident_state"] = "none"
+receipt["first_irreversible_row"] = None
+for row in receipt["rows"]:
+    row["state"] = "published_verified"
+    row["local_checksum"] = "sha256:" + row["local_checksum"]
+    row["registry_checksum"] = row["local_checksum"]
+path.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+PY
+VERSION=9.9.9 REPOSITORY=EffortlessMetrics/cargo-allow TAG=v9.9.9 \
+  COMMIT=fixture-commit TREE=fixture-tree AUTH_SOURCE=crates_io_api_token MSRV=1.95 \
+  TOPOLOGY_RECEIPT="${published_receipt}" OUTPUT="${work}/published-manifest.json" \
+  bash scripts/generate-release-manifest.sh >/dev/null
+python3 - "${work}/published-manifest.json" <<'PY'
+import json
+import sys
+
+manifest = json.loads(open(sys.argv[1], encoding="utf-8").read())
+assert manifest["payload"]["publication_posture"] == "published"
+PY
+
+partial_receipt="${work}/partial-topology.receipt.json"
+cp "${published_receipt}" "${partial_receipt}"
+python3 - "${partial_receipt}" <<'PY'
+import json
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+receipt = json.loads(path.read_text(encoding="utf-8"))
+receipt["complete"] = False
+receipt["incident_state"] = "partial"
+receipt["first_irreversible_row"] = receipt["rows"][0]["release_order"]
+receipt["rows"][0]["state"] = "uploaded_waiting_for_registry"
+path.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+PY
+expect_failure env VERSION=9.9.9 REPOSITORY=EffortlessMetrics/cargo-allow \
+  TAG=v9.9.9 COMMIT=fixture-commit TREE=fixture-tree AUTH_SOURCE=crates_io_api_token MSRV=1.95 \
+  TOPOLOGY_RECEIPT="${partial_receipt}" OUTPUT="${work}/partial-manifest.json" \
+  bash scripts/generate-release-manifest.sh
+
 bad_identity_receipt="${work}/bad-identity.receipt.json"
 cp "${topology_receipt}" "${bad_identity_receipt}"
 python3 - "${bad_identity_receipt}" <<'PY'
