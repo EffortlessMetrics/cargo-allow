@@ -10,6 +10,8 @@
 
 use allow_core::{AllowConfig, AllowEntry, CargoAllowError, CargoAllowResult, FindingKind};
 
+use crate::entry_validation::evidence_is_verified_local;
+
 /// `true` when `entry` receipts a bare `#[allow(...)]` attribute occurrence —
 /// i.e. it is a `lint_exception` scoped to the `allow_attribute` family. This
 /// is the static proxy for the runtime `finding.family == "allow_attribute"`
@@ -33,6 +35,17 @@ pub fn generated_entry_rejection(
     if !requirements.allow_bare_allow_attributes && entry_receipts_bare_allow(entry) {
         return Some(
             "requirements.allow_bare_allow_attributes = false forbids receipting bare #[allow(...)] attributes",
+        );
+    }
+    if requirements.unsafe_verified_evidence_required
+        && entry.kind == FindingKind::Unsafe
+        && !entry
+            .evidence
+            .iter()
+            .any(|evidence| evidence_is_verified_local(evidence))
+    {
+        return Some(
+            "requirements.unsafe.verified_evidence_required = true forbids generated unsafe entries without local-file evidence",
         );
     }
     None
@@ -133,6 +146,26 @@ mod tests {
         unsafe_entry.family = Some("unsafe_block".to_string());
 
         assert!(generated_entry_rejection(&forbidding, &unsafe_entry).is_none());
+    }
+
+    #[test]
+    fn generated_entry_rejection_routes_unverified_unsafe_entries_as_unreceiptable() {
+        let mut requirements = config_with(Vec::new(), false).requirements;
+        requirements.unsafe_verified_evidence_required = true;
+        let mut unsafe_entry = bare_allow_entry("allow-0002");
+        unsafe_entry.kind = FindingKind::Unsafe;
+        unsafe_entry.family = Some("unsafe_block".to_string());
+        unsafe_entry.evidence =
+            vec!["TODO: add unsafe-review or boundary-test evidence".to_string()];
+
+        let rejection = generated_entry_rejection(&requirements, &unsafe_entry);
+        assert!(
+            rejection.is_some_and(|reason| reason.contains("verified_evidence_required")),
+            "propose must skip generated unsafe entries the policy would reject: {rejection:?}"
+        );
+
+        unsafe_entry.evidence = vec!["doc:docs/safety.md".to_string()];
+        assert!(generated_entry_rejection(&requirements, &unsafe_entry).is_none());
     }
 
     #[test]
