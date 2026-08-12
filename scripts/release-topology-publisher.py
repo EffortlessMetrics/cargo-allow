@@ -96,6 +96,8 @@ def load_rows(topology_path: Path, mode: str) -> tuple[dict[str, Any], list[dict
     for raw in topology.get("package", []):
         if raw.get("product_family") not in families or raw.get("publish") is not True:
             continue
+        if mode == "cargo-allow" and raw.get("candidate_inclusion") is not True:
+            continue
         required = {
             "logical_id",
             "cargo_package_name",

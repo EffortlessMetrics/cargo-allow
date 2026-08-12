@@ -1,8 +1,9 @@
 # Release on Tag
 
 Future cargo-allow releases publish from GitHub Actions when a version tag is
-pushed. Manual `cargo publish` remains a documented fallback during Trusted
-Publishing setup or when automation is blocked.
+pushed. The selected publication path uses a crates.io API token exposed only
+as `CARGO_REGISTRY_TOKEN`; Trusted Publishing is optional post-release
+hardening, not a release prerequisite.
 
 This document is the operator source of truth for automated release
 prerequisites. Sequencing for the `0.1.10` adoption-trust cut lives in
@@ -57,8 +58,10 @@ It does **not** deny the source tree during path install. Offline
 schema/example characterization remains
 `cargo test -p cargo-allow --test source_candidate_smoke --locked`.
 
-Exact ten-crate isolation (#2277 / #2372 / #2378 / #2380 / #2408) is
-proven by:
+The topology-derived cargo-allow candidate currently contains thirteen rows:
+the ten cargo-allow packages plus `effortless-repo-protocol`,
+`effortless-repo-snapshot`, and `effortless-repo-edit`. Exact isolation
+(#2277 / #2372 / #2378 / #2380 / #2408) is proven by:
 
 ```bash
 bash scripts/exact-candidate-package-set.sh

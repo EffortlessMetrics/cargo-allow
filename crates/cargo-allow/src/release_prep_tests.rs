@@ -2,6 +2,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use allow_policy::product_packages::parse_product_package_topology_v2;
+
 const PUBLISHED_RELEASE_VERSION: &str = "0.1.11";
 const PREVIOUS_PUBLISHED_VERSION: &str = "0.1.10";
 const PUBLISHED_RELEASE_DOC: &str = "docs/release/0.1.11.md";
@@ -75,6 +77,11 @@ fn release_workflow_exists_and_lists_publish_order() {
             .contains("[\"cargo\", \"package\", \"--workspace\", \"--locked\", \"--no-verify\"]")
             && topology_publisher.contains("def package_workspace"),
         "publisher should package the coherent workspace candidate before row processing"
+    );
+    assert!(
+        topology_publisher.contains("candidate_inclusion")
+            && topology_publisher.contains("mode == \"cargo-allow\""),
+        "{RELEASE_TOPOLOGY_PUBLISHER} should keep namespace and cargo-allow membership distinct"
     );
     assert!(
         topology_publisher.contains("\"cargo-allow\": {\"shared\", \"cargo-allow\"}"),
@@ -320,17 +327,28 @@ fn release_publish_order_matches_internal_dependency_graph() {
         });
     let publish_order = parse_publish_order(&release_doc);
     let package_manifests = workspace_package_manifests(&root);
-    let package_names = package_manifests.keys().cloned().collect::<BTreeSet<_>>();
+    let topology = parse_product_package_topology_v2(&read_workspace_file(&root, PACKAGE_TOPOLOGY))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("parse current V2 topology: {err}")));
+    let package_names = topology
+        .package
+        .into_iter()
+        .filter(|entry| {
+            entry.publish
+                && entry.candidate_inclusion
+                && matches!(entry.product_family.as_str(), "shared" | "cargo-allow")
+        })
+        .map(|entry| entry.cargo_package_name)
+        .collect::<BTreeSet<_>>();
 
     assert_eq!(
         publish_order.iter().cloned().collect::<BTreeSet<_>>(),
         package_names,
-        "{PUBLISHED_RELEASE_VERSION} publish order should include every workspace package exactly once"
+        "{CANDIDATE_RELEASE_VERSION} publish order should include every candidate package exactly once"
     );
     assert_eq!(
         publish_order.len(),
         package_names.len(),
-        "{PUBLISHED_RELEASE_VERSION} publish order should not contain duplicate packages"
+        "{CANDIDATE_RELEASE_VERSION} publish order should not contain duplicate packages"
     );
 
     let order_index = publish_order
@@ -339,7 +357,10 @@ fn release_publish_order_matches_internal_dependency_graph() {
         .map(|(index, package)| (package.as_str(), index))
         .collect::<BTreeMap<_, _>>();
 
-    for (package, manifest) in package_manifests {
+    for (package, manifest) in package_manifests
+        .into_iter()
+        .filter(|(package, _)| package_names.contains(package))
+    {
         let package_index = release_order_index(&order_index, package.as_str());
         for dependency in internal_workspace_dependencies(&manifest, &package_names) {
             let dependency_index = release_order_index(&order_index, dependency.as_str());

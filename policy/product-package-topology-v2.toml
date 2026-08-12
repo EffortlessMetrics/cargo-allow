@@ -190,7 +190,7 @@ posture = "SharedProtocolInternalOrStabilizing"
 package_version = "0.1.0"
 version_source = "Explicit"
 publication_state = "UnpublishedInternal"
-publish = false
+publish = true
 candidate_inclusion = false
 release_order = 230
 
@@ -205,7 +205,7 @@ posture = "CargoIntentExperimental"
 package_version = "0.1.0"
 version_source = "Explicit"
 publication_state = "UnpublishedInternal"
-publish = false
+publish = true
 candidate_inclusion = false
 release_order = 310
 
@@ -218,7 +218,7 @@ posture = "CargoIntentExperimental"
 package_version = "0.1.0"
 version_source = "Explicit"
 publication_state = "UnpublishedInternal"
-publish = false
+publish = true
 candidate_inclusion = false
 release_order = 320
 
@@ -231,7 +231,7 @@ posture = "CargoIntentExperimental"
 package_version = "0.1.0"
 version_source = "Explicit"
 publication_state = "UnpublishedInternal"
-publish = false
+publish = true
 candidate_inclusion = false
 release_order = 330
 
@@ -244,7 +244,7 @@ posture = "CargoIntentExperimental"
 package_version = "0.1.0"
 version_source = "Explicit"
 publication_state = "UnpublishedInternal"
-publish = false
+publish = true
 candidate_inclusion = false
 release_order = 340
 
@@ -257,7 +257,7 @@ posture = "CargoIntentExperimental"
 package_version = "0.1.0"
 version_source = "Explicit"
 publication_state = "UnpublishedInternal"
-publish = false
+publish = true
 candidate_inclusion = false
 release_order = 360
 
@@ -272,7 +272,7 @@ posture = "CargoProofExperimental"
 package_version = "0.1.0"
 version_source = "Explicit"
 publication_state = "UnpublishedInternal"
-publish = false
+publish = true
 candidate_inclusion = false
 release_order = 410
 
@@ -285,7 +285,7 @@ posture = "CargoProofExperimental"
 package_version = "0.1.0"
 version_source = "Explicit"
 publication_state = "UnpublishedInternal"
-publish = false
+publish = true
 candidate_inclusion = false
 release_order = 430
 
@@ -298,6 +298,6 @@ posture = "CargoProofExperimental"
 package_version = "0.1.0"
 version_source = "Explicit"
 publication_state = "UnpublishedInternal"
-publish = false
+publish = true
 candidate_inclusion = false
 release_order = 435
