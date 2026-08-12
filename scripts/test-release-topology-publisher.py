@@ -1,0 +1,204 @@
+#!/usr/bin/env python3
+"""Deterministic checksum contract tests for the topology publisher."""
+
+from __future__ import annotations
+
+from contextlib import redirect_stdout
+import importlib.util
+import io
+import json
+from pathlib import Path
+import sys
+import tempfile
+from typing import Any, Callable
+
+
+ROOT = Path(__file__).resolve().parent.parent
+PUBLISHER_PATH = ROOT / "scripts/release-topology-publisher.py"
+SPEC = importlib.util.spec_from_file_location("release_topology_publisher", PUBLISHER_PATH)
+if SPEC is None or SPEC.loader is None:
+    raise SystemExit("could not load release topology publisher")
+PUBLISHER = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(PUBLISHER)
+
+DIGEST = "a" * 64
+CANONICAL = f"sha256:{DIGEST}"
+
+
+def expect_failure(action: Callable[[], Any]) -> None:
+    try:
+        action()
+    except SystemExit:
+        return
+    raise AssertionError("expected checksum validation failure")
+
+
+def row(state: str, *, local: str, registry: str | None) -> dict[str, Any]:
+    return PUBLISHER.receipt_row(
+        {
+            "logical_id": "fixture-package",
+            "cargo_package_name": "fixture-package",
+            "package_version": "9.9.9",
+            "product_family": "cargo-allow",
+            "release_order": 1,
+        },
+        crate_path=ROOT / "target/package/fixture-package-9.9.9.crate",
+        local_checksum=local,
+        registry_checksum=registry,
+        state=state,
+    )
+
+
+def assert_root_schema_accepts(schema_path: Path, artifact_path: Path) -> dict[str, Any]:
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+    required = set(schema.get("required", []))
+    missing = required - artifact.keys()
+    assert not missing, f"artifact misses required schema properties: {sorted(missing)}"
+    properties = schema.get("properties", {})
+    if schema.get("additionalProperties") is False:
+        unexpected = artifact.keys() - properties.keys()
+        assert not unexpected, f"artifact has undeclared schema properties: {sorted(unexpected)}"
+    for name, rules in properties.items():
+        if name not in artifact:
+            continue
+        if "const" in rules:
+            assert artifact[name] == rules["const"], f"{name} violates schema const"
+        if "enum" in rules:
+            assert artifact[name] in rules["enum"], f"{name} violates schema enum"
+    return artifact
+
+
+def exercise_main_receipt_shapes() -> None:
+    original = {
+        name: getattr(PUBLISHER, name)
+        for name in (
+            "cargo_packages",
+            "git_identity",
+            "load_rows",
+            "package_crate",
+            "package_workspace",
+            "registry_checksum",
+            "sha256_text",
+            "validate_rows",
+        )
+    }
+    original_argv = sys.argv
+    def fixture_rows(mode: str) -> list[dict[str, Any]]:
+        if mode == "shared":
+            return [
+                {
+                    "logical_id": f"shared-{index}",
+                    "cargo_package_name": f"effortless-fixture-{index}",
+                    "package_version": "0.1.0",
+                    "product_family": "shared",
+                    "release_order": index,
+                }
+                for index in range(1, 5)
+            ]
+        return [
+            {
+                "logical_id": "fixture-package",
+                "cargo_package_name": "fixture-package",
+                "package_version": "9.9.9",
+                "product_family": "cargo-allow",
+                "release_order": 1,
+            }
+        ]
+
+    try:
+        PUBLISHER.cargo_packages = lambda: {
+            "fixture-package": {},
+            **{f"effortless-fixture-{index}": {} for index in range(1, 5)},
+        }
+        PUBLISHER.git_identity = lambda _kind: DIGEST
+        PUBLISHER.load_rows = lambda _path, mode: (
+            {"topology_id": "fixture-topology"},
+            fixture_rows(mode),
+        )
+        PUBLISHER.package_crate = lambda name, version: (
+            ROOT / f"target/package/{name}-{version}.crate",
+            DIGEST,
+        )
+        PUBLISHER.package_workspace = lambda _selected, _packages: None
+        PUBLISHER.registry_checksum = lambda _name, _version: None
+        PUBLISHER.sha256_text = lambda _path: DIGEST
+        PUBLISHER.validate_rows = lambda _rows, _packages: None
+
+        with tempfile.TemporaryDirectory() as directory:
+            receipt = Path(directory) / "topology.json"
+            sys.argv = [
+                str(PUBLISHER_PATH),
+                "--mode",
+                "cargo-allow",
+                "--receipt",
+                str(receipt),
+            ]
+            with redirect_stdout(io.StringIO()):
+                assert PUBLISHER.main() == 0
+            topology = assert_root_schema_accepts(
+                ROOT / "docs/schemas/topology-publish-receipt.schema.json", receipt
+            )
+            assert "package_only" not in topology
+
+            sys.argv = [
+                str(PUBLISHER_PATH),
+                "--mode",
+                "shared",
+                "--package-only",
+                "--receipt",
+                str(receipt),
+            ]
+            with redirect_stdout(io.StringIO()):
+                assert PUBLISHER.main() == 0
+            shared = assert_root_schema_accepts(
+                ROOT / "docs/schemas/shared-package-candidate.v1.schema.json", receipt
+            )
+            assert shared["package_only"] is True
+    finally:
+        sys.argv = original_argv
+        for name, value in original.items():
+            setattr(PUBLISHER, name, value)
+
+
+def main() -> None:
+    assert PUBLISHER.receipt_checksum(DIGEST, field="fresh local checksum") == CANONICAL
+    assert PUBLISHER.receipt_checksum(CANONICAL, field="published registry checksum") == CANONICAL
+    assert PUBLISHER.receipt_checksum(None, field="missing registry checksum") is None
+
+    fresh = row("missing", local=DIGEST, registry=None)
+    published = row("published_verified", local=DIGEST, registry=DIGEST)
+    recovered = row("recovered_already_published_exact", local=CANONICAL, registry=CANONICAL)
+    for receipt_row in (fresh, published, recovered):
+        assert receipt_row["local_checksum"] == CANONICAL
+        if receipt_row["registry_checksum"] is not None:
+            assert receipt_row["registry_checksum"] == CANONICAL
+
+    accepted = PUBLISHER.recovery_rows({"rows": [recovered]})
+    assert accepted[("fixture-package", "9.9.9")]["local_checksum"] == CANONICAL
+    prior = dict(recovered)
+    prior["state"] = "published_verified"
+    assert PUBLISHER.recovery_row_is_exact(prior, CANONICAL)
+
+    for registry_checksum in (None, "sha256:" + ("b" * 64)):
+        incomplete = dict(prior)
+        incomplete["registry_checksum"] = registry_checksum
+        assert not PUBLISHER.recovery_row_is_exact(incomplete, CANONICAL)
+
+    for malformed in (
+        DIGEST,
+        "sha256:" + ("A" * 64),
+        "sha256:" + ("a" * 63),
+        "sha256:sha256:" + DIGEST,
+    ):
+        invalid = dict(recovered)
+        invalid["local_checksum"] = malformed
+        expect_failure(lambda invalid=invalid: PUBLISHER.recovery_rows({"rows": [invalid]}))
+
+    exercise_main_receipt_shapes()
+
+    print("topology publisher checksum contract: passed")
+
+
+if __name__ == "__main__":
+    main()
