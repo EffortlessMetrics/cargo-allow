@@ -953,7 +953,7 @@ receipt = {
     "tool": "cargo-allow",
     "result": "Passed",
     "claim_boundary": [
-        "exact_twelve_crate_package_graph",
+        "exact_thirteen_crate_package_graph",
         "classic_transitive_local_registry_offline_install",
         "source_checkout_denied_during_decisive_install",
         "source_candidate_not_published_install_journey",

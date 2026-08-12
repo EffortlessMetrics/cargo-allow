@@ -39,7 +39,8 @@ That script:
 5. writes `target/package-candidate-smoke/package-candidate-smoke.receipt.txt`
 
 Installed first-hour journey (temp consumer repo + JSON receipt
-`cargo-allow.source-candidate-smoke-receipt.v1`) is separately proven by:
+`cargo-allow.source-candidate-smoke-receipt.v1`) remains available as a
+standalone characterization harness:
 
 ```bash
 bash scripts/source-candidate-smoke.sh
@@ -54,8 +55,25 @@ isolated git consumer, records omitted-step / preview-apply / malformed-receipt
 failed-policy-rollback / optional-profile-without-assets (`NotProven`)
 negatives, and writes
 `target/source-candidate-smoke/source-candidate-smoke.receipt.json`.
-It does **not** deny the source tree during path install. Offline
-schema/example characterization remains
+It does **not** deny the source tree during path install. The exact-candidate
+journey below is the release-claim path for #3357.
+
+The exact-candidate install journey binds the isolated thirteen-crate package
+receipt to this first-hour journey and refuses a workspace-path fallback:
+
+```bash
+bash scripts/exact-candidate-install-journey.sh
+```
+
+It emits `target/exact-candidate-install-journey/exact-candidate-install-journey.receipt.json`
+(`cargo-allow.exact-candidate-install-journey.v1`). The receipt carries the
+SHA-256 digests of the package-set receipt, journey receipt, and canonical
+candidate fixture; it requires source-checkout denial, sibling-mismatch
+negatives, a finding/rollback path, and cleanup of the temporary consumer and
+journey artifacts. It proves a pre-publication exact-candidate journey only;
+it does not publish, tag, or install from a registry.
+
+Schema/example characterization remains
 `cargo test -p cargo-allow --test source_candidate_smoke --locked`.
 
 The topology-derived cargo-allow candidate currently contains thirteen rows:
@@ -130,10 +148,10 @@ This smoke runs in hosted CI on Linux as the `package-smoke` job in
 [ci.yml](../../.github/workflows/ci.yml) (on every PR and push to `main`),
 producing `package-candidate-smoke-receipt`,
 `exact-candidate-package-set-receipt`, and
-`source-candidate-smoke-receipt` workflow artifacts. Those hosted receipts are
-the durable evidence for the #2256 Stage A / #2278 Stage A+ / #2372 Stage A
-candidate claims; Windows and macOS candidate smoke remain a documented
-follow-up.
+`exact-candidate-install-journey-receipt` workflow artifacts. Those hosted
+receipts are the durable evidence for the #2256 Stage A / #2278 Stage A+ /
+#2372 / #3357 candidate claims; Windows and macOS candidate smoke remain a
+documented follow-up.
 
 ## Linux archive: download and install a tagged release
 

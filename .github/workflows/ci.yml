@@ -69,16 +69,10 @@ jobs:
           cp target/package-candidate-smoke/packages/*.crate \
             target/exact-candidate-package-set/packages/
           SKIP_PACKAGE=1 bash scripts/exact-candidate-package-set.sh
-      - name: Source candidate first-hour journey (#2278)
-        run: |
-          bin="target/exact-candidate-package-set/install/bin/cargo-allow"
-          if [[ ! -x "${bin}" && ! -x "${bin}.exe" ]]; then
-            bin="target/package-candidate-smoke/install/bin/cargo-allow"
-          fi
-          if [[ -x "${bin}.exe" ]]; then
-            bin="${bin}.exe"
-          fi
-          CARGO_ALLOW_BIN="${bin}" bash scripts/source-candidate-smoke.sh
+      - name: Exact candidate install journey (#3357)
+        run: bash scripts/exact-candidate-install-journey.sh
+      - name: Exact candidate journey contract characterization (#3357)
+        run: bash scripts/test-exact-candidate-install-journey.sh
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
@@ -93,8 +87,8 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
-          name: source-candidate-smoke-receipt
-          path: target/source-candidate-smoke/source-candidate-smoke.receipt.json
+          name: exact-candidate-install-journey-receipt
+          path: target/exact-candidate-install-journey/exact-candidate-install-journey.receipt.json
           if-no-files-found: warn
       - name: Intent candidate install smoke (#2599-C)
         run: bash scripts/intent-candidate-smoke.sh
