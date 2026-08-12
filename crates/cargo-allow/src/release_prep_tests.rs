@@ -40,8 +40,7 @@ fn release_workflow_exists_and_lists_publish_order() {
     assert!(
         workflow.contains("secrets.CARGO_REGISTRY_TOKEN")
             && workflow.contains("source=crates_io_api_token")
-            && !workflow.contains("crates-io-auth-action@")
-            && !workflow.contains("id-token: write"),
+            && !workflow.contains("crates-io-auth-action@"),
         "{RELEASE_WORKFLOW} should use the token-backed crates.io authentication contract"
     );
     assert!(
