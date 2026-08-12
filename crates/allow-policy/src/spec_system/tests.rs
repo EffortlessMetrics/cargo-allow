@@ -706,7 +706,14 @@ fn validates_current_repository_support_tier_claims() {
             "Historical spec-system artifacts",
             SupportTierLevel::Compatibility,
         ),
-        ("target 22-package topology", SupportTierLevel::Advisory),
+        (
+            "current 22-package workspace topology",
+            SupportTierLevel::Advisory,
+        ),
+        (
+            "historical 27-package extraction scaffold",
+            SupportTierLevel::Compatibility,
+        ),
         (
             "physical repository extraction",
             SupportTierLevel::NotIncluded,

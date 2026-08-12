@@ -237,10 +237,11 @@ cargo-intent family                     0.1.0
 retained cargo-proof family             0.1.0
 ```
 
-Move the four shared directories to matching `crates/effortless-*` paths while
-retaining concise dependency aliases and Rust import names. Update Cargo
-manifests/lockfile, V2 authorities, scripts, fixtures, selectors, candidate
-builders, receipts, docs and CI together. No package is published.
+The four shared directories now use matching `crates/effortless-*` paths,
+`effortless-*` dependency aliases and Cargo package names, and `effortless_*`
+Rust import names. The completed migration updated Cargo manifests/lockfile, V2
+authorities, scripts, fixtures, selectors, candidate builders, receipts, docs,
+and CI together. No package was published by the migration.
 
 ## Stage F — exact cargo-allow candidate
 

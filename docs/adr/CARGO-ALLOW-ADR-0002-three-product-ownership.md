@@ -283,7 +283,7 @@ Historical generations may remain readable but cannot become current authority.
 | cargo-allow core | published `0.1.11`; source candidate `0.2.0` |
 | cargo-intent | landed experimental staged-precommit vertical; canonical cutover incomplete |
 | cargo-proof | landed experimental three-package family; real composition incomplete |
-| shared substrate | landed transitional; package/version/dependency convergence incomplete |
+| shared substrate | `effortless-*` package/path/version migration landed; dependency neutrality remains incomplete |
 | bounded process transport | landed through #2901 |
 | embedded current intent deletion | incomplete |
 | independent exact product candidates | incomplete |

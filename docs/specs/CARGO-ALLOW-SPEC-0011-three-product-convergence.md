@@ -88,7 +88,7 @@ claim_class = "runtime_behavior"
 id = "shared-packages-use-effortless-identities"
 generation = 1
 status = "accepted"
-statement = "The retained shared logical crates use effortless-repo-protocol, effortless-repo-snapshot, effortless-repo-edit and effortless-rust-source-index as Cargo package identities and move to matching crates/effortless-* paths before first publication while retaining concise Rust library names and dependency aliases."
+statement = "The retained shared logical crates use effortless-repo-protocol, effortless-repo-snapshot, effortless-repo-edit and effortless-rust-source-index as current Cargo package identities and dependency aliases, use matching crates/effortless-* paths, and use matching effortless_* Rust library identities."
 claim_class = "runtime_behavior"
 
 [[requirement]]

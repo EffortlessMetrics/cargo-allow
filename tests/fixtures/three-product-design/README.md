@@ -37,8 +37,9 @@ cargo-proof    3 current /  3 retained
 ```
 
 The five historical package identities were absorbed into modules under
-`proof-engine` or `cargo-proof`. The four shared logical IDs retain concise Rust
-imports at `crates/effortless-*` paths and `effortless-*` Cargo package names:
+`proof-engine` or `cargo-proof`. The four shared logical IDs now use
+`crates/effortless-*` paths, `effortless-*` Cargo package names, and matching
+`effortless_*` Rust import identities:
 
 ```text
 effortless-repo-protocol

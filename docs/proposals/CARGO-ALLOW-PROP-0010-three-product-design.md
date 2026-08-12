@@ -211,16 +211,16 @@ to claim an obligation is satisfied.
 Logical ID, workspace path, dependency alias, Cargo package and Rust library are
 separate checked identities. The approved migration is:
 
-| Logical ID | Current path | Target path | Cargo package | Rust library |
+| Logical ID | Historical path | Current path | Cargo package | Rust library |
 | --- | --- | --- | --- | --- |
-| `repo-protocol` | `crates/repo-protocol` | `crates/effortless-repo-protocol` | `effortless-repo-protocol` | `repo_protocol` |
-| `repo-snapshot` | `crates/repo-snapshot` | `crates/effortless-repo-snapshot` | `effortless-repo-snapshot` | `repo_snapshot` |
-| `repo-edit` | `crates/repo-edit` | `crates/effortless-repo-edit` | `effortless-repo-edit` | `repo_edit` |
-| `rust-source-index` | `crates/rust-source-index` | `crates/effortless-rust-source-index` | `effortless-rust-source-index` | `rust_source_index` |
+| `repo-protocol` | `crates/repo-protocol` | `crates/effortless-repo-protocol` | `effortless-repo-protocol` | `effortless_repo_protocol` |
+| `repo-snapshot` | `crates/repo-snapshot` | `crates/effortless-repo-snapshot` | `effortless-repo-snapshot` | `effortless_repo_snapshot` |
+| `repo-edit` | `crates/repo-edit` | `crates/effortless-repo-edit` | `effortless-repo-edit` | `effortless_repo_edit` |
+| `rust-source-index` | `crates/rust-source-index` | `crates/effortless-rust-source-index` | `effortless-rust-source-index` | `effortless_rust_source_index` |
 
-`logical_id` is stable. `workspace_path` is exact current physical identity and
-may change only through a reviewed migration generation. Concise dependency
-aliases and Rust import names may remain unchanged.
+`logical_id` is stable. `workspace_path` and Rust library name are exact current
+physical/import identities and may change only through a reviewed migration
+generation.
 
 ## Version and publication posture
 

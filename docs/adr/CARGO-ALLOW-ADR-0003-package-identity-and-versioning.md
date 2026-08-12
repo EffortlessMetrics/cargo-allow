@@ -68,14 +68,15 @@ syntax and are not serialized as though they were registry package names.
 
 ## Shared package identities
 
-| Logical ID | Current path | Target path | Cargo package | Rust library |
+| Logical ID | Historical path | Current path | Cargo package | Rust library |
 | --- | --- | --- | --- | --- |
-| `repo-protocol` | `crates/repo-protocol` | `crates/effortless-repo-protocol` | `effortless-repo-protocol` | `repo_protocol` |
-| `repo-snapshot` | `crates/repo-snapshot` | `crates/effortless-repo-snapshot` | `effortless-repo-snapshot` | `repo_snapshot` |
-| `repo-edit` | `crates/repo-edit` | `crates/effortless-repo-edit` | `effortless-repo-edit` | `repo_edit` |
-| `rust-source-index` | `crates/rust-source-index` | `crates/effortless-rust-source-index` | `effortless-rust-source-index` | `rust_source_index` |
+| `repo-protocol` | `crates/repo-protocol` | `crates/effortless-repo-protocol` | `effortless-repo-protocol` | `effortless_repo_protocol` |
+| `repo-snapshot` | `crates/repo-snapshot` | `crates/effortless-repo-snapshot` | `effortless-repo-snapshot` | `effortless_repo_snapshot` |
+| `repo-edit` | `crates/repo-edit` | `crates/effortless-repo-edit` | `effortless-repo-edit` | `effortless_repo_edit` |
+| `rust-source-index` | `crates/rust-source-index` | `crates/effortless-rust-source-index` | `effortless-rust-source-index` | `effortless_rust_source_index` |
 
-The workspace may retain concise dependency aliases:
+The former concise dependency aliases remain historical migration evidence, not
+current workspace identities:
 
 ```toml
 [workspace.dependencies]
@@ -86,7 +87,7 @@ repo-protocol = {
 }
 ```
 
-The alias does not reserve or publish the generic package name.
+The historical alias did not reserve or publish the generic package name.
 
 ## Product package identities
 

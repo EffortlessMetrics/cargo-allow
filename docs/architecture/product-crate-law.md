@@ -69,12 +69,12 @@ publication/direct-use/candidate/CI posture
 
 The shared migration is:
 
-| Logical ID | Current path | Target path | Cargo package | Rust library |
+| Logical ID | Historical path | Current path | Cargo package | Rust library |
 | --- | --- | --- | --- | --- |
-| `repo-protocol` | `crates/repo-protocol` | `crates/effortless-repo-protocol` | `effortless-repo-protocol` | `repo_protocol` |
-| `repo-snapshot` | `crates/repo-snapshot` | `crates/effortless-repo-snapshot` | `effortless-repo-snapshot` | `repo_snapshot` |
-| `repo-edit` | `crates/repo-edit` | `crates/effortless-repo-edit` | `effortless-repo-edit` | `repo_edit` |
-| `rust-source-index` | `crates/rust-source-index` | `crates/effortless-rust-source-index` | `effortless-rust-source-index` | `rust_source_index` |
+| `repo-protocol` | `crates/repo-protocol` | `crates/effortless-repo-protocol` | `effortless-repo-protocol` | `effortless_repo_protocol` |
+| `repo-snapshot` | `crates/repo-snapshot` | `crates/effortless-repo-snapshot` | `effortless-repo-snapshot` | `effortless_repo_snapshot` |
+| `repo-edit` | `crates/repo-edit` | `crates/effortless-repo-edit` | `effortless-repo-edit` | `effortless_repo_edit` |
+| `rust-source-index` | `crates/rust-source-index` | `crates/effortless-rust-source-index` | `effortless-rust-source-index` | `effortless_rust_source_index` |
 
 `logical_id` is stable. A workspace path is checked current physical identity and
 changes only through a reviewed migration generation.

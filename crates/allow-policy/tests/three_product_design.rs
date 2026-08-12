@@ -1,4 +1,6 @@
-use allow_policy::product_crates::current_architecture_receipt_at;
+use allow_policy::product_crates::{
+    current_architecture_receipt_at, parse_architecture_manifest_v2,
+};
 use allow_policy::spec_system::{
     ArtifactStatus, SpecSystemRoots, SupportTierLevel, load_doc_artifacts,
     validate_doc_artifact_files, validate_doc_artifact_links, validate_support_tier_claims,
@@ -66,6 +68,7 @@ struct SharedRow {
     target_workspace_path: String,
     current_package: String,
     target_package: String,
+    dependency_aliases: Vec<String>,
     lib_name: String,
     status: String,
     target_disposition: String,
@@ -116,6 +119,9 @@ fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
         .map_err(|error| format!("parse generation-2 reconstruction fixture: {error}"))?;
     let current_receipt = current_architecture_receipt_at(&root)
         .map_err(|error| format!("read current architecture receipt: {error}"))?;
+    let current_architecture =
+        parse_architecture_manifest_v2(&read(&root, "policy/product-crates-v2.toml")?)
+            .map_err(|error| format!("parse current architecture authority: {error}"))?;
 
     if fixture.schema_version != "2.0" || fixture.authority_generation != 2 {
         return Err("fixture does not select exact generation 2".to_string());
@@ -268,7 +274,7 @@ fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
             "crates/effortless-repo-protocol",
             "effortless-repo-protocol",
             "effortless-repo-protocol",
-            "repo_protocol",
+            "effortless_repo_protocol",
         ),
         (
             "repo-snapshot",
@@ -276,7 +282,7 @@ fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
             "crates/effortless-repo-snapshot",
             "effortless-repo-snapshot",
             "effortless-repo-snapshot",
-            "repo_snapshot",
+            "effortless_repo_snapshot",
         ),
         (
             "repo-edit",
@@ -284,7 +290,7 @@ fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
             "crates/effortless-repo-edit",
             "effortless-repo-edit",
             "effortless-repo-edit",
-            "repo_edit",
+            "effortless_repo_edit",
         ),
         (
             "rust-source-index",
@@ -292,7 +298,7 @@ fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
             "crates/effortless-rust-source-index",
             "effortless-rust-source-index",
             "effortless-rust-source-index",
-            "rust_source_index",
+            "effortless_rust_source_index",
         ),
     ];
     if fixture.shared.len() != expected_shared.len() {
@@ -310,6 +316,11 @@ fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
             .iter()
             .find(|row| row.logical_id == logical)
             .ok_or_else(|| format!("fixture is missing shared logical ID {logical}"))?;
+        let identity = current_architecture
+            .crate_identity
+            .iter()
+            .find(|identity| identity.logical_id == logical)
+            .ok_or_else(|| format!("V2 architecture is missing shared logical ID {logical}"))?;
         if !seen_shared.insert(row.logical_id.as_str()) {
             return Err(format!("duplicate shared logical ID {}", row.logical_id));
         }
@@ -318,6 +329,10 @@ fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
             || row.current_package != current_package
             || row.target_package != target_package
             || row.lib_name != lib_name
+            || row.current_workspace_path != identity.workspace_path
+            || row.current_package != identity.cargo_package_name
+            || row.dependency_aliases != identity.workspace_dependency_aliases
+            || row.lib_name != identity.rust_library_name
             || row.status != "LandedExperimental"
             || row.target_disposition != "RetainPackage"
             || row.logical_id == row.target_package
