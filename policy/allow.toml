@@ -10226,6 +10226,27 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-9215"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/test-extraction-cutover-status.sh"
+owner = "core/ci"
+classification = "ci_characterization_script"
+reason = "Deterministic characterization for extraction cutover status evidence and stale receipt cleanup (#3469)."
+evidence = ["issue:3469", "workflow:.github/workflows/ci.yml", "doc:docs/architecture/extraction-parity.md"]
+created = "2026-08-12"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "sh"
+glob = "scripts/test-extraction-cutover-status.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9194"
 kind = "non_rust_file"
 family = "configuration"

@@ -4,12 +4,20 @@
 # Runs both current runtime parity stages and emits a truthful, fail-closed
 # status artifact. This lane is observational: a blocked status is expected
 # until parity, old-path, ownership, and package/build prerequisites are proven.
-set -uo pipefail
+set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
 
 output_dir="${EXTRACTION_CUTOVER_DIR:-${ROOT}/target/extraction-cutover}"
+
+cargo_allow() {
+  if [[ -n "${EXTRACTION_CARGO_ALLOW_BIN:-}" ]]; then
+    "${EXTRACTION_CARGO_ALLOW_BIN}" "$@"
+  else
+    cargo run -p cargo-allow --locked -- "$@"
+  fi
+}
 python3 - "${ROOT}" "${output_dir}" <<'PY'
 from pathlib import Path
 import sys
@@ -27,12 +35,12 @@ PY
 mkdir -p "${output_dir}"
 
 snapshot_exit=0
-cargo run -p cargo-allow --locked -- extraction-parity \
+cargo_allow extraction-parity \
   --stage repo-snapshot \
   --output "${output_dir}/repo-snapshot-parity.json" || snapshot_exit=$?
 
 edit_exit=0
-cargo run -p cargo-allow --locked -- extraction-parity \
+cargo_allow extraction-parity \
   --stage repo-edit \
   --output "${output_dir}/repo-edit-parity.json" || edit_exit=$?
 
@@ -324,7 +332,7 @@ for stage in repo-snapshot repo-edit; do
   rm -f "${receipt}" "${log}"
   if [[ -f "${manifest}" ]]; then
     adapter_exit=0
-    cargo run -p cargo-allow --locked -- extraction-parity \
+    cargo_allow extraction-parity \
       --stage "${stage}" \
       --cutover-evidence "${manifest}" \
       --output "${receipt}" >"${log}" 2>&1 || adapter_exit=$?
