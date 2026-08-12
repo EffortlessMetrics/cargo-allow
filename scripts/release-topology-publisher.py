@@ -209,8 +209,11 @@ def receipt_checksum(value: str | None) -> str | None:
     return None if value is None else f"sha256:{value}"
 
 
+def package_workspace() -> None:
+    run(["cargo", "package", "--workspace", "--locked", "--no-verify"])
+
+
 def package_crate(name: str, version: str) -> tuple[Path, str]:
-    run(["cargo", "package", "-p", name, "--locked", "--no-verify"])
     crate_path = ROOT / "target/package" / f"{name}-{version}.crate"
     if not crate_path.is_file():
         fail(f"cargo package did not create {crate_path.relative_to(ROOT)}")
@@ -344,6 +347,7 @@ def main() -> int:
 
     packages = cargo_packages()
     validate_rows(rows, packages)
+    package_workspace()
     receipt: dict[str, Any] = {
         "schema_id": "cargo-allow.topology-publish-receipt.v1",
         "schema_version": 1,
