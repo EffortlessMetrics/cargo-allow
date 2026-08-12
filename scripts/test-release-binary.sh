@@ -92,6 +92,8 @@ json.dump({
     "tree": "fixture-tree",
     "rows": rows,
     "complete": True,
+    "incident_state": "none",
+    "first_irreversible_row": None,
 }, open(sys.argv[1], "w", encoding="utf-8"), indent=2)
 PY
 VERSION=9.9.9 REPOSITORY=EffortlessMetrics/cargo-allow TAG=v9.9.9 \
