@@ -1,0 +1,11 @@
+schema_version = 1
+policy = "non-rust-allowlist"
+
+[[allow]]
+id = "negative-missing-evidence"
+path = "docs/missing-evidence.md"
+category = "documentation"
+owner = "docs"
+reason = "Missing evidence remains visible migration debt."
+created = "2026-08-12"
+review_after = "2026-11-10"

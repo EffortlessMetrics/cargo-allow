@@ -24,8 +24,12 @@ pub(crate) fn at_legacy_source(
     path: &Path,
     source: &str,
 ) -> CargoAllowError {
-    if error.location().is_some() {
-        return error;
+    if let Some(line) = error.location().map(|location| location.line) {
+        let rendered_path = path.display().to_string();
+        if error.message().contains(&rendered_path) {
+            return error;
+        }
+        return error.with_message_prefix(format!("legacy source {rendered_path}:{line}: "));
     }
 
     let offset = source_offset_for_error(error.message(), source);
@@ -36,10 +40,6 @@ pub(crate) fn at_legacy_source(
 }
 
 fn source_offset_for_error(message: &str, source: &str) -> usize {
-    if let Some(offset) = offset_for_matching_id(message, source) {
-        return offset;
-    }
-
     if let Some(index) = entry_index(message) {
         let header = if message.contains("workflow") || message.contains("baseline") {
             "[[entry]]"
@@ -49,6 +49,10 @@ fn source_offset_for_error(message: &str, source: &str) -> usize {
         if let Some(offset) = nth_line_start(source, header, index) {
             return offset;
         }
+    }
+
+    if let Some(offset) = offset_for_matching_id(message, source) {
+        return offset;
     }
 
     if let Some(offset) = first_entry_header(source) {
@@ -220,7 +224,7 @@ destination = "api.github.com"
     }
 
     #[test]
-    fn preserves_existing_location_without_rewriting_context() -> Result<(), String> {
+    fn preserves_existing_location_and_adds_missing_source_context() -> Result<(), String> {
         let source = "policy = \"network-allowlist\"\n";
         let located = CargoAllowError::new("already located").with_toml_span(
             Some(Path::new("network.toml")),
@@ -229,7 +233,13 @@ destination = "api.github.com"
         );
         let enriched = at_legacy_source(located, Path::new("network.toml"), source);
 
-        assert_eq!(enriched.message(), "already located");
+        assert_eq!(
+            enriched.message(),
+            &format!(
+                "legacy source {}:1: already located",
+                Path::new("network.toml").display()
+            )
+        );
         assert_eq!(enriched.location().map(|location| location.line), Some(1));
         Ok(())
     }

@@ -37,6 +37,15 @@ The fixture matrix at `tests/fixtures/migration/` proves field preservation
 lane via `migration_fixture_matrix_tests.rs`. This receipt confirms the
 operational pipeline matches.
 
+The non-Rust lane also has an executable negative-control slice in
+`saved_migrate_non_rust_negative_controls_fail_closed_or_surface_debt`. It runs
+the real binary against committed malformed, unsupported-field, conflicting
+target, duplicate-ID, and missing-evidence fixtures. Invalid inputs retain the
+legacy filename and best available entry line in their diagnostic; missing
+evidence becomes explicit TODO debt in schema-checked migrate and worklist
+artifacts, while compat and canonical governed paths remain equal. This is
+in-repository fixture evidence only, not external brownfield adoption proof.
+
 ## Migration
 
 For each lane, running `cargo-allow migrate --from <fixture> --out <receipt-path> --summary-format json --summary-output <summary-path>`

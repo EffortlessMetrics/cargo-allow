@@ -1,0 +1,9 @@
+schema_version = 1
+policy = "non-rust-allowlist"
+
+[[allow]]
+id = "negative-conflict"
+path = "docs/conflict.md"
+glob = "docs/**"
+owner = "docs"
+reason = "Conflicting target forms must not be merged implicitly."

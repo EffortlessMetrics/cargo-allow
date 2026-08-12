@@ -1,0 +1,14 @@
+schema_version = 1
+policy = "non-rust-allowlist"
+
+[[allow]]
+id = "negative-duplicate"
+path = "docs/duplicate-a.md"
+owner = "docs"
+reason = "First duplicate identity."
+
+[[allow]]
+id = "negative-duplicate"
+path = "docs/duplicate-b.md"
+owner = "docs"
+reason = "Second duplicate identity."
