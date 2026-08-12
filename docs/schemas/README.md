@@ -114,6 +114,7 @@ runtime, reachability, or semantic analysis.
 |---|---|---|
 | Historical release identity and verified executable assets | `cargo-allow.release-manifest.v1` | historical reader / typed `allow-report` model |
 | Current topology-derived release payload and execution envelope | `cargo-allow.release-manifest.v2` | release workflow / topology receipt / typed `allow-report` contract |
+| Topology candidate receipt | `cargo-allow.topology-publish-receipt.v1` | `scripts/release-topology-publisher.py` |
 
 `ReleaseManifestV1` remains readable as a historical release-control artifact
 but cannot satisfy the current release gate. The current workflow emits
@@ -126,6 +127,8 @@ candidate/install evidence digests, and attestation subject. The Rust validator
 rejects duplicate or non-canonical assets, unsupported targets, identity
 conflicts, unsafe filenames, malformed digests, and attestation/archive digest
 mismatches. See [release-manifest.schema.json](release-manifest.schema.json).
+The current V2 shape is defined by
+[release-manifest-v2.schema.json](release-manifest-v2.schema.json).
 
 ## Self-description contract (not a governed artifact)
 

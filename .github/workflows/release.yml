@@ -368,7 +368,7 @@ jobs:
       - name: Verify manifest checksum after attestation
         run: |
           cd target/cargo-allow
-          echo "${{ hashFiles('target/cargo-allow/release-manifest-v2.sha256') }}" | cut -d' ' -f1 | xargs -I{} sh -c 'echo "{}  release-manifest-v2.json" | sha256sum -c -'
+          sha256sum -c release-manifest-v2.sha256
       - name: Create GitHub Release (draft until manifest attached)
         uses: softprops/action-gh-release@42dc69e1aa15d09112580998cf2ef0119e2e91ae # v2.4.2
         with:

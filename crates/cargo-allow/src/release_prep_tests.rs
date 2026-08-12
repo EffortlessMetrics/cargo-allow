@@ -65,8 +65,17 @@ fn release_workflow_exists_and_lists_publish_order() {
     assert!(
         topology_publisher.contains("DEFAULT_TOPOLOGY")
             && topology_publisher.contains("load_rows")
-            && topology_publisher.contains("release_order"),
+            && topology_publisher.contains("release_order")
+            && topology_publisher.contains("schema_version")
+            && topology_publisher.contains("logical_id"),
         "{RELEASE_TOPOLOGY_PUBLISHER} should derive publication order from the V2 topology"
+    );
+    let receipt_schema = read_workspace_file(&root, "docs/schemas/topology-publish-receipt.schema.json");
+    assert!(
+        receipt_schema.contains("cargo-allow.topology-publish-receipt.v1")
+            && receipt_schema.contains("logical_id")
+            && receipt_schema.contains("schema_version"),
+        "topology publish receipt should have a machine-readable contract"
     );
 
     let authorized = read_workspace_file(&root, AUTHORIZED_RELEASE_WORKFLOW);

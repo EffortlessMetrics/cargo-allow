@@ -118,6 +118,25 @@ def valid_digest(value):
     )
 
 
+def valid_unprefixed_digest(value):
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(char in "0123456789abcdef" for char in value)
+    )
+
+
+def valid_semver(value):
+    parts = value.split(".")
+    return len(parts) == 3 and all(part.isdigit() for part in parts)
+
+
+if not valid_unprefixed_digest(topology.get("topology_sha256")):
+    raise SystemExit("release-manifest: malformed topology digest")
+if not valid_unprefixed_digest(topology.get("cargo_lock_sha256")):
+    raise SystemExit("release-manifest: malformed Cargo.lock digest")
+
+
 def artifact_reference(path):
     candidate = pathlib.Path(path)
     if not candidate.is_absolute():
@@ -133,16 +152,22 @@ def artifact_reference(path):
 
 rows = []
 seen_names = set()
+seen_logical_ids = set()
 seen_orders = set()
 for raw in raw_rows:
     required = ("logical_id", "name", "version", "release_order", "local_checksum")
     if any(not isinstance(raw.get(field), (str, int)) or str(raw.get(field)).strip() == "" for field in required):
         raise SystemExit("release-manifest: topology receipt row is incomplete")
+    if not isinstance(raw["logical_id"], str) or not isinstance(raw["name"], str):
+        raise SystemExit("release-manifest: topology receipt identity fields must be strings")
+    if not isinstance(raw["version"], str) or not valid_semver(raw["version"]):
+        raise SystemExit(f"release-manifest: malformed package version for {raw['name']}")
     name = raw["name"]
     order = int(raw["release_order"])
-    if name in seen_names or order in seen_orders:
+    if order <= 0 or name in seen_names or raw["logical_id"] in seen_logical_ids or order in seen_orders:
         raise SystemExit("release-manifest: topology receipt contains duplicate package identity")
     seen_names.add(name)
+    seen_logical_ids.add(raw["logical_id"])
     seen_orders.add(order)
     if not valid_digest(raw["local_checksum"]):
         raise SystemExit(f"release-manifest: malformed crate digest for {name}")
