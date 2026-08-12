@@ -70,6 +70,50 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-0521"
+kind = "non_rust_file"
+family = "ci_declarative"
+path = ".github/workflows/release-authorized.yml"
+owner = "core/release"
+classification = "authorized_release_workflow"
+reason = "Exact-authorization workflow that proves the selected release candidate, publishes the namespace graph, and pushes the tag only after verification; publication remains token-gated and separately authorized."
+evidence = ["issue:3389", "issue:3390", "doc:docs/release/README.md"]
+created = "2026-08-11"
+review_after = "2027-02-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".github/workflows/release-authorized.yml"
+target_fingerprint = "yml"
+glob = ".github/workflows/release-authorized.yml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0522"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/release-topology-publisher.py"
+owner = "core/release"
+classification = "topology_release_publisher"
+reason = "Fail-closed topology-derived publisher that verifies exact package identity, dependency closure, registry checksums, and post-upload visibility before advancing the release graph."
+evidence = ["issue:3389", "issue:3390", "doc:docs/release/README.md"]
+created = "2026-08-11"
+review_after = "2027-02-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/release-topology-publisher.py"
+target_fingerprint = "py"
+glob = "scripts/release-topology-publisher.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9200"
 kind = "non_rust_file"
 family = "documentation"
