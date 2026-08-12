@@ -1,3 +1,4 @@
+# Retry after making Changie's dotted version-file path explicit.
 # Self-removing release candidate convergence. The resulting branch contains
 # only the durable v0.2.0 implementation, documentation, and Changie batch.
 name: One-shot v0.2.0 release closeout
