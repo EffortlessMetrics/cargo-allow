@@ -2242,6 +2242,34 @@ PY
         );
         remove_fixture(&dir);
         assert_invalid("missing build receipt", result, "missing or not a file")?;
+
+        for (case, member, expected) in [
+            (
+                "malformed ownership receipt",
+                "ownership.json",
+                "parse ownership receipt",
+            ),
+            (
+                "malformed build receipt",
+                "build-package.json",
+                "parse independent build/package receipt",
+            ),
+        ] {
+            let (manifest, dir) = write_bundle(case, &current, "sha256:parity", "Passed", "Passed")
+                .map_err(|error| error.to_string())?;
+            fs::write(dir.join(member), "{not-json\n").map_err(|error| error.to_string())?;
+            let result = assemble_cutover_receipt_from_clean_inputs(
+                &root,
+                &registry,
+                ParityStageArg::RepoSnapshot,
+                "sha256:parity",
+                &current,
+                &manifest,
+                true,
+            );
+            remove_fixture(&dir);
+            assert_invalid(case, result, expected)?;
+        }
         Ok(())
     }
 
