@@ -145,7 +145,8 @@ receipt["incident_state"] = "none"
 receipt["first_irreversible_row"] = None
 for row in receipt["rows"]:
     row["state"] = "published_verified"
-    row["local_checksum"] = "sha256:" + row["local_checksum"]
+    if not row["local_checksum"].startswith("sha256:"):
+        row["local_checksum"] = "sha256:" + row["local_checksum"]
     row["registry_checksum"] = row["local_checksum"]
 path.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
 PY
