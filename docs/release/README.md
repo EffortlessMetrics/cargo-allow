@@ -1,4 +1,4 @@
-# Release on Tag
+# Release Operations
 
 Future cargo-allow releases publish from GitHub Actions when a version tag is
 pushed. The selected publication path uses a crates.io API token exposed only
@@ -6,14 +6,47 @@ as `CARGO_REGISTRY_TOKEN`; Trusted Publishing is optional post-release
 hardening, not a release prerequisite.
 
 This document is the operator source of truth for automated release
-prerequisites. Sequencing for the `0.1.10` adoption-trust cut lives in
-[plans/release/0.1.10-implementation-plan.md](../../plans/release/0.1.10-implementation-plan.md)
-(PR E1 documents prerequisites here; PR E2 records workflow_dispatch dry-run
-evidence).
+prerequisites. `0.1.11` is the latest published cargo-allow release. The
+workspace `0.2.0` version and its [release record](0.2.0.md) are an unpublished
+candidate until both release rails below are separately authorized and proven.
+The [0.1.11 qualification snapshot](0.1.11-readiness.md) remains historical
+evidence for the published patch release.
 
-The current qualification snapshot is
-[0.1.11-readiness.md](0.1.11-readiness.md). It is a go/no-go input, not a tag
-or publication authorization.
+## 0.2.0 release rails
+
+The namespace publication and the cargo-allow tag release are distinct,
+irreversible operations. A document, issue, pull request, rehearsal, or merged
+authorization-file template does not authorize either operation.
+
+Run them in this order:
+
+1. **Rehearse without publishing.** A normal `workflow_dispatch` of
+   [`.github/workflows/release.yml`](../../.github/workflows/release.yml) and
+   package-only topology publisher runs do not read the registry token or upload
+   crates. They prove the selected source candidate and workflow path, not
+   registry publication.
+2. **Freeze one exact namespace candidate.** Create
+   `release/authorize-v0.2.0.json` only after explicit publication
+   authorization. Its commit, parent tree, lockfile digest, topology digest,
+   and selected rows must match the authorized candidate exactly.
+3. **Publish the new namespaces.** The authorization-file push triggers
+   [`.github/workflows/release-authorized.yml`](../../.github/workflows/release-authorized.yml),
+   which publishes exactly twelve `0.1.0` namespace rows: four shared, five
+   cargo-intent, and three cargo-proof packages. This workflow stops after its
+   registry receipt; it does not push a tag or dispatch the cargo-allow release.
+4. **Reconcile publication truth.** Verify exact registry checksums, update the
+   V2 topology publication state and release/support docs through a separate
+   reviewed change, and preserve the namespace receipt.
+5. **Authorize the cargo-allow release separately.** Only an explicitly
+   authorized annotated `v0.2.0` tag may trigger
+   [`.github/workflows/release.yml`](../../.github/workflows/release.yml). Its
+   topology-selected candidate has thirteen rows: ten cargo-allow packages plus
+   `effortless-repo-protocol`, `effortless-repo-snapshot`, and
+   `effortless-repo-edit`. The selected shared rows must already be
+   `AlreadyPublishedExact` with checksum equality before the workflow publishes
+   the remaining cargo-allow rows. `effortless-rust-source-index` belongs only
+   to the namespace rail; cargo-intent and cargo-proof packages are not part of
+   the cargo-allow candidate.
 
 When a release may be incomplete, unsafe, or unsupported after publication,
 follow the [release incident and recovery runbook](incident-recovery.md). It
@@ -98,7 +131,8 @@ omit / candidate-mismatch (`CandidateStale`) / missing-metadata
 
 Post-publication registry install remains
 [scripts/release-install-smoke.sh](../../scripts/release-install-smoke.sh)
-(Stage B). The next 0.1.x cut stays on Rust 1.85; do not raise MSRV here.
+(Stage B). Published `0.1.11` stays on Rust 1.85; the unpublished `0.2.0`
+candidate uses Rust 1.95.
 
 ## Linux binary archive contract
 
@@ -195,30 +229,33 @@ remains the source-build fallback.
 
 ## Prerequisites
 
-Complete these checks before the first tag-triggered automated release:
+Complete these checks before the `0.2.0` tag-triggered cargo-allow release:
 
 | Prerequisite | Verification |
 | --- | --- |
 | GitHub Actions crates.io token | Repository secret `CARGO_REGISTRY_TOKEN` is available to the guarded release workflow; its value is never printed or retained |
-| Prior manual publish per crate | `0.1.0`–`0.1.9` manual publishes satisfy crates.io's first-publish requirement |
+| Namespace rail reconciled | The twelve-row namespace workflow receipt, exact crates.io checksums, and V2 topology publication state agree before tag authorization |
 | Workflow dry-run green on `main` | **Actions → Release → Run workflow**; preflight passes and publish runs `cargo publish --dry-run` only ([Manual dry-run](#manual-dry-run)) |
 | Release prep merged | Version bump, `docs/release/X.Y.Z.md`, and `docs/release/github/vX.Y.Z.md` on `main` before tagging |
 | No-new guard green on release head | `cargo-allow check --mode no-new` receipt on the commit to tag |
 
-Do not push a version tag until the guarded token-backed workflow and a recent
-non-publishing workflow_dispatch rehearsal are green.
+Do not create `release/authorize-v0.2.0.json` or push a version tag without
+separate explicit authorization for that irreversible operation. Before tag
+authorization, require the reconciled namespace receipt and a recent green
+non-publishing `workflow_dispatch` rehearsal.
 
 ## Canonical Path
 
-1. Merge release-prep PRs to `main` (version bump, release record, install pins,
+1. Complete and reconcile the namespace rail described above, then merge
+   cargo-allow release-prep PRs to `main` (version bump, release record, install pins,
    GitHub release notes draft under `docs/release/github/vX.Y.Z.md`, and promote
    [`docs/dogfood/fixtures/getting-started/published-command-registry.toml`](../dogfood/fixtures/getting-started/published-command-registry.toml)
    so the Published first-run command contract matches the crates.io binary).
 2. Push an annotated tag matching the workspace version:
 
    ```bash
-   git tag -a v0.1.10 -m "cargo-allow 0.1.10"
-   git push origin v0.1.10
+   git tag -a v0.2.0 -m "cargo-allow 0.2.0"
+   git push origin v0.2.0
    ```
 
 3. The [Release workflow](../../.github/workflows/release.yml) runs:
@@ -295,15 +332,15 @@ Do not commit API tokens to the repository.
 ## Manual Dry-Run
 
 Use workflow_dispatch to validate release automation without uploading. This is
-the proof step for [PR E2](../../plans/release/0.1.10-implementation-plan.md#pr-e2-dry-run-release-workflow-on-main)
-in the `0.1.10` plan.
+a rehearsal of the current cargo-allow candidate, not registry evidence or
+authorization.
 
 1. Open **Actions → Release → Run workflow** on `main`.
 2. Leave the branch selector on `main` and start the run.
 3. Confirm the **preflight** job passes (`fmt`, `clippy`, `test`, `package`,
    no-new guard).
-4. Confirm the **publish** job authenticates with
-   `auth: crates_io_api_token` in `release-publish.receipt.json`.
+4. Confirm the **publish** job records `auth: crates_io_api_token` in
+   `release-publish.receipt.json` while the logs show token lookup was skipped.
 5. Confirm the publish job logs topology-derived candidate validation and
    performs no upload during the rehearsal.
 6. Confirm no real `cargo publish` upload occurs.

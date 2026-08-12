@@ -15,12 +15,15 @@ const PACKAGE_TOPOLOGY: &str = "policy/product-package-topology-v2.toml";
 
 const RELEASE_WORKFLOW: &str = ".github/workflows/release.yml";
 const AUTHORIZED_RELEASE_WORKFLOW: &str = ".github/workflows/release-authorized.yml";
+const RELEASE_AUTHORIZATION_ARTIFACT: &str = "release/authorize-v0.2.0.json";
 const RELEASE_DOC: &str = "docs/release/README.md";
 const RELEASE_TOPOLOGY_PUBLISHER: &str = "scripts/release-topology-publisher.py";
 const RELEASE_TOPOLOGY_CHECKSUM_TEST: &str = "scripts/test-release-topology-publisher.py";
 
 const CANDIDATE_RELEASE_DOC: &str = "docs/release/0.2.0.md";
 const CANDIDATE_RELEASE_RECORD: &str = include_str!("../../../docs/release/0.2.0.md");
+const CANDIDATE_GITHUB_RELEASE_DOC: &str = "docs/release/github/v0.2.0.md";
+const EXTRACTION_PARITY_POLICY: &str = "policy/extraction-parity.toml";
 const CAPABILITIES_SOURCE: &str = include_str!("capabilities.rs");
 
 #[test]
@@ -46,10 +49,16 @@ fn release_workflow_exists_and_lists_publish_order() {
             && !workflow.contains("crates-io-auth-action@"),
         "{RELEASE_WORKFLOW} should use the token-backed crates.io authentication contract"
     );
-    assert!(
-        release_doc.contains(RELEASE_WORKFLOW),
-        "{RELEASE_DOC} should document the release workflow"
-    );
+    for required_path in [
+        RELEASE_WORKFLOW,
+        AUTHORIZED_RELEASE_WORKFLOW,
+        RELEASE_AUTHORIZATION_ARTIFACT,
+    ] {
+        assert!(
+            release_doc.contains(required_path),
+            "{RELEASE_DOC} should document release authority `{required_path}`"
+        );
+    }
     assert!(
         workflow.contains(RELEASE_TOPOLOGY_PUBLISHER),
         "{RELEASE_WORKFLOW} should delegate publication to the topology publisher"
@@ -283,6 +292,35 @@ fn candidate_release_record_exposes_the_checked_capability_contract() {
         CAPABILITIES_SOURCE.contains("pub(crate) const SENSOR_CAPABILITY_SCHEMA: &str = \"cargo-allow.sensor-capabilities.v1\""),
         "the release record should remain tied to the CLI capability schema source"
     );
+}
+
+#[test]
+fn candidate_release_docs_preserve_unpublished_extraction_posture() {
+    let root = workspace_root();
+    let extraction_policy = read_workspace_file(&root, EXTRACTION_PARITY_POLICY);
+    if !extraction_policy.contains("disposition = \"contract_only\"") {
+        return;
+    }
+
+    for candidate_doc in [CANDIDATE_RELEASE_DOC, CANDIDATE_GITHUB_RELEASE_DOC] {
+        let contents = read_workspace_file(&root, candidate_doc);
+        for required_marker in [
+            "not published",
+            "contract_only",
+            "Blocked",
+            "OldPathStillReachable",
+        ] {
+            assert!(
+                contents.contains(required_marker),
+                "{candidate_doc} should preserve current candidate marker `{required_marker}`"
+            );
+        }
+        assert!(
+            !contents.contains("closes all migration-parity compat lanes")
+                && !contents.contains("All 11 migration-parity compat lanes at `complete`"),
+            "{candidate_doc} must not present extraction cutover as complete while policy remains contract_only"
+        );
+    }
 }
 
 #[test]
