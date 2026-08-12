@@ -44,13 +44,20 @@ pub(crate) struct ParityArgs {
 }
 
 pub(crate) fn cmd_parity(args: &ParityArgs) -> CargoAllowResult<()> {
-    let root = resolve_source_tree_root(args.root.root.as_deref(), current_dir()?)?;
+    let cwd = current_dir()?;
+    let root = resolve_source_tree_root(args.root.root.as_deref(), cwd.clone())?;
     let registry = load_registry(&root)?;
     let initial_cutover_source_inputs = if args.cutover_evidence.is_some() {
         let stage = requested_extraction_stage(args.stage)?;
         let ledger = load_ledger(&root)?;
         let ownership = derive_ownership(&root, &registry, &ledger, stage)?;
         ensure_cutover_inputs_clean(&root, &ownership.source_input_paths)?;
+        ensure_cutover_output_separate(
+            &root,
+            &cwd,
+            args.output.as_deref(),
+            &ownership.source_input_paths,
+        )?;
         Some(ownership.source_input_paths)
     } else {
         None
@@ -218,6 +225,9 @@ pub(crate) fn cmd_parity(args: &ParityArgs) -> CargoAllowResult<()> {
         ensure_cutover_inputs_clean(&root, source_input_paths)?;
     }
     emit_text(args.output.as_deref(), &rendered)?;
+    if let Some(source_input_paths) = cutover_source_input_paths.as_deref() {
+        ensure_cutover_inputs_clean(&root, source_input_paths)?;
+    }
     if passed {
         Ok(())
     } else {
@@ -1090,6 +1100,62 @@ fn ensure_cutover_inputs_clean(root: &Path, source_input_paths: &[String]) -> Ca
     Ok(())
 }
 
+fn ensure_cutover_output_separate(
+    root: &Path,
+    cwd: &Path,
+    output: Option<&Path>,
+    source_input_paths: &[String],
+) -> CargoAllowResult<()> {
+    let Some(output) = output else {
+        return Ok(());
+    };
+    let output = canonicalize_allow_missing(&if output.is_absolute() {
+        output.to_path_buf()
+    } else {
+        cwd.join(output)
+    })?;
+    for source in source_input_paths {
+        let source = root.join(source);
+        let source_is_dir = source.is_dir();
+        let source = canonicalize_allow_missing(&source)?;
+        if output == source || source_is_dir && output.starts_with(&source) {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::InvalidConfig,
+                format!(
+                    "cutover evidence output `{}` overlaps watched source input `{}`",
+                    output.display(),
+                    source.display()
+                ),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn canonicalize_allow_missing(path: &Path) -> CargoAllowResult<PathBuf> {
+    let mut cursor = path;
+    let mut suffix = Vec::new();
+    while !cursor.exists() {
+        let name = cursor.file_name().ok_or_else(|| {
+            CargoAllowError::new(format!(
+                "cannot resolve output path outside an existing filesystem root: {}",
+                path.display()
+            ))
+        })?;
+        suffix.push(name.to_os_string());
+        cursor = cursor.parent().ok_or_else(|| {
+            CargoAllowError::new(format!("output path has no parent: {}", path.display()))
+        })?;
+    }
+    let mut resolved = fs::canonicalize(cursor).map_err(|error| {
+        CargoAllowError::new(format!("canonicalize path {}: {error}", cursor.display()))
+    })?;
+    for component in suffix.into_iter().rev() {
+        resolved.push(component);
+    }
+    Ok(resolved)
+}
+
 fn authority_kind(value: &str) -> AuthorityKind {
     match value {
         "CompatibilityProjection" => AuthorityKind::CompatibilityProjection,
@@ -1552,6 +1618,63 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn cutover_output_rejects_watched_files_and_directories() -> Result<(), String> {
+        let root = fixture_root("output-separation");
+        fs::create_dir_all(root.join("watched/directory")).map_err(|error| error.to_string())?;
+        fs::create_dir_all(root.join("target")).map_err(|error| error.to_string())?;
+        fs::write(root.join("watched/input.toml"), "source\n")
+            .map_err(|error| error.to_string())?;
+        let watched = vec![
+            "watched/input.toml".to_string(),
+            "watched/directory".to_string(),
+        ];
+        for output in [
+            Path::new("watched/input.toml"),
+            Path::new("watched/directory/new.json"),
+        ] {
+            if ensure_cutover_output_separate(&root, &root, Some(output), &watched).is_ok() {
+                remove_fixture(&root);
+                return Err(format!(
+                    "watched output alias was accepted: {}",
+                    output.display()
+                ));
+            }
+        }
+        ensure_cutover_output_separate(
+            &root,
+            &root,
+            Some(Path::new("target/runtime.json")),
+            &watched,
+        )
+        .map_err(|error| error.to_string())?;
+        remove_fixture(&root);
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn cutover_output_rejects_symlink_alias_to_watched_directory() -> Result<(), String> {
+        use std::os::unix::fs::symlink;
+
+        let root = fixture_root("output-symlink");
+        fs::create_dir_all(root.join("watched/directory")).map_err(|error| error.to_string())?;
+        symlink(root.join("watched/directory"), root.join("alias"))
+            .map_err(|error| error.to_string())?;
+        let watched = vec!["watched/directory".to_string()];
+        let result = ensure_cutover_output_separate(
+            &root,
+            &root,
+            Some(Path::new("alias/new.json")),
+            &watched,
+        );
+        remove_fixture(&root);
+        if result.is_ok() {
+            return Err("symlink alias to watched directory was accepted".to_string());
+        }
+        Ok(())
+    }
+
     #[cfg(unix)]
     #[test]
     fn cutover_status_adapter_fails_closed_for_receipt_location_and_lifecycle() -> Result<(), String>
@@ -1647,9 +1770,7 @@ printf '{"result":"Passed","expected_case_count":1,"emitted_case_count":1,"parit
         let missing = run_status(&root, &missing_output, &bin)?;
         let missing_blockers = blockers(&missing)?;
         if missing.get("result").and_then(Value::as_str) != Some("Blocked")
-            || !missing_blockers
-                .iter()
-                .any(|item| *item == "independent_build_package_receipt_missing:RepoSnapshot")
+            || !missing_blockers.contains(&"independent_build_package_receipt_missing:RepoSnapshot")
             || stale_receipt.exists()
         {
             remove_fixture(&fixture);
@@ -1690,10 +1811,7 @@ printf '{"result":"Passed","expected_case_count":1,"emitted_case_count":1,"parit
                 .map_err(|error| error.to_string())?,
         )
         .map_err(|error| error.to_string())?;
-        if !blockers(&outside_value)?
-            .iter()
-            .any(|item| *item == "build_package_receipt_outside_repo:RepoSnapshot")
-        {
+        if !blockers(&outside_value)?.contains(&"build_package_receipt_outside_repo:RepoSnapshot") {
             remove_fixture(&fixture);
             let _ = fs::remove_file(&outside);
             return Err("outside build receipt did not fail closed".into());
