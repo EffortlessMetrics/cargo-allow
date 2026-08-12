@@ -33,6 +33,7 @@ except ValueError:
     )
 PY
 mkdir -p "${output_dir}"
+output_dir="$(cd "${output_dir}" && pwd)"
 
 snapshot_exit=0
 cargo_allow extraction-parity \
@@ -280,13 +281,15 @@ for stage, path in stage_paths.items():
     if not build_receipt_path.is_absolute():
         build_receipt_path = root / build_receipt_path
     build_receipt_relative = None
-    if build_receipt_path.is_file():
-        try:
-            build_receipt_relative = str(build_receipt_path.relative_to(root)).replace("\\", "/")
-        except ValueError:
-            blockers.append(f"build_package_receipt_outside_repo:{stage}")
+    try:
+        build_receipt_path = build_receipt_path.resolve()
+        build_receipt_relative = str(build_receipt_path.relative_to(root)).replace("\\", "/")
+    except (OSError, ValueError):
+        blockers.append(f"build_package_receipt_outside_repo:{stage}")
     else:
-        blockers.append(f"independent_build_package_receipt_missing:{stage}")
+        if not build_receipt_path.is_file():
+            build_receipt_relative = None
+            blockers.append(f"independent_build_package_receipt_missing:{stage}")
     manifest_path = stage_dir / "cutover-evidence.json"
     receipt_path = stage_dir / "cutover-receipt.json"
     if build_receipt_relative is not None and ownership_result == "Passed":

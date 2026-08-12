@@ -107,6 +107,19 @@ if topology.get("mode") != "cargo-allow" or topology.get("complete") is not True
 raw_rows = topology.get("rows")
 if not isinstance(raw_rows, list) or not raw_rows:
     raise SystemExit("release-manifest: topology receipt has no package rows")
+publish = topology.get("publish")
+if not isinstance(publish, bool):
+    raise SystemExit("release-manifest: topology receipt publish field must be a Boolean")
+if publish:
+    if topology.get("complete") is not True:
+        raise SystemExit("release-manifest: published topology receipt is not complete")
+    if topology.get("incident_state") != "none":
+        raise SystemExit("release-manifest: published topology receipt records an incident")
+    first_irreversible_row = topology.get("first_irreversible_row")
+    if not isinstance(first_irreversible_row, int) or first_irreversible_row <= 0:
+        raise SystemExit(
+            "release-manifest: published topology receipt lacks an irreversible-row marker"
+        )
 
 
 def valid_digest(value):
@@ -171,6 +184,16 @@ for raw in raw_rows:
     seen_orders.add(order)
     if not valid_digest(raw["local_checksum"]):
         raise SystemExit(f"release-manifest: malformed crate digest for {name}")
+    if publish:
+        if raw.get("state") not in {"published_verified", "verified_existing"}:
+            raise SystemExit(
+                f"release-manifest: published topology row {name} is not registry-verified"
+            )
+        registry_checksum = raw.get("registry_checksum")
+        if registry_checksum != raw["local_checksum"]:
+            raise SystemExit(
+                f"release-manifest: registry checksum disagrees for published row {name}"
+            )
     row = {
         "logical_id": raw["logical_id"],
         "package_name": name,
@@ -258,8 +281,6 @@ if package_path and install_path:
 
 if auth_source != "crates_io_api_token":
     raise SystemExit("release-manifest: only crates_io_api_token is supported")
-if not isinstance(topology.get("publish"), bool):
-    raise SystemExit("release-manifest: topology receipt publish field must be a Boolean")
 manifest = {
     "payload": {
         "schema_id": "cargo-allow.release-manifest.v2",
@@ -274,7 +295,7 @@ manifest = {
         "candidate_digest": file_digest(topology_file),
         "package_rows": rows,
         "authentication": "crates_io_api_token",
-        "publication_posture": "published" if topology["publish"] else "unpublished",
+        "publication_posture": "published" if publish else "unpublished",
         "support_posture": "experimental",
         "limitations": LIMITATIONS,
         "claim_boundary": CLAIM_BOUNDARY,

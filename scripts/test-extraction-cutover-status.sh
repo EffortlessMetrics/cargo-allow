@@ -176,5 +176,22 @@ assert all(stage["ownership_result"] == "Blocked" for stage in status["stages"])
 assert all(stage["cutover_evidence_manifest"] is None for stage in status["stages"])
 PY
 done
+outside_receipt="${outside}/build-package.json"
+printf '{}\n' >"${outside_receipt}"
+symlink_dir="${work}/symlink"
+mkdir -p "${symlink_dir}"
+ln -s "${outside_receipt}" "${symlink_dir}/build-package.json"
+EXTRACTION_CARGO_ALLOW_BIN="${fake}" EXTRACTION_CUTOVER_DIR="${symlink_dir}" \
+  EXTRACTION_BUILD_PACKAGE_RECEIPT_REPO_SNAPSHOT="${symlink_dir}/build-package.json" \
+  EXTRACTION_BUILD_PACKAGE_RECEIPT_REPO_EDIT="${symlink_dir}/build-package.json" \
+  bash scripts/extraction-cutover-status.sh >/dev/null
+python3 - "${symlink_dir}/extraction-cutover-status.json" <<'PY'
+import json
+import sys
+status = json.load(open(sys.argv[1], encoding="utf-8"))
+assert "build_package_receipt_outside_repo:RepoSnapshot" in status["blockers"]
+assert "build_package_receipt_outside_repo:RepoEdit" in status["blockers"]
+assert all(stage["cutover_evidence_manifest"] is None for stage in status["stages"])
+PY
 
 printf 'extraction cutover status contract: passed\n'
