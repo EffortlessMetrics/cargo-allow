@@ -46,6 +46,15 @@ def fail(message: str) -> NoReturn:
     raise SystemExit(f"release-topology-publisher: error: {message}")
 
 
+def bounded_reference(value: str, field: str) -> str:
+    if not value or len(value) > 200 or any(
+        character not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._:/#-"
+        for character in value
+    ):
+        fail(f"{field} must be a bounded reference token")
+    return value
+
+
 def run(command: list[str], *, env: dict[str, str] | None = None) -> str:
     result = subprocess.run(
         command,
@@ -217,6 +226,62 @@ def write_receipt(path: Path, receipt: dict[str, Any]) -> None:
     temporary.replace(path)
 
 
+def load_recovery_receipt(
+    path: Path,
+    *,
+    mode: str,
+    topology: dict[str, Any],
+    topology_path: Path,
+    authorization: str,
+) -> dict[str, Any]:
+    try:
+        receipt = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        fail(f"recovery receipt is unreadable or malformed: {error}")
+    if not isinstance(receipt, dict):
+        fail("recovery receipt must be a JSON object")
+    if receipt.get("schema_id") != "cargo-allow.topology-publish-receipt.v1":
+        fail("recovery receipt has an unexpected schema")
+    if receipt.get("mode") != mode or receipt.get("publish") is not True:
+        fail("recovery receipt mode or publication posture does not match the request")
+    if receipt.get("authorization", authorization) != authorization:
+        fail("recovery receipt authorization differs from the selected authorization")
+    if receipt.get("complete") is not False:
+        fail("recovery requires an incomplete incident receipt")
+    if receipt.get("incident_state") not in {"partial", "release_incident"}:
+        fail("recovery receipt does not preserve a publish incident")
+    expected = {
+        "topology_id": topology["topology_id"],
+        "topology_sha256": sha256_text(topology_path),
+        "cargo_lock_sha256": sha256_text(ROOT / "Cargo.lock"),
+        "commit": git_identity("commit"),
+        "tree": git_identity("tree"),
+    }
+    for field, value in expected.items():
+        if receipt.get(field) != value:
+            fail(f"recovery receipt {field} differs from the exact candidate")
+    rows = receipt.get("rows")
+    if not isinstance(rows, list) or not rows:
+        fail("recovery receipt has no package-row evidence")
+    return receipt
+
+
+def recovery_rows(receipt: dict[str, Any]) -> dict[tuple[str, str], dict[str, Any]]:
+    result: dict[tuple[str, str], dict[str, Any]] = {}
+    for row in receipt["rows"]:
+        if not isinstance(row, dict):
+            fail("recovery receipt contains a malformed package row")
+        name = row.get("name")
+        version = row.get("version")
+        if not isinstance(name, str) or not isinstance(version, str):
+            fail("recovery receipt package rows require name and version")
+        key = (name, version)
+        if key in result:
+            fail(f"recovery receipt contains duplicate package row {name} {version}")
+        result[key] = row
+    return result
+
+
 def wait_for_checksum(name: str, version: str, expected: str) -> None:
     for attempt in range(1, 31):
         observed = registry_checksum(name, version)
@@ -239,6 +304,12 @@ def main() -> int:
     parser.add_argument("--list", action="store_true")
     parser.add_argument("--topology", type=Path, default=DEFAULT_TOPOLOGY)
     parser.add_argument("--receipt", type=Path, default=DEFAULT_RECEIPT)
+    parser.add_argument("--authorization", default="")
+    parser.add_argument(
+        "--recovery-receipt",
+        type=Path,
+        help="incomplete incident receipt from the exact candidate run",
+    )
     args = parser.parse_args()
 
     topology_path = args.topology.resolve()
@@ -254,6 +325,22 @@ def main() -> int:
     token = os.environ.get("CARGO_REGISTRY_TOKEN", "")
     if args.publish and not token:
         fail("CARGO_REGISTRY_TOKEN is required before the first upload")
+    authorization = bounded_reference(args.authorization, "authorization") if args.authorization else ""
+    if args.publish and not authorization:
+        fail("--authorization is required before publication")
+    recovery_receipt = None
+    prior_rows: dict[tuple[str, str], dict[str, Any]] = {}
+    if args.recovery_receipt is not None:
+        if not args.publish:
+            fail("a recovery receipt requires --publish")
+        recovery_receipt = load_recovery_receipt(
+            args.recovery_receipt.resolve(),
+            mode=args.mode,
+            topology=topology,
+            topology_path=topology_path,
+            authorization=authorization,
+        )
+        prior_rows = recovery_rows(recovery_receipt)
 
     packages = cargo_packages()
     validate_rows(rows, packages)
@@ -262,6 +349,7 @@ def main() -> int:
         "schema_version": 1,
         "mode": args.mode,
         "publish": args.publish,
+        "authorization": authorization,
         "topology_id": topology["topology_id"],
         "topology_sha256": sha256_text(topology_path),
         "cargo_lock_sha256": sha256_text(ROOT / "Cargo.lock"),
@@ -272,6 +360,9 @@ def main() -> int:
         "incident_state": "none",
         "first_irreversible_row": None,
     }
+    if recovery_receipt is not None:
+        receipt["recovery_receipt"] = "validated"
+        receipt["incident_state"] = "partial"
     write_receipt(args.receipt, receipt)
 
     publish_env = os.environ.copy()
@@ -279,6 +370,26 @@ def main() -> int:
         name = row["cargo_package_name"]
         version = row["package_version"]
         crate_path, local_checksum = package_crate(name, version)
+        prior = prior_rows.get((name, version))
+        if prior is not None:
+            if prior.get("local_checksum") != local_checksum:
+                fail(f"recovery candidate bytes differ for {name} {version}")
+            prior_state = prior.get("state")
+            if prior_state in {"verified_existing", "published_verified"}:
+                row_receipt = {
+                    "logical_id": row["logical_id"],
+                    "name": name,
+                    "version": version,
+                    "family": row["product_family"],
+                    "release_order": row["release_order"],
+                    "crate": str(crate_path.relative_to(ROOT)),
+                    "local_checksum": local_checksum,
+                    "registry_checksum": prior.get("registry_checksum"),
+                    "state": "recovered_already_published_exact",
+                }
+                receipt["rows"].append(row_receipt)
+                write_receipt(args.receipt, receipt)
+                continue
         observed = registry_checksum(name, version)
         row_receipt: dict[str, Any] = {
             "logical_id": row["logical_id"],

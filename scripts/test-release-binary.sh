@@ -85,6 +85,7 @@ json.dump({
     "schema_version": 1,
     "mode": "cargo-allow",
     "publish": False,
+    "authorization": "fixture-rehearsal",
     "topology_id": "fixture-topology",
     "topology_sha256": "b" * 64,
     "cargo_lock_sha256": "c" * 64,

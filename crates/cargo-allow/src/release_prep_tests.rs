@@ -109,9 +109,29 @@ fn topology_publish_receipt_preserves_incident_recovery_boundary() {
     assert!(
         publisher.contains("incident_state")
             && publisher.contains("first_irreversible_row")
+            && publisher.contains("--recovery-receipt")
+            && publisher.contains("--authorization")
+            && publisher.contains("load_recovery_receipt")
             && publisher.contains("receipt[\"incident_state\"] = \"partial\"")
             && publisher.contains("receipt[\"incident_state\"] = \"release_incident\""),
         "publisher should persist redacted incident state before failing"
+    );
+    let workflow = read_workspace_file(&root, RELEASE_WORKFLOW);
+    assert!(
+        workflow.contains("recovery_receipt_run_id")
+            && workflow.contains("actions/download-artifact")
+            && workflow.contains("run-id: ${{ needs.preflight.outputs.recovery_receipt_run_id }}")
+            && workflow.contains("--recovery-receipt")
+            && workflow.contains("--authorization")
+            && workflow.contains("actions: read"),
+        "recovery should consume the original run receipt through a bounded artifact identity"
+    );
+    let authorized = read_workspace_file(&root, AUTHORIZED_RELEASE_WORKFLOW);
+    assert!(
+        authorized.contains("secrets.CARGO_REGISTRY_TOKEN")
+            && authorized.contains("--mode namespace")
+            && !authorized.contains("crates-io-auth-action@"),
+        "namespace publication should use the shared token-backed publisher"
     );
 }
 

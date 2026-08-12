@@ -29,8 +29,13 @@ on:
         description: "Incident/recovery authorization reference for a publishing recovery"
         required: false
         type: string
+      recovery_receipt_run_id:
+        description: "The original GitHub Actions run containing the incomplete topology receipt"
+        required: false
+        type: string
 
 permissions:
+  actions: read
   contents: write
 
 concurrency:
@@ -50,6 +55,7 @@ jobs:
       tree: ${{ steps.release_context.outputs.tree }}
       recovery: ${{ steps.release_context.outputs.recovery }}
       authorization: ${{ steps.release_context.outputs.authorization }}
+      recovery_receipt_run_id: ${{ steps.release_context.outputs.recovery_receipt_run_id }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -65,6 +71,7 @@ jobs:
           RECOVERY_COMMIT: ${{ inputs.recovery_commit }}
           RECOVERY_TREE: ${{ inputs.recovery_tree }}
           RECOVERY_AUTHORIZATION: ${{ inputs.recovery_authorization }}
+          RECOVERY_RECEIPT_RUN_ID: ${{ inputs.recovery_receipt_run_id }}
         run: |
           set -euo pipefail
           recovery=false
@@ -72,15 +79,20 @@ jobs:
           if [ "${{ github.event_name }}" = "push" ] && [[ "${GITHUB_REF_NAME}" == v* ]]; then
             version="${GITHUB_REF_NAME#v}"
             tag="${GITHUB_REF_NAME}"
+            authorization="${GITHUB_REF_NAME}"
           elif [ "${{ inputs.publish_recovery }}" = "true" ]; then
             recovery=true
             version="${RECOVERY_VERSION}"
             tag="v${version}"
             authorization="${RECOVERY_AUTHORIZATION}"
-           if [ -z "${version}" ] || [ -z "${RECOVERY_COMMIT}" ] || [ -z "${RECOVERY_TREE}" ] || [ -z "${authorization}" ]; then
-             echo "::error::publish_recovery requires recovery_version, recovery_commit, recovery_tree, and recovery_authorization"
+           if [ -z "${version}" ] || [ -z "${RECOVERY_COMMIT}" ] || [ -z "${RECOVERY_TREE}" ] || [ -z "${authorization}" ] || [ -z "${RECOVERY_RECEIPT_RUN_ID}" ]; then
+             echo "::error::publish_recovery requires recovery_version, recovery_commit, recovery_tree, recovery_authorization, and recovery_receipt_run_id"
              exit 1
            fi
+            if [[ ! "${RECOVERY_RECEIPT_RUN_ID}" =~ ^[0-9]+$ ]]; then
+              echo "::error::recovery_receipt_run_id must be a numeric GitHub Actions run id"
+              exit 1
+            fi
             if [[ ! "${RECOVERY_COMMIT}" =~ ^[0-9a-fA-F]{40,64}$ ]] || [[ ! "${RECOVERY_TREE}" =~ ^[0-9a-fA-F]{40,64}$ ]]; then
               echo "::error::recovery_commit and recovery_tree must be hexadecimal commit/tree identities"
               exit 1
@@ -119,6 +131,7 @@ jobs:
             echo "tree=${tree}"
             echo "recovery=${recovery}"
             echo "authorization=${authorization}"
+            echo "recovery_receipt_run_id=${RECOVERY_RECEIPT_RUN_ID}"
           } >> "${GITHUB_OUTPUT}"
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
@@ -147,6 +160,14 @@ jobs:
       - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # stable
         with:
           toolchain: stable
+      - name: Download original publication incident receipt
+        if: needs.preflight.outputs.recovery == 'true'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-publish-receipt
+          path: target/cargo-allow/recovery-receipt
+          run-id: ${{ needs.preflight.outputs.recovery_receipt_run_id }}
+          github-token: ${{ github.token }}
       - name: Release version and artifact preflight
         env:
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && !inputs.publish_recovery && 'true' || 'false' }}
@@ -154,6 +175,7 @@ jobs:
           RELEASE_COMMIT: ${{ needs.preflight.outputs.commit }}
           RELEASE_TREE: ${{ needs.preflight.outputs.tree }}
           RECOVERY: ${{ needs.preflight.outputs.recovery }}
+          RECOVERY_RECEIPT: target/cargo-allow/recovery-receipt/topology-publish.receipt.json
         run: |
           set -euo pipefail
           version="${RELEASE_VERSION}"
@@ -208,10 +230,16 @@ jobs:
               --receipt target/cargo-allow/topology-publish.receipt.json
             exit 0
           fi
-          python3 scripts/release-topology-publisher.py \
-            --mode cargo-allow \
-            --publish \
+          publisher_args=(
+            --mode cargo-allow
+            --publish
+            --authorization "${{ needs.preflight.outputs.authorization }}"
             --receipt target/cargo-allow/topology-publish.receipt.json
+          )
+          if [ "${RECOVERY}" = "true" ]; then
+            publisher_args+=(--recovery-receipt "${RECOVERY_RECEIPT}")
+          fi
+          python3 scripts/release-topology-publisher.py "${publisher_args[@]}"
       - name: Record publish receipt
         if: always()
         run: |
@@ -227,6 +255,7 @@ jobs:
             "candidate_tree": "${{ needs.preflight.outputs.tree }}",
             "recovery": ${{ needs.preflight.outputs.recovery }},
             "authorization": "${{ needs.preflight.outputs.authorization }}",
+            "recovery_receipt_run_id": "${{ needs.preflight.outputs.recovery_receipt_run_id }}",
             "dry_run": ${{ github.event_name == 'workflow_dispatch' && !inputs.publish_recovery }},
             "workflow_run_id": ${{ github.run_id }},
             "auth": "${{ steps.registry_token.outputs.source }}"
