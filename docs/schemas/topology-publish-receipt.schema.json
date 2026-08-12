@@ -5,7 +5,7 @@
   "description": "The exact V2 topology candidate consumed by release-manifest generation.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_id", "schema_version", "mode", "publish", "topology_id", "topology_sha256", "cargo_lock_sha256", "commit", "tree", "rows", "complete"],
+  "required": ["schema_id", "schema_version", "mode", "publish", "topology_id", "topology_sha256", "cargo_lock_sha256", "commit", "tree", "rows", "complete", "incident_state"],
   "properties": {
     "schema_id": { "const": "cargo-allow.topology-publish-receipt.v1" },
     "schema_version": { "const": 1 },
@@ -17,6 +17,8 @@
     "commit": { "type": "string", "minLength": 1 },
     "tree": { "type": "string", "minLength": 1 },
     "complete": { "const": true },
+    "incident_state": { "enum": ["none", "partial", "release_incident"] },
+    "first_irreversible_row": { "type": ["integer", "null"], "minimum": 1 },
     "rows": {
       "type": "array",
       "minItems": 1,

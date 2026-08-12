@@ -94,6 +94,28 @@ fn release_workflow_exists_and_lists_publish_order() {
 }
 
 #[test]
+fn topology_publish_receipt_preserves_incident_recovery_boundary() {
+    let root = workspace_root();
+    let schema = read_workspace_file(&root, "docs/schemas/topology-publish-receipt.schema.json");
+    let publisher = read_workspace_file(&root, RELEASE_TOPOLOGY_PUBLISHER);
+
+    assert!(
+        schema.contains("incident_state")
+            && schema.contains("first_irreversible_row")
+            && schema.contains("release_incident")
+            && schema.contains("partial"),
+        "topology receipt schema should expose bounded incident and recovery state"
+    );
+    assert!(
+        publisher.contains("incident_state")
+            && publisher.contains("first_irreversible_row")
+            && publisher.contains("receipt[\"incident_state\"] = \"partial\"")
+            && publisher.contains("receipt[\"incident_state\"] = \"release_incident\""),
+        "publisher should persist redacted incident state before failing"
+    );
+}
+
+#[test]
 fn release_workflow_rehearsal_skips_secret_lookup_but_publication_fails_closed() {
     let root = workspace_root();
     let workflow = read_workspace_file(&root, RELEASE_WORKFLOW);

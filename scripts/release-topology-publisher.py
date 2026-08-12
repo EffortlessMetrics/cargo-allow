@@ -269,6 +269,8 @@ def main() -> int:
         "tree": git_identity("tree"),
         "rows": [],
         "complete": False,
+        "incident_state": "none",
+        "first_irreversible_row": None,
     }
     write_receipt(args.receipt, receipt)
 
@@ -295,6 +297,7 @@ def main() -> int:
         if observed is not None:
             if observed != local_checksum:
                 row_receipt["state"] = "checksum_conflict"
+                receipt["incident_state"] = "release_incident"
                 write_receipt(args.receipt, receipt)
                 fail(
                     f"registry checksum conflict for {name} {version}: "
@@ -307,12 +310,30 @@ def main() -> int:
         if not args.publish:
             continue
 
-        run(["cargo", "publish", "--dry-run", "-p", name, "--locked"], env=publish_env)
-        run(["cargo", "publish", "-p", name, "--locked"], env=publish_env)
+        try:
+            run(["cargo", "publish", "--dry-run", "-p", name, "--locked"], env=publish_env)
+        except SystemExit:
+            receipt["incident_state"] = "release_incident"
+            write_receipt(args.receipt, receipt)
+            raise
+        if receipt["first_irreversible_row"] is None:
+            receipt["first_irreversible_row"] = row["release_order"]
+        write_receipt(args.receipt, receipt)
+        try:
+            run(["cargo", "publish", "-p", name, "--locked"], env=publish_env)
+        except SystemExit:
+            receipt["incident_state"] = "partial"
+            write_receipt(args.receipt, receipt)
+            raise
         published_checksum = sha256_file(crate_path)
         row_receipt["state"] = "uploaded_waiting_for_registry"
         write_receipt(args.receipt, receipt)
-        wait_for_checksum(name, version, published_checksum)
+        try:
+            wait_for_checksum(name, version, published_checksum)
+        except SystemExit:
+            receipt["incident_state"] = "partial"
+            write_receipt(args.receipt, receipt)
+            raise
         row_receipt["registry_checksum"] = receipt_checksum(published_checksum)
         row_receipt["state"] = "published_verified"
         write_receipt(args.receipt, receipt)
