@@ -303,8 +303,10 @@ if workflow_run_id:
 pathlib.Path(output).write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 PY
 
-# Compute SHA-256 of the manifest
-sha256sum "${output}" | awk '{print $1}' > "${output%.json}.sha256"
+# Compute a sha256sum-compatible checksum record for the manifest.  The
+# release workflow verifies this file from the artifact directory, so record
+# the manifest basename rather than the generator's possibly absolute path.
+sha256sum "${output}" | awk -v file="$(basename "${output}")" '{print $1 "  " file}' > "${output%.json}.sha256"
 
 echo "release-manifest: ${output}"
 echo "sha256: $(cat "${output%.json}.sha256")"

@@ -149,6 +149,12 @@ assert manifest["payload"]["publication_posture"] == "unpublished"
 assert len(manifest["payload"]["package_rows"]) == 10
 PY
 
+manifest_checksum="${work}/complete-manifest.sha256"
+(
+  cd "${work}"
+  sha256sum -c "$(basename "${manifest_checksum}")" >/dev/null
+)
+
 expect_failure env VERSION=9.9.9 REPOSITORY=EffortlessMetrics/cargo-allow \
   TAG=v9.9.9 COMMIT=fixture-commit TREE=fixture-tree AUTH_SOURCE=crates_io_api_token MSRV=1.95 \
   BINARY_PACKAGE_RECEIPT="${output}/release-binary.receipt.json" \
