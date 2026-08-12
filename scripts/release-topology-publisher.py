@@ -211,7 +211,7 @@ def receipt_checksum(value: str | None) -> str | None:
 
 def package_workspace(selected: set[str], packages: dict[str, dict[str, Any]]) -> None:
     command = ["cargo", "package", "--workspace", "--locked", "--no-verify"]
-    for name in sorted(set(packages) - selected):
+    for name in sorted(packages.keys() - selected):
         command.extend(["--exclude", name])
     run(command)
 

@@ -71,8 +71,11 @@ fn release_workflow_exists_and_lists_publish_order() {
         "{RELEASE_TOPOLOGY_PUBLISHER} should derive publication order from the V2 topology"
     );
     assert!(
-        topology_publisher.contains("def package_workspace(selected: set[str]")
-            && topology_publisher.contains("\"--exclude\", name"),
+        topology_publisher.contains("def package_workspace(selected: set[str]"),
+        "publisher should derive workspace packaging from selected rows"
+    );
+    assert!(
+        topology_publisher.contains("\"--exclude\", name"),
         "publisher should exclude non-selected workspace members before row processing"
     );
     assert!(
