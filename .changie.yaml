@@ -3,6 +3,7 @@ changesDir: .changes
 unreleasedDir: .
 changelogPath: CHANGELOG.md
 versionExt: md
+versionFileFormat: '{{.Version}}.md'
 fragmentFileFormat: '{{.Kind}}-{{.Time.Format "20060102-150405"}}'
 versionFormat: '## [{{.VersionNoPrefix}}] - {{.Time.Format "2006-01-02"}}'
 kindFormat: '### {{.Kind}}'
