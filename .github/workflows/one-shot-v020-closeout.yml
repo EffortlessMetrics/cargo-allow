@@ -41,6 +41,7 @@ jobs:
           python3 scripts/one-shot-changie-bootstrap.py
           python3 - <<'PY'
           from pathlib import Path
+
           path = Path('crates/cargo-allow/src/release_prep_tests.rs')
           text = path.read_text(encoding='utf-8')
           old = '''    assert!(
@@ -54,6 +55,17 @@ jobs:
           if old not in text:
               raise SystemExit('release recovery version assertion seam changed')
           path.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          manifest = Path('crates/allow-report/src/artifacts/release_manifest.rs')
+          text = manifest.read_text(encoding='utf-8')
+          old = '        assert_eq!(manifest.crates[9].name, "cargo-allow");'
+          new = '''        assert_eq!(
+              manifest.crates.last().map(|entry| entry.name.as_str()),
+              Some("cargo-allow")
+          );'''
+          if old not in text:
+              raise SystemExit('release manifest mixed-row test seam changed')
+          manifest.write_text(text.replace(old, new, 1), encoding='utf-8')
           PY
       - name: Install and run exact Changie batch
         env:
