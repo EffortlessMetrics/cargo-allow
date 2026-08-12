@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow.shared-package-candidate.v1.schema.json",
+  "title": "SharedPackageCandidateV1",
+  "type": "object",
+  "required": [
+    "schema_id",
+    "schema_version",
+    "mode",
+    "package_only",
+    "publish",
+    "commit",
+    "tree",
+    "cargo_lock_sha256",
+    "topology_id",
+    "topology_sha256",
+    "rows",
+    "complete",
+    "claim_boundary"
+  ],
+  "properties": {
+    "schema_id": { "const": "cargo-allow.shared-package-candidate.v1" },
+    "schema_version": { "const": 1 },
+    "mode": { "const": "shared" },
+    "package_only": { "const": true },
+    "publish": { "const": false },
+    "commit": { "type": "string", "minLength": 1 },
+    "tree": { "type": "string", "minLength": 1 },
+    "cargo_lock_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "topology_id": { "type": "string", "minLength": 1 },
+    "topology_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "rows": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "required": ["logical_id", "name", "version", "family", "release_order", "crate", "local_checksum", "state"],
+        "properties": {
+          "logical_id": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "pattern": "^effortless-[a-z0-9-]+$" },
+          "version": { "const": "0.1.0" },
+          "family": { "const": "shared" },
+          "release_order": { "type": "integer", "minimum": 0 },
+          "crate": { "type": "string", "minLength": 1 },
+          "local_checksum": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "state": { "const": "packaged" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "complete": { "const": true },
+    "claim_boundary": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": true
+}

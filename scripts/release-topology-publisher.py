@@ -36,6 +36,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_TOPOLOGY = ROOT / "policy/product-package-topology-v2.toml"
 DEFAULT_RECEIPT = ROOT / "target/cargo-allow/topology-publish.receipt.json"
 FAMILY_MODES = {
+    "shared": {"shared"},
     "namespace": {"shared", "cargo-intent", "cargo-proof"},
     "cargo-allow": {"shared", "cargo-allow"},
     "all": {"shared", "cargo-intent", "cargo-proof", "cargo-allow"},
@@ -361,13 +362,16 @@ def main() -> int:
     packages = cargo_packages()
     validate_rows(rows, packages)
     package_workspace({row["cargo_package_name"] for row in rows}, packages)
-    if args.package_only:
-        return 0
     receipt: dict[str, Any] = {
-        "schema_id": "cargo-allow.topology-publish-receipt.v1",
+        "schema_id": (
+            "cargo-allow.shared-package-candidate.v1"
+            if args.mode == "shared" and args.package_only
+            else "cargo-allow.topology-publish-receipt.v1"
+        ),
         "schema_version": 1,
         "mode": args.mode,
         "publish": args.publish,
+        "package_only": args.package_only,
         "authorization": authorization,
         "topology_id": topology["topology_id"],
         "topology_sha256": sha256_text(topology_path),
@@ -378,6 +382,11 @@ def main() -> int:
         "complete": False,
         "incident_state": "none",
         "first_irreversible_row": None,
+        "claim_boundary": (
+            "Exact shared package bytes and metadata only; no registry, support, or publication claim."
+            if args.package_only
+            else "Topology-derived publication evidence; no publication occurs unless --publish is set."
+        ),
     }
     if recovery_receipt is not None:
         receipt["recovery_receipt"] = "validated"
@@ -409,6 +418,22 @@ def main() -> int:
                 receipt["rows"].append(row_receipt)
                 write_receipt(args.receipt, receipt)
                 continue
+        if args.package_only:
+            receipt["rows"].append(
+                {
+                    "logical_id": row["logical_id"],
+                    "name": name,
+                    "version": version,
+                    "family": row["product_family"],
+                    "release_order": row["release_order"],
+                    "crate": str(crate_path.relative_to(ROOT)),
+                    "local_checksum": local_checksum,
+                    "state": "packaged",
+                }
+            )
+            write_receipt(args.receipt, receipt)
+            continue
+
         observed = registry_checksum(name, version)
         row_receipt: dict[str, Any] = {
             "logical_id": row["logical_id"],

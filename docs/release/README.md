@@ -67,6 +67,21 @@ the ten cargo-allow packages plus `effortless-repo-protocol`,
 bash scripts/exact-candidate-package-set.sh
 ```
 
+The four shared `0.1.0` packages have a separate non-publishing rehearsal:
+
+```bash
+python scripts/release-topology-publisher.py \
+  --mode shared \
+  --package-only \
+  --receipt target/cargo-allow/shared-package-candidate.receipt.json
+```
+
+This writes `SharedPackageCandidateV1`
+(`cargo-allow.shared-package-candidate.v1`) with exact commit, tree,
+`Cargo.lock`, topology, package-byte digests, and the four selected rows. It
+does not query crates.io or upload a crate; publication remains a separate
+authorized operation.
+
 That harness packages the shared
 [`candidate-crate-set.toml`](../dogfood/fixtures/release/candidate-crate-set.toml),
 extracts each `.crate`, warms externals via patched `cargo fetch`, assembles a

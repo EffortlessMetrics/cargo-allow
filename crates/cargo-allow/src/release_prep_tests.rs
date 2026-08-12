@@ -86,6 +86,20 @@ fn release_workflow_exists_and_lists_publish_order() {
         "{RELEASE_TOPOLOGY_PUBLISHER} should keep namespace and cargo-allow membership distinct"
     );
     assert!(
+        topology_publisher.contains("\"shared\": {\"shared\"}")
+            && topology_publisher.contains("cargo-allow.shared-package-candidate.v1"),
+        "shared package qualification should have a dedicated non-publishing candidate receipt"
+    );
+    let shared_schema = read_workspace_file(
+        &root,
+        "docs/schemas/shared-package-candidate.v1.schema.json",
+    );
+    assert!(
+        shared_schema.contains("cargo-allow.shared-package-candidate.v1")
+            && shared_schema.contains("effortless-[a-z0-9-]+"),
+        "shared package candidate schema should constrain the four effortless package rows"
+    );
+    assert!(
         topology_publisher.contains("\"cargo-allow\": {\"shared\", \"cargo-allow\"}"),
         "cargo-allow release mode should include its topology-approved shared dependencies"
     );
