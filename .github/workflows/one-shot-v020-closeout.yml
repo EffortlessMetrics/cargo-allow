@@ -1,4 +1,5 @@
-# Retry after matching the current recovery-tag contract.
+# Clean rerun: the durable candidate already passed every proof; only its final
+# push raced an earlier branch edit. Do not mutate this branch while this runs.
 # Bootstrap the historical changelog into Changie-owned version files before
 # the final native batch/merge. This workflow removes itself before commit.
 name: One-shot v0.2.0 release closeout
