@@ -181,15 +181,14 @@ Complete these checks before the first tag-triggered automated release:
 
 | Prerequisite | Verification |
 | --- | --- |
-| Trusted Publishing on all thirteen crates | Each crate in [Publish order](#publish-order) has crates.io **Settings → Trusted Publishing** with owner `EffortlessMetrics`, repo `cargo-allow`, workflow `release.yml` |
+| GitHub Actions crates.io token | Repository secret `CARGO_REGISTRY_TOKEN` is available to the guarded release workflow; its value is never printed or retained |
 | Prior manual publish per crate | `0.1.0`–`0.1.9` manual publishes satisfy crates.io's first-publish requirement |
 | Workflow dry-run green on `main` | **Actions → Release → Run workflow**; preflight passes and publish runs `cargo publish --dry-run` only ([Manual dry-run](#manual-dry-run)) |
-| Token fallback documented | `CARGO_REGISTRY_TOKEN` secret exists only when OIDC is not yet configured for every crate ([Token fallback](#token-fallback-migration-only)) |
 | Release prep merged | Version bump, `docs/release/X.Y.Z.md`, and `docs/release/github/vX.Y.Z.md` on `main` before tagging |
 | No-new guard green on release head | `cargo-allow check --mode no-new` receipt on the commit to tag |
 
-Do not push a version tag until Trusted Publishing or an approved token fallback
-is verified and a recent workflow_dispatch dry-run is green.
+Do not push a version tag until the guarded token-backed workflow and a recent
+non-publishing workflow_dispatch rehearsal are green.
 
 ## Canonical Path
 
@@ -205,12 +204,12 @@ is verified and a recent workflow_dispatch dry-run is green.
    ```
 
 3. The [Release workflow](../../.github/workflows/release.yml) runs:
-   - **preflight** — `fmt`, `clippy`, `cargo test --workspace`,
-     `cargo package --workspace --locked`, and the default no-new guard.
+   - **preflight** — `fmt`, `clippy`, `cargo test --workspace`, the
+     topology-derived candidate preflight, and the default no-new guard.
    - **publish** — runs [release version preflight](../../scripts/release-version-preflight.sh)
      (tag/workspace alignment, internal dependency versions, CHANGELOG section,
      and release-record files; release-record checks skip on workflow_dispatch),
-     then publishes the thirteen workspace crates to crates.io in dependency order
+     then publishes the topology-derived cargo-allow rows to crates.io in dependency order
      (dry-run before each upload).
    - **install-smoke** *(tag pushes only)* — after `cargo-allow` is published,
      runs [release install smoke](../../scripts/release-install-smoke.sh):
@@ -227,23 +226,11 @@ is verified and a recent workflow_dispatch dry-run is green.
 
 ## Publish Order
 
-Internal crates must publish in dependency order:
-
-```text
-1. allow-core
-2. allow-policy
-3. allow-inventory
-4. allow-files
-5. allow-rust
-6. allow-match
-7. allow-report
-8. allow-policy-legacy
-9. repo-snapshot
-10. allow-diff
-11. repo-protocol
-12. repo-edit
-13. cargo-allow
-```
+The release publisher derives the exact rows and dependency order from
+`policy/product-package-topology-v2.toml`. The expected cargo-allow candidate
+contains the ten cargo-allow-family packages plus the selected shared packages;
+the count is a receipt result, not a maintained list. Each row carries its own
+package version, crate digest, and registry checksum.
 
 Each crate is dry-run verified immediately before upload. The workflow waits for
 crates.io index visibility of the **exact published version** (up to 30 attempts,
@@ -253,69 +240,28 @@ rather than a crate-name-only `cargo search` grep.
 
 ### Verifying publish order locally
 
-Before tagging, confirm packaging and dry-run publish for the full workspace:
+Before tagging, confirm the topology-derived candidate and dry-run publisher:
 
 ```bash
-cargo package --workspace --locked
-for crate in allow-core allow-policy allow-inventory allow-files allow-rust \
-  allow-match allow-report allow-policy-legacy repo-snapshot allow-diff repo-protocol repo-edit \
-  cargo-allow; do
-  cargo publish --dry-run -p "${crate}" --locked
-done
+python3 scripts/release-topology-publisher.py \
+  --mode cargo-allow \
+  --receipt target/cargo-allow/topology-publish.receipt.json
 ```
 
-The [release workflow](../../.github/workflows/release.yml) uses the same crate
-list and order. A failure mid-publish leaves earlier crates on crates.io; use
+The [release workflow](../../.github/workflows/release.yml) consumes the same
+topology-derived rows. A failure mid-publish leaves earlier crates on crates.io; use
 [Recovery and yank](#recovery-and-yank) before retrying.
 
-## crates.io Trusted Publishing (Preferred)
+## crates.io API token publication
 
-The release workflow uses [crates.io Trusted
-Publishing](https://crates.io/docs/trusted-publishing) via
-`rust-lang/crates-io-auth-action@v1` and `permissions.id-token: write`.
+The guarded GitHub Actions workflows authenticate to crates.io with the
+repository secret `CARGO_REGISTRY_TOKEN`, exposed only as the
+`CARGO_REGISTRY_TOKEN` environment variable. The token value is never printed,
+hashed, encoded, placed in a step output, or retained in a receipt. Receipts
+record only `auth_source = "crates_io_api_token"` and the workflow identity.
 
-Configure once per published crate on crates.io (**Settings → Trusted
-Publishing**):
-
-| Field | Value |
-| --- | --- |
-| Repository owner | `EffortlessMetrics` |
-| Repository name | `cargo-allow` |
-| Workflow filename | `release.yml` |
-| Environment | *(optional)* leave blank unless you add a GitHub `release` environment |
-
-Trusted Publishing requires at least one prior manual publish for each crate.
-The `0.1.0`–`0.1.9` releases were published manually and satisfy that
-prerequisite.
-
-Configure Trusted Publishing on **each** published crate:
-
-| # | Crate | crates.io settings |
-| --- | --- | --- |
-| 1 | `allow-core` | Settings → Trusted Publishing |
-| 2 | `allow-policy` | Settings → Trusted Publishing |
-| 3 | `allow-inventory` | Settings → Trusted Publishing |
-| 4 | `allow-files` | Settings → Trusted Publishing |
-| 5 | `allow-rust` | Settings → Trusted Publishing |
-| 6 | `allow-match` | Settings → Trusted Publishing |
-| 7 | `allow-report` | Settings → Trusted Publishing |
-| 8 | `allow-policy-legacy` | Settings → Trusted Publishing |
-| 9 | `repo-snapshot` | Settings → Trusted Publishing |
-| 10 | `allow-diff` | Settings → Trusted Publishing |
-| 11 | `repo-protocol` | Settings → Trusted Publishing |
-| 12 | `repo-edit` | Settings → Trusted Publishing |
-| 13 | `cargo-allow` | Settings → Trusted Publishing |
-
-All thirteen rows use the same GitHub binding: owner `EffortlessMetrics`, repository
-`cargo-allow`, workflow filename `release.yml`. Leave **Environment** blank
-unless the workflow is later scoped to a GitHub `release` environment.
-
-## Token Fallback (Migration Only)
-
-If Trusted Publishing is not yet configured for every crate, add a repository
-secret named `CARGO_REGISTRY_TOKEN`. The publish job uses it when OIDC exchange
-is unavailable. Remove the secret after Trusted Publishing is verified for all
-thirteen crates.
+Trusted Publishing/OIDC is optional post-release hardening and is not a
+precondition for the 0.2.0 publication path.
 
 Do not commit API tokens to the repository.
 
@@ -329,12 +275,10 @@ in the `0.1.10` plan.
 2. Leave the branch selector on `main` and start the run.
 3. Confirm the **preflight** job passes (`fmt`, `clippy`, `test`, `package`,
    no-new guard).
-4. Confirm the **publish** job authenticates (`auth: oidc` in
-   `release-publish.receipt.json` when Trusted Publishing is configured, or
-   `auth: secret` when using `CARGO_REGISTRY_TOKEN`).
-5. Confirm the publish job logs workspace packaging validation from preflight and
-   a single `allow-core` `cargo publish --dry-run` (dependent crate dry-runs
-   require index visibility and are skipped on workflow_dispatch).
+4. Confirm the **publish** job authenticates with
+   `auth: crates_io_api_token` in `release-publish.receipt.json`.
+5. Confirm the publish job logs topology-derived candidate validation and
+   performs no upload during the rehearsal.
 6. Confirm no real `cargo publish` upload occurs.
 7. Download the `release-publish-receipt` artifact and record the workflow run
    id in the release record or plan closeout.

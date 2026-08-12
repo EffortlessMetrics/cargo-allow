@@ -1,0 +1,5 @@
+kind: Fixed
+body: >-
+  Align release workflows with the token-backed mixed-version publication
+  boundary: topology-derived preflight uses CARGO_REGISTRY_TOKEN, and namespace
+  publication no longer tags or dispatches the cargo-allow release.

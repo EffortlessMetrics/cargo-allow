@@ -22,7 +22,7 @@ candidate_version = "0.2.0"
 name = "crates.io"
 available = true
 command = "cargo install cargo-allow --version 0.1.11 --locked"
-evidence = "release.yml publishes via Trusted Publishing; scripts/release-install-smoke.sh verifies the published crate installs"
+evidence = "release.yml publishes with the GitHub Actions CARGO_REGISTRY_TOKEN secret; scripts/release-install-smoke.sh verifies the published crate installs"
 
 [[package.metadata.cargo-allow.reference.channel]]
 name = "prebuilt-binary-archive"

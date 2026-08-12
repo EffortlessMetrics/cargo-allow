@@ -12,6 +12,7 @@ const CANDIDATE_RELEASE_VERSION: &str = "0.2.0";
 const PACKAGE_TOPOLOGY: &str = "policy/product-package-topology-v2.toml";
 
 const RELEASE_WORKFLOW: &str = ".github/workflows/release.yml";
+const AUTHORIZED_RELEASE_WORKFLOW: &str = ".github/workflows/release-authorized.yml";
 const RELEASE_DOC: &str = "docs/release/README.md";
 const RELEASE_TOPOLOGY_PUBLISHER: &str = "scripts/release-topology-publisher.py";
 
@@ -37,8 +38,10 @@ fn release_workflow_exists_and_lists_publish_order() {
         "{RELEASE_WORKFLOW} should trigger on version tags"
     );
     assert!(
-        workflow.contains("rust-lang/crates-io-auth-action@"),
-        "{RELEASE_WORKFLOW} should authenticate with crates.io Trusted Publishing"
+        workflow.contains("secrets.CARGO_REGISTRY_TOKEN")
+            && workflow.contains("source=crates_io_api_token")
+            && !workflow.contains("crates-io-auth-action@"),
+        "{RELEASE_WORKFLOW} should use the token-backed crates.io authentication contract"
     );
     assert!(
         release_doc.contains(RELEASE_WORKFLOW),
@@ -57,6 +60,14 @@ fn release_workflow_exists_and_lists_publish_order() {
             && topology_publisher.contains("load_rows")
             && topology_publisher.contains("release_order"),
         "{RELEASE_TOPOLOGY_PUBLISHER} should derive publication order from the V2 topology"
+    );
+
+    let authorized = read_workspace_file(&root, AUTHORIZED_RELEASE_WORKFLOW);
+    assert!(
+        authorized.contains("--mode namespace")
+            && !authorized.contains("Push exact v0.2.0 tag")
+            && !authorized.contains("gh workflow run release.yml"),
+        "{AUTHORIZED_RELEASE_WORKFLOW} must stop after namespace publication"
     );
 
     assert!(
