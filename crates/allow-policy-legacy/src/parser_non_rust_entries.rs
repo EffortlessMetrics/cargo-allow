@@ -1,7 +1,7 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use toml::Value;
 
-use crate::fields::{legacy_evidence, raw_string_field, string_field};
+use crate::fields::{raw_string_field, string_field, string_or_array_field};
 use crate::parser_support::normalize_legacy_date_field;
 use crate::parser_support::normalize_legacy_expires;
 use crate::types::LegacyNonRustRule;
@@ -114,11 +114,21 @@ fn parse_non_rust_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyNo
         owner: string_field(table, "owner").unwrap_or_default(),
         classification,
         reason,
-        evidence: legacy_evidence(table),
+        evidence: non_rust_evidence(table),
         created: normalize_legacy_date_field(string_field(table, "created")),
         review_after: normalize_legacy_date_field(string_field(table, "review_after")),
         expires: normalize_legacy_expires(string_field(table, "expires")),
     })
+}
+
+fn non_rust_evidence(table: &toml::Table) -> Vec<String> {
+    let mut evidence = string_or_array_field(table, "evidence");
+    for reference in string_or_array_field(table, "covered_by") {
+        if !evidence.contains(&reference) {
+            evidence.push(reference);
+        }
+    }
+    evidence
 }
 
 fn validate_non_rust_entry_shape(index: usize, table: &toml::Table) -> CargoAllowResult<()> {
@@ -246,6 +256,27 @@ classification = "documentation"
             std::panic::panic_any(format!("classification alias parses: {err}"))
         });
         assert_eq!(rules[0].classification, "documentation");
+
+        let dual_evidence = parse_table(
+            r#"
+[[allow]]
+id = "non-rust-dual-evidence"
+path = "SECURITY.md"
+evidence = ["test:explicit", "issue:#2469"]
+covered_by = ["issue:#2469", "spec:NON-RUST-DUAL"]
+"#,
+        );
+        let rules = parse_non_rust_rules(&dual_evidence).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("dual evidence fields parse: {err}"))
+        });
+        assert_eq!(
+            rules[0].evidence,
+            vec![
+                "test:explicit".to_string(),
+                "issue:#2469".to_string(),
+                "spec:NON-RUST-DUAL".to_string(),
+            ]
+        );
     }
 
     #[test]

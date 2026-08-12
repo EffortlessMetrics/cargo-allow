@@ -43,7 +43,8 @@ the real binary against committed malformed, unsupported-field, conflicting
 target, duplicate-ID, and missing-evidence fixtures. Invalid inputs retain the
 legacy filename and best available entry line in their diagnostic; missing
 evidence becomes explicit TODO debt in schema-checked migrate and worklist
-artifacts, while compat and canonical governed paths remain equal. This is
+artifacts, while dual `evidence`/`covered_by` references merge without loss or
+duplicates and compat and canonical governed paths remain equal. This is
 in-repository fixture evidence only, not external brownfield adoption proof.
 
 ## Migration

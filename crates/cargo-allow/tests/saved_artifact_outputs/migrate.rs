@@ -703,6 +703,8 @@ fn saved_migrate_non_rust_negative_controls_fail_closed_or_surface_debt() {
         assert_non_rust_fixture_rejected(fixture_name, diagnostic, line);
     }
 
+    assert_non_rust_dual_evidence_preserved();
+
     let fixture = SourceTreeFixture::new("saved-migrate-non-rust-missing-evidence");
     let legacy_dir = fixture.root.join("legacy-policy");
     fs::create_dir_all(&legacy_dir)
@@ -859,6 +861,52 @@ fn saved_migrate_non_rust_negative_controls_fail_closed_or_surface_debt() {
             .unwrap_or_else(|err| std::panic::panic_any(format!("read rerun summary: {err}"))),
         summary_text,
         "unchanged missing-evidence migration must reproduce summary bytes"
+    );
+}
+
+fn assert_non_rust_dual_evidence_preserved() {
+    let fixture = SourceTreeFixture::new("saved-migrate-non-rust-dual-evidence");
+    let legacy_dir = fixture.root.join("legacy-policy");
+    fs::create_dir_all(&legacy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create legacy policy dir: {err}")));
+    let legacy_policy = legacy_dir.join("non-rust-allowlist.toml");
+    copy_non_rust_negative_fixture("non-rust-dual-evidence.toml", &legacy_policy);
+    write_fixture_doc(&fixture.root, "docs/dual-evidence.md");
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let migrated_policy = artifact_dir.join("allow.migrated.toml");
+    let migrate_summary = artifact_dir.join("migrate-summary.json");
+    run_cargo_allow(&[
+        "migrate",
+        "--root",
+        fixture.root_str(),
+        "--repo-policy",
+        path_arg(&legacy_dir),
+        "--out",
+        path_arg(&migrated_policy),
+        "--summary-format",
+        "json",
+        "--summary-output",
+        path_arg(&migrate_summary),
+    ]);
+    assert_policy_output(&migrated_policy);
+    assert_policy_migration_artifact_with_inventory(
+        &migrate_summary,
+        allow_report::MIGRATE_SCHEMA_ID,
+        "migrate",
+        "filesystem_fallback",
+    );
+    let cfg = allow_policy::load_policy(&migrated_policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("load migrated policy: {err}")));
+    let entry = migrated_entry_by_path(&cfg, Path::new("docs/dual-evidence.md"));
+    assert_eq!(
+        entry.evidence,
+        vec![
+            "test:explicit".to_string(),
+            "issue:#2469".to_string(),
+            "spec:NON-RUST-DUAL".to_string(),
+        ],
+        "dual legacy evidence fields must merge stably without duplicates"
     );
 }
 
