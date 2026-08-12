@@ -92,8 +92,8 @@ evidence = "release.yml publishes with the GitHub Actions CARGO_REGISTRY_TOKEN s
 [[channel]]
 name = "prebuilt-binary-archive"
 available = false
-evidence = "release.yml attaches a ReleaseManifestV1 and its attestation, not binary archives"
-note = "Tracked by #2464 (Linux) and #2474 (Windows)."
+evidence = "release.yml attaches the topology-derived ReleaseManifestV2, its attestation, and the Linux binary archive/checksum artifacts"
+note = "The channel remains unavailable until the installed archive experience is separately qualified; tracked by #2464 (Linux) and #2474 (Windows)."
 
 [[channel]]
 name = "cargo-binstall"
