@@ -26,7 +26,8 @@ These changes are failing policy-posture signals:
 - `baseline_debt_normalized`: generated baseline debt is made to look reviewed
   without the expected review work.
 - `requirement_loosened`: policy requirements such as owner, reason,
-  classification, or lifecycle enforcement are relaxed.
+  classification, lifecycle enforcement, or
+  `requirements.unsafe.verified_evidence_required` are relaxed.
 - `workspace_ignored_added`: source-tree inventory scopes are hidden from the
   scan.
 
@@ -76,6 +77,9 @@ cargo-allow reports precision loss separately from ordinary text edits.
 cargo-allow validates local evidence references it can see, such as `doc:`,
 `spec:`, `adr:`, `ripr:`, `unsafe-review:`, and `coverage:` paths. It does not
 run tests, ripr, unsafe-review, coverage tools, GitHub APIs, or network checks.
+The optional `[requirements.unsafe] verified_evidence_required = true` setting
+requires at least one such local-file reference for unsafe entries;
+traceability-only references remain supplementary and unresolved.
 
 ## Related Docs
 

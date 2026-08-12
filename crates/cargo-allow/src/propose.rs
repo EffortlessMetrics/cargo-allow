@@ -71,6 +71,16 @@ fn next_allow_id(entries: &[allow_core::AllowEntry]) -> String {
     format!("allow-{:04}", highest + 1)
 }
 
+const MULTIPLE_UNRECEIPTABLE_REASONS: &str = "multiple policy requirements forbid generated entries; inspect each finding and the active requirements";
+
+fn record_unreceiptable_reason(current: &mut Option<&'static str>, next: &'static str) {
+    match *current {
+        None => *current = Some(next),
+        Some(existing) if existing != next => *current = Some(MULTIPLE_UNRECEIPTABLE_REASONS),
+        Some(_) => {}
+    }
+}
+
 pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
     require_json_summary_output(args.summary_format, args.summary_output.as_deref())?;
     let cwd = current_dir()?;
@@ -168,7 +178,7 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
             // stays `new` in `check`, and the summary reports the skip.
             if let Some(reason) = generated_entry_rejection(&proposed.requirements, &entry) {
                 unreceiptable_new_findings += 1;
-                unreceiptable_reason.get_or_insert(reason);
+                record_unreceiptable_reason(&mut unreceiptable_reason, reason);
                 continue;
             }
             if finding.kind == FindingKind::Unsafe {

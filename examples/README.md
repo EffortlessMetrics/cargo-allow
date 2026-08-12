@@ -46,6 +46,7 @@ stale_entries_fail = true
 
 [requirements.unsafe]
 evidence_required = true
+verified_evidence_required = true
 safety_comment_required = false
 ```
 
