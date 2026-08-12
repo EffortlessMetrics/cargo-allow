@@ -17,6 +17,7 @@ const RELEASE_WORKFLOW: &str = ".github/workflows/release.yml";
 const AUTHORIZED_RELEASE_WORKFLOW: &str = ".github/workflows/release-authorized.yml";
 const RELEASE_DOC: &str = "docs/release/README.md";
 const RELEASE_TOPOLOGY_PUBLISHER: &str = "scripts/release-topology-publisher.py";
+const RELEASE_TOPOLOGY_CHECKSUM_TEST: &str = "scripts/test-release-topology-publisher.py";
 
 const CANDIDATE_RELEASE_DOC: &str = "docs/release/0.2.0.md";
 const CANDIDATE_RELEASE_RECORD: &str = include_str!("../../../docs/release/0.2.0.md");
@@ -100,8 +101,18 @@ fn release_workflow_exists_and_lists_publish_order() {
     assert!(
         receipt_schema.contains("cargo-allow.topology-publish-receipt.v1")
             && receipt_schema.contains("logical_id")
-            && receipt_schema.contains("schema_version"),
+            && receipt_schema.contains("schema_version")
+            && receipt_schema.contains("^sha256:[0-9a-f]{64}$"),
         "topology publish receipt should have a machine-readable contract"
+    );
+    let checksum_test = read_workspace_file(&root, RELEASE_TOPOLOGY_CHECKSUM_TEST);
+    assert!(
+        topology_publisher.contains("def checksum_digest")
+            && topology_publisher.contains("def canonical_receipt_checksum")
+            && topology_publisher.contains("def receipt_row")
+            && checksum_test.contains("recovered_already_published_exact")
+            && checksum_test.contains("sha256:sha256:"),
+        "topology receipt checksums should be canonicalized and tested across recovery"
     );
 
     let authorized = read_workspace_file(&root, AUTHORIZED_RELEASE_WORKFLOW);

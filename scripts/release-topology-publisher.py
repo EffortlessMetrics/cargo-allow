@@ -40,6 +40,7 @@ FAMILY_MODES = {
     "cargo-allow": {"shared", "cargo-allow"},
     "all": {"shared", "cargo-intent", "cargo-proof", "cargo-allow"},
 }
+CHECKSUM_PREFIX = "sha256:"
 
 
 def fail(message: str) -> NoReturn:
@@ -196,19 +197,63 @@ def crate_api(name: str, version: str) -> dict[str, Any] | None:
     fail(f"crates.io lookup exhausted retries for {name} {version}")
 
 
+def checksum_digest(value: Any, field: str) -> str:
+    if not isinstance(value, str) or len(value) != 64 or any(
+        character not in "0123456789abcdef" for character in value
+    ):
+        fail(f"{field} must be exactly 64 lowercase hexadecimal characters")
+    return value
+
+
+def receipt_checksum(value: str | None, *, field: str) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        fail(f"{field} must be a checksum string")
+    digest = value[len(CHECKSUM_PREFIX) :] if value.startswith(CHECKSUM_PREFIX) else value
+    return f"{CHECKSUM_PREFIX}{checksum_digest(digest, field)}"
+
+
+def canonical_receipt_checksum(value: Any, field: str) -> str:
+    if not isinstance(value, str) or not value.startswith(CHECKSUM_PREFIX):
+        fail(f"{field} must use the canonical sha256:<64 lowercase hex> form")
+    canonical = receipt_checksum(value, field=field)
+    if canonical != value:
+        fail(f"{field} must use the canonical sha256:<64 lowercase hex> form")
+    return canonical
+
+
+def receipt_row(
+    row: dict[str, Any],
+    *,
+    crate_path: Path,
+    local_checksum: str,
+    registry_checksum: str | None,
+    state: str,
+) -> dict[str, Any]:
+    name = row["cargo_package_name"]
+    return {
+        "logical_id": row["logical_id"],
+        "name": name,
+        "version": row["package_version"],
+        "family": row["product_family"],
+        "release_order": row["release_order"],
+        "crate": str(crate_path.relative_to(ROOT)),
+        "local_checksum": receipt_checksum(local_checksum, field=f"{name} local checksum"),
+        "registry_checksum": receipt_checksum(
+            registry_checksum, field=f"{name} registry checksum"
+        ),
+        "state": state,
+    }
+
+
 def registry_checksum(name: str, version: str) -> str | None:
     payload = crate_api(name, version)
     if payload is None:
         return None
     version_payload = payload.get("version") or {}
     checksum = version_payload.get("checksum")
-    if not isinstance(checksum, str) or len(checksum) != 64:
-        fail(f"crates.io returned no bounded checksum for {name} {version}")
-    return checksum
-
-
-def receipt_checksum(value: str | None) -> str | None:
-    return None if value is None else f"sha256:{value}"
+    return checksum_digest(checksum, f"crates.io checksum for {name} {version}")
 
 
 def package_workspace(selected: set[str], packages: dict[str, dict[str, Any]]) -> None:
@@ -283,6 +328,11 @@ def recovery_rows(receipt: dict[str, Any]) -> dict[tuple[str, str], dict[str, An
         version = row.get("version")
         if not isinstance(name, str) or not isinstance(version, str):
             fail("recovery receipt package rows require name and version")
+        canonical_receipt_checksum(row.get("local_checksum"), f"{name} local checksum")
+        if row.get("registry_checksum") is not None:
+            canonical_receipt_checksum(
+                row.get("registry_checksum"), f"{name} registry checksum"
+            )
         key = (name, version)
         if key in result:
             fail(f"recovery receipt contains duplicate package row {name} {version}")
@@ -389,38 +439,33 @@ def main() -> int:
         name = row["cargo_package_name"]
         version = row["package_version"]
         crate_path, local_checksum = package_crate(name, version)
+        local_receipt_checksum = receipt_checksum(
+            local_checksum, field=f"{name} local checksum"
+        )
         prior = prior_rows.get((name, version))
         if prior is not None:
-            if prior.get("local_checksum") != local_checksum:
+            if prior.get("local_checksum") != local_receipt_checksum:
                 fail(f"recovery candidate bytes differ for {name} {version}")
             prior_state = prior.get("state")
             if prior_state in {"verified_existing", "published_verified"}:
-                row_receipt = {
-                    "logical_id": row["logical_id"],
-                    "name": name,
-                    "version": version,
-                    "family": row["product_family"],
-                    "release_order": row["release_order"],
-                    "crate": str(crate_path.relative_to(ROOT)),
-                    "local_checksum": local_checksum,
-                    "registry_checksum": prior.get("registry_checksum"),
-                    "state": "recovered_already_published_exact",
-                }
+                row_receipt = receipt_row(
+                    row,
+                    crate_path=crate_path,
+                    local_checksum=local_receipt_checksum,
+                    registry_checksum=prior.get("registry_checksum"),
+                    state="recovered_already_published_exact",
+                )
                 receipt["rows"].append(row_receipt)
                 write_receipt(args.receipt, receipt)
                 continue
         observed = registry_checksum(name, version)
-        row_receipt: dict[str, Any] = {
-            "logical_id": row["logical_id"],
-            "name": name,
-            "version": version,
-            "family": row["product_family"],
-            "release_order": row["release_order"],
-            "crate": str(crate_path.relative_to(ROOT)),
-            "local_checksum": local_checksum,
-            "registry_checksum": receipt_checksum(observed),
-            "state": "missing" if observed is None else "already_visible",
-        }
+        row_receipt: dict[str, Any] = receipt_row(
+            row,
+            crate_path=crate_path,
+            local_checksum=local_receipt_checksum,
+            registry_checksum=observed,
+            state="missing" if observed is None else "already_visible",
+        )
         receipt["rows"].append(row_receipt)
         write_receipt(args.receipt, receipt)
 
@@ -464,7 +509,9 @@ def main() -> int:
             receipt["incident_state"] = "partial"
             write_receipt(args.receipt, receipt)
             raise
-        row_receipt["registry_checksum"] = receipt_checksum(published_checksum)
+        row_receipt["registry_checksum"] = receipt_checksum(
+            published_checksum, field=f"{name} registry checksum"
+        )
         row_receipt["state"] = "published_verified"
         write_receipt(args.receipt, receipt)
 

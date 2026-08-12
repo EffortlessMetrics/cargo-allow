@@ -61,11 +61,20 @@ expect_failure() {
   fi
 }
 
+python3 scripts/test-release-topology-publisher.py
+
 topology_receipt="${work}/topology-publish.receipt.json"
-python3 - "${topology_receipt}" "${ROOT}/docs/dogfood/fixtures/release/candidate-crate-set.toml" <<'PY'
+python3 - "${topology_receipt}" "${ROOT}/docs/dogfood/fixtures/release/candidate-crate-set.toml" "${ROOT}/scripts/release-topology-publisher.py" <<'PY'
 import json
+import importlib.util
 import sys
 import tomllib
+
+spec = importlib.util.spec_from_file_location("release_topology_publisher", sys.argv[3])
+if spec is None or spec.loader is None:
+    raise SystemExit("could not load release topology publisher")
+publisher = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(publisher)
 
 rows = []
 with open(sys.argv[2], "rb") as source:
@@ -76,7 +85,7 @@ for order, name in enumerate(candidate, 1):
         "name": name,
         "version": "0.1.0" if name.startswith("effortless-") else "9.9.9",
         "release_order": order,
-        "local_checksum": "sha256:" + ("a" * 64),
+        "local_checksum": publisher.receipt_checksum("a" * 64, field="fixture local checksum"),
         "registry_checksum": None,
     })
 json.dump({
