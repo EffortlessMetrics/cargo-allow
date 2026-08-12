@@ -27,7 +27,7 @@ evidence = "release.yml publishes with the GitHub Actions CARGO_REGISTRY_TOKEN s
 [[package.metadata.cargo-allow.reference.channel]]
 name = "prebuilt-binary-archive"
 available = false
-evidence = "release.yml attaches a ReleaseManifestV1 and its attestation, not binary archives"
+evidence = "release.yml attaches the topology-derived ReleaseManifestV2, its attestation, and the Linux binary archive/checksum artifacts"
 
 [[package.metadata.cargo-allow.reference.channel]]
 name = "cargo-binstall"
