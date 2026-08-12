@@ -38,6 +38,16 @@ bind every package and build artifact by digest and prove source-checkout
 isolation. Missing, stale, contradictory, or incomplete evidence prevents a
 stage-specific receipt from being written.
 
+The evidence manifest, ownership receipt, and independent build/package
+receipt use the closed schemas in
+[`docs/schemas/`](../schemas/README.md). Unknown or missing fields are rejected.
+Before runtime execution, after execution, during receipt assembly, and again
+immediately before output, the adapter rejects index, worktree, or relevant
+untracked changes to the V2 policies, workspace manifests, stage implementation
+sources, command adapter, and parity fixtures that produced the evidence.
+Generated evidence and package/build artifacts under `target/` remain outputs,
+not source-identity inputs.
+
 ## Runtime evidence command
 
 `cargo allow extraction-parity --stage all --output

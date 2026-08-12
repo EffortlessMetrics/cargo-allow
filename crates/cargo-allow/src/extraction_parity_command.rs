@@ -45,6 +45,16 @@ pub(crate) struct ParityArgs {
 
 pub(crate) fn cmd_parity(args: &ParityArgs) -> CargoAllowResult<()> {
     let root = resolve_source_tree_root(args.root.root.as_deref(), current_dir()?)?;
+    let registry = load_registry(&root)?;
+    let initial_cutover_source_inputs = if args.cutover_evidence.is_some() {
+        let stage = requested_extraction_stage(args.stage)?;
+        let ledger = load_ledger(&root)?;
+        let ownership = derive_ownership(&root, &registry, &ledger, stage)?;
+        ensure_cutover_inputs_clean(&root, &ownership.source_input_paths)?;
+        Some(ownership.source_input_paths)
+    } else {
+        None
+    };
     let initial_source_identity = source_identity(&root)?;
     let mut records = Vec::new();
 
@@ -83,8 +93,10 @@ pub(crate) fn cmd_parity(args: &ParityArgs) -> CargoAllowResult<()> {
             "source Git commit/tree changed during parity execution",
         ));
     }
+    if let Some(source_input_paths) = initial_cutover_source_inputs.as_deref() {
+        ensure_cutover_inputs_clean(&root, source_input_paths)?;
+    }
 
-    let registry = load_registry(&root)?;
     let expected_case_ids: BTreeSet<_> = registry
         .case
         .iter()
@@ -179,8 +191,9 @@ pub(crate) fn cmd_parity(args: &ParityArgs) -> CargoAllowResult<()> {
         "unexpected_case_ids": unexpected_case_ids,
         "claim_boundary": claim_boundary,
     });
+    let mut cutover_source_input_paths = None;
     if let Some(evidence_path) = args.cutover_evidence.as_deref() {
-        let receipt = assemble_cutover_receipt(
+        let assembly = assemble_cutover_receipt(
             &root,
             &registry,
             args.stage,
@@ -189,17 +202,21 @@ pub(crate) fn cmd_parity(args: &ParityArgs) -> CargoAllowResult<()> {
             evidence_path,
             passed,
         )?;
-        let receipt_value = serde_json::to_value(receipt).map_err(|error| {
+        let receipt_value = serde_json::to_value(assembly.receipt).map_err(|error| {
             CargoAllowError::new(format!("render extraction cutover receipt: {error}"))
         })?;
         let object = payload.as_object_mut().ok_or_else(|| {
             CargoAllowError::new("render extraction cutover receipt requires JSON object payload")
         })?;
         object.insert("cutover_receipt".to_string(), receipt_value);
+        cutover_source_input_paths = Some(assembly.source_input_paths);
     }
     let rendered = serde_json::to_string_pretty(&payload)
         .map_err(|error| CargoAllowError::new(format!("render parity evidence: {error}")))?
         + "\n";
+    if let Some(source_input_paths) = cutover_source_input_paths.as_deref() {
+        ensure_cutover_inputs_clean(&root, source_input_paths)?;
+    }
     emit_text(args.output.as_deref(), &rendered)?;
     if passed {
         Ok(())
@@ -235,7 +252,7 @@ fn load_ledger(root: &Path) -> CargoAllowResult<ProductMoveLedger> {
     parse_product_move_ledger_at(Some(&path), &input)
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 struct CutoverEvidenceInput {
     schema_id: String,
@@ -303,6 +320,12 @@ struct DerivedOwnership {
     docs_paths: Vec<String>,
     ci_paths: Vec<String>,
     package_names: BTreeSet<String>,
+    source_input_paths: Vec<String>,
+}
+
+struct CutoverAssembly {
+    receipt: ExtractionCutoverReceipt,
+    source_input_paths: Vec<String>,
 }
 
 const CUTOVER_EVIDENCE_SCHEMA_ID: &str = "cargo-allow.extraction-cutover-evidence.v2";
@@ -318,9 +341,12 @@ fn assemble_cutover_receipt(
     source_identity: &str,
     evidence_path: &Path,
     parity_passed: bool,
-) -> CargoAllowResult<ExtractionCutoverReceipt> {
-    ensure_cutover_inputs_clean(root)?;
-    assemble_cutover_receipt_from_clean_inputs(
+) -> CargoAllowResult<CutoverAssembly> {
+    let stage = requested_extraction_stage(requested_stage)?;
+    let ledger = load_ledger(root)?;
+    let derived_ownership = derive_ownership(root, registry, &ledger, stage)?;
+    ensure_cutover_inputs_clean(root, &derived_ownership.source_input_paths)?;
+    let receipt = assemble_cutover_receipt_from_clean_inputs(
         root,
         registry,
         requested_stage,
@@ -328,7 +354,12 @@ fn assemble_cutover_receipt(
         source_identity,
         evidence_path,
         parity_passed,
-    )
+    )?;
+    ensure_cutover_inputs_clean(root, &derived_ownership.source_input_paths)?;
+    Ok(CutoverAssembly {
+        receipt,
+        source_input_paths: derived_ownership.source_input_paths,
+    })
 }
 
 fn assemble_cutover_receipt_from_clean_inputs(
@@ -340,16 +371,7 @@ fn assemble_cutover_receipt_from_clean_inputs(
     evidence_path: &Path,
     parity_passed: bool,
 ) -> CargoAllowResult<ExtractionCutoverReceipt> {
-    let stage = match requested_stage {
-        ParityStageArg::RepoSnapshot => ExtractionStage::RepoSnapshot,
-        ParityStageArg::RepoEdit => ExtractionStage::RepoEdit,
-        ParityStageArg::All => {
-            return Err(CargoAllowError::with_kind(
-                CargoAllowErrorKind::InvalidConfig,
-                "cutover receipts require one extraction stage, not `all`",
-            ));
-        }
-    };
+    let stage = requested_extraction_stage(requested_stage)?;
     if !parity_passed {
         return Err(CargoAllowError::with_kind(
             CargoAllowErrorKind::InvalidConfig,
@@ -680,7 +702,83 @@ fn derive_ownership(
         docs_paths,
         ci_paths,
         package_names,
+        source_input_paths: cutover_source_input_paths(root, &architecture, stage)?,
     })
+}
+
+fn requested_extraction_stage(requested: ParityStageArg) -> CargoAllowResult<ExtractionStage> {
+    match requested {
+        ParityStageArg::RepoSnapshot => Ok(ExtractionStage::RepoSnapshot),
+        ParityStageArg::RepoEdit => Ok(ExtractionStage::RepoEdit),
+        ParityStageArg::All => Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            "cutover receipts require one extraction stage, not `all`",
+        )),
+    }
+}
+
+fn cutover_source_input_paths(
+    root: &Path,
+    architecture: &allow_policy::product_crates::CurrentArchitectureReceiptV2,
+    stage: ExtractionStage,
+) -> CargoAllowResult<Vec<String>> {
+    let mut paths = BTreeSet::from([
+        "Cargo.toml".to_string(),
+        "policy/extraction-parity.toml".to_string(),
+        "policy/product-crates-v2.toml".to_string(),
+        "policy/product-package-topology-v2.toml".to_string(),
+        "policy/product-move-ledger.toml".to_string(),
+        "crates/allow-policy/src/extraction_parity".to_string(),
+        "crates/allow-policy/src/product_crates".to_string(),
+        "crates/allow-policy/src/product_packages".to_string(),
+        "crates/allow-policy/src/product_move".to_string(),
+        "crates/cargo-allow/src/extraction_parity_command.rs".to_string(),
+        "scripts/extraction-cutover-status.sh".to_string(),
+    ]);
+    let runtime_path = match stage {
+        ExtractionStage::RepoSnapshot => {
+            paths.insert("crates/allow-diff/src/snapshot_package".to_string());
+            paths.insert("crates/effortless-repo-snapshot/src".to_string());
+            "crates/cargo-allow/src/extraction_parity_runtime.rs".to_string()
+        }
+        ExtractionStage::RepoEdit => {
+            paths.insert("crates/effortless-repo-edit/src".to_string());
+            "crates/cargo-allow/src/extraction_repo_edit_runtime.rs".to_string()
+        }
+        other => {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::InvalidConfig,
+                format!(
+                    "unsupported cutover source-input stage `{}`",
+                    other.as_str()
+                ),
+            ));
+        }
+    };
+    paths.insert(runtime_path);
+    for package in &architecture.workspace_packages {
+        paths.insert(relative_file(
+            root,
+            &root.join(&package.workspace_path).join("Cargo.toml"),
+        )?);
+    }
+    let parity_paths = match stage {
+        ExtractionStage::RepoSnapshot => effortless_repo_snapshot::parity_contract_paths(root),
+        ExtractionStage::RepoEdit => effortless_repo_edit::parity_contract_paths(root),
+        other => {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::InvalidConfig,
+                format!(
+                    "unsupported cutover parity-input stage `{}`",
+                    other.as_str()
+                ),
+            ));
+        }
+    };
+    for path in parity_paths {
+        paths.insert(relative_file(root, &path)?);
+    }
+    Ok(paths.into_iter().collect())
 }
 
 fn validate_ownership_receipt(
@@ -966,24 +1064,12 @@ fn require_positive_outcome(field: &str, value: &str) -> CargoAllowResult<()> {
     }
 }
 
-fn ensure_cutover_inputs_clean(root: &Path) -> CargoAllowResult<()> {
+fn ensure_cutover_inputs_clean(root: &Path, source_input_paths: &[String]) -> CargoAllowResult<()> {
     let output = Command::new("git")
         .arg("-C")
         .arg(root)
-        .args([
-            "status",
-            "--porcelain",
-            "--untracked-files=all",
-            "--",
-            "Cargo.toml",
-            "crates/*/Cargo.toml",
-            "crates/allow-policy/src/extraction_parity",
-            "crates/cargo-allow/src/extraction_parity_command.rs",
-            "policy/product-crates-v2.toml",
-            "policy/product-package-topology-v2.toml",
-            "policy/extraction-parity.toml",
-            "policy/product-move-ledger.toml",
-        ])
+        .args(["status", "--porcelain", "--untracked-files=all", "--"])
+        .args(source_input_paths)
         .output()
         .map_err(|error| {
             CargoAllowError::new(format!("run git status for cutover inputs: {error}"))
@@ -1263,6 +1349,410 @@ mod tests {
             Ok(_) => CargoAllowError::new("expected cutover evidence rejection"),
             Err(error) => error,
         }
+    }
+
+    fn assert_schema_accepts_and_rejects_shape(
+        name: &str,
+        schema_text: &str,
+        valid: Value,
+    ) -> Result<(), String> {
+        let schema: Value =
+            serde_json::from_str(schema_text).map_err(|error| format!("{name} schema: {error}"))?;
+        let validator =
+            jsonschema::validator_for(&schema).map_err(|error| format!("{name}: {error}"))?;
+        validator
+            .validate(&valid)
+            .map_err(|error| format!("valid {name} sample rejected: {error}"))?;
+
+        let mut unknown = valid.clone();
+        unknown
+            .as_object_mut()
+            .ok_or_else(|| format!("{name} sample is not an object"))?
+            .insert("unknown".to_string(), Value::Bool(true));
+        if validator.validate(&unknown).is_ok() {
+            return Err(format!("{name} schema accepted an unknown field"));
+        }
+
+        let required = schema
+            .get("required")
+            .and_then(Value::as_array)
+            .and_then(|fields| fields.first())
+            .and_then(Value::as_str)
+            .ok_or_else(|| format!("{name} schema has no required field"))?;
+        let mut missing = valid;
+        missing
+            .as_object_mut()
+            .ok_or_else(|| format!("{name} sample is not an object"))?
+            .remove(required);
+        if validator.validate(&missing).is_ok() {
+            return Err(format!("{name} schema accepted missing `{required}`"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn extraction_cutover_input_schemas_are_closed_and_conformant() -> Result<(), String> {
+        let source = format!("commit:{}/tree:{}", "a".repeat(40), "b".repeat(40));
+        assert_schema_accepts_and_rejects_shape(
+            "extraction cutover evidence",
+            include_str!("../../../docs/schemas/extraction-cutover-evidence.schema.json"),
+            json!({
+                "schema_id": CUTOVER_EVIDENCE_SCHEMA_ID,
+                "schema_version": CUTOVER_EVIDENCE_SCHEMA_VERSION,
+                "ownership_receipt": "target/extraction/ownership.json",
+                "independent_build_package_receipt": "target/extraction/build.json"
+            }),
+        )?;
+        assert_schema_accepts_and_rejects_shape(
+            "extraction cutover ownership",
+            include_str!("../../../docs/schemas/extraction-cutover-ownership.schema.json"),
+            json!({
+                "schema_id": OWNERSHIP_EVIDENCE_SCHEMA_ID,
+                "schema_version": 1,
+                "stage": "RepoSnapshot",
+                "source_identity": source,
+                "parity_result_digest": "sha256:v1:parity",
+                "result": "Passed",
+                "package_paths": ["crates/effortless-repo-snapshot/Cargo.toml"],
+                "asset_paths": ["tests/fixtures/repo-snapshot/parity-committed-head-v1.toml"],
+                "docs_paths": ["docs/architecture/repo-snapshot.md"],
+                "ci_paths": ["scripts/extraction-cutover-status.sh"],
+                "claim_boundary": "topology-derived ownership"
+            }),
+        )?;
+        assert_schema_accepts_and_rejects_shape(
+            "extraction cutover build/package",
+            include_str!("../../../docs/schemas/extraction-cutover-build-package.schema.json"),
+            json!({
+                "schema_id": BUILD_PACKAGE_EVIDENCE_SCHEMA_ID,
+                "schema_version": 1,
+                "stage": "RepoSnapshot",
+                "source_identity": source,
+                "architecture_manifest_digest": "sha256:v1:architecture",
+                "parity_result_digest": "sha256:v1:parity",
+                "result": "Passed",
+                "independent": true,
+                "source_checkout_denied": true,
+                "package_records": [{
+                    "package_name": "effortless-repo-snapshot",
+                    "path": "target/package/effortless-repo-snapshot.crate",
+                    "sha256": "sha256:v1:package",
+                    "result": "Passed"
+                }],
+                "build_records": [{
+                    "artifact_name": "repo-snapshot-build",
+                    "path": "target/build/repo-snapshot.bin",
+                    "sha256": "sha256:v1:build",
+                    "result": "Passed"
+                }],
+                "claim_boundary": "isolated build/package evidence"
+            }),
+        )
+    }
+
+    fn run_test_git(root: &Path, args: &[&str]) -> Result<(), String> {
+        let output = Command::new("git")
+            .arg("-C")
+            .arg(root)
+            .args(args)
+            .output()
+            .map_err(|error| format!("run test git {args:?}: {error}"))?;
+        if !output.status.success() {
+            return Err(format!(
+                "test git {args:?} failed: {}",
+                String::from_utf8_lossy(&output.stderr).trim()
+            ));
+        }
+        Ok(())
+    }
+
+    fn clean_guard_fixture(name: &str, tracked_path: &str) -> Result<PathBuf, String> {
+        let root = fixture_root(name);
+        fs::create_dir_all(
+            root.join(tracked_path)
+                .parent()
+                .ok_or_else(|| "tracked fixture path has no parent".to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        fs::write(root.join(tracked_path), "committed\n").map_err(|error| error.to_string())?;
+        run_test_git(&root, &["init", "--quiet"])?;
+        run_test_git(
+            &root,
+            &["config", "user.email", "tests@cargo-allow.invalid"],
+        )?;
+        run_test_git(&root, &["config", "user.name", "cargo-allow tests"])?;
+        run_test_git(&root, &["add", "--", tracked_path])?;
+        run_test_git(&root, &["commit", "--quiet", "-m", "fixture"])?;
+        Ok(root)
+    }
+
+    #[test]
+    fn cutover_clean_guard_rejects_index_worktree_and_untracked_derivation_inputs()
+    -> Result<(), String> {
+        for (name, path, prepare) in [
+            ("guard-unstaged", "Cargo.toml", "unstaged"),
+            (
+                "guard-staged",
+                "policy/product-package-topology-v2.toml",
+                "staged",
+            ),
+            (
+                "guard-untracked-policy",
+                "policy/product-crates-v2.toml",
+                "untracked",
+            ),
+            (
+                "guard-untracked-manifest",
+                "crates/new-member/Cargo.toml",
+                "untracked",
+            ),
+            (
+                "guard-command",
+                "crates/cargo-allow/src/extraction_parity_command.rs",
+                "unstaged",
+            ),
+            (
+                "guard-asset",
+                "tests/fixtures/repo-snapshot/parity-committed-head-v1.toml",
+                "staged",
+            ),
+            (
+                "guard-stage-source",
+                "crates/effortless-repo-snapshot/src/lib.rs",
+                "unstaged",
+            ),
+        ] {
+            let committed_path = if prepare == "untracked" {
+                "README.md"
+            } else {
+                path
+            };
+            let root = clean_guard_fixture(name, committed_path)?;
+            let paths = vec![path.to_string()];
+            if prepare != "untracked" {
+                ensure_cutover_inputs_clean(&root, &paths).map_err(|error| error.to_string())?;
+            }
+            if let Some(parent) = root.join(path).parent() {
+                fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+            }
+            fs::write(root.join(path), format!("{prepare} change\n"))
+                .map_err(|error| error.to_string())?;
+            if prepare == "staged" {
+                run_test_git(&root, &["add", "--", path])?;
+            }
+            let error = ensure_cutover_inputs_clean(&root, &paths)
+                .err()
+                .ok_or_else(|| format!("{prepare} derivation input `{path}` was accepted"))?;
+            if !error.to_string().contains(path) {
+                remove_fixture(&root);
+                return Err(format!("dirty-input diagnostic omitted `{path}`: {error}"));
+            }
+            remove_fixture(&root);
+        }
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn cutover_status_adapter_fails_closed_for_receipt_location_and_lifecycle() -> Result<(), String>
+    {
+        use std::os::unix::fs::PermissionsExt;
+
+        fn run_status(root: &Path, output: &Path, bin: &Path) -> Result<Value, String> {
+            let current_path = std::env::var_os("PATH").unwrap_or_default();
+            let mut paths = vec![bin.to_path_buf()];
+            paths.extend(std::env::split_paths(&current_path));
+            let joined = std::env::join_paths(paths).map_err(|error| error.to_string())?;
+            let result = Command::new("bash")
+                .arg("scripts/extraction-cutover-status.sh")
+                .current_dir(root)
+                .env("PATH", joined)
+                .env("EXTRACTION_CUTOVER_DIR", output)
+                .output()
+                .map_err(|error| format!("run extraction cutover status: {error}"))?;
+            if !result.status.success() {
+                return Err(format!(
+                    "extraction cutover status failed: {}",
+                    String::from_utf8_lossy(&result.stderr)
+                ));
+            }
+            let text = fs::read_to_string(output.join("extraction-cutover-status.json"))
+                .map_err(|error| format!("read cutover status: {error}"))?;
+            serde_json::from_str(&text).map_err(|error| format!("parse cutover status: {error}"))
+        }
+
+        fn blockers(status: &Value) -> Result<Vec<&str>, String> {
+            status
+                .get("blockers")
+                .and_then(Value::as_array)
+                .ok_or_else(|| "cutover status has no blockers".to_string())?
+                .iter()
+                .map(|value| {
+                    value
+                        .as_str()
+                        .ok_or_else(|| "cutover blocker is not a string".to_string())
+                })
+                .collect()
+        }
+
+        let root = workspace_root();
+        let fixture = fixture_root("status-adapter");
+        let bin = fixture.join("bin");
+        fs::create_dir_all(&bin).map_err(|error| error.to_string())?;
+        let fake_cargo = bin.join("cargo");
+        fs::write(
+            &fake_cargo,
+            r#"#!/usr/bin/env bash
+set -eu
+output=""
+cutover=0
+stage=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --output) output="$2"; shift 2 ;;
+    --cutover-evidence) cutover=1; shift 2 ;;
+    --stage) stage="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+mkdir -p "$(dirname "$output")"
+if [[ "$cutover" -eq 1 ]]; then
+  printf '%s\n' '{"stale":true}' >"$output"
+  exit 17
+fi
+case "$stage" in
+  repo-snapshot) stage_name=RepoSnapshot ;;
+  repo-edit) stage_name=RepoEdit ;;
+  *) exit 19 ;;
+esac
+printf '{"result":"Passed","expected_case_count":1,"emitted_case_count":1,"parity_result_digest":"sha256:v1:%s","stage":"%s"}\n' "$stage" "$stage_name" >"$output"
+"#,
+        )
+        .map_err(|error| error.to_string())?;
+        let mut permissions = fs::metadata(&fake_cargo)
+            .map_err(|error| error.to_string())?
+            .permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&fake_cargo, permissions).map_err(|error| error.to_string())?;
+
+        let missing_output = fixture.join("missing");
+        let stale_receipt = missing_output.join("repo-snapshot/cutover-receipt.json");
+        fs::create_dir_all(
+            stale_receipt
+                .parent()
+                .ok_or_else(|| "stale receipt has no parent".to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        fs::write(&stale_receipt, "stale\n").map_err(|error| error.to_string())?;
+        let missing = run_status(&root, &missing_output, &bin)?;
+        let missing_blockers = blockers(&missing)?;
+        if missing.get("result").and_then(Value::as_str) != Some("Blocked")
+            || !missing_blockers
+                .iter()
+                .any(|item| *item == "independent_build_package_receipt_missing:RepoSnapshot")
+            || stale_receipt.exists()
+        {
+            remove_fixture(&fixture);
+            return Err("missing build receipt did not fail closed and remove stale output".into());
+        }
+
+        let outside = std::env::temp_dir().join(format!(
+            "cargo-allow-extraction-outside-{}",
+            std::process::id()
+        ));
+        fs::write(&outside, "{}\n").map_err(|error| error.to_string())?;
+        let outside_output = fixture.join("outside");
+        let outside_status = Command::new("bash")
+            .arg("scripts/extraction-cutover-status.sh")
+            .current_dir(&root)
+            .env("PATH", {
+                let mut paths = vec![bin.clone()];
+                paths.extend(std::env::split_paths(
+                    &std::env::var_os("PATH").unwrap_or_default(),
+                ));
+                std::env::join_paths(paths).map_err(|error| error.to_string())?
+            })
+            .env("EXTRACTION_CUTOVER_DIR", &outside_output)
+            .env("EXTRACTION_BUILD_PACKAGE_RECEIPT_REPO_SNAPSHOT", &outside)
+            .env("EXTRACTION_BUILD_PACKAGE_RECEIPT_REPO_EDIT", &outside)
+            .output()
+            .map_err(|error| error.to_string())?;
+        if !outside_status.status.success() {
+            remove_fixture(&fixture);
+            let _ = fs::remove_file(&outside);
+            return Err(format!(
+                "outside-receipt status run failed: {}",
+                String::from_utf8_lossy(&outside_status.stderr)
+            ));
+        }
+        let outside_value: Value = serde_json::from_str(
+            &fs::read_to_string(outside_output.join("extraction-cutover-status.json"))
+                .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        if !blockers(&outside_value)?
+            .iter()
+            .any(|item| *item == "build_package_receipt_outside_repo:RepoSnapshot")
+        {
+            remove_fixture(&fixture);
+            let _ = fs::remove_file(&outside);
+            return Err("outside build receipt did not fail closed".into());
+        }
+        let _ = fs::remove_file(&outside);
+
+        let configured_output = fixture.join("configured");
+        for stage in ["repo-snapshot", "repo-edit"] {
+            let path = configured_output.join(stage).join("build-package.json");
+            fs::create_dir_all(
+                path.parent()
+                    .ok_or_else(|| "configured receipt has no parent".to_string())?,
+            )
+            .map_err(|error| error.to_string())?;
+            fs::write(path, "{}\n").map_err(|error| error.to_string())?;
+        }
+        let configured = run_status(&root, &configured_output, &bin)?;
+        let configured_blockers = blockers(&configured)?;
+        for stage in ["repo-snapshot", "repo-edit"] {
+            let requested_stage = if stage == "repo-snapshot" {
+                ParityStageArg::RepoSnapshot
+            } else {
+                ParityStageArg::RepoEdit
+            };
+            let (_stage, _registry, _ledger, _source, expected) =
+                stage_inputs(requested_stage).map_err(|error| error.to_string())?;
+            let ownership: OwnershipEvidenceReceipt = serde_json::from_str(
+                &fs::read_to_string(configured_output.join(stage).join("ownership.json"))
+                    .map_err(|error| error.to_string())?,
+            )
+            .map_err(|error| error.to_string())?;
+            if !configured_output
+                .join(stage)
+                .join("cutover-evidence.json")
+                .is_file()
+                || configured_output
+                    .join(stage)
+                    .join("cutover-receipt.json")
+                    .exists()
+                || !configured_blockers
+                    .iter()
+                    .any(|item| *item == format!("cutover_receipt_rejected:{stage}:17"))
+                || ownership.package_paths.iter().collect::<BTreeSet<_>>()
+                    != expected.package_paths.iter().collect::<BTreeSet<_>>()
+                || ownership.asset_paths.iter().collect::<BTreeSet<_>>()
+                    != expected.asset_paths.iter().collect::<BTreeSet<_>>()
+                || ownership.docs_paths.iter().collect::<BTreeSet<_>>()
+                    != expected.docs_paths.iter().collect::<BTreeSet<_>>()
+                || ownership.ci_paths.iter().collect::<BTreeSet<_>>()
+                    != expected.ci_paths.iter().collect::<BTreeSet<_>>()
+            {
+                remove_fixture(&fixture);
+                return Err(format!(
+                    "configured/default receipt lifecycle was not fail-closed for {stage}"
+                ));
+            }
+        }
+        remove_fixture(&fixture);
+        Ok(())
     }
 
     #[test]

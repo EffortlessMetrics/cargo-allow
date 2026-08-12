@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/extraction-cutover-build-package.schema.json",
+  "title": "cargo-allow extraction cutover independent build and package receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_id", "schema_version", "stage", "source_identity", "architecture_manifest_digest", "parity_result_digest", "result", "independent", "source_checkout_denied", "package_records", "build_records", "claim_boundary"],
+  "properties": {
+    "schema_id": { "const": "cargo-allow.extraction-cutover-build-package.v1" },
+    "schema_version": { "const": 1 },
+    "stage": { "enum": ["RepoSnapshot", "RepoEdit"] },
+    "source_identity": { "type": "string", "pattern": "^commit:[0-9a-f]{40}/tree:[0-9a-f]{40}$" },
+    "architecture_manifest_digest": { "type": "string", "minLength": 1 },
+    "parity_result_digest": { "type": "string", "minLength": 1 },
+    "result": { "type": "string", "minLength": 1 },
+    "independent": { "type": "boolean" },
+    "source_checkout_denied": { "type": "boolean" },
+    "package_records": { "type": "array", "items": { "$ref": "#/$defs/package_record" }, "minItems": 1 },
+    "build_records": { "type": "array", "items": { "$ref": "#/$defs/build_record" }, "minItems": 1 },
+    "claim_boundary": { "type": "string", "minLength": 1 }
+  },
+  "$defs": {
+    "package_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["package_name", "path", "sha256", "result"],
+      "properties": {
+        "package_name": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "minLength": 1 },
+        "result": { "type": "string", "minLength": 1 }
+      }
+    },
+    "build_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_name", "path", "sha256", "result"],
+      "properties": {
+        "artifact_name": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "minLength": 1 },
+        "result": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

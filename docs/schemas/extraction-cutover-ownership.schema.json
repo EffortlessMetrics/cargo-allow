@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/extraction-cutover-ownership.schema.json",
+  "title": "cargo-allow extraction cutover ownership receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_id", "schema_version", "stage", "source_identity", "parity_result_digest", "result", "package_paths", "asset_paths", "docs_paths", "ci_paths", "claim_boundary"],
+  "properties": {
+    "schema_id": { "const": "cargo-allow.extraction-cutover-ownership.v1" },
+    "schema_version": { "const": 1 },
+    "stage": { "enum": ["RepoSnapshot", "RepoEdit"] },
+    "source_identity": { "type": "string", "pattern": "^commit:[0-9a-f]{40}/tree:[0-9a-f]{40}$" },
+    "parity_result_digest": { "type": "string", "minLength": 1 },
+    "result": { "type": "string", "minLength": 1 },
+    "package_paths": { "$ref": "#/$defs/paths" },
+    "asset_paths": { "$ref": "#/$defs/paths" },
+    "docs_paths": { "$ref": "#/$defs/paths" },
+    "ci_paths": { "$ref": "#/$defs/paths" },
+    "claim_boundary": { "type": "string", "minLength": 1 }
+  },
+  "$defs": {
+    "paths": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+  }
+}

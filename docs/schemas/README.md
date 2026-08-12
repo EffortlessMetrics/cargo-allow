@@ -149,6 +149,9 @@ source-tree scan result.
 |---|---|---|
 | Operator latency | `cargo-allow.operator-latency.v1` | `scripts/perf-budget-smoke.sh` |
 | Redacted support bundle | `cargo-allow.support-bundle.v1` | `cargo-allow doctor --support-bundle <path>` |
+| Extraction cutover evidence manifest | `cargo-allow.extraction-cutover-evidence.v2` | `scripts/extraction-cutover-status.sh` / `cargo-allow extraction-parity --cutover-evidence` |
+| Extraction cutover ownership receipt | `cargo-allow.extraction-cutover-ownership.v1` | `scripts/extraction-cutover-status.sh` |
+| Extraction cutover build/package receipt | `cargo-allow.extraction-cutover-build-package.v1` | independent package/build harness consumed by `cargo-allow extraction-parity --cutover-evidence` |
 
 The operator-latency receipt binds end-to-end wall-clock observations to the
 tested binary, host, repository fixture, ordered command arguments, output
@@ -163,6 +166,12 @@ metadata-only inventory counts, but does not use the governed artifact
 inventory shape or claim release/readiness proof. It is intentionally not
 included in the Rust producer's `ARTIFACT_CONTRACTS` or source-tree support
 matrix.
+
+The three extraction-cutover schemas are closed, stage-specific evidence-input
+contracts. They are validated by the extraction-parity adapter but are not
+ordinary cargo-allow source-scan artifacts and therefore are not part of
+`allow-report::ARTIFACT_CONTRACTS`. Their exact-source and digest checks do not
+promote policy, authorize publication, or establish release readiness.
 
 ## Files
 
@@ -192,6 +201,7 @@ matrix.
 - [worklist.schema.json](worklist.schema.json)
 - [tool-identity.schema.json](tool-identity.schema.json) self-description contract (not a governed artifact)
 - [operator-latency.schema.json](operator-latency.schema.json) supporting hosted performance receipt (not a governed artifact)
+- [extraction-cutover-evidence.schema.json](extraction-cutover-evidence.schema.json), [extraction-cutover-ownership.schema.json](extraction-cutover-ownership.schema.json), and [extraction-cutover-build-package.schema.json](extraction-cutover-build-package.schema.json) supporting cutover evidence-input contracts (not governed source-tree artifacts)
 - [release-manifest.schema.json](release-manifest.schema.json) release-control contract (not a governed source-tree artifact)
 - [release-manifest-v2.schema.json](release-manifest-v2.schema.json) topology-derived release contract (contract-only; not a publication authorization)
 - [common.v1.json](common.v1.json) shared source-tree fragments used as the

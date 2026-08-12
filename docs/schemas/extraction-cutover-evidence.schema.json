@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/extraction-cutover-evidence.schema.json",
+  "title": "cargo-allow extraction cutover evidence manifest v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_id", "schema_version", "ownership_receipt", "independent_build_package_receipt"],
+  "properties": {
+    "schema_id": { "const": "cargo-allow.extraction-cutover-evidence.v2" },
+    "schema_version": { "const": 2 },
+    "ownership_receipt": { "type": "string", "minLength": 1 },
+    "independent_build_package_receipt": { "type": "string", "minLength": 1 }
+  }
+}
