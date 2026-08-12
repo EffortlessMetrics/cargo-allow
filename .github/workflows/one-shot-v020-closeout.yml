@@ -1,0 +1,109 @@
+# Self-removing release candidate convergence. The resulting branch contains
+# only the durable v0.2.0 implementation, documentation, and Changie batch.
+name: One-shot v0.2.0 release closeout
+
+on:
+  push:
+    branches:
+      - release/v0.2.0-closeout
+    paths:
+      - .github/workflows/one-shot-v020-closeout.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: one-shot-v020-closeout
+  cancel-in-progress: false
+
+jobs:
+  converge:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: release/v0.2.0-closeout
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772
+        with:
+          toolchain: 1.95.0
+          components: rustfmt,clippy
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: '1.25.0'
+          cache: false
+      - name: Apply the durable release closeout
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/one-shot-v020-closeout.py
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('crates/cargo-allow/src/release_prep_tests.rs')
+          text = path.read_text(encoding='utf-8')
+          old = '''    assert!(
+                  publish.contains(r#"version="${RELEASE_VERSION}""#),
+                  "publish should consume the preflight-resolved version"
+              );'''
+          new = '''    assert!(
+                  publish.contains("needs.preflight.outputs.version"),
+                  "publish should consume the preflight-resolved version"
+              );'''
+          if old not in text:
+              raise SystemExit('release recovery version assertion seam changed')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+      - name: Install and run exact Changie batch
+        env:
+          GOBIN: ${{ runner.temp }}/changie-bin
+          GOPROXY: https://proxy.golang.org
+          GOSUMDB: sum.golang.org
+          GOTOOLCHAIN: local
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(go env GOVERSION)" = 'go1.25.0'
+          mkdir -p "${GOBIN}"
+          go install github.com/miniscruff/changie@v1.25.2
+          go version -m "${GOBIN}/changie" | grep -Eq $'^\tmod\tgithub\.com/miniscruff/changie\tv1\.25\.2(\t|$)'
+          "${GOBIN}/changie" batch v0.2.0
+          "${GOBIN}/changie" merge
+          test "$(grep -c '^## \[0\.2\.0\] - ' CHANGELOG.md)" -eq 1
+          grep -q '^## \[Unreleased\]$' CHANGELOG.md
+      - name: Remove temporary migration surfaces
+        run: |
+          git rm .github/workflows/one-shot-v020-closeout.yml
+          git rm scripts/one-shot-v020-closeout.py
+      - name: Prove release controller and package graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x scripts/generate-release-manifest.sh scripts/release-topology-publisher.py
+          python3 -m py_compile scripts/release-topology-publisher.py
+          test "$(python3 scripts/release-topology-publisher.py --mode namespace --list | wc -l)" -eq 12
+          test "$(python3 scripts/release-topology-publisher.py --mode cargo-allow --list | wc -l)" -eq 13
+          ! grep -q 'rust-lang/crates-io-auth-action@' .github/workflows/release.yml
+          grep -q 'CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}' .github/workflows/release.yml
+          grep -q 'crates_io_api_token' .github/workflows/release.yml
+          cargo fmt --all
+          cargo fmt --all -- --check
+          cargo clippy --workspace --all-targets --locked -- -D warnings
+          cargo test -p allow-report release_manifest --locked -- --nocapture
+          cargo test -p cargo-allow --bin cargo-allow release_prep --locked -- --nocapture
+          cargo test --workspace --locked
+          cargo run -p cargo-allow -- check --mode no-new \
+            --format markdown \
+            --receipt target/cargo-allow/check.receipt.json \
+            --output target/cargo-allow/check.md
+          git diff --check
+      - name: Commit the exact release candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -A
+          git diff --cached --check
+          git config user.name "EffortlessSteven"
+          git config user.email "git@effortlesssteven.com"
+          git commit -m "build(release): close out the token-backed v0.2.0 candidate"
+          git push origin HEAD:release/v0.2.0-closeout
