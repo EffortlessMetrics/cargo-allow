@@ -35,6 +35,14 @@ def patch_release_tests() -> None:
     );''',
         ),
         (
+            '.split("  publish:")',
+            '.split("\\n  publish:\\n")',
+        ),
+        (
+            'section.split("  install-smoke:").next()',
+            'section.split("\\n  install-smoke:\\n").next()',
+        ),
+        (
             'publish.contains("refs/tags/{0}")',
             'publish.contains("needs.preflight.outputs.tag")',
         ),
@@ -58,6 +66,10 @@ def patch_release_tests() -> None:
     for old, new in replacements:
         if old in text:
             text = text.replace(old, new, 1)
+    if '.split("\\n  publish:\\n")' not in text:
+        raise SystemExit("release publish job section parser seam changed")
+    if 'section.split("\\n  install-smoke:\\n").next()' not in text:
+        raise SystemExit("release install-smoke section parser seam changed")
     if 'publish.contains("needs.preflight.outputs.version")' not in text:
         raise SystemExit("release recovery version assertion seam changed")
     if 'publish.contains("needs.preflight.outputs.tag")' not in text:
