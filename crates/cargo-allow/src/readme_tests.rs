@@ -206,6 +206,7 @@ fn ci_docs_preserve_source_tree_scan_boundary() {
 
     for required_text in [
         "The examples install and run the standalone `cargo-allow` binary before\nscanning. They pin the published crates.io release by default:",
+        "cargo install --git https://github.com/EffortlessMetrics/cargo-allow cargo-allow --locked",
         "`cargo allow ...` remains optional Cargo external subcommand compatibility.",
         "The scan itself is source-tree only.",
         "It does not invoke Cargo metadata, Cargo\ncommands, rustc, Clippy, build scripts, proc macros, external evidence tools,\nor repository code.",
