@@ -131,6 +131,7 @@ jobs:
           python3 scripts/release-topology-publisher.py \
             --mode namespace \
             --publish \
+            --authorization "${{ steps.authorization.outputs.authorization }}" \
             --receipt target/cargo-allow/namespace-publish.receipt.json
       - name: Upload namespace publication receipt
         if: always()

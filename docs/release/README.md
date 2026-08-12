@@ -232,6 +232,15 @@ contains the ten cargo-allow-family packages plus the selected shared packages;
 the count is a receipt result, not a maintained list. Each row carries its own
 package version, crate digest, and registry checksum.
 
+Recovery is bound to the original publication evidence. A guarded
+`workflow_dispatch` recovery must provide the exact tag commit/tree, a bounded
+authorization reference, and the numeric run id that produced the incomplete
+`release-publish-receipt` artifact. The workflow downloads that artifact with
+`actions: read`; the publisher accepts only an incomplete incident receipt for
+the same candidate and skips only rows already recorded as exact. It never
+rebuilds recovery from current `main`. Rehearsal runs do not read the registry
+token and do not invoke the upload path.
+
 Each crate is dry-run verified immediately before upload. The workflow waits for
 crates.io index visibility of the **exact published version** (up to 30 attempts,
 10 seconds apart) before publishing dependents. Visibility checks use
