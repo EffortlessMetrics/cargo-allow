@@ -1,0 +1,7 @@
+schema_version = 1
+policy = "non-rust-allowlist"
+
+[[allow]]
+id = "negative-invalid-covered-by"
+path = "docs/invalid-covered-by.md"
+covered_by = ["test:valid", 7]

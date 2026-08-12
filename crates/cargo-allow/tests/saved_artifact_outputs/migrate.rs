@@ -699,6 +699,21 @@ fn saved_migrate_non_rust_negative_controls_fail_closed_or_surface_debt() {
             "non-rust allow entry 1 duplicates earlier id `non-rust-duplicate`",
             Some(10),
         ),
+        (
+            "non-rust-invalid-owner.toml",
+            "field `owner` must be a string",
+            Some(4),
+        ),
+        (
+            "non-rust-invalid-evidence.toml",
+            "field `evidence` must be a string or string array",
+            Some(4),
+        ),
+        (
+            "non-rust-invalid-covered-by.toml",
+            "field `covered_by` must be a string or string array",
+            Some(4),
+        ),
     ] {
         assert_non_rust_fixture_rejected(fixture_name, diagnostic, line);
     }
