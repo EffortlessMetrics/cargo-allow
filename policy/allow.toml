@@ -114,7 +114,7 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-0524"
+id = "allow-0525"
 kind = "non_rust_file"
 family = "release_script"
 path = "scripts/test-release-topology-publisher.py"
