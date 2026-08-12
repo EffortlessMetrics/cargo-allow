@@ -100,7 +100,11 @@ fn release_workflow_rehearsal_skips_secret_lookup_but_publication_fails_closed()
     let token_step = workflow
         .split("      - name: Resolve crates.io API token")
         .nth(1)
-        .and_then(|section| section.split("      - name: Require crates.io API token for publication").next())
+        .and_then(|section| {
+            section
+                .split("      - name: Require crates.io API token for publication")
+                .next()
+        })
         .unwrap_or_else(|| std::panic::panic_any("release token step should be present"));
 
     assert!(
@@ -114,12 +118,18 @@ fn release_workflow_rehearsal_skips_secret_lookup_but_publication_fails_closed()
     let require_token_step = workflow
         .split("      - name: Require crates.io API token for publication")
         .nth(1)
-        .and_then(|section| section.split("      - name: Publish cargo-allow topology rows").next())
+        .and_then(|section| {
+            section
+                .split("      - name: Publish cargo-allow topology rows")
+                .next()
+        })
         .unwrap_or_else(|| std::panic::panic_any("publication token step should be present"));
     assert!(
         require_token_step.contains("CARGO_REGISTRY_TOKEN is absent; no upload was attempted")
             && require_token_step.contains("if [ -z \"${CARGO_REGISTRY_TOKEN}\" ]")
-            && require_token_step.contains("if: github.event_name != 'workflow_dispatch' || inputs.publish_recovery"),
+            && require_token_step.contains(
+                "if: github.event_name != 'workflow_dispatch' || inputs.publish_recovery"
+            ),
         "tag and recovery publication should fail closed before upload when the token is absent"
     );
 
