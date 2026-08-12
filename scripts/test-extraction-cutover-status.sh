@@ -180,8 +180,8 @@ outside_receipt="${outside}/build-package.json"
 printf '{}\n' >"${outside_receipt}"
 symlink_dir="${work}/symlink"
 mkdir -p "${symlink_dir}"
-ln -s "${outside_receipt}" "${symlink_dir}/build-package.json"
-if [[ -L "${symlink_dir}/build-package.json" ]]; then
+if ln -s "${outside_receipt}" "${symlink_dir}/build-package.json" 2>/dev/null \
+  && [[ -L "${symlink_dir}/build-package.json" ]]; then
   EXTRACTION_CARGO_ALLOW_BIN="${fake}" EXTRACTION_CUTOVER_DIR="${symlink_dir}" \
     EXTRACTION_BUILD_PACKAGE_RECEIPT_REPO_SNAPSHOT="${symlink_dir}/build-package.json" \
     EXTRACTION_BUILD_PACKAGE_RECEIPT_REPO_EDIT="${symlink_dir}/build-package.json" \
