@@ -35,6 +35,10 @@ def patch_release_tests() -> None:
     );''',
         ),
         (
+            'publish.contains("ref: ${{ needs.preflight.outputs.tag }}")',
+            'publish.contains("needs.preflight.outputs.tag")',
+        ),
+        (
             '"Generate release manifest"',
             '"Generate exact mixed-version release manifest"',
         ),
@@ -56,6 +60,8 @@ def patch_release_tests() -> None:
             text = text.replace(old, new, 1)
     if 'publish.contains("needs.preflight.outputs.version")' not in text:
         raise SystemExit("release recovery version assertion seam changed")
+    if 'publish.contains("needs.preflight.outputs.tag")' not in text:
+        raise SystemExit("release recovery tag assertion seam changed")
     path.write_text(text, encoding="utf-8")
 
 
@@ -82,13 +88,25 @@ states which source-tree sensors ran and which claims remain excluded. It is not
 a compilation, type-analysis, macro-expansion, MIR, runtime, test-adequacy, or
 coverage-proof contract.'''
     new = '''The output schema is `cargo-allow.sensor-capabilities.v1`, generation 1. The
-catalog describes source-tree sensors and their bounded limitations. The catalog
-does not claim compilation, type analysis, macro expansion, MIR, runtime
-behavior, or test adequacy. Its checked source of truth remains #2570 and
-`docs/support-matrix.toml`; it is not a coverage-proof contract.'''
+catalog describes source-tree sensors and their bounded limitations.
+The catalog does not claim compilation, type analysis, macro expansion, MIR, runtime behavior, or test adequacy.
+Its checked source of truth remains #2570 and `docs/support-matrix.toml`; it is
+not a coverage-proof contract.'''
     if old not in text:
         raise SystemExit("release capability claim-boundary seam changed")
     path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+
+def patch_release_readme() -> None:
+    path = ROOT / "docs/release/README.md"
+    text = path.read_text(encoding="utf-8")
+    marker = '''The selected release path is GitHub Actions plus the repository's bounded
+`CARGO_REGISTRY_TOKEN` secret.'''
+    replacement = '''The selected release path is `.github/workflows/release.yml` under GitHub
+Actions plus the repository's bounded `CARGO_REGISTRY_TOKEN` secret.'''
+    if marker not in text:
+        raise SystemExit("release README controller seam changed")
+    path.write_text(text.replace(marker, replacement, 1), encoding="utf-8")
 
 
 def patch_release_workflow() -> None:
@@ -110,6 +128,7 @@ def main() -> None:
     patch_release_tests()
     patch_manifest_test()
     patch_release_record()
+    patch_release_readme()
     patch_release_workflow()
 
 
