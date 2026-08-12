@@ -1,4 +1,4 @@
-# Retry after aligning the final token-era release contracts.
+# Retry after matching the current recovery-tag contract.
 # Bootstrap the historical changelog into Changie-owned version files before
 # the final native batch/merge. This workflow removes itself before commit.
 name: One-shot v0.2.0 release closeout
@@ -9,6 +9,7 @@ on:
       - release/v0.2.0-closeout
     paths:
       - .github/workflows/one-shot-v020-closeout.yml
+      - scripts/one-shot-v020-finalize.py
 
 permissions:
   contents: write
