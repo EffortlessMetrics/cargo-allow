@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.proof-candidate-smoke.v1",
+  "tool": "cargo-proof",
+  "result": "Passed",
+  "claim_boundary": [
+    "five_crate_proof_package_graph",
+    "extracted_path_install_outside_workspace",
+    "source_checkout_denied_during_decisive_install",
+    "no_proof_or_test_invocation",
+    "no_workspace_target_debug_binary"
+  ],
+  "candidate": {
+    "workspace_version": "0.2.0",
+    "crate_set_schema_id": "cargo-allow.proof-candidate-crate-set.v1",
+    "git_head": null
+  },
+  "environment": {
+    "isolation_mechanism": "path_patch_extracted"
+  },
+  "package_set": {
+    "order": [
+      "effortless-repo-protocol",
+      "effortless-rust-source-index",
+      "proof-protocol",
+      "proof-orchestrator",
+      "cargo-proof"
+    ]
+  },
+  "install": {
+    "method": "cargo_install_path_extracted_with_patch"
+  }
+}
