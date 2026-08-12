@@ -94,6 +94,51 @@ fn release_workflow_exists_and_lists_publish_order() {
 }
 
 #[test]
+fn release_workflow_rehearsal_skips_secret_lookup_but_publication_fails_closed() {
+    let root = workspace_root();
+    let workflow = read_workspace_file(&root, RELEASE_WORKFLOW);
+    let token_step = workflow
+        .split("      - name: Resolve crates.io API token")
+        .nth(1)
+        .and_then(|section| section.split("      - name: Require crates.io API token for publication").next())
+        .unwrap_or_else(|| std::panic::panic_any("release token step should be present"));
+
+    assert!(
+        token_step.contains("DRY_RUN:")
+            && token_step.contains("if [ \"${DRY_RUN:-false}\" = \"true\" ]")
+            && token_step.contains("token lookup skipped")
+            && token_step.contains("source=crates_io_api_token")
+            && !token_step.contains("CARGO_REGISTRY_TOKEN"),
+        "workflow_dispatch rehearsal should record the selected auth class without reading a token"
+    );
+    let require_token_step = workflow
+        .split("      - name: Require crates.io API token for publication")
+        .nth(1)
+        .and_then(|section| section.split("      - name: Publish cargo-allow topology rows").next())
+        .unwrap_or_else(|| std::panic::panic_any("publication token step should be present"));
+    assert!(
+        require_token_step.contains("CARGO_REGISTRY_TOKEN is absent; no upload was attempted")
+            && require_token_step.contains("if [ -z \"${CARGO_REGISTRY_TOKEN}\" ]")
+            && require_token_step.contains("if: github.event_name != 'workflow_dispatch' || inputs.publish_recovery"),
+        "tag and recovery publication should fail closed before upload when the token is absent"
+    );
+
+    let publish_step = workflow
+        .split("      - name: Publish cargo-allow topology rows")
+        .nth(1)
+        .and_then(|section| section.split("      - name: Record publish receipt").next())
+        .unwrap_or_else(|| std::panic::panic_any("release publish step should be present"));
+    assert!(
+        publish_step.contains("if [ \"${DRY_RUN}\" = \"true\" ]")
+            && publish_step.contains("exit 0")
+            && publish_step.contains("--publish")
+            && publish_step.contains("CARGO_REGISTRY_TOKEN:")
+            && publish_step.contains("|| ''"),
+        "rehearsal should exit before the publisher upload path without receiving the token, while real publication retains --publish"
+    );
+}
+
+#[test]
 fn candidate_release_record_exposes_the_checked_capability_contract() {
     assert!(
         CANDIDATE_RELEASE_RECORD.contains("## Scanner capability contract"),
