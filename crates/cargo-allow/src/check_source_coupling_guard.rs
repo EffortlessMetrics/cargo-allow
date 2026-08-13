@@ -1,4 +1,6 @@
-use allow_core::{CargoAllowError, CargoAllowResult, normalize_path, read_text_file_capped};
+use allow_core::{
+    CargoAllowError, CargoAllowErrorKind, CargoAllowResult, normalize_path, read_text_file_capped,
+};
 use allow_match::CheckMode;
 use allow_policy::product_crates::{
     ArchitectureManifest, ArchitectureManifestV2, CrateIdentityV2, parse_architecture_manifest_at,
@@ -189,17 +191,30 @@ fn source_coupling_diagnostics_for_sources_at_root(
                         }
                         PathReadResolution::Resolved(target_path) => {
                             let target_path = if let Some(root) = root {
-                                let Some(resolved) = resolve_tracked_target(root, &target_path)?
-                                else {
-                                    diagnostics.push(unresolved_path_diagnostic(
-                                        path,
-                                        fact.start_line,
-                                        fact.start_column,
-                                        source_identity.product_or_shared_owner.clone(),
-                                        "<escaping-path>",
-                                        fact.text,
-                                    ));
-                                    continue;
+                                let resolved = match resolve_tracked_target(root, &target_path)? {
+                                    TrackedTargetResolution::Inside(resolved) => resolved,
+                                    TrackedTargetResolution::Missing => {
+                                        diagnostics.push(unresolved_path_diagnostic(
+                                            path,
+                                            fact.start_line,
+                                            fact.start_column,
+                                            source_identity.product_or_shared_owner.clone(),
+                                            "<unresolved-path>",
+                                            fact.text,
+                                        ));
+                                        continue;
+                                    }
+                                    TrackedTargetResolution::Outside => {
+                                        diagnostics.push(unresolved_path_diagnostic(
+                                            path,
+                                            fact.start_line,
+                                            fact.start_column,
+                                            source_identity.product_or_shared_owner.clone(),
+                                            "<escaping-path>",
+                                            fact.text,
+                                        ));
+                                        continue;
+                                    }
                                 };
                                 resolved
                             } else {
@@ -270,41 +285,15 @@ enum PathReadResolution {
     Escapes,
 }
 
-#[cfg(test)]
-fn resolve_relative_source_path(
-    source_path: &Path,
-    base: RustSourceCouplingPathBase,
-    path: &str,
-) -> PathReadResolution {
-    let crate_root = normalize_path(source_path)
-        .split_once("/src/")
-        .map(|(root, _)| root.to_string())
-        .or_else(|| {
-            let normalized = normalize_path(source_path);
-            normalized.rsplit_once('/').map(|(parent, name)| {
-                if name == "build.rs" {
-                    parent.to_string()
-                } else {
-                    parent
-                        .rsplit_once('/')
-                        .map(|(p, _)| p.to_string())
-                        .unwrap_or_default()
-                }
-            })
-        })
-        .unwrap_or_default();
-    if base == RustSourceCouplingPathBase::ManifestDirectory && crate_root.is_empty() {
-        return PathReadResolution::Unresolved;
-    }
-    resolve_relative_source_path_from_crate_root(source_path, base, path, &crate_root)
-}
-
 fn resolve_relative_source_path_from_crate_root(
     source_path: &Path,
     base: RustSourceCouplingPathBase,
     path: &str,
     crate_root: &str,
 ) -> PathReadResolution {
+    if base == RustSourceCouplingPathBase::ManifestDirectory && crate_root.is_empty() {
+        return PathReadResolution::Unresolved;
+    }
     let path = path.trim();
     let path = if base == RustSourceCouplingPathBase::ManifestDirectory {
         path.trim_start_matches(['/', '\\'])
@@ -357,33 +346,51 @@ fn resolve_relative_source_path_from_crate_root(
     }
 }
 
-fn resolve_tracked_target(root: &Path, target: &Path) -> CargoAllowResult<Option<PathBuf>> {
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum TrackedTargetResolution {
+    Inside(PathBuf),
+    Missing,
+    Outside,
+}
+
+fn resolve_tracked_target(root: &Path, target: &Path) -> CargoAllowResult<TrackedTargetResolution> {
     let root = std::fs::canonicalize(root).map_err(|error| {
-        CargoAllowError::new(format!(
-            "source coupling root unreadable at {}: {error}",
-            root.display()
-        ))
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Inventory,
+            format!(
+                "source coupling root unreadable at {}: {error}",
+                root.display()
+            ),
+        )
     })?;
     let target = root.join(target);
     let resolved = match std::fs::canonicalize(&target) {
         Ok(path) => path,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(TrackedTargetResolution::Missing);
+        }
         Err(error) => {
-            return Err(CargoAllowError::new(format!(
-                "source coupling target unreadable at {}: {error}",
-                target.display()
-            )));
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Inventory,
+                format!(
+                    "source coupling target unreadable at {}: {error}",
+                    target.display()
+                ),
+            ));
         }
     };
     if !resolved.starts_with(&root) {
-        return Ok(None);
+        return Ok(TrackedTargetResolution::Outside);
     }
     let relative = resolved.strip_prefix(&root).map_err(|error| {
-        CargoAllowError::new(format!(
-            "source coupling target normalization failed: {error}"
-        ))
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Internal,
+            format!("source coupling target normalization failed: {error}"),
+        )
     })?;
-    Ok(Some(PathBuf::from(normalize_path(relative))))
+    Ok(TrackedTargetResolution::Inside(PathBuf::from(
+        normalize_path(relative),
+    )))
 }
 
 fn unresolved_path_diagnostic(

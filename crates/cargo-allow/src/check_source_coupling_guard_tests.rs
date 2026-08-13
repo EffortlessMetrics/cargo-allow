@@ -1,7 +1,6 @@
 use super::{
-    crate_identity_for_path, resolve_relative_source_path, source_coupling_diagnostics_at,
-    source_coupling_diagnostics_for_check, source_coupling_diagnostics_for_sources,
-    source_coupling_fails_check,
+    crate_identity_for_path, source_coupling_diagnostics_at, source_coupling_diagnostics_for_check,
+    source_coupling_diagnostics_for_sources, source_coupling_fails_check,
 };
 use allow_match::CheckMode;
 use allow_policy::product_crates::parse_architecture_manifest_v2;
@@ -251,18 +250,20 @@ fn path_resolution_rejects_ambiguous_and_escaping_inputs() -> Result<(), String>
     use super::PathReadResolution::{Escapes, Resolved, Unresolved};
     use allow_rust::RustSourceCouplingPathBase::{ManifestDirectory, SourceFile};
 
-    if resolve_relative_source_path(
+    if super::resolve_relative_source_path_from_crate_root(
         Path::new("crates/product-a/src/lib.rs"),
         SourceFile,
         "local.rs",
+        "crates/product-a",
     ) != Resolved(PathBuf::from("crates/product-a/src/local.rs"))
     {
         return Err("source-relative path did not resolve from the source directory".to_string());
     }
-    if resolve_relative_source_path(
+    if super::resolve_relative_source_path_from_crate_root(
         Path::new("crates/product-a/src/lib.rs"),
         ManifestDirectory,
         "/shared/public.rs",
+        "crates/product-a",
     ) != Resolved(PathBuf::from("crates/product-a/shared/public.rs"))
     {
         return Err("manifest-relative path did not resolve from the crate root".to_string());
@@ -273,10 +274,11 @@ fn path_resolution_rejects_ambiguous_and_escaping_inputs() -> Result<(), String>
         "/absolute.rs",
         "C:\\absolute.rs",
     ] {
-        let resolution = resolve_relative_source_path(
+        let resolution = super::resolve_relative_source_path_from_crate_root(
             Path::new("crates/product-a/src/lib.rs"),
             SourceFile,
             path,
+            "crates/product-a",
         );
         if !matches!(resolution, Unresolved | Escapes) {
             return Err(format!(
@@ -284,8 +286,12 @@ fn path_resolution_rejects_ambiguous_and_escaping_inputs() -> Result<(), String>
             ));
         }
     }
-    if resolve_relative_source_path(Path::new("README.md"), ManifestDirectory, "shared.rs")
-        != Unresolved
+    if super::resolve_relative_source_path_from_crate_root(
+        Path::new("README.md"),
+        ManifestDirectory,
+        "shared.rs",
+        "",
+    ) != Unresolved
     {
         return Err("manifest-relative path without a source root was not unresolved".to_string());
     }
@@ -359,7 +365,7 @@ fn symlinked_tracked_targets_resolve_inside_and_reject_escape() -> Result<(), St
     .map_err(|error| format!("create inside symlink: {error}"))?;
     if super::resolve_tracked_target(&root, Path::new("crates/product-a-link.rs"))
         .map_err(|error| format!("resolve inside symlink: {error}"))?
-        != Some(PathBuf::from("crates/product-b/src/private.rs"))
+        != super::TrackedTargetResolution::Inside(PathBuf::from("crates/product-b/src/private.rs"))
     {
         return Err("inside symlink target was not canonicalized".to_string());
     }
@@ -390,9 +396,12 @@ fn symlinked_tracked_targets_resolve_inside_and_reject_escape() -> Result<(), St
         Some(&root),
     )
     .map_err(|error| format!("scan cross-product symlink: {error}"))?;
+    let Some(diagnostic) = diagnostics.first() else {
+        return Err("cross-product symlink produced no diagnostic".to_string());
+    };
     if diagnostics.len() != 1
-        || diagnostics[0].target_crate != "product-b"
-        || diagnostics[0].target_owner != "product-b"
+        || diagnostic.target_crate != "product-b"
+        || diagnostic.target_owner != "product-b"
     {
         return Err(format!(
             "cross-product symlink was not rejected: {diagnostics:?}"
@@ -401,17 +410,18 @@ fn symlinked_tracked_targets_resolve_inside_and_reject_escape() -> Result<(), St
     let outside = root
         .parent()
         .ok_or_else(|| "missing temp parent".to_string())?;
-    std::fs::write(outside.join("cargo-allow-outside.rs"), "outside\n")
+    let outside_file = outside.join(format!("cargo-allow-outside-{}.rs", std::process::id()));
+    std::fs::write(&outside_file, "outside\n")
         .map_err(|error| format!("write outside target: {error}"))?;
-    symlink("../cargo-allow-outside.rs", root.join("escape.rs"))
+    symlink(&outside_file, root.join("escape.rs"))
         .map_err(|error| format!("create escape symlink: {error}"))?;
     if super::resolve_tracked_target(&root, Path::new("escape.rs"))
         .map_err(|error| format!("resolve escape symlink: {error}"))?
-        .is_some()
+        != super::TrackedTargetResolution::Outside
     {
         return Err("outside symlink target was accepted".to_string());
     }
-    std::fs::remove_file(outside.join("cargo-allow-outside.rs")).ok();
+    std::fs::remove_file(&outside_file).ok();
     std::fs::remove_dir_all(&root).map_err(|error| format!("remove symlink fixture: {error}"))?;
     Ok(())
 }

@@ -171,6 +171,8 @@ fn find_macro_invocation<'a>(node: Node<'a>, source: &str, name: &str) -> Option
 }
 
 fn evaluate_manifest_concat_text(text: &str) -> Option<String> {
+    // Build-output bases such as env!("OUT_DIR") remain unresolved: resolving
+    // them would require build metadata, outside cargo-allow's source-tree scan.
     let start = text.find("concat!")? + "concat!".len();
     let open = text
         .get(start..)?
@@ -181,7 +183,7 @@ fn evaluate_manifest_concat_text(text: &str) -> Option<String> {
     let mut saw_manifest_dir = false;
     let mut path = String::new();
     for arg in split_concat_args(args)? {
-        let arg = arg.trim();
+        let arg = strip_leading_comments(arg)?.trim();
         if let Some(value) = arg.strip_prefix("env!") {
             let value = strip_macro_delimiters(value.trim())?.trim();
             if saw_manifest_dir
@@ -224,6 +226,19 @@ fn split_concat_args(args: &str) -> Option<Vec<&str>> {
     }
     result.push(args.get(start..)?);
     Some(result)
+}
+
+fn strip_leading_comments(mut text: &str) -> Option<&str> {
+    loop {
+        text = text.trim_start();
+        if text.starts_with("//") {
+            text = text.split_once('\n')?.1;
+        } else if text.starts_with("/*") {
+            text = text.split_once("*/")?.1;
+        } else {
+            return Some(text);
+        }
+    }
 }
 
 fn matching_delimiter(text: &str, open: usize) -> Option<usize> {
