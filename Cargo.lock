@@ -252,6 +252,7 @@ dependencies = [
  "intent-model",
  "intent-protocol",
  "jsonschema",
+ "regex",
  "serde",
  "serde_json",
  "terminal_size",

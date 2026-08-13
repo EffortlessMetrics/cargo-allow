@@ -52,3 +52,13 @@ severity = "info"
 help = "The word 'unsafe' in comments or docs is tracked as informational"
 owner = "repo-infra"
 rationale = "Example token/word-boundary rule for the scoped-text MVP"
+
+[[rule]]
+id = "example-regex-version"
+kind = "regex"
+term = "\\d+\\.\\d+\\.\\d+"
+case_sensitive = true
+severity = "info"
+help = "Version-like strings (x.y.z) are tracked as informational"
+owner = "repo-infra"
+rationale = "Example regex rule demonstrating pattern matching (#2715)"

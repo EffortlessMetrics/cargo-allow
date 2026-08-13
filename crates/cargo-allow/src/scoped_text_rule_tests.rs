@@ -17,6 +17,7 @@ enum MatcherKind {
     Literal,
     Phrase,
     Token,
+    Regex,
 }
 
 impl MatcherKind {
@@ -25,6 +26,7 @@ impl MatcherKind {
             "literal" => Ok(MatcherKind::Literal),
             "phrase" => Ok(MatcherKind::Phrase),
             "token" => Ok(MatcherKind::Token),
+            "regex" => Ok(MatcherKind::Regex),
             other => Err(format!("unknown matcher kind `{other}`")),
         }
     }
@@ -222,6 +224,17 @@ fn match_rule(rule: &ScopedTextRule, line: &str) -> Vec<(usize, String)> {
                     results.push((pos, matched));
                 }
                 start = pos + needle.len();
+            }
+            results
+        }
+        MatcherKind::Regex => {
+            // Regex match: compile the pattern and find all matches.
+            let Ok(re) = regex::Regex::new(&rule.term) else {
+                return Vec::new();
+            };
+            let mut results = Vec::new();
+            for mat in re.find_iter(line) {
+                results.push((mat.start(), mat.as_str().to_string()));
             }
             results
         }
@@ -434,9 +447,9 @@ fn scan_text_produces_deterministic_ordering() -> Result<(), String> {
 
 #[test]
 fn unknown_matcher_kind_fails() -> Result<(), String> {
-    let result = MatcherKind::parse("regex");
+    let result = MatcherKind::parse("glob");
     if result.is_ok() {
-        return Err("unknown matcher kind 'regex' should fail in the MVP".into());
+        return Err("unknown matcher kind 'glob' should fail".into());
     }
     let result = Severity::parse("critical");
     if result.is_ok() {
@@ -463,6 +476,56 @@ fn case_insensitive_unicode_normalization_policy() -> Result<(), String> {
     let results = match_rule(&rule, "drinking café au lait");
     if results.is_empty() {
         return Err("case-insensitive token matcher should find 'café'".into());
+    }
+    Ok(())
+}
+
+#[test]
+fn regex_matcher_finds_pattern_matches() -> Result<(), String> {
+    let rule = ScopedTextRule {
+        id: "test-regex-version".to_string(),
+        kind: MatcherKind::Regex,
+        term: r"\d+\.\d+\.\d+".to_string(),
+        case_sensitive: true,
+        severity: Severity::Info,
+        help: String::new(),
+        owner: String::new(),
+        rationale: String::new(),
+    };
+    // Match version-like strings
+    let results = match_rule(&rule, "version 1.2.3 released");
+    if results.len() != 1 {
+        return Err(format!("expected 1 regex match, got {results:?}"));
+    }
+    if results.first().map(|r| &r.1) != Some(&"1.2.3".to_string()) {
+        return Err(format!("expected '1.2.3', got {results:?}"));
+    }
+    // Multiple matches on one line
+    let results = match_rule(&rule, "upgrade from 0.1.0 to 0.2.0");
+    if results.len() != 2 {
+        return Err(format!("expected 2 regex matches, got {results:?}"));
+    }
+    Ok(())
+}
+
+#[test]
+fn regex_matcher_handles_invalid_pattern_gracefully() -> Result<(), String> {
+    let rule = ScopedTextRule {
+        id: "test-regex-invalid".to_string(),
+        kind: MatcherKind::Regex,
+        term: "[invalid".to_string(), // unclosed character class
+        case_sensitive: true,
+        severity: Severity::Info,
+        help: String::new(),
+        owner: String::new(),
+        rationale: String::new(),
+    };
+    // Invalid regex should return empty results, not panic.
+    let results = match_rule(&rule, "some text");
+    if !results.is_empty() {
+        return Err(format!(
+            "invalid regex should return empty, got {results:?}"
+        ));
     }
     Ok(())
 }
