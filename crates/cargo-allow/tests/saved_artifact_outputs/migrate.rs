@@ -696,7 +696,7 @@ fn saved_migrate_non_rust_negative_controls_fail_closed_or_surface_debt() {
         ),
         (
             "non-rust-duplicate.toml",
-            "non-rust allow entry 1 duplicates earlier id `non-rust-duplicate`",
+            "non-rust allow entry 1 duplicates earlier id `negative-duplicate`",
             Some(10),
         ),
         (

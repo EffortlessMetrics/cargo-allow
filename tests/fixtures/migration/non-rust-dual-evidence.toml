@@ -9,3 +9,5 @@ owner = "docs"
 reason = "Both legacy evidence fields must survive migration."
 evidence = ["test:explicit", "issue:#2469"]
 covered_by = ["issue:#2469", "spec:NON-RUST-DUAL"]
+created = "2026-08-12"
+review_after = "2026-11-10"
