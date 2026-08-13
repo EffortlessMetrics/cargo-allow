@@ -790,3 +790,157 @@ fn exception_within_bounds_produces_no_diagnostics() -> Result<(), String> {
     }
     Ok(())
 }
+
+// ---------------------------------------------------------------------------
+// #2718: Structured JSON/path/bookkeeping scopes
+// ---------------------------------------------------------------------------
+
+/// Semantic scope classifying WHERE a text match was found (#2718).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SemanticScope {
+    RawText,
+    TypedPath,
+    GeneratedArtifact,
+    BookkeepingMetadata,
+}
+
+/// Normalize a path to repository-relative forward-slash form (#2718).
+fn normalize_repository_path(path: &str) -> String {
+    let normalized = path.replace('\\', "/");
+    let trimmed = normalized.strip_prefix("./").unwrap_or(&normalized);
+    trimmed.to_string()
+}
+
+/// Classify the semantic scope of a finding based on its file context and
+/// optional JSON field name.
+fn classify_scope(file_path: &str, json_field: Option<&str>) -> SemanticScope {
+    let normalized = file_path.replace('\\', "/");
+    if normalized.starts_with("target/")
+        || normalized.ends_with(".lock")
+        || normalized.contains("/golden/")
+        || normalized.contains("/generated/")
+    {
+        return SemanticScope::GeneratedArtifact;
+    }
+    if let Some(field) = json_field {
+        match field {
+            "path" | "file" | "glob" | "source" | "target" | "output" => {
+                return SemanticScope::TypedPath;
+            }
+            "reason" | "evidence" | "rationale" | "note" | "comment" => {
+                return SemanticScope::BookkeepingMetadata;
+            }
+            _ => {}
+        }
+    }
+    SemanticScope::RawText
+}
+
+/// Policy action for a semantic scope.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ScopeAction {
+    Scan,
+    Exclude,
+    Warn,
+}
+
+fn scope_policy(scope: SemanticScope, exclude_generated: bool) -> ScopeAction {
+    match scope {
+        SemanticScope::GeneratedArtifact if exclude_generated => ScopeAction::Exclude,
+        SemanticScope::BookkeepingMetadata => ScopeAction::Warn,
+        _ => ScopeAction::Scan,
+    }
+}
+
+#[test]
+fn normalize_repository_path_converts_backslashes() -> Result<(), String> {
+    assert_eq!(normalize_repository_path("src\\lib.rs"), "src/lib.rs");
+    assert_eq!(normalize_repository_path(".\\src\\main.rs"), "src/main.rs");
+    assert_eq!(normalize_repository_path("src/main.rs"), "src/main.rs");
+    assert_eq!(normalize_repository_path("./Cargo.toml"), "Cargo.toml");
+    Ok(())
+}
+
+#[test]
+fn classify_scope_identifies_generated_artifacts() -> Result<(), String> {
+    assert_eq!(
+        classify_scope("target/debug/output.txt", None),
+        SemanticScope::GeneratedArtifact
+    );
+    assert_eq!(
+        classify_scope("Cargo.lock", None),
+        SemanticScope::GeneratedArtifact
+    );
+    assert_eq!(
+        classify_scope("tests/golden/expected.json", None),
+        SemanticScope::GeneratedArtifact
+    );
+    Ok(())
+}
+
+#[test]
+fn classify_scope_identifies_typed_paths_from_json_fields() -> Result<(), String> {
+    assert_eq!(
+        classify_scope("policy/allow.toml", Some("path")),
+        SemanticScope::TypedPath
+    );
+    assert_eq!(
+        classify_scope("policy/allow.toml", Some("glob")),
+        SemanticScope::TypedPath
+    );
+    Ok(())
+}
+
+#[test]
+fn classify_scope_identifies_bookkeeping_metadata() -> Result<(), String> {
+    assert_eq!(
+        classify_scope("policy/allow.toml", Some("reason")),
+        SemanticScope::BookkeepingMetadata
+    );
+    assert_eq!(
+        classify_scope("policy/allow.toml", Some("evidence")),
+        SemanticScope::BookkeepingMetadata
+    );
+    Ok(())
+}
+
+#[test]
+fn classify_scope_defaults_to_raw_text() -> Result<(), String> {
+    assert_eq!(classify_scope("src/lib.rs", None), SemanticScope::RawText);
+    assert_eq!(
+        classify_scope("src/lib.rs", Some("unknown_field")),
+        SemanticScope::RawText
+    );
+    Ok(())
+}
+
+#[test]
+fn scope_policy_excludes_generated_when_configured() -> Result<(), String> {
+    assert_eq!(
+        scope_policy(SemanticScope::GeneratedArtifact, true),
+        ScopeAction::Exclude
+    );
+    assert_eq!(
+        scope_policy(SemanticScope::GeneratedArtifact, false),
+        ScopeAction::Scan
+    );
+    assert_eq!(
+        scope_policy(SemanticScope::BookkeepingMetadata, true),
+        ScopeAction::Warn
+    );
+    assert_eq!(
+        scope_policy(SemanticScope::RawText, true),
+        ScopeAction::Scan
+    );
+    Ok(())
+}
+
+#[test]
+fn typed_path_vs_raw_text_are_distinct_scopes() -> Result<(), String> {
+    let path_scope = classify_scope("policy/allow.toml", Some("path"));
+    let text_scope = classify_scope("src/lib.rs", None);
+    assert_ne!(path_scope, text_scope);
+    assert_eq!(path_scope, SemanticScope::TypedPath);
+    assert_eq!(text_scope, SemanticScope::RawText);
+    Ok(())
+}
