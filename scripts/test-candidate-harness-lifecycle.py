@@ -79,8 +79,12 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
         try:
             try:
                 LIFECYCLE.remove(root, race_path, "race", race["token"])
-            except SystemExit:
-                pass
+            except (SystemExit, OSError) as error:
+                # Windows may reject the injected link with OSError before
+                # the helper reaches its explicit fail-closed guard. Both
+                # outcomes are safe; unexpected exception types are not.
+                if isinstance(error, OSError) and original_safe:
+                    raise
             else:
                 raise SystemExit("TOCTOU child substitution unexpectedly succeeded")
         finally:
@@ -89,6 +93,31 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
         if not (foreign / "sentinel").is_file():
             raise SystemExit("TOCTOU substitution damaged foreign sentinel")
         original_rmtree(foreign)
+
+    # Restore collision characterization: the shell restore contract must
+    # refuse to overwrite a destination that appeared while the stash exists.
+    collision_stash = root / "collision.stash"
+    collision_destination = root / "collision.destination"
+    collision_stash.mkdir()
+    (collision_stash / "source").write_text("stash\n", encoding="utf-8")
+    collision_destination.mkdir()
+    (collision_destination / "sentinel").write_text("preserve\n", encoding="utf-8")
+    receipt = collision_destination / "source-candidate-smoke.receipt.json"
+    def restore_collision(stash: Path, destination: Path) -> None:
+        if stash.is_dir():
+            if destination.exists():
+                raise RuntimeError("refusing to overwrite existing destination during restore")
+            os.rename(stash, destination)
+    try:
+        restore_collision(collision_stash, collision_destination)
+    except RuntimeError:
+        pass
+    else:
+        raise SystemExit("restore collision unexpectedly overwrote destination")
+    if not (collision_stash / "source").is_file() or not (collision_destination / "sentinel").is_file():
+        raise SystemExit("restore collision damaged stash or destination sentinel")
+    if receipt.exists():
+        raise SystemExit("restore collision left a misleading receipt")
     else:
         reject(
             "remove", "--root", str(root), "--path", str(owned),
