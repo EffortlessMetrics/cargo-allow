@@ -1,11 +1,12 @@
 use super::{
-    source_coupling_diagnostics_at, source_coupling_diagnostics_for_check,
-    source_coupling_diagnostics_for_sources, source_coupling_fails_check,
+    resolve_relative_source_path, source_coupling_diagnostics_at,
+    source_coupling_diagnostics_for_check, source_coupling_diagnostics_for_sources,
+    source_coupling_fails_check,
 };
 use allow_match::CheckMode;
 use allow_policy::product_crates::parse_architecture_manifest_v2;
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -228,6 +229,52 @@ fn path_read_fixtures_allow_owned_and_shared_paths_and_reject_forbidden_or_unres
         return Err(format!(
             "unexpected unresolved path-read diagnostics: {unresolved_diagnostics:?}"
         ));
+    }
+    Ok(())
+}
+
+#[test]
+fn path_resolution_rejects_ambiguous_and_escaping_inputs() -> Result<(), String> {
+    use super::PathReadResolution::{Escapes, Resolved, Unresolved};
+    use allow_rust::RustSourceCouplingPathBase::{ManifestDirectory, SourceFile};
+
+    if resolve_relative_source_path(
+        Path::new("crates/product-a/src/lib.rs"),
+        SourceFile,
+        "local.rs",
+    ) != Resolved(PathBuf::from("crates/product-a/src/local.rs"))
+    {
+        return Err("source-relative path did not resolve from the source directory".to_string());
+    }
+    if resolve_relative_source_path(
+        Path::new("crates/product-a/src/lib.rs"),
+        ManifestDirectory,
+        "/shared/public.rs",
+    ) != Resolved(PathBuf::from("crates/product-a/shared/public.rs"))
+    {
+        return Err("manifest-relative path did not resolve from the crate root".to_string());
+    }
+    for path in [
+        "",
+        "../../../../outside.rs",
+        "/absolute.rs",
+        "C:\\absolute.rs",
+    ] {
+        let resolution = resolve_relative_source_path(
+            Path::new("crates/product-a/src/lib.rs"),
+            SourceFile,
+            path,
+        );
+        if !matches!(resolution, Unresolved | Escapes) {
+            return Err(format!(
+                "ambiguous or escaping path resolved unexpectedly: {path:?}"
+            ));
+        }
+    }
+    if resolve_relative_source_path(Path::new("README.md"), ManifestDirectory, "shared.rs")
+        != Unresolved
+    {
+        return Err("manifest-relative path without a source root was not unresolved".to_string());
     }
     Ok(())
 }

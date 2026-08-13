@@ -105,6 +105,25 @@ fn extracts_manifest_directory_concat_path_reads() -> Result<(), String> {
 }
 
 #[test]
+fn path_reads_fail_closed_for_dynamic_and_escaped_literals() -> Result<(), String> {
+    let scan = scan_rust_source_coupling(
+        "include!(env!(\"OTHER_DIR\"));\ninclude!(\"dir\\\\file.rs\");\ninclude!(concat!(path!(), \"owned.rs\"));\n",
+    )
+    .map_err(|error| format!("scan ambiguous path reads: {error}"))?;
+    let reads: Vec<_> = scan
+        .facts
+        .iter()
+        .filter(|fact| fact.kind == RustSourceCouplingKind::PathRead)
+        .collect();
+    if reads.len() != 3 || reads.iter().any(|fact| !fact.path.is_empty()) {
+        return Err(format!(
+            "ambiguous path reads were not unresolved: {reads:?}"
+        ));
+    }
+    Ok(())
+}
+
+#[test]
 fn handles_empty_and_unscoped_use_lists() -> Result<(), String> {
     let scan = scan_rust_source_coupling("use broken::{,};\nuse {product_b::item};\n")
         .map_err(|error| format!("scan edge-case use lists: {error}"))?;
