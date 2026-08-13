@@ -3845,6 +3845,27 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-0527"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "docs/dogfood/fixtures/ci/partial-diff-artifacts.yml"
+owner = "core/policy"
+classification = "docs_executable_contract"
+reason = "Documented negative CI fixture proving partial revision scans stay blocking while their evidence artifacts remain reviewable (#3302)."
+evidence = ["workflow:examples/github-actions/cargo-allow-diff.yml", "test:committed_workflow_examples_parse_and_meet_semantic_contract", "issue:3302"]
+created = "2026-08-12"
+review_after = "2026-11-10"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "yml"
+glob = "docs/dogfood/fixtures/ci/partial-diff-artifacts.yml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0130"
 kind = "non_rust_file"
 family = "documentation"
