@@ -13,6 +13,7 @@ mod packet;
 mod parity;
 mod parity_corpus;
 mod phase_obligations;
+mod precommit_evaluator;
 mod subject_resolution;
 mod workspace;
 
@@ -59,6 +60,7 @@ pub use phase_obligations::{
     PhaseObligationCompileInputV1, PhaseObligationItemV1, PhaseObligationKindV1,
     PhaseObligationPlanV1, compile_phase_obligation_plan, load_phase_obligation_plan_toml,
 };
+pub use precommit_evaluator::evaluate_precommit_objectives;
 pub use subject_resolution::{
     IntentSubjectResolutionClassV1, IntentSubjectResolutionV1, resolve_authored_rust_subject,
 };

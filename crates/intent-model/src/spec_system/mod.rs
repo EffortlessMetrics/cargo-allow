@@ -7,6 +7,7 @@ mod doc_artifacts;
 mod graph_types;
 mod implementation_slice;
 mod import_roots;
+mod precommit_types;
 mod requirement;
 mod support_tiers;
 
@@ -43,6 +44,12 @@ pub use implementation_slice::{
     SupportClaimDispositionState, parse_implementation_slice, parse_implementation_slice_at,
 };
 pub use import_roots::{ImportNodeRole, ImportRootEntry, ImportRootsConfig};
+pub use precommit_types::{
+    PrecommitChangeClass, PrecommitChangeDeclaration, PrecommitEvaluationInput, PrecommitFinding,
+    PrecommitFindingCode, PrecommitFindingPosture, PrecommitInventoryPosture, PrecommitMovement,
+    PrecommitMovementKind, PrecommitObjectiveEvaluation, PrecommitSubjectResolution,
+    PrecommitSubjectResolutionStatus,
+};
 pub use requirement::{
     REQUIREMENT_BLOCK_SCHEMA_VERSION, RequirementClaimClass, RequirementGraph, RequirementId,
     RequirementSource, RequirementStatus, SpecRequirement, parse_requirement_blocks,
