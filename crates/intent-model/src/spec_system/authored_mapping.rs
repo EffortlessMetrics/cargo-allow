@@ -67,6 +67,15 @@ pub enum EvidencePurpose {
     ForbiddenRuntimePromotion,
 }
 
+impl EvidencePurpose {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::PositiveAcceptance => "positive_acceptance",
+            Self::ForbiddenRuntimePromotion => "forbidden_runtime_promotion",
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct EvidenceSubjectId(pub String);
@@ -82,6 +91,15 @@ impl EvidenceSubjectId {
 pub enum EvidenceSubjectRole {
     ExactEvidence,
     RelatedWeak,
+}
+
+impl EvidenceSubjectRole {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::ExactEvidence => "exact_evidence",
+            Self::RelatedWeak => "related_weak",
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
