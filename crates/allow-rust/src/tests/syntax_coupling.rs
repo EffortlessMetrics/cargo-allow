@@ -68,7 +68,7 @@ fn ignores_out_of_line_modules_when_extracting_inline_modules() -> Result<(), St
 #[test]
 fn extracts_compile_time_path_reads_and_marks_ambiguous_arguments() -> Result<(), String> {
     let scan = scan_rust_source_coupling(
-        "::std::include!(\"owned.rs\");\n::std::include_str!(r#\"../../shared/src/lib.rs\"#);\n::std::include_bytes!(concat!(\"unknown\", \".rs\"));\n",
+        "::std::include!(\"owned.rs\");\n::std::include_str!(r#\"../../shared/src/lib.rs\"#);\n::std::include_bytes!(::std::concat!(\"unknown\", \".rs\"));\n",
     )
     .map_err(|error| format!("scan path reads: {error}"))?;
     let reads: Vec<_> = scan
@@ -88,7 +88,7 @@ fn extracts_compile_time_path_reads_and_marks_ambiguous_arguments() -> Result<()
 #[test]
 fn extracts_manifest_directory_concat_path_reads() -> Result<(), String> {
     let scan = scan_rust_source_coupling(
-        "::std::include_str!(concat!(::std::env!(\"CARGO_MANIFEST_DIR\"), \"/../shared/\", \"public.rs\"));\n",
+        "::std::include_str!(::std::concat!(::std::env!(\"CARGO_MANIFEST_DIR\"), \"/../shared/\", \"public.rs\"));\n",
     )
     .map_err(|error| format!("scan concat path read: {error}"))?;
     let fact = scan
@@ -107,7 +107,7 @@ fn extracts_manifest_directory_concat_path_reads() -> Result<(), String> {
 #[test]
 fn manifest_concat_reconstructs_fragments_after_the_manifest_directory() -> Result<(), String> {
     let scan = scan_rust_source_coupling(
-        "::std::include_str!(concat!(::std::env!(\"CARGO_MANIFEST_DIR\"), r#\"/assets/\"#, \"schema.json\"));\n",
+        "::std::include_str!(::std::concat!(::std::env!(\"CARGO_MANIFEST_DIR\"), r#\"/assets/\"#, \"schema.json\"));\n",
     )
     .map_err(|error| format!("scan fragment concat: {error}"))?;
     let fact = scan
@@ -126,7 +126,7 @@ fn manifest_concat_reconstructs_fragments_after_the_manifest_directory() -> Resu
 #[test]
 fn manifest_concat_rejects_other_environment_and_dynamic_fragments() -> Result<(), String> {
     let scan = scan_rust_source_coupling(
-            "::std::include_str!(concat!(::std::env!(\"OTHER_DIR\"), \"/schema.json\"));\n::std::include_str!(concat!(::std::env!(\"CARGO_MANIFEST_DIR\"), path!()));\n::std::include_str!(concat!(\"prefix/\", ::std::env!(\"CARGO_MANIFEST_DIR\"), \"/schema.json\"));\n::std::include_str!(concat!(::std::env!(\"CARGO_MANIFEST_DIR\"), ::std::env!(\"CARGO_MANIFEST_DIR\"), \"/schema.json\"));\n::std::include_str!(concat!(::std::env!(\"CARGO_MANIFEST_DIR\"), \"sibling.rs\"));\n::std::include_str!((choose!(concat!(::std::env!(\"CARGO_MANIFEST_DIR\"), \"/decoy.rs\"))));\n::std::include_str!(concat!(myenv!(\"CARGO_MANIFEST_DIR\"), \"/decoy.rs\"));\n::std::include_str!(concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/shadowable.rs\"));\n",
+            "::std::include_str!(::std::concat!(::std::env!(\"OTHER_DIR\"), \"/schema.json\"));\n::std::include_str!(::std::concat!(::std::env!(\"CARGO_MANIFEST_DIR\"), path!()));\n::std::include_str!(::std::concat!(\"prefix/\", ::std::env!(\"CARGO_MANIFEST_DIR\"), \"/schema.json\"));\n::std::include_str!(::std::concat!(::std::env!(\"CARGO_MANIFEST_DIR\"), ::std::env!(\"CARGO_MANIFEST_DIR\"), \"/schema.json\"));\n::std::include_str!(::std::concat!(::std::env!(\"CARGO_MANIFEST_DIR\"), \"sibling.rs\"));\n::std::include_str!((choose!(::std::concat!(::std::env!(\"CARGO_MANIFEST_DIR\"), \"/decoy.rs\"))));\n::std::include_str!(::std::concat!(myenv!(\"CARGO_MANIFEST_DIR\"), \"/decoy.rs\"));\n::std::include_str!(::std::concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/shadowable.rs\"));\n",
     )
     .map_err(|error| format!("scan invalid manifest concat: {error}"))?;
     let reads: Vec<_> = scan
@@ -143,7 +143,7 @@ fn manifest_concat_rejects_other_environment_and_dynamic_fragments() -> Result<(
 #[test]
 fn manifest_concat_fails_closed_when_no_std_can_shadow_std() -> Result<(), String> {
     let scan = scan_rust_source_coupling(
-        "#![cfg_attr(any(), no_std)]\nmod std { pub use crate::env; }\n::std::include_str!(concat!(::std::env!(\"CARGO_MANIFEST_DIR\"), \"/decoy.rs\"));\n",
+        "#![cfg_attr(any(), no_std)]\nmod std { pub use crate::env; }\n::std::include_str!(::std::concat!(::std::env!(\"CARGO_MANIFEST_DIR\"), \"/decoy.rs\"));\n",
     )
     .map_err(|error| format!("scan no_std manifest concat: {error}"))?;
     let read = scan
@@ -185,7 +185,7 @@ fn source_posture_detects_exact_no_std_and_path_macro_shadows() -> Result<(), St
         return Err("renamed-away macro import was treated as a shadow".to_string());
     }
     for source in [
-        "macro_rules! harmless { () => { concat!(\"a\", \"b\") } }",
+        "macro_rules! harmless { () => { ::std::concat!(\"a\", \"b\") } }",
         "const S: &str = \"macro_use\"; extern crate dependency;",
     ] {
         if rust_source_shadows_path_macros(source).map_err(|error| error.to_string())? {
@@ -215,7 +215,7 @@ fn source_posture_detects_exact_no_std_and_path_macro_shadows() -> Result<(), St
 #[test]
 fn direct_path_containing_manifest_name_stays_source_relative() -> Result<(), String> {
     let scan = scan_rust_source_coupling(
-        "::std::include_str!(\"CARGO_MANIFEST_DIR.txt\");\n::std::include_str!(/* concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/decoy.rs\") */ \"owned.txt\");\n",
+        "::std::include_str!(\"CARGO_MANIFEST_DIR.txt\");\n::std::include_str!(/* ::std::concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/decoy.rs\") */ \"owned.txt\");\n",
     )
     .map_err(|error| format!("scan direct manifest-named path: {error}"))?;
     let reads: Vec<_> = scan
@@ -240,7 +240,7 @@ fn direct_path_containing_manifest_name_stays_source_relative() -> Result<(), St
 #[test]
 fn manifest_concat_uses_the_structural_argument_and_all_delimiters() -> Result<(), String> {
     let scan = scan_rust_source_coupling(
-            "::std::r#include_str!(/* concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/decoy.rs\") */ (r#concat /* macro */ ! {::std /* path */ :: r#env /* base */ ! [/* leading */ \"CARGO_MANIFEST_DIR\" /* base tail */], /* outer, ) [ /* nested */ */ \"/actual.rs\" /* literal tail */}));\n::std::include_str!(concat![::std::env!{// leading\n \"CARGO_MANIFEST_DIR\" // trailing\n}, // comma, close )\n \"/bracket.rs\"]);\n",
+            "::std::r#include_str!(/* ::std::concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/decoy.rs\") */ (::std::r#concat /* macro */ ! {::std /* path */ :: r#env /* base */ ! [/* leading */ \"CARGO_MANIFEST_DIR\" /* base tail */], /* outer, ) [ /* nested */ */ \"/actual.rs\" /* literal tail */}));\n::std::include_str!(::std::concat![::std::env!{// leading\n \"CARGO_MANIFEST_DIR\" // trailing\n}, // comma, close )\n \"/bracket.rs\"]);\n",
     )
     .map_err(|error| format!("scan structural concat arguments: {error}"))?;
     let reads: Vec<_> = scan
@@ -263,7 +263,7 @@ fn manifest_concat_uses_the_structural_argument_and_all_delimiters() -> Result<(
 #[test]
 fn manifest_concat_ignores_delimiters_inside_literals() -> Result<(), String> {
     let scan = scan_rust_source_coupling(
-        "::std::include_str!(concat!(::std::env!(\"CARGO_MANIFEST_DIR\"), \"/fixtures/)comma,\", r#\"raw,)ok.txt\"#));\n",
+        "::std::include_str!(::std::concat!(::std::env!(\"CARGO_MANIFEST_DIR\"), \"/fixtures/)comma,\", r#\"raw,)ok.txt\"#));\n",
     )
     .map_err(|error| format!("scan delimiter concat: {error}"))?;
     let fact = scan
@@ -282,7 +282,7 @@ fn manifest_concat_ignores_delimiters_inside_literals() -> Result<(), String> {
 #[test]
 fn path_reads_fail_closed_for_dynamic_and_escaped_literals() -> Result<(), String> {
     let scan = scan_rust_source_coupling(
-        "::std::include!(env!(\"OTHER_DIR\"));\n::std::include!(\"dir\\\\file.rs\");\n::std::include!(concat!(path!(), \"owned.rs\"));\n",
+        "::std::include!(env!(\"OTHER_DIR\"));\n::std::include!(\"dir\\\\file.rs\");\n::std::include!(::std::concat!(path!(), \"owned.rs\"));\n",
     )
     .map_err(|error| format!("scan ambiguous path reads: {error}"))?;
     let reads: Vec<_> = scan

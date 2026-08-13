@@ -122,6 +122,9 @@ fn use_binds_path_macro(node: Node<'_>, source: &str) -> bool {
     let Some(text) = node_text(source, node) else {
         return false;
     };
+    let Some(text) = strip_rust_comments(text) else {
+        return true;
+    };
     let compact: String = text.chars().filter(|ch| !ch.is_whitespace()).collect();
     if compact.contains('*')
         && compact.contains("::")
@@ -282,9 +285,24 @@ fn path_read_macro_kind(node: Node<'_>, source: &str) -> Option<RustSourceCoupli
 }
 
 fn path_read_macro_is_trusted(node: Node<'_>, source: &str, std_is_unshadowed: bool) -> bool {
-    node.child_by_field_name("macro")
-        .and_then(|macro_node| node_text(source, macro_node))
-        .is_some_and(|path| std_is_unshadowed && path.starts_with("::std::"))
+    std_is_unshadowed
+        && node_text(source, node).is_some_and(|text| text.trim_start().starts_with("::std::"))
+        && node
+            .child_by_field_name("macro")
+            .and_then(|macro_node| node_text(source, macro_node))
+            .is_some_and(is_standard_path_read_macro)
+}
+
+fn is_standard_path_read_macro(path: &str) -> bool {
+    matches!(
+        path,
+        "::std::include"
+            | "::std::include_str"
+            | "::std::include_bytes"
+            | "::std::r#include"
+            | "::std::r#include_str"
+            | "::std::r#include_bytes"
+    )
 }
 
 fn path_read_argument(
@@ -324,7 +342,11 @@ fn path_read_argument(
             .child_by_field_name("macro")
             .and_then(|macro_node| node_text(source, macro_node))?;
         let macro_name = macro_path.rsplit("::").next()?;
-        if (macro_path.contains("::") && !macro_path.starts_with("::std::"))
+        if (macro_path.contains("::")
+            && (!matches!(macro_path, "std::concat" | "std::r#concat")
+                || !node_text(source, child)?
+                    .trim_start()
+                    .starts_with("::std::")))
             || macro_name.strip_prefix("r#").unwrap_or(macro_name) != "concat"
         {
             return None;
@@ -364,6 +386,7 @@ fn find_token_tree_macro_text<'a>(
 fn evaluate_manifest_concat_text(text: &str) -> Option<String> {
     // Build-output bases such as env!("OUT_DIR") remain unresolved: resolving
     // them would require build metadata, outside cargo-allow's source-tree scan.
+    let text = text.trim_start().strip_prefix("::std::").unwrap_or(text);
     let concat_name = if text.trim_start().starts_with("r#concat") {
         "r#concat"
     } else {
