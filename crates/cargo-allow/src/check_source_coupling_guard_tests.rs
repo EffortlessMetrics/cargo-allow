@@ -346,6 +346,8 @@ fn symlinked_tracked_targets_resolve_inside_and_reject_escape() -> Result<(), St
         std::fs::remove_dir_all(&root)
             .map_err(|error| format!("clean symlink fixture: {error}"))?;
     }
+    std::fs::create_dir_all(root.join("crates/product-a/src"))
+        .map_err(|error| format!("create symlink source fixture: {error}"))?;
     std::fs::create_dir_all(root.join("crates/product-b/src"))
         .map_err(|error| format!("create symlink fixture: {error}"))?;
     std::fs::write(root.join("crates/product-b/src/private.rs"), "secret\n")
@@ -360,6 +362,41 @@ fn symlinked_tracked_targets_resolve_inside_and_reject_escape() -> Result<(), St
         != Some(PathBuf::from("crates/product-b/src/private.rs"))
     {
         return Err("inside symlink target was not canonicalized".to_string());
+    }
+    symlink(
+        "../../product-b/src/private.rs",
+        root.join("crates/product-a/src/linked.rs"),
+    )
+    .map_err(|error| format!("create cross-product symlink: {error}"))?;
+    let manifest = fixture_manifest()?;
+    let forbidden = BTreeMap::from([(
+        "product-a".to_string(),
+        BTreeSet::from(["product-b".to_string()]),
+    )]);
+    let tracked = BTreeSet::from([
+        PathBuf::from("crates/product-a/src/lib.rs"),
+        PathBuf::from("crates/product-a/src/linked.rs"),
+        PathBuf::from("crates/product-b/src/private.rs"),
+    ]);
+    let sources = vec![(
+        PathBuf::from("crates/product-a/src/lib.rs"),
+        "include_str!(\"linked.rs\");\n".to_string(),
+    )];
+    let diagnostics = super::source_coupling_diagnostics_for_sources_at_root(
+        &manifest,
+        &forbidden,
+        &tracked,
+        &sources,
+        Some(&root),
+    )
+    .map_err(|error| format!("scan cross-product symlink: {error}"))?;
+    if diagnostics.len() != 1
+        || diagnostics[0].target_crate != "product-b"
+        || diagnostics[0].target_owner != "product-b"
+    {
+        return Err(format!(
+            "cross-product symlink was not rejected: {diagnostics:?}"
+        ));
     }
     let outside = root
         .parent()
