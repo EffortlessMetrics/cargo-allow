@@ -35,7 +35,7 @@ def validate_test_root(root: Path, repository: Path) -> Path:
     allowed = canonical_existing(root, "test root")
     repo = canonical_existing(repository, "repository")
     target = repo / "target"
-    if allowed == repo or repo in allowed.parents:
+    if allowed == repo or repo in allowed.parents or allowed in repo.parents:
         fail(f"test root overlaps repository: {allowed}")
     if target.exists() and (allowed == target or target in allowed.parents or allowed in target.parents):
         fail(f"test root overlaps repository target: {allowed}")
