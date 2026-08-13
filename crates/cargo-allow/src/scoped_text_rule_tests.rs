@@ -59,6 +59,8 @@ struct ScopedTextRuleSchema {
     generated_by: String,
     #[serde(rename = "rule")]
     rules: Vec<RuleEntry>,
+    #[serde(default, rename = "exception")]
+    exceptions: Vec<ExceptionEntry>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -73,6 +75,20 @@ struct RuleEntry {
     help: String,
     owner: String,
     rationale: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ExceptionEntry {
+    rule_id: String,
+    reason: String,
+    owner: String,
+    #[serde(default)]
+    max_occurrences: Option<u32>,
+    #[serde(default)]
+    expires: Option<String>,
+    #[serde(default)]
+    review_after: Option<String>,
 }
 
 fn default_true() -> bool {
@@ -99,6 +115,79 @@ struct TextFinding {
     column: usize,
     matched_text: String,
     severity: String,
+}
+
+/// A central text exception that suppresses findings for a bounded reason (#2716).
+#[derive(Debug, Clone)]
+struct TextException {
+    rule_id: String,
+    reason: String,
+    owner: String,
+    max_occurrences: Option<u32>,
+    expires: Option<String>,
+    review_after: Option<String>,
+}
+
+/// Diagnostic kind for exception validation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ExceptionDiagnosticKind {
+    Expired,
+    ReviewDue,
+    OrphanRule,
+    OccurrenceOverflow,
+}
+
+/// Validate exceptions against findings and an as-of date. Returns
+/// diagnostics for expired, review-due, orphan, and overflow exceptions.
+fn validate_exceptions(
+    exceptions: &[TextException],
+    findings: &[TextFinding],
+    known_rule_ids: &[&str],
+    as_of: &str,
+) -> Vec<(ExceptionDiagnosticKind, String)> {
+    let mut diags = Vec::new();
+    for exc in exceptions {
+        // Orphan: exception references a rule that doesn't exist.
+        if !known_rule_ids.contains(&exc.rule_id.as_str()) {
+            diags.push((
+                ExceptionDiagnosticKind::OrphanRule,
+                format!("exception references unknown rule `{}`", exc.rule_id),
+            ));
+            continue;
+        }
+        // Expired: hard expiry date has passed.
+        if let Some(ref expires) = exc.expires
+            && expires.as_str() <= as_of
+        {
+            diags.push((
+                ExceptionDiagnosticKind::Expired,
+                format!("exception for `{}` expired on {expires}", exc.rule_id),
+            ));
+        }
+        // Review due: soft review date has passed (warning only).
+        if let Some(ref review) = exc.review_after
+            && review.as_str() <= as_of
+        {
+            diags.push((
+                ExceptionDiagnosticKind::ReviewDue,
+                format!("exception for `{}` due for review on {review}", exc.rule_id),
+            ));
+        }
+        // Occurrence overflow: more findings than max_occurrences allows.
+        if let Some(max) = exc.max_occurrences {
+            let count = findings.iter().filter(|f| f.rule_id == exc.rule_id).count() as u32;
+            if count > max {
+                diags.push((
+                    ExceptionDiagnosticKind::OccurrenceOverflow,
+                    format!(
+                        "exception for `{}` allows {max} occurrences but found {count}",
+                        exc.rule_id
+                    ),
+                ));
+            }
+        }
+    }
+    diags
 }
 
 fn load_rules() -> Result<Vec<ScopedTextRule>, String> {
@@ -144,6 +233,28 @@ fn load_rules() -> Result<Vec<ScopedTextRule>, String> {
                 help: r.help,
                 owner: r.owner,
                 rationale: r.rationale,
+            })
+        })
+        .collect()
+}
+
+fn load_exceptions() -> Result<Vec<TextException>, String> {
+    let root = workspace_root();
+    let path = root.join("policy/scoped-text-rules.toml");
+    let text = std::fs::read_to_string(&path)
+        .map_err(|e| format!("read policy/scoped-text-rules.toml: {e}"))?;
+    let raw: ScopedTextRuleSchema =
+        toml::from_str(&text).map_err(|e| format!("parse scoped-text-rules.toml: {e}"))?;
+    raw.exceptions
+        .into_iter()
+        .map(|e| {
+            Ok(TextException {
+                rule_id: e.rule_id,
+                reason: e.reason,
+                owner: e.owner,
+                max_occurrences: e.max_occurrences,
+                expires: e.expires,
+                review_after: e.review_after,
             })
         })
         .collect()
@@ -525,6 +636,156 @@ fn regex_matcher_handles_invalid_pattern_gracefully() -> Result<(), String> {
     if !results.is_empty() {
         return Err(format!(
             "invalid regex should return empty, got {results:?}"
+        ));
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// #2716: Central text exception tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn exceptions_load_from_manifest() -> Result<(), String> {
+    let excs = load_exceptions()?;
+    if excs.is_empty() {
+        return Err("scoped-text-rules.toml should have at least one exception".into());
+    }
+    for e in &excs {
+        if e.rule_id.trim().is_empty() || e.reason.trim().is_empty() || e.owner.trim().is_empty() {
+            return Err(format!(
+                "exception for rule `{}` has empty required field",
+                e.rule_id
+            ));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn exception_detects_expired_hard_expiry() -> Result<(), String> {
+    let excs = vec![TextException {
+        rule_id: "test-rule".to_string(),
+        reason: "test".to_string(),
+        owner: "test".to_string(),
+        max_occurrences: None,
+        expires: Some("2026-01-01".to_string()),
+        review_after: None,
+    }];
+    let diags = validate_exceptions(&excs, &[], &["test-rule"], "2026-08-13");
+    let expired = diags
+        .iter()
+        .any(|(k, _)| *k == ExceptionDiagnosticKind::Expired);
+    if !expired {
+        return Err("expired exception should be detected".into());
+    }
+    Ok(())
+}
+
+#[test]
+fn exception_detects_review_due() -> Result<(), String> {
+    let excs = vec![TextException {
+        rule_id: "test-rule".to_string(),
+        reason: "test".to_string(),
+        owner: "test".to_string(),
+        max_occurrences: None,
+        expires: None,
+        review_after: Some("2026-01-01".to_string()),
+    }];
+    let diags = validate_exceptions(&excs, &[], &["test-rule"], "2026-08-13");
+    let due = diags
+        .iter()
+        .any(|(k, _)| *k == ExceptionDiagnosticKind::ReviewDue);
+    if !due {
+        return Err("review-due exception should be detected".into());
+    }
+    Ok(())
+}
+
+#[test]
+fn exception_detects_orphan_rule_reference() -> Result<(), String> {
+    let excs = vec![TextException {
+        rule_id: "nonexistent-rule".to_string(),
+        reason: "test".to_string(),
+        owner: "test".to_string(),
+        max_occurrences: None,
+        expires: None,
+        review_after: None,
+    }];
+    let diags = validate_exceptions(&excs, &[], &["real-rule"], "2026-08-13");
+    let orphan = diags
+        .iter()
+        .any(|(k, _)| *k == ExceptionDiagnosticKind::OrphanRule);
+    if !orphan {
+        return Err("orphan rule reference should be detected".into());
+    }
+    Ok(())
+}
+
+#[test]
+fn exception_detects_occurrence_overflow() -> Result<(), String> {
+    let excs = vec![TextException {
+        rule_id: "test-rule".to_string(),
+        reason: "test".to_string(),
+        owner: "test".to_string(),
+        max_occurrences: Some(2),
+        expires: None,
+        review_after: None,
+    }];
+    let findings = vec![
+        TextFinding {
+            rule_id: "test-rule".to_string(),
+            line: 1,
+            column: 0,
+            matched_text: "match".to_string(),
+            severity: "info".to_string(),
+        },
+        TextFinding {
+            rule_id: "test-rule".to_string(),
+            line: 2,
+            column: 0,
+            matched_text: "match".to_string(),
+            severity: "info".to_string(),
+        },
+        TextFinding {
+            rule_id: "test-rule".to_string(),
+            line: 3,
+            column: 0,
+            matched_text: "match".to_string(),
+            severity: "info".to_string(),
+        },
+    ];
+    let diags = validate_exceptions(&excs, &findings, &["test-rule"], "2026-08-13");
+    let overflow = diags
+        .iter()
+        .any(|(k, _)| *k == ExceptionDiagnosticKind::OccurrenceOverflow);
+    if !overflow {
+        return Err("occurrence overflow (3 > 2) should be detected".into());
+    }
+    Ok(())
+}
+
+#[test]
+fn exception_within_bounds_produces_no_diagnostics() -> Result<(), String> {
+    let excs = vec![TextException {
+        rule_id: "test-rule".to_string(),
+        reason: "legitimate use".to_string(),
+        owner: "test".to_string(),
+        max_occurrences: Some(5),
+        expires: Some("2027-01-01".to_string()),
+        review_after: Some("2027-01-01".to_string()),
+    }];
+    let findings = vec![TextFinding {
+        rule_id: "test-rule".to_string(),
+        line: 1,
+        column: 0,
+        matched_text: "match".to_string(),
+        severity: "info".to_string(),
+    }];
+    let diags = validate_exceptions(&excs, &findings, &["test-rule"], "2026-08-13");
+    if !diags.is_empty() {
+        return Err(format!(
+            "valid exception should produce no diagnostics, got {diags:?}"
         ));
     }
     Ok(())
