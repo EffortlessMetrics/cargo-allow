@@ -129,19 +129,14 @@ fn source_coupling_diagnostics_for_sources_at_root(
 ) -> CargoAllowResult<Vec<SourceCouplingDiagnostic>> {
     let target_owners = target_owners(manifest);
     let scanned_paths: BTreeSet<&PathBuf> = files.iter().map(|(path, _)| path).collect();
-    let no_std_targets: BTreeSet<(String, String)> = files
+    let no_std_crates: BTreeSet<String> = files
         .iter()
         .filter_map(|(path, source)| {
             rust_source_declares_no_std(source)
                 .ok()
                 .filter(|declares| *declares)
                 .and_then(|_| crate_identity_for_path(manifest, path))
-                .map(|identity| {
-                    (
-                        identity.workspace_path.clone(),
-                        source_target_key(path, &identity.workspace_path),
-                    )
-                })
+                .map(|identity| identity.workspace_path.clone())
         })
         .collect();
     let shadowed_path_macro_crates: BTreeSet<String> = files
@@ -161,10 +156,7 @@ fn source_coupling_diagnostics_for_sources_at_root(
         };
         let scan = scan_rust_source_coupling_with_posture(
             source,
-            !no_std_targets.contains(&(
-                source_identity.workspace_path.clone(),
-                source_target_key(path, &source_identity.workspace_path),
-            )),
+            !no_std_crates.contains(&source_identity.workspace_path),
             !shadowed_path_macro_crates.contains(&source_identity.workspace_path),
         )?;
         for fact in scan.facts {
@@ -321,27 +313,6 @@ fn source_coupling_diagnostics_for_sources_at_root(
             ))
     });
     Ok(diagnostics)
-}
-
-fn source_target_key(path: &Path, crate_root: &str) -> String {
-    let normalized = normalize_path(path);
-    let relative = normalized
-        .strip_prefix(crate_root)
-        .and_then(|suffix| suffix.strip_prefix('/'))
-        .unwrap_or(&normalized);
-    if relative == "build.rs" {
-        return "build".to_string();
-    }
-    if let Some(example) = relative.strip_prefix("examples/") {
-        return format!("example:{}", example.split('/').next().unwrap_or(example));
-    }
-    if let Some(bin) = relative.strip_prefix("src/bin/") {
-        return format!("bin:{}", bin.split('/').next().unwrap_or(bin));
-    }
-    if relative == "src/main.rs" {
-        return "main".to_string();
-    }
-    "lib".to_string()
 }
 
 fn is_include_macro(text: &str) -> bool {

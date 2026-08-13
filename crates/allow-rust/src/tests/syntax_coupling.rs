@@ -172,10 +172,16 @@ fn source_posture_detects_exact_no_std_and_path_macro_shadows() -> Result<(), St
         "use crate::macros::concat;",
         "use crate::macros::other as include_bytes;",
         "pub use crate::macros::{concat, other};",
+        "#[macro_use] extern crate legacy_macros;",
     ] {
         if !rust_source_shadows_path_macros(source).map_err(|error| error.to_string())? {
             return Err(format!("path macro shadow was not detected: {source}"));
         }
+    }
+    if rust_source_shadows_path_macros("use crate::concat as harmless;")
+        .map_err(|error| error.to_string())?
+    {
+        return Err("renamed-away macro import was treated as a shadow".to_string());
     }
     Ok(())
 }

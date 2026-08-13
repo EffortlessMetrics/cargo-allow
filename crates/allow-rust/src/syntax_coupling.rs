@@ -75,8 +75,14 @@ pub fn rust_source_shadows_path_macros(source: &str) -> CargoAllowResult<bool> {
 }
 
 fn node_shadows_path_macros(node: Node<'_>, source: &str) -> bool {
-    if matches!(node.kind(), "macro_definition" | "use_declaration")
-        && contains_path_macro_identifier(node, source)
+    if node.kind() == "macro_definition" && contains_path_macro_identifier(node, source) {
+        return true;
+    }
+    if node.kind() == "use_declaration" && use_binds_path_macro(node, source) {
+        return true;
+    }
+    if node.kind() == "extern_crate_declaration"
+        && node_text(source, node).is_some_and(|text| text.contains("macro_use"))
     {
         return true;
     }
@@ -85,14 +91,33 @@ fn node_shadows_path_macros(node: Node<'_>, source: &str) -> bool {
         .any(|child| node_shadows_path_macros(child, source))
 }
 
+fn use_binds_path_macro(node: Node<'_>, source: &str) -> bool {
+    let Some(text) = node_text(source, node) else {
+        return false;
+    };
+    let compact: String = text.chars().filter(|ch| !ch.is_whitespace()).collect();
+    if let Some((_, alias)) = compact.rsplit_once("as") {
+        return matches_path_macro_name(alias.trim_end_matches(';'));
+    }
+    let binding = compact
+        .trim_end_matches(';')
+        .rsplit([':', ',', '{'])
+        .next()
+        .unwrap_or_default()
+        .trim_end_matches('}');
+    matches_path_macro_name(binding)
+}
+
+fn matches_path_macro_name(name: &str) -> bool {
+    matches!(
+        name.strip_prefix("r#").unwrap_or(name),
+        "include" | "include_str" | "include_bytes" | "concat"
+    )
+}
+
 fn contains_path_macro_identifier(node: Node<'_>, source: &str) -> bool {
     if node.kind() == "identifier"
-        && node_text(source, node).is_some_and(|name| {
-            matches!(
-                name.strip_prefix("r#").unwrap_or(name),
-                "include" | "include_str" | "include_bytes" | "concat"
-            )
-        })
+        && node_text(source, node).is_some_and(|name| matches_path_macro_name(name))
     {
         return true;
     }
