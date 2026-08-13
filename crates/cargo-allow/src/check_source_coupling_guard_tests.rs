@@ -1,5 +1,5 @@
 use super::{
-    resolve_relative_source_path, source_coupling_diagnostics_at,
+    crate_identity_for_path, resolve_relative_source_path, source_coupling_diagnostics_at,
     source_coupling_diagnostics_for_check, source_coupling_diagnostics_for_sources,
     source_coupling_fails_check,
 };
@@ -275,6 +275,22 @@ fn path_resolution_rejects_ambiguous_and_escaping_inputs() -> Result<(), String>
         != Unresolved
     {
         return Err("manifest-relative path without a source root was not unresolved".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn crate_identity_uses_the_deepest_containing_workspace_path() -> Result<(), String> {
+    let manifest = fixture_manifest()?;
+    let identity = crate_identity_for_path(&manifest, Path::new("crates/product-a/src/local.rs"))
+        .ok_or_else(|| "missing containing product identity".to_string())?;
+    if identity.logical_id != "product-a" {
+        return Err(format!("unexpected containing identity: {identity:?}"));
+    }
+    if crate_identity_for_path(&manifest, Path::new("crates/product")).is_some()
+        || crate_identity_for_path(&manifest, Path::new("outside.rs")).is_some()
+    {
+        return Err("non-containing path was assigned a crate identity".to_string());
     }
     Ok(())
 }
