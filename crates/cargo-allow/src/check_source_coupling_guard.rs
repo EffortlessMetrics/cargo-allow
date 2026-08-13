@@ -135,7 +135,7 @@ fn source_coupling_diagnostics_for_sources_at_root(
                 .ok()
                 .filter(|declares| *declares)
                 .and_then(|_| crate_identity_for_path(manifest, path))
-                .map(|identity| identity.workspace_path)
+                .map(|identity| identity.workspace_path.clone())
         })
         .collect();
     let mut diagnostics = Vec::new();
