@@ -97,6 +97,15 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
         if race_path.is_symlink():
             race_path.unlink()
         original_rmtree(foreign)
+    else:
+        # Windows and other unsupported platforms must refuse matching
+        # removal; the payload remains untouched.
+        reject(
+            "remove", "--root", str(root), "--path", str(owned),
+            "--purpose", "positive", "--token", allocation["token"],
+        )
+        if not (owned / "payload").is_file():
+            raise SystemExit("unsupported platform did not preserve payload")
 
     # Restore collision characterization: the shell restore contract must
     # refuse to overwrite a destination that appeared while the stash exists.
@@ -143,14 +152,6 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
         LIFECYCLE.os.rename = rename
     if not (rename_stash / "source").is_file() or not (rename_destination / "sentinel").is_file():
         raise SystemExit("restore rename race damaged stash or destination")
-    else:
-        reject(
-            "remove", "--root", str(root), "--path", str(owned),
-            "--purpose", "positive", "--token", allocation["token"],
-        )
-        if not (owned / "payload").is_file():
-            raise SystemExit("unsupported platform did not fail closed")
-
     preexisting = root / "preexisting"
     preexisting.mkdir()
     sentinel = preexisting / "sentinel"
