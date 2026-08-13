@@ -76,23 +76,29 @@ pub fn rust_source_shadows_path_macros(source: &str) -> CargoAllowResult<bool> {
 
 fn node_shadows_path_macros(node: Node<'_>, source: &str) -> bool {
     if matches!(node.kind(), "macro_definition" | "use_declaration")
-        && node_text(source, node).is_some_and(|text| {
-            let compact: String = text.chars().filter(|ch| !ch.is_whitespace()).collect();
-            ["include", "include_str", "include_bytes", "concat"]
-                .iter()
-                .any(|name| {
-                    compact.starts_with(&format!("macro_rules!{name}"))
-                        || (compact.starts_with("use")
-                            && (compact.ends_with(&format!("::{name};"))
-                                || compact.ends_with(&format!("as{name};"))))
-                })
-        })
+        && contains_path_macro_identifier(node, source)
     {
         return true;
     }
     let mut cursor = node.walk();
     node.named_children(&mut cursor)
         .any(|child| node_shadows_path_macros(child, source))
+}
+
+fn contains_path_macro_identifier(node: Node<'_>, source: &str) -> bool {
+    if node.kind() == "identifier"
+        && node_text(source, node).is_some_and(|name| {
+            matches!(
+                name.strip_prefix("r#").unwrap_or(name),
+                "include" | "include_str" | "include_bytes" | "concat"
+            )
+        })
+    {
+        return true;
+    }
+    let mut cursor = node.walk();
+    node.named_children(&mut cursor)
+        .any(|child| contains_path_macro_identifier(child, source))
 }
 
 pub fn rust_source_declares_no_std(source: &str) -> CargoAllowResult<bool> {
