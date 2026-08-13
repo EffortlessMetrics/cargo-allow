@@ -4,6 +4,7 @@ mod active_goal;
 mod authored_mapping;
 mod config;
 mod doc_artifacts;
+mod graph_types;
 mod implementation_slice;
 mod import_roots;
 mod requirement;
@@ -28,6 +29,12 @@ pub use config::{
 pub use doc_artifacts::{
     ArtifactKind, ArtifactStatus, DocArtifact, DocArtifactLedger, load_doc_artifacts,
     parse_doc_artifact_ledger, parse_doc_artifact_ledger_at,
+};
+pub use graph_types::{
+    CompiledSpecGraph, EvidenceClaimNode, EvidenceClaimRegistration, EvidenceSubjectNode,
+    GraphCompileInput, GraphDiagnostic, GraphDiagnosticCode, GraphSnapshotId,
+    ImplementationSeamNode, ImplementationSeamRegistration, ImplementationSliceNode,
+    RequirementNode,
 };
 pub use implementation_slice::{
     EvidenceDisposition, EvidenceDispositionState, IMPLEMENTATION_SLICE_SCHEMA_VERSION,
