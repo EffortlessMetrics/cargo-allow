@@ -133,7 +133,9 @@ fn path_read_argument(
             RustSourceCouplingPathBase::SourceFile,
         ));
     }
-    let concat_text = if child.kind() == "identifier" && node_text(source, child) == Some("concat")
+    let concat_text = if child.kind() == "identifier"
+        && node_text(source, child)
+            .is_some_and(|name| name.strip_prefix("r#").unwrap_or(name) == "concat")
     {
         let arguments = children.next()?;
         source.get(child.start_byte()..arguments.end_byte())?
@@ -148,7 +150,7 @@ fn path_read_argument(
             .and_then(|macro_node| node_text(source, macro_node))?
             .rsplit("::")
             .next()?;
-        if macro_name != "concat" {
+        if macro_name.strip_prefix("r#").unwrap_or(macro_name) != "concat" {
             return None;
         }
         node_text(source, child)?
@@ -174,7 +176,12 @@ fn find_macro_invocation<'a>(node: Node<'a>, source: &str, name: &str) -> Option
 fn evaluate_manifest_concat_text(text: &str) -> Option<String> {
     // Build-output bases such as env!("OUT_DIR") remain unresolved: resolving
     // them would require build metadata, outside cargo-allow's source-tree scan.
-    let start = macro_bang_end(text, "concat")?;
+    let concat_name = if text.trim_start().starts_with("r#concat") {
+        "r#concat"
+    } else {
+        "concat"
+    };
+    let start = macro_bang_end(text, concat_name)?;
     let open = text
         .get(start..)?
         .find(['(', '[', '{'])?
@@ -185,10 +192,15 @@ fn evaluate_manifest_concat_text(text: &str) -> Option<String> {
     let mut path = String::new();
     for arg in split_concat_args(args)? {
         let arg = strip_surrounding_comments(arg)?;
-        if arg.trim_start().starts_with("env") {
+        if arg.trim_start().starts_with("env") || arg.trim_start().starts_with("r#env") {
+            let env_name = if arg.trim_start().starts_with("r#env") {
+                "r#env"
+            } else {
+                "env"
+            };
             let value =
-                strip_macro_delimiters(arg.get(macro_bang_end(arg, "env")?..)?.trim_start())?
-                    .trim();
+                strip_macro_delimiters(arg.get(macro_bang_end(arg, env_name)?..)?.trim_start())?;
+            let value = strip_surrounding_comments(value)?;
             if saw_manifest_dir
                 || !path.is_empty()
                 || decode_path_literal(value)?.as_str() != "CARGO_MANIFEST_DIR"
