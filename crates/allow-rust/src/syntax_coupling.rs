@@ -76,6 +76,10 @@ pub fn rust_source_shadows_path_macros(source: &str) -> CargoAllowResult<bool> {
 }
 
 fn root_has_macro_use_extern(root: Node<'_>, source: &str) -> bool {
+    let uncommented = strip_rust_comments(source).unwrap_or_default();
+    if uncommented.contains("#[macro_use") && uncommented.contains("extern crate") {
+        return true;
+    }
     let mut cursor = root.walk();
     let children: Vec<_> = root.named_children(&mut cursor).collect();
     children.windows(2).any(|pair| {
@@ -129,6 +133,9 @@ fn use_binds_path_macro(node: Node<'_>, source: &str) -> bool {
         return true;
     }
     if compact.contains('{') {
+        if compact.matches('{').count() > 1 {
+            return true;
+        }
         let Some(group) = compact
             .split_once('{')
             .and_then(|(_, rest)| rest.rsplit_once('}').map(|(group, _)| group))
@@ -229,7 +236,8 @@ fn collect_coupling_facts(
                 .map(|paths| (paths, RustSourceCouplingPathBase::SourceFile))
                 .unwrap_or((Vec::new(), RustSourceCouplingPathBase::SourceFile)),
             RustSourceCouplingKind::PathRead
-                if path_macros_are_unshadowed && path_read_macro_is_trusted(node, source) =>
+                if path_macros_are_unshadowed
+                    && path_read_macro_is_trusted(node, source, manifest_env_is_unshadowed) =>
             {
                 let mut cursor = node.walk();
                 let token_tree = node
@@ -283,10 +291,12 @@ fn path_read_macro_kind(node: Node<'_>, source: &str) -> Option<RustSourceCoupli
         .then_some(RustSourceCouplingKind::PathRead)
 }
 
-fn path_read_macro_is_trusted(node: Node<'_>, source: &str) -> bool {
+fn path_read_macro_is_trusted(node: Node<'_>, source: &str, std_is_unshadowed: bool) -> bool {
     node.child_by_field_name("macro")
         .and_then(|macro_node| node_text(source, macro_node))
-        .is_some_and(|path| !path.contains("::") || path.starts_with("::std::"))
+        .is_some_and(|path| {
+            !path.contains("::") || (std_is_unshadowed && path.starts_with("::std::"))
+        })
 }
 
 fn path_read_argument(
