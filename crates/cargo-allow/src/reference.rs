@@ -101,8 +101,8 @@ pub(crate) fn cmd_reference(args: &ReferenceArgs) -> CargoAllowResult<()> {
 }
 
 #[cfg(test)]
-const SUPPORT_MATRIX: &str = include_str!("../../../docs/support-matrix.toml");
-const PACKAGE_MANIFEST: &str = include_str!("../Cargo.toml");
+const SUPPORT_MATRIX: &str = ::std::include_str!("../../../docs/support-matrix.toml");
+const PACKAGE_MANIFEST: &str = ::std::include_str!("../Cargo.toml");
 const SUPPORT_MATRIX_SOURCE: &str = "docs/support-matrix.toml";
 const PACKAGE_SUPPORT_SOURCE: &str = "crates/cargo-allow/Cargo.toml package metadata";
 

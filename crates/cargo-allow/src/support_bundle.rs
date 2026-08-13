@@ -183,7 +183,7 @@ mod tests {
     fn support_bundle_is_schema_valid_and_redacted() -> Result<(), String> {
         let json = render_support_bundle_json(facts()).map_err(|error| error.to_string())?;
         let value: Value = serde_json::from_str(&json).map_err(|error| error.to_string())?;
-        let schema: Value = serde_json::from_str(include_str!(
+        let schema: Value = serde_json::from_str(::std::include_str!(
             "../../../docs/schemas/support-bundle.schema.json"
         ))
         .map_err(|error| error.to_string())?;

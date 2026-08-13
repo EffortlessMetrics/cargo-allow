@@ -853,8 +853,8 @@ mod tests {
         let root = staged_fixture_repository()?;
         fs::write(
             root.join(SELF_HOSTED_RUNTIME_PROMOTION.seams_path),
-            include_str!(concat!(
-                env!("CARGO_MANIFEST_DIR"),
+            ::std::include_str!(::std::concat!(
+                ::std::env!("CARGO_MANIFEST_DIR"),
                 "/../../.allow/spec-system/seams/runtime-promotion-validator-v1.toml"
             ))
             .replace("owner = \"allow-policy\"", "owner = \"worktree-only\""),
@@ -901,8 +901,8 @@ mod tests {
     -> Result<(), String> {
         let root = staged_fixture_repository()?;
         run_git(&root, &["commit", "-qm", "parent"])?;
-        let seam_source = include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
+        let seam_source = ::std::include_str!(::std::concat!(
+            ::std::env!("CARGO_MANIFEST_DIR"),
             "/../../.allow/spec-system/seams/runtime-promotion-validator-v1.toml"
         ));
         fs::write(
@@ -1087,50 +1087,50 @@ mod tests {
         let files = [
             (
                 SELF_HOSTED_RUNTIME_PROMOTION.requirement_path,
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
+                ::std::include_str!(::std::concat!(
+                    ::std::env!("CARGO_MANIFEST_DIR"),
                     "/../../docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md"
                 )),
             ),
             (
                 SELF_HOSTED_RUNTIME_PROMOTION.slice_path,
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
+                ::std::include_str!(::std::concat!(
+                    ::std::env!("CARGO_MANIFEST_DIR"),
                     "/../../.allow/spec-system/slices/self-hosted-runtime-promotion-v1.toml"
                 )),
             ),
             (
                 SELF_HOSTED_RUNTIME_PROMOTION.seams_path,
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
+                ::std::include_str!(::std::concat!(
+                    ::std::env!("CARGO_MANIFEST_DIR"),
                     "/../../.allow/spec-system/seams/runtime-promotion-validator-v1.toml"
                 )),
             ),
             (
                 SELF_HOSTED_RUNTIME_PROMOTION.evidence_path,
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
+                ::std::include_str!(::std::concat!(
+                    ::std::env!("CARGO_MANIFEST_DIR"),
                     "/../../.allow/spec-system/evidence/runtime-promotion-v1.toml"
                 )),
             ),
             (
                 "crates/allow-policy/Cargo.toml",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
+                ::std::include_str!(::std::concat!(
+                    ::std::env!("CARGO_MANIFEST_DIR"),
                     "/../allow-policy/Cargo.toml"
                 )),
             ),
             (
                 "crates/allow-policy/src/lib.rs",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
+                ::std::include_str!(::std::concat!(
+                    ::std::env!("CARGO_MANIFEST_DIR"),
                     "/../allow-policy/src/lib.rs"
                 )),
             ),
             (
                 "crates/allow-policy/src/spec_system/runtime_promotion.rs",
-                include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
+                ::std::include_str!(::std::concat!(
+                    ::std::env!("CARGO_MANIFEST_DIR"),
                     "/../allow-policy/src/spec_system/runtime_promotion.rs"
                 )),
             ),

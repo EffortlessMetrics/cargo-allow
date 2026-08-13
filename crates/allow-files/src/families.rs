@@ -274,7 +274,7 @@ mod tests {
 
     #[test]
     fn family_reference_documents_each_classifier_family() -> Result<(), String> {
-        let readme = include_str!("../README.md");
+        let readme = ::std::include_str!("../README.md");
         for family in [
             "generated_code",
             "ci_declarative",

@@ -224,9 +224,13 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
         let source_owner = allow_report::sanitize_terminal_text(&diagnostic.source_owner);
         let target_crate = allow_report::sanitize_terminal_text(&diagnostic.target_crate);
         let import_text = allow_report::sanitize_terminal_text(&diagnostic.import_text);
+        let relation = match diagnostic.kind {
+            check_source_coupling_guard::SourceCouplingDiagnosticKind::Import => "imports",
+            check_source_coupling_guard::SourceCouplingDiagnosticKind::PathRead => "reads",
+        };
         eprintln!(
-            "source coupling: {}:{}:{}: {} imports {} ({})",
-            path, line, column, source_owner, target_crate, import_text,
+            "source coupling: {}:{}:{}: {} {} {} ({})",
+            path, line, column, source_owner, relation, target_crate, import_text,
         );
     }
     let source_coupling_failed = !source_coupling_diagnostics.is_empty();
