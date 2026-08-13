@@ -72,10 +72,9 @@ pub(crate) fn source_coupling_diagnostics_at(
         allow_inventory::git_ls_files(root)?.into_iter().collect();
     let files = tracked_paths
         .iter()
-        .cloned()
-        .into_iter()
         .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some("rs"))
         .filter(|path| !is_likely_test_file(path))
+        .cloned()
         .map(|path| {
             let text = read_text_file_capped(&root.join(&path)).map_err(|error| {
                 CargoAllowError::new(format!(
