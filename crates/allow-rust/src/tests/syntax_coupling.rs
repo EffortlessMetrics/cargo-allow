@@ -158,6 +158,28 @@ fn manifest_concat_fails_closed_when_no_std_can_shadow_std() -> Result<(), Strin
 }
 
 #[test]
+fn source_posture_detects_exact_no_std_and_path_macro_shadows() -> Result<(), String> {
+    use crate::{rust_source_declares_no_std, rust_source_shadows_path_macros};
+    if !rust_source_declares_no_std("// license\n#![cfg_attr(any(), /* c */ no_std)]\n")
+        .map_err(|error| error.to_string())?
+        || rust_source_declares_no_std("#[cfg(no_std)] fn helper() {}\n#![no_std_extra]\n")
+            .map_err(|error| error.to_string())?
+    {
+        return Err("no_std posture was not exact and comment-aware".to_string());
+    }
+    for source in [
+        "macro_rules! include_str { ($($t:tt)*) => { \"x\" } }",
+        "use crate::macros::concat;",
+        "use crate::macros::other as include_bytes;",
+    ] {
+        if !rust_source_shadows_path_macros(source).map_err(|error| error.to_string())? {
+            return Err(format!("path macro shadow was not detected: {source}"));
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn direct_path_containing_manifest_name_stays_source_relative() -> Result<(), String> {
     let scan = scan_rust_source_coupling(
         "include_str!(\"CARGO_MANIFEST_DIR.txt\");\ninclude_str!(/* concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/decoy.rs\") */ \"owned.txt\");\n",

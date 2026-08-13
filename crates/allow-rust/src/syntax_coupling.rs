@@ -33,12 +33,24 @@ pub struct RustSourceCouplingScan {
 }
 
 pub fn scan_rust_source_coupling(source: &str) -> CargoAllowResult<RustSourceCouplingScan> {
-    scan_rust_source_coupling_with_manifest_env(source, !rust_source_declares_no_std(source)?)
+    scan_rust_source_coupling_with_posture(
+        source,
+        !rust_source_declares_no_std(source)?,
+        !rust_source_shadows_path_macros(source)?,
+    )
 }
 
 pub fn scan_rust_source_coupling_with_manifest_env(
     source: &str,
     manifest_env_is_unshadowed: bool,
+) -> CargoAllowResult<RustSourceCouplingScan> {
+    scan_rust_source_coupling_with_posture(source, manifest_env_is_unshadowed, true)
+}
+
+pub fn scan_rust_source_coupling_with_posture(
+    source: &str,
+    manifest_env_is_unshadowed: bool,
+    path_macros_are_unshadowed: bool,
 ) -> CargoAllowResult<RustSourceCouplingScan> {
     let tree = parse_rust_syntax(source)?;
     let line_index = SourceLineIndex::new(source);
@@ -48,6 +60,7 @@ pub fn scan_rust_source_coupling_with_manifest_env(
         source,
         &line_index,
         manifest_env_is_unshadowed,
+        path_macros_are_unshadowed,
         &mut facts,
     );
     Ok(RustSourceCouplingScan {
@@ -56,20 +69,65 @@ pub fn scan_rust_source_coupling_with_manifest_env(
     })
 }
 
+pub fn rust_source_shadows_path_macros(source: &str) -> CargoAllowResult<bool> {
+    let tree = parse_rust_syntax(source)?;
+    Ok(node_shadows_path_macros(tree.tree.root_node(), source))
+}
+
+fn node_shadows_path_macros(node: Node<'_>, source: &str) -> bool {
+    if matches!(node.kind(), "macro_definition" | "use_declaration")
+        && node_text(source, node).is_some_and(|text| {
+            let compact: String = text.chars().filter(|ch| !ch.is_whitespace()).collect();
+            ["include", "include_str", "include_bytes", "concat"]
+                .iter()
+                .any(|name| {
+                    compact.starts_with(&format!("macro_rules!{name}"))
+                        || (compact.starts_with("use")
+                            && (compact.ends_with(&format!("::{name};"))
+                                || compact.ends_with(&format!("as{name};"))))
+                })
+        })
+    {
+        return true;
+    }
+    let mut cursor = node.walk();
+    node.named_children(&mut cursor)
+        .any(|child| node_shadows_path_macros(child, source))
+}
+
 pub fn rust_source_declares_no_std(source: &str) -> CargoAllowResult<bool> {
     let tree = parse_rust_syntax(source)?;
     let root = tree.tree.root_node();
     let mut cursor = root.walk();
-    Ok(root
-        .named_children(&mut cursor)
-        .take_while(|child| child.kind().contains("attribute"))
-        .any(|attribute| {
-            node_text(source, attribute).is_some_and(|text| {
+    Ok(root.named_children(&mut cursor).any(|attribute| {
+        attribute.kind().contains("attribute")
+            && node_text(source, attribute).is_some_and(|text| {
+                let Some(text) = strip_rust_comments(text) else {
+                    return false;
+                };
                 let compact: String = text.chars().filter(|ch| !ch.is_whitespace()).collect();
-                compact.starts_with("#![no_std")
-                    || (compact.starts_with("#![cfg_attr(") && compact.contains(",no_std"))
+                compact == "#![no_std]"
+                    || (compact.starts_with("#![cfg_attr(")
+                        && compact.ends_with(")]")
+                        && compact.split([',', ')']).any(|token| token == "no_std"))
             })
-        }))
+    }))
+}
+
+fn strip_rust_comments(text: &str) -> Option<String> {
+    let mut output = String::new();
+    let mut index = 0;
+    while index < text.len() {
+        if let Some(end) = rust_comment_end(text, index)? {
+            output.push(' ');
+            index = end;
+        } else {
+            let ch = text.get(index..)?.chars().next()?;
+            output.push(ch);
+            index += ch.len_utf8();
+        }
+    }
+    Some(output)
 }
 
 fn collect_coupling_facts(
@@ -77,6 +135,7 @@ fn collect_coupling_facts(
     source: &str,
     line_index: &SourceLineIndex,
     manifest_env_is_unshadowed: bool,
+    path_macros_are_unshadowed: bool,
     facts: &mut Vec<RustSourceCoupling>,
 ) {
     let kind = match node.kind() {
@@ -102,7 +161,7 @@ fn collect_coupling_facts(
                 .map(|path| vec![path.trim().to_string()])
                 .map(|paths| (paths, RustSourceCouplingPathBase::SourceFile))
                 .unwrap_or((Vec::new(), RustSourceCouplingPathBase::SourceFile)),
-            RustSourceCouplingKind::PathRead => {
+            RustSourceCouplingKind::PathRead if path_macros_are_unshadowed => {
                 let mut cursor = node.walk();
                 let token_tree = node
                     .named_children(&mut cursor)
@@ -111,6 +170,9 @@ fn collect_coupling_facts(
                         path_read_argument(token_tree, source, manifest_env_is_unshadowed)
                     });
                 token_tree.unwrap_or((vec![String::new()], RustSourceCouplingPathBase::SourceFile))
+            }
+            RustSourceCouplingKind::PathRead => {
+                (vec![String::new()], RustSourceCouplingPathBase::SourceFile)
             }
         };
         let start = node.start_position();
@@ -131,7 +193,14 @@ fn collect_coupling_facts(
 
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        collect_coupling_facts(child, source, line_index, manifest_env_is_unshadowed, facts);
+        collect_coupling_facts(
+            child,
+            source,
+            line_index,
+            manifest_env_is_unshadowed,
+            path_macros_are_unshadowed,
+            facts,
+        );
     }
 }
 
