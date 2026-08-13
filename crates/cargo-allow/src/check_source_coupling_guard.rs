@@ -192,7 +192,7 @@ fn source_coupling_diagnostics_for_sources_at_root(
                         }
                         PathReadResolution::Resolved(target_path) => {
                             let target_path = if let Some(root) = root {
-                                let resolved = match resolve_tracked_target(root, &target_path)? {
+                                match resolve_tracked_target(root, &target_path)? {
                                     TrackedTargetResolution::Inside(resolved) => resolved,
                                     TrackedTargetResolution::Missing => {
                                         diagnostics.push(unresolved_path_diagnostic(
@@ -216,8 +216,7 @@ fn source_coupling_diagnostics_for_sources_at_root(
                                         ));
                                         continue;
                                     }
-                                };
-                                resolved
+                                }
                             } else {
                                 target_path
                             };
