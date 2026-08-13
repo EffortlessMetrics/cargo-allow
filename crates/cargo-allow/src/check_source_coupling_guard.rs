@@ -291,15 +291,32 @@ fn source_coupling_diagnostics_for_sources_at_root(
 }
 
 fn is_include_macro(text: &str) -> bool {
-    let prefix = text
-        .trim_start()
-        .split_once('!')
-        .map(|(prefix, _)| prefix.trim())
-        .unwrap_or_default();
-    let Some(name) = prefix.rsplit("::").next() else {
+    let text = text.trim_start();
+    let Some(include) = text.rfind("include") else {
         return false;
     };
-    name.trim() == "include"
+    let prefix = text.get(..include).unwrap_or_default().trim_end();
+    if !prefix.is_empty() && !prefix.ends_with("::") {
+        return false;
+    }
+    macro_bang_follows(text, include + "include".len())
+}
+
+fn macro_bang_follows(text: &str, mut index: usize) -> bool {
+    loop {
+        let Some(suffix) = text.get(index..) else {
+            return false;
+        };
+        index += suffix.len() - suffix.trim_start().len();
+        if text.get(index..index + 2) == Some("/*") {
+            let Some(end) = text.get(index + 2..).and_then(|tail| tail.find("*/")) else {
+                return false;
+            };
+            index += end + 4;
+            continue;
+        }
+        return text.as_bytes().get(index) == Some(&b'!');
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

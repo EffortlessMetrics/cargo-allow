@@ -201,7 +201,7 @@ fn path_read_fixtures_allow_owned_and_shared_paths_and_reject_forbidden_or_unres
 
     let nested_include = vec![(
         PathBuf::from("crates/product-a/src/lib.rs"),
-        "std::include ! (\"nested.inc\");\ninclude!(\"tests.rs\");\n".to_string(),
+        "std::include /* marker ! */ ! (\"nested.inc\");\ninclude!(\"tests.rs\");\n".to_string(),
     )];
     let nested_tracked = BTreeSet::from([
         PathBuf::from("crates/product-a/src/lib.rs"),

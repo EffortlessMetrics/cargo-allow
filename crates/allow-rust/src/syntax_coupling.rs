@@ -235,10 +235,16 @@ fn split_concat_args(args: &str) -> Option<Vec<&str>> {
 }
 
 fn macro_bang_end(text: &str, name: &str) -> Option<usize> {
-    let start = text.find(name)? + name.len();
-    let suffix = text.get(start..)?;
-    let whitespace = suffix.len() - suffix.trim_start().len();
-    (suffix.as_bytes().get(whitespace) == Some(&b'!')).then_some(start + whitespace + 1)
+    let mut index = text.find(name)? + name.len();
+    loop {
+        let suffix = text.get(index..)?;
+        index += suffix.len() - suffix.trim_start().len();
+        if let Some(end) = rust_comment_end(text, index)? {
+            index = end;
+            continue;
+        }
+        return (text.as_bytes().get(index) == Some(&b'!')).then_some(index + 1);
+    }
 }
 
 fn strip_leading_comments(mut text: &str) -> Option<&str> {
