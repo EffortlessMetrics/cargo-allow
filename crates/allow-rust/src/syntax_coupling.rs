@@ -121,6 +121,7 @@ fn use_binds_path_macro(node: Node<'_>, source: &str) -> bool {
     };
     let compact: String = text.chars().filter(|ch| !ch.is_whitespace()).collect();
     if compact.contains('*')
+        && compact.contains("::")
         && !compact.contains("usesuper::")
         && !compact.contains("usecrate::")
         && !compact.contains("useself::")
