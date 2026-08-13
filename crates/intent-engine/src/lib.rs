@@ -8,6 +8,7 @@
 
 mod domain_queries;
 mod graph_comparison;
+mod graph_compiler;
 mod packet;
 mod parity;
 mod parity_corpus;
@@ -26,6 +27,7 @@ pub use graph_comparison::{
     GraphMovementV1, canonical_graph_movement_kinds, load_graph_comparison_report_json,
     sort_graph_movements,
 };
+pub use graph_compiler::compile_spec_graph;
 pub use packet::{
     INTENT_ENGINE_PACKET_SCHEMA_ID, IntentEnginePacketEnvelopeV1, IntentEnginePacketKindV1,
 };
