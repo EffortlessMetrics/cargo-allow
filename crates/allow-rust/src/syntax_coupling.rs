@@ -36,7 +36,14 @@ pub fn scan_rust_source_coupling(source: &str) -> CargoAllowResult<RustSourceCou
     let tree = parse_rust_syntax(source)?;
     let line_index = SourceLineIndex::new(source);
     let mut facts = Vec::new();
-    collect_coupling_facts(tree.tree.root_node(), source, &line_index, &mut facts);
+    let manifest_env_is_unshadowed = !contains_no_std_attribute(tree.tree.root_node(), source);
+    collect_coupling_facts(
+        tree.tree.root_node(),
+        source,
+        &line_index,
+        manifest_env_is_unshadowed,
+        &mut facts,
+    );
     Ok(RustSourceCouplingScan {
         facts,
         has_parse_error: tree.has_error(),
@@ -47,6 +54,7 @@ fn collect_coupling_facts(
     node: Node<'_>,
     source: &str,
     line_index: &SourceLineIndex,
+    manifest_env_is_unshadowed: bool,
     facts: &mut Vec<RustSourceCoupling>,
 ) {
     let kind = match node.kind() {
@@ -77,7 +85,9 @@ fn collect_coupling_facts(
                 let token_tree = node
                     .named_children(&mut cursor)
                     .find(|child| child.kind() == "token_tree")
-                    .and_then(|token_tree| path_read_argument(token_tree, source));
+                    .and_then(|token_tree| {
+                        path_read_argument(token_tree, source, manifest_env_is_unshadowed)
+                    });
                 token_tree.unwrap_or((vec![String::new()], RustSourceCouplingPathBase::SourceFile))
             }
         };
@@ -99,8 +109,26 @@ fn collect_coupling_facts(
 
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        collect_coupling_facts(child, source, line_index, facts);
+        collect_coupling_facts(child, source, line_index, manifest_env_is_unshadowed, facts);
     }
+}
+
+fn contains_no_std_attribute(node: Node<'_>, source: &str) -> bool {
+    if node.kind().contains("attribute") && contains_identifier(node, source, "no_std") {
+        return true;
+    }
+    let mut cursor = node.walk();
+    node.named_children(&mut cursor)
+        .any(|child| contains_no_std_attribute(child, source))
+}
+
+fn contains_identifier(node: Node<'_>, source: &str, expected: &str) -> bool {
+    if node.kind() == "identifier" && node_text(source, node) == Some(expected) {
+        return true;
+    }
+    let mut cursor = node.walk();
+    node.named_children(&mut cursor)
+        .any(|child| contains_identifier(child, source, expected))
 }
 
 fn path_read_macro_kind(node: Node<'_>, source: &str) -> Option<RustSourceCouplingKind> {
@@ -117,6 +145,7 @@ fn path_read_macro_kind(node: Node<'_>, source: &str) -> Option<RustSourceCoupli
 fn path_read_argument(
     node: Node<'_>,
     source: &str,
+    manifest_env_is_unshadowed: bool,
 ) -> Option<(Vec<String>, RustSourceCouplingPathBase)> {
     let mut cursor = node.walk();
     let mut children = node
@@ -142,7 +171,8 @@ fn path_read_argument(
     } else {
         if child.kind() != "macro_invocation" {
             let concat_text = find_token_tree_macro_text(child, source, "concat")?;
-            let path = evaluate_manifest_concat_text(concat_text)?;
+            let path = manifest_env_is_unshadowed
+                .then(|| evaluate_manifest_concat_text(concat_text))??;
             return Some((vec![path], RustSourceCouplingPathBase::ManifestDirectory));
         }
         let macro_name = child
@@ -155,7 +185,7 @@ fn path_read_argument(
         }
         node_text(source, child)?
     };
-    let path = evaluate_manifest_concat_text(concat_text)?;
+    let path = manifest_env_is_unshadowed.then(|| evaluate_manifest_concat_text(concat_text))??;
     Some((vec![path], RustSourceCouplingPathBase::ManifestDirectory))
 }
 

@@ -141,6 +141,23 @@ fn manifest_concat_rejects_other_environment_and_dynamic_fragments() -> Result<(
 }
 
 #[test]
+fn manifest_concat_fails_closed_when_no_std_can_shadow_std() -> Result<(), String> {
+    let scan = scan_rust_source_coupling(
+        "#![cfg_attr(any(), no_std)]\nmod std { pub use crate::env; }\ninclude_str!(concat!(::std::env!(\"CARGO_MANIFEST_DIR\"), \"/decoy.rs\"));\n",
+    )
+    .map_err(|error| format!("scan no_std manifest concat: {error}"))?;
+    let read = scan
+        .facts
+        .iter()
+        .find(|fact| fact.kind == RustSourceCouplingKind::PathRead)
+        .ok_or_else(|| "missing no_std path read".to_string())?;
+    if !read.path.is_empty() {
+        return Err(format!("no_std manifest concat resolved: {read:?}"));
+    }
+    Ok(())
+}
+
+#[test]
 fn direct_path_containing_manifest_name_stays_source_relative() -> Result<(), String> {
     let scan = scan_rust_source_coupling(
         "include_str!(\"CARGO_MANIFEST_DIR.txt\");\ninclude_str!(/* concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/decoy.rs\") */ \"owned.txt\");\n",
