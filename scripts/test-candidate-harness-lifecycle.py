@@ -90,7 +90,7 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
             result = subprocess.run(
                 ["bash", str(ROOT / "scripts" / script)],
                 cwd=ROOT,
-                env={**os.environ, "CANDIDATE_HARNESS_SNAPSHOT_PROBE": "1", "CANDIDATE_HARNESS_TEST_INJECTION": "1", "CANDIDATE_HARNESS_TEST_ROOT": str(root), "CANDIDATE_HARNESS_TOKEN": "forged"},
+                env={**os.environ, "CANDIDATE_HARNESS_SNAPSHOT_PROBE": "1", "CANDIDATE_HARNESS_TEST_INJECTION": "1", "CANDIDATE_HARNESS_TEST_ROOT": str(root), "CANDIDATE_HARNESS_TOKEN": "forged", "CANDIDATE_HARNESS_ROOT": str(ROOT), "CANDIDATE_HARNESS_OUTPUT_ROOT": str(ROOT), "CANDIDATE_HARNESS_GIT_HEAD": "forged"},
                 capture_output=True,
                 text=True,
                 check=False,

@@ -115,7 +115,8 @@ crates_path="${ROOT}/crates"
 crates_stash="${work_dir}/crates-source-stash"
 
 restore_source_checkout() {
-  if [[ -d "${crates_stash}" && ! -e "${crates_path}" ]]; then
+  if [[ -d "${crates_stash}" ]]; then
+    [[ ! -e "${crates_path}" ]] || fail "refusing to overwrite existing crates/ during restore"
     mv "${crates_stash}" "${crates_path}"
   fi
 }
@@ -266,7 +267,6 @@ for crate in "${crates[@]}"; do
   src="${packages_dir}/${crate_file}"
   [[ -f "${src}" ]] || fail "missing ${src}"
   dest="${extracted_dir}/${crate}-${crate_version}"
-  rm -rf "${dest}"
   mkdir -p "${dest}"
   tar --force-local -xzf "${src}" -C "${extracted_dir}"
   [[ -d "${dest}" ]] || fail "extract missing ${dest}"
@@ -376,7 +376,6 @@ else
 fi
 
 install_config="${install_cargo_home}/config.toml"
-rm -rf "${install_cargo_home}"
 mkdir -p "${install_cargo_home}"
 registry_native="$(to_cargo_path "${local_registry_dir}")"
 cat >"${install_config}" <<EOF
@@ -392,10 +391,9 @@ log "installing cargo-allow offline from extracted package via local-registry"
 log "denying workspace source checkout (renaming crates/) during decisive install"
 [[ -d "${crates_path}" ]] || fail "expected workspace crates/ at ${crates_path}"
 restore_source_checkout
-rm -rf "${crates_stash}"
+[[ ! -e "${crates_stash}" ]] || fail "refusing to overwrite pre-existing crates stash"
 mv "${crates_path}" "${crates_stash}"
 [[ ! -e "${crates_path}" ]] || fail "crates/ still present after stash for source-checkout denial"
-rm -rf "${install_root}"
 mkdir -p "${install_root}"
 set +e
 CARGO_HOME="${install_cargo_home}" CARGO_TARGET_DIR="${target_dir}" \
@@ -506,7 +504,6 @@ if [[ "${SKIP_NEGATIVES:-0}" != "1" ]]; then
   log "negative: omit allow-core from patch"
   neg_home="${work_dir}/neg-omit-home"
   neg_target="${work_dir}/neg-omit-target"
-  rm -rf "${neg_home}" "${neg_target}"
   mkdir -p "${neg_home}" "${neg_target}"
   write_patch_config "${neg_home}/config.toml" "allow-core"
   set +e
@@ -578,7 +575,6 @@ PY
 
   log "negative: injected normalized path dependency"
   path_leak_dir="${work_dir}/neg-path-leak/allow-core-${version}"
-  rm -rf "${work_dir}/neg-path-leak"
   mkdir -p "${work_dir}/neg-path-leak"
   cp -R "${extracted_dir}/allow-core-${version}" "${path_leak_dir}"
   python3 - "${path_leak_dir}/Cargo.toml" <<'PY'
@@ -619,7 +615,6 @@ PY
 
   log "negative: older/incompatible internal package version"
   version_conflict_dir="${work_dir}/neg-version/allow-core-${version}"
-  rm -rf "${work_dir}/neg-version"
   mkdir -p "${work_dir}/neg-version"
   cp -R "${extracted_dir}/allow-core-${version}" "${version_conflict_dir}"
   python3 - "${version_conflict_dir}/Cargo.toml" <<'PY'
@@ -640,7 +635,6 @@ path.write_text(text2, encoding="utf-8")
 PY
   version_home="${work_dir}/neg-version-home"
   version_target="${work_dir}/neg-version-target"
-  rm -rf "${version_home}" "${version_target}"
   mkdir -p "${version_home}" "${version_target}"
   {
     echo '# Generated negative: incompatible allow-core version'
@@ -703,7 +697,6 @@ PY
 
   log "negative: omit candidate from local-registry"
   omit_registry_dir="${work_dir}/neg-omit-local-registry"
-  rm -rf "${omit_registry_dir}"
   mkdir -p "${omit_registry_dir}"
   # Copy local-registry tree but drop allow-core .crate and index entry.
   python3 - "$(to_cargo_path "${local_registry_dir}")" "$(to_cargo_path "${omit_registry_dir}")" \
@@ -752,7 +745,6 @@ print("omitted", name, version)
 PY
   omit_registry_home="${work_dir}/neg-omit-local-registry-home"
   omit_registry_target="${work_dir}/neg-omit-local-registry-target"
-  rm -rf "${omit_registry_home}" "${omit_registry_target}"
   mkdir -p "${omit_registry_home}" "${omit_registry_target}"
   omit_registry_native="$(to_cargo_path "${omit_registry_dir}")"
   cat >"${omit_registry_home}/config.toml" <<EOF
@@ -812,7 +804,6 @@ PY
   # file they declare. Stripping license and deleting README.md must classify
   # ManifestMalformed (fail closed).
   malformed_dir="${work_dir}/neg-malformed/allow-core-${version}"
-  rm -rf "${work_dir}/neg-malformed"
   mkdir -p "${work_dir}/neg-malformed"
   cp -R "${extracted_dir}/allow-core-${version}" "${malformed_dir}"
   python3 - "$(to_cargo_path "${malformed_dir}")" <<'PY'

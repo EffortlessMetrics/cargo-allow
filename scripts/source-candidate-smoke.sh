@@ -99,10 +99,12 @@ templates_path="${ROOT}/docs/templates"
 templates_stash="${work_dir}/stashed-docs-templates"
 
 restore_source_tree() {
-  if [[ -d "${src_stash}" && ! -e "${src_path}" ]]; then
+  if [[ -d "${src_stash}" ]]; then
+    [[ ! -e "${src_path}" ]] || fail "refusing to overwrite existing source tree during restore"
     mv "${src_stash}" "${src_path}"
   fi
-  if [[ -d "${templates_stash}" && ! -e "${templates_path}" ]]; then
+  if [[ -d "${templates_stash}" ]]; then
+    [[ ! -e "${templates_path}" ]] || fail "refusing to overwrite existing templates during restore"
     mv "${templates_stash}" "${templates_path}"
   fi
 }
@@ -645,7 +647,6 @@ if status != "passed":
   # extract, drop a required packaged asset that remains under the source
   # checkout, rebuild the archive, and classify MissingAsset (fail closed).
   omit_work="${work_dir}/omit-packaged-asset"
-  rm -rf "${omit_work}"
   mkdir -p "${omit_work}/extract" "${omit_work}/rebuild"
   required_asset_rel="README.md"
   checkout_asset="${ROOT}/crates/cargo-allow/${required_asset_rel}"

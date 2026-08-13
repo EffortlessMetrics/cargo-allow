@@ -70,12 +70,10 @@ jobs:
       - name: Source candidate first-hour journey (#2278)
         run: |
           bin="target/exact-candidate-package-set/install/bin/cargo-allow"
-          if [[ ! -x "${bin}" && ! -x "${bin}.exe" ]]; then
-            bin="target/package-candidate-smoke/install/bin/cargo-allow"
-          fi
           if [[ -x "${bin}.exe" ]]; then
             bin="${bin}.exe"
           fi
+          test -x "${bin}"
           CARGO_ALLOW_BIN="${bin}" bash scripts/source-candidate-smoke.sh
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
