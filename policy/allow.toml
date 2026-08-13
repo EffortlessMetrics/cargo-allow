@@ -11280,3 +11280,76 @@ glob = "docs/schemas/shared-package-candidate.v1.schema.json"
 [allow.last_seen]
 line = 1
 column = 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[[allow]]
+id = "allow-9252"
+kind = "panic"
+family = "assert"
+owner = "core"
+classification = "baseline_assert"
+reason = "Baseline assert! detections across the workspace (#2577). Individual files should narrow their occurrence_limit over time."
+created = "2026-08-13"
+review_after = "2027-02-01"
+
+[allow.selector]
+glob = "crates/**/*.rs"
+ast_kind = "macro_call"
+macro_name = "assert"
+
+[[allow]]
+id = "allow-9253"
+kind = "panic"
+family = "assert_eq"
+owner = "core"
+classification = "baseline_assert"
+reason = "Baseline assert_eq! detections across the workspace (#2577). Individual files should narrow their occurrence_limit over time."
+created = "2026-08-13"
+review_after = "2027-02-01"
+
+[allow.selector]
+glob = "crates/**/*.rs"
+ast_kind = "macro_call"
+macro_name = "assert_eq"
+
+[[allow]]
+id = "allow-9254"
+kind = "panic"
+family = "assert_ne"
+owner = "core"
+classification = "baseline_assert"
+reason = "Baseline assert_ne! detections across the workspace (#2577). Individual files should narrow their occurrence_limit over time."
+created = "2026-08-13"
+review_after = "2027-02-01"
+
+[allow.selector]
+glob = "crates/**/*.rs"
+ast_kind = "macro_call"
+macro_name = "assert_ne"
