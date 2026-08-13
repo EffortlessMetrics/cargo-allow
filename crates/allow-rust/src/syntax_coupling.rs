@@ -101,7 +101,19 @@ fn use_binds_path_macro(node: Node<'_>, source: &str) -> bool {
     };
     let compact: String = text.chars().filter(|ch| !ch.is_whitespace()).collect();
     if compact.contains('{') {
-        return contains_path_macro_identifier(node, source);
+        let Some(group) = compact
+            .split_once('{')
+            .and_then(|(_, rest)| rest.rsplit_once('}').map(|(group, _)| group))
+        else {
+            return true;
+        };
+        return group.split(',').any(|leaf| {
+            let binding = leaf
+                .rsplit_once("as")
+                .map(|(_, alias)| alias)
+                .unwrap_or_else(|| leaf.rsplit("::").next().unwrap_or(leaf));
+            matches_path_macro_name(binding)
+        });
     }
     if let Some((_, alias)) = compact.rsplit_once("as") {
         return matches_path_macro_name(alias.trim_end_matches(';'));
@@ -199,7 +211,9 @@ fn collect_coupling_facts(
                 .map(|path| vec![path.trim().to_string()])
                 .map(|paths| (paths, RustSourceCouplingPathBase::SourceFile))
                 .unwrap_or((Vec::new(), RustSourceCouplingPathBase::SourceFile)),
-            RustSourceCouplingKind::PathRead if path_macros_are_unshadowed => {
+            RustSourceCouplingKind::PathRead
+                if path_macros_are_unshadowed && path_read_macro_is_trusted(node, source) =>
+            {
                 let mut cursor = node.walk();
                 let token_tree = node
                     .named_children(&mut cursor)
@@ -243,14 +257,19 @@ fn collect_coupling_facts(
 }
 
 fn path_read_macro_kind(node: Node<'_>, source: &str) -> Option<RustSourceCouplingKind> {
-    let macro_name = node
+    let macro_path = node
         .child_by_field_name("macro")
-        .and_then(|macro_node| node_text(source, macro_node))?
-        .rsplit("::")
-        .next()?;
+        .and_then(|macro_node| node_text(source, macro_node))?;
+    let macro_name = macro_path.rsplit("::").next()?;
     let macro_name = macro_name.strip_prefix("r#").unwrap_or(macro_name);
     matches!(macro_name, "include" | "include_str" | "include_bytes")
         .then_some(RustSourceCouplingKind::PathRead)
+}
+
+fn path_read_macro_is_trusted(node: Node<'_>, source: &str) -> bool {
+    node.child_by_field_name("macro")
+        .and_then(|macro_node| node_text(source, macro_node))
+        .is_some_and(|path| !path.contains("::") || path.starts_with("::std::"))
 }
 
 fn path_read_argument(
@@ -286,12 +305,13 @@ fn path_read_argument(
                 .then(|| evaluate_manifest_concat_text(concat_text))??;
             return Some((vec![path], RustSourceCouplingPathBase::ManifestDirectory));
         }
-        let macro_name = child
+        let macro_path = child
             .child_by_field_name("macro")
-            .and_then(|macro_node| node_text(source, macro_node))?
-            .rsplit("::")
-            .next()?;
-        if macro_name.strip_prefix("r#").unwrap_or(macro_name) != "concat" {
+            .and_then(|macro_node| node_text(source, macro_node))?;
+        let macro_name = macro_path.rsplit("::").next()?;
+        if (macro_path.contains("::") && !macro_path.starts_with("::std::"))
+            || macro_name.strip_prefix("r#").unwrap_or(macro_name) != "concat"
+        {
             return None;
         }
         node_text(source, child)?

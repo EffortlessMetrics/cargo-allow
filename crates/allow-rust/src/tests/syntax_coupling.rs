@@ -183,6 +183,21 @@ fn source_posture_detects_exact_no_std_and_path_macro_shadows() -> Result<(), St
     {
         return Err("renamed-away macro import was treated as a shadow".to_string());
     }
+    if rust_source_shadows_path_macros("use crate::{concat as harmless, Helper};")
+        .map_err(|error| error.to_string())?
+    {
+        return Err("grouped renamed-away macro import was treated as a shadow".to_string());
+    }
+    let qualified = scan_rust_source_coupling("third_party::include_str!(\"owned\");")
+        .map_err(|error| error.to_string())?;
+    if qualified
+        .facts
+        .iter()
+        .find(|fact| fact.kind == RustSourceCouplingKind::PathRead)
+        .is_none_or(|fact| !fact.path.is_empty())
+    {
+        return Err("arbitrary qualified include macro did not fail closed".to_string());
+    }
     Ok(())
 }
 
