@@ -117,13 +117,11 @@ fn path_read_argument(
     node: Node<'_>,
     source: &str,
 ) -> Option<(Vec<String>, RustSourceCouplingPathBase)> {
-    if let Some(path) = node_text(source, node).and_then(evaluate_manifest_concat_text) {
-        return Some((vec![path], RustSourceCouplingPathBase::ManifestDirectory));
-    }
     let mut cursor = node.walk();
-    let child = node
+    let mut children = node
         .named_children(&mut cursor)
-        .find(|child| !matches!(child.kind(), "line_comment" | "block_comment"))?;
+        .filter(|child| !matches!(child.kind(), "line_comment" | "block_comment"));
+    let child = children.next()?;
     if matches!(child.kind(), "string_literal" | "raw_string_literal") {
         return Some((
             vec![
@@ -134,20 +132,27 @@ fn path_read_argument(
             RustSourceCouplingPathBase::SourceFile,
         ));
     }
-    let child = if child.kind() == "macro_invocation" {
-        child
+    let concat_text = if child.kind() == "identifier" && node_text(source, child) == Some("concat")
+    {
+        let arguments = children.next()?;
+        source.get(child.start_byte()..arguments.end_byte())?
     } else {
-        find_macro_invocation(child, source, "concat")?
+        let child = if child.kind() == "macro_invocation" {
+            child
+        } else {
+            find_macro_invocation(child, source, "concat")?
+        };
+        let macro_name = child
+            .child_by_field_name("macro")
+            .and_then(|macro_node| node_text(source, macro_node))?
+            .rsplit("::")
+            .next()?;
+        if macro_name != "concat" {
+            return None;
+        }
+        node_text(source, child)?
     };
-    let macro_name = child
-        .child_by_field_name("macro")
-        .and_then(|macro_node| node_text(source, macro_node))?
-        .rsplit("::")
-        .next()?;
-    if macro_name != "concat" {
-        return None;
-    }
-    let path = evaluate_manifest_concat_text(node_text(source, child)?)?;
+    let path = evaluate_manifest_concat_text(concat_text)?;
     Some((vec![path], RustSourceCouplingPathBase::ManifestDirectory))
 }
 
@@ -167,15 +172,18 @@ fn find_macro_invocation<'a>(node: Node<'a>, source: &str, name: &str) -> Option
 
 fn evaluate_manifest_concat_text(text: &str) -> Option<String> {
     let start = text.find("concat!")? + "concat!".len();
-    let open = text.get(start..)?.find('(')? + start;
-    let close = matching_paren(text, open)?;
+    let open = text
+        .get(start..)?
+        .find(['(', '[', '{'])?
+        .checked_add(start)?;
+    let close = matching_delimiter(text, open)?;
     let args = text.get(open + 1..close)?;
     let mut saw_manifest_dir = false;
     let mut path = String::new();
     for arg in split_concat_args(args)? {
         let arg = arg.trim();
         if let Some(value) = arg.strip_prefix("env!") {
-            let value = value.trim().strip_prefix('(')?.strip_suffix(')')?.trim();
+            let value = strip_macro_delimiters(value.trim())?.trim();
             if saw_manifest_dir
                 || !path.is_empty()
                 || decode_path_literal(value)?.as_str() != "CARGO_MANIFEST_DIR"
@@ -194,7 +202,7 @@ fn evaluate_manifest_concat_text(text: &str) -> Option<String> {
 fn split_concat_args(args: &str) -> Option<Vec<&str>> {
     let mut result = Vec::new();
     let mut start = 0;
-    let mut depth = 0;
+    let mut delimiters = Vec::new();
     let mut index = 0;
     while index < args.len() {
         if let Some(end) = rust_string_end(args, index)? {
@@ -202,9 +210,11 @@ fn split_concat_args(args: &str) -> Option<Vec<&str>> {
             continue;
         }
         match args.as_bytes()[index] {
-            b'(' => depth += 1,
-            b')' => depth -= 1,
-            b',' if depth == 0 => {
+            b'(' => delimiters.push(b')'),
+            b'[' => delimiters.push(b']'),
+            b'{' => delimiters.push(b'}'),
+            close @ (b')' | b']' | b'}') if delimiters.pop() != Some(close) => return None,
+            b',' if delimiters.is_empty() => {
                 result.push(args.get(start..index)?);
                 start = index + 1;
             }
@@ -216,8 +226,8 @@ fn split_concat_args(args: &str) -> Option<Vec<&str>> {
     Some(result)
 }
 
-fn matching_paren(text: &str, open: usize) -> Option<usize> {
-    let mut depth = 0;
+fn matching_delimiter(text: &str, open: usize) -> Option<usize> {
+    let mut delimiters = Vec::new();
     let mut index = open;
     while index < text.len() {
         if let Some(end) = rust_string_end(text, index)? {
@@ -225,10 +235,14 @@ fn matching_paren(text: &str, open: usize) -> Option<usize> {
             continue;
         }
         match text.as_bytes()[index] {
-            b'(' => depth += 1,
-            b')' => {
-                depth -= 1;
-                if depth == 0 {
+            b'(' => delimiters.push(b')'),
+            b'[' => delimiters.push(b']'),
+            b'{' => delimiters.push(b'}'),
+            close @ (b')' | b']' | b'}') => {
+                if delimiters.pop() != Some(close) {
+                    return None;
+                }
+                if delimiters.is_empty() {
                     return Some(index);
                 }
             }
@@ -237,6 +251,17 @@ fn matching_paren(text: &str, open: usize) -> Option<usize> {
         index += 1;
     }
     None
+}
+
+fn strip_macro_delimiters(text: &str) -> Option<&str> {
+    let open = *text.as_bytes().first()?;
+    let close = match open {
+        b'(' => b')',
+        b'[' => b']',
+        b'{' => b'}',
+        _ => return None,
+    };
+    (text.as_bytes().last() == Some(&close)).then(|| text.get(1..text.len() - 1))?
 }
 
 fn rust_string_end(text: &str, start: usize) -> Option<Option<usize>> {

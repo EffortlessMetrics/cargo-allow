@@ -143,7 +143,7 @@ fn manifest_concat_rejects_other_environment_and_dynamic_fragments() -> Result<(
 #[test]
 fn direct_path_containing_manifest_name_stays_source_relative() -> Result<(), String> {
     let scan = scan_rust_source_coupling(
-        "include_str!(\"CARGO_MANIFEST_DIR.txt\");\ninclude_str!(/* CARGO_MANIFEST_DIR */ \"owned.txt\");\n",
+        "include_str!(\"CARGO_MANIFEST_DIR.txt\");\ninclude_str!(/* concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/decoy.rs\") */ \"owned.txt\");\n",
     )
     .map_err(|error| format!("scan direct manifest-named path: {error}"))?;
     let reads: Vec<_> = scan
@@ -159,6 +159,29 @@ fn direct_path_containing_manifest_name_stays_source_relative() -> Result<(), St
             .any(|fact| fact.path_base != RustSourceCouplingPathBase::SourceFile)
     {
         return Err(format!("unexpected direct manifest-named paths: {reads:?}"));
+    }
+    Ok(())
+}
+
+#[test]
+fn manifest_concat_uses_the_structural_argument_and_all_delimiters() -> Result<(), String> {
+    let scan = scan_rust_source_coupling(
+        "include_str!(/* concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/decoy.rs\") */ concat!{env![\"CARGO_MANIFEST_DIR\"], \"/actual.rs\"});\ninclude_str!(concat![env!{\"CARGO_MANIFEST_DIR\"}, \"/bracket.rs\"]);\n",
+    )
+    .map_err(|error| format!("scan structural concat arguments: {error}"))?;
+    let reads: Vec<_> = scan
+        .facts
+        .iter()
+        .filter(|fact| fact.kind == RustSourceCouplingKind::PathRead)
+        .collect();
+    if reads.len() != 2
+        || reads[0].path != "/actual.rs"
+        || reads[1].path != "/bracket.rs"
+        || reads
+            .iter()
+            .any(|fact| fact.path_base != RustSourceCouplingPathBase::ManifestDirectory)
+    {
+        return Err(format!("unexpected structural concat paths: {reads:?}"));
     }
     Ok(())
 }
