@@ -1,2 +1,2 @@
-include!(concat!("../../unknown/src/", "private.rs"));
-include!("../../../../outside.rs");
+::std::include!(::std::concat!("../../unknown/src/", "private.rs"));
+::std::include!("../../../../outside.rs");

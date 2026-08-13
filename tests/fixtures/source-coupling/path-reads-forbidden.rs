@@ -1,1 +1,1 @@
-include!("../../product-b/src/private.rs");
+::std::include!("../../product-b/src/private.rs");

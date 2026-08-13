@@ -310,6 +310,15 @@ fn path_read_argument(
     source: &str,
     manifest_env_is_unshadowed: bool,
 ) -> Option<(Vec<String>, RustSourceCouplingPathBase)> {
+    let full_argument = node_text(source, node)?;
+    let trimmed_argument = strip_macro_delimiters(full_argument)?.trim();
+    if trimmed_argument.starts_with("::std::concat")
+        || trimmed_argument.starts_with("::std::r#concat")
+    {
+        let path = manifest_env_is_unshadowed
+            .then(|| evaluate_manifest_concat_text(trimmed_argument))??;
+        return Some((vec![path], RustSourceCouplingPathBase::ManifestDirectory));
+    }
     let mut cursor = node.walk();
     let mut children = node
         .named_children(&mut cursor)

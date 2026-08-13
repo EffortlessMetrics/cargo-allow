@@ -199,9 +199,30 @@ fn path_read_fixtures_allow_owned_and_shared_paths_and_reject_forbidden_or_unres
         ));
     }
 
+    let untracked_sources = vec![(
+        PathBuf::from("crates/product-a/src/lib.rs"),
+        "::std::include_str!(\"local/untracked.txt\");\n".to_string(),
+    )];
+    let untracked_diagnostics = source_coupling_diagnostics_for_sources(
+        &manifest,
+        &forbidden,
+        &BTreeSet::from([PathBuf::from("crates/product-a/src/lib.rs")]),
+        &untracked_sources,
+    )
+    .map_err(|error| format!("scan untracked same-product path read: {error}"))?;
+    if untracked_diagnostics.len() != 1
+        || untracked_diagnostics
+            .first()
+            .is_some_and(|diagnostic| diagnostic.target_crate != "<untracked-path>")
+    {
+        return Err(format!(
+            "untracked same-product path read did not fail closed: {untracked_diagnostics:?}"
+        ));
+    }
+
     let nested_include = vec![(
         PathBuf::from("crates/product-a/src/lib.rs"),
-        "std::include!(\"nested/include\");\ninclude!(\"tests.rs\");\n".to_string(),
+        "::std::include!(\"nested/include\");\n::std::include!(\"tests.rs\");\n".to_string(),
     )];
     let nested_tracked = BTreeSet::from([
         PathBuf::from("crates/product-a/src/lib.rs"),

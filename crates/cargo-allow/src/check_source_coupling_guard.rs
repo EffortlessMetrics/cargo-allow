@@ -258,13 +258,13 @@ fn source_coupling_diagnostics_for_sources_at_root(
                                 ));
                                 continue;
                             }
-                            if target_identity.is_none() && !tracked_paths.contains(&target_path) {
+                            if !tracked_paths.contains(&target_path) {
                                 diagnostics.push(unresolved_path_diagnostic(
                                     path,
                                     fact.start_line,
                                     fact.start_column,
                                     source_identity.product_or_shared_owner.clone(),
-                                    "<unresolved-path>",
+                                    "<untracked-path>",
                                     fact.text,
                                 ));
                                 continue;
