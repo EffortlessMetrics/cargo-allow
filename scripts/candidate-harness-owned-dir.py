@@ -31,6 +31,19 @@ def canonical_existing(path: Path, label: str) -> Path:
     return resolved
 
 
+def validate_test_root(root: Path, repository: Path) -> Path:
+    allowed = canonical_existing(root, "test root")
+    repo = canonical_existing(repository, "repository")
+    target = repo / "target"
+    if allowed == repo or repo in allowed.parents:
+        fail(f"test root overlaps repository: {allowed}")
+    if target.exists() and (allowed == target or target in allowed.parents or allowed in target.parents):
+        fail(f"test root overlaps repository target: {allowed}")
+    if allowed.parent == allowed:
+        fail(f"test root must not be filesystem root: {allowed}")
+    return allowed
+
+
 def validate_purpose(purpose: str) -> None:
     if not purpose or any(character not in "abcdefghijklmnopqrstuvwxyz0123456789-" for character in purpose):
         fail(f"invalid purpose {purpose!r}")
@@ -156,6 +169,9 @@ def main() -> int:
     restore_parser = subparsers.add_parser("restore")
     restore_parser.add_argument("--stash", type=Path, required=True)
     restore_parser.add_argument("--destination", type=Path, required=True)
+    root_parser = subparsers.add_parser("validate-test-root")
+    root_parser.add_argument("--root", type=Path, required=True)
+    root_parser.add_argument("--repository", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "allocate":
         directory, token = allocate(args.root, args.purpose, args.durable)
@@ -182,6 +198,9 @@ def main() -> int:
         return 0
     if args.command == "restore":
         restore(args.stash, args.destination)
+        return 0
+    if args.command == "validate-test-root":
+        print(validate_test_root(args.root, args.repository))
         return 0
     remove(args.root, args.path, args.purpose, args.token)
     return 0

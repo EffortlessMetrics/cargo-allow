@@ -46,6 +46,7 @@ PY
     export CARGO_ALLOW_BIN
   fi
   temp_root="${CANDIDATE_HARNESS_TEST_ROOT:-${TMPDIR:-/tmp}}"
+  python3 "${lifecycle}" validate-test-root --root "${temp_root}" --repository "${SCRIPT_ROOT}" >/dev/null
   snapshot_json="$(python3 "${lifecycle}" snapshot --root "${temp_root}" --repository "${SCRIPT_ROOT}" --purpose source-candidate-snapshot)"
   read -r snapshot_root snapshot_token snapshot_head < <(
     printf '%s' "${snapshot_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"], v["git_head"])'
@@ -76,7 +77,7 @@ if [[ "${CANDIDATE_HARNESS_SNAPSHOT_PROBE:-0}" == "1" && "${CANDIDATE_HARNESS_TE
   exit 0
 fi
 
-output_root="${CANDIDATE_HARNESS_OUTPUT_ROOT:-${ROOT}/target}"
+output_root="${SCRIPT_ROOT}/target"
 mkdir -p "${output_root}"
 work_json="$(python3 "${lifecycle}" allocate --root "${output_root}" --purpose source-candidate-smoke --durable)"
 read -r work_dir work_token < <(

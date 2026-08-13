@@ -127,6 +127,21 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
     if receipt.exists():
         raise SystemExit("restore collision left a misleading receipt")
 
+    # Harness entrypoints reject broad/overlapping test roots before snapshot
+    # allocation, even when probe mode is disabled.
+    bad_roots = [ROOT, ROOT / "target", ROOT.parent, Path(ROOT.anchor)]
+    for script in ("exact-candidate-package-set.sh", "source-candidate-smoke.sh"):
+        for bad_root in bad_roots:
+            result = subprocess.run(
+                ["bash", str(ROOT / "scripts" / script)], cwd=ROOT,
+                env={**os.environ, "CANDIDATE_HARNESS_TEST_ROOT": str(bad_root)},
+                capture_output=True, text=True, check=False,
+            )
+            if result.returncode == 0:
+                raise SystemExit(f"{script} accepted unsafe test root {bad_root}")
+        if (ROOT / "target" / "exact-candidate-package-set").exists():
+            raise SystemExit("unsafe root validation created candidate output")
+
     # Inject a destination appearance after the helper's preflight check.
     rename = LIFECYCLE.os.rename
     injected = {"done": False}
