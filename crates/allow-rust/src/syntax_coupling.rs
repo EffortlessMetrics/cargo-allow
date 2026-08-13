@@ -175,7 +175,7 @@ pub fn rust_source_declares_no_std(source: &str) -> CargoAllowResult<bool> {
     let tree = parse_rust_syntax(source)?;
     let root = tree.tree.root_node();
     let mut cursor = root.walk();
-    Ok(root.named_children(&mut cursor).any(|attribute| {
+    let has_shadowing_attribute = root.named_children(&mut cursor).any(|attribute| {
         attribute.kind().contains("attribute")
             && node_text(source, attribute).is_some_and(|text| {
                 let Some(text) = strip_rust_comments(text) else {
@@ -183,10 +183,34 @@ pub fn rust_source_declares_no_std(source: &str) -> CargoAllowResult<bool> {
                 };
                 let compact: String = text.chars().filter(|ch| !ch.is_whitespace()).collect();
                 compact == "#![no_std]"
+                    || compact == "#![no_implicit_prelude]"
                     || (compact.starts_with("#![cfg_attr(")
                         && compact.ends_with(")]")
-                        && compact.split([',', ')']).any(|token| token == "no_std"))
+                        && compact
+                            .split([',', ')'])
+                            .any(|token| matches!(token, "no_std" | "no_implicit_prelude")))
             })
+    });
+    if has_shadowing_attribute {
+        return Ok(true);
+    }
+    let mut cursor = root.walk();
+    Ok(root.named_children(&mut cursor).any(|item| {
+        (item.kind() == "extern_crate_declaration"
+            && node_text(source, item).is_some_and(|text| {
+                strip_rust_comments(text).is_some_and(|text| {
+                    let compact: String = text.chars().filter(|ch| !ch.is_whitespace()).collect();
+                    compact
+                        .strip_prefix("externcrate")
+                        .and_then(|declaration| declaration.strip_suffix(';'))
+                        .is_some_and(|declaration| declaration.ends_with("asstd"))
+                })
+            }))
+            || (item.kind() == "mod_item"
+                && item
+                    .child_by_field_name("name")
+                    .and_then(|name| node_text(source, name))
+                    .is_some_and(|name| name == "std"))
     }))
 }
 
@@ -278,6 +302,7 @@ fn path_read_macro_kind(node: Node<'_>, source: &str) -> Option<RustSourceCoupli
     let macro_path = node
         .child_by_field_name("macro")
         .and_then(|macro_node| node_text(source, macro_node))?;
+    let macro_path = normalized_macro_path(macro_path)?;
     let macro_name = macro_path.rsplit("::").next()?;
     let macro_name = macro_name.strip_prefix("r#").unwrap_or(macro_name);
     matches!(macro_name, "include" | "include_str" | "include_bytes")
@@ -286,7 +311,6 @@ fn path_read_macro_kind(node: Node<'_>, source: &str) -> Option<RustSourceCoupli
 
 fn path_read_macro_is_trusted(node: Node<'_>, source: &str, std_is_unshadowed: bool) -> bool {
     std_is_unshadowed
-        && node_text(source, node).is_some_and(|text| text.trim_start().starts_with("::std::"))
         && node
             .child_by_field_name("macro")
             .and_then(|macro_node| node_text(source, macro_node))
@@ -294,8 +318,11 @@ fn path_read_macro_is_trusted(node: Node<'_>, source: &str, std_is_unshadowed: b
 }
 
 fn is_standard_path_read_macro(path: &str) -> bool {
+    let Some(path) = normalized_macro_path(path) else {
+        return false;
+    };
     matches!(
-        path,
+        path.as_str(),
         "::std::include"
             | "::std::include_str"
             | "::std::include_bytes"
@@ -305,6 +332,30 @@ fn is_standard_path_read_macro(path: &str) -> bool {
     )
 }
 
+fn normalized_macro_path(path: &str) -> Option<String> {
+    strip_rust_comments(path).map(|path| path.chars().filter(|ch| !ch.is_whitespace()).collect())
+}
+
+fn standard_concat_invocation_text(text: &str) -> Option<String> {
+    let mut index = 0;
+    let bang = loop {
+        if index >= text.len() {
+            return None;
+        }
+        if let Some(end) = rust_comment_end(text, index).flatten() {
+            index = end;
+            continue;
+        }
+        if text.as_bytes().get(index) == Some(&b'!') {
+            break index;
+        }
+        index += 1;
+    };
+    let path = normalized_macro_path(text.get(..bang).unwrap_or_default())?;
+    matches!(path.as_str(), "::std::concat" | "::std::r#concat")
+        .then(|| format!("concat{}", text.get(bang..).unwrap_or_default()))
+}
+
 fn path_read_argument(
     node: Node<'_>,
     source: &str,
@@ -312,11 +363,9 @@ fn path_read_argument(
 ) -> Option<(Vec<String>, RustSourceCouplingPathBase)> {
     let full_argument = node_text(source, node)?;
     let trimmed_argument = strip_macro_delimiters(full_argument)?.trim();
-    if trimmed_argument.starts_with("::std::concat")
-        || trimmed_argument.starts_with("::std::r#concat")
-    {
-        let path = manifest_env_is_unshadowed
-            .then(|| evaluate_manifest_concat_text(trimmed_argument))??;
+    if let Some(concat_text) = standard_concat_invocation_text(trimmed_argument) {
+        let path =
+            manifest_env_is_unshadowed.then(|| evaluate_manifest_concat_text(&concat_text))??;
         return Some((vec![path], RustSourceCouplingPathBase::ManifestDirectory));
     }
     let mut cursor = node.walk();

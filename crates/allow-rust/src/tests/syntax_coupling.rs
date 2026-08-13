@@ -142,17 +142,22 @@ fn manifest_concat_rejects_other_environment_and_dynamic_fragments() -> Result<(
 
 #[test]
 fn manifest_concat_fails_closed_when_no_std_can_shadow_std() -> Result<(), String> {
-    let scan = scan_rust_source_coupling(
+    for source in [
         "#![cfg_attr(any(), no_std)]\nmod std { pub use crate::env; }\n::std::include_str!(::std::concat!(::std::env!(\"CARGO_MANIFEST_DIR\"), \"/decoy.rs\"));\n",
-    )
-    .map_err(|error| format!("scan no_std manifest concat: {error}"))?;
-    let read = scan
-        .facts
-        .iter()
-        .find(|fact| fact.kind == RustSourceCouplingKind::PathRead)
-        .ok_or_else(|| "missing no_std path read".to_string())?;
-    if !read.path.is_empty() {
-        return Err(format!("no_std manifest concat resolved: {read:?}"));
+        "#![no_implicit_prelude]\nextern crate self as std;\n::std::include_str!(::std::concat!(::std::env!(\"CARGO_MANIFEST_DIR\"), \"/decoy.rs\"));\n",
+    ] {
+        let scan = scan_rust_source_coupling(source)
+            .map_err(|error| format!("scan shadowed standard manifest concat: {error}"))?;
+        let read = scan
+            .facts
+            .iter()
+            .find(|fact| fact.kind == RustSourceCouplingKind::PathRead)
+            .ok_or_else(|| "missing shadowed standard path read".to_string())?;
+        if !read.path.is_empty() {
+            return Err(format!(
+                "shadowed standard manifest concat resolved: {read:?}"
+            ));
+        }
     }
     Ok(())
 }
@@ -240,7 +245,7 @@ fn direct_path_containing_manifest_name_stays_source_relative() -> Result<(), St
 #[test]
 fn manifest_concat_uses_the_structural_argument_and_all_delimiters() -> Result<(), String> {
     let scan = scan_rust_source_coupling(
-            "::std::include_str!(::std::r#concat /* macro */ ! {::std /* path */ :: r#env /* base */ ! [/* leading */ \"CARGO_MANIFEST_DIR\" /* base tail */], /* outer, ) [ /* nested */ */ \"/actual.rs\" /* literal tail */});\n::std::include_str!(::std::concat![::std::env!{// leading\n \"CARGO_MANIFEST_DIR\" // trailing\n}, // comma, close )\n \"/bracket.rs\"]);\n",
+            "::std /* outer */ :: include_str!(::std /* concat path */ :: r#concat /* macro */ ! {::std /* path */ :: r#env /* base */ ! [/* leading */ \"CARGO_MANIFEST_DIR\" /* base tail */], /* outer, ) [ /* nested */ */ \"/actual.rs\" /* literal tail */});\n::std::include_str!(::std::concat![::std::env!{// leading\n \"CARGO_MANIFEST_DIR\" // trailing\n}, // comma, close )\n \"/bracket.rs\"]);\n",
     )
     .map_err(|error| format!("scan structural concat arguments: {error}"))?;
     let reads: Vec<_> = scan
