@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import importlib.util
 import os
 import subprocess
 import sys
@@ -12,6 +13,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 TOOL = ROOT / "scripts" / "candidate-harness-owned-dir.py"
+SPEC = importlib.util.spec_from_file_location("candidate_harness_owned_dir", TOOL)
+assert SPEC and SPEC.loader
+LIFECYCLE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(LIFECYCLE)
 
 
 def run(*args: str, expect: int = 0) -> subprocess.CompletedProcess[str]:
@@ -53,6 +58,37 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
         )
         if owned.exists():
             raise SystemExit("matching marker did not remove exact owned directory")
+
+        # Deterministic child substitution between validation and deletion.
+        race = json.loads(run("allocate", "--root", str(root), "--purpose", "race").stdout)
+        race_path = Path(race["path"])
+        (race_path / "sentinel").write_text("preserve\n", encoding="utf-8")
+        original_rmtree = LIFECYCLE.shutil.rmtree
+        original_safe = getattr(original_rmtree, "avoids_symlink_attacks", False)
+        def substitute_child(path: Path, *args, **kwargs):
+            moved = path.with_name(path.name + ".foreign")
+            os.rename(path, moved)
+            try:
+                path.symlink_to(moved, target_is_directory=True)
+            except OSError:
+                os.rename(moved, path)
+                raise
+            return original_rmtree(path, *args, **kwargs)
+        substitute_child.avoids_symlink_attacks = original_safe
+        LIFECYCLE.shutil.rmtree = substitute_child
+        try:
+            try:
+                LIFECYCLE.remove(root, race_path, "race", race["token"])
+            except SystemExit:
+                pass
+            else:
+                raise SystemExit("TOCTOU child substitution unexpectedly succeeded")
+        finally:
+            LIFECYCLE.shutil.rmtree = original_rmtree
+        foreign = race_path.with_name(race_path.name + ".foreign")
+        if not (foreign / "sentinel").is_file():
+            raise SystemExit("TOCTOU substitution damaged foreign sentinel")
+        original_rmtree(foreign)
     else:
         reject(
             "remove", "--root", str(root), "--path", str(owned),
