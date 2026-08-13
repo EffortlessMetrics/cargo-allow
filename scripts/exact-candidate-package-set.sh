@@ -37,31 +37,58 @@ lifecycle="${SCRIPT_ROOT}/scripts/candidate-harness-owned-dir.py"
 command -v python3 >/dev/null 2>&1 || { printf 'exact-candidate-package-set: error: python3 is required\n' >&2; exit 1; }
 
 if [[ "${1:-}" != "--internal" ]]; then
-  if [[ "${SKIP_PACKAGE:-0}" == "1" ]]; then
-    PACKAGE_INPUT_DIR="$(python3 - "${PACKAGE_INPUT_DIR:-}" "${SCRIPT_ROOT}/target" <<'PY'
-import sys
-from pathlib import Path
-
-raw = Path(sys.argv[1])
-target = Path(sys.argv[2]).resolve(strict=True)
-if not str(raw).strip() or not raw.exists() or raw.is_symlink():
-    raise SystemExit("SKIP_PACKAGE=1 requires an existing non-symlink PACKAGE_INPUT_DIR")
-resolved = raw.resolve(strict=True)
-try:
-    resolved.relative_to(target)
-except ValueError as error:
-    raise SystemExit(f"PACKAGE_INPUT_DIR must be below {target}, got {resolved}") from error
-print(resolved)
-PY
-)"
-    export PACKAGE_INPUT_DIR
-  fi
+  package_input_source="${PACKAGE_INPUT_DIR:-${SCRIPT_ROOT}/target/package-candidate-smoke/packages}"
   temp_root="${CANDIDATE_HARNESS_TEST_ROOT:-${TMPDIR:-/tmp}}"
   python3 "${lifecycle}" validate-test-root --root "${temp_root}" --repository "${SCRIPT_ROOT}" >/dev/null
   snapshot_json="$(python3 "${lifecycle}" snapshot --root "${temp_root}" --repository "${SCRIPT_ROOT}" --purpose exact-candidate-package-snapshot)"
   read -r snapshot_root snapshot_token snapshot_head < <(
     printf '%s' "${snapshot_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"], v["git_head"])'
   )
+  if [[ "${SKIP_PACKAGE:-0}" == "1" ]]; then
+    PACKAGE_INPUT_DIR="$(python3 - "${package_input_source}" "${snapshot_root}" "${snapshot_head}" <<'PY'
+import hashlib
+import json
+import shutil
+import sys
+from pathlib import Path
+
+raw = Path(sys.argv[1])
+snapshot = Path(sys.argv[2]).resolve(strict=True)
+head = sys.argv[3]
+if not str(raw).strip() or not raw.exists() or raw.is_symlink() or not raw.is_dir():
+    raise SystemExit("SKIP_PACKAGE=1 requires an existing non-symlink PACKAGE_INPUT_DIR directory")
+source = raw.resolve(strict=True)
+direct = list(source.glob("*.crate"))
+if not direct:
+    candidate = source / "target" / "package-candidate-smoke" / "packages"
+    if candidate.exists() and not candidate.is_symlink() and candidate.is_dir():
+        source = candidate.resolve(strict=True)
+        direct = list(source.glob("*.crate"))
+if not direct:
+    raise SystemExit(f"SKIP_PACKAGE=1 found no .crate files under {raw}")
+if any(not item.is_file() or item.is_symlink() for item in direct):
+    raise SystemExit("PACKAGE_INPUT_DIR contains a symlink or non-file .crate input")
+destination = snapshot / "target" / "package-candidate-smoke" / "packages"
+destination.mkdir(parents=True, exist_ok=False)
+records = []
+for item in sorted(direct):
+    target = destination / item.name
+    shutil.copyfile(item, target)
+    digest = hashlib.sha256(target.read_bytes()).hexdigest()
+    records.append({"name": item.name, "bytes": target.stat().st_size, "sha256": digest})
+provenance = destination / ".package-input-provenance.json"
+provenance.write_text(json.dumps({
+    "schema": "cargo-allow.package-input-provenance.v1",
+    "source": str(source),
+    "snapshot": str(snapshot),
+    "git_head": head,
+    "files": records,
+}, indent=2) + "\n", encoding="utf-8")
+print(destination)
+PY
+)"
+    export PACKAGE_INPUT_DIR
+  fi
   snapshot_cleanup() {
     python3 "${lifecycle}" remove --root "${temp_root}" --path "${snapshot_root}" \
       --purpose exact-candidate-package-snapshot --token "${snapshot_token}"
@@ -84,6 +111,10 @@ ROOT="${CANDIDATE_HARNESS_ROOT}"
 cd "${ROOT}"
 if [[ "${CANDIDATE_HARNESS_SNAPSHOT_PROBE:-0}" == "1" && "${CANDIDATE_HARNESS_TEST_INJECTION:-0}" == "1" ]]; then
   [[ "${ROOT}" != "${SCRIPT_ROOT}" && -f "${ROOT}/Cargo.toml" && -d "${ROOT}/crates" ]]
+  if [[ "${SKIP_PACKAGE:-0}" == "1" ]]; then
+    [[ -f "${ROOT}/target/package-candidate-smoke/packages/.package-input-provenance.json" ]]
+    [[ -n "$(find "${ROOT}/target/package-candidate-smoke/packages" -maxdepth 1 -type f -name '*.crate' -print -quit)" ]]
+  fi
   printf 'exact-candidate-package-set: disposable snapshot ok\n'
   exit 0
 fi

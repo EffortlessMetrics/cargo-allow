@@ -223,4 +223,22 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
             if result.returncode != 0 or "disposable snapshot ok" not in result.stdout:
                 raise SystemExit(f"snapshot probe failed for {script}:\n{result.stdout}{result.stderr}")
 
+        # CI supplies the checkout root as PACKAGE_INPUT_DIR.  The package
+        # harness must stage its crate inputs into the snapshot-local target,
+        # with digest/provenance evidence, before entering the snapshot.
+        package_input = root / "ci-checkout"
+        package_dir = package_input / "target" / "package-candidate-smoke" / "packages"
+        package_dir.mkdir(parents=True)
+        (package_dir / "candidate.crate").write_bytes(b"candidate-input\n")
+        result = subprocess.run(
+            ["bash", str(ROOT / "scripts" / "exact-candidate-package-set.sh")],
+            cwd=ROOT,
+            env={**os.environ, "SKIP_PACKAGE": "1", "PACKAGE_INPUT_DIR": str(package_input),
+                 "CANDIDATE_HARNESS_SNAPSHOT_PROBE": "1", "CANDIDATE_HARNESS_TEST_INJECTION": "1",
+                 "CANDIDATE_HARNESS_TEST_ROOT": str(root)},
+            capture_output=True, text=True, check=False,
+        )
+        if result.returncode != 0 or "disposable snapshot ok" not in result.stdout:
+            raise SystemExit(f"checkout-root package staging probe failed:\n{result.stdout}{result.stderr}")
+
 print("ok candidate harness owned-directory containment")
