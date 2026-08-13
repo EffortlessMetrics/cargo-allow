@@ -6392,6 +6392,48 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-11101"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/candidate-harness-owned-dir.py"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Marker/token-owned disposable directory lifecycle and disposable-checkout snapshot helper for candidate harness safety (#3509)."
+evidence = ["test:scripts/test-candidate-harness-lifecycle.py", "issue:3509"]
+created = "2026-08-13"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "py"
+glob = "scripts/candidate-harness-owned-dir.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11102"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test-candidate-harness-lifecycle.py"
+owner = "core/release"
+classification = "test_fixture"
+reason = "Adversarial lifecycle, forged-context, symlink, marker, and interrupted-cleanup characterization for candidate harness safety (#3509)."
+evidence = ["test:scripts/test-candidate-harness-lifecycle.py", "issue:3509"]
+created = "2026-08-13"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "py"
+glob = "scripts/test-candidate-harness-lifecycle.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-4763"
 kind = "non_rust_file"
 family = "python_tool"
