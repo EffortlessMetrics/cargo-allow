@@ -41,7 +41,8 @@ pub use package::{
 pub use scan_cache::ScanCache;
 pub use scan_result::{RustFileScanOutcome, RustFileScanStatus, RustScanResult};
 pub use syntax_coupling::{
-    RustSourceCoupling, RustSourceCouplingKind, RustSourceCouplingScan, scan_rust_source_coupling,
+    RustSourceCoupling, RustSourceCouplingKind, RustSourceCouplingPathBase, RustSourceCouplingScan,
+    scan_rust_source_coupling,
 };
 pub use syntax_tree::{RustSyntaxContainer, RustSyntaxTree, parse_rust_syntax};
 pub use test_subjects::{

@@ -4,12 +4,22 @@ use allow_policy::product_crates::{
     ArchitectureManifest, ArchitectureManifestV2, CrateIdentityV2, parse_architecture_manifest_at,
     parse_architecture_manifest_v2_at,
 };
-use allow_rust::{RustSourceCouplingKind, is_likely_test_file, scan_rust_source_coupling};
+use allow_rust::{
+    RustSourceCouplingKind, RustSourceCouplingPathBase, is_likely_test_file,
+    scan_rust_source_coupling,
+};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SourceCouplingDiagnosticKind {
+    Import,
+    PathRead,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct SourceCouplingDiagnostic {
+    pub(crate) kind: SourceCouplingDiagnosticKind,
     pub(crate) path: PathBuf,
     pub(crate) line: u32,
     pub(crate) column: u32,
@@ -58,7 +68,11 @@ pub(crate) fn source_coupling_diagnostics_at(
     let forbidden_manifest =
         parse_architecture_manifest_at(Some(&forbidden_path), &forbidden_text)?;
     let forbidden_edges = forbidden_product_edges(&forbidden_manifest);
-    let files = allow_inventory::git_ls_files(root)?
+    let tracked_paths: BTreeSet<PathBuf> =
+        allow_inventory::git_ls_files(root)?.into_iter().collect();
+    let files = tracked_paths
+        .iter()
+        .cloned()
         .into_iter()
         .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some("rs"))
         .filter(|path| !is_likely_test_file(path))
@@ -72,47 +86,112 @@ pub(crate) fn source_coupling_diagnostics_at(
             Ok((path, text))
         })
         .collect::<CargoAllowResult<Vec<_>>>()?;
-    source_coupling_diagnostics_for_sources(&manifest, &forbidden_edges, &files)
+    source_coupling_diagnostics_for_sources(&manifest, &forbidden_edges, &tracked_paths, &files)
 }
 
 fn source_coupling_diagnostics_for_sources(
     manifest: &ArchitectureManifestV2,
     forbidden_edges: &BTreeMap<String, BTreeSet<String>>,
+    tracked_paths: &BTreeSet<PathBuf>,
     files: &[(PathBuf, String)],
 ) -> CargoAllowResult<Vec<SourceCouplingDiagnostic>> {
     let target_owners = target_owners(manifest);
     let mut diagnostics = Vec::new();
     for (path, source) in files {
-        let Some(source_identity) = source_identity(manifest, path) else {
+        let Some(source_identity) = crate_identity_for_path(manifest, path) else {
             continue;
         };
         let scan = scan_rust_source_coupling(source)?;
         for fact in scan.facts {
-            if fact.kind != RustSourceCouplingKind::UseDeclaration {
-                continue;
+            match fact.kind {
+                RustSourceCouplingKind::UseDeclaration => {
+                    let Some(target_segment) = first_path_segment(&fact.path) else {
+                        continue;
+                    };
+                    let Some((target_identity, target_owner)) = target_owners.get(&target_segment)
+                    else {
+                        continue;
+                    };
+                    if target_owner == "shared"
+                        || !forbidden_edges
+                            .get(&source_identity.product_or_shared_owner)
+                            .is_some_and(|targets| targets.contains(target_owner))
+                    {
+                        continue;
+                    }
+                    diagnostics.push(SourceCouplingDiagnostic {
+                        kind: SourceCouplingDiagnosticKind::Import,
+                        path: path.clone(),
+                        line: fact.start_line,
+                        column: fact.start_column,
+                        source_owner: source_identity.product_or_shared_owner.clone(),
+                        target_crate: target_identity.logical_id.clone(),
+                        target_owner: target_owner.clone(),
+                        import_text: fact.text,
+                    });
+                }
+                RustSourceCouplingKind::PathRead => {
+                    match resolve_relative_source_path(path, fact.path_base, &fact.path) {
+                        PathReadResolution::Escapes => {
+                            diagnostics.push(unresolved_path_diagnostic(
+                                path,
+                                fact.start_line,
+                                fact.start_column,
+                                source_identity.product_or_shared_owner.clone(),
+                                "<escaping-path>",
+                                fact.text,
+                            ))
+                        }
+                        PathReadResolution::Unresolved => {
+                            diagnostics.push(unresolved_path_diagnostic(
+                                path,
+                                fact.start_line,
+                                fact.start_column,
+                                source_identity.product_or_shared_owner.clone(),
+                                "<unresolved-path>",
+                                fact.text,
+                            ))
+                        }
+                        PathReadResolution::Resolved(target_path) => {
+                            let target_identity = crate_identity_for_path(manifest, &target_path);
+                            if target_identity.is_none() && !tracked_paths.contains(&target_path) {
+                                diagnostics.push(unresolved_path_diagnostic(
+                                    path,
+                                    fact.start_line,
+                                    fact.start_column,
+                                    source_identity.product_or_shared_owner.clone(),
+                                    "<unresolved-path>",
+                                    fact.text,
+                                ));
+                                continue;
+                            }
+                            let Some(target_identity) = target_identity else {
+                                continue;
+                            };
+                            let target_owner = &target_identity.product_or_shared_owner;
+                            if target_owner == &source_identity.product_or_shared_owner
+                                || target_owner == "shared"
+                                || !forbidden_edges
+                                    .get(&source_identity.product_or_shared_owner)
+                                    .is_some_and(|targets| targets.contains(target_owner))
+                            {
+                                continue;
+                            }
+                            diagnostics.push(SourceCouplingDiagnostic {
+                                kind: SourceCouplingDiagnosticKind::PathRead,
+                                path: path.clone(),
+                                line: fact.start_line,
+                                column: fact.start_column,
+                                source_owner: source_identity.product_or_shared_owner.clone(),
+                                target_crate: target_identity.logical_id.clone(),
+                                target_owner: target_owner.clone(),
+                                import_text: fact.text,
+                            });
+                        }
+                    }
+                }
+                RustSourceCouplingKind::InlineModule => {}
             }
-            let Some(target_segment) = first_path_segment(&fact.path) else {
-                continue;
-            };
-            let Some((target_identity, target_owner)) = target_owners.get(&target_segment) else {
-                continue;
-            };
-            if target_owner == "shared"
-                || !forbidden_edges
-                    .get(&source_identity.product_or_shared_owner)
-                    .is_some_and(|targets| targets.contains(target_owner))
-            {
-                continue;
-            }
-            diagnostics.push(SourceCouplingDiagnostic {
-                path: path.clone(),
-                line: fact.start_line,
-                column: fact.start_column,
-                source_owner: source_identity.product_or_shared_owner.clone(),
-                target_crate: target_identity.logical_id.clone(),
-                target_owner: target_owner.clone(),
-                import_text: fact.text,
-            });
         }
     }
     diagnostics.sort_by(|left, right| {
@@ -130,6 +209,96 @@ fn source_coupling_diagnostics_for_sources(
             ))
     });
     Ok(diagnostics)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum PathReadResolution {
+    Resolved(PathBuf),
+    Unresolved,
+    Escapes,
+}
+
+fn resolve_relative_source_path(
+    source_path: &Path,
+    base: RustSourceCouplingPathBase,
+    path: &str,
+) -> PathReadResolution {
+    let path = path.trim();
+    let path = if base == RustSourceCouplingPathBase::ManifestDirectory {
+        path.trim_start_matches(['/', '\\'])
+    } else {
+        path
+    };
+    if path.is_empty() {
+        return PathReadResolution::Unresolved;
+    }
+    if (base == RustSourceCouplingPathBase::SourceFile
+        && (path.starts_with('/') || path.starts_with('\\')))
+        || path.as_bytes().get(1) == Some(&b':')
+    {
+        return PathReadResolution::Escapes;
+    }
+
+    let source = match base {
+        RustSourceCouplingPathBase::SourceFile => normalize_path(source_path),
+        RustSourceCouplingPathBase::ManifestDirectory => {
+            let normalized = normalize_path(source_path);
+            let Some((crate_root, _)) = normalized.split_once("/src/") else {
+                return PathReadResolution::Unresolved;
+            };
+            crate_root.to_string()
+        }
+    };
+    let combined = if base == RustSourceCouplingPathBase::ManifestDirectory {
+        format!("{source}/{path}")
+    } else {
+        let parent = source
+            .rsplit_once('/')
+            .map(|(parent, _)| parent)
+            .unwrap_or("");
+        if parent.is_empty() {
+            path.to_string()
+        } else {
+            format!("{parent}/{path}")
+        }
+    };
+    let mut components = Vec::new();
+    for component in combined.split(['/', '\\']) {
+        match component {
+            "" | "." => {}
+            ".." => {
+                if components.pop().is_none() {
+                    return PathReadResolution::Escapes;
+                }
+            }
+            component => components.push(component),
+        }
+    }
+    if components.is_empty() {
+        PathReadResolution::Unresolved
+    } else {
+        PathReadResolution::Resolved(PathBuf::from(components.join("/")))
+    }
+}
+
+fn unresolved_path_diagnostic(
+    path: &Path,
+    line: u32,
+    column: u32,
+    source_owner: String,
+    target_crate: &str,
+    import_text: String,
+) -> SourceCouplingDiagnostic {
+    SourceCouplingDiagnostic {
+        kind: SourceCouplingDiagnosticKind::PathRead,
+        path: path.to_path_buf(),
+        line,
+        column,
+        source_owner,
+        target_crate: target_crate.to_string(),
+        target_owner: "unresolved".to_string(),
+        import_text,
+    }
 }
 
 fn forbidden_product_edges(manifest: &ArchitectureManifest) -> BTreeMap<String, BTreeSet<String>> {
@@ -166,7 +335,7 @@ fn target_owners(
     owners
 }
 
-fn source_identity<'a>(
+fn crate_identity_for_path<'a>(
     manifest: &'a ArchitectureManifestV2,
     path: &Path,
 ) -> Option<&'a CrateIdentityV2> {

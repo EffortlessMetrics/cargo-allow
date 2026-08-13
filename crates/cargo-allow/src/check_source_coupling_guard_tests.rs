@@ -62,8 +62,10 @@ fn rejects_only_known_cross_product_imports() -> Result<(), String> {
         "product-a".to_string(),
         BTreeSet::from(["product-b".to_string()]),
     )]);
-    let diagnostics = source_coupling_diagnostics_for_sources(&manifest, &forbidden, &sources)
-        .map_err(|error| format!("scan coupling fixture: {error}"))?;
+    let tracked = BTreeSet::from([PathBuf::from("crates/product-a/src/lib.rs")]);
+    let diagnostics =
+        source_coupling_diagnostics_for_sources(&manifest, &forbidden, &tracked, &sources)
+            .map_err(|error| format!("scan coupling fixture: {error}"))?;
     if diagnostics.len() != 2 {
         return Err(format!(
             "expected two cross-product diagnostics, got {diagnostics:?}"
@@ -147,6 +149,85 @@ fn tracked_worktree_source_coupling_is_clean() -> Result<(), String> {
         .map_err(|error| format!("scan tracked source coupling: {error}"))?;
     if !diagnostics.is_empty() {
         return Err(format!("tracked worktree source coupling: {diagnostics:?}"));
+    }
+    Ok(())
+}
+
+#[test]
+fn path_read_fixtures_allow_owned_and_shared_paths_and_reject_forbidden_or_unresolved_paths()
+-> Result<(), String> {
+    let manifest = fixture_manifest()?;
+    let forbidden = BTreeMap::from([(
+        "product-a".to_string(),
+        BTreeSet::from(["product-b".to_string()]),
+    )]);
+    let allowed = vec![(
+        PathBuf::from("crates/product-a/src/lib.rs"),
+        include_str!("../../../tests/fixtures/source-coupling/path-reads-allowed.rs").to_string(),
+    )];
+    let allowed_tracked = BTreeSet::from([
+        PathBuf::from("crates/product-a/src/lib.rs"),
+        PathBuf::from("crates/product-a/src/local/owned.rs"),
+        PathBuf::from("crates/shared-protocol/src/public.rs"),
+    ]);
+    let allowed_diagnostics =
+        source_coupling_diagnostics_for_sources(&manifest, &forbidden, &allowed_tracked, &allowed)
+            .map_err(|error| format!("scan allowed path-read fixture: {error}"))?;
+    if !allowed_diagnostics.is_empty() {
+        return Err(format!(
+            "owned/shared path reads unexpectedly failed: {allowed_diagnostics:?}"
+        ));
+    }
+
+    let forbidden_sources = vec![(
+        PathBuf::from("crates/product-a/src/lib.rs"),
+        include_str!("../../../tests/fixtures/source-coupling/path-reads-forbidden.rs").to_string(),
+    )];
+    let forbidden_tracked = BTreeSet::from([
+        PathBuf::from("crates/product-a/src/lib.rs"),
+        PathBuf::from("crates/product-b/src/private.rs"),
+    ]);
+    let forbidden_diagnostics = source_coupling_diagnostics_for_sources(
+        &manifest,
+        &forbidden,
+        &forbidden_tracked,
+        &forbidden_sources,
+    )
+    .map_err(|error| format!("scan forbidden path-read fixture: {error}"))?;
+    let Some(forbidden_diagnostic) = forbidden_diagnostics.first() else {
+        return Err("missing forbidden path-read diagnostic".to_string());
+    };
+    if forbidden_diagnostics.len() != 1
+        || forbidden_diagnostic.kind != super::SourceCouplingDiagnosticKind::PathRead
+        || forbidden_diagnostic.target_crate != "product-b"
+        || forbidden_diagnostic.line != 1
+    {
+        return Err(format!(
+            "unexpected forbidden path-read diagnostics: {forbidden_diagnostics:?}"
+        ));
+    }
+
+    let unresolved_sources = vec![(
+        PathBuf::from("crates/product-a/src/lib.rs"),
+        include_str!("../../../tests/fixtures/source-coupling/path-reads-unresolved.rs")
+            .to_string(),
+    )];
+    let unresolved_tracked = BTreeSet::from([PathBuf::from("crates/product-a/src/lib.rs")]);
+    let unresolved_diagnostics = source_coupling_diagnostics_for_sources(
+        &manifest,
+        &forbidden,
+        &unresolved_tracked,
+        &unresolved_sources,
+    )
+    .map_err(|error| format!("scan unresolved path-read fixture: {error}"))?;
+    let unresolved_targets: Vec<_> = unresolved_diagnostics
+        .iter()
+        .map(|diagnostic| diagnostic.target_crate.as_str())
+        .collect();
+    if unresolved_targets != ["<unresolved-path>", "<escaping-path>"] {
+        return Err(format!(
+            "unexpected unresolved path-read diagnostics: {unresolved_diagnostics:?}"
+        ));
     }
     Ok(())
 }

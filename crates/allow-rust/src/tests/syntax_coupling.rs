@@ -1,4 +1,4 @@
-use crate::{RustSourceCouplingKind, scan_rust_source_coupling};
+use crate::{RustSourceCouplingKind, RustSourceCouplingPathBase, scan_rust_source_coupling};
 
 #[test]
 fn extracts_use_and_inline_module_paths_with_locations() -> Result<(), String> {
@@ -61,6 +61,45 @@ fn ignores_out_of_line_modules_when_extracting_inline_modules() -> Result<(), St
     let paths: Vec<_> = scan.facts.iter().map(|fact| fact.path.as_str()).collect();
     if paths != ["inline"] {
         return Err(format!("unexpected module paths: {paths:?}"));
+    }
+    Ok(())
+}
+
+#[test]
+fn extracts_compile_time_path_reads_and_marks_ambiguous_arguments() -> Result<(), String> {
+    let scan = scan_rust_source_coupling(
+        "include!(\"owned.rs\");\ninclude_str!(r#\"../../shared/src/lib.rs\"#);\ninclude_bytes!(concat!(\"unknown\", \".rs\"));\n",
+    )
+    .map_err(|error| format!("scan path reads: {error}"))?;
+    let reads: Vec<_> = scan
+        .facts
+        .iter()
+        .filter(|fact| fact.kind == RustSourceCouplingKind::PathRead)
+        .collect();
+    let paths: Vec<_> = reads.iter().map(|fact| fact.path.as_str()).collect();
+    if paths != ["owned.rs", "../../shared/src/lib.rs", ""]
+        || reads.iter().map(|fact| fact.start_line).collect::<Vec<_>>() != [1, 2, 3]
+    {
+        return Err(format!("unexpected path-read facts: {reads:?}"));
+    }
+    Ok(())
+}
+
+#[test]
+fn extracts_manifest_directory_concat_path_reads() -> Result<(), String> {
+    let scan = scan_rust_source_coupling(
+        "include_str!(concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/../shared/public.rs\"));\n",
+    )
+    .map_err(|error| format!("scan concat path read: {error}"))?;
+    let fact = scan
+        .facts
+        .iter()
+        .find(|fact| fact.kind == RustSourceCouplingKind::PathRead)
+        .ok_or_else(|| "missing concat path-read fact".to_string())?;
+    if fact.path != "/../shared/public.rs"
+        || fact.path_base != RustSourceCouplingPathBase::ManifestDirectory
+    {
+        return Err(format!("unexpected concat path-read fact: {fact:?}"));
     }
     Ok(())
 }
