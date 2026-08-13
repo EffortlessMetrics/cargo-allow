@@ -1,0 +1,8 @@
+schema_version = 1
+policy = "non-rust-allowlist"
+
+[[allow]]
+id = "negative-invalid-owner"
+path = "docs/invalid-owner.md"
+owner = 7
+reason = "Non-string scalar metadata must not disappear."

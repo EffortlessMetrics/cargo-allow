@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.exact-candidate-install-journey.v1",
+  "tool": "cargo-allow",
+  "result": "Passed",
+  "claim_boundary": [
+    "canonical_thirteen_crate_candidate",
+    "isolated_exact_candidate_install",
+    "source_checkout_denied_during_install",
+    "source_checkout_hidden_during_journey",
+    "digest_bound_package_and_journey_receipts",
+    "first_hour_finding_repair_and_policy_rollback",
+    "temporary_consumer_and_journey_state_cleanup",
+    "not_published_or_registry_release"
+  ],
+  "candidate": {
+    "workspace_version": "0.2.0",
+    "git_head": "0000000000000000000000000000000000000000",
+    "crate_set_schema_id": "cargo-allow.candidate-crate-set.v1",
+    "crate_count": 13
+  },
+  "provenance": {
+    "package_set_schema_id": "cargo-allow.exact-candidate-package-set.v1",
+    "journey_schema_id": "cargo-allow.source-candidate-smoke-receipt.v1",
+    "package_set_receipt_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "journey_receipt_sha256": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+    "candidate_fixture_sha256": "410c0d5d01d9048e6b6c14a2a162510540cb144922a85aa5c3ca3657a3777860",
+    "crate_order": [
+      "allow-core",
+      "allow-policy",
+      "allow-inventory",
+      "allow-files",
+      "allow-rust",
+      "allow-match",
+      "allow-report",
+      "allow-policy-legacy",
+      "allow-diff",
+      "effortless-repo-protocol",
+      "effortless-repo-snapshot",
+      "effortless-repo-edit",
+      "cargo-allow"
+    ]
+  },
+  "install": {
+    "method": "cargo_install_path_extracted_with_local_registry",
+    "version_output": "cargo-allow 0.2.0",
+    "source_checkout_denied": true,
+    "source_hidden_journey_passed": true,
+    "no_undeclared_source_reads": true,
+    "path_redacted": true
+  },
+  "journey": {
+    "finding_step": "audit_with_finding",
+    "repair_or_rollback_step": "policy_rollback_after_prune",
+    "artifact_schema_ids": [
+      "cargo-allow.doctor.v1",
+      "cargo-allow.report.v1",
+      "cargo-allow.list.v1",
+      "cargo-allow.refresh.v1",
+      "cargo-allow.prune.v1"
+    ],
+    "steps_expected": [
+      "version",
+      "doctor_no_policy",
+      "audit_with_finding",
+      "bootstrap_propose_write",
+      "check_no_new_pass",
+      "list_explain_worklist",
+      "refresh_location_drift_preview_write",
+      "diff_against_exact_base",
+      "prune_stale_preview_write",
+      "final_check_no_new",
+      "policy_rollback_after_prune"
+    ],
+    "steps_executed": [
+      { "id": "version", "exit_code": 0, "artifact_schema_id": null },
+      { "id": "doctor_no_policy", "exit_code": 0, "artifact_schema_id": "cargo-allow.doctor.v1" },
+      { "id": "audit_with_finding", "exit_code": 0, "artifact_schema_id": "cargo-allow.report.v1" },
+      { "id": "bootstrap_propose_write", "exit_code": 0, "artifact_schema_id": null },
+      { "id": "check_no_new_pass", "exit_code": 0, "artifact_schema_id": "cargo-allow.report.v1" },
+      { "id": "list_explain_worklist", "exit_code": 0, "artifact_schema_id": "cargo-allow.list.v1" },
+      { "id": "refresh_location_drift_preview_write", "exit_code": 0, "artifact_schema_id": "cargo-allow.refresh.v1" },
+      { "id": "diff_against_exact_base", "exit_code": 0, "artifact_schema_id": "cargo-allow.report.v1" },
+      { "id": "prune_stale_preview_write", "exit_code": 0, "artifact_schema_id": "cargo-allow.prune.v1" },
+      { "id": "final_check_no_new", "exit_code": 0, "artifact_schema_id": "cargo-allow.report.v1" },
+      { "id": "policy_rollback_after_prune", "exit_code": 0, "artifact_schema_id": "cargo-allow.list.v1" }
+    ]
+  },
+  "negative_controls": [
+    { "id": "source_checkout_denied_during_exact_install", "result_class": "CheckoutIsolated", "passed": true },
+    { "id": "source_checkout_read_after_install_rejected", "result_class": "CheckoutIsolated", "passed": true },
+    { "id": "missing_candidate_sibling_rejected", "result_class": "PackageMissing", "passed": true },
+    { "id": "wrong_candidate_sibling_version_rejected", "result_class": "InternalVersionConflict", "passed": true }
+  ],
+  "cleanup": {
+    "temporary_consumer_removed": true,
+    "temporary_config_removed": true,
+    "journey_artifacts_removed": true,
+    "durable_exact_candidate_install_preserved": true
+  },
+  "limitations": [
+    "package_fetch_warm_may_use_crates_io_before_offline_install",
+    "hosted_package_smoke_is_the_primary_linux_evidence",
+    "no_publication_tagging_or_registry_release"
+  ]
+}

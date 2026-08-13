@@ -1,10 +1,26 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use toml::Value;
 
-use crate::fields::{legacy_evidence, raw_string_field, string_field};
+use crate::fields::{raw_string_field, string_field, string_or_array_field};
 use crate::parser_support::normalize_legacy_date_field;
 use crate::parser_support::normalize_legacy_expires;
 use crate::types::LegacyNonRustRule;
+
+const NON_RUST_ENTRY_FIELDS: &[&str] = &[
+    "id",
+    "path",
+    "glob",
+    "category",
+    "classification",
+    "owner",
+    "reason",
+    "broad_glob_reason",
+    "evidence",
+    "covered_by",
+    "created",
+    "review_after",
+    "expires",
+];
 
 pub(crate) fn parse_non_rust_rules(
     table: &toml::Table,
@@ -13,22 +29,37 @@ pub(crate) fn parse_non_rust_rules(
         .get("allow")
         .and_then(Value::as_array)
         .ok_or_else(|| CargoAllowError::new("non-rust-allowlist missing allow entries"))?;
-    entries
+    let rules = entries
         .iter()
         .enumerate()
         .map(|(index, entry)| parse_non_rust_rule(index, entry))
-        .collect()
+        .collect::<CargoAllowResult<Vec<_>>>()?;
+    let mut ids = std::collections::BTreeSet::new();
+    for (index, rule) in rules.iter().enumerate() {
+        if !ids.insert(rule.id.as_str()) {
+            return Err(CargoAllowError::new(format!(
+                "non-rust allow entry {index} duplicates earlier id `{}`",
+                rule.id
+            )));
+        }
+    }
+    Ok(rules)
 }
 
 fn parse_non_rust_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyNonRustRule> {
     let table = entry.as_table().ok_or_else(|| {
         CargoAllowError::new(format!("non-rust allow entry {index} is not a table"))
     })?;
+    validate_non_rust_entry_shape(index, table)?;
     let id = string_field(table, "id").unwrap_or_else(|| format!("legacy-non-rust-{index:04}"));
     let (pattern, is_path) = match (string_field(table, "path"), string_field(table, "glob")) {
         (Some(path), None) => (path, true),
         (None, Some(glob)) => (glob, false),
-        (Some(path), Some(_)) => (path, true),
+        (Some(_), Some(_)) => {
+            return Err(CargoAllowError::new(format!(
+                "{id} defines both path and glob; choose one target form"
+            )));
+        }
         (None, None) => {
             return Err(CargoAllowError::new(format!("{id} missing path or glob")));
         }
@@ -63,19 +94,85 @@ fn parse_non_rust_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyNo
         (None, Some(scope_reason)) => scope_reason,
         (None, None) => String::new(),
     };
+    let classification = match (
+        string_field(table, "category"),
+        string_field(table, "classification"),
+    ) {
+        (Some(category), Some(classification)) if category != classification => {
+            return Err(CargoAllowError::new(format!(
+                "{id} defines conflicting category `{category}` and classification `{classification}`"
+            )));
+        }
+        (Some(category), _) => category,
+        (None, Some(classification)) => classification,
+        (None, None) => "legacy_non_rust".to_string(),
+    };
     Ok(LegacyNonRustRule {
         id: id.clone(),
         pattern,
         is_path,
         owner: string_field(table, "owner").unwrap_or_default(),
-        classification: string_field(table, "category")
-            .unwrap_or_else(|| "legacy_non_rust".to_string()),
+        classification,
         reason,
-        evidence: legacy_evidence(table),
+        evidence: non_rust_evidence(table),
         created: normalize_legacy_date_field(string_field(table, "created")),
         review_after: normalize_legacy_date_field(string_field(table, "review_after")),
         expires: normalize_legacy_expires(string_field(table, "expires")),
     })
+}
+
+fn non_rust_evidence(table: &toml::Table) -> Vec<String> {
+    let mut evidence = string_or_array_field(table, "evidence");
+    for reference in string_or_array_field(table, "covered_by") {
+        if !evidence.contains(&reference) {
+            evidence.push(reference);
+        }
+    }
+    evidence
+}
+
+fn validate_non_rust_entry_shape(index: usize, table: &toml::Table) -> CargoAllowResult<()> {
+    for key in table.keys() {
+        if !NON_RUST_ENTRY_FIELDS.contains(&key.as_str()) {
+            return Err(CargoAllowError::new(format!(
+                "non-rust allow entry {index} has unsupported field `{key}`"
+            )));
+        }
+    }
+    for field in [
+        "id",
+        "path",
+        "glob",
+        "category",
+        "classification",
+        "owner",
+        "reason",
+        "broad_glob_reason",
+        "created",
+        "review_after",
+        "expires",
+    ] {
+        if table.get(field).is_some_and(|value| !value.is_str()) {
+            return Err(CargoAllowError::new(format!(
+                "non-rust allow entry {index} field `{field}` must be a string"
+            )));
+        }
+    }
+    for field in ["evidence", "covered_by"] {
+        let Some(value) = table.get(field) else {
+            continue;
+        };
+        let valid = value.is_str()
+            || value
+                .as_array()
+                .is_some_and(|items| items.iter().all(Value::is_str));
+        if !valid {
+            return Err(CargoAllowError::new(format!(
+                "non-rust allow entry {index} field `{field}` must be a string or string array"
+            )));
+        }
+    }
+    Ok(())
 }
 
 fn is_broad_legacy_glob(pattern: &str) -> bool {
@@ -98,7 +195,6 @@ mod tests {
 [[allow]]
 id = "non-rust-readme"
 path = "README.md"
-glob = "*.md"
 category = "documentation"
 owner = "docs"
 reason = "Front door docs."
@@ -147,6 +243,40 @@ covered_by = ["doc:docs/README.md"]
         assert!(glob_rule.created.is_none());
         assert!(glob_rule.review_after.is_none());
         assert!(glob_rule.expires.is_none());
+
+        let alias = parse_table(
+            r#"
+[[allow]]
+id = "non-rust-classification-alias"
+path = "CONTRIBUTING.md"
+classification = "documentation"
+"#,
+        );
+        let rules = parse_non_rust_rules(&alias).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("classification alias parses: {err}"))
+        });
+        assert_eq!(rules[0].classification, "documentation");
+
+        let dual_evidence = parse_table(
+            r#"
+[[allow]]
+id = "non-rust-dual-evidence"
+path = "SECURITY.md"
+evidence = ["test:explicit", "issue:#2469"]
+covered_by = ["issue:#2469", "spec:NON-RUST-DUAL"]
+"#,
+        );
+        let rules = parse_non_rust_rules(&dual_evidence).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("dual evidence fields parse: {err}"))
+        });
+        assert_eq!(
+            rules[0].evidence,
+            vec![
+                "test:explicit".to_string(),
+                "issue:#2469".to_string(),
+                "spec:NON-RUST-DUAL".to_string(),
+            ]
+        );
     }
 
     #[test]
@@ -242,5 +372,88 @@ broad_glob_reason = "  "
             err.to_string()
                 .contains("non-rust-docs broad glob `docs/**` has empty broad_glob_reason")
         );
+
+        let conflicting_target = parse_table(
+            r#"
+[[allow]]
+id = "non-rust-conflict"
+path = "docs/guide.md"
+glob = "docs/**"
+"#,
+        );
+        let err = parse_non_rust_rules(&conflicting_target)
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("path and glob must conflict"));
+        assert!(
+            err.to_string()
+                .contains("non-rust-conflict defines both path and glob")
+        );
+
+        let unsupported_field = parse_table(
+            r#"
+[[allow]]
+id = "non-rust-unsupported"
+path = "docs/guide.md"
+approval_ticket = "SEC-123"
+"#,
+        );
+        let err = parse_non_rust_rules(&unsupported_field)
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("unknown field must be rejected"));
+        assert!(
+            err.to_string()
+                .contains("unsupported field `approval_ticket`")
+        );
+
+        let malformed_evidence = parse_table(
+            r#"
+[[allow]]
+id = "non-rust-malformed-evidence"
+path = "docs/guide.md"
+evidence = ["doc:docs/guide.md", 7]
+"#,
+        );
+        let err = parse_non_rust_rules(&malformed_evidence)
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("mixed evidence must be rejected"));
+        assert!(
+            err.to_string()
+                .contains("field `evidence` must be a string or string array")
+        );
+
+        let duplicate_ids = parse_table(
+            r#"
+[[allow]]
+id = "non-rust-duplicate"
+path = "docs/guide.md"
+
+[[allow]]
+id = "non-rust-duplicate"
+path = "docs/reference.md"
+"#,
+        );
+        let err = parse_non_rust_rules(&duplicate_ids)
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("duplicate IDs must be rejected"));
+        assert!(
+            err.to_string()
+                .contains("non-rust allow entry 1 duplicates earlier id `non-rust-duplicate`")
+        );
+
+        let conflicting_classification = parse_table(
+            r#"
+[[allow]]
+id = "non-rust-classification-conflict"
+path = "docs/guide.md"
+category = "documentation"
+classification = "generated"
+"#,
+        );
+        let err = parse_non_rust_rules(&conflicting_classification)
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("classification conflict must be rejected"));
+        assert!(err.to_string().contains(
+            "defines conflicting category `documentation` and classification `generated`"
+        ));
     }
 }

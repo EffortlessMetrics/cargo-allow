@@ -93,7 +93,10 @@ mod tests {
         assert_eq!(entry.glob.as_deref(), Some("docs/**"));
         assert_eq!(
             entry.evidence,
-            vec!["legacy-policy:non-rust-docs".to_string()]
+            vec![
+                "legacy-policy:non-rust-docs".to_string(),
+                "TODO: add non-rust migration evidence".to_string(),
+            ]
         );
         assert_eq!(entry.lifecycle.created.as_deref(), Some("2026-06-01"));
         assert_eq!(entry.lifecycle.review_after, None);

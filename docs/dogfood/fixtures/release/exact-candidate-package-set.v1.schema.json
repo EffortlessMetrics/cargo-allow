@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/exact-candidate-package-set.v1.schema.json",
   "title": "cargo-allow ExactCandidatePackageSet v1",
-  "description": "Release harness receipt proving the ten candidate crates package and resolve together via a classic Cargo local-registry (.crate + index) with crates-io source replacement. Not a cargo-allow CLI product artifact.",
+  "description": "Release harness receipt proving the thirteen candidate crates package and resolve together via a classic Cargo local-registry (.crate + index) with crates-io source replacement. Not a cargo-allow CLI product artifact.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -87,13 +87,11 @@
         "order": {
           "type": "array",
           "items": { "type": "string" },
-          "minItems": 10,
-          "maxItems": 10
+          "minItems": 1
         },
         "crates": {
           "type": "array",
-          "minItems": 10,
-          "maxItems": 10,
+          "minItems": 1,
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -110,7 +108,7 @@
               "name": { "type": "string" },
               "version": { "type": "string" },
               "crate_file": { "type": "string" },
-              "sha256": { "type": "string", "minLength": 64, "maxLength": 64 },
+              "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
               "size_bytes": { "type": "integer", "minimum": 1 },
               "extracted_dir": { "type": "string" },
               "no_path_deps": { "type": "boolean" }

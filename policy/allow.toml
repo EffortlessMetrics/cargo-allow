@@ -70,6 +70,116 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-0530"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "docs/dogfood/fixtures/release/exact-candidate-install-journey.v1.schema.json"
+owner = "core/release"
+classification = "exact_candidate_install_journey_schema"
+reason = "Defines the digest-bound receipt contract for the isolated thirteen-crate cargo-allow install journey; it records evidence only and does not authorize publication."
+evidence = ["issue:3357", "doc:docs/release/README.md", "workflow:.github/workflows/ci.yml"]
+created = "2026-08-12"
+review_after = "2027-02-12"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/dogfood/fixtures/release/exact-candidate-install-journey.v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/dogfood/fixtures/release/exact-candidate-install-journey.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0531"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/receipts/exact-candidate-install-journey-pass.example.json"
+owner = "core/release"
+classification = "exact_candidate_install_journey_receipt_example"
+reason = "Example receipt for the digest-bound exact-candidate install journey contract; it is a schema fixture and does not claim a live hosted run."
+evidence = ["issue:3357", "test:example_exact_candidate_install_journey_is_receipt_bound"]
+created = "2026-08-12"
+review_after = "2027-02-12"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/dogfood/receipts/exact-candidate-install-journey-pass.example.json"
+target_fingerprint = "json"
+glob = "docs/dogfood/receipts/exact-candidate-install-journey-pass.example.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0532"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/exact-candidate-install-journey.sh"
+owner = "core/release"
+classification = "exact_candidate_install_journey_harness"
+reason = "Runs the first-hour cargo-allow journey only from the extracted local-registry candidate install and binds its receipt to package, fixture, isolation, negative-control, and cleanup evidence."
+evidence = ["issue:3357", "doc:docs/release/README.md", "workflow:.github/workflows/ci.yml"]
+created = "2026-08-12"
+review_after = "2027-02-12"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/exact-candidate-install-journey.sh"
+target_fingerprint = "sh"
+glob = "scripts/exact-candidate-install-journey.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0533"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/test-exact-candidate-install-journey.sh"
+owner = "core/release"
+classification = "exact_candidate_install_journey_characterization"
+reason = "Offline schema and negative characterization for the exact-candidate install journey receipt; hosted CI supplies the executable Cargo journey proof."
+evidence = ["issue:3357", "test:example_exact_candidate_install_journey_is_receipt_bound", "workflow:.github/workflows/ci.yml"]
+created = "2026-08-12"
+review_after = "2027-02-12"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-exact-candidate-install-journey.sh"
+target_fingerprint = "sh"
+glob = "scripts/test-exact-candidate-install-journey.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0534"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/validate-exact-candidate-install-journey.py"
+owner = "core/release"
+classification = "exact_candidate_receipt_validator"
+reason = "Standard-library validator for exact-candidate package and journey receipt schemas plus cross-receipt digest and claim invariants; it performs no publication or registry operation."
+evidence = ["issue:3357", "doc:docs/release/README.md", "workflow:.github/workflows/ci.yml"]
+created = "2026-08-12"
+review_after = "2027-02-12"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/validate-exact-candidate-install-journey.py"
+target_fingerprint = "py"
+glob = "scripts/validate-exact-candidate-install-journey.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-9220"
 kind = "non_rust_file"
 family = "documentation"
