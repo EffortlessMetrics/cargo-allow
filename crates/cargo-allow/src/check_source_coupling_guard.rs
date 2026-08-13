@@ -85,14 +85,37 @@ pub(crate) fn source_coupling_diagnostics_at(
             Ok((path, text))
         })
         .collect::<CargoAllowResult<Vec<_>>>()?;
-    source_coupling_diagnostics_for_sources(&manifest, &forbidden_edges, &tracked_paths, &files)
+    source_coupling_diagnostics_for_sources_at_root(
+        &manifest,
+        &forbidden_edges,
+        &tracked_paths,
+        &files,
+        Some(root),
+    )
 }
 
+#[cfg(test)]
 fn source_coupling_diagnostics_for_sources(
     manifest: &ArchitectureManifestV2,
     forbidden_edges: &BTreeMap<String, BTreeSet<String>>,
     tracked_paths: &BTreeSet<PathBuf>,
     files: &[(PathBuf, String)],
+) -> CargoAllowResult<Vec<SourceCouplingDiagnostic>> {
+    source_coupling_diagnostics_for_sources_at_root(
+        manifest,
+        forbidden_edges,
+        tracked_paths,
+        files,
+        None,
+    )
+}
+
+fn source_coupling_diagnostics_for_sources_at_root(
+    manifest: &ArchitectureManifestV2,
+    forbidden_edges: &BTreeMap<String, BTreeSet<String>>,
+    tracked_paths: &BTreeSet<PathBuf>,
+    files: &[(PathBuf, String)],
+    root: Option<&Path>,
 ) -> CargoAllowResult<Vec<SourceCouplingDiagnostic>> {
     let target_owners = target_owners(manifest);
     let mut diagnostics = Vec::new();
@@ -130,7 +153,13 @@ fn source_coupling_diagnostics_for_sources(
                     });
                 }
                 RustSourceCouplingKind::PathRead => {
-                    match resolve_relative_source_path(path, fact.path_base, &fact.path) {
+                    let crate_root = source_identity.workspace_path.as_str();
+                    match resolve_relative_source_path_from_crate_root(
+                        path,
+                        fact.path_base,
+                        &fact.path,
+                        crate_root,
+                    ) {
                         PathReadResolution::Escapes => {
                             diagnostics.push(unresolved_path_diagnostic(
                                 path,
@@ -152,6 +181,23 @@ fn source_coupling_diagnostics_for_sources(
                             ))
                         }
                         PathReadResolution::Resolved(target_path) => {
+                            let target_path = if let Some(root) = root {
+                                let Some(resolved) = resolve_tracked_target(root, &target_path)?
+                                else {
+                                    diagnostics.push(unresolved_path_diagnostic(
+                                        path,
+                                        fact.start_line,
+                                        fact.start_column,
+                                        source_identity.product_or_shared_owner.clone(),
+                                        "<escaping-path>",
+                                        fact.text,
+                                    ));
+                                    continue;
+                                };
+                                resolved
+                            } else {
+                                target_path
+                            };
                             let target_identity = crate_identity_for_path(manifest, &target_path);
                             if target_identity.is_none() && !tracked_paths.contains(&target_path) {
                                 diagnostics.push(unresolved_path_diagnostic(
@@ -217,10 +263,40 @@ enum PathReadResolution {
     Escapes,
 }
 
+#[cfg(test)]
 fn resolve_relative_source_path(
     source_path: &Path,
     base: RustSourceCouplingPathBase,
     path: &str,
+) -> PathReadResolution {
+    let crate_root = normalize_path(source_path)
+        .split_once("/src/")
+        .map(|(root, _)| root.to_string())
+        .or_else(|| {
+            let normalized = normalize_path(source_path);
+            normalized.rsplit_once('/').map(|(parent, name)| {
+                if name == "build.rs" {
+                    parent.to_string()
+                } else {
+                    parent
+                        .rsplit_once('/')
+                        .map(|(p, _)| p.to_string())
+                        .unwrap_or_default()
+                }
+            })
+        })
+        .unwrap_or_default();
+    if base == RustSourceCouplingPathBase::ManifestDirectory && crate_root.is_empty() {
+        return PathReadResolution::Unresolved;
+    }
+    resolve_relative_source_path_from_crate_root(source_path, base, path, &crate_root)
+}
+
+fn resolve_relative_source_path_from_crate_root(
+    source_path: &Path,
+    base: RustSourceCouplingPathBase,
+    path: &str,
+    crate_root: &str,
 ) -> PathReadResolution {
     let path = path.trim();
     let path = if base == RustSourceCouplingPathBase::ManifestDirectory {
@@ -240,13 +316,7 @@ fn resolve_relative_source_path(
 
     let source = match base {
         RustSourceCouplingPathBase::SourceFile => normalize_path(source_path),
-        RustSourceCouplingPathBase::ManifestDirectory => {
-            let normalized = normalize_path(source_path);
-            let Some((crate_root, _)) = normalized.split_once("/src/") else {
-                return PathReadResolution::Unresolved;
-            };
-            crate_root.to_string()
-        }
+        RustSourceCouplingPathBase::ManifestDirectory => normalize_path(Path::new(crate_root)),
     };
     let combined = if base == RustSourceCouplingPathBase::ManifestDirectory {
         format!("{source}/{path}")
@@ -278,6 +348,35 @@ fn resolve_relative_source_path(
     } else {
         PathReadResolution::Resolved(PathBuf::from(components.join("/")))
     }
+}
+
+fn resolve_tracked_target(root: &Path, target: &Path) -> CargoAllowResult<Option<PathBuf>> {
+    let root = std::fs::canonicalize(root).map_err(|error| {
+        CargoAllowError::new(format!(
+            "source coupling root unreadable at {}: {error}",
+            root.display()
+        ))
+    })?;
+    let target = root.join(target);
+    let resolved = match std::fs::canonicalize(&target) {
+        Ok(path) => path,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => {
+            return Err(CargoAllowError::new(format!(
+                "source coupling target unreadable at {}: {error}",
+                target.display()
+            )));
+        }
+    };
+    if !resolved.starts_with(&root) {
+        return Ok(None);
+    }
+    let relative = resolved.strip_prefix(&root).map_err(|error| {
+        CargoAllowError::new(format!(
+            "source coupling target normalization failed: {error}"
+        ))
+    })?;
+    Ok(Some(PathBuf::from(normalize_path(relative))))
 }
 
 fn unresolved_path_diagnostic(

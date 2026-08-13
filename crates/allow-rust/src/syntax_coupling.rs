@@ -117,14 +117,8 @@ fn path_read_argument(
     node: Node<'_>,
     source: &str,
 ) -> Option<(Vec<String>, RustSourceCouplingPathBase)> {
-    if node_text(source, node)
-        .is_some_and(|text| text.contains("concat!") && text.contains("CARGO_MANIFEST_DIR"))
-    {
-        let mut literals = Vec::new();
-        collect_path_literals(node, source, &mut literals);
-        let path = literals
-            .into_iter()
-            .find(|path| path != "CARGO_MANIFEST_DIR")?;
+    if node_text(source, node).is_some_and(|text| text.contains("CARGO_MANIFEST_DIR")) {
+        let path = evaluate_manifest_concat_text(node_text(source, node)?)?;
         return Some((vec![path], RustSourceCouplingPathBase::ManifestDirectory));
     }
     let mut cursor = node.walk();
@@ -155,11 +149,7 @@ fn path_read_argument(
     if !node_text(source, child).is_some_and(|text| text.contains("CARGO_MANIFEST_DIR")) {
         return None;
     }
-    let mut literals = Vec::new();
-    collect_path_literals(child, source, &mut literals);
-    let path = literals
-        .into_iter()
-        .find(|path| path != "CARGO_MANIFEST_DIR")?;
+    let path = evaluate_manifest_concat_text(node_text(source, child)?)?;
     Some((vec![path], RustSourceCouplingPathBase::ManifestDirectory))
 }
 
@@ -177,16 +167,62 @@ fn find_macro_invocation<'a>(node: Node<'a>, source: &str, name: &str) -> Option
         .find_map(|child| find_macro_invocation(child, source, name))
 }
 
-fn collect_path_literals(node: Node<'_>, source: &str, literals: &mut Vec<String>) {
-    if matches!(node.kind(), "string_literal" | "raw_string_literal")
-        && let Some(text) = node_text(source, node).and_then(decode_path_literal)
-    {
-        literals.push(text);
+fn evaluate_manifest_concat_text(text: &str) -> Option<String> {
+    let start = text.find("concat!")? + "concat!".len();
+    let open = text.get(start..)?.find('(')? + start;
+    let mut depth = 0;
+    let mut close = None;
+    for (index, ch) in text.get(open..)?.char_indices() {
+        match ch {
+            '(' => depth += 1,
+            ')' => {
+                depth -= 1;
+                if depth == 0 {
+                    close = Some(open + index);
+                    break;
+                }
+            }
+            _ => {}
+        }
     }
-    let mut cursor = node.walk();
-    for child in node.named_children(&mut cursor) {
-        collect_path_literals(child, source, literals);
+    let close = close?;
+    let args = text.get(open + 1..close)?;
+    let mut saw_manifest_dir = false;
+    let mut path = String::new();
+    for arg in split_concat_args(args)? {
+        let arg = arg.trim();
+        if let Some(value) = arg.strip_prefix("env!") {
+            let value = value.trim().strip_prefix('(')?.strip_suffix(')')?.trim();
+            if decode_path_literal(value)?.as_str() != "CARGO_MANIFEST_DIR" {
+                return None;
+            }
+            saw_manifest_dir = true;
+        } else if let Some(value) = decode_path_literal(arg) {
+            path.push_str(&value);
+        } else {
+            return None;
+        }
     }
+    saw_manifest_dir.then_some(path)
+}
+
+fn split_concat_args(args: &str) -> Option<Vec<&str>> {
+    let mut result = Vec::new();
+    let mut start = 0;
+    let mut depth = 0;
+    for (index, ch) in args.char_indices() {
+        match ch {
+            '(' => depth += 1,
+            ')' => depth -= 1,
+            ',' if depth == 0 => {
+                result.push(args.get(start..index)?);
+                start = index + 1;
+            }
+            _ => {}
+        }
+    }
+    result.push(args.get(start..)?);
+    Some(result)
 }
 
 fn decode_path_literal(text: &str) -> Option<String> {

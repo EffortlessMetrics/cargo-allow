@@ -88,7 +88,7 @@ fn extracts_compile_time_path_reads_and_marks_ambiguous_arguments() -> Result<()
 #[test]
 fn extracts_manifest_directory_concat_path_reads() -> Result<(), String> {
     let scan = scan_rust_source_coupling(
-        "include_str!(concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/../shared/public.rs\"));\n",
+        "include_str!(concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/../shared/\", \"public.rs\"));\n",
     )
     .map_err(|error| format!("scan concat path read: {error}"))?;
     let fact = scan

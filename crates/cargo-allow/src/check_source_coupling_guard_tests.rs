@@ -294,3 +294,74 @@ fn crate_identity_uses_the_deepest_containing_workspace_path() -> Result<(), Str
     }
     Ok(())
 }
+#[test]
+fn manifest_directory_paths_use_crate_root_for_build_and_example_sources() -> Result<(), String> {
+    use super::resolve_relative_source_path_from_crate_root;
+    use allow_rust::RustSourceCouplingPathBase::ManifestDirectory;
+    for source in [
+        Path::new("crates/product-a/build.rs"),
+        Path::new("crates/product-a/examples/demo.rs"),
+    ] {
+        let path = resolve_relative_source_path_from_crate_root(
+            source,
+            ManifestDirectory,
+            "shared/public.rs",
+            "crates/product-a",
+        );
+        if path
+            != super::PathReadResolution::Resolved(PathBuf::from(
+                "crates/product-a/shared/public.rs",
+            ))
+        {
+            return Err(format!(
+                "manifest path did not use crate root for {source:?}: {path:?}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn symlinked_tracked_targets_resolve_inside_and_reject_escape() -> Result<(), String> {
+    use std::os::unix::fs::symlink;
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-coupling-symlink-{}",
+        std::process::id()
+    ));
+    if root.exists() {
+        std::fs::remove_dir_all(&root)
+            .map_err(|error| format!("clean symlink fixture: {error}"))?;
+    }
+    std::fs::create_dir_all(root.join("crates/product-b/src"))
+        .map_err(|error| format!("create symlink fixture: {error}"))?;
+    std::fs::write(root.join("crates/product-b/src/private.rs"), "secret\n")
+        .map_err(|error| format!("write symlink target: {error}"))?;
+    symlink(
+        "product-b/src/private.rs",
+        root.join("crates/product-a-link.rs"),
+    )
+    .map_err(|error| format!("create inside symlink: {error}"))?;
+    if super::resolve_tracked_target(&root, Path::new("crates/product-a-link.rs"))
+        .map_err(|error| format!("resolve inside symlink: {error}"))?
+        != Some(PathBuf::from("crates/product-b/src/private.rs"))
+    {
+        return Err("inside symlink target was not canonicalized".to_string());
+    }
+    let outside = root
+        .parent()
+        .ok_or_else(|| "missing temp parent".to_string())?;
+    std::fs::write(outside.join("cargo-allow-outside.rs"), "outside\n")
+        .map_err(|error| format!("write outside target: {error}"))?;
+    symlink("../cargo-allow-outside.rs", root.join("escape.rs"))
+        .map_err(|error| format!("create escape symlink: {error}"))?;
+    if super::resolve_tracked_target(&root, Path::new("escape.rs"))
+        .map_err(|error| format!("resolve escape symlink: {error}"))?
+        .is_some()
+    {
+        return Err("outside symlink target was accepted".to_string());
+    }
+    std::fs::remove_file(outside.join("cargo-allow-outside.rs")).ok();
+    std::fs::remove_dir_all(&root).map_err(|error| format!("remove symlink fixture: {error}"))?;
+    Ok(())
+}
