@@ -201,11 +201,11 @@ fn path_read_fixtures_allow_owned_and_shared_paths_and_reject_forbidden_or_unres
 
     let nested_include = vec![(
         PathBuf::from("crates/product-a/src/lib.rs"),
-        "std::include /* marker ! */ ! (\"nested.inc\");\ninclude!(\"tests.rs\");\n".to_string(),
+        "std::include!(\"nested/include\");\ninclude!(\"tests.rs\");\n".to_string(),
     )];
     let nested_tracked = BTreeSet::from([
         PathBuf::from("crates/product-a/src/lib.rs"),
-        PathBuf::from("crates/product-a/src/nested.inc"),
+        PathBuf::from("crates/product-a/src/nested/include"),
         PathBuf::from("crates/product-a/src/tests.rs"),
     ]);
     let nested_diagnostics = source_coupling_diagnostics_for_sources(
@@ -223,6 +223,15 @@ fn path_read_fixtures_allow_owned_and_shared_paths_and_reject_forbidden_or_unres
         return Err(format!(
             "unscanned nested include did not fail closed: {nested_diagnostics:?}"
         ));
+    }
+    for invocation in [
+        "std::include!(\"nested/include\")",
+        "std::include /* outer ! /* nested */ still */ ! (\"nested/include\")",
+        "include // note !\n ! (\"tests.rs\")",
+    ] {
+        if !super::is_include_macro(invocation) {
+            return Err(format!("include identity missed trivia: {invocation}"));
+        }
     }
 
     let forbidden_sources = vec![

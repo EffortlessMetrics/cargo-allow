@@ -292,31 +292,74 @@ fn source_coupling_diagnostics_for_sources_at_root(
 
 fn is_include_macro(text: &str) -> bool {
     let text = text.trim_start();
-    let Some(include) = text.rfind("include") else {
+    let Some(bang) = macro_bang_index(text) else {
         return false;
     };
-    let prefix = text.get(..include).unwrap_or_default().trim_end();
-    if !prefix.is_empty() && !prefix.ends_with("::") {
+    let Some(path) = text.get(..bang) else {
         return false;
-    }
-    macro_bang_follows(text, include + "include".len())
+    };
+    let Some(include) = path.rfind("include") else {
+        return false;
+    };
+    let prefix = path.get(..include).unwrap_or_default().trim_end();
+    (prefix.is_empty() || prefix.ends_with("::"))
+        && comment_trivia_only(path.get(include + "include".len()..).unwrap_or_default())
 }
 
-fn macro_bang_follows(text: &str, mut index: usize) -> bool {
-    loop {
-        let Some(suffix) = text.get(index..) else {
-            return false;
-        };
-        index += suffix.len() - suffix.trim_start().len();
-        if text.get(index..index + 2) == Some("/*") {
-            let Some(end) = text.get(index + 2..).and_then(|tail| tail.find("*/")) else {
-                return false;
-            };
-            index += end + 4;
-            continue;
+fn comment_trivia_only(text: &str) -> bool {
+    let bytes = text.as_bytes();
+    let mut index = 0;
+    let mut block_depth = 0usize;
+    while index < bytes.len() {
+        match bytes.get(index..index + 2) {
+            Some(b"//") if block_depth == 0 => {
+                index = text
+                    .get(index + 2..)
+                    .and_then(|tail| tail.find('\n'))
+                    .map_or(text.len(), |offset| index + 3 + offset);
+            }
+            Some(b"/*") => {
+                block_depth += 1;
+                index += 2;
+            }
+            Some(b"*/") if block_depth > 0 => {
+                block_depth -= 1;
+                index += 2;
+            }
+            _ if block_depth > 0 => index += 1,
+            _ if bytes.get(index).is_some_and(u8::is_ascii_whitespace) => index += 1,
+            _ => return false,
         }
-        return text.as_bytes().get(index) == Some(&b'!');
     }
+    block_depth == 0
+}
+
+fn macro_bang_index(text: &str) -> Option<usize> {
+    let bytes = text.as_bytes();
+    let mut index = 0;
+    let mut block_depth = 0usize;
+    while index < bytes.len() {
+        match bytes.get(index..index + 2) {
+            Some(b"//") if block_depth == 0 => {
+                index = text
+                    .get(index + 2..)?
+                    .find('\n')
+                    .map_or(text.len(), |offset| index + 3 + offset);
+            }
+            Some(b"/*") => {
+                block_depth += 1;
+                index += 2;
+            }
+            Some(b"*/") if block_depth > 0 => {
+                block_depth -= 1;
+                index += 2;
+            }
+            _ if block_depth > 0 => index += 1,
+            _ if bytes.get(index) == Some(&b'!') => return Some(index),
+            _ => index += 1,
+        }
+    }
+    None
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
