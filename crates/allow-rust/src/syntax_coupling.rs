@@ -70,6 +70,10 @@ pub fn scan_rust_source_coupling_with_posture(
 }
 
 pub fn rust_source_shadows_path_macros(source: &str) -> CargoAllowResult<bool> {
+    let uncommented = strip_rust_comments(source).unwrap_or_default();
+    if uncommented.contains("macro_use") && uncommented.contains("extern crate") {
+        return Ok(true);
+    }
     let tree = parse_rust_syntax(source)?;
     Ok(node_shadows_path_macros(tree.tree.root_node(), source))
 }
@@ -96,6 +100,9 @@ fn use_binds_path_macro(node: Node<'_>, source: &str) -> bool {
         return false;
     };
     let compact: String = text.chars().filter(|ch| !ch.is_whitespace()).collect();
+    if compact.contains('{') {
+        return contains_path_macro_identifier(node, source);
+    }
     if let Some((_, alias)) = compact.rsplit_once("as") {
         return matches_path_macro_name(alias.trim_end_matches(';'));
     }
