@@ -38,10 +38,17 @@ pub(crate) fn source_coupling_diagnostics_for_check(
     root: &Path,
     mode: CheckMode,
 ) -> CargoAllowResult<Vec<SourceCouplingDiagnostic>> {
-    if mode != CheckMode::NoNew && mode != CheckMode::Strict {
+    if !source_coupling_mode_enforced(mode) {
         return Ok(Vec::new());
     }
     source_coupling_diagnostics_at(root)
+}
+
+fn source_coupling_mode_enforced(mode: CheckMode) -> bool {
+    matches!(
+        mode,
+        CheckMode::NoNew | CheckMode::Strict | CheckMode::Release
+    )
 }
 
 pub(crate) fn source_coupling_diagnostics_at(

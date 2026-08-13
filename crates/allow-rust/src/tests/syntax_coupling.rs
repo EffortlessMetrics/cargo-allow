@@ -105,6 +105,42 @@ fn extracts_manifest_directory_concat_path_reads() -> Result<(), String> {
 }
 
 #[test]
+fn manifest_concat_reconstructs_fragments_around_the_manifest_directory() -> Result<(), String> {
+    let scan = scan_rust_source_coupling(
+        "include_str!(concat!(\"prefix/\", env!(\"CARGO_MANIFEST_DIR\"), r#\"/assets/\"#, \"schema.json\"));\n",
+    )
+    .map_err(|error| format!("scan fragment concat: {error}"))?;
+    let fact = scan
+        .facts
+        .iter()
+        .find(|fact| fact.kind == RustSourceCouplingKind::PathRead)
+        .ok_or_else(|| "missing fragment concat fact".to_string())?;
+    if fact.path != "prefix//assets/schema.json"
+        || fact.path_base != RustSourceCouplingPathBase::ManifestDirectory
+    {
+        return Err(format!("unexpected fragment concat fact: {fact:?}"));
+    }
+    Ok(())
+}
+
+#[test]
+fn manifest_concat_rejects_other_environment_and_dynamic_fragments() -> Result<(), String> {
+    let scan = scan_rust_source_coupling(
+        "include_str!(concat!(env!(\"OTHER_DIR\"), \"/schema.json\"));\ninclude_str!(concat!(env!(\"CARGO_MANIFEST_DIR\"), path!()));\n",
+    )
+    .map_err(|error| format!("scan invalid manifest concat: {error}"))?;
+    let reads: Vec<_> = scan
+        .facts
+        .iter()
+        .filter(|fact| fact.kind == RustSourceCouplingKind::PathRead)
+        .collect();
+    if reads.len() != 2 || reads.iter().any(|fact| !fact.path.is_empty()) {
+        return Err(format!("invalid concat fragments resolved: {reads:?}"));
+    }
+    Ok(())
+}
+
+#[test]
 fn path_reads_fail_closed_for_dynamic_and_escaped_literals() -> Result<(), String> {
     let scan = scan_rust_source_coupling(
         "include!(env!(\"OTHER_DIR\"));\ninclude!(\"dir\\\\file.rs\");\ninclude!(concat!(path!(), \"owned.rs\"));\n",

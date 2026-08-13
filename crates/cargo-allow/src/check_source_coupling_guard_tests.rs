@@ -96,6 +96,19 @@ fn audit_mode_remains_advisory() -> Result<(), String> {
 }
 
 #[test]
+fn release_mode_enforces_source_coupling() -> Result<(), String> {
+    for mode in [CheckMode::NoNew, CheckMode::Strict, CheckMode::Release] {
+        if !super::source_coupling_mode_enforced(mode) {
+            return Err(format!("{mode:?} unexpectedly bypassed source coupling"));
+        }
+    }
+    if super::source_coupling_mode_enforced(CheckMode::Audit) {
+        return Err("audit unexpectedly enforced source coupling".to_string());
+    }
+    Ok(())
+}
+
+#[test]
 fn strict_mode_checks_architecture_repositories() -> Result<(), String> {
     let root = repo_root();
     if !root.join("policy/product-crates-v2.toml").is_file()

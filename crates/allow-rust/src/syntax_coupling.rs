@@ -197,10 +197,9 @@ fn evaluate_manifest_concat_text(text: &str) -> Option<String> {
                 return None;
             }
             saw_manifest_dir = true;
-        } else if let Some(value) = decode_path_literal(arg) {
-            path.push_str(&value);
         } else {
-            return None;
+            let value = decode_path_literal(arg)?;
+            path.push_str(&value);
         }
     }
     saw_manifest_dir.then_some(path)
