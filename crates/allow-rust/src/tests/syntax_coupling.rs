@@ -105,9 +105,9 @@ fn extracts_manifest_directory_concat_path_reads() -> Result<(), String> {
 }
 
 #[test]
-fn manifest_concat_reconstructs_fragments_around_the_manifest_directory() -> Result<(), String> {
+fn manifest_concat_reconstructs_fragments_after_the_manifest_directory() -> Result<(), String> {
     let scan = scan_rust_source_coupling(
-        "include_str!(concat!(\"prefix/\", env!(\"CARGO_MANIFEST_DIR\"), r#\"/assets/\"#, \"schema.json\"));\n",
+        "include_str!(concat!(env!(\"CARGO_MANIFEST_DIR\"), r#\"/assets/\"#, \"schema.json\"));\n",
     )
     .map_err(|error| format!("scan fragment concat: {error}"))?;
     let fact = scan
@@ -115,7 +115,7 @@ fn manifest_concat_reconstructs_fragments_around_the_manifest_directory() -> Res
         .iter()
         .find(|fact| fact.kind == RustSourceCouplingKind::PathRead)
         .ok_or_else(|| "missing fragment concat fact".to_string())?;
-    if fact.path != "prefix//assets/schema.json"
+    if fact.path != "/assets/schema.json"
         || fact.path_base != RustSourceCouplingPathBase::ManifestDirectory
     {
         return Err(format!("unexpected fragment concat fact: {fact:?}"));
@@ -126,7 +126,7 @@ fn manifest_concat_reconstructs_fragments_around_the_manifest_directory() -> Res
 #[test]
 fn manifest_concat_rejects_other_environment_and_dynamic_fragments() -> Result<(), String> {
     let scan = scan_rust_source_coupling(
-        "include_str!(concat!(env!(\"OTHER_DIR\"), \"/schema.json\"));\ninclude_str!(concat!(env!(\"CARGO_MANIFEST_DIR\"), path!()));\n",
+        "include_str!(concat!(env!(\"OTHER_DIR\"), \"/schema.json\"));\ninclude_str!(concat!(env!(\"CARGO_MANIFEST_DIR\"), path!()));\ninclude_str!(concat!(\"prefix/\", env!(\"CARGO_MANIFEST_DIR\"), \"/schema.json\"));\ninclude_str!(concat!(env!(\"CARGO_MANIFEST_DIR\"), env!(\"CARGO_MANIFEST_DIR\"), \"/schema.json\"));\n",
     )
     .map_err(|error| format!("scan invalid manifest concat: {error}"))?;
     let reads: Vec<_> = scan
@@ -134,8 +134,50 @@ fn manifest_concat_rejects_other_environment_and_dynamic_fragments() -> Result<(
         .iter()
         .filter(|fact| fact.kind == RustSourceCouplingKind::PathRead)
         .collect();
-    if reads.len() != 2 || reads.iter().any(|fact| !fact.path.is_empty()) {
+    if reads.len() != 4 || reads.iter().any(|fact| !fact.path.is_empty()) {
         return Err(format!("invalid concat fragments resolved: {reads:?}"));
+    }
+    Ok(())
+}
+
+#[test]
+fn direct_path_containing_manifest_name_stays_source_relative() -> Result<(), String> {
+    let scan = scan_rust_source_coupling(
+        "include_str!(\"CARGO_MANIFEST_DIR.txt\");\ninclude_str!(/* CARGO_MANIFEST_DIR */ \"owned.txt\");\n",
+    )
+    .map_err(|error| format!("scan direct manifest-named path: {error}"))?;
+    let reads: Vec<_> = scan
+        .facts
+        .iter()
+        .filter(|fact| fact.kind == RustSourceCouplingKind::PathRead)
+        .collect();
+    if reads.len() != 2
+        || reads[0].path != "CARGO_MANIFEST_DIR.txt"
+        || reads[1].path != "owned.txt"
+        || reads
+            .iter()
+            .any(|fact| fact.path_base != RustSourceCouplingPathBase::SourceFile)
+    {
+        return Err(format!("unexpected direct manifest-named paths: {reads:?}"));
+    }
+    Ok(())
+}
+
+#[test]
+fn manifest_concat_ignores_delimiters_inside_literals() -> Result<(), String> {
+    let scan = scan_rust_source_coupling(
+        "include_str!(concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/fixtures/)comma,\", r#\"raw,)ok.txt\"#));\n",
+    )
+    .map_err(|error| format!("scan delimiter concat: {error}"))?;
+    let fact = scan
+        .facts
+        .iter()
+        .find(|fact| fact.kind == RustSourceCouplingKind::PathRead)
+        .ok_or_else(|| "missing delimiter concat fact".to_string())?;
+    if fact.path != "/fixtures/)comma,raw,)ok.txt"
+        || fact.path_base != RustSourceCouplingPathBase::ManifestDirectory
+    {
+        return Err(format!("unexpected delimiter concat fact: {fact:?}"));
     }
     Ok(())
 }

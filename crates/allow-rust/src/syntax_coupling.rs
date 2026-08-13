@@ -117,12 +117,13 @@ fn path_read_argument(
     node: Node<'_>,
     source: &str,
 ) -> Option<(Vec<String>, RustSourceCouplingPathBase)> {
-    if node_text(source, node).is_some_and(|text| text.contains("CARGO_MANIFEST_DIR")) {
-        let path = evaluate_manifest_concat_text(node_text(source, node)?)?;
+    if let Some(path) = node_text(source, node).and_then(evaluate_manifest_concat_text) {
         return Some((vec![path], RustSourceCouplingPathBase::ManifestDirectory));
     }
     let mut cursor = node.walk();
-    let child = node.named_children(&mut cursor).next()?;
+    let child = node
+        .named_children(&mut cursor)
+        .find(|child| !matches!(child.kind(), "line_comment" | "block_comment"))?;
     if matches!(child.kind(), "string_literal" | "raw_string_literal") {
         return Some((
             vec![
@@ -146,9 +147,6 @@ fn path_read_argument(
     if macro_name != "concat" {
         return None;
     }
-    if !node_text(source, child).is_some_and(|text| text.contains("CARGO_MANIFEST_DIR")) {
-        return None;
-    }
     let path = evaluate_manifest_concat_text(node_text(source, child)?)?;
     Some((vec![path], RustSourceCouplingPathBase::ManifestDirectory))
 }
@@ -170,22 +168,7 @@ fn find_macro_invocation<'a>(node: Node<'a>, source: &str, name: &str) -> Option
 fn evaluate_manifest_concat_text(text: &str) -> Option<String> {
     let start = text.find("concat!")? + "concat!".len();
     let open = text.get(start..)?.find('(')? + start;
-    let mut depth = 0;
-    let mut close = None;
-    for (index, ch) in text.get(open..)?.char_indices() {
-        match ch {
-            '(' => depth += 1,
-            ')' => {
-                depth -= 1;
-                if depth == 0 {
-                    close = Some(open + index);
-                    break;
-                }
-            }
-            _ => {}
-        }
-    }
-    let close = close?;
+    let close = matching_paren(text, open)?;
     let args = text.get(open + 1..close)?;
     let mut saw_manifest_dir = false;
     let mut path = String::new();
@@ -193,7 +176,10 @@ fn evaluate_manifest_concat_text(text: &str) -> Option<String> {
         let arg = arg.trim();
         if let Some(value) = arg.strip_prefix("env!") {
             let value = value.trim().strip_prefix('(')?.strip_suffix(')')?.trim();
-            if decode_path_literal(value)?.as_str() != "CARGO_MANIFEST_DIR" {
+            if saw_manifest_dir
+                || !path.is_empty()
+                || decode_path_literal(value)?.as_str() != "CARGO_MANIFEST_DIR"
+            {
                 return None;
             }
             saw_manifest_dir = true;
@@ -209,19 +195,84 @@ fn split_concat_args(args: &str) -> Option<Vec<&str>> {
     let mut result = Vec::new();
     let mut start = 0;
     let mut depth = 0;
-    for (index, ch) in args.char_indices() {
-        match ch {
-            '(' => depth += 1,
-            ')' => depth -= 1,
-            ',' if depth == 0 => {
+    let mut index = 0;
+    while index < args.len() {
+        if let Some(end) = rust_string_end(args, index)? {
+            index = end;
+            continue;
+        }
+        match args.as_bytes()[index] {
+            b'(' => depth += 1,
+            b')' => depth -= 1,
+            b',' if depth == 0 => {
                 result.push(args.get(start..index)?);
                 start = index + 1;
             }
             _ => {}
         }
+        index += 1;
     }
     result.push(args.get(start..)?);
     Some(result)
+}
+
+fn matching_paren(text: &str, open: usize) -> Option<usize> {
+    let mut depth = 0;
+    let mut index = open;
+    while index < text.len() {
+        if let Some(end) = rust_string_end(text, index)? {
+            index = end;
+            continue;
+        }
+        match text.as_bytes()[index] {
+            b'(' => depth += 1,
+            b')' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(index);
+                }
+            }
+            _ => {}
+        }
+        index += 1;
+    }
+    None
+}
+
+fn rust_string_end(text: &str, start: usize) -> Option<Option<usize>> {
+    let bytes = text.as_bytes();
+    if bytes.get(start) == Some(&b'"') {
+        let mut index = start + 1;
+        while index < bytes.len() {
+            match bytes[index] {
+                b'\\' => index += 2,
+                b'"' => return Some(Some(index + 1)),
+                _ => index += 1,
+            }
+        }
+        return None;
+    }
+    if bytes.get(start) != Some(&b'r') {
+        return Some(None);
+    }
+    let mut quote = start + 1;
+    while bytes.get(quote) == Some(&b'#') {
+        quote += 1;
+    }
+    if bytes.get(quote) != Some(&b'"') {
+        return Some(None);
+    }
+    let hashes = quote - start - 1;
+    let mut index = quote + 1;
+    while index < bytes.len() {
+        if bytes[index] == b'"'
+            && bytes.get(index + 1..index + 1 + hashes) == Some(&bytes[start + 1..quote])
+        {
+            return Some(Some(index + 1 + hashes));
+        }
+        index += 1;
+    }
+    None
 }
 
 fn decode_path_literal(text: &str) -> Option<String> {
