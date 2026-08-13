@@ -213,6 +213,10 @@ fn split_concat_args(args: &str) -> Option<Vec<&str>> {
             index = end;
             continue;
         }
+        if let Some(end) = rust_comment_end(args, index)? {
+            index = end;
+            continue;
+        }
         match *args.as_bytes().get(index)? {
             b'(' => delimiters.push(b')'),
             b'[' => delimiters.push(b']'),
@@ -240,10 +244,8 @@ fn macro_bang_end(text: &str, name: &str) -> Option<usize> {
 fn strip_leading_comments(mut text: &str) -> Option<&str> {
     loop {
         text = text.trim_start();
-        if text.starts_with("//") {
-            text = text.split_once('\n')?.1;
-        } else if text.starts_with("/*") {
-            text = text.split_once("*/")?.1;
+        if let Some(end) = rust_comment_end(text, 0)? {
+            text = text.get(end..)?;
         } else {
             return Some(text);
         }
@@ -255,6 +257,10 @@ fn matching_delimiter(text: &str, open: usize) -> Option<usize> {
     let mut index = open;
     while index < text.len() {
         if let Some(end) = rust_string_end(text, index)? {
+            index = end;
+            continue;
+        }
+        if let Some(end) = rust_comment_end(text, index)? {
             index = end;
             continue;
         }
@@ -273,6 +279,39 @@ fn matching_delimiter(text: &str, open: usize) -> Option<usize> {
             _ => {}
         }
         index += 1;
+    }
+    None
+}
+
+fn rust_comment_end(text: &str, start: usize) -> Option<Option<usize>> {
+    let bytes = text.as_bytes();
+    if bytes.get(start..start + 2) == Some(b"//") {
+        return Some(Some(
+            text.get(start + 2..)?
+                .find('\n')
+                .map_or(text.len(), |offset| start + 3 + offset),
+        ));
+    }
+    if bytes.get(start..start + 2) != Some(b"/*") {
+        return Some(None);
+    }
+    let mut depth = 1usize;
+    let mut index = start + 2;
+    while index < bytes.len() {
+        match bytes.get(index..index + 2) {
+            Some(b"/*") => {
+                depth += 1;
+                index += 2;
+            }
+            Some(b"*/") => {
+                depth -= 1;
+                index += 2;
+                if depth == 0 {
+                    return Some(Some(index));
+                }
+            }
+            _ => index += 1,
+        }
     }
     None
 }

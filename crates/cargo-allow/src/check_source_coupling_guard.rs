@@ -291,10 +291,15 @@ fn source_coupling_diagnostics_for_sources_at_root(
 }
 
 fn is_include_macro(text: &str) -> bool {
-    let Some(suffix) = text.trim_start().strip_prefix("include") else {
+    let prefix = text
+        .trim_start()
+        .split_once('!')
+        .map(|(prefix, _)| prefix.trim())
+        .unwrap_or_default();
+    let Some(name) = prefix.rsplit("::").next() else {
         return false;
     };
-    suffix.trim_start().starts_with('!')
+    name.trim() == "include"
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
