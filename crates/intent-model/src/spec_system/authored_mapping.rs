@@ -2,13 +2,100 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::compiled_graph::{
-    EvidenceClaimId, EvidencePurpose, ImplementationSeamId, SourceLocation,
-};
 use super::implementation_slice::ImplementationSliceId;
 use super::requirement::RequirementId;
 
 pub const AUTHORED_MAPPING_SCHEMA_VERSION: &str = "1.0";
+
+// Shared ID types previously in compiled_graph.rs (#3304).
+// Moved here because authored_mapping is the only consumer.
+
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct ImplementationSeamId(pub String);
+
+impl ImplementationSeamId {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct EvidenceClaimId(pub String);
+
+impl EvidenceClaimId {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SourceLocation {
+    pub path: String,
+    #[serde(default)]
+    pub line: Option<u32>,
+    #[serde(default)]
+    pub symbol: Option<String>,
+}
+
+impl SourceLocation {
+    pub fn new(path: impl Into<String>) -> Self {
+        Self {
+            path: allow_core::normalize_path(path.into()),
+            line: None,
+            symbol: None,
+        }
+    }
+
+    pub fn with_line(mut self, line: u32) -> Self {
+        self.line = Some(line);
+        self
+    }
+
+    pub fn with_symbol(mut self, symbol: impl Into<String>) -> Self {
+        self.symbol = Some(symbol.into());
+        self
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EvidencePurpose {
+    PositiveAcceptance,
+    ForbiddenRuntimePromotion,
+}
+
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct EvidenceSubjectId(pub String);
+
+impl EvidenceSubjectId {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EvidenceSubjectRole {
+    ExactEvidence,
+    RelatedWeak,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EvidenceSubjectRegistration {
+    pub id: EvidenceSubjectId,
+    pub role: EvidenceSubjectRole,
+    pub package: String,
+    pub target: String,
+    pub module_path: String,
+    pub test_name: String,
+    pub source: SourceLocation,
+    pub source_identity: String,
+}
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

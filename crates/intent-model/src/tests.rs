@@ -12,15 +12,15 @@ fn parity_contracts_load_from_fixtures() -> Result<(), String> {
     Ok(())
 }
 
+// authored_mapping.rs is intentionally different between the two crates:
+// intent-model inlines shared ID types (#3304); allow-policy imports from
+// its own compiled_graph.rs snapshot copy. The remaining files still match.
 const SPEC_SYSTEM_DTO_FILES: &[&str] = &[
     "active_goal.rs",
-    "authored_mapping.rs",
-    "compiled_graph.rs",
     "config.rs",
     "doc_artifacts.rs",
     "implementation_slice.rs",
     "import_roots.rs",
-    "precommit.rs",
     "requirement.rs",
     "support_tiers.rs",
 ];
