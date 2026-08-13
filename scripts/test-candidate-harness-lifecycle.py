@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import errno
 import importlib.util
 import os
 import subprocess
@@ -79,12 +80,11 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
         try:
             try:
                 LIFECYCLE.remove(root, race_path, "race", race["token"])
-            except (SystemExit, OSError) as error:
-                # Windows may reject the injected link with OSError before
-                # the helper reaches its explicit fail-closed guard. Both
-                # outcomes are safe; unexpected exception types are not.
-                if isinstance(error, OSError) and not original_safe:
+            except OSError as error:
+                if not original_safe or error.errno not in {errno.EINVAL, errno.ENOTDIR, errno.ELOOP, errno.EPERM}:
                     raise
+            except SystemExit:
+                pass
             else:
                 raise SystemExit("TOCTOU child substitution unexpectedly succeeded")
         finally:
@@ -92,6 +92,10 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
         foreign = race_path.with_name(race_path.name + ".foreign")
         if not (foreign / "sentinel").is_file():
             raise SystemExit("TOCTOU substitution damaged foreign sentinel")
+        if race_path.exists() and not race_path.is_symlink():
+            raise SystemExit("TOCTOU substitution unexpectedly replaced race path")
+        if race_path.is_symlink():
+            race_path.unlink()
         original_rmtree(foreign)
 
     # Restore collision characterization: the shell restore contract must
@@ -113,6 +117,32 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
         raise SystemExit("restore collision damaged stash or destination sentinel")
     if receipt.exists():
         raise SystemExit("restore collision left a misleading receipt")
+
+    # Inject a destination appearance after the helper's preflight check.
+    rename = LIFECYCLE.os.rename
+    injected = {"done": False}
+    def race_rename(source: Path, destination: Path) -> None:
+        if not injected["done"] and destination == root / "rename-race-destination":
+            injected["done"] = True
+            destination.mkdir()
+            (destination / "sentinel").write_text("preserve\n", encoding="utf-8")
+        return rename(source, destination)
+    LIFECYCLE.os.rename = race_rename
+    rename_stash = root / "rename-race-stash"
+    rename_destination = root / "rename-race-destination"
+    rename_stash.mkdir()
+    (rename_stash / "source").write_text("stash\n", encoding="utf-8")
+    try:
+        try:
+            LIFECYCLE.restore(rename_stash, rename_destination)
+        except (FileExistsError, SystemExit):
+            pass
+        else:
+            raise SystemExit("restore rename race unexpectedly succeeded")
+    finally:
+        LIFECYCLE.os.rename = rename
+    if not (rename_stash / "source").is_file() or not (rename_destination / "sentinel").is_file():
+        raise SystemExit("restore rename race damaged stash or destination")
     else:
         reject(
             "remove", "--root", str(root), "--path", str(owned),
