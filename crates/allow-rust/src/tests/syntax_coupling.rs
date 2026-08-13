@@ -152,8 +152,10 @@ fn direct_path_containing_manifest_name_stays_source_relative() -> Result<(), St
         .filter(|fact| fact.kind == RustSourceCouplingKind::PathRead)
         .collect();
     if reads.len() != 2
-        || reads[0].path != "CARGO_MANIFEST_DIR.txt"
-        || reads[1].path != "owned.txt"
+        || reads
+            .first()
+            .is_none_or(|fact| fact.path != "CARGO_MANIFEST_DIR.txt")
+        || reads.get(1).is_none_or(|fact| fact.path != "owned.txt")
         || reads
             .iter()
             .any(|fact| fact.path_base != RustSourceCouplingPathBase::SourceFile)
@@ -175,8 +177,8 @@ fn manifest_concat_uses_the_structural_argument_and_all_delimiters() -> Result<(
         .filter(|fact| fact.kind == RustSourceCouplingKind::PathRead)
         .collect();
     if reads.len() != 2
-        || reads[0].path != "/actual.rs"
-        || reads[1].path != "/bracket.rs"
+        || reads.first().is_none_or(|fact| fact.path != "/actual.rs")
+        || reads.get(1).is_none_or(|fact| fact.path != "/bracket.rs")
         || reads
             .iter()
             .any(|fact| fact.path_base != RustSourceCouplingPathBase::ManifestDirectory)

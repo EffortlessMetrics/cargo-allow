@@ -174,10 +174,17 @@ fn path_read_fixtures_allow_owned_and_shared_paths_and_reject_forbidden_or_unres
         "product-a".to_string(),
         BTreeSet::from(["product-b".to_string()]),
     )]);
-    let allowed = vec![(
-        PathBuf::from("crates/product-a/src/lib.rs"),
-        include_str!("../../../tests/fixtures/source-coupling/path-reads-allowed.rs").to_string(),
-    )];
+    let allowed = vec![
+        (
+            PathBuf::from("crates/product-a/src/lib.rs"),
+            include_str!("../../../tests/fixtures/source-coupling/path-reads-allowed.rs")
+                .to_string(),
+        ),
+        (
+            PathBuf::from("crates/product-a/src/local/owned.rs"),
+            String::new(),
+        ),
+    ];
     let allowed_tracked = BTreeSet::from([
         PathBuf::from("crates/product-a/src/lib.rs"),
         PathBuf::from("crates/product-a/src/local/owned.rs"),
@@ -218,10 +225,17 @@ fn path_read_fixtures_allow_owned_and_shared_paths_and_reject_forbidden_or_unres
         ));
     }
 
-    let forbidden_sources = vec![(
-        PathBuf::from("crates/product-a/src/lib.rs"),
-        include_str!("../../../tests/fixtures/source-coupling/path-reads-forbidden.rs").to_string(),
-    )];
+    let forbidden_sources = vec![
+        (
+            PathBuf::from("crates/product-a/src/lib.rs"),
+            include_str!("../../../tests/fixtures/source-coupling/path-reads-forbidden.rs")
+                .to_string(),
+        ),
+        (
+            PathBuf::from("crates/product-b/src/private.rs"),
+            String::new(),
+        ),
+    ];
     let forbidden_tracked = BTreeSet::from([
         PathBuf::from("crates/product-a/src/lib.rs"),
         PathBuf::from("crates/product-b/src/private.rs"),

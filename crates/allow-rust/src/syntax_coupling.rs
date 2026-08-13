@@ -213,7 +213,7 @@ fn split_concat_args(args: &str) -> Option<Vec<&str>> {
             index = end;
             continue;
         }
-        match args.as_bytes()[index] {
+        match *args.as_bytes().get(index)? {
             b'(' => delimiters.push(b')'),
             b'[' => delimiters.push(b']'),
             b'{' => delimiters.push(b'}'),
@@ -258,7 +258,7 @@ fn matching_delimiter(text: &str, open: usize) -> Option<usize> {
             index = end;
             continue;
         }
-        match text.as_bytes()[index] {
+        match *text.as_bytes().get(index)? {
             b'(' => delimiters.push(b')'),
             b'[' => delimiters.push(b']'),
             b'{' => delimiters.push(b'}'),
@@ -293,7 +293,7 @@ fn rust_string_end(text: &str, start: usize) -> Option<Option<usize>> {
     if bytes.get(start) == Some(&b'"') {
         let mut index = start + 1;
         while index < bytes.len() {
-            match bytes[index] {
+            match *bytes.get(index)? {
                 b'\\' => index += 2,
                 b'"' => return Some(Some(index + 1)),
                 _ => index += 1,
@@ -314,8 +314,8 @@ fn rust_string_end(text: &str, start: usize) -> Option<Option<usize>> {
     let hashes = quote - start - 1;
     let mut index = quote + 1;
     while index < bytes.len() {
-        if bytes[index] == b'"'
-            && bytes.get(index + 1..index + 1 + hashes) == Some(&bytes[start + 1..quote])
+        if bytes.get(index) == Some(&b'"')
+            && bytes.get(index + 1..index + 1 + hashes) == bytes.get(start + 1..quote)
         {
             return Some(Some(index + 1 + hashes));
         }
