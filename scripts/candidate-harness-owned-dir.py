@@ -90,6 +90,15 @@ def remove(root: Path, directory: Path, purpose: str, token: str) -> None:
     shutil.rmtree(resolved)
 
 
+def restore(stash: Path, destination: Path) -> None:
+    if not stash.exists() or stash.is_symlink() or not stash.is_dir():
+        fail(f"restore stash must be an existing non-symlink directory: {stash}")
+    if destination.exists() or destination.is_symlink():
+        fail(f"refusing to overwrite existing restore destination: {destination}")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    os.rename(stash, destination)
+
+
 def snapshot(root: Path, repository: Path, purpose: str) -> tuple[Path, str, str]:
     repo = canonical_existing(repository, "repository")
     directory, token = allocate(root, purpose, False)
@@ -144,6 +153,9 @@ def main() -> int:
     verify_parser.add_argument("--token", required=True)
     verify_parser.add_argument("--git-head")
     verify_parser.add_argument("--repository", type=Path)
+    restore_parser = subparsers.add_parser("restore")
+    restore_parser.add_argument("--stash", type=Path, required=True)
+    restore_parser.add_argument("--destination", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "allocate":
         directory, token = allocate(args.root, args.purpose, args.durable)
@@ -167,6 +179,9 @@ def main() -> int:
             repository = canonical_existing(args.repository, "repository")
             if marker.get("repository") != str(repository):
                 fail(f"snapshot repository mismatch for {directory}")
+        return 0
+    if args.command == "restore":
+        restore(args.stash, args.destination)
         return 0
     remove(args.root, args.path, args.purpose, args.token)
     return 0

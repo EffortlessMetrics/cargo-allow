@@ -101,11 +101,11 @@ templates_stash="${work_dir}/stashed-docs-templates"
 restore_source_tree() {
   if [[ -d "${src_stash}" ]]; then
     [[ ! -e "${src_path}" ]] || fail "refusing to overwrite existing source tree during restore"
-    mv "${src_stash}" "${src_path}"
+    python3 "${lifecycle}" restore --stash "${src_stash}" --destination "${src_path}"
   fi
   if [[ -d "${templates_stash}" ]]; then
     [[ ! -e "${templates_path}" ]] || fail "refusing to overwrite existing templates during restore"
-    mv "${templates_stash}" "${templates_path}"
+    python3 "${lifecycle}" restore --stash "${templates_stash}" --destination "${templates_path}"
   fi
 }
 
@@ -613,8 +613,8 @@ PY
   log "negative: ordinary scan must not require source checkout after install"
   [[ -d "${src_path}" ]] || fail "expected source tree at ${src_path}"
   [[ -d "${templates_path}" ]] || fail "expected templates at ${templates_path}"
-  mv "${src_path}" "${src_stash}"
-  mv "${templates_path}" "${templates_stash}"
+  python3 "${lifecycle}" restore --stash "${src_path}" --destination "${src_stash}"
+  python3 "${lifecycle}" restore --stash "${templates_path}" --destination "${templates_stash}"
   set +e
   hidden_check_json="$("${cargo_bin}" check --root "${consumer_dir}" --config "${policy_path}" --kind panic --mode no-new --format json 2>"${work_dir}/hidden-check.stderr")"
   hidden_check_code=$?

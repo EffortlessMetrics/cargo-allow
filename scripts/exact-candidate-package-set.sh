@@ -117,7 +117,7 @@ crates_stash="${work_dir}/crates-source-stash"
 restore_source_checkout() {
   if [[ -d "${crates_stash}" ]]; then
     [[ ! -e "${crates_path}" ]] || fail "refusing to overwrite existing crates/ during restore"
-    mv "${crates_stash}" "${crates_path}"
+    python3 "${lifecycle}" restore --stash "${crates_stash}" --destination "${crates_path}"
   fi
 }
 
@@ -392,7 +392,7 @@ log "denying workspace source checkout (renaming crates/) during decisive instal
 [[ -d "${crates_path}" ]] || fail "expected workspace crates/ at ${crates_path}"
 restore_source_checkout
 [[ ! -e "${crates_stash}" ]] || fail "refusing to overwrite pre-existing crates stash"
-mv "${crates_path}" "${crates_stash}"
+python3 "${lifecycle}" restore --stash "${crates_path}" --destination "${crates_stash}"
 [[ ! -e "${crates_path}" ]] || fail "crates/ still present after stash for source-checkout denial"
 mkdir -p "${install_root}"
 set +e

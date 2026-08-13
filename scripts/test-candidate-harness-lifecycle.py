@@ -83,7 +83,7 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
                 # Windows may reject the injected link with OSError before
                 # the helper reaches its explicit fail-closed guard. Both
                 # outcomes are safe; unexpected exception types are not.
-                if isinstance(error, OSError) and original_safe:
+                if isinstance(error, OSError) and not original_safe:
                     raise
             else:
                 raise SystemExit("TOCTOU child substitution unexpectedly succeeded")
@@ -103,14 +103,9 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
     collision_destination.mkdir()
     (collision_destination / "sentinel").write_text("preserve\n", encoding="utf-8")
     receipt = collision_destination / "source-candidate-smoke.receipt.json"
-    def restore_collision(stash: Path, destination: Path) -> None:
-        if stash.is_dir():
-            if destination.exists():
-                raise RuntimeError("refusing to overwrite existing destination during restore")
-            os.rename(stash, destination)
     try:
-        restore_collision(collision_stash, collision_destination)
-    except RuntimeError:
+        LIFECYCLE.restore(collision_stash, collision_destination)
+    except SystemExit:
         pass
     else:
         raise SystemExit("restore collision unexpectedly overwrote destination")
