@@ -194,11 +194,12 @@ fn path_read_fixtures_allow_owned_and_shared_paths_and_reject_forbidden_or_unres
 
     let nested_include = vec![(
         PathBuf::from("crates/product-a/src/lib.rs"),
-        "include!(\"nested.inc\");\n".to_string(),
+        "include ! (\"nested.inc\");\ninclude!(\"tests.rs\");\n".to_string(),
     )];
     let nested_tracked = BTreeSet::from([
         PathBuf::from("crates/product-a/src/lib.rs"),
         PathBuf::from("crates/product-a/src/nested.inc"),
+        PathBuf::from("crates/product-a/src/tests.rs"),
     ]);
     let nested_diagnostics = source_coupling_diagnostics_for_sources(
         &manifest,
@@ -207,8 +208,10 @@ fn path_read_fixtures_allow_owned_and_shared_paths_and_reject_forbidden_or_unres
         &nested_include,
     )
     .map_err(|error| format!("scan unscanned nested include: {error}"))?;
-    if nested_diagnostics.len() != 1
-        || nested_diagnostics[0].target_crate != "<unscanned-include-path>"
+    if nested_diagnostics.len() != 2
+        || nested_diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.target_crate != "<unscanned-include-path>")
     {
         return Err(format!(
             "unscanned nested include did not fail closed: {nested_diagnostics:?}"

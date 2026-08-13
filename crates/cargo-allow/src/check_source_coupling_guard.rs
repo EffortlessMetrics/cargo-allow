@@ -127,6 +127,7 @@ fn source_coupling_diagnostics_for_sources_at_root(
     root: Option<&Path>,
 ) -> CargoAllowResult<Vec<SourceCouplingDiagnostic>> {
     let target_owners = target_owners(manifest);
+    let scanned_paths: BTreeSet<&PathBuf> = files.iter().map(|(path, _)| path).collect();
     let mut diagnostics = Vec::new();
     for (path, source) in files {
         let Some(source_identity) = crate_identity_for_path(manifest, path) else {
@@ -221,11 +222,7 @@ fn source_coupling_diagnostics_for_sources_at_root(
                                 target_path
                             };
                             let target_identity = crate_identity_for_path(manifest, &target_path);
-                            if fact.text.trim_start().starts_with("include!")
-                                && target_path
-                                    .extension()
-                                    .and_then(|extension| extension.to_str())
-                                    != Some("rs")
+                            if is_include_macro(&fact.text) && !scanned_paths.contains(&target_path)
                             {
                                 diagnostics.push(unresolved_path_diagnostic(
                                     path,
@@ -292,6 +289,13 @@ fn source_coupling_diagnostics_for_sources_at_root(
             ))
     });
     Ok(diagnostics)
+}
+
+fn is_include_macro(text: &str) -> bool {
+    let Some(suffix) = text.trim_start().strip_prefix("include") else {
+        return false;
+    };
+    suffix.trim_start().starts_with('!')
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
