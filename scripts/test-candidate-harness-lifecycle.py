@@ -85,6 +85,20 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
             if sentinel.read_text(encoding="utf-8") != "sentinel\n":
                 raise SystemExit("symlink negative changed target sentinel")
 
+    snapshot = json.loads(
+        run("snapshot", "--root", str(root), "--repository", str(ROOT), "--purpose", "snapshot-auth").stdout
+    )
+    snap_path = snapshot["path"]
+    run("verify", "--root", str(root), "--path", snap_path, "--purpose", "snapshot-auth",
+        "--token", snapshot["token"], "--git-head", snapshot["git_head"], "--repository", str(ROOT))
+    reject("verify", "--root", str(root), "--path", snap_path, "--purpose", "snapshot-auth",
+           "--token", snapshot["token"], "--git-head", "forged", "--repository", str(ROOT))
+    reject("verify", "--root", str(root), "--path", str(root), "--purpose", "snapshot-auth",
+           "--token", snapshot["token"], "--git-head", snapshot["git_head"], "--repository", str(ROOT))
+    if __import__("shutil").rmtree.avoids_symlink_attacks:
+        run("remove", "--root", str(root), "--path", snap_path,
+            "--purpose", "snapshot-auth", "--token", snapshot["token"])
+
     if __import__("shutil").rmtree.avoids_symlink_attacks:
         for script in ("exact-candidate-package-set.sh", "source-candidate-smoke.sh"):
             result = subprocess.run(

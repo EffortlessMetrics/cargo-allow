@@ -36,9 +36,9 @@ def validate_purpose(purpose: str) -> None:
         fail(f"invalid purpose {purpose!r}")
 
 
-def write_marker(directory: Path, purpose: str, token: str) -> None:
+def write_marker(directory: Path, purpose: str, token: str, **metadata: str) -> None:
     marker = directory / MARKER
-    marker.write_text(json.dumps({"purpose": purpose, "token": token}) + "\n", encoding="utf-8")
+    marker.write_text(json.dumps({"purpose": purpose, "token": token, **metadata}) + "\n", encoding="utf-8")
     os.chmod(directory, stat.S_IRWXU)
     os.chmod(marker, stat.S_IRUSR | stat.S_IWUSR)
 
@@ -112,7 +112,7 @@ def snapshot(root: Path, repository: Path, purpose: str) -> tuple[Path, str, str
                 if directory not in target.parents:
                     fail(f"archive member escapes snapshot: {member.name}")
             bundle.extractall(directory, filter="data")
-        write_marker(directory, purpose, token)
+        write_marker(directory, purpose, token, git_head=head, repository=str(repo))
         return directory, token, head
     except Exception:
         if directory.exists():
@@ -142,6 +142,8 @@ def main() -> int:
     verify_parser.add_argument("--path", type=Path, required=True)
     verify_parser.add_argument("--purpose", required=True)
     verify_parser.add_argument("--token", required=True)
+    verify_parser.add_argument("--git-head")
+    verify_parser.add_argument("--repository", type=Path)
     args = parser.parse_args()
     if args.command == "allocate":
         directory, token = allocate(args.root, args.purpose, args.durable)
@@ -159,6 +161,12 @@ def main() -> int:
         marker = load_marker(directory)
         if marker.get("purpose") != args.purpose or marker.get("token") != args.token:
             fail(f"ownership marker mismatch for {directory}")
+        if args.git_head is not None and marker.get("git_head") != args.git_head:
+            fail(f"snapshot git head mismatch for {directory}")
+        if args.repository is not None:
+            repository = canonical_existing(args.repository, "repository")
+            if marker.get("repository") != str(repository):
+                fail(f"snapshot repository mismatch for {directory}")
         return 0
     remove(args.root, args.path, args.purpose, args.token)
     return 0

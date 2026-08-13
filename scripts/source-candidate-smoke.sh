@@ -66,7 +66,7 @@ snapshot_head="$4"
 export CANDIDATE_HARNESS_ROOT="$snapshot_root" CANDIDATE_HARNESS_GIT_HEAD="$snapshot_head"
 python3 "${lifecycle}" verify --root "${CANDIDATE_HARNESS_TEST_ROOT:-${TMPDIR:-/tmp}}" \
   --path "${snapshot_root}" --purpose source-candidate-snapshot \
-  --token "${snapshot_token}"
+  --token "${snapshot_token}" --git-head "${snapshot_head}" --repository "${SCRIPT_ROOT}"
 
 ROOT="${CANDIDATE_HARNESS_ROOT}"
 cd "${ROOT}"
