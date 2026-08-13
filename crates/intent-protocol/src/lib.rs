@@ -10,6 +10,7 @@ mod closure;
 mod diff;
 mod identity;
 mod obligation;
+mod packet;
 mod parity;
 mod query;
 mod snapshot_package;
@@ -28,6 +29,9 @@ pub use obligation::{
     INTENT_OBLIGATION_PLAN_RESPONSE_SCHEMA_ID, INTENT_OBLIGATION_PLAN_SCHEMA_ID,
     IntentObligationPlanEnvelopeV1, IntentObligationPlanResponseV1, IntentObligationPostureV1,
     IntentPhaseObligationKindV1, IntentPhaseObligationV1,
+};
+pub use packet::{
+    INTENT_ENGINE_PACKET_SCHEMA_ID, IntentEnginePacketEnvelopeV1, IntentEnginePacketKindV1,
 };
 pub use parity::{
     IdentityQueryParityContract, ObligationPlanParityContract, ViewDiffClosureParityContract,
