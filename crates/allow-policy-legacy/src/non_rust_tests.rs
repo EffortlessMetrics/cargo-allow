@@ -19,7 +19,13 @@ fn migrates_non_rust_allowlist_to_canonical_policy() {
     assert_eq!(docs.lifecycle.expires.as_deref(), Some("never"));
     assert_eq!(docs.lifecycle.review_after.as_deref(), Some("2026-05-09"));
     assert!(docs.reason.contains("Scope note:"));
-    assert_eq!(docs.evidence, vec!["legacy-policy:non-rust-docs"]);
+    assert_eq!(
+        docs.evidence,
+        vec![
+            "legacy-policy:non-rust-docs",
+            "TODO: add non-rust migration evidence",
+        ]
+    );
     let ripr = cfg
         .allow
         .get(3)
@@ -56,7 +62,10 @@ fn compat_config_expands_matching_findings_to_exact_entries() {
     );
     assert_eq!(
         entry.evidence,
-        vec!["legacy-policy:non-rust-github-workflows"]
+        vec![
+            "legacy-policy:non-rust-github-workflows",
+            "TODO: add non-rust migration evidence",
+        ]
     );
     assert_eq!(entry.links, vec!["legacy-policy:non-rust-github-workflows"]);
 }
