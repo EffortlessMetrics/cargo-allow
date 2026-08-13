@@ -173,7 +173,7 @@ fn find_macro_invocation<'a>(node: Node<'a>, source: &str, name: &str) -> Option
 fn evaluate_manifest_concat_text(text: &str) -> Option<String> {
     // Build-output bases such as env!("OUT_DIR") remain unresolved: resolving
     // them would require build metadata, outside cargo-allow's source-tree scan.
-    let start = text.find("concat!")? + "concat!".len();
+    let start = macro_bang_end(text, "concat")?;
     let open = text
         .get(start..)?
         .find(['(', '[', '{'])?
@@ -184,8 +184,10 @@ fn evaluate_manifest_concat_text(text: &str) -> Option<String> {
     let mut path = String::new();
     for arg in split_concat_args(args)? {
         let arg = strip_leading_comments(arg)?.trim();
-        if let Some(value) = arg.strip_prefix("env!") {
-            let value = strip_macro_delimiters(value.trim())?.trim();
+        if arg.trim_start().starts_with("env") {
+            let value =
+                strip_macro_delimiters(arg.get(macro_bang_end(arg, "env")?..)?.trim_start())?
+                    .trim();
             if saw_manifest_dir
                 || !path.is_empty()
                 || decode_path_literal(value)?.as_str() != "CARGO_MANIFEST_DIR"
@@ -226,6 +228,13 @@ fn split_concat_args(args: &str) -> Option<Vec<&str>> {
     }
     result.push(args.get(start..)?);
     Some(result)
+}
+
+fn macro_bang_end(text: &str, name: &str) -> Option<usize> {
+    let start = text.find(name)? + name.len();
+    let suffix = text.get(start..)?;
+    let whitespace = suffix.len() - suffix.trim_start().len();
+    (suffix.as_bytes().get(whitespace) == Some(&b'!')).then_some(start + whitespace + 1)
 }
 
 fn strip_leading_comments(mut text: &str) -> Option<&str> {

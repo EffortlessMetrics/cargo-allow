@@ -192,6 +192,29 @@ fn path_read_fixtures_allow_owned_and_shared_paths_and_reject_forbidden_or_unres
         ));
     }
 
+    let nested_include = vec![(
+        PathBuf::from("crates/product-a/src/lib.rs"),
+        "include!(\"nested.inc\");\n".to_string(),
+    )];
+    let nested_tracked = BTreeSet::from([
+        PathBuf::from("crates/product-a/src/lib.rs"),
+        PathBuf::from("crates/product-a/src/nested.inc"),
+    ]);
+    let nested_diagnostics = source_coupling_diagnostics_for_sources(
+        &manifest,
+        &forbidden,
+        &nested_tracked,
+        &nested_include,
+    )
+    .map_err(|error| format!("scan unscanned nested include: {error}"))?;
+    if nested_diagnostics.len() != 1
+        || nested_diagnostics[0].target_crate != "<unscanned-include-path>"
+    {
+        return Err(format!(
+            "unscanned nested include did not fail closed: {nested_diagnostics:?}"
+        ));
+    }
+
     let forbidden_sources = vec![(
         PathBuf::from("crates/product-a/src/lib.rs"),
         include_str!("../../../tests/fixtures/source-coupling/path-reads-forbidden.rs").to_string(),

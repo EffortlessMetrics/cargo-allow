@@ -221,6 +221,22 @@ fn source_coupling_diagnostics_for_sources_at_root(
                                 target_path
                             };
                             let target_identity = crate_identity_for_path(manifest, &target_path);
+                            if fact.text.trim_start().starts_with("include!")
+                                && target_path
+                                    .extension()
+                                    .and_then(|extension| extension.to_str())
+                                    != Some("rs")
+                            {
+                                diagnostics.push(unresolved_path_diagnostic(
+                                    path,
+                                    fact.start_line,
+                                    fact.start_column,
+                                    source_identity.product_or_shared_owner.clone(),
+                                    "<unscanned-include-path>",
+                                    fact.text,
+                                ));
+                                continue;
+                            }
                             if target_identity.is_none() && !tracked_paths.contains(&target_path) {
                                 diagnostics.push(unresolved_path_diagnostic(
                                     path,
