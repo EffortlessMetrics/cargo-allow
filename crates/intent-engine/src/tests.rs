@@ -57,7 +57,7 @@ fn evaluator_packet_envelope_roundtrip() -> Result<(), String> {
     if decoded.kind != crate::IntentEnginePacketKindV1::LoadAndValidate {
         return Err("packet kind did not round-trip".to_string());
     }
-    if decoded.query_schema_id != crate::INTENT_QUERY_TRANSPORT_SCHEMA_ID {
+    if decoded.query_schema_id != intent_protocol::INTENT_QUERY_SCHEMA_ID {
         return Err("query schema id mismatch".to_string());
     }
     Ok(())
@@ -176,7 +176,7 @@ fn bounded_domain_query_returns_protocol_shaped_response() -> Result<(), String>
     }
     let protocol_json = crate::to_intent_query_response_json(&response);
     if protocol_json.get("schema_id").and_then(|v| v.as_str())
-        != Some(crate::INTENT_QUERY_RESPONSE_SCHEMA_ID)
+        != Some(intent_protocol::INTENT_QUERY_RESPONSE_SCHEMA_ID)
     {
         return Err("protocol projection missing query-response schema".to_string());
     }
@@ -256,7 +256,7 @@ fn validate_bounded_domain_queries_contract(
     if contract.scenario_id.is_empty() {
         return Err("empty scenario_id".to_string());
     }
-    if contract.protocol_response_schema != crate::INTENT_QUERY_RESPONSE_SCHEMA_ID {
+    if contract.protocol_response_schema != intent_protocol::INTENT_QUERY_RESPONSE_SCHEMA_ID {
         return Err("protocol_response_schema must be intent.query-response.v1".to_string());
     }
     if contract.required_query_kinds.len() < 3 {

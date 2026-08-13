@@ -18,9 +18,8 @@ mod workspace;
 pub use domain_queries::{
     BOUNDED_DOMAIN_QUERY_RESPONSE_SCHEMA_ID, BOUNDED_DOMAIN_QUERY_SCHEMA_ID,
     BoundedDomainQueryKindV1, BoundedDomainQueryRequestV1, BoundedDomainQueryResponseV1,
-    INTENT_QUERY_RESPONSE_SCHEMA_ID, RESULT_CLASS_COMPLETED, canonical_bounded_domain_query_kinds,
-    execute_bounded_domain_query, load_bounded_domain_query_catalog_toml,
-    to_intent_query_response_json,
+    RESULT_CLASS_COMPLETED, canonical_bounded_domain_query_kinds, execute_bounded_domain_query,
+    load_bounded_domain_query_catalog_toml, to_intent_query_response_json,
 };
 pub use graph_comparison::{
     GRAPH_COMPARISON_REPORT_SCHEMA_ID, GraphComparisonReportV1, GraphMovementKindV1,
@@ -28,8 +27,7 @@ pub use graph_comparison::{
     sort_graph_movements,
 };
 pub use packet::{
-    INTENT_ENGINE_PACKET_SCHEMA_ID, INTENT_QUERY_TRANSPORT_SCHEMA_ID, IntentEnginePacketEnvelopeV1,
-    IntentEnginePacketKindV1,
+    INTENT_ENGINE_PACKET_SCHEMA_ID, IntentEnginePacketEnvelopeV1, IntentEnginePacketKindV1,
 };
 pub use parity::{
     BoundedDomainQueriesParityContract, EvaluatorPacketParityContract,
