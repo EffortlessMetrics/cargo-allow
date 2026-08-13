@@ -122,6 +122,8 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
     if __import__("shutil").rmtree.avoids_symlink_attacks:
         run("remove", "--root", str(package_parent), "--path", str(child_path),
             "--purpose", "exact-candidate-package-set", "--token", child["token"])
+        if child_path.exists():
+            raise SystemExit("matching marker did not remove package-set child")
     else:
         reject("remove", "--root", str(package_parent), "--path", str(child_path),
                "--purpose", "exact-candidate-package-set", "--token", child["token"])
