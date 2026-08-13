@@ -311,6 +311,15 @@ fn path_resolution_rejects_ambiguous_and_escaping_inputs() -> Result<(), String>
     }
     if super::resolve_relative_source_path_from_crate_root(
         Path::new("crates/product-a/src/lib.rs"),
+        SourceFile,
+        " spaced.rs ",
+        "crates/product-a",
+    ) != Resolved(PathBuf::from("crates/product-a/src/ spaced.rs "))
+    {
+        return Err("source-relative literal path whitespace was not preserved".to_string());
+    }
+    if super::resolve_relative_source_path_from_crate_root(
+        Path::new("crates/product-a/src/lib.rs"),
         ManifestDirectory,
         "/shared/public.rs",
         "crates/product-a",

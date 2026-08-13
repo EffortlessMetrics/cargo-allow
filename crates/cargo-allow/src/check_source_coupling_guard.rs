@@ -390,7 +390,6 @@ fn resolve_relative_source_path_from_crate_root(
     if base == RustSourceCouplingPathBase::ManifestDirectory && crate_root.is_empty() {
         return PathReadResolution::Unresolved;
     }
-    let path = path.trim();
     let path = if base == RustSourceCouplingPathBase::ManifestDirectory {
         #[cfg(windows)]
         let path = path.trim_start_matches(['/', '\\']);
