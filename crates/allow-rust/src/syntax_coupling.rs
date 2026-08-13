@@ -216,9 +216,11 @@ fn evaluate_manifest_concat_text(text: &str) -> Option<String> {
             saw_manifest_dir = true;
         } else {
             let value = decode_path_literal(arg)?;
-            if !saw_manifest_dir
-                || (path.is_empty() && !value.starts_with('/') && !value.starts_with('\\'))
-            {
+            #[cfg(windows)]
+            let begins_with_separator = value.starts_with(['/', '\\']);
+            #[cfg(not(windows))]
+            let begins_with_separator = value.starts_with('/');
+            if !saw_manifest_dir || (path.is_empty() && !begins_with_separator) {
                 return None;
             }
             path.push_str(&value);
@@ -228,7 +230,12 @@ fn evaluate_manifest_concat_text(text: &str) -> Option<String> {
 }
 
 fn manifest_env_bang_end(text: &str) -> Option<usize> {
-    macro_bang_end(text, "r#env").or_else(|| macro_bang_end(text, "env"))
+    // Bare `env!` can be shadowed by a source macro. Only the absolute standard
+    // macro path is strong enough for a source-only scanner to reconstruct.
+    let text = strip_leading_comments(text)?;
+    ["::std::r#env", "::std::env"]
+        .into_iter()
+        .find_map(|name| text.starts_with(name).then(|| macro_bang_end(text, name))?)
 }
 
 fn split_concat_args(args: &str) -> Option<Vec<&str>> {

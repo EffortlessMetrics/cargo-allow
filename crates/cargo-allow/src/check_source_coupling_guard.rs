@@ -403,8 +403,11 @@ fn resolve_relative_source_path_from_crate_root(
     if path.is_empty() {
         return PathReadResolution::Unresolved;
     }
-    if (base == RustSourceCouplingPathBase::SourceFile
-        && (path.starts_with('/') || path.starts_with('\\')))
+    #[cfg(windows)]
+    let source_path_is_absolute = path.starts_with('/') || path.starts_with('\\');
+    #[cfg(not(windows))]
+    let source_path_is_absolute = path.starts_with('/');
+    if (base == RustSourceCouplingPathBase::SourceFile && source_path_is_absolute)
         || path.as_bytes().get(1) == Some(&b':')
     {
         return PathReadResolution::Escapes;
