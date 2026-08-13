@@ -233,9 +233,37 @@ fn manifest_env_bang_end(text: &str) -> Option<usize> {
     // Bare `env!` can be shadowed by a source macro. Only the absolute standard
     // macro path is strong enough for a source-only scanner to reconstruct.
     let text = strip_leading_comments(text)?;
-    ["::std::r#env", "::std::env"]
-        .into_iter()
-        .find_map(|name| text.starts_with(name).then(|| macro_bang_end(text, name))?)
+    let mut index = 0;
+    for token in ["::", "std", "::"] {
+        index = skip_rust_trivia(text, index)?;
+        if !text.get(index..)?.starts_with(token) {
+            return None;
+        }
+        index += token.len();
+    }
+    index = skip_rust_trivia(text, index)?;
+    let env_len = if text.get(index..)?.starts_with("r#env") {
+        "r#env".len()
+    } else if text.get(index..)?.starts_with("env") {
+        "env".len()
+    } else {
+        return None;
+    };
+    index += env_len;
+    index = skip_rust_trivia(text, index)?;
+    (text.as_bytes().get(index) == Some(&b'!')).then_some(index + 1)
+}
+
+fn skip_rust_trivia(text: &str, mut index: usize) -> Option<usize> {
+    loop {
+        let suffix = text.get(index..)?;
+        index += suffix.len() - suffix.trim_start().len();
+        if let Some(end) = rust_comment_end(text, index)? {
+            index = end;
+        } else {
+            return Some(index);
+        }
+    }
 }
 
 fn split_concat_args(args: &str) -> Option<Vec<&str>> {
