@@ -318,6 +318,26 @@ fn path_resolution_rejects_ambiguous_and_escaping_inputs() -> Result<(), String>
     {
         return Err("manifest-relative path did not resolve from the crate root".to_string());
     }
+    #[cfg(unix)]
+    if super::resolve_relative_source_path_from_crate_root(
+        Path::new("crates/product-a/src/lib.rs"),
+        SourceFile,
+        "safe\\owned.rs",
+        "crates/product-a",
+    ) != Resolved(PathBuf::from("crates/product-a/src/safe\\owned.rs"))
+    {
+        return Err("unix path resolution treated a literal backslash as a separator".to_string());
+    }
+    #[cfg(windows)]
+    if super::resolve_relative_source_path_from_crate_root(
+        Path::new("crates/product-a/src/lib.rs"),
+        SourceFile,
+        "safe\\owned.rs",
+        "crates/product-a",
+    ) != Resolved(PathBuf::from("crates/product-a/src/safe/owned.rs"))
+    {
+        return Err("windows path resolution did not treat backslash as a separator".to_string());
+    }
     for path in [
         "",
         "../../../../outside.rs",

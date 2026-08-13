@@ -392,7 +392,11 @@ fn resolve_relative_source_path_from_crate_root(
     }
     let path = path.trim();
     let path = if base == RustSourceCouplingPathBase::ManifestDirectory {
-        path.trim_start_matches(['/', '\\'])
+        #[cfg(windows)]
+        let path = path.trim_start_matches(['/', '\\']);
+        #[cfg(not(windows))]
+        let path = path.trim_start_matches('/');
+        path
     } else {
         path
     };
@@ -424,7 +428,11 @@ fn resolve_relative_source_path_from_crate_root(
         }
     };
     let mut components = Vec::new();
-    for component in combined.split(['/', '\\']) {
+    #[cfg(windows)]
+    let component_iter = combined.split(['/', '\\']);
+    #[cfg(not(windows))]
+    let component_iter = combined.split('/');
+    for component in component_iter {
         match component {
             "" | "." => {}
             ".." => {

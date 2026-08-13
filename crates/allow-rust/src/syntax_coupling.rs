@@ -168,17 +168,21 @@ fn find_token_tree_macro_text<'a>(
     let mut children = node
         .named_children(&mut cursor)
         .filter(|child| !matches!(child.kind(), "line_comment" | "block_comment"));
-    if let Some(name) = children.next()
-        && name.kind() == "identifier"
-        && node_text(source, name)
-            .is_some_and(|name| name.strip_prefix("r#").unwrap_or(name) == expected)
-    {
-        let arguments = children.next()?;
-        return source.get(name.start_byte()..arguments.end_byte());
+    if let Some(name) = children.next() {
+        if name.kind() == "identifier" {
+            if node_text(source, name)
+                .is_some_and(|name| name.strip_prefix("r#").unwrap_or(name) == expected)
+            {
+                let arguments = children.next()?;
+                return source.get(name.start_byte()..arguments.end_byte());
+            }
+            return None;
+        }
+        if children.next().is_none() {
+            return find_token_tree_macro_text(name, source, expected);
+        }
     }
-    let mut cursor = node.walk();
-    node.named_children(&mut cursor)
-        .find_map(|child| find_token_tree_macro_text(child, source, expected))
+    None
 }
 
 fn evaluate_manifest_concat_text(text: &str) -> Option<String> {
@@ -200,14 +204,8 @@ fn evaluate_manifest_concat_text(text: &str) -> Option<String> {
     let mut path = String::new();
     for arg in split_concat_args(args)? {
         let arg = strip_surrounding_comments(arg)?;
-        if arg.trim_start().starts_with("env") || arg.trim_start().starts_with("r#env") {
-            let env_name = if arg.trim_start().starts_with("r#env") {
-                "r#env"
-            } else {
-                "env"
-            };
-            let value =
-                strip_macro_delimiters(arg.get(macro_bang_end(arg, env_name)?..)?.trim_start())?;
+        if let Some(env_start) = manifest_env_bang_end(arg) {
+            let value = strip_macro_delimiters(arg.get(env_start..)?.trim_start())?;
             let value = strip_surrounding_comments(value)?;
             if saw_manifest_dir
                 || !path.is_empty()
@@ -218,10 +216,19 @@ fn evaluate_manifest_concat_text(text: &str) -> Option<String> {
             saw_manifest_dir = true;
         } else {
             let value = decode_path_literal(arg)?;
+            if !saw_manifest_dir
+                || (path.is_empty() && !value.starts_with('/') && !value.starts_with('\\'))
+            {
+                return None;
+            }
             path.push_str(&value);
         }
     }
     saw_manifest_dir.then_some(path)
+}
+
+fn manifest_env_bang_end(text: &str) -> Option<usize> {
+    macro_bang_end(text, "r#env").or_else(|| macro_bang_end(text, "env"))
 }
 
 fn split_concat_args(args: &str) -> Option<Vec<&str>> {
