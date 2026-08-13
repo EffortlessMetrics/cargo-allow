@@ -60,7 +60,7 @@ mod why;
 mod worklist;
 mod world;
 
-pub(crate) use command_support::*;
+pub(crate) use crate::command_support::*;
 
 fn main() {
     if let Err(err) = cli::run() {
