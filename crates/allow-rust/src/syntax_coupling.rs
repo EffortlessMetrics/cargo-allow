@@ -70,23 +70,43 @@ pub fn scan_rust_source_coupling_with_posture(
 }
 
 pub fn rust_source_shadows_path_macros(source: &str) -> CargoAllowResult<bool> {
-    let uncommented = strip_rust_comments(source).unwrap_or_default();
-    if uncommented.contains("macro_use") && uncommented.contains("extern crate") {
-        return Ok(true);
-    }
     let tree = parse_rust_syntax(source)?;
-    Ok(node_shadows_path_macros(tree.tree.root_node(), source))
+    let root = tree.tree.root_node();
+    Ok(root_has_macro_use_extern(root, source) || node_shadows_path_macros(root, source))
+}
+
+fn root_has_macro_use_extern(root: Node<'_>, source: &str) -> bool {
+    let mut cursor = root.walk();
+    let children: Vec<_> = root.named_children(&mut cursor).collect();
+    children.windows(2).any(|pair| {
+        pair.first().is_some_and(|attribute| {
+            attribute.kind().contains("attribute")
+                && node_text(source, *attribute).is_some_and(|text| {
+                    strip_rust_comments(text).is_some_and(|text| {
+                        text.chars()
+                            .filter(|ch| !ch.is_whitespace())
+                            .collect::<String>()
+                            == "#[macro_use]"
+                    })
+                })
+        }) && pair
+            .get(1)
+            .is_some_and(|item| item.kind() == "extern_crate_declaration")
+    })
 }
 
 fn node_shadows_path_macros(node: Node<'_>, source: &str) -> bool {
-    if node.kind() == "macro_definition" && contains_path_macro_identifier(node, source) {
+    if node.kind() == "macro_definition"
+        && node
+            .child_by_field_name("name")
+            .and_then(|name| node_text(source, name))
+            .is_some_and(matches_path_macro_name)
+    {
         return true;
     }
-    if node.kind() == "use_declaration" && use_binds_path_macro(node, source) {
-        return true;
-    }
-    if node.kind() == "extern_crate_declaration"
-        && node_text(source, node).is_some_and(|text| text.contains("macro_use"))
+    if node.kind() == "use_declaration"
+        && node_text(source, node).is_some_and(|text| !text.trim_start().starts_with("use super::"))
+        && use_binds_path_macro(node, source)
     {
         return true;
     }
@@ -100,6 +120,13 @@ fn use_binds_path_macro(node: Node<'_>, source: &str) -> bool {
         return false;
     };
     let compact: String = text.chars().filter(|ch| !ch.is_whitespace()).collect();
+    if compact.contains('*')
+        && !compact.contains("usesuper::")
+        && !compact.contains("usecrate::")
+        && !compact.contains("useself::")
+    {
+        return true;
+    }
     if compact.contains('{') {
         let Some(group) = compact
             .split_once('{')
@@ -132,17 +159,6 @@ fn matches_path_macro_name(name: &str) -> bool {
         name.strip_prefix("r#").unwrap_or(name),
         "include" | "include_str" | "include_bytes" | "concat"
     )
-}
-
-fn contains_path_macro_identifier(node: Node<'_>, source: &str) -> bool {
-    if node.kind() == "identifier"
-        && node_text(source, node).is_some_and(|name| matches_path_macro_name(name))
-    {
-        return true;
-    }
-    let mut cursor = node.walk();
-    node.named_children(&mut cursor)
-        .any(|child| contains_path_macro_identifier(child, source))
 }
 
 pub fn rust_source_declares_no_std(source: &str) -> CargoAllowResult<bool> {
