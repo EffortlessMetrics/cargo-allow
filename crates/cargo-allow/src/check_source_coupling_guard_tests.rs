@@ -486,7 +486,7 @@ fn symlinked_tracked_targets_resolve_inside_and_reject_escape() -> Result<(), St
     ]);
     let sources = vec![(
         PathBuf::from("crates/product-a/src/lib.rs"),
-        "include_str!(\"linked.rs\");\n".to_string(),
+        "::std::include_str!(\"linked.rs\");\n".to_string(),
     )];
     let diagnostics = super::source_coupling_diagnostics_for_sources_at_root(
         &manifest,
