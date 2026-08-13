@@ -140,11 +140,11 @@ fn path_read_argument(
         let arguments = children.next()?;
         source.get(child.start_byte()..arguments.end_byte())?
     } else {
-        let child = if child.kind() == "macro_invocation" {
-            child
-        } else {
-            find_macro_invocation(child, source, "concat")?
-        };
+        if child.kind() != "macro_invocation" {
+            let concat_text = find_token_tree_macro_text(child, source, "concat")?;
+            let path = evaluate_manifest_concat_text(concat_text)?;
+            return Some((vec![path], RustSourceCouplingPathBase::ManifestDirectory));
+        }
         let macro_name = child
             .child_by_field_name("macro")
             .and_then(|macro_node| node_text(source, macro_node))?
@@ -159,18 +159,26 @@ fn path_read_argument(
     Some((vec![path], RustSourceCouplingPathBase::ManifestDirectory))
 }
 
-fn find_macro_invocation<'a>(node: Node<'a>, source: &str, name: &str) -> Option<Node<'a>> {
-    if node.kind() == "macro_invocation"
-        && node
-            .child_by_field_name("macro")
-            .and_then(|macro_node| node_text(source, macro_node))
-            .is_some_and(|macro_name| macro_name.rsplit("::").next() == Some(name))
+fn find_token_tree_macro_text<'a>(
+    node: Node<'a>,
+    source: &'a str,
+    expected: &str,
+) -> Option<&'a str> {
+    let mut cursor = node.walk();
+    let mut children = node
+        .named_children(&mut cursor)
+        .filter(|child| !matches!(child.kind(), "line_comment" | "block_comment"));
+    if let Some(name) = children.next()
+        && name.kind() == "identifier"
+        && node_text(source, name)
+            .is_some_and(|name| name.strip_prefix("r#").unwrap_or(name) == expected)
     {
-        return Some(node);
+        let arguments = children.next()?;
+        return source.get(name.start_byte()..arguments.end_byte());
     }
     let mut cursor = node.walk();
     node.named_children(&mut cursor)
-        .find_map(|child| find_macro_invocation(child, source, name))
+        .find_map(|child| find_token_tree_macro_text(child, source, expected))
 }
 
 fn evaluate_manifest_concat_text(text: &str) -> Option<String> {

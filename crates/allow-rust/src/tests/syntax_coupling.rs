@@ -168,7 +168,7 @@ fn direct_path_containing_manifest_name_stays_source_relative() -> Result<(), St
 #[test]
 fn manifest_concat_uses_the_structural_argument_and_all_delimiters() -> Result<(), String> {
     let scan = scan_rust_source_coupling(
-        "r#include_str!(/* concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/decoy.rs\") */ r#concat /* macro */ ! {r#env /* base */ ! [/* leading */ \"CARGO_MANIFEST_DIR\" /* base tail */], /* outer, ) [ /* nested */ */ \"/actual.rs\" /* literal tail */});\ninclude_str!(concat![env!{// leading\n \"CARGO_MANIFEST_DIR\" // trailing\n}, // comma, close )\n \"/bracket.rs\"]);\n",
+        "r#include_str!(/* concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/decoy.rs\") */ (r#concat /* macro */ ! {r#env /* base */ ! [/* leading */ \"CARGO_MANIFEST_DIR\" /* base tail */], /* outer, ) [ /* nested */ */ \"/actual.rs\" /* literal tail */}));\ninclude_str!(concat![env!{// leading\n \"CARGO_MANIFEST_DIR\" // trailing\n}, // comma, close )\n \"/bracket.rs\"]);\n",
     )
     .map_err(|error| format!("scan structural concat arguments: {error}"))?;
     let reads: Vec<_> = scan
