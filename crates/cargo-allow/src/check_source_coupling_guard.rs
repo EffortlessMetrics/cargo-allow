@@ -298,40 +298,52 @@ fn is_include_macro(text: &str) -> bool {
     let Some(path) = text.get(..bang) else {
         return false;
     };
-    let Some(include) = path.rfind("include") else {
-        return false;
-    };
-    let prefix = path.get(..include).unwrap_or_default().trim_end();
-    (prefix.is_empty() || prefix.ends_with("::"))
-        && comment_trivia_only(path.get(include + "include".len()..).unwrap_or_default())
+    let without_comments = remove_comments(path);
+    without_comments
+        .trim()
+        .rsplit("::")
+        .next()
+        .is_some_and(|name| name.trim().strip_prefix("r#").unwrap_or(name.trim()) == "include")
 }
 
-fn comment_trivia_only(text: &str) -> bool {
+fn remove_comments(text: &str) -> String {
     let bytes = text.as_bytes();
+    let mut result = String::new();
+    let mut segment_start = 0;
     let mut index = 0;
     let mut block_depth = 0usize;
     while index < bytes.len() {
         match bytes.get(index..index + 2) {
             Some(b"//") if block_depth == 0 => {
+                result.push_str(text.get(segment_start..index).unwrap_or_default());
                 index = text
                     .get(index + 2..)
                     .and_then(|tail| tail.find('\n'))
                     .map_or(text.len(), |offset| index + 3 + offset);
+                segment_start = index;
             }
             Some(b"/*") => {
+                if block_depth == 0 {
+                    result.push_str(text.get(segment_start..index).unwrap_or_default());
+                }
                 block_depth += 1;
                 index += 2;
             }
             Some(b"*/") if block_depth > 0 => {
                 block_depth -= 1;
                 index += 2;
+                if block_depth == 0 {
+                    segment_start = index;
+                }
             }
             _ if block_depth > 0 => index += 1,
-            _ if bytes.get(index).is_some_and(u8::is_ascii_whitespace) => index += 1,
-            _ => return false,
+            _ => index += 1,
         }
     }
-    block_depth == 0
+    if block_depth == 0 {
+        result.push_str(text.get(segment_start..).unwrap_or_default());
+    }
+    result
 }
 
 fn macro_bang_index(text: &str) -> Option<usize> {

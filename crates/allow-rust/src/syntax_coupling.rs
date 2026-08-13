@@ -109,6 +109,7 @@ fn path_read_macro_kind(node: Node<'_>, source: &str) -> Option<RustSourceCoupli
         .and_then(|macro_node| node_text(source, macro_node))?
         .rsplit("::")
         .next()?;
+    let macro_name = macro_name.strip_prefix("r#").unwrap_or(macro_name);
     matches!(macro_name, "include" | "include_str" | "include_bytes")
         .then_some(RustSourceCouplingKind::PathRead)
 }
@@ -183,7 +184,7 @@ fn evaluate_manifest_concat_text(text: &str) -> Option<String> {
     let mut saw_manifest_dir = false;
     let mut path = String::new();
     for arg in split_concat_args(args)? {
-        let arg = strip_leading_comments(arg)?.trim();
+        let arg = strip_surrounding_comments(arg)?;
         if arg.trim_start().starts_with("env") {
             let value =
                 strip_macro_delimiters(arg.get(macro_bang_end(arg, "env")?..)?.trim_start())?
@@ -256,6 +257,26 @@ fn strip_leading_comments(mut text: &str) -> Option<&str> {
             return Some(text);
         }
     }
+}
+
+fn strip_surrounding_comments(text: &str) -> Option<&str> {
+    let text = strip_leading_comments(text)?.trim_end();
+    let mut index = 0;
+    while index < text.len() {
+        if let Some(end) = rust_string_end(text, index)? {
+            index = end;
+            continue;
+        }
+        if let Some(end) = rust_comment_end(text, index)? {
+            if text.get(end..)?.trim().is_empty() {
+                return strip_surrounding_comments(text.get(..index)?);
+            }
+            index = end;
+            continue;
+        }
+        index += text.get(index..)?.chars().next()?.len_utf8();
+    }
+    Some(text.trim())
 }
 
 fn matching_delimiter(text: &str, open: usize) -> Option<usize> {

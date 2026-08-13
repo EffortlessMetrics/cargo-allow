@@ -226,8 +226,9 @@ fn path_read_fixtures_allow_owned_and_shared_paths_and_reject_forbidden_or_unres
     }
     for invocation in [
         "std::include!(\"nested/include\")",
-        "std::include /* outer ! /* nested */ still */ ! (\"nested/include\")",
+        "std::include /* mention include ! /* nested */ still */ ! (\"nested/include\")",
         "include // note !\n ! (\"tests.rs\")",
+        "r#include!(\"tests.rs\")",
     ] {
         if !super::is_include_macro(invocation) {
             return Err(format!("include identity missed trivia: {invocation}"));
