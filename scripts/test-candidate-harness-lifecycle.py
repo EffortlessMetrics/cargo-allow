@@ -107,6 +107,27 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
         if not (owned / "payload").is_file():
             raise SystemExit("unsupported platform did not preserve payload")
 
+    # CI pre-creates the canonical package-set parent.  Allocation owns only
+    # a fresh child and cleanup must leave that parent (and its inputs) intact.
+    package_parent = root / "exact-candidate-package-set"
+    package_parent.mkdir()
+    (package_parent / "packages").mkdir()
+    parent_sentinel = package_parent / "packages" / "candidate.crate"
+    parent_sentinel.write_bytes(b"precreated\n")
+    child = json.loads(
+        run("allocate", "--root", str(package_parent), "--purpose", "exact-candidate-package-set").stdout
+    )
+    child_path = Path(child["path"])
+    (child_path / "scratch").write_text("child\n", encoding="utf-8")
+    if __import__("shutil").rmtree.avoids_symlink_attacks:
+        run("remove", "--root", str(package_parent), "--path", str(child_path),
+            "--purpose", "exact-candidate-package-set", "--token", child["token"])
+    else:
+        reject("remove", "--root", str(package_parent), "--path", str(child_path),
+               "--purpose", "exact-candidate-package-set", "--token", child["token"])
+    if not package_parent.is_dir() or not parent_sentinel.is_file():
+        raise SystemExit("parent cleanup removed pre-created package-set input")
+
     # Restore collision characterization: the shell restore contract must
     # refuse to overwrite a destination that appeared while the stash exists.
     collision_stash = root / "collision.stash"

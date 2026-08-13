@@ -121,11 +121,16 @@ fi
 
 output_root="${SCRIPT_ROOT}/target"
 mkdir -p "${output_root}"
-work_json="$(python3 "${lifecycle}" allocate --root "${output_root}" --purpose exact-candidate-package-set --durable)"
+exact_parent="${output_root}/exact-candidate-package-set"
+if [[ ! -e "${exact_parent}" ]]; then
+  mkdir "${exact_parent}"
+fi
+python3 "${lifecycle}" validate-contained --root "${output_root}" --path "${exact_parent}" >/dev/null
+work_json="$(python3 "${lifecycle}" allocate --root "${exact_parent}" --purpose exact-candidate-package-set)"
 read -r work_dir work_token < <(
   printf '%s' "${work_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
 )
-packages_dir="${work_dir}/packages"
+packages_dir="${exact_parent}/packages"
 # Extracted packages must live outside the workspace tree; otherwise Cargo
 # walks up to the repo Cargo.toml and treats them as workspace members.
 offline_parent="${CANDIDATE_HARNESS_TEST_ROOT:-${TMPDIR:-/tmp}}"
@@ -138,8 +143,8 @@ cargo_home="${offline_root}/cargo-home"
 local_registry_dir="${offline_root}/local-registry"
 install_cargo_home="${offline_root}/install-cargo-home"
 target_dir="${offline_root}/target"
-install_root="${offline_root}/install"
-receipt="${work_dir}/exact-candidate-package-set.receipt.json"
+install_root="${exact_parent}/install"
+receipt="${exact_parent}/exact-candidate-package-set.receipt.json"
 crate_set_fixture="${ROOT}/docs/dogfood/fixtures/release/candidate-crate-set.toml"
 schema_id="cargo-allow.exact-candidate-package-set.v1"
 crate_set_schema_id="cargo-allow.candidate-crate-set.v1"
@@ -159,10 +164,8 @@ cleanup_offline() {
     python3 "${lifecycle}" remove --root "${offline_parent}" --path "${offline_root}" \
       --purpose exact-candidate-package-offline --token "${offline_token}"
   fi
-  if [[ "${package_set_passed:-0}" != "1" ]]; then
-    python3 "${lifecycle}" remove --root "${output_root}" --path "${work_dir}" \
-      --purpose exact-candidate-package-set --token "${work_token}"
-  fi
+  python3 "${lifecycle}" remove --root "${exact_parent}" --path "${work_dir}" \
+    --purpose exact-candidate-package-set --token "${work_token}"
 }
 trap cleanup_offline EXIT
 
@@ -1084,7 +1087,7 @@ log "receipt: ${receipt}"
 
 # Preserve the installed binary under the durable work_dir for CI reuse
 # (source-candidate-smoke) before the offline root is cleaned.
-durable_bin="${work_dir}/install/bin/cargo-allow"
+durable_bin="${exact_parent}/install/bin/cargo-allow"
 if [[ -f "${cargo_bin}.exe" || "${cargo_bin}" == *.exe ]]; then
   durable_bin="${durable_bin}.exe"
 fi

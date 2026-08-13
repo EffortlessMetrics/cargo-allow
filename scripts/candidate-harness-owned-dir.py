@@ -44,6 +44,16 @@ def validate_test_root(root: Path, repository: Path) -> Path:
     return allowed
 
 
+def validate_contained_directory(root: Path, directory: Path) -> Path:
+    allowed = canonical_existing(root, "allowed root")
+    resolved = canonical_existing(directory, "directory")
+    try:
+        resolved.relative_to(allowed)
+    except ValueError as error:
+        fail(f"directory must be contained under {allowed}: {resolved}")
+    return resolved
+
+
 def validate_purpose(purpose: str) -> None:
     if not purpose or any(character not in "abcdefghijklmnopqrstuvwxyz0123456789-" for character in purpose):
         fail(f"invalid purpose {purpose!r}")
@@ -172,6 +182,9 @@ def main() -> int:
     root_parser = subparsers.add_parser("validate-test-root")
     root_parser.add_argument("--root", type=Path, required=True)
     root_parser.add_argument("--repository", type=Path, required=True)
+    contained_parser = subparsers.add_parser("validate-contained")
+    contained_parser.add_argument("--root", type=Path, required=True)
+    contained_parser.add_argument("--path", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "allocate":
         directory, token = allocate(args.root, args.purpose, args.durable)
@@ -201,6 +214,9 @@ def main() -> int:
         return 0
     if args.command == "validate-test-root":
         print(validate_test_root(args.root, args.repository))
+        return 0
+    if args.command == "validate-contained":
+        print(validate_contained_directory(args.root, args.path))
         return 0
     remove(args.root, args.path, args.purpose, args.token)
     return 0
