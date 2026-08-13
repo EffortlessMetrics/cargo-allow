@@ -42,63 +42,69 @@ pub(crate) struct SchemaContract {
 
 pub(crate) fn schema_contracts() -> [SchemaContract; 16] {
     [
-        schema_contract("add", include_str!("../../../docs/schemas/add.schema.json")),
+        schema_contract(
+            "add",
+            ::std::include_str!("../../../docs/schemas/add.schema.json"),
+        ),
         schema_contract(
             "add-finding-plan",
-            include_str!("../../../docs/schemas/add-finding-plan.schema.json"),
+            ::std::include_str!("../../../docs/schemas/add-finding-plan.schema.json"),
         ),
         schema_contract(
             "add-plan-application",
-            include_str!("../../../docs/schemas/add-plan-application.schema.json"),
+            ::std::include_str!("../../../docs/schemas/add-plan-application.schema.json"),
         ),
         schema_contract(
             "core-adoption-plan",
-            include_str!("../../../docs/schemas/core-adoption-plan.schema.json"),
+            ::std::include_str!("../../../docs/schemas/core-adoption-plan.schema.json"),
         ),
         schema_contract(
             "doctor",
-            include_str!("../../../docs/schemas/doctor.schema.json"),
+            ::std::include_str!("../../../docs/schemas/doctor.schema.json"),
         ),
         schema_contract(
             "explain",
-            include_str!("../../../docs/schemas/explain.schema.json"),
+            ::std::include_str!("../../../docs/schemas/explain.schema.json"),
         ),
         schema_contract(
             "list",
-            include_str!("../../../docs/schemas/list.schema.json"),
+            ::std::include_str!("../../../docs/schemas/list.schema.json"),
         ),
         schema_contract(
             "migrate",
-            include_str!("../../../docs/schemas/migrate.schema.json"),
+            ::std::include_str!("../../../docs/schemas/migrate.schema.json"),
         ),
         schema_contract(
             "propose",
-            include_str!("../../../docs/schemas/propose.schema.json"),
+            ::std::include_str!("../../../docs/schemas/propose.schema.json"),
         ),
         schema_contract(
             "prune",
-            include_str!("../../../docs/schemas/prune.schema.json"),
+            ::std::include_str!("../../../docs/schemas/prune.schema.json"),
         ),
         schema_contract(
             "refresh",
-            include_str!("../../../docs/schemas/refresh.schema.json"),
+            ::std::include_str!("../../../docs/schemas/refresh.schema.json"),
         ),
         schema_contract(
             "receipt",
-            include_str!("../../../docs/schemas/receipt.schema.json"),
+            ::std::include_str!("../../../docs/schemas/receipt.schema.json"),
         ),
         schema_contract(
             "report",
-            include_str!("../../../docs/schemas/report.schema.json"),
+            ::std::include_str!("../../../docs/schemas/report.schema.json"),
         ),
         schema_contract(
             "spec-system",
-            include_str!("../../../docs/schemas/spec-system.schema.json"),
+            ::std::include_str!("../../../docs/schemas/spec-system.schema.json"),
         ),
-        schema_contract("why", include_str!("../../../docs/schemas/why.schema.json")),
+        schema_contract(
+            "why",
+            ::std::include_str!("../../../docs/schemas/why.schema.json"),
+        ),
         schema_contract(
             "worklist",
-            include_str!("../../../docs/schemas/worklist.schema.json"),
+            ::std::include_str!("../../../docs/schemas/worklist.schema.json"),
         ),
     ]
 }

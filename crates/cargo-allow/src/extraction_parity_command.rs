@@ -1511,7 +1511,7 @@ mod tests {
         let source = format!("commit:{}/tree:{}", "a".repeat(40), "b".repeat(40));
         assert_schema_accepts_and_rejects_shape(
             "extraction cutover evidence",
-            include_str!("../../../docs/schemas/extraction-cutover-evidence.schema.json"),
+            ::std::include_str!("../../../docs/schemas/extraction-cutover-evidence.schema.json"),
             json!({
                 "schema_id": CUTOVER_EVIDENCE_SCHEMA_ID,
                 "schema_version": CUTOVER_EVIDENCE_SCHEMA_VERSION,
@@ -1534,10 +1534,10 @@ mod tests {
         });
         assert_schema_accepts_and_rejects_shape(
             "extraction cutover ownership",
-            include_str!("../../../docs/schemas/extraction-cutover-ownership.schema.json"),
+            ::std::include_str!("../../../docs/schemas/extraction-cutover-ownership.schema.json"),
             ownership_sample.clone(),
         )?;
-        let ownership_schema: Value = serde_json::from_str(include_str!(
+        let ownership_schema: Value = serde_json::from_str(::std::include_str!(
             "../../../docs/schemas/extraction-cutover-ownership.schema.json"
         ))
         .map_err(|error| error.to_string())?;
@@ -1555,7 +1555,9 @@ mod tests {
         }
         assert_schema_accepts_and_rejects_shape(
             "extraction cutover build/package",
-            include_str!("../../../docs/schemas/extraction-cutover-build-package.schema.json"),
+            ::std::include_str!(
+                "../../../docs/schemas/extraction-cutover-build-package.schema.json"
+            ),
             json!({
                 "schema_id": BUILD_PACKAGE_EVIDENCE_SCHEMA_ID,
                 "schema_version": 1,

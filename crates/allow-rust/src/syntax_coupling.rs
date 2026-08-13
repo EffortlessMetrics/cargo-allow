@@ -50,7 +50,7 @@ pub fn scan_rust_source_coupling_with_manifest_env(
 pub fn scan_rust_source_coupling_with_posture(
     source: &str,
     manifest_env_is_unshadowed: bool,
-    path_macros_are_unshadowed: bool,
+    _path_macros_are_unshadowed: bool,
 ) -> CargoAllowResult<RustSourceCouplingScan> {
     let tree = parse_rust_syntax(source)?;
     let line_index = SourceLineIndex::new(source);
@@ -60,7 +60,6 @@ pub fn scan_rust_source_coupling_with_posture(
         source,
         &line_index,
         manifest_env_is_unshadowed,
-        path_macros_are_unshadowed,
         &mut facts,
     );
     Ok(RustSourceCouplingScan {
@@ -209,7 +208,6 @@ fn collect_coupling_facts(
     source: &str,
     line_index: &SourceLineIndex,
     manifest_env_is_unshadowed: bool,
-    path_macros_are_unshadowed: bool,
     facts: &mut Vec<RustSourceCoupling>,
 ) {
     let kind = match node.kind() {
@@ -236,8 +234,7 @@ fn collect_coupling_facts(
                 .map(|paths| (paths, RustSourceCouplingPathBase::SourceFile))
                 .unwrap_or((Vec::new(), RustSourceCouplingPathBase::SourceFile)),
             RustSourceCouplingKind::PathRead
-                if path_macros_are_unshadowed
-                    && path_read_macro_is_trusted(node, source, manifest_env_is_unshadowed) =>
+                if path_read_macro_is_trusted(node, source, manifest_env_is_unshadowed) =>
             {
                 let mut cursor = node.walk();
                 let token_tree = node
@@ -270,14 +267,7 @@ fn collect_coupling_facts(
 
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        collect_coupling_facts(
-            child,
-            source,
-            line_index,
-            manifest_env_is_unshadowed,
-            path_macros_are_unshadowed,
-            facts,
-        );
+        collect_coupling_facts(child, source, line_index, manifest_env_is_unshadowed, facts);
     }
 }
 
@@ -294,9 +284,7 @@ fn path_read_macro_kind(node: Node<'_>, source: &str) -> Option<RustSourceCoupli
 fn path_read_macro_is_trusted(node: Node<'_>, source: &str, std_is_unshadowed: bool) -> bool {
     node.child_by_field_name("macro")
         .and_then(|macro_node| node_text(source, macro_node))
-        .is_some_and(|path| {
-            !path.contains("::") || (std_is_unshadowed && path.starts_with("::std::"))
-        })
+        .is_some_and(|path| std_is_unshadowed && path.starts_with("::std::"))
 }
 
 fn path_read_argument(
