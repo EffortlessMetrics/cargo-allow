@@ -1,0 +1,54 @@
+# Versioned scoped-text rule schema (#2714 / #2684).
+#
+# Repository-neutral text-policy rules with deterministic literal, phrase,
+# and token/word-boundary matching. Each rule declares a stable ID, matcher
+# kind, term, case/Unicode policy, scope, severity, and help text.
+#
+# This is the MVP engine slice: literal, phrase, and token matching only.
+# Regex, inline exceptions, structured scope, and RIPR parity are out of
+# scope (#2715, #2718, #2719, #2720).
+
+schema_id = "cargo-allow.scoped-text-rules.v1"
+schema_version = 1
+controlling_issue = 2684
+generated_by = "#2714"
+
+# Matcher kinds:
+#   literal — substring match (case-sensitive by default)
+#   phrase  — whole-phrase match (word-boundary on both sides)
+#   token   — single-token match (word-boundary, no spaces in term)
+
+# Severity levels: info, warning, error
+
+# Example rules (repository-neutral; real deployments override these):
+# These demonstrate each matcher kind and are not RIPR-specific.
+
+[[rule]]
+id = "example-literal-todo"
+kind = "literal"
+term = "TODO"
+case_sensitive = true
+severity = "info"
+help = "TODO comments are tracked as informational findings"
+owner = "repo-infra"
+rationale = "Example literal-substring rule for the scoped-text MVP"
+
+[[rule]]
+id = "example-phrase-deprecated-api"
+kind = "phrase"
+term = "deprecated API"
+case_sensitive = false
+severity = "warning"
+help = "References to deprecated APIs should be reviewed"
+owner = "repo-infra"
+rationale = "Example phrase-match rule for the scoped-text MVP"
+
+[[rule]]
+id = "example-token-unsafe"
+kind = "token"
+term = "unsafe"
+case_sensitive = true
+severity = "info"
+help = "The word 'unsafe' in comments or docs is tracked as informational"
+owner = "repo-infra"
+rationale = "Example token/word-boundary rule for the scoped-text MVP"

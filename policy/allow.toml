@@ -11200,6 +11200,22 @@ review_after = "2026-11-08"
 glob = "policy/product-support-matrix.toml"
 
 [[allow]]
+id = "allow-9223"
+kind = "non_rust_file"
+family = "configuration"
+glob = "policy/scoped-text-rules.toml"
+owner = "core/governance"
+classification = "scoped_text_rule_schema"
+reason = "Versioned scoped-text rule schema with literal/phrase/token matcher MVP (#2714)"
+evidence = ["issue:2714", "issue:2684"]
+occurrence_limit = 1
+created = "2026-08-13"
+review_after = "2026-11-13"
+
+[allow.selector]
+glob = "policy/scoped-text-rules.toml"
+
+[[allow]]
 id = "allow-0518"
 kind = "non_rust_file"
 family = "documentation"
