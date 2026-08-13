@@ -1308,28 +1308,6 @@ glob = "tests/fixtures/intent-model/parity-spec-system-v1.toml"
 line = 1
 column = 1
 
-[[allow]]
-id = "allow-9066"
-kind = "lint_exception"
-family = "expect_attribute"
-path = "crates/intent-model/src/spec_system/mod.rs"
-owner = "repo-infra"
-classification = "intent_model_implementation"
-reason = "intent-model DTO helpers are consumed by allow-policy snapshot impl during #2584 parity window."
-evidence = ["doc:docs/architecture/intent-model.md", "test:crates/intent-model/src/tests.rs"]
-created = "2026-07-23"
-review_after = "2026-11-01"
-
-[allow.selector]
-ast_kind = "attribute"
-lint = "dead_code"
-symbol = "#![expect( dead_code, reason = \"policy:allow-9066: spec-system DTO helpers consumed by allow-policy snapshot impl (#2584-B)\" )]"
-target_fingerprint = "policy:allow-9066"
-glob = "crates/intent-model/src/spec_system/mod.rs"
-
-[allow.last_seen]
-line = 2
-column = 1
 
 [[allow]]
 id = "allow-9064"
