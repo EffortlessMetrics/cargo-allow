@@ -44,7 +44,11 @@ pub(crate) fn lifecycle_from_rule(rule: &LegacyNonRustRule) -> Lifecycle {
 }
 
 pub(crate) fn evidence_from_rule(rule: &LegacyNonRustRule) -> Vec<String> {
-    preserve_evidence(&rule.evidence, &rule.id)
+    let mut evidence = preserve_evidence(&rule.evidence, &rule.id);
+    if rule.evidence.is_empty() {
+        evidence.push("TODO: add non-rust migration evidence".to_string());
+    }
+    evidence
 }
 
 #[cfg(test)]
@@ -136,7 +140,10 @@ mod tests {
         assert_eq!(lifecycle.expires.as_deref(), Some("never"));
         assert_eq!(
             evidence_from_rule(&rule),
-            vec!["legacy-policy:docs".to_string()]
+            vec![
+                "legacy-policy:docs".to_string(),
+                "TODO: add non-rust migration evidence".to_string(),
+            ]
         );
     }
 

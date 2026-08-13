@@ -1,0 +1,7 @@
+schema_version = 1
+policy = "non-rust-allowlist"
+
+[[allow]]
+id = "negative-invalid-evidence"
+path = "docs/invalid-evidence.md"
+evidence = ["test:valid", 7]

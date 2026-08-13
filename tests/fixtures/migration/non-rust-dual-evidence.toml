@@ -1,0 +1,13 @@
+schema_version = 1
+policy = "non-rust-allowlist"
+
+[[allow]]
+id = "negative-dual-evidence"
+path = "docs/dual-evidence.md"
+category = "documentation"
+owner = "docs"
+reason = "Both legacy evidence fields must survive migration."
+evidence = ["test:explicit", "issue:#2469"]
+covered_by = ["issue:#2469", "spec:NON-RUST-DUAL"]
+created = "2026-08-12"
+review_after = "2026-11-10"

@@ -681,6 +681,339 @@ fn saved_migrate_output_is_deterministic_for_shuffled_non_rust_rows() {
 }
 
 #[test]
+fn saved_migrate_non_rust_negative_controls_fail_closed_or_surface_debt() {
+    for (fixture_name, diagnostic, line) in [
+        ("non-rust-malformed.toml", "invalid basic string", Some(6)),
+        (
+            "non-rust-unsupported.toml",
+            "unsupported field `approval_ticket`",
+            Some(4),
+        ),
+        (
+            "non-rust-conflict.toml",
+            "defines both path and glob",
+            Some(5),
+        ),
+        (
+            "non-rust-duplicate.toml",
+            "non-rust allow entry 1 duplicates earlier id `negative-duplicate`",
+            Some(10),
+        ),
+        (
+            "non-rust-invalid-owner.toml",
+            "field `owner` must be a string",
+            Some(4),
+        ),
+        (
+            "non-rust-invalid-evidence.toml",
+            "field `evidence` must be a string or string array",
+            Some(4),
+        ),
+        (
+            "non-rust-invalid-covered-by.toml",
+            "field `covered_by` must be a string or string array",
+            Some(4),
+        ),
+    ] {
+        assert_non_rust_fixture_rejected(fixture_name, diagnostic, line);
+    }
+
+    assert_non_rust_dual_evidence_preserved();
+
+    let fixture = SourceTreeFixture::new("saved-migrate-non-rust-missing-evidence");
+    let legacy_dir = fixture.root.join("legacy-policy");
+    fs::create_dir_all(&legacy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create legacy policy dir: {err}")));
+    write_fixture_doc(&fixture.root, "docs/missing-evidence.md");
+    let legacy_policy = legacy_dir.join("non-rust-allowlist.toml");
+    copy_non_rust_negative_fixture("non-rust-missing-evidence.toml", &legacy_policy);
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let compat_audit = artifact_dir.join("compat-audit.json");
+    let migrated_policy = artifact_dir.join("allow.migrated.toml");
+    let migrate_summary = artifact_dir.join("migrate-summary.json");
+    run_cargo_allow(&[
+        "audit",
+        "--root",
+        fixture.root_str(),
+        "--compat",
+        "--kind",
+        "non-rust",
+        "--config",
+        path_arg(&legacy_policy),
+        "--format",
+        "json",
+        "--output",
+        path_arg(&compat_audit),
+    ]);
+    let compat = assert_source_syntax_artifact_with_inventory(
+        &compat_audit,
+        allow_report::REPORT_SCHEMA_ID,
+        "audit",
+        "filesystem_fallback",
+    );
+
+    let migrate_args = [
+        "migrate",
+        "--root",
+        fixture.root_str(),
+        "--repo-policy",
+        path_arg(&legacy_dir),
+        "--out",
+        path_arg(&migrated_policy),
+        "--summary-format",
+        "json",
+        "--summary-output",
+        path_arg(&migrate_summary),
+    ];
+    run_cargo_allow(&migrate_args);
+    assert_policy_output(&migrated_policy);
+    let summary = assert_policy_migration_artifact_with_inventory(
+        &migrate_summary,
+        allow_report::MIGRATE_SCHEMA_ID,
+        "migrate",
+        "filesystem_fallback",
+    );
+    assert!(
+        summary
+            .pointer("/summary/weak_evidence_references")
+            .and_then(serde_json::Value::as_u64)
+            .is_some_and(|count| count >= 1),
+        "missing legacy evidence must remain visible in the migration summary: {summary}"
+    );
+    let policy_text = fs::read_to_string(&migrated_policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read migrated policy: {err}")));
+    let summary_text = fs::read_to_string(&migrate_summary)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read migrate summary: {err}")));
+    let cfg = allow_policy::load_policy(&migrated_policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("load migrated policy: {err}")));
+    let entry = migrated_entry_by_path(&cfg, Path::new("docs/missing-evidence.md"));
+    assert!(
+        entry
+            .evidence
+            .contains(&"legacy-policy:negative-missing-evidence".to_string())
+            && entry
+                .evidence
+                .contains(&"TODO: add non-rust migration evidence".to_string()),
+        "missing evidence must become explicit provenance plus TODO debt: {:?}",
+        entry.evidence
+    );
+
+    let canonical_audit = artifact_dir.join("canonical-audit.json");
+    run_cargo_allow(&[
+        "audit",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        path_arg(&migrated_policy),
+        "--format",
+        "json",
+        "--output",
+        path_arg(&canonical_audit),
+    ]);
+    let canonical = assert_source_syntax_artifact_with_inventory(
+        &canonical_audit,
+        allow_report::REPORT_SCHEMA_ID,
+        "audit",
+        "filesystem_fallback",
+    );
+    let finding_paths = |value: &serde_json::Value| {
+        value
+            .pointer("/findings")
+            .and_then(serde_json::Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(|finding| finding.get("path"))
+            .filter_map(serde_json::Value::as_str)
+            .map(str::to_owned)
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        finding_paths(&compat),
+        finding_paths(&canonical),
+        "missing-evidence downgrade must not alter compat/canonical governed paths"
+    );
+
+    let worklist = artifact_dir.join("worklist.json");
+    run_cargo_allow(&[
+        "worklist",
+        "--root",
+        fixture.root_str(),
+        "--config",
+        path_arg(&migrated_policy),
+        "--format",
+        "json",
+        "--output",
+        path_arg(&worklist),
+    ]);
+    let worklist =
+        assert_source_syntax_artifact(&worklist, allow_report::WORKLIST_SCHEMA_ID, "worklist");
+    assert!(
+        worklist
+            .pointer("/work_items")
+            .and_then(serde_json::Value::as_array)
+            .is_some_and(|items| items.iter().any(|item| {
+                item.get("allow_id")
+                    .and_then(serde_json::Value::as_str)
+                    .is_some_and(|id| id.starts_with("negative-missing-evidence--"))
+            })),
+        "canonical worklist must retain missing-evidence downgrade debt: {worklist}"
+    );
+
+    fs::remove_file(&migrated_policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove migrated policy: {err}")));
+    fs::remove_file(&migrate_summary)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove migrate summary: {err}")));
+    run_cargo_allow(&migrate_args);
+    assert_eq!(
+        fs::read_to_string(&migrated_policy)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read rerun policy: {err}"))),
+        policy_text,
+        "unchanged missing-evidence migration must reproduce canonical policy bytes"
+    );
+    assert_eq!(
+        fs::read_to_string(&migrate_summary)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read rerun summary: {err}"))),
+        summary_text,
+        "unchanged missing-evidence migration must reproduce summary bytes"
+    );
+}
+
+fn assert_non_rust_dual_evidence_preserved() {
+    let fixture = SourceTreeFixture::new("saved-migrate-non-rust-dual-evidence");
+    let legacy_dir = fixture.root.join("legacy-policy");
+    fs::create_dir_all(&legacy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create legacy policy dir: {err}")));
+    let legacy_policy = legacy_dir.join("non-rust-allowlist.toml");
+    copy_non_rust_negative_fixture("non-rust-dual-evidence.toml", &legacy_policy);
+    write_fixture_doc(&fixture.root, "docs/dual-evidence.md");
+
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let migrated_policy = artifact_dir.join("allow.migrated.toml");
+    let migrate_summary = artifact_dir.join("migrate-summary.json");
+    run_cargo_allow(&[
+        "migrate",
+        "--root",
+        fixture.root_str(),
+        "--repo-policy",
+        path_arg(&legacy_dir),
+        "--out",
+        path_arg(&migrated_policy),
+        "--summary-format",
+        "json",
+        "--summary-output",
+        path_arg(&migrate_summary),
+    ]);
+    assert_policy_output(&migrated_policy);
+    assert_policy_migration_artifact_with_inventory(
+        &migrate_summary,
+        allow_report::MIGRATE_SCHEMA_ID,
+        "migrate",
+        "filesystem_fallback",
+    );
+    let cfg = allow_policy::load_policy(&migrated_policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("load migrated policy: {err}")));
+    let entry = migrated_entry_by_path(&cfg, Path::new("docs/dual-evidence.md"));
+    assert_eq!(
+        entry.evidence,
+        vec![
+            "test:explicit".to_string(),
+            "issue:#2469".to_string(),
+            "spec:NON-RUST-DUAL".to_string(),
+        ],
+        "dual legacy evidence fields must merge stably without duplicates"
+    );
+}
+
+fn assert_non_rust_fixture_rejected(
+    fixture_name: &str,
+    expected_diagnostic: &str,
+    expected_line: Option<usize>,
+) {
+    let fixture = SourceTreeFixture::new(&format!("saved-migrate-{fixture_name}"));
+    let legacy_dir = fixture.root.join("legacy-policy");
+    fs::create_dir_all(&legacy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create legacy policy dir: {err}")));
+    let legacy_policy = legacy_dir.join("non-rust-allowlist.toml");
+    copy_non_rust_negative_fixture(fixture_name, &legacy_policy);
+    let artifact_dir = fixture.root.join("target/cargo-allow");
+    let compat_output = artifact_dir.join("compat.json");
+    let migrated_output = artifact_dir.join("allow.migrated.toml");
+    let summary_output = artifact_dir.join("migrate-summary.json");
+
+    for (command, args) in [
+        (
+            "compat",
+            vec![
+                "audit",
+                "--root",
+                fixture.root_str(),
+                "--compat",
+                "--kind",
+                "non-rust",
+                "--config",
+                path_arg(&legacy_policy),
+                "--format",
+                "json",
+                "--output",
+                path_arg(&compat_output),
+            ],
+        ),
+        (
+            "migrate",
+            vec![
+                "migrate",
+                "--root",
+                fixture.root_str(),
+                "--repo-policy",
+                path_arg(&legacy_dir),
+                "--out",
+                path_arg(&migrated_output),
+                "--summary-format",
+                "json",
+                "--summary-output",
+                path_arg(&summary_output),
+            ],
+        ),
+    ] {
+        let output = super::support::cargo_allow_command()
+            .args(&args)
+            .output()
+            .unwrap_or_else(|err| {
+                std::panic::panic_any(format!("run {command} for {fixture_name}: {err}"))
+            });
+        assert!(
+            !output.status.success(),
+            "{command} unexpectedly accepted {fixture_name}"
+        );
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("non-rust-allowlist.toml") && stderr.contains(expected_diagnostic),
+            "{command} diagnostic for {fixture_name} lost source or cause: {stderr}"
+        );
+        if let Some(line) = expected_line {
+            assert!(
+                stderr.contains(&format!("non-rust-allowlist.toml:{line}")),
+                "{command} diagnostic for {fixture_name} lost entry line {line}: {stderr}"
+            );
+        }
+    }
+}
+
+fn copy_non_rust_negative_fixture(name: &str, destination: &Path) {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/fixtures/migration")
+        .join(name);
+    fs::copy(&source, destination).unwrap_or_else(|err| {
+        std::panic::panic_any(format!(
+            "copy negative migration fixture {} to {}: {err}",
+            source.display(),
+            destination.display()
+        ))
+    });
+}
+
+#[test]
 fn saved_migrate_output_preserves_policy_exception_evidence_matrix() {
     let fixture = SourceTreeFixture::new("saved-migrate-policy-exception-evidence-matrix");
     let legacy_dir = fixture.root.join("legacy-policy");

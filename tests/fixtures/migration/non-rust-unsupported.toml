@@ -1,0 +1,9 @@
+schema_version = 1
+policy = "non-rust-allowlist"
+
+[[allow]]
+id = "negative-unsupported"
+path = "docs/unsupported.md"
+owner = "docs"
+reason = "Unsupported metadata must not disappear."
+approval_ticket = "SEC-123"
