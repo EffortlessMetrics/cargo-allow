@@ -62,3 +62,18 @@ severity = "info"
 help = "Version-like strings (x.y.z) are tracked as informational"
 owner = "repo-infra"
 rationale = "Example regex rule demonstrating pattern matching (#2715)"
+
+# ---------------------------------------------------------------------------
+# Central text exceptions (#2716)
+# ---------------------------------------------------------------------------
+# Each exception suppresses a specific rule's finding for a bounded reason.
+# Exceptions require: rule_id, reason, owner. Optional: expires (hard
+# invalidation date), review_after (warning-only date), max_occurrences
+# (bounded count).
+
+[[exception]]
+rule_id = "example-literal-todo"
+reason = "Migration tracking file legitimately contains TODO comments"
+owner = "repo-infra"
+max_occurrences = 10
+review_after = "2026-12-01"
