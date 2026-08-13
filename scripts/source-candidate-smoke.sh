@@ -17,21 +17,80 @@
 #   bash scripts/source-candidate-smoke.sh
 #
 # Optional:
-#   WORK_DIR=<path>          work root (default: target/source-candidate-smoke)
 #   CARGO_ALLOW_BIN=<path>   prebuilt/path-installed binary (skips cargo install)
-#   INSTALL_ROOT=<path>      cargo install --root when installing (default: WORK_DIR/install)
 #   SKIP_NEGATIVES=1         skip harness-level negative controls (debug only)
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "${ROOT}"
+SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+lifecycle="${SCRIPT_ROOT}/scripts/candidate-harness-owned-dir.py"
+command -v python3 >/dev/null 2>&1 || { printf 'source-candidate-smoke: error: python3 is required\n' >&2; exit 1; }
 
-work_dir="${WORK_DIR:-${ROOT}/target/source-candidate-smoke}"
-install_root="${INSTALL_ROOT:-${work_dir}/install}"
+if [[ "${1:-}" != "--internal" ]]; then
+  if [[ -n "${CARGO_ALLOW_BIN:-}" ]]; then
+    CARGO_ALLOW_BIN="$(python3 - "${CARGO_ALLOW_BIN}" "${SCRIPT_ROOT}/target" <<'PY'
+import sys
+from pathlib import Path
+
+raw = Path(sys.argv[1])
+target = Path(sys.argv[2]).resolve(strict=True)
+if not raw.exists() or raw.is_symlink() or not raw.is_file():
+    raise SystemExit("CARGO_ALLOW_BIN must be an existing non-symlink file")
+resolved = raw.resolve(strict=True)
+try:
+    resolved.relative_to(target)
+except ValueError as error:
+    raise SystemExit(f"CARGO_ALLOW_BIN must be below {target}, got {resolved}") from error
+print(resolved)
+PY
+)"
+    export CARGO_ALLOW_BIN
+  fi
+  temp_root="${CANDIDATE_HARNESS_TEST_ROOT:-${TMPDIR:-/tmp}}"
+  snapshot_json="$(python3 "${lifecycle}" snapshot --root "${temp_root}" --repository "${SCRIPT_ROOT}" --purpose source-candidate-snapshot)"
+  read -r snapshot_root snapshot_token snapshot_head < <(
+    printf '%s' "${snapshot_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"], v["git_head"])'
+  )
+  snapshot_cleanup() {
+    python3 "${lifecycle}" remove --root "${temp_root}" --path "${snapshot_root}" \
+      --purpose source-candidate-snapshot --token "${snapshot_token}"
+  }
+  trap snapshot_cleanup EXIT
+  bash "${BASH_SOURCE[0]}" --internal "${snapshot_root}" "${snapshot_token}" "${snapshot_head}"
+  exit $?
+fi
+
+[[ "$#" -eq 4 ]] || { printf 'source-candidate-smoke: error: invalid internal invocation\n' >&2; exit 1; }
+snapshot_root="$2"
+snapshot_token="$3"
+snapshot_head="$4"
+export CANDIDATE_HARNESS_ROOT="$snapshot_root" CANDIDATE_HARNESS_GIT_HEAD="$snapshot_head"
+python3 "${lifecycle}" verify --root "${CANDIDATE_HARNESS_TEST_ROOT:-${TMPDIR:-/tmp}}" \
+  --path "${snapshot_root}" --purpose source-candidate-snapshot \
+  --token "${snapshot_token}"
+
+ROOT="${CANDIDATE_HARNESS_ROOT}"
+cd "${ROOT}"
+if [[ "${CANDIDATE_HARNESS_SNAPSHOT_PROBE:-0}" == "1" && "${CANDIDATE_HARNESS_TEST_INJECTION:-0}" == "1" ]]; then
+  [[ "${ROOT}" != "${SCRIPT_ROOT}" && -f "${ROOT}/Cargo.toml" && -d "${ROOT}/crates/cargo-allow/src" && -d "${ROOT}/docs/templates" ]]
+  printf 'source-candidate-smoke: disposable snapshot ok\n'
+  exit 0
+fi
+
+output_root="${CANDIDATE_HARNESS_OUTPUT_ROOT:-${ROOT}/target}"
+mkdir -p "${output_root}"
+work_json="$(python3 "${lifecycle}" allocate --root "${output_root}" --purpose source-candidate-smoke --durable)"
+read -r work_dir work_token < <(
+  printf '%s' "${work_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
+)
+install_root="${work_dir}/install"
 receipt="${work_dir}/source-candidate-smoke.receipt.json"
 # Keep the consumer outside this checkout so inventory/policy resolve to the
 # temporary adopter tree, not the cargo-allow workspace git root.
-consumer_dir="${CONSUMER_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/cargo-allow-source-candidate-consumer.XXXXXX")}"
+consumer_parent="${CANDIDATE_HARNESS_TEST_ROOT:-${TMPDIR:-/tmp}}"
+consumer_json="$(python3 "${lifecycle}" allocate --root "${consumer_parent}" --purpose source-candidate-consumer)"
+read -r consumer_dir consumer_token < <(
+  printf '%s' "${consumer_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
+)
 schema_id="cargo-allow.source-candidate-smoke-receipt.v1"
 
 src_path="${ROOT}/crates/cargo-allow/src"
@@ -50,8 +109,11 @@ restore_source_tree() {
 
 cleanup() {
   restore_source_tree
-  if [[ "${KEEP_CONSUMER:-0}" != "1" ]]; then
-    rm -rf "${consumer_dir}"
+  python3 "${lifecycle}" remove --root "${consumer_parent}" --path "${consumer_dir}" \
+    --purpose source-candidate-consumer --token "${consumer_token}"
+  if [[ "${source_candidate_passed:-0}" != "1" ]]; then
+    python3 "${lifecycle}" remove --root "${output_root}" --path "${work_dir}" \
+      --purpose source-candidate-smoke --token "${work_token}"
   fi
 }
 trap cleanup EXIT
@@ -66,8 +128,6 @@ fail() {
 }
 
 command -v cargo >/dev/null 2>&1 || fail "cargo is required"
-command -v python3 >/dev/null 2>&1 || fail "python3 is required to emit the JSON receipt"
-command -v mktemp >/dev/null 2>&1 || fail "mktemp is required"
 
 read_workspace_version() {
   awk '
@@ -85,12 +145,8 @@ read_workspace_version() {
 version="$(read_workspace_version)"
 [[ -n "${version}" ]] || fail "could not read workspace.package.version"
 
-git_head=""
-if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  git_head="$(git rev-parse HEAD 2>/dev/null || true)"
-fi
+git_head="${CANDIDATE_HARNESS_GIT_HEAD:-}"
 
-rm -rf "${work_dir}"
 mkdir -p "${work_dir}" "${consumer_dir}/src"
 
 install_method="cargo_install_path"
@@ -1094,3 +1150,4 @@ PY
 
 log "SourceCandidateSmokeReceiptV1 passed for workspace ${version}"
 log "receipt: ${receipt}"
+source_candidate_passed=1

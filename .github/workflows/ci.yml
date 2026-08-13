@@ -65,10 +65,8 @@ jobs:
           if-no-files-found: warn
       - name: Exact candidate package set (#2372)
         run: |
-          mkdir -p target/exact-candidate-package-set/packages
-          cp target/package-candidate-smoke/packages/*.crate \
-            target/exact-candidate-package-set/packages/
-          SKIP_PACKAGE=1 bash scripts/exact-candidate-package-set.sh
+          PACKAGE_INPUT_DIR=target/package-candidate-smoke/packages \
+            SKIP_PACKAGE=1 bash scripts/exact-candidate-package-set.sh
       - name: Source candidate first-hour journey (#2278)
         run: |
           bin="target/exact-candidate-package-set/install/bin/cargo-allow"

@@ -25,21 +25,82 @@
 #   bash scripts/exact-candidate-package-set.sh
 #
 # Optional:
-#   WORK_DIR=<path>           work root (default: target/exact-candidate-package-set)
-#   SKIP_PACKAGE=1            reuse WORK_DIR/packages without re-packing
+#   PACKAGE_INPUT_DIR=<path>  prebuilt .crate input for SKIP_PACKAGE=1
+#   SKIP_PACKAGE=1            reuse PACKAGE_INPUT_DIR without re-packing
 #   SKIP_NEGATIVES=1          skip negative controls (debug only)
 #   SKIP_LOCAL_REGISTRY=1     reuse OFFLINE_ROOT/local-registry if present (debug only)
 #   ALLOW_DIRTY=1             pass --allow-dirty to cargo package (local debug only)
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "${ROOT}"
+SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+lifecycle="${SCRIPT_ROOT}/scripts/candidate-harness-owned-dir.py"
+command -v python3 >/dev/null 2>&1 || { printf 'exact-candidate-package-set: error: python3 is required\n' >&2; exit 1; }
 
-work_dir="${WORK_DIR:-${ROOT}/target/exact-candidate-package-set}"
+if [[ "${1:-}" != "--internal" ]]; then
+  if [[ "${SKIP_PACKAGE:-0}" == "1" ]]; then
+    PACKAGE_INPUT_DIR="$(python3 - "${PACKAGE_INPUT_DIR:-}" "${SCRIPT_ROOT}/target" <<'PY'
+import sys
+from pathlib import Path
+
+raw = Path(sys.argv[1])
+target = Path(sys.argv[2]).resolve(strict=True)
+if not str(raw).strip() or not raw.exists() or raw.is_symlink():
+    raise SystemExit("SKIP_PACKAGE=1 requires an existing non-symlink PACKAGE_INPUT_DIR")
+resolved = raw.resolve(strict=True)
+try:
+    resolved.relative_to(target)
+except ValueError as error:
+    raise SystemExit(f"PACKAGE_INPUT_DIR must be below {target}, got {resolved}") from error
+print(resolved)
+PY
+)"
+    export PACKAGE_INPUT_DIR
+  fi
+  temp_root="${CANDIDATE_HARNESS_TEST_ROOT:-${TMPDIR:-/tmp}}"
+  snapshot_json="$(python3 "${lifecycle}" snapshot --root "${temp_root}" --repository "${SCRIPT_ROOT}" --purpose exact-candidate-package-snapshot)"
+  read -r snapshot_root snapshot_token snapshot_head < <(
+    printf '%s' "${snapshot_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"], v["git_head"])'
+  )
+  snapshot_cleanup() {
+    python3 "${lifecycle}" remove --root "${temp_root}" --path "${snapshot_root}" \
+      --purpose exact-candidate-package-snapshot --token "${snapshot_token}"
+  }
+  trap snapshot_cleanup EXIT
+  bash "${BASH_SOURCE[0]}" --internal "${snapshot_root}" "${snapshot_token}" "${snapshot_head}"
+  exit $?
+fi
+
+[[ "$#" -eq 4 ]] || { printf 'exact-candidate-package-set: error: invalid internal invocation\n' >&2; exit 1; }
+snapshot_root="$2"
+snapshot_token="$3"
+snapshot_head="$4"
+export CANDIDATE_HARNESS_ROOT="$snapshot_root" CANDIDATE_HARNESS_GIT_HEAD="$snapshot_head"
+python3 "${lifecycle}" verify --root "${CANDIDATE_HARNESS_TEST_ROOT:-${TMPDIR:-/tmp}}" \
+  --path "${snapshot_root}" --purpose exact-candidate-package-snapshot \
+  --token "${snapshot_token}"
+
+ROOT="${CANDIDATE_HARNESS_ROOT}"
+cd "${ROOT}"
+if [[ "${CANDIDATE_HARNESS_SNAPSHOT_PROBE:-0}" == "1" && "${CANDIDATE_HARNESS_TEST_INJECTION:-0}" == "1" ]]; then
+  [[ "${ROOT}" != "${SCRIPT_ROOT}" && -f "${ROOT}/Cargo.toml" && -d "${ROOT}/crates" ]]
+  printf 'exact-candidate-package-set: disposable snapshot ok\n'
+  exit 0
+fi
+
+output_root="${CANDIDATE_HARNESS_OUTPUT_ROOT:-${ROOT}/target}"
+mkdir -p "${output_root}"
+work_json="$(python3 "${lifecycle}" allocate --root "${output_root}" --purpose exact-candidate-package-set --durable)"
+read -r work_dir work_token < <(
+  printf '%s' "${work_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
+)
 packages_dir="${work_dir}/packages"
 # Extracted packages must live outside the workspace tree; otherwise Cargo
 # walks up to the repo Cargo.toml and treats them as workspace members.
-offline_root="${OFFLINE_ROOT:-$(mktemp -d "${TMPDIR:-/tmp}/cargo-allow-ecps-offline.XXXXXX")}"
+offline_parent="${CANDIDATE_HARNESS_TEST_ROOT:-${TMPDIR:-/tmp}}"
+offline_json="$(python3 "${lifecycle}" allocate --root "${offline_parent}" --purpose exact-candidate-package-offline)"
+read -r offline_root offline_token < <(
+  printf '%s' "${offline_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
+)
 extracted_dir="${offline_root}/extracted"
 cargo_home="${offline_root}/cargo-home"
 local_registry_dir="${offline_root}/local-registry"
@@ -62,7 +123,12 @@ restore_source_checkout() {
 cleanup_offline() {
   restore_source_checkout
   if [[ "${KEEP_OFFLINE:-0}" != "1" ]]; then
-    rm -rf "${offline_root}"
+    python3 "${lifecycle}" remove --root "${offline_parent}" --path "${offline_root}" \
+      --purpose exact-candidate-package-offline --token "${offline_token}"
+  fi
+  if [[ "${package_set_passed:-0}" != "1" ]]; then
+    python3 "${lifecycle}" remove --root "${output_root}" --path "${work_dir}" \
+      --purpose exact-candidate-package-set --token "${work_token}"
   fi
 }
 trap cleanup_offline EXIT
@@ -77,7 +143,6 @@ fail() {
 }
 
 command -v cargo >/dev/null 2>&1 || fail "cargo is required"
-command -v python3 >/dev/null 2>&1 || fail "python3 is required"
 command -v tar >/dev/null 2>&1 || fail "tar is required"
 
 read_workspace_version() {
@@ -135,29 +200,24 @@ done
 version="$(read_workspace_version)"
 [[ -n "${version}" ]] || fail "could not read workspace.package.version"
 
-git_head=""
-if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  git_head="$(git rev-parse HEAD 2>/dev/null || true)"
-fi
+git_head="${CANDIDATE_HARNESS_GIT_HEAD:-}"
 
-package_staging=""
 if [[ "${SKIP_PACKAGE:-0}" == "1" ]]; then
-  package_staging="$(mktemp -d "${TMPDIR:-/tmp}/cargo-allow-ecps-packages.XXXXXX")"
   shopt -s nullglob
-  staged=("${packages_dir}"/*.crate)
+  package_input_dir="${PACKAGE_INPUT_DIR:-}"
+  [[ -n "${package_input_dir}" && -d "${package_input_dir}" ]] \
+    || fail "SKIP_PACKAGE=1 requires PACKAGE_INPUT_DIR"
+  staged=("${package_input_dir}"/*.crate)
   shopt -u nullglob
   [[ "${#staged[@]}" -gt 0 ]] \
-    || fail "SKIP_PACKAGE=1 but no .crate files under ${packages_dir}"
-  cp "${staged[@]}" "${package_staging}/"
+    || fail "SKIP_PACKAGE=1 but no .crate files under ${package_input_dir}"
 fi
 
-rm -rf "${work_dir}"
 mkdir -p "${packages_dir}" "${extracted_dir}" "${cargo_home}" "${target_dir}" "${install_root}" "${work_dir}/install/bin" "${local_registry_dir}"
 
 if [[ "${SKIP_PACKAGE:-0}" == "1" ]]; then
   log "SKIP_PACKAGE=1; restoring prebuilt packages"
-  cp "${package_staging}"/*.crate "${packages_dir}/"
-  rm -rf "${package_staging}"
+  cp "${staged[@]}" "${packages_dir}/"
 else
   log "packaging workspace crates with cargo package --workspace --locked"
   package_flags=(--workspace --locked)
@@ -1007,3 +1067,4 @@ if [[ -f "${cargo_bin}.exe" || "${cargo_bin}" == *.exe ]]; then
 fi
 cp "${cargo_bin}" "${durable_bin}"
 log "durable install copy: ${durable_bin}"
+package_set_passed=1
