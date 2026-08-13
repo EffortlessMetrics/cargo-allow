@@ -33,10 +33,16 @@ pub struct RustSourceCouplingScan {
 }
 
 pub fn scan_rust_source_coupling(source: &str) -> CargoAllowResult<RustSourceCouplingScan> {
+    scan_rust_source_coupling_with_manifest_env(source, !rust_source_declares_no_std(source)?)
+}
+
+pub fn scan_rust_source_coupling_with_manifest_env(
+    source: &str,
+    manifest_env_is_unshadowed: bool,
+) -> CargoAllowResult<RustSourceCouplingScan> {
     let tree = parse_rust_syntax(source)?;
     let line_index = SourceLineIndex::new(source);
     let mut facts = Vec::new();
-    let manifest_env_is_unshadowed = !contains_no_std_attribute(tree.tree.root_node(), source);
     collect_coupling_facts(
         tree.tree.root_node(),
         source,
@@ -48,6 +54,22 @@ pub fn scan_rust_source_coupling(source: &str) -> CargoAllowResult<RustSourceCou
         facts,
         has_parse_error: tree.has_error(),
     })
+}
+
+pub fn rust_source_declares_no_std(source: &str) -> CargoAllowResult<bool> {
+    let tree = parse_rust_syntax(source)?;
+    let root = tree.tree.root_node();
+    let mut cursor = root.walk();
+    Ok(root
+        .named_children(&mut cursor)
+        .take_while(|child| child.kind().contains("attribute"))
+        .any(|attribute| {
+            node_text(source, attribute).is_some_and(|text| {
+                let compact: String = text.chars().filter(|ch| !ch.is_whitespace()).collect();
+                compact.starts_with("#![no_std")
+                    || (compact.starts_with("#![cfg_attr(") && compact.contains(",no_std"))
+            })
+        }))
 }
 
 fn collect_coupling_facts(
@@ -111,24 +133,6 @@ fn collect_coupling_facts(
     for child in node.children(&mut cursor) {
         collect_coupling_facts(child, source, line_index, manifest_env_is_unshadowed, facts);
     }
-}
-
-fn contains_no_std_attribute(node: Node<'_>, source: &str) -> bool {
-    if node.kind().contains("attribute") && contains_identifier(node, source, "no_std") {
-        return true;
-    }
-    let mut cursor = node.walk();
-    node.named_children(&mut cursor)
-        .any(|child| contains_no_std_attribute(child, source))
-}
-
-fn contains_identifier(node: Node<'_>, source: &str, expected: &str) -> bool {
-    if node.kind() == "identifier" && node_text(source, node) == Some(expected) {
-        return true;
-    }
-    let mut cursor = node.walk();
-    node.named_children(&mut cursor)
-        .any(|child| contains_identifier(child, source, expected))
 }
 
 fn path_read_macro_kind(node: Node<'_>, source: &str) -> Option<RustSourceCouplingKind> {

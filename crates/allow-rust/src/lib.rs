@@ -42,7 +42,8 @@ pub use scan_cache::ScanCache;
 pub use scan_result::{RustFileScanOutcome, RustFileScanStatus, RustScanResult};
 pub use syntax_coupling::{
     RustSourceCoupling, RustSourceCouplingKind, RustSourceCouplingPathBase, RustSourceCouplingScan,
-    scan_rust_source_coupling,
+    rust_source_declares_no_std, scan_rust_source_coupling,
+    scan_rust_source_coupling_with_manifest_env,
 };
 pub use syntax_tree::{RustSyntaxContainer, RustSyntaxTree, parse_rust_syntax};
 pub use test_subjects::{

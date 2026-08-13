@@ -8,7 +8,7 @@ use allow_policy::product_crates::{
 };
 use allow_rust::{
     RustSourceCouplingKind, RustSourceCouplingPathBase, is_likely_test_file,
-    scan_rust_source_coupling,
+    rust_source_declares_no_std, scan_rust_source_coupling_with_manifest_env,
 };
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -128,12 +128,25 @@ fn source_coupling_diagnostics_for_sources_at_root(
 ) -> CargoAllowResult<Vec<SourceCouplingDiagnostic>> {
     let target_owners = target_owners(manifest);
     let scanned_paths: BTreeSet<&PathBuf> = files.iter().map(|(path, _)| path).collect();
+    let no_std_crates: BTreeSet<String> = files
+        .iter()
+        .filter_map(|(path, source)| {
+            rust_source_declares_no_std(source)
+                .ok()
+                .filter(|declares| *declares)
+                .and_then(|_| crate_identity_for_path(manifest, path))
+                .map(|identity| identity.workspace_path)
+        })
+        .collect();
     let mut diagnostics = Vec::new();
     for (path, source) in files {
         let Some(source_identity) = crate_identity_for_path(manifest, path) else {
             continue;
         };
-        let scan = scan_rust_source_coupling(source)?;
+        let scan = scan_rust_source_coupling_with_manifest_env(
+            source,
+            !no_std_crates.contains(&source_identity.workspace_path),
+        )?;
         for fact in scan.facts {
             match fact.kind {
                 RustSourceCouplingKind::UseDeclaration => {
