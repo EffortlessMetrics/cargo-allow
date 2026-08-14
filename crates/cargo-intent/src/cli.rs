@@ -127,6 +127,10 @@ fn cmd_governance(
 
     let receipt = compile_governance_receipt_at(root)?;
     if let Some(path) = &args.receipt {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|err| format!("create receipt directory {}: {err}", parent.display()))?;
+        }
         let json = serde_json::to_string_pretty(&receipt)
             .map_err(|err| format!("serialize receipt: {err}"))?;
         std::fs::write(path, format!("{json}\n"))

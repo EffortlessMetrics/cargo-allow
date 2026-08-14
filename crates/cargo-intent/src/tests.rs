@@ -74,3 +74,23 @@ fn exit_mapping_matches_result_classes() -> Result<(), String> {
     );
     Ok(())
 }
+
+#[test]
+fn ci_consumes_the_governance_receipt_with_a_pinned_path() -> Result<(), String> {
+    // #2942 step 5 (#3541): the CI test job must validate governance through
+    // the cargo-intent receipt with a pinned receipt path, not a binary
+    // heuristic.
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let workflow = std::fs::read_to_string(root.join(".github/workflows/ci.yml"))
+        .map_err(|err| format!("read ci.yml: {err}"))?;
+    if !workflow.contains("Governance validation receipt (#2942 step 5)") {
+        return Err("CI must run the governance receipt step".into());
+    }
+    if !workflow.contains("--receipt target/cargo-intent/governance-receipt.json") {
+        return Err("CI must pin the governance receipt path".into());
+    }
+    if !workflow.contains("name: governance-receipt") {
+        return Err("CI must upload the governance receipt artifact".into());
+    }
+    Ok(())
+}
