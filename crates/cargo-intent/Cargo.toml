@@ -19,6 +19,7 @@ path = "src/main.rs"
 [dependencies]
 clap.workspace = true
 intent-compiler.workspace = true
+intent-model.workspace = true
 intent-protocol.workspace = true
 effortless-repo-protocol.workspace = true
 effortless-repo-snapshot.workspace = true

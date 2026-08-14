@@ -246,6 +246,34 @@ parity_case = "parity-proof-engine-boundary-v1"
 claim_boundary = "Engine orchestration scaffold only; cargo-proof CLI lands in follow-on packets."
 
 [[shim]]
+id = "shim-proof-engine-ripr-routing"
+old_identity = "ripr::proof_route"
+new_identity = "proof-engine::ripr_routing"
+kind = "ModuleFacade"
+posture = "private"
+status = "active"
+move_ledger_entry = "introduce-proof-engine-ripr-routing"
+controlling_issue = 2713
+latest_allowed_stage = 1
+removal_condition = "issue:#2606 proof-engine ripr-routing cutover receipt"
+parity_case = "parity-proof-engine-ripr-routing-v1"
+claim_boundary = "Route/preflight composition consuming the #2708 corpus contract with fail-closed required aggregates; does not execute live ripr-swarm providers or claim dual-run parity."
+
+[[shim]]
+id = "shim-proof-protocol-proof-corpus"
+old_identity = "ripr::proof_route"
+new_identity = "proof-protocol::proof_corpus"
+kind = "ModuleFacade"
+posture = "private"
+status = "active"
+move_ledger_entry = "introduce-proof-protocol-proof-corpus"
+controlling_issue = 2708
+latest_allowed_stage = 1
+removal_condition = "issue:#2606 proof-protocol proof-corpus cutover receipt"
+parity_case = "parity-proof-protocol-corpus-v1"
+claim_boundary = "Provider-independent proof corpus, result taxonomy, binding identities, and negative experiments; does not execute real RIPR providers or cut over production routing."
+
+[[shim]]
 id = "shim-cargo-proof-crate-scaffold"
 old_identity = "cargo-proof::cargo_proof_unowned"
 new_identity = "cargo-proof::identity"

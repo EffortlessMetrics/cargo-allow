@@ -17,7 +17,8 @@ use super::package_posture::{
     VersionSourceV2,
 };
 use super::transitions::{
-    ParityDispositionV2, ParityReferenceV2, ShimReferenceV2, ShimStatusV2, TransitionExpiryV2,
+    MoveReferenceV2, ParityDispositionV2, ParityReferenceV2, ShimReferenceV2, ShimStatusV2,
+    TransitionExpiryV2,
 };
 
 /// Parse `policy/product-crates-v2.toml` `[[crate_identity]]` rows.
@@ -261,4 +262,47 @@ pub fn parse_dependency_law_v1(
         required.push(edge);
     }
     Ok((forbidden, required))
+}
+
+/// Parse `policy/product-move-ledger.toml` `[[entry]]` rows into move
+/// references. Tolerant of the ledger's current/consumer fields; strict on
+/// the reference fields.
+pub fn parse_move_references_v1(text: &str) -> Result<Vec<MoveReferenceV2>, String> {
+    #[derive(Deserialize)]
+    struct LedgerToml {
+        #[serde(default)]
+        entry: Vec<EntryToml>,
+    }
+    #[derive(Deserialize)]
+    struct EntryToml {
+        id: String,
+        #[serde(default)]
+        source_kind: String,
+        #[serde(default)]
+        current_product: String,
+        #[serde(default)]
+        current_crate: String,
+        #[serde(default)]
+        target_product: String,
+        #[serde(default)]
+        target_crate: String,
+    }
+    let ledger: LedgerToml =
+        toml::from_str(text).map_err(|err| format!("parse move ledger: {err}"))?;
+    ledger
+        .entry
+        .into_iter()
+        .map(|row| {
+            let reference = MoveReferenceV2 {
+                entry_id: row.id,
+                source_kind: row.source_kind,
+                current_product: row.current_product,
+                current_crate: row.current_crate,
+                target_product: row.target_product,
+                target_crate: row.target_crate,
+            };
+            reference.validate()?;
+            Ok(reference)
+        })
+        .collect()
 }
