@@ -14,10 +14,10 @@
 
 ### Status counts
 
-- `CutoverCurrent`: **3**
+- `CutoverCurrent`: **14**
 - `CutoverOutstanding`: **6**
 - `RepositoryDecisionRequired`: **1**
-- `TargetRatified`: **98**
+- `TargetRatified`: **87**
 
 ### Disposition counts
 
@@ -694,8 +694,8 @@
 - Current: crates/effortless-repo-edit/src/single_target_apply.rs
 - Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `RepoEdit` / `TargetRatified`
-- Old path: `OldPathStillReachable`
+- Stage/status: `RepoEdit` / `CutoverCurrent`
+- Old path: `Deleted`
 - Removal: issue:#2606 stage-7 cutover receipt
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
 - Deletion output: Deferred to extraction cutover and parity receipts.
@@ -1035,8 +1035,8 @@
 - Current: crates/effortless-repo-edit/src/single_target_apply.rs
 - Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `RepoEdit` / `TargetRatified`
-- Old path: `OldPathStillReachable`
+- Stage/status: `RepoEdit` / `CutoverCurrent`
+- Old path: `Deleted`
 - Removal: issue:#2606 stage-3 cutover receipt
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
 - Deletion output: Deferred to extraction cutover and parity receipts.
@@ -1046,8 +1046,8 @@
 - Current: crates/cargo-allow/src/add.rs
 - Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `RepoEdit` / `TargetRatified`
-- Old path: `OldPathStillReachable`
+- Stage/status: `RepoEdit` / `CutoverCurrent`
+- Old path: `Deleted`
 - Removal: issue:#2606 stage-8 cutover receipt
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
 - Deletion output: Deferred to extraction cutover and parity receipts.
@@ -1057,8 +1057,8 @@
 - Current: crates/cargo-allow/src/init.rs
 - Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `RepoEdit` / `TargetRatified`
-- Old path: `OldPathStillReachable`
+- Stage/status: `RepoEdit` / `CutoverCurrent`
+- Old path: `Deleted`
 - Removal: issue:#2606 stage-4 cutover receipt
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
 - Deletion output: Deferred to extraction cutover and parity receipts.
@@ -1068,8 +1068,8 @@
 - Current: crates/cargo-allow/src/migrate.rs
 - Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `RepoEdit` / `TargetRatified`
-- Old path: `OldPathStillReachable`
+- Stage/status: `RepoEdit` / `CutoverCurrent`
+- Old path: `Deleted`
 - Removal: issue:#2606 stage-9 cutover receipt
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
 - Deletion output: Deferred to extraction cutover and parity receipts.
@@ -1079,8 +1079,8 @@
 - Current: crates/cargo-allow/src/propose.rs
 - Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `RepoEdit` / `TargetRatified`
-- Old path: `OldPathStillReachable`
+- Stage/status: `RepoEdit` / `CutoverCurrent`
+- Old path: `Deleted`
 - Removal: issue:#2606 stage-10 cutover receipt
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
 - Deletion output: Deferred to extraction cutover and parity receipts.
@@ -1090,8 +1090,8 @@
 - Current: crates/cargo-allow/src/prune.rs
 - Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `RepoEdit` / `TargetRatified`
-- Old path: `OldPathStillReachable`
+- Stage/status: `RepoEdit` / `CutoverCurrent`
+- Old path: `Deleted`
 - Removal: issue:#2606 stage-6 cutover receipt
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
 - Deletion output: Deferred to extraction cutover and parity receipts.
@@ -1101,8 +1101,8 @@
 - Current: crates/cargo-allow/src/refresh.rs
 - Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `RepoEdit` / `TargetRatified`
-- Old path: `OldPathStillReachable`
+- Stage/status: `RepoEdit` / `CutoverCurrent`
+- Old path: `Deleted`
 - Removal: issue:#2606 stage-5 cutover receipt
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
 - Deletion output: Deferred to extraction cutover and parity receipts.
@@ -1167,8 +1167,8 @@
 - Current: crates/cargo-allow/src/command_support.rs
 - Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `RepoEdit` / `TargetRatified`
-- Old path: `OldPathStillReachable`
+- Stage/status: `RepoEdit` / `CutoverCurrent`
+- Old path: `Deleted`
 - Removal: issue:#2606 stage-2 cutover receipt
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
 - Deletion output: Deferred to extraction cutover and parity receipts.
@@ -1178,8 +1178,8 @@
 - Current: crates/cargo-allow/src/mutation_lock.rs
 - Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `RepoEdit` / `TargetRatified`
-- Old path: `OldPathStillReachable`
+- Stage/status: `RepoEdit` / `CutoverCurrent`
+- Old path: `Deleted`
 - Removal: issue:#2606 stage-1 cutover receipt
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
 - Deletion output: Deferred to extraction cutover and parity receipts.
@@ -1189,8 +1189,8 @@
 - Current: crates/cargo-allow/src/policy_config.rs
 - Target: `shared / effortless-repo-edit::repo_edit`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `RepoEdit` / `TargetRatified`
-- Old path: `OldPathStillReachable`
+- Stage/status: `RepoEdit` / `CutoverCurrent`
+- Old path: `Deleted`
 - Removal: issue:#2606 stage-1 cutover receipt
 - Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
 - Deletion output: Deferred to extraction cutover and parity receipts.

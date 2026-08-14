@@ -41,58 +41,28 @@ fn extraction_shim_registry_report_only() -> Result<(), String> {
 
 #[test]
 fn repo_edit_core_shims_match_live_private_forwards() -> Result<(), String> {
+    // #3557: the repo-edit core forwards (mutation lock, containment,
+    // atomic write) are removed at the RepoEdit cutover; the forwarding
+    // marker files may remain as ordinary call sites.
     let root = repo_root();
     let registry_text = std::fs::read_to_string(root.join("policy/extraction-shims.toml"))
         .map_err(|err| format!("read shim registry: {err}"))?;
     let registry = allow_policy::extraction_shims::parse_extraction_shim_registry(&registry_text)
         .map_err(|err| format!("parse shim registry: {err}"))?;
 
-    let expected = [
-        (
-            "shim-cargo-allow-mutation-lock",
-            "cargo-allow::mutation_lock",
-            "repo-edit::mutation_lock",
-            "crates/cargo-allow/src/mutation_lock.rs",
-            "pub(crate) use effortless_repo_edit::MutationLock;",
-        ),
-        (
-            "shim-cargo-allow-path-containment",
-            "cargo-allow::policy_config::assert_path_within_root",
-            "repo-edit::containment",
-            "crates/cargo-allow/src/policy_config.rs",
-            "map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)",
-        ),
-        (
-            "shim-cargo-allow-atomic-write",
-            "cargo-allow::io::write_file",
-            "repo-edit::atomic_write",
-            "crates/cargo-allow/src/command_support.rs",
-            "pub(crate) use effortless_repo_edit::{write_file, write_file_no_overwrite};",
-        ),
-    ];
-
-    for (id, old_identity, new_identity, source_path, forwarding_marker) in expected {
+    for id in [
+        "shim-cargo-allow-mutation-lock",
+        "shim-cargo-allow-path-containment",
+        "shim-cargo-allow-atomic-write",
+    ] {
         let shim = registry
             .shim
             .iter()
             .find(|shim| shim.id == id)
             .ok_or_else(|| format!("missing repo-edit core shim {id}"))?;
-        if shim.posture != allow_policy::extraction_shims::ShimPosture::Private
-            || shim.status != allow_policy::extraction_shims::ShimStatus::Active
-            || shim.old_identity != old_identity
-            || shim.new_identity != new_identity
-            || !shim.removal_condition.contains("#2606")
-        {
+        if shim.status != allow_policy::extraction_shims::ShimStatus::Removed {
             return Err(format!(
-                "repo-edit core shim {id} has an unexpected compatibility boundary"
-            ));
-        }
-
-        let source = std::fs::read_to_string(root.join(source_path))
-            .map_err(|err| format!("read {source_path}: {err}"))?;
-        if !source.contains(forwarding_marker) {
-            return Err(format!(
-                "repo-edit core shim {id} is missing forwarding marker in {source_path}"
+                "repo-edit core shim {id} must be removed after the cutover"
             ));
         }
     }
@@ -148,13 +118,13 @@ fn repo_edit_command_shims_match_live_apply_forwards() -> Result<(), String> {
             .find(|shim| shim.id == id)
             .ok_or_else(|| format!("missing repo-edit command shim {id}"))?;
         if shim.posture != allow_policy::extraction_shims::ShimPosture::Private
-            || shim.status != allow_policy::extraction_shims::ShimStatus::Active
+            || shim.status != allow_policy::extraction_shims::ShimStatus::Removed
             || shim.old_identity != old_identity
             || shim.new_identity != "repo-edit::single_target_apply"
             || !shim.removal_condition.contains("#2606")
         {
             return Err(format!(
-                "repo-edit command shim {id} has an unexpected compatibility boundary"
+                "repo-edit command shim {id} must be removed after the cutover"
             ));
         }
 
