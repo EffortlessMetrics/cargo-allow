@@ -81,7 +81,10 @@ jobs:
         if: always()
         with:
           name: extraction-cutover-build-receipts
-          path: target/extraction-cutover/**/build-package.json
+          path: |
+            target/extraction-cutover/**/build-package.json
+            target/exact-candidate-package-set/exact-candidate-package-set.receipt.json
+            target/exact-candidate-package-set/packages/
           if-no-files-found: warn
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
@@ -264,6 +267,12 @@ jobs:
           if-no-files-found: warn
       - name: Characterize extraction parity cutover status (#3469)
         run: bash scripts/test-extraction-cutover-status.sh
+      - name: Restore cutover build receipts (#3469/#3552)
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: extraction-cutover-build-receipts
+          path: target
+        continue-on-error: true
       - name: Extraction parity cutover status (#3469)
         run: bash scripts/extraction-cutover-status.sh
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

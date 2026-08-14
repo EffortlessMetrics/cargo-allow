@@ -105,7 +105,7 @@ if receipt_head != current_head:
 if not source_identity.startswith(f"commit:{current_head}/"):
     fail("parity source identity does not match the current commit")
 
-root = Path(os.environ["PACKAGE_SET_RECEIPT"]).parents[1]
+root = Path(os.environ["PACKAGE_SET_RECEIPT"]).parents[2]
 crates = {record["name"]: record for record in package_set.get("package_set", {}).get("crates", [])}
 expected_packages = sorted(expectation.get("package_names") or [])
 if not expected_packages:
