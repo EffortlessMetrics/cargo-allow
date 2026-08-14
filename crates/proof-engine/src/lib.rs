@@ -25,6 +25,8 @@ mod legacy_conversion;
 mod obligation_plan;
 mod parity;
 mod phase_gate;
+#[cfg(test)]
+mod plan_semantics_tests;
 mod planner;
 mod provider_api;
 mod provider_registry;
