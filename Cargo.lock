@@ -280,6 +280,7 @@ dependencies = [
  "clap",
  "effortless-repo-protocol",
  "effortless-rust-source-index",
+ "intent-protocol",
  "proof-orchestrator",
  "proof-protocol",
  "serde",
