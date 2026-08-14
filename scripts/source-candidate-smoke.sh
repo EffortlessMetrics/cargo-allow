@@ -704,7 +704,7 @@ EOF
       HTTPS_PROXY=http://127.0.0.1:9 \
       HTTP_PROXY=http://127.0.0.1:9 \
       http_proxy=http://127.0.0.1:9 \
-      cargo package -p cargo-allow --no-verify --locked --allow-dirty \
+      cargo package --workspace --no-verify --locked --allow-dirty \
         --config "${package_config}"
     } 2>&1)"
     package_code=$?
