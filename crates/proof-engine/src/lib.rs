@@ -21,6 +21,7 @@ mod currentness;
 mod dry_run;
 mod execution;
 mod intent_planner;
+mod legacy_conversion;
 mod obligation_plan;
 mod parity;
 mod phase_gate;
@@ -78,6 +79,7 @@ pub use execution::{
 pub use intent_planner::{
     INTENT_OBLIGATION_PLANNER_SCHEMA_ID, IntentPlannerError, plan_proof_execution_from_intent,
 };
+pub use legacy_conversion::{LegacyConversionError, convert_legacy_obligation_plan};
 pub use obligation_plan::{
     CHANGE_OBLIGATION_PLAN_SCHEMA_ID, ChangeObligationPlanV1, ChangeObligationV1,
     ObligationPlanError, load_obligation_plan_toml, validate_obligation_plan,
