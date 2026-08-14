@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::provider_api::{FAKE_PROOF_PROVIDER_ID, FakeProofProviderV1};
+use crate::provider_api::FakeProofProviderV1;
 use proof_protocol::{
     ProofPhaseGatePostureV1, ProofPhaseGateV1, ProofReceiptBindingV1, ProofReceiptSetV1,
 };
@@ -13,16 +13,19 @@ use crate::contradiction::detect_contradictions;
 use crate::currentness::{evaluate_currentness, receipt_set_digest};
 use crate::dry_run::dry_run_proof_plan;
 use crate::execution::{ExecutionApprovalV1, evaluate_execution_gate, require_explicit_execution};
-use crate::obligation_plan::{ChangeObligationPlanV1, ChangeObligationV1};
 use crate::parity::{
     load_ripr_routing_contract, parity_contract_paths, ripr_routing_contract_path,
 };
 use crate::phase_gate::evaluate_phase_gate;
-use crate::planner::plan_proof_execution;
 use crate::provider_registry::{ProviderRegistryV1, register_validated_provider};
 use crate::ripr_routing::{
     ProofClaimPostureV1, RiprPreflightClaimInputV1, RiprRouteClaimInputV1, RiprRoutingError,
     compose_preflight_receipt, compose_route_receipt, compose_routing_aggregate,
+};
+use intent_protocol::{
+    IntentArtifactKindV1, IntentIdentityEnvelopeV1, IntentObligationPlanEnvelopeV1,
+    IntentObligationPostureV1, IntentPhaseObligationKindV1, IntentPhaseObligationV1,
+    RepositorySnapshotV1, ResolvedRevisionV1,
 };
 use proof_protocol::ProofResultStateV1;
 
@@ -115,19 +118,42 @@ fn allowed_upstream_topology_registered() -> Result<(), String> {
 
 #[test]
 fn planner_dry_run_and_execution_gate_pipeline() -> Result<(), String> {
-    let obligation_plan = ChangeObligationPlanV1::new(
+    let identity = IntentIdentityEnvelopeV1::new(
+        RepositorySnapshotV1::new_committed_head(
+            "identity",
+            "sha1",
+            ResolvedRevisionV1 {
+                requested: "HEAD".to_string(),
+                commit: "abc".to_string(),
+                tree: String::new(),
+            },
+        ),
+        IntentArtifactKindV1::RequirementDocument,
         "plan-2589-smoke",
-        vec![ChangeObligationV1 {
+        "test/source.md",
+        "test-content",
+    );
+    let envelope = IntentObligationPlanEnvelopeV1::new(
+        identity,
+        "precommit",
+        vec![IntentPhaseObligationV1 {
             obligation_id: "obligation-1".to_string(),
-            provider_id: FAKE_PROOF_PROVIDER_ID.to_string(),
-            proof_kind: "cargo-allow.no-new".to_string(),
+            phase: "precommit".to_string(),
+            kind: IntentPhaseObligationKindV1::EvidenceReview,
+            statement: "Run cargo-allow no-new".to_string(),
+            posture: IntentObligationPostureV1::Blocking,
+            evidence_refs: vec![],
         }],
     );
     let mut provider_registry = ProviderRegistryV1::new(Vec::new());
-    register_validated_provider(&mut provider_registry, &FakeProofProviderV1::new())
-        .map_err(|err| err.as_str())?;
+    register_validated_provider(
+        &mut provider_registry,
+        &FakeProofProviderV1::with_id("cargo-allow"),
+    )
+    .map_err(|err| err.as_str())?;
     let plan =
-        plan_proof_execution(&obligation_plan, &provider_registry).map_err(|err| err.as_str())?;
+        crate::intent_planner::plan_proof_execution_from_intent(&envelope, &provider_registry)
+            .map_err(|err| err.as_str())?;
     let dry_run = dry_run_proof_plan(&plan).map_err(|err| err.as_str())?;
     let first_line = dry_run
         .lines

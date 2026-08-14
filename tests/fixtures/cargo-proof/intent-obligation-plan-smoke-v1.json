@@ -1,0 +1,34 @@
+{
+  "schema_id": "intent.obligation-plan.v1",
+  "identity": {
+    "schema_id": "intent.identity.v1",
+    "snapshot": {
+      "schema_id": "repo.repository-snapshot.v1",
+      "kind": "committed_head",
+      "root_identity": "cargo-proof-smoke",
+      "object_format": "sha1",
+      "head": {
+        "requested": "HEAD",
+        "commit": "0000000000000000000000000000000000000000",
+        "tree": ""
+      },
+      "dirty_state": "not_probed",
+      "selected_source_closure": ""
+    },
+    "artifact_kind": "requirement_document",
+    "artifact_id": "cargo-proof-smoke-obligation",
+    "source_path": "tests/fixtures/cargo-proof/intent-obligation-plan-smoke-v1.json",
+    "content_identity": "smoke"
+  },
+  "phase": "precommit",
+  "obligations": [
+    {
+      "obligation_id": "obligation-no-new",
+      "phase": "precommit",
+      "kind": "evidence_review",
+      "statement": "Run cargo-allow no-new guard",
+      "posture": "blocking",
+      "evidence_refs": []
+    }
+  ]
+}

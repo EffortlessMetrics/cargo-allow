@@ -162,38 +162,26 @@ PY
 record_stage "cargo_intent_change_status" "real" "Passed"
 
 log "stage obligation_plan_bridge"
-obligation_plan_path="${work_dir}/obligation-plan.toml"
+obligation_plan_path="${work_dir}/intent-obligation-plan.json"
 python3 - "${intent_status_path}" "${obligation_plan_path}" <<'PY'
 import json, sys
 from pathlib import Path
 
 report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 out = Path(sys.argv[2])
-obligations = (
-    report.get("obligation_plan", {})
-    .get("plan", {})
-    .get("obligations", [])
-)
-if not obligations:
+# cargo-proof plan consumes IntentObligationPlanEnvelopeV1 JSON (#3314); the
+# intent change-status response embeds that envelope verbatim under
+# obligation_plan.plan, so the bridge passes it through without reauthoring.
+envelope = report.get("obligation_plan", {}).get("plan")
+if not isinstance(envelope, dict):
+    raise SystemExit("intent status missing obligation_plan.plan envelope")
+if envelope.get("schema_id") != "intent.obligation-plan.v1":
+    raise SystemExit(
+        f"unexpected envelope schema_id: {envelope.get('schema_id')!r}"
+    )
+if not envelope.get("obligations"):
     raise SystemExit("intent status missing obligations for bridge")
-
-lines = [
-    'schema_id = "proof.change-obligation-plan.v1"',
-    'plan_id = "three-product-dogfood-obligation"',
-    "",
-]
-for idx, item in enumerate(obligations):
-    kind = item.get("kind", "unknown")
-    if isinstance(kind, dict):
-        kind = next(iter(kind.keys()), "unknown")
-    # cargo-proof plan registry currently registers fake provider only (#2589-B).
-    provider = "proof.fake-provider.v1"
-    lines.append("[[obligations]]")
-    lines.append(f'obligation_id = "obligation-{idx}"')
-    lines.append(f'provider_id = "{provider}"')
-    lines.append('proof_kind = "cargo-allow.no-new"')
-    lines.append("")
-out.write_text("\n".join(lines), encoding="utf-8")
+out.write_text(json.dumps(envelope, indent=2) + "\n", encoding="utf-8")
 PY
 record_stage "obligation_plan_bridge" "bridged" "Passed"
 

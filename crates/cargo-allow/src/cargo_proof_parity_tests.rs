@@ -35,7 +35,7 @@ fn cargo_proof_parity_fixtures_registered() -> Result<(), String> {
 fn cargo_proof_parity_fixture_paths(root: &std::path::Path) -> Vec<PathBuf> {
     vec![
         root.join("tests/fixtures/cargo-proof/product-identity-v1.toml"),
-        root.join("tests/fixtures/cargo-proof/obligation-plan-smoke-v1.toml"),
+        root.join("tests/fixtures/cargo-proof/intent-obligation-plan-smoke-v1.json"),
         root.join("tests/fixtures/cargo-proof/proof-plan-smoke-v1.toml"),
     ]
 }

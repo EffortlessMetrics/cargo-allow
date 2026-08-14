@@ -21,13 +21,10 @@ mod currentness;
 mod dry_run;
 mod execution;
 mod intent_planner;
-mod legacy_conversion;
-mod obligation_plan;
 mod parity;
 mod phase_gate;
 #[cfg(test)]
 mod plan_semantics_tests;
-mod planner;
 mod provider_api;
 mod provider_registry;
 mod ripr_routing;
@@ -81,11 +78,6 @@ pub use execution::{
 pub use intent_planner::{
     INTENT_OBLIGATION_PLANNER_SCHEMA_ID, IntentPlannerError, plan_proof_execution_from_intent,
 };
-pub use legacy_conversion::{LegacyConversionError, convert_legacy_obligation_plan};
-pub use obligation_plan::{
-    CHANGE_OBLIGATION_PLAN_SCHEMA_ID, ChangeObligationPlanV1, ChangeObligationV1,
-    ObligationPlanError, load_obligation_plan_toml, validate_obligation_plan,
-};
 pub use parity::{
     RiprRoutingParityContract, load_ripr_routing_contract, parity_contract_path,
     parity_contract_paths, ripr_routing_contract_path,
@@ -94,7 +86,6 @@ pub use phase_gate::{
     PHASE_GATE_EVALUATION_SCHEMA_ID, PhaseGateError, PhaseGateEvaluationV1, PhaseGateOutcomeV1,
     evaluate_phase_gate,
 };
-pub use planner::{PROOF_PLANNER_SCHEMA_ID, PlannerError, plan_proof_execution};
 // Re-export the absorbed provider API contracts (#2937).
 pub use provider_api::{
     CONFORMANCE_SCENARIO_ID, FAKE_PROOF_PROVIDER_ID, FakeProofProviderV1,
@@ -109,8 +100,7 @@ pub use provider_registry::{
     validate_provider_registry,
 };
 pub use ripr_routing::{
-    PHASE_PREFLIGHT, PHASE_ROUTE, ProofClaimPostureV1, ProofClaimV1,
-    RIPR_PREFLIGHT_RECEIPT_SCHEMA_ID, RIPR_ROUTE_RECEIPT_SCHEMA_ID,
+    ProofClaimPostureV1, RIPR_PREFLIGHT_RECEIPT_SCHEMA_ID, RIPR_ROUTE_RECEIPT_SCHEMA_ID,
     RIPR_ROUTING_AGGREGATE_SCHEMA_ID, RiprPreflightClaimInputV1, RiprPreflightReceiptV1,
     RiprRouteClaimInputV1, RiprRouteReceiptV1, RiprRoutingAggregateV1, RiprRoutingError,
     compose_preflight_receipt, compose_route_receipt, compose_routing_aggregate,

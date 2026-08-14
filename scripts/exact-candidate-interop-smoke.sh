@@ -238,7 +238,7 @@ record_journey "B" "cargo-intent" "Passed"
 
 # --- Journey C: cargo-proof fake/command provider ---
 log "journey C: cargo-proof plan + dry-run (fake provider)"
-obligation_fixture="${ROOT}/tests/fixtures/cargo-proof/obligation-plan-smoke-v1.toml"
+obligation_fixture="${ROOT}/tests/fixtures/cargo-proof/intent-obligation-plan-smoke-v1.json"
 proof_plan_fixture="${ROOT}/tests/fixtures/cargo-proof/proof-plan-smoke-v1.toml"
 [[ -f "${obligation_fixture}" ]] || fail "missing ${obligation_fixture}"
 [[ -f "${proof_plan_fixture}" ]] || fail "missing ${proof_plan_fixture}"
