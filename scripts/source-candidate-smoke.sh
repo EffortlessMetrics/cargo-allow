@@ -692,7 +692,29 @@ if status != "passed":
     log "package-rebuild omit: packaging cargo-allow ${version} (--no-verify)"
     # --allow-dirty: this path only feeds the adversarial rebuild; release
     # package identity remains package-candidate-smoke / ExactCandidate.
-    cargo package -p cargo-allow --no-verify --locked --allow-dirty
+    package_config="${omit_work}/cargo-config.toml"
+    cat >"${package_config}" <<EOF
+[patch.crates-io]
+allow-core = { path = "${ROOT}/crates/allow-core" }
+EOF
+    set +e
+    package_output="$({
+      CARGO_NET_OFFLINE=true \
+      CARGO_HTTP_PROXY=http://127.0.0.1:9 \
+      HTTPS_PROXY=http://127.0.0.1:9 \
+      HTTP_PROXY=http://127.0.0.1:9 \
+      http_proxy=http://127.0.0.1:9 \
+      cargo package -p cargo-allow --no-verify --locked --allow-dirty \
+        --config "${package_config}"
+    } 2>&1)"
+    package_code=$?
+    set -e
+    printf '%s\n' "${package_output}" >"${omit_work}/package.stderr"
+    [[ "${package_code}" -eq 0 ]] || {
+      grep -F "Updating crates.io index" "${omit_work}/package.stderr" >/dev/null \
+        && fail "offline package-rebuild attempted a crates.io index query"
+      fail "offline package-rebuild failed (exit ${package_code}); see ${omit_work}/package.stderr"
+    }
     packaged_crate="${ROOT}/target/package/${crate_name}"
   fi
   [[ -f "${packaged_crate}" ]] || fail "missing packaged crate ${packaged_crate}"
