@@ -25,9 +25,12 @@ only; no Cargo invocation.
 
 **Consumers** (#2942 step 5): the CI `test` job runs the operation with a
 pinned receipt path and uploads `governance-receipt` as an artifact; the
-step fails on any blocking finding. cargo-allow's architecture tests keep
-calling allow-policy validators directly during cutover — they are the V1
-authority under migration (#2942 steps 6-7).
+step fails on any blocking finding. cargo-allow's check pipeline and
+extraction-parity command keep calling allow-policy validators directly
+during the cutover window (#3542): the runtime guards are bounded
+adapters recorded in the MOVE-GOV ledger rows, and their deletion is
+blocked on #3548 (source-coupling guard migration) and #3469 (cutover
+receipts) per the #3543 consumer audit.
 
 ## Install smoke (#2599-C)
 

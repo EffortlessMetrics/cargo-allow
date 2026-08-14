@@ -278,7 +278,7 @@
 - Disposition: `MoveToIntentModel`
 - Stage/status: `IntentModel` / `CutoverOutstanding`
 - Old path: `OldPathStillReachable`
-- Removal: #2942 step 7 deletion after parity and consumer migration
+- Removal: #3548 source-coupling guard migration, then #2942 step 7 deletion
 - Next: Runtime consumers read through intent-model::governance_v2 compat parsing (#3327); allow-policy keeps V1 parsing as bounded parity until step 7.
 - Deletion output: Delete the V1 architecture manifest parsers from allow-policy under #2942 step 7 after parity and consumer migration (#3541).
 
@@ -289,7 +289,7 @@
 - Disposition: `MoveToIntentEngine`
 - Stage/status: `IntentEngine` / `CutoverOutstanding`
 - Old path: `OldPathStillReachable`
-- Removal: #2942 step 7 deletion after parity and consumer migration
+- Removal: #3548 source-coupling guard migration, then #2942 step 7 deletion
 - Next: intent-engine reconciliation (#3328) and closure validation (#3329) supersede these validators; allow-policy keeps them as bounded parity until step 7.
 - Deletion output: Delete the V1 dependency-law validators from allow-policy under #2942 step 7 after the governance receipt lane proves equivalence (#3541).
 
@@ -300,7 +300,7 @@
 - Disposition: `MoveToIntentModel`
 - Stage/status: `IntentModel` / `CutoverOutstanding`
 - Old path: `OldPathStillReachable`
-- Removal: #2942 step 7 deletion after parity and consumer migration
+- Removal: #3469 cutover receipts and #3548 guard migration, then #2942 step 7 deletion
 - Next: intent-model::governance_v2 parse_parity_references_v1 (#3327) reads the same cases; linkage reconciliation runs in intent-engine (#3328).
 - Deletion output: Delete the V1 parity case parsers and validators from allow-policy under #2942 step 7.
 
@@ -311,7 +311,7 @@
 - Disposition: `MoveToIntentModel`
 - Stage/status: `IntentModel` / `CutoverOutstanding`
 - Old path: `OldPathStillReachable`
-- Removal: #2942 step 7 deletion after parity and consumer migration
+- Removal: #3469 cutover receipts and #3548 guard migration, then #2942 step 7 deletion
 - Next: intent-model::governance_v2 parse_shim_references_v1 (#3327) reads shims and expiries; deletion eligibility runs in intent-engine (#3328).
 - Deletion output: Delete the V1 shim registry parsers and validators from allow-policy under #2942 step 7.
 
@@ -322,7 +322,7 @@
 - Disposition: `MoveToIntentModel`
 - Stage/status: `IntentModel` / `CutoverOutstanding`
 - Old path: `OldPathStillReachable`
-- Removal: #2942 step 7 deletion after parity and consumer migration
+- Removal: #3469 cutover receipts and #3548 guard migration, then #2942 step 7 deletion
 - Next: intent-model::governance_v2 parse_move_references_v1 (#3545) reads the same ledger rows; the ledger validator itself remains a migration-control surface (REMAIN-MOVE-LEDGER-VALIDATOR).
 - Deletion output: Delete the V1 move-ledger entry parser from allow-policy under #2942 step 7 once receipts carry the linkage.
 
@@ -333,7 +333,7 @@
 - Disposition: `MoveToIntentModel`
 - Stage/status: `IntentModel` / `CutoverOutstanding`
 - Old path: `OldPathStillReachable`
-- Removal: #2942 step 7 deletion after parity and consumer migration
+- Removal: #3548 source-coupling guard migration, then #2942 step 7 deletion
 - Next: intent-model::governance_v2 package posture DTOs plus compat parsing (#3327) supersede these DTOs; candidate rows project through the governance receipt (#3540).
 - Deletion output: Delete the V1 package topology parsers and validators from allow-policy under #2942 step 7.
 
