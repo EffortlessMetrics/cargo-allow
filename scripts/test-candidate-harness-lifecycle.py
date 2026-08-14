@@ -149,10 +149,17 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
     if not source_parent.is_dir() or source_sentinel.read_text(encoding="utf-8") != "precreated\n":
         raise SystemExit("source-candidate parent cleanup removed pre-created output")
 
-    caller_work = root / "caller-work" / "source-candidate-smoke"
-    caller_work.parent.mkdir()
-    run("validate-caller", "--repository", str(ROOT), "--path", str(caller_work))
+    caller_repo = root / "caller-repo"
+    caller_repo.mkdir()
+    (caller_repo / "target").mkdir()
+    caller_work = caller_repo / "target" / "source-candidate-smoke"
+    run("validate-work", "--repository", str(caller_repo), "--target", str(caller_repo / "target"),
+        "--path", str(caller_work))
     caller_work.mkdir(parents=True)
+    reject("validate-work", "--repository", str(ROOT), "--target", str(ROOT / "target"),
+           "--path", str(ROOT))
+    reject("validate-work", "--repository", str(ROOT), "--target", str(ROOT / "target"),
+           "--path", str(ROOT / "target"))
     caller_consumer = root / "caller-consumer"
     caller_consumer.mkdir()
     claimed = json.loads(
@@ -165,6 +172,9 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
             "--purpose", "source-candidate-consumer", "--token", claimed["token"])
         if caller_consumer.exists():
             raise SystemExit("claimed caller consumer was not removed")
+    reject("validate-caller", "--repository", str(ROOT), "--path", str(ROOT))
+    reject("validate-caller", "--repository", str(ROOT),
+           "--path", str(ROOT / "crates" / "cargo-allow"))
 
     # Target aliases must be rejected before a harness can mkdir through them.
     run("validate-target", "--repository", str(ROOT), "--path", str(ROOT / "target"))

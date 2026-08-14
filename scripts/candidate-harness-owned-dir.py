@@ -94,6 +94,23 @@ def validate_caller_directory(path: Path, repository: Path) -> Path:
     return resolved
 
 
+def validate_work_directory(path: Path, repository: Path, target: Path) -> Path:
+    repo = canonical_existing(repository, "repository")
+    target_root = canonical_existing(target, "target")
+    candidate_path = path.absolute()
+    if candidate_path.exists():
+        if is_reparse_point(candidate_path) or not candidate_path.is_dir():
+            fail(f"work directory must be a non-symlink directory: {candidate_path}")
+        candidate = candidate_path.resolve(strict=True)
+    else:
+        candidate = canonical_existing(candidate_path.parent, "work directory parent") / candidate_path.name
+    if candidate == repo or candidate in repo.parents:
+        fail(f"work directory overlaps repository root or ancestor: {candidate}")
+    if candidate == target_root or target_root not in candidate.parents:
+        fail(f"work directory must be a strict child of target: {candidate}")
+    return candidate
+
+
 def claim(directory: Path, purpose: str) -> tuple[Path, str]:
     validate_purpose(purpose)
     owned = canonical_existing(directory, "claim directory")
@@ -241,6 +258,10 @@ def main() -> int:
     caller_parser = subparsers.add_parser("validate-caller")
     caller_parser.add_argument("--repository", type=Path, required=True)
     caller_parser.add_argument("--path", type=Path, required=True)
+    work_parser = subparsers.add_parser("validate-work")
+    work_parser.add_argument("--repository", type=Path, required=True)
+    work_parser.add_argument("--target", type=Path, required=True)
+    work_parser.add_argument("--path", type=Path, required=True)
     claim_parser = subparsers.add_parser("claim")
     claim_parser.add_argument("--path", type=Path, required=True)
     claim_parser.add_argument("--purpose", required=True)
@@ -282,6 +303,9 @@ def main() -> int:
         return 0
     if args.command == "validate-caller":
         print(validate_caller_directory(args.path, args.repository))
+        return 0
+    if args.command == "validate-work":
+        print(validate_work_directory(args.path, args.repository, args.target))
         return 0
     if args.command == "claim":
         directory, token = claim(args.path, args.purpose)

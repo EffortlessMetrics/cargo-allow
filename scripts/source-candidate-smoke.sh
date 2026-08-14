@@ -86,7 +86,8 @@ if [[ ! -e "${source_parent}" ]]; then
   mkdir "${source_parent}"
 fi
 if [[ -n "${WORK_DIR:-}" ]]; then
-  python3 "${lifecycle}" validate-caller --repository "${SCRIPT_ROOT}" --path "${source_parent}" >/dev/null
+  python3 "${lifecycle}" validate-work --repository "${SCRIPT_ROOT}" --target "${output_root}" \
+    --path "${source_parent}" >/dev/null
 else
   python3 "${lifecycle}" validate-contained --root "${output_root}" --path "${source_parent}" >/dev/null
 fi
