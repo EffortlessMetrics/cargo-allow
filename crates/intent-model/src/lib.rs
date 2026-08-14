@@ -11,6 +11,7 @@
 extern crate self as allow_core;
 
 mod error;
+mod governance_v2;
 mod parity;
 mod spec_system;
 
@@ -22,6 +23,7 @@ pub use error::{
     IntentModelError as CargoAllowError, IntentModelErrorKind as CargoAllowErrorKind,
     IntentModelResult as CargoAllowResult,
 };
+pub use governance_v2::*;
 pub use parity::{
     SpecSystemParityContract, load_spec_system_parity_contract, spec_system_parity_contract_path,
     spec_system_parity_contract_paths,
