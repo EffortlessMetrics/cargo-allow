@@ -25,7 +25,8 @@ pub use closure::{
 };
 pub use config::{
     ArchitectureManifest, CrateRole, ForbiddenCrateDependency, PlannedCrate, ProductDefinition,
-    SharedCrateDefinition, parse_architecture_manifest, parse_architecture_manifest_at,
+    RequiredCrateDependency, SharedCrateDefinition, parse_architecture_manifest,
+    parse_architecture_manifest_at,
 };
 pub use cross_check::{
     DenominatorReport, validate_architecture_denominators, validate_architecture_denominators_at,

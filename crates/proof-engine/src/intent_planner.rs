@@ -2,7 +2,8 @@
 //!
 //! Accepts `IntentObligationPlanEnvelopeV1` from intent-protocol and maps each
 //! `IntentPhaseObligationV1` into a `ProofPlanV1`. This is the sole planning
-//! entry point; the legacy `ChangeObligationPlanV1` path was deleted (#3314).
+//! entry point; the legacy proof-owned obligation path was deleted (#3314)
+//! and is guarded against reintroduction (#3317).
 
 use proof_protocol::{ProofPlanCommandV1, ProofPlanV1};
 

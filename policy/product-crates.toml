@@ -83,6 +83,16 @@ from = "proof-engine"
 to = "intent-engine"
 repair_hint = "intent-protocol"
 
+# Converged obligation-input dependency path (#2936 / #3317): intent-protocol
+# is the sole obligation input authority for proof-engine. The proof-owned
+# duplicate obligation model (ChangeObligationPlanV1) was deleted in #3314
+# and must not be reintroduced.
+[[required_crate_dependency]]
+from = "proof-engine"
+from_package = "proof-orchestrator"
+to = "intent-protocol"
+rationale_issue = 2936
+
 # Shared substrate manifests currently have no allow-core dependency or
 # allow-core-interop feature. Product adapters own conversion into cargo-allow
 # error and finding types. The source-index package test and the workspace

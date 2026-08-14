@@ -42,6 +42,11 @@ allowed_domain_dependencies = []
 from = "proof-engine"
 to = "intent-engine"
 repair_hint = "intent-protocol"
+
+[[required_crate_dependency]]
+from = "proof-engine"
+to = "intent-protocol"
+rationale_issue = 2936
 "#;
 
 fn fixture_root() -> PathBuf {
@@ -147,6 +152,28 @@ fn forbidden_proof_engine_to_intent_engine_recommends_intent_protocol() -> Resul
     }
     if !forbidden.message.contains("intent-protocol") {
         return Err(format!("missing repair hint: {}", forbidden.message));
+    }
+    Ok(())
+}
+
+#[test]
+fn missing_required_obligation_input_edge_is_reported() -> Result<(), String> {
+    let manifest = parse_architecture_manifest(REPO_MANIFEST)
+        .map_err(|err| format!("parse manifest: {err}"))?;
+    let graph = load_fixture_metadata("missing-required-proof-engine-to-intent-protocol.json")?;
+    let diagnostics = validate_dependency_law(&manifest, &graph);
+    let missing = diagnostics
+        .iter()
+        .find(|diag| diag.kind == ArchitectureDiagnosticKind::MissingRequiredCrateDependency)
+        .ok_or_else(|| format!("expected missing required dependency: {diagnostics:?}"))?;
+    if missing.dependency_path != vec!["proof-engine".to_string(), "intent-protocol".to_string()] {
+        return Err(format!(
+            "unexpected dependency path: {:?}",
+            missing.dependency_path
+        ));
+    }
+    if !missing.message.contains("#2936") {
+        return Err(format!("missing rationale issue: {}", missing.message));
     }
     Ok(())
 }

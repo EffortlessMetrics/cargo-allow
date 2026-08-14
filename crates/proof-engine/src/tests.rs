@@ -6,7 +6,8 @@ use proof_protocol::{
 };
 
 use crate::boundary::{
-    ALLOWED_UPSTREAM_CRATES, BoundarySurface, FORBIDDEN_DEPENDENCY_EDGES, upstream_surface_markers,
+    ALLOWED_UPSTREAM_CRATES, BoundarySurface, FORBIDDEN_DEPENDENCY_EDGES,
+    REQUIRED_DEPENDENCY_EDGES, upstream_surface_markers,
 };
 use crate::captured_receipts::CapturedReceiptStoreV1;
 use crate::contradiction::detect_contradictions;
@@ -110,6 +111,20 @@ fn allowed_upstream_topology_registered() -> Result<(), String> {
             .any(|value| value.as_str() == Some(*edge));
         if !present {
             return Err(format!("fixture missing forbidden edge {from} -> {to}"));
+        }
+    }
+    for edge in REQUIRED_DEPENDENCY_EDGES {
+        let fixture_edges = fixture
+            .get("required_dependency_edges")
+            .and_then(|value| value.as_array())
+            .ok_or_else(|| "parity fixture missing required_dependency_edges".to_string())?;
+        let present = fixture_edges
+            .iter()
+            .any(|value| value.as_str() == Some(*edge));
+        if !present {
+            return Err(format!(
+                "fixture missing required obligation-input edge {edge} (#3317)"
+            ));
         }
     }
     let _ = upstream_surface_markers();

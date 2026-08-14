@@ -73,6 +73,50 @@ fn product_crate_dependency_law_loads_workspace_graph() -> Result<(), String> {
         ));
     }
 
+    let missing_required: Vec<_> = diagnostics
+        .iter()
+        .filter(|diag| diag.kind == ArchitectureDiagnosticKind::MissingRequiredCrateDependency)
+        .collect();
+    if !missing_required.is_empty() {
+        return Err(format!(
+            "converged dependency paths must stay declared: {missing_required:?}"
+        ));
+    }
+
+    Ok(())
+}
+
+#[test]
+fn intent_protocol_is_recorded_as_sole_obligation_input_for_proof() -> Result<(), String> {
+    let root = repo_root();
+    let manifest_path = root.join("policy/product-crates.toml");
+    let (manifest, _, _) = validate_architecture_manifest_at(&root, &manifest_path, &[])
+        .map_err(|err| format!("validate architecture manifest: {err}"))?;
+
+    let converged = manifest
+        .required_crate_dependency
+        .iter()
+        .any(|rule| rule.from == "proof-engine" && rule.to == "intent-protocol");
+    if !converged {
+        return Err(
+            "architecture manifest must record proof-engine -> intent-protocol as the converged \
+             obligation-input path (#2936/#3317)"
+                .into(),
+        );
+    }
+
+    let forbidden_intent_edges: Vec<_> = manifest
+        .forbidden_crate_dependency
+        .iter()
+        .filter(|rule| rule.from == "proof-engine" && rule.to.starts_with("intent-"))
+        .filter(|rule| rule.to != "intent-protocol")
+        .collect();
+    if forbidden_intent_edges.is_empty() {
+        return Err(
+            "proof-engine must stay forbidden from intent-engine/intent-model internals (#3317)"
+                .into(),
+        );
+    }
     Ok(())
 }
 
