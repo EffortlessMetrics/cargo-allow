@@ -6,8 +6,9 @@
 //! contradiction detection, and phase gates. It also absorbs the provider API
 //! contracts (#2603-A) and command adapter contracts (#2603-B) that previously
 //! lived in standalone `proof-provider-api` and `proof-adapter-command` crates
-//! (#2937). It does not scan source files, does not invoke Cargo, compile code,
-//! execute repository code, spawn processes, or depend on intent crates.
+//! (#2937). It accepts intent obligation plans via intent-protocol (#3310).
+//! It does not execute repository code or invoke Cargo, rustc, Clippy, build
+//! scripts, or proc macros.
 
 #[cfg(test)]
 mod boundary;
@@ -19,6 +20,7 @@ mod corpus_semantics;
 mod currentness;
 mod dry_run;
 mod execution;
+mod intent_planner;
 mod obligation_plan;
 mod parity;
 mod phase_gate;
@@ -72,6 +74,9 @@ pub use dry_run::{
 pub use execution::{
     EXECUTION_GATE_SCHEMA_ID, ExecutionApprovalV1, ExecutionError, ExecutionGateReportV1,
     evaluate_execution_gate, require_explicit_execution,
+};
+pub use intent_planner::{
+    INTENT_OBLIGATION_PLANNER_SCHEMA_ID, IntentPlannerError, plan_proof_execution_from_intent,
 };
 pub use obligation_plan::{
     CHANGE_OBLIGATION_PLAN_SCHEMA_ID, ChangeObligationPlanV1, ChangeObligationV1,

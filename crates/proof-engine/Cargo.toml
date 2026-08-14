@@ -18,6 +18,7 @@ path = "src/lib.rs"
 
 [dependencies]
 proof-protocol.workspace = true
+intent-protocol.workspace = true
 effortless-repo-protocol.workspace = true
 effortless-rust-source-index.workspace = true
 serde = { workspace = true, features = ["derive"] }
