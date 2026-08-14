@@ -61,3 +61,4 @@ effortless-rust-source-index = { path = "../effortless-rust-source-index" }
 intent-model = { path = "../intent-model" }
 intent-protocol = { path = "../intent-protocol" }
 intent-compiler = { path = "../intent-engine" }
+regex = "1.13"

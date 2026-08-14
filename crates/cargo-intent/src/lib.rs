@@ -11,6 +11,7 @@
 mod change;
 mod config;
 mod exit;
+mod governance;
 mod identity;
 mod render;
 mod transport;
@@ -20,6 +21,11 @@ pub use config::{ConfigProfileV1, IntentConfigV1, load_config};
 pub use exit::{
     ProcessExitFamilyV1, exit_code_for_family, exit_code_for_result_class,
     exit_family_for_result_class,
+};
+pub use governance::{
+    CandidatePackageRowV1, GOVERNANCE_CLAIM_BOUNDARY, GOVERNANCE_RECEIPT_SCHEMA_ID,
+    GovernanceAuthorityStateV1, GovernanceReceiptV1, compile_governance_receipt,
+    compile_governance_receipt_at,
 };
 pub use identity::{
     PRODUCT_CLAIM_BOUNDARY, PRODUCT_ID, PRODUCT_IDENTITY_SCHEMA_ID, ProductIdentityV1,

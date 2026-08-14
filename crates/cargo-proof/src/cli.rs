@@ -46,7 +46,7 @@ impl From<FormatArg> for OutputFormat {
 pub enum CargoProofCommand {
     /// Identity and capability surface.
     Identity,
-    /// Plan proof execution from a change obligation plan TOML file.
+    /// Plan proof execution from an intent obligation plan JSON file.
     Plan(PlanArgs),
     /// Dry-run a proof plan TOML file (structured argv only).
     DryRun(DryRunArgs),
@@ -54,7 +54,7 @@ pub enum CargoProofCommand {
 
 #[derive(Debug, Parser)]
 pub struct PlanArgs {
-    /// Path to a `proof.change-obligation-plan.v1` TOML file.
+    /// Path to an `intent.obligation-plan.v1` JSON file.
     #[arg(long)]
     pub obligation_plan: PathBuf,
 }
@@ -81,8 +81,8 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
             Ok(ProcessExitFamilyV1::Success)
         }
         Some(CargoProofCommand::Plan(args)) => {
-            let plan = plan_from_obligation_path(&args.obligation_plan)?;
-            let rendered = render_plan_frame(&plan, output_format)?;
+            let outcome = plan_from_obligation_path(&args.obligation_plan)?;
+            let rendered = render_plan_frame(&outcome, output_format)?;
             print!("{rendered}");
             Ok(ProcessExitFamilyV1::Success)
         }

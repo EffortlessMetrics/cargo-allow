@@ -19,10 +19,10 @@ path = "src/lib.rs"
 [dependencies]
 effortless-rust-source-index.workspace = true
 intent-model.workspace = true
+intent-protocol.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 toml.workspace = true
 
 [dev-dependencies]
-intent-protocol.workspace = true
 serde_json.workspace = true

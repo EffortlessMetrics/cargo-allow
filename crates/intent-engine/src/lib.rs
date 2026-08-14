@@ -6,30 +6,44 @@
 //! without executing repository code and does not invoke Cargo, rustc, Clippy,
 //! build scripts, proc macros, or proof commands.
 
+mod closure_validation;
 mod domain_queries;
+mod governance_reconciliation;
 mod graph_comparison;
+mod graph_compiler;
 mod packet;
 mod parity;
 mod parity_corpus;
 mod phase_obligations;
+mod precommit_evaluator;
 mod subject_resolution;
 mod workspace;
 
+pub use closure_validation::{
+    ClosureFindingKindV2, ClosureFindingV2, ClosureValidationInputV2, ClosureValidationReportV2,
+    ObservedDependencyClassV2, ObservedDependencyEdgeV2, ObservedMetadataGraphV2,
+    parse_observed_metadata_graph_v2, shortest_observed_path, validate_observed_closure,
+};
 pub use domain_queries::{
     BOUNDED_DOMAIN_QUERY_RESPONSE_SCHEMA_ID, BOUNDED_DOMAIN_QUERY_SCHEMA_ID,
     BoundedDomainQueryKindV1, BoundedDomainQueryRequestV1, BoundedDomainQueryResponseV1,
-    INTENT_QUERY_RESPONSE_SCHEMA_ID, RESULT_CLASS_COMPLETED, canonical_bounded_domain_query_kinds,
-    execute_bounded_domain_query, load_bounded_domain_query_catalog_toml,
-    to_intent_query_response_json,
+    RESULT_CLASS_COMPLETED, canonical_bounded_domain_query_kinds, execute_bounded_domain_query,
+    load_bounded_domain_query_catalog_toml, to_intent_query_response_json,
+};
+pub use governance_reconciliation::{
+    ComponentDispositionRecordV2, DeletionEligibilityDecisionV2, DeletionEligibilityV2,
+    GovernanceFindingKindV2, GovernanceFindingSeverityV2, GovernanceFindingV2,
+    GovernanceReconciliationInputV2, GovernanceReconciliationReportV2, WorkspaceMemberFactV2,
+    reconcile_governance_authority,
 };
 pub use graph_comparison::{
     GRAPH_COMPARISON_REPORT_SCHEMA_ID, GraphComparisonReportV1, GraphMovementKindV1,
     GraphMovementV1, canonical_graph_movement_kinds, load_graph_comparison_report_json,
     sort_graph_movements,
 };
+pub use graph_compiler::compile_spec_graph;
 pub use packet::{
-    INTENT_ENGINE_PACKET_SCHEMA_ID, INTENT_QUERY_TRANSPORT_SCHEMA_ID, IntentEnginePacketEnvelopeV1,
-    IntentEnginePacketKindV1,
+    INTENT_ENGINE_PACKET_SCHEMA_ID, IntentEnginePacketEnvelopeV1, IntentEnginePacketKindV1,
 };
 pub use parity::{
     BoundedDomainQueriesParityContract, EvaluatorPacketParityContract,
@@ -59,6 +73,7 @@ pub use phase_obligations::{
     PhaseObligationCompileInputV1, PhaseObligationItemV1, PhaseObligationKindV1,
     PhaseObligationPlanV1, compile_phase_obligation_plan, load_phase_obligation_plan_toml,
 };
+pub use precommit_evaluator::evaluate_precommit_objectives;
 pub use subject_resolution::{
     IntentSubjectResolutionClassV1, IntentSubjectResolutionV1, resolve_authored_rust_subject,
 };

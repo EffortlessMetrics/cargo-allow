@@ -474,7 +474,7 @@ old_producer = "cargo-proof::proof_engine_unowned"
 new_producer = "proof-engine::boundary"
 expected_result = "EquivalentWithCanonicalRenaming"
 disposition = "contract_only"
-claim_boundary = "Engine orchestration scaffold only; cargo-proof CLI lands in follow-on packets."
+claim_boundary = "proof-engine is the sole currentness, cache, aggregate, contradiction, and phase-gate semantic authority; proof-protocol is a data/serialization/structural-validation seam (#2943/#3320)."
 
 [[case]]
 id = "parity-cargo-proof-product-identity-v1"
@@ -692,3 +692,67 @@ required_fields = [
   "duplicate_authority",
   "rollback",
 ]
+[[case]]
+id = "PARITY-GOV-ARCHITECTURE-DTOS"
+stage = "IntentModel"
+move_ledger_entry = "MOVE-GOV-ARCHITECTURE-DTOS"
+old_producer = "allow-policy::product_crates.config"
+new_producer = "intent-model::governance_v2.compat"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Bounded parity only: intent-model compat parsing reads the same architecture manifest rows; allow-policy keeps V1 parsing until #2942 step 7 deletion."
+
+
+[[case]]
+id = "PARITY-GOV-ARCHITECTURE-VALIDATION"
+stage = "IntentEngine"
+move_ledger_entry = "MOVE-GOV-ARCHITECTURE-VALIDATION"
+old_producer = "allow-policy::product_crates.validate"
+new_producer = "intent-engine::governance_reconciliation"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Bounded parity only: intent-engine reconciliation and closure validation supersede the V1 dependency-law validators; the governance receipt lane carries current evidence (#3540/#3541)."
+
+
+[[case]]
+id = "PARITY-GOV-PACKAGE-TOPOLOGY"
+stage = "IntentModel"
+move_ledger_entry = "MOVE-GOV-PACKAGE-TOPOLOGY"
+old_producer = "allow-policy::product_packages.config"
+new_producer = "intent-model::governance_v2.package_posture"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Bounded parity only: intent-model package posture DTOs read the same topology rows; candidate rows project through the governance receipt."
+
+
+[[case]]
+id = "PARITY-GOV-MOVE-LEDGER-READER"
+stage = "IntentModel"
+move_ledger_entry = "MOVE-GOV-MOVE-LEDGER-READER"
+old_producer = "allow-policy::product_move.config"
+new_producer = "intent-model::governance_v2.move_references"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Bounded parity only: intent-model reads the same move ledger rows; the ledger validator itself remains the migration-control surface."
+
+
+[[case]]
+id = "PARITY-GOV-EXTRACTION-PARITY"
+stage = "IntentModel"
+move_ledger_entry = "MOVE-GOV-EXTRACTION-PARITY"
+old_producer = "allow-policy::extraction_parity.config"
+new_producer = "intent-model::governance_v2.parity_references"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Bounded parity only: intent-model reads the same parity cases; linkage reconciliation runs in intent-engine."
+
+
+[[case]]
+id = "PARITY-GOV-EXTRACTION-SHIMS"
+stage = "IntentModel"
+move_ledger_entry = "MOVE-GOV-EXTRACTION-SHIMS"
+old_producer = "allow-policy::extraction_shims.config"
+new_producer = "intent-model::governance_v2.shim_references"
+expected_result = "EquivalentWithCanonicalRenaming"
+disposition = "contract_only"
+claim_boundary = "Bounded parity only: intent-model reads shims and expiries; deletion eligibility runs in intent-engine."

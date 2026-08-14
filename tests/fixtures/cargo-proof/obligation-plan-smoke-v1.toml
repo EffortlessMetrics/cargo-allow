@@ -1,6 +1,0 @@
-schema_id = "proof.change-obligation-plan.v1"
-plan_id = "cargo-proof-smoke-obligation"
-[[obligations]]
-obligation_id = "obligation-no-new"
-provider_id = "proof.fake-provider.v1"
-proof_kind = "cargo-allow.no-new"

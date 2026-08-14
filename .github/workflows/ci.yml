@@ -69,10 +69,23 @@ jobs:
           cp target/package-candidate-smoke/packages/*.crate \
             target/exact-candidate-package-set/packages/
           SKIP_PACKAGE=1 bash scripts/exact-candidate-package-set.sh
+      - name: Cutover build receipts from package-set artifacts (#3469/#3552)
+        run: |
+          bash scripts/extraction-cutover-build-receipt.sh repo-snapshot
+          bash scripts/extraction-cutover-build-receipt.sh repo-edit
       - name: Exact candidate install journey (#3357)
         run: bash scripts/exact-candidate-install-journey.sh
       - name: Exact candidate journey contract characterization (#3357)
         run: bash scripts/test-exact-candidate-install-journey.sh
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: extraction-cutover-build-receipts
+          path: |
+            target/extraction-cutover/**/build-package.json
+            target/exact-candidate-package-set/exact-candidate-package-set.receipt.json
+            target/exact-candidate-package-set/packages/
+          if-no-files-found: warn
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
@@ -213,6 +226,10 @@ jobs:
           if-no-files-found: warn
 
   test:
+    # The cutover status lane restores the build receipts produced by the
+    # package-smoke job; artifacts are only downloadable once that job
+    # completes (#3469/#3552).
+    needs: package-smoke
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -224,6 +241,16 @@ jobs:
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Build three-product binaries for dogfood (#2558)
         run: cargo build -p cargo-allow -p cargo-intent -p cargo-proof --locked
+      - name: Governance validation receipt (#2942 step 5)
+        run: |
+          cargo run -p cargo-intent --locked -- --root . governance \
+            --receipt target/cargo-intent/governance-receipt.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: governance-receipt
+          path: target/cargo-intent/governance-receipt.json
+          if-no-files-found: warn
       - name: Three-product dogfood smoke (#2558)
         run: bash scripts/three-product-dogfood-smoke.sh
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -244,6 +271,12 @@ jobs:
           if-no-files-found: warn
       - name: Characterize extraction parity cutover status (#3469)
         run: bash scripts/test-extraction-cutover-status.sh
+      - name: Restore cutover build receipts (#3469/#3552)
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: extraction-cutover-build-receipts
+          path: target
+        continue-on-error: true
       - name: Extraction parity cutover status (#3469)
         run: bash scripts/extraction-cutover-status.sh
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

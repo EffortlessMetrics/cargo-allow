@@ -47,6 +47,15 @@ pub enum CargoIntentCommand {
     Identity,
     /// Change-oriented intent commands.
     Change(ChangeCli),
+    /// Compile the governance authority into a validation receipt (#2942 step 4).
+    Governance(GovernanceArgs),
+}
+
+#[derive(Debug, Parser)]
+pub struct GovernanceArgs {
+    /// Write the receipt JSON to this path in addition to stdout.
+    #[arg(long)]
+    pub receipt: Option<PathBuf>,
 }
 
 #[derive(Debug, Parser)]
@@ -103,7 +112,48 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
                 )
             }
         },
+        Some(CargoIntentCommand::Governance(args)) => {
+            cmd_governance(&cli.root, &args, output_format)
+        }
     }
+}
+
+fn cmd_governance(
+    root: &std::path::Path,
+    args: &GovernanceArgs,
+    format: OutputFormat,
+) -> Result<ProcessExitFamilyV1, String> {
+    use cargo_intent::{GOVERNANCE_RECEIPT_SCHEMA_ID, compile_governance_receipt_at};
+
+    let receipt = compile_governance_receipt_at(root)?;
+    if let Some(path) = &args.receipt {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|err| format!("create receipt directory {}: {err}", parent.display()))?;
+        }
+        let json = serde_json::to_string_pretty(&receipt)
+            .map_err(|err| format!("serialize receipt: {err}"))?;
+        std::fs::write(path, format!("{json}\n"))
+            .map_err(|err| format!("write receipt {}: {err}", path.display()))?;
+    }
+    let rendered = match format {
+        OutputFormat::Json => serde_json::to_string_pretty(&receipt)
+            .map_err(|err| format!("serialize receipt: {err}"))?,
+        OutputFormat::Human => format!(
+            "governance receipt {} ({} blocking findings, {} candidate rows)\nschema: {GOVERNANCE_RECEIPT_SCHEMA_ID}\ndigest: {}\nclaim boundary: {}\n",
+            receipt.result,
+            receipt.blocking_finding_count,
+            receipt.candidate_package_rows.len(),
+            receipt.receipt_digest,
+            receipt.claim_boundary
+        ),
+    };
+    print!("{rendered}");
+    Ok(if receipt.result == "passed" {
+        ProcessExitFamilyV1::Success
+    } else {
+        ProcessExitFamilyV1::Blocking
+    })
 }
 
 fn validate_change_status_args(args: &StatusArgs, format: OutputFormat) -> Result<(), String> {

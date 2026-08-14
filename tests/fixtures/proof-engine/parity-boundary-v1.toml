@@ -10,11 +10,17 @@ required_behaviors = [
 forbidden_dependency_edges = [
   "proof-engine -> intent-model",
   "proof-engine -> intent-engine",
-  "proof-engine -> intent-protocol",
   "cargo-allow product -> proof-engine",
+]
+# Converged obligation-input path (#2936 / #3317): intent-protocol is the
+# sole obligation input authority; the proof-owned duplicate obligation
+# model was deleted (#3314) and must not return.
+required_dependency_edges = [
+  "proof-engine -> intent-protocol",
 ]
 allowed_upstream_crates = [
   "effortless-repo-protocol",
   "effortless-rust-source-index",
+  "intent-protocol",
   "proof-protocol",
 ]

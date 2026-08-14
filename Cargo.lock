@@ -252,6 +252,7 @@ dependencies = [
  "intent-model",
  "intent-protocol",
  "jsonschema",
+ "regex",
  "serde",
  "serde_json",
  "terminal_size",
@@ -266,6 +267,7 @@ dependencies = [
  "effortless-repo-protocol",
  "effortless-repo-snapshot",
  "intent-compiler",
+ "intent-model",
  "intent-protocol",
  "serde",
  "serde_json",
@@ -279,6 +281,7 @@ dependencies = [
  "clap",
  "effortless-repo-protocol",
  "effortless-rust-source-index",
+ "intent-protocol",
  "proof-orchestrator",
  "proof-protocol",
  "serde",
@@ -1042,8 +1045,11 @@ version = "0.1.0"
 dependencies = [
  "effortless-repo-protocol",
  "effortless-rust-source-index",
+ "intent-protocol",
  "proof-protocol",
  "serde",
+ "serde_json",
+ "sha2",
  "toml",
 ]
 

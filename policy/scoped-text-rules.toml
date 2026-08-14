@@ -1,0 +1,79 @@
+# Versioned scoped-text rule schema (#2714 / #2684).
+#
+# Repository-neutral text-policy rules with deterministic literal, phrase,
+# and token/word-boundary matching. Each rule declares a stable ID, matcher
+# kind, term, case/Unicode policy, scope, severity, and help text.
+#
+# This is the MVP engine slice: literal, phrase, and token matching only.
+# Regex, inline exceptions, structured scope, and RIPR parity are out of
+# scope (#2715, #2718, #2719, #2720).
+
+schema_id = "cargo-allow.scoped-text-rules.v1"
+schema_version = 1
+controlling_issue = 2684
+generated_by = "#2714"
+
+# Matcher kinds:
+#   literal — substring match (case-sensitive by default)
+#   phrase  — whole-phrase match (word-boundary on both sides)
+#   token   — single-token match (word-boundary, no spaces in term)
+
+# Severity levels: info, warning, error
+
+# Example rules (repository-neutral; real deployments override these):
+# These demonstrate each matcher kind and are not RIPR-specific.
+
+[[rule]]
+id = "example-literal-todo"
+kind = "literal"
+term = "TODO"
+case_sensitive = true
+severity = "info"
+help = "TODO comments are tracked as informational findings"
+owner = "repo-infra"
+rationale = "Example literal-substring rule for the scoped-text MVP"
+
+[[rule]]
+id = "example-phrase-deprecated-api"
+kind = "phrase"
+term = "deprecated API"
+case_sensitive = false
+severity = "warning"
+help = "References to deprecated APIs should be reviewed"
+owner = "repo-infra"
+rationale = "Example phrase-match rule for the scoped-text MVP"
+
+[[rule]]
+id = "example-token-unsafe"
+kind = "token"
+term = "unsafe"
+case_sensitive = true
+severity = "info"
+help = "The word 'unsafe' in comments or docs is tracked as informational"
+owner = "repo-infra"
+rationale = "Example token/word-boundary rule for the scoped-text MVP"
+
+[[rule]]
+id = "example-regex-version"
+kind = "regex"
+term = "\\d+\\.\\d+\\.\\d+"
+case_sensitive = true
+severity = "info"
+help = "Version-like strings (x.y.z) are tracked as informational"
+owner = "repo-infra"
+rationale = "Example regex rule demonstrating pattern matching (#2715)"
+
+# ---------------------------------------------------------------------------
+# Central text exceptions (#2716)
+# ---------------------------------------------------------------------------
+# Each exception suppresses a specific rule's finding for a bounded reason.
+# Exceptions require: rule_id, reason, owner. Optional: expires (hard
+# invalidation date), review_after (warning-only date), max_occurrences
+# (bounded count).
+
+[[exception]]
+rule_id = "example-literal-todo"
+reason = "Migration tracking file legitimately contains TODO comments"
+owner = "repo-infra"
+max_occurrences = 10
+review_after = "2026-12-01"

@@ -64,10 +64,13 @@ fn product_identity_matches_fixture() -> Result<(), String> {
 #[test]
 fn plan_and_dry_run_fixture_pipeline() -> Result<(), String> {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/cargo-proof");
-    let obligation = root.join("obligation-plan-smoke-v1.toml");
-    let plan = plan_from_obligation_path(&obligation)?;
-    if plan.commands.is_empty() {
+    let obligation = root.join("intent-obligation-plan-smoke-v1.json");
+    let outcome = plan_from_obligation_path(&obligation)?;
+    if outcome.plan.commands.is_empty() {
         return Err("plan produced no commands".to_string());
+    }
+    if !outcome.plan.plan_id.contains(&outcome.intent_plan_digest) {
+        return Err("plan identity must bind the intent plan digest".to_string());
     }
     let plan_fixture = root.join("proof-plan-smoke-v1.toml");
     let report = dry_run_from_plan_path(&plan_fixture)?;

@@ -88,6 +88,9 @@ pub(crate) enum PanicMacroKind {
     Todo,
     Unimplemented,
     Unreachable,
+    Assert,
+    AssertEq,
+    AssertNe,
 }
 
 impl PanicMacroKind {
@@ -97,6 +100,9 @@ impl PanicMacroKind {
             "todo" => Some(Self::Todo),
             "unimplemented" => Some(Self::Unimplemented),
             "unreachable" => Some(Self::Unreachable),
+            "assert" => Some(Self::Assert),
+            "assert_eq" => Some(Self::AssertEq),
+            "assert_ne" => Some(Self::AssertNe),
             _ => None,
         }
     }
@@ -107,6 +113,9 @@ impl PanicMacroKind {
             Self::Todo => "todo",
             Self::Unimplemented => "unimplemented",
             Self::Unreachable => "unreachable",
+            Self::Assert => "assert",
+            Self::AssertEq => "assert_eq",
+            Self::AssertNe => "assert_ne",
         }
     }
 
@@ -116,6 +125,9 @@ impl PanicMacroKind {
             Self::Todo => "todo",
             Self::Unimplemented => "unimplemented",
             Self::Unreachable => "unreachable",
+            Self::Assert => "assert",
+            Self::AssertEq => "assert_eq",
+            Self::AssertNe => "assert_ne",
         }
     }
 }
@@ -227,12 +239,15 @@ mod tests {
             ("todo", PanicMacroKind::Todo),
             ("unimplemented", PanicMacroKind::Unimplemented),
             ("unreachable", PanicMacroKind::Unreachable),
+            ("assert", PanicMacroKind::Assert),
+            ("assert_eq", PanicMacroKind::AssertEq),
+            ("assert_ne", PanicMacroKind::AssertNe),
         ];
 
         for (name, expected) in accepted {
             assert_eq!(PanicMacroKind::from_name(name), Some(expected));
         }
-        assert_eq!(PanicMacroKind::from_name("assert"), None);
+        assert_eq!(PanicMacroKind::from_name("debug_assert"), None);
         assert_eq!(PanicMacroKind::from_name("std::panic"), None);
     }
 

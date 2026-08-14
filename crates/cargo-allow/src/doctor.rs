@@ -471,6 +471,7 @@ fn doctor_file_family_facts(
     let options = FileScanOptions {
         generated: cfg.workspace.generated.clone(),
         file_families: cfg.workspace.file_families.clone(),
+        content_aware_generated: false,
     };
     let mut matched_files = cfg
         .workspace

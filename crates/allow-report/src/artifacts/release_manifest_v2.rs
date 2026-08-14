@@ -593,7 +593,7 @@ mod tests {
 
     #[test]
     fn v2_schema_matches_the_contract_generation() -> Result<(), String> {
-        let schema: serde_json::Value = serde_json::from_str(include_str!(
+        let schema: serde_json::Value = serde_json::from_str(::std::include_str!(
             "../../../../docs/schemas/release-manifest-v2.schema.json"
         ))
         .map_err(|error| error.to_string())?;

@@ -128,6 +128,80 @@ fn receipt_set_requires_repo_protocol_schema() -> Result<(), String> {
     }
 }
 
+#[test]
+fn protocol_dtos_round_trip_without_engine_source() -> Result<(), String> {
+    // The data seam must round-trip independently of proof-engine: this
+    // crate has no engine/intent/application dependency, so serialization
+    // here cannot reach semantic evaluation (#2943 step 6).
+    let plan = crate::ProofPlanV1::new(
+        "plan-roundtrip",
+        vec![crate::ProofPlanCommandV1::new(
+            "cargo-allow",
+            vec!["check".to_string()],
+        )],
+    );
+    crate::validate_proof_plan(&plan).map_err(|err| format!("{err:?}"))?;
+    let plan_toml = toml::to_string(&plan).map_err(|err| format!("serialize plan: {err}"))?;
+    let reloaded =
+        crate::load_proof_plan_toml(&plan_toml).map_err(|err| format!("reload plan: {err}"))?;
+    if reloaded != plan {
+        return Err("proof plan TOML round-trip drift".to_string());
+    }
+
+    let set = crate::ProofReceiptSetV1::new(
+        "plan-roundtrip",
+        vec![crate::ProofReceiptBindingV1 {
+            binding_id: "binding-1".to_string(),
+            plan_id: "plan-roundtrip".to_string(),
+            command_index: 0,
+            analysis_receipt_schema_id: "repo.analysis-receipt.v1".to_string(),
+            receipt_digest: "sha256:v1:abc".to_string(),
+        }],
+    );
+    crate::validate_receipt_set(&set).map_err(|err| format!("{err:?}"))?;
+    let set_toml = toml::to_string(&set).map_err(|err| format!("serialize receipt set: {err}"))?;
+    let reloaded: crate::ProofReceiptSetV1 =
+        toml::from_str(&set_toml).map_err(|err| format!("reload receipt set: {err}"))?;
+    if reloaded != set {
+        return Err("receipt set round-trip drift".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn protocol_crate_declares_no_semantic_or_application_dependency() -> Result<(), String> {
+    // Independence proof for the data seam: no engine, intent, or
+    // application crate may appear in any dependency section, so protocol
+    // DTOs stay usable with proof-engine source unavailable (#2943).
+    let manifest = workspace_root().join("crates/proof-protocol/Cargo.toml");
+    let text = std::fs::read_to_string(&manifest)
+        .map_err(|err| format!("read proof-protocol manifest: {err}"))?;
+    let table = toml::from_str::<toml::Table>(&text)
+        .map_err(|err| format!("parse proof-protocol manifest: {err}"))?;
+    let mut declared: Vec<&str> = Vec::new();
+    for section in ["dependencies", "dev-dependencies", "build-dependencies"] {
+        let Some(deps) = table.get(section).and_then(|value| value.as_table()) else {
+            continue;
+        };
+        declared.extend(deps.keys().map(String::as_str));
+    }
+    for forbidden in [
+        "proof-orchestrator",
+        "intent-protocol",
+        "intent-compiler",
+        "intent-model",
+        "cargo-allow",
+        "allow-core",
+    ] {
+        if declared.contains(&forbidden) {
+            return Err(format!(
+                "proof-protocol must not depend on {forbidden}; it is a data/serialization seam only"
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn manifest_lists_dependency(manifest_text: &str, crate_name: &str) -> bool {
     let Ok(table) = toml::from_str::<toml::Table>(manifest_text) else {
         return false;

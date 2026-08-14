@@ -60,7 +60,7 @@ mod why;
 mod worklist;
 mod world;
 
-pub(crate) use command_support::*;
+pub(crate) use crate::command_support::*;
 
 fn main() {
     if let Err(err) = cli::run() {
@@ -237,3 +237,15 @@ mod product_support_matrix_tests;
 #[cfg(test)]
 #[path = "governance_authority_guard_tests.rs"]
 mod governance_authority_guard_tests;
+
+#[cfg(test)]
+#[path = "governance_adapter_window_tests.rs"]
+mod governance_adapter_window_tests;
+
+#[cfg(test)]
+#[path = "governance_return_guard_tests.rs"]
+mod governance_return_guard_tests;
+
+#[cfg(test)]
+#[path = "scoped_text_rule_tests.rs"]
+mod scoped_text_rule_tests;

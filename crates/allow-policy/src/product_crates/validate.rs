@@ -20,6 +20,7 @@ pub enum ArchitectureDiagnosticKind {
     PackageTopologyCrateMissingFromArchitecture,
     PlannedCrateNowPresent,
     MoveLedgerUnknownTargetCrate,
+    MissingRequiredCrateDependency,
 }
 
 impl ArchitectureDiagnosticKind {
@@ -43,6 +44,7 @@ impl ArchitectureDiagnosticKind {
             }
             Self::PlannedCrateNowPresent => "planned_crate_now_present",
             Self::MoveLedgerUnknownTargetCrate => "move_ledger_unknown_target_crate",
+            Self::MissingRequiredCrateDependency => "missing_required_crate_dependency",
         }
     }
 }
@@ -283,7 +285,42 @@ pub fn validate_dependency_law(
         }
     }
 
+    check_required_crate_dependencies(manifest, graph, &mut diagnostics);
+
     diagnostics
+}
+
+/// Required dependency paths must stay declared in the workspace graph
+/// (#2936 / #3317). A missing required edge means the converged obligation
+/// input authority was severed.
+fn check_required_crate_dependencies(
+    manifest: &ArchitectureManifest,
+    graph: &CargoMetadataGraph,
+    diagnostics: &mut Vec<ArchitectureDiagnostic>,
+) {
+    for rule in &manifest.required_crate_dependency {
+        let from_name = rule.from_package.as_deref().unwrap_or(&rule.from);
+        let present = graph
+            .edges
+            .iter()
+            .any(|edge| edge.from == from_name && edge.to == rule.to);
+        if !present {
+            let rationale = rule
+                .rationale_issue
+                .map(|issue| format!(" (rationale: #{issue})"))
+                .unwrap_or_default();
+            diagnostics.push(ArchitectureDiagnostic {
+                kind: ArchitectureDiagnosticKind::MissingRequiredCrateDependency,
+                message: format!(
+                    "crate `{}` must depend on crate `{}`{rationale}; the converged dependency path is not declared",
+                    rule.from, rule.to
+                ),
+                crate_names: vec![rule.from.clone(), rule.to.clone()],
+                dependency_class: None,
+                dependency_path: vec![rule.from.clone(), rule.to.clone()],
+            });
+        }
+    }
 }
 
 pub fn validate_architecture_with_dependency_graph(

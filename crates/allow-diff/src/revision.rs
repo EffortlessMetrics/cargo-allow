@@ -109,6 +109,7 @@ pub fn scan_at_revision(
         &allow_files::FileScanOptions {
             generated: cfg.workspace.generated.clone(),
             file_families: cfg.workspace.file_families.clone(),
+            content_aware_generated: false,
         },
     ));
     if has_generated_code_receipt(cfg)

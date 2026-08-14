@@ -14,8 +14,6 @@ use serde_json::{Value, json};
 
 pub const BOUNDED_DOMAIN_QUERY_SCHEMA_ID: &str = "intent.bounded-domain-query.v1";
 pub const BOUNDED_DOMAIN_QUERY_RESPONSE_SCHEMA_ID: &str = "intent.bounded-domain-query-response.v1";
-pub const INTENT_QUERY_RESPONSE_SCHEMA_ID: &str = "intent.query-response.v1";
-pub const INTENT_QUERY_SCHEMA_ID: &str = "intent.query.v1";
 pub const RESULT_CLASS_COMPLETED: &str = "completed";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -106,9 +104,9 @@ pub fn execute_bounded_domain_query(
 /// Project a bounded domain response into `intent.query-response.v1` JSON.
 pub fn to_intent_query_response_json(response: &BoundedDomainQueryResponseV1) -> Value {
     json!({
-        "schema_id": INTENT_QUERY_RESPONSE_SCHEMA_ID,
+        "schema_id": intent_protocol::INTENT_QUERY_RESPONSE_SCHEMA_ID,
         "query": {
-            "schema_id": INTENT_QUERY_SCHEMA_ID,
+            "schema_id": intent_protocol::INTENT_QUERY_SCHEMA_ID,
             "kind": "validate_artifact",
             "selector": response.query.kind.as_str(),
             "identity": {

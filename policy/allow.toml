@@ -1308,28 +1308,6 @@ glob = "tests/fixtures/intent-model/parity-spec-system-v1.toml"
 line = 1
 column = 1
 
-[[allow]]
-id = "allow-9066"
-kind = "lint_exception"
-family = "expect_attribute"
-path = "crates/intent-model/src/spec_system/mod.rs"
-owner = "repo-infra"
-classification = "intent_model_implementation"
-reason = "intent-model DTO helpers are consumed by allow-policy snapshot impl during #2584 parity window."
-evidence = ["doc:docs/architecture/intent-model.md", "test:crates/intent-model/src/tests.rs"]
-created = "2026-07-23"
-review_after = "2026-11-01"
-
-[allow.selector]
-ast_kind = "attribute"
-lint = "dead_code"
-symbol = "#![expect( dead_code, reason = \"policy:allow-9066: spec-system DTO helpers consumed by allow-policy snapshot impl (#2584-B)\" )]"
-target_fingerprint = "policy:allow-9066"
-glob = "crates/intent-model/src/spec_system/mod.rs"
-
-[allow.last_seen]
-line = 2
-column = 1
 
 [[allow]]
 id = "allow-9064"
@@ -6502,48 +6480,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11101"
-kind = "non_rust_file"
-family = "python_tool"
-path = "scripts/candidate-harness-owned-dir.py"
-owner = "core/release"
-classification = "release_automation_script"
-reason = "Marker/token-owned disposable directory lifecycle and disposable-checkout snapshot helper for candidate harness safety (#3509)."
-evidence = ["test:scripts/test-candidate-harness-lifecycle.py", "issue:3509"]
-created = "2026-08-13"
-review_after = "2027-01-01"
-
-[allow.selector]
-ast_kind = "tracked_file"
-target_fingerprint = "py"
-glob = "scripts/candidate-harness-owned-dir.py"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11102"
-kind = "non_rust_file"
-family = "python_tool"
-path = "scripts/test-candidate-harness-lifecycle.py"
-owner = "core/release"
-classification = "test_fixture"
-reason = "Adversarial lifecycle, forged-context, symlink, marker, and interrupted-cleanup characterization for candidate harness safety (#3509)."
-evidence = ["test:scripts/test-candidate-harness-lifecycle.py", "issue:3509"]
-created = "2026-08-13"
-review_after = "2027-01-01"
-
-[allow.selector]
-ast_kind = "tracked_file"
-target_fingerprint = "py"
-glob = "scripts/test-candidate-harness-lifecycle.py"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-4763"
 kind = "non_rust_file"
 family = "python_tool"
@@ -9580,27 +9516,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-9152"
-kind = "non_rust_file"
-family = "test_fixture"
-path = "tests/fixtures/cargo-proof/obligation-plan-smoke-v1.toml"
-owner = "repo-infra"
-classification = "cargo_proof_parity_fixture"
-reason = "Cargo-proof obligation plan smoke fixture (#2589-B)."
-evidence = ["test:cargo_proof_parity_fixtures_registered", "issue:2589"]
-created = "2026-07-24"
-review_after = "2027-01-01"
-
-[allow.selector]
-ast_kind = "tracked_file"
-target_fingerprint = "toml"
-glob = "tests/fixtures/cargo-proof/obligation-plan-smoke-v1.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-9153"
 kind = "non_rust_file"
 family = "test_fixture"
@@ -11242,6 +11157,22 @@ review_after = "2026-11-08"
 glob = "policy/product-support-matrix.toml"
 
 [[allow]]
+id = "allow-9223"
+kind = "non_rust_file"
+family = "configuration"
+glob = "policy/scoped-text-rules.toml"
+owner = "core/governance"
+classification = "scoped_text_rule_schema"
+reason = "Versioned scoped-text rule schema with literal/phrase/token matcher MVP (#2714)"
+evidence = ["issue:2714", "issue:2684"]
+occurrence_limit = 1
+created = "2026-08-13"
+review_after = "2026-11-13"
+
+[allow.selector]
+glob = "policy/scoped-text-rules.toml"
+
+[[allow]]
 id = "allow-0518"
 kind = "non_rust_file"
 family = "documentation"
@@ -11302,6 +11233,174 @@ ast_kind = "tracked_file"
 symbol = "docs/schemas/shared-package-candidate.v1.schema.json"
 target_fingerprint = "json"
 glob = "docs/schemas/shared-package-candidate.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[[allow]]
+id = "allow-9252"
+kind = "panic"
+family = "assert"
+owner = "core"
+classification = "baseline_assert"
+reason = "Baseline assert! detections across the workspace (#2577). Individual files should narrow their occurrence_limit over time."
+created = "2026-08-13"
+review_after = "2027-02-01"
+
+[allow.selector]
+glob = "crates/**/*.rs"
+ast_kind = "macro_call"
+macro_name = "assert"
+
+[[allow]]
+id = "allow-9253"
+kind = "panic"
+family = "assert_eq"
+owner = "core"
+classification = "baseline_assert"
+reason = "Baseline assert_eq! detections across the workspace (#2577). Individual files should narrow their occurrence_limit over time."
+created = "2026-08-13"
+review_after = "2027-02-01"
+
+[allow.selector]
+glob = "crates/**/*.rs"
+ast_kind = "macro_call"
+macro_name = "assert_eq"
+
+[[allow]]
+id = "allow-9254"
+kind = "panic"
+family = "assert_ne"
+owner = "core"
+classification = "baseline_assert"
+reason = "Baseline assert_ne! detections across the workspace (#2577). Individual files should narrow their occurrence_limit over time."
+created = "2026-08-13"
+review_after = "2027-02-01"
+
+[allow.selector]
+glob = "crates/**/*.rs"
+ast_kind = "macro_call"
+macro_name = "assert_ne"
+
+[[allow]]
+id = "allow-9255"
+kind = "non_rust_file"
+family = "test_fixture"
+glob = "tests/fixtures/cargo-proof/intent-obligation-plan-smoke-v1.json"
+owner = "core/test"
+classification = "cargo_proof_intent_obligation_fixture"
+reason = "Intent-protocol obligation plan JSON fixture for cargo-proof plan pipeline (#3314)"
+evidence = ["issue:3314", "test:plan_and_dry_run_fixture_pipeline"]
+occurrence_limit = 1
+created = "2026-08-14"
+review_after = "2027-02-01"
+
+[allow.selector]
+glob = "tests/fixtures/cargo-proof/intent-obligation-plan-smoke-v1.json"
+
+[[allow]]
+id = "allow-9256"
+kind = "non_rust_file"
+family = "test_fixture"
+glob = "tests/fixtures/product-crates/missing-required-proof-engine-to-intent-protocol.json"
+owner = "core/test"
+classification = "product_crates_required_dependency_fixture"
+reason = "Seeded workspace metadata fixture proving a missing required proof-engine to intent-protocol edge is reported (#3317)"
+evidence = ["issue:3317", "test:missing_required_obligation_input_edge_is_reported"]
+occurrence_limit = 1
+created = "2026-08-14"
+review_after = "2027-02-01"
+
+[allow.selector]
+glob = "tests/fixtures/product-crates/missing-required-proof-engine-to-intent-protocol.json"
+
+[[allow]]
+id = "allow-9257"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/extraction-cutover-build-receipt.sh"
+owner = "core/ci"
+classification = "extraction_cutover_build_receipt"
+reason = "Produces the fail-closed independent build/package receipt for one cutover stage from exact-candidate package-set artifacts (#3469/#3552)."
+evidence = ["issue:3552", "issue:3469", "workflow:.github/workflows/ci.yml"]
+created = "2026-08-14"
+review_after = "2027-02-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "sh"
+glob = "scripts/extraction-cutover-build-receipt.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11101"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/candidate-harness-owned-dir.py"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Marker/token-owned disposable directory lifecycle and disposable-checkout snapshot helper for candidate harness safety (#3509)."
+evidence = ["test:scripts/test-candidate-harness-lifecycle.py", "issue:3509"]
+created = "2026-08-13"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "py"
+glob = "scripts/candidate-harness-owned-dir.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11102"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test-candidate-harness-lifecycle.py"
+owner = "core/release"
+classification = "test_fixture"
+reason = "Adversarial lifecycle, forged-context, symlink, marker, and interrupted-cleanup characterization for candidate harness safety (#3509)."
+evidence = ["test:scripts/test-candidate-harness-lifecycle.py", "issue:3509"]
+created = "2026-08-13"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "py"
+glob = "scripts/test-candidate-harness-lifecycle.py"
 
 [allow.last_seen]
 line = 1

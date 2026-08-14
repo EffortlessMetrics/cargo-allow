@@ -37,6 +37,6 @@ discovery_fixtures = [
 ]
 
 proof_fixtures = [
-  "tests/fixtures/cargo-proof/obligation-plan-smoke-v1.toml",
+  "tests/fixtures/cargo-proof/intent-obligation-plan-smoke-v1.json",
   "tests/fixtures/cargo-proof/proof-plan-smoke-v1.toml",
 ]

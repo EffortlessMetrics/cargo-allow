@@ -162,44 +162,70 @@ PY
 record_stage "cargo_intent_change_status" "real" "Passed"
 
 log "stage obligation_plan_bridge"
-obligation_plan_path="${work_dir}/obligation-plan.toml"
+obligation_plan_path="${work_dir}/intent-obligation-plan.json"
 python3 - "${intent_status_path}" "${obligation_plan_path}" <<'PY'
 import json, sys
 from pathlib import Path
 
 report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 out = Path(sys.argv[2])
-obligations = (
-    report.get("obligation_plan", {})
-    .get("plan", {})
-    .get("obligations", [])
-)
-if not obligations:
+# cargo-proof plan consumes IntentObligationPlanEnvelopeV1 JSON (#3314); the
+# intent change-status response embeds that envelope verbatim under
+# obligation_plan.plan, so the bridge passes it through without reauthoring.
+envelope = report.get("obligation_plan", {}).get("plan")
+if not isinstance(envelope, dict):
+    raise SystemExit("intent status missing obligation_plan.plan envelope")
+if envelope.get("schema_id") != "intent.obligation-plan.v1":
+    raise SystemExit(
+        f"unexpected envelope schema_id: {envelope.get('schema_id')!r}"
+    )
+if not envelope.get("obligations"):
     raise SystemExit("intent status missing obligations for bridge")
-
-lines = [
-    'schema_id = "proof.change-obligation-plan.v1"',
-    'plan_id = "three-product-dogfood-obligation"',
-    "",
-]
-for idx, item in enumerate(obligations):
-    kind = item.get("kind", "unknown")
-    if isinstance(kind, dict):
-        kind = next(iter(kind.keys()), "unknown")
-    # cargo-proof plan registry currently registers fake provider only (#2589-B).
-    provider = "proof.fake-provider.v1"
-    lines.append("[[obligations]]")
-    lines.append(f'obligation_id = "obligation-{idx}"')
-    lines.append(f'provider_id = "{provider}"')
-    lines.append('proof_kind = "cargo-allow.no-new"')
-    lines.append("")
-out.write_text("\n".join(lines), encoding="utf-8")
+out.write_text(json.dumps(envelope, indent=2) + "\n", encoding="utf-8")
 PY
 record_stage "obligation_plan_bridge" "bridged" "Passed"
 
 log "stage cargo_proof_plan"
 proof_plan_path="${work_dir}/proof-plan.toml"
 "${cargo_proof_bin}" --format json plan --obligation-plan "${obligation_plan_path}" >"${work_dir}/proof-plan-frame.json"
+# The intent plan digest must be load-bearing (#3316): the frame binds the
+# exact intent plan identity, identical envelopes plan identically, and a
+# changed envelope plans to a distinct identity.
+"${cargo_proof_bin}" --format json plan --obligation-plan "${obligation_plan_path}" >"${work_dir}/proof-plan-frame-repeat.json"
+modified_plan_path="${work_dir}/intent-obligation-plan-modified.json"
+python3 - "${obligation_plan_path}" "${modified_plan_path}" <<'PY'
+import json, sys
+from pathlib import Path
+
+envelope = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+obligations = envelope.get("obligations", [])
+if not obligations:
+    raise SystemExit("bridge envelope missing obligations")
+obligations[0]["statement"] = obligations[0].get("statement", "") + " (changed)"
+Path(sys.argv[2]).write_text(json.dumps(envelope, indent=2) + "\n", encoding="utf-8")
+PY
+"${cargo_proof_bin}" --format json plan --obligation-plan "${modified_plan_path}" >"${work_dir}/proof-plan-frame-modified.json"
+python3 - "${work_dir}/proof-plan-frame.json" "${work_dir}/proof-plan-frame-repeat.json" "${work_dir}/proof-plan-frame-modified.json" <<'PY'
+import json, sys
+from pathlib import Path
+
+def load(idx):
+    return json.loads(Path(sys.argv[idx]).read_text(encoding="utf-8"))
+
+base, repeat, modified = load(1), load(2), load(3)
+digest = base.get("intent_plan_digest", "")
+if not digest.startswith("sha256:v1:"):
+    raise SystemExit(f"plan frame missing intent_plan_digest: {digest!r}")
+if base.get("plan_id", "").find(digest) < 0:
+    raise SystemExit("plan_id must embed the intent plan digest")
+if base != repeat:
+    raise SystemExit("identical intent envelopes must produce identical plan frames")
+if modified.get("plan_id") == base.get("plan_id"):
+    raise SystemExit("changed intent envelope must produce a distinct plan identity")
+if modified.get("intent_plan_digest") == digest:
+    raise SystemExit("changed intent envelope must produce a distinct digest")
+print("intent_plan_digest_load_bearing_ok")
+PY
 record_stage "cargo_proof_plan" "real" "Passed"
 
 log "stage cargo_proof_dry_run"

@@ -111,6 +111,7 @@ pub(crate) fn load_staged_world(
         &allow_files::FileScanOptions {
             generated: options.generated.clone(),
             file_families: cfg.workspace.file_families.clone(),
+            content_aware_generated: false,
         },
     ));
     let staged_companion_findings =
@@ -380,6 +381,7 @@ pub(crate) fn load_world_with_evidence_mode(
         &allow_files::FileScanOptions {
             generated: opts.generated.clone(),
             file_families: cfg.workspace.file_families.clone(),
+            content_aware_generated: false,
         },
     ));
     let companion_findings = canonical_companion_findings(&root, &cfg, &files)?;
@@ -472,6 +474,7 @@ pub(crate) fn load_world_for_path(
         &allow_files::FileScanOptions {
             generated: cfg.workspace.generated.clone(),
             file_families: cfg.workspace.file_families.clone(),
+            content_aware_generated: false,
         },
     ));
     let companion_findings = canonical_companion_findings(&root, &cfg, &files)?;
@@ -608,6 +611,7 @@ fn load_world_without_policy(
         &allow_files::FileScanOptions {
             generated: opts.generated.clone(),
             file_families: cfg.workspace.file_families.clone(),
+            content_aware_generated: false,
         },
     ));
     let companion_findings = canonical_companion_findings(root, &cfg, &files)?;

@@ -1,9 +1,16 @@
-//! Compiled spec graph DTOs (#2584-B).
+//! Graph compilation DTOs — the stable types consumed by compile_spec_graph (#3520).
+//!
+//! These types were previously in compiled_graph.rs which was deleted as dead
+//! code in #3304. They are restored here as a focused DTO-only module so the
+//! graph compiler can move from allow-policy to intent-engine (#3520).
 
-use allow_core::normalize_path;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
+use super::authored_mapping::{
+    EvidenceClaimId, EvidencePurpose, EvidenceSubjectId, EvidenceSubjectRegistration,
+    EvidenceSubjectRole, ImplementationSeamId, SourceLocation,
+};
 use super::implementation_slice::{
     EvidenceDispositionState, ImplementationClaimStatus, ImplementationSliceClass,
     ImplementationSliceId, ImplementationSliceV1, SupportClaimDispositionState,
@@ -12,84 +19,14 @@ use super::requirement::{
     RequirementClaimClass, RequirementGraph, RequirementId, RequirementStatus,
 };
 
-macro_rules! graph_id {
-    ($name:ident) => {
-        #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
-        #[serde(transparent)]
-        pub struct $name(pub String);
+/// Stable snapshot identifier for a compiled graph.
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct GraphSnapshotId(pub String);
 
-        impl $name {
-            pub fn as_str(&self) -> &str {
-                &self.0
-            }
-        }
-    };
-}
-
-graph_id!(GraphSnapshotId);
-graph_id!(ImplementationSeamId);
-graph_id!(EvidenceClaimId);
-graph_id!(EvidenceSubjectId);
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct SourceLocation {
-    pub path: String,
-    #[serde(default)]
-    pub line: Option<u32>,
-    #[serde(default)]
-    pub symbol: Option<String>,
-}
-
-impl SourceLocation {
-    pub fn new(path: impl Into<String>) -> Self {
-        Self {
-            path: normalize_path(path.into()),
-            line: None,
-            symbol: None,
-        }
-    }
-
-    pub fn with_line(mut self, line: u32) -> Self {
-        self.line = Some(line);
-        self
-    }
-
-    pub fn with_symbol(mut self, symbol: impl Into<String>) -> Self {
-        self.symbol = Some(symbol.into());
-        self
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum EvidencePurpose {
-    PositiveAcceptance,
-    ForbiddenRuntimePromotion,
-}
-
-impl EvidencePurpose {
-    pub(crate) fn as_str(self) -> &'static str {
-        match self {
-            Self::PositiveAcceptance => "positive_acceptance",
-            Self::ForbiddenRuntimePromotion => "forbidden_runtime_promotion",
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum EvidenceSubjectRole {
-    ExactEvidence,
-    RelatedWeak,
-}
-
-impl EvidenceSubjectRole {
-    pub(crate) fn as_str(self) -> &'static str {
-        match self {
-            Self::ExactEvidence => "exact_evidence",
-            Self::RelatedWeak => "related_weak",
-        }
+impl GraphSnapshotId {
+    pub fn as_str(&self) -> &str {
+        &self.0
     }
 }
 
@@ -100,19 +37,6 @@ pub struct ImplementationSeamRegistration {
     pub owner: String,
     pub operation: String,
     pub source: SourceLocation,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct EvidenceSubjectRegistration {
-    pub id: EvidenceSubjectId,
-    pub role: EvidenceSubjectRole,
-    pub package: String,
-    pub target: String,
-    pub module_path: String,
-    pub test_name: String,
-    pub source: SourceLocation,
-    pub source_identity: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -216,7 +140,7 @@ pub enum GraphDiagnosticCode {
 }
 
 impl GraphDiagnosticCode {
-    pub(crate) fn as_str(self) -> &'static str {
+    pub fn as_str(self) -> &'static str {
         match self {
             Self::DuplicateId => "duplicate_id",
             Self::UnknownRequirement => "unknown_requirement",
@@ -242,7 +166,7 @@ pub struct GraphDiagnostic {
 }
 
 impl GraphDiagnostic {
-    pub(crate) fn new(
+    pub fn new(
         code: GraphDiagnosticCode,
         subject: impl Into<String>,
         message: impl Into<String>,
@@ -297,39 +221,6 @@ impl CompiledSpecGraph {
             .into_iter()
             .flat_map(|claim| claim.subject_ids.iter())
             .filter_map(|subject_id| self.subjects.get(subject_id))
-            .collect()
-    }
-
-    pub fn related_subjects_for_evidence(
-        &self,
-        evidence_id: &EvidenceClaimId,
-    ) -> Vec<&EvidenceSubjectNode> {
-        self.evidence_claims
-            .get(evidence_id)
-            .into_iter()
-            .flat_map(|claim| claim.related_subject_ids.iter())
-            .filter_map(|subject_id| self.subjects.get(subject_id))
-            .collect()
-    }
-
-    pub fn diagnostics_for_slice(&self, slice_id: &ImplementationSliceId) -> Vec<&GraphDiagnostic> {
-        let requirement_ids = self
-            .slices
-            .get(slice_id)
-            .map(|slice| {
-                slice
-                    .requirement_ids
-                    .iter()
-                    .map(RequirementId::as_str)
-                    .collect::<BTreeSet<_>>()
-            })
-            .unwrap_or_default();
-        self.diagnostics
-            .iter()
-            .filter(|diagnostic| {
-                diagnostic.subject == slice_id.as_str()
-                    || requirement_ids.contains(diagnostic.subject.as_str())
-            })
             .collect()
     }
 }

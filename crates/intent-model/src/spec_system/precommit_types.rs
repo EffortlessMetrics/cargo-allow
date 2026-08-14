@@ -1,6 +1,12 @@
-//! Pre-commit evaluation DTOs (#2584-B).
+//! Pre-commit evaluation DTOs (#3521 / #2935 slice 5b).
+//!
+//! These types were previously in compiled_graph.rs (deleted in #3304 as dead
+//! code) and lived only in allow-policy's snapshot_package copy. Restored here
+//! as a focused DTO module so the precommit evaluator can move from allow-policy
+//! to intent-engine.
 
-use super::compiled_graph::{CompiledSpecGraph, EvidenceSubjectId};
+use super::authored_mapping::EvidenceSubjectId;
+use super::graph_types::CompiledSpecGraph;
 use super::implementation_slice::{ImplementationSliceId, ImplementationSliceV1};
 
 /// The stable change vocabulary consumed by the pre-commit policy.
@@ -73,10 +79,6 @@ pub struct PrecommitMovement {
 }
 
 /// A caller-provided declaration of the change being evaluated.
-///
-/// The evaluator does not infer a precise semantic class from file extensions.
-/// An absent declaration is only classified when the graph movements provide a
-/// single high-confidence class.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct PrecommitChangeDeclaration {
     pub class: Option<PrecommitChangeClass>,
