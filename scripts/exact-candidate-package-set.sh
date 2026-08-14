@@ -120,7 +120,9 @@ if [[ "${CANDIDATE_HARNESS_SNAPSHOT_PROBE:-0}" == "1" && "${CANDIDATE_HARNESS_TE
 fi
 
 output_root="${SCRIPT_ROOT}/target"
+python3 "${lifecycle}" validate-target --repository "${SCRIPT_ROOT}" --path "${output_root}"
 mkdir -p "${output_root}"
+python3 "${lifecycle}" validate-target --repository "${SCRIPT_ROOT}" --path "${output_root}"
 exact_parent="${output_root}/exact-candidate-package-set"
 if [[ ! -e "${exact_parent}" ]]; then
   mkdir "${exact_parent}"

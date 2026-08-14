@@ -78,7 +78,9 @@ if [[ "${CANDIDATE_HARNESS_SNAPSHOT_PROBE:-0}" == "1" && "${CANDIDATE_HARNESS_TE
 fi
 
 output_root="${SCRIPT_ROOT}/target"
+python3 "${lifecycle}" validate-target --repository "${SCRIPT_ROOT}" --path "${output_root}"
 mkdir -p "${output_root}"
+python3 "${lifecycle}" validate-target --repository "${SCRIPT_ROOT}" --path "${output_root}"
 work_json="$(python3 "${lifecycle}" allocate --root "${output_root}" --purpose source-candidate-smoke --durable)"
 read -r work_dir work_token < <(
   printf '%s' "${work_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'

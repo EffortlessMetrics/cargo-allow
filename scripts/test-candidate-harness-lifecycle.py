@@ -130,6 +130,25 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
     if not package_parent.is_dir() or not parent_sentinel.is_file():
         raise SystemExit("parent cleanup removed pre-created package-set input")
 
+    # Target aliases must be rejected before a harness can mkdir through them.
+    run("validate-target", "--repository", str(ROOT), "--path", str(ROOT / "target"))
+    alias_repo = root / "target-alias-repo"
+    alias_repo.mkdir()
+    alias_target = root / "target-alias-external"
+    alias_target.mkdir()
+    alias_sentinel = alias_target / "sentinel"
+    alias_sentinel.write_text("preserve\n", encoding="utf-8")
+    if hasattr(os, "symlink"):
+        target_alias = alias_repo / "target"
+        try:
+            target_alias.symlink_to(alias_target, target_is_directory=True)
+        except OSError:
+            pass
+        else:
+            reject("validate-target", "--repository", str(alias_repo), "--path", str(target_alias))
+            if alias_sentinel.read_text(encoding="utf-8") != "preserve\n":
+                raise SystemExit("target alias validation changed external sentinel")
+
     # Restore collision characterization: the shell restore contract must
     # refuse to overwrite a destination that appeared while the stash exists.
     collision_stash = root / "collision.stash"

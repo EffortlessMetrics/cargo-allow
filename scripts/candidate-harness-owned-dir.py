@@ -16,14 +16,22 @@ from io import BytesIO
 from pathlib import Path
 
 MARKER = ".candidate-harness-owner.json"
+REPARSE_POINT = 0x400
 
 
 def fail(message: str) -> None:
     raise SystemExit(f"candidate-harness-owned-dir: {message}")
 
 
+def is_reparse_point(path: Path) -> bool:
+    if path.is_symlink():
+        return True
+    attributes = getattr(path.lstat(), "st_file_attributes", 0)
+    return bool(attributes & REPARSE_POINT)
+
+
 def canonical_existing(path: Path, label: str) -> Path:
-    if not str(path).strip() or not path.exists() or path.is_symlink():
+    if not str(path).strip() or not path.exists() or is_reparse_point(path):
         fail(f"{label} must be an existing non-symlink directory: {path}")
     resolved = path.resolve(strict=True)
     if not resolved.is_dir():
@@ -52,6 +60,24 @@ def validate_contained_directory(root: Path, directory: Path) -> Path:
     except ValueError as error:
         fail(f"directory must be contained under {allowed}: {resolved}")
     return resolved
+
+
+def validate_target(repository: Path, target: Path) -> None:
+    repo = canonical_existing(repository, "repository")
+    expected = repo / "target"
+    if target.absolute() != expected.absolute():
+        fail(f"target must be the repository target directory: {target}")
+    if not target.exists():
+        return
+    if is_reparse_point(target):
+        fail(f"target must not be a symlink or reparse point: {target}")
+    if not target.is_dir():
+        fail(f"target must be a directory: {target}")
+    resolved = target.resolve(strict=True)
+    try:
+        resolved.relative_to(repo)
+    except ValueError as error:
+        fail(f"target must be contained under repository: {resolved}")
 
 
 def validate_purpose(purpose: str) -> None:
@@ -185,6 +211,9 @@ def main() -> int:
     contained_parser = subparsers.add_parser("validate-contained")
     contained_parser.add_argument("--root", type=Path, required=True)
     contained_parser.add_argument("--path", type=Path, required=True)
+    target_parser = subparsers.add_parser("validate-target")
+    target_parser.add_argument("--repository", type=Path, required=True)
+    target_parser.add_argument("--path", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "allocate":
         directory, token = allocate(args.root, args.purpose, args.durable)
@@ -217,6 +246,9 @@ def main() -> int:
         return 0
     if args.command == "validate-contained":
         print(validate_contained_directory(args.root, args.path))
+        return 0
+    if args.command == "validate-target":
+        validate_target(args.repository, args.path)
         return 0
     remove(args.root, args.path, args.purpose, args.token)
     return 0
