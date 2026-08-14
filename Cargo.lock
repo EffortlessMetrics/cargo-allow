@@ -1047,6 +1047,8 @@ dependencies = [
  "intent-protocol",
  "proof-protocol",
  "serde",
+ "serde_json",
+ "sha2",
  "toml",
 ]
 

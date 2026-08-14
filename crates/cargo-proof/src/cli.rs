@@ -81,8 +81,8 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
             Ok(ProcessExitFamilyV1::Success)
         }
         Some(CargoProofCommand::Plan(args)) => {
-            let plan = plan_from_obligation_path(&args.obligation_plan)?;
-            let rendered = render_plan_frame(&plan, output_format)?;
+            let outcome = plan_from_obligation_path(&args.obligation_plan)?;
+            let rendered = render_plan_frame(&outcome, output_format)?;
             print!("{rendered}");
             Ok(ProcessExitFamilyV1::Success)
         }

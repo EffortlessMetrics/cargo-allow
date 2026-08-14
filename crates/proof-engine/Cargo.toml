@@ -22,4 +22,6 @@ intent-protocol.workspace = true
 effortless-repo-protocol.workspace = true
 effortless-rust-source-index.workspace = true
 serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+sha2.workspace = true
 toml.workspace = true

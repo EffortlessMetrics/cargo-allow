@@ -20,6 +20,7 @@ mod corpus_semantics;
 mod currentness;
 mod dry_run;
 mod execution;
+mod intent_digest;
 mod intent_planner;
 mod parity;
 mod phase_gate;
@@ -34,8 +35,8 @@ mod subject_reconciliation;
 mod tests;
 
 pub use cache::{
-    CacheError, PROOF_CACHE_SCHEMA_ID, ProofCacheEntryV1, ProofCacheV1, cache_key_for_plan,
-    validate_proof_cache,
+    CacheError, PROOF_CACHE_SCHEMA_ID, ProofCacheEntryV1, ProofCacheV1, cache_key_for_intent_plan,
+    cache_key_for_plan, validate_proof_cache,
 };
 pub use captured_receipts::{
     CAPTURED_RECEIPT_STORE_SCHEMA_ID, CapturedReceiptError, CapturedReceiptStoreV1,
@@ -65,7 +66,7 @@ pub use contradiction::{
 };
 pub use currentness::{
     CURRENTNESS_REPORT_SCHEMA_ID, CurrentnessError, CurrentnessReportV1, evaluate_currentness,
-    receipt_set_digest,
+    evaluate_intent_plan_currentness, receipt_set_digest,
 };
 pub use dry_run::{
     DRY_RUN_PLAN_REPORT_SCHEMA_ID, DryRunError, DryRunPlanLineV1, DryRunPlanReportV1,
@@ -74,6 +75,9 @@ pub use dry_run::{
 pub use execution::{
     EXECUTION_GATE_SCHEMA_ID, ExecutionApprovalV1, ExecutionError, ExecutionGateReportV1,
     evaluate_execution_gate, require_explicit_execution,
+};
+pub use intent_digest::{
+    INTENT_PLAN_IDENTITY_PREFIX, intent_obligation_plan_digest, intent_plan_identity,
 };
 pub use intent_planner::{
     INTENT_OBLIGATION_PLANNER_SCHEMA_ID, IntentPlannerError, plan_proof_execution_from_intent,
