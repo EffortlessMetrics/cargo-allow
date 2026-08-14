@@ -78,6 +78,21 @@ pub struct ForbiddenCrateDependency {
     pub repair_hint: Option<String>,
 }
 
+/// A converged dependency path that must stay declared (#2936 / #3317).
+///
+/// Records the final obligation-input authority: proof-engine must depend on
+/// intent-protocol, and the deleted proof-owned obligation model must not
+/// silently sever that path. `from_package` resolves the logical crate name
+/// to its cargo package name when they differ (e.g. proof-engine is
+/// published as proof-orchestrator).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RequiredCrateDependency {
+    pub from: String,
+    pub from_package: Option<String>,
+    pub to: String,
+    pub rationale_issue: Option<u32>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ArchitectureManifest {
     pub schema_version: String,
@@ -88,6 +103,7 @@ pub struct ArchitectureManifest {
     pub shared_crate: Vec<SharedCrateDefinition>,
     pub planned_crate: Vec<PlannedCrate>,
     pub forbidden_crate_dependency: Vec<ForbiddenCrateDependency>,
+    pub required_crate_dependency: Vec<RequiredCrateDependency>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -105,6 +121,8 @@ struct ArchitectureManifestToml {
     planned_crate: Vec<PlannedCrateToml>,
     #[serde(default)]
     forbidden_crate_dependency: Vec<ForbiddenCrateDependencyToml>,
+    #[serde(default)]
+    required_crate_dependency: Vec<RequiredCrateDependencyToml>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -142,6 +160,15 @@ struct ForbiddenCrateDependencyToml {
     from: String,
     to: String,
     repair_hint: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RequiredCrateDependencyToml {
+    from: String,
+    from_package: Option<String>,
+    to: String,
+    rationale_issue: Option<u32>,
 }
 
 impl ArchitectureManifestToml {
@@ -197,6 +224,17 @@ impl ArchitectureManifestToml {
             })
             .collect();
 
+        let required_crate_dependency = self
+            .required_crate_dependency
+            .into_iter()
+            .map(|entry| RequiredCrateDependency {
+                from: entry.from,
+                from_package: entry.from_package,
+                to: entry.to,
+                rationale_issue: entry.rationale_issue,
+            })
+            .collect();
+
         Ok(ArchitectureManifest {
             schema_version,
             manifest_id,
@@ -206,6 +244,7 @@ impl ArchitectureManifestToml {
             shared_crate,
             planned_crate,
             forbidden_crate_dependency,
+            required_crate_dependency,
         })
     }
 }

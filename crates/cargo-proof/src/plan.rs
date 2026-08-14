@@ -1,8 +1,9 @@
 //! Proof plan command wired to proof-engine (#2589-B).
 //!
 //! The plan CLI consumes intent-protocol obligation input via the intent
-//! planner entry point (#3310/#3312). The legacy ChangeObligationPlanV1
-//! path has been deleted (#3314).
+//! planner entry point (#3310/#3312). The legacy proof-owned obligation
+//! path has been deleted (#3314) and is guarded against reintroduction
+//! (#3317).
 
 use std::path::Path;
 

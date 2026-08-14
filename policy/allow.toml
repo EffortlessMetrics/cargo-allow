@@ -11326,3 +11326,19 @@ review_after = "2027-02-01"
 
 [allow.selector]
 glob = "tests/fixtures/cargo-proof/intent-obligation-plan-smoke-v1.json"
+
+[[allow]]
+id = "allow-9256"
+kind = "non_rust_file"
+family = "test_fixture"
+glob = "tests/fixtures/product-crates/missing-required-proof-engine-to-intent-protocol.json"
+owner = "core/test"
+classification = "product_crates_required_dependency_fixture"
+reason = "Seeded workspace metadata fixture proving a missing required proof-engine to intent-protocol edge is reported (#3317)"
+evidence = ["issue:3317", "test:missing_required_obligation_input_edge_is_reported"]
+occurrence_limit = 1
+created = "2026-08-14"
+review_after = "2027-02-01"
+
+[allow.selector]
+glob = "tests/fixtures/product-crates/missing-required-proof-engine-to-intent-protocol.json"

@@ -22,6 +22,8 @@ mod dry_run;
 mod execution;
 mod intent_digest;
 mod intent_planner;
+#[cfg(test)]
+mod obligation_authority_guard;
 mod parity;
 mod phase_gate;
 #[cfg(test)]
