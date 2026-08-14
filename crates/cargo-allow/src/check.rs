@@ -26,6 +26,8 @@ mod check_extraction_shim_guard;
 use check_extraction_shim_guard::extraction_shim_registry_fails_check;
 #[path = "check_source_coupling_guard.rs"]
 mod check_source_coupling_guard;
+#[path = "governance_projection.rs"]
+pub(crate) mod governance_projection;
 use check_source_coupling_guard::source_coupling_diagnostics_for_check;
 
 use crate::federation_report::FederationReportBundle;

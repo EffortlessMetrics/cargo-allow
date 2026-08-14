@@ -1,11 +1,11 @@
+use super::governance_projection::{
+    GovernanceProjection, crate_identity_for_path as projection_identity_for_path, identity_owners,
+    load_governance_projection_at,
+};
 use allow_core::{
     CargoAllowError, CargoAllowErrorKind, CargoAllowResult, normalize_path, read_text_file_capped,
 };
 use allow_match::CheckMode;
-use allow_policy::product_crates::{
-    ArchitectureManifest, ArchitectureManifestV2, CrateIdentityV2, parse_architecture_manifest_at,
-    parse_architecture_manifest_v2_at,
-};
 use allow_rust::{
     RustSourceCouplingKind, RustSourceCouplingPathBase, is_likely_test_file,
     rust_source_declares_no_std, rust_source_shadows_path_macros,
@@ -62,22 +62,8 @@ pub(crate) fn source_coupling_diagnostics_at(
     if !manifest_path.is_file() || !forbidden_path.is_file() {
         return Ok(Vec::new());
     }
-    let manifest_text = std::fs::read_to_string(&manifest_path).map_err(|error| {
-        CargoAllowError::new(format!(
-            "source coupling ownership manifest unreadable at {}: {error}",
-            manifest_path.display()
-        ))
-    })?;
-    let manifest = parse_architecture_manifest_v2_at(Some(&manifest_path), &manifest_text)?;
-    let forbidden_text = std::fs::read_to_string(&forbidden_path).map_err(|error| {
-        CargoAllowError::new(format!(
-            "source coupling dependency policy unreadable at {}: {error}",
-            forbidden_path.display()
-        ))
-    })?;
-    let forbidden_manifest =
-        parse_architecture_manifest_at(Some(&forbidden_path), &forbidden_text)?;
-    let forbidden_edges = forbidden_product_edges(&forbidden_manifest);
+    let projection = load_governance_projection_at(root)?;
+    let forbidden_edges = projection.forbidden_product_dependencies.clone();
     let tracked_paths: BTreeSet<PathBuf> =
         allow_inventory::git_ls_files(root)?.into_iter().collect();
     let files = tracked_paths
@@ -96,7 +82,7 @@ pub(crate) fn source_coupling_diagnostics_at(
         })
         .collect::<CargoAllowResult<Vec<_>>>()?;
     source_coupling_diagnostics_for_sources_at_root(
-        &manifest,
+        &projection,
         &forbidden_edges,
         &tracked_paths,
         &files,
@@ -106,7 +92,7 @@ pub(crate) fn source_coupling_diagnostics_at(
 
 #[cfg(test)]
 fn source_coupling_diagnostics_for_sources(
-    manifest: &ArchitectureManifestV2,
+    manifest: &GovernanceProjection,
     forbidden_edges: &BTreeMap<String, BTreeSet<String>>,
     tracked_paths: &BTreeSet<PathBuf>,
     files: &[(PathBuf, String)],
@@ -121,13 +107,13 @@ fn source_coupling_diagnostics_for_sources(
 }
 
 fn source_coupling_diagnostics_for_sources_at_root(
-    manifest: &ArchitectureManifestV2,
+    manifest: &GovernanceProjection,
     forbidden_edges: &BTreeMap<String, BTreeSet<String>>,
     tracked_paths: &BTreeSet<PathBuf>,
     files: &[(PathBuf, String)],
     root: Option<&Path>,
 ) -> CargoAllowResult<Vec<SourceCouplingDiagnostic>> {
-    let target_owners = target_owners(manifest);
+    let target_owners = identity_owners(manifest);
     let scanned_paths: BTreeSet<&PathBuf> = files.iter().map(|(path, _)| path).collect();
     let no_std_crates: BTreeSet<String> = files
         .iter()
@@ -135,7 +121,7 @@ fn source_coupling_diagnostics_for_sources_at_root(
             rust_source_declares_no_std(source)
                 .ok()
                 .filter(|declares| *declares)
-                .and_then(|_| crate_identity_for_path(manifest, path))
+                .and_then(|_| projection_identity_for_path(manifest, &normalize_path(path)))
                 .map(|identity| identity.workspace_path.clone())
         })
         .collect();
@@ -145,13 +131,14 @@ fn source_coupling_diagnostics_for_sources_at_root(
             rust_source_shadows_path_macros(source)
                 .ok()
                 .filter(|shadows| *shadows)
-                .and_then(|_| crate_identity_for_path(manifest, path))
+                .and_then(|_| projection_identity_for_path(manifest, &normalize_path(path)))
                 .map(|identity| identity.workspace_path.clone())
         })
         .collect();
     let mut diagnostics = Vec::new();
     for (path, source) in files {
-        let Some(source_identity) = crate_identity_for_path(manifest, path) else {
+        let Some(source_identity) = projection_identity_for_path(manifest, &normalize_path(path))
+        else {
             continue;
         };
         let scan = scan_rust_source_coupling_with_posture(
@@ -245,7 +232,10 @@ fn source_coupling_diagnostics_for_sources_at_root(
                             } else {
                                 target_path
                             };
-                            let target_identity = crate_identity_for_path(manifest, &target_path);
+                            let target_identity = projection_identity_for_path(
+                                manifest,
+                                &normalize_path(&target_path),
+                            );
                             if is_include_macro(&fact.text) && !scanned_paths.contains(&target_path)
                             {
                                 diagnostics.push(unresolved_path_diagnostic(
@@ -542,57 +532,6 @@ fn unresolved_path_diagnostic(
         target_owner: "unresolved".to_string(),
         import_text,
     }
-}
-
-fn forbidden_product_edges(manifest: &ArchitectureManifest) -> BTreeMap<String, BTreeSet<String>> {
-    manifest
-        .product
-        .iter()
-        .map(|product| {
-            (
-                product.id.clone(),
-                product
-                    .forbid_product_dependencies
-                    .iter()
-                    .cloned()
-                    .collect(),
-            )
-        })
-        .collect()
-}
-
-fn target_owners(
-    manifest: &ArchitectureManifestV2,
-) -> BTreeMap<String, (&CrateIdentityV2, String)> {
-    let mut owners = BTreeMap::new();
-    for identity in &manifest.crate_identity {
-        let owner = identity.product_or_shared_owner.clone();
-        owners.insert(
-            normalize_segment(&identity.rust_library_name),
-            (identity, owner.clone()),
-        );
-        for alias in &identity.workspace_dependency_aliases {
-            owners.insert(normalize_segment(alias), (identity, owner.clone()));
-        }
-    }
-    owners
-}
-
-fn crate_identity_for_path<'a>(
-    manifest: &'a ArchitectureManifestV2,
-    path: &Path,
-) -> Option<&'a CrateIdentityV2> {
-    let normalized = normalize_path(path);
-    manifest
-        .crate_identity
-        .iter()
-        .filter(|identity| {
-            let root = identity.workspace_path.trim_end_matches('/');
-            normalized == root
-                || (normalized.starts_with(root)
-                    && normalized.as_bytes().get(root.len()) == Some(&b'/'))
-        })
-        .max_by_key(|identity| identity.workspace_path.len())
 }
 
 fn first_path_segment(path: &str) -> Option<String> {
