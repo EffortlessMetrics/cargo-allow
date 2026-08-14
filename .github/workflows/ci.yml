@@ -224,6 +224,16 @@ jobs:
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Build three-product binaries for dogfood (#2558)
         run: cargo build -p cargo-allow -p cargo-intent -p cargo-proof --locked
+      - name: Governance validation receipt (#2942 step 5)
+        run: |
+          cargo run -p cargo-intent --locked -- --root . governance \
+            --receipt target/cargo-intent/governance-receipt.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: governance-receipt
+          path: target/cargo-intent/governance-receipt.json
+          if-no-files-found: warn
       - name: Three-product dogfood smoke (#2558)
         run: bash scripts/three-product-dogfood-smoke.sh
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

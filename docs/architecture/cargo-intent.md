@@ -12,6 +12,22 @@ Product identity, config entrypoint, renderer framework, and exit mapping. `chan
 - `cargo-intent::config` — config entrypoint (#2599-A)
 - `cargo-intent::render` — human/JSON renderer framework (#2599-A)
 - `cargo-intent::exit` — process exit mapping (#2599-A)
+- `cargo-intent::governance` — repository governance receipt operation (#2942 step 4, #3540)
+
+## Governance receipt operation (#2942)
+
+`cargo-intent governance [--receipt <path>]` compiles the live governance
+authority (crate identities, package topology, move ledger, shims, parity,
+dependency law) through the intent-engine reconciliation and closure
+validation operations into a deterministic `cargo-intent.governance-receipt.v1`
+with candidate package-row projections. It reads repository files as text
+only; no Cargo invocation.
+
+**Consumers** (#2942 step 5): the CI `test` job runs the operation with a
+pinned receipt path and uploads `governance-receipt` as an artifact; the
+step fails on any blocking finding. cargo-allow's architecture tests keep
+calling allow-policy validators directly during cutover — they are the V1
+authority under migration (#2942 steps 6-7).
 
 ## Install smoke (#2599-C)
 
