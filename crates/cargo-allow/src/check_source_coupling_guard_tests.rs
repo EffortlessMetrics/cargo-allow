@@ -1,9 +1,11 @@
+use super::super::governance_projection::CrateIdentityProjection;
+use super::super::governance_projection::GovernanceProjection;
+use super::super::governance_projection::crate_identity_for_path;
 use super::{
-    crate_identity_for_path, source_coupling_diagnostics_at, source_coupling_diagnostics_for_check,
+    source_coupling_diagnostics_at, source_coupling_diagnostics_for_check,
     source_coupling_diagnostics_for_sources, source_coupling_fails_check,
 };
 use allow_match::CheckMode;
-use allow_policy::product_crates::parse_architecture_manifest_v2;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
@@ -11,49 +13,38 @@ fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
-fn fixture_manifest() -> Result<allow_policy::product_crates::ArchitectureManifestV2, String> {
-    parse_architecture_manifest_v2(
-        r#"
-schema_version = "2.0"
-authority_generation = 2
-manifest_id = "fixture"
-controlling_issue = 3443
-linked_move_ledger = "fixture-ledger"
-
-[[crate_identity]]
-logical_id = "product-a"
-workspace_path = "crates/product-a"
-workspace_dependency_aliases = ["product-a"]
-cargo_package_name = "product-a"
-rust_library_name = "product_a"
-product_or_shared_owner = "product-a"
-crate_role = "CargoAllowCore"
-
-[[crate_identity]]
-logical_id = "product-b"
-workspace_path = "crates/product-b"
-workspace_dependency_aliases = ["product-b"]
-cargo_package_name = "product-b"
-rust_library_name = "product_b"
-product_or_shared_owner = "product-b"
-crate_role = "CargoAllowCore"
-
-[[crate_identity]]
-logical_id = "shared-protocol"
-workspace_path = "crates/shared-protocol"
-workspace_dependency_aliases = ["shared-protocol"]
-cargo_package_name = "shared-protocol"
-rust_library_name = "shared_protocol"
-product_or_shared_owner = "shared"
-crate_role = "SharedProtocol"
-"#,
-    )
-    .map_err(|error| format!("fixture manifest: {error}"))
+fn fixture_manifest() -> GovernanceProjection {
+    GovernanceProjection {
+        crate_identities: vec![
+            CrateIdentityProjection {
+                logical_id: "product-a".to_string(),
+                workspace_path: "crates/product-a".to_string(),
+                workspace_dependency_aliases: vec!["product-a".to_string()],
+                rust_library_name: "product_a".to_string(),
+                product_or_shared_owner: "product-a".to_string(),
+            },
+            CrateIdentityProjection {
+                logical_id: "product-b".to_string(),
+                workspace_path: "crates/product-b".to_string(),
+                workspace_dependency_aliases: vec!["product-b".to_string()],
+                rust_library_name: "product_b".to_string(),
+                product_or_shared_owner: "product-b".to_string(),
+            },
+            CrateIdentityProjection {
+                logical_id: "shared-protocol".to_string(),
+                workspace_path: "crates/shared-protocol".to_string(),
+                workspace_dependency_aliases: vec!["shared-protocol".to_string()],
+                rust_library_name: "shared_protocol".to_string(),
+                product_or_shared_owner: "shared".to_string(),
+            },
+        ],
+        forbidden_product_dependencies: BTreeMap::new(),
+    }
 }
 
 #[test]
 fn rejects_only_known_cross_product_imports() -> Result<(), String> {
-    let manifest = fixture_manifest()?;
+    let manifest = fixture_manifest();
     let sources = vec![(
         PathBuf::from("crates/product-a/src/lib.rs"),
         "use product_b::private_api;\nuse product_b::another_api;\nuse product_a::own_api;\nuse shared_protocol::Wire;\nuse external::Thing;\nuse crate::local;\n".to_string(),
@@ -169,7 +160,7 @@ fn tracked_worktree_source_coupling_is_clean() -> Result<(), String> {
 #[test]
 fn path_read_fixtures_allow_owned_and_shared_paths_and_reject_forbidden_or_unresolved_paths()
 -> Result<(), String> {
-    let manifest = fixture_manifest()?;
+    let manifest = fixture_manifest();
     let forbidden = BTreeMap::from([(
         "product-a".to_string(),
         BTreeSet::from(["product-b".to_string()]),
@@ -400,14 +391,14 @@ fn path_resolution_rejects_ambiguous_and_escaping_inputs() -> Result<(), String>
 
 #[test]
 fn crate_identity_uses_the_deepest_containing_workspace_path() -> Result<(), String> {
-    let manifest = fixture_manifest()?;
-    let identity = crate_identity_for_path(&manifest, Path::new("crates/product-a/src/local.rs"))
+    let manifest = fixture_manifest();
+    let identity = crate_identity_for_path(&manifest, "crates/product-a/src/local.rs")
         .ok_or_else(|| "missing containing product identity".to_string())?;
     if identity.logical_id != "product-a" {
         return Err(format!("unexpected containing identity: {identity:?}"));
     }
-    if crate_identity_for_path(&manifest, Path::new("crates/product")).is_some()
-        || crate_identity_for_path(&manifest, Path::new("outside.rs")).is_some()
+    if crate_identity_for_path(&manifest, "crates/product").is_some()
+        || crate_identity_for_path(&manifest, "outside.rs").is_some()
     {
         return Err("non-containing path was assigned a crate identity".to_string());
     }
@@ -474,7 +465,7 @@ fn symlinked_tracked_targets_resolve_inside_and_reject_escape() -> Result<(), St
         root.join("crates/product-a/src/linked.rs"),
     )
     .map_err(|error| format!("create cross-product symlink: {error}"))?;
-    let manifest = fixture_manifest()?;
+    let manifest = fixture_manifest();
     let forbidden = BTreeMap::from([(
         "product-a".to_string(),
         BTreeSet::from(["product-b".to_string()]),

@@ -7,7 +7,7 @@
 ## Denominator
 
 - Ledger schema: `cargo-allow.three-product-move-ledger.v1` generation `1`
-- Entries: **107**
+- Entries: **108**
 - Topology authority: Issue **#2612**
 - Move/deletion owner: Issue **#2598**
 - Current posture: inventory and target ratification only; no implementation moved.
@@ -17,7 +17,7 @@
 - `CutoverCurrent`: **1**
 - `CutoverOutstanding`: **6**
 - `RepositoryDecisionRequired`: **1**
-- `TargetRatified`: **99**
+- `TargetRatified`: **100**
 
 ### Disposition counts
 
@@ -37,7 +37,7 @@
 - `MoveToRustSourceIndex`: **2**
 - `MoveToSharedProtocol`: **4**
 - `MoveToSharedSnapshot`: **19**
-- `RemainCargoAllowCore`: **3**
+- `RemainCargoAllowCore`: **4**
 - `RemainProviderOwned`: **1**
 - `RepositoryDecisionRequired`: **1**
 
@@ -666,6 +666,17 @@
 - Removal: #2567 public provider contract; remain cargo-allow-owned
 - Next: Expose through cargo-allow public process contract without moving ontology.
 - Deletion output: No deletion; only private transport duplication may be removed.
+
+### `REMAIN-GOV-COUPLING-PROJECTION`
+
+- Current: Bounded governance projection for the source-coupling guard: crate identity fields and product forbidden dependencies only (#3548)
+- Target: `cargo-allow / cargo-allow::governance_projection`
+- Disposition: `RemainCargoAllowCore`
+- Stage/status: `CargoAllowCompatibilityCutover` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: Retain while the check pipeline enforces source coupling; revisit when #3544 authority guards land
+- Next: Keep the projection bounded to the fields the guard reads; parity with the canonical parsers is asserted by its equivalence test.
+- Deletion output: Delete or absorb into the final authority surface after the governance cutover completes.
 
 ### `REMAIN-MOVE-LEDGER-VALIDATOR`
 
