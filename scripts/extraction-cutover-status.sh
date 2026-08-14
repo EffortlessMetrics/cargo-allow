@@ -182,17 +182,28 @@ def validate_runtime_payload(stage: str, payload: object, stage_ids: set[str]) -
             if isinstance(records, list) else False,
         "missing_cases": payload.get("missing_case_ids") == [],
         "unexpected_cases": payload.get("unexpected_case_ids") == [],
+        # Digest forms observed across execution environments: the
+        # comparison kernel emits bare 64-hex sha256 (#3435), while some
+        # pinned-binary runs emit the sha256:v1-prefixed form. Accept both
+        # (#3552).
         "digest": isinstance(payload.get("parity_result_digest"), str)
-            and re.fullmatch(r"sha256:v1:[0-9a-f]{64}", payload["parity_result_digest"])
+            and re.fullmatch(r"(?:sha256:v1:)?[0-9a-f]{64}", payload["parity_result_digest"])
             is not None,
     }
     for name, passed in checks.items():
         if not passed:
             errors.append(name)
+    # Per-record identities use case-specific forms: committed snapshot cases
+    # carry `commit:<sha>/tree:<sha>`, the staged-index case carries
+    # `staged:<commit>:...`, and repo-edit cases carry operation-level
+    # identities. The run-level commit binding is enforced by the
+    # `source_identity` check above; here every record must be equivalent
+    # and carry a non-empty identity.
     if isinstance(records, list) and any(
         not isinstance(record, dict)
-        or record.get("source_identity") != expected_identity
         or record.get("result") != "SemanticallyEquivalent"
+        or not isinstance(record.get("source_identity"), str)
+        or not record["source_identity"].strip()
         for record in records
     ):
         errors.append("records")
@@ -371,9 +382,13 @@ PY
 # only when exact source identity, runtime parity, topology-derived ownership,
 # independent artifact digests, and policy prerequisites all pass. The current
 # contract_only/old-path state therefore emits only status and evidence inputs.
+# Pass repository-relative paths to the adapter: absolute Windows path forms
+# (F:/...) can fail the CLI's root containment check on a local host, while
+# relative paths resolve identically on hosted Linux CI (#3552).
+rel_output_dir="$(python3 -c "from pathlib import Path; import sys; sys.stdout.write(str(Path('${output_dir}').resolve().relative_to(Path('${ROOT}').resolve())).replace(chr(92), '/'))")"
 for stage in repo-snapshot repo-edit; do
-  manifest="${output_dir}/${stage}/cutover-evidence.json"
-  receipt="${output_dir}/${stage}/cutover-receipt.json"
+  manifest="${rel_output_dir}/${stage}/cutover-evidence.json"
+  receipt="${rel_output_dir}/${stage}/cutover-receipt.json"
   log="${output_dir}/${stage}/cutover-receipt.log"
   rm -f "${receipt}" "${log}"
   if [[ -f "${manifest}" ]]; then

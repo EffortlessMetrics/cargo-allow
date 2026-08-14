@@ -11342,3 +11342,24 @@ review_after = "2027-02-01"
 
 [allow.selector]
 glob = "tests/fixtures/product-crates/missing-required-proof-engine-to-intent-protocol.json"
+
+[[allow]]
+id = "allow-9257"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/extraction-cutover-build-receipt.sh"
+owner = "core/ci"
+classification = "extraction_cutover_build_receipt"
+reason = "Produces the fail-closed independent build/package receipt for one cutover stage from exact-candidate package-set artifacts (#3469/#3552)."
+evidence = ["issue:3552", "issue:3469", "workflow:.github/workflows/ci.yml"]
+created = "2026-08-14"
+review_after = "2027-02-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "sh"
+glob = "scripts/extraction-cutover-build-receipt.sh"
+
+[allow.last_seen]
+line = 1
+column = 1

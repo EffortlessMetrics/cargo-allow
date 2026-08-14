@@ -198,6 +198,19 @@ pub(crate) fn cmd_parity(args: &ParityArgs) -> CargoAllowResult<()> {
         "unexpected_case_ids": unexpected_case_ids,
         "claim_boundary": claim_boundary,
     });
+    // For a specific stage, expose the derived cutover expectation so an
+    // independent evidence producer can bind build/package receipts to the
+    // same derivation without duplicating it (#3552).
+    if !matches!(args.stage, ParityStageArg::All) && args.cutover_evidence.is_none() {
+        let expectation = cutover_expectation_value(&root, &registry, args.stage)?;
+        let object = payload.as_object_mut().ok_or_else(|| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                "cutover expectation requires a JSON object payload",
+            )
+        })?;
+        object.insert("cutover_expectation".to_string(), expectation);
+    }
     let mut cutover_source_input_paths = None;
     if let Some(evidence_path) = args.cutover_evidence.as_deref() {
         let assembly = assemble_cutover_receipt(
@@ -351,6 +364,27 @@ const CUTOVER_EVIDENCE_SCHEMA_ID: &str = "cargo-allow.extraction-cutover-evidenc
 const CUTOVER_EVIDENCE_SCHEMA_VERSION: u32 = 2;
 const OWNERSHIP_EVIDENCE_SCHEMA_ID: &str = "cargo-allow.extraction-cutover-ownership.v1";
 const BUILD_PACKAGE_EVIDENCE_SCHEMA_ID: &str = "cargo-allow.extraction-cutover-build-package.v1";
+
+/// The derived cutover expectation for one stage: everything an independent
+/// evidence producer needs to bind build/package and ownership receipts to
+/// the same derivation the CLI validates against (#3552).
+fn cutover_expectation_value(
+    root: &Path,
+    registry: &ExtractionParityRegistry,
+    requested_stage: ParityStageArg,
+) -> CargoAllowResult<Value> {
+    let stage = requested_extraction_stage(requested_stage)?;
+    let ledger = load_ledger(root)?;
+    let ownership = derive_ownership(root, registry, &ledger, stage)?;
+    Ok(json!({
+        "architecture_manifest_digest": ownership.architecture_manifest_digest,
+        "package_names": ownership.package_names.iter().collect::<Vec<_>>(),
+        "package_paths": ownership.package_paths,
+        "asset_paths": ownership.asset_paths,
+        "docs_paths": ownership.docs_paths,
+        "ci_paths": ownership.ci_paths,
+    }))
+}
 
 fn assemble_cutover_receipt(
     root: &Path,
@@ -2045,7 +2079,7 @@ PY
             let stage_dir = configured_output.join(stage);
             if !stage_dir.join("cutover-evidence.json").is_file() {
                 return Err(format!(
-                    "configured status omitted evidence manifest for {stage}"
+                    "configured status omitted evidence manifest for {stage}; blockers={configured_blockers:?}"
                 ));
             }
             if stage_dir.join("cutover-receipt.json").exists() {
@@ -2115,6 +2149,43 @@ PY
         let message = expect_error(result).to_string();
         if !message.contains("source identity") {
             return Err(format!("stale identity was not reported: {message}"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn cutover_expectation_exposes_stage_binding_inputs() -> Result<(), String> {
+        // #3552: an independent evidence producer binds receipts to exactly
+        // these derived values.
+        let root = workspace_root();
+        let registry = load_registry(&root).map_err(|error| error.to_string())?;
+        for (stage_arg, package) in [
+            (ParityStageArg::RepoSnapshot, "effortless-repo-snapshot"),
+            (ParityStageArg::RepoEdit, "effortless-repo-edit"),
+        ] {
+            let value = cutover_expectation_value(&root, &registry, stage_arg)
+                .map_err(|error| error.to_string())?;
+            let digest = value
+                .get("architecture_manifest_digest")
+                .and_then(Value::as_str)
+                .ok_or("expectation missing architecture_manifest_digest")?;
+            if !digest.starts_with("sha256:v1:") {
+                return Err(format!("manifest digest drift: {digest}"));
+            }
+            let names = value
+                .get("package_names")
+                .and_then(Value::as_array)
+                .ok_or("expectation missing package_names")?;
+            if !names.iter().any(|name| name.as_str() == Some(package)) {
+                return Err(format!(
+                    "expectation for stage arg must include `{package}`: {names:?}"
+                ));
+            }
+            for field in ["package_paths", "asset_paths", "docs_paths", "ci_paths"] {
+                if value.get(field).and_then(Value::as_array).is_none() {
+                    return Err(format!("expectation missing {field}"));
+                }
+            }
         }
         Ok(())
     }
