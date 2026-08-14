@@ -64,7 +64,7 @@ fn product_identity_matches_fixture() -> Result<(), String> {
 #[test]
 fn plan_and_dry_run_fixture_pipeline() -> Result<(), String> {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/cargo-proof");
-    let obligation = root.join("obligation-plan-smoke-v1.toml");
+    let obligation = root.join("intent-obligation-plan-smoke-v1.json");
     let plan = plan_from_obligation_path(&obligation)?;
     if plan.commands.is_empty() {
         return Err("plan produced no commands".to_string());

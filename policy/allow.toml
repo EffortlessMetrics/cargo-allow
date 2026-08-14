@@ -9516,27 +9516,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-9152"
-kind = "non_rust_file"
-family = "test_fixture"
-path = "tests/fixtures/cargo-proof/obligation-plan-smoke-v1.toml"
-owner = "repo-infra"
-classification = "cargo_proof_parity_fixture"
-reason = "Cargo-proof obligation plan smoke fixture (#2589-B)."
-evidence = ["test:cargo_proof_parity_fixtures_registered", "issue:2589"]
-created = "2026-07-24"
-review_after = "2027-01-01"
-
-[allow.selector]
-ast_kind = "tracked_file"
-target_fingerprint = "toml"
-glob = "tests/fixtures/cargo-proof/obligation-plan-smoke-v1.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-9153"
 kind = "non_rust_file"
 family = "test_fixture"
@@ -11331,3 +11310,19 @@ review_after = "2027-02-01"
 glob = "crates/**/*.rs"
 ast_kind = "macro_call"
 macro_name = "assert_ne"
+
+[[allow]]
+id = "allow-9255"
+kind = "non_rust_file"
+family = "test_fixture"
+glob = "tests/fixtures/cargo-proof/intent-obligation-plan-smoke-v1.json"
+owner = "core/test"
+classification = "cargo_proof_intent_obligation_fixture"
+reason = "Intent-protocol obligation plan JSON fixture for cargo-proof plan pipeline (#3314)"
+evidence = ["issue:3314", "test:plan_and_dry_run_fixture_pipeline"]
+occurrence_limit = 1
+created = "2026-08-14"
+review_after = "2027-02-01"
+
+[allow.selector]
+glob = "tests/fixtures/cargo-proof/intent-obligation-plan-smoke-v1.json"
