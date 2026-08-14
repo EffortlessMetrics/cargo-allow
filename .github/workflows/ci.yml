@@ -69,10 +69,20 @@ jobs:
           cp target/package-candidate-smoke/packages/*.crate \
             target/exact-candidate-package-set/packages/
           SKIP_PACKAGE=1 bash scripts/exact-candidate-package-set.sh
+      - name: Cutover build receipts from package-set artifacts (#3469/#3552)
+        run: |
+          bash scripts/extraction-cutover-build-receipt.sh repo-snapshot
+          bash scripts/extraction-cutover-build-receipt.sh repo-edit
       - name: Exact candidate install journey (#3357)
         run: bash scripts/exact-candidate-install-journey.sh
       - name: Exact candidate journey contract characterization (#3357)
         run: bash scripts/test-exact-candidate-install-journey.sh
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: extraction-cutover-build-receipts
+          path: target/extraction-cutover/**/build-package.json
+          if-no-files-found: warn
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:

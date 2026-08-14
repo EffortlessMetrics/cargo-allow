@@ -198,6 +198,31 @@ pub(crate) fn cmd_parity(args: &ParityArgs) -> CargoAllowResult<()> {
         "unexpected_case_ids": unexpected_case_ids,
         "claim_boundary": claim_boundary,
     });
+    // For a specific stage, expose the derived cutover expectation so an
+    // independent evidence producer can bind build/package receipts to the
+    // same derivation without duplicating it (#3552).
+    if !matches!(args.stage, ParityStageArg::All) && args.cutover_evidence.is_none() {
+        let ledger = load_ledger(&root)?;
+        let stage = requested_extraction_stage(args.stage)?;
+        let ownership = derive_ownership(&root, &registry, &ledger, stage)?;
+        let object = payload.as_object_mut().ok_or_else(|| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                "cutover expectation requires a JSON object payload",
+            )
+        })?;
+        object.insert(
+            "cutover_expectation".to_string(),
+            json!({
+                "architecture_manifest_digest": ownership.architecture_manifest_digest,
+                "package_names": ownership.package_names.iter().collect::<Vec<_>>(),
+                "package_paths": ownership.package_paths,
+                "asset_paths": ownership.asset_paths,
+                "docs_paths": ownership.docs_paths,
+                "ci_paths": ownership.ci_paths,
+            }),
+        );
+    }
     let mut cutover_source_input_paths = None;
     if let Some(evidence_path) = args.cutover_evidence.as_deref() {
         let assembly = assemble_cutover_receipt(
