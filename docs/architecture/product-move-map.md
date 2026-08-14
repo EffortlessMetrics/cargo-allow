@@ -14,10 +14,10 @@
 
 ### Status counts
 
-- `CutoverCurrent`: **1**
+- `CutoverCurrent`: **3**
 - `CutoverOutstanding`: **6**
 - `RepositoryDecisionRequired`: **1**
-- `TargetRatified`: **100**
+- `TargetRatified`: **98**
 
 ### Disposition counts
 
@@ -1112,8 +1112,8 @@
 - Current: crates/effortless-repo-snapshot/src/revision_identity.rs
 - Target: `shared / effortless-repo-snapshot::repo_snapshot`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `RepoSnapshot` / `TargetRatified`
-- Old path: `OldPathStillReachable`
+- Stage/status: `RepoSnapshot` / `CutoverCurrent`
+- Old path: `Deleted`
 - Removal: issue:#2606 stage-1 cutover receipt
 - Next: Keep the public compatibility shim active while #2606 stage-1 parity and old-path reachability receipts establish whether the legacy evaluator can be deleted.
 - Deletion output: Deferred to extraction cutover and parity receipts.
@@ -1123,8 +1123,8 @@
 - Current: crates/effortless-repo-snapshot/src/staged_index.rs
 - Target: `shared / effortless-repo-snapshot::repo_snapshot`
 - Disposition: `MoveToSharedSnapshot`
-- Stage/status: `RepoSnapshot` / `TargetRatified`
-- Old path: `OldPathStillReachable`
+- Stage/status: `RepoSnapshot` / `CutoverCurrent`
+- Old path: `Deleted`
 - Removal: issue:#2606 stage-1 cutover receipt
 - Next: Keep the public compatibility shim active while #2606 stage-1 parity and old-path reachability receipts establish whether the legacy evaluator can be deleted.
 - Deletion output: Deferred to extraction cutover and parity receipts.

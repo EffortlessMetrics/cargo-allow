@@ -36,8 +36,6 @@ selected_files = [
   "crates/allow-report/src/contracts.rs",
   "crates/allow-diff/src/revision.rs",
   "crates/allow-diff/src/revision_git.rs",
-  "crates/allow-diff/src/revision_identity.rs",
-  "crates/allow-diff/src/staged_index.rs",
   "crates/allow-rust/src/test_subjects.rs",
   ".allow/profiles/spec-system.toml"]
 filename_tokens = ["spec_system", "spec-system", "spec_precommit"]
@@ -759,7 +757,7 @@ deletion_output = "No deletion; only private transport duplication may be remove
 [[entry]]
 id = "MOVE-REPO-SNAPSHOT-GIT"
 source_kind = "RustModule"
-current_paths = ["crates/allow-diff/src/revision.rs", "crates/allow-diff/src/revision_git.rs", "crates/allow-diff/src/revision_identity.rs", "crates/allow-diff/src/staged_index.rs", "crates/allow-diff/src/lib.rs"]
+current_paths = ["crates/allow-diff/src/revision.rs", "crates/allow-diff/src/revision_git.rs", "crates/allow-diff/src/lib.rs"]
 current_refs = []
 current_identity = "Generic committed revision, tree/blob reads, snapshot identity, staged-index identity, exact staged bytes, and re-exports"
 current_product = "cargo-allow"
@@ -2579,17 +2577,17 @@ schema_producer_impact = "shim-linked operational row; canonical producer deferr
 parity_case_ids = ['PARITY-MOVE_ALLOW_DIFF_REVISION_IDENTITY']
 cutover_stage = "RepoSnapshot"
 expected_cutover_receipt = "CUTOVER-REPO-SNAPSHOT"
-old_path_reachability_disposition = "OldPathStillReachable"
-active_shim_ids = ["shim-allow-diff-revision-identity"]
+old_path_reachability_disposition = "Deleted"
+active_shim_ids = []
 latest_allowed_shim_stage = "ArchitectureInventory"
-duplicate_authority_class = "BoundedParityOnly"
+duplicate_authority_class = "None"
 selected_public_producer_after_cutover = "repository"
 package_ci_docs_impact = ["extraction shims", "parity fixtures"]
 removal_issue_or_condition = "issue:#2606 stage-1 cutover receipt"
 migration_owner_issue = "#2583"
 risk = "Medium"
 rollback = "Retain shim-linked row until extraction cutover receipts land."
-status = "TargetRatified"
+status = "CutoverCurrent"
 claim_boundary = "Shared revision-identity implementation is live behind an allow-diff public compatibility re-export; parity acceptance and deletion remain unclaimed until the #2606 stage-1 receipt."
 next_move = "Keep the public compatibility shim active while #2606 stage-1 parity and old-path reachability receipts establish whether the legacy evaluator can be deleted."
 deletion_output = "Deferred to extraction cutover and parity receipts."
@@ -2614,17 +2612,17 @@ schema_producer_impact = "shim-linked operational row; canonical producer deferr
 parity_case_ids = ['PARITY-MOVE_ALLOW_DIFF_STAGED_INDEX']
 cutover_stage = "RepoSnapshot"
 expected_cutover_receipt = "CUTOVER-REPO-SNAPSHOT"
-old_path_reachability_disposition = "OldPathStillReachable"
-active_shim_ids = ["shim-allow-diff-staged-index"]
+old_path_reachability_disposition = "Deleted"
+active_shim_ids = []
 latest_allowed_shim_stage = "ArchitectureInventory"
-duplicate_authority_class = "BoundedParityOnly"
+duplicate_authority_class = "None"
 selected_public_producer_after_cutover = "repository"
 package_ci_docs_impact = ["extraction shims", "parity fixtures"]
 removal_issue_or_condition = "issue:#2606 stage-1 cutover receipt"
 migration_owner_issue = "#2583"
 risk = "Medium"
 rollback = "Retain shim-linked row until extraction cutover receipts land."
-status = "TargetRatified"
+status = "CutoverCurrent"
 claim_boundary = "Shared staged-index implementation is live behind an allow-diff public compatibility re-export; parity acceptance and deletion remain unclaimed until the #2606 stage-1 receipt."
 next_move = "Keep the public compatibility shim active while #2606 stage-1 parity and old-path reachability receipts establish whether the legacy evaluator can be deleted."
 deletion_output = "Deferred to extraction cutover and parity receipts."

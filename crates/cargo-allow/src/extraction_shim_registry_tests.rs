@@ -173,7 +173,9 @@ fn repo_edit_command_shims_match_live_apply_forwards() -> Result<(), String> {
 }
 
 #[test]
-fn repo_snapshot_shims_match_live_forwarding_surfaces() -> Result<(), String> {
+fn repo_snapshot_shims_retired_after_cutover() -> Result<(), String> {
+    // #3556: the allow-diff forwarding shims are removed at cutover; the
+    // old-path files are deleted and the registry records the retired state.
     let root = repo_root();
     let registry_text = std::fs::read_to_string(root.join("policy/extraction-shims.toml"))
         .map_err(|err| format!("read shim registry: {err}"))?;
@@ -183,44 +185,28 @@ fn repo_snapshot_shims_match_live_forwarding_surfaces() -> Result<(), String> {
     let expected = [
         (
             "shim-allow-diff-staged-index",
-            "allow-diff::staged_index",
-            "repo-snapshot::staged_index",
             "crates/allow-diff/src/staged_index.rs",
-            "#[path = \"snapshot_package/staged_index.rs\"]",
-            "pub use staged_index_impl::*;",
         ),
         (
             "shim-allow-diff-revision-identity",
-            "allow-diff::revision_identity",
-            "repo-snapshot::revision_identity",
             "crates/allow-diff/src/revision_identity.rs",
-            "#[path = \"snapshot_package/revision_identity.rs\"]",
-            "pub use revision_identity_impl::*;",
         ),
     ];
 
-    for (id, old_identity, new_identity, source_path, path_marker, reexport_marker) in expected {
+    for (id, deleted_path) in expected {
         let shim = registry
             .shim
             .iter()
             .find(|shim| shim.id == id)
             .ok_or_else(|| format!("missing repo-snapshot shim {id}"))?;
-        if shim.posture != allow_policy::extraction_shims::ShimPosture::Public
-            || shim.status != allow_policy::extraction_shims::ShimStatus::Active
-            || shim.old_identity != old_identity
-            || shim.new_identity != new_identity
-            || !shim.removal_condition.contains("#2606")
-        {
+        if shim.status != allow_policy::extraction_shims::ShimStatus::Removed {
             return Err(format!(
-                "repo-snapshot shim {id} does not match its live compatibility contract"
+                "repo-snapshot shim {id} must be removed after the cutover"
             ));
         }
-
-        let source = std::fs::read_to_string(root.join(source_path))
-            .map_err(|err| format!("read {source_path}: {err}"))?;
-        if !source.contains(path_marker) || !source.contains(reexport_marker) {
+        if root.join(deleted_path).exists() {
             return Err(format!(
-                "repo-snapshot shim {id} is missing identity-only forwarding in {source_path}"
+                "old path {deleted_path} still exists after shim removal"
             ));
         }
     }

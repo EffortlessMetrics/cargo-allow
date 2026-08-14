@@ -39,7 +39,7 @@ impl MoveReferenceV2 {
 pub enum ShimStatusV2 {
     Planned,
     Active,
-    Retired,
+    Removed,
 }
 
 impl ShimStatusV2 {
@@ -47,7 +47,7 @@ impl ShimStatusV2 {
         match self {
             Self::Planned => "planned",
             Self::Active => "active",
-            Self::Retired => "retired",
+            Self::Removed => "removed",
         }
     }
 
@@ -55,7 +55,7 @@ impl ShimStatusV2 {
         match value.trim() {
             "planned" => Ok(Self::Planned),
             "active" => Ok(Self::Active),
-            "retired" => Ok(Self::Retired),
+            "removed" => Ok(Self::Removed),
             other => Err(format!("unsupported shim status `{other}`")),
         }
     }
@@ -97,7 +97,7 @@ pub enum ParityDispositionV2 {
     /// Runtime-proven parity after the cutover evidence chain completed
     /// (#3469 slice B).
     Proven,
-    Retired,
+    Removed,
 }
 
 impl ParityDispositionV2 {
@@ -106,7 +106,7 @@ impl ParityDispositionV2 {
             Self::ContractOnly => "contract_only",
             Self::EvidenceBacked => "evidence_backed",
             Self::Proven => "proven",
-            Self::Retired => "retired",
+            Self::Removed => "removed",
         }
     }
 
@@ -115,7 +115,7 @@ impl ParityDispositionV2 {
             "contract_only" => Ok(Self::ContractOnly),
             "evidence_backed" => Ok(Self::EvidenceBacked),
             "proven" => Ok(Self::Proven),
-            "retired" => Ok(Self::Retired),
+            "removed" => Ok(Self::Removed),
             other => Err(format!("unsupported parity disposition `{other}`")),
         }
     }

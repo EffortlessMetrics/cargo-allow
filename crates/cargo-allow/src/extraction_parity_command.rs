@@ -581,7 +581,12 @@ fn assemble_cutover_receipt_from_clean_inputs(
             format!("selected ledger entries have conflicting shim deadlines: {shim_stages:?}"),
         ));
     }
-    let derived_shim_stage = shim_stages.into_iter().next().unwrap_or_default();
+    // Post-cutover stages have no active compatibility shims left; the
+    // receipt records that no shim deadline applies (#3556).
+    let derived_shim_stage = shim_stages
+        .into_iter()
+        .next()
+        .unwrap_or_else(|| "NoActiveShims".to_string());
     let old_tool_identity = stage_cases
         .iter()
         .map(|case| case.old_producer.as_str())

@@ -31,8 +31,6 @@ mod policy_workspace;
 mod result;
 mod revision;
 mod revision_git;
-mod revision_identity;
-mod staged_index;
 
 pub use finding::{
     FindingPostureChange, FindingPostureKind, finding_identity_key, finding_posture_changes,
@@ -57,18 +55,6 @@ pub use result::retain_confident_finding_changes;
 pub use result::{DiffResultClass, DiffScanCoverage, classify_diff_result};
 pub use revision::{RevisionScanResult, findings_at_revision, scan_at_revision};
 pub use revision_git::{changed_files, git_tracked_files_at_revision, read_file_at_revision};
-pub use revision_identity::{
-    REPOSITORY_SNAPSHOT_SCHEMA, RepositoryDirtyState, RepositoryObjectFormat,
-    RepositorySnapshotIdentity, RepositorySnapshotKind, RepositorySnapshotRequest,
-    ResolvedRevisionIdentity, SelectedPathIdentity, repository_object_format, repository_snapshot,
-    resolve_dirty_state, resolve_revision_identity,
-};
-pub use staged_index::{
-    STAGED_GIT_CAPABILITY_GENERATION, StagedEntryKind, StagedGitCapabilities, StagedIndexEntry,
-    StagedPathChange, StagedPathRead, StagedPathStatus, StagedRepositorySnapshot,
-    StagedSnapshotCompleteness, StagedSnapshotIdentity, probe_staged_git_capabilities,
-    read_staged_path, read_staged_raw_path, staged_repository_snapshot,
-};
 
 #[cfg(test)]
 mod tests;

@@ -186,7 +186,7 @@ fn repository_move_ledger_is_complete_and_projection_is_current() -> Result<(), 
         return Err(format!("move ledger diagnostics: {diagnostics:?}"));
     }
     assert_eq!(report.entry_count, 108);
-    assert_eq!(report.target_ratified_count, 100);
+    assert_eq!(report.target_ratified_count, 98);
     assert_eq!(report.decision_required_count, 1);
 
     let projection = std::fs::read_to_string(root.join(&validated.ledger.projection))
@@ -199,32 +199,42 @@ fn repository_move_ledger_is_complete_and_projection_is_current() -> Result<(), 
 }
 
 #[test]
-fn snapshot_move_rows_track_live_public_compatibility_shims() -> Result<(), String> {
+fn snapshot_move_rows_retired_after_the_cutover() -> Result<(), String> {
+    // #3556: the RepoSnapshot old paths (allow-diff's revision-identity and
+    // staged-index evaluators) are deleted; their compatibility shims are
+    // removed and the ledger rows record the closed cutover state.
     let ledger = current_ledger()?;
     let expected = [
-        (
-            "move-allow-diff-revision-identity",
-            "shim-allow-diff-revision-identity",
-        ),
-        (
-            "move-allow-diff-staged-index",
-            "shim-allow-diff-staged-index",
-        ),
+        "move-allow-diff-revision-identity",
+        "move-allow-diff-staged-index",
     ];
 
-    for (entry_id, shim_id) in expected {
+    for entry_id in expected {
         let entry = ledger
             .entry
             .iter()
             .find(|entry| entry.id == entry_id)
             .ok_or_else(|| format!("missing snapshot move row {entry_id}"))?;
-        if entry.active_shim_ids != [shim_id.to_string()]
-            || entry.old_path_reachability_disposition != "OldPathStillReachable"
-            || !entry.removal_issue_or_condition.contains("#2606 stage-1")
+        if !entry.active_shim_ids.is_empty()
+            || entry.old_path_reachability_disposition != "Deleted"
+            || entry.duplicate_authority_class != "None"
+            || entry.status != "CutoverCurrent"
         {
             return Err(format!(
-                "snapshot move row {entry_id} must retain its active public compatibility shim until #2606"
+                "snapshot move row {entry_id} must record the closed cutover: no active shims, Deleted old path, no duplicate authority, CutoverCurrent status"
             ));
+        }
+    }
+    for path in [
+        "crates/allow-diff/src/revision_identity.rs",
+        "crates/allow-diff/src/staged_index.rs",
+    ] {
+        if ledger
+            .entry
+            .iter()
+            .any(|entry| entry.current_paths.iter().any(|p| p == path))
+        {
+            return Err(format!("deleted old path {path} is still registered"));
         }
     }
 
