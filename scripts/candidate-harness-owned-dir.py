@@ -117,7 +117,7 @@ def claim(directory: Path, purpose: str) -> tuple[Path, str]:
     if any(owned.iterdir()):
         fail(f"refusing to claim non-empty directory: {owned}")
     token = secrets.token_hex(32)
-    write_marker(owned, purpose, token)
+    write_marker(owned, purpose, token, caller_claim=True)
     return owned, token
 
 
@@ -126,7 +126,7 @@ def validate_purpose(purpose: str) -> None:
         fail(f"invalid purpose {purpose!r}")
 
 
-def write_marker(directory: Path, purpose: str, token: str, **metadata: str) -> None:
+def write_marker(directory: Path, purpose: str, token: str, **metadata: object) -> None:
     marker = directory / MARKER
     marker.write_text(json.dumps({"purpose": purpose, "token": token, **metadata}) + "\n", encoding="utf-8")
     os.chmod(directory, stat.S_IRWXU)
@@ -170,9 +170,13 @@ def remove(root: Path, directory: Path, purpose: str, token: str) -> None:
     resolved = directory.resolve(strict=True)
     if resolved.parent != allowed:
         fail(f"owned directory must be a direct child of {allowed}: {resolved}")
-    if resolved.name != purpose and not resolved.name.startswith(f"{purpose}."):
-        fail(f"owned directory name does not match purpose {purpose!r}: {resolved.name}")
     marker = load_marker(resolved)
+    if (
+        resolved.name != purpose
+        and not resolved.name.startswith(f"{purpose}.")
+        and marker.get("caller_claim") is not True
+    ):
+        fail(f"owned directory name does not match purpose {purpose!r}: {resolved.name}")
     if marker.get("purpose") != purpose or marker.get("token") != token:
         fail(f"ownership marker mismatch for {resolved}")
     if resolved.resolve(strict=True).parent != canonical_existing(root, "allowed root"):
