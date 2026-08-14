@@ -1,27 +1,26 @@
 # proof-protocol
 
-Proof plan transport and provider-neutral contracts for three-product extraction (#2588).
+Proof protocol data seam: DTOs, serialization, and structural validation for the proof family (#2588 / #2943 step 6).
 
-Most users should use [cargo-allow](https://github.com/EffortlessMetrics/cargo-allow) or downstream cargo-proof products; `proof-protocol` is an internal cargo-proof crate for proof plan DTOs and provider API contracts.
+Most users should use [cargo-allow](https://github.com/EffortlessMetrics/cargo-allow) or downstream cargo-proof products; `proof-protocol` is an internal cargo-proof crate for the stable data/serialization/structural-validation seam.
 
-## Claim boundary
+## Data versus semantic boundary
 
-Packet 2588-A lands crate scaffold, boundary documentation, parity/ledger registration, and enforced dependency topology. Plan DTO transport and provider API surfaces land in later #2588/#2603 packets.
+`proof-protocol` owns **data only**:
 
-`proof-protocol` does not execute proof commands, spawn processes, access the network, or depend on intent-model or intent-engine.
+- schema IDs and DTO types (plan, capability, receipt, contradiction, phase-gate, proof corpus);
+- TOML/JSON serialization;
+- structural validation — required fields, ID shape, local uniqueness, schema generation, and enum/shape consistency expressible without external or current state.
 
-## Packet 2588-A
+**Semantic evaluation lives in proof-engine** (the sole semantic evaluator): currentness against captured receipts, cache decisions, blocking aggregation, contradiction interpretation, phase-gate evaluation, provider registry behavior, and obligation planning. A raw process or provider success can never be interpreted as obligation satisfaction inside this crate.
 
-- `proof-protocol::boundary` — claim boundary and upstream topology markers
+`proof-protocol` does not scan source files, execute proof commands, spawn processes, access the network, or depend on intent, engine, or application crates. Protocol DTOs round-trip independently with proof-engine source unavailable (guarded by `protocol_dtos_round_trip_without_engine_source` and `protocol_crate_declares_no_semantic_or_application_dependency`).
 
-## Packet 2588-B+
+## Modules
 
-- `proof-protocol::plan_dtos` — portable proof plan command transport
-- `proof-protocol::capability_dtos` — provider capability catalog transport
-- `proof-protocol::receipt_dtos` — receipt binding transport bound to repo-protocol
-- `proof-protocol::contradiction_dtos` — contradiction report transport
-- `proof-protocol::phase_gate_dtos` — phase-gate transport
-
-## Packet 2708
-
-- `proof-protocol::proof_corpus` — provider-independent proof corpus, result taxonomy, binding identities, and composition honesty for external RIPR cutover (#2683)
+- `plan_dtos` — portable proof plan command transport
+- `capability_dtos` — provider capability catalog transport
+- `receipt_dtos` — receipt binding transport bound to repo-protocol
+- `contradiction_dtos` — contradiction report transport
+- `phase_gate_dtos` — phase-gate transport
+- `proof_corpus` — provider-independent proof corpus, result taxonomy, binding identities, and composition honesty for external RIPR cutover (#2683)
