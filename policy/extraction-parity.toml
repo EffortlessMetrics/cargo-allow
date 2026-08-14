@@ -13,7 +13,7 @@ shim_id = "shim-allow-diff-staged-index"
 old_producer = "allow-diff::staged_index"
 new_producer = "repo-snapshot::staged_index"
 expected_result = "SemanticallyEquivalent"
-disposition = "contract_only"
+disposition = "proven"
 claim_boundary = "Contract only; fixture replay lands with repo-snapshot move."
 
 [[case]]
@@ -24,7 +24,7 @@ shim_id = "shim-cargo-allow-mutation-lock"
 old_producer = "cargo-allow::mutation_lock"
 new_producer = "repo-edit::mutation_lock"
 expected_result = "SemanticallyEquivalent"
-disposition = "contract_only"
+disposition = "proven"
 claim_boundary = "Alias-convergent lock paths; cargo-allow forwards via ModuleFacade shim."
 
 [[case]]
@@ -35,7 +35,7 @@ shim_id = "shim-cargo-allow-path-containment"
 old_producer = "cargo-allow::policy_config::assert_path_within_root"
 new_producer = "repo-edit::containment"
 expected_result = "SemanticallyEquivalent"
-disposition = "contract_only"
+disposition = "proven"
 claim_boundary = "Lexical root containment; cargo-allow forwards via ModuleFacade shim."
 
 [[case]]
@@ -46,7 +46,7 @@ shim_id = "shim-cargo-allow-atomic-write"
 old_producer = "cargo-allow::io::write_file"
 new_producer = "repo-edit::atomic_write"
 expected_result = "SemanticallyEquivalent"
-disposition = "contract_only"
+disposition = "proven"
 claim_boundary = "Single-target atomic create/replace; cargo-allow forwards via ModuleFacade shim."
 
 [[case]]
@@ -56,7 +56,7 @@ move_ledger_entry = "introduce-repo-edit-apply-receipt"
 old_producer = "cargo-allow::mutation_apply::apply_target"
 new_producer = "repo-edit::single_target_apply"
 expected_result = "SemanticallyEquivalent"
-disposition = "contract_only"
+disposition = "proven"
 claim_boundary = "Generic single-target apply receipt; product layers retain semantic authority."
 
 [[case]]
@@ -66,7 +66,7 @@ move_ledger_entry = "extend-repo-edit-apply-backup-mode"
 old_producer = "cargo-allow::io::write_file_no_overwrite"
 new_producer = "repo-edit::single_target_apply"
 expected_result = "SemanticallyEquivalent"
-disposition = "contract_only"
+disposition = "proven"
 claim_boundary = "Create-new-only and replace-with-backup modes preserve --force .bak semantics."
 
 [[case]]
@@ -77,7 +77,7 @@ shim_id = "shim-cargo-allow-init-apply"
 old_producer = "cargo-allow::init"
 new_producer = "repo-edit::single_target_apply"
 expected_result = "SemanticallyEquivalent"
-disposition = "contract_only"
+disposition = "proven"
 claim_boundary = "init command applies starter policy via repo-edit; ledger semantics unchanged."
 
 [[case]]
@@ -88,7 +88,7 @@ shim_id = "shim-cargo-allow-refresh-apply"
 old_producer = "cargo-allow::refresh"
 new_producer = "repo-edit::single_target_apply"
 expected_result = "SemanticallyEquivalent"
-disposition = "contract_only"
+disposition = "proven"
 claim_boundary = "refresh command rewrites policy via repo-edit apply; last_seen semantics unchanged."
 
 [[case]]
@@ -99,7 +99,7 @@ shim_id = "shim-cargo-allow-prune-apply"
 old_producer = "cargo-allow::prune"
 new_producer = "repo-edit::single_target_apply"
 expected_result = "SemanticallyEquivalent"
-disposition = "contract_only"
+disposition = "proven"
 claim_boundary = "prune command rewrites policy via repo-edit apply; stale removal semantics unchanged."
 
 [[case]]
@@ -110,7 +110,7 @@ shim_id = "shim-cargo-allow-add-apply"
 old_producer = "cargo-allow::add"
 new_producer = "repo-edit::single_target_apply"
 expected_result = "SemanticallyEquivalent"
-disposition = "contract_only"
+disposition = "proven"
 claim_boundary = "add and add-from-plan policy writes forward through repo-edit apply modes."
 
 [[case]]
@@ -121,7 +121,7 @@ shim_id = "shim-cargo-allow-migrate-apply"
 old_producer = "cargo-allow::migrate"
 new_producer = "repo-edit::single_target_apply"
 expected_result = "SemanticallyEquivalent"
-disposition = "contract_only"
+disposition = "proven"
 claim_boundary = "migrate --update/--out policy writes forward through repo-edit apply modes; in-repository --out uses apply, out-of-tree --out retains atomic_write."
 
 [[case]]
@@ -132,7 +132,7 @@ shim_id = "shim-cargo-allow-propose-apply"
 old_producer = "cargo-allow::propose"
 new_producer = "repo-edit::single_target_apply"
 expected_result = "SemanticallyEquivalent"
-disposition = "contract_only"
+disposition = "proven"
 claim_boundary = "propose --write is repository-contained and fail-closed outside the source-tree root."
 
 [[case]]
@@ -143,7 +143,7 @@ shim_id = "shim-allow-diff-revision-identity"
 old_producer = "allow-diff::revision_identity"
 new_producer = "repo-snapshot::revision_identity"
 expected_result = "SemanticallyEquivalent"
-disposition = "contract_only"
+disposition = "proven"
 claim_boundary = "Contract only; revision identity parity deferred to stage receipt."
 
 [[case]]
