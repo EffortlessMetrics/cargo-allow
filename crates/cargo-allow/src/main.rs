@@ -239,5 +239,9 @@ mod product_support_matrix_tests;
 mod governance_authority_guard_tests;
 
 #[cfg(test)]
+#[path = "governance_adapter_window_tests.rs"]
+mod governance_adapter_window_tests;
+
+#[cfg(test)]
 #[path = "scoped_text_rule_tests.rs"]
 mod scoped_text_rule_tests;
