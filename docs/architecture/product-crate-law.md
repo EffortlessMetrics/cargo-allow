@@ -109,6 +109,16 @@ cargo-proof
 `allow-policy` must not become permanent three-product governance ontology merely
 because generation-1 validators currently live there.
 
+## Final governance dependency path (#2942 / #3544)
+
+Governance authority = `intent-model` DTOs (governance_v2) + `intent-engine`
+validation (reconciliation, closure); `allow-policy` = source-exception policy
+only. Recorded as forbidden crate-dependency edges `allow-policy ->
+intent-model / intent-engine / intent-protocol` in `policy/product-crates.toml`,
+the MOVE-GOV adapter-window rows in the move ledger (#3542), the
+`governance_return_guard_tests` freeze (#3544), and the bounded
+`governance_projection` for the check pipeline (#3548).
+
 ## Dependency law
 
 The final architecture requires:
