@@ -83,6 +83,26 @@ from = "proof-engine"
 to = "intent-engine"
 repair_hint = "intent-protocol"
 
+# Governance authority lives in intent-model (DTOs) and intent-engine
+# (validation); allow-policy is the source-exception policy crate (#2942
+# step 8, #3544). Runtime intent dependencies are forbidden; parity runs
+# at dev scope in cargo-allow and the check pipeline uses the bounded
+# governance projection (#3548).
+[[forbidden_crate_dependency]]
+from = "allow-policy"
+to = "intent-model"
+repair_hint = "dev-scope compat parity in cargo-allow"
+
+[[forbidden_crate_dependency]]
+from = "allow-policy"
+to = "intent-engine"
+repair_hint = "cargo-intent governance receipt"
+
+[[forbidden_crate_dependency]]
+from = "allow-policy"
+to = "intent-protocol"
+repair_hint = "cargo-intent governance receipt"
+
 # Converged obligation-input dependency path (#2936 / #3317): intent-protocol
 # is the sole obligation input authority for proof-engine. The proof-owned
 # duplicate obligation model (ChangeObligationPlanV1) was deleted in #3314

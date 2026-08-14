@@ -243,5 +243,9 @@ mod governance_authority_guard_tests;
 mod governance_adapter_window_tests;
 
 #[cfg(test)]
+#[path = "governance_return_guard_tests.rs"]
+mod governance_return_guard_tests;
+
+#[cfg(test)]
 #[path = "scoped_text_rule_tests.rs"]
 mod scoped_text_rule_tests;
