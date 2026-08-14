@@ -1043,6 +1043,7 @@ version = "0.1.0"
 dependencies = [
  "effortless-repo-protocol",
  "effortless-rust-source-index",
+ "intent-protocol",
  "proof-protocol",
  "serde",
  "toml",

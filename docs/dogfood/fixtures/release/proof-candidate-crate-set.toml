@@ -1,6 +1,7 @@
-# Five-crate ProofCandidate package / install set (#2589-B, #2937, #3147).
+# Six-crate ProofCandidate package / install set (#2589-B, #2937, #3147, #3310).
 # Shared by proof-candidate smoke and extraction parity receipts.
 # proof-provider-api and proof-adapter-command were absorbed into proof-orchestrator.
+# intent-protocol added as proof-engine dependency (#3310).
 
 schema_id = "cargo-allow.proof-candidate-crate-set.v1"
 schema_version = 1
@@ -9,6 +10,7 @@ schema_version = 1
 crates = [
   "effortless-repo-protocol",
   "effortless-rust-source-index",
+  "intent-protocol",
   "proof-protocol",
   "proof-orchestrator",
   "cargo-proof",
