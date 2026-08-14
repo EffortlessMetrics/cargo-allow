@@ -1091,6 +1091,10 @@ durable_bin="${exact_parent}/install/bin/cargo-allow"
 if [[ -f "${cargo_bin}.exe" || "${cargo_bin}" == *.exe ]]; then
   durable_bin="${durable_bin}.exe"
 fi
-cp "${cargo_bin}" "${durable_bin}"
-log "durable install copy: ${durable_bin}"
+if [[ "${cargo_bin}" == "${durable_bin}" ]]; then
+  log "durable install already at: ${durable_bin}"
+else
+  cp "${cargo_bin}" "${durable_bin}"
+  log "durable install copy: ${durable_bin}"
+fi
 package_set_passed=1
