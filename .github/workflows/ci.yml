@@ -279,6 +279,11 @@ jobs:
         continue-on-error: true
       - name: Extraction parity cutover status (#3469)
         run: bash scripts/extraction-cutover-status.sh
+        env:
+          # #3469 slice B: parity execution, ownership derivation, receipt
+          # supply, and ledger linkage gate CI; old-path retirement stays
+          # observational until #3543.
+          EXTRACTION_CUTOVER_LANE_GATE: "1"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:

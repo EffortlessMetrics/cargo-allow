@@ -94,6 +94,9 @@ impl ShimReferenceV2 {
 pub enum ParityDispositionV2 {
     ContractOnly,
     EvidenceBacked,
+    /// Runtime-proven parity after the cutover evidence chain completed
+    /// (#3469 slice B).
+    Proven,
     Retired,
 }
 
@@ -102,6 +105,7 @@ impl ParityDispositionV2 {
         match self {
             Self::ContractOnly => "contract_only",
             Self::EvidenceBacked => "evidence_backed",
+            Self::Proven => "proven",
             Self::Retired => "retired",
         }
     }
@@ -110,6 +114,7 @@ impl ParityDispositionV2 {
         match value.trim() {
             "contract_only" => Ok(Self::ContractOnly),
             "evidence_backed" => Ok(Self::EvidenceBacked),
+            "proven" => Ok(Self::Proven),
             "retired" => Ok(Self::Retired),
             other => Err(format!("unsupported parity disposition `{other}`")),
         }

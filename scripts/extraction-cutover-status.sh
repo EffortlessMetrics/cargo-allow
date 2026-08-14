@@ -224,7 +224,7 @@ for stage, path in stage_paths.items():
         blockers.append(f"runtime_parity_not_complete:{stage}")
         blockers.extend(f"runtime_parity_invalid:{stage}:{error}" for error in runtime_errors)
     contract_only = [
-        case.get("id") for case in stage_cases if case.get("disposition") != "Proven"
+        case.get("id") for case in stage_cases if case.get("disposition") != "proven"
     ]
     if contract_only:
         blockers.append(f"policy_disposition_not_proven:{stage}")
@@ -332,7 +332,7 @@ for stage, path in stage_paths.items():
             "registered_case_count": len(stage_cases),
             "registered_case_ids": sorted(stage_ids),
             "runtime_result": payload_dict.get("result"),
-            "policy_disposition": "Proven" if not contract_only else "contract_only",
+            "policy_disposition": "proven" if not contract_only else "contract_only",
             "old_path_reachability": (
                 "closed" if not old_path_not_closed else "OldPathStillReachable"
             ),
@@ -425,3 +425,32 @@ status_path.write_text(json.dumps(status, indent=2) + "\n", encoding="utf-8")
 PY
   fi
 done
+
+
+# Evidence gate (#3469 slice B): parity execution, ownership derivation,
+# receipt supply, and ledger linkage now gate CI. The only tolerated
+# blockers are the old-path family owned by the retirement slice (#3543)
+# and the adapter rejections those old-path dispositions cause.
+gate_mode="${EXTRACTION_CUTOVER_LANE_GATE:-0}"
+if [[ "${gate_mode}" == "1" ]]; then
+  python3 - "${output_dir}/extraction-cutover-status.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+status = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+gating = [
+    blocker
+    for blocker in status.get("blockers", [])
+    if not blocker.startswith("old_path_still_reachable:")
+    and not blocker.startswith("cutover_receipt_rejected:")
+]
+if gating:
+    print(
+        "extraction-cutover-status: gating blockers present: "
+        + ", ".join(sorted(gating)),
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+PY
+fi

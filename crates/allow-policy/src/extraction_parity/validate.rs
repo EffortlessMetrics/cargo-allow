@@ -1,4 +1,6 @@
-use super::config::{ExtractionParityRegistry, parse_extraction_parity_registry_at};
+use super::config::{
+    ExtractionParityRegistry, ExtractionStage, parse_extraction_parity_registry_at,
+};
 use allow_core::CargoAllowResult;
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -100,17 +102,28 @@ pub fn validate_extraction_parity_registry(
 
         referenced_shim_cases.insert(entry.id.as_str());
 
-        if entry.disposition.as_str() != "contract_only" {
-            diagnostics.push(ParityDiagnostic {
-                kind: ParityDiagnosticKind::NonContractDisposition,
-                message: format!(
-                    "parity case `{}` expected contract_only disposition in PR1",
-                    entry.id
-                ),
-                case_ids: vec![entry.id.clone()],
-            });
-        } else {
-            contract_only_count += 1;
+        // #3469 slice B: RepoSnapshot and RepoEdit cases are promoted to
+        // `proven` after their runtime parity, reachability, ownership, and
+        // independent build/package receipts flowed end-to-end in CI
+        // (#3552, #3554). Every other stage stays PR1 fail-closed
+        // (contract_only only).
+        let promotion_stage = matches!(
+            entry.stage,
+            ExtractionStage::RepoSnapshot | ExtractionStage::RepoEdit
+        );
+        match entry.disposition.as_str() {
+            "contract_only" => contract_only_count += 1,
+            "proven" if promotion_stage => {}
+            other => {
+                diagnostics.push(ParityDiagnostic {
+                    kind: ParityDiagnosticKind::NonContractDisposition,
+                    message: format!(
+                        "parity case `{}` has unsupported disposition `{other}`; only contract_only is allowed, except proven for the promoted RepoSnapshot/RepoEdit stages",
+                        entry.id
+                    ),
+                    case_ids: vec![entry.id.clone()],
+                });
+            }
         }
     }
 
