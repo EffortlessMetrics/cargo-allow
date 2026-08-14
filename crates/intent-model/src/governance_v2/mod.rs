@@ -22,8 +22,8 @@ mod transitions;
 
 pub use claim::ClaimBoundaryV2;
 pub use compat::{
-    parse_crate_identities_v1, parse_dependency_law_v1, parse_package_postures_v1,
-    parse_parity_references_v1, parse_shim_references_v1,
+    parse_crate_identities_v1, parse_dependency_law_v1, parse_move_references_v1,
+    parse_package_postures_v1, parse_parity_references_v1, parse_shim_references_v1,
 };
 pub use dependency_law::{GovernanceForbiddenEdgeV2, GovernanceRequiredEdgeV2};
 pub use identity::{

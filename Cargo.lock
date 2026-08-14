@@ -267,6 +267,7 @@ dependencies = [
  "effortless-repo-protocol",
  "effortless-repo-snapshot",
  "intent-compiler",
+ "intent-model",
  "intent-protocol",
  "serde",
  "serde_json",

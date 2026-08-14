@@ -3185,7 +3185,7 @@ deletion_output = "Delete scaffold sources after parity cutover and old-path ret
 [[entry]]
 id = "INVENTORY-CARGO_INTENT-SRC"
 source_kind = "RustModule"
-current_paths = ["crates/cargo-intent/src/change/mod.rs", "crates/cargo-intent/src/change/report.rs", "crates/cargo-intent/src/change/status.rs", "crates/cargo-intent/src/cli.rs", "crates/cargo-intent/src/config.rs", "crates/cargo-intent/src/exit.rs", "crates/cargo-intent/src/identity.rs", "crates/cargo-intent/src/lib.rs", "crates/cargo-intent/src/main.rs", "crates/cargo-intent/src/render.rs", "crates/cargo-intent/src/tests.rs", "crates/cargo-intent/src/transport/analysis_receipt.rs", "crates/cargo-intent/src/transport/mod.rs"]
+current_paths = ["crates/cargo-intent/src/change/mod.rs", "crates/cargo-intent/src/change/report.rs", "crates/cargo-intent/src/change/status.rs", "crates/cargo-intent/src/cli.rs", "crates/cargo-intent/src/config.rs", "crates/cargo-intent/src/exit.rs", "crates/cargo-intent/src/governance.rs", "crates/cargo-intent/src/identity.rs", "crates/cargo-intent/src/lib.rs", "crates/cargo-intent/src/main.rs", "crates/cargo-intent/src/render.rs", "crates/cargo-intent/src/tests.rs", "crates/cargo-intent/src/transport/analysis_receipt.rs", "crates/cargo-intent/src/transport/mod.rs"]
 current_refs = []
 current_identity = "Extracted cargo-intent source tree under no-new intent/proof/shared enforcement (#2598)"
 current_product = "cargo-intent"
