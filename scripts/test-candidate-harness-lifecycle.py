@@ -130,6 +130,25 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
     if not package_parent.is_dir() or not parent_sentinel.is_file():
         raise SystemExit("parent cleanup removed pre-created package-set input")
 
+    source_parent = root / "source-candidate-smoke"
+    source_parent.mkdir()
+    source_sentinel = source_parent / "source-candidate-smoke.receipt.json"
+    source_sentinel.write_text("precreated\n", encoding="utf-8")
+    source_child = json.loads(
+        run("allocate", "--root", str(source_parent), "--purpose", "source-candidate-smoke").stdout
+    )
+    source_child_path = Path(source_child["path"])
+    if __import__("shutil").rmtree.avoids_symlink_attacks:
+        run("remove", "--root", str(source_parent), "--path", str(source_child_path),
+            "--purpose", "source-candidate-smoke", "--token", source_child["token"])
+        if source_child_path.exists():
+            raise SystemExit("matching marker did not remove source-candidate child")
+    else:
+        reject("remove", "--root", str(source_parent), "--path", str(source_child_path),
+               "--purpose", "source-candidate-smoke", "--token", source_child["token"])
+    if not source_parent.is_dir() or source_sentinel.read_text(encoding="utf-8") != "precreated\n":
+        raise SystemExit("source-candidate parent cleanup removed pre-created output")
+
     # Target aliases must be rejected before a harness can mkdir through them.
     run("validate-target", "--repository", str(ROOT), "--path", str(ROOT / "target"))
     alias_repo = root / "target-alias-repo"

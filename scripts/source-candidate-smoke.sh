@@ -81,12 +81,17 @@ output_root="${SCRIPT_ROOT}/target"
 python3 "${lifecycle}" validate-target --repository "${SCRIPT_ROOT}" --path "${output_root}"
 mkdir -p "${output_root}"
 python3 "${lifecycle}" validate-target --repository "${SCRIPT_ROOT}" --path "${output_root}"
-work_json="$(python3 "${lifecycle}" allocate --root "${output_root}" --purpose source-candidate-smoke --durable)"
+source_parent="${output_root}/source-candidate-smoke"
+if [[ ! -e "${source_parent}" ]]; then
+  mkdir "${source_parent}"
+fi
+python3 "${lifecycle}" validate-contained --root "${output_root}" --path "${source_parent}" >/dev/null
+work_json="$(python3 "${lifecycle}" allocate --root "${source_parent}" --purpose source-candidate-smoke)"
 read -r work_dir work_token < <(
   printf '%s' "${work_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
 )
-install_root="${work_dir}/install"
-receipt="${work_dir}/source-candidate-smoke.receipt.json"
+install_root="${source_parent}/install"
+receipt="${source_parent}/source-candidate-smoke.receipt.json"
 # Keep the consumer outside this checkout so inventory/policy resolve to the
 # temporary adopter tree, not the cargo-allow workspace git root.
 consumer_parent="${CANDIDATE_HARNESS_TEST_ROOT:-${TMPDIR:-/tmp}}"
@@ -116,10 +121,8 @@ cleanup() {
   restore_source_tree
   python3 "${lifecycle}" remove --root "${consumer_parent}" --path "${consumer_dir}" \
     --purpose source-candidate-consumer --token "${consumer_token}"
-  if [[ "${source_candidate_passed:-0}" != "1" ]]; then
-    python3 "${lifecycle}" remove --root "${output_root}" --path "${work_dir}" \
-      --purpose source-candidate-smoke --token "${work_token}"
-  fi
+  python3 "${lifecycle}" remove --root "${source_parent}" --path "${work_dir}" \
+    --purpose source-candidate-smoke --token "${work_token}"
 }
 trap cleanup EXIT
 
