@@ -6,6 +6,7 @@
 //! without executing repository code and does not invoke Cargo, rustc, Clippy,
 //! build scripts, proc macros, or proof commands.
 
+mod closure_validation;
 mod domain_queries;
 mod governance_reconciliation;
 mod graph_comparison;
@@ -18,6 +19,11 @@ mod precommit_evaluator;
 mod subject_resolution;
 mod workspace;
 
+pub use closure_validation::{
+    ClosureFindingKindV2, ClosureFindingV2, ClosureValidationInputV2, ClosureValidationReportV2,
+    ObservedDependencyClassV2, ObservedDependencyEdgeV2, ObservedMetadataGraphV2,
+    parse_observed_metadata_graph_v2, shortest_observed_path, validate_observed_closure,
+};
 pub use domain_queries::{
     BOUNDED_DOMAIN_QUERY_RESPONSE_SCHEMA_ID, BOUNDED_DOMAIN_QUERY_SCHEMA_ID,
     BoundedDomainQueryKindV1, BoundedDomainQueryRequestV1, BoundedDomainQueryResponseV1,

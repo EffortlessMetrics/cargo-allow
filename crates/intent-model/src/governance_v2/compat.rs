@@ -10,6 +10,7 @@
 
 use serde::Deserialize;
 
+use super::dependency_law::{GovernanceForbiddenEdgeV2, GovernanceRequiredEdgeV2};
 use super::identity::{GovernanceCrateIdentityV2, GovernanceCrateRoleV2, GovernanceOwnerV2};
 use super::package_posture::{
     CandidateMembershipV2, GovernancePackagePostureV2, ProductPostureV2, PublicationStateV2,
@@ -194,4 +195,70 @@ pub fn parse_parity_references_v1(text: &str) -> Result<Vec<ParityReferenceV2>, 
             Ok(reference)
         })
         .collect()
+}
+
+/// Parse `policy/product-crates.toml` `[[forbidden_crate_dependency]]` and
+/// `[[required_crate_dependency]]` rows into V2 dependency-law DTOs.
+///
+/// The V1 rows use logical crate names directly, so no identity resolution
+/// happens here; closure validation maps them against V2 identities.
+pub fn parse_dependency_law_v1(
+    text: &str,
+) -> Result<
+    (
+        Vec<GovernanceForbiddenEdgeV2>,
+        Vec<GovernanceRequiredEdgeV2>,
+    ),
+    String,
+> {
+    #[derive(Deserialize)]
+    struct LawToml {
+        #[serde(default)]
+        forbidden_crate_dependency: Vec<ForbiddenToml>,
+        #[serde(default)]
+        required_crate_dependency: Vec<RequiredToml>,
+    }
+    #[derive(Deserialize)]
+    struct ForbiddenToml {
+        from: String,
+        to: String,
+        #[serde(default)]
+        repair_hint: Option<String>,
+    }
+    #[derive(Deserialize)]
+    struct RequiredToml {
+        from: String,
+        #[serde(default)]
+        from_package: Option<String>,
+        to: String,
+        #[serde(default)]
+        rationale_issue: Option<u32>,
+    }
+    let law: LawToml =
+        toml::from_str(text).map_err(|err| format!("parse dependency law: {err}"))?;
+    let mut forbidden = Vec::with_capacity(law.forbidden_crate_dependency.len());
+    for row in law.forbidden_crate_dependency {
+        let edge = GovernanceForbiddenEdgeV2 {
+            from_logical_id: row.from,
+            to_logical_id: row.to,
+            repair_hint: row.repair_hint,
+        };
+        edge.validate()?;
+        forbidden.push(edge);
+    }
+    let mut required = Vec::with_capacity(law.required_crate_dependency.len());
+    for row in law.required_crate_dependency {
+        // The V1 required row carries an optional cargo package alias; the
+        // V2 DTO is logical-only, so the alias is validated to match the
+        // from identity during closure validation instead of here.
+        let _ = row.from_package;
+        let edge = GovernanceRequiredEdgeV2 {
+            from_logical_id: row.from,
+            to_logical_id: row.to,
+            rationale_issue: row.rationale_issue,
+        };
+        edge.validate()?;
+        required.push(edge);
+    }
+    Ok((forbidden, required))
 }

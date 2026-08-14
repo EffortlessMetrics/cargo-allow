@@ -15,15 +15,17 @@
 
 mod claim;
 mod compat;
+mod dependency_law;
 mod identity;
 mod package_posture;
 mod transitions;
 
 pub use claim::ClaimBoundaryV2;
 pub use compat::{
-    parse_crate_identities_v1, parse_package_postures_v1, parse_parity_references_v1,
-    parse_shim_references_v1,
+    parse_crate_identities_v1, parse_dependency_law_v1, parse_package_postures_v1,
+    parse_parity_references_v1, parse_shim_references_v1,
 };
+pub use dependency_law::{GovernanceForbiddenEdgeV2, GovernanceRequiredEdgeV2};
 pub use identity::{
     GovernanceComponentKindV2, GovernanceCrateIdentityV2, GovernanceCrateRoleV2, GovernanceOwnerV2,
     TargetDispositionV2,
@@ -260,6 +262,45 @@ claim_boundary = "Contract only."
     }
 
     #[test]
+    fn dependency_law_round_trips_forbidden_and_required() -> Result<(), String> {
+        let (forbidden, required) = parse_dependency_law_v1(
+            r#"
+[[forbidden_crate_dependency]]
+from = "proof-engine"
+to = "intent-engine"
+repair_hint = "intent-protocol"
+
+[[required_crate_dependency]]
+from = "proof-engine"
+from_package = "proof-orchestrator"
+to = "intent-protocol"
+rationale_issue = 2936
+"#,
+        )?;
+        let forbidden_edge = forbidden
+            .first()
+            .ok_or("fixture must yield one forbidden edge")?;
+        if forbidden_edge.from_logical_id != "proof-engine"
+            || forbidden_edge.to_logical_id != "intent-engine"
+            || forbidden_edge.repair_hint.as_deref() != Some("intent-protocol")
+        {
+            return Err(format!("forbidden edge drift: {forbidden_edge:?}"));
+        }
+        let required_edge = required
+            .first()
+            .ok_or("fixture must yield one required edge")?;
+        if required_edge.to_logical_id != "intent-protocol"
+            || required_edge.rationale_issue != Some(2936)
+        {
+            return Err(format!("required edge drift: {required_edge:?}"));
+        }
+        if parse_dependency_law_v1("[[forbidden_crate_dependency\nfrom = ").is_ok() {
+            return Err("malformed law must fail".into());
+        }
+        Ok(())
+    }
+
+    #[test]
     fn live_authorities_parse_through_compat() -> Result<(), String> {
         // The current V1 allow-policy authority must read into the V2 DTOs
         // without behavior change on the allow-policy side.
@@ -302,6 +343,20 @@ claim_boundary = "Contract only."
                 "expected the full parity case roster, got {}",
                 parity.len()
             ));
+        }
+
+        let (forbidden, required) = parse_dependency_law_v1(&read("policy/product-crates.toml")?)?;
+        if !forbidden.iter().any(|edge| {
+            edge.from_logical_id == "proof-engine" && edge.to_logical_id == "intent-engine"
+        }) {
+            return Err(
+                "live dependency law must retain the proof-engine -> intent-engine edge".into(),
+            );
+        }
+        if !required.iter().any(|edge| {
+            edge.from_logical_id == "proof-engine" && edge.to_logical_id == "intent-protocol"
+        }) {
+            return Err("live dependency law must retain the converged required edge".into());
         }
         Ok(())
     }
