@@ -24,6 +24,9 @@ set -euo pipefail
 SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 lifecycle="${SCRIPT_ROOT}/scripts/candidate-harness-owned-dir.py"
 command -v python3 >/dev/null 2>&1 || { printf 'source-candidate-smoke: error: python3 is required\n' >&2; exit 1; }
+if [[ -n "${CONSUMER_DIR:-}" ]]; then
+  python3 "${lifecycle}" validate-caller --repository "${SCRIPT_ROOT}" --path "${CONSUMER_DIR}" >/dev/null
+fi
 
 if [[ "${1:-}" != "--internal" ]]; then
   if [[ -n "${CARGO_ALLOW_BIN:-}" ]]; then
@@ -103,6 +106,7 @@ consumer_parent="${CANDIDATE_HARNESS_TEST_ROOT:-${TMPDIR:-/tmp}}"
 if [[ -n "${CONSUMER_DIR:-}" ]]; then
   consumer_dir="${CONSUMER_DIR}"
   consumer_parent="$(dirname "${consumer_dir}")"
+  python3 "${lifecycle}" validate-caller --repository "${SCRIPT_ROOT}" --path "${consumer_dir}" >/dev/null
   if [[ ! -e "${consumer_dir}" ]]; then
     mkdir -p "${consumer_dir}"
   fi
