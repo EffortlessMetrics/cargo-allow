@@ -396,12 +396,12 @@ fn reconcile_deletion_eligibility(
                 .iter()
                 .any(|expiry| expiry.component_id == shim.shim_id);
             match (shim.status, has_expiry) {
-                (ShimStatusV2::Retired, true) => DeletionEligibilityDecisionV2 {
+                (ShimStatusV2::Removed, true) => DeletionEligibilityDecisionV2 {
                     shim_id: shim.shim_id.clone(),
                     eligibility: DeletionEligibilityV2::Eligible,
                     reason: "shim is retired with a recorded removal condition".to_string(),
                 },
-                (ShimStatusV2::Retired, false) => DeletionEligibilityDecisionV2 {
+                (ShimStatusV2::Removed, false) => DeletionEligibilityDecisionV2 {
                     shim_id: shim.shim_id.clone(),
                     eligibility: DeletionEligibilityV2::NotEligibleMissingExpiry,
                     reason: "shim is retired but no expiry/removal condition is recorded"
@@ -792,9 +792,9 @@ mod tests {
     #[test]
     fn deletion_eligibility_tracks_retirement_and_expiry() -> Result<(), String> {
         let shims = vec![
-            shim("shim-retired", ShimStatusV2::Retired, "MOVE-A"),
+            shim("shim-retired", ShimStatusV2::Removed, "MOVE-A"),
             shim("shim-active", ShimStatusV2::Active, "MOVE-A"),
-            shim("shim-no-expiry", ShimStatusV2::Retired, "MOVE-A"),
+            shim("shim-no-expiry", ShimStatusV2::Removed, "MOVE-A"),
         ];
         let expiries = vec![
             TransitionExpiryV2 {

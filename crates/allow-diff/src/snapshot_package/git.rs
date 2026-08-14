@@ -165,28 +165,6 @@ pub fn read_file_at_revision(
     }
 }
 
-/// Resolve the blob object id of `path` at `commit_oid`, or `None` when the
-/// path is absent or is not a regular file. Reuses the exact-path tree lookup
-/// so a snapshot's selected-source identity matches the bytes
-/// [`read_file_at_revision`] would return for the same path and revision.
-pub(crate) fn tree_blob_oid_at_commit(
-    root: &Path,
-    commit_oid: &str,
-    path: &Path,
-) -> CargoAllowResult<Option<String>> {
-    let path_bytes = source_tree_path_bytes(path)?;
-    match lookup_tree_path(root, commit_oid, &path_bytes)? {
-        TreePathLookup::Missing => Ok(None),
-        TreePathLookup::Found { mode, blob_oid, .. } => {
-            if mode.starts_with("100") {
-                Ok(Some(blob_oid))
-            } else {
-                Ok(None)
-            }
-        }
-    }
-}
-
 pub(crate) fn resolve_commit_oid(root: &Path, revision: &str) -> CargoAllowResult<String> {
     validate_revision_input(revision)?;
 

@@ -68,6 +68,8 @@ fn snapshot_shims_record_live_public_compatibility_boundary() -> Result<(), Stri
         return Err(format!("unexpected shim diagnostics: {diagnostics:?}"));
     }
 
+    // #3556: the allow-diff forwarding shims are removed at the RepoSnapshot
+    // cutover; their old-path files are deleted from the tree.
     for id in [
         "shim-allow-diff-staged-index",
         "shim-allow-diff-revision-identity",
@@ -77,12 +79,9 @@ fn snapshot_shims_record_live_public_compatibility_boundary() -> Result<(), Stri
             .iter()
             .find(|entry| entry.id == id)
             .ok_or_else(|| format!("missing snapshot shim {id}"))?;
-        if shim.posture != super::config::ShimPosture::Public
-            || shim.status != super::config::ShimStatus::Active
-            || !shim.removal_condition.contains("#2606")
-        {
+        if shim.status != super::config::ShimStatus::Removed {
             return Err(format!(
-                "snapshot shim {id} must remain an active public compatibility boundary until #2606"
+                "snapshot shim {id} must be removed after the cutover"
             ));
         }
     }
@@ -178,6 +177,10 @@ fn whitespace_support_and_unbounded_duplicate_identity_fail_closed() -> Result<(
         .first()
         .cloned()
         .ok_or_else(|| "fixture registry has no shim entry".to_string())?;
+    // Keep the fixture deterministic regardless of registry ordering: the
+    // duplicate/unbounded rules evaluate active public shims.
+    first.status = super::config::ShimStatus::Active;
+    first.posture = super::config::ShimPosture::Public;
     first.move_ledger_entry = unbounded_move.id.clone();
     first.new_identity = "duplicate::identity".to_string();
     first.parity_case = Some("parity::duplicate".to_string());

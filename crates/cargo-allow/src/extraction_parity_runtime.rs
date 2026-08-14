@@ -29,12 +29,8 @@ pub(crate) fn run_repo_snapshot_parity(root: &Path) -> CargoAllowResult<RepoSnap
 }
 
 fn committed_head_parity(root: &Path) -> CargoAllowResult<RepoSnapshotParityCase> {
-    let old_request =
-        allow_diff::RepositorySnapshotRequest::committed_head("HEAD").with_dirty_state_probe(true);
-    let old = allow_diff::repository_snapshot(root, &old_request).map_err(|error| {
-        CargoAllowError::new(format!("old RepoSnapshot authority failed: {error}"))
-    })?;
-
+    // Old twin (allow-diff) deleted at cutover (#3556): the committed case
+    // now proves the new authority resolves the exact git ground truth.
     let new_request = effortless_repo_snapshot::RepositorySnapshotRequest::committed_head("HEAD")
         .with_dirty_state_probe(true);
     let new =
@@ -42,82 +38,104 @@ fn committed_head_parity(root: &Path) -> CargoAllowResult<RepoSnapshotParityCase
             CargoAllowError::new(format!("new RepoSnapshot authority failed: {error}"))
         })?;
 
-    let old_output = committed_canonical_output(&CommittedCanonicalParts {
-        schema: old.schema,
-        kind: old.kind.as_str(),
-        root_identity: &old.root_identity,
-        object_format: old.object_format.as_str(),
-        head_requested: &old.head.requested,
-        head_commit: &old.head.commit,
-        head_tree: &old.head.tree,
-        base: old.base.as_ref().map(|identity| {
-            (
-                identity.requested.as_str(),
-                identity.commit.as_str(),
-                identity.tree.as_str(),
-            )
-        }),
-        merge_base: old.merge_base.as_deref(),
-        dirty_state: old.dirty_state.as_str(),
-        selected_paths: format!("{:?}", old.selected_paths),
-        selected_source_closure: &old.selected_source_closure,
-        limitations: &old.limitations,
-    });
-    let new_output = committed_canonical_output(&CommittedCanonicalParts {
-        schema: new.schema,
-        kind: new.kind.as_str(),
-        root_identity: &new.root_identity,
-        object_format: new.object_format.as_str(),
-        head_requested: &new.head.requested,
-        head_commit: &new.head.commit,
-        head_tree: &new.head.tree,
-        base: new.base.as_ref().map(|identity| {
-            (
-                identity.requested.as_str(),
-                identity.commit.as_str(),
-                identity.tree.as_str(),
-            )
-        }),
-        merge_base: new.merge_base.as_deref(),
-        dirty_state: new.dirty_state.as_str(),
-        selected_paths: format!("{:?}", new.selected_paths),
-        selected_source_closure: &new.selected_source_closure,
-        limitations: &new.limitations,
-    });
-    let source_identity = format!("commit:{}/tree:{}", old.head.commit, old.head.tree);
-    Ok(parity_case(source_identity, old_output, new_output))
+    let oracle_commit = git_oracle_value(root, &["rev-parse", "HEAD"])?;
+    let oracle_tree = git_oracle_value(root, &["rev-parse", "HEAD^{tree}"])?;
+    let oracle_format = git_oracle_value(root, &["rev-parse", "--show-object-format"])?;
+
+    let oracle_output = format!("head=HEAD:{oracle_commit}:{oracle_tree}|object={oracle_format}");
+    let new_output = format!(
+        "head=HEAD:{}:{}|object={}",
+        new.head.commit,
+        new.head.tree,
+        new.object_format.as_str()
+    );
+    let source_identity = format!("commit:{}/tree:{}", new.head.commit, new.head.tree);
+    Ok(parity_case(source_identity, oracle_output, new_output))
 }
 
 fn staged_index_parity(root: &Path) -> CargoAllowResult<RepoSnapshotParityCase> {
-    let old = allow_diff::staged_repository_snapshot(root)
-        .map_err(|error| CargoAllowError::new(format!("old staged authority failed: {error}")))?;
+    // Old twin deleted at cutover (#3556): the staged case proves the new
+    // authority's parent commit and staged change set match git ground truth.
     let new = effortless_repo_snapshot::staged_repository_snapshot(root)
         .map_err(|error| CargoAllowError::new(format!("new staged authority failed: {error}")))?;
 
-    let old_output = staged_canonical_output(
-        &old.parent_commit,
-        &old.capabilities,
-        &old.entries,
-        &old.changes,
-        &old.identity,
-        old.completeness,
-        &old.limitations,
-    );
-    let new_output = staged_canonical_output(
-        &new.parent_commit,
-        &new.capabilities,
-        &new.entries,
-        &new.changes,
-        &new.identity,
-        new.completeness,
-        &new.limitations,
-    );
-    let source_identity = format!(
-        "staged:{}:{}",
-        old.parent_commit.as_deref().unwrap_or("none"),
-        old.identity.semantic_hash
-    );
-    Ok(parity_case(source_identity, old_output, new_output))
+    let oracle_parent = git_oracle_value(root, &["rev-parse", "HEAD"])?;
+    let oracle_changes = git_oracle_staged_changes(root)?;
+
+    let new_parent = new
+        .parent_commit
+        .clone()
+        .unwrap_or_else(|| "none".to_string());
+    let mut new_changes: Vec<String> = new
+        .changes
+        .iter()
+        .map(|change| {
+            format!(
+                "{}	{}",
+                staged_status_letter(&change.status),
+                change
+                    .path
+                    .as_ref()
+                    .map(|path| path.to_string_lossy().replace('\\', "/"))
+                    .unwrap_or_default()
+            )
+        })
+        .collect();
+    new_changes.sort();
+
+    let oracle_output = format!("parent={oracle_parent}|changes={oracle_changes:?}");
+    let new_output = format!("parent={new_parent}|changes={new_changes:?}");
+    let source_identity = format!("staged:{}:{}", new_parent, new.identity.semantic_hash);
+    Ok(parity_case(source_identity, oracle_output, new_output))
+}
+
+fn git_oracle_value(root: &Path, args: &[&str]) -> CargoAllowResult<String> {
+    let output = std::process::Command::new("git")
+        .args(args)
+        .current_dir(root)
+        .output()
+        .map_err(|error| CargoAllowError::new(format!("git oracle {:?}: {error}", args)))?;
+    if !output.status.success() {
+        return Err(CargoAllowError::new(format!(
+            "git oracle {:?} failed: {}",
+            args,
+            String::from_utf8_lossy(&output.stderr)
+        )));
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+fn git_oracle_staged_changes(root: &Path) -> CargoAllowResult<Vec<String>> {
+    let text = git_oracle_value(root, &["diff", "--cached", "--name-status"])?;
+    let mut changes = Vec::new();
+    for line in text.lines() {
+        let line = line.trim_end_matches('\r');
+        if line.is_empty() {
+            continue;
+        }
+        let mut fields = line.split('\t');
+        let (status, path) = match (fields.next(), fields.next_back()) {
+            (Some(status), Some(path)) => (status, path),
+            _ => continue,
+        };
+        let letter = status.chars().next().unwrap_or('T');
+        changes.push(format!("{letter}\t{}", path.replace('\\', "/")));
+    }
+    changes.sort();
+    Ok(changes)
+}
+
+fn staged_status_letter(status: &effortless_repo_snapshot::StagedPathStatus) -> char {
+    match status {
+        effortless_repo_snapshot::StagedPathStatus::Added => 'A',
+        effortless_repo_snapshot::StagedPathStatus::Modified => 'M',
+        effortless_repo_snapshot::StagedPathStatus::Deleted => 'D',
+        effortless_repo_snapshot::StagedPathStatus::Renamed => 'R',
+        effortless_repo_snapshot::StagedPathStatus::Copied => 'C',
+        effortless_repo_snapshot::StagedPathStatus::TypeChanged => 'T',
+        effortless_repo_snapshot::StagedPathStatus::Unmerged => 'U',
+        effortless_repo_snapshot::StagedPathStatus::Unknown => '?',
+    }
 }
 
 fn parity_case(
@@ -142,58 +160,6 @@ fn parity_case(
     }
 }
 
-struct CommittedCanonicalParts<'a> {
-    schema: &'a str,
-    kind: &'a str,
-    root_identity: &'a str,
-    object_format: &'a str,
-    head_requested: &'a str,
-    head_commit: &'a str,
-    head_tree: &'a str,
-    base: Option<(&'a str, &'a str, &'a str)>,
-    merge_base: Option<&'a str>,
-    dirty_state: &'a str,
-    selected_paths: String,
-    selected_source_closure: &'a str,
-    limitations: &'a [String],
-}
-
-fn committed_canonical_output(parts: &CommittedCanonicalParts<'_>) -> String {
-    let base = parts
-        .base
-        .map(|(requested, commit, tree)| format!("{requested}:{commit}:{tree}"))
-        .unwrap_or_else(|| "none".to_string());
-    format!(
-        "schema={}|kind={}|root={}|object={}|head={}:{}:{}|base={base}|merge_base={:?}|dirty={}|paths={}|closure={}|limitations={:?}",
-        parts.schema,
-        parts.kind,
-        parts.root_identity,
-        parts.object_format,
-        parts.head_requested,
-        parts.head_commit,
-        parts.head_tree,
-        parts.merge_base,
-        parts.dirty_state,
-        parts.selected_paths,
-        parts.selected_source_closure,
-        parts.limitations,
-    )
-}
-
-fn staged_canonical_output<T: std::fmt::Debug>(
-    parent_commit: &Option<String>,
-    capabilities: &T,
-    entries: &[impl std::fmt::Debug],
-    changes: &[impl std::fmt::Debug],
-    identity: &impl std::fmt::Debug,
-    completeness: impl std::fmt::Debug,
-    limitations: &[String],
-) -> String {
-    format!(
-        "parent={parent_commit:?}|capabilities={capabilities:?}|entries={entries:?}|changes={changes:?}|identity={identity:?}|completeness={completeness:?}|limitations={limitations:?}"
-    )
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -201,7 +167,7 @@ mod tests {
     use std::path::PathBuf;
 
     #[test]
-    fn repository_snapshot_authorities_are_parity_equivalent() -> Result<(), String> {
+    fn repository_snapshot_matches_git_ground_truth() -> Result<(), String> {
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
         let run = run_repo_snapshot_parity(&root).map_err(|error| error.to_string())?;
         for (label, case) in [("committed", run.committed), ("staged", run.staged)] {
