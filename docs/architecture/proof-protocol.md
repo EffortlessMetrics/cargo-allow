@@ -1,16 +1,18 @@
 # proof-protocol
 
-Human projection of the cargo-proof protocol crate (#2588).
+Human projection of the cargo-proof protocol crate (#2588 / #2943).
 
-## Claim boundary
+## Data versus semantic boundary
 
-Packet 2588-A lands crate scaffold, boundary documentation, parity/ledger registration, and enforced dependency topology. `proof-protocol` must not depend on `intent-model` or `intent-engine` (ADR-0002 forbidden edges). `cargo-allow` must not take a production dependency on proof libraries.
+`proof-protocol` is the stable **data/serialization/structural-validation seam** of the proof family (#2943 step 6, #3318):
 
-Plan DTO transport lands in #2588-B. Proof-provider-api surfaces land in #2603.
+- schema IDs and DTO types (plan, capability, receipt, contradiction, phase-gate, proof corpus);
+- TOML/JSON serialization and structural loaders;
+- structural validation only — required fields, ID shape, local uniqueness, schema generation, enum/shape consistency expressible without external or current state.
 
-Parity fixtures live under `tests/fixtures/proof-protocol/`.
+`proof-engine` is the **sole semantic authority**: currentness against captured receipts, cache decisions, blocking aggregation, contradiction interpretation, phase-gate evaluation, provider registry behavior, and obligation planning (#2943 step 8, #3320). A raw process or provider success can never be interpreted as obligation satisfaction inside proof-protocol.
 
-- `proof-protocol::proof_corpus` — provider-independent proof corpus, result taxonomy, and composition honesty (#2708)
+The extraction-era parity path/contract loader APIs are test-only (retirement tracked by #2940).
 
 ## Module surfaces
 
@@ -20,6 +22,9 @@ Parity fixtures live under `tests/fixtures/proof-protocol/`.
 - `proof-protocol::receipt_dtos` — receipt binding transport (#2588-B)
 - `proof-protocol::contradiction_dtos` — contradiction report transport (#2588-B+)
 - `proof-protocol::phase_gate_dtos` — phase-gate transport (#2588-B+)
+- `proof-protocol::proof_corpus` — provider-independent proof corpus, result taxonomy, and binding identities (#2708); corpus behavioral evaluation lives in `proof-engine::corpus_semantics`
+
+Parity fixtures live under `tests/fixtures/proof-protocol/`.
 
 ## Allowed upstream dependencies
 
@@ -30,6 +35,8 @@ proof-protocol → repo-protocol
 ## Forbidden dependency edges
 
 ```text
-proof-protocol → intent-model / intent-engine
+proof-protocol → intent-model / intent-engine / intent-protocol / proof-engine
 cargo-allow product → proof-protocol
 ```
+
+Protocol DTOs round-trip independently with proof-engine source unavailable; the manifest must declare no engine, intent, or application dependency (guarded by `protocol_crate_declares_no_semantic_or_application_dependency`).
