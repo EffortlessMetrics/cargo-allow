@@ -474,7 +474,7 @@ old_producer = "cargo-proof::proof_engine_unowned"
 new_producer = "proof-engine::boundary"
 expected_result = "EquivalentWithCanonicalRenaming"
 disposition = "contract_only"
-claim_boundary = "Engine orchestration scaffold only; cargo-proof CLI lands in follow-on packets."
+claim_boundary = "proof-engine is the sole currentness, cache, aggregate, contradiction, and phase-gate semantic authority; proof-protocol is a data/serialization/structural-validation seam (#2943/#3320)."
 
 [[case]]
 id = "parity-cargo-proof-product-identity-v1"

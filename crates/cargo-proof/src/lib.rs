@@ -37,4 +37,6 @@ pub use render::{
 };
 
 #[cfg(test)]
+mod semantic_routing_guard_tests;
+#[cfg(test)]
 mod tests;
