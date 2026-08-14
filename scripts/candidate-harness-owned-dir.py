@@ -80,6 +80,30 @@ def validate_target(repository: Path, target: Path) -> None:
         fail(f"target must be contained under repository: {resolved}")
 
 
+def validate_caller_directory(path: Path, repository: Path) -> Path:
+    repo = canonical_existing(repository, "repository")
+    candidate = path.absolute()
+    if candidate.exists():
+        if is_reparse_point(candidate) or not candidate.is_dir():
+            fail(f"caller directory must be a non-symlink directory: {candidate}")
+        resolved = candidate.resolve(strict=True)
+    else:
+        resolved = canonical_existing(candidate.parent, "caller directory parent") / candidate.name
+    if resolved == repo or repo in resolved.parents or resolved in repo.parents:
+        fail(f"caller directory overlaps repository: {resolved}")
+    return resolved
+
+
+def claim(directory: Path, purpose: str) -> tuple[Path, str]:
+    validate_purpose(purpose)
+    owned = canonical_existing(directory, "claim directory")
+    if any(owned.iterdir()):
+        fail(f"refusing to claim non-empty directory: {owned}")
+    token = secrets.token_hex(32)
+    write_marker(owned, purpose, token)
+    return owned, token
+
+
 def validate_purpose(purpose: str) -> None:
     if not purpose or any(character not in "abcdefghijklmnopqrstuvwxyz0123456789-" for character in purpose):
         fail(f"invalid purpose {purpose!r}")
@@ -214,6 +238,12 @@ def main() -> int:
     target_parser = subparsers.add_parser("validate-target")
     target_parser.add_argument("--repository", type=Path, required=True)
     target_parser.add_argument("--path", type=Path, required=True)
+    caller_parser = subparsers.add_parser("validate-caller")
+    caller_parser.add_argument("--repository", type=Path, required=True)
+    caller_parser.add_argument("--path", type=Path, required=True)
+    claim_parser = subparsers.add_parser("claim")
+    claim_parser.add_argument("--path", type=Path, required=True)
+    claim_parser.add_argument("--purpose", required=True)
     args = parser.parse_args()
     if args.command == "allocate":
         directory, token = allocate(args.root, args.purpose, args.durable)
@@ -249,6 +279,13 @@ def main() -> int:
         return 0
     if args.command == "validate-target":
         validate_target(args.repository, args.path)
+        return 0
+    if args.command == "validate-caller":
+        print(validate_caller_directory(args.path, args.repository))
+        return 0
+    if args.command == "claim":
+        directory, token = claim(args.path, args.purpose)
+        print(json.dumps({"path": str(directory), "purpose": args.purpose, "token": token}))
         return 0
     remove(args.root, args.path, args.purpose, args.token)
     return 0

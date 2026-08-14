@@ -149,6 +149,23 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
     if not source_parent.is_dir() or source_sentinel.read_text(encoding="utf-8") != "precreated\n":
         raise SystemExit("source-candidate parent cleanup removed pre-created output")
 
+    caller_work = root / "caller-work" / "source-candidate-smoke"
+    caller_work.parent.mkdir()
+    run("validate-caller", "--repository", str(ROOT), "--path", str(caller_work))
+    caller_work.mkdir(parents=True)
+    caller_consumer = root / "caller-consumer"
+    caller_consumer.mkdir()
+    claimed = json.loads(
+        run("claim", "--path", str(caller_consumer), "--purpose", "source-candidate-consumer").stdout
+    )
+    if Path(claimed["path"]) != caller_consumer:
+        raise SystemExit("caller consumer claim changed the requested path")
+    if __import__("shutil").rmtree.avoids_symlink_attacks:
+        run("remove", "--root", str(caller_consumer.parent), "--path", str(caller_consumer),
+            "--purpose", "source-candidate-consumer", "--token", claimed["token"])
+        if caller_consumer.exists():
+            raise SystemExit("claimed caller consumer was not removed")
+
     # Target aliases must be rejected before a harness can mkdir through them.
     run("validate-target", "--repository", str(ROOT), "--path", str(ROOT / "target"))
     alias_repo = root / "target-alias-repo"

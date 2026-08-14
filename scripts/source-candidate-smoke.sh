@@ -81,11 +81,15 @@ output_root="${SCRIPT_ROOT}/target"
 python3 "${lifecycle}" validate-target --repository "${SCRIPT_ROOT}" --path "${output_root}"
 mkdir -p "${output_root}"
 python3 "${lifecycle}" validate-target --repository "${SCRIPT_ROOT}" --path "${output_root}"
-source_parent="${output_root}/source-candidate-smoke"
+source_parent="${WORK_DIR:-${output_root}/source-candidate-smoke}"
 if [[ ! -e "${source_parent}" ]]; then
   mkdir "${source_parent}"
 fi
-python3 "${lifecycle}" validate-contained --root "${output_root}" --path "${source_parent}" >/dev/null
+if [[ -n "${WORK_DIR:-}" ]]; then
+  python3 "${lifecycle}" validate-caller --repository "${SCRIPT_ROOT}" --path "${source_parent}" >/dev/null
+else
+  python3 "${lifecycle}" validate-contained --root "${output_root}" --path "${source_parent}" >/dev/null
+fi
 work_json="$(python3 "${lifecycle}" allocate --root "${source_parent}" --purpose source-candidate-smoke)"
 read -r work_dir work_token < <(
   printf '%s' "${work_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
@@ -95,7 +99,16 @@ receipt="${source_parent}/source-candidate-smoke.receipt.json"
 # Keep the consumer outside this checkout so inventory/policy resolve to the
 # temporary adopter tree, not the cargo-allow workspace git root.
 consumer_parent="${CANDIDATE_HARNESS_TEST_ROOT:-${TMPDIR:-/tmp}}"
-consumer_json="$(python3 "${lifecycle}" allocate --root "${consumer_parent}" --purpose source-candidate-consumer)"
+if [[ -n "${CONSUMER_DIR:-}" ]]; then
+  consumer_dir="${CONSUMER_DIR}"
+  consumer_parent="$(dirname "${consumer_dir}")"
+  if [[ ! -e "${consumer_dir}" ]]; then
+    mkdir -p "${consumer_dir}"
+  fi
+  consumer_json="$(python3 "${lifecycle}" claim --path "${consumer_dir}" --purpose source-candidate-consumer)"
+else
+  consumer_json="$(python3 "${lifecycle}" allocate --root "${consumer_parent}" --purpose source-candidate-consumer)"
+fi
 read -r consumer_dir consumer_token < <(
   printf '%s' "${consumer_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
 )
