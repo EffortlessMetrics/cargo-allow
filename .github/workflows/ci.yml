@@ -226,6 +226,10 @@ jobs:
           if-no-files-found: warn
 
   test:
+    # The cutover status lane restores the build receipts produced by the
+    # package-smoke job; artifacts are only downloadable once that job
+    # completes (#3469/#3552).
+    needs: package-smoke
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
