@@ -1,15 +1,33 @@
-//! Proof plan transport and provider-neutral contracts for three-product
-//! extraction (#2588).
+//! Proof protocol data seam: DTOs, serialization, and structural validation
+//! (#2588 / #2943 step 6).
 //!
 //! Most users should use [cargo-allow](https://github.com/EffortlessMetrics/cargo-allow);
-//! `proof-protocol` defines proof plan DTOs and provider-neutral transport. It
-//! does not scan source files, does not invoke Cargo, compile code, execute
-//! repository code, spawn processes, or depend on intent crates.
+//! `proof-protocol` defines the stable data/serialization/structural-validation
+//! seam shared by the proof family.
+//!
+//! ## Data versus semantic boundary
+//!
+//! This crate owns **data only**: schema IDs, DTO types, TOML/JSON
+//! serialization, and structural validation (required fields, ID shape,
+//! local uniqueness, schema generation, enum/shape consistency expressible
+//! without external or current state).
+//!
+//! **Semantic evaluation lives in proof-engine** (the sole semantic
+//! evaluator): currentness against captured receipts, cache decisions,
+//! blocking aggregation, contradiction interpretation, phase-gate
+//! evaluation, provider registry behavior, and obligation planning. A raw
+//! process or provider success can never be interpreted as obligation
+//! satisfaction inside this crate.
+//!
+//! `proof-protocol` does not scan source files, does not invoke Cargo,
+//! compile code, execute repository code, spawn processes, and does not
+//! depend on intent, engine, or application crates.
 
 #[cfg(test)]
 mod boundary;
 mod capability_dtos;
 mod contradiction_dtos;
+#[cfg(test)]
 mod parity;
 mod phase_gate_dtos;
 mod plan_dtos;
@@ -26,20 +44,6 @@ pub use capability_dtos::{
 pub use contradiction_dtos::{
     PROOF_CONTRADICTION_REPORT_SCHEMA_ID, ProofContradictionError, ProofContradictionReportV1,
     ProofContradictionV1, validate_contradiction_report,
-};
-pub use parity::{
-    CapabilityDtosParityContract, ContradictionDtosParityContract, PhaseGateDtosParityContract,
-    PlanDtosParityContract, ProofCorpusParityContract, ReceiptDtosParityContract,
-    capability_dtos_parity_contract_path, capability_dtos_parity_contract_paths,
-    contradiction_dtos_parity_contract_path, contradiction_dtos_parity_contract_paths,
-    load_capability_dtos_parity_contract, load_contradiction_dtos_parity_contract,
-    load_phase_gate_dtos_parity_contract, load_plan_dtos_parity_contract,
-    load_proof_corpus_contract, load_proof_corpus_fixture, load_receipt_dtos_parity_contract,
-    parity_contract_path, parity_contract_paths, phase_gate_dtos_parity_contract_path,
-    phase_gate_dtos_parity_contract_paths, plan_dtos_parity_contract_path,
-    plan_dtos_parity_contract_paths, proof_corpus_contract_path, proof_corpus_contract_paths,
-    proof_corpus_fixture_path, receipt_dtos_parity_contract_path,
-    receipt_dtos_parity_contract_paths,
 };
 pub use phase_gate_dtos::{
     PROOF_PHASE_GATE_SCHEMA_ID, ProofPhaseGateError, ProofPhaseGatePostureV1, ProofPhaseGateV1,
