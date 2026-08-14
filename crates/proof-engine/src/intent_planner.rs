@@ -9,6 +9,7 @@ use proof_protocol::{ProofPlanCommandV1, ProofPlanV1};
 use crate::command_adapter::{
     compile_invocation_spec, default_cargo_allow_registry, validate_command_registry,
 };
+use crate::intent_digest::intent_plan_identity;
 use crate::provider_registry::{ProviderRegistryV1, require_registered_provider};
 use intent_protocol::IntentObligationPlanEnvelopeV1;
 
@@ -54,23 +55,14 @@ pub fn plan_proof_execution_from_intent(
         return Err(IntentPlannerError::NoCommandsPlanned);
     }
 
-    let plan_id = intent_plan_identity(envelope);
+    // The plan identity embeds the content-complete intent plan digest, so a
+    // changed or stale intent plan always yields a distinct proof identity
+    // (#3316).
+    let plan_id = intent_plan_identity(envelope).map_err(IntentPlannerError::PlanIdentity)?;
     let plan = ProofPlanV1::new(plan_id, commands);
     proof_protocol::validate_proof_plan(&plan)
         .map_err(|err| IntentPlannerError::PlanValidation(format!("{err:?}")))?;
     Ok(plan)
-}
-
-/// Derive a stable plan identity from the intent envelope.
-///
-/// Different phases produce different plan identities (a required negative control).
-fn intent_plan_identity(envelope: &IntentObligationPlanEnvelopeV1) -> String {
-    let mut parts = Vec::with_capacity(envelope.obligations.len() + 1);
-    parts.push(envelope.phase.as_str());
-    for obligation in &envelope.obligations {
-        parts.push(obligation.obligation_id.as_str());
-    }
-    format!("intent-proof-plan:{}", parts.join("|"))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -79,16 +71,18 @@ pub enum IntentPlannerError {
     CommandRegistry(String),
     CommandSpec(String),
     NoCommandsPlanned,
+    PlanIdentity(String),
     PlanValidation(String),
 }
 
 impl IntentPlannerError {
-    pub fn as_str(&self) -> &'static str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::ProviderRegistry(_) => "provider_registry_invalid",
             Self::CommandRegistry(_) => "command_registry_invalid",
             Self::CommandSpec(_) => "command_spec_invalid",
             Self::NoCommandsPlanned => "no_commands_planned",
+            Self::PlanIdentity(_) => "plan_identity_failed",
             Self::PlanValidation(_) => "plan_validation_failed",
         }
     }
@@ -159,8 +153,8 @@ mod tests {
     fn different_phases_produce_different_plan_identities() -> Result<(), String> {
         let precommit = sample_envelope("precommit");
         let release = sample_envelope("release");
-        let id1 = intent_plan_identity(&precommit);
-        let id2 = intent_plan_identity(&release);
+        let id1 = crate::intent_digest::intent_plan_identity(&precommit)?;
+        let id2 = crate::intent_digest::intent_plan_identity(&release)?;
         if id1 == id2 {
             return Err(format!(
                 "different phases must produce different plan identities: {id1} == {id2}"

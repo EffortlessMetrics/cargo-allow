@@ -62,6 +62,7 @@ impl IdentityFrameV1 {
 pub struct PlanFrameV1 {
     pub schema_id: String,
     pub plan_id: String,
+    pub intent_plan_digest: String,
     pub command_count: usize,
     pub claim_boundary: String,
 }
