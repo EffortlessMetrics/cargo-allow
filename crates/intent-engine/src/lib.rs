@@ -7,6 +7,7 @@
 //! build scripts, proc macros, or proof commands.
 
 mod domain_queries;
+mod governance_reconciliation;
 mod graph_comparison;
 mod graph_compiler;
 mod packet;
@@ -22,6 +23,12 @@ pub use domain_queries::{
     BoundedDomainQueryKindV1, BoundedDomainQueryRequestV1, BoundedDomainQueryResponseV1,
     RESULT_CLASS_COMPLETED, canonical_bounded_domain_query_kinds, execute_bounded_domain_query,
     load_bounded_domain_query_catalog_toml, to_intent_query_response_json,
+};
+pub use governance_reconciliation::{
+    ComponentDispositionRecordV2, DeletionEligibilityDecisionV2, DeletionEligibilityV2,
+    GovernanceFindingKindV2, GovernanceFindingSeverityV2, GovernanceFindingV2,
+    GovernanceReconciliationInputV2, GovernanceReconciliationReportV2, WorkspaceMemberFactV2,
+    reconcile_governance_authority,
 };
 pub use graph_comparison::{
     GRAPH_COMPARISON_REPORT_SCHEMA_ID, GraphComparisonReportV1, GraphMovementKindV1,
