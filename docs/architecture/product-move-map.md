@@ -7,7 +7,7 @@
 ## Denominator
 
 - Ledger schema: `cargo-allow.three-product-move-ledger.v1` generation `1`
-- Entries: **101**
+- Entries: **107**
 - Topology authority: Issue **#2612**
 - Move/deletion owner: Issue **#2598**
 - Current posture: inventory and target ratification only; no implementation moved.
@@ -15,6 +15,7 @@
 ### Status counts
 
 - `CutoverCurrent`: **1**
+- `CutoverOutstanding`: **6**
 - `RepositoryDecisionRequired`: **1**
 - `TargetRatified`: **99**
 
@@ -26,8 +27,8 @@
 - `MoveToCargoIntentApp`: **6**
 - `MoveToCargoProofApp`: **2**
 - `MoveToIntentEdit`: **7**
-- `MoveToIntentEngine`: **11**
-- `MoveToIntentModel`: **6**
+- `MoveToIntentEngine`: **12**
+- `MoveToIntentModel`: **11**
 - `MoveToIntentProtocol`: **4**
 - `MoveToProofAdapter`: **9**
 - `MoveToProofEngine`: **9**
@@ -269,6 +270,72 @@
 - Removal: #2564/#2599 then #2601/#2568
 - Next: Land canonical cargo-intent staged status and delegate legacy command.
 - Deletion output: cargo-allow spec_precommit implementation becomes deletable.
+
+### `MOVE-GOV-ARCHITECTURE-DTOS`
+
+- Current: Architecture manifest DTOs: product/shared/planned definitions, forbidden and required crate dependencies, V2 crate identities, and the historical V1 reader
+- Target: `cargo-intent / intent-model::governance_v2`
+- Disposition: `MoveToIntentModel`
+- Stage/status: `IntentModel` / `CutoverOutstanding`
+- Old path: `OldPathStillReachable`
+- Removal: #2942 step 7 deletion after parity and consumer migration
+- Next: Runtime consumers read through intent-model::governance_v2 compat parsing (#3327); allow-policy keeps V1 parsing as bounded parity until step 7.
+- Deletion output: Delete the V1 architecture manifest parsers from allow-policy under #2942 step 7 after parity and consumer migration (#3541).
+
+### `MOVE-GOV-ARCHITECTURE-VALIDATION`
+
+- Current: Architecture dependency law: manifest validation, denominator cross-checks, dependency graph, closure diagnostics, and shortest-path routing
+- Target: `cargo-intent / intent-engine::governance_reconciliation_and_closure_validation`
+- Disposition: `MoveToIntentEngine`
+- Stage/status: `IntentEngine` / `CutoverOutstanding`
+- Old path: `OldPathStillReachable`
+- Removal: #2942 step 7 deletion after parity and consumer migration
+- Next: intent-engine reconciliation (#3328) and closure validation (#3329) supersede these validators; allow-policy keeps them as bounded parity until step 7.
+- Deletion output: Delete the V1 dependency-law validators from allow-policy under #2942 step 7 after the governance receipt lane proves equivalence (#3541).
+
+### `MOVE-GOV-EXTRACTION-PARITY`
+
+- Current: Extraction parity case DTOs, validators, and reachability checks
+- Target: `cargo-intent / intent-model::governance_v2_parity_references`
+- Disposition: `MoveToIntentModel`
+- Stage/status: `IntentModel` / `CutoverOutstanding`
+- Old path: `OldPathStillReachable`
+- Removal: #2942 step 7 deletion after parity and consumer migration
+- Next: intent-model::governance_v2 parse_parity_references_v1 (#3327) reads the same cases; linkage reconciliation runs in intent-engine (#3328).
+- Deletion output: Delete the V1 parity case parsers and validators from allow-policy under #2942 step 7.
+
+### `MOVE-GOV-EXTRACTION-SHIMS`
+
+- Current: Extraction shim registry DTOs, validators, and expiry tracking
+- Target: `cargo-intent / intent-model::governance_v2_shim_references`
+- Disposition: `MoveToIntentModel`
+- Stage/status: `IntentModel` / `CutoverOutstanding`
+- Old path: `OldPathStillReachable`
+- Removal: #2942 step 7 deletion after parity and consumer migration
+- Next: intent-model::governance_v2 parse_shim_references_v1 (#3327) reads shims and expiries; deletion eligibility runs in intent-engine (#3328).
+- Deletion output: Delete the V1 shim registry parsers and validators from allow-policy under #2942 step 7.
+
+### `MOVE-GOV-MOVE-LEDGER-READER`
+
+- Current: Move ledger entry DTOs and parsing for the three-product move authority
+- Target: `cargo-intent / intent-model::governance_v2_move_references`
+- Disposition: `MoveToIntentModel`
+- Stage/status: `IntentModel` / `CutoverOutstanding`
+- Old path: `OldPathStillReachable`
+- Removal: #2942 step 7 deletion after parity and consumer migration
+- Next: intent-model::governance_v2 parse_move_references_v1 (#3545) reads the same ledger rows; the ledger validator itself remains a migration-control surface (REMAIN-MOVE-LEDGER-VALIDATOR).
+- Deletion output: Delete the V1 move-ledger entry parser from allow-policy under #2942 step 7 once receipts carry the linkage.
+
+### `MOVE-GOV-PACKAGE-TOPOLOGY`
+
+- Current: Product package topology DTOs and validators: version lines, postures, publication state, and candidate membership
+- Target: `cargo-intent / intent-model::governance_v2_package_posture`
+- Disposition: `MoveToIntentModel`
+- Stage/status: `IntentModel` / `CutoverOutstanding`
+- Old path: `OldPathStillReachable`
+- Removal: #2942 step 7 deletion after parity and consumer migration
+- Next: intent-model::governance_v2 package posture DTOs plus compat parsing (#3327) supersede these DTOs; candidate rows project through the governance receipt (#3540).
+- Deletion output: Delete the V1 package topology parsers and validators from allow-policy under #2942 step 7.
 
 ### `MOVE-INTENT-CI-LANES`
 
