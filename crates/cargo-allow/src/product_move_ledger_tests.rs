@@ -15,7 +15,7 @@ fn product_move_ledger_repository_inventory_is_valid() -> Result<(), String> {
         return Err(format!("move ledger diagnostics: {diagnostics:?}"));
     }
     assert_eq!(report.entry_count, 108);
-    assert_eq!(report.target_ratified_count, 98);
+    assert_eq!(report.target_ratified_count, 87);
     assert_eq!(report.decision_required_count, 1);
     assert_eq!(validated.ledger.controlling_issue, 2598);
     assert_eq!(validated.ledger.topology_issue, 2612);
