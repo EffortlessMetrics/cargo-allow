@@ -81,7 +81,9 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
             try:
                 LIFECYCLE.remove(root, race_path, "race", race["token"])
             except OSError as error:
-                if not original_safe or error.errno not in {errno.EINVAL, errno.ENOTDIR, errno.ELOOP, errno.EPERM}:
+                expected_errno = error.errno in {errno.EINVAL, errno.ENOTDIR, errno.ELOOP, errno.EPERM}
+                expected_message = str(error) == "Cannot call rmtree on a symbolic link"
+                if not original_safe or not (expected_errno or expected_message):
                     raise
             except SystemExit:
                 pass
@@ -217,6 +219,8 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
 
     # Harness entrypoints reject broad/overlapping test roots before snapshot
     # allocation, even when probe mode is disabled.
+    # `root` is the dedicated disposable valid case. Its broad parent must
+    # remain rejected alongside repository/workspace/target/system roots.
     bad_roots = [ROOT, ROOT / "target", ROOT.parent, root.parent, Path(ROOT.anchor)]
     ancestor_sentinel = root.parent / ".cargo-allow-3509-root-sentinel"
     ancestor_sentinel.write_text("preserve\n", encoding="utf-8")
@@ -254,6 +258,9 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
             LIFECYCLE.restore(rename_stash, rename_destination)
         except (FileExistsError, SystemExit):
             pass
+        except OSError as error:
+            if error.errno != errno.ENOTEMPTY:
+                raise
         else:
             raise SystemExit("restore rename race unexpectedly succeeded")
     finally:
