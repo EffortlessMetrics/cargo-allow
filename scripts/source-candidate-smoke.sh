@@ -48,18 +48,34 @@ PY
 )"
     export CARGO_ALLOW_BIN
   fi
-  temp_root="${CANDIDATE_HARNESS_TEST_ROOT:-${TMPDIR:-/tmp}}"
+  test_root_token=""
+  if [[ -n "${CANDIDATE_HARNESS_TEST_ROOT:-}" ]]; then
+    temp_root="${CANDIDATE_HARNESS_TEST_ROOT}"
+  else
+    test_root_json="$(python3 "${lifecycle}" allocate --root "${TMPDIR:-/tmp}" --purpose source-candidate-test-root)"
+    read -r temp_root test_root_token < <(
+      printf '%s' "${test_root_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
+    )
+  fi
+  snapshot_root=""
+  snapshot_cleanup() {
+    if [[ -n "${snapshot_root}" ]]; then
+      python3 "${lifecycle}" remove --root "${temp_root}" --path "${snapshot_root}" \
+        --purpose source-candidate-snapshot --token "${snapshot_token}"
+    fi
+    if [[ -n "${test_root_token}" ]]; then
+      python3 "${lifecycle}" remove --root "${TMPDIR:-/tmp}" --path "${temp_root}" \
+        --purpose source-candidate-test-root --token "${test_root_token}"
+    fi
+  }
+  trap snapshot_cleanup EXIT
   python3 "${lifecycle}" validate-test-root --root "${temp_root}" --repository "${SCRIPT_ROOT}" >/dev/null
   snapshot_json="$(python3 "${lifecycle}" snapshot --root "${temp_root}" --repository "${SCRIPT_ROOT}" --purpose source-candidate-snapshot)"
   read -r snapshot_root snapshot_token snapshot_head < <(
     printf '%s' "${snapshot_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"], v["git_head"])'
   )
-  snapshot_cleanup() {
-    python3 "${lifecycle}" remove --root "${temp_root}" --path "${snapshot_root}" \
-      --purpose source-candidate-snapshot --token "${snapshot_token}"
-  }
-  trap snapshot_cleanup EXIT
-  bash "${BASH_SOURCE[0]}" --internal "${snapshot_root}" "${snapshot_token}" "${snapshot_head}"
+  CANDIDATE_HARNESS_TEST_ROOT="${temp_root}" \
+    bash "${BASH_SOURCE[0]}" --internal "${snapshot_root}" "${snapshot_token}" "${snapshot_head}"
   exit $?
 fi
 
