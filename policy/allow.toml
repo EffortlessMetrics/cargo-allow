@@ -70,6 +70,182 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-11103"
+kind = "non_rust_file"
+family = "documentation"
+path = ".changes/Added-20260815-cargo-allow-product-docs.yaml"
+owner = "core/docs"
+classification = "cargo_allow_product_docs_changelog"
+reason = "Changie fragment records the independently linked cargo-allow product documentation slice for issue #3447."
+evidence = ["issue:3447", "doc:docs/README.md", "test:cargo_allow_product_docs_are_independent_and_indexed"]
+created = "2026-08-15"
+review_after = "2027-02-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".changes/Added-20260815-cargo-allow-product-docs.yaml"
+target_fingerprint = "yaml"
+glob = ".changes/Added-20260815-cargo-allow-product-docs.yaml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11104"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-allow/getting-started.md"
+owner = "core/docs"
+classification = "cargo_allow_product_documentation"
+reason = "Independent cargo-allow getting-started surface linked from the integrated docs index for issue #3447."
+evidence = ["issue:3447", "doc:docs/README.md", "policy:product-support-matrix.toml", "test:cargo_allow_product_docs_are_independent_and_indexed"]
+created = "2026-08-15"
+review_after = "2027-02-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/products/cargo-allow/getting-started.md"
+target_fingerprint = "md"
+glob = "docs/products/cargo-allow/getting-started.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11105"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-allow/command-reference.md"
+owner = "core/docs"
+classification = "cargo_allow_product_documentation"
+reason = "Independent cargo-allow command reference surface with an explicit core-only boundary for issue #3447."
+evidence = ["issue:3447", "doc:docs/README.md", "policy:product-support-matrix.toml", "test:cargo_allow_product_docs_are_independent_and_indexed"]
+created = "2026-08-15"
+review_after = "2027-02-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/products/cargo-allow/command-reference.md"
+target_fingerprint = "md"
+glob = "docs/products/cargo-allow/command-reference.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11106"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-allow/schemas.md"
+owner = "core/docs"
+classification = "cargo_allow_product_documentation"
+reason = "Independent cargo-allow schema subset surface with a full-catalog boundary for issue #3447."
+evidence = ["issue:3447", "doc:docs/README.md", "doc:docs/schemas/README.md", "test:cargo_allow_product_docs_are_independent_and_indexed"]
+created = "2026-08-15"
+review_after = "2027-02-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/products/cargo-allow/schemas.md"
+target_fingerprint = "md"
+glob = "docs/products/cargo-allow/schemas.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11107"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-allow/limitations.md"
+owner = "core/docs"
+classification = "cargo_allow_product_documentation"
+reason = "Independent cargo-allow limitations and claim-boundary surface linked from the integrated docs index for issue #3447."
+evidence = ["issue:3447", "doc:docs/README.md", "doc:docs/claim-boundaries.md", "test:cargo_allow_product_docs_are_independent_and_indexed"]
+created = "2026-08-15"
+review_after = "2027-02-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/products/cargo-allow/limitations.md"
+target_fingerprint = "md"
+glob = "docs/products/cargo-allow/limitations.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11108"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-allow/compatibility.md"
+owner = "core/docs"
+classification = "cargo_allow_product_documentation"
+reason = "Independent cargo-allow compatibility and upgrade surface linked from the integrated docs index for issue #3447."
+evidence = ["issue:3447", "doc:docs/README.md", "policy:product-support-matrix.toml", "test:cargo_allow_product_docs_are_independent_and_indexed"]
+created = "2026-08-15"
+review_after = "2027-02-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/products/cargo-allow/compatibility.md"
+target_fingerprint = "md"
+glob = "docs/products/cargo-allow/compatibility.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11109"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-allow/support-and-security.md"
+owner = "core/docs"
+classification = "cargo_allow_product_documentation"
+reason = "Independent cargo-allow support, security, and issue-routing surface linked from the integrated docs index for issue #3447."
+evidence = ["issue:3447", "doc:docs/README.md", "policy:product-support-matrix.toml", "test:cargo_allow_product_docs_are_independent_and_indexed"]
+created = "2026-08-15"
+review_after = "2027-02-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/products/cargo-allow/support-and-security.md"
+target_fingerprint = "md"
+glob = "docs/products/cargo-allow/support-and-security.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11110"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-allow/release-notes.md"
+owner = "core/docs"
+classification = "cargo_allow_product_documentation"
+reason = "Independent cargo-allow release-notes and authorization-boundary surface linked from the integrated docs index for issue #3447."
+evidence = ["issue:3447", "doc:docs/README.md", "doc:docs/release/README.md", "test:cargo_allow_product_docs_are_independent_and_indexed"]
+created = "2026-08-15"
+review_after = "2027-02-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/products/cargo-allow/release-notes.md"
+target_fingerprint = "md"
+glob = "docs/products/cargo-allow/release-notes.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0530"
 kind = "non_rust_file"
 family = "test_fixture"
