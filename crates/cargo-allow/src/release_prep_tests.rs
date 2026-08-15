@@ -293,10 +293,18 @@ fn topology_publish_receipt_preserves_incident_recovery_boundary() {
     );
     let preflight = workflow
         .find("Prove shared registry preflight before upload")
-        .expect("workflow should run shared registry preflight before upload");
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "{RELEASE_WORKFLOW} should run shared registry preflight before upload"
+            ))
+        });
     let upload = workflow
         .find("Publish cargo-allow topology rows in dependency order")
-        .expect("workflow should retain the topology upload step");
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "{RELEASE_WORKFLOW} should retain the topology upload step"
+            ))
+        });
     assert!(
         preflight < upload,
         "shared registry preflight must precede upload"
