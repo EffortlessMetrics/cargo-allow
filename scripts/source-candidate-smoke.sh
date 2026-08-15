@@ -57,21 +57,25 @@ PY
       printf '%s' "${test_root_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
     )
   fi
-  python3 "${lifecycle}" validate-test-root --root "${temp_root}" --repository "${SCRIPT_ROOT}" >/dev/null
-  snapshot_json="$(python3 "${lifecycle}" snapshot --root "${temp_root}" --repository "${SCRIPT_ROOT}" --purpose source-candidate-snapshot)"
-  read -r snapshot_root snapshot_token snapshot_head < <(
-    printf '%s' "${snapshot_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"], v["git_head"])'
-  )
+  snapshot_root=""
   snapshot_cleanup() {
-    python3 "${lifecycle}" remove --root "${temp_root}" --path "${snapshot_root}" \
-      --purpose source-candidate-snapshot --token "${snapshot_token}"
+    if [[ -n "${snapshot_root}" ]]; then
+      python3 "${lifecycle}" remove --root "${temp_root}" --path "${snapshot_root}" \
+        --purpose source-candidate-snapshot --token "${snapshot_token}"
+    fi
     if [[ -n "${test_root_token}" ]]; then
       python3 "${lifecycle}" remove --root "${TMPDIR:-/tmp}" --path "${temp_root}" \
         --purpose source-candidate-test-root --token "${test_root_token}"
     fi
   }
   trap snapshot_cleanup EXIT
-  bash "${BASH_SOURCE[0]}" --internal "${snapshot_root}" "${snapshot_token}" "${snapshot_head}"
+  python3 "${lifecycle}" validate-test-root --root "${temp_root}" --repository "${SCRIPT_ROOT}" >/dev/null
+  snapshot_json="$(python3 "${lifecycle}" snapshot --root "${temp_root}" --repository "${SCRIPT_ROOT}" --purpose source-candidate-snapshot)"
+  read -r snapshot_root snapshot_token snapshot_head < <(
+    printf '%s' "${snapshot_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"], v["git_head"])'
+  )
+  CANDIDATE_HARNESS_TEST_ROOT="${temp_root}" \
+    bash "${BASH_SOURCE[0]}" --internal "${snapshot_root}" "${snapshot_token}" "${snapshot_head}"
   exit $?
 fi
 
