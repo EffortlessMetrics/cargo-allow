@@ -1,0 +1,12 @@
+kind: Changed
+body: >-
+  Complete the #3237 unsafe verified-evidence migration. All twelve
+  grandfathered `unsafe`-kind entries (the dogfood unsafe fixture and the
+  structural-identity refactor-pair fixtures) now carry `doc:` evidence
+  naming a per-entry containment analysis in
+  `docs/dogfood/unsafe-fixture-safety-analysis.md`; their `test:` references
+  remain supplementary traceability. With every unsafe entry carrying
+  verified local-file evidence, the
+  `verified_evidence_grandfather_entries_created_before` rollout window is
+  retired from `policy/allow.toml` and the mandate applies to every unsafe
+  entry.
