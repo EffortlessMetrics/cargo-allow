@@ -141,7 +141,14 @@ set +e
 full_code=$?
 set -e
 echo "full_exit=${full_code}" >>"${receipt}"
-[[ "${full_code}" -eq 0 ]] || fail "full-history diff failed (exit ${full_code}); see ${full_log}"
+if [[ "${full_code}" -ne 0 ]]; then
+  echo "full_history_positive=fail" >>"${receipt}"
+  echo "full_history_error_artifact=${full_log}" >>"${receipt}"
+  echo "result=fail" >>"${receipt}"
+  cat "${artifact_dir}/full-history.stdout.txt"
+  cat "${full_log}" >&2
+  fail "full-history diff failed (exit ${full_code}); see ${full_log}"
+fi
 [[ -f "${full_out}" ]] || fail "missing full-history markdown artifact"
 echo "full_history_positive=pass" >>"${receipt}"
 

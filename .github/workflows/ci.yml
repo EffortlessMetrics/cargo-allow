@@ -158,6 +158,9 @@ jobs:
           key: shallow-diff-smoke
       - name: Shallow diff base smoke
         run: bash scripts/shallow-diff-base-smoke.sh
+      - name: Shallow diff failure artifact characterization (#3566)
+        if: always()
+        run: bash scripts/test-shallow-diff-base-failure.sh
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
