@@ -371,6 +371,8 @@ fn cargo_allow_product_docs_are_independent_and_indexed() -> Result<(), String> 
         "core command reference",
         "not an exhaustive command inventory",
         "published-command-registry.toml",
+        "propose --summary-format json --summary-output <path>",
+        "add --summary-format json --summary-output <path>",
     ] {
         if !command_reference.contains(marker) {
             return Err(format!(

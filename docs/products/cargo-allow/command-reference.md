@@ -18,8 +18,12 @@ review/evidence helpers:
 | `init`, `propose`, `add`, `refresh`, `prune` | Plan or apply bounded ledger changes. |
 | `worklist` | Emit actionable repair items. |
 
-Use `--format json` where a machine-readable artifact is required. Mutation
-commands write receipts and should be run from a clean, reviewable lane.
+Report commands such as `audit`, `check`, `diff`, `list`, `explain`, `why`, and
+`worklist` use `--format json` for machine-readable output. Mutation commands
+use their command-specific summary flags, for example
+`propose --summary-format json --summary-output <path>` and
+`add --summary-format json --summary-output <path>`; they write receipts and
+should be run from a clean, reviewable lane.
 
 The published command set is pinned by that registry; source-candidate commands
 are not automatically published commands.
