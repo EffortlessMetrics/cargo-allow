@@ -97,6 +97,27 @@ def exercise_shared_registry_preflight() -> None:
         PUBLISHER.write_receipt = original_write
 
 
+def exercise_preflight_schema_contract() -> None:
+    schema = json.loads(
+        (ROOT / "docs/schemas/topology-publish-receipt.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    items = schema["properties"]["shared_registry_preflight"]["items"]
+    branches = items["oneOf"]
+    assert any(
+        branch["properties"]["state"].get("const") == "missing"
+        and branch["properties"]["registry_checksum"].get("type") == "null"
+        for branch in branches
+    )
+    assert any(
+        branch["properties"]["state"].get("enum")
+        == ["already_published_exact", "checksum_conflict"]
+        and branch["properties"]["registry_checksum"].get("type") == "string"
+        for branch in branches
+    )
+
+
 def row(state: str, *, local: str, registry: str | None) -> dict[str, Any]:
     return PUBLISHER.receipt_row(
         {
@@ -263,8 +284,12 @@ def main() -> None:
 
     exercise_main_receipt_shapes()
     exercise_shared_registry_preflight()
+    exercise_preflight_schema_contract()
     source = PUBLISHER_PATH.read_text(encoding="utf-8")
-    assert source.index("shared_registry_preflight(") < source.index('run(["cargo", "publish"')
+    main_start = source.index("def main()")
+    assert source.index("shared_registry_preflight(", main_start) < source.index(
+        'run(["cargo", "publish"', main_start
+    )
 
     print("topology publisher checksum contract: passed")
 

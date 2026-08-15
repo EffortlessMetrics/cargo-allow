@@ -43,8 +43,9 @@ Run them in this order:
    topology-selected candidate has thirteen rows: ten cargo-allow packages plus
    `effortless-repo-protocol`, `effortless-repo-snapshot`, and
    `effortless-repo-edit`. Before pushing the tag, the operator must preserve a
-   receipt proving those three selected shared rows are `AlreadyPublishedExact`
-   with checksum equality. The tag workflow now derives and enforces this
+   workflow-owned receipt proving those three selected shared rows are
+   `AlreadyPublishedExact` with checksum equality. The tag workflow now derives
+   and enforces this
    shared-first read-only registry preflight before any cargo-allow upload. Its
    commit/tree/topology-bound receipt is attached to the run; a missing row,
    version mismatch, checksum mismatch, malformed response, registry error, or

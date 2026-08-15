@@ -37,7 +37,21 @@
           "local_checksum": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
           "registry_checksum": { "type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$" },
           "state": { "enum": ["missing", "already_published_exact", "checksum_conflict"] }
-        }
+        },
+        "oneOf": [
+          {
+            "properties": {
+              "state": { "const": "missing" },
+              "registry_checksum": { "type": "null" }
+            }
+          },
+          {
+            "properties": {
+              "state": { "enum": ["already_published_exact", "checksum_conflict"] },
+              "registry_checksum": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+            }
+          }
+        ]
       }
     },
     "recovery_receipt": { "type": "string", "minLength": 1 },

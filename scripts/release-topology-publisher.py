@@ -456,7 +456,7 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.package_only and (args.publish or args.registry_preflight):
-        fail("--package-only cannot be combined with --publish")
+        fail("--package-only cannot be combined with --publish or --registry-preflight")
 
     topology_path = args.topology.resolve()
     topology, rows = load_rows(topology_path, args.mode)
