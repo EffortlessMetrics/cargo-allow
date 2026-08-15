@@ -196,6 +196,47 @@ fn integration_test_dependency_guard_allows_same_product_shared_and_non_test_dep
 }
 
 #[test]
+fn integration_test_dependency_guard_rejects_target_specific_path_dependencies()
+-> Result<(), String> {
+    let manifest = fixture_manifest();
+    let forbidden = BTreeMap::from([(
+        "product-a".to_string(),
+        BTreeSet::from(["product-b".to_string()]),
+    )]);
+    let manifests = vec![(
+        PathBuf::from("crates/product-a/Cargo.toml"),
+        "[target.'cfg(windows)'.dev-dependencies]\nproduct-b = { path = \"../product-b\" }\n"
+            .to_string(),
+    )];
+    let tracked = BTreeSet::from([
+        PathBuf::from("crates/product-a/Cargo.toml"),
+        PathBuf::from("crates/product-a/tests/cross_product.rs"),
+    ]);
+    let integration_tests = vec![(
+        PathBuf::from("crates/product-a/tests/cross_product.rs"),
+        "use product_b::private_api;\n".to_string(),
+    )];
+    let diagnostics = super::integration_test_dependency_diagnostics(
+        &manifest,
+        &forbidden,
+        &tracked,
+        &manifests,
+        &integration_tests,
+    );
+    let Some(diagnostic) = diagnostics.first() else {
+        return Err(format!(
+            "missing target-specific diagnostic: {diagnostics:?}"
+        ));
+    };
+    if diagnostics.len() != 1 || diagnostic.target_crate != "product-b" || diagnostic.line != 2 {
+        return Err(format!(
+            "unexpected target-specific diagnostics: {diagnostics:?}"
+        ));
+    }
+    Ok(())
+}
+
+#[test]
 fn audit_mode_remains_advisory() -> Result<(), String> {
     if source_coupling_fails_check(repo_root().as_path(), CheckMode::Audit)
         .map_err(|error| format!("audit guard: {error}"))?

@@ -155,68 +155,85 @@ fn integration_test_dependency_diagnostics(
         let Ok(value) = toml::from_str::<toml::Table>(text) else {
             continue;
         };
-        let Some(dev_dependencies) = value
+        let mut dependency_tables = Vec::new();
+        if let Some(dev_dependencies) = value
             .get("dev-dependencies")
             .and_then(toml::Value::as_table)
-        else {
-            continue;
-        };
-        for (dependency_name, specification) in dev_dependencies {
-            let Some(path_value) = specification
-                .as_table()
-                .and_then(|table| table.get("path"))
-                .and_then(toml::Value::as_str)
-            else {
-                continue;
-            };
-            let Some(target_path) = normalize_relative_path(crate_root, path_value) else {
-                continue;
-            };
-            let Some(target_identity) =
-                projection_identity_for_path(manifest, &normalize_path(&target_path))
-            else {
-                continue;
-            };
-            let dependency_crate_name = dependency_name.replace('-', "_");
-            let test_uses_dependency = integration_tests.iter().any(|(path, source)| {
-                normalize_path(path).starts_with(&format!("{}/tests/", normalize_path(crate_root)))
-                    && source.lines().any(|line| {
-                        let line = line.trim_start();
-                        line.starts_with(&format!("use {dependency_crate_name}::"))
-                            || line.starts_with(&format!("extern crate {dependency_crate_name}"))
-                            || line.contains(&format!("{dependency_crate_name}::"))
-                    })
-            });
-            if !test_uses_dependency {
-                continue;
+        {
+            dependency_tables.push(dev_dependencies);
+        }
+        if let Some(targets) = value.get("target").and_then(toml::Value::as_table) {
+            for target in targets.values() {
+                if let Some(dev_dependencies) = target
+                    .as_table()
+                    .and_then(|table| table.get("dev-dependencies"))
+                    .and_then(toml::Value::as_table)
+                {
+                    dependency_tables.push(dev_dependencies);
+                }
             }
-            if target_identity.product_or_shared_owner == source_identity.product_or_shared_owner
-                || target_identity.product_or_shared_owner == "shared"
-                || !forbidden_edges
-                    .get(&source_identity.product_or_shared_owner)
-                    .is_some_and(|targets| {
-                        targets.contains(&target_identity.product_or_shared_owner)
+        }
+        for dev_dependencies in dependency_tables {
+            for (dependency_name, specification) in dev_dependencies {
+                let Some(path_value) = specification
+                    .as_table()
+                    .and_then(|table| table.get("path"))
+                    .and_then(toml::Value::as_str)
+                else {
+                    continue;
+                };
+                let Some(target_path) = normalize_relative_path(crate_root, path_value) else {
+                    continue;
+                };
+                let Some(target_identity) =
+                    projection_identity_for_path(manifest, &normalize_path(&target_path))
+                else {
+                    continue;
+                };
+                let dependency_crate_name = dependency_name.replace('-', "_");
+                let test_uses_dependency = integration_tests.iter().any(|(path, source)| {
+                    normalize_path(path)
+                        .starts_with(&format!("{}/tests/", normalize_path(crate_root)))
+                        && source.lines().any(|line| {
+                            let line = line.trim_start();
+                            line.starts_with(&format!("use {dependency_crate_name}::"))
+                                || line
+                                    .starts_with(&format!("extern crate {dependency_crate_name}"))
+                                || line.contains(&format!("{dependency_crate_name}::"))
+                        })
+                });
+                if !test_uses_dependency {
+                    continue;
+                }
+                if target_identity.product_or_shared_owner
+                    == source_identity.product_or_shared_owner
+                    || target_identity.product_or_shared_owner == "shared"
+                    || !forbidden_edges
+                        .get(&source_identity.product_or_shared_owner)
+                        .is_some_and(|targets| {
+                            targets.contains(&target_identity.product_or_shared_owner)
+                        })
+                {
+                    continue;
+                }
+                let line = text
+                    .lines()
+                    .position(|line| {
+                        line.trim_start()
+                            .starts_with(&format!("{dependency_name} ="))
                     })
-            {
-                continue;
+                    .map_or(1, |line| line as u32 + 1);
+                diagnostics.push(SourceCouplingDiagnostic {
+                    kind: SourceCouplingDiagnosticKind::IntegrationTestDependency,
+                    path: manifest_path.clone(),
+                    line,
+                    column: 1,
+                    source_owner: source_identity.product_or_shared_owner.clone(),
+                    target_crate: target_identity.logical_id.clone(),
+                    target_owner: target_identity.product_or_shared_owner.clone(),
+                    import_text: format!("{dependency_name} path dependency {path_value}"),
+                });
             }
-            let line = text
-                .lines()
-                .position(|line| {
-                    line.trim_start()
-                        .starts_with(&format!("{dependency_name} ="))
-                })
-                .map_or(1, |line| line as u32 + 1);
-            diagnostics.push(SourceCouplingDiagnostic {
-                kind: SourceCouplingDiagnosticKind::IntegrationTestDependency,
-                path: manifest_path.clone(),
-                line,
-                column: 1,
-                source_owner: source_identity.product_or_shared_owner.clone(),
-                target_crate: target_identity.logical_id.clone(),
-                target_owner: target_identity.product_or_shared_owner.clone(),
-                import_text: format!("{dependency_name} path dependency {path_value}"),
-            });
         }
     }
     diagnostics
