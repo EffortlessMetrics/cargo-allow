@@ -15,6 +15,16 @@ governance profile model around it.
 - [Contributing](../CONTRIBUTING.md): local development, product boundaries,
   and pull request expectations.
 
+## Product documentation
+
+- [cargo-allow getting started](products/cargo-allow/getting-started.md)
+- [cargo-allow command reference](products/cargo-allow/command-reference.md)
+- [cargo-allow schemas and artifacts](products/cargo-allow/schemas.md)
+- [cargo-allow limitations](products/cargo-allow/limitations.md)
+- [cargo-allow compatibility](products/cargo-allow/compatibility.md)
+- [cargo-allow support and security](products/cargo-allow/support-and-security.md)
+- [cargo-allow release notes](products/cargo-allow/release-notes.md)
+
 ## Understand The Model
 
 - [Design](design.md): cargo-allow's source-exception governance model.

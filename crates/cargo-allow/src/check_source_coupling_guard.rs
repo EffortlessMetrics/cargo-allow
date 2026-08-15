@@ -18,6 +18,7 @@ use std::path::{Path, PathBuf};
 pub(crate) enum SourceCouplingDiagnosticKind {
     Import,
     PathRead,
+    IntegrationTestDependency,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -81,13 +82,332 @@ pub(crate) fn source_coupling_diagnostics_at(
             Ok((path, text))
         })
         .collect::<CargoAllowResult<Vec<_>>>()?;
-    source_coupling_diagnostics_for_sources_at_root(
+    let mut diagnostics = source_coupling_diagnostics_for_sources_at_root(
         &projection,
         &forbidden_edges,
         &tracked_paths,
         &files,
         Some(root),
-    )
+    )?;
+    let manifests = tracked_paths
+        .iter()
+        .filter(|path| path.file_name().and_then(|name| name.to_str()) == Some("Cargo.toml"))
+        .map(|path| read_tracked_source_coupling_file(root, path, "manifest"))
+        .collect::<CargoAllowResult<Vec<_>>>()?;
+    let integration_tests = tracked_paths
+        .iter()
+        .filter(|path| is_likely_test_file(path))
+        .map(|path| read_tracked_source_coupling_file(root, path, "integration test"))
+        .collect::<CargoAllowResult<Vec<_>>>()?;
+    let workspace_dependencies = workspace_dependencies_at(root)?;
+    diagnostics.extend(integration_test_dependency_diagnostics(
+        &projection,
+        &forbidden_edges,
+        &tracked_paths,
+        &manifests,
+        &integration_tests,
+        &workspace_dependencies,
+    )?);
+    diagnostics.sort_by(|left, right| {
+        (
+            normalize_path(&left.path),
+            left.line,
+            left.column,
+            &left.target_crate,
+        )
+            .cmp(&(
+                normalize_path(&right.path),
+                right.line,
+                right.column,
+                &right.target_crate,
+            ))
+    });
+    Ok(diagnostics)
+}
+
+fn read_tracked_source_coupling_file(
+    root: &Path,
+    path: &Path,
+    description: &str,
+) -> CargoAllowResult<(PathBuf, String)> {
+    read_text_file_capped(&root.join(path))
+        .map(|text| (path.to_path_buf(), text))
+        .map_err(|error| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Inventory,
+                format!(
+                    "source coupling {description} unreadable at {}: {error}",
+                    root.join(path).display()
+                ),
+            )
+        })
+}
+
+fn workspace_dependencies_at(root: &Path) -> CargoAllowResult<toml::map::Map<String, toml::Value>> {
+    if !root.join("Cargo.toml").is_file() {
+        return Ok(toml::map::Map::new());
+    }
+    let text = read_text_file_capped(&root.join("Cargo.toml")).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Inventory,
+            format!("workspace manifest unreadable: {error}"),
+        )
+    })?;
+    let table = toml::from_str::<toml::Table>(&text).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Scan,
+            format!("workspace manifest parse failed: {error}"),
+        )
+    })?;
+    Ok(table
+        .get("workspace")
+        .and_then(toml::Value::as_table)
+        .and_then(|workspace| workspace.get("dependencies"))
+        .and_then(toml::Value::as_table)
+        .cloned()
+        .unwrap_or_default())
+}
+
+fn integration_test_dependency_diagnostics(
+    manifest: &GovernanceProjection,
+    forbidden_edges: &BTreeMap<String, BTreeSet<String>>,
+    tracked_paths: &BTreeSet<PathBuf>,
+    manifests: &[(PathBuf, String)],
+    integration_tests: &[(PathBuf, String)],
+    workspace_dependencies: &toml::map::Map<String, toml::Value>,
+) -> CargoAllowResult<Vec<SourceCouplingDiagnostic>> {
+    let mut diagnostics = Vec::new();
+    for (manifest_path, text) in manifests {
+        let crate_root = manifest_path.parent().unwrap_or_else(|| Path::new(""));
+        let Some(source_identity) =
+            projection_identity_for_path(manifest, &normalize_path(crate_root))
+        else {
+            continue;
+        };
+        let has_integration_test = tracked_paths
+            .iter()
+            .any(|path| normalize_path(path).starts_with(&integration_test_prefix(crate_root)));
+        if !has_integration_test {
+            continue;
+        }
+        let value = toml::from_str::<toml::Table>(text).map_err(|error| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Scan,
+                format!(
+                    "manifest parse failed at {}: {error}",
+                    manifest_path.display()
+                ),
+            )
+        })?;
+        let mut dependency_tables = Vec::new();
+        if let Some(dev_dependencies) = value
+            .get("dev-dependencies")
+            .and_then(toml::Value::as_table)
+        {
+            dependency_tables.push(dev_dependencies);
+        }
+        if let Some(targets) = value.get("target").and_then(toml::Value::as_table) {
+            for target in targets.values() {
+                if let Some(dev_dependencies) = target
+                    .as_table()
+                    .and_then(|table| table.get("dev-dependencies"))
+                    .and_then(toml::Value::as_table)
+                {
+                    dependency_tables.push(dev_dependencies);
+                }
+            }
+        }
+        for dev_dependencies in dependency_tables {
+            for (dependency_name, specification) in dev_dependencies {
+                let workspace_path = specification
+                    .as_table()
+                    .and_then(|table| table.get("workspace"))
+                    .and_then(toml::Value::as_bool)
+                    .is_some_and(|workspace| workspace);
+                let path_value = specification
+                    .as_table()
+                    .and_then(|table| table.get("path"))
+                    .and_then(toml::Value::as_str)
+                    .or_else(|| {
+                        specification
+                            .as_table()
+                            .and_then(|table| table.get("workspace"))
+                            .and_then(toml::Value::as_bool)
+                            .filter(|workspace| *workspace)
+                            .and_then(|_| workspace_dependencies.get(dependency_name))
+                            .and_then(toml::Value::as_table)
+                            .and_then(|table| table.get("path"))
+                            .and_then(toml::Value::as_str)
+                    });
+                let Some(path_value) = path_value else {
+                    continue;
+                };
+                let path_base = if workspace_path {
+                    Path::new("")
+                } else {
+                    crate_root
+                };
+                let Some(target_path) = normalize_relative_path(path_base, path_value) else {
+                    continue;
+                };
+                let Some(target_identity) =
+                    projection_identity_for_path(manifest, &normalize_path(&target_path))
+                else {
+                    continue;
+                };
+                let mut dependency_aliases = BTreeSet::from([dependency_name.replace('-', "_")]);
+                dependency_aliases.insert(target_identity.rust_library_name.clone());
+                dependency_aliases.extend(
+                    target_identity
+                        .workspace_dependency_aliases
+                        .iter()
+                        .map(|alias| alias.replace('-', "_")),
+                );
+                let test_uses_dependency = integration_tests.iter().any(|(path, source)| {
+                    normalize_path(path).starts_with(&integration_test_prefix(crate_root))
+                        && rust_source_uses_dependency(source, &dependency_aliases)
+                });
+                if !test_uses_dependency {
+                    continue;
+                }
+                if target_identity.product_or_shared_owner
+                    == source_identity.product_or_shared_owner
+                    || target_identity.product_or_shared_owner == "shared"
+                    || !forbidden_edges
+                        .get(&source_identity.product_or_shared_owner)
+                        .is_some_and(|targets| {
+                            targets.contains(&target_identity.product_or_shared_owner)
+                        })
+                {
+                    continue;
+                }
+                let line = text
+                    .lines()
+                    .position(|line| {
+                        line.trim_start()
+                            .starts_with(&format!("{dependency_name} ="))
+                    })
+                    .map_or(1, |line| line as u32 + 1);
+                diagnostics.push(SourceCouplingDiagnostic {
+                    kind: SourceCouplingDiagnosticKind::IntegrationTestDependency,
+                    path: manifest_path.clone(),
+                    line,
+                    column: 1,
+                    source_owner: source_identity.product_or_shared_owner.clone(),
+                    target_crate: target_identity.logical_id.clone(),
+                    target_owner: target_identity.product_or_shared_owner.clone(),
+                    import_text: format!("{dependency_name} path dependency {path_value}"),
+                });
+            }
+        }
+    }
+    Ok(diagnostics)
+}
+
+fn integration_test_prefix(crate_root: &Path) -> String {
+    let root = normalize_path(crate_root);
+    if root.is_empty() {
+        "tests/".to_string()
+    } else {
+        format!("{root}/tests/")
+    }
+}
+
+fn rust_source_uses_dependency(source: &str, aliases: &BTreeSet<String>) -> bool {
+    let cleaned = rust_source_without_comments_or_strings(source);
+    let token_source = cleaned.replace("::", " __PATH_SEPARATOR__ ");
+    let tokens = token_source
+        .split(|character: char| !character.is_ascii_alphanumeric() && character != '_')
+        .filter(|token| !token.is_empty())
+        .collect::<Vec<_>>();
+    for (index, token) in tokens.iter().enumerate() {
+        if aliases.contains(*token)
+            && tokens
+                .get(index + 1)
+                .is_some_and(|next| *next == "__PATH_SEPARATOR__")
+        {
+            return true;
+        }
+        if *token == "extern"
+            && tokens.get(index + 1) == Some(&"crate")
+            && tokens
+                .get(index + 2)
+                .is_some_and(|name| aliases.contains(*name))
+        {
+            return true;
+        }
+    }
+    false
+}
+
+fn rust_source_without_comments_or_strings(source: &str) -> String {
+    let mut output = String::with_capacity(source.len());
+    let mut chars = source.chars().peekable();
+    let mut block_comment_depth = 0_u32;
+    while let Some(character) = chars.next() {
+        if block_comment_depth > 0 {
+            if character == '/' && chars.peek() == Some(&'*') {
+                chars.next();
+                block_comment_depth += 1;
+            } else if character == '*' && chars.peek() == Some(&'/') {
+                chars.next();
+                block_comment_depth -= 1;
+            }
+            output.push(' ');
+            continue;
+        }
+        if character == '/' && chars.peek() == Some(&'/') {
+            chars.next();
+            for comment_character in chars.by_ref() {
+                if comment_character == '\n' {
+                    output.push('\n');
+                    break;
+                }
+            }
+            continue;
+        }
+        if character == '/' && chars.peek() == Some(&'*') {
+            chars.next();
+            block_comment_depth = 1;
+            output.push(' ');
+            continue;
+        }
+        if character == '"' || character == '\'' {
+            let quote = character;
+            let mut escaped = false;
+            output.push(' ');
+            for string_character in chars.by_ref() {
+                if escaped {
+                    escaped = false;
+                } else if string_character == '\\' {
+                    escaped = true;
+                } else if string_character == quote {
+                    break;
+                }
+            }
+            continue;
+        }
+        output.push(character);
+    }
+    output
+}
+
+fn normalize_relative_path(base: &Path, value: &str) -> Option<PathBuf> {
+    if value.trim().is_empty() || Path::new(value).is_absolute() {
+        return None;
+    }
+    let mut components = Vec::new();
+    for component in base.join(value).components() {
+        match component {
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                components.pop()?;
+            }
+            std::path::Component::Normal(value) => components.push(value.to_owned()),
+            _ => return None,
+        }
+    }
+    Some(components.iter().collect())
 }
 
 #[cfg(test)]

@@ -30,7 +30,6 @@ mod lifecycle;
 mod policy_header;
 pub mod product_crates;
 pub mod product_move;
-pub mod product_packages;
 mod render;
 mod render_entry;
 mod render_last_seen;

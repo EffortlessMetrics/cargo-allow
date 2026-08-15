@@ -25,9 +25,12 @@ mod package;
 mod safety_comments;
 mod scan_cache;
 mod scan_result;
+#[cfg(feature = "syntax")]
 mod syntax_coupling;
+#[cfg(feature = "syntax")]
 mod syntax_facts;
 mod syntax_kinds;
+#[cfg(feature = "syntax")]
 mod syntax_tree;
 mod test_subjects;
 mod text;
@@ -40,16 +43,22 @@ pub use package::{
 };
 pub use scan_cache::ScanCache;
 pub use scan_result::{RustFileScanOutcome, RustFileScanStatus, RustScanResult};
+#[cfg(feature = "syntax")]
 pub use syntax_coupling::{
     RustSourceCoupling, RustSourceCouplingKind, RustSourceCouplingPathBase, RustSourceCouplingScan,
     rust_source_declares_no_std, rust_source_shadows_path_macros, scan_rust_source_coupling,
     scan_rust_source_coupling_with_manifest_env, scan_rust_source_coupling_with_posture,
 };
+#[cfg(feature = "syntax")]
 pub use syntax_tree::{RustSyntaxContainer, RustSyntaxTree, parse_rust_syntax};
 pub use test_subjects::{
     RustTestInventory, RustTestInventoryDiagnostic, RustTestInventoryDiagnosticKind,
     RustTestInventoryOptions, RustTestInventoryStatus, RustTestResolution, RustTestSelector,
     RustTestSourceRange, RustTestSubject, RustTestTargetIdentity, RustTestTargetKind,
+};
+
+#[cfg(feature = "syntax")]
+pub use test_subjects::{
     inventory_rust_test_subjects, inventory_rust_test_subjects_from_sources,
     resolve_rust_test_selector,
 };
@@ -85,6 +94,7 @@ pub const SOURCE_FINDING_FAMILIES: &[(&str, &str)] = &[
     ("lint_exception", "warn_attribute"),
 ];
 
+#[cfg(feature = "syntax")]
 pub fn scan_rust_files(
     root: impl AsRef<Path>,
     files: &[PathBuf],
@@ -173,10 +183,12 @@ pub struct RustSourceScan {
     pub has_parse_error: bool,
 }
 
+#[cfg(feature = "syntax")]
 pub fn scan_rust_source(path: impl AsRef<Path>, source: &str) -> Vec<Finding> {
     scan_rust_source_with_completeness(path, source).findings
 }
 
+#[cfg(feature = "syntax")]
 pub fn scan_rust_source_with_completeness(path: impl AsRef<Path>, source: &str) -> RustSourceScan {
     let path = path.as_ref().to_path_buf();
     let outcome = syntax_facts::syntax_facts_with_outcome(source);
@@ -191,6 +203,7 @@ pub fn scan_rust_source_with_completeness(path: impl AsRef<Path>, source: &str) 
 /// On a repeat scan, files whose mtime+size hasn't changed are served from
 /// the cache instead of re-parsing. Falls through to a full re-parse on any
 /// cache miss. Package context is still applied per-file.
+#[cfg(feature = "syntax")]
 pub fn scan_rust_files_cached(
     root: impl AsRef<Path>,
     files: &[PathBuf],

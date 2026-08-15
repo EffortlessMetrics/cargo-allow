@@ -3,6 +3,15 @@
 //! This crate owns committed tree, staged index, and working-tree source views for
 //! source-tree snapshot consumers. It does not invoke Cargo, compile code, or execute
 //! repository policy.
+//!
+//! ## Product-neutrality contract (#3146)
+//!
+//! This is a shared substrate crate: its runtime dependencies are neutral
+//! (serde/sha2/toml only), its public surface carries no product-domain
+//! vocabulary, and no product crate (allow-*, intent-*, proof-*,
+//! cargo-allow/intent/proof) may appear in its dependency graph. The
+//! parity cases and cutover machinery live with their consumers. Registry
+//! publication posture is decided by #3386, not here.
 
 mod error;
 mod git;

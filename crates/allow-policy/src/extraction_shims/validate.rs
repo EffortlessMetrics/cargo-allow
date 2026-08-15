@@ -15,6 +15,8 @@ pub enum ShimDiagnosticKind {
     Expired,
     DuplicateDto,
     SupportAmbiguous,
+    ActiveShimWithDeletedOldPath,
+    RemovedShimWithReachableOldPath,
 }
 
 impl ShimDiagnosticKind {
@@ -27,6 +29,10 @@ impl ShimDiagnosticKind {
             Self::Expired => "extraction_shim_expired",
             Self::DuplicateDto => "extraction_shim_duplicate_dto",
             Self::SupportAmbiguous => "extraction_shim_support_ambiguous",
+            Self::ActiveShimWithDeletedOldPath => "extraction_shim_active_with_deleted_old_path",
+            Self::RemovedShimWithReachableOldPath => {
+                "extraction_shim_removed_shim_with_reachable_old_path"
+            }
         }
     }
 }
@@ -168,6 +174,38 @@ fn validate_extraction_shim_registry_with_ledger_inner(
                     message: format!(
                         "shim `{}` duplicates new identity `{}` without bounded authority",
                         entry.id, entry.new_identity
+                    ),
+                    shim_ids: vec![entry.id.clone()],
+                });
+            }
+        }
+
+        // Registry-level consumer posture (#3376a): the shim's status must
+        // agree with its move entry's old-path disposition. An active shim
+        // whose old path is Deleted has no possible consumer; a removed
+        // shim whose old path is still reachable retired prematurely.
+        if let Some(ledger_entry) = ledger_entry {
+            let old_path_deleted = ledger_entry.old_path_reachability_disposition == "Deleted";
+            if old_path_deleted && matches!(entry.status, ShimStatus::Active | ShimStatus::Planned)
+            {
+                diagnostics.push(ShimDiagnostic {
+                    kind: ShimDiagnosticKind::ActiveShimWithDeletedOldPath,
+                    message: format!(
+                        "shim `{}` is {} but its move entry `{}` records the old path as Deleted",
+                        entry.id,
+                        entry.status.as_str(),
+                        entry.move_ledger_entry
+                    ),
+                    shim_ids: vec![entry.id.clone()],
+                });
+            }
+            if !old_path_deleted && entry.status == ShimStatus::Removed {
+                diagnostics.push(ShimDiagnostic {
+                    kind: ShimDiagnosticKind::RemovedShimWithReachableOldPath,
+                    message: format!(
+                        "shim `{}` is removed but its move entry `{}` still records the old path as reachable",
+                        entry.id,
+                        entry.move_ledger_entry
                     ),
                     shim_ids: vec![entry.id.clone()],
                 });

@@ -11,12 +11,19 @@ readme = "README.md"
 keywords.workspace = true
 categories.workspace = true
 
+[features]
+# Default-on syntax feature: embedders that only need the data model can
+# build with --no-default-features and skip the tree-sitter C parser
+# (#2821). Default surface is identical.
+default = ["syntax"]
+syntax = ["dep:tree-sitter", "dep:tree-sitter-rust"]
+
 [dependencies]
 allow-core.workspace = true
 rayon.workspace = true
 toml.workspace = true
-tree-sitter.workspace = true
-tree-sitter-rust.workspace = true
+tree-sitter = { workspace = true, optional = true }
+tree-sitter-rust = { workspace = true, optional = true }
 
 [dev-dependencies]
 proptest = { version = "1.11.0", default-features = false, features = ["std"] }

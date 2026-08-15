@@ -6,7 +6,6 @@ use allow_policy::extraction_parity::{
     ParityComparisonResult, corpus_digest, produce_extraction_cutover_receipt,
     validate_cutover_reachability,
 };
-use allow_policy::product_crates::current_architecture_receipt_at;
 use allow_policy::product_move::{ProductMoveLedger, parse_product_move_ledger_at};
 use clap::{Args, ValueEnum};
 use serde::{Deserialize, Serialize};
@@ -653,9 +652,38 @@ fn derive_ownership(
     ledger: &ProductMoveLedger,
     stage: ExtractionStage,
 ) -> CargoAllowResult<DerivedOwnership> {
-    let architecture = current_architecture_receipt_at(root)?;
-    let architecture_json = architecture.render_json()?;
-    let architecture_manifest_digest = sha256_v1_bytes(architecture_json.as_bytes());
+    // Re-based onto raw authority bytes + the bounded governance projection
+    // (#3562): the architecture digest binds to the exact bytes of the
+    // three authority files — a stronger binding than the previous
+    // receipt-JSON digest normalized through the allow-policy parser chain
+    // (closure/v2_validate/v2_reconcile). The package→path map comes from
+    // the projection (#3548), so cutover evidence no longer depends on the
+    // allow-policy receipt chain.
+    let identities_text = fs::read_to_string(root.join("policy/product-crates-v2.toml"))
+        .map_err(|error| CargoAllowError::new(format!("read identity authority: {error}")))?;
+    let topology_text = fs::read_to_string(root.join("policy/product-package-topology-v2.toml"))
+        .map_err(|error| CargoAllowError::new(format!("read topology authority: {error}")))?;
+    let law_text = fs::read_to_string(root.join("policy/product-crates.toml"))
+        .map_err(|error| CargoAllowError::new(format!("read dependency law: {error}")))?;
+    let architecture_manifest_digest = sha256_v1_bytes(
+        format!(
+            "{identities_text}
+|{topology_text}
+|{law_text}"
+        )
+        .as_bytes(),
+    );
+    let projection = crate::check::governance_projection::load_governance_projection_at(root)?;
+    let architecture_packages: BTreeMap<&str, &str> = projection
+        .crate_identities
+        .iter()
+        .map(|identity| {
+            (
+                identity.cargo_package_name.as_str(),
+                identity.workspace_path.as_str(),
+            )
+        })
+        .collect();
     let stage_cases: Vec<_> = registry
         .case
         .iter()
@@ -688,11 +716,7 @@ fn derive_ownership(
         .iter()
         .flat_map(|entry| [entry.current_crate.clone(), entry.target_crate.clone()])
         .collect();
-    let architecture_packages: BTreeMap<_, _> = architecture
-        .workspace_packages
-        .iter()
-        .map(|package| (package.cargo_package_name.as_str(), package))
-        .collect();
+
     let package_paths = package_names
         .iter()
         .map(|package_name| {
@@ -704,7 +728,7 @@ fn derive_ownership(
                         format!("V2 topology has no package identity for `{package_name}`"),
                     )
                 })?;
-            relative_file(root, &root.join(&package.workspace_path).join("Cargo.toml"))
+            relative_file(root, &root.join(package).join("Cargo.toml"))
         })
         .collect::<CargoAllowResult<Vec<_>>>()?;
 
@@ -761,7 +785,7 @@ fn derive_ownership(
         docs_paths,
         ci_paths,
         package_names,
-        source_input_paths: cutover_source_input_paths(root, &architecture, stage)?,
+        source_input_paths: cutover_source_input_paths(root, &projection, stage)?,
     })
 }
 
@@ -778,7 +802,7 @@ fn requested_extraction_stage(requested: ParityStageArg) -> CargoAllowResult<Ext
 
 fn cutover_source_input_paths(
     root: &Path,
-    architecture: &allow_policy::product_crates::CurrentArchitectureReceiptV2,
+    projection: &crate::check::governance_projection::GovernanceProjection,
     stage: ExtractionStage,
 ) -> CargoAllowResult<Vec<String>> {
     let mut paths = BTreeSet::from([
@@ -789,7 +813,6 @@ fn cutover_source_input_paths(
         "policy/product-move-ledger.toml".to_string(),
         "crates/allow-policy/src/extraction_parity".to_string(),
         "crates/allow-policy/src/product_crates".to_string(),
-        "crates/allow-policy/src/product_packages".to_string(),
         "crates/allow-policy/src/product_move".to_string(),
         "crates/cargo-allow/src/extraction_parity_command.rs".to_string(),
         "scripts/extraction-cutover-status.sh".to_string(),
@@ -824,10 +847,10 @@ fn cutover_source_input_paths(
             ));
         }
     }
-    for package in &architecture.workspace_packages {
+    for identity in &projection.crate_identities {
         paths.insert(relative_file(
             root,
-            &root.join(&package.workspace_path).join("Cargo.toml"),
+            &root.join(&identity.workspace_path).join("Cargo.toml"),
         )?);
     }
     let parity_paths = match stage {

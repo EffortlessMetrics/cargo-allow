@@ -183,6 +183,12 @@ pub struct Requirements {
     /// is accepted as supplementary but does not satisfy this mandate alone.
     /// Default: false (opt-in to tighten the governance boundary).
     pub unsafe_verified_evidence_required: bool,
+    /// Entries created strictly before this date (YYYY-MM-DD) are exempt
+    /// from `unsafe_verified_evidence_required` — the grandfathering window
+    /// for the rollout (#3237). Entries with no `created` date are treated
+    /// as grandfathered (they predate the mandate's record-keeping). None
+    /// disables grandfathering (the mandate applies to every entry).
+    pub unsafe_verified_evidence_grandfather_entries_created_before: Option<String>,
 }
 
 impl Default for Requirements {
@@ -199,6 +205,7 @@ impl Default for Requirements {
             unsafe_evidence_required: true,
             unsafe_safety_comment_required: false,
             unsafe_verified_evidence_required: false,
+            unsafe_verified_evidence_grandfather_entries_created_before: None,
         }
     }
 }

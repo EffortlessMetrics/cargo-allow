@@ -5,3 +5,4 @@ target/
 **/*.rs.bk
 policy/allow.proposed.toml
 .zcode/
+__pycache__/

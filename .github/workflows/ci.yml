@@ -158,6 +158,9 @@ jobs:
           key: shallow-diff-smoke
       - name: Shallow diff base smoke
         run: bash scripts/shallow-diff-base-smoke.sh
+      - name: Shallow diff failure artifact characterization (#3566)
+        if: always()
+        run: bash scripts/test-shallow-diff-base-failure.sh
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
@@ -259,6 +262,8 @@ jobs:
           name: three-product-dogfood-receipt
           path: target/three-product-dogfood/three-product-dogfood.receipt.json
           if-no-files-found: warn
+      - name: Candidate harness lifecycle characterization (#3509)
+        run: python scripts/test-candidate-harness-lifecycle.py
       - name: Three-product simplification audit (#2208)
         run: bash scripts/three-product-simplification-audit.sh
       - name: Extraction readiness receipt (#2559)

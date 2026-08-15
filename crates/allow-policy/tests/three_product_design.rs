@@ -1,6 +1,4 @@
-use allow_policy::product_crates::{
-    current_architecture_receipt_at, parse_architecture_manifest_v2,
-};
+use allow_policy::product_crates::v2::parse_architecture_manifest_v2;
 use allow_policy::spec_system::{
     ArtifactStatus, SpecSystemRoots, SupportTierLevel, load_doc_artifacts,
     validate_doc_artifact_files, validate_doc_artifact_links, validate_support_tier_claims,
@@ -117,8 +115,10 @@ fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
     )?;
     let fixture = toml::from_str::<ReconstructionFixture>(&fixture_text)
         .map_err(|error| format!("parse generation-2 reconstruction fixture: {error}"))?;
-    let current_receipt = current_architecture_receipt_at(&root)
-        .map_err(|error| format!("read current architecture receipt: {error}"))?;
+    // Re-based (#3562): the receipt chain is deleted; the denominators are
+    // derived directly from the three authorities via compat parsing.
+    let identity_count = intent_compat::parse_crate_identities_for_tests(&root)?;
+    let topology_count = intent_compat::parse_package_postures_for_tests(&root)?;
     let current_architecture =
         parse_architecture_manifest_v2(&read(&root, "policy/product-crates-v2.toml")?)
             .map_err(|error| format!("parse current architecture authority: {error}"))?;
@@ -253,12 +253,11 @@ fn three_product_generation_two_reconstructs_exact_current_and_target_authority(
     }
     if current_total != 22
         || current_total != fixture.current_package_count
-        || current_total != current_receipt.workspace_package_count
-        || current_total != current_receipt.architecture_identity_count
-        || current_total != current_receipt.topology_package_count
+        || current_total != identity_count
+        || current_total != topology_count
     {
         return Err(format!(
-            "current topology projection does not match the V2 receipt: fixture={current_total}, receipt={current_receipt:?}"
+            "current topology projection denominators disagree: fixture={current_total}, identities={identity_count}, topology={topology_count}"
         ));
     }
     if retained_total != 22 || retained_total != fixture.retained_package_count {
@@ -590,5 +589,29 @@ fn test_roots() -> SpecSystemRoots {
         goals: Some(".allow/goals".to_string()),
         support_tiers: "docs/status/SUPPORT_TIERS.md".to_string(),
         artifact_ledger: ".allow/artifacts/doc-artifacts.toml".to_string(),
+    }
+}
+
+mod intent_compat {
+    use std::path::Path;
+
+    fn count_table_rows(root: &Path, rel: &str, table: &str) -> Result<usize, String> {
+        let text =
+            std::fs::read_to_string(root.join(rel)).map_err(|err| format!("read {rel}: {err}"))?;
+        let parsed: toml::Table =
+            toml::from_str(&text).map_err(|err| format!("parse {rel}: {err}"))?;
+        Ok(parsed
+            .get(table)
+            .and_then(|v| v.as_array())
+            .map(|arr| arr.len())
+            .unwrap_or(0))
+    }
+
+    pub fn parse_crate_identities_for_tests(root: &Path) -> Result<usize, String> {
+        count_table_rows(root, "policy/product-crates-v2.toml", "crate_identity")
+    }
+
+    pub fn parse_package_postures_for_tests(root: &Path) -> Result<usize, String> {
+        count_table_rows(root, "policy/product-package-topology-v2.toml", "package")
     }
 }

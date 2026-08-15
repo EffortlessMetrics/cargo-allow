@@ -5,6 +5,16 @@
 //! locked for cargo-allow mutation commands. It does not scan source files,
 //! does not invoke Cargo, compile code, execute repository artifacts, or decide
 //! ledger or intent semantics.
+//!
+//! ## Product-neutrality contract (#2969)
+//!
+//! The most neutral shared crate: sha2 is the only runtime dependency. The
+//! `allow_core` references in error.rs doc-comments are deliberate
+//! byte-compatibility contracts (stable_hash_hex, json_escape) preserving
+//! lock-key and receipt identity across the shared/product split —
+//! documentation, not dependencies, enforced by byte-compat tests. No
+//! product crate may appear in the dependency graph. Registry publication
+//! posture is decided by #3386.
 
 mod apply_receipt;
 mod atomic_write;

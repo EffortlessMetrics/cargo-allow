@@ -6,6 +6,16 @@
 //! This crate will own package/target/module/test subject discovery and selector
 //! resolution from supplied source-tree bytes. It does not invoke Cargo, rustc,
 //! Clippy, build scripts, proc macros, or repository code execution.
+//!
+//! ## Product-neutrality contract (#3147)
+//!
+//! Runtime dependencies are neutral (serde/toml/tree-sitter only). The
+//! `allow_core` references in helper doc-comments are deliberate
+//! byte-compatibility contracts (stable_hash_hex, normalize_path,
+//! read_text_file_capped) kept so shared and product implementations stay
+//! interchangeable — they are documentation, not dependencies, and are
+//! enforced by the byte-compat tests. No product crate may appear in the
+//! dependency graph. Registry publication posture is decided by #3386.
 
 mod error;
 mod inventory;

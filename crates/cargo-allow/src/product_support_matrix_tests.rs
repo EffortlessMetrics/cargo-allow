@@ -309,6 +309,13 @@ fn cargo_allow_doc_does_not_imply_intent_or_proof_stability() -> Result<(), Stri
         "docs/getting-started.md",
         "docs/release/0.2.0.md",
         "docs/status/SUPPORT_TIERS.md",
+        "docs/products/cargo-allow/getting-started.md",
+        "docs/products/cargo-allow/command-reference.md",
+        "docs/products/cargo-allow/schemas.md",
+        "docs/products/cargo-allow/limitations.md",
+        "docs/products/cargo-allow/compatibility.md",
+        "docs/products/cargo-allow/support-and-security.md",
+        "docs/products/cargo-allow/release-notes.md",
     ];
     for doc_rel in &docs_to_check {
         let path = root.join(doc_rel);
@@ -320,6 +327,68 @@ fn cargo_allow_doc_does_not_imply_intent_or_proof_stability() -> Result<(), Stri
             return Err(format!(
                 "{doc_rel} implies `{phrase}` without opt-in framing; cargo-allow docs must not imply cargo-intent or cargo-proof is installed/supported/stable"
             ));
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn cargo_allow_product_docs_are_independent_and_indexed() -> Result<(), String> {
+    let root = workspace_root();
+    let docs = [
+        "getting-started",
+        "command-reference",
+        "schemas",
+        "limitations",
+        "compatibility",
+        "support-and-security",
+        "release-notes",
+    ];
+    let index = std::fs::read_to_string(root.join("docs/README.md"))
+        .map_err(|error| format!("read docs/README.md: {error}"))?;
+    for doc in docs {
+        let relative = format!("docs/products/cargo-allow/{doc}.md");
+        let path = root.join(&relative);
+        if !path.is_file() {
+            return Err(format!("missing cargo-allow product doc {relative}"));
+        }
+        let content =
+            std::fs::read_to_string(&path).map_err(|error| format!("read {relative}: {error}"))?;
+        if !content.contains("cargo-allow") {
+            return Err(format!(
+                "cargo-allow product doc lacks identity: {relative}"
+            ));
+        }
+        let link = format!("products/cargo-allow/{doc}.md");
+        if !index.contains(&link) {
+            return Err(format!("docs/README.md does not link {link}"));
+        }
+    }
+    let command_reference =
+        std::fs::read_to_string(root.join("docs/products/cargo-allow/command-reference.md"))
+            .map_err(|error| format!("read command reference: {error}"))?;
+    for marker in [
+        "core command reference",
+        "not an exhaustive command inventory",
+        "published-command-registry.toml",
+        "propose --summary-format json --summary-output <path>",
+        "add --summary-format json --summary-output <path>",
+    ] {
+        if !command_reference.contains(marker) {
+            return Err(format!(
+                "command reference lacks completeness marker {marker}"
+            ));
+        }
+    }
+    let schemas = std::fs::read_to_string(root.join("docs/products/cargo-allow/schemas.md"))
+        .map_err(|error| format!("read schema catalog: {error}"))?;
+    for marker in [
+        "core schema and artifact catalog",
+        "not an exhaustive artifact inventory",
+        "schemas/README.md",
+    ] {
+        if !schemas.contains(marker) {
+            return Err(format!("schema catalog lacks completeness marker {marker}"));
         }
     }
     Ok(())

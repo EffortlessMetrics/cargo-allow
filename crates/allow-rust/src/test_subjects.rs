@@ -7,12 +7,15 @@
 mod subject_types;
 pub use subject_types::*;
 
+#[cfg(feature = "syntax")]
 #[path = "snapshot_package/syntax.rs"]
 mod subject_syntax;
 
+#[cfg(feature = "syntax")]
 #[path = "snapshot_package/inventory.rs"]
 mod inventory_impl;
 
+#[cfg(feature = "syntax")]
 pub use inventory_impl::{
     inventory_rust_test_subjects, inventory_rust_test_subjects_from_sources,
     resolve_rust_test_selector,

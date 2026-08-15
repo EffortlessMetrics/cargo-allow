@@ -20,6 +20,7 @@ use serde::Deserialize;
 pub(crate) struct CrateIdentityProjection {
     pub logical_id: String,
     pub workspace_path: String,
+    pub cargo_package_name: String,
     pub workspace_dependency_aliases: Vec<String>,
     pub rust_library_name: String,
     pub product_or_shared_owner: String,
@@ -45,6 +46,7 @@ pub(crate) fn load_governance_projection_at(root: &Path) -> CargoAllowResult<Gov
     struct IdentityRowToml {
         logical_id: String,
         workspace_path: String,
+        cargo_package_name: String,
         #[serde(default)]
         workspace_dependency_aliases: Vec<String>,
         rust_library_name: String,
@@ -81,6 +83,7 @@ pub(crate) fn load_governance_projection_at(root: &Path) -> CargoAllowResult<Gov
     for row in identity_manifest.crate_identity {
         if row.logical_id.trim().is_empty()
             || row.workspace_path.trim().is_empty()
+            || row.cargo_package_name.trim().is_empty()
             || row.rust_library_name.trim().is_empty()
             || row.product_or_shared_owner.trim().is_empty()
         {
@@ -98,6 +101,7 @@ pub(crate) fn load_governance_projection_at(root: &Path) -> CargoAllowResult<Gov
         crate_identities.push(CrateIdentityProjection {
             logical_id: row.logical_id,
             workspace_path: row.workspace_path,
+            cargo_package_name: row.cargo_package_name,
             workspace_dependency_aliases: row.workspace_dependency_aliases,
             rust_library_name: row.rust_library_name,
             product_or_shared_owner: row.product_or_shared_owner,
@@ -157,6 +161,16 @@ pub(crate) fn identity_owners(
     owners
 }
 
+pub(crate) fn forbidden_product_targets(
+    projection: &GovernanceProjection,
+) -> std::collections::BTreeMap<String, std::collections::BTreeSet<String>> {
+    projection
+        .forbidden_product_dependencies
+        .iter()
+        .map(|(from, targets)| (from.clone(), targets.iter().cloned().collect()))
+        .collect()
+}
+
 fn normalize_segment(value: &str) -> String {
     value.trim().replace('-', "_")
 }
@@ -178,8 +192,9 @@ mod tests {
 
         let identity_text = std::fs::read_to_string(root.join("policy/product-crates-v2.toml"))
             .map_err(|err| err.to_string())?;
-        let manifest = allow_policy::product_crates::parse_architecture_manifest_v2(&identity_text)
-            .map_err(|err| format!("{err}"))?;
+        let manifest =
+            allow_policy::product_crates::v2::parse_architecture_manifest_v2(&identity_text)
+                .map_err(|err| format!("{err}"))?;
         if projection.crate_identities.len() != manifest.crate_identity.len() {
             return Err(format!(
                 "identity count drift: projection {} vs canonical {}",
@@ -239,6 +254,7 @@ mod tests {
                 CrateIdentityProjection {
                     logical_id: "a".to_string(),
                     workspace_path: "crates/a".to_string(),
+                    cargo_package_name: "a".to_string(),
                     workspace_dependency_aliases: vec!["a".to_string()],
                     rust_library_name: "a".to_string(),
                     product_or_shared_owner: "shared".to_string(),
@@ -246,6 +262,7 @@ mod tests {
                 CrateIdentityProjection {
                     logical_id: "a-b".to_string(),
                     workspace_path: "crates/a/b".to_string(),
+                    cargo_package_name: "a-b".to_string(),
                     workspace_dependency_aliases: vec![],
                     rust_library_name: "a_b".to_string(),
                     product_or_shared_owner: "shared".to_string(),

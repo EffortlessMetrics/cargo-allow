@@ -1,4 +1,4 @@
-use allow_core::{AllowConfig, FileFamilyRule};
+use allow_core::{AllowConfig, FileFamilyRule, Requirements};
 
 use crate::render_sections::{render_policy_header, render_requirements, render_workspace};
 use crate::{parse_policy, render_policy};
@@ -111,6 +111,90 @@ stale_entries_fail = true\n\n\
 evidence_required = true\n\
 verified_evidence_required = true\n\
 safety_comment_required = true\n"
+    );
+}
+
+/// The grandfathering cutoff is optional and non-bool, so it was the one
+/// requirement the renderer could drop while every other field round-tripped.
+/// Losing it does not merely lose formatting: it lifts the window, so every
+/// unsafe entry created before the cutoff fails validation the moment a
+/// mutating command (`add --update`, `migrate --update`) rewrites the ledger.
+/// That is a silent policy change performed by the tool, which the product
+/// exists to prevent (#3237).
+#[test]
+fn renders_and_parses_unsafe_verified_evidence_grandfather_cutoff() {
+    let mut cfg = AllowConfig::empty();
+    cfg.requirements.unsafe_verified_evidence_required = true;
+    cfg.requirements
+        .unsafe_verified_evidence_grandfather_entries_created_before =
+        Some("2026-08-15".to_string());
+
+    let rendered = render_policy(&cfg);
+    assert!(
+        rendered.contains("verified_evidence_grandfather_entries_created_before = \"2026-08-15\""),
+        "rendered policy must keep the grandfathering cutoff: {rendered}"
+    );
+
+    let reparsed = parse_policy(&rendered)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("rendered policy parses: {err}")));
+    assert_eq!(
+        reparsed
+            .requirements
+            .unsafe_verified_evidence_grandfather_entries_created_before
+            .as_deref(),
+        Some("2026-08-15"),
+        "grandfathering cutoff must survive a render/parse round trip"
+    );
+}
+
+/// Structural guard for the whole section, not one field. Every requirement is
+/// set away from its default, so any field the renderer forgets to emit comes
+/// back as its default and fails the comparison. The literal is written out
+/// field by field with no `..` rest pattern: adding a requirement breaks this
+/// test at compile time, which is the point — a new field must be consciously
+/// round-tripped rather than silently dropped by a mutating command.
+#[test]
+fn every_requirement_survives_a_render_parse_round_trip() {
+    let defaults = Requirements::default();
+    let mut cfg = AllowConfig::empty();
+    cfg.requirements = Requirements {
+        owner_required: !defaults.owner_required,
+        reason_required: !defaults.reason_required,
+        classification_required: !defaults.classification_required,
+        evidence_required: !defaults.evidence_required,
+        expires_or_review_after_required: !defaults.expires_or_review_after_required,
+        allow_bare_allow_attributes: !defaults.allow_bare_allow_attributes,
+        lint_policy_id_required: !defaults.lint_policy_id_required,
+        stale_entries_fail: !defaults.stale_entries_fail,
+        unsafe_evidence_required: !defaults.unsafe_evidence_required,
+        unsafe_safety_comment_required: !defaults.unsafe_safety_comment_required,
+        unsafe_verified_evidence_required: !defaults.unsafe_verified_evidence_required,
+        unsafe_verified_evidence_grandfather_entries_created_before: Some("2026-08-15".to_string()),
+    };
+    let expected = cfg.requirements.clone();
+
+    let rendered = render_policy(&cfg);
+    let reparsed = parse_policy(&rendered)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("rendered policy parses: {err}")));
+
+    assert_eq!(
+        reparsed.requirements, expected,
+        "every requirement must survive render -> parse; rendered policy was:\n{rendered}"
+    );
+}
+
+/// An absent cutoff must stay absent rather than render an empty or default
+/// value, so a ledger that never opted into grandfathering does not silently
+/// acquire a window.
+#[test]
+fn omits_absent_unsafe_verified_evidence_grandfather_cutoff() {
+    let cfg = AllowConfig::empty();
+
+    let rendered = render_policy(&cfg);
+
+    assert!(
+        !rendered.contains("verified_evidence_grandfather_entries_created_before"),
+        "absent cutoff must not be rendered: {rendered}"
     );
 }
 

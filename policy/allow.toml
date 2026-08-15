@@ -23,6 +23,13 @@ stale_entries_fail = false
 [requirements.unsafe]
 evidence_required = true
 safety_comment_required = false
+# #3237 rollout: unsafe entries created from 2026-08-15 onward require at
+# least one verified local-file evidence reference (doc:, spec:, adr:,
+# ripr:, coverage:, unsafe-review:). Entries created before this date are
+# grandfathered (12 existing entries carry test:-only evidence and need
+# per-entry safety documentation before this cutoff is lifted).
+verified_evidence_required = true
+verified_evidence_grandfather_entries_created_before = "2026-08-15"
 
 [[allow]]
 id = "allow-0038"
@@ -64,6 +71,182 @@ lint = "clippy::unwrap_used"
 symbol = "#[expect(clippy::unwrap_used, reason = \"policy:allow-0069: lint fixture exercises suppression scanning\")]"
 target_fingerprint = "policy:allow-0069"
 normalized_snippet_hash = "fnv1a64:15b5e01eae57adf1"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11111"
+kind = "non_rust_file"
+family = "documentation"
+path = ".changes/Added-20260815-cargo-allow-product-docs.yaml"
+owner = "core/docs"
+classification = "cargo_allow_product_docs_changelog"
+reason = "Changie fragment records the independently linked cargo-allow product documentation slice for issue #3447."
+evidence = ["issue:3447", "doc:docs/README.md", "test:cargo_allow_product_docs_are_independent_and_indexed"]
+created = "2026-08-15"
+review_after = "2027-02-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".changes/Added-20260815-cargo-allow-product-docs.yaml"
+target_fingerprint = "yaml"
+glob = ".changes/Added-20260815-cargo-allow-product-docs.yaml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11112"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-allow/getting-started.md"
+owner = "core/docs"
+classification = "cargo_allow_product_documentation"
+reason = "Independent cargo-allow getting-started surface linked from the integrated docs index for issue #3447."
+evidence = ["issue:3447", "doc:docs/README.md", "policy:product-support-matrix.toml", "test:cargo_allow_product_docs_are_independent_and_indexed"]
+created = "2026-08-15"
+review_after = "2027-02-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/products/cargo-allow/getting-started.md"
+target_fingerprint = "md"
+glob = "docs/products/cargo-allow/getting-started.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11113"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-allow/command-reference.md"
+owner = "core/docs"
+classification = "cargo_allow_product_documentation"
+reason = "Independent cargo-allow command reference surface with an explicit core-only boundary for issue #3447."
+evidence = ["issue:3447", "doc:docs/README.md", "policy:product-support-matrix.toml", "test:cargo_allow_product_docs_are_independent_and_indexed"]
+created = "2026-08-15"
+review_after = "2027-02-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/products/cargo-allow/command-reference.md"
+target_fingerprint = "md"
+glob = "docs/products/cargo-allow/command-reference.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11114"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-allow/schemas.md"
+owner = "core/docs"
+classification = "cargo_allow_product_documentation"
+reason = "Independent cargo-allow schema subset surface with a full-catalog boundary for issue #3447."
+evidence = ["issue:3447", "doc:docs/README.md", "doc:docs/schemas/README.md", "test:cargo_allow_product_docs_are_independent_and_indexed"]
+created = "2026-08-15"
+review_after = "2027-02-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/products/cargo-allow/schemas.md"
+target_fingerprint = "md"
+glob = "docs/products/cargo-allow/schemas.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11115"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-allow/limitations.md"
+owner = "core/docs"
+classification = "cargo_allow_product_documentation"
+reason = "Independent cargo-allow limitations and claim-boundary surface linked from the integrated docs index for issue #3447."
+evidence = ["issue:3447", "doc:docs/README.md", "doc:docs/claim-boundaries.md", "test:cargo_allow_product_docs_are_independent_and_indexed"]
+created = "2026-08-15"
+review_after = "2027-02-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/products/cargo-allow/limitations.md"
+target_fingerprint = "md"
+glob = "docs/products/cargo-allow/limitations.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11116"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-allow/compatibility.md"
+owner = "core/docs"
+classification = "cargo_allow_product_documentation"
+reason = "Independent cargo-allow compatibility and upgrade surface linked from the integrated docs index for issue #3447."
+evidence = ["issue:3447", "doc:docs/README.md", "policy:product-support-matrix.toml", "test:cargo_allow_product_docs_are_independent_and_indexed"]
+created = "2026-08-15"
+review_after = "2027-02-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/products/cargo-allow/compatibility.md"
+target_fingerprint = "md"
+glob = "docs/products/cargo-allow/compatibility.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11117"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-allow/support-and-security.md"
+owner = "core/docs"
+classification = "cargo_allow_product_documentation"
+reason = "Independent cargo-allow support, security, and issue-routing surface linked from the integrated docs index for issue #3447."
+evidence = ["issue:3447", "doc:docs/README.md", "policy:product-support-matrix.toml", "test:cargo_allow_product_docs_are_independent_and_indexed"]
+created = "2026-08-15"
+review_after = "2027-02-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/products/cargo-allow/support-and-security.md"
+target_fingerprint = "md"
+glob = "docs/products/cargo-allow/support-and-security.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11118"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-allow/release-notes.md"
+owner = "core/docs"
+classification = "cargo_allow_product_documentation"
+reason = "Independent cargo-allow release-notes and authorization-boundary surface linked from the integrated docs index for issue #3447."
+evidence = ["issue:3447", "doc:docs/README.md", "doc:docs/release/README.md", "test:cargo_allow_product_docs_are_independent_and_indexed"]
+created = "2026-08-15"
+review_after = "2027-02-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/products/cargo-allow/release-notes.md"
+target_fingerprint = "md"
+glob = "docs/products/cargo-allow/release-notes.md"
 
 [allow.last_seen]
 line = 1
@@ -6600,6 +6783,27 @@ review_after = "2026-10-15"
 ast_kind = "tracked_file"
 target_fingerprint = "sh"
 glob = "scripts/test-shallow-diff-base-smoke.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11103"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/test-shallow-diff-base-failure.sh"
+owner = "core/ci"
+classification = "ci_characterization_script"
+reason = "Deterministic injected-binary characterization that retains full-history shallow-diff failure diagnostics and receipt status (#3566)."
+evidence = ["test:scripts/test-shallow-diff-base-failure.sh", "issue:3566"]
+created = "2026-08-15"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "sh"
+glob = "scripts/test-shallow-diff-base-failure.sh"
 
 [allow.last_seen]
 line = 1

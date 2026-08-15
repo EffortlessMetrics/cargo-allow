@@ -247,5 +247,9 @@ mod governance_adapter_window_tests;
 mod governance_return_guard_tests;
 
 #[cfg(test)]
+#[path = "shared_crate_neutrality_tests.rs"]
+mod shared_crate_neutrality_tests;
+
+#[cfg(test)]
 #[path = "scoped_text_rule_tests.rs"]
 mod scoped_text_rule_tests;

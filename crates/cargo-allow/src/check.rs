@@ -24,6 +24,9 @@ use check_product_move_guard::product_move_ledger_fails_check;
 #[path = "check_extraction_shim_guard.rs"]
 mod check_extraction_shim_guard;
 use check_extraction_shim_guard::extraction_shim_registry_fails_check;
+#[path = "check_extraction_shim_source_guard.rs"]
+mod check_extraction_shim_source_guard;
+use check_extraction_shim_source_guard::shim_sources_fail_check;
 #[path = "check_source_coupling_guard.rs"]
 mod check_source_coupling_guard;
 #[path = "governance_projection.rs"]
@@ -218,6 +221,7 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
     }
     let product_move_ledger_failed = product_move_ledger_fails_check(&root, mode)?;
     let extraction_shim_registry_failed = extraction_shim_registry_fails_check(&root, mode)?;
+    let extraction_shim_sources_failed = shim_sources_fail_check(&root, mode)?;
     let source_coupling_diagnostics = source_coupling_diagnostics_for_check(&root, mode)?;
     for diagnostic in &source_coupling_diagnostics {
         let path = allow_report::sanitize_terminal_text(&diagnostic.path.display().to_string());
@@ -226,10 +230,7 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
         let source_owner = allow_report::sanitize_terminal_text(&diagnostic.source_owner);
         let target_crate = allow_report::sanitize_terminal_text(&diagnostic.target_crate);
         let import_text = allow_report::sanitize_terminal_text(&diagnostic.import_text);
-        let relation = match diagnostic.kind {
-            check_source_coupling_guard::SourceCouplingDiagnosticKind::Import => "imports",
-            check_source_coupling_guard::SourceCouplingDiagnosticKind::PathRead => "reads",
-        };
+        let relation = source_coupling_relation(diagnostic.kind);
         eprintln!(
             "source coupling: {}:{}:{}: {} {} {} ({})",
             path, line, column, source_owner, relation, target_crate, import_text,
@@ -244,6 +245,7 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
         || (inventory_facts.rust_files_with_parse_errors > 0 && mode == CheckMode::NoNew)
         || product_move_ledger_failed
         || extraction_shim_registry_failed
+        || extraction_shim_sources_failed
         || source_coupling_failed;
     if should_emit_report_stdout(
         args.output.as_deref(),
@@ -328,6 +330,18 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
         process::exit(1);
     }
     Ok(())
+}
+
+pub(crate) fn source_coupling_relation(
+    kind: check_source_coupling_guard::SourceCouplingDiagnosticKind,
+) -> &'static str {
+    match kind {
+        check_source_coupling_guard::SourceCouplingDiagnosticKind::Import => "imports",
+        check_source_coupling_guard::SourceCouplingDiagnosticKind::PathRead => "reads",
+        check_source_coupling_guard::SourceCouplingDiagnosticKind::IntegrationTestDependency => {
+            "uses integration-test dependency"
+        }
+    }
 }
 
 fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {

@@ -144,8 +144,23 @@ pub(crate) fn validate_allow_entry_evidence_and_limit(
     // evidence reference, not just traceability-only references (#3237).
     // Traceability evidence (test:, issue:, pr:) is accepted as supplementary
     // but cannot satisfy the mandate alone when this flag is enabled.
+    // Entries created strictly before the grandfathering cutoff are exempt
+    // (they predate the mandate); entries with no recorded created date are
+    // treated as grandfathered for the same reason.
+    let grandfathered = match requirements
+        .unsafe_verified_evidence_grandfather_entries_created_before
+        .as_deref()
+    {
+        Some(cutoff) => entry
+            .lifecycle
+            .created
+            .as_deref()
+            .is_none_or(|created| created.trim() < cutoff.trim()),
+        None => false,
+    };
     if requirements.unsafe_verified_evidence_required
         && entry.kind == FindingKind::Unsafe
+        && !grandfathered
         && !entry
             .evidence
             .iter()
@@ -886,5 +901,124 @@ mod tests {
             err_text(validate_local_link_scopes(&entry))
                 .contains("links link entry 2 path must be source-tree-relative")
         );
+    }
+}
+
+#[cfg(test)]
+mod unsafe_verified_evidence_rollout_tests {
+    use super::*;
+    use crate::toml_requirements::RequirementsToml;
+    use allow_core::{Lifecycle, Selector};
+
+    fn requirements_from(text: &str) -> Result<Requirements, String> {
+        let toml: RequirementsToml =
+            toml::from_str(text).map_err(|err| format!("parse test requirements: {err}"))?;
+        Ok(toml.into_requirements())
+    }
+
+    fn unsafe_entry(created: Option<&str>, evidence: Vec<String>) -> AllowEntry {
+        let mut entry = AllowEntry {
+            id: "allow-test-unsafe".to_string(),
+            kind: FindingKind::Unsafe,
+            family: None,
+            path: None,
+            glob: None,
+            owner: "core/test".to_string(),
+            classification: "test".to_string(),
+            reason: "test".to_string(),
+            evidence,
+            links: Vec::new(),
+            occurrence_limit: None,
+            lifecycle: Lifecycle::empty(),
+            selector: Selector::default(),
+            last_seen: None,
+        };
+        entry.lifecycle.created = created.map(str::to_string);
+        entry
+    }
+
+    #[test]
+    fn new_entries_require_verified_local_evidence() -> Result<(), String> {
+        let requirements = requirements_from(
+            r#"
+[unsafe]
+evidence_required = true
+verified_evidence_required = true
+verified_evidence_grandfather_entries_created_before = "2026-08-15"
+"#,
+        )?;
+        // Created on the cutoff date or later -> mandate applies.
+        for created in [Some("2026-08-15"), Some("2026-12-01")] {
+            let entry = unsafe_entry(created, vec!["test:some_test".to_string()]);
+            if validate_allow_entry_evidence_and_limit(&entry, &requirements).is_ok() {
+                return Err(format!(
+                    "entry created {created:?} with test:-only evidence must fail the mandate"
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn grandfathered_entries_pass_until_the_cutoff() -> Result<(), String> {
+        let requirements = requirements_from(
+            r#"
+[unsafe]
+evidence_required = true
+verified_evidence_required = true
+verified_evidence_grandfather_entries_created_before = "2026-08-15"
+"#,
+        )?;
+        // Created before the cutoff or with no created date -> grandfathered.
+        for created in [Some("2026-06-01"), None] {
+            let entry = unsafe_entry(created, vec!["test:some_test".to_string()]);
+            if let Err(error) = validate_allow_entry_evidence_and_limit(&entry, &requirements) {
+                return Err(format!(
+                    "entry created {created:?} must be grandfathered, got: {error}"
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn no_grandfather_cutoff_applies_mandate_everywhere() -> Result<(), String> {
+        let requirements = requirements_from(
+            r#"
+[unsafe]
+evidence_required = true
+verified_evidence_required = true
+"#,
+        )?;
+        let entry = unsafe_entry(Some("2020-01-01"), vec!["test:some_test".to_string()]);
+        if validate_allow_entry_evidence_and_limit(&entry, &requirements).is_ok() {
+            return Err("without a cutoff every unsafe entry must satisfy the mandate".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn verified_local_evidence_satisfies_the_mandate_for_new_entries() -> Result<(), String> {
+        let requirements = requirements_from(
+            r#"
+[unsafe]
+evidence_required = true
+verified_evidence_required = true
+verified_evidence_grandfather_entries_created_before = "2026-08-15"
+"#,
+        )?;
+        let entry = unsafe_entry(
+            Some("2026-08-20"),
+            vec![
+                "test:some_test".to_string(),
+                "doc:docs/safety/test.md".to_string(),
+            ],
+        );
+        if let Err(error) = validate_allow_entry_evidence_and_limit(&entry, &requirements) {
+            return Err(format!(
+                "verified-local evidence must satisfy the mandate: {error}"
+            ));
+        }
+        Ok(())
     }
 }
