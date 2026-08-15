@@ -277,6 +277,51 @@ fn integration_test_dependency_import_matching_handles_multiline_use_and_comment
     if !super::rust_source_uses_dependency("extern crate product_b;\n", &aliases) {
         return Err("extern crate use was not recognized".to_string());
     }
+    if !super::rust_source_uses_dependency(
+        "extern crate unrelated;\nfn call() { product_b::private_api(); }\n",
+        &aliases,
+    ) {
+        return Err("qualified dependency path was not recognized".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn integration_test_dependency_guard_handles_root_package_tests() -> Result<(), String> {
+    let mut manifest = fixture_manifest();
+    if let Some(identity) = manifest.crate_identities.first_mut() {
+        identity.workspace_path.clear();
+    }
+    let forbidden = BTreeMap::from([(
+        "product-a".to_string(),
+        BTreeSet::from(["product-b".to_string()]),
+    )]);
+    let tracked = BTreeSet::from([
+        PathBuf::from("Cargo.toml"),
+        PathBuf::from("tests/root_product.rs"),
+    ]);
+    let manifests = vec![(
+        PathBuf::from("Cargo.toml"),
+        "[dev-dependencies]\nproduct-b = { path = \"crates/product-b\" }\n".to_string(),
+    )];
+    let integration_tests = vec![(
+        PathBuf::from("tests/root_product.rs"),
+        "use product_b::private_api;\n".to_string(),
+    )];
+    let diagnostics = super::integration_test_dependency_diagnostics(
+        &manifest,
+        &forbidden,
+        &tracked,
+        &manifests,
+        &integration_tests,
+        &toml::map::Map::new(),
+    )
+    .map_err(|error| error.to_string())?;
+    if diagnostics.len() != 1 {
+        return Err(format!(
+            "root package test was not diagnosed: {diagnostics:?}"
+        ));
+    }
     Ok(())
 }
 

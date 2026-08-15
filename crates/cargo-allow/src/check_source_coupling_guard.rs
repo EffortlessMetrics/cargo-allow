@@ -93,13 +93,16 @@ pub(crate) fn source_coupling_diagnostics_at(
         .iter()
         .filter(|path| path.file_name().and_then(|name| name.to_str()) == Some("Cargo.toml"))
         .map(|path| {
-            std::fs::read_to_string(root.join(path))
+            read_text_file_capped(&root.join(path))
                 .map(|text| (path.clone(), text))
                 .map_err(|error| {
-                    CargoAllowError::new(format!(
-                        "source coupling manifest unreadable at {}: {error}",
-                        root.join(path).display()
-                    ))
+                    CargoAllowError::with_kind(
+                        CargoAllowErrorKind::Inventory,
+                        format!(
+                            "source coupling manifest unreadable at {}: {error}",
+                            root.join(path).display()
+                        ),
+                    )
                 })
         })
         .collect::<CargoAllowResult<Vec<_>>>()?;
@@ -107,22 +110,31 @@ pub(crate) fn source_coupling_diagnostics_at(
         .iter()
         .filter(|path| is_likely_test_file(path))
         .map(|path| {
-            std::fs::read_to_string(root.join(path))
+            read_text_file_capped(&root.join(path))
                 .map(|text| (path.clone(), text))
                 .map_err(|error| {
-                    CargoAllowError::new(format!(
-                        "source coupling integration test unreadable at {}: {error}",
-                        root.join(path).display()
-                    ))
+                    CargoAllowError::with_kind(
+                        CargoAllowErrorKind::Inventory,
+                        format!(
+                            "source coupling integration test unreadable at {}: {error}",
+                            root.join(path).display()
+                        ),
+                    )
                 })
         })
         .collect::<CargoAllowResult<Vec<_>>>()?;
     let workspace_dependencies = if root.join("Cargo.toml").is_file() {
-        let text = std::fs::read_to_string(root.join("Cargo.toml")).map_err(|error| {
-            CargoAllowError::new(format!("workspace manifest unreadable: {error}"))
+        let text = read_text_file_capped(&root.join("Cargo.toml")).map_err(|error| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Inventory,
+                format!("workspace manifest unreadable: {error}"),
+            )
         })?;
         let table = toml::from_str::<toml::Table>(&text).map_err(|error| {
-            CargoAllowError::new(format!("workspace manifest parse failed: {error}"))
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Scan,
+                format!("workspace manifest parse failed: {error}"),
+            )
         })?;
         table
             .get("workspace")
@@ -175,17 +187,20 @@ fn integration_test_dependency_diagnostics(
         else {
             continue;
         };
-        let has_integration_test = tracked_paths.iter().any(|path| {
-            normalize_path(path).starts_with(&format!("{}/tests/", normalize_path(crate_root)))
-        });
+        let has_integration_test = tracked_paths
+            .iter()
+            .any(|path| normalize_path(path).starts_with(&integration_test_prefix(crate_root)));
         if !has_integration_test {
             continue;
         }
         let value = toml::from_str::<toml::Table>(text).map_err(|error| {
-            CargoAllowError::new(format!(
-                "manifest parse failed at {}: {error}",
-                manifest_path.display()
-            ))
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Scan,
+                format!(
+                    "manifest parse failed at {}: {error}",
+                    manifest_path.display()
+                ),
+            )
         })?;
         let mut dependency_tables = Vec::new();
         if let Some(dev_dependencies) = value
@@ -252,8 +267,7 @@ fn integration_test_dependency_diagnostics(
                         .map(|alias| alias.replace('-', "_")),
                 );
                 let test_uses_dependency = integration_tests.iter().any(|(path, source)| {
-                    normalize_path(path)
-                        .starts_with(&format!("{}/tests/", normalize_path(crate_root)))
+                    normalize_path(path).starts_with(&integration_test_prefix(crate_root))
                         && rust_source_uses_dependency(source, &dependency_aliases)
                 });
                 if !test_uses_dependency {
@@ -293,39 +307,92 @@ fn integration_test_dependency_diagnostics(
     Ok(diagnostics)
 }
 
+fn integration_test_prefix(crate_root: &Path) -> String {
+    let root = normalize_path(crate_root);
+    if root.is_empty() {
+        "tests/".to_string()
+    } else {
+        format!("{root}/tests/")
+    }
+}
+
 fn rust_source_uses_dependency(source: &str, aliases: &BTreeSet<String>) -> bool {
-    let mut use_statement = false;
-    for raw_line in source.lines() {
-        let line = raw_line.split("//").next().unwrap_or_default().trim();
-        if line.is_empty() {
-            continue;
-        }
-        let rest = if use_statement {
-            line
-        } else if line == "use" {
-            use_statement = true;
-            continue;
-        } else if let Some(rest) = line.strip_prefix("use ") {
-            rest.trim_start()
-        } else if let Some(rest) = line.strip_prefix("extern crate ") {
-            let name = rest
-                .split(|character: char| !character.is_ascii_alphanumeric() && character != '_')
-                .next()
-                .unwrap_or_default();
-            return aliases.contains(name);
-        } else {
-            continue;
-        };
-        let name = rest
-            .split(|character: char| !character.is_ascii_alphanumeric() && character != '_')
-            .next()
-            .unwrap_or_default();
-        if aliases.contains(name) {
+    let cleaned = rust_source_without_comments_or_strings(source);
+    let token_source = cleaned.replace("::", " __PATH_SEPARATOR__ ");
+    let tokens = token_source
+        .split(|character: char| !character.is_ascii_alphanumeric() && character != '_')
+        .filter(|token| !token.is_empty())
+        .collect::<Vec<_>>();
+    for (index, token) in tokens.iter().enumerate() {
+        if aliases.contains(*token)
+            && tokens
+                .get(index + 1)
+                .is_some_and(|next| *next == "__PATH_SEPARATOR__")
+        {
             return true;
         }
-        use_statement = !line.contains(';');
+        if *token == "extern"
+            && tokens.get(index + 1) == Some(&"crate")
+            && tokens
+                .get(index + 2)
+                .is_some_and(|name| aliases.contains(*name))
+        {
+            return true;
+        }
     }
     false
+}
+
+fn rust_source_without_comments_or_strings(source: &str) -> String {
+    let mut output = String::with_capacity(source.len());
+    let mut chars = source.chars().peekable();
+    let mut block_comment_depth = 0_u32;
+    while let Some(character) = chars.next() {
+        if block_comment_depth > 0 {
+            if character == '/' && chars.peek() == Some(&'*') {
+                chars.next();
+                block_comment_depth += 1;
+            } else if character == '*' && chars.peek() == Some(&'/') {
+                chars.next();
+                block_comment_depth -= 1;
+            }
+            output.push(' ');
+            continue;
+        }
+        if character == '/' && chars.peek() == Some(&'/') {
+            chars.next();
+            for comment_character in chars.by_ref() {
+                if comment_character == '\n' {
+                    output.push('\n');
+                    break;
+                }
+            }
+            continue;
+        }
+        if character == '/' && chars.peek() == Some(&'*') {
+            chars.next();
+            block_comment_depth = 1;
+            output.push(' ');
+            continue;
+        }
+        if character == '"' || character == '\'' {
+            let quote = character;
+            let mut escaped = false;
+            output.push(' ');
+            for string_character in chars.by_ref() {
+                if escaped {
+                    escaped = false;
+                } else if string_character == '\\' {
+                    escaped = true;
+                } else if string_character == quote {
+                    break;
+                }
+            }
+            continue;
+        }
+        output.push(character);
+    }
+    output
 }
 
 fn normalize_relative_path(base: &Path, value: &str) -> Option<PathBuf> {
