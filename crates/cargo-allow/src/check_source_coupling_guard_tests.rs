@@ -356,6 +356,36 @@ fn integration_test_dependency_guard_rejects_malformed_manifest() -> Result<(), 
 }
 
 #[test]
+fn integration_test_dependency_guard_classifies_bounded_input_failures() -> Result<(), String> {
+    let missing = super::read_tracked_source_coupling_file(
+        Path::new("."),
+        Path::new("missing-source-coupling-input.rs"),
+        "integration test",
+    )
+    .expect_err("missing tracked input must fail closed");
+    if missing.kind() != allow_core::CargoAllowErrorKind::Inventory {
+        return Err(format!("unexpected missing-input kind: {missing:?}"));
+    }
+
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-source-coupling-workspace-{}",
+        std::process::id()
+    ));
+    if root.exists() {
+        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    }
+    std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+    std::fs::write(root.join("Cargo.toml"), "[workspace\n").map_err(|error| error.to_string())?;
+    let parse_error = super::workspace_dependencies_at(&root)
+        .expect_err("malformed workspace manifest must fail closed");
+    std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+    if parse_error.kind() != allow_core::CargoAllowErrorKind::Scan {
+        return Err(format!("unexpected workspace parse kind: {parse_error:?}"));
+    }
+    Ok(())
+}
+
+#[test]
 fn integration_test_dependency_diagnostic_has_stable_cli_relation() -> Result<(), String> {
     let expected = [
         (super::SourceCouplingDiagnosticKind::Import, "imports"),

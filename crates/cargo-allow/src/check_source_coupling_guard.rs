@@ -92,60 +92,14 @@ pub(crate) fn source_coupling_diagnostics_at(
     let manifests = tracked_paths
         .iter()
         .filter(|path| path.file_name().and_then(|name| name.to_str()) == Some("Cargo.toml"))
-        .map(|path| {
-            read_text_file_capped(&root.join(path))
-                .map(|text| (path.clone(), text))
-                .map_err(|error| {
-                    CargoAllowError::with_kind(
-                        CargoAllowErrorKind::Inventory,
-                        format!(
-                            "source coupling manifest unreadable at {}: {error}",
-                            root.join(path).display()
-                        ),
-                    )
-                })
-        })
+        .map(|path| read_tracked_source_coupling_file(root, path, "manifest"))
         .collect::<CargoAllowResult<Vec<_>>>()?;
     let integration_tests = tracked_paths
         .iter()
         .filter(|path| is_likely_test_file(path))
-        .map(|path| {
-            read_text_file_capped(&root.join(path))
-                .map(|text| (path.clone(), text))
-                .map_err(|error| {
-                    CargoAllowError::with_kind(
-                        CargoAllowErrorKind::Inventory,
-                        format!(
-                            "source coupling integration test unreadable at {}: {error}",
-                            root.join(path).display()
-                        ),
-                    )
-                })
-        })
+        .map(|path| read_tracked_source_coupling_file(root, path, "integration test"))
         .collect::<CargoAllowResult<Vec<_>>>()?;
-    let workspace_dependencies = if root.join("Cargo.toml").is_file() {
-        let text = read_text_file_capped(&root.join("Cargo.toml")).map_err(|error| {
-            CargoAllowError::with_kind(
-                CargoAllowErrorKind::Inventory,
-                format!("workspace manifest unreadable: {error}"),
-            )
-        })?;
-        let table = toml::from_str::<toml::Table>(&text).map_err(|error| {
-            CargoAllowError::with_kind(
-                CargoAllowErrorKind::Scan,
-                format!("workspace manifest parse failed: {error}"),
-            )
-        })?;
-        table
-            .get("workspace")
-            .and_then(toml::Value::as_table)
-            .and_then(|workspace| workspace.get("dependencies"))
-            .and_then(toml::Value::as_table)
-            .cloned()
-            .unwrap_or_default()
-    } else {
-        toml::map::Map::new()
-    };
+    let workspace_dependencies = workspace_dependencies_at(root)?;
     diagnostics.extend(integration_test_dependency_diagnostics(
         &projection,
         &forbidden_edges,
@@ -169,6 +123,49 @@ pub(crate) fn source_coupling_diagnostics_at(
             ))
     });
     Ok(diagnostics)
+}
+
+fn read_tracked_source_coupling_file(
+    root: &Path,
+    path: &Path,
+    description: &str,
+) -> CargoAllowResult<(PathBuf, String)> {
+    read_text_file_capped(&root.join(path))
+        .map(|text| (path.to_path_buf(), text))
+        .map_err(|error| {
+            CargoAllowError::with_kind(
+                CargoAllowErrorKind::Inventory,
+                format!(
+                    "source coupling {description} unreadable at {}: {error}",
+                    root.join(path).display()
+                ),
+            )
+        })
+}
+
+fn workspace_dependencies_at(root: &Path) -> CargoAllowResult<toml::map::Map<String, toml::Value>> {
+    if !root.join("Cargo.toml").is_file() {
+        return Ok(toml::map::Map::new());
+    }
+    let text = read_text_file_capped(&root.join("Cargo.toml")).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Inventory,
+            format!("workspace manifest unreadable: {error}"),
+        )
+    })?;
+    let table = toml::from_str::<toml::Table>(&text).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::Scan,
+            format!("workspace manifest parse failed: {error}"),
+        )
+    })?;
+    Ok(table
+        .get("workspace")
+        .and_then(toml::Value::as_table)
+        .and_then(|workspace| workspace.get("dependencies"))
+        .and_then(toml::Value::as_table)
+        .cloned()
+        .unwrap_or_default())
 }
 
 fn integration_test_dependency_diagnostics(
