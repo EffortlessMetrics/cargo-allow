@@ -351,3 +351,20 @@ fn regenerate_product_move_map_projection() -> Result<(), String> {
         .map_err(|error| format!("write move map projection: {error}"))?;
     Ok(())
 }
+
+#[test]
+fn dangling_parity_case_reference_count_reports_the_gap() -> Result<(), String> {
+    // #3576: the ledger's planned PARITY-UPPERCASE parity_case_ids were
+    // never registered; the report counts them so the drift is visible.
+    let root = repo_root();
+    let ledger_path = root.join("policy/product-move-ledger.toml");
+    let (_, _, report) =
+        validate_product_move_ledger_at(&root, &ledger_path).map_err(|e| format!("{e}"))?;
+    if report.dangling_parity_case_reference_count < 80 {
+        return Err(format!(
+            "expected the pre-existing dangling-reference gap (~84), got {}",
+            report.dangling_parity_case_reference_count
+        ));
+    }
+    Ok(())
+}

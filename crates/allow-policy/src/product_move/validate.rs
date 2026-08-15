@@ -61,6 +61,11 @@ pub struct MoveLedgerReport {
     pub old_path_reachable_count: usize,
     pub disposition_counts: BTreeMap<String, usize>,
     pub status_counts: BTreeMap<String, usize>,
+    /// Ledger parity_case_ids references with no registered parity case
+    /// (#3576). Pre-existing drift: 84 references use a planned
+    /// PARITY-UPPERCASE naming scheme the registry never adopted. Counted
+    /// (not diagnosed) until the naming decision lands.
+    pub dangling_parity_case_reference_count: usize,
 }
 
 pub fn validate_product_move_ledger(ledger: ProductMoveLedger) -> ValidatedProductMoveLedger {
@@ -706,7 +711,44 @@ fn summarize_report(ledger: &ProductMoveLedger) -> MoveLedgerReport {
             .entry(entry.status.clone())
             .or_default() += 1;
     }
+    report.dangling_parity_case_reference_count = count_dangling_parity_case_references(ledger);
     report
+}
+
+/// Count parity_case_ids references with no registered parity case
+/// (#3576). Registered ids come from extraction-parity.toml; the ledger's
+/// planned PARITY-UPPERCASE ids that were never registered count as
+/// dangling.
+fn count_dangling_parity_case_references(ledger: &ProductMoveLedger) -> usize {
+    let registry_text = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../policy/extraction-parity.toml"),
+    )
+    .unwrap_or_default();
+    let registered: BTreeSet<String> = toml::from_str::<toml::Table>(&registry_text)
+        .ok()
+        .and_then(|table| {
+            table
+                .get("case")
+                .and_then(|value| value.as_array())
+                .map(|cases| {
+                    cases
+                        .iter()
+                        .filter_map(|case| {
+                            case.get("id")
+                                .and_then(|id| id.as_str())
+                                .map(str::to_string)
+                        })
+                        .collect()
+                })
+        })
+        .unwrap_or_default();
+    ledger
+        .entry
+        .iter()
+        .flat_map(|entry| entry.parity_case_ids.iter())
+        .filter(|case_id| !registered.contains(*case_id))
+        .count()
 }
 
 fn closed(values: &[&'static str]) -> BTreeSet<&'static str> {
