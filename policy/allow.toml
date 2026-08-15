@@ -23,6 +23,13 @@ stale_entries_fail = false
 [requirements.unsafe]
 evidence_required = true
 safety_comment_required = false
+# #3237 rollout: unsafe entries created from 2026-08-15 onward require at
+# least one verified local-file evidence reference (doc:, spec:, adr:,
+# ripr:, coverage:, unsafe-review:). Entries created before this date are
+# grandfathered (12 existing entries carry test:-only evidence and need
+# per-entry safety documentation before this cutoff is lifted).
+verified_evidence_required = true
+verified_evidence_grandfather_entries_created_before = "2026-08-15"
 
 [[allow]]
 id = "allow-0038"
