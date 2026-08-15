@@ -171,10 +171,11 @@ Tag pushes matching `v*` trigger the [Release
 workflow](../.github/workflows/release.yml). The workflow runs preflight checks,
 processes and verifies the topology-derived thirteen-row cargo-allow candidate,
 and creates a GitHub Release from `docs/release/github/vX.Y.Z.md` when that file
-exists. Before the tag is pushed, an external operator receipt must prove the
-three selected shared rows are `AlreadyPublishedExact`; the workflow does not
-enforce shared-first registry preflight. With that precondition satisfied, the
-expected missing uploads are the ten cargo-allow-family rows. The separate
+exists. Before any cargo-allow upload, the workflow derives all three selected
+shared rows from the V2 topology and enforces a commit/tree/topology-bound
+read-only registry preflight proving `AlreadyPublishedExact` and checksum
+equality. A missing or malformed result fails closed. With that precondition
+satisfied, the expected missing uploads are the ten cargo-allow-family rows. The separate
 [authorized namespace workflow](../.github/workflows/release-authorized.yml)
 publishes twelve `0.1.0` namespace rows and deliberately does not trigger the
 cargo-allow tag rail.
