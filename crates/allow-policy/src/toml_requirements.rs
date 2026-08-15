@@ -35,6 +35,10 @@ struct UnsafeRequirementsToml {
     verified_evidence_required: Option<bool>,
     #[serde(default, deserialize_with = "option_bool_or_string")]
     safety_comment_required: Option<bool>,
+    /// Entries created strictly before this date are exempt from the
+    /// verified-evidence mandate (#3237 grandfathering).
+    #[serde(default)]
+    verified_evidence_grandfather_entries_created_before: Option<String>,
 }
 
 impl RequirementsToml {
@@ -71,6 +75,10 @@ impl RequirementsToml {
                 .unsafe_requirements
                 .verified_evidence_required
                 .unwrap_or(default.unsafe_verified_evidence_required),
+            unsafe_verified_evidence_grandfather_entries_created_before: self
+                .unsafe_requirements
+                .verified_evidence_grandfather_entries_created_before
+                .or(default.unsafe_verified_evidence_grandfather_entries_created_before),
         }
     }
 }
@@ -101,6 +109,7 @@ mod tests {
                 evidence_required: Some(false),
                 verified_evidence_required: Some(true),
                 safety_comment_required: Some(true),
+                verified_evidence_grandfather_entries_created_before: None,
             },
         }
         .into_requirements();
@@ -119,6 +128,7 @@ mod tests {
                 unsafe_evidence_required: false,
                 unsafe_safety_comment_required: true,
                 unsafe_verified_evidence_required: true,
+                unsafe_verified_evidence_grandfather_entries_created_before: None,
             }
         );
     }
