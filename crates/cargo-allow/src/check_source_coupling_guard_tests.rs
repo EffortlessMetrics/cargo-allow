@@ -278,6 +278,25 @@ fn integration_test_dependency_import_matching_handles_multiline_use_and_comment
 }
 
 #[test]
+fn integration_test_dependency_diagnostic_has_stable_cli_relation() -> Result<(), String> {
+    let expected = [
+        (super::SourceCouplingDiagnosticKind::Import, "imports"),
+        (super::SourceCouplingDiagnosticKind::PathRead, "reads"),
+        (
+            super::SourceCouplingDiagnosticKind::IntegrationTestDependency,
+            "uses integration-test dependency",
+        ),
+    ];
+    for (kind, expected_relation) in expected {
+        let relation = super::super::source_coupling_relation(kind);
+        if relation != expected_relation {
+            return Err(format!("unexpected diagnostic relation: {relation}"));
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn audit_mode_remains_advisory() -> Result<(), String> {
     if source_coupling_fails_check(repo_root().as_path(), CheckMode::Audit)
         .map_err(|error| format!("audit guard: {error}"))?
