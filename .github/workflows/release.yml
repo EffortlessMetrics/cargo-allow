@@ -281,6 +281,7 @@ jobs:
           path: |
             target/cargo-allow/release-publish.receipt.json
             target/cargo-allow/topology-publish.receipt.json
+            target/cargo-allow/shared-registry-preflight.receipt.json
 
   install-smoke:
     needs: publish

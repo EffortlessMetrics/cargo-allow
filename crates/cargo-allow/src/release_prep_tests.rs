@@ -304,6 +304,7 @@ fn topology_publish_receipt_preserves_incident_recovery_boundary() {
     assert!(
         workflow.contains("--registry-preflight")
             && workflow.contains("shared-registry-preflight.receipt.json")
+            && workflow.contains("target/cargo-allow/shared-registry-preflight.receipt.json")
             && workflow.contains("RELEASE_COMMIT")
             && workflow.contains("RELEASE_TREE"),
         "shared registry preflight should emit identity-bound evidence"

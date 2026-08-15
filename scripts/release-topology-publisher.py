@@ -269,6 +269,13 @@ def registry_checksum(name: str, version: str) -> str | None:
     version_payload = payload.get("version") or {}
     if not isinstance(version_payload, dict):
         fail(f"crates.io returned a malformed version response for {name} {version}")
+    observed_version = version_payload.get("num")
+    if not isinstance(observed_version, str):
+        fail(f"crates.io response is missing version for {name} {version}")
+    if observed_version != version:
+        fail(
+            f"crates.io returned version {observed_version} for requested {name} {version}"
+        )
     checksum = version_payload.get("checksum")
     return checksum_digest(checksum, f"crates.io checksum for {name} {version}")
 

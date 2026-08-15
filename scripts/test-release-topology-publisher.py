@@ -86,6 +86,10 @@ def exercise_shared_registry_preflight() -> None:
         expect_failure(lambda: PUBLISHER.registry_checksum("fixture", "0.1.0"))
         PUBLISHER.crate_api = lambda _name, _version: {"version": {}}
         expect_failure(lambda: PUBLISHER.registry_checksum("fixture", "0.1.0"))
+        PUBLISHER.crate_api = lambda _name, _version: {
+            "version": {"num": "0.1.1", "checksum": DIGEST}
+        }
+        expect_failure(lambda: PUBLISHER.registry_checksum("fixture", "0.1.0"))
     finally:
         PUBLISHER.registry_checksum = original
         PUBLISHER.crate_api = original_api
