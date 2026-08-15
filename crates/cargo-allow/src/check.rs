@@ -229,6 +229,9 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
         let relation = match diagnostic.kind {
             check_source_coupling_guard::SourceCouplingDiagnosticKind::Import => "imports",
             check_source_coupling_guard::SourceCouplingDiagnosticKind::PathRead => "reads",
+            check_source_coupling_guard::SourceCouplingDiagnosticKind::IntegrationTestDependency => {
+                "uses integration-test dependency"
+            }
         };
         eprintln!(
             "source coupling: {}:{}:{}: {} {} {} ({})",

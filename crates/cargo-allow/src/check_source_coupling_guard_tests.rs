@@ -79,6 +79,123 @@ fn rejects_only_known_cross_product_imports() -> Result<(), String> {
 }
 
 #[test]
+fn integration_tests_reject_forbidden_path_dev_dependencies() -> Result<(), String> {
+    let manifest = fixture_manifest();
+    let forbidden = BTreeMap::from([(
+        "product-a".to_string(),
+        BTreeSet::from(["product-b".to_string()]),
+    )]);
+    let manifests = vec![(
+        PathBuf::from("crates/product-a/Cargo.toml"),
+        "[package]\nname = \"product-a\"\n\n[dev-dependencies]\nproduct-b = { path = \"../product-b\" }\n"
+            .to_string(),
+    )];
+    let tracked = BTreeSet::from([
+        PathBuf::from("crates/product-a/Cargo.toml"),
+        PathBuf::from("crates/product-a/tests/cross_product.rs"),
+    ]);
+    if super::normalize_relative_path(Path::new("crates/product-a"), "../product-b")
+        != Some(PathBuf::from("crates/product-b"))
+    {
+        return Err("fixture path normalization failed".to_string());
+    }
+    if super::projection_identity_for_path(&manifest, "crates/product-a").is_none()
+        || super::projection_identity_for_path(&manifest, "crates/product-b").is_none()
+    {
+        return Err("fixture identity projection failed".to_string());
+    }
+    let manifest_text = manifests
+        .first()
+        .map(|(_, text)| text)
+        .ok_or_else(|| "fixture manifest missing".to_string())?;
+    let parsed = toml::from_str::<toml::Table>(manifest_text).map_err(|e| e.to_string())?;
+    let path = parsed
+        .get("dev-dependencies")
+        .and_then(toml::Value::as_table)
+        .and_then(|table| table.get("product-b"))
+        .and_then(toml::Value::as_table)
+        .and_then(|table| table.get("path"))
+        .and_then(toml::Value::as_str)
+        .ok_or_else(|| "fixture TOML path dependency failed".to_string())?;
+    let target_path = super::normalize_relative_path(Path::new("crates/product-a"), path)
+        .ok_or_else(|| "fixture target path failed".to_string())?;
+    let target =
+        super::projection_identity_for_path(&manifest, &super::normalize_path(&target_path))
+            .ok_or_else(|| format!("fixture target identity failed: {target_path:?}"))?;
+    if !forbidden
+        .get("product-a")
+        .is_some_and(|targets| targets.contains(&target.product_or_shared_owner))
+    {
+        return Err(format!("fixture forbidden edge failed: {target:?}"));
+    }
+    let integration_tests = vec![(
+        PathBuf::from("crates/product-a/tests/cross_product.rs"),
+        "use product_b::private_api;\n".to_string(),
+    )];
+    let diagnostics = super::integration_test_dependency_diagnostics(
+        &manifest,
+        &forbidden,
+        &tracked,
+        &manifests,
+        &integration_tests,
+    );
+    let Some(diagnostic) = diagnostics.first() else {
+        return Err("missing integration-test path dependency diagnostic".to_string());
+    };
+    if diagnostics.len() != 1
+        || diagnostic.kind != super::SourceCouplingDiagnosticKind::IntegrationTestDependency
+        || diagnostic.source_owner != "product-a"
+        || diagnostic.target_crate != "product-b"
+        || diagnostic.target_owner != "product-b"
+        || diagnostic.line != 5
+    {
+        return Err(format!(
+            "unexpected integration-test dependency diagnostics: {diagnostics:?}"
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn integration_test_dependency_guard_allows_same_product_shared_and_non_test_dependencies()
+-> Result<(), String> {
+    let manifest = fixture_manifest();
+    let forbidden = BTreeMap::from([(
+        "product-a".to_string(),
+        BTreeSet::from(["product-b".to_string()]),
+    )]);
+    let manifests = vec![
+        (
+            PathBuf::from("crates/product-a/Cargo.toml"),
+            "[dev-dependencies]\nproduct-a = { path = \".\" }\nshared-protocol = { path = \"../shared-protocol\" }\n"
+                .to_string(),
+        ),
+        (
+            PathBuf::from("crates/product-b/Cargo.toml"),
+            "[dev-dependencies]\nproduct-a = { path = \"../product-a\" }\n".to_string(),
+        ),
+    ];
+    let tracked = BTreeSet::from([
+        PathBuf::from("crates/product-a/Cargo.toml"),
+        PathBuf::from("crates/product-a/tests/owned.rs"),
+        PathBuf::from("crates/product-b/Cargo.toml"),
+    ]);
+    let diagnostics = super::integration_test_dependency_diagnostics(
+        &manifest,
+        &forbidden,
+        &tracked,
+        &manifests,
+        &[],
+    );
+    if !diagnostics.is_empty() {
+        return Err(format!(
+            "allowed or non-integration dependencies unexpectedly failed: {diagnostics:?}"
+        ));
+    }
+    Ok(())
+}
+
+#[test]
 fn audit_mode_remains_advisory() -> Result<(), String> {
     if source_coupling_fails_check(repo_root().as_path(), CheckMode::Audit)
         .map_err(|error| format!("audit guard: {error}"))?

@@ -18,6 +18,7 @@ use std::path::{Path, PathBuf};
 pub(crate) enum SourceCouplingDiagnosticKind {
     Import,
     PathRead,
+    IntegrationTestDependency,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -81,13 +82,162 @@ pub(crate) fn source_coupling_diagnostics_at(
             Ok((path, text))
         })
         .collect::<CargoAllowResult<Vec<_>>>()?;
-    source_coupling_diagnostics_for_sources_at_root(
+    let mut diagnostics = source_coupling_diagnostics_for_sources_at_root(
         &projection,
         &forbidden_edges,
         &tracked_paths,
         &files,
         Some(root),
-    )
+    )?;
+    let manifests = tracked_paths
+        .iter()
+        .filter(|path| path.file_name().and_then(|name| name.to_str()) == Some("Cargo.toml"))
+        .filter_map(|path| {
+            std::fs::read_to_string(root.join(path))
+                .ok()
+                .map(|text| (path.clone(), text))
+        })
+        .collect::<Vec<_>>();
+    let integration_tests = tracked_paths
+        .iter()
+        .filter(|path| is_likely_test_file(path))
+        .filter_map(|path| {
+            std::fs::read_to_string(root.join(path))
+                .ok()
+                .map(|text| (path.clone(), text))
+        })
+        .collect::<Vec<_>>();
+    diagnostics.extend(integration_test_dependency_diagnostics(
+        &projection,
+        &forbidden_edges,
+        &tracked_paths,
+        &manifests,
+        &integration_tests,
+    ));
+    diagnostics.sort_by(|left, right| {
+        (
+            normalize_path(&left.path),
+            left.line,
+            left.column,
+            &left.target_crate,
+        )
+            .cmp(&(
+                normalize_path(&right.path),
+                right.line,
+                right.column,
+                &right.target_crate,
+            ))
+    });
+    Ok(diagnostics)
+}
+
+fn integration_test_dependency_diagnostics(
+    manifest: &GovernanceProjection,
+    forbidden_edges: &BTreeMap<String, BTreeSet<String>>,
+    tracked_paths: &BTreeSet<PathBuf>,
+    manifests: &[(PathBuf, String)],
+    integration_tests: &[(PathBuf, String)],
+) -> Vec<SourceCouplingDiagnostic> {
+    let mut diagnostics = Vec::new();
+    for (manifest_path, text) in manifests {
+        let crate_root = manifest_path.parent().unwrap_or_else(|| Path::new(""));
+        let Some(source_identity) =
+            projection_identity_for_path(manifest, &normalize_path(crate_root))
+        else {
+            continue;
+        };
+        let has_integration_test = tracked_paths.iter().any(|path| {
+            normalize_path(path).starts_with(&format!("{}/tests/", normalize_path(crate_root)))
+        });
+        if !has_integration_test {
+            continue;
+        }
+        let Ok(value) = toml::from_str::<toml::Table>(text) else {
+            continue;
+        };
+        let Some(dev_dependencies) = value
+            .get("dev-dependencies")
+            .and_then(toml::Value::as_table)
+        else {
+            continue;
+        };
+        for (dependency_name, specification) in dev_dependencies {
+            let Some(path_value) = specification
+                .as_table()
+                .and_then(|table| table.get("path"))
+                .and_then(toml::Value::as_str)
+            else {
+                continue;
+            };
+            let Some(target_path) = normalize_relative_path(crate_root, path_value) else {
+                continue;
+            };
+            let Some(target_identity) =
+                projection_identity_for_path(manifest, &normalize_path(&target_path))
+            else {
+                continue;
+            };
+            let dependency_crate_name = dependency_name.replace('-', "_");
+            let test_uses_dependency = integration_tests.iter().any(|(path, source)| {
+                normalize_path(path).starts_with(&format!("{}/tests/", normalize_path(crate_root)))
+                    && source.lines().any(|line| {
+                        let line = line.trim_start();
+                        line.starts_with(&format!("use {dependency_crate_name}::"))
+                            || line.starts_with(&format!("extern crate {dependency_crate_name}"))
+                            || line.contains(&format!("{dependency_crate_name}::"))
+                    })
+            });
+            if !test_uses_dependency {
+                continue;
+            }
+            if target_identity.product_or_shared_owner == source_identity.product_or_shared_owner
+                || target_identity.product_or_shared_owner == "shared"
+                || !forbidden_edges
+                    .get(&source_identity.product_or_shared_owner)
+                    .is_some_and(|targets| {
+                        targets.contains(&target_identity.product_or_shared_owner)
+                    })
+            {
+                continue;
+            }
+            let line = text
+                .lines()
+                .position(|line| {
+                    line.trim_start()
+                        .starts_with(&format!("{dependency_name} ="))
+                })
+                .map_or(1, |line| line as u32 + 1);
+            diagnostics.push(SourceCouplingDiagnostic {
+                kind: SourceCouplingDiagnosticKind::IntegrationTestDependency,
+                path: manifest_path.clone(),
+                line,
+                column: 1,
+                source_owner: source_identity.product_or_shared_owner.clone(),
+                target_crate: target_identity.logical_id.clone(),
+                target_owner: target_identity.product_or_shared_owner.clone(),
+                import_text: format!("{dependency_name} path dependency {path_value}"),
+            });
+        }
+    }
+    diagnostics
+}
+
+fn normalize_relative_path(base: &Path, value: &str) -> Option<PathBuf> {
+    if value.trim().is_empty() || Path::new(value).is_absolute() {
+        return None;
+    }
+    let mut components = Vec::new();
+    for component in base.join(value).components() {
+        match component {
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                components.pop()?;
+            }
+            std::path::Component::Normal(value) => components.push(value.to_owned()),
+            _ => return None,
+        }
+    }
+    Some(components.iter().collect())
 }
 
 #[cfg(test)]
