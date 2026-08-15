@@ -227,3 +227,87 @@ fn whitespace_support_and_unbounded_duplicate_identity_fail_closed() -> Result<(
     }
     Ok(())
 }
+
+#[test]
+fn shim_status_must_agree_with_old_path_disposition() -> Result<(), String> {
+    // #3376a: an active shim whose move entry records the old path as
+    // Deleted has no possible consumer; a removed shim whose old path is
+    // still reachable retired prematurely. Both are registry-level drift.
+    let ledger_text = std::fs::read_to_string(
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../policy/product-move-ledger.toml"),
+    )
+    .map_err(|err| format!("read ledger: {err}"))?;
+    let ledger =
+        parse_product_move_ledger(&ledger_text).map_err(|err| format!("parse ledger: {err}"))?;
+
+    // Find one Deleted-entry and one reachable-entry from the live ledger.
+    let deleted_entry = ledger
+        .entry
+        .iter()
+        .find(|entry| entry.old_path_reachability_disposition == "Deleted")
+        .ok_or("live ledger has no Deleted entry for the seeded test")?;
+    let reachable_entry = ledger
+        .entry
+        .iter()
+        .find(|entry| entry.old_path_reachability_disposition == "OldPathStillReachable")
+        .ok_or("live ledger has no reachable entry for the seeded test")?;
+
+    let base_shim = |entry_id: &str, status: &str| {
+        format!(
+            r#"
+[[shim]]
+id = "shim-seeded-{status}-{entry_id}"
+old_identity = "old::{entry_id}"
+new_identity = "new::{entry_id}"
+kind = "ModuleFacade"
+posture = "private"
+status = "{status}"
+move_ledger_entry = "{entry_id}"
+controlling_issue = 2607
+latest_allowed_stage = 1
+removal_condition = "issue:#2606 stage-1 cutover receipt"
+parity_case = "parity-seeded"
+claim_boundary = "seeded boundary"
+"#
+        )
+    };
+
+    // Active shim on a Deleted entry -> flagged
+    let active_on_deleted = format!(
+        "registry_id = \"test\"\ncontrolling_issue = 2607\nlinked_move_ledger = \"test\"\n{}",
+        base_shim(&deleted_entry.id, "active")
+    );
+    let registry = parse_extraction_shim_registry(&active_on_deleted)
+        .map_err(|err| format!("parse registry: {err}"))?;
+    let (_, diagnostics, _) = validate_extraction_shim_registry_with_ledger(registry, &ledger);
+    if !diagnostics
+        .iter()
+        .any(|diag| matches!(diag.kind, ShimDiagnosticKind::ActiveShimWithDeletedOldPath))
+    {
+        return Err(format!(
+            "active shim on Deleted entry was not flagged: {diagnostics:?}"
+        ));
+    }
+
+    // Removed shim on a reachable entry -> flagged
+    let removed_on_reachable = format!(
+        "registry_id = \"test\"\ncontrolling_issue = 2607\nlinked_move_ledger = \"test\"\n{}",
+        base_shim(&reachable_entry.id, "removed")
+    );
+    let registry = parse_extraction_shim_registry(&removed_on_reachable)
+        .map_err(|err| format!("parse registry: {err}"))?;
+    let (_, diagnostics, _) = validate_extraction_shim_registry_with_ledger(registry, &ledger);
+    if !diagnostics.iter().any(|diag| {
+        matches!(
+            diag.kind,
+            ShimDiagnosticKind::RemovedShimWithReachableOldPath
+        )
+    }) {
+        return Err(format!(
+            "removed shim on reachable entry was not flagged: {diagnostics:?}"
+        ));
+    }
+
+    Ok(())
+}
