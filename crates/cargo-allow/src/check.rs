@@ -226,10 +226,7 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
         let source_owner = allow_report::sanitize_terminal_text(&diagnostic.source_owner);
         let target_crate = allow_report::sanitize_terminal_text(&diagnostic.target_crate);
         let import_text = allow_report::sanitize_terminal_text(&diagnostic.import_text);
-        let relation = match diagnostic.kind {
-            check_source_coupling_guard::SourceCouplingDiagnosticKind::Import => "imports",
-            check_source_coupling_guard::SourceCouplingDiagnosticKind::PathRead => "reads",
-        };
+        let relation = source_coupling_relation(diagnostic.kind);
         eprintln!(
             "source coupling: {}:{}:{}: {} {} {} ({})",
             path, line, column, source_owner, relation, target_crate, import_text,
@@ -328,6 +325,18 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
         process::exit(1);
     }
     Ok(())
+}
+
+pub(crate) fn source_coupling_relation(
+    kind: check_source_coupling_guard::SourceCouplingDiagnosticKind,
+) -> &'static str {
+    match kind {
+        check_source_coupling_guard::SourceCouplingDiagnosticKind::Import => "imports",
+        check_source_coupling_guard::SourceCouplingDiagnosticKind::PathRead => "reads",
+        check_source_coupling_guard::SourceCouplingDiagnosticKind::IntegrationTestDependency => {
+            "uses integration-test dependency"
+        }
+    }
 }
 
 fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
