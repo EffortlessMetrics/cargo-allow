@@ -92,28 +92,56 @@ pub(crate) fn source_coupling_diagnostics_at(
     let manifests = tracked_paths
         .iter()
         .filter(|path| path.file_name().and_then(|name| name.to_str()) == Some("Cargo.toml"))
-        .filter_map(|path| {
+        .map(|path| {
             std::fs::read_to_string(root.join(path))
-                .ok()
                 .map(|text| (path.clone(), text))
+                .map_err(|error| {
+                    CargoAllowError::new(format!(
+                        "source coupling manifest unreadable at {}: {error}",
+                        root.join(path).display()
+                    ))
+                })
         })
-        .collect::<Vec<_>>();
+        .collect::<CargoAllowResult<Vec<_>>>()?;
     let integration_tests = tracked_paths
         .iter()
         .filter(|path| is_likely_test_file(path))
-        .filter_map(|path| {
+        .map(|path| {
             std::fs::read_to_string(root.join(path))
-                .ok()
                 .map(|text| (path.clone(), text))
+                .map_err(|error| {
+                    CargoAllowError::new(format!(
+                        "source coupling integration test unreadable at {}: {error}",
+                        root.join(path).display()
+                    ))
+                })
         })
-        .collect::<Vec<_>>();
+        .collect::<CargoAllowResult<Vec<_>>>()?;
+    let workspace_dependencies = if root.join("Cargo.toml").is_file() {
+        let text = std::fs::read_to_string(root.join("Cargo.toml")).map_err(|error| {
+            CargoAllowError::new(format!("workspace manifest unreadable: {error}"))
+        })?;
+        let table = toml::from_str::<toml::Table>(&text).map_err(|error| {
+            CargoAllowError::new(format!("workspace manifest parse failed: {error}"))
+        })?;
+        table
+            .get("workspace")
+            .and_then(toml::Value::as_table)
+            .and_then(|workspace| workspace.get("dependencies"))
+            .and_then(toml::Value::as_table)
+            .cloned()
+            .unwrap_or_default()
+    } else {
+        toml::map::Map::new()
+    };
     diagnostics.extend(integration_test_dependency_diagnostics(
         &projection,
         &forbidden_edges,
         &tracked_paths,
         &manifests,
         &integration_tests,
-    ));
+        &workspace_dependencies,
+    )?);
     diagnostics.sort_by(|left, right| {
         (
             normalize_path(&left.path),
@@ -137,7 +165,8 @@ fn integration_test_dependency_diagnostics(
     tracked_paths: &BTreeSet<PathBuf>,
     manifests: &[(PathBuf, String)],
     integration_tests: &[(PathBuf, String)],
-) -> Vec<SourceCouplingDiagnostic> {
+    workspace_dependencies: &toml::map::Map<String, toml::Value>,
+) -> CargoAllowResult<Vec<SourceCouplingDiagnostic>> {
     let mut diagnostics = Vec::new();
     for (manifest_path, text) in manifests {
         let crate_root = manifest_path.parent().unwrap_or_else(|| Path::new(""));
@@ -152,9 +181,12 @@ fn integration_test_dependency_diagnostics(
         if !has_integration_test {
             continue;
         }
-        let Ok(value) = toml::from_str::<toml::Table>(text) else {
-            continue;
-        };
+        let value = toml::from_str::<toml::Table>(text).map_err(|error| {
+            CargoAllowError::new(format!(
+                "manifest parse failed at {}: {error}",
+                manifest_path.display()
+            ))
+        })?;
         let mut dependency_tables = Vec::new();
         if let Some(dev_dependencies) = value
             .get("dev-dependencies")
@@ -175,14 +207,35 @@ fn integration_test_dependency_diagnostics(
         }
         for dev_dependencies in dependency_tables {
             for (dependency_name, specification) in dev_dependencies {
-                let Some(path_value) = specification
+                let workspace_path = specification
+                    .as_table()
+                    .and_then(|table| table.get("workspace"))
+                    .and_then(toml::Value::as_bool)
+                    .is_some_and(|workspace| workspace);
+                let path_value = specification
                     .as_table()
                     .and_then(|table| table.get("path"))
                     .and_then(toml::Value::as_str)
-                else {
+                    .or_else(|| {
+                        specification
+                            .as_table()
+                            .and_then(|table| table.get("workspace"))
+                            .and_then(toml::Value::as_bool)
+                            .filter(|workspace| *workspace)
+                            .and_then(|_| workspace_dependencies.get(dependency_name))
+                            .and_then(toml::Value::as_table)
+                            .and_then(|table| table.get("path"))
+                            .and_then(toml::Value::as_str)
+                    });
+                let Some(path_value) = path_value else {
                     continue;
                 };
-                let Some(target_path) = normalize_relative_path(crate_root, path_value) else {
+                let path_base = if workspace_path {
+                    Path::new("")
+                } else {
+                    crate_root
+                };
+                let Some(target_path) = normalize_relative_path(path_base, path_value) else {
                     continue;
                 };
                 let Some(target_identity) =
@@ -190,17 +243,18 @@ fn integration_test_dependency_diagnostics(
                 else {
                     continue;
                 };
-                let dependency_crate_name = dependency_name.replace('-', "_");
+                let mut dependency_aliases = BTreeSet::from([dependency_name.replace('-', "_")]);
+                dependency_aliases.insert(target_identity.rust_library_name.clone());
+                dependency_aliases.extend(
+                    target_identity
+                        .workspace_dependency_aliases
+                        .iter()
+                        .map(|alias| alias.replace('-', "_")),
+                );
                 let test_uses_dependency = integration_tests.iter().any(|(path, source)| {
                     normalize_path(path)
                         .starts_with(&format!("{}/tests/", normalize_path(crate_root)))
-                        && source.lines().any(|line| {
-                            let line = line.trim_start();
-                            line.starts_with(&format!("use {dependency_crate_name}::"))
-                                || line
-                                    .starts_with(&format!("extern crate {dependency_crate_name}"))
-                                || line.contains(&format!("{dependency_crate_name}::"))
-                        })
+                        && rust_source_uses_dependency(source, &dependency_aliases)
                 });
                 if !test_uses_dependency {
                     continue;
@@ -236,7 +290,42 @@ fn integration_test_dependency_diagnostics(
             }
         }
     }
-    diagnostics
+    Ok(diagnostics)
+}
+
+fn rust_source_uses_dependency(source: &str, aliases: &BTreeSet<String>) -> bool {
+    let mut use_statement = false;
+    for raw_line in source.lines() {
+        let line = raw_line.split("//").next().unwrap_or_default().trim();
+        if line.is_empty() {
+            continue;
+        }
+        let rest = if use_statement {
+            line
+        } else if line == "use" {
+            use_statement = true;
+            continue;
+        } else if let Some(rest) = line.strip_prefix("use ") {
+            rest.trim_start()
+        } else if let Some(rest) = line.strip_prefix("extern crate ") {
+            let name = rest
+                .split(|character: char| !character.is_ascii_alphanumeric() && character != '_')
+                .next()
+                .unwrap_or_default();
+            return aliases.contains(name);
+        } else {
+            continue;
+        };
+        let name = rest
+            .split(|character: char| !character.is_ascii_alphanumeric() && character != '_')
+            .next()
+            .unwrap_or_default();
+        if aliases.contains(name) {
+            return true;
+        }
+        use_statement = !line.contains(';');
+    }
+    false
 }
 
 fn normalize_relative_path(base: &Path, value: &str) -> Option<PathBuf> {

@@ -28,7 +28,10 @@ fn fixture_manifest() -> GovernanceProjection {
                 logical_id: "product-b".to_string(),
                 workspace_path: "crates/product-b".to_string(),
                 cargo_package_name: "product-b".to_string(),
-                workspace_dependency_aliases: vec!["product-b".to_string()],
+                workspace_dependency_aliases: vec![
+                    "product-b".to_string(),
+                    "product-b-alias".to_string(),
+                ],
                 rust_library_name: "product_b".to_string(),
                 product_or_shared_owner: "product-b".to_string(),
             },
@@ -138,7 +141,9 @@ fn integration_tests_reject_forbidden_path_dev_dependencies() -> Result<(), Stri
         &tracked,
         &manifests,
         &integration_tests,
-    );
+        &toml::map::Map::new(),
+    )
+    .map_err(|error| error.to_string())?;
     let Some(diagnostic) = diagnostics.first() else {
         return Err("missing integration-test path dependency diagnostic".to_string());
     };
@@ -185,8 +190,13 @@ fn integration_test_dependency_guard_allows_same_product_shared_and_non_test_dep
         &forbidden,
         &tracked,
         &manifests,
-        &[],
-    );
+        &[(
+            PathBuf::from("crates/product-a/tests/owned.rs"),
+            "use product_a::own_api;\nuse shared_protocol::Wire;\n".to_string(),
+        )],
+        &toml::map::Map::new(),
+    )
+    .map_err(|error| error.to_string())?;
     if !diagnostics.is_empty() {
         return Err(format!(
             "allowed or non-integration dependencies unexpectedly failed: {diagnostics:?}"
@@ -205,7 +215,7 @@ fn integration_test_dependency_guard_rejects_target_specific_path_dependencies()
     )]);
     let manifests = vec![(
         PathBuf::from("crates/product-a/Cargo.toml"),
-        "[target.'cfg(windows)'.dev-dependencies]\nproduct-b = { path = \"../product-b\" }\n"
+        "[target.'cfg(windows)'.dev-dependencies]\nproduct-b-alias = { workspace = true }\n"
             .to_string(),
     )];
     let tracked = BTreeSet::from([
@@ -216,13 +226,25 @@ fn integration_test_dependency_guard_rejects_target_specific_path_dependencies()
         PathBuf::from("crates/product-a/tests/cross_product.rs"),
         "use product_b::private_api;\n".to_string(),
     )];
+    let workspace = toml::from_str::<toml::Table>(
+        "[workspace.dependencies]\nproduct-b-alias = { path = \"crates/product-b\" }\n",
+    )
+    .map_err(|error| error.to_string())?;
+    let workspace_dependencies = workspace
+        .get("workspace")
+        .and_then(toml::Value::as_table)
+        .and_then(|table| table.get("dependencies"))
+        .and_then(toml::Value::as_table)
+        .ok_or_else(|| "missing workspace dependency fixture".to_string())?;
     let diagnostics = super::integration_test_dependency_diagnostics(
         &manifest,
         &forbidden,
         &tracked,
         &manifests,
         &integration_tests,
-    );
+        workspace_dependencies,
+    )
+    .map_err(|error| error.to_string())?;
     let Some(diagnostic) = diagnostics.first() else {
         return Err(format!(
             "missing target-specific diagnostic: {diagnostics:?}"
@@ -232,6 +254,25 @@ fn integration_test_dependency_guard_rejects_target_specific_path_dependencies()
         return Err(format!(
             "unexpected target-specific diagnostics: {diagnostics:?}"
         ));
+    }
+    Ok(())
+}
+
+#[test]
+fn integration_test_dependency_import_matching_handles_multiline_use_and_comments()
+-> Result<(), String> {
+    let aliases = BTreeSet::from(["product_b".to_string()]);
+    if !super::rust_source_uses_dependency(
+        "use\n    product_b::{private_api,\n    another_api};\n",
+        &aliases,
+    ) {
+        return Err("multiline use was not recognized".to_string());
+    }
+    if super::rust_source_uses_dependency(
+        "// use product_b::private_api;\nlet text = \"product_b::private_api\";\n",
+        &aliases,
+    ) {
+        return Err("comment or string falsely matched dependency".to_string());
     }
     Ok(())
 }
