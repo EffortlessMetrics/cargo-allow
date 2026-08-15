@@ -3522,7 +3522,7 @@ deletion_output = "Delete scaffold sources after parity cutover and old-path ret
 [[entry]]
 id = "MOVE-GOV-ARCHITECTURE-DTOS"
 source_kind = "RustModule"
-current_paths = ["crates/allow-policy/src/product_crates/config.rs", "crates/allow-policy/src/product_crates/v1_reader.rs", "crates/allow-policy/src/product_crates/receipt.rs", "crates/allow-policy/src/product_crates/v2.rs"]
+current_paths = ["crates/allow-policy/src/product_crates/config.rs", "crates/allow-policy/src/product_crates/v2.rs"]
 current_refs = []
 current_identity = "Architecture manifest DTOs: product/shared/planned definitions, forbidden and required crate dependencies, V2 crate identities, and the historical V1 reader"
 current_product = "cargo-allow"
@@ -3557,7 +3557,7 @@ deletion_output = "Delete the V1 architecture manifest parsers from allow-policy
 [[entry]]
 id = "MOVE-GOV-ARCHITECTURE-VALIDATION"
 source_kind = "RustModule"
-current_paths = ["crates/allow-policy/src/product_crates/validate.rs", "crates/allow-policy/src/product_crates/cross_check.rs", "crates/allow-policy/src/product_crates/dependency_graph.rs", "crates/allow-policy/src/product_crates/closure.rs", "crates/allow-policy/src/product_crates/workspace.rs", "crates/allow-policy/src/product_crates/v2_validate.rs", "crates/allow-policy/src/product_crates/v2_reconcile.rs"]
+current_paths = ["crates/allow-policy/src/product_crates/validate.rs", "crates/allow-policy/src/product_crates/cross_check.rs", "crates/allow-policy/src/product_crates/dependency_graph.rs", "crates/allow-policy/src/product_crates/workspace.rs"]
 current_refs = []
 current_identity = "Architecture dependency law: manifest validation, denominator cross-checks, dependency graph, closure diagnostics, and shortest-path routing"
 current_product = "cargo-allow"

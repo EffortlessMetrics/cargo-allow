@@ -182,8 +182,9 @@ mod tests {
 
         let identity_text = std::fs::read_to_string(root.join("policy/product-crates-v2.toml"))
             .map_err(|err| err.to_string())?;
-        let manifest = allow_policy::product_crates::parse_architecture_manifest_v2(&identity_text)
-            .map_err(|err| format!("{err}"))?;
+        let manifest =
+            allow_policy::product_crates::v2::parse_architecture_manifest_v2(&identity_text)
+                .map_err(|err| format!("{err}"))?;
         if projection.crate_identities.len() != manifest.crate_identity.len() {
             return Err(format!(
                 "identity count drift: projection {} vs canonical {}",
