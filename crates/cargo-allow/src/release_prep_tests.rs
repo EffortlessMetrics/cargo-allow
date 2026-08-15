@@ -3,7 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use allow_policy::extraction_parity::{ParityDisposition, parse_extraction_parity_registry};
-use allow_policy::product_packages::parse_product_package_topology_v2;
+use intent_model::parse_package_postures_v1;
 
 const PUBLISHED_RELEASE_VERSION: &str = "0.1.11";
 const PREVIOUS_PUBLISHED_VERSION: &str = "0.1.10";
@@ -40,13 +40,12 @@ fn release_workflow_exists_and_lists_publish_order() {
         &root,
         active_publish_order_doc(&workspace_version),
     ));
-    let topology = parse_product_package_topology_v2(&read_workspace_file(&root, PACKAGE_TOPOLOGY))
+    let topology = parse_package_postures_v1(&read_workspace_file(&root, PACKAGE_TOPOLOGY))
         .unwrap_or_else(|err| std::panic::panic_any(format!("parse {PACKAGE_TOPOLOGY}: {err}")));
     let namespace_rows = topology
-        .package
         .iter()
         .filter(|row| {
-            row.publish
+            row.membership.publish
                 && matches!(
                     row.product_family.as_str(),
                     "shared" | "cargo-intent" | "cargo-proof"
@@ -55,11 +54,10 @@ fn release_workflow_exists_and_lists_publish_order() {
         .map(|row| row.cargo_package_name.as_str())
         .collect::<BTreeSet<_>>();
     let cargo_candidate_rows = topology
-        .package
         .iter()
         .filter(|row| {
-            row.publish
-                && row.candidate_inclusion
+            row.membership.publish
+                && row.membership.candidate_inclusion
                 && matches!(row.product_family.as_str(), "shared" | "cargo-allow")
         })
         .map(|row| row.cargo_package_name.as_str())
@@ -529,14 +527,13 @@ fn release_publish_order_matches_internal_dependency_graph() {
         });
     let publish_order = parse_publish_order(&release_doc);
     let package_manifests = workspace_package_manifests(&root);
-    let topology = parse_product_package_topology_v2(&read_workspace_file(&root, PACKAGE_TOPOLOGY))
+    let topology = parse_package_postures_v1(&read_workspace_file(&root, PACKAGE_TOPOLOGY))
         .unwrap_or_else(|err| std::panic::panic_any(format!("parse current V2 topology: {err}")));
     let package_names = topology
-        .package
         .into_iter()
         .filter(|entry| {
-            entry.publish
-                && entry.candidate_inclusion
+            entry.membership.publish
+                && entry.membership.candidate_inclusion
                 && matches!(entry.product_family.as_str(), "shared" | "cargo-allow")
         })
         .map(|entry| entry.cargo_package_name)

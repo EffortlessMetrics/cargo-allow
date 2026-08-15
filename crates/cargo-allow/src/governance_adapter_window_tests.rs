@@ -193,7 +193,16 @@ fn allow_policy_governance_window_is_explicit() -> Result<(), String> {
         if entry.removal_issue_or_condition.trim().is_empty() {
             return Err(format!("`{}` needs a deletion condition", entry.id));
         }
-        if entry.status != "CutoverOutstanding" {
+        let closed = entry.old_path_reachability_disposition == "Deleted";
+        if closed {
+            // Deleted rows record the completed cutover.
+            if entry.status != "CutoverCurrent" {
+                return Err(format!(
+                    "`{}` has a Deleted old path but does not record CutoverCurrent",
+                    entry.id
+                ));
+            }
+        } else if entry.status != "CutoverOutstanding" {
             return Err(format!(
                 "`{}` must record CutoverOutstanding while the adapter window is open",
                 entry.id
@@ -228,9 +237,6 @@ fn allow_policy_governance_window_is_explicit() -> Result<(), String> {
     // inside the MOVE-GOV window specifically (not merely registered).
     for canonical in [
         "crates/allow-policy/src/product_crates/config.rs",
-        "crates/allow-policy/src/product_crates/validate.rs",
-        "crates/allow-policy/src/product_packages/config.rs",
-        "crates/allow-policy/src/product_packages/validate.rs",
         "crates/allow-policy/src/product_move/config.rs",
         "crates/allow-policy/src/extraction_parity/config.rs",
         "crates/allow-policy/src/extraction_shims/config.rs",
@@ -259,7 +265,6 @@ fn allow_policy_governance_window_is_explicit() -> Result<(), String> {
     };
     let module_dirs = [
         "crates/allow-policy/src/product_crates",
-        "crates/allow-policy/src/product_packages",
         "crates/allow-policy/src/product_move",
         "crates/allow-policy/src/extraction_parity",
         "crates/allow-policy/src/extraction_shims",

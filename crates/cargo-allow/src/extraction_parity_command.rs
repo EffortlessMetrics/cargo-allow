@@ -813,7 +813,6 @@ fn cutover_source_input_paths(
         "policy/product-move-ledger.toml".to_string(),
         "crates/allow-policy/src/extraction_parity".to_string(),
         "crates/allow-policy/src/product_crates".to_string(),
-        "crates/allow-policy/src/product_packages".to_string(),
         "crates/allow-policy/src/product_move".to_string(),
         "crates/cargo-allow/src/extraction_parity_command.rs".to_string(),
         "scripts/extraction-cutover-status.sh".to_string(),

@@ -14,8 +14,8 @@
 
 ### Status counts
 
-- `CutoverCurrent`: **14**
-- `CutoverOutstanding`: **6**
+- `CutoverCurrent`: **15**
+- `CutoverOutstanding`: **5**
 - `RepositoryDecisionRequired`: **1**
 - `TargetRatified`: **87**
 
@@ -331,8 +331,8 @@
 - Current: Product package topology DTOs and validators: version lines, postures, publication state, and candidate membership
 - Target: `cargo-intent / intent-model::governance_v2_package_posture`
 - Disposition: `MoveToIntentModel`
-- Stage/status: `IntentModel` / `CutoverOutstanding`
-- Old path: `OldPathStillReachable`
+- Stage/status: `IntentModel` / `CutoverCurrent`
+- Old path: `Deleted`
 - Removal: #3548 source-coupling guard migration, then #2942 step 7 deletion
 - Next: intent-model::governance_v2 package posture DTOs plus compat parsing (#3327) supersede these DTOs; candidate rows project through the governance receipt (#3540).
 - Deletion output: Delete the V1 package topology parsers and validators from allow-policy under #2942 step 7.
