@@ -40,6 +40,12 @@ if [[ "${1:-}" != "--internal" ]]; then
   package_input_source="${PACKAGE_INPUT_DIR:-${SCRIPT_ROOT}/target/package-candidate-smoke/packages}"
   temp_root="${CANDIDATE_HARNESS_TEST_ROOT:-${TMPDIR:-/tmp}}"
   python3 "${lifecycle}" validate-test-root --root "${temp_root}" --repository "${SCRIPT_ROOT}" >/dev/null
+  system_temp_root="$(python3 -c 'import tempfile; from pathlib import Path; print(Path(tempfile.gettempdir()).resolve())')"
+  canonical_temp_root="$(python3 -c 'import sys; from pathlib import Path; print(Path(sys.argv[1]).resolve())' "${temp_root}")"
+  [[ "${canonical_temp_root}" != "${system_temp_root}" ]] || {
+    printf 'exact-candidate-package-set: error: test root must be a dedicated child, not system temporary root: %s\n' "${canonical_temp_root}" >&2
+    exit 1
+  }
   snapshot_json="$(python3 "${lifecycle}" snapshot --root "${temp_root}" --repository "${SCRIPT_ROOT}" --purpose exact-candidate-package-snapshot)"
   read -r snapshot_root snapshot_token snapshot_head < <(
     printf '%s' "${snapshot_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"], v["git_head"])'
