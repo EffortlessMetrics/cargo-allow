@@ -169,9 +169,7 @@ fn every_requirement_survives_a_render_parse_round_trip() {
         unsafe_evidence_required: !defaults.unsafe_evidence_required,
         unsafe_safety_comment_required: !defaults.unsafe_safety_comment_required,
         unsafe_verified_evidence_required: !defaults.unsafe_verified_evidence_required,
-        unsafe_verified_evidence_grandfather_entries_created_before: Some(
-            "2026-08-15".to_string(),
-        ),
+        unsafe_verified_evidence_grandfather_entries_created_before: Some("2026-08-15".to_string()),
     };
     let expected = cfg.requirements.clone();
 
