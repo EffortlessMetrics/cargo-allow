@@ -258,6 +258,9 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
             LIFECYCLE.restore(rename_stash, rename_destination)
         except (FileExistsError, SystemExit):
             pass
+        except OSError as error:
+            if error.errno != errno.ENOTEMPTY:
+                raise
         else:
             raise SystemExit("restore rename race unexpectedly succeeded")
     finally:
