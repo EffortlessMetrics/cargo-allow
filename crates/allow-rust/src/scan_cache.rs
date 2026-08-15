@@ -15,6 +15,7 @@
 //! re-parse. Correctness is never compromised — the cache only skips work
 //! that would produce identical findings.
 
+#[cfg(feature = "syntax")]
 use crate::scan_rust_source_with_completeness;
 use allow_core::{CargoAllowResult, Finding};
 use std::collections::HashMap;
@@ -46,6 +47,7 @@ impl ScanCache {
     /// Returns `(findings, has_parse_error, skipped)`. When `skipped` is true,
     /// the file could not be read (oversized, binary, permission-denied) and
     /// the caller should count it as a skipped file (#2801).
+    #[cfg(feature = "syntax")]
     pub fn scan_file(
         &mut self,
         root: &Path,
@@ -112,6 +114,7 @@ impl ScanCache {
 
     /// Scan multiple files, using the cache for unchanged files.
     /// Returns findings for all `.rs` files in the list.
+    #[cfg(feature = "syntax")]
     pub fn scan_files(&mut self, root: &Path, files: &[PathBuf]) -> CargoAllowResult<Vec<Finding>> {
         let mut out = Vec::new();
         for rel in files {
