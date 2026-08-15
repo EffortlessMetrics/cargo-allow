@@ -1,7 +1,12 @@
-# cargo-allow schema and artifact catalog
+# cargo-allow core schema and artifact catalog
 
-The canonical machine-readable artifact contracts live in
-[`docs/schemas/`](../../schemas/README.md). The core cargo-allow artifacts are:
+This page is a core subset for quick orientation, not an exhaustive artifact inventory.
+The complete [cargo-allow schema catalog](../../schemas/README.md)
+is canonical and includes release-control, supporting-harness, and other
+non-governed contracts that are intentionally not repeated here.
+
+The canonical machine-readable artifact contracts live in the complete catalog
+linked above. The core cargo-allow artifacts are:
 
 | Artifact | Producer |
 | --- | --- |

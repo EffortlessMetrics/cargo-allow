@@ -348,12 +348,45 @@ fn cargo_allow_product_docs_are_independent_and_indexed() -> Result<(), String> 
         .map_err(|error| format!("read docs/README.md: {error}"))?;
     for doc in docs {
         let relative = format!("docs/products/cargo-allow/{doc}.md");
-        if !root.join(&relative).is_file() {
+        let path = root.join(&relative);
+        if !path.is_file() {
             return Err(format!("missing cargo-allow product doc {relative}"));
+        }
+        let content =
+            std::fs::read_to_string(&path).map_err(|error| format!("read {relative}: {error}"))?;
+        if !content.contains("cargo-allow") {
+            return Err(format!(
+                "cargo-allow product doc lacks identity: {relative}"
+            ));
         }
         let link = format!("products/cargo-allow/{doc}.md");
         if !index.contains(&link) {
             return Err(format!("docs/README.md does not link {link}"));
+        }
+    }
+    let command_reference =
+        std::fs::read_to_string(root.join("docs/products/cargo-allow/command-reference.md"))
+            .map_err(|error| format!("read command reference: {error}"))?;
+    for marker in [
+        "core command reference",
+        "not an exhaustive command inventory",
+        "published-command-registry.toml",
+    ] {
+        if !command_reference.contains(marker) {
+            return Err(format!(
+                "command reference lacks completeness marker {marker}"
+            ));
+        }
+    }
+    let schemas = std::fs::read_to_string(root.join("docs/products/cargo-allow/schemas.md"))
+        .map_err(|error| format!("read schema catalog: {error}"))?;
+    for marker in [
+        "core schema and artifact catalog",
+        "not an exhaustive artifact inventory",
+        "schemas/README.md",
+    ] {
+        if !schemas.contains(marker) {
+            return Err(format!("schema catalog lacks completeness marker {marker}"));
         }
     }
     Ok(())

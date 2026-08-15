@@ -1,4 +1,9 @@
-# cargo-allow command reference
+# cargo-allow core command reference
+
+This is a core quick-reference, not an exhaustive command inventory. The
+[published command registry](../../dogfood/fixtures/getting-started/published-command-registry.toml)
+is the canonical, complete list for the published `0.1.11` channel; consult it
+before treating a command as part of the supported install surface.
 
 The supported product command surface is the source-tree ledger and its
 review/evidence helpers:
@@ -16,9 +21,8 @@ review/evidence helpers:
 Use `--format json` where a machine-readable artifact is required. Mutation
 commands write receipts and should be run from a clean, reviewable lane.
 
-The published command set is pinned by
-[`published-command-registry.toml`](../../dogfood/fixtures/getting-started/published-command-registry.toml);
-source-candidate commands are not automatically published commands.
+The published command set is pinned by that registry; source-candidate commands
+are not automatically published commands.
 
 Claim boundary: command output describes source-tree observations and ledger
 state. It is not a compiler, semantic analyzer, test runner, or release proof.
