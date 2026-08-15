@@ -161,6 +161,16 @@ pub(crate) fn identity_owners(
     owners
 }
 
+pub(crate) fn forbidden_product_targets(
+    projection: &GovernanceProjection,
+) -> std::collections::BTreeMap<String, std::collections::BTreeSet<String>> {
+    projection
+        .forbidden_product_dependencies
+        .iter()
+        .map(|(from, targets)| (from.clone(), targets.iter().cloned().collect()))
+        .collect()
+}
+
 fn normalize_segment(value: &str) -> String {
     value.trim().replace('-', "_")
 }
