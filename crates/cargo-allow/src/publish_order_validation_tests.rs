@@ -8,7 +8,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-use allow_policy::product_packages::parse_product_package_topology_v2;
+use intent_model::parse_package_postures_v1;
 
 #[derive(Debug)]
 struct WorkspaceMember {
@@ -152,10 +152,9 @@ fn topology_release_order(root: &Path) -> Result<BTreeMap<String, u32>, String> 
     let path = root.join("policy/product-package-topology-v2.toml");
     let text =
         std::fs::read_to_string(&path).map_err(|err| format!("read {}: {err}", path.display()))?;
-    let topology = parse_product_package_topology_v2(&text)
+    let postures = parse_package_postures_v1(&text)
         .map_err(|err| format!("parse current V2 topology: {err}"))?;
-    Ok(topology
-        .package
+    Ok(postures
         .into_iter()
         .map(|entry| (entry.cargo_package_name, entry.release_order))
         .collect())

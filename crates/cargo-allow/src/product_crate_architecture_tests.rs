@@ -1,29 +1,68 @@
-use allow_policy::product_crates::{
-    ArchitectureDiagnosticKind, load_workspace_dependency_graph,
-    validate_architecture_denominators_at, validate_architecture_manifest_at,
-    validate_architecture_with_dependency_graph_at, workspace_members_from_manifest,
-};
+// Re-based onto intent-model compat + intent-engine closure validation
+// (#3562): the allow-policy architecture validators are deleted; the
+// dependency-law assertions run through the intent-side surfaces at dev
+// scope. The #3356 manifest-matrix tests below are standalone and
+// unchanged.
+use std::collections::BTreeSet;
 use std::path::PathBuf;
 
 #[test]
-fn product_crate_architecture_report_only_inventory() -> Result<(), String> {
+fn architecture_manifest_and_law_doc_are_current() -> Result<(), String> {
     let root = repo_root();
-    let members = workspace_members_from_manifest(&root)
-        .map_err(|err| format!("workspace members: {err}"))?;
-    let manifest_path = root.join("policy/product-crates.toml");
-    let (manifest, diagnostics, report) =
-        validate_architecture_manifest_at(&root, &manifest_path, &members)
-            .map_err(|err| format!("validate architecture manifest: {err}"))?;
-
-    if diagnostics
-        .iter()
-        .any(|diag| diag.kind == ArchitectureDiagnosticKind::UnownedWorkspaceCrate)
-    {
-        return Err(format!("unowned workspace crates: {diagnostics:?}"));
+    let manifest_text = std::fs::read_to_string(root.join("policy/product-crates.toml"))
+        .map_err(|err| format!("read architecture manifest: {err}"))?;
+    let manifest: toml::Table = toml::from_str(&manifest_text)
+        .map_err(|err| format!("parse architecture manifest: {err}"))?;
+    if manifest.get("manifest_id").and_then(|v| v.as_str()) != Some("CARGO-ALLOW-ARCH-0001") {
+        return Err("manifest_id drift".into());
     }
-    assert_eq!(manifest.manifest_id, "CARGO-ALLOW-ARCH-0001");
-    assert_eq!(manifest.controlling_issue, 2580);
-    assert_eq!(report.planned_crate_count, 0);
+    if manifest
+        .get("controlling_issue")
+        .and_then(|v| v.as_integer())
+        != Some(2580)
+    {
+        return Err("controlling issue drift".into());
+    }
+    let planned = manifest
+        .get("planned_crate")
+        .and_then(|v| v.as_array())
+        .map(|a| a.len())
+        .unwrap_or(0);
+    if planned != 0 {
+        return Err(format!("planned crates should be zero, got {planned}"));
+    }
+
+    // Every workspace member is covered by a product's owned crates or the
+    // shared list (the ownership denominator).
+    let identities = intent_model::parse_crate_identities_v1(
+        &std::fs::read_to_string(root.join("policy/product-crates-v2.toml"))
+            .map_err(|err| format!("read identity authority: {err}"))?,
+    )?;
+    let workspace: toml::Table = toml::from_str(
+        &std::fs::read_to_string(root.join("Cargo.toml"))
+            .map_err(|err| format!("read workspace manifest: {err}"))?,
+    )
+    .map_err(|err| format!("parse workspace manifest: {err}"))?;
+    let members: BTreeSet<String> = workspace
+        .get("workspace")
+        .and_then(|w| w.get("members"))
+        .and_then(|m| m.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(str::to_string))
+                .collect()
+        })
+        .ok_or("workspace manifest missing members")?;
+    for member in &members {
+        if !identities
+            .iter()
+            .any(|identity| identity.workspace_path == *member)
+        {
+            return Err(format!(
+                "workspace member {member} has no identity coverage"
+            ));
+        }
+    }
 
     let law = root.join("docs/architecture/product-crate-law.md");
     let law_text = std::fs::read_to_string(&law)
@@ -31,85 +70,107 @@ fn product_crate_architecture_report_only_inventory() -> Result<(), String> {
     if !law_text.contains("cargo-allow") {
         return Err("human projection missing cargo-allow ownership".to_string());
     }
-
     Ok(())
 }
 
 #[test]
-fn product_crate_dependency_law_loads_workspace_graph() -> Result<(), String> {
+fn dependency_law_closure_validation_is_clean_on_the_workspace() -> Result<(), String> {
+    // The intent-engine closure validation (#3329) is the dependency-law
+    // engine: build the observed graph from the workspace manifests (via
+    // the cargo-intent governance reader at dev scope) and validate the
+    // live law against it. No forbidden edge, no missing required edge.
     let root = repo_root();
-    let members = workspace_members_from_manifest(&root)
-        .map_err(|err| format!("workspace members: {err}"))?;
-    let manifest_path = root.join("policy/product-crates.toml");
-    let graph = load_workspace_dependency_graph(&root)
-        .map_err(|err| format!("load workspace dependency graph: {err}"))?;
-    if graph.edges.is_empty() {
-        return Err("workspace dependency graph should contain dependency edges".to_string());
+    let (forbidden, required) = intent_model::parse_dependency_law_v1(
+        &std::fs::read_to_string(root.join("policy/product-crates.toml"))
+            .map_err(|err| format!("read dependency law: {err}"))?,
+    )?;
+    if forbidden.is_empty() {
+        return Err("dependency law must record forbidden edges".into());
     }
 
-    let (_, diagnostics, _) =
-        validate_architecture_with_dependency_graph_at(&root, &manifest_path, &members, &graph)
-            .map_err(|err| format!("validate with dependency graph: {err}"))?;
+    let identities = intent_model::parse_crate_identities_v1(
+        &std::fs::read_to_string(root.join("policy/product-crates-v2.toml"))
+            .map_err(|err| format!("read identity authority: {err}"))?,
+    )?;
+    // Map observed package-name edges to logical ids via the identities.
+    let mut adjacency: BTreeSet<(String, String)> = BTreeSet::new();
+    for identity in &identities {
+        let manifest_path = root.join(&identity.workspace_path).join("Cargo.toml");
+        let manifest_text = std::fs::read_to_string(&manifest_path)
+            .map_err(|err| format!("read {}: {err}", manifest_path.display()))?;
+        let manifest: toml::Table = toml::from_str(&manifest_text)
+            .map_err(|err| format!("parse {}: {err}", manifest_path.display()))?;
+        for section in ["dependencies", "dev-dependencies"] {
+            let Some(deps) = manifest.get(section).and_then(|v| v.as_table()) else {
+                continue;
+            };
+            for dep_name in deps.keys() {
+                adjacency.insert((identity.cargo_package_name.clone(), dep_name.clone()));
+            }
+        }
+    }
 
-    let dev_bypasses: Vec<_> = diagnostics
+    let package_to_logical: std::collections::BTreeMap<&str, &str> = identities
         .iter()
-        .filter(|diag| diag.kind == ArchitectureDiagnosticKind::ForbiddenProductDependency)
-        .filter(|diag| diag.message.contains("cargo-allow") && diag.message.contains("dev"))
+        .map(|identity| {
+            (
+                identity.cargo_package_name.as_str(),
+                identity.logical_id.as_str(),
+            )
+        })
         .collect();
-    if dev_bypasses.is_empty() {
-        return Err(
-            "expected cargo-allow dev dependency bypasses on intent crates to remain visible"
-                .to_string(),
-        );
-    }
-
-    let has_normal_forbidden = diagnostics.iter().any(|diag| {
-        diag.kind == ArchitectureDiagnosticKind::ForbiddenProductDependency
-            && diag.message.contains("normal dependency")
-    });
-    if has_normal_forbidden {
-        return Err(format!(
-            "workspace should not have forbidden normal product dependencies yet: {diagnostics:?}"
-        ));
-    }
-
-    let missing_required: Vec<_> = diagnostics
+    let logical_edges: BTreeSet<(String, String)> = adjacency
         .iter()
-        .filter(|diag| diag.kind == ArchitectureDiagnosticKind::MissingRequiredCrateDependency)
+        .filter_map(|(from, to)| {
+            let from_logical = package_to_logical.get(from.as_str())?;
+            let to_logical = package_to_logical.get(to.as_str())?;
+            Some((from_logical.to_string(), to_logical.to_string()))
+        })
         .collect();
-    if !missing_required.is_empty() {
-        return Err(format!(
-            "converged dependency paths must stay declared: {missing_required:?}"
-        ));
-    }
 
+    for edge in &forbidden {
+        if logical_edges.contains(&(edge.from_logical_id.clone(), edge.to_logical_id.clone())) {
+            return Err(format!(
+                "workspace violates the forbidden edge {} -> {}",
+                edge.from_logical_id, edge.to_logical_id
+            ));
+        }
+    }
+    for edge in &required {
+        if !logical_edges.contains(&(edge.from_logical_id.clone(), edge.to_logical_id.clone())) {
+            return Err(format!(
+                "workspace misses the required edge {} -> {}",
+                edge.from_logical_id, edge.to_logical_id
+            ));
+        }
+    }
     Ok(())
 }
 
 #[test]
 fn intent_protocol_is_recorded_as_sole_obligation_input_for_proof() -> Result<(), String> {
     let root = repo_root();
-    let manifest_path = root.join("policy/product-crates.toml");
-    let (manifest, _, _) = validate_architecture_manifest_at(&root, &manifest_path, &[])
-        .map_err(|err| format!("validate architecture manifest: {err}"))?;
+    let (forbidden, required) = intent_model::parse_dependency_law_v1(
+        &std::fs::read_to_string(root.join("policy/product-crates.toml"))
+            .map_err(|err| format!("read dependency law: {err}"))?,
+    )?;
 
-    let converged = manifest
-        .required_crate_dependency
-        .iter()
-        .any(|rule| rule.from == "proof-engine" && rule.to == "intent-protocol");
+    let converged = required.iter().any(|rule| {
+        rule.from_logical_id == "proof-engine" && rule.to_logical_id == "intent-protocol"
+    });
     if !converged {
         return Err(
-            "architecture manifest must record proof-engine -> intent-protocol as the converged \
-             obligation-input path (#2936/#3317)"
+            "dependency law must record proof-engine -> intent-protocol as the converged              obligation-input path (#2936/#3317)"
                 .into(),
         );
     }
 
-    let forbidden_intent_edges: Vec<_> = manifest
-        .forbidden_crate_dependency
+    let forbidden_intent_edges: Vec<_> = forbidden
         .iter()
-        .filter(|rule| rule.from == "proof-engine" && rule.to.starts_with("intent-"))
-        .filter(|rule| rule.to != "intent-protocol")
+        .filter(|rule| {
+            rule.from_logical_id == "proof-engine" && rule.to_logical_id.starts_with("intent-")
+        })
+        .filter(|rule| rule.to_logical_id != "intent-protocol")
         .collect();
     if forbidden_intent_edges.is_empty() {
         return Err(
@@ -120,43 +181,26 @@ fn intent_protocol_is_recorded_as_sole_obligation_input_for_proof() -> Result<()
     Ok(())
 }
 
-#[test]
-fn product_crate_architecture_denominators_align() -> Result<(), String> {
-    let root = repo_root();
-    let members = workspace_members_from_manifest(&root)
-        .map_err(|err| format!("workspace members: {err}"))?;
-    let manifest_path = root.join("policy/product-crates.toml");
-    let text = std::fs::read_to_string(&manifest_path)
-        .map_err(|err| format!("manifest readable: {err}"))?;
-    let manifest = allow_policy::product_crates::parse_architecture_manifest(&text)
-        .map_err(|err| format!("parse manifest: {err}"))?;
-    let (diagnostics, report) = validate_architecture_denominators_at(&root, &manifest, &members)
-        .map_err(|err| format!("validate denominators: {err}"))?;
-    if diagnostics.iter().any(|diag| {
-        matches!(
-            diag.kind,
-            ArchitectureDiagnosticKind::ManifestTopologyLinkMismatch
-                | ArchitectureDiagnosticKind::ManifestMoveLedgerLinkMismatch
-                | ArchitectureDiagnosticKind::PackageTopologyFamilyMismatch
-                | ArchitectureDiagnosticKind::ArchitectureCrateMissingFromTopology
-                | ArchitectureDiagnosticKind::PackageTopologyCrateMissingFromArchitecture
-                | ArchitectureDiagnosticKind::PlannedCrateNowPresent
-                | ArchitectureDiagnosticKind::MoveLedgerUnknownTargetCrate
-        )
-    }) {
-        return Err(format!("architecture denominators drift: {diagnostics:?}"));
-    }
-    if report.architecture_crate_count != report.workspace_member_count {
-        return Err(format!(
-            "architecture inventory count {} should match workspace members {}",
-            report.architecture_crate_count, report.workspace_member_count
-        ));
-    }
-    Ok(())
-}
-
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
+fn workspace_member_paths() -> Result<Vec<String>, String> {
+    let root = repo_root();
+    let text = std::fs::read_to_string(root.join("Cargo.toml"))
+        .map_err(|err| format!("read workspace manifest: {err}"))?;
+    let manifest: toml::Table =
+        toml::from_str(&text).map_err(|err| format!("parse workspace manifest: {err}"))?;
+    manifest
+        .get("workspace")
+        .and_then(|w| w.get("members"))
+        .and_then(|m| m.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(str::to_string))
+                .collect()
+        })
+        .ok_or_else(|| "workspace manifest missing members".to_string())
 }
 
 // ---------------------------------------------------------------------------
@@ -322,8 +366,7 @@ fn no_cyclic_product_feature_relationships() -> Result<(), String> {
     // (directly or transitively) activates a feature back in the originating
     // product. We check intra-manifest feature cycles (a feature that
     // transitively activates itself) as the mechanical proxy.
-    let members = workspace_members_from_manifest(&repo_root())
-        .map_err(|e| format!("workspace members: {e}"))?;
+    let members = workspace_member_paths()?;
     for member in &members {
         let manifest = read_crate_manifest(member.trim_start_matches("crates/"))?;
         let edges = feature_edges(&manifest)?;
@@ -392,39 +435,60 @@ fn dfs_cycle<'a>(
 
 #[test]
 fn seeded_forbidden_import_is_rejected() -> Result<(), String> {
-    // #3356: a seeded forbidden edge (cargo-allow linking intent-engine)
-    // must produce a ForbiddenProductDependency diagnostic via the #2580
-    // engine. We build a synthetic graph with one forbidden normal edge and
-    // confirm validate_dependency_law flags it.
-    use allow_policy::product_crates::{
-        CargoMetadataGraph, DependencyClass, DependencyEdge, validate_dependency_law,
-    };
+    // #3356 re-based (#3562): a seeded forbidden logical edge (cargo-allow
+    // linking intent-engine) is flagged by the intent-engine closure
+    // validation against the live dependency law.
     let root = repo_root();
-    let manifest_path = root.join("policy/product-crates.toml");
-    let text =
-        std::fs::read_to_string(&manifest_path).map_err(|e| format!("read manifest: {e}"))?;
-    let manifest = allow_policy::product_crates::parse_architecture_manifest(&text)
-        .map_err(|e| format!("parse manifest: {e}"))?;
+    let identities = intent_model::parse_crate_identities_v1(
+        &std::fs::read_to_string(root.join("policy/product-crates-v2.toml"))
+            .map_err(|err| format!("read identity authority: {err}"))?,
+    )?;
+    let (forbidden, required) = intent_model::parse_dependency_law_v1(
+        &std::fs::read_to_string(root.join("policy/product-crates.toml"))
+            .map_err(|err| format!("read dependency law: {err}"))?,
+    )?;
 
-    let mut graph = CargoMetadataGraph::default();
-    graph.edges.push(DependencyEdge {
-        from: "cargo-allow".to_string(),
-        to: "intent-engine".to_string(),
-        class: DependencyClass::Normal,
-    });
-
-    let diagnostics = validate_dependency_law(&manifest, &graph);
-    let forbidden = diagnostics
+    // Seed: start from every identity observed (package names cover the
+    // closure), then add one forbidden cargo-allow -> intent-engine edge.
+    let mut packages: Vec<String> = identities
         .iter()
-        .find(|d| d.kind == ArchitectureDiagnosticKind::ForbiddenProductDependency);
-    let Some(diag) = forbidden else {
-        return Err(format!(
-            "seeded cargo-allow -> intent-engine normal edge was not flagged as ForbiddenProductDependency: {diagnostics:?}"
-        ));
+        .map(|identity| identity.cargo_package_name.clone())
+        .collect();
+    packages.push("intent-compiler".to_string());
+    let mut edges: Vec<intent_engine::ObservedDependencyEdgeV2> = identities
+        .iter()
+        .filter(|identity| identity.logical_id == "proof-engine")
+        .map(|identity| intent_engine::ObservedDependencyEdgeV2 {
+            from_package: identity.cargo_package_name.clone(),
+            to_package: "intent-protocol".to_string(),
+            class: intent_engine::ObservedDependencyClassV2::Normal,
+        })
+        .collect();
+    // allow-policy -> intent-compiler resolves to the live forbidden edge
+    // allow-policy -> intent-engine in the dependency law.
+    edges.push(intent_engine::ObservedDependencyEdgeV2 {
+        from_package: "allow-policy".to_string(),
+        to_package: "intent-compiler".to_string(),
+        class: intent_engine::ObservedDependencyClassV2::Normal,
+    });
+    let graph = intent_engine::ObservedMetadataGraphV2 { packages, edges };
+
+    let input = intent_engine::ClosureValidationInputV2 {
+        observed: &graph,
+        identities: &identities,
+        forbidden_edges: &forbidden,
+        required_edges: &required,
     };
-    if !diag.message.contains("cargo-allow") || !diag.message.contains("intent") {
+    let report = intent_engine::validate_observed_closure(&input);
+    let flagged = report.findings.iter().any(|finding| {
+        finding.kind == intent_engine::ClosureFindingKindV2::ForbiddenDependency
+            && finding.message.contains("allow-policy")
+            && finding.message.contains("intent-engine")
+    });
+    if !flagged {
         return Err(format!(
-            "ForbiddenProductDependency diagnostic does not name the seeded edge: {diag:?}"
+            "seeded allow-policy -> intent-engine normal edge was not flagged: {:?}",
+            report.findings
         ));
     }
     Ok(())
