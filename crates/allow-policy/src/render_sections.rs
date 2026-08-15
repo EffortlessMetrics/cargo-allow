@@ -106,4 +106,15 @@ pub(crate) fn render_requirements(out: &mut String, requirements: &Requirements)
         "safety_comment_required",
         requirements.unsafe_safety_comment_required,
     );
+    // Optional, and the only non-bool field in this section. It must round-trip:
+    // dropping it silently lifts the grandfathering window, which retroactively
+    // invalidates every pre-cutoff unsafe entry the moment a mutating command
+    // rewrites the ledger (#3237).
+    if let Some(cutoff) = &requirements.unsafe_verified_evidence_grandfather_entries_created_before
+    {
+        out.push_str(&format!(
+            "verified_evidence_grandfather_entries_created_before = \"{}\"\n",
+            escape_toml(cutoff)
+        ));
+    }
 }

@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  Preserve `requirements.unsafe.verified_evidence_grandfather_entries_created_before`
+  when a mutating command rewrites the ledger. The policy loader read the
+  grandfathering cutoff but the renderer never emitted it, so `add --update`,
+  `add --from-plan --update`, and `migrate --update` silently dropped it. That
+  lifted the grandfathering window and retroactively invalidated every unsafe
+  entry created before the cutoff, leaving a ledger that no longer loaded. The
+  renderer now round-trips the field, and a render/parse test covers both the
+  present and absent cases (#3237).
