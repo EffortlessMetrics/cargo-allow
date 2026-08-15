@@ -283,6 +283,12 @@ fn integration_test_dependency_import_matching_handles_multiline_use_and_comment
     ) {
         return Err("qualified dependency path was not recognized".to_string());
     }
+    if !super::rust_source_uses_dependency(
+        "/* product_b::fake /* nested product_b::fake */ still fake */\nlet c = ':';\nproduct_b::real_api();\n",
+        &aliases,
+    ) {
+        return Err("qualified path after nested comment was not recognized".to_string());
+    }
     Ok(())
 }
 
