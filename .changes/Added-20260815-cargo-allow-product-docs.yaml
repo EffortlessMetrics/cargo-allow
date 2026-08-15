@@ -1,0 +1,6 @@
+kind: Added
+body: >-
+  Add independent cargo-allow getting-started, command-reference, schema,
+  limitation, compatibility, support/security, and release-note surfaces
+  linked from the integrated docs index. The pages preserve the checked
+  cargo-allow support matrix and cross-product opt-in claim boundary (#3447).
