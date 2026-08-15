@@ -25,28 +25,128 @@
 #   bash scripts/exact-candidate-package-set.sh
 #
 # Optional:
-#   WORK_DIR=<path>           work root (default: target/exact-candidate-package-set)
-#   SKIP_PACKAGE=1            reuse WORK_DIR/packages without re-packing
+#   PACKAGE_INPUT_DIR=<path>  prebuilt .crate input for SKIP_PACKAGE=1
+#   SKIP_PACKAGE=1            reuse PACKAGE_INPUT_DIR without re-packing
 #   SKIP_NEGATIVES=1          skip negative controls (debug only)
 #   SKIP_LOCAL_REGISTRY=1     reuse OFFLINE_ROOT/local-registry if present (debug only)
 #   ALLOW_DIRTY=1             pass --allow-dirty to cargo package (local debug only)
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "${ROOT}"
+SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+lifecycle="${SCRIPT_ROOT}/scripts/candidate-harness-owned-dir.py"
+command -v python3 >/dev/null 2>&1 || { printf 'exact-candidate-package-set: error: python3 is required\n' >&2; exit 1; }
 
-work_dir="${WORK_DIR:-${ROOT}/target/exact-candidate-package-set}"
-packages_dir="${work_dir}/packages"
+if [[ "${1:-}" != "--internal" ]]; then
+  package_input_source="${PACKAGE_INPUT_DIR:-${SCRIPT_ROOT}/target/package-candidate-smoke/packages}"
+  temp_root="${CANDIDATE_HARNESS_TEST_ROOT:-${TMPDIR:-/tmp}}"
+  python3 "${lifecycle}" validate-test-root --root "${temp_root}" --repository "${SCRIPT_ROOT}" >/dev/null
+  snapshot_json="$(python3 "${lifecycle}" snapshot --root "${temp_root}" --repository "${SCRIPT_ROOT}" --purpose exact-candidate-package-snapshot)"
+  read -r snapshot_root snapshot_token snapshot_head < <(
+    printf '%s' "${snapshot_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"], v["git_head"])'
+  )
+  if [[ "${SKIP_PACKAGE:-0}" == "1" ]]; then
+    PACKAGE_INPUT_DIR="$(python3 - "${package_input_source}" "${snapshot_root}" "${snapshot_head}" <<'PY'
+import hashlib
+import json
+import shutil
+import sys
+from pathlib import Path
+
+raw = Path(sys.argv[1])
+snapshot = Path(sys.argv[2]).resolve(strict=True)
+head = sys.argv[3]
+if not str(raw).strip() or not raw.exists() or raw.is_symlink() or not raw.is_dir():
+    raise SystemExit("SKIP_PACKAGE=1 requires an existing non-symlink PACKAGE_INPUT_DIR directory")
+source = raw.resolve(strict=True)
+direct = list(source.glob("*.crate"))
+if not direct:
+    candidate = source / "target" / "package-candidate-smoke" / "packages"
+    if candidate.exists() and not candidate.is_symlink() and candidate.is_dir():
+        source = candidate.resolve(strict=True)
+        direct = list(source.glob("*.crate"))
+if not direct:
+    raise SystemExit(f"SKIP_PACKAGE=1 found no .crate files under {raw}")
+if any(not item.is_file() or item.is_symlink() for item in direct):
+    raise SystemExit("PACKAGE_INPUT_DIR contains a symlink or non-file .crate input")
+destination = snapshot / "target" / "package-candidate-smoke" / "packages"
+destination.mkdir(parents=True, exist_ok=False)
+records = []
+for item in sorted(direct):
+    target = destination / item.name
+    shutil.copyfile(item, target)
+    digest = hashlib.sha256(target.read_bytes()).hexdigest()
+    records.append({"name": item.name, "bytes": target.stat().st_size, "sha256": digest})
+provenance = destination / ".package-input-provenance.json"
+provenance.write_text(json.dumps({
+    "schema": "cargo-allow.package-input-provenance.v1",
+    "source": str(source),
+    "snapshot": str(snapshot),
+    "git_head": head,
+    "files": records,
+}, indent=2) + "\n", encoding="utf-8")
+print(destination)
+PY
+)"
+    export PACKAGE_INPUT_DIR
+  fi
+  snapshot_cleanup() {
+    python3 "${lifecycle}" remove --root "${temp_root}" --path "${snapshot_root}" \
+      --purpose exact-candidate-package-snapshot --token "${snapshot_token}"
+  }
+  trap snapshot_cleanup EXIT
+  bash "${BASH_SOURCE[0]}" --internal "${snapshot_root}" "${snapshot_token}" "${snapshot_head}"
+  exit $?
+fi
+
+[[ "$#" -eq 4 ]] || { printf 'exact-candidate-package-set: error: invalid internal invocation\n' >&2; exit 1; }
+snapshot_root="$2"
+snapshot_token="$3"
+snapshot_head="$4"
+export CANDIDATE_HARNESS_ROOT="$snapshot_root" CANDIDATE_HARNESS_GIT_HEAD="$snapshot_head"
+python3 "${lifecycle}" verify --root "${CANDIDATE_HARNESS_TEST_ROOT:-${TMPDIR:-/tmp}}" \
+  --path "${snapshot_root}" --purpose exact-candidate-package-snapshot \
+  --token "${snapshot_token}" --git-head "${snapshot_head}" --repository "${SCRIPT_ROOT}"
+
+ROOT="${CANDIDATE_HARNESS_ROOT}"
+cd "${ROOT}"
+if [[ "${CANDIDATE_HARNESS_SNAPSHOT_PROBE:-0}" == "1" && "${CANDIDATE_HARNESS_TEST_INJECTION:-0}" == "1" ]]; then
+  [[ "${ROOT}" != "${SCRIPT_ROOT}" && -f "${ROOT}/Cargo.toml" && -d "${ROOT}/crates" ]]
+  if [[ "${SKIP_PACKAGE:-0}" == "1" ]]; then
+    [[ -f "${ROOT}/target/package-candidate-smoke/packages/.package-input-provenance.json" ]]
+    [[ -n "$(find "${ROOT}/target/package-candidate-smoke/packages" -maxdepth 1 -type f -name '*.crate' -print -quit)" ]]
+  fi
+  printf 'exact-candidate-package-set: disposable snapshot ok\n'
+  exit 0
+fi
+
+output_root="${SCRIPT_ROOT}/target"
+python3 "${lifecycle}" validate-target --repository "${SCRIPT_ROOT}" --path "${output_root}"
+mkdir -p "${output_root}"
+python3 "${lifecycle}" validate-target --repository "${SCRIPT_ROOT}" --path "${output_root}"
+exact_parent="${output_root}/exact-candidate-package-set"
+if [[ ! -e "${exact_parent}" ]]; then
+  mkdir "${exact_parent}"
+fi
+python3 "${lifecycle}" validate-contained --root "${output_root}" --path "${exact_parent}" >/dev/null
+work_json="$(python3 "${lifecycle}" allocate --root "${exact_parent}" --purpose exact-candidate-package-set)"
+read -r work_dir work_token < <(
+  printf '%s' "${work_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
+)
+packages_dir="${exact_parent}/packages"
 # Extracted packages must live outside the workspace tree; otherwise Cargo
 # walks up to the repo Cargo.toml and treats them as workspace members.
-offline_root="${OFFLINE_ROOT:-$(mktemp -d "${TMPDIR:-/tmp}/cargo-allow-ecps-offline.XXXXXX")}"
+offline_parent="${CANDIDATE_HARNESS_TEST_ROOT:-${TMPDIR:-/tmp}}"
+offline_json="$(python3 "${lifecycle}" allocate --root "${offline_parent}" --purpose exact-candidate-package-offline)"
+read -r offline_root offline_token < <(
+  printf '%s' "${offline_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
+)
 extracted_dir="${offline_root}/extracted"
 cargo_home="${offline_root}/cargo-home"
 local_registry_dir="${offline_root}/local-registry"
 install_cargo_home="${offline_root}/install-cargo-home"
 target_dir="${offline_root}/target"
-install_root="${offline_root}/install"
-receipt="${work_dir}/exact-candidate-package-set.receipt.json"
+install_root="${exact_parent}/install"
+receipt="${exact_parent}/exact-candidate-package-set.receipt.json"
 crate_set_fixture="${ROOT}/docs/dogfood/fixtures/release/candidate-crate-set.toml"
 schema_id="cargo-allow.exact-candidate-package-set.v1"
 crate_set_schema_id="cargo-allow.candidate-crate-set.v1"
@@ -54,16 +154,20 @@ crates_path="${ROOT}/crates"
 crates_stash="${work_dir}/crates-source-stash"
 
 restore_source_checkout() {
-  if [[ -d "${crates_stash}" && ! -e "${crates_path}" ]]; then
-    mv "${crates_stash}" "${crates_path}"
+  if [[ -d "${crates_stash}" ]]; then
+    [[ ! -e "${crates_path}" ]] || fail "refusing to overwrite existing crates/ during restore"
+    python3 "${lifecycle}" restore --stash "${crates_stash}" --destination "${crates_path}"
   fi
 }
 
 cleanup_offline() {
   restore_source_checkout
   if [[ "${KEEP_OFFLINE:-0}" != "1" ]]; then
-    rm -rf "${offline_root}"
+    python3 "${lifecycle}" remove --root "${offline_parent}" --path "${offline_root}" \
+      --purpose exact-candidate-package-offline --token "${offline_token}"
   fi
+  python3 "${lifecycle}" remove --root "${exact_parent}" --path "${work_dir}" \
+    --purpose exact-candidate-package-set --token "${work_token}"
 }
 trap cleanup_offline EXIT
 
@@ -77,7 +181,6 @@ fail() {
 }
 
 command -v cargo >/dev/null 2>&1 || fail "cargo is required"
-command -v python3 >/dev/null 2>&1 || fail "python3 is required"
 command -v tar >/dev/null 2>&1 || fail "tar is required"
 
 read_workspace_version() {
@@ -135,29 +238,24 @@ done
 version="$(read_workspace_version)"
 [[ -n "${version}" ]] || fail "could not read workspace.package.version"
 
-git_head=""
-if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  git_head="$(git rev-parse HEAD 2>/dev/null || true)"
-fi
+git_head="${CANDIDATE_HARNESS_GIT_HEAD:-}"
 
-package_staging=""
 if [[ "${SKIP_PACKAGE:-0}" == "1" ]]; then
-  package_staging="$(mktemp -d "${TMPDIR:-/tmp}/cargo-allow-ecps-packages.XXXXXX")"
   shopt -s nullglob
-  staged=("${packages_dir}"/*.crate)
+  package_input_dir="${PACKAGE_INPUT_DIR:-}"
+  [[ -n "${package_input_dir}" && -d "${package_input_dir}" ]] \
+    || fail "SKIP_PACKAGE=1 requires PACKAGE_INPUT_DIR"
+  staged=("${package_input_dir}"/*.crate)
   shopt -u nullglob
   [[ "${#staged[@]}" -gt 0 ]] \
-    || fail "SKIP_PACKAGE=1 but no .crate files under ${packages_dir}"
-  cp "${staged[@]}" "${package_staging}/"
+    || fail "SKIP_PACKAGE=1 but no .crate files under ${package_input_dir}"
 fi
 
-rm -rf "${work_dir}"
 mkdir -p "${packages_dir}" "${extracted_dir}" "${cargo_home}" "${target_dir}" "${install_root}" "${work_dir}/install/bin" "${local_registry_dir}"
 
 if [[ "${SKIP_PACKAGE:-0}" == "1" ]]; then
   log "SKIP_PACKAGE=1; restoring prebuilt packages"
-  cp "${package_staging}"/*.crate "${packages_dir}/"
-  rm -rf "${package_staging}"
+  cp "${staged[@]}" "${packages_dir}/"
 else
   log "packaging workspace crates with cargo package --workspace --locked"
   package_flags=(--workspace --locked)
@@ -206,7 +304,6 @@ for crate in "${crates[@]}"; do
   src="${packages_dir}/${crate_file}"
   [[ -f "${src}" ]] || fail "missing ${src}"
   dest="${extracted_dir}/${crate}-${crate_version}"
-  rm -rf "${dest}"
   mkdir -p "${dest}"
   tar --force-local -xzf "${src}" -C "${extracted_dir}"
   [[ -d "${dest}" ]] || fail "extract missing ${dest}"
@@ -316,7 +413,6 @@ else
 fi
 
 install_config="${install_cargo_home}/config.toml"
-rm -rf "${install_cargo_home}"
 mkdir -p "${install_cargo_home}"
 registry_native="$(to_cargo_path "${local_registry_dir}")"
 cat >"${install_config}" <<EOF
@@ -332,10 +428,9 @@ log "installing cargo-allow offline from extracted package via local-registry"
 log "denying workspace source checkout (renaming crates/) during decisive install"
 [[ -d "${crates_path}" ]] || fail "expected workspace crates/ at ${crates_path}"
 restore_source_checkout
-rm -rf "${crates_stash}"
-mv "${crates_path}" "${crates_stash}"
+[[ ! -e "${crates_stash}" ]] || fail "refusing to overwrite pre-existing crates stash"
+python3 "${lifecycle}" restore --stash "${crates_path}" --destination "${crates_stash}"
 [[ ! -e "${crates_path}" ]] || fail "crates/ still present after stash for source-checkout denial"
-rm -rf "${install_root}"
 mkdir -p "${install_root}"
 set +e
 CARGO_HOME="${install_cargo_home}" CARGO_TARGET_DIR="${target_dir}" \
@@ -446,7 +541,6 @@ if [[ "${SKIP_NEGATIVES:-0}" != "1" ]]; then
   log "negative: omit allow-core from patch"
   neg_home="${work_dir}/neg-omit-home"
   neg_target="${work_dir}/neg-omit-target"
-  rm -rf "${neg_home}" "${neg_target}"
   mkdir -p "${neg_home}" "${neg_target}"
   write_patch_config "${neg_home}/config.toml" "allow-core"
   set +e
@@ -518,7 +612,6 @@ PY
 
   log "negative: injected normalized path dependency"
   path_leak_dir="${work_dir}/neg-path-leak/allow-core-${version}"
-  rm -rf "${work_dir}/neg-path-leak"
   mkdir -p "${work_dir}/neg-path-leak"
   cp -R "${extracted_dir}/allow-core-${version}" "${path_leak_dir}"
   python3 - "${path_leak_dir}/Cargo.toml" <<'PY'
@@ -559,7 +652,6 @@ PY
 
   log "negative: older/incompatible internal package version"
   version_conflict_dir="${work_dir}/neg-version/allow-core-${version}"
-  rm -rf "${work_dir}/neg-version"
   mkdir -p "${work_dir}/neg-version"
   cp -R "${extracted_dir}/allow-core-${version}" "${version_conflict_dir}"
   python3 - "${version_conflict_dir}/Cargo.toml" <<'PY'
@@ -580,7 +672,6 @@ path.write_text(text2, encoding="utf-8")
 PY
   version_home="${work_dir}/neg-version-home"
   version_target="${work_dir}/neg-version-target"
-  rm -rf "${version_home}" "${version_target}"
   mkdir -p "${version_home}" "${version_target}"
   {
     echo '# Generated negative: incompatible allow-core version'
@@ -643,7 +734,6 @@ PY
 
   log "negative: omit candidate from local-registry"
   omit_registry_dir="${work_dir}/neg-omit-local-registry"
-  rm -rf "${omit_registry_dir}"
   mkdir -p "${omit_registry_dir}"
   # Copy local-registry tree but drop allow-core .crate and index entry.
   python3 - "$(to_cargo_path "${local_registry_dir}")" "$(to_cargo_path "${omit_registry_dir}")" \
@@ -692,7 +782,6 @@ print("omitted", name, version)
 PY
   omit_registry_home="${work_dir}/neg-omit-local-registry-home"
   omit_registry_target="${work_dir}/neg-omit-local-registry-target"
-  rm -rf "${omit_registry_home}" "${omit_registry_target}"
   mkdir -p "${omit_registry_home}" "${omit_registry_target}"
   omit_registry_native="$(to_cargo_path "${omit_registry_dir}")"
   cat >"${omit_registry_home}/config.toml" <<EOF
@@ -752,7 +841,6 @@ PY
   # file they declare. Stripping license and deleting README.md must classify
   # ManifestMalformed (fail closed).
   malformed_dir="${work_dir}/neg-malformed/allow-core-${version}"
-  rm -rf "${work_dir}/neg-malformed"
   mkdir -p "${work_dir}/neg-malformed"
   cp -R "${extracted_dir}/allow-core-${version}" "${malformed_dir}"
   python3 - "$(to_cargo_path "${malformed_dir}")" <<'PY'
@@ -1001,9 +1089,14 @@ log "receipt: ${receipt}"
 
 # Preserve the installed binary under the durable work_dir for CI reuse
 # (source-candidate-smoke) before the offline root is cleaned.
-durable_bin="${work_dir}/install/bin/cargo-allow"
+durable_bin="${exact_parent}/install/bin/cargo-allow"
 if [[ -f "${cargo_bin}.exe" || "${cargo_bin}" == *.exe ]]; then
   durable_bin="${durable_bin}.exe"
 fi
-cp "${cargo_bin}" "${durable_bin}"
-log "durable install copy: ${durable_bin}"
+if [[ "${cargo_bin}" == "${durable_bin}" ]]; then
+  log "durable install already at: ${durable_bin}"
+else
+  cp "${cargo_bin}" "${durable_bin}"
+  log "durable install copy: ${durable_bin}"
+fi
+package_set_passed=1

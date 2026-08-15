@@ -6444,7 +6444,7 @@ family = "shell_script"
 path = "scripts/source-candidate-smoke.sh"
 owner = "core/release"
 classification = "release_automation_script"
-reason = "Installed first-hour journey smoke emitting SourceCandidateSmokeReceiptV1 (#2278 Stage A+); path-install or CARGO_ALLOW_BIN reuse. Classified shell_script (filename lacks package/release/publish/deploy token)."
+reason = "Owned disposable-checkout first-hour journey smoke emitting SourceCandidateSmokeReceiptV1 (#2278 Stage A+); canonicalizes CARGO_ALLOW_BIN, never mutates the live checkout, and removes only marker-owned temporary paths. Classified shell_script (filename lacks package/release/publish/deploy token)."
 evidence = ["doc:docs/release/README.md", "test:example_source_candidate_smoke_receipt_matches_schema_constants", "issue:2278"]
 created = "2026-07-15"
 review_after = "2027-01-01"
@@ -6465,7 +6465,7 @@ family = "release_script"
 path = "scripts/exact-candidate-package-set.sh"
 owner = "core/release"
 classification = "release_automation_script"
-reason = "ExactCandidatePackageSetV1 harness: package/extract/local-registry-install ten-crate set and emit receipt (#2408 / #2372 / #2277)."
+reason = "ExactCandidatePackageSetV1 harness: package/extract/local-registry-install thirteen-crate set with marker-owned disposable lifecycle, source-hidden negative on a disposable checkout, and receipt emission (#3509 / #2408 / #2372 / #2277)."
 evidence = ["doc:docs/release/README.md", "test:example_exact_candidate_package_set_matches_schema_constants", "issue:2408", "issue:2372"]
 created = "2026-07-16"
 review_after = "2027-01-01"
@@ -11359,6 +11359,48 @@ review_after = "2027-02-01"
 ast_kind = "tracked_file"
 target_fingerprint = "sh"
 glob = "scripts/extraction-cutover-build-receipt.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11101"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/candidate-harness-owned-dir.py"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Marker/token-owned disposable directory lifecycle and disposable-checkout snapshot helper for candidate harness safety (#3509)."
+evidence = ["test:scripts/test-candidate-harness-lifecycle.py", "issue:3509"]
+created = "2026-08-13"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "py"
+glob = "scripts/candidate-harness-owned-dir.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11102"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test-candidate-harness-lifecycle.py"
+owner = "core/release"
+classification = "test_fixture"
+reason = "Adversarial lifecycle, forged-context, symlink, marker, and interrupted-cleanup characterization for candidate harness safety (#3509)."
+evidence = ["test:scripts/test-candidate-harness-lifecycle.py", "issue:3509"]
+created = "2026-08-13"
+review_after = "2027-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "py"
+glob = "scripts/test-candidate-harness-lifecycle.py"
 
 [allow.last_seen]
 line = 1
