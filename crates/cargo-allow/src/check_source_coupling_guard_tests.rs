@@ -19,6 +19,7 @@ fn fixture_manifest() -> GovernanceProjection {
             CrateIdentityProjection {
                 logical_id: "product-a".to_string(),
                 workspace_path: "crates/product-a".to_string(),
+                cargo_package_name: "product-a".to_string(),
                 workspace_dependency_aliases: vec!["product-a".to_string()],
                 rust_library_name: "product_a".to_string(),
                 product_or_shared_owner: "product-a".to_string(),
@@ -26,6 +27,7 @@ fn fixture_manifest() -> GovernanceProjection {
             CrateIdentityProjection {
                 logical_id: "product-b".to_string(),
                 workspace_path: "crates/product-b".to_string(),
+                cargo_package_name: "product-b".to_string(),
                 workspace_dependency_aliases: vec!["product-b".to_string()],
                 rust_library_name: "product_b".to_string(),
                 product_or_shared_owner: "product-b".to_string(),
@@ -33,6 +35,7 @@ fn fixture_manifest() -> GovernanceProjection {
             CrateIdentityProjection {
                 logical_id: "shared-protocol".to_string(),
                 workspace_path: "crates/shared-protocol".to_string(),
+                cargo_package_name: "shared-protocol".to_string(),
                 workspace_dependency_aliases: vec!["shared-protocol".to_string()],
                 rust_library_name: "shared_protocol".to_string(),
                 product_or_shared_owner: "shared".to_string(),
