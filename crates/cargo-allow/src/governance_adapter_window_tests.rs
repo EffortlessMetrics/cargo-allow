@@ -21,8 +21,9 @@ fn governance_compat_parsing_matches_allow_policy_authority() -> Result<(), Stri
     // Crate identities: V2 manifest (allow-policy) vs governance_v2 compat
     // (intent-model) must agree row for row.
     let identity_text = read("policy/product-crates-v2.toml")?;
-    let v2_manifest = allow_policy::product_crates::parse_architecture_manifest_v2(&identity_text)
-        .map_err(|err| format!("allow-policy V2 parse: {err}"))?;
+    let v2_manifest =
+        allow_policy::product_crates::v2::parse_architecture_manifest_v2(&identity_text)
+            .map_err(|err| format!("allow-policy V2 parse: {err}"))?;
     let compat_identities = intent_model::parse_crate_identities_v1(&identity_text)?;
     let v2_rows: BTreeSet<(String, String, String)> = v2_manifest
         .crate_identity

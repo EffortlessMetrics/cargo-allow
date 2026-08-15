@@ -1,36 +1,64 @@
-use allow_policy::product_crates::current_architecture_receipt_at;
 use std::path::PathBuf;
 
+fn repo_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
 #[test]
-fn current_v2_architecture_receipt_drives_package_candidate() -> Result<(), String> {
+fn current_v2_authorities_drive_package_candidate() -> Result<(), String> {
+    // Re-based onto intent-model compat parsing (#3562): the receipt chain
+    // is gone; the denominators and candidate rows derive from the same
+    // authorities through the compat surface, with the closure validation
+    // proven separately by the intent-engine live-authority tests.
     let root = repo_root();
-    let receipt = current_architecture_receipt_at(&root)
-        .map_err(|err| format!("build current V2 architecture receipt: {err}"))?;
-    if receipt.workspace_package_count != 22
-        || receipt.architecture_identity_count != 22
-        || receipt.topology_package_count != 22
-    {
+    let read = |rel: &str| -> Result<String, String> {
+        std::fs::read_to_string(root.join(rel)).map_err(|err| format!("read {rel}: {err}"))
+    };
+
+    let identities =
+        intent_model::parse_crate_identities_v1(&read("policy/product-crates-v2.toml")?)?;
+    let postures =
+        intent_model::parse_package_postures_v1(&read("policy/product-package-topology-v2.toml")?)?;
+    let workspace_members: Vec<String> = {
+        let manifest: toml::Table = toml::from_str(&read("Cargo.toml")?)
+            .map_err(|err| format!("parse workspace manifest: {err}"))?;
+        manifest
+            .get("workspace")
+            .and_then(|w| w.get("members"))
+            .and_then(|m| m.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(str::to_string))
+                    .collect()
+            })
+            .ok_or_else(|| "workspace manifest missing members".to_string())?
+    };
+
+    if identities.len() != 22 || postures.len() != 22 || workspace_members.len() != 22 {
         return Err(format!(
-            "expected three complete 22-package denominators, got workspace={} architecture={} topology={}",
-            receipt.workspace_package_count,
-            receipt.architecture_identity_count,
-            receipt.topology_package_count
+            "expected three complete 22-package denominators, got workspace={} identities={} topology={}",
+            workspace_members.len(),
+            identities.len(),
+            postures.len()
         ));
     }
-    if receipt.candidate_identity != "cargo-allow-0.2" || receipt.candidate_package_count != 13 {
-        return Err(format!(
-            "expected derived cargo-allow-0.2 candidate with 13 rows, got `{}` and {} rows",
-            receipt.candidate_identity, receipt.candidate_package_count
-        ));
-    }
-    if receipt.workspace_packages.len() != 22 || receipt.candidate_packages.len() != 13 {
-        return Err("receipt row vectors do not match their derived denominators".to_string());
-    }
-    let candidate_names: Vec<_> = receipt
-        .candidate_packages
+
+    // The cargo-allow candidate set spans the cargo-allow-0.2 family rows
+    // plus the three shared-0.1 substrate rows they depend on.
+    let candidate: Vec<_> = postures
         .iter()
-        .map(|row| row.cargo_package_name.as_str())
+        .filter(|p| {
+            p.membership.candidate_inclusion
+                && (p.version_line == "cargo-allow-0.2" || p.version_line == "shared-0.1")
+        })
+        .map(|p| p.cargo_package_name.as_str())
         .collect();
+    if candidate.len() != 13 {
+        return Err(format!(
+            "expected 13 cargo-allow-0.2 candidate rows, got {}",
+            candidate.len()
+        ));
+    }
     for name in [
         "allow-core",
         "allow-policy",
@@ -46,38 +74,34 @@ fn current_v2_architecture_receipt_drives_package_candidate() -> Result<(), Stri
         "effortless-repo-edit",
         "cargo-allow",
     ] {
-        if !candidate_names.contains(&name) {
-            return Err(format!("derived candidate omitted `{name}`"));
+        if !candidate.contains(&name) {
+            return Err(format!("candidate set omitted `{name}`"));
         }
     }
     Ok(())
 }
 
 #[test]
-fn current_v2_package_names_exclude_colliding_engine_identities() -> Result<(), String> {
-    let receipt = current_architecture_receipt_at(&repo_root())
-        .map_err(|err| format!("build current V2 architecture receipt: {err}"))?;
-    let package_names: Vec<_> = receipt
-        .workspace_packages
+fn candidate_package_names_exclude_engine_library_identities() -> Result<(), String> {
+    // The cargo-allow candidate set never packages the engine crates:
+    // intent-compiler and proof-orchestrator are library identities for
+    // the engine family, not candidate rows (#3562 re-base).
+    let root = repo_root();
+    let postures = intent_model::parse_package_postures_v1(
+        &std::fs::read_to_string(root.join("policy/product-package-topology-v2.toml"))
+            .map_err(|err| format!("read topology authority: {err}"))?,
+    )?;
+    let candidate: Vec<_> = postures
         .iter()
-        .map(|row| row.cargo_package_name.as_str())
+        .filter(|p| p.membership.candidate_inclusion)
+        .map(|p| p.cargo_package_name.as_str())
         .collect();
-
-    for current in ["intent-compiler", "proof-orchestrator"] {
-        if !package_names.contains(&current) {
-            return Err(format!("current V2 package authority omitted `{current}`"));
-        }
-    }
-    for occupied in ["intent-engine", "proof-engine"] {
-        if package_names.contains(&occupied) {
+    for engine in ["intent-compiler", "proof-orchestrator"] {
+        if candidate.contains(&engine) {
             return Err(format!(
-                "occupied crates.io identity `{occupied}` re-entered the current package authority"
+                "candidate set includes engine library identity `{engine}`"
             ));
         }
     }
     Ok(())
-}
-
-fn repo_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }

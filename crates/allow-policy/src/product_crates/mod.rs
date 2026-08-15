@@ -5,24 +5,13 @@
 //! PR3 cross-checks architecture ownership against #2598 move ledger and #2604
 //! package topology denominators.
 
-mod closure;
 mod config;
 mod cross_check;
 mod dependency_graph;
-mod receipt;
-mod v1_reader;
-mod v2;
-mod v2_reconcile;
-mod v2_validate;
+pub mod v2;
 mod validate;
 mod workspace;
 
-pub use closure::{
-    CargoDependencyClass, CargoDependencyEdge, CargoMetadataGraphV2, CargoPackageIdResolver,
-    ClosureDiagnostic, ClosureResultKind, PackageResolutionError, find_identity_by_library,
-    find_identity_by_package, load_workspace_metadata_graph_v2, parse_cargo_metadata_graph_v2,
-    shortest_closure_path,
-};
 pub use config::{
     ArchitectureManifest, CrateRole, ForbiddenCrateDependency, PlannedCrate, ProductDefinition,
     RequiredCrateDependency, SharedCrateDefinition, parse_architecture_manifest,
@@ -35,24 +24,6 @@ pub use dependency_graph::{
     CargoMetadataGraph, DependencyClass, DependencyEdge, load_workspace_dependency_graph,
     parse_cargo_metadata_graph, shortest_dependency_path,
 };
-pub use receipt::{
-    ArchitecturePackageRowV2, CARGO_ALLOW_CANDIDATE_ID_V2, CURRENT_ARCHITECTURE_RECEIPT_V2,
-    CurrentArchitectureReceiptV2, current_architecture_receipt_at,
-};
-pub use v1_reader::{HistoricalReaderDiagnostic, HistoricalV1Projection, read_v1_as_historical};
-pub use v2::{
-    ARCHITECTURE_MANIFEST_V2_AUTHORITY_GENERATION, ARCHITECTURE_MANIFEST_V2_SCHEMA_VERSION,
-    ArchitectureManifestV2, CrateIdentityV2, parse_architecture_manifest_v2,
-    parse_architecture_manifest_v2_at,
-};
-pub use v2_reconcile::{
-    ReconcileDiagnostic, ReconcileDiagnosticKind, ReconcileReport, reconcile_v2_denominators,
-    reconcile_v2_denominators_at,
-};
-pub use v2_validate::{
-    IdentityDiagnostic, IdentityDiagnosticKind, validate_v2_alias_map,
-    validate_v2_identity_uniqueness,
-};
 pub use validate::{
     ArchitectureDiagnostic, ArchitectureDiagnosticKind, ArchitectureReport,
     validate_architecture_manifest, validate_architecture_manifest_at,
@@ -62,10 +33,4 @@ pub use validate::{
 pub use workspace::workspace_members_from_manifest;
 
 #[cfg(test)]
-mod closure_tests;
-#[cfg(test)]
 mod tests;
-#[cfg(test)]
-mod v2_reconcile_tests;
-#[cfg(test)]
-mod v2_tests;

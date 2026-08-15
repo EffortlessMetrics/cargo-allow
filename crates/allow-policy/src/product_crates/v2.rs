@@ -162,7 +162,7 @@ impl ArchitectureManifestV2Toml {
 ///
 /// Rejects `schema_version != "2.0"` and `authority_generation != 2` strictly.
 /// V1 manifests (`schema_version = "1.0"`) are never accepted here — use
-/// [`read_v1_as_historical`](crate::product_crates::read_v1_as_historical) for
+/// the historical V1 projection (deleted with the receipt chain in #3562) for
 /// migration. The link targets the public re-export; `v1_reader` itself is a
 /// private module and cannot be linked from public documentation.
 pub fn parse_architecture_manifest_v2(input: &str) -> CargoAllowResult<ArchitectureManifestV2> {
