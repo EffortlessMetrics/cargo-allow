@@ -274,6 +274,33 @@ fn integration_test_dependency_import_matching_handles_multiline_use_and_comment
     ) {
         return Err("comment or string falsely matched dependency".to_string());
     }
+    if !super::rust_source_uses_dependency("extern crate product_b;\n", &aliases) {
+        return Err("extern crate use was not recognized".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn integration_test_dependency_guard_rejects_malformed_manifest() -> Result<(), String> {
+    let manifest = fixture_manifest();
+    let forbidden = BTreeMap::new();
+    let tracked = BTreeSet::from([PathBuf::from("crates/product-a/tests/bad.rs")]);
+    let manifests = vec![(
+        PathBuf::from("crates/product-a/Cargo.toml"),
+        "[dev-dependencies\n".to_string(),
+    )];
+    let error = super::integration_test_dependency_diagnostics(
+        &manifest,
+        &forbidden,
+        &tracked,
+        &manifests,
+        &[],
+        &toml::map::Map::new(),
+    )
+    .expect_err("malformed manifest must fail closed");
+    if !error.to_string().contains("manifest parse failed") {
+        return Err(format!("unexpected malformed manifest error: {error}"));
+    }
     Ok(())
 }
 
