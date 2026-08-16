@@ -121,18 +121,15 @@ fn classify_line_endings(bytes: &[u8]) -> ChangieLineEndingClass {
     }
     let mut lf = 0usize;
     let mut crlf = 0usize;
-    let mut index = 0usize;
-    while index < bytes.len() {
-        match bytes[index] {
-            b'\r' if bytes.get(index + 1) == Some(&b'\n') => {
+    let mut iter = bytes.iter().copied().peekable();
+    while let Some(byte) = iter.next() {
+        match byte {
+            b'\r' if iter.peek() == Some(&b'\n') => {
                 crlf += 1;
-                index += 2;
+                iter.next();
             }
-            b'\n' => {
-                lf += 1;
-                index += 1;
-            }
-            _ => index += 1,
+            b'\n' => lf += 1,
+            _ => {}
         }
     }
     if lf == 0 && crlf == 0 {
@@ -504,7 +501,7 @@ fn parse_source(source: &ChangieSourceDocument) -> ParsedSource {
         };
     }
     let mut walker = Walker {
-        events: &events[..],
+        events: events.as_slice(),
         cursor: 0,
         path: Vec::new(),
         unsupported_fields: Vec::new(),
@@ -619,12 +616,12 @@ impl<'a> Walker<'a> {
                 self.cursor += 1;
                 let mut mapping = ChangieMapping::default();
                 loop {
-                    let (event, _) = {
+                    let (event, event_marker) = {
                         let (event, marker) = self.events.get(self.cursor)?;
                         (event.clone(), *marker)
                     };
                     if matches!(event, yaml_rust2::parser::Event::MappingEnd) {
-                        let end = self.events[self.cursor].1;
+                        let end = event_marker;
                         self.cursor += 1;
                         return Some(ChangieNode {
                             value: ChangieValue::Mapping(mapping),
