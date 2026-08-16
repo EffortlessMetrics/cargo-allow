@@ -435,11 +435,11 @@ jobs:
         with:
           key: test-intent-experimental
       - name: cargo-intent clippy
-        run: cargo clippy --locked --all-targets -p intent-model -p intent-protocol -p intent-engine -p intent-edit -p cargo-intent -- -D warnings
+        run: cargo clippy --locked --all-targets -p intent-model -p intent-protocol -p intent-compiler -p intent-edit -p cargo-intent -- -D warnings
       - name: cargo-intent test suite
-        run: cargo test --locked -p intent-model -p intent-protocol -p intent-engine -p intent-edit -p cargo-intent
+        run: cargo test --locked -p intent-model -p intent-protocol -p intent-compiler -p intent-edit -p cargo-intent
       - name: cargo-intent doc tests
-        run: cargo test --doc --locked -p intent-model -p intent-protocol -p intent-engine -p intent-edit -p cargo-intent
+        run: cargo test --doc --locked -p intent-model -p intent-protocol -p intent-compiler -p intent-edit -p cargo-intent
 
   test-proof-experimental:
     runs-on: ubuntu-latest
@@ -452,11 +452,11 @@ jobs:
         with:
           key: test-proof-experimental
       - name: cargo-proof clippy
-        run: cargo clippy --locked --all-targets -p proof-protocol -p proof-engine -p cargo-proof -- -D warnings
+        run: cargo clippy --locked --all-targets -p proof-protocol -p proof-orchestrator -p cargo-proof -- -D warnings
       - name: cargo-proof test suite
-        run: cargo test --locked -p proof-protocol -p proof-engine -p cargo-proof
+        run: cargo test --locked -p proof-protocol -p proof-orchestrator -p cargo-proof
       - name: cargo-proof doc tests
-        run: cargo test --doc --locked -p proof-protocol -p proof-engine -p cargo-proof
+        run: cargo test --doc --locked -p proof-protocol -p proof-orchestrator -p cargo-proof
 
   # Shared-protocol lane (#3358): the namespace-rail shared crate is not
   # part of the cargo-allow release set and keeps its own proof lane.
