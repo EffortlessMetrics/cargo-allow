@@ -508,11 +508,12 @@ jobs:
           # which the e2e resolves ahead of target/debug.
           cargo build -p cargo-intent --locked
           cp target/debug/cargo-intent "${coverage_temp}/cargo-intent"
-          export CARGO_BIN_EXE_cargo-intent="${coverage_temp}/cargo-intent"
           # cargo-allow release set only (#3358); experimental product
 
           # coverage does not gate this lane.
-          cargo tarpaulin --locked --engine llvm --out xml \
+          # env(1) carries the hyphenated name a shell export cannot.
+          env "CARGO_BIN_EXE_cargo-intent=${coverage_temp}/cargo-intent" \
+            cargo tarpaulin --locked --engine llvm --out xml \
             --output-dir target/cargo-allow \
             -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit \
             -- --test-threads 1
