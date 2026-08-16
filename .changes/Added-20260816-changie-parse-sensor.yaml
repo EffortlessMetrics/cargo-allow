@@ -1,0 +1,15 @@
+kind: Added
+body: >-
+  Add the feature-gated `allow_files::changie` source sensor parse slice
+  (#3588, ruling #3587): a source-aware, process-free parser for the
+  Changie 1.25 configuration and fragment surface built on yaml-rust2
+  event streams with markers (the maintained YAML 1.2 parser; serde_yml
+  and libyml are self-deprecated and serde_yaml is archived). The parser
+  preserves what permissive deserialization loses — duplicate mapping
+  keys in authored order, missing/null/empty-string presence
+  distinctions, typed scalars without coercion (quoted "42" stays a
+  string), per-node source ranges, unknown and unsupported field
+  records, and explicit alias handling — behind the opt-in `changie`
+  feature so feature-disabled allow-files keeps its current dependency
+  and behavior surface. A CI step compiles and tests the feature so the
+  gated module cannot rot.

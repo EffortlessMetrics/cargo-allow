@@ -5,6 +5,8 @@
 //! governance findings. It treats Cargo manifests and lockfiles as ordinary
 //! source-tree files rather than required build metadata.
 
+#[cfg(feature = "changie")]
+pub mod changie;
 mod families;
 mod finding;
 mod finding_config;
@@ -16,6 +18,7 @@ mod path_rules;
 mod scanner;
 
 pub use families::FileFamilyClassification;
+
 pub use finding_config::{network_findings_from_config, process_findings_from_config};
 pub use finding_dependency::{
     dependency_surface_findings_from_git, dependency_surface_findings_from_paths,
