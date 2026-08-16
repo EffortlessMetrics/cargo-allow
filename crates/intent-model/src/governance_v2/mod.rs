@@ -67,6 +67,10 @@ publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = true
 release_order = 400
+ci_lane = "test"
+support_tier = "supported"
+asset_roots = []
+extraction_destination = "cargo-allow"
 "#;
 
     const SHIM_FIXTURE: &str = r#"

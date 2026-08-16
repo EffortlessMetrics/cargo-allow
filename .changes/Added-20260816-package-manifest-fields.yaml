@@ -1,0 +1,11 @@
+kind: Added
+body: >-
+  Complete the enforced package-set manifest (#3365): every topology row
+  in `policy/product-package-topology-v2.toml` now carries `ci_lane`,
+  `support_tier`, `asset_roots`, and `extraction_destination`, all
+  required and vocabulary-checked by the intent-model parser. The CI
+  lane crate sets are derived from the topology's `ci_lane` field instead
+  of a duplicated truth table, an unclassified new workspace package
+  fails validation in both directions, declared asset roots must exist,
+  and tiers/destinations must follow the product split (shared protocols
+  remain hosted by cargo-allow under #2559).

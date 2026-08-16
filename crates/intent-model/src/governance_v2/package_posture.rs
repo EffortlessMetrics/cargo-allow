@@ -124,7 +124,30 @@ pub struct GovernancePackagePostureV2 {
     pub publication_state: PublicationStateV2,
     pub membership: CandidateMembershipV2,
     pub release_order: u32,
+    /// Lane in `docs/ci-lanes.toml` that proves this package (#3365).
+    pub ci_lane: String,
+    /// Package support tier mirroring the product support matrix (#3365).
+    pub support_tier: String,
+    /// Workspace directories owned by the package for release-asset
+    /// qualification; empty means no release assets (#3365).
+    pub asset_roots: Vec<String>,
+    /// Repository the package lands in under the #2559 repository split
+    /// (#3365).
+    pub extraction_destination: String,
 }
+
+/// Recognized repository-extraction destinations (#2559/#3365). Shared
+/// protocol crates remain hosted by the cargo-allow repository.
+pub const EXTRACTION_DESTINATIONS: &[&str] = &["cargo-allow", "cargo-intent", "cargo-proof"];
+
+/// Recognized package support tiers (#3365), mirroring the product
+/// support matrix vocabulary.
+pub const SUPPORT_TIERS: &[&str] = &[
+    "supported",
+    "experimental-opt-in",
+    "internal-stabilizing",
+    "legacy",
+];
 
 impl GovernancePackagePostureV2 {
     pub fn validate(&self) -> Result<(), String> {
@@ -148,6 +171,36 @@ impl GovernancePackagePostureV2 {
                 "package `{}` requires a non-empty package_version",
                 self.logical_id
             ));
+        }
+        if self.ci_lane.trim().is_empty() {
+            return Err(format!(
+                "package `{}` requires a non-empty ci_lane (#3365)",
+                self.logical_id
+            ));
+        }
+        if !SUPPORT_TIERS.contains(&self.support_tier.as_str()) {
+            return Err(format!(
+                "package `{}` has unrecognized support_tier `{}`; expected one of {SUPPORT_TIERS:?}",
+                self.logical_id, self.support_tier
+            ));
+        }
+        if !EXTRACTION_DESTINATIONS.contains(&self.extraction_destination.as_str()) {
+            return Err(format!(
+                "package `{}` has unrecognized extraction_destination `{}`; expected one of {EXTRACTION_DESTINATIONS:?}",
+                self.logical_id, self.extraction_destination
+            ));
+        }
+        for root in &self.asset_roots {
+            if root.trim().is_empty()
+                || root.starts_with('/')
+                || root.starts_with("..")
+                || root.contains(':')
+            {
+                return Err(format!(
+                    "package `{}` asset_root `{root}` must be a non-empty workspace-relative directory path",
+                    self.logical_id
+                ));
+            }
         }
         Ok(())
     }

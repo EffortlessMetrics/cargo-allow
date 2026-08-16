@@ -82,6 +82,10 @@ pub fn parse_package_postures_v1(text: &str) -> Result<Vec<GovernancePackagePost
         publish: bool,
         candidate_inclusion: bool,
         release_order: u32,
+        ci_lane: String,
+        support_tier: String,
+        asset_roots: Vec<String>,
+        extraction_destination: String,
     }
     let topology: TopologyToml =
         toml::from_str(text).map_err(|err| format!("parse topology: {err}"))?;
@@ -106,6 +110,10 @@ pub fn parse_package_postures_v1(text: &str) -> Result<Vec<GovernancePackagePost
                     publish: row.publish,
                 },
                 release_order: row.release_order,
+                ci_lane: row.ci_lane,
+                support_tier: row.support_tier,
+                asset_roots: row.asset_roots,
+                extraction_destination: row.extraction_destination,
             };
             posture.validate()?;
             Ok(posture)
