@@ -43,13 +43,14 @@ Run them in this order:
    topology-selected candidate has thirteen rows: ten cargo-allow packages plus
    `effortless-repo-protocol`, `effortless-repo-snapshot`, and
    `effortless-repo-edit`. Before pushing the tag, the operator must preserve a
-   receipt proving those three selected shared rows are `AlreadyPublishedExact`
-   with checksum equality. The current tag workflow follows topology release
-   order and **does not enforce shared-first registry preflight**, so tag
-   publication is prohibited without that external precondition receipt. Once
-   it is satisfied, the expected missing uploads are the ten cargo-allow rows.
-   Fail-closed workflow enforcement is tracked in
-   [#3505](https://github.com/EffortlessMetrics/cargo-allow/issues/3505).
+   workflow-owned receipt proving those three selected shared rows are
+   `AlreadyPublishedExact` with checksum equality. The tag workflow now derives
+   and enforces this
+   shared-first read-only registry preflight before any cargo-allow upload. Its
+   commit/tree/topology-bound receipt is attached to the run; a missing row,
+   version mismatch, checksum mismatch, malformed response, registry error, or
+   incomplete result fails closed. Once it is satisfied, the expected missing
+   uploads are the ten cargo-allow rows.
    `effortless-rust-source-index` belongs only to the namespace rail;
    cargo-intent and cargo-proof packages are not part of the cargo-allow
    candidate.

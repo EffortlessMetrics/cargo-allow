@@ -174,7 +174,13 @@ def crate_api(name: str, version: str) -> dict[str, Any] | None:
     for attempt in range(1, 4):
         try:
             with urlopen(request, timeout=30) as response:
-                return json.loads(response.read().decode("utf-8"))
+                try:
+                    payload = json.loads(response.read().decode("utf-8"))
+                except (UnicodeDecodeError, json.JSONDecodeError) as error:
+                    fail(f"crates.io returned malformed JSON for {name} {version}: {error}")
+                if not isinstance(payload, dict):
+                    fail(f"crates.io returned a malformed response for {name} {version}")
+                return payload
         except HTTPError as error:
             if error.code == 404:
                 return None
@@ -258,7 +264,18 @@ def registry_checksum(name: str, version: str) -> str | None:
     payload = crate_api(name, version)
     if payload is None:
         return None
+    if not isinstance(payload, dict):
+        fail(f"crates.io returned a malformed response for {name} {version}")
     version_payload = payload.get("version") or {}
+    if not isinstance(version_payload, dict):
+        fail(f"crates.io returned a malformed version response for {name} {version}")
+    observed_version = version_payload.get("num")
+    if not isinstance(observed_version, str):
+        fail(f"crates.io response is missing version for {name} {version}")
+    if observed_version != version:
+        fail(
+            f"crates.io returned version {observed_version} for requested {name} {version}"
+        )
     checksum = version_payload.get("checksum")
     return checksum_digest(checksum, f"crates.io checksum for {name} {version}")
 
@@ -275,6 +292,57 @@ def package_crate(name: str, version: str) -> tuple[Path, str]:
     if not crate_path.is_file():
         fail(f"cargo package did not create {crate_path.relative_to(ROOT)}")
     return crate_path, sha256_file(crate_path)
+
+
+def shared_registry_preflight(
+    rows: list[dict[str, Any]],
+    *,
+    publish: bool,
+    receipt: dict[str, Any],
+    receipt_path: Path,
+) -> None:
+    """Prove the shared overlap before the cargo-allow upload loop begins.
+
+    A rehearsal records read-only observations, but a publishing run requires
+    all three topology-selected shared rows to be exact.  The complete batch is
+    queried before returning so a later cargo-allow row can never upload after
+    an unexamined shared prerequisite.
+    """
+    shared = [row for row in rows if row["product_family"] == "shared"]
+    if len(shared) != 3:
+        fail(f"cargo-allow shared preflight expected 3 topology rows, found {len(shared)}")
+    evidence: list[dict[str, Any]] = []
+    receipt["shared_registry_preflight"] = evidence
+    for row in shared:
+        name = row["cargo_package_name"]
+        version = row["package_version"]
+        crate_path, local_checksum = package_crate(name, version)
+        observed = registry_checksum(name, version)
+        item = {
+            "logical_id": row["logical_id"],
+            "name": name,
+            "version": version,
+            "release_order": row["release_order"],
+            "local_checksum": receipt_checksum(local_checksum, field=f"{name} local checksum"),
+            "registry_checksum": receipt_checksum(observed, field=f"{name} registry checksum"),
+            "state": "missing" if observed is None else "already_published_exact",
+        }
+        evidence.append(item)
+        write_receipt(receipt_path, receipt)
+        if observed is not None and observed != local_checksum:
+            item["state"] = "checksum_conflict"
+            receipt["incident_state"] = "release_incident"
+            write_receipt(receipt_path, receipt)
+            fail(
+                f"shared registry checksum conflict for {name} {version}: "
+                f"local {local_checksum}, registry {observed}"
+            )
+        if publish and observed is None:
+            receipt["incident_state"] = "release_incident"
+            write_receipt(receipt_path, receipt)
+            fail(f"shared registry preflight missing {name} {version}")
+    receipt["shared_registry_preflight_complete"] = True
+    write_receipt(receipt_path, receipt)
 
 
 def write_receipt(path: Path, receipt: dict[str, Any]) -> None:
@@ -367,6 +435,11 @@ def main() -> int:
     parser.add_argument("--mode", choices=sorted(FAMILY_MODES), required=True)
     parser.add_argument("--publish", action="store_true")
     parser.add_argument(
+        "--registry-preflight",
+        action="store_true",
+        help="prove shared registry rows and exit without publication",
+    )
+    parser.add_argument(
         "--package-only",
         action="store_true",
         help="package the selected workspace candidate without registry checks or publication",
@@ -382,8 +455,8 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    if args.package_only and args.publish:
-        fail("--package-only cannot be combined with --publish")
+    if args.package_only and (args.publish or args.registry_preflight):
+        fail("--package-only cannot be combined with --publish or --registry-preflight")
 
     topology_path = args.topology.resolve()
     topology, rows = load_rows(topology_path, args.mode)
@@ -448,6 +521,19 @@ def main() -> int:
         receipt["recovery_receipt"] = "validated"
         receipt["incident_state"] = "partial"
     write_receipt(args.receipt, receipt)
+
+    if args.mode == "cargo-allow" and not args.package_only:
+        shared_registry_preflight(
+            rows,
+            publish=args.publish or args.registry_preflight,
+            receipt=receipt,
+            receipt_path=args.receipt,
+        )
+        if args.registry_preflight:
+            receipt["complete"] = True
+            write_receipt(args.receipt, receipt)
+            print(json.dumps(receipt, indent=2, sort_keys=True))
+            return 0
 
     publish_env = os.environ.copy()
     for row in rows:

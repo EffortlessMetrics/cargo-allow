@@ -221,9 +221,8 @@ fn release_workflow_exists_and_lists_publish_order() {
     }
     assert!(
         candidate_release_doc.contains("not an instruction to upload all thirteen rows")
-            && candidate_release_doc.contains("does not")
-            && candidate_release_doc.contains("enforce shared-first registry preflight"),
-        "{CANDIDATE_RELEASE_DOC} should separate dependency order from the unenforced upload precondition"
+            && candidate_release_doc.contains("shared-first registry preflight"),
+        "{CANDIDATE_RELEASE_DOC} should separate dependency order from the enforced upload precondition"
     );
     assert!(
         release_doc.contains("exactly twelve `0.1.0` namespace rows")
@@ -240,9 +239,8 @@ fn release_workflow_exists_and_lists_publish_order() {
     );
     for operator_doc in [&release_doc, &ci_doc] {
         assert!(
-            operator_doc.contains("does not")
-                && operator_doc.contains("enforce shared-first registry preflight"),
-            "operator docs must disclose the current tag workflow's shared-preflight limitation"
+            operator_doc.contains("shared-first") && operator_doc.contains("preflight"),
+            "operator docs must document the tag workflow's shared-preflight contract"
         );
     }
     assert!(
@@ -290,6 +288,32 @@ fn topology_publish_receipt_preserves_incident_recovery_boundary() {
             && workflow.contains("RECOVERY_RECEIPT: target/cargo-allow/recovery-receipt/topology-publish.receipt.json")
             && workflow.contains("actions: read"),
         "recovery should consume the original run receipt through a bounded artifact identity"
+    );
+    let preflight = workflow
+        .find("Prove shared registry preflight before upload")
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "{RELEASE_WORKFLOW} should run shared registry preflight before upload"
+            ))
+        });
+    let upload = workflow
+        .find("Publish cargo-allow topology rows in dependency order")
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "{RELEASE_WORKFLOW} should retain the topology upload step"
+            ))
+        });
+    assert!(
+        preflight < upload,
+        "shared registry preflight must precede upload"
+    );
+    assert!(
+        workflow.contains("--registry-preflight")
+            && workflow.contains("shared-registry-preflight.receipt.json")
+            && workflow.contains("target/cargo-allow/shared-registry-preflight.receipt.json")
+            && workflow.contains("RELEASE_COMMIT")
+            && workflow.contains("RELEASE_TREE"),
+        "shared registry preflight should emit identity-bound evidence"
     );
     let authorized = read_workspace_file(&root, AUTHORIZED_RELEASE_WORKFLOW);
     assert!(

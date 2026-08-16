@@ -33,6 +33,91 @@ def expect_failure(action: Callable[[], Any]) -> None:
     raise AssertionError("expected checksum validation failure")
 
 
+def shared_fixture_rows() -> list[dict[str, Any]]:
+    return [
+        {
+            "logical_id": f"shared-{index}",
+            "cargo_package_name": f"effortless-fixture-{index}",
+            "package_version": "0.1.0",
+            "product_family": "shared",
+            "release_order": index,
+        }
+        for index in (80, 85, 90)
+    ]
+
+
+def exercise_shared_registry_preflight() -> None:
+    original = PUBLISHER.registry_checksum
+    original_api = PUBLISHER.crate_api
+    original_package = PUBLISHER.package_crate
+    original_write = PUBLISHER.write_receipt
+    try:
+        PUBLISHER.package_crate = lambda name, version: (
+            ROOT / f"target/package/{name}-{version}.crate",
+            DIGEST,
+        )
+        PUBLISHER.write_receipt = lambda _path, _receipt: None
+        receipt = {"incident_state": "none"}
+        calls: list[str] = []
+        PUBLISHER.registry_checksum = lambda name, _version: calls.append(name) or DIGEST
+        PUBLISHER.shared_registry_preflight(
+            shared_fixture_rows(), publish=True, receipt=receipt, receipt_path=ROOT / "unused"
+        )
+        assert calls == [row["cargo_package_name"] for row in shared_fixture_rows()]
+        assert receipt["shared_registry_preflight_complete"] is True
+        assert all(item["state"] == "already_published_exact" for item in receipt["shared_registry_preflight"])
+
+        PUBLISHER.registry_checksum = lambda _name, _version: None
+        expect_failure(
+            lambda: PUBLISHER.shared_registry_preflight(
+                shared_fixture_rows(), publish=True, receipt={"incident_state": "none"}, receipt_path=ROOT / "unused"
+            )
+        )
+
+        PUBLISHER.registry_checksum = lambda _name, _version: "b" * 64
+        expect_failure(
+            lambda: PUBLISHER.shared_registry_preflight(
+                shared_fixture_rows(), publish=True, receipt={"incident_state": "none"}, receipt_path=ROOT / "unused"
+            )
+        )
+
+        PUBLISHER.registry_checksum = original
+        PUBLISHER.crate_api = lambda _name, _version: []
+        expect_failure(lambda: PUBLISHER.registry_checksum("fixture", "0.1.0"))
+        PUBLISHER.crate_api = lambda _name, _version: {"version": {}}
+        expect_failure(lambda: PUBLISHER.registry_checksum("fixture", "0.1.0"))
+        PUBLISHER.crate_api = lambda _name, _version: {
+            "version": {"num": "0.1.1", "checksum": DIGEST}
+        }
+        expect_failure(lambda: PUBLISHER.registry_checksum("fixture", "0.1.0"))
+    finally:
+        PUBLISHER.registry_checksum = original
+        PUBLISHER.crate_api = original_api
+        PUBLISHER.package_crate = original_package
+        PUBLISHER.write_receipt = original_write
+
+
+def exercise_preflight_schema_contract() -> None:
+    schema = json.loads(
+        (ROOT / "docs/schemas/topology-publish-receipt.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    items = schema["properties"]["shared_registry_preflight"]["items"]
+    branches = items["oneOf"]
+    assert any(
+        branch["properties"]["state"].get("const") == "missing"
+        and branch["properties"]["registry_checksum"].get("type") == "null"
+        for branch in branches
+    )
+    assert any(
+        branch["properties"]["state"].get("enum")
+        == ["already_published_exact", "checksum_conflict"]
+        and branch["properties"]["registry_checksum"].get("type") == "string"
+        for branch in branches
+    )
+
+
 def row(state: str, *, local: str, registry: str | None) -> dict[str, Any]:
     return PUBLISHER.receipt_row(
         {
@@ -81,6 +166,7 @@ def exercise_main_receipt_shapes() -> None:
             "registry_checksum",
             "sha256_text",
             "validate_rows",
+            "shared_registry_preflight",
         )
     }
     original_argv = sys.argv
@@ -124,6 +210,7 @@ def exercise_main_receipt_shapes() -> None:
         PUBLISHER.registry_checksum = lambda _name, _version: None
         PUBLISHER.sha256_text = lambda _path: DIGEST
         PUBLISHER.validate_rows = lambda _rows, _packages: None
+        PUBLISHER.shared_registry_preflight = lambda *_args, **_kwargs: None
 
         with tempfile.TemporaryDirectory() as directory:
             receipt = Path(directory) / "topology.json"
@@ -196,6 +283,13 @@ def main() -> None:
         expect_failure(lambda invalid=invalid: PUBLISHER.recovery_rows({"rows": [invalid]}))
 
     exercise_main_receipt_shapes()
+    exercise_shared_registry_preflight()
+    exercise_preflight_schema_contract()
+    source = PUBLISHER_PATH.read_text(encoding="utf-8")
+    main_start = source.index("def main()")
+    assert source.index("shared_registry_preflight(", main_start) < source.index(
+        'run(["cargo", "publish"', main_start
+    )
 
     print("topology publisher checksum contract: passed")
 
