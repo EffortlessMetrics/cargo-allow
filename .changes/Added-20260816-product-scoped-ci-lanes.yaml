@@ -1,0 +1,16 @@
+kind: Added
+body: >-
+  Product-scoped CI lanes (#3358): one product's experimental failure no
+  longer blocks the cargo-allow patch/release lanes. The intent and proof
+  candidate smokes plus the three-product interop matrix move out of
+  package-smoke into `product-candidates-interop`; governance validation,
+  three-product dogfood, and the simplification audit move out of `test`
+  into `integrated-dogfood`; new `test-intent-experimental`,
+  `test-proof-experimental`, and `test-shared-protocol` lanes prove the
+  experimental products and the namespace-rail shared crate. The required
+  lanes (msrv, test, test-windows, coverage) narrow to the thirteen-crate
+  cargo-allow release set. `docs/ci-lanes.toml` is the checked lane-posture
+  authority, enforced by `ci_lane_topology_tests.rs` with the
+  seeded-failure proof: no required lane depends on, shares a job with, or
+  references an experimental product except through a declared
+  cross-product entry (test-windows's #2601-B cargo-intent build).

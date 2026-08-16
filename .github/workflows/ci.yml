@@ -32,7 +32,16 @@ jobs:
         with:
           key: msrv-1.95
       - name: MSRV workspace check
-        run: cargo check --workspace --all-targets --locked
+        # cargo-allow-scoped by policy (#3358): intent and proof claim
+        # no toolchain yet; their lanes run stable checks only.
+        run: |
+          cargo check --locked --all-targets \
+            -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy \
+            -p allow-inventory -p allow-files -p allow-rust -p allow-match \
+            -p allow-report -p allow-diff \
+            -p effortless-repo-protocol -p effortless-repo-snapshot \
+            -p effortless-repo-edit
+
       - name: MSRV fast cargo-allow package proof
         run: cargo test -p cargo-allow --bins --locked
 
@@ -103,6 +112,24 @@ jobs:
           name: exact-candidate-install-journey-receipt
           path: target/exact-candidate-install-journey/exact-candidate-install-journey.receipt.json
           if-no-files-found: warn
+  # Product-scoped candidate lanes (#3358): one product's experimental
+  # packaging failure must not block the cargo-allow patch/release lanes.
+  # This lane owns the intent and proof candidate smokes plus the
+  # three-product interop matrix; it re-runs the cargo-allow exact
+  # candidate set standalone because the interop smoke drives the
+  # installed cargo-allow binary. Posture: experimental-informational.
+  product-candidates-interop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          key: product-candidates-interop
+      - name: Exact candidate package set for interop (#2372)
+        run: |
+          mkdir -p target/exact-candidate-package-set/packages
+          bash scripts/exact-candidate-package-set.sh
       - name: Intent candidate install smoke (#2599-C)
         run: bash scripts/intent-candidate-smoke.sh
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -241,31 +268,20 @@ jobs:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
       - run: cargo fmt --all --check
-      - run: cargo clippy --workspace --all-targets -- -D warnings
-      - name: Build three-product binaries for dogfood (#2558)
-        run: cargo build -p cargo-allow -p cargo-intent -p cargo-proof --locked
-      - name: Governance validation receipt (#2942 step 5)
+      - name: cargo-allow release-set clippy (#3358)
         run: |
-          cargo run -p cargo-intent --locked -- --root . governance \
-            --receipt target/cargo-intent/governance-receipt.json
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: always()
-        with:
-          name: governance-receipt
-          path: target/cargo-intent/governance-receipt.json
-          if-no-files-found: warn
-      - name: Three-product dogfood smoke (#2558)
-        run: bash scripts/three-product-dogfood-smoke.sh
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: always()
-        with:
-          name: three-product-dogfood-receipt
-          path: target/three-product-dogfood/three-product-dogfood.receipt.json
-          if-no-files-found: warn
+          cargo clippy --locked --all-targets \
+            -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit \
+            -- -D warnings
+
+      - name: Build cargo-intent for staged precommit delegation e2e (#2601-B)
+        # Declared cross-product reference (docs/ci-lanes.toml): the
+        # delegation e2e is a cargo-allow contract that exercises the
+        # cargo-intent binary.
+        run: cargo build -p cargo-intent --locked
       - name: Candidate harness lifecycle characterization (#3509)
+
         run: python scripts/test-candidate-harness-lifecycle.py
-      - name: Three-product simplification audit (#2208)
-        run: bash scripts/three-product-simplification-audit.sh
       - name: Extraction readiness receipt (#2559)
         run: bash scripts/extraction-readiness-receipt.sh
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -318,10 +334,21 @@ jobs:
         run: cargo test -p cargo-allow --bins --locked
       - name: Contract cargo-allow package proof
         run: cargo test -p cargo-allow --tests --locked
-      - name: Full workspace proof union
-        run: cargo test --workspace --locked
-      - run: cargo test --doc --workspace
-      - run: cargo doc --workspace --no-deps
+      - name: Cargo-allow release-set proof union (#3358)
+        run: |
+          cargo test --locked \
+            -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit
+
+      - name: Cargo-allow release-set doc tests (#3358)
+        run: |
+          cargo test --doc --locked \
+            -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit
+
+      - name: Cargo-allow release-set docs (#3358)
+        run: |
+          cargo doc --no-deps --locked \
+            -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit
+
         env:
           RUSTDOCFLAGS: -D warnings
       - run: cargo run -p cargo-allow -- audit --format json --output target/cargo-allow/audit.json
@@ -346,6 +373,41 @@ jobs:
   # verbatim prefixes, CRLF, MAIN_SEPARATOR_STR). Kept separate from the main
   # `test` job so lint/doc/audit feedback stays fast on Linux. Windows-only
   # for now; macOS can be added when the cost/benefit shifts.
+  # Integrated dogfood lane (#3358): cross-product contracts change here.
+  # Governance validation, three-product dogfood, and the simplification
+  # audit exercise the products together and stay out of the
+  # cargo-allow-required test lane. Posture: integrated-informational.
+  integrated-dogfood:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          key: integrated-dogfood
+      - name: Build three-product binaries for dogfood (#2558)
+        run: cargo build -p cargo-allow -p cargo-intent -p cargo-proof --locked
+      - name: Governance validation receipt (#2942 step 5)
+        run: |
+          cargo run -p cargo-intent --locked -- --root . governance \
+            --receipt target/cargo-intent/governance-receipt.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: governance-receipt
+          path: target/cargo-intent/governance-receipt.json
+          if-no-files-found: warn
+      - name: Three-product dogfood smoke (#2558)
+        run: bash scripts/three-product-dogfood-smoke.sh
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: three-product-dogfood-receipt
+          path: target/three-product-dogfood/three-product-dogfood.receipt.json
+          if-no-files-found: warn
+      - name: Three-product simplification audit (#2208)
+        run: bash scripts/three-product-simplification-audit.sh
+
   test-windows:
     runs-on: windows-latest
     steps:
@@ -356,8 +418,65 @@ jobs:
           key: test-windows
       - name: Build cargo-intent for staged precommit delegation e2e (#2601-B)
         run: cargo build -p cargo-intent --locked
-      - name: Full workspace test suite
-        run: cargo test --workspace --locked
+      - name: Cargo-allow release-set test suite (#3358)
+        # The cargo-intent build above stays: the staged precommit
+        # delegation e2e (#2601-B) is a documented cross-product
+        # dependency of this lane, recorded in docs/ci-lanes.toml.
+        # Single line: this job runs under PowerShell, which has no
+        # backslash line continuation.
+        run: cargo test --locked -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit
+
+
+  # Product-scoped test lanes (#3358): experimental products prove
+  # themselves without gating the cargo-allow patch/release lanes.
+  # Posture: experimental-informational.
+  test-intent-experimental:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          key: test-intent-experimental
+      - name: cargo-intent clippy
+        run: cargo clippy --locked --all-targets -p intent-model -p intent-protocol -p intent-compiler -p intent-edit -p cargo-intent -- -D warnings
+      - name: cargo-intent test suite
+        run: cargo test --locked -p intent-model -p intent-protocol -p intent-compiler -p intent-edit -p cargo-intent
+      - name: cargo-intent doc tests
+        run: cargo test --doc --locked -p intent-model -p intent-protocol -p intent-compiler -p intent-edit -p cargo-intent
+
+  test-proof-experimental:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          key: test-proof-experimental
+      - name: cargo-proof clippy
+        run: cargo clippy --locked --all-targets -p proof-protocol -p proof-orchestrator -p cargo-proof -- -D warnings
+      - name: cargo-proof test suite
+        run: cargo test --locked -p proof-protocol -p proof-orchestrator -p cargo-proof
+      - name: cargo-proof doc tests
+        run: cargo test --doc --locked -p proof-protocol -p proof-orchestrator -p cargo-proof
+
+  # Shared-protocol lane (#3358): the namespace-rail shared crate is not
+  # part of the cargo-allow release set and keeps its own proof lane.
+  # Posture: shared-protocol-informational.
+  test-shared-protocol:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          key: test-shared-protocol
+      - name: Shared protocol test suite
+        run: cargo test --locked -p effortless-rust-source-index
 
   # Test coverage reporting (#1902). Runs cargo-tarpaulin on Linux and
   # uploads coverage to Codecov. Kept separate from the main test job so
@@ -381,7 +500,24 @@ jobs:
           # suite launches cargo-allow subprocesses; Tarpaulin's default
           # ptrace backend has produced false fixture failures in that lane.
           cargo install cargo-tarpaulin --version 0.37.0 --locked
-          cargo tarpaulin --workspace --locked --engine llvm --out xml --output-dir target/cargo-allow -- --test-threads 1
+          # The staged precommit delegation e2e (#2601-B) is a declared
+          # cross-product reference of this lane and needs the
+          # cargo-intent binary. Tarpaulin cleans the project before
+          # its instrumented build, so the binary is copied outside
+          # target/ and exported through CARGO_BIN_EXE_cargo-intent,
+          # which the e2e resolves ahead of target/debug.
+          cargo build -p cargo-intent --locked
+          cp target/debug/cargo-intent "${coverage_temp}/cargo-intent"
+          # cargo-allow release set only (#3358); experimental product
+
+          # coverage does not gate this lane.
+          # env(1) carries the hyphenated name a shell export cannot.
+          env "CARGO_BIN_EXE_cargo-intent=${coverage_temp}/cargo-intent" \
+            cargo tarpaulin --locked --engine llvm --out xml \
+            --output-dir target/cargo-allow \
+            -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit \
+            -- --test-threads 1
+
       - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         if: always()
         with:

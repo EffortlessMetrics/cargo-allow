@@ -1,0 +1,157 @@
+schema_version = 1
+schema_id = "cargo-allow.ci-lanes.v1"
+controlling_issue = 3358
+
+# The CI lane topology and gating posture (#3358). One product's
+# experimental failure must not block an unrelated cargo-allow patch or
+# release lane. This manifest is the checked authority for which jobs
+# exist, what product scope each owns, and which cross-product references
+# are deliberately declared. ci_lane_topology_tests.rs validates
+# .github/workflows/ci.yml against it, including the seeded-failure
+# property.
+
+# Crate sets named by lane scope. The cargo-allow release set is the
+# thirteen-package candidate (ten family crates plus the three shared
+# crates it publishes with); effortless-rust-source-index belongs to the
+# namespace rail only and is not part of it.
+
+[crates]
+cargo_allow_release_set = [
+  "cargo-allow",
+  "allow-core",
+  "allow-policy",
+  "allow-policy-legacy",
+  "allow-inventory",
+  "allow-files",
+  "allow-rust",
+  "allow-match",
+  "allow-report",
+  "allow-diff",
+  "effortless-repo-protocol",
+  "effortless-repo-snapshot",
+  "effortless-repo-edit",
+]
+intent_set = [
+  "intent-model",
+  "intent-protocol",
+  "intent-compiler",
+  "intent-edit",
+  "cargo-intent",
+]
+proof_set = [
+  "proof-protocol",
+  "proof-orchestrator",
+  "cargo-proof",
+]
+shared_protocol_set = ["effortless-rust-source-index"]
+
+# postures:
+#   required                    — gates cargo-allow patch and release lanes
+#   experimental-informational  — proves an experimental product; never gates
+#   integrated-informational    — cross-product matrix; never gates
+
+[[lane]]
+id = "msrv"
+product = "cargo-allow"
+posture = "required"
+scope = "cargo-allow-release-set"
+note = "cargo-allow-scoped by policy: intent and proof claim no toolchain"
+
+[[lane]]
+id = "package-smoke"
+product = "cargo-allow"
+posture = "required"
+scope = "cargo-allow-release-set"
+note = "candidate packaging, install journey, cutover build receipts"
+
+[[lane]]
+id = "shallow-diff-smoke"
+product = "cargo-allow"
+posture = "required"
+scope = "cargo-allow-release-set"
+
+[[lane]]
+id = "operator-latency"
+product = "cargo-allow"
+posture = "required"
+scope = "cargo-allow-release-set"
+
+[[lane]]
+id = "test"
+product = "cargo-allow"
+posture = "required"
+scope = "cargo-allow-release-set"
+note = "fmt stays workspace-wide (repo hygiene); clippy, tests, and docs are release-set scoped"
+
+[[lane]]
+id = "test-windows"
+product = "cargo-allow"
+posture = "required"
+scope = "cargo-allow-release-set"
+
+[[lane]]
+id = "coverage"
+product = "cargo-allow"
+posture = "required"
+scope = "cargo-allow-release-set"
+
+[[lane]]
+id = "cargo-deny"
+product = "cargo-allow"
+posture = "required"
+scope = "workspace"
+
+[[lane]]
+id = "test-intent-experimental"
+product = "cargo-intent"
+posture = "experimental-informational"
+scope = "intent-set"
+
+[[lane]]
+id = "test-proof-experimental"
+product = "cargo-proof"
+posture = "experimental-informational"
+scope = "proof-set"
+
+[[lane]]
+id = "test-shared-protocol"
+product = "shared-protocol"
+posture = "experimental-informational"
+scope = "shared-protocol-set"
+
+[[lane]]
+id = "product-candidates-interop"
+product = "integrated"
+posture = "integrated-informational"
+scope = "three-product-candidates"
+note = "intent and proof candidate smokes plus the three-product interop matrix; re-runs the cargo-allow exact candidate standalone"
+
+[[lane]]
+id = "integrated-dogfood"
+product = "integrated"
+posture = "integrated-informational"
+scope = "workspace"
+note = "governance validation, three-product dogfood, simplification audit"
+
+# Deliberate cross-product references inside required lanes. Every entry
+# here must name the lane, the referenced product, and why; the contract
+# test fails on any cross-product token in a required lane that is not
+# declared here. Adding an entry requires a reviewed justification.
+
+[[declared_cross_product_reference]]
+lane = "test-windows"
+referenced_product = "cargo-intent"
+token = "cargo-intent"
+reason = "staged precommit delegation e2e (#2601-B): the lane builds cargo-intent to run cargo-allow's own delegation contract"
+
+[[declared_cross_product_reference]]
+lane = "test"
+referenced_product = "cargo-intent"
+token = "cargo-intent"
+reason = "staged precommit delegation e2e (#2601-B): cargo-allow's integration tests exercise the cargo-intent binary"
+
+[[declared_cross_product_reference]]
+lane = "coverage"
+referenced_product = "cargo-intent"
+token = "cargo-intent"
+reason = "the coverage instrumented suite includes the staged precommit delegation e2e (#2601-B), which needs the cargo-intent binary"

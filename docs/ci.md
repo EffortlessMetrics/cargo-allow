@@ -39,15 +39,39 @@ scan should remain usable even when the checked-out repository does not build.
 
 ## Repository CI
 
-cargo-allow's own GitHub Actions workflow runs two proof lanes on pull requests
-and `main`:
+cargo-allow's own GitHub Actions workflow is split into product-scoped lanes
+(#3358) so one product's experimental failure cannot block an unrelated
+cargo-allow patch or release lane. The checked authority for the topology and
+gating posture is [ci-lanes.toml](ci-lanes.toml), validated against the
+workflow by `ci_lane_topology_tests.rs` (including the seeded-failure proof:
+no required lane depends on, shares a job with, or references an experimental
+product except through a declared cross-product reference).
 
-- **MSRV (`1.95`)**: `cargo check --workspace --all-targets --locked` plus the
-  fast `cargo-allow` package binary tests, on the declared workspace
-  `rust-version`. This keeps the 0.1.x install claim honest before any later
-  MSRV raise.
-- **Stable full suite**: rustfmt, Clippy, fast and contract package tests,
-  workspace tests, docs, audit, no-new check, and opt-in spec-system dogfood.
+Required lanes (gate cargo-allow patch and release):
+
+- **`msrv`**: cargo-allow release-set `cargo check --all-targets` on the
+  declared `rust-version` (`1.95`). cargo-allow-scoped by policy — cargo-intent
+  and cargo-proof claim no toolchain yet.
+- **`package-smoke`**: candidate packaging, release-binary contract, exact
+  candidate package set, cutover build receipts, install journey.
+- **`test`**: rustfmt (workspace-wide, repo hygiene), release-set Clippy,
+  tests, doc tests, docs, audit, no-new check, cutover status chain.
+- **`test-windows`**: release-set suite on Windows (plus the declared
+  #2601-B cargo-intent build for the staged precommit delegation e2e).
+- **`coverage`**: release-set Tarpaulin coverage.
+- **`shallow-diff-smoke`**, **`operator-latency`**, **`cargo-deny`**:
+  cargo-allow-specific lanes and the workspace supply-chain audit.
+
+Experimental and integrated lanes (never gate cargo-allow):
+
+- **`test-intent-experimental`** / **`test-proof-experimental`**: each
+  product's Clippy, tests, and doc tests on stable.
+- **`test-shared-protocol`**: the namespace-rail shared crate
+  (`effortless-rust-source-index`) outside the cargo-allow release set.
+- **`product-candidates-interop`**: intent and proof candidate smokes plus
+  the three-product interop matrix.
+- **`integrated-dogfood`**: governance validation, three-product dogfood,
+  and the simplification audit — where cross-product contracts change.
 
 ## Pull Requests
 
