@@ -150,6 +150,9 @@ mod artifact_top_level_contract_tests;
 #[cfg(test)]
 mod cargo_proof_parity_tests;
 #[cfg(test)]
+#[path = "ci_lane_topology_tests.rs"]
+mod ci_lane_topology_tests;
+#[cfg(test)]
 mod compat_companion_tests;
 #[cfg(test)]
 mod compat_dependency_tests;
@@ -175,6 +178,9 @@ mod intent_engine_parity_tests;
 mod intent_model_parity_tests;
 #[cfg(test)]
 mod intent_protocol_parity_tests;
+#[cfg(test)]
+#[path = "package_topology_enforcement_tests.rs"]
+mod package_topology_enforcement_tests;
 #[cfg(test)]
 mod product_crate_architecture_tests;
 #[cfg(test)]
