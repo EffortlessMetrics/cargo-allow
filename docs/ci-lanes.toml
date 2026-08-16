@@ -34,13 +34,13 @@ cargo_allow_release_set = [
 intent_set = [
   "intent-model",
   "intent-protocol",
-  "intent-engine",
+  "intent-compiler",
   "intent-edit",
   "cargo-intent",
 ]
 proof_set = [
   "proof-protocol",
-  "proof-engine",
+  "proof-orchestrator",
   "cargo-proof",
 ]
 shared_protocol_set = ["effortless-rust-source-index"]

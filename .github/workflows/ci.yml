@@ -34,8 +34,13 @@ jobs:
       - name: MSRV workspace check
         # cargo-allow-scoped by policy (#3358): intent and proof claim
         # no toolchain yet; their lanes run stable checks only.
-        run: cargo check --locked --all-targets \
-          -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit
+        run: |
+          cargo check --locked --all-targets \
+            -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy \
+            -p allow-inventory -p allow-files -p allow-rust -p allow-match \
+            -p allow-report -p allow-diff \
+            -p effortless-repo-protocol -p effortless-repo-snapshot \
+            -p effortless-repo-edit
 
       - name: MSRV fast cargo-allow package proof
         run: cargo test -p cargo-allow --bins --locked
@@ -411,9 +416,9 @@ jobs:
         # The cargo-intent build above stays: the staged precommit
         # delegation e2e (#2601-B) is a documented cross-product
         # dependency of this lane, recorded in docs/ci-lanes.toml.
-        run: |
-          cargo test --locked \
-            -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit
+        # Single line: this job runs under PowerShell, which has no
+        # backslash line continuation.
+        run: cargo test --locked -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit
 
 
   # Product-scoped test lanes (#3358): experimental products prove

@@ -79,20 +79,22 @@ fn ci_jobs(ci_yml: &str) -> Vec<(String, String)> {
             }
             continue;
         }
-        let is_job_header = line.len() >= 4
-            && line.starts_with("  ")
-            && !line.starts_with("   ")
-            && line.trim_end().ends_with(':')
-            && line[2..3]
-                .chars()
-                .next()
-                .is_some_and(|c| c.is_ascii_lowercase())
-            && !line[2..].starts_with('-');
+        let rest = line.strip_prefix("  ");
+        let is_job_header = match rest {
+            Some(rest) => {
+                !rest.starts_with(' ')
+                    && rest.ends_with(':')
+                    && rest.chars().next().is_some_and(|c| c.is_ascii_lowercase())
+                    && !rest.starts_with('-')
+            }
+            None => false,
+        };
         if is_job_header {
             if let Some((id, body)) = current.take() {
                 jobs.push((id, body));
             }
-            current = Some((line[2..].trim_end_matches(':').to_string(), String::new()));
+            let id = rest.unwrap_or("").trim_end_matches(':').to_string();
+            current = Some((id, String::new()));
         } else if let Some((_, body)) = current.as_mut() {
             body.push_str(line);
             body.push('\n');
@@ -188,10 +190,24 @@ fn every_manifest_lane_exists_as_a_ci_job() {
 #[test]
 fn crate_sets_partition_the_workspace_exactly() {
     let (root, manifest, _) = manifest_and_jobs();
+    // Member paths are directory names; the lane sets carry cargo package
+    // names. Two directories name their packages differently
+    // (intent-engine -> intent-compiler, proof-engine -> proof-orchestrator),
+    // so resolve each member's package name from its own manifest.
     let members: BTreeSet<String> = read_workspace_file(&root, "Cargo.toml")
         .lines()
         .filter_map(|l| l.trim().strip_prefix("\"crates/"))
         .map(|l| l.trim_end_matches("\",").to_string())
+        .map(|dir| {
+            let manifest = read_workspace_file(&root, &format!("crates/{dir}/Cargo.toml"));
+            manifest
+                .lines()
+                .find_map(|line| line.trim().strip_prefix("name = \""))
+                .map(|rest| rest.trim_end_matches('\"').to_string())
+                .unwrap_or_else(|| {
+                    std::panic::panic_any(format!("crates/{dir}/Cargo.toml has no name"))
+                })
+        })
         .collect();
     let mut union = BTreeSet::new();
     for set in [
