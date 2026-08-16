@@ -48,7 +48,11 @@ claim_boundary = "Source-tree observations only; no compilation, type, macro, MI
 # the job resolved is that MSRV, because rust-toolchain.toml outranks the
 # `rustup default` the workflow toolchain tag applies.
 msrv = "1.95"
-msrv_evidence = "ci.yml job `msrv` pins dtolnay/rust-toolchain@1.95.0, sets RUSTUP_TOOLCHAIN=1.95.0 so rust-toolchain.toml cannot override it, verifies the resolved compiler with scripts/check-msrv-resolved.sh, and runs `cargo check --workspace --all-targets --locked`"
+# Scoped to the cargo-allow release set rather than the whole workspace
+# (#3358): cargo-intent and cargo-proof claim no toolchain yet and are proven
+# on stable only, so the MSRV claim does not cover them.
+msrv_evidence = "ci.yml job `msrv` pins dtolnay/rust-toolchain@1.95.0, sets RUSTUP_TOOLCHAIN=1.95.0 so rust-toolchain.toml cannot override it, verifies the resolved compiler with scripts/check-msrv-resolved.sh, and runs `cargo check --locked --all-targets` over the thirteen-package cargo-allow release set plus `cargo test -p cargo-allow --bins --locked`"
+msrv_scope = "cargo-allow-release-set"
 stable_evidence = "ci.yml job `test` runs the full suite on dtolnay/rust-toolchain@stable"
 
 # Platform rows. `tier` is descriptive of executed evidence, not a promise:

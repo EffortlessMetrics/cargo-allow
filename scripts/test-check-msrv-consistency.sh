@@ -135,6 +135,125 @@ accepts_case "reformatted RUSTUP_TOOLCHAIN is still matched" ".github/workflows/
 drift_case "rustup toolchain override removed" ".github/workflows/ci.yml" \
   "RUSTUP_TOOLCHAIN: \"${msrv}.0\"" "UNRELATED_ENV: \"${msrv}.0\""
 
+# Relocating the pin to a different job must fail. A whole-file search would
+# accept this: the correct string is still present, just on a lane that is not
+# the MSRV proof, leaving msrv resolving whatever the runner's channel is.
+relocated_dir="${work}/relocated-pin"
+mkdir -p "${relocated_dir}/.github/workflows"
+cp Cargo.toml "${relocated_dir}/Cargo.toml"
+cp .github/workflows/release.yml "${relocated_dir}/.github/workflows/release.yml"
+python3 - "${relocated_dir}/.github/workflows/ci.yml" \
+  ".github/workflows/ci.yml" "${msrv}" <<'PY'
+import re
+import sys
+
+out_path, src_path, msrv = sys.argv[1], sys.argv[2], sys.argv[3]
+with open(src_path, encoding="utf-8") as handle:
+    text = handle.read()
+
+pin = f'RUSTUP_TOOLCHAIN: "{msrv}.0"'
+if pin not in text:
+    sys.exit(f"fixture setup failed: {pin!r} not present in {src_path}")
+
+# Strip the msrv job's env block, then graft the same pin onto another job so
+# the string still exists in the file but not where it counts.
+text = text.replace(f"    env:\n      {pin}\n", "", 1)
+if pin in text:
+    sys.exit("fixture setup failed: msrv pin was not removed")
+
+target = re.search(r"^  cargo-deny:[ \t]*$", text, re.MULTILINE)
+if target is None:
+    sys.exit("fixture setup failed: no cargo-deny job to relocate the pin onto")
+insert_at = target.end() + 1
+text = text[:insert_at] + f"    env:\n      {pin}\n" + text[insert_at:]
+
+with open(out_path, "w", encoding="utf-8") as handle:
+    handle.write(text)
+PY
+run_expect_failure "rustup toolchain override relocated to another job" \
+  env CARGO_TOML="${relocated_dir}/Cargo.toml" \
+  CI_WORKFLOW="${relocated_dir}/.github/workflows/ci.yml" \
+  RELEASE_WORKFLOW="${relocated_dir}/.github/workflows/release.yml" \
+  bash scripts/check-msrv-consistency.sh
+
+# The terminator must tolerate a trailing comment on a job header. Without
+# that, the extracted block runs past the commented header into the next job
+# and accepts its pin — silently undoing the scoping above.
+#
+# The pin has to move to the job *immediately* after `msrv:` for this to
+# discriminate. Parked further away, an over-running block would still exit at
+# some later uncommented header before reaching it, and the case would pass
+# with or without the fix.
+commented_dir="${work}/relocated-pin-commented-header"
+mkdir -p "${commented_dir}/.github/workflows"
+cp Cargo.toml "${commented_dir}/Cargo.toml"
+cp .github/workflows/release.yml "${commented_dir}/.github/workflows/release.yml"
+python3 - "${commented_dir}/.github/workflows/ci.yml" \
+  ".github/workflows/ci.yml" "${msrv}" <<'PY'
+import re
+import sys
+
+out_path, src_path, msrv = sys.argv[1], sys.argv[2], sys.argv[3]
+with open(src_path, encoding="utf-8") as handle:
+    text = handle.read()
+
+pin = f'RUSTUP_TOOLCHAIN: "{msrv}.0"'
+if pin not in text:
+    sys.exit(f"fixture setup failed: {pin!r} not present in {src_path}")
+text = text.replace(f"    env:\n      {pin}\n", "", 1)
+if pin in text:
+    sys.exit("fixture setup failed: msrv pin was not removed")
+
+match = re.search(r"^  msrv:[ \t]*$", text, re.MULTILINE)
+if match is None:
+    sys.exit("fixture setup failed: no msrv job header")
+following = re.search(r"^  ([A-Za-z0-9_-]+):[ \t]*$", text[match.end():], re.MULTILINE)
+if following is None:
+    sys.exit("fixture setup failed: no job header after msrv")
+
+start = match.end() + following.start()
+end = match.end() + following.end()
+# Comment the terminator header and graft the pin onto that adjacent job.
+text = (
+    text[:start]
+    + f"  {following.group(1)}:  # trailing comment\n    env:\n      {pin}"
+    + text[end:]
+)
+
+with open(out_path, "w", encoding="utf-8") as handle:
+    handle.write(text)
+PY
+run_expect_failure "relocated pin with a commented terminator header" \
+  env CARGO_TOML="${commented_dir}/Cargo.toml" \
+  CI_WORKFLOW="${commented_dir}/.github/workflows/ci.yml" \
+  RELEASE_WORKFLOW="${commented_dir}/.github/workflows/release.yml" \
+  bash scripts/check-msrv-consistency.sh
+
+# A trailing comment on the `msrv:` header itself must still locate the job.
+commented_msrv_dir="${work}/commented-msrv-header"
+mkdir -p "${commented_msrv_dir}/.github/workflows"
+cp Cargo.toml "${commented_msrv_dir}/Cargo.toml"
+cp .github/workflows/release.yml "${commented_msrv_dir}/.github/workflows/release.yml"
+python3 - "${commented_msrv_dir}/.github/workflows/ci.yml" \
+  ".github/workflows/ci.yml" <<'PY'
+import re
+import sys
+
+out_path, src_path = sys.argv[1], sys.argv[2]
+with open(src_path, encoding="utf-8") as handle:
+    text = handle.read()
+text, count = re.subn(r"^  msrv:[ \t]*$", "  msrv:  # MSRV lane", text, count=1, flags=re.MULTILINE)
+if count != 1:
+    sys.exit("fixture setup failed: no msrv job header")
+with open(out_path, "w", encoding="utf-8") as handle:
+    handle.write(text)
+PY
+run_expect_success "commented msrv header still locates the job" \
+  env CARGO_TOML="${commented_msrv_dir}/Cargo.toml" \
+  CI_WORKFLOW="${commented_msrv_dir}/.github/workflows/ci.yml" \
+  RELEASE_WORKFLOW="${commented_msrv_dir}/.github/workflows/release.yml" \
+  bash scripts/check-msrv-consistency.sh
+
 # The override requirement exists only because a toolchain file outranks the
 # workflow tag. A repository without one must not be asked for it.
 toolchain_relaxation_dir="${work}/no-toolchain-file"
