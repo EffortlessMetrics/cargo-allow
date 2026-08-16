@@ -1,3 +1,6 @@
+# Compat-owned fixture (#3369): shared by the cargo-allow
+# compatibility test targets and the spec-system cutover receipt
+# script. Owned by the compatibility surface, not cargo-allow core.
 # Proof provider discovery fixture (#2567).
 
 schema_id = "cargo-allow.proof-provider-discovery.v1"

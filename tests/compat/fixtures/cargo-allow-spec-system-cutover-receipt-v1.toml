@@ -1,3 +1,6 @@
+# Compat-owned fixture (#3369): shared by the cargo-allow
+# compatibility test targets and the spec-system cutover receipt
+# script. Owned by the compatibility surface, not cargo-allow core.
 stage = "CargoAllowCompatibilityCutover"
 parity_corpus_digest = "sha256:v1:2601-c-spec-system-cutover"
 old_path_reachability = "embedded spec-system CI audit retired (#2568); delegate_spec_system enabled repo-wide; legacy commands fail closed"

@@ -1,0 +1,22 @@
+# Reviewed authorization for the weakening-class ledger edits in #3369
+# (the diff classifies entry path moves and removals as Fail until a
+# matching note exists). The five fixture entries moved with their files
+# to tests/compat/fixtures/; allow-0506 receipts a schema deleted in
+# #3595 and its finding no longer exists.
+schema_version = 1
+
+[[records]]
+allow_ids = [
+  "allow-9098",
+  "allow-9099",
+  "allow-9100",
+  "allow-9101",
+  "allow-9161",
+]
+change_kinds = ["entry_path_changed"]
+reason = "fixtures moved to the compat-owned root tests/compat/fixtures (#3369); each entry's selector, glob, and fingerprint follow the file unchanged"
+
+[[records]]
+allow_ids = ["allow-0506"]
+change_kinds = ["entry_removed"]
+reason = "receipted schema deleted by #3595; the finding no longer exists in any tree"

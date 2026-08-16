@@ -241,7 +241,6 @@ dependencies = [
  "allow-policy-legacy",
  "allow-report",
  "allow-rust",
- "cargo-intent",
  "clap",
  "clap_complete",
  "effortless-repo-edit",

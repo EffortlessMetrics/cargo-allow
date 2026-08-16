@@ -1,3 +1,6 @@
+# Compat-owned fixture (#3369): shared by the cargo-allow
+# compatibility test targets and the spec-system cutover receipt
+# script. Owned by the compatibility surface, not cargo-allow core.
 # Intent provider discovery fixture (#2601-A).
 
 schema_id = "cargo-allow.intent-provider-discovery.v1"

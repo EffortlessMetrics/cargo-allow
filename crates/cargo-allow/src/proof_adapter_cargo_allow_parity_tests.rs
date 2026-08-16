@@ -42,7 +42,7 @@ fn proof_adapter_cargo_allow_parity_fixture_paths(root: &std::path::Path) -> Vec
     vec![
         root.join("tests/fixtures/proof-adapter-cargo-allow/parity-boundary-v1.toml"),
         root.join("tests/fixtures/proof-adapter-cargo-allow/parity-provider-contract-v1.toml"),
-        root.join("tests/fixtures/cargo-allow/proof-provider-discovery-v1.toml"),
+        root.join("tests/compat/fixtures/proof-provider-discovery-v1.toml"),
     ]
 }
 

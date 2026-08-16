@@ -294,12 +294,8 @@ jobs:
             -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit \
             -- -D warnings
 
-      - name: Build cargo-intent for staged precommit delegation e2e (#2601-B)
-        # Declared cross-product reference (docs/ci-lanes.toml): the
-        # delegation e2e is a cargo-allow contract that exercises the
-        # cargo-intent binary.
-        run: cargo build -p cargo-intent --locked
       - name: Candidate harness lifecycle characterization (#3509)
+
 
         run: python scripts/test-candidate-harness-lifecycle.py
       - name: Extraction readiness receipt (#2559)
@@ -436,17 +432,67 @@ jobs:
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
           key: test-windows
-      - name: Build cargo-intent for staged precommit delegation e2e (#2601-B)
-        run: cargo build -p cargo-intent --locked
       - name: Cargo-allow release-set test suite (#3358)
-        # The cargo-intent build above stays: the staged precommit
-        # delegation e2e (#2601-B) is a documented cross-product
-        # dependency of this lane, recorded in docs/ci-lanes.toml.
         # Single line: this job runs under PowerShell, which has no
         # backslash line continuation.
         run: cargo test --locked -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit
 
 
+  # Compatibility delegation lane (#3369/#2601-B): cargo-allow's staged
+  # precommit delegation contract against cargo-intent. Core lanes no
+  # longer build cargo-intent; this required lane proves the contract
+  # with the exact installed candidate on Linux and a fresh build on
+  # Windows.
+  compat-delegation:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          key: compat-delegation-${{ matrix.os }}
+      - name: Core independence graph proof (#3369)
+        # cargo-allow has no dependency edge on the cargo-intent
+        # application; the delegation e2e lives in the
+        # compat-delegation lane. --locked keeps the tree from
+        # rewriting the lockfile; bash runs on both matrix OSes.
+        shell: bash
+        run: |
+          if cargo tree --locked -p cargo-allow --all-targets -e normal,dev \
+            | grep -q "cargo-intent v"; then
+            echo "::error::cargo-allow graph gained a cargo-intent edge" >&2
+            exit 1
+          fi
+      - name: Install the exact cargo-intent candidate (Linux)
+        # The smoke packages against a patched registry without
+        # --locked on every invocation and may rewrite Cargo.lock;
+        # restore it so the --locked test step below stays honest.
+        run: |
+          cp Cargo.lock "${RUNNER_TEMP}/Cargo.lock.guard"
+          bash scripts/intent-candidate-smoke.sh
+          cp "${RUNNER_TEMP}/Cargo.lock.guard" Cargo.lock
+
+        if: runner.os == 'Linux'
+      - name: Build cargo-intent (Windows)
+        if: runner.os == 'Windows'
+        run: cargo build -p cargo-intent --locked
+      - name: Delegation e2e against the resolved cargo-intent binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${RUNNER_OS}" == "Linux" ]]; then
+            bin="target/intent-candidate-smoke/install/bin/cargo-intent"
+          else
+            bin="target/debug/cargo-intent.exe"
+          fi
+          test -f "${bin}"
+          env "CARGO_BIN_EXE_cargo-intent=$(pwd)/${bin}" \
+            "CARGO_ALLOW_COMPAT_DELEGATION_REQUIRED=1" \
+            cargo test -p cargo-allow --locked --test intent_staged_precommit_delegate -- --nocapture
   # Product-scoped test lanes (#3358): experimental products prove
   # themselves without gating the cargo-allow patch/release lanes.
   # Posture: experimental-informational.
@@ -520,20 +566,10 @@ jobs:
           # suite launches cargo-allow subprocesses; Tarpaulin's default
           # ptrace backend has produced false fixture failures in that lane.
           cargo install cargo-tarpaulin --version 0.37.0 --locked
-          # The staged precommit delegation e2e (#2601-B) is a declared
-          # cross-product reference of this lane and needs the
-          # cargo-intent binary. Tarpaulin cleans the project before
-          # its instrumented build, so the binary is copied outside
-          # target/ and exported through CARGO_BIN_EXE_cargo-intent,
-          # which the e2e resolves ahead of target/debug.
-          cargo build -p cargo-intent --locked
-          cp target/debug/cargo-intent "${coverage_temp}/cargo-intent"
           # cargo-allow release set only (#3358); experimental product
 
           # coverage does not gate this lane.
-          # env(1) carries the hyphenated name a shell export cannot.
-          env "CARGO_BIN_EXE_cargo-intent=${coverage_temp}/cargo-intent" \
-            cargo tarpaulin --locked --engine llvm --out xml \
+          cargo tarpaulin --locked --engine llvm --out xml \
             --output-dir target/cargo-allow \
             -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit \
             -- --test-threads 1

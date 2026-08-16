@@ -202,3 +202,58 @@ fn tiers_and_destinations_follow_the_product_split() {
         );
     }
 }
+
+/// A schema is core-owned when its title or identifier is
+/// cargo-allow-namespaced (#3369). Used both over the live catalog and
+/// over a seeded intent-branded fixture that must be rejected.
+fn schema_is_core_owned(text: &str) -> bool {
+    let title = text
+        .split("\"title\"")
+        .nth(1)
+        .and_then(|rest| rest.split('\"').nth(1))
+        .unwrap_or_default();
+    if title.starts_with("cargo-allow") {
+        return true;
+    }
+    text.contains("/schemas/cargo-allow") || text.contains("schemas/cargo-allow")
+}
+
+/// Package assets must not embed cargo-intent (or other product) schemas
+/// as if core-owned (#3369). Seeded check: an intent-branded schema is
+/// rejected by the same predicate that accepts the live catalog.
+#[test]
+fn asset_roots_embed_no_foreign_product_schemas() {
+    let root = workspace_root();
+    let mut checked = 0usize;
+    for row in postures(&root) {
+        for asset_root in &row.asset_roots {
+            let dir = root.join(asset_root);
+            let entries = fs::read_dir(&dir)
+                .unwrap_or_else(|err| std::panic::panic_any(format!("read {asset_root}: {err}")));
+            for entry in entries {
+                let path = entry
+                    .unwrap_or_else(|err| std::panic::panic_any(format!("entry: {err}")))
+                    .path();
+                if path.extension().and_then(|e| e.to_str()) != Some("json") {
+                    continue;
+                }
+                let text = fs::read_to_string(&path)
+                    .unwrap_or_else(|err| std::panic::panic_any(format!("read schema: {err}")));
+                assert!(
+                    schema_is_core_owned(&text),
+                    "schema {} in asset root {asset_root} is not cargo-allow-namespaced",
+                    path.display()
+                );
+                checked += 1;
+            }
+        }
+    }
+    assert!(checked > 0, "expected to check at least one schema");
+
+    // Seeded negative: a cargo-intent-branded schema is foreign.
+    let intent_branded = "{\"title\": \"cargo-intent governance v1\", \"$id\": \"https://effortlessmetrics.dev/schemas/cargo-intent/governance.v1.schema.json\"}";
+    assert!(
+        !schema_is_core_owned(intent_branded),
+        "an intent-branded schema must not pass the core-ownership predicate"
+    );
+}

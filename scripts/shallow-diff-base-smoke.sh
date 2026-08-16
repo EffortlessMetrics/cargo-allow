@@ -141,7 +141,13 @@ set +e
 full_code=$?
 set -e
 echo "full_exit=${full_code}" >>"${receipt}"
-if [[ "${full_code}" -ne 0 ]]; then
+if [[ "${full_code}" -eq 1 ]] && grep -Fq '**Result:**' "${full_out}"; then
+  # Exit 1 with a rendered report is a posture-changed diff against
+  # the parent (this PR's own policy changes), not an infrastructure
+  # failure. The positive leg proves the diff ran against full
+  # history; the guard still owns the posture verdict.
+  echo "full_history_positive=pass_posture_changed" >>"${receipt}"
+elif [[ "${full_code}" -ne 0 ]]; then
   echo "full_history_positive=fail" >>"${receipt}"
   echo "full_history_error_artifact=${full_log}" >>"${receipt}"
   echo "result=fail" >>"${receipt}"
