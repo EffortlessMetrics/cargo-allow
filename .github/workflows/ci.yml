@@ -294,6 +294,10 @@ jobs:
             -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit \
             -- -D warnings
 
+      - name: Changie sensor feature proof (#3588)
+        # The allow-files changie module is feature-gated; without this
+        # step nothing in CI compiles or tests it.
+        run: cargo test -p allow-files --locked --features changie
       - name: Candidate harness lifecycle characterization (#3509)
 
 
