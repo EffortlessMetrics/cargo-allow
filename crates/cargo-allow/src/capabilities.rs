@@ -566,7 +566,7 @@ fn render_human(catalog: &CapabilityCatalog) -> String {
 fn validate_catalog() -> CargoAllowResult<()> {
     let mut expected = allow_rust::SOURCE_FINDING_FAMILIES.to_vec();
     expected.extend_from_slice(allow_files::FILE_FINDING_FAMILIES);
-    expected.extend_from_slice(allow_policy_legacy::POLICY_FINDING_FAMILIES);
+    expected.extend_from_slice(allow_files::POLICY_FINDING_FAMILIES);
     expected.sort_unstable();
     validate_catalog_entries(CAPABILITIES, &expected)
 }

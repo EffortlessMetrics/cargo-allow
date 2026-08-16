@@ -1,0 +1,14 @@
+kind: Changed
+body: >-
+  Finish decoupling the companion-finding consumers from
+  `allow-policy-legacy` (#2821 half 2, step 2). `allow-diff` imports the
+  workflow/dependency/generated/process-network generators from `allow-files`
+  and drops its `allow-policy-legacy` dependency entirely; `cargo-allow`'s
+  companion scan surface and the `capabilities` command do the same, and
+  `POLICY_FINDING_FAMILIES` moves to `allow-files` beside the generators
+  that emit those families (legacy re-exports it for stability). The only
+  remaining `allow-policy-legacy` consumer is `cargo-allow`'s own
+  compat/migrate surface, which owns the legacy-policy product promise:
+  `check` and `audit` load legacy-or-canonical policy through it, so a
+  `migrate` cargo feature cannot remove the legacy compile cost without a
+  separate product decision on legacy-policy compat in default builds.

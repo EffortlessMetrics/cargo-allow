@@ -14,7 +14,6 @@ categories.workspace = true
 [dependencies]
 allow-core.workspace = true
 allow-files.workspace = true
-allow-policy-legacy.workspace = true
 allow-policy.workspace = true
 allow-rust.workspace = true
 effortless-repo-snapshot.workspace = true

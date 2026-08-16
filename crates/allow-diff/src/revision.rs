@@ -115,7 +115,9 @@ pub fn scan_at_revision(
     if has_generated_code_receipt(cfg)
         && let Some(text) = source_texts.get(Path::new(".gitattributes"))
     {
-        findings.extend(allow_policy_legacy::generated_findings_from_gitattributes_text(text));
+        findings.extend(allow_files::generated_findings_from_gitattributes_text(
+            text,
+        ));
     }
     if has_policy_family(cfg, &["github_workflow", "workflow_external_action"]) {
         let mut workflow_sources = Vec::new();
@@ -125,15 +127,15 @@ pub fn scan_at_revision(
                 .ok_or_else(|| missing_revision_source(rel))?;
             workflow_sources.push((rel.clone(), text.clone()));
         }
-        findings.extend(allow_policy_legacy::workflow_findings_from_sources(
+        findings.extend(allow_files::workflow_findings_from_sources(
             workflow_sources,
         ));
     }
     if has_policy_family(cfg, &["process_spawn"]) {
-        findings.extend(allow_policy_legacy::process_findings_from_config(cfg));
+        findings.extend(allow_files::process_findings_from_config(cfg));
     }
     if has_policy_family(cfg, &["network_destination"]) {
-        findings.extend(allow_policy_legacy::network_findings_from_config(cfg));
+        findings.extend(allow_files::network_findings_from_config(cfg));
     }
     if has_policy_family(cfg, &["executable_file"]) {
         let executable_paths = tree_files
@@ -141,11 +143,11 @@ pub fn scan_at_revision(
             .filter(|entry| entry.mode == "100755")
             .map(|entry| entry.path.clone())
             .collect::<Vec<_>>();
-        findings.extend(allow_policy_legacy::executable_findings_from_paths(
+        findings.extend(allow_files::executable_findings_from_paths(
             &executable_paths,
         ));
     }
-    findings.extend(allow_policy_legacy::dependency_surface_findings_from_paths(
+    findings.extend(allow_files::dependency_surface_findings_from_paths(
         &files, cfg,
     ));
     let scanner_completeness = if rust_files_considered == 0 {
