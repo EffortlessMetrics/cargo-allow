@@ -8,27 +8,25 @@ pub(crate) fn canonical_companion_findings(
 ) -> CargoAllowResult<Vec<Finding>> {
     let mut findings = Vec::new();
     if has_allow_family(cfg, FindingKind::GeneratedCode, "generated_code") {
-        findings.extend(allow_policy_legacy::generated_findings_from_gitattributes(
-            root,
-        )?);
+        findings.extend(allow_files::generated_findings_from_gitattributes(root)?);
     }
     if has_allow_family(cfg, FindingKind::PolicyException, "executable_file") {
-        findings.extend(allow_policy_legacy::executable_findings_from_git(root)?);
+        findings.extend(allow_files::executable_findings_from_git(root)?);
     }
     if has_policy_family(cfg, &["github_workflow", "workflow_external_action"]) {
-        findings.extend(allow_policy_legacy::workflow_findings_from_files(root)?);
+        findings.extend(allow_files::workflow_findings_from_files(root)?);
     }
     if has_allow_family(cfg, FindingKind::PolicyException, "dependency_surface") {
-        findings.extend(allow_policy_legacy::dependency_surface_findings_from_paths(
+        findings.extend(allow_files::dependency_surface_findings_from_paths(
             inventory_files,
             cfg,
         ));
     }
     if has_allow_family(cfg, FindingKind::PolicyException, "process_spawn") {
-        findings.extend(allow_policy_legacy::process_findings_from_config(cfg));
+        findings.extend(allow_files::process_findings_from_config(cfg));
     }
     if has_allow_family(cfg, FindingKind::PolicyException, "network_destination") {
-        findings.extend(allow_policy_legacy::network_findings_from_config(cfg));
+        findings.extend(allow_files::network_findings_from_config(cfg));
     }
     Ok(findings)
 }
@@ -46,16 +44,16 @@ pub(crate) fn staged_companion_findings(
 ) -> CargoAllowResult<Vec<Finding>> {
     let mut findings = Vec::new();
     if has_staged_family(cfg, "dependency_surface") {
-        findings.extend(allow_policy_legacy::dependency_surface_findings_from_paths(
+        findings.extend(allow_files::dependency_surface_findings_from_paths(
             inventory_files,
             cfg,
         ));
     }
     if has_staged_family(cfg, "process_spawn") {
-        findings.extend(allow_policy_legacy::process_findings_from_config(cfg));
+        findings.extend(allow_files::process_findings_from_config(cfg));
     }
     if has_staged_family(cfg, "network_destination") {
-        findings.extend(allow_policy_legacy::network_findings_from_config(cfg));
+        findings.extend(allow_files::network_findings_from_config(cfg));
     }
     Ok(findings)
 }

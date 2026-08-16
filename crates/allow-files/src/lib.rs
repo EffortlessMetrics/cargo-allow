@@ -25,6 +25,18 @@ pub use finding_generated_executable::{
     generated_findings_from_gitattributes, generated_findings_from_gitattributes_text,
 };
 pub use finding_workflow::{workflow_findings_from_files, workflow_findings_from_sources};
+
+/// Policy-derived finding families emitted by the companion-finding
+/// generators above. These projections do not execute the referenced
+/// behavior (#2821).
+pub const POLICY_FINDING_FAMILIES: &[(&str, &str)] = &[
+    ("policy_exception", "github_workflow"),
+    ("policy_exception", "workflow_external_action"),
+    ("policy_exception", "dependency_surface"),
+    ("policy_exception", "process_spawn"),
+    ("policy_exception", "network_destination"),
+    ("policy_exception", "executable_file"),
+];
 pub use options::FileScanOptions;
 pub use path_rules::is_rust_source;
 pub use scanner::{
