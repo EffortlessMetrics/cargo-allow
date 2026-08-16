@@ -7,7 +7,7 @@ use std::process::{Command, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const FIXTURE: &str =
-    include_str!("../../../tests/fixtures/cargo-allow/intent-staged-precommit-delegate-v1.toml");
+    include_str!("../../../tests/compat/fixtures/intent-staged-precommit-delegate-v1.toml");
 
 #[test]
 fn intent_staged_precommit_delegate_fixture_pins_contract() {
@@ -87,19 +87,43 @@ fn fixture_nonce() -> Result<u128, String> {
         .map(|duration| duration.as_nanos())
 }
 
-fn cargo_intent_binary() -> Result<PathBuf, String> {
+/// Resolve the cargo-intent executable for the delegation e2e (#3369).
+///
+/// The compat lane sets CARGO_BIN_EXE_cargo-intent to the exact installed
+/// candidate binary and CARGO_ALLOW_COMPAT_DELEGATION_REQUIRED=1: there,
+/// absence is a failure. Everywhere else (core lanes, local runs) the
+/// binary is deliberately absent — cargo-allow no longer dev-depends on
+/// cargo-intent — and the binary-dependent tests skip explicitly rather
+/// than silently passing.
+enum BinaryResolution {
+    Binary(PathBuf),
+    Skip(&'static str),
+}
+
+fn resolve_cargo_intent_binary() -> Result<BinaryResolution, String> {
     if let Ok(bin) = std::env::var("CARGO_BIN_EXE_cargo-intent") {
-        return Ok(PathBuf::from(bin));
+        let path = PathBuf::from(bin);
+        if path.is_file() {
+            return Ok(BinaryResolution::Binary(path));
+        }
     }
     let bin = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../target/debug")
         .join(cargo_intent_bin_name());
     if bin.is_file() {
-        return Ok(bin);
+        return Ok(BinaryResolution::Binary(bin));
     }
-    Err(format!(
-        "cargo-intent binary missing at {}; dev-dependency build should produce it",
-        bin.display()
+    if std::env::var("CARGO_ALLOW_COMPAT_DELEGATION_REQUIRED")
+        .ok()
+        .as_deref()
+        == Some("1")
+    {
+        return Err(
+            "compat lane marked delegation required but no cargo-intent binary resolved".into(),
+        );
+    }
+    Ok(BinaryResolution::Skip(
+        "cargo-intent binary absent; delegation e2e runs in the compat lane",
     ))
 }
 
@@ -172,7 +196,13 @@ fn prepare_staged_repo(repo: &FixtureRepo) -> Result<(), String> {
 
 #[test]
 fn cargo_intent_rejects_analysis_receipt_without_json() -> Result<(), String> {
-    let provider = cargo_intent_binary()?;
+    let provider = match resolve_cargo_intent_binary()? {
+        BinaryResolution::Binary(path) => path,
+        BinaryResolution::Skip(reason) => {
+            eprintln!("SKIP: {reason}");
+            return Ok(());
+        }
+    };
     let repo = FixtureRepo::new("receipt-format")?;
     let output = Command::new(provider)
         .arg("--root")
@@ -199,7 +229,13 @@ fn cargo_intent_rejects_analysis_receipt_without_json() -> Result<(), String> {
 
 #[test]
 fn delegated_staged_precommit_uses_analysis_receipt() -> Result<(), String> {
-    let provider = cargo_intent_binary()?;
+    let provider = match resolve_cargo_intent_binary()? {
+        BinaryResolution::Binary(path) => path,
+        BinaryResolution::Skip(reason) => {
+            eprintln!("SKIP: {reason}");
+            return Ok(());
+        }
+    };
     let repo = FixtureRepo::new("delegated")?;
     write_delegation_config(&repo.root, &provider)?;
     prepare_staged_repo(&repo)?;
@@ -215,7 +251,13 @@ fn delegated_staged_precommit_uses_analysis_receipt() -> Result<(), String> {
 
 #[test]
 fn delegated_staged_precommit_drains_large_analysis_receipt() -> Result<(), String> {
-    let provider = cargo_intent_binary()?;
+    let provider = match resolve_cargo_intent_binary()? {
+        BinaryResolution::Binary(path) => path,
+        BinaryResolution::Skip(reason) => {
+            eprintln!("SKIP: {reason}");
+            return Ok(());
+        }
+    };
     let repo = FixtureRepo::new("large-delegated")?;
     write_delegation_config(&repo.root, &provider)?;
     repo.write("README.md", "base\n")?;

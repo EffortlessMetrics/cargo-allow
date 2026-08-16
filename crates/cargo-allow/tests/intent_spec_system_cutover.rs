@@ -6,10 +6,9 @@ use std::process::{Command, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const FIXTURE: &str =
-    include_str!("../../../tests/fixtures/cargo-allow/intent-spec-system-cutover-v1.toml");
-const RECEIPT: &str = include_str!(
-    "../../../tests/fixtures/cargo-allow/cargo-allow-spec-system-cutover-receipt-v1.toml"
-);
+    include_str!("../../../tests/compat/fixtures/intent-spec-system-cutover-v1.toml");
+const RECEIPT: &str =
+    include_str!("../../../tests/compat/fixtures/cargo-allow-spec-system-cutover-receipt-v1.toml");
 
 #[test]
 fn intent_spec_system_cutover_fixture_pins_contract() {

@@ -13,8 +13,8 @@ work_dir="${WORK_DIR:-${ROOT}/target/spec-system-cutover}"
 receipt="${work_dir}/spec-system-cutover.receipt.json"
 schema_id="cargo-allow.spec-system-cutover-receipt.v1"
 config_path="${ROOT}/.allow/compatibility/intent-delegation.toml"
-cutover_fixture="${ROOT}/tests/fixtures/cargo-allow/intent-spec-system-cutover-v1.toml"
-stage_receipt="${ROOT}/tests/fixtures/cargo-allow/cargo-allow-spec-system-cutover-receipt-v1.toml"
+cutover_fixture="${ROOT}/tests/compat/fixtures/intent-spec-system-cutover-v1.toml"
+stage_receipt="${ROOT}/tests/compat/fixtures/cargo-allow-spec-system-cutover-receipt-v1.toml"
 
 log() {
   printf 'spec-system-cutover: %s\n' "$*"
