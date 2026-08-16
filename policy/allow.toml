@@ -11630,3 +11630,47 @@ glob = "docs/dogfood/unsafe-fixture-safety-analysis.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0551"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/check-msrv-resolved.sh"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "MSRV resolved-toolchain guard: asks the compiler the msrv CI job actually resolved what it is and fails closed unless it reports the declared rust-version series. Reads Cargo.toml and runs rustc --version only; it does not build the workspace or prove the MSRV compiles."
+evidence = ["doc:SUPPORT.md"]
+created = "2026-08-16"
+review_after = "2026-11-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/check-msrv-resolved.sh"
+target_fingerprint = "sh"
+glob = "scripts/check-msrv-resolved.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0552"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/test-check-msrv-resolved.sh"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Characterization guard for scripts/check-msrv-resolved.sh: drives it with stub compilers to prove it accepts the declared MSRV series and fails closed on a different minor, a different major, unparseable output, and a missing compiler. Uses stubs only; installs no toolchains and invokes no network."
+evidence = ["doc:SUPPORT.md"]
+created = "2026-08-16"
+review_after = "2026-11-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-check-msrv-resolved.sh"
+target_fingerprint = "sh"
+glob = "scripts/test-check-msrv-resolved.sh"
+
+[allow.last_seen]
+line = 1
+column = 1

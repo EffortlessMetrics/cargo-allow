@@ -81,6 +81,11 @@ drift_case "cache key drift" ".github/workflows/ci.yml" \
   "key: msrv-${msrv}" "key: msrv-1.100"
 drift_case "attested release manifest drift" ".github/workflows/release.yml" \
   "MSRV: \"${msrv}\"" "MSRV: \"1.100\""
+# The toolchain tag is applied via `rustup default`, which rust-toolchain.toml
+# outranks. RUSTUP_TOOLCHAIN is what actually pins the lane, so moving it off
+# the MSRV must fail even though the tag and cache key above still match.
+drift_case "rustup toolchain override drift" ".github/workflows/ci.yml" \
+  "RUSTUP_TOOLCHAIN: \"${msrv}.0\"" "RUSTUP_TOOLCHAIN: \"1.100.0\""
 
 # Reformatting a matching site must not be reported as drift. Without these,
 # the tolerant patterns in the guard would be untested and could silently
@@ -121,5 +126,37 @@ if [[ "${dotted}" != "${msrv}" ]]; then
   drift_case "regex dot is literal, not a wildcard" ".github/workflows/release.yml" \
     "MSRV: \"${msrv}\"" "MSRV: \"${dotted}\""
 fi
+
+accepts_case "reformatted RUSTUP_TOOLCHAIN is still matched" ".github/workflows/ci.yml" \
+  "RUSTUP_TOOLCHAIN: \"${msrv}.0\"" "RUSTUP_TOOLCHAIN:   ${msrv}.0"
+
+# Deleting the pin outright, not just moving it, must also fail: the tag and
+# cache key stay correct, so nothing else in the guard would notice.
+drift_case "rustup toolchain override removed" ".github/workflows/ci.yml" \
+  "RUSTUP_TOOLCHAIN: \"${msrv}.0\"" "UNRELATED_ENV: \"${msrv}.0\""
+
+# The override requirement exists only because a toolchain file outranks the
+# workflow tag. A repository without one must not be asked for it.
+toolchain_relaxation_dir="${work}/no-toolchain-file"
+mkdir -p "${toolchain_relaxation_dir}/.github/workflows"
+cp Cargo.toml "${toolchain_relaxation_dir}/Cargo.toml"
+cp .github/workflows/release.yml "${toolchain_relaxation_dir}/.github/workflows/release.yml"
+python3 - "${toolchain_relaxation_dir}/.github/workflows/ci.yml" \
+  ".github/workflows/ci.yml" "RUSTUP_TOOLCHAIN: \"${msrv}.0\"" <<'PY'
+import sys
+out_path, src_path, needle = sys.argv[1], sys.argv[2], sys.argv[3]
+with open(src_path, encoding="utf-8") as handle:
+    text = handle.read()
+if needle not in text:
+    sys.exit(f"fixture setup failed: {needle!r} not present in {src_path}")
+with open(out_path, "w", encoding="utf-8") as handle:
+    handle.write(text.replace(needle, 'UNRELATED_ENV: "unset"', 1))
+PY
+run_expect_success "no toolchain file relaxes the override requirement" \
+  env CARGO_TOML="${toolchain_relaxation_dir}/Cargo.toml" \
+  CI_WORKFLOW="${toolchain_relaxation_dir}/.github/workflows/ci.yml" \
+  RELEASE_WORKFLOW="${toolchain_relaxation_dir}/.github/workflows/release.yml" \
+  TOOLCHAIN_FILE="${toolchain_relaxation_dir}/rust-toolchain.toml" \
+  bash scripts/check-msrv-consistency.sh
 
 printf 'all check-msrv-consistency characterization checks passed\n'

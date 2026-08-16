@@ -11,6 +11,16 @@ jobs:
   # the MSRV lane stays short and release-claim oriented (#1901).
   msrv:
     runs-on: ubuntu-latest
+    # `rust-toolchain.toml` pins the floating `stable` channel for local
+    # development. rustup ranks that file ABOVE `rustup default`, and `rustup
+    # default` is how `dtolnay/rust-toolchain` selects its toolchain, so the
+    # action tag below is inert on its own: cargo would resolve the runner's
+    # stable and this lane would prove a Rust version the workspace does not
+    # claim. `RUSTUP_TOOLCHAIN` outranks the toolchain file, so it is what
+    # actually pins the lane. Removing it silently unpins the MSRV proof;
+    # `scripts/check-msrv-consistency.sh` fails closed if it goes missing.
+    env:
+      RUSTUP_TOOLCHAIN: "1.95.0"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # Runs before the toolchain so drift fails in seconds. `rust-version` in
@@ -23,6 +33,10 @@ jobs:
       # cargo: runs in about a second.
       - name: MSRV consistency guard characterization
         run: bash scripts/test-check-msrv-consistency.sh
+      # Drives the resolved-toolchain guard with stub compilers, so its
+      # fail-closed behaviour is proven without installing real toolchains.
+      - name: MSRV resolved toolchain guard characterization
+        run: bash scripts/test-check-msrv-resolved.sh
       # The action tag IS the proven toolchain, not a dependency version: it
       # must equal Cargo.toml `rust-version`. Dependabot is configured to leave
       # this action alone (.github/dependabot.yml); bumping it would keep CI
@@ -31,6 +45,12 @@ jobs:
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
           key: msrv-1.95
+      # The pin above is configuration; this is the evidence. Asks the resolved
+      # compiler what it is and fails closed unless it matches the declared
+      # `rust-version`, so no future toolchain-selection change can leave this
+      # lane green while proving a different Rust version.
+      - name: MSRV resolved toolchain
+        run: bash scripts/check-msrv-resolved.sh
       - name: MSRV workspace check
         run: cargo check --workspace --all-targets --locked
       - name: MSRV fast cargo-allow package proof
