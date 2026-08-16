@@ -1,3 +1,6 @@
+# Compat-owned fixture (#3369): shared by the cargo-allow
+# compatibility test targets and the spec-system cutover receipt
+# script. Owned by the compatibility surface, not cargo-allow core.
 # Spec-system cutover contract fixture (#2601-C).
 
 schema_id = "cargo-allow.intent-spec-system-cutover.v1"

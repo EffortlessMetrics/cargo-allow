@@ -1,3 +1,6 @@
+# Compat-owned fixture (#3369): shared by the cargo-allow
+# compatibility test targets and the spec-system cutover receipt
+# script. Owned by the compatibility surface, not cargo-allow core.
 # Staged precommit delegation contract fixture (#2601-B).
 
 schema_id = "cargo-allow.intent-staged-precommit-delegate.v1"

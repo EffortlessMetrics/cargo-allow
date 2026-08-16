@@ -71,7 +71,9 @@ fn read_workspace_file(root: &Path, rel: &str) -> String {
 fn ci_jobs(ci_yml: &str) -> Vec<(String, String)> {
     let mut jobs = Vec::new();
     let mut current: Option<(String, String)> = None;
+    let mut pending = String::new();
     let mut in_jobs = false;
+    let mut previous_blank = true;
     for line in ci_yml.lines() {
         if !in_jobs {
             if line.trim_end() == "jobs:" {
@@ -89,16 +91,33 @@ fn ci_jobs(ci_yml: &str) -> Vec<(String, String)> {
             }
             None => false,
         };
+        // A two-space comment directly after a blank line introduces the
+        // next job's documentation block; lines from there belong to that
+        // job, not the one above it.
+        let starts_between_jobs_comment = previous_blank && line.starts_with("  #");
         if is_job_header {
             if let Some((id, body)) = current.take() {
                 jobs.push((id, body));
             }
             let id = rest.unwrap_or("").trim_end_matches(':').to_string();
-            current = Some((id, String::new()));
-        } else if let Some((_, body)) = current.as_mut() {
-            body.push_str(line);
-            body.push('\n');
+            let body = std::mem::take(&mut pending);
+            current = Some((id, body));
+        } else if starts_between_jobs_comment && current.is_some() {
+            if let Some((id, body)) = current.take() {
+                jobs.push((id, body));
+            }
+            pending.push_str(line);
+            pending.push('\n');
+        } else if current.is_some() {
+            if let Some((_, body)) = current.as_mut() {
+                body.push_str(line);
+                body.push('\n');
+            }
+        } else {
+            pending.push_str(line);
+            pending.push('\n');
         }
+        previous_blank = line.trim().is_empty();
     }
     if let Some((id, body)) = current {
         jobs.push((id, body));

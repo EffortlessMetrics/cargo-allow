@@ -8664,7 +8664,7 @@ column = 1
 id = "allow-9098"
 kind = "non_rust_file"
 family = "test_fixture"
-path = "tests/fixtures/cargo-allow/intent-provider-discovery-v1.toml"
+path = "tests/compat/fixtures/intent-provider-discovery-v1.toml"
 owner = "core/intent-delegation"
 classification = "docs_executable_contract"
 reason = "Provider discovery contract fixture for cargo-intent delegation (#2601-A)."
@@ -8675,7 +8675,7 @@ review_after = "2027-01-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-glob = "tests/fixtures/cargo-allow/intent-provider-discovery-v1.toml"
+glob = "tests/compat/fixtures/intent-provider-discovery-v1.toml"
 
 [allow.last_seen]
 line = 1
@@ -8729,7 +8729,7 @@ column = 1
 id = "allow-9099"
 kind = "non_rust_file"
 family = "test_fixture"
-path = "tests/fixtures/cargo-allow/intent-staged-precommit-delegate-v1.toml"
+path = "tests/compat/fixtures/intent-staged-precommit-delegate-v1.toml"
 owner = "core/intent-delegation"
 classification = "docs_executable_contract"
 reason = "Staged precommit delegation contract fixture (#2601-B)."
@@ -8740,7 +8740,7 @@ review_after = "2027-01-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-glob = "tests/fixtures/cargo-allow/intent-staged-precommit-delegate-v1.toml"
+glob = "tests/compat/fixtures/intent-staged-precommit-delegate-v1.toml"
 
 [allow.last_seen]
 line = 1
@@ -8750,7 +8750,7 @@ column = 1
 id = "allow-9100"
 kind = "non_rust_file"
 family = "test_fixture"
-path = "tests/fixtures/cargo-allow/intent-spec-system-cutover-v1.toml"
+path = "tests/compat/fixtures/intent-spec-system-cutover-v1.toml"
 owner = "core/intent-delegation"
 classification = "docs_executable_contract"
 reason = "Spec-system cutover contract fixture (#2601-C)."
@@ -8761,7 +8761,7 @@ review_after = "2027-01-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-glob = "tests/fixtures/cargo-allow/intent-spec-system-cutover-v1.toml"
+glob = "tests/compat/fixtures/intent-spec-system-cutover-v1.toml"
 
 [allow.last_seen]
 line = 1
@@ -8771,7 +8771,7 @@ column = 1
 id = "allow-9101"
 kind = "non_rust_file"
 family = "test_fixture"
-path = "tests/fixtures/cargo-allow/cargo-allow-spec-system-cutover-receipt-v1.toml"
+path = "tests/compat/fixtures/cargo-allow-spec-system-cutover-receipt-v1.toml"
 owner = "core/intent-delegation"
 classification = "extraction_stage_receipt"
 reason = "CargoAllowCompatibilityCutover stage receipt for #2601-C / #2606."
@@ -8782,7 +8782,7 @@ review_after = "2027-01-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-glob = "tests/fixtures/cargo-allow/cargo-allow-spec-system-cutover-receipt-v1.toml"
+glob = "tests/compat/fixtures/cargo-allow-spec-system-cutover-receipt-v1.toml"
 
 [allow.last_seen]
 line = 1
@@ -9870,7 +9870,7 @@ column = 1
 id = "allow-9161"
 kind = "non_rust_file"
 family = "test_fixture"
-path = "tests/fixtures/cargo-allow/proof-provider-discovery-v1.toml"
+path = "tests/compat/fixtures/proof-provider-discovery-v1.toml"
 owner = "repo-infra"
 classification = "proof_adapter_cargo_allow_parity_fixture"
 reason = "cargo-allow proof provider discovery contract fixture (#2567)."
@@ -9881,7 +9881,7 @@ review_after = "2027-01-01"
 [allow.selector]
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
-glob = "tests/fixtures/cargo-allow/proof-provider-discovery-v1.toml"
+glob = "tests/compat/fixtures/proof-provider-discovery-v1.toml"
 
 [allow.last_seen]
 line = 1
@@ -10546,7 +10546,7 @@ path = ".allow/compatibility/intent-delegation.toml"
 owner = "core/intent-delegation"
 classification = "intent_delegation_config"
 reason = "Repo-wide spec-system cutover flags (#2568)."
-evidence = ["test:repository_enables_delegate_spec_system_cutover", "issue:2568", "doc:tests/fixtures/cargo-allow/intent-spec-system-cutover-v1.toml"]
+evidence = ["test:repository_enables_delegate_spec_system_cutover", "issue:2568", "doc:tests/compat/fixtures/intent-spec-system-cutover-v1.toml"]
 created = "2026-07-24"
 review_after = "2027-01-01"
 
@@ -11143,28 +11143,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-0506"
-kind = "non_rust_file"
-family = "documentation"
-path = "docs/schemas/release-manifest.schema.json"
-owner = "core/release"
-classification = "release_contract_schema"
-reason = "Defines the typed release-control contract for verified executable assets; it is intentionally outside the governed source-tree command-artifact registry."
-evidence = ["issue:2463", "doc:docs/schemas/README.md"]
-created = "2026-08-02"
-review_after = "2027-02-01"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = "docs/schemas/release-manifest.schema.json"
-target_fingerprint = "json"
-glob = "docs/schemas/release-manifest.schema.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-0510"
 kind = "non_rust_file"
 family = "documentation"
@@ -11647,6 +11625,27 @@ review_after = "2026-11-13"
 ast_kind = "tracked_file"
 target_fingerprint = "toml"
 glob = "docs/ci-lanes.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11120"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3369-compat-fixture-split.toml"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3369/#2075 revision note authorizing the weakening-class ledger edits (five fixture entry path moves, one dead-receipt prune); this receipt covers the note file itself as tracked configuration."
+evidence = ["doc:docs/how-to/manage-an-exception.md"]
+created = "2026-08-16"
+review_after = "2026-11-13"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3369-compat-fixture-split.toml"
 
 [allow.last_seen]
 line = 1

@@ -1,0 +1,17 @@
+kind: Changed
+body: >-
+  Split the cargo-intent compatibility surface out of cargo-allow core
+  (#3369). cargo-allow no longer dev-depends on cargo-intent at all: the
+  staged precommit delegation e2e resolves its binary through
+  CARGO_BIN_EXE_cargo-intent or target/debug, skips explicitly when
+  absent, and fails only when the lane marks it required. A new required
+  `compat-delegation` CI lane (Linux + Windows matrix) runs the e2e
+  against the exact installed cargo-intent candidate on Linux and a
+  fresh build on Windows; the required core lanes (test, test-windows,
+  coverage) no longer build cargo-intent, and the lane manifest's
+  declared cross-product ledger shrinks to that single lane. A graph
+  proof in the compat lane asserts cargo-allow has no cargo-intent
+  dependency edge. Compat fixtures moved to a compat-owned
+  `tests/compat/fixtures/` root with ownership headers, and the schema
+  catalog gained a seeded core-ownership check so no foreign product
+  schema can masquerade as cargo-allow-owned.

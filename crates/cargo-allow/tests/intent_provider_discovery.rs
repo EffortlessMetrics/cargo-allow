@@ -1,7 +1,7 @@
 //! Characterization for cargo-intent provider discovery (#2601-A).
 
 const FIXTURE: &str =
-    include_str!("../../../tests/fixtures/cargo-allow/intent-provider-discovery-v1.toml");
+    include_str!("../../../tests/compat/fixtures/intent-provider-discovery-v1.toml");
 
 #[test]
 fn intent_provider_discovery_fixture_pins_contract() {

@@ -60,6 +60,13 @@ posture = "required"
 scope = "cargo-allow-release-set"
 
 [[lane]]
+id = "compat-delegation"
+product = "cargo-allow"
+posture = "required"
+scope = "cargo-allow-release-set"
+note = "staged precommit delegation e2e (#2601-B/#3369): Linux runs it against the exact installed cargo-intent candidate, Windows against a fresh build"
+
+[[lane]]
 id = "coverage"
 product = "cargo-allow"
 posture = "required"
@@ -107,21 +114,11 @@ note = "governance validation, three-product dogfood, simplification audit"
 # here must name the lane, the referenced product, and why; the contract
 # test fails on any cross-product token in a required lane that is not
 # declared here. Adding an entry requires a reviewed justification.
+# Core lanes carry none since #3369; the delegation e2e is the compat
+# lane's whole purpose.
 
 [[declared_cross_product_reference]]
-lane = "test-windows"
+lane = "compat-delegation"
 referenced_product = "cargo-intent"
 token = "cargo-intent"
-reason = "staged precommit delegation e2e (#2601-B): the lane builds cargo-intent to run cargo-allow's own delegation contract"
-
-[[declared_cross_product_reference]]
-lane = "test"
-referenced_product = "cargo-intent"
-token = "cargo-intent"
-reason = "staged precommit delegation e2e (#2601-B): cargo-allow's integration tests exercise the cargo-intent binary"
-
-[[declared_cross_product_reference]]
-lane = "coverage"
-referenced_product = "cargo-intent"
-token = "cargo-intent"
-reason = "the coverage instrumented suite includes the staged precommit delegation e2e (#2601-B), which needs the cargo-intent binary"
+reason = "the delegation e2e is cargo-allow's compatibility contract with the cargo-intent binary; this required lane exists to run it outside core (#3369)"

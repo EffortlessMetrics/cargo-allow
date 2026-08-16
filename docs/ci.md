@@ -56,8 +56,12 @@ Required lanes (gate cargo-allow patch and release):
   candidate package set, cutover build receipts, install journey.
 - **`test`**: rustfmt (workspace-wide, repo hygiene), release-set Clippy,
   tests, doc tests, docs, audit, no-new check, cutover status chain.
-- **`test-windows`**: release-set suite on Windows (plus the declared
-  #2601-B cargo-intent build for the staged precommit delegation e2e).
+- **`test-windows`**: release-set suite on Windows.
+- **`compat-delegation`**: the staged precommit delegation e2e
+  (#2601-B) — Linux against the exact installed cargo-intent
+  candidate, Windows against a fresh build. Core lanes carry no
+  cargo-intent edge; this lane owns the compatibility contract
+  (#3369).
 - **`coverage`**: release-set Tarpaulin coverage.
 - **`shallow-diff-smoke`**, **`operator-latency`**, **`cargo-deny`**:
   cargo-allow-specific lanes and the workspace supply-chain audit.
