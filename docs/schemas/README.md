@@ -112,22 +112,14 @@ runtime, reachability, or semantic analysis.
 
 | Artifact | Schema ID | Producer |
 |---|---|---|
-| Historical release identity and verified executable assets | `cargo-allow.release-manifest.v1` | historical reader / typed `allow-report` model |
 | Current topology-derived release payload and execution envelope | `cargo-allow.release-manifest.v2` | release workflow / topology receipt / typed `allow-report` contract |
 | [Topology candidate receipt](topology-publish-receipt.schema.json) | `cargo-allow.topology-publish-receipt.v1` | `scripts/release-topology-publisher.py` |
 | Shared package candidate receipt | `cargo-allow.shared-package-candidate.v1` | `scripts/release-topology-publisher.py --mode shared --package-only` |
 
-`ReleaseManifestV1` remains readable as a historical release-control artifact
-but cannot satisfy the current release gate. The current workflow emits
-`ReleaseManifestV2`, whose package rows come from the exact topology publisher
-receipt and whose authentication class is token-backed. Neither artifact is a
-source-tree scan result. In the historical V1 reader, `binary_assets` may be
-empty for crates.io-only releases. When populated, each asset is bound to the manifest's
-tag, commit, tree, version, proven platform, executable digest, archive digest,
-candidate/install evidence digests, and attestation subject. The Rust validator
-rejects duplicate or non-canonical assets, unsupported targets, identity
-conflicts, unsafe filenames, malformed digests, and attestation/archive digest
-mismatches. See [release-manifest.schema.json](release-manifest.schema.json).
+The historical `ReleaseManifestV1` scaffold (hard-coded publish order, mandatory
+OIDC authentication) was retired with its schema: no release ever attached a V1
+manifest, the release workflow emits only `ReleaseManifestV2`, and the retired
+scaffold's authentication law contradicted the shipped token-backed mechanism.
 The current V2 shape is defined by
 [release-manifest-v2.schema.json](release-manifest-v2.schema.json).
 
@@ -202,7 +194,6 @@ promote policy, authorize publication, or establish release readiness.
 - [tool-identity.schema.json](tool-identity.schema.json) self-description contract (not a governed artifact)
 - [operator-latency.schema.json](operator-latency.schema.json) supporting hosted performance receipt (not a governed artifact)
 - [extraction-cutover-evidence.schema.json](extraction-cutover-evidence.schema.json), [extraction-cutover-ownership.schema.json](extraction-cutover-ownership.schema.json), and [extraction-cutover-build-package.schema.json](extraction-cutover-build-package.schema.json) supporting cutover evidence-input contracts (not governed source-tree artifacts)
-- [release-manifest.schema.json](release-manifest.schema.json) release-control contract (not a governed source-tree artifact)
 - [release-manifest-v2.schema.json](release-manifest-v2.schema.json) topology-derived release contract (contract-only; not a publication authorization)
 - [common.v1.json](common.v1.json) shared source-tree fragments used as the
   tested vocabulary source for future schema consolidation. Artifact schemas

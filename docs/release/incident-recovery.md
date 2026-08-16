@@ -214,6 +214,6 @@ Related source of truth:
 - [release operator guide](README.md)
 - [support matrix](../support-matrix.toml)
 - [release workflow](../../.github/workflows/release.yml)
-- [release manifest schema](../schemas/release-manifest.schema.json)
+- [release manifest schema](../schemas/release-manifest-v2.schema.json)
 - [release authorization issue #2502](https://github.com/EffortlessMetrics/cargo-allow/issues/2502)
 - [recovery mechanics issue #2509](https://github.com/EffortlessMetrics/cargo-allow/issues/2509)

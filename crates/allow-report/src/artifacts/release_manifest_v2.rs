@@ -581,17 +581,6 @@ mod tests {
     }
 
     #[test]
-    fn v1_is_not_the_current_v2_gate() -> Result<(), String> {
-        if crate::artifacts::RELEASE_MANIFEST_SCHEMA_ID == RELEASE_MANIFEST_V2_SCHEMA_ID {
-            return Err("V1 and V2 schema identifiers must remain distinct".to_string());
-        }
-        if crate::artifacts::RELEASE_MANIFEST_SCHEMA_VERSION >= RELEASE_MANIFEST_V2_SCHEMA_VERSION {
-            return Err("V1 must remain historical relative to V2".to_string());
-        }
-        Ok(())
-    }
-
-    #[test]
     fn v2_schema_matches_the_contract_generation() -> Result<(), String> {
         let schema: serde_json::Value = serde_json::from_str(::std::include_str!(
             "../../../../docs/schemas/release-manifest-v2.schema.json"
