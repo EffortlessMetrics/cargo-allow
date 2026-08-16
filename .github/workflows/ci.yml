@@ -500,10 +500,15 @@ jobs:
           # suite launches cargo-allow subprocesses; Tarpaulin's default
           # ptrace backend has produced false fixture failures in that lane.
           cargo install cargo-tarpaulin --version 0.37.0 --locked
-          # The cargo-intent build below must precede tarpaulin: the
-          # staged precommit delegation e2e (#2601-B) is a declared
-          # cross-product reference of this lane and needs the binary.
+          # The staged precommit delegation e2e (#2601-B) is a declared
+          # cross-product reference of this lane and needs the
+          # cargo-intent binary. Tarpaulin cleans the project before
+          # its instrumented build, so the binary is copied outside
+          # target/ and exported through CARGO_BIN_EXE_cargo-intent,
+          # which the e2e resolves ahead of target/debug.
           cargo build -p cargo-intent --locked
+          cp target/debug/cargo-intent "${coverage_temp}/cargo-intent"
+          export CARGO_BIN_EXE_cargo-intent="${coverage_temp}/cargo-intent"
           # cargo-allow release set only (#3358); experimental product
 
           # coverage does not gate this lane.
