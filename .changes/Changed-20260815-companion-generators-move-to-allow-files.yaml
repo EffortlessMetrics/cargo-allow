@@ -1,0 +1,11 @@
+kind: Changed
+body: >-
+  Move the live companion-finding generators (workflow, dependency-surface,
+  generated/executable, and process/network config findings) from
+  `allow-policy-legacy` to `allow-files`, whose charter already owns
+  file-surface classification. `allow-policy-legacy` keeps a re-export
+  facade so the migration adapters and their characterization tests compile
+  unchanged; the construction helpers the adapters still borrow are exposed
+  deliberately through `allow_files::companion_helpers`. No behavior change:
+  the modules are self-contained over `allow-core` types and moved with
+  their inline tests (#2821 half 2, step 1).

@@ -56,7 +56,7 @@ fn git_ls_files(root: impl AsRef<Path>) -> CargoAllowResult<Vec<PathBuf>> {
         .collect())
 }
 
-pub(crate) fn dependency_surface_finding(path: PathBuf) -> Finding {
+pub fn dependency_surface_finding(path: PathBuf) -> Finding {
     let normalized = normalize_path(&path);
     let mut identity = allow_core::StructuralIdentity::new("file", "dependency_surface");
     identity.symbol = Some(normalized.clone());
