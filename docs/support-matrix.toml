@@ -42,10 +42,13 @@ claim_boundary = "Source-tree observations only; no compilation, type, macro, MI
 
 [rust]
 # Source of truth is `rust-version` under [workspace.package] in Cargo.toml.
-# scripts/check-msrv-consistency.sh proves the CI pin, the cache key, and the
-# attested release-manifest MSRV all still agree with it.
+# scripts/check-msrv-consistency.sh proves the CI pin, the cache key, the
+# attested release-manifest MSRV, and the msrv job's RUSTUP_TOOLCHAIN all still
+# agree with it. scripts/check-msrv-resolved.sh separately proves the compiler
+# the job resolved is that MSRV, because rust-toolchain.toml outranks the
+# `rustup default` the workflow toolchain tag applies.
 msrv = "1.95"
-msrv_evidence = "ci.yml job `msrv` pins dtolnay/rust-toolchain@1.95.0 and runs `cargo check --workspace --all-targets --locked`"
+msrv_evidence = "ci.yml job `msrv` pins dtolnay/rust-toolchain@1.95.0, sets RUSTUP_TOOLCHAIN=1.95.0 so rust-toolchain.toml cannot override it, verifies the resolved compiler with scripts/check-msrv-resolved.sh, and runs `cargo check --workspace --all-targets --locked`"
 stable_evidence = "ci.yml job `test` runs the full suite on dtolnay/rust-toolchain@stable"
 
 # Platform rows. `tier` is descriptive of executed evidence, not a promise:

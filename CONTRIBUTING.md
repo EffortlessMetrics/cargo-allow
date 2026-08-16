@@ -30,6 +30,11 @@ repository root. `rust-toolchain.toml` pins the `stable` channel plus the
 `rustfmt` and `clippy` components, so `rustup` installs a matching toolchain
 automatically the first time you run a `cargo` command here.
 
+That file pins the channel, not the MSRV, so your stable must already be at or
+above the declared `rust-version`; an older stable fails the build with a
+`rustc … is not supported` error rather than downloading the MSRV for you. CI
+proves the MSRV separately in its own job — see [SUPPORT.md](SUPPORT.md).
+
 Useful local commands:
 
 ```bash

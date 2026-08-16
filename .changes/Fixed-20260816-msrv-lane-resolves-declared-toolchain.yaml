@@ -1,0 +1,13 @@
+kind: Fixed
+body: >-
+  Make the CI `msrv` job actually run the declared MSRV. rustup ranks
+  `rust-toolchain.toml` above `rustup default`, and `rustup default` is how
+  `dtolnay/rust-toolchain` applies its tag, so the job's `@1.95.0` pin was inert
+  and its cargo steps resolved whatever the runner's `stable` channel happened
+  to be — currently two minor versions above the MSRV. The published
+  `rust-version = "1.95"` support claim therefore had no executed evidence
+  behind it. The job now sets `RUSTUP_TOOLCHAIN`, which outranks the toolchain
+  file, and a new `scripts/check-msrv-resolved.sh` asks the resolved compiler
+  what it is and fails the job unless it reports the declared MSRV series.
+  `scripts/check-msrv-consistency.sh` gained the `RUSTUP_TOOLCHAIN` pin as a
+  fourth drift site so it cannot be silently removed.

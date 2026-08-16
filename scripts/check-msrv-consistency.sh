@@ -13,6 +13,10 @@ cd "${ROOT}"
 cargo_toml="${CARGO_TOML:-Cargo.toml}"
 ci_workflow="${CI_WORKFLOW:-.github/workflows/ci.yml}"
 release_workflow="${RELEASE_WORKFLOW:-.github/workflows/release.yml}"
+# Optional: only repositories that ship a toolchain file need the workflow to
+# outrank it. Checked for existence rather than required, so dropping the file
+# relaxes the guard instead of breaking it.
+toolchain_file="${TOOLCHAIN_FILE:-rust-toolchain.toml}"
 
 fail() {
   printf 'error: %s\n' "$1" >&2
@@ -53,6 +57,25 @@ if ! grep -qF "key: msrv-${msrv}" "${ci_workflow}"; then
     "       Use key: msrv-${msrv}.")"
 fi
 printf 'ok %s uses cache key msrv-%s\n' "${ci_workflow}" "${msrv}"
+
+# The action tag above is stated configuration, not the resolved toolchain.
+# rustup ranks `rust-toolchain.toml` above `rustup default`, and `rustup
+# default` is how `dtolnay/rust-toolchain` applies its tag, so while this
+# repository ships a `rust-toolchain.toml` the tag alone resolves to whatever
+# the runner's channel happens to be. RUSTUP_TOOLCHAIN outranks the toolchain
+# file and is what actually pins the lane; without it the MSRV proof is inert
+# while every check above still reports green.
+if [[ -f "${toolchain_file}" ]]; then
+  if ! grep -qE "RUSTUP_TOOLCHAIN:[[:space:]]*\"?${msrv_ere}\.[0-9]+\"?[[:space:]]*$" "${ci_workflow}"; then
+    actual="$(grep -oE 'RUSTUP_TOOLCHAIN: "?[^"[:space:]]+"?' "${ci_workflow}" | head -n 1 || true)"
+    fail "$(printf '%s ships %s, which outranks the workflow toolchain tag.\n%s sets %s but the MSRV is %s.\n%s' \
+      "${ROOT}" "${toolchain_file}" \
+      "       ${ci_workflow}" "${actual:-no RUSTUP_TOOLCHAIN value}" "${msrv}" \
+      "       Set RUSTUP_TOOLCHAIN: \"${msrv}.0\" on the msrv job.")"
+  fi
+  printf 'ok %s pins RUSTUP_TOOLCHAIN to the %s series over %s\n' \
+    "${ci_workflow}" "${msrv}" "${toolchain_file}"
+fi
 
 if ! grep -qE "MSRV:[[:space:]]*\"?${msrv_ere}\"?[[:space:]]*$" "${release_workflow}"; then
   actual="$(grep -oE 'MSRV: "?[^"[:space:]]+"?' "${release_workflow}" | head -n 1 || true)"

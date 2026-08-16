@@ -22,11 +22,17 @@ candidate. Do not treat it as a published release.
 
 **MSRV: 1.95**, declared as `rust-version` under `[workspace.package]`.
 
-CI proves it: the `msrv` job pins `dtolnay/rust-toolchain@1.95.0` and runs
-`cargo check --workspace --all-targets --locked`. The full suite additionally
-runs on stable. `scripts/check-msrv-consistency.sh` proves the MSRV is stated
-identically in the CI pin, the build cache key, and the attested release
-manifest.
+CI proves it: the `msrv` job pins `dtolnay/rust-toolchain@1.95.0`, sets
+`RUSTUP_TOOLCHAIN=1.95.0` so the repository's `rust-toolchain.toml` cannot
+override that pin, and runs `cargo check --workspace --all-targets --locked`.
+The full suite additionally runs on stable.
+
+Two guards keep that honest, because a pin can be stated correctly and still be
+overridden at run time. `scripts/check-msrv-consistency.sh` proves the MSRV is
+stated identically in the CI pin, the build cache key, the attested release
+manifest, and the job's `RUSTUP_TOOLCHAIN`. `scripts/check-msrv-resolved.sh`
+then asks the resolved compiler what it is and fails the job unless it reports
+the declared MSRV series.
 
 ## Platforms
 

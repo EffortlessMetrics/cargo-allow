@@ -11,9 +11,19 @@ and does not repeat it.
 
 ## Commands
 
-Rust 2024, MSRV/toolchain pinned to **1.95** (`rust-toolchain.toml`,
-`workspace.package.rust-version`, and the `dtolnay/rust-toolchain@1.95.0` pin in
-`ci.yml` must all agree — `scripts/check-msrv-consistency.sh` enforces this).
+Rust 2024, MSRV **1.95**, declared by `workspace.package.rust-version` — the
+single source of truth. `scripts/check-msrv-consistency.sh` proves the CI
+toolchain pin, the MSRV cache key, the attested release-manifest MSRV, and the
+`msrv` job's `RUSTUP_TOOLCHAIN` all still agree with it.
+
+`rust-toolchain.toml` pins the floating `stable` channel, **not** the MSRV, so
+local builds use current stable and need it to be >= 1.95. That file outranks
+`rustup default`, which is how `dtolnay/rust-toolchain` applies its tag, so the
+`msrv` job sets `RUSTUP_TOOLCHAIN` to pin itself and runs
+`scripts/check-msrv-resolved.sh` to prove the compiler it actually resolved is
+the declared MSRV. Changing how that job selects a toolchain means re-proving
+it, not just re-stating it.
+
 Building requires a C toolchain because of tree-sitter.
 
 ```bash
