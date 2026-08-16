@@ -23,13 +23,13 @@ stale_entries_fail = false
 [requirements.unsafe]
 evidence_required = true
 safety_comment_required = false
-# #3237 rollout: unsafe entries created from 2026-08-15 onward require at
-# least one verified local-file evidence reference (doc:, spec:, adr:,
-# ripr:, coverage:, unsafe-review:). Entries created before this date are
-# grandfathered (12 existing entries carry test:-only evidence and need
-# per-entry safety documentation before this cutoff is lifted).
+# #3237 mandate: every unsafe entry requires at least one verified
+# local-file evidence reference (doc:, spec:, adr:, ripr:, coverage:,
+# unsafe-review:); traceability-only references (test:, issue:, pr:) are
+# supplementary. The rollout grandfathering window was retired after all
+# twelve pre-mandate entries gained per-entry safety analysis in
+# docs/dogfood/unsafe-fixture-safety-analysis.md.
 verified_evidence_required = true
-verified_evidence_grandfather_entries_created_before = "2026-08-15"
 
 [[allow]]
 id = "allow-0038"
@@ -3023,7 +3023,7 @@ path = "fixtures/unsafe/src/lib.rs"
 owner = "core/rust-scanner"
 classification = "unsafe_scanner_fixture"
 reason = "Reviewed 2026-08-08: still required. Unsafe fixture intentionally contains an unsafe function so cargo-allow can dogfood unsafe syntax inventory without executing repository code."
-evidence = ["test:detects_unsafe_function_signatures_from_syntax"]
+evidence = ["doc:docs/dogfood/unsafe-fixture-safety-analysis.md", "test:detects_unsafe_function_signatures_from_syntax"]
 created = "2026-05-26"
 review_after = "2027-02-08"
 
@@ -3044,7 +3044,7 @@ path = "fixtures/unsafe/src/lib.rs"
 owner = "core/rust-scanner"
 classification = "unsafe_scanner_fixture"
 reason = "Reviewed 2026-08-08: still required. Unsafe fixture intentionally contains an unsafe block so cargo-allow can dogfood unsafe block inventory without executing repository code."
-evidence = ["test:detects_multiple_unsafe_constructs_on_one_line"]
+evidence = ["doc:docs/dogfood/unsafe-fixture-safety-analysis.md", "test:detects_multiple_unsafe_constructs_on_one_line"]
 created = "2026-05-26"
 review_after = "2027-02-08"
 
@@ -6100,7 +6100,7 @@ path = "tests/fixtures/structural-identity/function_move/after.rs"
 owner = "core/rust-scanner"
 classification = "structural_identity_fixture"
 reason = "Structural identity refactor-pair fixture for D2 characterization tests."
-evidence = ["test:structural_identity_field_matrix_documents_fixture_classifications"]
+evidence = ["doc:docs/dogfood/unsafe-fixture-safety-analysis.md", "test:structural_identity_field_matrix_documents_fixture_classifications"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -6121,7 +6121,7 @@ path = "tests/fixtures/structural-identity/function_move/after.rs"
 owner = "core/rust-scanner"
 classification = "structural_identity_fixture"
 reason = "Structural identity refactor-pair fixture for D2 characterization tests."
-evidence = ["test:structural_identity_field_matrix_documents_fixture_classifications"]
+evidence = ["doc:docs/dogfood/unsafe-fixture-safety-analysis.md", "test:structural_identity_field_matrix_documents_fixture_classifications"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -6142,7 +6142,7 @@ path = "tests/fixtures/structural-identity/function_move/before.rs"
 owner = "core/rust-scanner"
 classification = "structural_identity_fixture"
 reason = "Structural identity refactor-pair fixture for D2 characterization tests."
-evidence = ["test:structural_identity_field_matrix_documents_fixture_classifications"]
+evidence = ["doc:docs/dogfood/unsafe-fixture-safety-analysis.md", "test:structural_identity_field_matrix_documents_fixture_classifications"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -6163,7 +6163,7 @@ path = "tests/fixtures/structural-identity/function_move/before.rs"
 owner = "core/rust-scanner"
 classification = "structural_identity_fixture"
 reason = "Structural identity refactor-pair fixture for D2 characterization tests."
-evidence = ["test:structural_identity_field_matrix_documents_fixture_classifications"]
+evidence = ["doc:docs/dogfood/unsafe-fixture-safety-analysis.md", "test:structural_identity_field_matrix_documents_fixture_classifications"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -6324,7 +6324,7 @@ path = "tests/fixtures/structural-identity/module_move/after.rs"
 owner = "core/rust-scanner"
 classification = "structural_identity_fixture"
 reason = "Structural identity refactor-pair fixture for D2 characterization tests."
-evidence = ["test:structural_identity_field_matrix_documents_fixture_classifications"]
+evidence = ["doc:docs/dogfood/unsafe-fixture-safety-analysis.md", "test:structural_identity_field_matrix_documents_fixture_classifications"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -6345,7 +6345,7 @@ path = "tests/fixtures/structural-identity/module_move/before.rs"
 owner = "core/rust-scanner"
 classification = "structural_identity_fixture"
 reason = "Structural identity refactor-pair fixture for D2 characterization tests."
-evidence = ["test:structural_identity_field_matrix_documents_fixture_classifications"]
+evidence = ["doc:docs/dogfood/unsafe-fixture-safety-analysis.md", "test:structural_identity_field_matrix_documents_fixture_classifications"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -6943,7 +6943,7 @@ path = "tests/fixtures/structural-identity/container_same_name_sibling_modules/b
 owner = "core/rust-scanner"
 classification = "structural_identity_fixture"
 reason = "Structural identity D3 fixture: sibling modules with same free-function name."
-evidence = ["test:refactor_pair_sibling_modules_same_function_name_have_distinct_container_identity"]
+evidence = ["doc:docs/dogfood/unsafe-fixture-safety-analysis.md", "test:refactor_pair_sibling_modules_same_function_name_have_distinct_container_identity"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -6964,7 +6964,7 @@ path = "tests/fixtures/structural-identity/container_same_name_sibling_modules/b
 owner = "core/rust-scanner"
 classification = "structural_identity_fixture"
 reason = "Structural identity D3 fixture: sibling modules with same free-function name."
-evidence = ["test:refactor_pair_sibling_modules_same_function_name_have_distinct_container_identity"]
+evidence = ["doc:docs/dogfood/unsafe-fixture-safety-analysis.md", "test:refactor_pair_sibling_modules_same_function_name_have_distinct_container_identity"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -6985,7 +6985,7 @@ path = "tests/fixtures/structural-identity/container_same_name_sibling_modules/a
 owner = "core/rust-scanner"
 classification = "structural_identity_fixture"
 reason = "Structural identity D3 fixture: sibling modules with same free-function name."
-evidence = ["test:refactor_pair_sibling_modules_same_function_name_have_distinct_container_identity"]
+evidence = ["doc:docs/dogfood/unsafe-fixture-safety-analysis.md", "test:refactor_pair_sibling_modules_same_function_name_have_distinct_container_identity"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -7006,7 +7006,7 @@ path = "tests/fixtures/structural-identity/container_same_name_sibling_modules/a
 owner = "core/rust-scanner"
 classification = "structural_identity_fixture"
 reason = "Structural identity D3 fixture: sibling modules with same free-function name."
-evidence = ["test:refactor_pair_sibling_modules_same_function_name_have_distinct_container_identity"]
+evidence = ["doc:docs/dogfood/unsafe-fixture-safety-analysis.md", "test:refactor_pair_sibling_modules_same_function_name_have_distinct_container_identity"]
 created = "2026-06-18"
 review_after = "2026-11-01"
 
@@ -11605,6 +11605,27 @@ review_after = "2027-01-01"
 ast_kind = "tracked_file"
 target_fingerprint = "py"
 glob = "scripts/test-candidate-harness-lifecycle.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0550"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/unsafe-fixture-safety-analysis.md"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3237 worklist: verified per-entry safety analysis for the twelve grandfathered unsafe fixture entries; receipts the analysis document itself as tracked documentation."
+evidence = ["doc:docs/dogfood/unsafe-fixture-safety-analysis.md"]
+created = "2026-08-15"
+review_after = "2026-11-13"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "docs/dogfood/unsafe-fixture-safety-analysis.md"
 
 [allow.last_seen]
 line = 1
