@@ -323,13 +323,18 @@ fn seeded_experimental_failure_cannot_block_required_lanes() {
                                 std::panic::panic_any(format!("lane {id}: dangling -p flag"))
                             })
                             .trim_end_matches('\\');
+                        let in_release_set = manifest
+                            .crates
+                            .cargo_allow_release_set
+                            .iter()
+                            .any(|c| c == target);
+                        let declared = manifest
+                            .declared_cross_product_reference
+                            .iter()
+                            .any(|d| d.lane == *id && d.token == *target);
                         assert!(
-                            manifest
-                                .crates
-                                .cargo_allow_release_set
-                                .iter()
-                                .any(|c| c == target),
-                            "required lane {id} scopes cargo onto non-release-set crate {target}"
+                            in_release_set || declared,
+                            "required lane {id} scopes cargo onto non-release-set crate {target} without a declared_cross_product_reference entry"
                         );
                     }
                 }

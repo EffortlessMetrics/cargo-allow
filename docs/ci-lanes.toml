@@ -143,3 +143,15 @@ lane = "test-windows"
 referenced_product = "cargo-intent"
 token = "cargo-intent"
 reason = "staged precommit delegation e2e (#2601-B): the lane builds cargo-intent to run cargo-allow's own delegation contract"
+
+[[declared_cross_product_reference]]
+lane = "test"
+referenced_product = "cargo-intent"
+token = "cargo-intent"
+reason = "staged precommit delegation e2e (#2601-B): cargo-allow's integration tests exercise the cargo-intent binary"
+
+[[declared_cross_product_reference]]
+lane = "coverage"
+referenced_product = "cargo-intent"
+token = "cargo-intent"
+reason = "the coverage instrumented suite includes the staged precommit delegation e2e (#2601-B), which needs the cargo-intent binary"

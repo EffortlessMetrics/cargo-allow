@@ -274,7 +274,13 @@ jobs:
             -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit \
             -- -D warnings
 
+      - name: Build cargo-intent for staged precommit delegation e2e (#2601-B)
+        # Declared cross-product reference (docs/ci-lanes.toml): the
+        # delegation e2e is a cargo-allow contract that exercises the
+        # cargo-intent binary.
+        run: cargo build -p cargo-intent --locked
       - name: Candidate harness lifecycle characterization (#3509)
+
         run: python scripts/test-candidate-harness-lifecycle.py
       - name: Extraction readiness receipt (#2559)
         run: bash scripts/extraction-readiness-receipt.sh
@@ -494,7 +500,12 @@ jobs:
           # suite launches cargo-allow subprocesses; Tarpaulin's default
           # ptrace backend has produced false fixture failures in that lane.
           cargo install cargo-tarpaulin --version 0.37.0 --locked
+          # The cargo-intent build below must precede tarpaulin: the
+          # staged precommit delegation e2e (#2601-B) is a declared
+          # cross-product reference of this lane and needs the binary.
+          cargo build -p cargo-intent --locked
           # cargo-allow release set only (#3358); experimental product
+
           # coverage does not gate this lane.
           cargo tarpaulin --locked --engine llvm --out xml \
             --output-dir target/cargo-allow \
