@@ -425,16 +425,19 @@ fn validate_action(action: &CoreCommandActionV1) -> Result<(), String> {
     require_non_empty("action.expected_effect", &action.expected_effect)?;
     require_non_empty("action.proof_boundary", &action.proof_boundary)?;
 
+    // Guarded arm plus an explicit fall-through `Command => {}`: collapsing
+    // the program check into the guard (as 1.95.0 clippy suggests) would let
+    // a valid `Command` action with a program fall into the "non-command
+    // action cannot carry command argv" arm below.
+    let command_missing_program = action
+        .program
+        .as_deref()
+        .is_none_or(|program| program.trim().is_empty());
     match action.kind {
-        CoreCommandActionKindV1::Command => {
-            if action
-                .program
-                .as_deref()
-                .is_none_or(|program| program.trim().is_empty())
-            {
-                return Err("command action requires a program".to_string());
-            }
+        CoreCommandActionKindV1::Command if command_missing_program => {
+            return Err("command action requires a program".to_string());
         }
+        CoreCommandActionKindV1::Command => {}
         _ if action.program.is_some() || !action.args.is_empty() => {
             return Err("non-command action cannot carry command argv".to_string());
         }

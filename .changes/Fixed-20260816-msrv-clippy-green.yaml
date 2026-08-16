@@ -1,0 +1,12 @@
+kind: Fixed
+body: >-
+  `cargo clippy --workspace --all-targets -- -D warnings` now passes on both
+  the declared MSRV toolchain (1.95.0) and stable. Two divergences fixed:
+  the unfulfilled `#[expect(dead_code)]` in `effortless-repo-snapshot` was
+  caused by dead public re-exports keeping the helpers reachable on 1.95.0's
+  dead-code analysis — removing the re-exports (no downstream consumer;
+  allow-diff uses its own facade copy) makes the deadness unambiguous on
+  every toolchain; and a 1.95-only `collapsible_match` hit in
+  `core_command_summary` was restructured with an explicit guarded arm,
+  because following the suggested collapse would have let valid `Command`
+  actions fall into the "non-command argv" rejection arm.
