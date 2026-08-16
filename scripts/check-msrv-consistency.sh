@@ -72,9 +72,13 @@ printf 'ok %s uses cache key msrv-%s\n' "${ci_workflow}" "${msrv}"
 # the `  msrv:` key to the next top-level job key (a line indented exactly two
 # spaces ending in `:`), and match only within it.
 if [[ -f "${toolchain_file}" ]]; then
+  # Job headers may carry a trailing comment. Tolerating it matters most on the
+  # terminator: a missed end key would run the block on into later jobs and
+  # accept their RUSTUP_TOOLCHAIN, reopening exactly the hole this scoping
+  # closes. A missed start key only fails closed, which is safe but noisy.
   msrv_job="$(awk '
-    /^  msrv:[[:space:]]*$/ { in_job = 1; next }
-    in_job && /^  [A-Za-z0-9_-]+:[[:space:]]*$/ { exit }
+    /^  msrv:[[:space:]]*(#.*)?$/ { in_job = 1; next }
+    in_job && /^  [A-Za-z0-9_-]+:[[:space:]]*(#.*)?$/ { exit }
     in_job { print }
   ' "${ci_workflow}")"
 
