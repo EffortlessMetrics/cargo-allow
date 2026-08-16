@@ -71,7 +71,7 @@ pub fn workflow_findings_from_sources(sources: Vec<(PathBuf, String)>) -> Vec<Fi
     findings
 }
 
-pub(crate) fn workflow_file_finding(path: PathBuf) -> Finding {
+pub fn workflow_file_finding(path: PathBuf) -> Finding {
     let normalized = normalize_path(&path);
     let mut identity = allow_core::StructuralIdentity::new("workflow", "github_workflow");
     identity.symbol = Some(normalized);
@@ -86,7 +86,7 @@ pub(crate) fn workflow_file_finding(path: PathBuf) -> Finding {
     }
 }
 
-pub(crate) fn workflow_action_finding(path: PathBuf, action: String) -> Finding {
+pub fn workflow_action_finding(path: PathBuf, action: String) -> Finding {
     let normalized = normalize_path(&path);
     let mut identity = allow_core::StructuralIdentity::new("workflow", "github_action_uses");
     identity.symbol = Some(workflow_action_symbol(&normalized, &action));
@@ -117,7 +117,7 @@ fn extract_workflow_uses(line: &str) -> Option<String> {
     }
 }
 
-pub(crate) fn workflow_action_symbol(path: &str, action: &str) -> String {
+pub fn workflow_action_symbol(path: &str, action: &str) -> String {
     format!("{path} uses {action}")
 }
 

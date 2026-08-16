@@ -64,7 +64,7 @@ fn generated_path_from_gitattributes_line(line: &str) -> Option<String> {
         .map(str::to_string)
 }
 
-pub(crate) fn generated_finding(path: PathBuf) -> Finding {
+pub fn generated_finding(path: PathBuf) -> Finding {
     let normalized = normalize_path(&path);
     let mut identity = allow_core::StructuralIdentity::new("file", "tracked_file");
     identity.symbol = Some(normalized);
@@ -80,7 +80,7 @@ pub(crate) fn generated_finding(path: PathBuf) -> Finding {
     }
 }
 
-pub(crate) fn executable_findings_from_git_stage(input: &str) -> Vec<Finding> {
+pub fn executable_findings_from_git_stage(input: &str) -> Vec<Finding> {
     input
         .lines()
         .filter_map(executable_path_from_git_stage_line)
@@ -102,7 +102,7 @@ fn executable_path_from_git_stage_line(line: &str) -> Option<PathBuf> {
     }
 }
 
-pub(crate) fn executable_finding(path: PathBuf) -> Finding {
+pub fn executable_finding(path: PathBuf) -> Finding {
     let normalized = normalize_path(&path);
     let mut identity = allow_core::StructuralIdentity::new("file", "git_executable_file");
     identity.symbol = Some(normalized);
@@ -118,7 +118,7 @@ pub(crate) fn executable_finding(path: PathBuf) -> Finding {
     }
 }
 
-pub(crate) fn file_fingerprint(path: &Path) -> Option<String> {
+pub fn file_fingerprint(path: &Path) -> Option<String> {
     path.extension()
         .and_then(|extension| extension.to_str())
         .map(|extension| extension.to_ascii_lowercase())
