@@ -228,6 +228,12 @@ record_skipped() {
 measure() {
   local phase="$1" name="$2" artifact_rel="$3" semantic_rel="$4" marker="$5"
   shift 5
+  # POSTURE_OK=1 (via measure_posture) accepts exit 1 with a rendered
+  # report: a diff against the parent may legitimately fail on
+  # posture (this PR's own policy changes); the latency sample is
+  # still valid. Infrastructure failures (other exits, missing
+  # output) still fail.
+  local posture_ok="${POSTURE_OK:-0}"
   local artifact="${output_dir}/${artifact_rel}"
   local semantic="${output_dir}/${semantic_rel}"
   local stdout_path="${run_dir}/${name}.stdout"
@@ -238,17 +244,24 @@ measure() {
   mkdir -p "$(dirname "${artifact}")" "$(dirname "${semantic}")"
   argv_json="$(encode_argv "$@")"
   start="$(now_ms)"
-  if ! "${binary}" "$@" >"${stdout_path}" 2>"${stderr_path}"; then
+  local rc=0
+  "${binary}" "$@" >"${stdout_path}" 2>"${stderr_path}" || rc=$?
+  if (( rc != 0 )) && { (( rc != 1 )) || [[ "${posture_ok}" != "1" ]]; }; then
     cat "${stdout_path}" >&2
     cat "${stderr_path}" >&2
-    fail "${name} command failed"
+    fail "${name} command failed (exit ${rc})"
   fi
   end="$(now_ms)"
   elapsed=$(( end - start ))
   [[ -s "${artifact}" ]] || fail "${name} did not produce ${artifact_rel}"
   [[ -s "${semantic}" ]] || fail "${name} did not produce ${semantic_rel}"
-  grep -Fq "${marker}" "${semantic}" || \
-    fail "${name} semantic result did not contain expected marker: ${marker}"
+  if (( rc == 0 )); then
+    grep -Fq "${marker}" "${semantic}" || \
+      fail "${name} semantic result did not contain expected marker: ${marker}"
+  else
+    grep -Fq "${marker%%passed*}" "${semantic}" || \
+      fail "${name} posture-failed output still needs a rendered result marker"
+  fi
   if (( elapsed > hard_ceiling_ms )); then
     fail "${name} exceeded the ${hard_ceiling_ms}ms catastrophic ceiling (${elapsed}ms)"
   fi
@@ -258,6 +271,10 @@ measure() {
     "${phase}" "${name}" "${elapsed}" "${artifact_rel}" "${digest}" \
     "${semantic_rel}" "${semantic_digest}" "passed" "${argv_json}" >>"${metrics}"
   log "${name}: ${elapsed}ms"
+}
+
+measure_posture() {
+  POSTURE_OK=1 measure "$@"
 }
 
 log "measuring first process audit"
@@ -289,7 +306,7 @@ measure "targeted" "worklist" \
 
 if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
   log "measuring diff against HEAD~1"
-  measure "targeted" "diff_base" \
+  measure_posture "targeted" "diff_base" \
     "artifacts/diff-base.md" "artifacts/diff-base.md" \
     '**Result:** passed' \
     diff --base HEAD~1 --format markdown --output "${artifact_dir}/diff-base.md"

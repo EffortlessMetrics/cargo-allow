@@ -438,16 +438,25 @@ jobs:
       - name: Core independence graph proof (#3369)
         # cargo-allow has no dependency edge on the cargo-intent
         # application; the delegation e2e lives in the
-        # compat-delegation lane.
+        # compat-delegation lane. --locked keeps the tree from
+        # rewriting the lockfile; bash runs on both matrix OSes.
+        shell: bash
         run: |
-          if cargo tree -p cargo-allow --all-targets -e normal,dev \
+          if cargo tree --locked -p cargo-allow --all-targets -e normal,dev \
             | grep -q "cargo-intent v"; then
             echo "::error::cargo-allow graph gained a cargo-intent edge" >&2
             exit 1
           fi
       - name: Install the exact cargo-intent candidate (Linux)
+        # The smoke packages against a patched registry without
+        # --locked on every invocation and may rewrite Cargo.lock;
+        # restore it so the --locked test step below stays honest.
+        run: |
+          cp Cargo.lock "${RUNNER_TEMP}/Cargo.lock.guard"
+          bash scripts/intent-candidate-smoke.sh
+          cp "${RUNNER_TEMP}/Cargo.lock.guard" Cargo.lock
+
         if: runner.os == 'Linux'
-        run: bash scripts/intent-candidate-smoke.sh
       - name: Build cargo-intent (Windows)
         if: runner.os == 'Windows'
         run: cargo build -p cargo-intent --locked
