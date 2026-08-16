@@ -808,31 +808,6 @@ fn release_packages_use_crate_local_readmes() {
 }
 
 #[test]
-fn release_manifest_validate_produces_complete_with_all_checksums() {
-    let checksums: Vec<Option<String>> = allow_report::PUBLISH_ORDER
-        .iter()
-        .map(|_| Some("sha256:abc123".to_string()))
-        .collect();
-    let manifest = allow_report::generate_release_manifest(&allow_report::ManifestInput {
-        version: "0.2.0",
-        repository: "EffortlessMetrics/cargo-allow",
-        tag: "v0.2.0",
-        commit: "abc123",
-        tree: "def456",
-        auth_source: "oidc",
-        workflow_run_id: Some(12345),
-        msrv: "1.95",
-        platforms_proven: &["linux"],
-        crate_checksums: &checksums,
-        binary_assets: &[],
-        generated_at: "2026-07-20T00:00:00Z",
-    });
-    let (result, gaps) = allow_report::validate_release_manifest(&manifest);
-    assert_eq!(result, allow_report::ManifestResult::Complete);
-    assert!(gaps.is_empty());
-}
-
-#[test]
 fn release_recovery_binds_one_exact_candidate_context() {
     let root = workspace_root();
     let workflow = read_workspace_file(&root, RELEASE_WORKFLOW);

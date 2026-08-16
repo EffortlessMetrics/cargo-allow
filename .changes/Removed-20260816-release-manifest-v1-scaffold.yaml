@@ -1,0 +1,11 @@
+kind: Removed
+body: >-
+  Retire the unconsumed `ReleaseManifestV1` scaffold (#3393): the hard-coded
+  ten-package `PUBLISH_ORDER`, the `auth_source == "oidc"` gate that
+  contradicted the shipped `crates_io_api_token` mechanism, `generated_at`
+  inside the canonical structure, the `release-manifest.schema.json` schema,
+  and its doc references. No release ever attached a V1 manifest and the
+  workflow emits only the topology-derived, token-authenticated
+  `ReleaseManifestV2`; the retired scaffold's authentication law was a trap
+  for any future consumer. Docs now record the retirement instead of the
+  never-exercised "historical reader" claim.
