@@ -468,7 +468,27 @@ pub(crate) fn load_world_for_path(
     let mut findings = Vec::new();
     let rust_scan = allow_rust::scan_rust_files(&root, &files)?;
     let target_scan = rust_scan.status_for(&target).cloned();
-    findings.extend(rust_scan.findings);
+    // The scoped file list carries no Cargo.toml, so package-context
+    // discovery inside the scanner finds no manifests and leaves
+    // crate_name unset — while the full scan (check/add) sets it from the
+    // inventory's manifests and finding_identity_key covers crate_name.
+    // Apply the inventory's package contexts so the scoped and full scans
+    // produce identical finding identities; otherwise every
+    // why --plan → add --from-plan round trip for an in-package Rust
+    // finding rejects with "finding identity changed" (#3581).
+    let manifests = inventory
+        .files
+        .iter()
+        .filter(|path| path.file_name().and_then(|name| name.to_str()) == Some("Cargo.toml"))
+        .filter_map(|rel| {
+            allow_core::read_text_file_capped(&root.join(rel))
+                .ok()
+                .map(|text| (rel.clone(), text))
+        });
+    let packages = allow_rust::source_package_contexts_from_sources(manifests);
+    let mut rust_findings = rust_scan.findings;
+    allow_rust::apply_source_package_context(&target, &packages, &mut rust_findings);
+    findings.extend(rust_findings);
     findings.extend(allow_files::scan_files_with_options(
         &files,
         &allow_files::FileScanOptions {
@@ -989,5 +1009,87 @@ mod tests {
         fs::create_dir_all(&dir)
             .unwrap_or_else(|err| std::panic::panic_any(format!("fixture dir: {err}")));
         dir
+    }
+
+    /// The scoped loader (`why`/`why --plan`) and the full loader
+    /// (`check`/`add --from-plan`) must produce identical finding
+    /// identities for an in-package Rust file. Package-context discovery
+    /// reads manifests from the scan set; a scoped scan of one source file
+    /// carries no manifest, so without re-applying the inventory's package
+    /// contexts the scoped finding loses `crate_name` and every
+    /// why --plan → add --from-plan round trip for an in-package finding
+    /// rejects with "finding identity changed" (#3581).
+    #[test]
+    fn scoped_and_full_scans_agree_on_in_package_finding_identity() {
+        let root = fixture_dir();
+        let cleanup = |dir: &Path| {
+            fs::remove_dir_all(dir)
+                .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture: {err}")));
+        };
+        fs::create_dir_all(root.join("pkg/src"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("pkg dir: {err}")));
+        fs::write(
+            root.join("pkg/Cargo.toml"),
+            "[package]\nname = \"probe-pkg\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("pkg manifest: {err}")));
+        fs::write(
+            root.join("pkg/src/lib.rs"),
+            "pub fn probe() {\n    let value: Option<u8> = None;\n    value.unwrap();\n}\n",
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("pkg source: {err}")));
+        fs::create_dir_all(root.join("policy"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+        fs::write(
+            root.join("policy/allow.toml"),
+            "schema_version = 1\npolicy = \"cargo-allow\"\n\n[workspace]\nignored = []\ngenerated = []\n",
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy write: {err}")));
+        git(root.as_path(), &["init"]);
+        git(
+            root.as_path(),
+            &["config", "user.email", "cargo-allow@example.invalid"],
+        );
+        git(root.as_path(), &["config", "user.name", "cargo-allow test"]);
+        git(root.as_path(), &["add", "--all"]);
+        git(root.as_path(), &["commit", "-m", "scoped identity fixture"]);
+
+        let target = root.join("pkg/src/lib.rs");
+        let full = load_world(Some(&root), None, true, Some("panic"), false)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("full load: {err}")));
+        let scoped = load_world_for_path(Some(&root), None, true, Some("panic"), false, &target)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("scoped load: {err}")));
+
+        let select = |findings: &[allow_core::Finding]| {
+            findings
+                .iter()
+                .find(|finding| {
+                    finding.path.ends_with("pkg/src/lib.rs")
+                        && finding.identity.callee.as_deref() == Some("unwrap")
+                })
+                .cloned()
+                .unwrap_or_else(|| {
+                    std::panic::panic_any("expected the probe unwrap finding in pkg/src/lib.rs")
+                })
+        };
+        let full_finding = select(&full.2);
+        let scoped_finding = select(&scoped.2);
+
+        assert_eq!(
+            full_finding.identity.crate_name.as_deref(),
+            Some("probe-pkg"),
+            "full scan must resolve the package context for an in-package file"
+        );
+        assert_eq!(
+            scoped_finding.identity.crate_name.as_deref(),
+            Some("probe-pkg"),
+            "scoped scan must carry the same package context as the full scan"
+        );
+        assert_eq!(
+            allow_core::finding_identity_key(&full_finding),
+            allow_core::finding_identity_key(&scoped_finding),
+            "scoped and full scans must agree on the finding identity key"
+        );
+        cleanup(&root);
     }
 }

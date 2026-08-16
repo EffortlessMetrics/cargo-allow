@@ -1,0 +1,14 @@
+kind: Fixed
+body: >-
+  Fix the documented `why --plan` → `add --from-plan --update` route for
+  in-package Rust findings (#3581). The scoped scan behind `why` passed only
+  the target file to the scanner, and package-context discovery reads
+  manifests from the scan set — so the scoped finding carried no `crate_name`
+  while the full scan behind `add` set it, and `finding_identity_key` covers
+  `crate_name`: every plan/apply round trip for a finding inside a workspace
+  package rejected with "finding identity changed since the plan was
+  generated". The scoped loader now applies the inventory's package contexts
+  so both scans produce identical finding identities. The failure was not
+  caused by `cargo run` mutating state — the original hypothesis — and a
+  regression test proves scoped/full identity-key parity, failing on the
+  pre-fix loader.
