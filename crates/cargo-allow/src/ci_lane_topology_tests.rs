@@ -19,13 +19,13 @@ struct LaneManifest {
     schema_version: u8,
     schema_id: String,
     controlling_issue: u32,
-    crates: CrateSets,
     lane: Vec<Lane>,
     declared_cross_product_reference: Vec<DeclaredRef>,
 }
 
-#[derive(Debug, serde::Deserialize)]
-#[serde(deny_unknown_fields)]
+/// Lane crate sets are derived from the package topology's `ci_lane`
+/// field (#3365), never maintained as a second truth table.
+#[derive(Debug, Clone)]
 struct CrateSets {
     cargo_allow_release_set: Vec<String>,
     intent_set: Vec<String>,
@@ -112,12 +112,32 @@ fn load_manifest(root: &Path) -> LaneManifest {
         .unwrap_or_else(|err| std::panic::panic_any(format!("parse docs/ci-lanes.toml: {err}")))
 }
 
-fn manifest_and_jobs() -> (PathBuf, LaneManifest, Vec<(String, String)>) {
+fn lane_crate_sets(root: &Path) -> CrateSets {
+    let topology_text = read_workspace_file(root, "policy/product-package-topology-v2.toml");
+    let postures = intent_model::parse_package_postures_v1(&topology_text)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("parse package topology: {err}")));
+    let by_lane = |lane: &str| {
+        postures
+            .iter()
+            .filter(|row| row.ci_lane == lane)
+            .map(|row| row.cargo_package_name.clone())
+            .collect::<Vec<String>>()
+    };
+    CrateSets {
+        cargo_allow_release_set: by_lane("test"),
+        intent_set: by_lane("test-intent-experimental"),
+        proof_set: by_lane("test-proof-experimental"),
+        shared_protocol_set: by_lane("test-shared-protocol"),
+    }
+}
+
+fn manifest_and_jobs() -> (CrateSets, LaneManifest, Vec<(String, String)>) {
     let root = workspace_root();
     let manifest = load_manifest(&root);
+    let sets = lane_crate_sets(&root);
     let ci = read_workspace_file(&root, ".github/workflows/ci.yml");
     let jobs = ci_jobs(&ci);
-    (root, manifest, jobs)
+    (sets, manifest, jobs)
 }
 
 #[test]
@@ -189,7 +209,8 @@ fn every_manifest_lane_exists_as_a_ci_job() {
 
 #[test]
 fn crate_sets_partition_the_workspace_exactly() {
-    let (root, manifest, _) = manifest_and_jobs();
+    let root = workspace_root();
+    let (sets, _, _) = manifest_and_jobs();
     // Member paths are directory names; the lane sets carry cargo package
     // names. Two directories name their packages differently
     // (intent-engine -> intent-compiler, proof-engine -> proof-orchestrator),
@@ -211,10 +232,10 @@ fn crate_sets_partition_the_workspace_exactly() {
         .collect();
     let mut union = BTreeSet::new();
     for set in [
-        &manifest.crates.cargo_allow_release_set,
-        &manifest.crates.intent_set,
-        &manifest.crates.proof_set,
-        &manifest.crates.shared_protocol_set,
+        &sets.cargo_allow_release_set,
+        &sets.intent_set,
+        &sets.proof_set,
+        &sets.shared_protocol_set,
     ] {
         for name in set {
             assert!(
@@ -231,19 +252,18 @@ fn crate_sets_partition_the_workspace_exactly() {
 
 #[test]
 fn required_lanes_never_reference_experimental_products_without_declaration() {
-    let (_, manifest, jobs) = manifest_and_jobs();
+    let (sets, manifest, jobs) = manifest_and_jobs();
     let required: BTreeSet<&str> = manifest
         .lane
         .iter()
         .filter(|l| l.posture == "required")
         .map(|l| l.id.as_str())
         .collect();
-    let mut experimental_tokens: Vec<&str> = manifest
-        .crates
+    let mut experimental_tokens: Vec<&str> = sets
         .intent_set
         .iter()
-        .chain(&manifest.crates.proof_set)
-        .chain(&manifest.crates.shared_protocol_set)
+        .chain(&sets.proof_set)
+        .chain(&sets.shared_protocol_set)
         .map(String::as_str)
         .collect();
     experimental_tokens.extend(["cargo-intent", "cargo-proof"]);
@@ -270,7 +290,7 @@ fn required_lanes_never_reference_experimental_products_without_declaration() {
 
 #[test]
 fn seeded_experimental_failure_cannot_block_required_lanes() {
-    let (_, manifest, jobs) = manifest_and_jobs();
+    let (sets, manifest, jobs) = manifest_and_jobs();
     let required: BTreeSet<&str> = manifest
         .lane
         .iter()
@@ -323,11 +343,8 @@ fn seeded_experimental_failure_cannot_block_required_lanes() {
                                 std::panic::panic_any(format!("lane {id}: dangling -p flag"))
                             })
                             .trim_end_matches('\\');
-                        let in_release_set = manifest
-                            .crates
-                            .cargo_allow_release_set
-                            .iter()
-                            .any(|c| c == target);
+                        let in_release_set =
+                            sets.cargo_allow_release_set.iter().any(|c| c == target);
                         let declared = manifest
                             .declared_cross_product_reference
                             .iter()
@@ -347,14 +364,14 @@ fn seeded_experimental_failure_cannot_block_required_lanes() {
 /// release set, so narrowing can never silently drop a crate's coverage.
 #[test]
 fn cargo_scoped_required_lanes_carry_the_complete_release_set() {
-    let (_, manifest, jobs) = manifest_and_jobs();
+    let (sets, _, jobs) = manifest_and_jobs();
     for lane_id in ["msrv", "test", "test-windows", "coverage"] {
         let body = jobs
             .iter()
             .find(|(id, _)| id == lane_id)
             .map(|(_, body)| body.as_str())
             .unwrap_or_else(|| std::panic::panic_any(format!("job {lane_id} missing")));
-        for name in &manifest.crates.cargo_allow_release_set {
+        for name in &sets.cargo_allow_release_set {
             assert!(
                 body.contains(&format!("-p {name}")),
                 "required lane {lane_id} omits release-set crate {name}"

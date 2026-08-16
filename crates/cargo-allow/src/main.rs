@@ -179,6 +179,9 @@ mod intent_model_parity_tests;
 #[cfg(test)]
 mod intent_protocol_parity_tests;
 #[cfg(test)]
+#[path = "package_topology_enforcement_tests.rs"]
+mod package_topology_enforcement_tests;
+#[cfg(test)]
 mod product_crate_architecture_tests;
 #[cfg(test)]
 mod product_move_ledger_tests;

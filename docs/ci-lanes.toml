@@ -15,40 +15,10 @@ controlling_issue = 3358
 # crates it publishes with); effortless-rust-source-index belongs to the
 # namespace rail only and is not part of it.
 
-[crates]
-cargo_allow_release_set = [
-  "cargo-allow",
-  "allow-core",
-  "allow-policy",
-  "allow-policy-legacy",
-  "allow-inventory",
-  "allow-files",
-  "allow-rust",
-  "allow-match",
-  "allow-report",
-  "allow-diff",
-  "effortless-repo-protocol",
-  "effortless-repo-snapshot",
-  "effortless-repo-edit",
-]
-intent_set = [
-  "intent-model",
-  "intent-protocol",
-  "intent-compiler",
-  "intent-edit",
-  "cargo-intent",
-]
-proof_set = [
-  "proof-protocol",
-  "proof-orchestrator",
-  "cargo-proof",
-]
-shared_protocol_set = ["effortless-rust-source-index"]
-
-# postures:
-#   required                    — gates cargo-allow patch and release lanes
-#   experimental-informational  — proves an experimental product; never gates
-#   integrated-informational    — cross-product matrix; never gates
+# Crate sets are NOT duplicated here: the lane crate sets derive from
+# policy/product-package-topology-v2.toml ci_lane field (#3365), enforced
+# by ci_lane_topology_tests.rs. Adding a lane-scoped crate means editing
+# the topology row, not this file.
 
 [[lane]]
 id = "msrv"

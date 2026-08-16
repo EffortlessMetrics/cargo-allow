@@ -7,6 +7,15 @@ linked_architecture_manifest = "CARGO-ALLOW-ARCH-V2-0001"
 # Generation-2 package topology (#2923).
 # Every package carries explicit version_source and publication_state.
 # logical_id links to the V2 architecture authority.
+#
+# Release-manifest fields (#3365): ci_lane names the lane in
+# docs/ci-lanes.toml that proves this package (the lane crate sets are
+# derived from this field, not maintained separately); support_tier
+# mirrors the product support matrix; asset_roots lists workspace
+# directories owned by the package for release-asset qualification
+# (empty = no release assets); extraction_destination names the
+# repository the package lands in under the #2559 repository split
+# (shared protocols remain hosted by cargo-allow).
 
 # --- cargo-allow product (release order 10-100) ---
 
@@ -22,6 +31,10 @@ publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = true
 release_order = 10
+ci_lane = "test"
+support_tier = "supported"
+asset_roots = []
+extraction_destination = "cargo-allow"
 
 [[package]]
 logical_id = "allow-policy"
@@ -35,6 +48,10 @@ publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = true
 release_order = 20
+ci_lane = "test"
+support_tier = "supported"
+asset_roots = []
+extraction_destination = "cargo-allow"
 
 [[package]]
 logical_id = "allow-inventory"
@@ -48,6 +65,10 @@ publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = true
 release_order = 30
+ci_lane = "test"
+support_tier = "supported"
+asset_roots = []
+extraction_destination = "cargo-allow"
 
 [[package]]
 logical_id = "allow-files"
@@ -61,6 +82,10 @@ publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = true
 release_order = 40
+ci_lane = "test"
+support_tier = "supported"
+asset_roots = []
+extraction_destination = "cargo-allow"
 
 [[package]]
 logical_id = "allow-rust"
@@ -74,6 +99,10 @@ publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = true
 release_order = 50
+ci_lane = "test"
+support_tier = "supported"
+asset_roots = []
+extraction_destination = "cargo-allow"
 
 [[package]]
 logical_id = "allow-match"
@@ -87,6 +116,10 @@ publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = true
 release_order = 60
+ci_lane = "test"
+support_tier = "supported"
+asset_roots = []
+extraction_destination = "cargo-allow"
 
 [[package]]
 logical_id = "allow-report"
@@ -100,6 +133,10 @@ publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = true
 release_order = 70
+ci_lane = "test"
+support_tier = "supported"
+asset_roots = []
+extraction_destination = "cargo-allow"
 
 [[package]]
 logical_id = "allow-policy-legacy"
@@ -113,6 +150,10 @@ publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = true
 release_order = 75
+ci_lane = "test"
+support_tier = "supported"
+asset_roots = []
+extraction_destination = "cargo-allow"
 
 [[package]]
 logical_id = "allow-diff"
@@ -126,6 +167,10 @@ publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = true
 release_order = 95
+ci_lane = "test"
+support_tier = "supported"
+asset_roots = []
+extraction_destination = "cargo-allow"
 
 [[package]]
 logical_id = "cargo-allow"
@@ -139,6 +184,10 @@ publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = true
 release_order = 100
+ci_lane = "test"
+support_tier = "supported"
+asset_roots = ["docs/schemas", "examples"]
+extraction_destination = "cargo-allow"
 
 # --- shared crates (release order 90-98, 220-230) ---
 
@@ -154,6 +203,10 @@ publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = true
 release_order = 80
+ci_lane = "test"
+support_tier = "internal-stabilizing"
+asset_roots = []
+extraction_destination = "cargo-allow"
 
 [[package]]
 logical_id = "repo-edit"
@@ -167,6 +220,10 @@ publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = true
 release_order = 90
+ci_lane = "test"
+support_tier = "internal-stabilizing"
+asset_roots = []
+extraction_destination = "cargo-allow"
 
 [[package]]
 logical_id = "repo-snapshot"
@@ -180,6 +237,10 @@ publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = true
 release_order = 85
+ci_lane = "test"
+support_tier = "internal-stabilizing"
+asset_roots = []
+extraction_destination = "cargo-allow"
 
 [[package]]
 logical_id = "rust-source-index"
@@ -193,6 +254,10 @@ publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = false
 release_order = 230
+ci_lane = "test-shared-protocol"
+support_tier = "internal-stabilizing"
+asset_roots = []
+extraction_destination = "cargo-allow"
 
 # --- cargo-intent product (release order 310-360) ---
 
@@ -208,6 +273,10 @@ publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = false
 release_order = 310
+ci_lane = "test-intent-experimental"
+support_tier = "experimental-opt-in"
+asset_roots = []
+extraction_destination = "cargo-intent"
 
 [[package]]
 logical_id = "intent-protocol"
@@ -221,6 +290,10 @@ publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = false
 release_order = 320
+ci_lane = "test-intent-experimental"
+support_tier = "experimental-opt-in"
+asset_roots = []
+extraction_destination = "cargo-intent"
 
 [[package]]
 logical_id = "intent-engine"
@@ -234,6 +307,10 @@ publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = false
 release_order = 330
+ci_lane = "test-intent-experimental"
+support_tier = "experimental-opt-in"
+asset_roots = []
+extraction_destination = "cargo-intent"
 
 [[package]]
 logical_id = "intent-edit"
@@ -247,6 +324,10 @@ publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = false
 release_order = 340
+ci_lane = "test-intent-experimental"
+support_tier = "experimental-opt-in"
+asset_roots = []
+extraction_destination = "cargo-intent"
 
 [[package]]
 logical_id = "cargo-intent"
@@ -260,6 +341,10 @@ publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = false
 release_order = 360
+ci_lane = "test-intent-experimental"
+support_tier = "experimental-opt-in"
+asset_roots = []
+extraction_destination = "cargo-intent"
 
 # --- cargo-proof product (release order 410-435) ---
 
@@ -275,6 +360,10 @@ publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = false
 release_order = 410
+ci_lane = "test-proof-experimental"
+support_tier = "experimental-opt-in"
+asset_roots = []
+extraction_destination = "cargo-proof"
 
 [[package]]
 logical_id = "proof-engine"
@@ -288,6 +377,10 @@ publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = false
 release_order = 430
+ci_lane = "test-proof-experimental"
+support_tier = "experimental-opt-in"
+asset_roots = []
+extraction_destination = "cargo-proof"
 
 [[package]]
 logical_id = "cargo-proof"
@@ -301,3 +394,7 @@ publication_state = "UnpublishedInternal"
 publish = true
 candidate_inclusion = false
 release_order = 435
+ci_lane = "test-proof-experimental"
+support_tier = "experimental-opt-in"
+asset_roots = []
+extraction_destination = "cargo-proof"
