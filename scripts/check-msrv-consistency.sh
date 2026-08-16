@@ -65,15 +65,33 @@ printf 'ok %s uses cache key msrv-%s\n' "${ci_workflow}" "${msrv}"
 # the runner's channel happens to be. RUSTUP_TOOLCHAIN outranks the toolchain
 # file and is what actually pins the lane; without it the MSRV proof is inert
 # while every check above still reports green.
+# The pin only counts if it is on the `msrv` job itself. Searching the whole
+# file would accept a RUSTUP_TOOLCHAIN belonging to some other job while the
+# msrv lane sits unpinned and silently resolves the wrong compiler — the exact
+# failure this guard exists to prevent. So extract the job block first: from
+# the `  msrv:` key to the next top-level job key (a line indented exactly two
+# spaces ending in `:`), and match only within it.
 if [[ -f "${toolchain_file}" ]]; then
-  if ! grep -qE "RUSTUP_TOOLCHAIN:[[:space:]]*\"?${msrv_ere}\.[0-9]+\"?[[:space:]]*$" "${ci_workflow}"; then
-    actual="$(grep -oE 'RUSTUP_TOOLCHAIN: "?[^"[:space:]]+"?' "${ci_workflow}" | head -n 1 || true)"
-    fail "$(printf '%s ships %s, which outranks the workflow toolchain tag.\n%s sets %s but the MSRV is %s.\n%s' \
+  msrv_job="$(awk '
+    /^  msrv:[[:space:]]*$/ { in_job = 1; next }
+    in_job && /^  [A-Za-z0-9_-]+:[[:space:]]*$/ { exit }
+    in_job { print }
+  ' "${ci_workflow}")"
+
+  [[ -n "${msrv_job}" ]] || fail "$(printf 'no `msrv:` job found in %s.\n%s' \
+    "${ci_workflow}" \
+    "       This guard checks that job specifically; rename it here if it moved.")"
+
+  if ! printf '%s\n' "${msrv_job}" \
+    | grep -qE "RUSTUP_TOOLCHAIN:[[:space:]]*\"?${msrv_ere}\.[0-9]+\"?[[:space:]]*$"; then
+    actual="$(printf '%s\n' "${msrv_job}" \
+      | grep -oE 'RUSTUP_TOOLCHAIN: "?[^"[:space:]]+"?' | head -n 1 || true)"
+    fail "$(printf '%s ships %s, which outranks the workflow toolchain tag.\n%s msrv job sets %s but the MSRV is %s.\n%s' \
       "${ROOT}" "${toolchain_file}" \
       "       ${ci_workflow}" "${actual:-no RUSTUP_TOOLCHAIN value}" "${msrv}" \
       "       Set RUSTUP_TOOLCHAIN: \"${msrv}.0\" on the msrv job.")"
   fi
-  printf 'ok %s pins RUSTUP_TOOLCHAIN to the %s series over %s\n' \
+  printf 'ok %s msrv job pins RUSTUP_TOOLCHAIN to the %s series over %s\n' \
     "${ci_workflow}" "${msrv}" "${toolchain_file}"
 fi
 

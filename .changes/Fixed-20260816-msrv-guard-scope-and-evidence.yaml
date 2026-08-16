@@ -1,0 +1,15 @@
+kind: Fixed
+body: >-
+  Close two review findings from #3597. `scripts/check-msrv-consistency.sh`
+  searched the whole workflow for the `msrv` job's `RUSTUP_TOOLCHAIN` pin, so a
+  matching value on any other job satisfied the guard while the MSRV lane sat
+  unpinned and silently resolved the runner's channel — precisely the failure
+  the guard exists to prevent. It now extracts the `msrv` job block and matches
+  only within it, with a characterization case that relocates the pin to
+  another job and must fail. Separately, `SUPPORT.md` and
+  `docs/support-matrix.toml` claimed the lane runs
+  `cargo check --workspace --all-targets --locked`; since #3358 it runs
+  `cargo check --locked --all-targets` over the thirteen-package cargo-allow
+  release set. Both records now state the executed command and say plainly that
+  the MSRV claim covers the release set rather than every package in the
+  repository.

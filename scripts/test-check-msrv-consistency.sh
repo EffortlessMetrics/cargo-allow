@@ -135,6 +135,47 @@ accepts_case "reformatted RUSTUP_TOOLCHAIN is still matched" ".github/workflows/
 drift_case "rustup toolchain override removed" ".github/workflows/ci.yml" \
   "RUSTUP_TOOLCHAIN: \"${msrv}.0\"" "UNRELATED_ENV: \"${msrv}.0\""
 
+# Relocating the pin to a different job must fail. A whole-file search would
+# accept this: the correct string is still present, just on a lane that is not
+# the MSRV proof, leaving msrv resolving whatever the runner's channel is.
+relocated_dir="${work}/relocated-pin"
+mkdir -p "${relocated_dir}/.github/workflows"
+cp Cargo.toml "${relocated_dir}/Cargo.toml"
+cp .github/workflows/release.yml "${relocated_dir}/.github/workflows/release.yml"
+python3 - "${relocated_dir}/.github/workflows/ci.yml" \
+  ".github/workflows/ci.yml" "${msrv}" <<'PY'
+import re
+import sys
+
+out_path, src_path, msrv = sys.argv[1], sys.argv[2], sys.argv[3]
+with open(src_path, encoding="utf-8") as handle:
+    text = handle.read()
+
+pin = f'RUSTUP_TOOLCHAIN: "{msrv}.0"'
+if pin not in text:
+    sys.exit(f"fixture setup failed: {pin!r} not present in {src_path}")
+
+# Strip the msrv job's env block, then graft the same pin onto another job so
+# the string still exists in the file but not where it counts.
+text = text.replace(f"    env:\n      {pin}\n", "", 1)
+if pin in text:
+    sys.exit("fixture setup failed: msrv pin was not removed")
+
+target = re.search(r"^  cargo-deny:[ \t]*$", text, re.MULTILINE)
+if target is None:
+    sys.exit("fixture setup failed: no cargo-deny job to relocate the pin onto")
+insert_at = target.end() + 1
+text = text[:insert_at] + f"    env:\n      {pin}\n" + text[insert_at:]
+
+with open(out_path, "w", encoding="utf-8") as handle:
+    handle.write(text)
+PY
+run_expect_failure "rustup toolchain override relocated to another job" \
+  env CARGO_TOML="${relocated_dir}/Cargo.toml" \
+  CI_WORKFLOW="${relocated_dir}/.github/workflows/ci.yml" \
+  RELEASE_WORKFLOW="${relocated_dir}/.github/workflows/release.yml" \
+  bash scripts/check-msrv-consistency.sh
+
 # The override requirement exists only because a toolchain file outranks the
 # workflow tag. A repository without one must not be asked for it.
 toolchain_relaxation_dir="${work}/no-toolchain-file"

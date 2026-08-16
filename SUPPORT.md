@@ -24,8 +24,15 @@ candidate. Do not treat it as a published release.
 
 CI proves it: the `msrv` job pins `dtolnay/rust-toolchain@1.95.0`, sets
 `RUSTUP_TOOLCHAIN=1.95.0` so the repository's `rust-toolchain.toml` cannot
-override that pin, and runs `cargo check --workspace --all-targets --locked`.
-The full suite additionally runs on stable.
+override that pin, and runs `cargo check --locked --all-targets` over the
+thirteen-package cargo-allow release set, plus
+`cargo test -p cargo-allow --bins --locked`. The full suite additionally runs
+on stable.
+
+The MSRV check is scoped to the release set, not the whole workspace (#3358):
+the cargo-intent and cargo-proof packages claim no toolchain yet and are
+proven only on stable. **The MSRV claim therefore covers the cargo-allow
+release set, not every package in the repository.**
 
 Two guards keep that honest, because a pin can be stated correctly and still be
 overridden at run time. `scripts/check-msrv-consistency.sh` proves the MSRV is
