@@ -20,6 +20,40 @@
     "complete": { "type": "boolean" },
     "incident_state": { "enum": ["none", "partial", "release_incident"] },
     "first_irreversible_row": { "type": ["integer", "null"], "minimum": 1 },
+    "shared_registry_preflight_complete": { "type": "boolean" },
+    "shared_registry_preflight": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["logical_id", "name", "version", "release_order", "local_checksum", "registry_checksum", "state"],
+        "properties": {
+          "logical_id": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "minLength": 1 },
+          "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+          "release_order": { "type": "integer", "minimum": 1 },
+          "local_checksum": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+          "registry_checksum": { "type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$" },
+          "state": { "enum": ["missing", "already_published_exact", "checksum_conflict"] }
+        },
+        "oneOf": [
+          {
+            "properties": {
+              "state": { "const": "missing" },
+              "registry_checksum": { "type": "null" }
+            }
+          },
+          {
+            "properties": {
+              "state": { "enum": ["already_published_exact", "checksum_conflict"] },
+              "registry_checksum": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+            }
+          }
+        ]
+      }
+    },
     "recovery_receipt": { "type": "string", "minLength": 1 },
     "rows": {
       "type": "array",

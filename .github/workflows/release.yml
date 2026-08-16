@@ -208,6 +208,18 @@ jobs:
             echo "::error::CARGO_REGISTRY_TOKEN is absent; no upload was attempted." >&2
             exit 1
           fi
+      - name: Prove shared registry preflight before upload
+        env:
+          RELEASE_COMMIT: ${{ needs.preflight.outputs.commit }}
+          RELEASE_TREE: ${{ needs.preflight.outputs.tree }}
+        run: |
+          set -euo pipefail
+          [ "$(git rev-parse HEAD^{commit})" = "${RELEASE_COMMIT}" ] || { echo "::error::publish checkout commit differs from preflight"; exit 1; }
+          [ "$(git rev-parse HEAD^{tree})" = "${RELEASE_TREE}" ] || { echo "::error::publish checkout tree differs from preflight"; exit 1; }
+          python3 scripts/release-topology-publisher.py \
+            --mode cargo-allow \
+            --registry-preflight \
+            --receipt target/cargo-allow/shared-registry-preflight.receipt.json
       - name: Publish cargo-allow topology rows in dependency order
         env:
           CARGO_REGISTRY_TOKEN: ${{ (github.event_name != 'workflow_dispatch' || inputs.publish_recovery) && secrets.CARGO_REGISTRY_TOKEN || '' }}
@@ -269,6 +281,7 @@ jobs:
           path: |
             target/cargo-allow/release-publish.receipt.json
             target/cargo-allow/topology-publish.receipt.json
+            target/cargo-allow/shared-registry-preflight.receipt.json
 
   install-smoke:
     needs: publish
