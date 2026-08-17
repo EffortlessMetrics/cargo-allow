@@ -3,8 +3,8 @@ use std::collections::BTreeSet;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    RustItemDefinitionKindV1, RustItemInventoryStatusV1, RustItemInventoryV1,
-    RustItemSubjectIdV1, RustItemSubjectV1, RustItemTargetKindV1,
+    RustItemDefinitionKindV1, RustItemInventoryStatusV1, RustItemInventoryV1, RustItemSubjectIdV1,
+    RustItemSubjectV1, RustItemTargetKindV1,
 };
 
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
@@ -101,10 +101,7 @@ pub fn resolve_rust_item_subject(
             RustItemResolutionClassV1::GeneratedOrMacroOwned
         } else if !subject.source_available {
             RustItemResolutionClassV1::SourceUnavailable
-        } else if matches!(
-            &subject.definition_kind,
-            RustItemDefinitionKindV1::Other(_)
-        ) {
+        } else if matches!(&subject.definition_kind, RustItemDefinitionKindV1::Other(_)) {
             RustItemResolutionClassV1::UnsupportedDefinitionKind
         } else if !subject.cfg_expressions.is_empty() {
             RustItemResolutionClassV1::CfgOrFeatureUnknown
