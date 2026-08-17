@@ -11801,3 +11801,297 @@ glob = "policy/changie-compatibility-matrix.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11127-cargo-intent-getting-started"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-intent/getting-started.md"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3447 independent per-product documentation surface (cargo-intent getting-started); this receipt covers the document itself as tracked documentation."
+evidence = ["doc:docs/README.md"]
+created = "2026-08-17"
+review_after = "2026-11-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "docs/products/cargo-intent/getting-started.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11127-cargo-intent-command-reference"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-intent/command-reference.md"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3447 independent per-product documentation surface (cargo-intent command-reference); this receipt covers the document itself as tracked documentation."
+evidence = ["doc:docs/README.md"]
+created = "2026-08-17"
+review_after = "2026-11-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "docs/products/cargo-intent/command-reference.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11127-cargo-intent-schemas"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-intent/schemas.md"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3447 independent per-product documentation surface (cargo-intent schemas); this receipt covers the document itself as tracked documentation."
+evidence = ["doc:docs/README.md"]
+created = "2026-08-17"
+review_after = "2026-11-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "docs/products/cargo-intent/schemas.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11127-cargo-intent-limitations"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-intent/limitations.md"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3447 independent per-product documentation surface (cargo-intent limitations); this receipt covers the document itself as tracked documentation."
+evidence = ["doc:docs/README.md"]
+created = "2026-08-17"
+review_after = "2026-11-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "docs/products/cargo-intent/limitations.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11127-cargo-intent-compatibility"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-intent/compatibility.md"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3447 independent per-product documentation surface (cargo-intent compatibility); this receipt covers the document itself as tracked documentation."
+evidence = ["doc:docs/README.md"]
+created = "2026-08-17"
+review_after = "2026-11-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "docs/products/cargo-intent/compatibility.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11127-cargo-intent-support-and-security"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-intent/support-and-security.md"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3447 independent per-product documentation surface (cargo-intent support-and-security); this receipt covers the document itself as tracked documentation."
+evidence = ["doc:docs/README.md"]
+created = "2026-08-17"
+review_after = "2026-11-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "docs/products/cargo-intent/support-and-security.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11127-cargo-intent-release-notes"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-intent/release-notes.md"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3447 independent per-product documentation surface (cargo-intent release-notes); this receipt covers the document itself as tracked documentation."
+evidence = ["doc:docs/README.md"]
+created = "2026-08-17"
+review_after = "2026-11-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "docs/products/cargo-intent/release-notes.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11127-cargo-proof-getting-started"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-proof/getting-started.md"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3447 independent per-product documentation surface (cargo-proof getting-started); this receipt covers the document itself as tracked documentation."
+evidence = ["doc:docs/README.md"]
+created = "2026-08-17"
+review_after = "2026-11-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "docs/products/cargo-proof/getting-started.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11127-cargo-proof-command-reference"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-proof/command-reference.md"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3447 independent per-product documentation surface (cargo-proof command-reference); this receipt covers the document itself as tracked documentation."
+evidence = ["doc:docs/README.md"]
+created = "2026-08-17"
+review_after = "2026-11-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "docs/products/cargo-proof/command-reference.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11127-cargo-proof-schemas"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-proof/schemas.md"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3447 independent per-product documentation surface (cargo-proof schemas); this receipt covers the document itself as tracked documentation."
+evidence = ["doc:docs/README.md"]
+created = "2026-08-17"
+review_after = "2026-11-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "docs/products/cargo-proof/schemas.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11127-cargo-proof-limitations"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-proof/limitations.md"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3447 independent per-product documentation surface (cargo-proof limitations); this receipt covers the document itself as tracked documentation."
+evidence = ["doc:docs/README.md"]
+created = "2026-08-17"
+review_after = "2026-11-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "docs/products/cargo-proof/limitations.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11127-cargo-proof-compatibility"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-proof/compatibility.md"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3447 independent per-product documentation surface (cargo-proof compatibility); this receipt covers the document itself as tracked documentation."
+evidence = ["doc:docs/README.md"]
+created = "2026-08-17"
+review_after = "2026-11-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "docs/products/cargo-proof/compatibility.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11127-cargo-proof-support-and-security"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-proof/support-and-security.md"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3447 independent per-product documentation surface (cargo-proof support-and-security); this receipt covers the document itself as tracked documentation."
+evidence = ["doc:docs/README.md"]
+created = "2026-08-17"
+review_after = "2026-11-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "docs/products/cargo-proof/support-and-security.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11127-cargo-proof-release-notes"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/products/cargo-proof/release-notes.md"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3447 independent per-product documentation surface (cargo-proof release-notes); this receipt covers the document itself as tracked documentation."
+evidence = ["doc:docs/README.md"]
+created = "2026-08-17"
+review_after = "2026-11-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "docs/products/cargo-proof/release-notes.md"
+
+[allow.last_seen]
+line = 1
+column = 1
