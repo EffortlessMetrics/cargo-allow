@@ -1,0 +1,20 @@
+kind: Added
+body: >-
+  Publish the checked Changie supported-version matrix and upstream
+  maintenance loop (#3614 PR E). ChangieCompatibilityMatrixV1
+  (policy/changie-compatibility-matrix.toml) pins compatibility
+  generation 1.25 to exactly one evidence-backed release — 1.25.2,
+  with retained module/schema identities, per-dimension results
+  (official schema / config load / new authoring / batch / Rust static
+  companion / source safety), and reviewed dispositions for every
+  retained difference. 1.25.0 and 1.25.1 are explicitly
+  UnsupportedPendingEvidence (no hosted lane, no artifacts) so the
+  public claim is never the evidence-free "1.25.x"; future versions
+  fail visibly instead of inheriting the nearest generation. The
+  upstream collaboration gate is PendingMaintainerAction and blocks
+  support promotion — no automation posts upstream and a discussion is
+  never endorsement. Earned wording, forbidden-wording list, upgrade
+  workflow, and divergence reporting are documented; eight contract
+  tests enforce the exact-release claim, the dimension separation, the
+  offline posture of normal checks, and the wording alignment across
+  docs, README, and the capability row. The sensor stays experimental.

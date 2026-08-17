@@ -1,0 +1,118 @@
+schema_version = 1
+schema_id = "cargo-allow.changie-compatibility-matrix.v1"
+controlling_issue = 3614
+# The generation the sensor models. Must equal
+# allow_files::changie::CHANGIE_COMPATIBILITY_GENERATION.
+compatibility_generation = "1.25"
+
+# The public support claim is exactly as broad as current evidence:
+# one exact upstream release with a retained, hosted compatibility
+# lane (#3154). Patch releases without lane evidence are
+# UnsupportedPendingEvidence and must NOT be claimed. Future versions
+# fail visibly rather than inheriting the nearest generation.
+
+[[release]]
+version = "1.25.2"
+status = "SupportedExperimental"
+# Hosted evidence: the pinned changie-contract lane installs the exact
+# module and validates config/fragments without mutation (#3154).
+evidence = ["ci-lane:changie-contract", "packaged-external-consumer:#3621", "self-dogfood:#3623"]
+
+[release.artifacts]
+# Module identity installed by the hosted lane (exact go module pin).
+module = "github.com/miniscruff/changie@v1.25.2"
+# Official configuration schema advertised by this release.
+official_config_schema = "https://raw.githubusercontent.com/miniscruff/changie/v1.25.2/docs/schema.json"
+# The repository's own configuration declares this schema for editors.
+repo_config_schema_declaration = ".changie.yaml"
+
+[[release.dimensions]]
+dimension = "OfficialConfigSchema"
+result = "VerifiedByHostedLane"
+evidence = "ub-review.yml changie-contract: config accepted by the official CLI install"
+
+[[release.dimensions]]
+dimension = "UpstreamConfigLoad"
+result = "VerifiedByHostedLane"
+evidence = "changie new --dry-run consumes the repo config shape without rejection"
+
+[[release.dimensions]]
+dimension = "UpstreamNewAuthoring"
+result = "VerifiedByHostedLane"
+evidence = "changie-contract probe authors and rejects an unconfigured kind"
+
+[[release.dimensions]]
+dimension = "UpstreamBatchLoad"
+result = "NotProvenSeparately"
+evidence = "batch dry-run is not a separate hosted case; render claims excluded"
+
+[[release.dimensions]]
+dimension = "RustStaticCompanion"
+result = "VerifiedByTestAndDogfood"
+evidence = "allow-files changie suites + cargo-allow self-dogfood lane"
+
+[[release.dimensions]]
+dimension = "SourceSafety"
+result = "VerifiedByTest"
+evidence = "changie_source_view falsifiers (#3622)"
+
+[[release.differences]]
+description = "Body and custom authoring constraints are enforced by the Rust sensor before any Changie run; upstream `new` enforces them on the authoring path and batch does not fully re-check hand edits"
+disposition = "StaticAuthoringStrongerThanBatch"
+reviewed = true
+
+[[release.differences]]
+description = "Duplicate top-level config keys are a fail-closed compile blocker in the Rust sensor; upstream YAML loading is last-writer-wins"
+disposition = "StaticAuthoringStrongerThanBatch"
+reviewed = true
+
+[[release.differences]]
+description = "Numeric bounds on string-valued integer custom choices are annotated in the fragment schema but enforced only by the Rust sensor"
+disposition = "RustDefectNoneSchemaLimitation"
+reviewed = true
+
+[[release.differences]]
+description = "Template rendering, batch output bytes, and merge behavior are outside every supported claim"
+disposition = "RecognizedRenderOnly"
+reviewed = true
+
+[[release]]
+version = "1.25.1"
+status = "UnsupportedPendingEvidence"
+# No hosted lane, fixture set, or artifact identities exist for this
+# patch release. Claiming it would be evidence-free inheritance.
+evidence = []
+
+[[release]]
+version = "1.25.0"
+status = "UnsupportedPendingEvidence"
+evidence = []
+
+# Future/unknown releases never inherit the nearest generation.
+[future_versions]
+behavior = "UnsupportedWithVisibleFailure"
+note = "Unknown generations must fail visibly as unsupported, not fall back"
+
+# The upstream collaboration gate. No automation opens or mutates
+# upstream; a maintainer opens the discussion and records the URL.
+# Until recorded, support promotion is blocked and the sensor stays
+# experimental.
+[upstream_collaboration]
+status = "PendingMaintainerAction"
+required_for_promotion = true
+discussion_url = ""
+rules = [
+  "no automation posts or mutates upstream",
+  "no 'official Changie support' wording without explicit upstream adoption",
+  "upstream disagreement is recorded and can narrow the support claim",
+  "local compatibility shims require a named issue, rationale, tests, and removal condition",
+]
+
+# Earned public wording, bounded to the exact release with evidence.
+[public_terminology]
+supported_claim = "Experimental Rust-native static authoring diagnostics for Changie 1.25.2-compatible configuration and fragments. Actual Changie remains required for template, batch, merge, and release proof."
+forbidden_wording = [
+  "official Changie support",
+  "1.25.x compatible",
+  "changie replacement",
+]

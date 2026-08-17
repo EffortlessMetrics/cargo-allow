@@ -155,6 +155,10 @@ mod changie;
 mod changie_source_view;
 
 #[cfg(test)]
+#[path = "changie_compat_matrix_tests.rs"]
+mod changie_compat_matrix_tests;
+
+#[cfg(test)]
 #[path = "allow_files_changie_admission_tests.rs"]
 mod allow_files_changie_admission_tests;
 #[cfg(test)]
