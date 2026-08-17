@@ -11741,7 +11741,7 @@ column = 1
 [[allow]]
 id = "allow-11124"
 kind = "non_rust_file"
-family = "configuration"
+family = "documentation"
 path = "docs/schemas/allow-files-changie-package-admission.schema.json"
 owner = "core/governance"
 classification = "dogfood_evidence"
@@ -11752,6 +11752,7 @@ review_after = "2026-11-14"
 
 [allow.selector]
 ast_kind = "tracked_file"
+symbol = "docs/schemas/allow-files-changie-package-admission.schema.json"
 target_fingerprint = "json"
 glob = "docs/schemas/allow-files-changie-package-admission.schema.json"
 
