@@ -1,0 +1,16 @@
+kind: Added
+body: >-
+  Retain the full reviewed changelog history as a Changie corpus and prove
+  it round-trips (#3160). A deterministic generator splits the reviewed
+  CHANGELOG.md into `.changes/header.md` plus one version file per release
+  (0.1.6 through 0.2.0), byte-verified by `--check`; `.changie.yaml` now
+  points `headerPath` at that header (resolved relative to `changesDir`).
+  An isolated roundtrip harness proves, under the pinned changie v1.25.2
+  module in CI, that the retained corpus alone merges byte-identically to
+  header-plus-corpus, that batch previews do not mutate, that a mutating
+  batch creates the version file and consumes unreleased fragments, that
+  dry-run and live merges stay byte-equivalent, and that rollback restores
+  the corpus — binding module, repository tree, config, corpus, and output
+  digests into a retained receipt. The empty `.changes/v0.2.0` stray is
+  removed with its receipt because changie reads it as version `v0.2` and
+  then fails every `changie merge` trying to open `v0.2.md`.

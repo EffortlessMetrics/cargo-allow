@@ -98,8 +98,9 @@ retained difference.
 Current claim, bounded by evidence:
 
 - **1.25.2** — supported (experimental), backed by the hosted
-  `changie-contract` lane, the packaged external-consumer proof, and
-  the repository self-dogfood.
+  `changie-contract` lane (which also proves the history-corpus
+  roundtrip under this exact module), the packaged external-consumer
+  proof, and the repository self-dogfood.
 - **1.25.0 / 1.25.1** — explicitly unsupported pending evidence. No
   hosted lane or artifact identities exist for them, so claiming
   "1.25.x" would be evidence-free inheritance.

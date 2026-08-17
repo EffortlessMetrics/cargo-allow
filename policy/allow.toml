@@ -8555,28 +8555,6 @@ target_fingerprint = "yaml"
 glob = ".changes/*.yaml"
 
 [[allow]]
-id = "allow-0385"
-kind = "non_rust_file"
-family = "unknown_non_rust"
-path = ".changes/v0.2.0"
-owner = "core/release"
-classification = "release_marker"
-reason = "Changie release marker retained with the versioned change archive"
-evidence = ["doc:docs/how-to/manage-changelog.md"]
-created = "2026-07-29"
-review_after = "2026-10-29"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".changes/v0.2.0"
-target_fingerprint = "0"
-glob = ".changes/v0.2.0"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-9094"
 kind = "non_rust_file"
 family = "test_fixture"
@@ -12091,6 +12069,90 @@ review_after = "2026-11-14"
 ast_kind = "tracked_file"
 target_fingerprint = "md"
 glob = "docs/products/cargo-proof/release-notes.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11128-changie-history-generator"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/generate-changie-history.py"
+owner = "core/release"
+classification = "release_automation"
+reason = "#3160 deterministic CHANGELOG.md splitter producing the retained Changie history corpus (header plus one reviewed version file per release); --check mode verifies corpus currency."
+evidence = ["doc:docs/how-to/manage-changelog.md", "issue:3160"]
+created = "2026-08-17"
+review_after = "2026-11-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "py"
+glob = "scripts/generate-changie-history.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11128-changie-history-roundtrip-harness"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/test-changie-history-roundtrip.sh"
+owner = "core/release"
+classification = "release_automation"
+reason = "#3160 isolated history-corpus roundtrip proof: corpus-only merge byte-equivalence, batch preview, mutating batch, merge dry-run and live byte-equivalence, rollback, and rerun determinism, bound to the exact Changie module in a retained receipt."
+evidence = ["doc:docs/how-to/manage-changelog.md", "issue:3160"]
+created = "2026-08-17"
+review_after = "2026-11-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "sh"
+glob = "scripts/test-changie-history-roundtrip.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11128-changie-history-header"
+kind = "non_rust_file"
+family = "documentation"
+path = ".changes/header.md"
+owner = "core/release"
+classification = "release_automation"
+reason = "#3160 retained Changie header file: the reviewed changelog intro prose that changie merge prepends to the history corpus; byte-verified by the roundtrip harness."
+evidence = ["doc:docs/how-to/manage-changelog.md", "issue:3160"]
+created = "2026-08-17"
+review_after = "2026-11-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = ".changes/header.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11128-changie-history-versions"
+kind = "non_rust_file"
+family = "documentation"
+owner = "core/release"
+classification = "release_automation"
+reason = "#3160 retained Changie history corpus version files (0.1.6 through 0.2.0), generated deterministically from the reviewed CHANGELOG.md; merge reproduces the reviewed changelog byte-for-byte."
+evidence = ["doc:docs/how-to/manage-changelog.md", "issue:3160"]
+created = "2026-08-17"
+review_after = "2026-11-14"
+occurrence_limit = 7
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = ".changes/0.*.md"
 
 [allow.last_seen]
 line = 1
