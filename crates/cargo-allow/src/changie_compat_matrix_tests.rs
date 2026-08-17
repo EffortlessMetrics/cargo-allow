@@ -119,8 +119,22 @@ fn every_dimension_result_is_classified_and_reviewed_differences_exist() {
         );
     }
     // No precedence flattens the dimensions: batch is separately
-    // classified, not folded into config schema or new.
-    assert!(text.contains("dimension = \"UpstreamBatchLoad\"\nresult = \"NotProvenSeparately\""));
+    // classified, not folded into config schema or new. Line-ending
+    // independent — a Windows autocrlf checkout must not break it.
+    let supported_block = text
+        .split("[[release]]")
+        .find(|block| block.contains("status = \"SupportedExperimental\""))
+        .unwrap_or_default();
+    let batch_at = supported_block
+        .find("dimension = \"UpstreamBatchLoad\"")
+        .unwrap_or_else(|| std::panic::panic_any("batch dimension missing"));
+    let not_proven_at = supported_block
+        .find("result = \"NotProvenSeparately\"")
+        .unwrap_or_else(|| std::panic::panic_any("batch result missing"));
+    assert!(
+        not_proven_at > batch_at,
+        "batch must be separately classified, not folded"
+    );
     // Every difference carries a reviewed disposition.
     let difference_blocks: Vec<&str> = text
         .split("[[release.differences]]")
