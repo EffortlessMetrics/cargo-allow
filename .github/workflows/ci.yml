@@ -295,7 +295,9 @@ jobs:
             -- -D warnings
 
       - name: Changie sensor projections and falsifiers (#3623)
-        run: cargo test -p cargo-allow --locked changie_source_view changie_command -- --nocapture
+        run: |
+          cargo test -p cargo-allow --locked changie_source_view -- --nocapture
+          cargo test -p cargo-allow --locked changie_command -- --nocapture
       - name: Changie sensor self-dogfood (#3623)
         # cargo-allow analyzes its own .changie.yaml and complete
         # fragment population with the Rust-native sensor: no Go,
