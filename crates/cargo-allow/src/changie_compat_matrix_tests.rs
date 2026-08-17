@@ -21,7 +21,10 @@ fn read_workspace_file(root: &Path, rel: &str) -> String {
 }
 
 fn matrix_text() -> String {
-    read_workspace_file(&workspace_root(), "policy/changie-compatibility-matrix.toml")
+    read_workspace_file(
+        &workspace_root(),
+        "policy/changie-compatibility-matrix.toml",
+    )
 }
 
 fn release_blocks(text: &str) -> Vec<String> {
@@ -136,10 +139,7 @@ fn every_dimension_result_is_classified_and_reviewed_differences_exist() {
         "batch must be separately classified, not folded"
     );
     // Every difference carries a reviewed disposition.
-    let difference_blocks: Vec<&str> = text
-        .split("[[release.differences]]")
-        .skip(1)
-        .collect();
+    let difference_blocks: Vec<&str> = text.split("[[release.differences]]").skip(1).collect();
     assert!(!difference_blocks.is_empty());
     for block in &difference_blocks {
         assert!(
@@ -231,7 +231,5 @@ fn matrix_schema_is_self_describing_and_versioned() {
     assert!(text.contains("schema_id = \"cargo-allow.changie-compatibility-matrix.v1\""));
     assert!(text.contains("controlling_issue = 3614"));
     // The claim text names the exact release.
-    assert!(
-        text.contains("Changie 1.25.2-compatible configuration and fragments")
-    );
+    assert!(text.contains("Changie 1.25.2-compatible configuration and fragments"));
 }
