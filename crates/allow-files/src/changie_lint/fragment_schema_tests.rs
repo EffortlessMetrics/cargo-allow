@@ -85,11 +85,16 @@ fn kind_specific_branches_are_deterministic_and_ordered() {
         fixed_at < internal_at,
         "branch order follows compiled kind order"
     );
-    let internal_end = (internal_at + 600).min(text.len());
-    let internal_branch = &text[internal_at..internal_end];
-    assert!(internal_branch.contains("x-changie-body-required\": false"));
-    // Ticket (additional choice, int, min 1) is required only for Internal.
-    assert!(internal_branch.contains("\"required\": [\"Ticket\"]"));
+    // The Internal branch runs to the end of the allOf array; assert
+    // containment in order without slicing a byte window.
+    let internal_branch = text.get(internal_at..).unwrap_or("");
+    let body_at = internal_branch
+        .find("x-changie-body-required\": false")
+        .unwrap_or_else(|| std::panic::panic_any("skipBody branch missing"));
+    let ticket_at = internal_branch
+        .find("\"required\": [\"Ticket\"]")
+        .unwrap_or_else(|| std::panic::panic_any("Ticket required missing"));
+    assert!(ticket_at > body_at);
 }
 
 #[test]
@@ -106,7 +111,14 @@ fn string_valued_integers_annotate_not_enforce() {
     let pr_at = text
         .find("\"PR\"")
         .unwrap_or_else(|| std::panic::panic_any("PR property missing"));
-    let pr_block = &text[pr_at..pr_at + 420];
+    // The PR property ends where the next property or the custom-object
+    // close begins; assert absence over that structural window.
+    let pr_close = text
+        .get(pr_at..)
+        .and_then(|remainder| remainder.find("\n      }"))
+        .map(|offset| pr_at + offset)
+        .unwrap_or(text.len());
+    let pr_block = text.get(pr_at..pr_close).unwrap_or("");
     assert!(!pr_block.contains("\"minimum\""));
     assert!(!pr_block.contains("\"maximum\""));
 }
