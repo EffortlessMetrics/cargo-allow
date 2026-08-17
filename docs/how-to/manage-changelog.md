@@ -101,6 +101,16 @@ A mutating batch moves or deletes fragments and merge rewrites
 harness proves the behavior under the pinned module in isolation so the
 release procedure can rely on it when authorization is explicit.
 
+A release that batches and merges extends the corpus, so the release
+train also owns three mechanical follow-ups: rerun
+`scripts/generate-changie-history.py` after the merge so the new
+`<version>.md` is split out of the reviewed `CHANGELOG.md`, bump the
+`occurrence_limit` on the `allow-11128-changie-history-versions`
+receipt to the new corpus size, and rerun the roundtrip harness. The
+harness itself needs no edits — it discovers the version set at run
+time and proves the corpus-only roundtrip even in the zero-fragment
+state a release PR is in after its own batch.
+
 ## Optional pre-commit convention
 
 Install the repository convenience hook through Git's active hook path:

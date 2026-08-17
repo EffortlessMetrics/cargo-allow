@@ -87,6 +87,27 @@ def normalize_newlines(text: str) -> str:
     return text.replace("\r\n", "\n")
 
 
+def audit_changes_dir(expected: dict[Path, str]) -> list[str]:
+    """Flag entries that participate in neither the corpus nor the fragment workflow.
+
+    Version-file discovery in ``changie merge`` is not extension-strict:
+    an extensionless stray such as ``.changes/v0.2.0`` is read as version
+    ``v0.2`` and then fails the merge trying to open ``v0.2.md``. The
+    audit keeps that file class visible instead of silently ignored.
+    """
+    problems: list[str] = []
+    for path in sorted(CHANGES_DIR.iterdir()):
+        if path in expected or path.name == "README.md":
+            continue
+        if path.is_file() and path.suffix in {".md", ".yaml", ".yml"}:
+            continue
+        problems.append(
+            f"unexpected .changes entry {path.name!r}; "
+            "only <version>.md corpus files and *.yaml fragments belong here"
+        )
+    return problems
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="verify corpus is current; write nothing")
@@ -94,7 +115,6 @@ def main() -> int:
 
     raw = CHANGELOG.read_text(encoding="utf-8")
     header, sections = split_changelog(normalize_newlines(raw))
-    CHANGES_DIR.mkdir(exist_ok=True)
     expected: dict[Path, str] = {}
     # The header file carries the reviewed intro prose so `changie
     # merge` reproduces the changelog byte-for-byte when headerPath is
@@ -115,6 +135,8 @@ def main() -> int:
         for path in sorted(CHANGES_DIR.glob("*.md")):
             if path not in expected and path.name != "README.md":
                 drift.append(f"unretained history file {path.relative_to(ROOT)}")
+        if CHANGES_DIR.is_dir():
+            drift.extend(audit_changes_dir(expected))
         if drift:
             for line in drift:
                 print(f"history corpus drift: {line}", file=sys.stderr)
@@ -122,6 +144,7 @@ def main() -> int:
         print(f"history corpus current: {len(expected)} files verified")
         return 0
 
+    CHANGES_DIR.mkdir(exist_ok=True)
     for path, content in sorted(expected.items()):
         path.write_text(content, encoding="utf-8", newline="\n")
         print(f"wrote {path.relative_to(ROOT)}")
