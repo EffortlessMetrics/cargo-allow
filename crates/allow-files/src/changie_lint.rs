@@ -41,6 +41,7 @@ pub enum ChangieRule {
     FragmentComponentUnknown,
     FragmentProjectMissing,
     FragmentProjectUnknown,
+    FragmentProjectNotCanonical,
     FragmentBodyMissing,
     FragmentBodyWrongType,
     FragmentBodyTooShort,
@@ -75,6 +76,7 @@ impl ChangieRule {
             Self::FragmentComponentUnknown => "changie.fragment.component_unknown",
             Self::FragmentProjectMissing => "changie.fragment.project_missing",
             Self::FragmentProjectUnknown => "changie.fragment.project_unknown",
+            Self::FragmentProjectNotCanonical => "changie.fragment.project_not_canonical",
             Self::FragmentBodyMissing => "changie.fragment.body_missing",
             Self::FragmentBodyWrongType => "changie.fragment.body_wrong_type",
             Self::FragmentBodyTooShort => "changie.fragment.body_too_short",
@@ -117,6 +119,7 @@ impl ChangieResultClass {
 pub enum ChangieAction {
     OpenRelatedConfigValue,
     ChooseConfiguredValue,
+    CanonicalizeConfiguredValue,
     InsertMissingField,
     ShowStaticVersusRenderLimitation,
 }
@@ -126,6 +129,7 @@ impl ChangieAction {
         match self {
             Self::OpenRelatedConfigValue => "open related configured value",
             Self::ChooseConfiguredValue => "choose one configured value",
+            Self::CanonicalizeConfiguredValue => "canonicalize to one configured value",
             Self::InsertMissingField => "insert the missing field after supplying a value",
             Self::ShowStaticVersusRenderLimitation => "show static-versus-render limitation",
         }
@@ -138,6 +142,47 @@ impl ChangieAction {
 pub struct ChangieExpectedActual {
     pub expected: String,
     pub actual: String,
+}
+
+impl ChangieDiagnostic {
+    /// The authority class behind this rule (#3620): which layer's
+    /// observed behavior the rule encodes. Derived from the stable rule
+    /// identity so provenance cannot drift from the rule.
+    pub fn provenance(&self) -> &'static str {
+        match self.rule {
+            ChangieRule::ConfigMalformed => "upstream_config_load",
+            ChangieRule::ConfigDuplicateKey
+            | ChangieRule::ConfigUnknownField
+            | ChangieRule::ConfigInvalidConstraint
+            | ChangieRule::ConfigDuplicateProject
+            | ChangieRule::ConfigDuplicateComponent
+            | ChangieRule::ConfigDuplicateKind => "rust_static_companion",
+            ChangieRule::ConfigUnsupportedSemantics => "rust_static_companion",
+            ChangieRule::ConfigPathInvalid => "source_safety",
+            ChangieRule::FragmentPathNotDiscovered | ChangieRule::FragmentEntryUnsupported => {
+                "source_safety"
+            }
+            ChangieRule::FragmentMalformed => "upstream_batch_load",
+            ChangieRule::FragmentKindMissing
+            | ChangieRule::FragmentKindUnknown
+            | ChangieRule::FragmentComponentMissing
+            | ChangieRule::FragmentComponentUnknown
+            | ChangieRule::FragmentProjectMissing
+            | ChangieRule::FragmentProjectUnknown
+            | ChangieRule::FragmentProjectNotCanonical
+            | ChangieRule::FragmentBodyMissing
+            | ChangieRule::FragmentBodyWrongType
+            | ChangieRule::FragmentBodyTooShort
+            | ChangieRule::FragmentBodyTooLong
+            | ChangieRule::FragmentTimeMissing
+            | ChangieRule::FragmentTimeInvalid
+            | ChangieRule::FragmentCustomMissing
+            | ChangieRule::FragmentCustomWrongType
+            | ChangieRule::FragmentCustomOutOfRange
+            | ChangieRule::FragmentCustomUnknownValue
+            | ChangieRule::FragmentCustomUnconfigured => "rust_static_companion",
+        }
+    }
 }
 
 /// One diagnostic with full source correlation.
@@ -238,6 +283,17 @@ pub struct ChangieLintReport {
 // ---------------------------------------------------------------------------
 // lint()
 // ---------------------------------------------------------------------------
+
+pub use compiled_contract::{
+    ChangieCompiledFragmentContractV1, ChangieProvenance, ContractCompileBlocker, compile_contract,
+};
+
+/// Per-fragment validation result against the compiled contract (#3620).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChangieFragmentValidationV1 {
+    pub repo_path: String,
+    pub diagnostics: Vec<ChangieDiagnostic>,
+}
 
 pub fn lint(candidate: ChangieLintCandidate) -> ChangieLintReport {
     let config = &candidate.config;
@@ -351,11 +407,38 @@ pub fn lint(candidate: ChangieLintCandidate) -> ChangieLintReport {
         completeness = ChangieCompleteness::NotProven;
     }
 
+    // Compile the effective fragment contract once (#3620). Fragment
+    // semantics consume only the contract; ambiguity fails honestly
+    // instead of guessing.
+    let compiled = compile_contract(config);
+    let contract = compiled.as_ref().ok().or_else(|| {
+        completeness = ChangieCompleteness::Partial;
+        let blocker = compiled
+            .as_ref()
+            .err()
+            .unwrap_or(&ContractCompileBlocker::MalformedConfiguration);
+        diagnostics.push(ChangieDiagnostic {
+            rule: ChangieRule::ConfigUnsupportedSemantics,
+            result_class: ChangieResultClass::Unsupported,
+            repo_path: config.source.repo_path().to_string(),
+            field_path: None,
+            range: None,
+            related_config_ranges: Vec::new(),
+            expected_actual: None,
+            message: format!(
+                "fragment contract not compiled ({blocker:?}); persisted-fragment semantics skipped"
+            ),
+            actions: vec![ChangieAction::ShowStaticVersusRenderLimitation],
+        });
+        None
+    });
+
     // Candidate entry discovery classification.
     let mut discovered = Vec::new();
     let mut not_discovered = Vec::new();
     classify_entries(
         config,
+        contract,
         &candidate.entries,
         &mut diagnostics,
         &mut discovered,
@@ -1044,6 +1127,7 @@ fn validate_custom_choices(
 /// children only, and distinct handling for every non-file state.
 fn classify_entries(
     config: &ChangieConfigDocument,
+    contract: Option<&ChangieCompiledFragmentContractV1>,
     entries: &[ChangieCandidateEntry],
     diagnostics: &mut Vec<ChangieDiagnostic>,
     discovered: &mut Vec<String>,
@@ -1114,8 +1198,10 @@ fn classify_entries(
         }
         // Semantic fragment rules run for every supplied fragment
         // document, discovered or not (#3589 PR B2).
-        if let Some(fragment) = entry.fragment.as_ref() {
-            fragment_rules::validate_fragment(config, entry, fragment, diagnostics);
+        if let Some(fragment) = entry.fragment.as_ref()
+            && let Some(contract) = contract
+        {
+            fragment_rules::validate_fragment(contract, entry, fragment, diagnostics);
         }
         // A malformed fragment stays in the population report.
         if let Some(fragment) = entry.fragment.as_ref()
@@ -1197,6 +1283,7 @@ fn shape(value: &ChangieValue) -> &'static str {
     }
 }
 
+pub mod compiled_contract;
 mod fragment_rules;
 
 #[cfg(test)]

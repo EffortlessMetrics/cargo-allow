@@ -181,7 +181,31 @@ fn project_rules_match_keys_only() {
     assert!(ok.diagnostics.is_empty(), "{:#?}", ok.diagnostics);
 
     let label_only = lint_with(config, "kind: Fixed\nbody: b\nproject: Backend\n");
-    assert!(rules(&label_only).contains(&"changie.fragment.project_unknown".to_string()));
+    // Canonical identity law: a label is a source-located finding with a
+    // canonicalization action, not a silent normalization and not a bare
+    // unknown.
+    let canonical = label_only
+        .diagnostics
+        .iter()
+        .find(|d| d.rule.as_str() == "changie.fragment.project_not_canonical")
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "label should be not_canonical, got {:#?}",
+                label_only.diagnostics
+            ))
+        });
+    assert_eq!(
+        canonical
+            .expected_actual
+            .as_ref()
+            .map(|ea| ea.expected.clone()),
+        Some("backend".to_string())
+    );
+    assert!(
+        canonical
+            .actions
+            .contains(&ChangieAction::CanonicalizeConfiguredValue)
+    );
 
     let missing = lint_with(config, "kind: Fixed\nbody: b\n");
     assert!(rules(&missing).contains(&"changie.fragment.project_missing".to_string()));
