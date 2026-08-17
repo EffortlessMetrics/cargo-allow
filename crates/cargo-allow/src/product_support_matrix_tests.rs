@@ -160,6 +160,11 @@ fn implies_other_product_stability(text: &str, owning_product: &str) -> Option<S
             ("cargo-proof", "cargo-proof"),
             ("cargo-allow", "cargo-allow application"),
         ]
+    } else if owning_product == "cargo-proof" {
+        &[
+            ("cargo-intent", "cargo-intent"),
+            ("cargo-allow", "cargo-allow application"),
+        ]
     } else {
         &[]
     };
@@ -301,39 +306,56 @@ fn only_cargo_allow_is_installed_by_default() -> Result<(), String> {
 }
 
 #[test]
-fn cargo_allow_doc_does_not_imply_intent_or_proof_stability() -> Result<(), String> {
-    // Scan cargo-allow's own documentation surfaces for cross-product
-    // stability implications without opt-in framing.
+fn product_docs_do_not_imply_other_products_stability() -> Result<(), String> {
+    // Scan every product's documentation surfaces for cross-product
+    // stability implications without opt-in framing (#3447: all three
+    // products now carry the full seven-doc surface).
     let root = workspace_root();
-    let docs_to_check = [
-        "docs/getting-started.md",
-        "docs/release/0.2.0.md",
-        "docs/status/SUPPORT_TIERS.md",
-        "docs/products/cargo-allow/getting-started.md",
-        "docs/products/cargo-allow/command-reference.md",
-        "docs/products/cargo-allow/schemas.md",
-        "docs/products/cargo-allow/limitations.md",
-        "docs/products/cargo-allow/compatibility.md",
-        "docs/products/cargo-allow/support-and-security.md",
-        "docs/products/cargo-allow/release-notes.md",
+    let products = [
+        (
+            "cargo-allow",
+            vec![
+                "docs/getting-started.md",
+                "docs/release/0.2.0.md",
+                "docs/status/SUPPORT_TIERS.md",
+            ],
+        ),
+        ("cargo-intent", vec![]),
+        ("cargo-proof", vec![]),
     ];
-    for doc_rel in &docs_to_check {
-        let path = root.join(doc_rel);
-        if !path.is_file() {
-            continue;
+    const DOC_KINDS: &[&str] = &[
+        "getting-started",
+        "command-reference",
+        "schemas",
+        "limitations",
+        "compatibility",
+        "support-and-security",
+        "release-notes",
+    ];
+    for (product, extra_docs) in &products {
+        let mut docs_to_check: Vec<String> = extra_docs.iter().map(|doc| doc.to_string()).collect();
+        for kind in DOC_KINDS {
+            docs_to_check.push(format!("docs/products/{product}/{kind}.md"));
         }
-        let text = std::fs::read_to_string(&path).map_err(|e| format!("read {doc_rel}: {e}"))?;
-        if let Some(phrase) = implies_other_product_stability(&text, "cargo-allow") {
-            return Err(format!(
-                "{doc_rel} implies `{phrase}` without opt-in framing; cargo-allow docs must not imply cargo-intent or cargo-proof is installed/supported/stable"
-            ));
+        for doc_rel in &docs_to_check {
+            let path = root.join(doc_rel);
+            if !path.is_file() {
+                continue;
+            }
+            let text =
+                std::fs::read_to_string(&path).map_err(|e| format!("read {doc_rel}: {e}"))?;
+            if let Some(phrase) = implies_other_product_stability(&text, product) {
+                return Err(format!(
+                    "{doc_rel} implies `{phrase}` without opt-in framing; {product} docs must not imply another product is installed/supported/stable"
+                ));
+            }
         }
     }
     Ok(())
 }
 
 #[test]
-fn cargo_allow_product_docs_are_independent_and_indexed() -> Result<(), String> {
+fn product_docs_are_independent_and_indexed() -> Result<(), String> {
     let root = workspace_root();
     let docs = [
         "getting-started",
@@ -344,25 +366,35 @@ fn cargo_allow_product_docs_are_independent_and_indexed() -> Result<(), String> 
         "support-and-security",
         "release-notes",
     ];
+    let products = ["cargo-allow", "cargo-intent", "cargo-proof"];
+    for product in products {
+        product_docs_check(&root, product, &docs)?;
+    }
+    product_index_check(&root)?;
+    Ok(())
+}
+
+fn product_docs_check(root: &std::path::Path, product: &str, docs: &[&str]) -> Result<(), String> {
     let index = std::fs::read_to_string(root.join("docs/README.md"))
         .map_err(|error| format!("read docs/README.md: {error}"))?;
     for doc in docs {
-        let relative = format!("docs/products/cargo-allow/{doc}.md");
+        let relative = format!("docs/products/{product}/{doc}.md");
         let path = root.join(&relative);
         if !path.is_file() {
-            return Err(format!("missing cargo-allow product doc {relative}"));
+            return Err(format!("missing {product} product doc {relative}"));
         }
         let content =
             std::fs::read_to_string(&path).map_err(|error| format!("read {relative}: {error}"))?;
-        if !content.contains("cargo-allow") {
-            return Err(format!(
-                "cargo-allow product doc lacks identity: {relative}"
-            ));
+        if !content.contains(product) {
+            return Err(format!("{product} product doc lacks identity: {relative}"));
         }
-        let link = format!("products/cargo-allow/{doc}.md");
+        let link = format!("products/{product}/{doc}.md");
         if !index.contains(&link) {
             return Err(format!("docs/README.md does not link {link}"));
         }
+    }
+    if product != "cargo-allow" {
+        return Ok(());
     }
     let command_reference =
         std::fs::read_to_string(root.join("docs/products/cargo-allow/command-reference.md"))
@@ -389,6 +421,20 @@ fn cargo_allow_product_docs_are_independent_and_indexed() -> Result<(), String> 
     ] {
         if !schemas.contains(marker) {
             return Err(format!("schema catalog lacks completeness marker {marker}"));
+        }
+    }
+    Ok(())
+}
+
+fn product_index_check(root: &std::path::Path) -> Result<(), String> {
+    let index = std::fs::read_to_string(root.join("docs/README.md"))
+        .map_err(|error| format!("read docs/README.md: {error}"))?;
+    for product in ["cargo-allow", "cargo-intent", "cargo-proof"] {
+        let link = format!("products/{product}/getting-started.md");
+        if !index.contains(&link) {
+            return Err(format!(
+                "docs/README.md does not index {product} getting-started"
+            ));
         }
     }
     Ok(())

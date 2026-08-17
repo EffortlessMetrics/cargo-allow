@@ -1,0 +1,15 @@
+kind: Added
+body: >-
+  Add the independent cargo-intent and cargo-proof documentation
+  surfaces (#3447, criterion 2 of #3359). Each experimental product now
+  carries all seven doc kinds — getting started, command reference,
+  schema catalog, limitations and claim boundary, compatibility and
+  upgrades, issue routing and security ownership, release notes —
+  grounded in the live CLI surface and the product-support-matrix
+  postures (experimental opt-in, not installed by default, separate
+  claim boundaries). The cross-product-implication checker now scans
+  every product's docs (not just cargo-allow's), cargo-proof gains its
+  own other-products arm, and the independence/index test enforces the
+  full 3×7 set with per-product indexing in docs/README.md. The
+  integrated getting-started guide links the per-product surfaces
+  without describing them (criterion 4).
