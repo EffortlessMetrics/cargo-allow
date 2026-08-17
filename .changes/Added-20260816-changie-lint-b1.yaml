@@ -1,0 +1,19 @@
+kind: Added
+body: >-
+  Add the Changie static authoring contract validator, PR B1 of #3589:
+  the diagnostic/result model (stable `changie.*` rule identities, result
+  classes finding/malformed/unsupported/partial kept separate from
+  severity and consumer posture, primary ranges with related config
+  declaration ranges, typed expected/actual values, deterministic
+  non-mutating action descriptors) and the configuration-consistency
+  half — repository-relative path safety with normalization-collision
+  detection relating both declarations, missing discovery roots,
+  duplicate keys/components/kind labels, the body constraint law
+  (integer, non-negative, min <= max), and the custom-choice contract
+  (unique keys, string/block/int/enum types, non-empty duplicate-free
+  enum options, unsupported types as explicit unsupported results).
+  Operation-affecting fields (templates, post, replacements) degrade
+  completeness to NotProven instead of erroring, and the candidate-entry
+  discovery contract classifies exact `.yaml` direct children only,
+  keeping every non-file state distinct. A malformed fragment stays in
+  the population report.
