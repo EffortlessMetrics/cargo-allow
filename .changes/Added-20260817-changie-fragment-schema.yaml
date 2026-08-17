@@ -1,0 +1,30 @@
+kind: Added
+body: >-
+  Emit the config-derived fragment JSON Schema and schema-association
+  metadata (#3613 PR D). `fragment_json_schema` projects the compiled
+  contract into a JSON Schema Draft 2020-12 document — project canonical
+  keys, configured components and kinds, body min/max in pinned
+  utf8-bytes semantics, date-time `time` under a configured timeFormat,
+  custom mapping with required-vs-optional active choices, enum options,
+  and kind-specific branches (skipBody, skipGlobalChoices,
+  additionalChoices) in stable compiled order via allOf/if-then. The
+  schema identity keys on the contract digest (order-independent), no
+  absolute paths or timestamps enter portable identity, and
+  string-valued integer choices carry a lexical pattern plus namespaced
+  x-changie numeric annotations that honestly disclaim JSON-Schema
+  enforcement — the Rust sensor stays authoritative. The claim boundary
+  and every opaque limitation are machine-readable annotations. The
+  association descriptor (ChangieFragmentSchemaAssociationV1) binds
+  config identity, schema digest, discovery-derived fragment patterns,
+  and completeness so config changes stale editor bindings; config
+  documents stay associated with Changie's official schema. `cargo allow
+  changie schema --fragments [--association]` exposes a documented,
+  scriptable, non-mutating route; a CI smoke validates the emitted
+  schema with an independent JSON Schema validator and checks the
+  association shape. Eleven fixture tests cover the issue's list:
+  flat/Perl configs, optional/required choices, kind branches, annotated
+  integer bounds, malformed-config refusal, pure-function determinism
+  plus order-semantic parity (mirroring the compiled contract's own
+  identity semantics), config-change invalidation, association
+  patterns, canonical-rule mapping, and valid-JSON structure. No second
+  rule evaluator, no editor transport, no external execution.

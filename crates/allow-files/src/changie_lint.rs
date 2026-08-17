@@ -1285,6 +1285,7 @@ fn shape(value: &ChangieValue) -> &'static str {
 
 pub mod compiled_contract;
 mod fragment_rules;
+pub mod fragment_schema;
 pub mod sensor;
 
 #[cfg(test)]
