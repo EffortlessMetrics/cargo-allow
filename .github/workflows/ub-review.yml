@@ -88,6 +88,14 @@ jobs:
           cmp "${tmp}/before.worktree.diff" "${tmp}/after.worktree.diff"
           cmp "${tmp}/before.index.diff" "${tmp}/after.index.diff"
 
+      - name: Prove Changie history corpus roundtrip in isolation
+        env:
+          CHANGIE_BIN: ${{ runner.temp }}/changie-bin/changie
+        run: |
+          set -euo pipefail
+          bash scripts/test-changie-history-roundtrip.sh
+          cat target/changie-history-roundtrip/changie-history-roundtrip.receipt.json
+
   changelog-hook-contract:
     permissions:
       contents: read
