@@ -496,3 +496,17 @@ and `crates/cargo-allow/tests/first_hour_adoption.rs` (consumable by #2278):
 | `receipt_apply` | Source-candidate `add --from-plan --update` (atomic write) |
 | `receipt_targeted_recheck` | Source-candidate recheck of the one finding |
 | `receipt_full_check` | Source-candidate full `check --mode no-new` proof |
+
+## Per-product surfaces
+
+This guide covers `cargo-allow`, the supported product. The optional
+experimental products have their own independent documentation surfaces:
+
+- [cargo-intent](products/cargo-intent/getting-started.md) — opt-in
+  experimental intent and obligation compiler; not installed by default.
+- [cargo-proof](products/cargo-proof/getting-started.md) — opt-in
+  experimental exact-snapshot evidence orchestrator; not installed by
+  default.
+
+Their commands and artifacts are separate products with separate claim
+boundaries; this guide does not describe them.
