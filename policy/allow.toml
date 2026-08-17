@@ -11716,3 +11716,24 @@ glob = "scripts/test-changie-sensor-external-consumer.sh"
 line = 1
 column = 1
 
+
+[[allow]]
+id = "allow-11123"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/how-to/run-changie-sensor.md"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3623 operator documentation for the opt-in changie lint surface: subject selection, config precedence, claim boundary, and the no-Go/no-Changie local story; this receipt covers the document itself as tracked documentation."
+evidence = ["doc:docs/ci.md"]
+created = "2026-08-17"
+review_after = "2026-11-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "docs/how-to/run-changie-sensor.md"
+
+[allow.last_seen]
+line = 1
+column = 1
