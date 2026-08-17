@@ -82,7 +82,7 @@ and consumes unreleased fragments, `merge --dry-run` and a live `merge`
 stay byte-equivalent to the header-plus-corpus reconstruction, rollback
 restores the corpus, and a re-batch of an existing version is rejected.
 The harness writes a receipt binding the Changie module identity,
-repository tree, config digest, history corpus digest, and output digest.
+repository tree, config digest, history corpus digest, and changelog digest.
 CI runs it with the pinned `changie@v1.25.2` module in the
 `UB Review / changie-contract` job.
 
