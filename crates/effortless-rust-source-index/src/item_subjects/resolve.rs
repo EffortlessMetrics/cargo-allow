@@ -146,5 +146,5 @@ fn resolution(
 }
 
 fn optional_eq<T: PartialEq>(selected: Option<&T>, actual: &T) -> bool {
-    selected.map_or(true, |selected| selected == actual)
+    selected.is_none_or(|selected| selected == actual)
 }
