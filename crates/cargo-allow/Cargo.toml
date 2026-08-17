@@ -54,6 +54,13 @@ toml.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 
+[features]
+# Exact source-view adapter for the embeddable Changie sensor
+# (#3622). Feature-off keeps yaml-rust2 out of the shipped
+# binary closure; the adapter step in the test lane compiles and
+# proves it.
+changie-adapter = ["allow-files/changie"]
+
 [dev-dependencies]
 jsonschema = { version = "0.49.2", default-features = false }
 effortless-rust-source-index = { path = "../effortless-rust-source-index" }
