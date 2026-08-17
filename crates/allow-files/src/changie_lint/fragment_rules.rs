@@ -576,37 +576,49 @@ fn validate_time(
 /// ranges are validated; no host timezone or locale is consulted.
 fn rfc3339_shaped(text: &str) -> bool {
     let bytes = text.as_bytes();
+    if bytes.len() < 20 {
+        return false;
+    }
+    let at = |index: usize| bytes.get(index).copied();
     let digits = |range: std::ops::Range<usize>| {
         bytes
             .get(range)
             .map(|slice| slice.iter().all(|b| b.is_ascii_digit()))
             .unwrap_or(false)
     };
-    if bytes.len() < 20 {
+    if !digits(0..4)
+        || at(4) != Some(b'-')
+        || !digits(5..7)
+        || at(7) != Some(b'-')
+        || !digits(8..10)
+    {
         return false;
     }
-    if !digits(0..4) || bytes[4] != b'-' || !digits(5..7) || bytes[7] != b'-' || !digits(8..10) {
-        return false;
-    }
-    if bytes[10] != b'T' && bytes[10] != b't' && bytes[10] != b' ' {
-        return false;
+    match at(10) {
+        Some(b'T') | Some(b't') | Some(b' ') => {}
+        _ => return false,
     }
     if !digits(11..13)
-        || bytes[13] != b':'
+        || at(13) != Some(b':')
         || !digits(14..16)
-        || bytes[16] != b':'
+        || at(16) != Some(b':')
         || !digits(17..19)
     {
         return false;
     }
-    let month = text.get(5..7).and_then(|v| v.parse::<u32>().ok());
-    let day = text.get(8..10).and_then(|v| v.parse::<u32>().ok());
-    let hour = text.get(11..13).and_then(|v| v.parse::<u32>().ok());
-    let minute = text.get(14..16).and_then(|v| v.parse::<u32>().ok());
-    let second = text.get(17..19).and_then(|v| v.parse::<u32>().ok());
-    let (Some(month), Some(day), Some(hour), Some(minute), Some(second)) =
-        (month, day, hour, minute, second)
-    else {
+    let number = |range: std::ops::Range<usize>| {
+        bytes
+            .get(range)
+            .and_then(|slice| std::str::from_utf8(slice).ok())
+            .and_then(|value| value.parse::<u32>().ok())
+    };
+    let (Some(month), Some(day), Some(hour), Some(minute), Some(second)) = (
+        number(5..7),
+        number(8..10),
+        number(11..13),
+        number(14..16),
+        number(17..19),
+    ) else {
         return false;
     };
     if !(1..=12).contains(&month) || day == 0 || day > 31 || hour > 23 || minute > 59 || second > 60
@@ -614,17 +626,17 @@ fn rfc3339_shaped(text: &str) -> bool {
         return false;
     }
     let mut cursor = 19;
-    if bytes.get(cursor) == Some(&b'.') {
+    if at(cursor) == Some(b'.') {
         cursor += 1;
         while bytes.get(cursor).is_some_and(|b| b.is_ascii_digit()) {
             cursor += 1;
         }
     }
-    match bytes.get(cursor) {
+    match at(cursor) {
         Some(b'Z') | Some(b'z') => bytes.len() == cursor + 1,
         Some(b'+') | Some(b'-') => {
             bytes.len() == cursor + 6
-                && bytes.get(cursor + 3) == Some(&b':')
+                && at(cursor + 3) == Some(b':')
                 && digits(cursor + 1..cursor + 3)
                 && digits(cursor + 4..cursor + 6)
         }
