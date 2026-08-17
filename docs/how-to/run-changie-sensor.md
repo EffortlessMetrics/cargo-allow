@@ -84,3 +84,55 @@ Static authoring contract only. Diagnostics say the contract is
 satisfied or violated at a source location — they never claim Changie
 rendered, batched, or merged anything, and never claim compilation,
 type, or security proof.
+
+## Supported versions and upgrades
+
+The checked support record is
+[`policy/changie-compatibility-matrix.toml`](../policy/changie-compatibility-matrix.toml).
+It states exactly which upstream Changie releases are supported, the
+artifact identities behind each claim, the per-dimension results
+(official schema / config load / `new` authoring / batch / Rust static
+companion / source safety), and a reviewed disposition for every
+retained difference.
+
+Current claim, bounded by evidence:
+
+- **1.25.2** — supported (experimental), backed by the hosted
+  `changie-contract` lane, the packaged external-consumer proof, and
+  the repository self-dogfood.
+- **1.25.0 / 1.25.1** — explicitly unsupported pending evidence. No
+  hosted lane or artifact identities exist for them, so claiming
+  "1.25.x" would be evidence-free inheritance.
+- **Future releases** — fail visibly as unsupported; they never fall
+  back to the nearest supported generation.
+
+Adding a release is an explicit, reviewable step, never automatic:
+
+1. Record the release's artifact identities (tag/commit, module, schema
+   URL) in the matrix with `UnsupportedPendingEvidence`.
+2. Add or refresh the retained fixtures and the hosted lane pin for the
+   exact module version.
+3. Run every dimension comparison the evidence supports; classify each
+   observed difference with a reviewed disposition.
+4. Flip the release to supported only when the difference list has zero
+   unreviewed entries and the public wording names the exact release.
+
+Normal lint and build steps never fetch upstream artifacts — all
+identities are retained strings, and the hosted lane is CI-owned.
+
+## Reporting a divergence
+
+If the sensor and real Changie disagree:
+
+- check the matrix first — the difference may already carry a
+  disposition such as `StaticAuthoringStrongerThanBatch`;
+- open a cargo-allow issue with the exact config, fragment, and both
+  tools' outputs;
+- upstream defects get a minimal reproduction reported to Changie
+  following their issue-before-PR guidance, and the matrix records the
+  link. No automation posts upstream, and an upstream discussion is
+  never represented as endorsement.
+
+The sensor remains **experimental** until, among other gates, an
+upstream discussion is opened and recorded by a maintainer. Successful
+package upload or self-dogfood green never promotes support by itself.
