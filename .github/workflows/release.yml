@@ -366,7 +366,7 @@ jobs:
           archive="${OUTPUT_DIR}/cargo-allow-v${version}-x86_64-unknown-linux-gnu.tar.gz"
           bash scripts/verify-release-binary.sh --version "${version}" --receipt "${OUTPUT_DIR}/release-binary-install.receipt.json" "${archive}"
       - name: Attest tagged Linux executable archive
-        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: target/cargo-allow/release-assets/cargo-allow-${{ github.ref_name }}-x86_64-unknown-linux-gnu.tar.gz
       - name: Verify tagged Linux executable attestation
@@ -404,7 +404,7 @@ jobs:
           export TREE="$(git rev-parse "${GITHUB_SHA}^{tree}")"
           bash scripts/generate-release-manifest.sh
       - name: Attest release manifest
-        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: target/cargo-allow/release-manifest-v2.json
       - name: Resolve release notes
