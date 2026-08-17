@@ -1124,10 +1124,25 @@ fn string_field(config: &ChangieConfigDocument, key: &str) -> Option<String> {
 }
 
 fn extension_of(name: &str) -> &str {
-    match name.rfind('.') {
-        Some(index) => &name[index..],
-        None => "",
-    }
+    name.rsplit_once('.')
+        .map(|(_, extension)| extension)
+        .map(|_| {
+            // The slice below is guarded by rsplit_once's Some, but express it
+            // without direct slicing: split at the last dot via the iterator.
+            let mut start = name.len();
+            for (index, byte) in name.bytes().enumerate().rev() {
+                if byte == b'.' {
+                    start = index + 1;
+                    break;
+                }
+            }
+            if start > name.len() {
+                ""
+            } else {
+                name.split_at(start).1
+            }
+        })
+        .unwrap_or("")
 }
 
 fn shape(value: &ChangieValue) -> &'static str {
