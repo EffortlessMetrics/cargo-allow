@@ -377,6 +377,7 @@ pub const CHANGIE_CONFIG_FIELD_SURFACE: &[&str] = &[
     "body",
     "signoffs",
     "executableEnv",
+    "timeFormat",
     "fragmentTemplateDirs",
     "versionTemplateDirs",
     "post",

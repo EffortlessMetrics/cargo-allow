@@ -1,0 +1,17 @@
+kind: Added
+body: >-
+  Add semantic fragment validation to the Changie static authoring
+  contract, PR B2 of #3589: kind requiredness and lookup against
+  configured labels with no silent fallback for unknown kinds, component
+  and project rules following the configured sets (projects match keys
+  only), body required unless the kind skips it with upstream UTF-8
+  byte length semantics for min/max (pinned by Unicode fixtures), time
+  required only when the configuration declares `timeFormat` and
+  validated with a bounded RFC3339 shape check that rejects ambiguous
+  local times, and custom values honoring per-kind `skipGlobalChoices`
+  and `additionalChoices` — required/optional presence, base-10 integer
+  bounds, exact enum options, string bounds, wrong scalar types distinct
+  from invalid values, and unconfigured keys kept visible. The retained
+  Perl fixture semantics (required int minimum 1, optional string,
+  required enum `no|yes`) are a dedicated test, and the real repository
+  config plus a real fragment lint clean.
