@@ -9,8 +9,7 @@
 //! complete contract is never produced.
 
 use crate::changie::{
-    ChangieConfigDocument, ChangieContentIdentity, ChangieFieldPath, ChangieMapping, ChangieNode,
-    ChangieSourceRange, ChangieValue,
+    ChangieConfigDocument, ChangieContentIdentity, ChangieMapping, ChangieSourceRange, ChangieValue,
 };
 
 /// Authority behind each diagnostic: which layer's observed behavior the
@@ -590,14 +589,6 @@ fn shape(value: &ChangieValue) -> &'static str {
         ChangieValue::UnsupportedAlias => "alias",
     }
 }
-
-/// Convenience re-export used by fragment validation.
-pub fn field_path(parts: &[&str]) -> ChangieFieldPath {
-    ChangieFieldPath(parts.iter().map(|part| part.to_string()).collect())
-}
-
-#[allow(dead_code)]
-fn _node_type_witness(_: &ChangieNode) {}
 
 #[cfg(test)]
 #[path = "compiled_contract_tests.rs"]
