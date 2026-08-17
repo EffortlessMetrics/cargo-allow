@@ -1,8 +1,4 @@
 //! Exact repository source-view adapter for the Changie sensor (#3622).
-#![expect(
-    dead_code,
-    reason = "policy:allow-11122: changie source-view adapter awaits the #3623 projection leaf"
-)]
 //!
 //! One adapter turns every supported exact cargo-allow source view —
 //! saved worktree, staged index, or committed tree — into the same pure
@@ -182,6 +178,22 @@ impl std::fmt::Display for ChangieSourceViewError {
 /// Run one exact analysis: select the config in the view, parse it from
 /// the view's bytes, derive the fragment population from the parsed
 /// config inside the same view, and lint through the pure sensor.
+/// Reject an unsupported view kind explicitly (#3622 falsifier 6
+/// positive control): the adapter has no filesystem/Git loader of its
+/// own for kinds it does not know.
+pub fn unsupported_view_kind(kind: &'static str) -> ChangieSourceViewError {
+    ChangieSourceViewError::UnsupportedView(kind)
+}
+
+/// Mark an acquisition as not-proven for instrumentation failures the
+/// exact views cannot currently express (#3623 falsifier 3).
+pub fn mark_not_proven(result: &mut ChangieAnalysisResultV1, reason: &str) {
+    result.completeness = ChangieAcquisitionCompleteness::NotProven;
+    result
+        .limitations
+        .push(format!("instrument failure: {reason}"));
+}
+
 pub fn analyze_source_view(
     view: &RepositorySourceView,
     selection: &ChangieConfigSelectionV1,
@@ -473,12 +485,19 @@ fn population_from_view(
     // Enumerate candidates from the view's inventory — the same view
     // that produced the config. Sorted for determinism regardless of
     // the view's internal traversal order (falsifier 9).
+    // Only fragment-shaped entries enter the population: `.yaml` and
+    // `.yml` files under the config-derived root. Other repository
+    // files that merely live nearby (READMEs, version archives) are not
+    // fragment candidates and produce no findings — the discovery
+    // contract's `.yml`/nested retention covers the plausible user
+    // errors, and everything else is ordinary repository content.
     let mut candidates: Vec<String> = view
         .inventory()
         .files
         .iter()
         .map(|path| normalize_repo_relative(&path.to_string_lossy()))
         .filter(|path| path.starts_with(&root_prefix))
+        .filter(|path| path.ends_with(".yaml") || path.ends_with(".yml"))
         .collect();
     candidates.sort();
     candidates.dedup();

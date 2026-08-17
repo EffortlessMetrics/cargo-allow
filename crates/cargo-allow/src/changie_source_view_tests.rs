@@ -2,8 +2,6 @@
 //! selection law, population semantics, determinism, and the required
 //! falsifier list — each fixture built before the happy path.
 
-#![cfg(feature = "changie-adapter")]
-
 use crate::changie_source_view::*;
 use effortless_repo_snapshot::RepositorySourceView;
 use std::fs;

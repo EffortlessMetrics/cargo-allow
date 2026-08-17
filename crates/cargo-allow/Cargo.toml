@@ -38,7 +38,10 @@ evidence = "no binstall metadata exists in Cargo.toml"
 allow-core.workspace = true
 allow-policy.workspace = true
 allow-inventory.workspace = true
-allow-files.workspace = true
+# The Changie sensor projection (#3623) makes the sensor facade a
+# first-party cargo-allow surface: the feature is enabled unconditionally
+# so `changie lint` always exists. yaml-rust2 is pure Rust.
+allow-files = { workspace = true, features = ["changie"] }
 allow-rust.workspace = true
 allow-match.workspace = true
 allow-report.workspace = true
@@ -53,13 +56,6 @@ terminal_size.workspace = true
 toml.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-
-[features]
-# Exact source-view adapter for the embeddable Changie sensor
-# (#3622). Feature-off keeps yaml-rust2 out of the shipped
-# binary closure; the adapter step in the test lane compiles and
-# proves it.
-changie-adapter = ["allow-files/changie"]
 
 [dev-dependencies]
 jsonschema = { version = "0.49.2", default-features = false }
