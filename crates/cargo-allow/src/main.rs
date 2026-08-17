@@ -149,6 +149,10 @@ mod artifact_schema_worklist_tests;
 mod artifact_top_level_contract_tests;
 #[cfg(test)]
 mod cargo_proof_parity_tests;
+#[cfg(feature = "changie-adapter")]
+#[path = "changie_source_view.rs"]
+mod changie_source_view;
+
 #[cfg(test)]
 #[path = "ci_lane_topology_tests.rs"]
 mod ci_lane_topology_tests;

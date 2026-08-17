@@ -11715,3 +11715,26 @@ glob = "scripts/test-changie-sensor-external-consumer.sh"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11122"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "crates/cargo-allow/src/changie_source_view.rs"
+owner = "core/governance"
+classification = "changie_adapter_surface"
+reason = "The #3622 exact source-view adapter is proven by its falsifier tests under the changie-adapter feature; the projection leaf (#3623) is its first in-binary consumer, after which this expectation retires."
+evidence = ["test:crates/cargo-allow/src/changie_source_view_tests.rs"]
+created = "2026-08-17"
+review_after = "2026-11-14"
+
+[allow.selector]
+ast_kind = "attribute"
+lint = "dead_code"
+symbol = "#![expect( dead_code, reason = \"policy:allow-11122: changie source-view adapter awaits the #3623 projection leaf\" )]"
+target_fingerprint = "policy:allow-11122"
+glob = "crates/cargo-allow/src/changie_source_view.rs"
+
+[allow.last_seen]
+line = 2
+column = 1
