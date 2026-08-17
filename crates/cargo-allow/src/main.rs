@@ -155,6 +155,9 @@ mod changie;
 mod changie_source_view;
 
 #[cfg(test)]
+#[path = "allow_files_changie_admission_tests.rs"]
+mod allow_files_changie_admission_tests;
+#[cfg(test)]
 #[path = "ci_lane_topology_tests.rs"]
 mod ci_lane_topology_tests;
 #[cfg(test)]
@@ -183,6 +186,7 @@ mod intent_engine_parity_tests;
 mod intent_model_parity_tests;
 #[cfg(test)]
 mod intent_protocol_parity_tests;
+
 #[cfg(test)]
 #[path = "package_topology_enforcement_tests.rs"]
 mod package_topology_enforcement_tests;

@@ -73,3 +73,32 @@ while the 0.x series hardens file-family classification and report contracts.
 - Binary crate: `cargo-allow`
 - Product docs: repository README
 - Claim boundaries: `docs/claim-boundaries.md`
+
+## Optional feature: `changie`
+
+The `changie` Cargo feature enables an embeddable, experimental
+Rust-native static sensor for [Changie](https://changie.dev/) 1.25
+configuration and fragment authoring:
+
+```toml
+allow-files = { version = "0.2.0", features = ["changie"] }
+```
+
+- `allow_files::changie` — source-aware parsing that preserves
+  duplicate keys, source ranges, presence/scalar distinctions, and
+  unknown/unsupported field records;
+- `allow_files::changie_lint` — the compiled effective contract,
+  persisted-fragment validation with stable `changie.*` rule
+  identities and provenance classes, and the `ChangieSensor` facade.
+
+A clean result says the **static authoring contract** is satisfied — it
+never says `changie batch` ran, never claims rendering, and never
+decides whether a change needs a release note. Compatibility
+generation: `1.25`. Diagnostic and effective-rule schema generations:
+both `1`. The feature adds only the optional `yaml-rust2` dependency;
+feature-disabled consumers keep the exact dependency and behavior
+surface above.
+
+Support posture: experimental static companion — not a stable parser
+SDK. See the `docs/how-to/run-changie-sensor.md` operator guide in the
+cargo-allow repository for the CLI surface over this sensor.

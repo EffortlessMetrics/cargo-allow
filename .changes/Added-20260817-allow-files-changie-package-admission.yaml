@@ -1,0 +1,22 @@
+kind: Added
+body: >-
+  Admit the Changie sensor feature of `allow-files` to the versioned
+  package handoff (#3624).
+  `AllowFilesChangiePackageAdmissionV1` records the exact surface the
+  cargo-allow release candidate must carry: the `changie` feature
+  gating exactly the optional registry `yaml-rust2` dependency, the
+  feature-disabled closure without YAML, the public
+  `allow_files::changie`/`changie_lint` modules with the
+  static-versus-render boundary stated verbatim in the packaged
+  rustdoc, compatibility generation 1.25, diagnostic and
+  effective-rule schema generations 1, MSRV 1.95, and the
+  experimental-static-companion support posture that refuses stable
+  parser SDK or broad 1.x claims. The checked
+  `allow-files-changie-package-admission.schema.json` pins the record
+  shape, the crate README documents the versioned consumer contract
+  (`allow-files = { version = "...", features = ["changie"] }`), and
+  nine admission tests prove the manifest feature, the exact closure,
+  source independence (no path/git deps), the topology candidate row,
+  schema parity, and determinism. Publication itself stays owned by
+  the explicitly authorized release transaction; this is qualification
+  input to #2501 only.
