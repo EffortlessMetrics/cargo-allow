@@ -96,10 +96,7 @@ fn exact_resolution_requires_structural_identity() {
         },
     );
     assert_eq!(exact.class, RustItemResolutionClassV1::Exact);
-    assert_eq!(
-        exact.candidate_ids,
-        vec![RustItemSubjectIdV1::new("right")]
-    );
+    assert_eq!(exact.candidate_ids, vec![RustItemSubjectIdV1::new("right")]);
 }
 
 #[test]
@@ -182,36 +179,27 @@ fn malformed_selector_is_rejected_before_inventory_use() {
         ),
         &RustItemSelectorV1::default(),
     );
-    assert_eq!(
-        result.class,
-        RustItemResolutionClassV1::MalformedSelector
-    );
+    assert_eq!(result.class, RustItemResolutionClassV1::MalformedSelector);
 }
 
 #[test]
 fn inventory_validation_enforces_snapshot_and_unique_subject_identity() {
     let subject = item("same", &["one"]);
-    assert!(!inventory(
-        RustItemInventoryStatusV1::Complete,
-        vec![subject.clone(), subject],
-    )
-    .validate());
+    assert!(
+        !inventory(
+            RustItemInventoryStatusV1::Complete,
+            vec![subject.clone(), subject],
+        )
+        .validate()
+    );
 
     let mut wrong_snapshot = item("snapshot", &["snapshot"]);
     wrong_snapshot.snapshot_id = "tree:def".into();
-    assert!(!inventory(
-        RustItemInventoryStatusV1::Complete,
-        vec![wrong_snapshot],
-    )
-    .validate());
+    assert!(!inventory(RustItemInventoryStatusV1::Complete, vec![wrong_snapshot],).validate());
 
     let mut wrong_repository = item("repository", &["repository"]);
     wrong_repository.repository_id = "other".into();
-    assert!(!inventory(
-        RustItemInventoryStatusV1::Complete,
-        vec![wrong_repository],
-    )
-    .validate());
+    assert!(!inventory(RustItemInventoryStatusV1::Complete, vec![wrong_repository],).validate());
 }
 
 #[test]
@@ -220,52 +208,32 @@ fn inventory_validation_enforces_nested_lint_identity() {
     let mut declaration = lint("lint-one", "one");
     declaration.schema_version = "rust_item_subject.v2".into();
     invalid_schema.lint_declarations.push(declaration);
-    assert!(!inventory(
-        RustItemInventoryStatusV1::Complete,
-        vec![invalid_schema],
-    )
-    .validate());
+    assert!(!inventory(RustItemInventoryStatusV1::Complete, vec![invalid_schema],).validate());
 
     let mut misparented = item("two", &["two"]);
     misparented
         .lint_declarations
         .push(lint("lint-two", "other"));
-    assert!(!inventory(
-        RustItemInventoryStatusV1::Complete,
-        vec![misparented],
-    )
-    .validate());
+    assert!(!inventory(RustItemInventoryStatusV1::Complete, vec![misparented],).validate());
 
     let mut empty_lint = item("three", &["three"]);
     let mut declaration = lint("lint-three", "three");
     declaration.lint_names.clear();
     empty_lint.lint_declarations.push(declaration);
-    assert!(!inventory(
-        RustItemInventoryStatusV1::Complete,
-        vec![empty_lint],
-    )
-    .validate());
+    assert!(!inventory(RustItemInventoryStatusV1::Complete, vec![empty_lint],).validate());
 
     let mut first = item("first", &["first"]);
     first.lint_declarations.push(lint("shared", "first"));
     let mut second = item("second", &["second"]);
     second.lint_declarations.push(lint("shared", "second"));
-    assert!(!inventory(
-        RustItemInventoryStatusV1::Complete,
-        vec![first, second],
-    )
-    .validate());
+    assert!(!inventory(RustItemInventoryStatusV1::Complete, vec![first, second],).validate());
 }
 
 #[test]
 fn invalid_ranges_and_invalid_inventory_fail_closed() {
     let mut invalid_range = item("range", &["range"]);
     invalid_range.source.declaration_range.end_line = 0;
-    assert!(!inventory(
-        RustItemInventoryStatusV1::Complete,
-        vec![invalid_range],
-    )
-    .validate());
+    assert!(!inventory(RustItemInventoryStatusV1::Complete, vec![invalid_range],).validate());
 
     let mut stale = item("stale", &["stale"]);
     stale.snapshot_id = "tree:def".into();
