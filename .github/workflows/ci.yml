@@ -294,6 +294,12 @@ jobs:
             -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit \
             -- -D warnings
 
+      - name: Changie sensor packaged external-consumer proof (#3621)
+        # Packages the workspace candidate set, extracts the exact
+        # packaged allow-files bytes, patches crates-io to the packaged
+        # siblings, and runs an isolated offline fixture crate against
+        # the facade with the source checkout unneeded.
+        run: bash scripts/test-changie-sensor-external-consumer.sh
       - name: Changie sensor feature proof (#3588)
         # The allow-files changie module is feature-gated; without this
         # step nothing in CI compiles or tests it.

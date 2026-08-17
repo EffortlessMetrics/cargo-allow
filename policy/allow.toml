@@ -11694,3 +11694,24 @@ glob = "scripts/test-check-msrv-resolved.sh"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11121"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/test-changie-sensor-external-consumer.sh"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3621 packaged external-consumer qualification harness: packages the workspace candidate set, patches crates-io to the packaged siblings, and runs an isolated offline fixture crate against the changie sensor facade; receipts the harness itself as tracked release automation."
+evidence = ["doc:docs/ci.md"]
+created = "2026-08-17"
+review_after = "2026-11-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "sh"
+glob = "scripts/test-changie-sensor-external-consumer.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
