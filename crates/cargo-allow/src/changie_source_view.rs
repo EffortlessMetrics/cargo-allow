@@ -696,3 +696,62 @@ fn sensor_parse_fragment(
 #[cfg(test)]
 #[path = "changie_source_view_tests.rs"]
 mod changie_source_view_tests;
+
+/// Select and parse the Changie config in a view without running the
+/// full analysis — the schema projection route (#3613).
+pub fn selected_config(
+    view: &RepositorySourceView,
+    selection: &ChangieConfigSelectionV1,
+) -> Result<allow_files::changie::ChangieConfigDocument, ChangieSourceViewError> {
+    let record = select_config(view, selection)?;
+    let config_bytes = view
+        .read_bytes(std::path::Path::new(&record.selected_path))
+        .map_err(|err| ChangieSourceViewError::ConfigUnreadable {
+            path: record.selected_path.clone(),
+            reason: err.to_string(),
+        })?;
+    let repo_path = ChangieRepoPath::from_repo_relative(&record.selected_path).map_err(|err| {
+        ChangieSourceViewError::ConfigPathUnsafe {
+            path: record.selected_path.clone(),
+            reason: err,
+        }
+    })?;
+    let source =
+        ChangieSourceDocument::from_bytes(repo_path, config_bytes, Some("changie-schema".into()))
+            .map_err(|err| ChangieSourceViewError::ConfigUnreadable {
+            path: record.selected_path.clone(),
+            reason: err,
+        })?;
+    Ok(ChangieSensor.parse_config(source))
+}
+
+/// The config-derived fragment root (`<changesDir>/<unreleasedDir>`),
+/// normalized, for schema-association patterns.
+pub fn population_root(config: &allow_files::changie::ChangieConfigDocument) -> String {
+    let string_field = |key: &str| -> Option<String> {
+        config
+            .root
+            .as_ref()
+            .and_then(|node| match &node.value {
+                allow_files::changie::ChangieValue::Mapping(mapping) => {
+                    mapping.first(key).map(|node| &node.value)
+                }
+                _ => None,
+            })
+            .and_then(|value| match value {
+                allow_files::changie::ChangieValue::String(text) => Some(text.clone()),
+                _ => None,
+            })
+    };
+    let changes_dir = string_field("changesDir").unwrap_or_default();
+    let unreleased_dir = string_field("unreleasedDir").unwrap_or_default();
+    let owned = format!("{changes_dir}/{unreleased_dir}").replace('\\', "/");
+    let mut parts: Vec<&str> = Vec::new();
+    for segment in owned.split('/') {
+        match segment {
+            "" | "." | ".." => {}
+            other => parts.push(other),
+        }
+    }
+    parts.join("/")
+}

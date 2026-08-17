@@ -298,6 +298,8 @@ jobs:
         run: |
           cargo test -p cargo-allow --locked changie_source_view -- --nocapture
           cargo test -p cargo-allow --locked changie_command -- --nocapture
+      - name: Changie fragment schema independent-validation smoke (#3613)
+        run: bash scripts/test-changie-fragment-schema-smoke.sh
       - name: Changie sensor self-dogfood (#3623)
         # cargo-allow analyzes its own .changie.yaml and complete
         # fragment population with the Rust-native sensor: no Go,
