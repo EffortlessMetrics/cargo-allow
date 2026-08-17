@@ -1,11 +1,14 @@
-//! Semantic fragment validation against the parsed configuration
-//! (#3589 PR B2). Every rule is config-derived: no hidden repository
-//! house rule decides requiredness, and unknown kinds do not silently
-//! fall back to global semantics.
+//! Persisted-fragment validation against the compiled effective contract
+//! (#3620). Fragment semantics consume the contract only — never the
+//! raw configuration — so the contract is the single rule authority and
+//! #3613 can project it without another evaluator.
 
+use super::compiled_contract::{
+    ChangieCompiledFragmentContractV1, ChoiceType, CompiledChoice, CompiledKind, active_choices,
+};
 use super::{
-    ChangieAction, ChangieCandidateEntry, ChangieConfigDocument, ChangieDiagnostic,
-    ChangieExpectedActual, ChangieFragmentDocument, ChangieResultClass, ChangieRule,
+    ChangieAction, ChangieCandidateEntry, ChangieDiagnostic, ChangieExpectedActual,
+    ChangieFragmentDocument, ChangieResultClass, ChangieRule,
 };
 use crate::changie::{ChangieFieldPath, ChangieMapping, ChangieNode, ChangieValue};
 
@@ -15,7 +18,7 @@ use crate::changie::{ChangieFieldPath, ChangieMapping, ChangieNode, ChangieValue
 pub const BODY_LENGTH_SEMANTICS: &str = "utf8-bytes";
 
 pub(super) fn validate_fragment(
-    config: &ChangieConfigDocument,
+    contract: &ChangieCompiledFragmentContractV1,
     entry: &ChangieCandidateEntry,
     fragment: &ChangieFragmentDocument,
     diagnostics: &mut Vec<ChangieDiagnostic>,
@@ -23,8 +26,6 @@ pub(super) fn validate_fragment(
     let root = match fragment.root.as_ref().map(|node| &node.value) {
         Some(ChangieValue::Mapping(mapping)) => mapping,
         Some(_) => {
-            // A non-mapping fragment root is malformed at the parse level
-            // for this surface; report it and stop semantic validation.
             diagnostics.push(ChangieDiagnostic {
                 rule: ChangieRule::FragmentMalformed,
                 result_class: ChangieResultClass::Malformed,
@@ -41,40 +42,31 @@ pub(super) fn validate_fragment(
         None => return,
     };
 
-    let kind = resolve_kind(config, entry, root, diagnostics);
-    let components = configured_components(config);
-    let projects_enabled = config_has_projects(config);
-
-    validate_component(&components, entry, root, diagnostics);
-    validate_project(projects_enabled, config, entry, root, diagnostics);
-    validate_body(config, &kind, entry, root, diagnostics);
-    validate_time(config, entry, root, diagnostics);
-    validate_custom_values(config, &kind, entry, root, diagnostics);
+    let kind = resolve_kind(contract, entry, root, diagnostics);
+    validate_component(contract, entry, root, diagnostics);
+    validate_project(contract, entry, root, diagnostics);
+    validate_body(contract, kind.as_ref(), entry, root, diagnostics);
+    validate_time(contract, entry, root, diagnostics);
+    validate_custom_values(contract, kind.as_ref(), entry, root, diagnostics);
 }
 
-// ---------------------------------------------------------------------------
-// Config-derived declarations
-// ---------------------------------------------------------------------------
-
-pub(super) struct KindDeclaration {
-    pub label: String,
-    pub skip_body: bool,
-    pub skip_global_choices: bool,
-}
-
-fn resolve_kind<'a>(
-    config: &'a ChangieConfigDocument,
+fn resolve_kind(
+    contract: &ChangieCompiledFragmentContractV1,
     entry: &ChangieCandidateEntry,
-    root: &'a ChangieMapping,
+    root: &ChangieMapping,
     diagnostics: &mut Vec<ChangieDiagnostic>,
-) -> Option<KindDeclaration> {
-    let configured = configured_kinds(config);
-    if configured.is_empty() {
-        // No kinds configured: upstream does not gate on kind, so neither
-        // does the static contract.
+) -> Option<CompiledKind> {
+    if contract.kinds.is_empty() {
+        // No kinds configured: upstream does not gate on kind, so
+        // neither does the static contract.
         return None;
     }
     let kind_node = root.first("kind");
+    let related: Vec<_> = contract
+        .kinds
+        .iter()
+        .map(|kind| kind.declaration_range)
+        .collect();
     let label = match kind_node.map(|node| &node.value) {
         Some(ChangieValue::String(label)) => Some(label.clone()),
         Some(ChangieValue::EmptyString) | Some(ChangieValue::Null) | None => None,
@@ -85,7 +77,7 @@ fn resolve_kind<'a>(
                 repo_path: entry.repo_path.clone(),
                 field_path: Some(ChangieFieldPath(vec!["kind".into()])),
                 range: kind_node.map(|n| n.range),
-                related_config_ranges: kind_label_ranges(config),
+                related_config_ranges: related,
                 expected_actual: Some(ChangieExpectedActual {
                     expected: "kind string".into(),
                     actual: shape(other).into(),
@@ -103,15 +95,17 @@ fn resolve_kind<'a>(
             repo_path: entry.repo_path.clone(),
             field_path: Some(ChangieFieldPath(vec!["kind".into()])),
             range: None,
-            related_config_ranges: kind_label_ranges(config),
+            related_config_ranges: related,
             expected_actual: None,
             message: "fragment `kind` is required but absent".into(),
             actions: vec![ChangieAction::InsertMissingField],
         });
         return None;
     };
-    match configured.into_iter().find(|kind| kind.label == label) {
-        Some(kind) => Some(kind),
+    // Kind labels are their own canonical persisted identity in the
+    // modeled generation (kinds carry no separate key).
+    match contract.kinds.iter().find(|kind| kind.label == label) {
+        Some(kind) => Some(kind.clone()),
         None => {
             diagnostics.push(ChangieDiagnostic {
                 rule: ChangieRule::FragmentKindUnknown,
@@ -119,7 +113,7 @@ fn resolve_kind<'a>(
                 repo_path: entry.repo_path.clone(),
                 field_path: Some(ChangieFieldPath(vec!["kind".into()])),
                 range: kind_node.map(|n| n.range),
-                related_config_ranges: kind_label_ranges(config),
+                related_config_ranges: related,
                 expected_actual: Some(ChangieExpectedActual {
                     expected: "a configured kind label".into(),
                     actual: label.clone(),
@@ -134,90 +128,17 @@ fn resolve_kind<'a>(
     }
 }
 
-fn configured_kinds(config: &ChangieConfigDocument) -> Vec<KindDeclaration> {
-    let mut kinds = Vec::new();
-    if let Some(ChangieValue::Sequence(items)) = field(config, "kinds").map(|n| &n.value) {
-        for item in items {
-            if let ChangieValue::Mapping(mapping) = &item.value {
-                let Some(ChangieValue::String(label)) = mapping.first("label").map(|n| &n.value)
-                else {
-                    continue;
-                };
-                kinds.push(KindDeclaration {
-                    label: label.clone(),
-                    skip_body: flag(mapping, "skipBody"),
-                    skip_global_choices: flag(mapping, "skipGlobalChoices"),
-                });
-            }
-        }
-    }
-    kinds
-}
-
-fn flag(mapping: &ChangieMapping, key: &str) -> bool {
-    matches!(
-        mapping.first(key).map(|n| &n.value),
-        Some(ChangieValue::Boolean(true))
-    )
-}
-
-fn configured_components(config: &ChangieConfigDocument) -> Vec<String> {
-    let mut components = Vec::new();
-    if let Some(ChangieValue::Sequence(items)) = field(config, "components").map(|n| &n.value) {
-        for item in items {
-            if let ChangieValue::String(value) = &item.value {
-                components.push(value.clone());
-            }
-        }
-    }
-    components
-}
-
-fn config_has_projects(config: &ChangieConfigDocument) -> bool {
-    matches!(
-        field(config, "projects").map(|n| &n.value),
-        Some(ChangieValue::Sequence(items)) if !items.is_empty()
-    )
-}
-
-fn field<'a>(config: &'a ChangieConfigDocument, key: &str) -> Option<&'a ChangieNode> {
-    config.root.as_ref().and_then(|node| match &node.value {
-        ChangieValue::Mapping(mapping) => mapping.first(key),
-        _ => None,
-    })
-}
-
-fn kind_label_ranges(config: &ChangieConfigDocument) -> Vec<crate::changie::ChangieSourceRange> {
-    let mut ranges = Vec::new();
-    if let Some(ChangieValue::Sequence(items)) = field(config, "kinds").map(|n| &n.value) {
-        for item in items {
-            if let ChangieValue::Mapping(mapping) = &item.value
-                && let Some(label) = mapping.first("label")
-            {
-                ranges.push(label.range);
-            }
-        }
-    }
-    ranges
-}
-
-// ---------------------------------------------------------------------------
-// Field rules
-// ---------------------------------------------------------------------------
-
 fn validate_component(
-    components: &[String],
+    contract: &ChangieCompiledFragmentContractV1,
     entry: &ChangieCandidateEntry,
     root: &ChangieMapping,
     diagnostics: &mut Vec<ChangieDiagnostic>,
 ) {
-    if components.is_empty() {
+    if contract.components.is_empty() {
         // No configured components: no hidden repository policy applies.
         return;
     }
     let component = root.first("component");
-    let configured_range = field_declaration_range_of("components");
-    let _ = configured_range;
     match component.map(|n| &n.value) {
         None | Some(ChangieValue::Null) => diagnostics.push(ChangieDiagnostic {
             rule: ChangieRule::FragmentComponentMissing,
@@ -225,7 +146,7 @@ fn validate_component(
             repo_path: entry.repo_path.clone(),
             field_path: Some(ChangieFieldPath(vec!["component".into()])),
             range: component.map(|n| n.range),
-            related_config_ranges: components_config_ranges(components),
+            related_config_ranges: Vec::new(),
             expected_actual: None,
             message: "fragment `component` is required while components are configured".into(),
             actions: vec![ChangieAction::ChooseConfiguredValue],
@@ -236,7 +157,7 @@ fn validate_component(
             repo_path: entry.repo_path.clone(),
             field_path: Some(ChangieFieldPath(vec!["component".into()])),
             range: component.map(|n| n.range),
-            related_config_ranges: components_config_ranges(components),
+            related_config_ranges: Vec::new(),
             expected_actual: Some(ChangieExpectedActual {
                 expected: "non-empty component".into(),
                 actual: "empty".into(),
@@ -245,14 +166,14 @@ fn validate_component(
             actions: vec![ChangieAction::ChooseConfiguredValue],
         }),
         Some(ChangieValue::String(value)) => {
-            if !components.contains(value) {
+            if !contract.components.contains(value) {
                 diagnostics.push(ChangieDiagnostic {
                     rule: ChangieRule::FragmentComponentUnknown,
                     result_class: ChangieResultClass::Finding,
                     repo_path: entry.repo_path.clone(),
                     field_path: Some(ChangieFieldPath(vec!["component".into()])),
                     range: component.map(|n| n.range),
-                    related_config_ranges: components_config_ranges(components),
+                    related_config_ranges: Vec::new(),
                     expected_actual: Some(ChangieExpectedActual {
                         expected: "a configured component".into(),
                         actual: value.clone(),
@@ -268,7 +189,7 @@ fn validate_component(
             repo_path: entry.repo_path.clone(),
             field_path: Some(ChangieFieldPath(vec!["component".into()])),
             range: component.map(|n| n.range),
-            related_config_ranges: components_config_ranges(components),
+            related_config_ranges: Vec::new(),
             expected_actual: Some(ChangieExpectedActual {
                 expected: "component string".into(),
                 actual: shape(other).into(),
@@ -279,27 +200,21 @@ fn validate_component(
     }
 }
 
-fn components_config_ranges(components: &[String]) -> Vec<crate::changie::ChangieSourceRange> {
-    let _ = components;
-    Vec::new()
-}
-
-fn field_declaration_range_of(_key: &str) -> Option<crate::changie::ChangieSourceRange> {
-    None
-}
-
 fn validate_project(
-    projects_enabled: bool,
-    config: &ChangieConfigDocument,
+    contract: &ChangieCompiledFragmentContractV1,
     entry: &ChangieCandidateEntry,
     root: &ChangieMapping,
     diagnostics: &mut Vec<ChangieDiagnostic>,
 ) {
-    if !projects_enabled {
+    if contract.projects.is_empty() {
         return;
     }
     let project = root.first("project");
-    let project_keys = configured_project_keys(config);
+    let related: Vec<_> = contract
+        .projects
+        .iter()
+        .map(|project| project.declaration_range)
+        .collect();
     match project.map(|n| &n.value) {
         None | Some(ChangieValue::Null) => diagnostics.push(ChangieDiagnostic {
             rule: ChangieRule::FragmentProjectMissing,
@@ -307,32 +222,59 @@ fn validate_project(
             repo_path: entry.repo_path.clone(),
             field_path: Some(ChangieFieldPath(vec!["project".into()])),
             range: project.map(|n| n.range),
-            related_config_ranges: Vec::new(),
+            related_config_ranges: related,
             expected_actual: None,
             message: "fragment `project` is required while projects are configured".into(),
             actions: vec![ChangieAction::ChooseConfiguredValue],
         }),
         Some(ChangieValue::String(value)) => {
-            // Upstream lookup is by project key; a label-only match is
-            // still unknown for the modeled generation.
-            if !project_keys.contains(value) {
+            if contract.projects.iter().any(|p| p.key == *value) {
+                return;
+            }
+            // Canonical identity law: `changie new` may accept a label,
+            // but persisted fragments carry the canonical key. A label
+            // match is a source-located finding with a canonicalization
+            // action — never a silent normalization.
+            if let Some(declared) = contract
+                .projects
+                .iter()
+                .find(|p| p.label.as_deref() == Some(value.as_str()))
+            {
                 diagnostics.push(ChangieDiagnostic {
-                    rule: ChangieRule::FragmentProjectUnknown,
+                    rule: ChangieRule::FragmentProjectNotCanonical,
                     result_class: ChangieResultClass::Finding,
                     repo_path: entry.repo_path.clone(),
                     field_path: Some(ChangieFieldPath(vec!["project".into()])),
                     range: project.map(|n| n.range),
-                    related_config_ranges: Vec::new(),
+                    related_config_ranges: vec![declared.declaration_range],
                     expected_actual: Some(ChangieExpectedActual {
-                        expected: "a configured project key".into(),
+                        expected: declared.key.clone(),
                         actual: value.clone(),
                     }),
                     message: format!(
-                        "fragment project `{value}` does not match a configured project key"
+                        "fragment `project` carries the label `{value}`; persisted fragments use the canonical key `{}`",
+                        declared.key
                     ),
-                    actions: vec![ChangieAction::ChooseConfiguredValue],
+                    actions: vec![ChangieAction::CanonicalizeConfiguredValue],
                 });
+                return;
             }
+            diagnostics.push(ChangieDiagnostic {
+                rule: ChangieRule::FragmentProjectUnknown,
+                result_class: ChangieResultClass::Finding,
+                repo_path: entry.repo_path.clone(),
+                field_path: Some(ChangieFieldPath(vec!["project".into()])),
+                range: project.map(|n| n.range),
+                related_config_ranges: related,
+                expected_actual: Some(ChangieExpectedActual {
+                    expected: "a configured project key".into(),
+                    actual: value.clone(),
+                }),
+                message: format!(
+                    "fragment project `{value}` does not match a configured project key"
+                ),
+                actions: vec![ChangieAction::ChooseConfiguredValue],
+            });
         }
         Some(other) => diagnostics.push(ChangieDiagnostic {
             rule: ChangieRule::FragmentProjectUnknown,
@@ -340,7 +282,7 @@ fn validate_project(
             repo_path: entry.repo_path.clone(),
             field_path: Some(ChangieFieldPath(vec!["project".into()])),
             range: project.map(|n| n.range),
-            related_config_ranges: Vec::new(),
+            related_config_ranges: related,
             expected_actual: Some(ChangieExpectedActual {
                 expected: "project string".into(),
                 actual: shape(other).into(),
@@ -351,47 +293,30 @@ fn validate_project(
     }
 }
 
-fn configured_project_keys(config: &ChangieConfigDocument) -> Vec<String> {
-    let mut keys = Vec::new();
-    if let Some(ChangieValue::Sequence(items)) = field(config, "projects").map(|n| &n.value) {
-        for item in items {
-            if let ChangieValue::Mapping(mapping) = &item.value
-                && let Some(ChangieValue::String(key)) = mapping.first("key").map(|n| &n.value)
-            {
-                keys.push(key.clone());
-            }
-        }
-    }
-    keys
-}
-
 fn validate_body(
-    config: &ChangieConfigDocument,
-    kind: &Option<KindDeclaration>,
+    contract: &ChangieCompiledFragmentContractV1,
+    kind: Option<&CompiledKind>,
     entry: &ChangieCandidateEntry,
     root: &ChangieMapping,
     diagnostics: &mut Vec<ChangieDiagnostic>,
 ) {
-    if kind.as_ref().is_some_and(|kind| kind.skip_body) {
+    if kind.is_some_and(|kind| kind.skip_body) {
         return;
     }
-    let (min_length, max_length) = configured_body_bounds(config);
     let body = root.first("body");
     let text = match body.map(|n| &n.value) {
         None | Some(ChangieValue::Null) => {
-            if kind.is_some() || min_length.is_some() || max_length.is_some() {
-                diagnostics.push(ChangieDiagnostic {
-                    rule: ChangieRule::FragmentBodyMissing,
-                    result_class: ChangieResultClass::Finding,
-                    repo_path: entry.repo_path.clone(),
-                    field_path: Some(ChangieFieldPath(vec!["body".into()])),
-                    range: body.map(|n| n.range),
-                    related_config_ranges: body_config_ranges(config),
-                    expected_actual: None,
-                    message: "fragment `body` is required but absent".into(),
-                    actions: vec![ChangieAction::InsertMissingField],
-                });
-            }
+            diagnostics.push(ChangieDiagnostic {
+                rule: ChangieRule::FragmentBodyMissing,
+                result_class: ChangieResultClass::Finding,
+                repo_path: entry.repo_path.clone(),
+                field_path: Some(ChangieFieldPath(vec!["body".into()])),
+                range: body.map(|n| n.range),
+                related_config_ranges: Vec::new(),
+                expected_actual: None,
+                message: "fragment `body` is required but absent".into(),
+                actions: vec![ChangieAction::InsertMissingField],
+            });
             return;
         }
         Some(ChangieValue::EmptyString) => {
@@ -401,12 +326,29 @@ fn validate_body(
                 repo_path: entry.repo_path.clone(),
                 field_path: Some(ChangieFieldPath(vec!["body".into()])),
                 range: body.map(|n| n.range),
-                related_config_ranges: body_config_ranges(config),
+                related_config_ranges: Vec::new(),
                 expected_actual: Some(ChangieExpectedActual {
                     expected: "non-empty body".into(),
                     actual: "empty".into(),
                 }),
                 message: "fragment `body` is authored empty".into(),
+                actions: vec![ChangieAction::InsertMissingField],
+            });
+            return;
+        }
+        Some(ChangieValue::String(text)) if text.trim().is_empty() => {
+            diagnostics.push(ChangieDiagnostic {
+                rule: ChangieRule::FragmentBodyMissing,
+                result_class: ChangieResultClass::Finding,
+                repo_path: entry.repo_path.clone(),
+                field_path: Some(ChangieFieldPath(vec!["body".into()])),
+                range: body.map(|n| n.range),
+                related_config_ranges: Vec::new(),
+                expected_actual: Some(ChangieExpectedActual {
+                    expected: "non-whitespace body".into(),
+                    actual: "whitespace-only".into(),
+                }),
+                message: "fragment `body` is authored whitespace-only".into(),
                 actions: vec![ChangieAction::InsertMissingField],
             });
             return;
@@ -419,7 +361,7 @@ fn validate_body(
                 repo_path: entry.repo_path.clone(),
                 field_path: Some(ChangieFieldPath(vec!["body".into()])),
                 range: body.map(|n| n.range),
-                related_config_ranges: body_config_ranges(config),
+                related_config_ranges: Vec::new(),
                 expected_actual: Some(ChangieExpectedActual {
                     expected: "body string".into(),
                     actual: shape(other).into(),
@@ -430,82 +372,60 @@ fn validate_body(
             return;
         }
     };
-    if let Some(min) = min_length {
-        let length = text.len();
-        if length < min {
-            diagnostics.push(ChangieDiagnostic {
-                rule: ChangieRule::FragmentBodyTooShort,
-                result_class: ChangieResultClass::Finding,
-                repo_path: entry.repo_path.clone(),
-                field_path: Some(ChangieFieldPath(vec!["body".into()])),
-                range: body.map(|n| n.range),
-                related_config_ranges: body_config_ranges(config),
-                expected_actual: Some(ChangieExpectedActual {
-                    expected: format!("at least {min} {BODY_LENGTH_SEMANTICS}"),
-                    actual: format!("{length}"),
-                }),
-                message: format!(
-                    "fragment body is {length} {BODY_LENGTH_SEMANTICS}; the configured minimum is {min}"
-                ),
-                actions: vec![ChangieAction::OpenRelatedConfigValue],
-            });
-        }
+    let length = text.len();
+    if let Some(min) = contract.body.min_length
+        && length < min
+    {
+        diagnostics.push(ChangieDiagnostic {
+            rule: ChangieRule::FragmentBodyTooShort,
+            result_class: ChangieResultClass::Finding,
+            repo_path: entry.repo_path.clone(),
+            field_path: Some(ChangieFieldPath(vec!["body".into()])),
+            range: body.map(|n| n.range),
+            related_config_ranges: Vec::new(),
+            expected_actual: Some(ChangieExpectedActual {
+                expected: format!("at least {min} {BODY_LENGTH_SEMANTICS}"),
+                actual: format!("{length}"),
+            }),
+            message: format!(
+                "fragment body is {length} {BODY_LENGTH_SEMANTICS}; the configured minimum is {min}"
+            ),
+            actions: vec![ChangieAction::OpenRelatedConfigValue],
+        });
     }
-    if let Some(max) = max_length {
-        let length = text.len();
-        if length > max {
-            diagnostics.push(ChangieDiagnostic {
-                rule: ChangieRule::FragmentBodyTooLong,
-                result_class: ChangieResultClass::Finding,
-                repo_path: entry.repo_path.clone(),
-                field_path: Some(ChangieFieldPath(vec!["body".into()])),
-                range: body.map(|n| n.range),
-                related_config_ranges: body_config_ranges(config),
-                expected_actual: Some(ChangieExpectedActual {
-                    expected: format!("at most {max} {BODY_LENGTH_SEMANTICS}"),
-                    actual: format!("{length}"),
-                }),
-                message: format!(
-                    "fragment body is {length} {BODY_LENGTH_SEMANTICS}; the configured maximum is {max}"
-                ),
-                actions: vec![ChangieAction::OpenRelatedConfigValue],
-            });
-        }
+    if let Some(max) = contract.body.max_length
+        && length > max
+    {
+        diagnostics.push(ChangieDiagnostic {
+            rule: ChangieRule::FragmentBodyTooLong,
+            result_class: ChangieResultClass::Finding,
+            repo_path: entry.repo_path.clone(),
+            field_path: Some(ChangieFieldPath(vec!["body".into()])),
+            range: body.map(|n| n.range),
+            related_config_ranges: Vec::new(),
+            expected_actual: Some(ChangieExpectedActual {
+                expected: format!("at most {max} {BODY_LENGTH_SEMANTICS}"),
+                actual: format!("{length}"),
+            }),
+            message: format!(
+                "fragment body is {length} {BODY_LENGTH_SEMANTICS}; the configured maximum is {max}"
+            ),
+            actions: vec![ChangieAction::OpenRelatedConfigValue],
+        });
     }
-}
-
-fn configured_body_bounds(config: &ChangieConfigDocument) -> (Option<usize>, Option<usize>) {
-    let mut minimum = None;
-    let mut maximum = None;
-    if let Some(ChangieValue::Mapping(mapping)) = field(config, "body").map(|n| &n.value) {
-        if let Some(ChangieValue::Integer(value)) = mapping.first("minLength").map(|n| &n.value) {
-            minimum = Some((*value).max(0) as usize);
-        }
-        if let Some(ChangieValue::Integer(value)) = mapping.first("maxLength").map(|n| &n.value) {
-            maximum = Some((*value).max(0) as usize);
-        }
-    }
-    (minimum, maximum)
-}
-
-fn body_config_ranges(config: &ChangieConfigDocument) -> Vec<crate::changie::ChangieSourceRange> {
-    field(config, "body")
-        .map(|n| vec![n.range])
-        .unwrap_or_default()
 }
 
 /// Time is expected only when the configuration declares `timeFormat`:
 /// upstream authors the fragment `time` field in that layout. Without
-/// it, unreleased fragments carry no time and none is required — the
+/// it, persisted fragments carry no time and none is required — the
 /// static contract follows the configuration, not a house rule.
 fn validate_time(
-    config: &ChangieConfigDocument,
+    contract: &ChangieCompiledFragmentContractV1,
     entry: &ChangieCandidateEntry,
     root: &ChangieMapping,
     diagnostics: &mut Vec<ChangieDiagnostic>,
 ) {
-    let Some(ChangieValue::String(time_format)) = field(config, "timeFormat").map(|n| &n.value)
-    else {
+    let Some(time_format) = &contract.time_format else {
         return;
     };
     let time = root.first("time");
@@ -517,10 +437,7 @@ fn validate_time(
                 repo_path: entry.repo_path.clone(),
                 field_path: Some(ChangieFieldPath(vec!["time".into()])),
                 range: time.map(|n| n.range),
-                related_config_ranges: field(config, "timeFormat")
-                    .map(|n| n.range)
-                    .into_iter()
-                    .collect(),
+                related_config_ranges: Vec::new(),
                 expected_actual: None,
                 message: format!(
                     "fragment `time` is required while timeFormat `{time_format}` is configured"
@@ -537,10 +454,7 @@ fn validate_time(
                 repo_path: entry.repo_path.clone(),
                 field_path: Some(ChangieFieldPath(vec!["time".into()])),
                 range: time.map(|n| n.range),
-                related_config_ranges: field(config, "timeFormat")
-                    .map(|n| n.range)
-                    .into_iter()
-                    .collect(),
+                related_config_ranges: Vec::new(),
                 expected_actual: Some(ChangieExpectedActual {
                     expected: "timestamp string".into(),
                     actual: shape(other).into(),
@@ -558,7 +472,7 @@ fn validate_time(
             repo_path: entry.repo_path.clone(),
             field_path: Some(ChangieFieldPath(vec!["time".into()])),
             range: time.map(|n| n.range),
-            related_config_ranges: field(config, "timeFormat").map(|n| n.range).into_iter().collect(),
+            related_config_ranges: Vec::new(),
             expected_actual: Some(ChangieExpectedActual {
                 expected: "RFC3339-shaped timestamp".into(),
                 actual: authored.clone(),
@@ -644,121 +558,21 @@ fn rfc3339_shaped(text: &str) -> bool {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Custom values
-// ---------------------------------------------------------------------------
-
-pub(super) struct ActiveChoice {
-    pub key: String,
-    pub choice_type: String,
-    pub optional: bool,
-    pub min_int: Option<i64>,
-    pub max_int: Option<i64>,
-    pub min_length: Option<usize>,
-    pub max_length: Option<usize>,
-    pub enum_options: Vec<String>,
-    pub range: crate::changie::ChangieSourceRange,
-}
-
-fn active_choices(
-    config: &ChangieConfigDocument,
-    kind: &Option<KindDeclaration>,
-) -> Vec<ActiveChoice> {
-    let mut choices = Vec::new();
-    let include_global = !kind.as_ref().is_some_and(|kind| kind.skip_global_choices);
-    if include_global {
-        choices.extend(choice_declarations(
-            config,
-            field(config, "custom").map(|n| &n.value),
-        ));
-    }
-    if let Some(kind) = kind.as_ref()
-        && let Some(ChangieValue::Sequence(items)) = kind_additional_choices(config, &kind.label)
-    {
-        choices.extend(choice_declarations(
-            config,
-            Some(&ChangieValue::Sequence(items.clone())),
-        ));
-    }
-    choices
-}
-
-fn kind_additional_choices(config: &ChangieConfigDocument, label: &str) -> Option<ChangieValue> {
-    let items = field(config, "kinds").map(|n| &n.value)?;
-    let ChangieValue::Sequence(items) = items else {
-        return None;
-    };
-    for item in items {
-        if let ChangieValue::Mapping(mapping) = &item.value {
-            let matches = matches!(
-                mapping.first("label").map(|n| &n.value),
-                Some(ChangieValue::String(value)) if value == label
-            );
-            if matches {
-                return mapping.first("additionalChoices").map(|n| n.value.clone());
-            }
-        }
-    }
-    None
-}
-
-fn choice_declarations(
-    config: &ChangieConfigDocument,
-    value: Option<&ChangieValue>,
-) -> Vec<ActiveChoice> {
-    let _ = config;
-    let mut choices = Vec::new();
-    let Some(ChangieValue::Sequence(items)) = value else {
-        return choices;
-    };
-    for item in items {
-        let ChangieValue::Mapping(mapping) = &item.value else {
-            continue;
-        };
-        let (Some(ChangieValue::String(key)), Some(ChangieValue::String(choice_type))) = (
-            mapping.first("key").map(|n| &n.value),
-            mapping.first("type").map(|n| &n.value),
-        ) else {
-            continue;
-        };
-        let mut enum_options = Vec::new();
-        if let Some(ChangieValue::Sequence(options)) = mapping.first("enum").map(|n| &n.value) {
-            for option in options {
-                if let ChangieValue::String(option_value) = &option.value {
-                    enum_options.push(option_value.clone());
-                }
-            }
-        }
-        choices.push(ActiveChoice {
-            key: key.clone(),
-            choice_type: choice_type.clone(),
-            optional: flag(mapping, "optional"),
-            min_int: int_option(mapping, "minInt"),
-            max_int: int_option(mapping, "maxInt"),
-            min_length: int_option(mapping, "minLength").map(|v| v.max(0) as usize),
-            max_length: int_option(mapping, "maxLength").map(|v| v.max(0) as usize),
-            enum_options,
-            range: mapping.first("key").map(|n| n.range).unwrap_or(item.range),
-        });
-    }
-    choices
-}
-
-fn int_option(mapping: &ChangieMapping, key: &str) -> Option<i64> {
-    match mapping.first(key).map(|n| &n.value) {
-        Some(ChangieValue::Integer(value)) => Some(*value),
-        _ => None,
-    }
-}
-
 fn validate_custom_values(
-    config: &ChangieConfigDocument,
-    kind: &Option<KindDeclaration>,
+    contract: &ChangieCompiledFragmentContractV1,
+    kind: Option<&CompiledKind>,
     entry: &ChangieCandidateEntry,
     root: &ChangieMapping,
     diagnostics: &mut Vec<ChangieDiagnostic>,
 ) {
-    let choices = active_choices(config, kind);
+    let choices: Vec<&CompiledChoice> = match kind.map(|kind| kind.label.as_str()) {
+        Some(label) => active_choices(contract, label),
+        None => contract
+            .choices
+            .iter()
+            .filter(|choice| choice.scope.is_global())
+            .collect(),
+    };
     let authored = root.first("custom").map(|n| &n.value);
     let authored_mapping = match authored {
         Some(ChangieValue::Mapping(mapping)) => Some(mapping),
@@ -770,7 +584,7 @@ fn validate_custom_values(
                 repo_path: entry.repo_path.clone(),
                 field_path: Some(ChangieFieldPath(vec!["custom".into()])),
                 range: root.first("custom").map(|n| n.range),
-                related_config_ranges: choices.iter().map(|c| c.range).collect(),
+                related_config_ranges: choices.iter().map(|c| c.declaration_range).collect(),
                 expected_actual: None,
                 message: "fragment `custom` must be a mapping of choice values".into(),
                 actions: vec![ChangieAction::OpenRelatedConfigValue],
@@ -793,7 +607,7 @@ fn validate_custom_values(
                     repo_path: entry.repo_path.clone(),
                     field_path: Some(ChangieFieldPath(vec!["custom".into(), choice.key.clone()])),
                     range: value.map(|n| n.range),
-                    related_config_ranges: vec![choice.range],
+                    related_config_ranges: vec![choice.declaration_range],
                     expected_actual: None,
                     message: format!("required custom choice `{}` is absent or empty", choice.key),
                     actions: vec![ChangieAction::InsertMissingField],
@@ -802,17 +616,18 @@ fn validate_custom_values(
             continue;
         }
         let value = value.unwrap_or_else(|| std::panic::panic_any("checked above"));
-        match choice.choice_type.as_str() {
-            "int" => validate_int_choice(choice, value, entry, diagnostics),
-            "enum" => validate_enum_choice(choice, value, entry, diagnostics),
-            "string" | "block" => validate_string_choice(choice, value, entry, diagnostics),
-            _ => {
-                // Unsupported choice types are config-level findings from
-                // B1; values under them cannot be judged here.
+        match choice.choice_type {
+            ChoiceType::Int => validate_int_choice(choice, value, entry, diagnostics),
+            ChoiceType::Enum => validate_enum_choice(choice, value, entry, diagnostics),
+            ChoiceType::String | ChoiceType::Block => {
+                validate_string_choice(choice, value, entry, diagnostics)
             }
         }
     }
     // Unconfigured custom keys stay visible rather than disappearing.
+    // Post-generated keys are, by construction, never required authored
+    // input: only configured choices are required, and any other key is
+    // reported here instead of being demanded.
     if let Some(mapping) = authored_mapping {
         for authored_entry in &mapping.entries {
             if !choices
@@ -828,7 +643,7 @@ fn validate_custom_values(
                         authored_entry.key.clone(),
                     ])),
                     range: Some(authored_entry.key_range),
-                    related_config_ranges: choices.iter().map(|c| c.range).collect(),
+                    related_config_ranges: choices.iter().map(|c| c.declaration_range).collect(),
                     expected_actual: None,
                     message: format!(
                         "custom key `{}` is not an active configured choice for this kind",
@@ -842,11 +657,15 @@ fn validate_custom_values(
 }
 
 fn validate_int_choice(
-    choice: &ActiveChoice,
+    choice: &CompiledChoice,
     value: &ChangieNode,
     entry: &ChangieCandidateEntry,
     diagnostics: &mut Vec<ChangieDiagnostic>,
 ) {
+    // Changie persists custom values as strings, including integer
+    // choices: an authored YAML integer is accepted, and a string-valued
+    // integer must parse as base-10 — neither shape is required over
+    // the other.
     let parsed: Option<i64> = match &value.value {
         ChangieValue::Integer(number) => Some(*number),
         ChangieValue::String(text) => text.parse::<i64>().ok(),
@@ -859,7 +678,7 @@ fn validate_int_choice(
             repo_path: entry.repo_path.clone(),
             field_path: Some(ChangieFieldPath(vec!["custom".into(), choice.key.clone()])),
             range: Some(value.range),
-            related_config_ranges: vec![choice.range],
+            related_config_ranges: vec![choice.declaration_range],
             expected_actual: Some(ChangieExpectedActual {
                 expected: "parseable base-10 signed integer".into(),
                 actual: scalar_text(&value.value),
@@ -872,24 +691,24 @@ fn validate_int_choice(
         });
         return;
     };
-    if let Some(min) = choice.min_int
-        && number < min
-    {
-        let mut diagnostic = out_of_range(choice, value, number, min, "minimum");
-        diagnostic.repo_path = entry.repo_path.clone();
-        diagnostics.push(diagnostic);
-    }
-    if let Some(max) = choice.max_int
-        && number > max
-    {
-        let mut diagnostic = out_of_range(choice, value, number, max, "maximum");
-        diagnostic.repo_path = entry.repo_path.clone();
-        diagnostics.push(diagnostic);
+    for (bound, which) in [(choice.min_int, "minimum"), (choice.max_int, "maximum")] {
+        if let Some(bound) = bound {
+            let violated = if which == "minimum" {
+                number < bound
+            } else {
+                number > bound
+            };
+            if violated {
+                let mut diagnostic = out_of_range(choice, value, number, bound, which);
+                diagnostic.repo_path = entry.repo_path.clone();
+                diagnostics.push(diagnostic);
+            }
+        }
     }
 }
 
 fn out_of_range(
-    choice: &ActiveChoice,
+    choice: &CompiledChoice,
     value: &ChangieNode,
     number: i64,
     bound: i64,
@@ -901,7 +720,7 @@ fn out_of_range(
         repo_path: String::new(),
         field_path: Some(ChangieFieldPath(vec!["custom".into(), choice.key.clone()])),
         range: Some(value.range),
-        related_config_ranges: vec![choice.range],
+        related_config_ranges: vec![choice.declaration_range],
         expected_actual: Some(ChangieExpectedActual {
             expected: format!("{which} {bound}"),
             actual: number.to_string(),
@@ -915,12 +734,14 @@ fn out_of_range(
 }
 
 fn validate_enum_choice(
-    choice: &ActiveChoice,
+    choice: &CompiledChoice,
     value: &ChangieNode,
     entry: &ChangieCandidateEntry,
     diagnostics: &mut Vec<ChangieDiagnostic>,
 ) {
     if let ChangieValue::String(text) = &value.value {
+        // Enum comparison is exact in the modeled generation: no case
+        // folding.
         if !choice.enum_options.contains(text) {
             diagnostics.push(ChangieDiagnostic {
                 rule: ChangieRule::FragmentCustomUnknownValue,
@@ -928,7 +749,7 @@ fn validate_enum_choice(
                 repo_path: entry.repo_path.clone(),
                 field_path: Some(ChangieFieldPath(vec!["custom".into(), choice.key.clone()])),
                 range: Some(value.range),
-                related_config_ranges: vec![choice.range],
+                related_config_ranges: vec![choice.declaration_range],
                 expected_actual: Some(ChangieExpectedActual {
                     expected: format!("one of {}", choice.enum_options.join(" | ")),
                     actual: text.clone(),
@@ -948,7 +769,7 @@ fn validate_enum_choice(
         repo_path: entry.repo_path.clone(),
         field_path: Some(ChangieFieldPath(vec!["custom".into(), choice.key.clone()])),
         range: Some(value.range),
-        related_config_ranges: vec![choice.range],
+        related_config_ranges: vec![choice.declaration_range],
         expected_actual: Some(ChangieExpectedActual {
             expected: "enum option string".into(),
             actual: shape(&value.value).into(),
@@ -959,7 +780,7 @@ fn validate_enum_choice(
 }
 
 fn validate_string_choice(
-    choice: &ActiveChoice,
+    choice: &CompiledChoice,
     value: &ChangieNode,
     entry: &ChangieCandidateEntry,
     diagnostics: &mut Vec<ChangieDiagnostic>,
@@ -974,7 +795,7 @@ fn validate_string_choice(
                 repo_path: entry.repo_path.clone(),
                 field_path: Some(ChangieFieldPath(vec!["custom".into(), choice.key.clone()])),
                 range: Some(value.range),
-                related_config_ranges: vec![choice.range],
+                related_config_ranges: vec![choice.declaration_range],
                 expected_actual: Some(ChangieExpectedActual {
                     expected: "string".into(),
                     actual: shape(other).into(),
@@ -986,47 +807,36 @@ fn validate_string_choice(
         }
     };
     let length = text.len();
-    if let Some(min) = choice.min_length
-        && length < min
-    {
-        diagnostics.push(ChangieDiagnostic {
-                rule: ChangieRule::FragmentCustomOutOfRange,
-                result_class: ChangieResultClass::Finding,
-                repo_path: entry.repo_path.clone(),
-                field_path: Some(ChangieFieldPath(vec!["custom".into(), choice.key.clone()])),
-                range: Some(value.range),
-                related_config_ranges: vec![choice.range],
-                expected_actual: Some(ChangieExpectedActual {
-                    expected: format!("at least {min} {BODY_LENGTH_SEMANTICS}"),
-                    actual: format!("{length}"),
-                }),
-                message: format!(
-                    "custom choice `{}` is {length} {BODY_LENGTH_SEMANTICS}; the configured minimum is {min}",
-                    choice.key
-                ),
-                actions: vec![ChangieAction::OpenRelatedConfigValue],
-            });
-    }
-    if let Some(max) = choice.max_length
-        && length > max
-    {
-        diagnostics.push(ChangieDiagnostic {
-                rule: ChangieRule::FragmentCustomOutOfRange,
-                result_class: ChangieResultClass::Finding,
-                repo_path: entry.repo_path.clone(),
-                field_path: Some(ChangieFieldPath(vec!["custom".into(), choice.key.clone()])),
-                range: Some(value.range),
-                related_config_ranges: vec![choice.range],
-                expected_actual: Some(ChangieExpectedActual {
-                    expected: format!("at most {max} {BODY_LENGTH_SEMANTICS}"),
-                    actual: format!("{length}"),
-                }),
-                message: format!(
-                    "custom choice `{}` is {length} {BODY_LENGTH_SEMANTICS}; the configured maximum is {max}",
-                    choice.key
-                ),
-                actions: vec![ChangieAction::OpenRelatedConfigValue],
-            });
+    for (bound, which) in [
+        (choice.min_length, "minimum"),
+        (choice.max_length, "maximum"),
+    ] {
+        if let Some(bound) = bound {
+            let violated = if which == "minimum" {
+                length < bound
+            } else {
+                length > bound
+            };
+            if violated {
+                diagnostics.push(ChangieDiagnostic {
+                    rule: ChangieRule::FragmentCustomOutOfRange,
+                    result_class: ChangieResultClass::Finding,
+                    repo_path: entry.repo_path.clone(),
+                    field_path: Some(ChangieFieldPath(vec!["custom".into(), choice.key.clone()])),
+                    range: Some(value.range),
+                    related_config_ranges: vec![choice.declaration_range],
+                    expected_actual: Some(ChangieExpectedActual {
+                        expected: format!("{which} {bound} {BODY_LENGTH_SEMANTICS}"),
+                        actual: format!("{length}"),
+                    }),
+                    message: format!(
+                        "custom choice `{}` is {length} {BODY_LENGTH_SEMANTICS}; the configured {which} is {bound}",
+                        choice.key
+                    ),
+                    actions: vec![ChangieAction::OpenRelatedConfigValue],
+                });
+            }
+        }
     }
 }
 
