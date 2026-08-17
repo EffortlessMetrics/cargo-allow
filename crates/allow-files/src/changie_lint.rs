@@ -1285,6 +1285,7 @@ fn shape(value: &ChangieValue) -> &'static str {
 
 pub mod compiled_contract;
 mod fragment_rules;
+pub mod sensor;
 
 #[cfg(test)]
 #[path = "changie_lint_tests.rs"]
