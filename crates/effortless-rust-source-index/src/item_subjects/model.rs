@@ -155,7 +155,7 @@ impl RustLintDeclarationSubjectV1 {
             && self
                 .cfg_expression
                 .as_ref()
-                .map_or(true, |expression| !expression.trim().is_empty())
+                .is_none_or(|expression| !expression.trim().is_empty())
     }
 }
 
@@ -214,7 +214,7 @@ impl RustItemSubjectV1 {
                 .source
                 .identifier_range
                 .as_ref()
-                .map_or(true, RustSourceRangeV1::validate)
+                .is_none_or(RustSourceRangeV1::validate)
             && self
                 .module_path
                 .iter()
