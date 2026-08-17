@@ -11716,25 +11716,24 @@ glob = "scripts/test-changie-sensor-external-consumer.sh"
 line = 1
 column = 1
 
+
 [[allow]]
-id = "allow-11122"
-kind = "lint_exception"
-family = "expect_attribute"
-path = "crates/cargo-allow/src/changie_source_view.rs"
+id = "allow-11123"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/how-to/run-changie-sensor.md"
 owner = "core/governance"
-classification = "changie_adapter_surface"
-reason = "The #3622 exact source-view adapter is proven by its falsifier tests under the changie-adapter feature; the projection leaf (#3623) is its first in-binary consumer, after which this expectation retires."
-evidence = ["test:crates/cargo-allow/src/changie_source_view_tests.rs"]
+classification = "dogfood_evidence"
+reason = "#3623 operator documentation for the opt-in changie lint surface: subject selection, config precedence, claim boundary, and the no-Go/no-Changie local story; this receipt covers the document itself as tracked documentation."
+evidence = ["doc:docs/ci.md"]
 created = "2026-08-17"
 review_after = "2026-11-14"
 
 [allow.selector]
-ast_kind = "attribute"
-lint = "dead_code"
-symbol = "#![expect( dead_code, reason = \"policy:allow-11122: changie source-view adapter awaits the #3623 projection leaf\" )]"
-target_fingerprint = "policy:allow-11122"
-glob = "crates/cargo-allow/src/changie_source_view.rs"
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "docs/how-to/run-changie-sensor.md"
 
 [allow.last_seen]
-line = 2
+line = 1
 column = 1

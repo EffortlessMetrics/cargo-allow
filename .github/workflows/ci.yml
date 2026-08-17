@@ -294,12 +294,15 @@ jobs:
             -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit \
             -- -D warnings
 
-      - name: Changie source-view adapter proof (#3622)
-        # The exact source-view adapter (staged/committed/worktree
-        # parity, mixed-view rejection, falsifiers) compiles and runs
-        # only under the changie-adapter feature; this step keeps it
-        # proven while the #3623 projection leaf is its only consumer.
-        run: cargo test -p cargo-allow --locked --features changie-adapter changie_source_view
+      - name: Changie sensor projections and falsifiers (#3623)
+        run: |
+          cargo test -p cargo-allow --locked changie_source_view -- --nocapture
+          cargo test -p cargo-allow --locked changie_command -- --nocapture
+      - name: Changie sensor self-dogfood (#3623)
+        # cargo-allow analyzes its own .changie.yaml and complete
+        # fragment population with the Rust-native sensor: no Go,
+        # Aqua, or Changie on the runner, no ledger mutation.
+        run: cargo run -p cargo-allow --locked -- changie lint --format json
       - name: Changie sensor packaged external-consumer proof (#3621)
         # Packages the workspace candidate set, extracts the exact
         # packaged allow-files bytes, patches crates-io to the packaged
