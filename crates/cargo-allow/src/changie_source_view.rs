@@ -57,6 +57,14 @@ pub struct ChangiePopulationEntry {
     pub content_identity: Option<allow_files::changie::ChangieContentIdentity>,
 }
 
+/// Internal assembly bundle for population enumeration.
+struct PopulationAssembly {
+    root: String,
+    population: Vec<ChangiePopulationEntry>,
+    entries: Vec<ChangieCandidateEntry>,
+    omitted: Vec<(String, String)>,
+}
+
 /// The fragment population derived from the selected config.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChangieSourcePopulationV1 {
@@ -216,7 +224,12 @@ pub fn analyze_source_view(
     let config = sensor.parse_config(config_source);
 
     // --- population from the same view -------------------------------------
-    let (root, population, entries, omitted) = population_from_view(
+    let PopulationAssembly {
+        root,
+        population,
+        entries,
+        omitted,
+    } = population_from_view(
         view,
         &config,
         view_kind,
@@ -403,22 +416,13 @@ fn normalize_repo_relative(raw: &str) -> String {
     parts.join("/")
 }
 
-#[allow(clippy::type_complexity)]
 fn population_from_view(
     view: &RepositorySourceView,
     config: &allow_files::changie::ChangieConfigDocument,
     view_kind: ChangieSourceViewKind,
     completeness: &mut ChangieAcquisitionCompleteness,
     limitations: &mut Vec<String>,
-) -> Result<
-    (
-        String,
-        Vec<ChangiePopulationEntry>,
-        Vec<ChangieCandidateEntry>,
-        Vec<(String, String)>,
-    ),
-    ChangieSourceViewError,
-> {
+) -> Result<PopulationAssembly, ChangieSourceViewError> {
     // Derive the root only from the parsed config's own fields.
     let string_field = |key: &str| -> Option<String> {
         config
@@ -443,7 +447,12 @@ fn population_from_view(
         Some(allow_files::changie::ChangieValue::Mapping(_))
     );
     if !config_root_is_mapping {
-        return Ok((String::new(), Vec::new(), Vec::new(), Vec::new()));
+        return Ok(PopulationAssembly {
+            root: String::new(),
+            population: Vec::new(),
+            entries: Vec::new(),
+            omitted: Vec::new(),
+        });
     }
     let changes_dir = string_field("changesDir").unwrap_or_default();
     let unreleased_dir = string_field("unreleasedDir").unwrap_or_default();
@@ -643,7 +652,12 @@ fn population_from_view(
         );
     }
 
-    Ok((root, population, entries, omitted))
+    Ok(PopulationAssembly {
+        root,
+        population,
+        entries,
+        omitted,
+    })
 }
 
 fn sensor_parse_fragment(
