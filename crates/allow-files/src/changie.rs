@@ -4,7 +4,10 @@
 //! documents into a source-aware model: ordered mappings that retain
 //! duplicate keys, per-node source ranges, presence/scalar distinctions
 //! (missing, null, empty, typed), unknown and unsupported field records,
-//! and parse diagnostics. The parser never discovers files, validates
+//! and parse diagnostics. A clean Rust result says **static contract
+//! satisfied** — it never says `changie batch` ran, never claims
+//! rendering, and never decides whether a change needs a release note.
+//! The parser never discovers files, validates
 //! config-derived relationships, executes templates, or starts a process.
 //!
 //! A clean parse says the document is syntactically representable under

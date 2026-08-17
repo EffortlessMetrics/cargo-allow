@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/allow-files-changie-package-admission.schema.json",
+  "title": "cargo-allow allow-files Changie package admission v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "schema_id",
+    "crate_name",
+    "feature",
+    "feature_enabled_closure",
+    "feature_disabled_closure_contains_yaml",
+    "public_modules",
+    "compatibility_generation",
+    "diagnostic_schema_generation",
+    "effective_rule_schema_generation",
+    "msrv",
+    "support_posture",
+    "admission_digest_inputs"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "schema_id": { "const": "cargo-allow.allow-files-changie-package-admission.v1" },
+    "crate_name": { "const": "allow-files" },
+    "feature": { "const": "changie" },
+    "feature_enabled_closure": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" },
+      "description": "Registry dependencies the feature adds; must contain no path or git dependencies."
+    },
+    "feature_disabled_closure_contains_yaml": { "const": false },
+    "public_modules": {
+      "type": "array",
+      "minItems": 2,
+      "items": { "type": "string" }
+    },
+    "compatibility_generation": { "const": "1.25" },
+    "diagnostic_schema_generation": { "const": 1 },
+    "effective_rule_schema_generation": { "const": 1 },
+    "msrv": { "const": "1.95" },
+    "support_posture": {
+      "type": "string",
+      "description": "Experimental static companion wording; must not claim a stable parser SDK or broad 1.x support."
+    },
+    "admission_digest_inputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" },
+      "description": "Exact file identities whose content changes invalidate the admission."
+    }
+  }
+}
