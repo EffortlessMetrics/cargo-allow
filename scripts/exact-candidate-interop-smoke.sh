@@ -343,11 +343,16 @@ if delegated_identity != direct_identity:
 delegated_gate = "delegated via repo.analysis-receipt.v1" in (
     delegated.get("remaining_gates") or []
 )
+delegated_unmapped = "provider reported unmapped staged surface" in (
+    delegated.get("remaining_gates") or []
+)
 direct_unmapped = bool(direct.get("unmapped_staged_surface"))
 if not direct_unmapped:
     raise SystemExit("expected the unmapped staged surface in the direct run")
 if not delegated_gate:
     raise SystemExit("expected the delegation gate in the delegated run")
+if not delegated_unmapped:
+    raise SystemExit("expected the delegated surface to classify the state unmapped")
 PY
 record_journey "PARITY" "cargo-intent+cargo-allow" "Passed"
 
