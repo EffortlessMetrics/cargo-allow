@@ -114,5 +114,9 @@ fn exit_mapping_matches_result_classes() -> Result<(), String> {
         exit_code_for_result_class("malformed_input"),
         exit_code_for_family(ProcessExitFamilyV1::Usage)
     );
+    assert_eq!(
+        exit_family_for_result_class("provider_unavailable"),
+        ProcessExitFamilyV1::InstrumentFailure
+    );
     Ok(())
 }

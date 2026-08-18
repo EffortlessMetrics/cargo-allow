@@ -86,11 +86,16 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
                 Err(plan_error) => {
                     // Map the exit family from the proof-corpus result
                     // class instead of treating every plan failure as
-                    // usage (#3598 exit-family follow-up).
+                    // usage (#3598 exit-family follow-up). Input failures
+                    // (missing/unreadable envelope) stay in the usage
+                    // family: they are invocation errors, not provider
+                    // posture.
+                    let family = match plan_error.result_state {
+                        proof_protocol::ProofResultStateV1::Missing => ProcessExitFamilyV1::Usage,
+                        state => exit_family_for_result_class(state.as_str()),
+                    };
                     eprintln!("error: {}", plan_error.message);
-                    return Ok(exit_family_for_result_class(
-                        plan_error.result_state.as_str(),
-                    ));
+                    return Ok(family);
                 }
             };
             let rendered = render_plan_frame(&outcome, output_format)?;
