@@ -1,0 +1,18 @@
+kind: Changed
+body: >-
+  Update the parity/shim authorities to reflect the converged
+  five-package topology and record the #2922 dependency-path evidence
+  (#3309 installment 3). The three IntentEngine parity cases whose
+  proofs landed this cycle — workspace composition, graph comparison,
+  and phase obligations — move from contract_only to proven with claim
+  boundaries citing the landing PRs (#3643-#3652) and the unchanged
+  #2606 cutover-receipt deletion gates; a new proven case records the
+  graph-compiler same-input/same-output parity across its four
+  scenarios (clean, authored-registration, generation-mismatch,
+  resolved-subject replay). The two intent shims' claim boundaries
+  state the same: parity proven, legacy implementations remain selected
+  until their cutover receipts. The #2922 closure-validation engine
+  runs green against the converged workspace (forbidden and required
+  edges enforced on the live manifests, including the #3306 production
+  dependency wiring), recorded as the #2580 acceptance evidence for the
+  converged dependency path.
