@@ -190,6 +190,26 @@ record_negative() {
   negative_records+=("$1|$2|$3|$4")
 }
 
+# --- Sentinel plants (#2605 final hardening): undeclared-read decoys ---
+# Poison the monorepo target tree (a dedicated subdirectory, so real
+# build outputs are untouched) with decoy product binaries that would
+# be selected by ANY path-based discovery leaking the workspace, and
+# plant marker files whose text must never appear in a retained
+# artifact. The PATH-poison control below then proves the strongest
+# form: even when a decoy IS discoverable, the real protocol handshake
+# rejects it — a workspace binary cannot impersonate a provider.
+log "sentinels: planting workspace decoys and markers"
+sentinel_marker="SENTINEL-2605-DO-NOT-READ"
+sentinel_dir="${ROOT}/target/interop-sentinel"
+mkdir -p "${sentinel_dir}"
+for product in cargo-allow cargo-intent cargo-proof; do
+  printf '#!/usr/bin/env bash\necho "%s 0.0.0-sentinel"\nexit 1\n' "${product}" \
+    >"${sentinel_dir}/${product}"
+  chmod +x "${sentinel_dir}/${product}"
+done
+printf '%s\n' "${sentinel_marker}" >"${sentinel_dir}/sentinel-marker.txt"
+printf '%s\n' "${sentinel_marker}" >"${ROOT}/crates/sentinel-marker.txt"
+
 # --- Journey A: cargo-allow alone ---
 log "journey A: cargo-allow alone (compatible)"
 a_version="$("${cargo_allow_bin}" --version | tr -d '\r')"
@@ -355,26 +375,6 @@ if not delegated_unmapped:
     raise SystemExit("expected the delegated surface to classify the state unmapped")
 PY
 record_journey "PARITY" "cargo-intent+cargo-allow" "Passed"
-
-# --- Sentinel plants (#2605 final hardening): undeclared-read decoys ---
-# Poison the monorepo target tree (a dedicated subdirectory, so real
-# build outputs are untouched) with decoy product binaries that would
-# be selected by ANY path-based discovery leaking the workspace, and
-# plant marker files whose text must never appear in a retained
-# artifact. The PATH-poison control below then proves the strongest
-# form: even when a decoy IS discoverable, the real protocol handshake
-# rejects it — a workspace binary cannot impersonate a provider.
-log "sentinels: planting workspace decoys and markers"
-sentinel_marker="SENTINEL-2605-DO-NOT-READ"
-sentinel_dir="${ROOT}/target/interop-sentinel"
-mkdir -p "${sentinel_dir}"
-for product in cargo-allow cargo-intent cargo-proof; do
-  printf '#!/usr/bin/env bash\necho "%s 0.0.0-sentinel"\nexit 1\n' "${product}" \
-    >"${sentinel_dir}/${product}"
-  chmod +x "${sentinel_dir}/${product}"
-done
-printf '%s\n' "${sentinel_marker}" >"${sentinel_dir}/sentinel-marker.txt"
-printf '%s\n' "${sentinel_marker}" >"${ROOT}/crates/sentinel-marker.txt"
 
 log "sentinel: PATH-poisoned discovery cannot impersonate a provider"
 poison_dir="${work_dir}/path-poison-consumer"

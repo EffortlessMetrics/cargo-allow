@@ -11,9 +11,10 @@ body: >-
   the poisoned directory is prepended to PATH — the real protocol
   handshake rejects it (wrong_protocol, malformed provider output,
   instrument failure, or discovery failure), so a workspace binary
-  cannot impersonate a provider. After every journey, a marker-leak
-  scan greps all retained artifacts and consumer outputs for the
-  planted marker text, proving no undeclared source-checkout read
-  surfaced in anything the harness retains. Together with the
+  cannot impersonate a provider. The plants are
+  placed before the first journey so the end-of-run marker-leak scan
+  (grep over every retained artifact and consumer output) covers all
+  of them, proving no undeclared source-checkout read surfaced in
+  anything the harness retains. Together with the
   already-real workspace-leak control, this closes the harness audit's
   sentinel gap.
