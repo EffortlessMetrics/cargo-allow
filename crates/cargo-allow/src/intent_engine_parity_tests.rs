@@ -731,3 +731,27 @@ fn change_status_schema_mirror_matches_protocol_authority() -> Result<(), String
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
+
+/// Shape-parity binding for cargo-allow's local StagedChangeV1 mirror
+/// (#3309 installment 2): the compatibility payload embeds a local
+/// mirror of the protocol change-status DTO's staged-change entry. The
+/// mirror cannot import the cargo-intent-owned protocol crate in
+/// production, so this dev-scope test binds the two shapes through
+/// their serialized form — a field rename, removal, addition, or type
+/// change on either side changes the JSON shape and fails the binding.
+#[test]
+fn staged_change_shape_mirror_matches_protocol_authority() -> Result<(), String> {
+    let mirror_json = crate::spec_precommit::tests::sample_staged_change_shape_json()?;
+    let authority = intent_protocol::StagedChangeV1 {
+        status: "modified".to_string(),
+        path: Some("crates/example/src/lib.rs".to_string()),
+        previous_path: Some("crates/example/src/old.rs".to_string()),
+    };
+    let authority_json = serde_json::to_value(&authority).map_err(|error| error.to_string())?;
+    if mirror_json != authority_json {
+        return Err(format!(
+            "cargo-allow staged-change shape mirror drifted from the protocol authority: {mirror_json} != {authority_json}"
+        ));
+    }
+    Ok(())
+}

@@ -582,11 +582,24 @@ fn map_delegated_result_class(outcome: &DelegatedPrecommitOutcome) -> SpecPrecom
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use clap::Parser;
     use std::error::Error;
     use std::fs;
+
+    /// Serialized shape of the local staged-change mirror for the #3309
+    /// shape-parity binding in intent_engine_parity_tests: constructed
+    /// here where the private fields live, serialized to JSON so the
+    /// binding compares shapes, not types.
+    pub(crate) fn sample_staged_change_shape_json() -> Result<serde_json::Value, String> {
+        let mirror = StagedChangeV1 {
+            status: "modified".to_string(),
+            path: Some("crates/example/src/lib.rs".to_string()),
+            previous_path: Some("crates/example/src/old.rs".to_string()),
+        };
+        serde_json::to_value(&mirror).map_err(|error| error.to_string())
+    }
 
     fn output_path(label: &str) -> PathBuf {
         PathBuf::from(format!(
