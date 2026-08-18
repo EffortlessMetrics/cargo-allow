@@ -7,7 +7,7 @@
     "outside_monorepo_consumer",
     "journey_a_cargo_allow_alone",
     "journey_b_cargo_intent_alone",
-    "journey_c_cargo_proof_fake_provider",
+    "journey_c_cargo_proof_explicit_unavailable_plan",
     "journey_d_cargo_proof_invokes_cargo_allow",
     "journey_e_cargo_allow_delegates_cargo_intent",
     "no_workspace_target_debug_binary",
