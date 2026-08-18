@@ -344,20 +344,45 @@ PY
     || fail "workspace target leak not rejected"
   record_negative "A" "incompatible" "ForbiddenWorkspaceTarget" "true"
 
-  log "negative B: wrong product incompatible"
-  wrong_product_class="$(
-    python3 - "${cargo_proof_bin}" <<'PY'
-import sys
+  log "negative B: wrong product incompatible (real delegation discovery)"
+  wrong_dir="${work_dir}/wrong-product-consumer"
+  mkdir -p "${wrong_dir}/.allow/compatibility"
+  git -C "${wrong_dir}" init -q 2>/dev/null || true
+  git -C "${wrong_dir}" config user.name "Interop Harness"
+  git -C "${wrong_dir}" config user.email "interop@example.invalid"
+  printf 'wrong-product\n' >"${wrong_dir}/staged.txt"
+  git -C "${wrong_dir}" add staged.txt
+  PROOF_EXEC="${cargo_proof_bin}" WRONG_CONFIG="${wrong_dir}/.allow/compatibility/intent-delegation.toml" python3 <<'PY'
+import os
 from pathlib import Path
-candidate = Path(sys.argv[1]).name.replace(".exe", "")
-if candidate != "cargo-intent":
-    print("WrongProduct")
-else:
-    print("InstrumentFailure")
+path = Path(os.environ["WRONG_CONFIG"])
+executable = Path(os.environ["PROOF_EXEC"]).resolve()
+path.write_text(
+    "schema_id = \"cargo-allow.intent-delegation.v1\"\n"
+    f"executable = {str(executable)!r}\n"
+    "delegate_staged_precommit = true\n"
+    "timeout_secs = 30\n",
+    encoding="utf-8",
+)
 PY
-  )"
-  [[ "${wrong_product_class}" == "WrongProduct" ]] || fail "wrong product negative failed"
-  record_negative "B" "incompatible" "WrongProduct" "true"
+  wrong_out="${wrong_dir}/precommit-wrong-product.json"
+  set +e
+  wrong_err="$("${cargo_allow_bin}" check \
+    --root "${wrong_dir}" \
+    --profile spec-system \
+    --phase precommit \
+    --staged \
+    --format json \
+    --output "${wrong_out}" 2>&1)"
+  wrong_exit=$?
+  set -e
+  wrong_passed=false
+  if [[ "${wrong_exit}" -ne 0 ]] && printf '%s' "${wrong_err}" | grep -q "wrong_product\|wrong product"; then
+    wrong_passed=true
+  fi
+  [[ "${wrong_passed}" == "true" ]] \
+    || fail "wrong product negative expected real WrongProduct failure, got exit=${wrong_exit} err=${wrong_err}"
+  record_negative "B" "incompatible" "WrongProduct" "${wrong_passed}"
 
   log "negative C: malformed proof plan"
   malformed_plan="${work_dir}/malformed-plan.toml"
