@@ -709,6 +709,25 @@ fn graph_compiler_parity_scenario(
     Ok(())
 }
 
+/// One-way compatibility schema mirror parity (#3309): cargo-allow's
+/// delegation consumer carries the change-status schema id as a literal
+/// (the dependency law forbids importing the cargo-intent-owned
+/// protocol crate in production); the authority constant lives in
+/// intent-protocol, and this dev-scope binding keeps the mirror honest.
+#[test]
+fn change_status_schema_mirror_matches_protocol_authority() -> Result<(), String> {
+    if crate::intent_delegate::CHANGE_STATUS_PAYLOAD_SCHEMA
+        != intent_protocol::CHANGE_STATUS_SCHEMA_ID
+    {
+        return Err(format!(
+            "cargo-allow mirror {} != protocol authority {}",
+            crate::intent_delegate::CHANGE_STATUS_PAYLOAD_SCHEMA,
+            intent_protocol::CHANGE_STATUS_SCHEMA_ID
+        ));
+    }
+    Ok(())
+}
+
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
