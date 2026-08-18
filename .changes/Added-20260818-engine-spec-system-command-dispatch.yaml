@@ -1,0 +1,21 @@
+kind: Added
+body: >-
+  Add the canonical spec-system command dispatch contract and close the
+  cutover-switch test gap (#3523 slice D step ii). intent-engine workspace
+  gains the dispatched command vocabulary as data — SpecSystemCommandV1
+  with each command's embedded-authority rejection surface and whether it
+  exposes a --mode override (check does; audit is report-only and does
+  not), a fail-closed resolver, and the surface-membership check that
+  states the cutover contract: every dispatched surface rejects
+  cargo-allow's embedded authority under delegate_spec_system and names
+  cargo-intent as the owner. cargo-allow's dispatch keeps its local
+  literals (the dependency law forbids a production import in either
+  direction) and gains the previously missing behavior tests: embedded
+  authority stays allowed without a delegation config or with delegation
+  disabled, and every one of the six surfaces rejects with the surface
+  name, the cargo-intent owner, and the delegation config path when the
+  switch is on. A dev-scope parity test binds the engine table to the
+  literals cargo-allow dispatches today, so engine-side drift is caught
+  by the table check and cargo-allow-side drift shows up as a mismatch
+  the next time the binding is refreshed against the call sites. The
+  new module is registered in the product move-ledger.
