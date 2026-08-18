@@ -151,6 +151,11 @@ pub struct ProofItemV1 {
     pub disposition: ProofItemDispositionV1,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub selection: Option<ProviderSelectionV1>,
+    /// The exact receipt this item reuses (id or digest reference) when
+    /// the disposition is SatisfiedByCurrentReceipt — reuse is auditable,
+    /// never name- or exit-code-matched (#3599).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub current_receipt: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub expected_receipt: Option<ExpectedReceiptContractV1>,
     pub execution_posture: ProofItemExecutionPostureV1,
@@ -228,6 +233,70 @@ impl ProofPlanV2 {
                     item.proof_item_id
                 ));
             }
+            if item.disposition == ProofItemDispositionV1::SatisfiedByCurrentReceipt
+                && item
+                    .current_receipt
+                    .as_deref()
+                    .unwrap_or("")
+                    .trim()
+                    .is_empty()
+            {
+                return Err(format!(
+                    "item {} satisfied by a current receipt without an exact receipt reference",
+                    item.proof_item_id
+                ));
+            }
+            if item.current_receipt.is_some()
+                && item.disposition != ProofItemDispositionV1::SatisfiedByCurrentReceipt
+            {
+                return Err(format!(
+                    "item {} carries a receipt reference without the reuse disposition",
+                    item.proof_item_id
+                ));
+            }
+            let requires_reason = matches!(
+                item.disposition,
+                ProofItemDispositionV1::NotApplicableWithReason
+                    | ProofItemDispositionV1::DeferredWithinExplicitPolicy
+            );
+            if requires_reason
+                && item
+                    .limitations
+                    .iter()
+                    .all(|reason| reason.trim().is_empty())
+            {
+                return Err(format!(
+                    "item {} uses a reason-bearing disposition without a stated reason",
+                    item.proof_item_id
+                ));
+            }
+            let needs_receipt = matches!(
+                item.disposition,
+                ProofItemDispositionV1::SelectedForExecution
+                    | ProofItemDispositionV1::SelectedForCapturedIngestion
+            );
+            if needs_receipt && item.expected_receipt.is_none() {
+                return Err(format!(
+                    "item {} is selected without an expected-receipt contract",
+                    item.proof_item_id
+                ));
+            }
+            let posture_allowed = match item.execution_posture {
+                ProofItemExecutionPostureV1::Execute => item.disposition.lowers_to_command(),
+                ProofItemExecutionPostureV1::CapturedIngest => {
+                    item.disposition == ProofItemDispositionV1::SelectedForCapturedIngestion
+                }
+                ProofItemExecutionPostureV1::ManualNative => {
+                    item.disposition == ProofItemDispositionV1::ManualOrNativeOutstanding
+                }
+                ProofItemExecutionPostureV1::None => true,
+            };
+            if !posture_allowed {
+                return Err(format!(
+                    "item {} execution posture does not match its disposition",
+                    item.proof_item_id
+                ));
+            }
         }
         if self.items.is_empty() {
             return Err(
@@ -265,6 +334,7 @@ mod tests {
             subject: subject(),
             disposition,
             selection: None,
+            current_receipt: None,
             expected_receipt: None,
             execution_posture: ProofItemExecutionPostureV1::None,
             dependency_group: None,
@@ -364,6 +434,67 @@ mod tests {
         let plan = plan(vec![]);
         if plan.validate().is_ok() {
             return Err("zero-item plan must fail".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn reuse_disposition_requires_an_exact_receipt_reference() -> Result<(), String> {
+        let plan = plan(vec![item(
+            "item-1",
+            ProofItemDispositionV1::SatisfiedByCurrentReceipt,
+        )]);
+        if plan.validate().is_ok() {
+            return Err("reuse without a receipt reference must fail".to_string());
+        }
+        let mut reused = item("item-1", ProofItemDispositionV1::SatisfiedByCurrentReceipt);
+        reused.current_receipt = Some("receipt-7".to_string());
+        ProofPlanV2::new("plan-1", "sha256:v1:intent", "snap-1", vec![reused])
+            .validate()
+            .map_err(|error| format!("reuse with a reference must pass: {error}"))
+    }
+
+    #[test]
+    fn reason_bearing_dispositions_require_a_stated_reason() -> Result<(), String> {
+        let plan = plan(vec![item(
+            "item-1",
+            ProofItemDispositionV1::NotApplicableWithReason,
+        )]);
+        if plan.validate().is_ok() {
+            return Err("reasonless not-applicable must fail".to_string());
+        }
+        let mut reasoned = item("item-1", ProofItemDispositionV1::NotApplicableWithReason);
+        reasoned.limitations = vec!["out of scope for this phase".to_string()];
+        ProofPlanV2::new("plan-1", "sha256:v1:intent", "snap-1", vec![reasoned])
+            .validate()
+            .map_err(|error| format!("reasoned not-applicable must pass: {error}"))
+    }
+
+    #[test]
+    fn selected_items_require_an_expected_receipt_contract() -> Result<(), String> {
+        let mut selected = item(
+            "item-1",
+            ProofItemDispositionV1::SelectedForCapturedIngestion,
+        );
+        selected.selection = Some(ProviderSelectionV1 {
+            provider_id: "cargo-allow".to_string(),
+            capability_id: "check".to_string(),
+            request_digest: "sha256:v1:req".to_string(),
+        });
+        let plan = plan(vec![selected]);
+        if plan.validate().is_ok() {
+            return Err("selection without an expected receipt must fail".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn manual_disposition_cannot_carry_the_execute_posture() -> Result<(), String> {
+        let mut manual = item("item-1", ProofItemDispositionV1::ManualOrNativeOutstanding);
+        manual.execution_posture = ProofItemExecutionPostureV1::Execute;
+        let plan = plan(vec![manual]);
+        if plan.validate().is_ok() {
+            return Err("manual disposition with execute posture must fail".to_string());
         }
         Ok(())
     }
