@@ -12,8 +12,9 @@ use intent_engine::{
     self_hosted_workspace_composition_fixture_path, workspace_composition_parity_contract_paths,
 };
 use intent_engine::{
-    SPEC_SYSTEM_COMMANDS, embedded_authority_surface, graph_movement_kind_to_precommit,
-    spec_system_command, subject_resolution_from_diagnostic,
+    SPEC_SYSTEM_COMMANDS, embedded_authority_surface, graph_compiler_parity_contract_paths,
+    graph_movement_kind_to_precommit, load_graph_compiler_parity_contract, spec_system_command,
+    subject_resolution_from_diagnostic,
 };
 
 /// End-to-end dispatch binding (#3523 slice D step iii): the command the
@@ -52,6 +53,11 @@ fn intent_engine_parity_fixtures_registered() -> Result<(), String> {
         }
     }
     for path in graph_comparison_parity_contract_paths(&root) {
+        if !path.is_file() {
+            return Err(format!("missing parity fixture {}", path.display()));
+        }
+    }
+    for path in graph_compiler_parity_contract_paths(&root) {
         if !path.is_file() {
             return Err(format!("missing parity fixture {}", path.display()));
         }
@@ -446,6 +452,131 @@ fn spec_system_command_dispatch_parity() -> Result<(), String> {
     }
     if embedded_authority_surface("not-a-command") {
         return Err("unknown surface counted as dispatched".to_string());
+    }
+    Ok(())
+}
+
+/// Graph-compiler parity (#3524 slice E): the scenario's authority files
+/// are parsed with BOTH families' own parsers, compiled with BOTH
+/// compilers from structurally identical inputs, and the legacy graph is
+/// converted through the serde round-trip validated in #3645. The
+/// compiled graphs must be semantically identical; the round-trip itself
+/// is the drift oracle (any field divergence between the DTO families
+/// fails the conversion loudly).
+#[test]
+fn graph_compiler_parity_same_input_same_output() -> Result<(), String> {
+    let root = repo_root();
+    let contract = load_graph_compiler_parity_contract(
+        &intent_engine::graph_compiler_parity_contract_path(&root),
+    )?;
+    if contract.scenario_id != "parity-intent-engine-graph-compiler-v1" {
+        return Err(format!(
+            "unexpected graph-compiler parity scenario {}",
+            contract.scenario_id
+        ));
+    }
+    for (label, relative) in [
+        ("requirement", &contract.requirement_path),
+        ("slice", &contract.slice_path),
+        ("seams", &contract.seams_path),
+        ("evidence", &contract.evidence_path),
+    ] {
+        if !root.join(relative).is_file() {
+            return Err(format!("parity scenario {label} file missing: {relative}"));
+        }
+    }
+    if contract.covered_dimensions.is_empty() {
+        return Err("parity contract records no covered dimensions".to_string());
+    }
+
+    let requirement_text = std::fs::read_to_string(root.join(&contract.requirement_path))
+        .map_err(|error| error.to_string())?;
+    let slice_text = std::fs::read_to_string(root.join(&contract.slice_path))
+        .map_err(|error| error.to_string())?;
+
+    // Both families parse the same bytes with their own parsers.
+    let legacy_requirements = allow_policy::spec_system::parse_requirement_blocks_at(
+        Some(std::path::Path::new(&contract.requirement_path)),
+        &requirement_text,
+    )
+    .map_err(|error| format!("legacy requirement parse: {error}"))?;
+    let legacy_slice = allow_policy::spec_system::parse_implementation_slice_at(
+        Some(std::path::Path::new(&contract.slice_path)),
+        &slice_text,
+    )
+    .map_err(|error| format!("legacy slice parse: {error}"))?;
+    let canonical_requirements = intent_model::parse_requirement_blocks_at(
+        Some(std::path::Path::new(&contract.requirement_path)),
+        &requirement_text,
+    )
+    .map_err(|error| format!("canonical requirement parse: {error}"))?;
+    let canonical_slice = intent_model::parse_implementation_slice_at(
+        Some(std::path::Path::new(&contract.slice_path)),
+        &slice_text,
+    )
+    .map_err(|error| format!("canonical slice parse: {error}"))?;
+
+    // Parser parity on the same inputs is itself part of the claim: the
+    // parsed inputs must be structurally identical across families.
+    let legacy_requirements_canonical: intent_model::RequirementGraph = serde_json::from_value(
+        serde_json::to_value(&legacy_requirements).map_err(|error| error.to_string())?,
+    )
+    .map_err(|error| format!("requirement-graph families drifted: {error}"))?;
+    if legacy_requirements_canonical != canonical_requirements {
+        return Err("requirement parser drift between families".to_string());
+    }
+    let legacy_slice_canonical: intent_model::ImplementationSliceV1 = serde_json::from_value(
+        serde_json::to_value(&legacy_slice).map_err(|error| error.to_string())?,
+    )
+    .map_err(|error| format!("implementation-slice families drifted: {error}"))?;
+    if legacy_slice_canonical != canonical_slice {
+        return Err("slice parser drift between families".to_string());
+    }
+
+    let legacy_graph = allow_policy::spec_system::compile_spec_graph(
+        allow_policy::spec_system::GraphCompileInput {
+            requirement_graphs: vec![legacy_requirements],
+            implementation_slices: vec![legacy_slice],
+            ..Default::default()
+        },
+    );
+    let canonical_graph = intent_engine::compile_spec_graph(intent_model::GraphCompileInput {
+        requirement_graphs: vec![canonical_requirements],
+        implementation_slices: vec![canonical_slice],
+        ..Default::default()
+    });
+
+    let converted: intent_model::CompiledSpecGraph = serde_json::from_value(
+        serde_json::to_value(&legacy_graph).map_err(|error| error.to_string())?,
+    )
+    .map_err(|error| format!("compiled-graph families drifted: {error}"))?;
+
+    if converted.snapshot_id != canonical_graph.snapshot_id {
+        return Err(format!(
+            "snapshot id drift: legacy {} != canonical {}",
+            converted.snapshot_id.0, canonical_graph.snapshot_id.0
+        ));
+    }
+    if converted.requirements != canonical_graph.requirements {
+        return Err("requirement nodes drift between compilers".to_string());
+    }
+    if converted.slices != canonical_graph.slices {
+        return Err("slice nodes drift between compilers".to_string());
+    }
+    if converted.seams != canonical_graph.seams {
+        return Err("seam nodes drift between compilers".to_string());
+    }
+    if converted.evidence_claims != canonical_graph.evidence_claims {
+        return Err("evidence-claim nodes drift between compilers".to_string());
+    }
+    if converted.subjects != canonical_graph.subjects {
+        return Err("subject nodes drift between compilers".to_string());
+    }
+    if converted.diagnostics != canonical_graph.diagnostics {
+        return Err(format!(
+            "diagnostics drift between compilers: legacy {:?} != canonical {:?}",
+            converted.diagnostics, canonical_graph.diagnostics
+        ));
     }
     Ok(())
 }
