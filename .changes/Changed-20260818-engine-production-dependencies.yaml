@@ -19,5 +19,6 @@ body: >-
   framing. The move-ledger registers source_views.rs, drops the deleted
   shim path, and records production workspace-orchestration consumption
   on the engine row. No forbidden dependency (intent-edit, proof-*,
-  cargo-allow private crates) is introduced; the dependency-boundary
-  matrix and product-crate architecture tests enforce the closure.
+  cargo-allow private crates) is introduced; the encoded dependency law
+  and product-crate architecture tests enforce the cross-product edges,
+  and the four-crate target set itself is enforced by review.
