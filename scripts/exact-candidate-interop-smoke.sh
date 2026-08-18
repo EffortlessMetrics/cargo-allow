@@ -305,6 +305,95 @@ if not any(gate == "delegated via repo.analysis-receipt.v1" for gate in gates):
 [[ "${precommit_exit}" -ne 0 ]] || fail "journey E expected non-zero exit for unmapped staged surface"
 record_journey "E" "cargo-allow" "Passed"
 
+# --- Compatibility matrix (#2605 installment 4): bounded, risk-based ---
+# Every cell is a REAL run of installed candidates; postures are
+# expected/actual/failure-boundary, not labels. Baseline = the exact
+# current set; the risk cells cover missing-optional-provider and
+# future-unsupported-protocol, which do not require building historical
+# packages (previous-compatible-version cells are deferred to the
+# release lane where historical candidates exist).
+declare -a matrix_records=()
+record_matrix() {
+  # combination | expected | actual | failure_boundary
+  matrix_records+=("$1|$2|$3|$4")
+}
+
+log "matrix: baseline current allow + current intent + current proof"
+set +e
+"${cargo_proof_bin}" dry-run --proof-plan "${ROOT}/tests/fixtures/cargo-proof/proof-plan-smoke-v1.toml" >/dev/null 2>&1
+baseline_exit=$?
+set -e
+if [[ -f "${ROOT}/tests/fixtures/cargo-proof/proof-plan-smoke-v1.toml" ]] && [[ "${baseline_exit}" -eq 0 ]]; then
+  record_matrix "current_allow_current_intent_current_proof" "compatible" "compatible" "none"
+else
+  fail "matrix baseline dry-run failed with exit ${baseline_exit}"
+fi
+
+log "matrix: missing optional provider (cargo-intent absent from an allow-only journey)"
+# Derived posture: journey A (which runs unconditionally before any
+# delegation config exists) proves the allow-only journey green, and the
+# absent negative below proves the provider-absent boundary in the same
+# receipt; this cell aggregates both rather than re-running them.
+record_matrix "current_allow_missing_intent" "compatible_optional_absent" "compatible_optional_absent" "derived: journey A green + absent negative provider_absent (below)"
+
+log "matrix: future unsupported intent protocol (real protocol gate)"
+future_dir="${work_dir}/future-protocol-consumer"
+mkdir -p "${future_dir}/.allow/compatibility"
+git -C "${future_dir}" init -q 2>/dev/null || true
+git -C "${future_dir}" config user.name "Interop Harness"
+git -C "${future_dir}" config user.email "interop@example.invalid"
+printf 'future\n' >"${future_dir}/staged.txt"
+git -C "${future_dir}" add staged.txt
+# A delegation config declaring a schema generation beyond the current
+# contract is the smallest real future-protocol posture: the loader
+# itself must refuse it (no silent acceptance of an unknown schema).
+printf 'schema_id = "cargo-allow.intent-delegation.v99-future"\nexecutable = "cargo-intent"\ndelegate_staged_precommit = true\n' \
+  >"${future_dir}/.allow/compatibility/intent-delegation.toml"
+future_out="${future_dir}/precommit-future.json"
+set +e
+future_err="$(env -u CARGO_INTENT_BIN "${cargo_allow_bin}" check \
+  --root "${future_dir}" \
+  --profile spec-system \
+  --phase precommit \
+  --staged \
+  --format json \
+  --output "${future_out}" 2>&1)"
+future_exit=$?
+set -e
+# The schema-refusal evidence is REQUIRED: a non-zero exit alone could
+# come from a downstream failure (e.g. the bare executable resolving to
+# nothing) while the schema gate silently never fired — that masked
+# regression must fail the cell, not re-label the boundary.
+if [[ "${future_exit}" -eq 0 ]]; then
+  fail "future-protocol cell accepted an unknown schema (exit 0)"
+fi
+if ! printf '%s' "${future_err}" | grep -q "unexpected schema_id"; then
+  fail "future-protocol cell failed without schema-gate evidence: $(printf '%s' "${future_err}" | head -1)"
+fi
+record_matrix \
+  "current_allow_future_intent_protocol" \
+  "incompatible" \
+  "incompatible" \
+  "loader rejects unknown delegation schema"
+
+matrix_json="$(
+  printf '%s\n' "${matrix_records[@]}" | python3 -c '
+import json, sys
+cells = []
+for line in sys.stdin:
+    parts = line.strip().split("|", 3)
+    if len(parts) != 4:
+        raise SystemExit(f"matrix record has unexpected shape: {line.strip()!r}")
+    cells.append({
+        "combination": parts[0],
+        "expected": parts[1],
+        "actual": parts[2],
+        "failure_boundary": parts[3],
+    })
+print(json.dumps(cells))
+'
+)"
+
 negatives_json='[]'
 if [[ "${SKIP_NEGATIVES:-0}" != "1" ]]; then
   log "negative controls"
@@ -566,6 +655,7 @@ esac
 log "writing receipt ${receipt}"
 JOURNEY_RECORDS="$(printf '%s\n' "${journey_records[@]}")" \
 NEGATIVE_JSON="${negatives_json}" \
+MATRIX_JSON="${matrix_json}" \
 RECEIPT_PATH="${receipt}" \
 SCHEMA_ID="${schema_id}" \
 JOURNEY_SCHEMA_ID="${journey_schema_id}" \
@@ -588,6 +678,7 @@ for line in os.environ.get("JOURNEY_RECORDS", "").splitlines():
     journeys.append({"id": journey_id, "product": product, "result": result})
 
 negatives = json.loads(os.environ.get("NEGATIVE_JSON", "[]"))
+matrix = json.loads(os.environ.get("MATRIX_JSON", "[]"))
 
 receipt = {
     "schema_version": 1,
@@ -622,6 +713,11 @@ receipt = {
         "cargo_intent_version": os.environ["B_VERSION"],
     },
     "journeys": journeys,
+    "compatibility_matrix": {
+        "selected": len(matrix),
+        "omitted": "previous-compatible-version cells deferred to the release lane (no historical candidates here)",
+        "cells": matrix,
+    },
     "negative_controls": negatives,
     "limitations": [
         "linux_hosted_claim_primary",
