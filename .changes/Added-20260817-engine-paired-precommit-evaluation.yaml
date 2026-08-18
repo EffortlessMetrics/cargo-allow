@@ -1,0 +1,20 @@
+kind: Added
+body: >-
+  Add the canonical engine-side paired precommit evaluation (#3523 slice D
+  step i). intent-engine workspace gains GraphDiagnosticV1 (the normalized
+  compile-diagnostic transport), the canonical graph-movement to precommit
+  movement mapping, the diagnostic-code to subject-resolution mapping, and
+  evaluate_paired_precommit_objectives_v1 — the pure adapter that derives
+  the canonical evaluator input from paired-comparison facts (movements,
+  diagnostics, inferred changed subjects) and runs the canonical
+  precommit evaluator. cargo-allow's local adapter over the legacy
+  allow-policy copies stays in place under the promotion switch, and
+  dev-scope parity tests bind the vocabularies together: movement mapping
+  is string-stable with the movement parity fixture and the allow-policy
+  mirror across every canonical kind, and the diagnostic-code status
+  table is characterized against the legacy adapter's inline mapping.
+  intent-model's PrecommitMovementKind gains the as_str vocabulary method
+  its sibling enums already carry. Full old/new end-to-end evaluation
+  parity needs the compiled-graph converter and lands with slice E
+  (#3524); the new engine module is registered in the product
+  move-ledger.

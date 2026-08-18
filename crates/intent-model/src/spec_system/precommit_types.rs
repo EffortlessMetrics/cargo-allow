@@ -72,6 +72,35 @@ pub enum PrecommitMovementKind {
     UnknownOrUncomparable,
 }
 
+impl PrecommitMovementKind {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::RequirementAdded => "requirement_added",
+            Self::RequirementRemoved => "requirement_removed",
+            Self::RequirementChanged => "requirement_changed",
+            Self::ImplementationSliceAdded => "implementation_slice_added",
+            Self::ImplementationSliceRemoved => "implementation_slice_removed",
+            Self::ImplementationSliceChanged => "implementation_slice_changed",
+            Self::SeamMappingAdded => "seam_mapping_added",
+            Self::SeamMappingRemoved => "seam_mapping_removed",
+            Self::SeamMappingChanged => "seam_mapping_changed",
+            Self::EvidencePurposeAdded => "evidence_purpose_added",
+            Self::EvidencePurposeRemoved => "evidence_purpose_removed",
+            Self::EvidencePurposeChanged => "evidence_purpose_changed",
+            Self::EvidenceClaimChanged => "evidence_claim_changed",
+            Self::SubjectSelectorAdded => "subject_selector_added",
+            Self::SubjectSelectorRemoved => "subject_selector_removed",
+            Self::SubjectSelectorChanged => "subject_selector_changed",
+            Self::SubjectBodyIdentityChanged => "subject_body_identity_changed",
+            Self::GeneratedSourceRelationAdded => "generated_source_relation_added",
+            Self::GeneratedSourceRelationRemoved => "generated_source_relation_removed",
+            Self::GeneratedSourceRelationChanged => "generated_source_relation_changed",
+            Self::ProfileOrDialectChanged => "profile_or_dialect_changed",
+            Self::UnknownOrUncomparable => "unknown_or_uncomparable",
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PrecommitMovement {
     pub kind: PrecommitMovementKind,
