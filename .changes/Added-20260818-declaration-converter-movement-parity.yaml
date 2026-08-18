@@ -1,0 +1,17 @@
+kind: Added
+body: >-
+  Add the general PrecommitChangeDeclaration converter and a
+  movement-bearing end-to-end parity scenario (#3524 slice E installment
+  3). The declaration is not serde on either side, so the converter maps
+  it explicitly field-by-field — every change class by identical variant
+  name, slice and subject id newtypes unwrapped and rewrapped, all three
+  declaration flags copied — replacing the single-class mirrored-by-
+  construction limitation from #3645, with a unit test asserting every
+  field of a fully populated declaration. The movement-bearing scenario
+  appends a second requirement block to the fixture authority document
+  after the parent commit and stages it, so the paired compilation
+  observes a requirement-added movement and the movement-driven
+  evaluator checks run through both adapters with non-empty movements
+  and non-empty findings (both vacuity-guarded). The finding-for-finding
+  parity assertion and the movement mapping are extracted into shared
+  helpers used by both end-to-end scenarios.

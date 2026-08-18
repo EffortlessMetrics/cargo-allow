@@ -1186,6 +1186,105 @@ mod tests {
             .map_err(|error| format!("implementation-slice families drifted: {error}"))
     }
 
+    /// General PrecommitChangeDeclaration converter between the families
+    /// (#3524 slice E). The declaration is not serde on either side, so
+    /// the mapping is explicit field-by-field; every change class maps by
+    /// identical variant name.
+    fn canonical_declaration(
+        declaration: &PrecommitChangeDeclaration,
+    ) -> intent_model::PrecommitChangeDeclaration {
+        use allow_policy::spec_system::PrecommitChangeClass as Legacy;
+        use intent_model::PrecommitChangeClass as Canonical;
+        let class = declaration.class.map(|class| match class {
+            Legacy::BehaviorChange => Canonical::BehaviorChange,
+            Legacy::BugFix => Canonical::BugFix,
+            Legacy::RefactorNoIntendedBehaviorChange => Canonical::RefactorNoIntendedBehaviorChange,
+            Legacy::SpecOrPolicyChange => Canonical::SpecOrPolicyChange,
+            Legacy::TestOnlyChange => Canonical::TestOnlyChange,
+            Legacy::GeneratedArtifactChange => Canonical::GeneratedArtifactChange,
+            Legacy::DocsOnly => Canonical::DocsOnly,
+            Legacy::ToolingOrCiChange => Canonical::ToolingOrCiChange,
+            Legacy::DependencyOrToolchainChange => Canonical::DependencyOrToolchainChange,
+            Legacy::ResearchOrEvidenceOnly => Canonical::ResearchOrEvidenceOnly,
+            Legacy::Mechanical => Canonical::Mechanical,
+            Legacy::UnknownOrMixed => Canonical::UnknownOrMixed,
+        });
+        intent_model::PrecommitChangeDeclaration {
+            class,
+            implementation_slice_ids: declaration
+                .implementation_slice_ids
+                .iter()
+                .map(|id| intent_model::ImplementationSliceId(id.0.clone()))
+                .collect(),
+            regression_subject_ids: declaration
+                .regression_subject_ids
+                .iter()
+                .map(|id| intent_model::EvidenceSubjectId(id.0.clone()))
+                .collect(),
+            changed_subject_ids: declaration
+                .changed_subject_ids
+                .iter()
+                .map(|id| intent_model::EvidenceSubjectId(id.0.clone()))
+                .collect(),
+            no_intended_behavior_change: declaration.no_intended_behavior_change,
+            evidence_closure_reviewed: declaration.evidence_closure_reviewed,
+            generated_source_relation_present: declaration.generated_source_relation_present,
+        }
+    }
+
+    #[test]
+    fn canonical_declaration_converter_maps_every_field() -> Result<(), String> {
+        use allow_policy::spec_system::PrecommitChangeClass as Legacy;
+        let legacy = PrecommitChangeDeclaration {
+            class: Some(Legacy::DependencyOrToolchainChange),
+            implementation_slice_ids: vec![allow_policy::spec_system::ImplementationSliceId(
+                "slice-a".to_string(),
+            )],
+            regression_subject_ids: vec![allow_policy::spec_system::EvidenceSubjectId(
+                "tests::regression".to_string(),
+            )],
+            changed_subject_ids: vec![allow_policy::spec_system::EvidenceSubjectId(
+                "tests::changed".to_string(),
+            )],
+            no_intended_behavior_change: true,
+            evidence_closure_reviewed: true,
+            generated_source_relation_present: true,
+        };
+        let canonical = canonical_declaration(&legacy);
+        if canonical.class.map(|class| class.as_str()) != Some("dependency_or_toolchain_change") {
+            return Err("converter lost or misrouted the change class".to_string());
+        }
+        if canonical.implementation_slice_ids.len() != 1
+            || canonical
+                .implementation_slice_ids
+                .first()
+                .map(|id| id.0.as_str())
+                != Some("slice-a")
+        {
+            return Err("converter lost implementation slice ids".to_string());
+        }
+        if canonical
+            .regression_subject_ids
+            .first()
+            .map(|id| id.0.as_str())
+            != Some("tests::regression")
+            || canonical
+                .changed_subject_ids
+                .first()
+                .map(|id| id.0.as_str())
+                != Some("tests::changed")
+        {
+            return Err("converter lost subject id lists".to_string());
+        }
+        if !canonical.no_intended_behavior_change
+            || !canonical.evidence_closure_reviewed
+            || !canonical.generated_source_relation_present
+        {
+            return Err("converter lost declaration flags".to_string());
+        }
+        Ok(())
+    }
+
     /// The inventory-posture derivation contract from the legacy adapter:
     /// partial rust-test inventory forces Partial; otherwise the file
     /// inventory completeness decides (Complete|Scoped -> Complete,
@@ -1223,70 +1322,27 @@ mod tests {
         }
     }
 
-    /// End-to-end dev-scope parity (#3523 slice D step iii): the real
-    /// fixture repository compiles through the legacy paired path, the
-    /// paired facts convert to canonical types, and the engine-side
-    /// paired-precommit evaluation must agree with the legacy adapter
-    /// finding-for-finding.
-    #[test]
-    fn paired_precommit_evaluation_end_to_end_engine_parity() -> Result<(), String> {
-        let root = staged_fixture_repository()?;
-        run_git(&root, &["commit", "-qm", "parent"])?;
-        let paired = compile_paired_self_hosted_graph(&root).map_err(|error| error.to_string())?;
-        let declaration = PrecommitChangeDeclaration {
-            class: Some(allow_policy::spec_system::PrecommitChangeClass::BehaviorChange),
-            ..Default::default()
-        };
-
-        let legacy = evaluate_paired_precommit_objectives(&paired, &declaration, false);
-        if legacy.findings.is_empty() {
-            return Err(
-                "parity fixture produced no findings; the equality below would be vacuous"
-                    .to_string(),
-            );
-        }
-
-        let graph = canonical_graph(&paired.candidate.graph)?;
-        let slice = canonical_slice(&paired.candidate.slice)?;
-        // The declaration is not serde on either side; this test uses a
-        // single declared class with default flags, mirrored by
-        // construction. A general converter belongs to the slice-E
-        // graph-converter lane.
-        let canonical_declaration = intent_model::PrecommitChangeDeclaration {
-            class: Some(intent_model::PrecommitChangeClass::BehaviorChange),
-            ..Default::default()
-        };
-        let mut movements = Vec::new();
-        for movement in &paired.movements {
+    fn canonical_movements(
+        movements: &[SpecGraphMovement],
+    ) -> Result<Vec<intent_engine::GraphMovementV1>, String> {
+        let mut canonical = Vec::new();
+        for movement in movements {
             let kind = intent_engine::canonical_graph_movement_kinds()
                 .iter()
                 .find(|kind| kind.as_str() == movement.kind.as_str())
                 .ok_or_else(|| format!("no canonical kind for {}", movement.kind.as_str()))?;
-            movements.push(intent_engine::GraphMovementV1 {
+            canonical.push(intent_engine::GraphMovementV1 {
                 kind: *kind,
                 id: movement.id.clone(),
             });
         }
-        let diagnostics = paired
-            .candidate
-            .diagnostics
-            .iter()
-            .map(|diagnostic| intent_engine::GraphDiagnosticV1 {
-                code: diagnostic.code.to_string(),
-                subject: diagnostic.subject.clone(),
-                message: diagnostic.message.clone(),
-            })
-            .collect::<Vec<_>>();
-        let engine = intent_engine::evaluate_paired_precommit_objectives_v1(
-            &graph,
-            &slice,
-            &movements,
-            &canonical_declaration,
-            &diagnostics,
-            canonical_inventory_posture(&paired.candidate),
-            false,
-        );
+        Ok(canonical)
+    }
 
+    fn assert_evaluation_parity(
+        legacy: &allow_policy::spec_system::PrecommitObjectiveEvaluation,
+        engine: &intent_model::PrecommitObjectiveEvaluation,
+    ) -> Result<(), String> {
         if legacy.change_class.as_str() != engine.change_class.as_str() {
             return Err(format!(
                 "change class drift: legacy {} != engine {}",
@@ -1346,6 +1402,136 @@ mod tests {
                     engine_finding.action
                 ));
             }
+        }
+
+        Ok(())
+    }
+
+    /// End-to-end dev-scope parity (#3523 slice D step iii): the real
+    /// fixture repository compiles through the legacy paired path, the
+    /// paired facts convert to canonical types, and the engine-side
+    /// paired-precommit evaluation must agree with the legacy adapter
+    /// finding-for-finding.
+    #[test]
+    fn paired_precommit_evaluation_end_to_end_engine_parity() -> Result<(), String> {
+        let root = staged_fixture_repository()?;
+        run_git(&root, &["commit", "-qm", "parent"])?;
+        let paired = compile_paired_self_hosted_graph(&root).map_err(|error| error.to_string())?;
+        let declaration = PrecommitChangeDeclaration {
+            class: Some(allow_policy::spec_system::PrecommitChangeClass::BehaviorChange),
+            ..Default::default()
+        };
+
+        let legacy = evaluate_paired_precommit_objectives(&paired, &declaration, false);
+        if legacy.findings.is_empty() {
+            return Err(
+                "parity fixture produced no findings; the equality below would be vacuous"
+                    .to_string(),
+            );
+        }
+
+        let graph = canonical_graph(&paired.candidate.graph)?;
+        let slice = canonical_slice(&paired.candidate.slice)?;
+        let canonical_declaration = canonical_declaration(&declaration);
+        let movements = canonical_movements(&paired.movements)?;
+        let diagnostics = paired
+            .candidate
+            .diagnostics
+            .iter()
+            .map(|diagnostic| intent_engine::GraphDiagnosticV1 {
+                code: diagnostic.code.to_string(),
+                subject: diagnostic.subject.clone(),
+                message: diagnostic.message.clone(),
+            })
+            .collect::<Vec<_>>();
+        let engine = intent_engine::evaluate_paired_precommit_objectives_v1(
+            &graph,
+            &slice,
+            &movements,
+            &canonical_declaration,
+            &diagnostics,
+            canonical_inventory_posture(&paired.candidate),
+            false,
+        );
+
+        assert_evaluation_parity(&legacy, &engine)?;
+
+        let _ = fs::remove_dir_all(&root);
+        Ok(())
+    }
+
+    /// Movement-bearing end-to-end parity (#3524 slice E): after the
+    /// fixture parent commit, a second requirement block is appended to
+    /// the authority document and staged, so the paired compilation
+    /// observes non-empty movements and the movement-driven evaluator
+    /// checks run through both adapters. The evaluation must agree
+    /// finding-for-finding, and the movements and findings must be
+    /// non-empty (the scenario exists so movement handling is never
+    /// vacuous).
+    #[test]
+    fn paired_precommit_movement_bearing_end_to_end_engine_parity() -> Result<(), String> {
+        let root = staged_fixture_repository()?;
+        run_git(&root, &["commit", "-qm", "parent"])?;
+
+        let requirement_path = root.join(SELF_HOSTED_RUNTIME_PROMOTION.requirement_path);
+        let original = fs::read_to_string(&requirement_path)
+            .map_err(|error| format!("read fixture requirement: {error}"))?;
+        let added_block = "\n[[requirement]]\nid = \"second-added-requirement\"\ngeneration = 1\nstatus = \"accepted\"\nstatement = \"A second requirement exists so paired compilation observes a requirement-added movement.\"\nclaim_class = \"runtime_behavior\"\n";
+        let fence_close = original
+            .rfind("```")
+            .ok_or_else(|| "fixture requirement lacks a closing fence".to_string())?;
+        let (head, tail) = original.split_at(fence_close);
+        let mut amended = String::with_capacity(original.len() + added_block.len());
+        amended.push_str(head);
+        amended.push_str(added_block);
+        amended.push_str(tail);
+        fs::write(&requirement_path, &amended)
+            .map_err(|error| format!("write amended requirement: {error}"))?;
+        run_git(&root, &["add", "--all"])?;
+
+        let paired = compile_paired_self_hosted_graph(&root).map_err(|error| error.to_string())?;
+        if paired.movements.is_empty() {
+            return Err(
+                "movement-bearing scenario produced no movements; the paired comparison is vacuous"
+                    .to_string(),
+            );
+        }
+
+        let declaration = PrecommitChangeDeclaration {
+            class: Some(allow_policy::spec_system::PrecommitChangeClass::BehaviorChange),
+            ..Default::default()
+        };
+        let legacy = evaluate_paired_precommit_objectives(&paired, &declaration, false);
+
+        let graph = canonical_graph(&paired.candidate.graph)?;
+        let slice = canonical_slice(&paired.candidate.slice)?;
+        let canonical_declaration = canonical_declaration(&declaration);
+        let movements = canonical_movements(&paired.movements)?;
+        let diagnostics = paired
+            .candidate
+            .diagnostics
+            .iter()
+            .map(|diagnostic| intent_engine::GraphDiagnosticV1 {
+                code: diagnostic.code.to_string(),
+                subject: diagnostic.subject.clone(),
+                message: diagnostic.message.clone(),
+            })
+            .collect::<Vec<_>>();
+        let engine = intent_engine::evaluate_paired_precommit_objectives_v1(
+            &graph,
+            &slice,
+            &movements,
+            &canonical_declaration,
+            &diagnostics,
+            canonical_inventory_posture(&paired.candidate),
+            false,
+        );
+        assert_evaluation_parity(&legacy, &engine)?;
+        if legacy.findings.is_empty() {
+            return Err(
+                "movement-bearing scenario produced no findings; the parity assertion would be vacuous"
+                    .to_string(),
+            );
         }
 
         let _ = fs::remove_dir_all(&root);
