@@ -200,10 +200,13 @@ impl ProofPlanV2 {
     }
 
     /// Validate the #3599 planning rules. Fails closed on every
-    /// negative-control shape: duplicate item ids, command-lowering on
-    /// a non-execution disposition, selection on unselected
-    /// dispositions, and an empty plan without explicit no-execution
-    /// dispositions.
+    /// negative-control shape: duplicate item ids; selection without
+    /// the execution disposition and execution without a selection;
+    /// reuse without an exact receipt reference and references without
+    /// the reuse disposition; reason-bearing dispositions without a
+    /// stated reason; selected items without an expected-receipt
+    /// contract; execution postures that do not match the disposition;
+    /// and an empty plan presented as ready.
     pub fn validate(&self) -> Result<(), String> {
         if self.schema_id != PROOF_PLAN_V2_SCHEMA_ID {
             return Err(format!("unexpected schema_id {}", self.schema_id));
@@ -472,20 +475,37 @@ mod tests {
 
     #[test]
     fn selected_items_require_an_expected_receipt_contract() -> Result<(), String> {
-        let mut selected = item(
-            "item-1",
-            ProofItemDispositionV1::SelectedForCapturedIngestion,
-        );
+        // SelectedForExecution with a selection but no expected receipt:
+        // the only shape that reaches the expected-receipt rule (the
+        // selection-consistency rules fire first for other shapes).
+        let mut selected = item("item-1", ProofItemDispositionV1::SelectedForExecution);
         selected.selection = Some(ProviderSelectionV1 {
             provider_id: "cargo-allow".to_string(),
             capability_id: "check".to_string(),
             request_digest: "sha256:v1:req".to_string(),
         });
+        selected.execution_posture = ProofItemExecutionPostureV1::Execute;
         let plan = plan(vec![selected]);
-        if plan.validate().is_ok() {
-            return Err("selection without an expected receipt must fail".to_string());
+        match plan.validate() {
+            Err(message) if message.contains("expected-receipt") => Ok(()),
+            Err(message) => Err(format!(
+                "expected the expected-receipt failure, got: {message}"
+            )),
+            Ok(()) => Err("selection without an expected receipt must fail".to_string()),
         }
-        Ok(())
+    }
+
+    #[test]
+    fn receipt_reference_without_the_reuse_disposition_fails() -> Result<(), String> {
+        let mut stray = item("item-1", ProofItemDispositionV1::NotProven);
+        stray.current_receipt = Some("receipt-7".to_string());
+        let plan = plan(vec![stray]);
+        match plan.validate() {
+            Err(message) if message.contains("without the reuse disposition") => Ok(()),
+            other => Err(format!(
+                "expected the stray-receipt-reference failure, got: {other:?}"
+            )),
+        }
     }
 
     #[test]
