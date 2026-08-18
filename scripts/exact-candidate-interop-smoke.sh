@@ -268,8 +268,12 @@ printf '%s\n' "${dry_run_out}" | grep -F "[structured argv]" >/dev/null \
   || fail "journey C dry-run missing structured argv marker"
 record_journey "C" "cargo-proof" "Passed"
 
-# --- Journey D: cargo-proof invokes installed cargo-allow ---
-log "journey D: cargo-proof dry-run then invoke installed cargo-allow"
+# --- Journey D: independent cargo-allow execution + independent proof dry-run ---
+# #3598 wording: cargo-proof does NOT invoke cargo-allow. The journey
+# proves the two installed candidates run independently against the same
+# consumer root — cargo-allow executes for real; cargo-proof dry-runs a
+# static plan fixture (zero process execution).
+log "journey D: installed cargo-allow executes; installed cargo-proof dry-runs (independent, same root)"
 policy_path="${consumer_dir}/policy/allow.toml"
 "${cargo_allow_bin}" propose --root "${consumer_dir}" --kind panic --write "${policy_path}"
 [[ -f "${policy_path}" ]] || fail "journey D propose did not write policy"

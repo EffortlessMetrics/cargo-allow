@@ -266,7 +266,9 @@ if digest != store_digest:
     raise SystemExit("contradiction_eval failed")
 print("contradiction_eval_ok")
 PY
-record_stage "contradiction_eval" "real" "Passed"
+# Simulated characterization (inline digest comparison), not the
+# proof-engine contradiction API (#3598 truth-in-execution labeling).
+record_stage "contradiction_eval" "simulated" "Passed"
 
 log "stage repair: refresh allow last_seen via check"
 "${cargo_allow_bin}" check --root "${consumer_dir}" --config "${policy_path}" --kind panic --mode no-new --format json >/dev/null
@@ -326,7 +328,9 @@ if not required.issubset(present):
     raise SystemExit("merge_ready_gate closed")
 print("merge_ready_open")
 PY
-record_stage "merge_ready_gate" "real" "Passed"
+# Simulated characterization (inline binding-set check), not the
+# proof-engine phase-gate API.
+record_stage "merge_ready_gate" "simulated" "Passed"
 
 log "stage reconciliation"
 python3 - "${check_json}" "${post_propose_check}" <<'PY'
@@ -338,7 +342,9 @@ if before.get("status") != "passed" or after.get("status") != "passed":
     raise SystemExit("reconciliation status drift")
 print("reconciliation_ok")
 PY
-record_stage "reconciliation" "real" "Passed"
+# Simulated characterization (cargo-allow status comparison), not the
+# proof-engine reconciliation API.
+record_stage "reconciliation" "simulated" "Passed"
 
 os_name="$(uname -s | tr '[:upper:]' '[:lower:]')"
 case "${os_name}" in

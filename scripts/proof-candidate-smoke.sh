@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # ProofCandidateInstallSmokeV1 (#2589-B).
 #
-# Packages the five-crate proof stack, extracts each .crate outside the
+# Packages the six-crate proof stack (per the checked
+# proof-candidate-crate-set fixture), extracts each .crate outside the
 # workspace, installs cargo-proof from the extracted tree via patched path
 # resolution, verifies the isolated binary surface, and denies workspace
 # source-checkout / target/debug leakage during the decisive install.
@@ -457,7 +458,7 @@ receipt = {
     "tool": "cargo-proof",
     "result": "Passed",
     "claim_boundary": [
-        "five_crate_proof_package_graph",
+        "six_crate_proof_package_graph",
         "extracted_path_install_outside_workspace",
         "source_checkout_denied_during_decisive_install",
         "no_proof_or_test_invocation",
