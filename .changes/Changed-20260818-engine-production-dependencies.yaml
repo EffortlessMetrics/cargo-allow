@@ -1,0 +1,23 @@
+kind: Changed
+body: >-
+  Wire intent-engine's final production dependencies and remove the
+  extraction-only packet surface (#3306, slice 4 of #2935). The engine
+  gains effortless-repo-snapshot as a production dependency and a
+  source-view supply module: read_workspace_composition_sources and
+  composition_sources_present_in_view read every composition authority
+  file through a single RepositorySourceView handle (filesystem, staged,
+  or committed), so staged and committed analyses can never mix dirty
+  worktree bytes — with seeded tests over a real worktree view and the
+  missing-file failure path. Structural subject resolution already runs
+  on effortless-rust-source-index (subject_resolution), and with this
+  wiring the engine consumes the full target set (intent-model,
+  intent-protocol, effortless-repo-snapshot,
+  effortless-rust-source-index) in production. The extraction-only
+  packet re-export shim is deleted — the stable packet DTOs live in
+  intent-protocol and consumers import them directly — and the crate
+  docs move from three-product-extraction framing to production
+  framing. The move-ledger registers source_views.rs, drops the deleted
+  shim path, and records production workspace-orchestration consumption
+  on the engine row. No forbidden dependency (intent-edit, proof-*,
+  cargo-allow private crates) is introduced; the dependency-boundary
+  matrix and product-crate architecture tests enforce the closure.

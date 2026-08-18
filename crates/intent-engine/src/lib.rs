@@ -1,8 +1,10 @@
-//! Intent evaluator packets for three-product extraction (#2586).
+//! Intent compilation, workspace composition, and phase-evaluation engine
+//! for cargo-intent (#2586 lineage; production wiring #3306).
 //!
-//! Most users should use [cargo-allow](https://github.com/EffortlessMetrics/cargo-allow);
+//! Most users should use the `cargo-intent` CLI;
 //! `intent-engine` orchestrates spec-system evaluation from intent-model domain
-//! facts and intent-protocol transport envelopes. It parses source-tree inputs
+//! facts and intent-protocol transport envelopes (the stable packet DTOs live
+//! in `intent-protocol`). It parses source-tree inputs
 //! without executing repository code and does not invoke Cargo, rustc, Clippy,
 //! build scripts, proc macros, or proof commands.
 
@@ -11,7 +13,6 @@ mod domain_queries;
 mod governance_reconciliation;
 mod graph_comparison;
 mod graph_compiler;
-mod packet;
 mod parity;
 mod parity_corpus;
 mod phase_obligations;
@@ -42,9 +43,6 @@ pub use graph_comparison::{
     sort_graph_movements,
 };
 pub use graph_compiler::compile_spec_graph;
-pub use packet::{
-    INTENT_ENGINE_PACKET_SCHEMA_ID, IntentEnginePacketEnvelopeV1, IntentEnginePacketKindV1,
-};
 pub use parity::{
     BoundedDomainQueriesParityContract, EvaluatorPacketParityContract,
     GraphComparisonParityContract, GraphCompilerParityContract, GraphCompilerParityScenario,
@@ -83,10 +81,11 @@ pub use workspace::{
     AUTHORITY_COMPILE_PLAN_SCHEMA_ID, AuthorityCompilePlanV1, AuthoritySourceRoleV1,
     AuthoritySourceV1, GraphDiagnosticV1, SELF_HOSTED_RUNTIME_PROMOTION_COMPOSITION_ID,
     SPEC_SYSTEM_COMMAND_DISPATCH_SCHEMA_ID, SPEC_SYSTEM_COMMANDS, SpecSystemCommandV1,
-    WorkspaceCompositionV1, composition_sources_present, embedded_authority_surface,
+    WorkspaceCompositionSources, WorkspaceCompositionV1, composition_sources_present,
+    composition_sources_present_in_view, embedded_authority_surface,
     evaluate_paired_precommit_objectives_v1, graph_movement_kind_to_precommit,
-    load_workspace_composition_toml, plan_authority_compile, spec_system_command,
-    subject_resolution_from_diagnostic,
+    load_workspace_composition_toml, plan_authority_compile, read_workspace_composition_sources,
+    spec_system_command, subject_resolution_from_diagnostic,
 };
 
 #[cfg(test)]
