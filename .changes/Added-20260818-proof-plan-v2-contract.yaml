@@ -9,11 +9,16 @@ body: >-
   selector, body identity, limitations), a provider selection retains
   the namespaced request digest without flattening payloads, and the
   expected-receipt contract states the load-bearing currentness
-  dimensions. Validation enforces the issue's planning rules and fails
-  closed on its negative-control shapes: duplicate item identities,
-  selection without the execution disposition, execution without a
-  selection, a provider-unavailable item carrying the execute posture,
-  and a zero-item plan presented as ready. Seeded tests cover the
+  dimensions, and reuse items retain the exact current-receipt
+  reference so satisfied-by-current-receipt is always auditable.
+  Validation enforces the issue's planning rules and fails closed on
+  its negative-control shapes: duplicate item identities, selection
+  without the execution disposition, execution without a selection, a
+  provider-unavailable item carrying the execute posture, a zero-item
+  plan presented as ready, reuse without an exact receipt reference,
+  reason-bearing dispositions without a stated reason, selected items
+  without an expected-receipt contract, and execution postures that do
+  not match their disposition. Seeded tests cover the
   disposition vocabulary, each negative shape, and serialization
   round-trip; proof.plan.v1 remains the historical reader, not the
   authority. The planner rewiring, artifact output, and dry-run
