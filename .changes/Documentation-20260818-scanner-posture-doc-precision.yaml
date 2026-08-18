@@ -1,0 +1,7 @@
+kind: Documentation
+body: >-
+  State the scanner posture semantics precisely (#3653 re-review note):
+  NotTestExact records that a predicate is implied by not(test) and
+  cannot hold under test, not that it is exactly equivalent to
+  not(test) — not(P) for any test-requiring P lands there and can be
+  stronger. Comment-only; no behavior change.
