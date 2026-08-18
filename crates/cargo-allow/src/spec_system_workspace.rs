@@ -1285,6 +1285,46 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn canonical_declaration_converter_routes_every_class_variant() -> Result<(), String> {
+        use allow_policy::spec_system::PrecommitChangeClass as Legacy;
+        let variants = [
+            (Legacy::BehaviorChange, "behavior_change"),
+            (Legacy::BugFix, "bug_fix"),
+            (
+                Legacy::RefactorNoIntendedBehaviorChange,
+                "refactor_no_intended_behavior_change",
+            ),
+            (Legacy::SpecOrPolicyChange, "spec_or_policy_change"),
+            (Legacy::TestOnlyChange, "test_only_change"),
+            (Legacy::GeneratedArtifactChange, "generated_artifact_change"),
+            (Legacy::DocsOnly, "docs_only"),
+            (Legacy::ToolingOrCiChange, "tooling_or_ci_change"),
+            (
+                Legacy::DependencyOrToolchainChange,
+                "dependency_or_toolchain_change",
+            ),
+            (Legacy::ResearchOrEvidenceOnly, "research_or_evidence_only"),
+            (Legacy::Mechanical, "mechanical"),
+            (Legacy::UnknownOrMixed, "unknown_or_mixed"),
+        ];
+        for (legacy, expected) in variants {
+            let declaration = PrecommitChangeDeclaration {
+                class: Some(legacy),
+                ..Default::default()
+            };
+            let canonical = canonical_declaration(&declaration);
+            let routed = canonical
+                .class
+                .map(|class| class.as_str())
+                .ok_or_else(|| format!("variant {expected} lost its class"))?;
+            if routed != expected {
+                return Err(format!("variant {} misrouted to {routed}", legacy.as_str()));
+            }
+        }
+        Ok(())
+    }
+
     /// The inventory-posture derivation contract from the legacy adapter:
     /// partial rust-test inventory forces Partial; otherwise the file
     /// inventory completeness decides (Complete|Scoped -> Complete,
@@ -1497,15 +1537,8 @@ mod tests {
             );
         }
 
-        let declaration = PrecommitChangeDeclaration {
-            class: Some(allow_policy::spec_system::PrecommitChangeClass::BehaviorChange),
-            ..Default::default()
-        };
-        let legacy = evaluate_paired_precommit_objectives(&paired, &declaration, false);
-
         let graph = canonical_graph(&paired.candidate.graph)?;
         let slice = canonical_slice(&paired.candidate.slice)?;
-        let canonical_declaration = canonical_declaration(&declaration);
         let movements = canonical_movements(&paired.movements)?;
         let diagnostics = paired
             .candidate
@@ -1517,11 +1550,19 @@ mod tests {
                 message: diagnostic.message.clone(),
             })
             .collect::<Vec<_>>();
+
+        // Declared class: the declared value must reach both evaluations
+        // unchanged and the findings must agree.
+        let declared = PrecommitChangeDeclaration {
+            class: Some(allow_policy::spec_system::PrecommitChangeClass::BehaviorChange),
+            ..Default::default()
+        };
+        let legacy = evaluate_paired_precommit_objectives(&paired, &declared, false);
         let engine = intent_engine::evaluate_paired_precommit_objectives_v1(
             &graph,
             &slice,
             &movements,
-            &canonical_declaration,
+            &canonical_declaration(&declared),
             &diagnostics,
             canonical_inventory_posture(&paired.candidate),
             false,
@@ -1533,6 +1574,36 @@ mod tests {
                     .to_string(),
             );
         }
+
+        // Movement-causal variant: with no declared class, classification
+        // must be INFERRED from the movements on both sides — the
+        // requirement-added movement forces spec_or_policy_change — so
+        // the compared change class is causally load-bearing for the
+        // movements this scenario stages.
+        let undeclared = PrecommitChangeDeclaration::default();
+        let legacy_unclassified = evaluate_paired_precommit_objectives(&paired, &undeclared, false);
+        if legacy_unclassified.change_class.as_str() != "spec_or_policy_change" {
+            return Err(format!(
+                "legacy inference did not classify the requirement-added movement: {}",
+                legacy_unclassified.change_class.as_str()
+            ));
+        }
+        let engine_unclassified = intent_engine::evaluate_paired_precommit_objectives_v1(
+            &graph,
+            &slice,
+            &movements,
+            &canonical_declaration(&undeclared),
+            &diagnostics,
+            canonical_inventory_posture(&paired.candidate),
+            false,
+        );
+        if engine_unclassified.change_class.as_str() != "spec_or_policy_change" {
+            return Err(format!(
+                "engine inference did not classify the requirement-added movement: {}",
+                engine_unclassified.change_class.as_str()
+            ));
+        }
+        assert_evaluation_parity(&legacy_unclassified, &engine_unclassified)?;
 
         let _ = fs::remove_dir_all(&root);
         Ok(())
