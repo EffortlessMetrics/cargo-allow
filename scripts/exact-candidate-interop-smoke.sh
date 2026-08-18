@@ -208,7 +208,7 @@ for product in cargo-allow cargo-intent cargo-proof; do
   chmod +x "${sentinel_dir}/${product}"
 done
 printf '%s\n' "${sentinel_marker}" >"${sentinel_dir}/sentinel-marker.txt"
-printf '%s\n' "${sentinel_marker}" >"${ROOT}/crates/sentinel-marker.txt"
+printf '%s\n' "${sentinel_marker}" >"${sentinel_dir}/crates-sentinel-marker.txt"
 
 # --- Journey A: cargo-allow alone ---
 log "journey A: cargo-allow alone (compatible)"
