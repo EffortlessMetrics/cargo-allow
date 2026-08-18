@@ -1,0 +1,13 @@
+kind: Fixed
+body: >-
+  Make the interop harness's wrong-product negative control real instead
+  of simulated (#2605 installment). The previous control classified a
+  filename in Python without running any product binary; it now builds a
+  real isolated consumer repository, configures cargo-allow's intent
+  delegation to point at the installed cargo-proof binary, stages a
+  change, and runs the installed cargo-allow precommit check — the real
+  discovery path must reject it (wrong_product: expected cargo-intent,
+  got cargo-proof) with a non-zero exit for the negative to pass. This
+  moves the incompatible-combination class of the compatibility matrix
+  from harness-internal simulation to actual product behavior, verified
+  locally against the real failure message before landing.
