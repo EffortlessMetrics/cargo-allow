@@ -42,19 +42,19 @@ fn parity_contracts_load_from_fixtures() -> Result<(), String> {
 
 #[test]
 fn evaluator_packet_envelope_roundtrip() -> Result<(), String> {
-    let packet = crate::IntentEnginePacketEnvelopeV1::new(
+    let packet = intent_protocol::IntentEnginePacketEnvelopeV1::new(
         serde_json::json!({
             "schema_id": "intent.query.v1",
             "kind": "validate_artifact",
             "selector": "policy/spec-system.toml",
         }),
-        crate::IntentEnginePacketKindV1::LoadAndValidate,
+        intent_protocol::IntentEnginePacketKindV1::LoadAndValidate,
     );
     let json = serde_json::to_string(&packet)
         .map_err(|err| format!("serialize evaluator packet: {err}"))?;
-    let decoded: crate::IntentEnginePacketEnvelopeV1 = serde_json::from_str(&json)
+    let decoded: intent_protocol::IntentEnginePacketEnvelopeV1 = serde_json::from_str(&json)
         .map_err(|err| format!("deserialize evaluator packet: {err}"))?;
-    if decoded.kind != crate::IntentEnginePacketKindV1::LoadAndValidate {
+    if decoded.kind != intent_protocol::IntentEnginePacketKindV1::LoadAndValidate {
         return Err("packet kind did not round-trip".to_string());
     }
     if decoded.query_schema_id != intent_protocol::INTENT_QUERY_SCHEMA_ID {

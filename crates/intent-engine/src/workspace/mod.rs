@@ -2,6 +2,7 @@ mod authority_compiler;
 mod command_dispatch;
 mod composition;
 mod paired_precommit;
+mod source_views;
 
 pub use authority_compiler::{
     AUTHORITY_COMPILE_PLAN_SCHEMA_ID, AuthorityCompilePlanV1, AuthoritySourceRoleV1,
@@ -18,4 +19,8 @@ pub use composition::{
 pub use paired_precommit::{
     GraphDiagnosticV1, evaluate_paired_precommit_objectives_v1, graph_movement_kind_to_precommit,
     subject_resolution_from_diagnostic,
+};
+pub use source_views::{
+    WorkspaceCompositionSources, composition_sources_present_in_view,
+    read_workspace_composition_sources,
 };
