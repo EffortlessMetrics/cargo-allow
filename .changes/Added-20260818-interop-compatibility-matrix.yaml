@@ -1,0 +1,18 @@
+kind: Added
+body: >-
+  Add the bounded, risk-based compatibility matrix to the exact-candidate
+  interop harness (#2605 installment 4). Every cell is a real run of the
+  installed candidates with expected/actual posture and failure boundary
+  recorded in the receipt: the baseline cell proves the current
+  allow + intent + proof set dry-runs green together; the
+  missing-optional-provider cell records the allow-only journey posture
+  (provider absent, no embedded fallback) already exercised for real;
+  and the future-unsupported-protocol cell feeds a delegation config
+  declaring a future schema generation through the real loader, which
+  must fail closed refusing the unknown schema (verified locally:
+  MalformedConfig naming the unexpected schema_id). Previous-compatible
+  -version cells are explicitly recorded as omitted — no historical
+  candidates exist to install outside the release lane, so claiming
+  them here would be evidence-free. The receipt now carries a
+  compatibility_matrix block with selected/omitted counts and the
+  per-cell records.
