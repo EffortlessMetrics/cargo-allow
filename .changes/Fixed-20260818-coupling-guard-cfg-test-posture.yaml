@@ -1,0 +1,16 @@
+kind: Fixed
+body: >-
+  Make the source-coupling guard cfg(test)-aware and state its dev-scope
+  posture explicitly (#3646). Use declarations and whole modules gated
+  on #[cfg(test)] inside production-named files no longer contribute
+  production coupling facts — mirroring the *_tests.rs file exemption at
+  item level — while cfg(not(test)), cfg(feature = ...), and ungated
+  modules keep contributing facts as before. This closes the blind spot
+  found during the #3523 parity lanes, where dev-scope cross-family test
+  code in production-named files had to hide behind fully-qualified
+  inline paths because the use-declaration scan could not see
+  cfg-gating; the guard's module docs now state the posture. Seeded
+  tests cover the gated use, the gated module subtree (including nested
+  modules), cfg(not(test)), unrelated cfg forms, and the
+  cfg(all(test, ...)) composition, and the existing #3523/#3524 parity
+  suites pass unchanged.

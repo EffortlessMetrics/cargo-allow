@@ -214,6 +214,35 @@ pub fn rust_source_declares_no_std(source: &str) -> CargoAllowResult<bool> {
     }))
 }
 
+/// Whether the item's own attribute list gates it on `cfg(test)`
+/// (directly or through `cfg(all(..., test, ...))`). `cfg(not(test))`
+/// and other cfg forms are not test gating.
+fn item_is_test_cfg_gated(node: Node<'_>, source: &str) -> bool {
+    let mut current = node.prev_sibling();
+    while let Some(sibling) = current {
+        if sibling.kind() != "attribute_item" {
+            break;
+        }
+        if let Some(text) = node_text(source, sibling)
+            && let Some(inner) = text
+                .trim()
+                .strip_prefix("#[cfg(")
+                .and_then(|inner| inner.strip_suffix(")]"))
+        {
+            let compact: String = inner.chars().filter(|ch| !ch.is_whitespace()).collect();
+            let gated = compact == "test"
+                || (compact.starts_with("all(")
+                    && compact.contains("test")
+                    && !compact.contains("not("));
+            if gated {
+                return true;
+            }
+        }
+        current = sibling.prev_sibling();
+    }
+    false
+}
+
 fn strip_rust_comments(text: &str) -> Option<String> {
     let mut output = String::new();
     let mut index = 0;
@@ -237,6 +266,16 @@ fn collect_coupling_facts(
     manifest_env_is_unshadowed: bool,
     facts: &mut Vec<RustSourceCoupling>,
 ) {
+    // Test-gated items are dev-scope (#3646): a `#[cfg(test)]` use or a
+    // `#[cfg(test)]` module (typically `mod tests`) does not contribute
+    // production coupling facts, and the module's whole subtree is
+    // pruned. This mirrors the *_tests.rs file exemption at item level
+    // and keeps the guard honest about cfg-gating instead of relying on
+    // fully-qualified paths being invisible to the use-declaration scan.
+    if matches!(node.kind(), "use_declaration" | "mod_item") && item_is_test_cfg_gated(node, source)
+    {
+        return;
+    }
     let kind = match node.kind() {
         "use_declaration" => Some(RustSourceCouplingKind::UseDeclaration),
         "mod_item" => Some(RustSourceCouplingKind::InlineModule),

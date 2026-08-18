@@ -1,3 +1,9 @@
+//! Source-coupling posture (#3646): files named like tests are exempt,
+//! and inside production-named files, items gated on `cfg(test)` (and
+//! whole `#[cfg(test)]` modules) are dev-scope — their use declarations
+//! contribute no production coupling facts. Production cross-family
+//! imports remain enforced wherever they compile into the binary.
+
 use super::governance_projection::{
     GovernanceProjection, crate_identity_for_path as projection_identity_for_path, identity_owners,
     load_governance_projection_at,

@@ -326,3 +326,78 @@ fn preserves_parse_error_signal() -> Result<(), String> {
     }
     Ok(())
 }
+
+#[test]
+fn cfg_test_gated_uses_do_not_contribute_coupling_facts() -> Result<(), String> {
+    let source = concat!(
+        "use product_a::api;\n",
+        "#[cfg(test)]\n",
+        "use product_b::dev_api;\n",
+        "#[cfg(test)]\n",
+        "#[allow(dead_code)]\n",
+        "mod tests {\n",
+        "    use product_c::test_api;\n",
+        "    mod nested {\n",
+        "        use product_d::nested_api;\n",
+        "    }\n",
+        "}\n",
+        "mod not_gated {\n",
+        "    use product_e::internal_api;\n",
+        "}\n",
+    );
+    let scan = scan_rust_source_coupling(source)
+        .map_err(|error| format!("scan cfg-gated source: {error}"))?;
+    if scan.has_parse_error {
+        return Err("valid cfg fixture parsed with errors".to_string());
+    }
+    let use_paths: Vec<_> = scan
+        .facts
+        .iter()
+        .filter(|fact| fact.kind == RustSourceCouplingKind::UseDeclaration)
+        .map(|fact| fact.path.as_str())
+        .collect();
+    if use_paths != ["product_a::api", "product_e::internal_api"] {
+        return Err(format!(
+            "cfg(test) gating not honored; use facts: {use_paths:?}"
+        ));
+    }
+    let module_paths: Vec<_> = scan
+        .facts
+        .iter()
+        .filter(|fact| fact.kind == RustSourceCouplingKind::InlineModule)
+        .map(|fact| fact.path.as_str())
+        .collect();
+    if module_paths != ["not_gated"] {
+        return Err(format!(
+            "cfg(test) module not pruned or wrong module facts: {module_paths:?}"
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn cfg_not_test_and_unrelated_cfg_are_not_test_gating() -> Result<(), String> {
+    let source = concat!(
+        "#[cfg(not(test))]\n",
+        "use product_f::not_test_api;\n",
+        "#[cfg(feature = \"heavy\")]\n",
+        "use product_g::feature_api;\n",
+        "#[cfg(all(test, debug_assertions))]\n",
+        "use product_h::debug_test_api;\n",
+    );
+    let scan = scan_rust_source_coupling(source)
+        .map_err(|error| format!("scan cfg-form source: {error}"))?;
+    if scan.has_parse_error {
+        return Err("valid cfg-form fixture parsed with errors".to_string());
+    }
+    let use_paths: Vec<_> = scan
+        .facts
+        .iter()
+        .filter(|fact| fact.kind == RustSourceCouplingKind::UseDeclaration)
+        .map(|fact| fact.path.as_str())
+        .collect();
+    if use_paths != ["product_f::not_test_api", "product_g::feature_api"] {
+        return Err(format!("cfg form misclassified; use facts: {use_paths:?}"));
+    }
+    Ok(())
+}
