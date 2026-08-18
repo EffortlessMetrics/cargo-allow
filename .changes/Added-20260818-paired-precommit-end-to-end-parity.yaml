@@ -10,9 +10,10 @@ body: >-
   evaluate_paired_precommit_objectives_v1 must agree with the legacy
   adapter finding-for-finding — change class, and every finding's code,
   subject, posture, message, and action. A vacuity guard requires the
-  fixture to produce real findings on both sides, and the
-  inventory-posture derivation contract is exercised through the
-  documented legacy rules. The dispatch surface gains an end-to-end
+  fixture to produce real findings on both sides. The inventory posture
+  is derived test-side through the documented legacy rules and passed
+  to the engine as a parameter; engine-side derivation parity belongs
+  to the future cargo-intent orchestrator. The dispatch surface gains an end-to-end
   binding: the command the real report assembly embeds in the contract
   sample must be a member of the canonical dispatched vocabulary. The
   round-trip converter is the validated approach the slice-E
