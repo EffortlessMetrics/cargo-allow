@@ -8,7 +8,7 @@
 #   A — cargo-allow alone
 #   B — cargo-intent alone
 #   C — cargo-proof explicit-unavailable plan (no provider fabricated) + dry-run fixture
-#   D — cargo-proof dry-run then invoke installed cargo-allow
+#   D — independent cargo-allow execution + independent proof dry-run
 #   E — legacy cargo-allow delegates staged precommit to installed cargo-intent
 #
 # Scenario classes covered (per journey where applicable):
@@ -824,7 +824,7 @@ receipt = {
         "journey_a_cargo_allow_alone",
         "journey_b_cargo_intent_alone",
         "journey_c_cargo_proof_explicit_unavailable_plan",
-        "journey_d_cargo_proof_invokes_cargo_allow",
+        "journey_d_independent_cargo_allow_and_proof_dry_run",
         "journey_e_cargo_allow_delegates_cargo_intent",
         "no_workspace_target_debug_binary",
         "no_workspace_crates_checkout",

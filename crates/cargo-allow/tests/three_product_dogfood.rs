@@ -74,7 +74,7 @@ fn dogfood_stage_fixture_lists_seventeen_pipeline_stages() {
             "stage fixture missing {stage_id}"
         );
     }
-    for execution in ["real", "bridged", "stubbed"] {
+    for execution in ["real", "bridged", "stubbed", "simulated"] {
         assert!(
             STAGE_FIXTURE.contains(execution),
             "stage fixture missing execution mode {execution}"

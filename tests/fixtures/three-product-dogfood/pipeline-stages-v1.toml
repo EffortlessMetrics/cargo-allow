@@ -16,11 +16,11 @@ stages = [
   { id = "evidence_ripr", product = "proof-adapter-ripr", execution = "stubbed" },
   { id = "evidence_hawk", product = "proof-adapter-hawk", execution = "stubbed" },
   { id = "evidence_test", product = "proof-adapter-command", execution = "stubbed" },
-  { id = "contradiction_eval", product = "proof-engine", execution = "real" },
+  { id = "contradiction_eval", product = "proof-engine", execution = "simulated" },
   { id = "repair", product = "cargo-allow", execution = "real" },
   { id = "precommit_gate", product = "cargo-allow", execution = "real" },
-  { id = "merge_ready_gate", product = "proof-engine", execution = "real" },
-  { id = "reconciliation", product = "cargo-allow", execution = "real" },
+  { id = "merge_ready_gate", product = "proof-engine", execution = "simulated" },
+  { id = "reconciliation", product = "cargo-allow", execution = "simulated" },
 ]
 
 stubbed_claim_boundary = [

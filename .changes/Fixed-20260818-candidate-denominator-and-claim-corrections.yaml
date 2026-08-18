@@ -2,16 +2,20 @@ kind: Fixed
 body: >-
   Reconcile the candidate denominator and correct overstated dogfood and
   journey claims (#3598 installment 2). The proof-candidate smoke's
-  header, receipt claim boundary, example receipt, and its
-  characterization-test pin all said five-crate while the checked
-  fixture authority (proof-candidate-crate-set.toml) lists six crates —
-  every site now says six, agreeing with the checked package authority
-  rather than a stale shell constant. Journey D in the interop harness
-  is reworded to what actually runs: installed cargo-allow executes for
+  header, receipt claim boundary, example receipt (order array), its
+  characterization-test crate pin, and the test's own name all said
+  five-crate while the checked fixture authority
+  (proof-candidate-crate-set.toml) lists six — every site now says six,
+  agreeing with the checked package authority rather than a stale shell
+  constant. Journey D in the interop harness —
+  its block, header, receipt claim boundary, example receipt, and the
+  journeys fixture — is reworded to what actually runs: installed cargo-allow executes for
   real and installed cargo-proof dry-runs a static plan fixture
   independently against the same consumer root — cargo-proof does not
   invoke cargo-allow. The three-product dogfood smoke's simulated
   stages (contradiction_eval, merge_ready_gate, reconciliation — inline
   Python characterizations, not the proof-engine APIs they name) are
-  marked execution=simulated with explanatory comments, joining the
-  existing stubbed labeling for the fake-provider evidence stage.
+  marked execution=simulated with explanatory comments in both the
+  script and the stage inventory fixture, with the characterization
+  test pinning the simulated mode, joining the existing stubbed
+  labeling for the fake-provider evidence stage.
