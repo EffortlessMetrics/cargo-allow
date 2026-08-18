@@ -1,0 +1,20 @@
+kind: Added
+body: >-
+  Add the evidence-oriented proof plan contract (#3599 slice A,
+  unblocked by #3598's completion). ProofPlanV2 and its item contract
+  land in proof-protocol: every applicable evidence need carries
+  exactly one of the eleven planning dispositions (SelectedForExecution
+  through NotProven), the item binds the exact repository snapshot
+  identity and a structural subject (class, revision, namespaced
+  selector, body identity, limitations), a provider selection retains
+  the namespaced request digest without flattening payloads, and the
+  expected-receipt contract states the load-bearing currentness
+  dimensions. Validation enforces the issue's planning rules and fails
+  closed on its negative-control shapes: duplicate item identities,
+  selection without the execution disposition, execution without a
+  selection, a provider-unavailable item carrying the execute posture,
+  and a zero-item plan presented as ready. Seeded tests cover the
+  disposition vocabulary, each negative shape, and serialization
+  round-trip; proof.plan.v1 remains the historical reader, not the
+  authority. The planner rewiring, artifact output, and dry-run
+  consumption are the next slices.

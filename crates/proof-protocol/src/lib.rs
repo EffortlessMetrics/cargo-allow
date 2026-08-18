@@ -31,6 +31,7 @@ mod contradiction_dtos;
 mod parity;
 mod phase_gate_dtos;
 mod plan_dtos;
+mod plan_v2;
 mod proof_corpus;
 mod receipt_dtos;
 
@@ -52,6 +53,11 @@ pub use phase_gate_dtos::{
 pub use plan_dtos::{
     PROOF_PLAN_COMMAND_SCHEMA_ID, PROOF_PLAN_SCHEMA_ID, ProofPlanCommandV1, ProofPlanError,
     ProofPlanV1, load_proof_plan_toml, validate_proof_plan,
+};
+pub use plan_v2::{
+    ExpectedReceiptContractV1, PROOF_PLAN_V2_SCHEMA_ID, PROOF_PLAN_V2_SCHEMA_VERSION,
+    ProofItemDispositionV1, ProofItemExecutionPostureV1, ProofItemV1, ProofPlanV2,
+    ProofSubjectClassV1, ProofSubjectV1, ProviderSelectionV1,
 };
 pub use proof_corpus::{
     BindingCurrentnessV1, PROOF_CORPUS_DIGEST_V1, PROOF_CORPUS_SCHEMA_ID, ProofBindingIdentityV1,
