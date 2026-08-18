@@ -456,13 +456,16 @@ fn spec_system_command_dispatch_parity() -> Result<(), String> {
     Ok(())
 }
 
-/// Graph-compiler parity (#3524 slice E): the scenario's authority files
-/// are parsed with BOTH families' own parsers, compiled with BOTH
-/// compilers from structurally identical inputs, and the legacy graph is
-/// converted through the serde round-trip validated in #3645. The
-/// compiled graphs must be semantically identical; the round-trip itself
-/// is the drift oracle (any field divergence between the DTO families
-/// fails the conversion loudly).
+/// Graph-compiler parity (#3524 slice E): every scenario's authority
+/// files are parsed with BOTH families' own parsers (parser parity is
+/// asserted structurally), the authored seam/evidence/subject inputs are
+/// mapped to registrations exactly as the legacy orchestrator's
+/// unresolved-selector path does, the assembled input itself crosses the
+/// families through the serde round-trip (extending the drift oracle to
+/// the registration types), both compilers run, and the legacy graph
+/// converts back for semantic equality — including the scenario's
+/// expected diagnostic codes, which the mismatch scenario keeps
+/// non-vacuous.
 #[test]
 fn graph_compiler_parity_same_input_same_output() -> Result<(), String> {
     let root = repo_root();
@@ -475,106 +478,231 @@ fn graph_compiler_parity_same_input_same_output() -> Result<(), String> {
             contract.scenario_id
         ));
     }
-    for (label, relative) in [
-        ("requirement", &contract.requirement_path),
-        ("slice", &contract.slice_path),
-        ("seams", &contract.seams_path),
-        ("evidence", &contract.evidence_path),
-    ] {
-        if !root.join(relative).is_file() {
-            return Err(format!("parity scenario {label} file missing: {relative}"));
-        }
-    }
     if contract.covered_dimensions.is_empty() {
         return Err("parity contract records no covered dimensions".to_string());
     }
+    if contract.scenarios.is_empty() {
+        return Err("parity contract records no scenarios".to_string());
+    }
 
-    let requirement_text = std::fs::read_to_string(root.join(&contract.requirement_path))
-        .map_err(|error| error.to_string())?;
-    let slice_text = std::fs::read_to_string(root.join(&contract.slice_path))
-        .map_err(|error| error.to_string())?;
+    for scenario in &contract.scenarios {
+        graph_compiler_parity_scenario(&root, scenario)?;
+    }
+    Ok(())
+}
 
-    // Both families parse the same bytes with their own parsers.
+fn graph_compiler_parity_scenario(
+    root: &std::path::Path,
+    scenario: &intent_engine::GraphCompilerParityScenario,
+) -> Result<(), String> {
+    let label = &scenario.id;
+    let requirement_text = std::fs::read_to_string(root.join(&scenario.requirement_path))
+        .map_err(|error| format!("[{label}] read requirement: {error}"))?;
+    let slice_text = std::fs::read_to_string(root.join(&scenario.slice_path))
+        .map_err(|error| format!("[{label}] read slice: {error}"))?;
+
     let legacy_requirements = allow_policy::spec_system::parse_requirement_blocks_at(
-        Some(std::path::Path::new(&contract.requirement_path)),
+        Some(std::path::Path::new(&scenario.requirement_path)),
         &requirement_text,
     )
-    .map_err(|error| format!("legacy requirement parse: {error}"))?;
+    .map_err(|error| format!("[{label}] legacy requirement parse: {error}"))?;
     let legacy_slice = allow_policy::spec_system::parse_implementation_slice_at(
-        Some(std::path::Path::new(&contract.slice_path)),
+        Some(std::path::Path::new(&scenario.slice_path)),
         &slice_text,
     )
-    .map_err(|error| format!("legacy slice parse: {error}"))?;
+    .map_err(|error| format!("[{label}] legacy slice parse: {error}"))?;
     let canonical_requirements = intent_model::parse_requirement_blocks_at(
-        Some(std::path::Path::new(&contract.requirement_path)),
+        Some(std::path::Path::new(&scenario.requirement_path)),
         &requirement_text,
     )
-    .map_err(|error| format!("canonical requirement parse: {error}"))?;
+    .map_err(|error| format!("[{label}] canonical requirement parse: {error}"))?;
     let canonical_slice = intent_model::parse_implementation_slice_at(
-        Some(std::path::Path::new(&contract.slice_path)),
+        Some(std::path::Path::new(&scenario.slice_path)),
         &slice_text,
     )
-    .map_err(|error| format!("canonical slice parse: {error}"))?;
+    .map_err(|error| format!("[{label}] canonical slice parse: {error}"))?;
 
-    // Parser parity on the same inputs is itself part of the claim: the
-    // parsed inputs must be structurally identical across families.
-    let legacy_requirements_canonical: intent_model::RequirementGraph = serde_json::from_value(
+    // Parser parity: the parsed requirement graph and slice must be
+    // structurally identical across families.
+    let round_requirements: intent_model::RequirementGraph = serde_json::from_value(
         serde_json::to_value(&legacy_requirements).map_err(|error| error.to_string())?,
     )
-    .map_err(|error| format!("requirement-graph families drifted: {error}"))?;
-    if legacy_requirements_canonical != canonical_requirements {
-        return Err("requirement parser drift between families".to_string());
+    .map_err(|error| format!("[{label}] requirement-graph families drifted: {error}"))?;
+    if round_requirements != canonical_requirements {
+        return Err(format!(
+            "[{label}] requirement parser drift between families"
+        ));
     }
-    let legacy_slice_canonical: intent_model::ImplementationSliceV1 = serde_json::from_value(
+    let round_slice: intent_model::ImplementationSliceV1 = serde_json::from_value(
         serde_json::to_value(&legacy_slice).map_err(|error| error.to_string())?,
     )
-    .map_err(|error| format!("implementation-slice families drifted: {error}"))?;
-    if legacy_slice_canonical != canonical_slice {
-        return Err("slice parser drift between families".to_string());
+    .map_err(|error| format!("[{label}] implementation-slice families drifted: {error}"))?;
+    if round_slice != canonical_slice {
+        return Err(format!("[{label}] slice parser drift between families"));
     }
 
-    let legacy_graph = allow_policy::spec_system::compile_spec_graph(
-        allow_policy::spec_system::GraphCompileInput {
-            requirement_graphs: vec![legacy_requirements],
-            implementation_slices: vec![legacy_slice],
-            ..Default::default()
-        },
-    );
-    let canonical_graph = intent_engine::compile_spec_graph(intent_model::GraphCompileInput {
-        requirement_graphs: vec![canonical_requirements],
-        implementation_slices: vec![canonical_slice],
-        ..Default::default()
-    });
+    // Authored-registration inputs, mapped exactly like the legacy
+    // orchestrator's unresolved-selector path: seams one-to-one, claims
+    // field-for-field with role-partitioned subject ids, subjects
+    // registered from the authored selector with the authored fallback
+    // source identity.
+    let mut seams = Vec::new();
+    let mut evidence_claims = Vec::new();
+    let mut subjects = Vec::new();
+    if let Some(seams_path) = &scenario.seams_path {
+        let seams_text = std::fs::read_to_string(root.join(seams_path))
+            .map_err(|error| format!("[{label}] read seams: {error}"))?;
+        let legacy_seams = allow_policy::spec_system::parse_authored_seams_at(
+            Some(std::path::Path::new(seams_path)),
+            &seams_text,
+        )
+        .map_err(|error| format!("[{label}] legacy seams parse: {error}"))?;
+        seams = legacy_seams
+            .seam
+            .iter()
+            .map(
+                |seam| allow_policy::spec_system::ImplementationSeamRegistration {
+                    id: seam.id.clone(),
+                    owner: seam.owner.clone(),
+                    operation: seam.operation.clone(),
+                    source: seam.source.clone(),
+                },
+            )
+            .collect();
+    }
+    if let Some(evidence_path) = &scenario.evidence_path {
+        let evidence_text = std::fs::read_to_string(root.join(evidence_path))
+            .map_err(|error| format!("[{label}] read evidence: {error}"))?;
+        let legacy_evidence = allow_policy::spec_system::parse_authored_evidence_at(
+            Some(std::path::Path::new(evidence_path)),
+            &evidence_text,
+        )
+        .map_err(|error| format!("[{label}] legacy evidence parse: {error}"))?;
+        for claim in &legacy_evidence.evidence {
+            let mut subject_ids = Vec::new();
+            let mut related_subject_ids = Vec::new();
+            for authored_subject in &claim.subject {
+                let subject_id =
+                    allow_policy::spec_system::EvidenceSubjectId(authored_subject.id.clone());
+                let target_name = authored_subject.target.rsplit(':').next().unwrap_or("");
+                subjects.push(allow_policy::spec_system::EvidenceSubjectRegistration {
+                    id: subject_id.clone(),
+                    role: match authored_subject.role {
+                        allow_policy::spec_system::AuthoredSubjectRole::ExactEvidence => {
+                            allow_policy::spec_system::EvidenceSubjectRole::ExactEvidence
+                        }
+                        allow_policy::spec_system::AuthoredSubjectRole::RelatedWeak => {
+                            allow_policy::spec_system::EvidenceSubjectRole::RelatedWeak
+                        }
+                    },
+                    package: authored_subject.package.clone(),
+                    target: target_name.to_string(),
+                    module_path: authored_subject.module_path.clone(),
+                    test_name: authored_subject.test_name.clone(),
+                    source: claim.source.clone(),
+                    source_identity: format!("authored-selector:{}", authored_subject.id.clone()),
+                });
+                if authored_subject.role
+                    == allow_policy::spec_system::AuthoredSubjectRole::ExactEvidence
+                {
+                    subject_ids.push(subject_id);
+                } else {
+                    related_subject_ids.push(subject_id);
+                }
+            }
+            evidence_claims.push(allow_policy::spec_system::EvidenceClaimRegistration {
+                id: claim.id.clone(),
+                requirement_id: claim.requirement_id.clone(),
+                slice_id: claim.slice_id.clone(),
+                seam_id: claim.seam_id.clone(),
+                purpose: claim.purpose,
+                precondition: claim.precondition.clone(),
+                operation: claim.operation.clone(),
+                expected_observable: claim.expected_observable.clone(),
+                discriminator: claim.discriminator.clone(),
+                claim_boundary: claim.claim_boundary.clone(),
+                source: claim.source.clone(),
+                subject_ids,
+                related_subject_ids,
+            });
+        }
+    }
+
+    let legacy_input = allow_policy::spec_system::GraphCompileInput {
+        requirement_graphs: vec![legacy_requirements],
+        implementation_slices: vec![legacy_slice],
+        seams,
+        evidence_claims,
+        subjects,
+    };
+    // The compile input itself crosses the families through the
+    // round-trip, extending the drift oracle to the registration types.
+    let canonical_input: intent_model::GraphCompileInput = serde_json::from_value(
+        serde_json::to_value(&legacy_input).map_err(|error| error.to_string())?,
+    )
+    .map_err(|error| format!("[{label}] compile-input families drifted: {error}"))?;
+
+    let legacy_graph = allow_policy::spec_system::compile_spec_graph(legacy_input);
+    let canonical_graph = intent_engine::compile_spec_graph(canonical_input);
 
     let converted: intent_model::CompiledSpecGraph = serde_json::from_value(
         serde_json::to_value(&legacy_graph).map_err(|error| error.to_string())?,
     )
-    .map_err(|error| format!("compiled-graph families drifted: {error}"))?;
+    .map_err(|error| format!("[{label}] compiled-graph families drifted: {error}"))?;
 
     if converted.snapshot_id != canonical_graph.snapshot_id {
         return Err(format!(
-            "snapshot id drift: legacy {} != canonical {}",
+            "[{label}] snapshot id drift: legacy {} != canonical {}",
             converted.snapshot_id.0, canonical_graph.snapshot_id.0
         ));
     }
     if converted.requirements != canonical_graph.requirements {
-        return Err("requirement nodes drift between compilers".to_string());
+        return Err(format!(
+            "[{label}] requirement nodes drift between compilers"
+        ));
     }
     if converted.slices != canonical_graph.slices {
-        return Err("slice nodes drift between compilers".to_string());
+        return Err(format!("[{label}] slice nodes drift between compilers"));
     }
     if converted.seams != canonical_graph.seams {
-        return Err("seam nodes drift between compilers".to_string());
+        return Err(format!("[{label}] seam nodes drift between compilers"));
     }
     if converted.evidence_claims != canonical_graph.evidence_claims {
-        return Err("evidence-claim nodes drift between compilers".to_string());
+        return Err(format!(
+            "[{label}] evidence-claim nodes drift between compilers"
+        ));
     }
     if converted.subjects != canonical_graph.subjects {
-        return Err("subject nodes drift between compilers".to_string());
+        return Err(format!("[{label}] subject nodes drift between compilers"));
+    }
+
+    let mut legacy_codes = converted
+        .diagnostics
+        .iter()
+        .map(|diagnostic| diagnostic.code.as_str().to_string())
+        .collect::<Vec<_>>();
+    legacy_codes.sort();
+    let mut canonical_codes = canonical_graph
+        .diagnostics
+        .iter()
+        .map(|diagnostic| diagnostic.code.as_str().to_string())
+        .collect::<Vec<_>>();
+    canonical_codes.sort();
+    if legacy_codes != canonical_codes {
+        return Err(format!(
+            "[{label}] diagnostic codes drift: legacy {legacy_codes:?} != canonical {canonical_codes:?}"
+        ));
+    }
+    let mut expected = scenario.expect_diagnostics.clone();
+    expected.sort();
+    if legacy_codes != expected {
+        return Err(format!(
+            "[{label}] diagnostics {legacy_codes:?} do not match the recorded expectation {expected:?}"
+        ));
     }
     if converted.diagnostics != canonical_graph.diagnostics {
         return Err(format!(
-            "diagnostics drift between compilers: legacy {:?} != canonical {:?}",
+            "[{label}] diagnostics drift between compilers: legacy {:?} != canonical {:?}",
             converted.diagnostics, canonical_graph.diagnostics
         ));
     }

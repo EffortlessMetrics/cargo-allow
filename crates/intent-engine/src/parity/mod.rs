@@ -20,8 +20,9 @@ pub use graph_comparison::{
     load_graph_comparison_parity_contract, load_graph_movement_kinds_fixture,
 };
 pub use graph_compiler::{
-    GraphCompilerParityContract, ParityDimensionRecord, graph_compiler_parity_contract_path,
-    graph_compiler_parity_contract_paths, load_graph_compiler_parity_contract,
+    GraphCompilerParityContract, GraphCompilerParityScenario, ParityDimensionRecord,
+    graph_compiler_parity_contract_path, graph_compiler_parity_contract_paths,
+    load_graph_compiler_parity_contract,
 };
 pub use phase_obligations::{
     PhaseObligationsParityContract, load_phase_obligations_parity_contract,

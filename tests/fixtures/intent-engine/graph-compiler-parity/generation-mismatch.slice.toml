@@ -1,0 +1,39 @@
+schema_version = "2.0"
+id = "cargo-allow.slice.self-hosted-runtime-promotion.v1"
+generation = 1
+source_issue = "issue:2206"
+design_reference = "CARGO-ALLOW-SPEC-0009#spec-only-runtime-promotion"
+change_class = "spec_or_policy_change"
+claim_boundary = "Defines the accepted runtime-promotion requirement without claiming runtime implementation, current proof, or support promotion."
+non_goals = [
+  "runtime implementation",
+  "runtime proof execution",
+  "support-tier promotion",
+  "complete requirement lifecycle",
+]
+return_conditions = [
+  "A later behavior slice provides compatible implementation and current evidence closure.",
+]
+owned_seams = [
+  "seam:allow-policy:spec-system:runtime-promotion-validator",
+]
+shared_seams = [
+  "docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md",
+]
+forbidden_seams = [
+  "docs/status/SUPPORT_TIERS.md",
+  ".allow/goals/active.toml",
+]
+
+[[requirement_delta]]
+requirement_id = "CARGO-ALLOW-SPEC-0009#spec-only-runtime-promotion"
+requirement_generation = 2
+
+[implementation_claim]
+status = "outstanding"
+
+[evidence]
+state = "outstanding"
+
+[support_claim]
+state = "unchanged"
