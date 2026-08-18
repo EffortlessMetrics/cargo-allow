@@ -65,16 +65,26 @@ fn product_identity_matches_fixture() -> Result<(), String> {
 fn plan_and_dry_run_fixture_pipeline() -> Result<(), String> {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/cargo-proof");
     let obligation = root.join("intent-obligation-plan-smoke-v1.json");
-    let Err(message) = plan_from_obligation_path(&obligation) else {
+    let Err(error) = plan_from_obligation_path(&obligation) else {
         return Err("plan must not fabricate from an empty registry".to_string());
     };
-    if !message.contains(crate::plan::INTENDED_PROVIDER_ID) {
+    if error.result_state != proof_protocol::ProofResultStateV1::ProviderUnavailable {
         return Err(format!(
-            "plan failure must name the intended provider: {message}"
+            "plan failure must carry the provider_unavailable state: {:?}",
+            error.result_state
         ));
     }
-    if !message.contains("not yet established") {
-        return Err(format!("plan failure must state the limitation: {message}"));
+    if !error.message.contains(crate::plan::INTENDED_PROVIDER_ID) {
+        return Err(format!(
+            "plan failure must name the intended provider: {}",
+            error.message
+        ));
+    }
+    if !error.message.contains("not yet established") {
+        return Err(format!(
+            "plan failure must state the limitation: {}",
+            error.message
+        ));
     }
     let plan_fixture = root.join("proof-plan-smoke-v1.toml");
     let report = dry_run_from_plan_path(&plan_fixture)?;

@@ -45,6 +45,12 @@ fn example_proof_candidate_smoke_matches_contract() -> Result<(), String> {
     if observed != EXPECTED_CRATES {
         return Err(format!("proof candidate order mismatch: {observed:?}"));
     }
+    if EXPECTED_CRATES.len() != 6 {
+        return Err(format!(
+            "proof candidate crate count drifted from six: {}",
+            EXPECTED_CRATES.len()
+        ));
+    }
     for required in [
         "six_crate_proof_package_graph",
         "source_checkout_denied_during_decisive_install",
