@@ -1,7 +1,7 @@
 use cargo_proof::{
     IdentityFrameV1, OutputFormat, ProcessExitFamilyV1, ProductIdentityV1, dry_run_from_plan_path,
-    emit_frame, exit_code_for_family, load_config, plan_from_obligation_path, render_dry_run_frame,
-    render_plan_frame,
+    emit_frame, exit_code_for_family, exit_family_for_result_class, load_config,
+    plan_from_obligation_path, render_dry_run_frame, render_plan_frame,
 };
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
@@ -81,7 +81,23 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
             Ok(ProcessExitFamilyV1::Success)
         }
         Some(CargoProofCommand::Plan(args)) => {
-            let outcome = plan_from_obligation_path(&args.obligation_plan)?;
+            let outcome = match plan_from_obligation_path(&args.obligation_plan) {
+                Ok(outcome) => outcome,
+                Err(plan_error) => {
+                    // Map the exit family from the proof-corpus result
+                    // class instead of treating every plan failure as
+                    // usage (#3598 exit-family follow-up). Input failures
+                    // (missing/unreadable envelope) stay in the usage
+                    // family: they are invocation errors, not provider
+                    // posture.
+                    let family = match plan_error.result_state {
+                        proof_protocol::ProofResultStateV1::Missing => ProcessExitFamilyV1::Usage,
+                        state => exit_family_for_result_class(state.as_str()),
+                    };
+                    eprintln!("error: {}", plan_error.message);
+                    return Ok(family);
+                }
+            };
             let rendered = render_plan_frame(&outcome, output_format)?;
             print!("{rendered}");
             Ok(ProcessExitFamilyV1::Success)

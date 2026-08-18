@@ -33,8 +33,19 @@ pub fn exit_family_for_result_class(result_class: &str) -> ProcessExitFamilyV1 {
         "completed" => ProcessExitFamilyV1::Success,
         "findings" => ProcessExitFamilyV1::Blocking,
         "malformed_input" => ProcessExitFamilyV1::Usage,
-        "stale_input" | "unsupported" | "instrument_failure" | "partial_data" | "not_proven"
-        | "cancelled" | "conflict" => ProcessExitFamilyV1::InstrumentFailure,
+        // The proof-corpus vocabulary's provider-unavailable state
+        // (ProofResultStateV1::ProviderUnavailable, proof-protocol) maps to
+        // the instrument-failure family — distinct from usage — so a
+        // missing provider is never confused with a malformed command
+        // (#3598 exit-family follow-up).
+        "provider_unavailable"
+        | "stale_input"
+        | "unsupported"
+        | "instrument_failure"
+        | "partial_data"
+        | "not_proven"
+        | "cancelled"
+        | "conflict" => ProcessExitFamilyV1::InstrumentFailure,
         _ => ProcessExitFamilyV1::InstrumentFailure,
     }
 }

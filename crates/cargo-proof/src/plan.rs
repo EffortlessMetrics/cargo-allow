@@ -16,7 +16,7 @@ use proof_engine::{
 /// registry lands (#2938). Named in every unavailable result so output
 /// states exactly what is missing; never constructed as a fake.
 pub const INTENDED_PROVIDER_ID: &str = "cargo-allow";
-use proof_protocol::{PROOF_PLAN_SCHEMA_ID, ProofPlanV1};
+use proof_protocol::{PROOF_PLAN_SCHEMA_ID, ProofPlanV1, ProofResultStateV1};
 
 use crate::render::{OutputFormat, PlanFrameV1, emit_frame};
 
@@ -31,37 +31,65 @@ pub struct PlanOutcomeV1 {
     pub intent_plan_digest: String,
 }
 
+/// Plan failure carrying the proof-corpus result class so the CLI maps
+/// the exit family from the vocabulary instead of treating every error
+/// as usage (#3598 exit-family follow-up).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlanErrorV1 {
+    pub result_state: ProofResultStateV1,
+    pub message: String,
+}
+
+impl std::fmt::Display for PlanErrorV1 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
 /// Plan proof execution from an intent obligation plan file (JSON).
-pub fn plan_from_obligation_path(path: &Path) -> Result<PlanOutcomeV1, String> {
-    let text =
-        std::fs::read_to_string(path).map_err(|err| format!("read {}: {err}", path.display()))?;
-    let envelope: intent_protocol::IntentObligationPlanEnvelopeV1 =
-        serde_json::from_str(&text).map_err(|err| format!("parse intent envelope JSON: {err}"))?;
+pub fn plan_from_obligation_path(path: &Path) -> Result<PlanOutcomeV1, PlanErrorV1> {
+    let text = std::fs::read_to_string(path).map_err(|err| PlanErrorV1 {
+        result_state: ProofResultStateV1::Missing,
+        message: format!("read {}: {err}", path.display()),
+    })?;
+    let envelope: intent_protocol::IntentObligationPlanEnvelopeV1 = serde_json::from_str(&text)
+        .map_err(|err| PlanErrorV1 {
+            result_state: ProofResultStateV1::Missing,
+            message: format!("parse intent envelope JSON: {err}"),
+        })?;
     plan_from_intent_envelope(&envelope)
 }
 
 /// Plan proof execution from an intent obligation plan envelope.
 fn plan_from_intent_envelope(
     envelope: &intent_protocol::IntentObligationPlanEnvelopeV1,
-) -> Result<PlanOutcomeV1, String> {
+) -> Result<PlanOutcomeV1, PlanErrorV1> {
     // Provider selection is not yet established (#3598/#2938): the
     // product registry is empty and no provider is fabricated. The
     // intent digest stays available, and the failure names the exact
     // missing provider and the limitation.
     let registry = ProviderRegistryV1::new(Vec::new());
-    // Digest validation still runs first: an invalid envelope fails as a
-    // usage error rather than a provider result.
-    intent_obligation_plan_digest(envelope)?;
+    // Digest validation still runs first: an invalid envelope fails with
+    // the missing-input state rather than a provider result.
+    intent_obligation_plan_digest(envelope).map_err(|err| PlanErrorV1 {
+        result_state: ProofResultStateV1::Missing,
+        message: err,
+    })?;
     let Err(err) = plan_proof_execution_from_intent(envelope, &registry) else {
-        return Err(
-            "planner produced a plan from an empty provider registry; provider selection must not fabricate"
-                .to_string(),
-        );
+        return Err(PlanErrorV1 {
+            result_state: ProofResultStateV1::Unsupported,
+            message:
+                "planner produced a plan from an empty provider registry; provider selection must not fabricate"
+                    .to_string(),
+        });
     };
-    Err(format!(
-        "provider unavailable: executable provider selection is not yet established;          intended provider `{INTENDED_PROVIDER_ID}` is not registered and no provider is fabricated;          planner result: {}",
-        planner_result_detail(&err),
-    ))
+    Err(PlanErrorV1 {
+        result_state: ProofResultStateV1::ProviderUnavailable,
+        message: format!(
+            "provider unavailable: executable provider selection is not yet established;          intended provider `{INTENDED_PROVIDER_ID}` is not registered and no provider is fabricated;          planner result: {}",
+            planner_result_detail(&err),
+        ),
+    })
 }
 
 fn planner_result_detail(err: &IntentPlannerError) -> String {
@@ -128,18 +156,25 @@ mod tests {
                 evidence_refs: vec![],
             }],
         );
-        let Err(message) = plan_from_intent_envelope(&envelope) else {
+        let Err(error) = plan_from_intent_envelope(&envelope) else {
             return Err("empty registry must not produce a plan".into());
         };
+        if error.result_state != ProofResultStateV1::ProviderUnavailable {
+            return Err(format!(
+                "unavailable result must carry the provider_unavailable state: {:?}",
+                error.result_state
+            ));
+        }
         for required in [
             "provider unavailable",
             INTENDED_PROVIDER_ID,
             "not yet established",
             "no provider is fabricated",
         ] {
-            if !message.contains(required) {
+            if !error.message.contains(required) {
                 return Err(format!(
-                    "unavailable result missing {required:?}: {message}"
+                    "unavailable result missing {required:?}: {}",
+                    error.message
                 ));
             }
         }

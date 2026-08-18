@@ -1,0 +1,16 @@
+kind: Changed
+body: >-
+  Wire the provider-unavailable plan failure to the proof-corpus
+  result-class exit vocabulary (#3598 exit-family follow-up). Plan
+  failures now carry a typed PlanErrorV1 with the ProofResultStateV1
+  result class — provider_unavailable for the empty-registry interim
+  result, unsupported for the fabrication guard, missing for input
+  failures — and the CLI maps the exit family from the class
+  (exit_family_for_result_class) instead of treating every error as
+  usage: a missing provider now exits in the instrument-failure family
+  (exit 1, verified against the real binary) rather than usage (exit
+  2), and the vocabulary is the proof-protocol one already consumed by
+  cargo-intent's status path. Also strengthens the #3666 review's N1
+  follow-up: the interop characterization test now pins all five
+  journey claim-boundary strings (A-E), and the proof-candidate test
+  pins the six-crate count alongside the order equality.
