@@ -230,17 +230,182 @@ fn item_is_test_cfg_gated(node: Node<'_>, source: &str) -> bool {
                 .and_then(|inner| inner.strip_suffix(")]"))
         {
             let compact: String = inner.chars().filter(|ch| !ch.is_whitespace()).collect();
-            let gated = compact == "test"
-                || (compact.starts_with("all(")
-                    && compact.contains("test")
-                    && !compact.contains("not("));
-            if gated {
+            if cfg_predicate_posture(&compact) == CfgPredicatePosture::RequiresTest {
                 return true;
             }
         }
         current = sibling.prev_sibling();
     }
     false
+}
+
+/// What a cfg predicate implies about the `test` configuration (#3646
+/// hardening). The scanner gates an item only when the predicate
+/// REQUIRES test — the item cannot compile into a production build.
+/// Identifiers are parsed structurally, so a feature or value string
+/// merely similar to `test` (for example `feature = "testing"`) never
+/// gates an item, and string values never contribute split arms.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum CfgPredicatePosture {
+    /// The predicate can only hold when cfg(test) holds: dev-scope.
+    RequiresTest,
+    /// The predicate is exactly equivalent to `not(test)`.
+    NotTestExact,
+    /// The predicate entails `not(test)` (but may be stronger): the item
+    /// cannot exist in a test build, so it must contribute coupling
+    /// facts. Negating this does NOT require test — the negation can
+    /// hold in non-test builds too.
+    ExcludesTest,
+    /// No test implication either way.
+    Independent,
+}
+
+fn posture_entails_not_test(posture: CfgPredicatePosture) -> bool {
+    matches!(
+        posture,
+        CfgPredicatePosture::NotTestExact | CfgPredicatePosture::ExcludesTest
+    )
+}
+
+fn cfg_predicate_posture(predicate: &str) -> CfgPredicatePosture {
+    let Some(head) = cfg_predicate_head(predicate) else {
+        return CfgPredicatePosture::Independent;
+    };
+    let Some(inner) = head.group else {
+        // Bare identifier or `key = "value"`: only the exact identifier
+        // `test` requires test; values are never inspected.
+        return if head.name == "test" {
+            CfgPredicatePosture::RequiresTest
+        } else {
+            CfgPredicatePosture::Independent
+        };
+    };
+    let arms = cfg_predicate_arms(inner);
+    let postures = arms
+        .iter()
+        .map(|arm| cfg_predicate_posture(arm))
+        .collect::<Vec<_>>();
+    match head.name {
+        "not" => match postures.first() {
+            Some(only) => match only {
+                CfgPredicatePosture::RequiresTest => CfgPredicatePosture::NotTestExact,
+                CfgPredicatePosture::NotTestExact => CfgPredicatePosture::RequiresTest,
+                // Soundness: `not(entails-not-test)` (for example
+                // `not(all(not(test), feature))`, i.e. "test OR
+                // feature-off") still holds in non-test builds, so it
+                // must NOT gate.
+                CfgPredicatePosture::ExcludesTest | CfgPredicatePosture::Independent => {
+                    CfgPredicatePosture::Independent
+                }
+            },
+            None => CfgPredicatePosture::Independent,
+        },
+        "all" => {
+            // A conjunction holds only when every arm holds: an arm that
+            // entails not(test) makes the whole predicate unable to hold
+            // under test; an arm that requires test forces test.
+            if postures.is_empty() {
+                return CfgPredicatePosture::Independent;
+            }
+            if postures
+                .iter()
+                .any(|posture| posture_entails_not_test(*posture))
+            {
+                return CfgPredicatePosture::ExcludesTest;
+            }
+            if postures.contains(&CfgPredicatePosture::RequiresTest) {
+                return CfgPredicatePosture::RequiresTest;
+            }
+            CfgPredicatePosture::Independent
+        }
+        "any" => {
+            // A disjunction requires test only when EVERY arm requires
+            // it. `any(test, feature = "x")` deliberately does not gate:
+            // the item still compiles into production when the other
+            // arm holds, so dropping its coupling facts would
+            // under-enforce. When every arm entails not(test), the
+            // disjunction itself entails not(test).
+            if postures.is_empty() {
+                return CfgPredicatePosture::Independent;
+            }
+            if postures
+                .iter()
+                .all(|posture| *posture == CfgPredicatePosture::RequiresTest)
+            {
+                return CfgPredicatePosture::RequiresTest;
+            }
+            if postures
+                .iter()
+                .all(|posture| posture_entails_not_test(*posture))
+            {
+                return CfgPredicatePosture::ExcludesTest;
+            }
+            CfgPredicatePosture::Independent
+        }
+        _ => CfgPredicatePosture::Independent,
+    }
+}
+
+struct CfgPredicateHead<'a> {
+    name: &'a str,
+    group: Option<&'a str>,
+}
+
+/// Parse a cfg predicate into its head: `name(inner)`, a bare
+/// identifier, or `key = "value"` (group is None for the latter two).
+fn cfg_predicate_head(predicate: &str) -> Option<CfgPredicateHead<'_>> {
+    let Some(open) = predicate.find('(') else {
+        return Some(CfgPredicateHead {
+            name: predicate,
+            group: None,
+        });
+    };
+    if !predicate.ends_with(')') {
+        return None;
+    }
+    let name = predicate.get(..open)?;
+    if name.is_empty() || !name.chars().all(|ch| ch.is_alphanumeric() || ch == '_') {
+        return None;
+    }
+    let close = predicate.len().checked_sub(1)?;
+    let inner = predicate.get(open + 1..close)?;
+    Some(CfgPredicateHead {
+        name,
+        group: Some(inner),
+    })
+}
+
+/// Split a group body into top-level comma-separated arms, respecting
+/// nesting and skipping commas inside string literals so a value like
+/// `feature = "x,test"` never produces phantom arms. Malformed nesting
+/// or unterminated strings yield no arms.
+fn cfg_predicate_arms(inner: &str) -> Vec<&str> {
+    let mut arms = Vec::new();
+    let mut depth: usize = 0;
+    let mut in_string = false;
+    let mut start: usize = 0;
+    for (index, ch) in inner.char_indices() {
+        match ch {
+            '"' => in_string = !in_string,
+            '(' if !in_string => depth = depth.saturating_add(1),
+            ')' if !in_string => depth = depth.saturating_sub(1),
+            ',' if depth == 0 && !in_string => {
+                if let Some(arm) = inner.get(start..index) {
+                    arms.push(arm);
+                }
+                start = index + 1;
+            }
+            _ => {}
+        }
+    }
+    if depth != 0 || in_string {
+        return Vec::new();
+    }
+    if let Some(arm) = inner.get(start..) {
+        arms.push(arm);
+    }
+    arms.retain(|arm| !arm.is_empty());
+    arms
 }
 
 fn strip_rust_comments(text: &str) -> Option<String> {

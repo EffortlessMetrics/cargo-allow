@@ -401,3 +401,112 @@ fn cfg_not_test_and_unrelated_cfg_are_not_test_gating() -> Result<(), String> {
     }
     Ok(())
 }
+
+#[test]
+fn cfg_predicates_similar_to_test_never_gate() -> Result<(), String> {
+    let source = concat!(
+        "#[cfg(all(feature = \"testing\"))]\n",
+        "use product_i::feature_named_testing;\n",
+        "#[cfg(target_os = \"test\")]\n",
+        "use product_j::target_named_test;\n",
+        "#[cfg(test_mode)]\n",
+        "use product_k::ident_named_test_mode;\n",
+        "#[cfg(all(any(feature = \"a\", feature = \"contest\")))]\n",
+        "use product_l::value_containing_test;\n",
+    );
+    let scan = scan_rust_source_coupling(source)
+        .map_err(|error| format!("scan lookalike source: {error}"))?;
+    if scan.has_parse_error {
+        return Err("valid lookalike fixture parsed with errors".to_string());
+    }
+    let use_paths: Vec<_> = scan
+        .facts
+        .iter()
+        .filter(|fact| fact.kind == RustSourceCouplingKind::UseDeclaration)
+        .map(|fact| fact.path.as_str())
+        .collect();
+    if use_paths.len() != 4 {
+        return Err(format!(
+            "a predicate merely similar to test dropped facts; use facts: {use_paths:?}"
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn cfg_predicate_disjunction_and_negation_entailment() -> Result<(), String> {
+    let source = concat!(
+        "#[cfg(any(test))]\n",
+        "use product_m::degenerate_any_test;\n",
+        "#[cfg(not(not(test)))]\n",
+        "use product_n::double_negation;\n",
+        "#[cfg(all(all(test, feature = \"x\"), target_os = \"linux\"))]\n",
+        "use product_o::nested_conjunction;\n",
+        "#[cfg(any(test, debug_assertions))]\n",
+        "use product_p::disjunction_with_other_arm;\n",
+        "#[cfg(all(not(test), feature = \"x\"))]\n",
+        "use product_q::non_test_conjunction;\n",
+        "#[cfg(not(feature = \"x\"))]\n",
+        "use product_r::unrelated_negation;\n",
+    );
+    let scan = scan_rust_source_coupling(source)
+        .map_err(|error| format!("scan entailment source: {error}"))?;
+    if scan.has_parse_error {
+        return Err("valid entailment fixture parsed with errors".to_string());
+    }
+    let use_paths: Vec<_> = scan
+        .facts
+        .iter()
+        .filter(|fact| fact.kind == RustSourceCouplingKind::UseDeclaration)
+        .map(|fact| fact.path.as_str())
+        .collect();
+    // Gated: any(test) (every arm requires test), not(not(test)), and the
+    // nested conjunction whose all() chain requires test. Contributing:
+    // any(test, debug_assertions) (the item ships when the other arm
+    // holds), all(not(test), ...) (non-test only), and the unrelated
+    // negation.
+    if use_paths
+        != [
+            "product_p::disjunction_with_other_arm",
+            "product_q::non_test_conjunction",
+            "product_r::unrelated_negation",
+        ]
+    {
+        return Err(format!(
+            "cfg entailment misclassified; use facts: {use_paths:?}"
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn cfg_negation_of_not_test_conjunctions_never_gate() -> Result<(), String> {
+    // Regression for the entailment soundness hole: negating a
+    // not(test)-entailing conjunction ("test OR feature-off" written in
+    // negated style) still ships in production, so it must contribute.
+    let source = concat!(
+        "#[cfg(not(all(not(test), feature = \"x\")))]\n",
+        "use product_s::negated_not_test_conjunction;\n",
+        "#[cfg(not(all(not(test), target_os = \"windows\")))]\n",
+        "use product_t::negated_not_test_platform;\n",
+        "#[cfg(all(feature = \"x,test,y\"))]\n",
+        "use product_u::comma_inside_value;\n",
+    );
+    let scan = scan_rust_source_coupling(source)
+        .map_err(|error| format!("scan negation source: {error}"))?;
+    if scan.has_parse_error {
+        return Err("valid negation fixture parsed with errors".to_string());
+    }
+    let use_paths: Vec<_> = scan
+        .facts
+        .iter()
+        .filter(|fact| fact.kind == RustSourceCouplingKind::UseDeclaration)
+        .map(|fact| fact.path.as_str())
+        .collect();
+    if use_paths.len() != 3 {
+        return Err(format!(
+            "an unsound negation or string-comma form dropped facts; use facts: {use_paths:?}"
+        ));
+    }
+    Ok(())
+}
