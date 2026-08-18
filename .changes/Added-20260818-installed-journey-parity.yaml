@@ -1,0 +1,15 @@
+kind: Added
+body: >-
+  Bind the installed-journey parity proof into the exact-candidate
+  interop harness (#3309 final installment, per the assessment on
+  #2605). The same staged state — the journey-E consumer with its
+  delegation candidate staged — now flows through BOTH surfaces of the
+  installed candidates: installed cargo-intent's own change-status
+  command runs directly on that state, and its staged_identity must
+  equal the cargo-allow delegated precommit report's
+  staged_identity_after, with both surfaces classifying the state
+  identically (unmapped staged surface; delegation gate asserted). The
+  receipt gains an installed_journey_parity record naming both
+  surfaces, the shared staged state, and the agreement proven — the
+  same protocol results end to end from real installed binaries, which
+  is #3309's acceptance.
