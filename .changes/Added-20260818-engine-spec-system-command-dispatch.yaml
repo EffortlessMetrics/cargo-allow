@@ -15,5 +15,7 @@ body: >-
   disabled, and every one of the six surfaces rejects with the surface
   name, the cargo-intent owner, and the delegation config path when the
   switch is on. A dev-scope parity test binds the engine table to the
-  cargo-allow call-site literals so neither side can drift alone. The
+  literals cargo-allow dispatches today, so engine-side drift is caught
+  by the table check and cargo-allow-side drift shows up as a mismatch
+  the next time the binding is refreshed against the call sites. The
   new module is registered in the product move-ledger.

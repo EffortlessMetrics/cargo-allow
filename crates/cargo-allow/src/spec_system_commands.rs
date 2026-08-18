@@ -253,7 +253,7 @@ delegate_spec_system = {delegate_spec_system}
             },
             "check",
         );
-        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        let _ = fs::remove_dir_all(&root);
         result.map_err(|error| format!("expected embedded authority allowed: {error}"))
     }
 
@@ -267,7 +267,7 @@ delegate_spec_system = {delegate_spec_system}
             },
             "worklist",
         );
-        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        let _ = fs::remove_dir_all(&root);
         result.map_err(|error| format!("expected embedded authority allowed: {error}"))
     }
 
@@ -300,6 +300,7 @@ delegate_spec_system = {delegate_spec_system}
                 ));
             }
         }
-        fs::remove_dir_all(&root).map_err(|error| error.to_string())
+        let _ = fs::remove_dir_all(&root);
+        Ok(())
     }
 }
