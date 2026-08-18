@@ -478,3 +478,35 @@ fn cfg_predicate_disjunction_and_negation_entailment() -> Result<(), String> {
     }
     Ok(())
 }
+
+#[test]
+fn cfg_negation_of_not_test_conjunctions_never_gate() -> Result<(), String> {
+    // Regression for the entailment soundness hole: negating a
+    // not(test)-entailing conjunction ("test OR feature-off" written in
+    // negated style) still ships in production, so it must contribute.
+    let source = concat!(
+        "#[cfg(not(all(not(test), feature = \"x\")))]\n",
+        "use product_s::negated_not_test_conjunction;\n",
+        "#[cfg(not(all(not(test), target_os = \"windows\")))]\n",
+        "use product_t::negated_not_test_platform;\n",
+        "#[cfg(all(feature = \"x,test,y\"))]\n",
+        "use product_u::comma_inside_value;\n",
+    );
+    let scan = scan_rust_source_coupling(source)
+        .map_err(|error| format!("scan negation source: {error}"))?;
+    if scan.has_parse_error {
+        return Err("valid negation fixture parsed with errors".to_string());
+    }
+    let use_paths: Vec<_> = scan
+        .facts
+        .iter()
+        .filter(|fact| fact.kind == RustSourceCouplingKind::UseDeclaration)
+        .map(|fact| fact.path.as_str())
+        .collect();
+    if use_paths.len() != 3 {
+        return Err(format!(
+            "an unsound negation or string-comma form dropped facts; use facts: {use_paths:?}"
+        ));
+    }
+    Ok(())
+}

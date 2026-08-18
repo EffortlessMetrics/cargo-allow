@@ -3,8 +3,9 @@ body: >-
   Harden the source-coupling scanner's cfg(test) recognition with
   structural predicate entailment (#3646 follow-up, from the #3649
   review notes). cfg predicates now parse into not/all/any groups and
-  bare key-value forms, and an item gates only when the predicate
-  REQUIRES test — it cannot hold in a production build. This closes the
+  bare key-value forms, and an item gates only when the predicate REQUIRES
+  test — the predicate cannot hold in any non-test build, verified by
+  entailment over the parsed predicate rather than string similarity. This closes the
   token-boundary hole where a substring match let feature = "testing" or
   similar values drop production coupling facts (under-enforcement), and
   it recognizes the remaining cfg forms correctly: nested conjunctions
@@ -17,4 +18,4 @@ body: >-
   lookalike predicates (feature/target/identifier names similar to
   test) and the full entailment matrix, including the previously seeded
   cfg(test), cfg(all(test, ...)), cfg(not(test)), and cfg(feature)
-  forms, which are unchanged.
+  forms, which are unchanged. Negating a not(test)-entailing conjunction (for example not(all(not(test), feature))) still contributes facts — it holds in production whenever the other arm is off — and commas inside cfg string values never split phantom arms; both carry seeded regressions.

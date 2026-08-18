@@ -244,16 +244,27 @@ fn item_is_test_cfg_gated(node: Node<'_>, source: &str) -> bool {
 /// REQUIRES test — the item cannot compile into a production build.
 /// Identifiers are parsed structurally, so a feature or value string
 /// merely similar to `test` (for example `feature = "testing"`) never
-/// gates an item.
+/// gates an item, and string values never contribute split arms.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum CfgPredicatePosture {
     /// The predicate can only hold when cfg(test) holds: dev-scope.
     RequiresTest,
-    /// The predicate cannot hold when cfg(test) holds: the item exists
-    /// only in non-test builds and must contribute coupling facts.
+    /// The predicate is exactly equivalent to `not(test)`.
+    NotTestExact,
+    /// The predicate entails `not(test)` (but may be stronger): the item
+    /// cannot exist in a test build, so it must contribute coupling
+    /// facts. Negating this does NOT require test — the negation can
+    /// hold in non-test builds too.
     ExcludesTest,
     /// No test implication either way.
     Independent,
+}
+
+fn posture_entails_not_test(posture: CfgPredicatePosture) -> bool {
+    matches!(
+        posture,
+        CfgPredicatePosture::NotTestExact | CfgPredicatePosture::ExcludesTest
+    )
 }
 
 fn cfg_predicate_posture(predicate: &str) -> CfgPredicatePosture {
@@ -270,24 +281,36 @@ fn cfg_predicate_posture(predicate: &str) -> CfgPredicatePosture {
         };
     };
     let arms = cfg_predicate_arms(inner);
+    let postures = arms
+        .iter()
+        .map(|arm| cfg_predicate_posture(arm))
+        .collect::<Vec<_>>();
     match head.name {
-        "not" => match arms.first() {
-            Some(only) => match cfg_predicate_posture(only) {
-                CfgPredicatePosture::RequiresTest => CfgPredicatePosture::ExcludesTest,
-                CfgPredicatePosture::ExcludesTest => CfgPredicatePosture::RequiresTest,
-                CfgPredicatePosture::Independent => CfgPredicatePosture::Independent,
+        "not" => match postures.first() {
+            Some(only) => match only {
+                CfgPredicatePosture::RequiresTest => CfgPredicatePosture::NotTestExact,
+                CfgPredicatePosture::NotTestExact => CfgPredicatePosture::RequiresTest,
+                // Soundness: `not(entails-not-test)` (for example
+                // `not(all(not(test), feature))`, i.e. "test OR
+                // feature-off") still holds in non-test builds, so it
+                // must NOT gate.
+                CfgPredicatePosture::ExcludesTest | CfgPredicatePosture::Independent => {
+                    CfgPredicatePosture::Independent
+                }
             },
             None => CfgPredicatePosture::Independent,
         },
         "all" => {
-            if arms.is_empty() {
+            // A conjunction holds only when every arm holds: an arm that
+            // entails not(test) makes the whole predicate unable to hold
+            // under test; an arm that requires test forces test.
+            if postures.is_empty() {
                 return CfgPredicatePosture::Independent;
             }
-            let postures = arms
+            if postures
                 .iter()
-                .map(|arm| cfg_predicate_posture(arm))
-                .collect::<Vec<_>>();
-            if postures.contains(&CfgPredicatePosture::ExcludesTest) {
+                .any(|posture| posture_entails_not_test(*posture))
+            {
                 return CfgPredicatePosture::ExcludesTest;
             }
             if postures.contains(&CfgPredicatePosture::RequiresTest) {
@@ -300,16 +323,24 @@ fn cfg_predicate_posture(predicate: &str) -> CfgPredicatePosture {
             // it. `any(test, feature = "x")` deliberately does not gate:
             // the item still compiles into production when the other
             // arm holds, so dropping its coupling facts would
-            // under-enforce.
-            if !arms.is_empty()
-                && arms
-                    .iter()
-                    .all(|arm| cfg_predicate_posture(arm) == CfgPredicatePosture::RequiresTest)
-            {
-                CfgPredicatePosture::RequiresTest
-            } else {
-                CfgPredicatePosture::Independent
+            // under-enforce. When every arm entails not(test), the
+            // disjunction itself entails not(test).
+            if postures.is_empty() {
+                return CfgPredicatePosture::Independent;
             }
+            if postures
+                .iter()
+                .all(|posture| *posture == CfgPredicatePosture::RequiresTest)
+            {
+                return CfgPredicatePosture::RequiresTest;
+            }
+            if postures
+                .iter()
+                .all(|posture| posture_entails_not_test(*posture))
+            {
+                return CfgPredicatePosture::ExcludesTest;
+            }
+            CfgPredicatePosture::Independent
         }
         _ => CfgPredicatePosture::Independent,
     }
@@ -345,16 +376,20 @@ fn cfg_predicate_head(predicate: &str) -> Option<CfgPredicateHead<'_>> {
 }
 
 /// Split a group body into top-level comma-separated arms, respecting
-/// nesting. Malformed nesting yields no arms.
+/// nesting and skipping commas inside string literals so a value like
+/// `feature = "x,test"` never produces phantom arms. Malformed nesting
+/// or unterminated strings yield no arms.
 fn cfg_predicate_arms(inner: &str) -> Vec<&str> {
     let mut arms = Vec::new();
     let mut depth: usize = 0;
+    let mut in_string = false;
     let mut start: usize = 0;
     for (index, ch) in inner.char_indices() {
         match ch {
-            '(' => depth = depth.saturating_add(1),
-            ')' => depth = depth.saturating_sub(1),
-            ',' if depth == 0 => {
+            '"' => in_string = !in_string,
+            '(' if !in_string => depth = depth.saturating_add(1),
+            ')' if !in_string => depth = depth.saturating_sub(1),
+            ',' if depth == 0 && !in_string => {
                 if let Some(arm) = inner.get(start..index) {
                     arms.push(arm);
                 }
@@ -363,7 +398,7 @@ fn cfg_predicate_arms(inner: &str) -> Vec<&str> {
             _ => {}
         }
     }
-    if depth != 0 {
+    if depth != 0 || in_string {
         return Vec::new();
     }
     if let Some(arm) = inner.get(start..) {
