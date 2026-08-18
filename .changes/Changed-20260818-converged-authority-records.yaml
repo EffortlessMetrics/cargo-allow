@@ -1,6 +1,6 @@
 kind: Changed
 body: >-
-  Update the move/shim/parity authorities to reflect the converged
+  Update the parity/shim authorities to reflect the converged
   five-package topology and record the #2922 dependency-path evidence
   (#3309 installment 3). The three IntentEngine parity cases whose
   proofs landed this cycle — workspace composition, graph comparison,

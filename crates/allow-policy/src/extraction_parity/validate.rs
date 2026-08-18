@@ -105,11 +105,15 @@ pub fn validate_extraction_parity_registry(
         // #3469 slice B: RepoSnapshot and RepoEdit cases are promoted to
         // `proven` after their runtime parity, reachability, ownership, and
         // independent build/package receipts flowed end-to-end in CI
-        // (#3552, #3554). Every other stage stays PR1 fail-closed
-        // (contract_only only).
+        // (#3552, #3554). #3309 installment 3 promotes the IntentEngine
+        // stage the same way: its parity cases are backed by the landed
+        // dual-run fixtures and tests (#3643-#3652). Every other stage
+        // stays PR1 fail-closed (contract_only only).
         let promotion_stage = matches!(
             entry.stage,
-            ExtractionStage::RepoSnapshot | ExtractionStage::RepoEdit
+            ExtractionStage::RepoSnapshot
+                | ExtractionStage::RepoEdit
+                | ExtractionStage::IntentEngine
         );
         match entry.disposition.as_str() {
             "contract_only" => contract_only_count += 1,
@@ -118,7 +122,7 @@ pub fn validate_extraction_parity_registry(
                 diagnostics.push(ParityDiagnostic {
                     kind: ParityDiagnosticKind::NonContractDisposition,
                     message: format!(
-                        "parity case `{}` has unsupported disposition `{other}`; only contract_only is allowed, except proven for the promoted RepoSnapshot/RepoEdit stages",
+                        "parity case `{}` has unsupported disposition `{other}`; only contract_only is allowed, except proven for the promoted RepoSnapshot/RepoEdit/IntentEngine stages",
                         entry.id
                     ),
                     case_ids: vec![entry.id.clone()],
