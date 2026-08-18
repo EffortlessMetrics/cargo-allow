@@ -1,7 +1,8 @@
 //! Intent compilation, workspace composition, and phase-evaluation engine
 //! for cargo-intent (#2586 lineage; production wiring #3306).
 //!
-//! Most users should use the `cargo-intent` CLI;
+//! Most users should use the `cargo-intent` CLI or
+//! [cargo-allow](https://github.com/EffortlessMetrics/cargo-allow);
 //! `intent-engine` orchestrates spec-system evaluation from intent-model domain
 //! facts and intent-protocol transport envelopes (the stable packet DTOs live
 //! in `intent-protocol`). It parses source-tree inputs
