@@ -190,3 +190,89 @@ fn semantic_operations_resolve_through_engine_not_protocol() -> Result<(), Strin
     }
     Ok(())
 }
+
+/// #3598 recurrence check: the fake provider must never be constructed
+/// in cargo-proof's product (non-test) code. The fake stays available in
+/// proof-engine for conformance and fixtures; this guard fails if any
+/// non-test source under this crate references it.
+#[test]
+fn fake_provider_is_absent_from_product_code() -> Result<(), String> {
+    let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut offenders = Vec::new();
+    let mut stack = vec![root];
+    while let Some(dir) = stack.pop() {
+        let entries = std::fs::read_dir(&dir).map_err(|error| error.to_string())?;
+        for entry in entries {
+            let entry = entry.map_err(|error| error.to_string())?;
+            let path = entry.path();
+            if path.is_dir() {
+                stack.push(path);
+                continue;
+            }
+            if path.extension().and_then(|ext| ext.to_str()) != Some("rs") {
+                continue;
+            }
+            // Files whose names mark them as test-only (mounted via
+            // #[cfg(test)] #[path = ...]) are not product code.
+            let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+            if name == "tests.rs" || name.ends_with("_tests.rs") {
+                continue;
+            }
+            let text = std::fs::read_to_string(&path).map_err(|error| error.to_string())?;
+            let trimmed = strip_test_modules(&text);
+            if trimmed.contains("FakeProofProvider") {
+                offenders.push(path.display().to_string());
+            }
+        }
+    }
+    if offenders.is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "fake provider referenced outside test modules: {offenders:?}"
+        ))
+    }
+}
+
+/// Remove `#[cfg(test)] mod … { … }` bodies so fixtures inside them do
+/// not count as product references. Nested braces are tracked; a
+/// malformed tail keeps the remaining text (fail-visible).
+fn strip_test_modules(text: &str) -> String {
+    let mut output = String::with_capacity(text.len());
+    let mut in_test_module = false;
+    let mut depth: usize = 0;
+    let mut saw_test_attr = false;
+    for line in text.lines() {
+        let trimmed = line.trim_start();
+        if !in_test_module {
+            if trimmed.starts_with("#[cfg(test)]") {
+                saw_test_attr = true;
+                continue;
+            }
+            if saw_test_attr && trimmed.starts_with("mod ") {
+                in_test_module = true;
+                depth = 0;
+                saw_test_attr = false;
+                continue;
+            }
+            if !trimmed.starts_with("#[") {
+                saw_test_attr = false;
+            }
+            output.push_str(line);
+            output.push('\n');
+        } else {
+            for ch in line.chars() {
+                if ch == '{' {
+                    depth = depth.saturating_add(1);
+                } else if ch == '}' {
+                    depth = depth.saturating_sub(1);
+                    if depth == 0 {
+                        in_test_module = false;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    output
+}

@@ -241,24 +241,28 @@ if not report.get("unmapped_staged_surface"):
 [[ "${b_status_exit}" -ne 0 ]] || fail "journey B expected non-zero exit for unmapped staged surface"
 record_journey "B" "cargo-intent" "Passed"
 
-# --- Journey C: cargo-proof fake/command provider ---
-log "journey C: cargo-proof plan + dry-run (fake provider)"
+# --- Journey C: cargo-proof explicit-unavailable plan + dry-run fixture ---
+# #3598: the plan command no longer fabricates a provider. The journey
+# asserts the truthful interim result — the failure names the intended
+# provider and the limitation — and the dry-run stays on the retained
+# static fixture (structured argv only, zero process execution).
+log "journey C: cargo-proof plan (explicit unavailable) + dry-run fixture"
 obligation_fixture="${ROOT}/tests/fixtures/cargo-proof/intent-obligation-plan-smoke-v1.json"
 proof_plan_fixture="${ROOT}/tests/fixtures/cargo-proof/proof-plan-smoke-v1.toml"
 [[ -f "${obligation_fixture}" ]] || fail "missing ${obligation_fixture}"
 [[ -f "${proof_plan_fixture}" ]] || fail "missing ${proof_plan_fixture}"
-"${cargo_proof_bin}" --format json plan --obligation-plan "${obligation_fixture}" >"${work_dir}/proof-plan-frame.json"
-python3 - "${work_dir}/proof-plan-frame.json" <<'PY'
-import json, sys
-from pathlib import Path
-
-frame = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-digest = frame.get("intent_plan_digest", "")
-if not digest.startswith("sha256:v1:"):
-    raise SystemExit(f"plan frame must bind intent_plan_digest, got {digest!r}")
-if digest not in frame.get("plan_id", ""):
-    raise SystemExit("plan_id must embed the intent plan digest (#3316)")
-PY
+set +e
+plan_err="$("${cargo_proof_bin}" --format json plan --obligation-plan "${obligation_fixture}" 2>&1)"
+plan_exit=$?
+set -e
+plan_truthful=false
+if [[ "${plan_exit}" -ne 0 ]] \
+  && printf '%s' "${plan_err}" | grep -q "cargo-allow" \
+  && printf '%s' "${plan_err}" | grep -q "not yet established"; then
+  plan_truthful=true
+fi
+[[ "${plan_truthful}" == "true" ]] \
+  || fail "journey C plan must fail explicitly naming the intended provider and limitation, got exit=${plan_exit} err=${plan_err}"
 dry_run_out="$("${cargo_proof_bin}" dry-run --proof-plan "${proof_plan_fixture}")"
 printf '%s\n' "${dry_run_out}" | grep -F "[structured argv]" >/dev/null \
   || fail "journey C dry-run missing structured argv marker"
