@@ -249,7 +249,11 @@ fn item_is_test_cfg_gated(node: Node<'_>, source: &str) -> bool {
 enum CfgPredicatePosture {
     /// The predicate can only hold when cfg(test) holds: dev-scope.
     RequiresTest,
-    /// The predicate is exactly equivalent to `not(test)`.
+    /// The predicate is implied by `not(test)`: whenever cfg(test) is
+    /// off the predicate may hold, and it cannot hold under test. It is
+    /// not claimed to be *equivalent* to `not(test)` — `not(P)` for any
+    /// P that requires test lands here, and such a predicate can be
+    /// stronger than plain `not(test)`.
     NotTestExact,
     /// The predicate entails `not(test)` (but may be stronger): the item
     /// cannot exist in a test build, so it must contribute coupling
