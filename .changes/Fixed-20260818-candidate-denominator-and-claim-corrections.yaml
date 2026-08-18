@@ -15,7 +15,8 @@ body: >-
   invoke cargo-allow. The three-product dogfood smoke's simulated
   stages (contradiction_eval, merge_ready_gate, reconciliation — inline
   Python characterizations, not the proof-engine APIs they name) are
-  marked execution=simulated with explanatory comments in both the
-  script and the stage inventory fixture, with the characterization
+  marked execution=simulated, with explanatory comments in the script
+  and matching markings in the stage inventory fixture, with the
+  characterization
   test pinning the simulated mode, joining the existing stubbed
   labeling for the fake-provider evidence stage.
