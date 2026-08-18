@@ -376,9 +376,16 @@ PY
     --output "${wrong_out}" 2>&1)"
   wrong_exit=$?
   set -e
+  # The failure detail surfaces in the written delegated report and/or
+  # stderr depending on platform; accept either, but require the
+  # non-zero exit and the wrong_product classification somewhere real.
   wrong_passed=false
-  if [[ "${wrong_exit}" -ne 0 ]] && printf '%s' "${wrong_err}" | grep -q "wrong_product\|wrong product"; then
-    wrong_passed=true
+  if [[ "${wrong_exit}" -ne 0 ]]; then
+    if printf '%s' "${wrong_err}" | grep -q "wrong_product\|wrong product"; then
+      wrong_passed=true
+    elif [[ -f "${wrong_out}" ]] && grep -q "wrong_product" "${wrong_out}"; then
+      wrong_passed=true
+    fi
   fi
   [[ "${wrong_passed}" == "true" ]] \
     || fail "wrong product negative expected real WrongProduct failure, got exit=${wrong_exit} err=${wrong_err}"
