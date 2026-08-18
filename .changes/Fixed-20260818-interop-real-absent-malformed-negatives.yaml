@@ -1,0 +1,16 @@
+kind: Fixed
+body: >-
+  Make two more interop negative controls real instead of simulated
+  (#2605 installment 2). Provider-absent now builds an isolated consumer
+  whose delegation config enables staged precommit without an
+  executable and runs the installed cargo-allow precommit check with the
+  CI provider override scrubbed — the real discovery must classify
+  provider_absent with a non-zero exit (no PATH hit, no env override).
+  Malformed-config now writes invalid TOML into a consumer's real
+  intent-delegation config and runs the same check — the real loader
+  must fail with MalformedConfig naming the config path. Both verified
+  locally against the actual failure messages before landing. The
+  journey-D partial proof-delegation control remains shape-level and is
+  now annotated as such: cargo-proof does not yet expose provider
+  discovery as a CLI surface, so its real path lands with the
+  journey-C registered-command installment.

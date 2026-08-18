@@ -324,18 +324,38 @@ negatives_json='[]'
 if [[ "${SKIP_NEGATIVES:-0}" != "1" ]]; then
   log "negative controls"
 
-  log "negative A: provider absent"
-  absent_class="$(
-    python3 <<'PY'
-import os
-if not os.environ.get("PROBE_BIN"):
-    print("ProviderAbsent")
-else:
-    print("InstrumentFailure")
-PY
-  )"
-  [[ "${absent_class}" == "ProviderAbsent" ]] || fail "absent negative misclassified"
-  record_negative "A" "absent" "ProviderAbsent" "true"
+  log "negative A: provider absent (real delegation discovery)"
+  absent_dir="${work_dir}/absent-consumer"
+  mkdir -p "${absent_dir}/.allow/compatibility"
+  git -C "${absent_dir}" init -q 2>/dev/null || true
+  git -C "${absent_dir}" config user.name "Interop Harness"
+  git -C "${absent_dir}" config user.email "interop@example.invalid"
+  printf 'absent\n' >"${absent_dir}/staged.txt"
+  git -C "${absent_dir}" add staged.txt
+  printf 'schema_id = "cargo-allow.intent-delegation.v1"\ndelegate_staged_precommit = true\ntimeout_secs = 30\n' \
+    >"${absent_dir}/.allow/compatibility/intent-delegation.toml"
+  absent_out="${absent_dir}/precommit-absent.json"
+  set +e
+  absent_err="$(env -u CARGO_INTENT_BIN "${cargo_allow_bin}" check \
+    --root "${absent_dir}" \
+    --profile spec-system \
+    --phase precommit \
+    --staged \
+    --format json \
+    --output "${absent_out}" 2>&1)"
+  absent_exit=$?
+  set -e
+  absent_passed=false
+  if [[ "${absent_exit}" -ne 0 ]]; then
+    if printf '%s' "${absent_err}" | grep -q "provider_absent"; then
+      absent_passed=true
+    elif [[ -f "${absent_out}" ]] && grep -q "provider_absent" "${absent_out}"; then
+      absent_passed=true
+    fi
+  fi
+  [[ "${absent_passed}" == "true" ]] \
+    || fail "absent negative expected real ProviderAbsent failure, got exit=${absent_exit} err=${absent_err}"
+  record_negative "A" "absent" "ProviderAbsent" "${absent_passed}"
 
   log "negative A: workspace target leak rejected"
   ws_target="${ROOT}/target/debug/cargo-allow"
@@ -418,7 +438,10 @@ PY
   [[ "${wrong_exit}" -ne 0 ]] || fail "wrong snapshot negative expected failure"
   record_negative "C" "wrong_snapshot" "ProofPlanInvalid" "true"
 
-  log "negative D: partial proof-delegation config"
+  # Shape-level until cargo-proof exposes provider-discovery as a CLI
+  # surface (the journey-C registered-command installment); the config
+  # shape it validates is the one the real loader will reject/ignore.
+  log "negative D: partial proof-delegation config (shape-level; real path lands with the provider CLI)"
   partial_dir="${work_dir}/partial-consumer"
   mkdir -p "${partial_dir}/.allow/compatibility"
   printf 'schema_id = "proof.cargo-allow-delegation.v1"\n' >"${partial_dir}/.allow/compatibility/proof-delegation.toml"
@@ -436,27 +459,34 @@ PY
   [[ "${partial_class}" == "PartialConfig" ]] || fail "partial config negative failed"
   record_negative "D" "partial" "PartialConfig" "true"
 
-  log "negative E: malformed intent delegation config"
-  bad_config="${work_dir}/bad-intent-delegation.toml"
-  printf 'not_valid_toml [[[\n' >"${bad_config}"
-  malformed_delegate_class="$(
-    python3 - "${bad_config}" <<'PY'
-import sys
-from pathlib import Path
-try:
-    import tomllib
-except ImportError:
-    import tomli as tomllib
-path = Path(sys.argv[1])
-try:
-    tomllib.loads(path.read_text(encoding="utf-8"))
-    print("InstrumentFailure")
-except Exception:
-    print("MalformedConfig")
-PY
-  )"
-  [[ "${malformed_delegate_class}" == "MalformedConfig" ]] || fail "malformed delegation negative failed"
-  record_negative "E" "malformed" "MalformedConfig" "true"
+  log "negative E: malformed intent delegation config (real parse path)"
+  malformed_dir="${work_dir}/malformed-config-consumer"
+  mkdir -p "${malformed_dir}/.allow/compatibility"
+  git -C "${malformed_dir}" init -q 2>/dev/null || true
+  git -C "${malformed_dir}" config user.name "Interop Harness"
+  git -C "${malformed_dir}" config user.email "interop@example.invalid"
+  printf 'malformed\n' >"${malformed_dir}/staged.txt"
+  git -C "${malformed_dir}" add staged.txt
+  printf 'not_valid_toml [[[\n' >"${malformed_dir}/.allow/compatibility/intent-delegation.toml"
+  malformed_out="${malformed_dir}/precommit-malformed.json"
+  set +e
+  malformed_err="$(env -u CARGO_INTENT_BIN "${cargo_allow_bin}" check \
+    --root "${malformed_dir}" \
+    --profile spec-system \
+    --phase precommit \
+    --staged \
+    --format json \
+    --output "${malformed_out}" 2>&1)"
+  malformed_exit=$?
+  set -e
+  malformed_passed=false
+  if [[ "${malformed_exit}" -ne 0 ]] \
+    && printf '%s' "${malformed_err}" | grep -q "MalformedConfig.*intent-delegation.toml"; then
+    malformed_passed=true
+  fi
+  [[ "${malformed_passed}" == "true" ]] \
+    || fail "malformed delegation negative expected real MalformedConfig parse failure, got exit=${malformed_exit} err=${malformed_err}"
+  record_negative "E" "malformed" "MalformedConfig" "${malformed_passed}"
 
   log "negative E: stale provider path absent"
   stale_class="$(
