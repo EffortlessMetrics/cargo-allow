@@ -305,6 +305,57 @@ if not any(gate == "delegated via repo.analysis-receipt.v1" for gate in gates):
 [[ "${precommit_exit}" -ne 0 ]] || fail "journey E expected non-zero exit for unmapped staged surface"
 record_journey "E" "cargo-allow" "Passed"
 
+# --- Installed-journey parity (#3309 final installment) ---
+# The same staged state flows through BOTH surfaces of the installed
+# candidates: cargo-intent's own change-status command (journey B's
+# surface) and cargo-allow's one-way compatibility delegation (journey
+# E). Both must bind the same staged identity and classify the state
+# identically — the same protocol results end to end.
+log "installed-journey parity: direct change status on the delegated state"
+parity_out="${consumer_dir}/parity-direct.json"
+set +e
+"${cargo_intent_bin}" --root "${consumer_dir}" --format json change status \
+  --staged --phase precommit >"${parity_out}" 2>"${consumer_dir}/parity-direct.err"
+parity_exit=$?
+set -e
+[[ -f "${parity_out}" ]] || fail "parity direct change status wrote no output"
+PARITY_PRECOMMIT="${precommit_out}" PARITY_DIRECT="${parity_out}" python3 <<'PY'
+import json
+import os
+from pathlib import Path
+
+delegated = json.loads(Path(os.environ["PARITY_PRECOMMIT"]).read_text(encoding="utf-8"))
+direct = json.loads(Path(os.environ["PARITY_DIRECT"]).read_text(encoding="utf-8"))
+
+if direct.get("schema_id") != "cargo-intent.change-status.v1":
+    raise SystemExit(f"direct run is not change-status: {direct.get('schema_id')!r}")
+
+delegated_identity = delegated.get("staged_identity_after") or ""
+direct_identity = direct.get("staged_identity") or ""
+if not direct_identity:
+    raise SystemExit("direct change-status lacks staged_identity")
+if delegated_identity != direct_identity:
+    raise SystemExit(
+        "installed-journey parity drift: delegated "
+        f"{delegated_identity!r} != direct {direct_identity!r}"
+    )
+
+delegated_gate = "delegated via repo.analysis-receipt.v1" in (
+    delegated.get("remaining_gates") or []
+)
+delegated_unmapped = "provider reported unmapped staged surface" in (
+    delegated.get("remaining_gates") or []
+)
+direct_unmapped = bool(direct.get("unmapped_staged_surface"))
+if not direct_unmapped:
+    raise SystemExit("expected the unmapped staged surface in the direct run")
+if not delegated_gate:
+    raise SystemExit("expected the delegation gate in the delegated run")
+if not delegated_unmapped:
+    raise SystemExit("expected the delegated surface to classify the state unmapped")
+PY
+record_journey "PARITY" "cargo-intent+cargo-allow" "Passed"
+
 # --- Compatibility matrix (#2605 installment 4): bounded, risk-based ---
 # Every cell is a REAL run of installed candidates; postures are
 # expected/actual/failure-boundary, not labels. Baseline = the exact
@@ -671,10 +722,22 @@ import json
 import os
 
 journeys = []
+parity = None
 for line in os.environ.get("JOURNEY_RECORDS", "").splitlines():
     if not line.strip():
         continue
     journey_id, product, result = line.split("|", 2)
+    if journey_id == "PARITY":
+        parity = {
+            "surfaces": [
+                "cargo-intent change status (direct)",
+                "cargo-allow delegated precommit",
+            ],
+            "staged_state": "journey E consumer (delegated.txt staged)",
+            "agreement": "delegated staged_identity_after == direct staged_identity; both classify the state unmapped",
+            "result": result,
+        }
+        continue
     journeys.append({"id": journey_id, "product": product, "result": result})
 
 negatives = json.loads(os.environ.get("NEGATIVE_JSON", "[]"))
@@ -713,6 +776,7 @@ receipt = {
         "cargo_intent_version": os.environ["B_VERSION"],
     },
     "journeys": journeys,
+    "installed_journey_parity": parity,
     "compatibility_matrix": {
         "selected": len(matrix),
         "omitted": "previous-compatible-version cells deferred to the release lane (no historical candidates here)",
