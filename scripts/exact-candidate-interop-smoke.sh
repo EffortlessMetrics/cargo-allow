@@ -367,7 +367,10 @@ path.write_text(
 PY
   wrong_out="${wrong_dir}/precommit-wrong-product.json"
   set +e
-  wrong_err="$("${cargo_allow_bin}" check \
+  # Scrub the CI-provided provider override so discovery reads the
+  # config wrong executable (env vars outrank the config in provider
+  # discovery); the negative tests config-based discovery specifically.
+  wrong_err="$(env -u CARGO_INTENT_BIN "${cargo_allow_bin}" check \
     --root "${wrong_dir}" \
     --profile spec-system \
     --phase precommit \
