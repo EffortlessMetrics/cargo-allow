@@ -1,10 +1,15 @@
 mod authority_compiler;
+mod command_dispatch;
 mod composition;
 mod paired_precommit;
 
 pub use authority_compiler::{
     AUTHORITY_COMPILE_PLAN_SCHEMA_ID, AuthorityCompilePlanV1, AuthoritySourceRoleV1,
     AuthoritySourceV1, composition_sources_present, plan_authority_compile,
+};
+pub use command_dispatch::{
+    SPEC_SYSTEM_COMMAND_DISPATCH_SCHEMA_ID, SPEC_SYSTEM_COMMANDS, SpecSystemCommandV1,
+    embedded_authority_surface, spec_system_command,
 };
 pub use composition::{
     SELF_HOSTED_RUNTIME_PROMOTION_COMPOSITION_ID, WorkspaceCompositionV1,

@@ -11,7 +11,10 @@ use intent_engine::{
     phase_obligations_parity_contract_paths, precommit_obligation_plan_fixture_path,
     self_hosted_workspace_composition_fixture_path, workspace_composition_parity_contract_paths,
 };
-use intent_engine::{graph_movement_kind_to_precommit, subject_resolution_from_diagnostic};
+use intent_engine::{
+    SPEC_SYSTEM_COMMANDS, embedded_authority_surface, graph_movement_kind_to_precommit,
+    spec_system_command, subject_resolution_from_diagnostic,
+};
 use intent_model::PrecommitMovementKind as CanonicalPrecommitMovementKind;
 use std::path::PathBuf;
 
@@ -371,6 +374,60 @@ fn paired_precommit_diagnostic_status_parity() {
             assert_eq!(resolution.id.as_str(), "subject-1", "code {code}");
         }
     }
+}
+
+#[test]
+fn spec_system_command_dispatch_parity() -> Result<(), String> {
+    // The literals below are the command and surface strings cargo-allow's
+    // dispatch passes today: check.rs/audit.rs route through cmd_spec_system
+    // with their command string as the rejection surface; doctor, explain,
+    // init, and worklist pass their own surface. Only `check` exposes a
+    // --mode override (audit is report-only). Drift on either side of the
+    // binding fails here.
+    let expected = [
+        ("check", "check", true),
+        ("audit", "audit", false),
+        ("doctor", "doctor", false),
+        ("explain", "explain", false),
+        ("init", "init", false),
+        ("worklist", "worklist", false),
+    ];
+    for (command, surface, exposes_mode) in expected {
+        let entry = spec_system_command(command)
+            .ok_or_else(|| format!("dispatch vocabulary missing command {command}"))?;
+        if entry.command != command {
+            return Err(format!("command mismatch: {} != {command}", entry.command));
+        }
+        if entry.surface != surface {
+            return Err(format!(
+                "surface mismatch for {command}: {} != {surface}",
+                entry.surface
+            ));
+        }
+        if entry.exposes_mode_override != exposes_mode {
+            return Err(format!(
+                "--mode exposure mismatch for {command}: {} != {exposes_mode}",
+                entry.exposes_mode_override
+            ));
+        }
+        if !embedded_authority_surface(surface) {
+            return Err(format!("surface {surface} is not a dispatched surface"));
+        }
+    }
+    if SPEC_SYSTEM_COMMANDS.len() != expected.len() {
+        return Err(format!(
+            "dispatch vocabulary has {} entries, expected {}",
+            SPEC_SYSTEM_COMMANDS.len(),
+            expected.len()
+        ));
+    }
+    if spec_system_command("not-a-command").is_some() {
+        return Err("unknown command resolved in the dispatch vocabulary".to_string());
+    }
+    if embedded_authority_surface("not-a-command") {
+        return Err("unknown surface counted as dispatched".to_string());
+    }
+    Ok(())
 }
 
 fn repo_root() -> PathBuf {

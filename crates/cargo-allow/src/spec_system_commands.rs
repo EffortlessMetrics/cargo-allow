@@ -212,3 +212,94 @@ pub(crate) fn cmd_spec_system_init(args: SpecSystemInitCommandArgs<'_>) -> Cargo
 
     Ok(())
 }
+
+#[cfg(test)]
+mod cutover_tests {
+    use super::*;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_root(label: &str) -> Result<PathBuf, String> {
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|error| error.to_string())?
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "cargo-allow-spec-system-cutover-{label}-{}-{stamp}",
+            std::process::id()
+        ));
+        fs::create_dir_all(root.join(".allow/compatibility")).map_err(|error| error.to_string())?;
+        Ok(root)
+    }
+
+    fn write_delegation_config(root: &Path, delegate_spec_system: bool) -> Result<(), String> {
+        fs::write(
+            root.join(".allow/compatibility/intent-delegation.toml"),
+            format!(
+                "schema_id = \"cargo-allow.intent-delegation.v1\"
+delegate_spec_system = {delegate_spec_system}
+"
+            ),
+        )
+        .map_err(|error| error.to_string())
+    }
+
+    #[test]
+    fn embedded_authority_allowed_without_delegation_config() -> Result<(), String> {
+        let root = temp_root("absent")?;
+        let result = reject_cutover_embedded_authority(
+            &RootArgs {
+                root: Some(root.clone()),
+            },
+            "check",
+        );
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        result.map_err(|error| format!("expected embedded authority allowed: {error}"))
+    }
+
+    #[test]
+    fn embedded_authority_allowed_when_delegation_disabled() -> Result<(), String> {
+        let root = temp_root("disabled")?;
+        write_delegation_config(&root, false)?;
+        let result = reject_cutover_embedded_authority(
+            &RootArgs {
+                root: Some(root.clone()),
+            },
+            "worklist",
+        );
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        result.map_err(|error| format!("expected embedded authority allowed: {error}"))
+    }
+
+    #[test]
+    fn embedded_authority_rejects_under_delegation_for_every_surface() -> Result<(), String> {
+        let root = temp_root("active")?;
+        write_delegation_config(&root, true)?;
+        for surface in ["check", "audit", "doctor", "explain", "init", "worklist"] {
+            let error = reject_cutover_embedded_authority(
+                &RootArgs {
+                    root: Some(root.clone()),
+                },
+                surface,
+            )
+            .expect_err("delegated surface must reject embedded authority");
+            let message = error.to_string();
+            if !message.contains("embedded spec-system") || !message.contains(surface) {
+                return Err(format!(
+                    "rejection for {surface} lost its surface or authority wording: {message}"
+                ));
+            }
+            if !message.contains("cargo-intent") {
+                return Err(format!(
+                    "rejection for {surface} must name cargo-intent as the owner: {message}"
+                ));
+            }
+            if !message.contains("intent-delegation.toml") {
+                return Err(format!(
+                    "rejection for {surface} must name the delegation config: {message}"
+                ));
+            }
+        }
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())
+    }
+}
