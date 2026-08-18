@@ -723,7 +723,7 @@ deletion_output = "Current intent schema authority leaves allow-report."
 [[entry]]
 id = "REMAIN-CARGO-ALLOW-PROVIDER-PAYLOADS"
 source_kind = "RustSurface"
-current_paths = ["crates/allow-report/src/artifacts.rs", "crates/allow-report/src/artifacts/why.rs", "crates/allow-report/src/artifacts/add_finding_plan.rs", "crates/allow-report/src/why_json.rs"]
+current_paths = ["crates/allow-report/src/artifacts.rs", "crates/allow-report/src/artifacts/why.rs", "crates/allow-report/src/artifacts/add_finding_plan.rs", "crates/allow-report/src/spec_system_render.rs", "crates/allow-report/src/spec_system_report_types.rs", "crates/allow-report/src/why_json.rs"]
 current_refs = []
 current_identity = "Cargo-allow source-exception reports, why/add plans, receipts, and provider payload semantics"
 current_product = "cargo-allow"

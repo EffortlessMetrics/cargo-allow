@@ -1,5 +1,7 @@
 use super::{
-    DEFAULT_OWNED_IMPORTS_ROOT, SpecSystemFinding, SpecSystemWorkItem,
+    DEFAULT_OWNED_IMPORTS_ROOT, SpecSystemFederationSummary, SpecSystemFinding,
+    SpecSystemImportDiagnostic, SpecSystemImportEdge, SpecSystemImportGraphSummary,
+    SpecSystemImportNode, SpecSystemLedgerContributor, SpecSystemWorkItem,
     apply_work_item_ledger_provenance, spec_system_proof_commands,
 };
 use allow_policy::federation::{
@@ -11,59 +13,6 @@ use allow_policy::import_roots::{
 };
 use allow_policy::spec_system::ImportRootsConfig;
 use std::path::Path;
-
-#[derive(Debug, Clone)]
-pub(super) struct SpecSystemFederationSummary {
-    pub(super) federation_version: String,
-    pub(super) precedence_applied: String,
-    pub(super) ledger_contributors: Vec<SpecSystemLedgerContributor>,
-}
-
-#[derive(Debug, Clone)]
-pub(super) struct SpecSystemLedgerContributor {
-    pub(super) id: String,
-    pub(super) path: String,
-    pub(super) role: String,
-    pub(super) dialect: String,
-    pub(super) mode: String,
-    pub(super) priority: u32,
-    pub(super) lanes: Vec<String>,
-}
-
-#[derive(Debug, Clone)]
-pub(super) struct SpecSystemImportGraphSummary {
-    pub(super) node_count: usize,
-    pub(super) edge_count: usize,
-    pub(super) diagnostic_count: usize,
-    pub(super) nodes: Vec<SpecSystemImportNode>,
-    pub(super) edges: Vec<SpecSystemImportEdge>,
-    pub(super) diagnostics: Vec<SpecSystemImportDiagnostic>,
-}
-
-#[derive(Debug, Clone)]
-pub(super) struct SpecSystemImportNode {
-    pub(super) id: String,
-    pub(super) path: String,
-    pub(super) role: String,
-    pub(super) ecosystem: String,
-    pub(super) provenance: String,
-    pub(super) confidence: String,
-}
-
-#[derive(Debug, Clone)]
-pub(super) struct SpecSystemImportEdge {
-    pub(super) source_id: String,
-    pub(super) target_id: String,
-    pub(super) kind: String,
-    pub(super) provenance: String,
-}
-
-#[derive(Debug, Clone)]
-pub(super) struct SpecSystemImportDiagnostic {
-    pub(super) kind: String,
-    pub(super) message: String,
-    pub(super) root_ids: Vec<String>,
-}
 
 pub(super) fn discover_spec_system_import_graph(
     root: &Path,

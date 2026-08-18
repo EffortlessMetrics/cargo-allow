@@ -1,0 +1,20 @@
+kind: Changed
+body: >-
+  Move the spec-system report projection out of cargo-allow's embedded
+  authority (#3522 slice C of #3307). The report DTO family
+  (SpecSystemReport with artifacts, links, findings, work items,
+  readiness, federation, and import-graph summaries, plus finding
+  blocking classification and the derived failure-posture helpers) and
+  the human, markdown, JSON, SARIF, and HTML renderers over those DTOs
+  now live in allow-report (`spec_system_report_types` and
+  `spec_system_render` behind a neutral SpecSystemRenderFormat), keeping
+  the projection inside the cargo-allow product family the crate
+  dependency law and source-coupling guard permit while still outside
+  the cargo-allow binary's embedded authority. The mode field keeps the
+  shared allow-policy SpecSystemMode the config flow already uses, so
+  report assembly needs no conversion, and allow-report gains allow-policy
+  as a same-family dependency. cargo-allow keeps command assembly and
+  maps its OutputFormat onto the neutral format through a thin adapter;
+  output formats are unchanged and every existing render and schema test
+  passes against the moved code. Both new files are registered in the
+  product move-ledger.

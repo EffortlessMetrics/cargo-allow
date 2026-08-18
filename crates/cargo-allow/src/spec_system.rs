@@ -11,6 +11,18 @@ use allow_policy::spec_system::{
 };
 use std::path::{Path, PathBuf};
 
+// Report projection DTOs moved to allow-report (#3522 slice C); the
+// allow-policy config types above remain the config-flow authority
+// until the parity cutover.
+use allow_report::{
+    SpecSystemArtifact, SpecSystemFederationSummary, SpecSystemFinding, SpecSystemImportDiagnostic,
+    SpecSystemImportEdge, SpecSystemImportGraphSummary, SpecSystemImportNode,
+    SpecSystemLedgerContributor, SpecSystemLink, SpecSystemReadiness, SpecSystemReadinessCheck,
+    SpecSystemReport, SpecSystemWorkItem,
+};
+#[cfg(test)]
+use allow_report::{spec_system_blocking_reason, spec_system_work_item_blocking_reason};
+
 use crate::spec_system_view::render_self_hosted_explain;
 use crate::{OutputFormat, RootArgs, current_dir, root_relative_path};
 
@@ -34,9 +46,8 @@ use spec_system_readiness::{
 #[path = "spec_system_graph.rs"]
 mod spec_system_graph;
 use spec_system_graph::{
-    SpecSystemFederationSummary, SpecSystemImportGraphSummary, discover_spec_system_import_graph,
-    federation_config_findings, import_graph_findings, import_graph_summary_from_graph,
-    spec_system_federation_summary, work_items_from_import_graph,
+    discover_spec_system_import_graph, federation_config_findings, import_graph_findings,
+    import_graph_summary_from_graph, spec_system_federation_summary, work_items_from_import_graph,
 };
 
 #[path = "spec_system_report.rs"]
@@ -55,10 +66,6 @@ const PROFILE_NAME: &str = "spec-system";
 const DEFAULT_OWNED_ARTIFACT_LEDGER: &str = ".allow/artifacts/doc-artifacts.toml";
 const DEFAULT_OWNED_IMPORTS_ROOT: &str = ".allow/imports";
 const DEFAULT_PROFILE_CONFIG: &str = ".allow/profiles/spec-system.toml";
-const SPEC_SYSTEM_CHECK_PROOF_COMMAND: &str =
-    "cargo-allow check --profile spec-system --mode audit";
-const SPEC_SYSTEM_WORKLIST_PROOF_COMMAND: &str =
-    "cargo-allow worklist --profile spec-system --format json";
 const EXPECTED_TEMPLATE_FILES: [&str; 7] = [
     "docs/templates/proposal.md",
     "docs/templates/spec.md",
@@ -68,108 +75,6 @@ const EXPECTED_TEMPLATE_FILES: [&str; 7] = [
     "docs/templates/closeout.md",
     "docs/templates/pr-body.md",
 ];
-
-#[derive(Debug)]
-struct SpecSystemReport {
-    command: String,
-    root: PathBuf,
-    config_source: String,
-    config_provenance: String,
-    mode: SpecSystemMode,
-    artifacts: Vec<SpecSystemArtifact>,
-    links: Vec<SpecSystemLink>,
-    support_tier_rows: usize,
-    findings: Vec<SpecSystemFinding>,
-    work_items: Vec<SpecSystemWorkItem>,
-    readiness: Option<SpecSystemReadiness>,
-    federation: Option<SpecSystemFederationSummary>,
-    import_graph: Option<SpecSystemImportGraphSummary>,
-}
-
-#[derive(Debug, Clone)]
-struct SpecSystemArtifact {
-    id: String,
-    kind: &'static str,
-    path: String,
-    status: &'static str,
-    owner: String,
-    created: String,
-}
-
-#[derive(Debug, Clone)]
-struct SpecSystemLink {
-    source_id: String,
-    field: &'static str,
-    target: String,
-    target_kind: Option<&'static str>,
-}
-
-#[derive(Debug, Clone)]
-struct SpecSystemFinding {
-    kind: &'static str,
-    message: String,
-    blocking_eligible: bool,
-    blocking_reason: Option<&'static str>,
-}
-
-impl SpecSystemFinding {
-    fn new(kind: &'static str, message: String) -> Self {
-        let blocking_reason = spec_system_blocking_reason(kind, &message);
-        Self {
-            kind,
-            message,
-            blocking_eligible: blocking_reason.is_some(),
-            blocking_reason,
-        }
-    }
-
-    /// Construct a finding with a typed diagnostic kind that drives blocking
-    /// classification directly, without parsing the rendered message string
-    /// (#1942).
-    fn new_typed(kind: &'static str, message: String, diagnostic_kind: &'static str) -> Self {
-        let blocking_reason = typed_blocking_reason(diagnostic_kind);
-        Self {
-            kind,
-            message,
-            blocking_eligible: blocking_reason.is_some(),
-            blocking_reason,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-struct SpecSystemWorkItem {
-    kind: &'static str,
-    artifact_id: Option<String>,
-    path: Option<String>,
-    owner: Option<String>,
-    status: Option<String>,
-    message: String,
-    suggested_actions: Vec<String>,
-    proof_commands: Vec<String>,
-    ledger_id: Option<String>,
-    ledger_path: Option<String>,
-    lane: Option<String>,
-    mode: Option<String>,
-    role: Option<String>,
-}
-
-#[derive(Debug)]
-struct SpecSystemReadiness {
-    ready: bool,
-    mode: &'static str,
-    checks: Vec<SpecSystemReadinessCheck>,
-}
-
-#[derive(Debug)]
-struct SpecSystemReadinessCheck {
-    kind: &'static str,
-    path: Option<String>,
-    found: bool,
-    valid: Option<bool>,
-    status: &'static str,
-    message: String,
-}
 
 #[derive(Debug)]
 struct LoadedSpecSystemConfig {
@@ -593,13 +498,6 @@ fn artifact_work_item(
     }
 }
 
-fn spec_system_proof_commands() -> Vec<String> {
-    vec![
-        SPEC_SYSTEM_CHECK_PROOF_COMMAND.to_string(),
-        SPEC_SYSTEM_WORKLIST_PROOF_COMMAND.to_string(),
-    ]
-}
-
 fn has_artifact_value(value: Option<&str>) -> bool {
     value.is_some_and(|value| !value.trim().is_empty())
 }
@@ -707,14 +605,6 @@ fn artifact_status_name(status: ArtifactStatus) -> &'static str {
     }
 }
 
-fn spec_system_mode_name(mode: &SpecSystemMode) -> &'static str {
-    match mode {
-        SpecSystemMode::Advisory => "advisory",
-        SpecSystemMode::Shadow => "shadow",
-        SpecSystemMode::Blocking => "blocking",
-    }
-}
-
 /// Parse an explicit `--mode` value for a `check --profile spec-system` run
 /// into a [`SpecSystemMode`] override.
 ///
@@ -737,202 +627,20 @@ fn parse_spec_system_mode_override(value: &str) -> CargoAllowResult<SpecSystemMo
     }
 }
 
+fn spec_system_mode_name(mode: &SpecSystemMode) -> &'static str {
+    allow_report::spec_system_mode_name(mode)
+}
+
 fn spec_system_command_failed(report: &SpecSystemReport) -> bool {
-    spec_system_setup_failed(report)
-        || (report.mode == SpecSystemMode::Blocking
-            && spec_system_blocking_finding_count(report) > 0)
-}
-
-fn spec_system_report_failed(report: &SpecSystemReport) -> bool {
-    if spec_system_setup_failed(report) {
-        return true;
-    }
-    match report.mode {
-        SpecSystemMode::Advisory => false,
-        SpecSystemMode::Shadow => !report.findings.is_empty(),
-        SpecSystemMode::Blocking => spec_system_blocking_finding_count(report) > 0,
-    }
-}
-
-fn spec_system_setup_failed(report: &SpecSystemReport) -> bool {
-    report
-        .findings
-        .iter()
-        .any(|finding| finding.kind == "profile_config" && finding.blocking_eligible)
+    report.command_failed()
 }
 
 fn spec_system_blocking_finding_count(report: &SpecSystemReport) -> usize {
-    report
-        .findings
-        .iter()
-        .filter(|finding| finding.blocking_eligible)
-        .count()
+    report.blocking_finding_count()
 }
 
-fn spec_system_advisory_finding_count(report: &SpecSystemReport) -> usize {
-    report.findings.len() - spec_system_blocking_finding_count(report)
-}
-
-fn spec_system_blocking_work_item_count(report: &SpecSystemReport) -> usize {
-    report
-        .work_items
-        .iter()
-        .filter(|item| spec_system_work_item_blocking_reason(item).is_some())
-        .count()
-}
-
-fn spec_system_advisory_work_item_count(report: &SpecSystemReport) -> usize {
-    report.work_items.len() - spec_system_blocking_work_item_count(report)
-}
-
-fn spec_system_report_status(report: &SpecSystemReport) -> &'static str {
-    if spec_system_report_failed(report) {
-        "failed"
-    } else {
-        "passed"
-    }
-}
-
-/// Typed blocking classification: maps a diagnostic kind string directly to
-/// a blocking reason without parsing the rendered message (#1942).
-///
-/// This replaces the fragile substring-based classification that would silently
-/// downgrade blocking findings to advisory if upstream error text changed.
-fn typed_blocking_reason(diagnostic_kind: &str) -> Option<&'static str> {
-    match diagnostic_kind {
-        "profile_config_parse_failure" => Some("profile_config_parse_failure"),
-        // Listed explicitly rather than left to the `_` fallback so a future
-        // typed-migration cannot silently escalate this advisory to blocking:
-        // an owned/legacy profile-config conflict resolves deterministically
-        // and only asks the repository to remove the unused file.
-        "profile_config_legacy_conflict" => None,
-        "duplicate_id" => Some("duplicate_id"),
-        "dialect_conflict" => Some("dialect_conflict"),
-        "federation_config_invalid" => Some("federation_config_invalid"),
-        "federation_config_parse_failure" => Some("federation_config_parse_failure"),
-        "doc_artifact_ledger_missing" => Some("doc_artifact_ledger_missing"),
-        "doc_artifact_ledger_parse_failure" => Some("doc_artifact_ledger_parse_failure"),
-        "invalid_artifact_kind_or_status" => Some("invalid_artifact_kind_or_status"),
-        "artifact_file_missing" => Some("artifact_file_missing"),
-        "artifact_link_broken" => Some("artifact_link_broken"),
-        _ => None,
-    }
-}
-
-fn spec_system_blocking_reason(kind: &str, message: &str) -> Option<&'static str> {
-    match kind {
-        "profile_config" => profile_config_blocking_reason(message),
-        "federation_config" => federation_config_blocking_reason(message),
-        "doc_artifact_ledger" => doc_artifact_ledger_blocking_reason(message),
-        "artifact_file" => artifact_file_blocking_reason(message),
-        "artifact_link" => artifact_link_blocking_reason(message),
-        _ => None,
-    }
-}
-
-fn profile_config_blocking_reason(message: &str) -> Option<&'static str> {
-    if message.contains("does not exist") || message.contains("both owned profile config") {
-        return None;
-    }
-    if message.contains("failed to parse spec-system config TOML")
-        || message.contains("failed to read spec-system profile config")
-    {
-        return Some("profile_config_parse_failure");
-    }
-    None
-}
-
-fn federation_config_blocking_reason(message: &str) -> Option<&'static str> {
-    if message.contains("duplicate federation ledger id") {
-        return Some("duplicate_id");
-    }
-    if message.contains("dialect_conflict") || message.contains("foreign dialect") {
-        return Some("dialect_conflict");
-    }
-    if message.contains("duplicate_path")
-        || message.contains("duplicate_canonical_lane")
-        || message.contains("mirror_missing_target")
-        || message.contains("unknown_mirror_target")
-        || message.contains("unknown_drain_mirror_ledger")
-        || message.contains("drain_window_missing_field")
-    {
-        return Some("federation_config_invalid");
-    }
-    if message.contains("failed to parse federation config TOML") {
-        return Some("federation_config_parse_failure");
-    }
-    None
-}
-
-fn doc_artifact_ledger_blocking_reason(message: &str) -> Option<&'static str> {
-    if message.contains("failed to read doc artifact ledger") {
-        return Some("doc_artifact_ledger_missing");
-    }
-    if message.contains("failed to parse doc artifact ledger TOML") {
-        if message.contains("unknown variant") {
-            return Some("invalid_artifact_kind_or_status");
-        }
-        return Some("doc_artifact_ledger_parse_failure");
-    }
-    if message.contains("duplicate doc artifact id") {
-        return Some("duplicate_id");
-    }
-    None
-}
-
-fn artifact_file_blocking_reason(message: &str) -> Option<&'static str> {
-    if message.contains(" artifact file missing: ") {
-        return Some("artifact_file_missing");
-    }
-    if message.contains("failed to read artifact ") {
-        return Some("artifact_file_unreadable");
-    }
-    if message.contains(" not found in artifact file ") {
-        return Some("artifact_id_not_in_file");
-    }
-    None
-}
-
-fn artifact_link_blocking_reason(message: &str) -> Option<&'static str> {
-    if message.contains(" target ") && message.contains(" is not registered") {
-        return Some("unknown_link_target");
-    }
-    if message.contains(" target ") && message.contains(" is not registered by id or path") {
-        return Some("unknown_link_target");
-    }
-    None
-}
-
-fn spec_system_work_item_blocking_reason(item: &SpecSystemWorkItem) -> Option<&'static str> {
-    match item.kind {
-        "artifact_file_missing" => Some("artifact_file_missing"),
-        "artifact_file_unreadable" => Some("artifact_file_unreadable"),
-        "artifact_id_not_in_file" => Some("artifact_id_not_in_file"),
-        "unknown_link_target" => Some("unknown_link_target"),
-        "missing_node" => missing_node_work_item_blocking_reason(&item.message),
-        _ => None,
-    }
-}
-
-fn missing_node_work_item_blocking_reason(message: &str) -> Option<&'static str> {
-    if message.contains("spec-system profile config") && !message.contains("does not exist") {
-        return Some("profile_config_parse_failure");
-    }
-    if message.contains("doc artifact ledger") {
-        if message.contains("failed to read doc artifact ledger") {
-            return Some("doc_artifact_ledger_missing");
-        }
-        if message.contains("duplicate doc artifact id") {
-            return Some("duplicate_id");
-        }
-        if message.contains("failed to parse doc artifact ledger TOML") {
-            if message.contains("unknown variant") {
-                return Some("invalid_artifact_kind_or_status");
-            }
-            return Some("doc_artifact_ledger_parse_failure");
-        }
-    }
-    None
+fn spec_system_proof_commands() -> Vec<String> {
+    allow_report::spec_system_proof_commands()
 }
 
 fn support_tier_level_name(tier: SupportTierLevel) -> &'static str {
@@ -950,51 +658,14 @@ fn normalize_source_path(path: &str) -> String {
     path.trim_matches('/').replace('\\', "/")
 }
 
-fn render_string_array<T: AsRef<str>>(text: &mut String, values: &[T], indent: &str) {
-    text.push_str("[\n");
-    for (index, value) in values.iter().enumerate() {
-        text.push_str(indent);
-        text.push_str("  \"");
-        text.push_str(&json_escape(value.as_ref()));
-        text.push('"');
-        if index + 1 != values.len() {
-            text.push(',');
-        }
-        text.push('\n');
-    }
-    text.push_str(indent);
-    text.push(']');
-}
-
+#[cfg(test)]
 fn json_escape(value: &str) -> String {
-    let mut escaped = String::new();
-    for ch in value.chars() {
-        match ch {
-            '"' => escaped.push_str("\\\""),
-            '\\' => escaped.push_str("\\\\"),
-            '\n' => escaped.push_str("\\n"),
-            '\r' => escaped.push_str("\\r"),
-            '\t' => escaped.push_str("\\t"),
-            ch if ch.is_control() => escaped.push(' '),
-            ch => escaped.push(ch),
-        }
-    }
-    escaped
+    allow_report::json_escape(value)
 }
 
+#[cfg(test)]
 fn optional_bool_json(value: Option<bool>) -> &'static str {
-    match value {
-        Some(true) => "true",
-        Some(false) => "false",
-        None => "null",
-    }
-}
-
-fn html_escape(value: &str) -> String {
-    value
-        .replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
+    allow_report::optional_bool_json(value)
 }
 
 #[cfg(test)]
