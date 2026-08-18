@@ -1,0 +1,18 @@
+kind: Fixed
+body: >-
+  Make the workspace-leak negative control real instead of simulated
+  (#2605 installment 3). The previous control mirrored the production
+  path rule in a Python prefix check without running any binary. The
+  real control poisons the consumer repository's own target/debug with
+  a copy of the installed cargo-allow binary renamed cargo-intent — so
+  only the workspace-path rule, not the product-name rule, can reject
+  it — configures delegation to that path, stages a change, and runs
+  the installed cargo-allow precommit check with the CI provider
+  override scrubbed. The real discovery must refuse the workspace
+  target path (provider_instrument_failure with the bounded action
+  naming the forbidden workspace path) with a non-zero exit, verified
+  locally against the actual failure message before landing. Also
+  records on #2605 that journey C registered-command execution is
+  gated on the #3601 bounded structured runner (whose train depends on
+  #3599 and the #3607 contracts in the #3618 draft PR) rather than
+  being bulldozed through the harness lane.

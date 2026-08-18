@@ -128,6 +128,13 @@ print("ok")
 PY
 }
 
+bin_ext() {
+  case "$(uname -s | tr '[:upper:]' '[:lower:]')" in
+    mingw*|msys*|cygwin*) printf '.exe' ;;
+    *) printf '' ;;
+  esac
+}
+
 reject_workspace_provider_path() {
   local candidate="$1"
   local product="$2"
@@ -357,12 +364,53 @@ if [[ "${SKIP_NEGATIVES:-0}" != "1" ]]; then
     || fail "absent negative expected real ProviderAbsent failure, got exit=${absent_exit} err=${absent_err}"
   record_negative "A" "absent" "ProviderAbsent" "${absent_passed}"
 
-  log "negative A: workspace target leak rejected"
-  ws_target="${ROOT}/target/debug/cargo-allow"
-  leak_class="$(reject_workspace_provider_path "${ws_target}" "cargo-allow")"
-  [[ "${leak_class}" == "ForbiddenWorkspaceLeak:cargo-allow" ]] \
-    || fail "workspace target leak not rejected"
-  record_negative "A" "incompatible" "ForbiddenWorkspaceTarget" "true"
+  log "negative A: workspace target leak rejected (real delegation discovery)"
+  leak_dir="${work_dir}/leak-consumer"
+  mkdir -p "${leak_dir}/.allow/compatibility" "${leak_dir}/target/debug"
+  git -C "${leak_dir}" init -q 2>/dev/null || true
+  git -C "${leak_dir}" config user.name "Interop Harness"
+  git -C "${leak_dir}" config user.email "interop@example.invalid"
+  printf 'leak\n' >"${leak_dir}/staged.txt"
+  git -C "${leak_dir}" add staged.txt
+  # Poison the consumer's own target dir with a workspace-style binary
+  # named for the expected product, so only the workspace-path rule —
+  # not the product-name rule — can reject it.
+  cp "${cargo_allow_bin}" "${leak_dir}/target/debug/cargo-intent$(bin_ext)"
+  LEAK_EXEC="${leak_dir}/target/debug/cargo-intent$(bin_ext)" \
+    LEAK_CONFIG="${leak_dir}/.allow/compatibility/intent-delegation.toml" python3 <<'PY'
+import os
+from pathlib import Path
+path = Path(os.environ["LEAK_CONFIG"])
+executable = Path(os.environ["LEAK_EXEC"]).resolve()
+path.write_text(
+    "schema_id = \"cargo-allow.intent-delegation.v1\"\n"
+    f"executable = {str(executable)!r}\n"
+    "delegate_staged_precommit = true\n"
+    "timeout_secs = 30\n",
+    encoding="utf-8",
+)
+PY
+  leak_out="${leak_dir}/precommit-leak.json"
+  set +e
+  leak_err="$(env -u CARGO_INTENT_BIN "${cargo_allow_bin}" check \
+    --root "${leak_dir}" \
+    --profile spec-system \
+    --phase precommit \
+    --staged \
+    --format json \
+    --output "${leak_out}" 2>&1)"
+  leak_exit=$?
+  set -e
+  leak_passed=false
+  if [[ "${leak_exit}" -ne 0 ]] \
+    && printf '%s' "${leak_err}" | grep -q "workspace path, which is forbidden"; then
+    leak_passed=true
+  elif [[ -f "${leak_out}" ]] && grep -q "workspace path, which is forbidden" "${leak_out}"; then
+    leak_passed=true
+  fi
+  [[ "${leak_passed}" == "true" ]] \
+    || fail "workspace target leak negative expected real forbidden-workspace-path failure, got exit=${leak_exit} err=${leak_err}"
+  record_negative "A" "incompatible" "ForbiddenWorkspaceTarget" "${leak_passed}"
 
   log "negative B: wrong product incompatible (real delegation discovery)"
   wrong_dir="${work_dir}/wrong-product-consumer"
