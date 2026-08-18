@@ -1166,4 +1166,189 @@ mod tests {
             Err(String::from_utf8_lossy(&output.stderr).into_owned())
         }
     }
+
+    /// Dev-scope converter between the legacy allow-policy compiled graph
+    /// and the canonical intent-model compiled graph (#3524 feeder). Both
+    /// families serialize the same shape, so the round-trip is the parity
+    /// oracle: any field drift fails the conversion instead of silently
+    /// producing a wrong graph.
+    fn canonical_graph(
+        graph: &allow_policy::spec_system::CompiledSpecGraph,
+    ) -> Result<intent_model::CompiledSpecGraph, String> {
+        serde_json::from_value(serde_json::to_value(graph).map_err(|error| error.to_string())?)
+            .map_err(|error| format!("compiled-graph families drifted: {error}"))
+    }
+
+    fn canonical_slice(
+        slice: &ImplementationSliceV1,
+    ) -> Result<intent_model::ImplementationSliceV1, String> {
+        serde_json::from_value(serde_json::to_value(slice).map_err(|error| error.to_string())?)
+            .map_err(|error| format!("implementation-slice families drifted: {error}"))
+    }
+
+    /// The inventory-posture derivation contract from the legacy adapter:
+    /// partial rust-test inventory forces Partial; otherwise the file
+    /// inventory completeness decides (Complete|Scoped -> Complete,
+    /// Partial -> Partial, Fallback -> Unsupported).
+    fn canonical_inventory_posture(
+        candidate: &SelfHostedGraphCompilation,
+    ) -> intent_model::PrecommitInventoryPosture {
+        use allow_inventory::InventoryCompleteness;
+        use allow_rust::RustTestInventoryStatus;
+        if candidate.inventory.status == RustTestInventoryStatus::Partial {
+            return intent_model::PrecommitInventoryPosture::Partial;
+        }
+        match candidate.file_inventory.completeness {
+            InventoryCompleteness::Complete | InventoryCompleteness::Scoped => {
+                intent_model::PrecommitInventoryPosture::Complete
+            }
+            InventoryCompleteness::Partial => intent_model::PrecommitInventoryPosture::Partial,
+            InventoryCompleteness::Fallback => intent_model::PrecommitInventoryPosture::Unsupported,
+        }
+    }
+
+    fn legacy_posture_name(
+        posture: allow_policy::spec_system::PrecommitFindingPosture,
+    ) -> &'static str {
+        match posture {
+            allow_policy::spec_system::PrecommitFindingPosture::Blocking => "blocking",
+            allow_policy::spec_system::PrecommitFindingPosture::Advisory => "advisory",
+        }
+    }
+
+    fn canonical_posture_name(posture: intent_model::PrecommitFindingPosture) -> &'static str {
+        match posture {
+            intent_model::PrecommitFindingPosture::Blocking => "blocking",
+            intent_model::PrecommitFindingPosture::Advisory => "advisory",
+        }
+    }
+
+    /// End-to-end dev-scope parity (#3523 slice D step iii): the real
+    /// fixture repository compiles through the legacy paired path, the
+    /// paired facts convert to canonical types, and the engine-side
+    /// paired-precommit evaluation must agree with the legacy adapter
+    /// finding-for-finding.
+    #[test]
+    fn paired_precommit_evaluation_end_to_end_engine_parity() -> Result<(), String> {
+        let root = staged_fixture_repository()?;
+        run_git(&root, &["commit", "-qm", "parent"])?;
+        let paired = compile_paired_self_hosted_graph(&root).map_err(|error| error.to_string())?;
+        let declaration = PrecommitChangeDeclaration {
+            class: Some(allow_policy::spec_system::PrecommitChangeClass::BehaviorChange),
+            ..Default::default()
+        };
+
+        let legacy = evaluate_paired_precommit_objectives(&paired, &declaration, false);
+        if legacy.findings.is_empty() {
+            return Err(
+                "parity fixture produced no findings; the equality below would be vacuous"
+                    .to_string(),
+            );
+        }
+
+        let graph = canonical_graph(&paired.candidate.graph)?;
+        let slice = canonical_slice(&paired.candidate.slice)?;
+        // The declaration is not serde on either side; this test uses a
+        // single declared class with default flags, mirrored by
+        // construction. A general converter belongs to the slice-E
+        // graph-converter lane.
+        let canonical_declaration = intent_model::PrecommitChangeDeclaration {
+            class: Some(intent_model::PrecommitChangeClass::BehaviorChange),
+            ..Default::default()
+        };
+        let mut movements = Vec::new();
+        for movement in &paired.movements {
+            let kind = intent_engine::canonical_graph_movement_kinds()
+                .iter()
+                .find(|kind| kind.as_str() == movement.kind.as_str())
+                .ok_or_else(|| format!("no canonical kind for {}", movement.kind.as_str()))?;
+            movements.push(intent_engine::GraphMovementV1 {
+                kind: *kind,
+                id: movement.id.clone(),
+            });
+        }
+        let diagnostics = paired
+            .candidate
+            .diagnostics
+            .iter()
+            .map(|diagnostic| intent_engine::GraphDiagnosticV1 {
+                code: diagnostic.code.to_string(),
+                subject: diagnostic.subject.clone(),
+                message: diagnostic.message.clone(),
+            })
+            .collect::<Vec<_>>();
+        let engine = intent_engine::evaluate_paired_precommit_objectives_v1(
+            &graph,
+            &slice,
+            &movements,
+            &canonical_declaration,
+            &diagnostics,
+            canonical_inventory_posture(&paired.candidate),
+            false,
+        );
+
+        if legacy.change_class.as_str() != engine.change_class.as_str() {
+            return Err(format!(
+                "change class drift: legacy {} != engine {}",
+                legacy.change_class.as_str(),
+                engine.change_class.as_str()
+            ));
+        }
+        if legacy.findings.len() != engine.findings.len() {
+            return Err(format!(
+                "finding count drift: legacy {} != engine {} (legacy: {:?})",
+                legacy.findings.len(),
+                engine.findings.len(),
+                legacy
+                    .findings
+                    .iter()
+                    .map(|finding| finding.code.as_str())
+                    .collect::<Vec<_>>()
+            ));
+        }
+        for (legacy_finding, engine_finding) in legacy.findings.iter().zip(&engine.findings) {
+            if legacy_finding.code.as_str() != engine_finding.code.as_str() {
+                return Err(format!(
+                    "finding code drift: {} != {}",
+                    legacy_finding.code.as_str(),
+                    engine_finding.code.as_str()
+                ));
+            }
+            if legacy_finding.subject != engine_finding.subject {
+                return Err(format!(
+                    "finding subject drift for {}: {} != {}",
+                    legacy_finding.code.as_str(),
+                    legacy_finding.subject,
+                    engine_finding.subject
+                ));
+            }
+            if legacy_posture_name(legacy_finding.posture)
+                != canonical_posture_name(engine_finding.posture)
+            {
+                return Err(format!(
+                    "finding posture drift for {}",
+                    legacy_finding.code.as_str()
+                ));
+            }
+            if legacy_finding.message != engine_finding.message {
+                return Err(format!(
+                    "finding message drift for {}: {} != {}",
+                    legacy_finding.code.as_str(),
+                    legacy_finding.message,
+                    engine_finding.message
+                ));
+            }
+            if legacy_finding.action != engine_finding.action {
+                return Err(format!(
+                    "finding action drift for {}: {} != {}",
+                    legacy_finding.code.as_str(),
+                    legacy_finding.action,
+                    engine_finding.action
+                ));
+            }
+        }
+
+        let _ = fs::remove_dir_all(&root);
+        Ok(())
+    }
 }

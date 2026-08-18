@@ -15,6 +15,26 @@ use intent_engine::{
     SPEC_SYSTEM_COMMANDS, embedded_authority_surface, graph_movement_kind_to_precommit,
     spec_system_command, subject_resolution_from_diagnostic,
 };
+
+/// End-to-end dispatch binding (#3523 slice D step iii): the command the
+/// real report assembly embeds in the contract sample must be a member of
+/// the canonical dispatched vocabulary.
+#[test]
+fn contract_sample_command_is_dispatched() -> Result<(), String> {
+    let sample = crate::spec_system::sample_spec_system_json_for_contract_test();
+    let value: serde_json::Value =
+        serde_json::from_str(&sample).map_err(|error| format!("parse sample: {error}"))?;
+    let command = value
+        .get("command")
+        .and_then(|command| command.as_str())
+        .ok_or_else(|| "contract sample lacks a command string".to_string())?;
+    if spec_system_command(command).is_none() {
+        return Err(format!(
+            "contract sample command {command} is outside the dispatched vocabulary"
+        ));
+    }
+    Ok(())
+}
 use intent_model::PrecommitMovementKind as CanonicalPrecommitMovementKind;
 use std::path::PathBuf;
 
