@@ -12,8 +12,9 @@ body: >-
   (test-named files and #[cfg(test)] modules excluded), so the fake
   cannot silently return to product code; it remains available in
   proof-engine for conformance and fixtures. The interop harness's
-  journey C is corrected to assert the truthful result (explicit
-  unavailable naming the provider and limitation) with the dry-run
-  fixture unchanged; its receipt and log no longer describe a fake
-  provider. Remaining #3598 scope (candidate-denominator and dogfood
+  journey C and the three-product dogfood smoke's plan stage are
+  corrected to assert the truthful result (explicit unavailable naming
+  the provider and limitation, deterministic across runs) with the
+  dry-run fixture unchanged; their receipts and logs no longer
+  describe a fake provider. Remaining #3598 scope (candidate-denominator and dogfood
   claim corrections) recorded on the issue for the next installment.

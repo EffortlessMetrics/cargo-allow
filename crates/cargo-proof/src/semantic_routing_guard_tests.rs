@@ -251,7 +251,9 @@ fn strip_test_modules(text: &str) -> String {
             }
             if saw_test_attr && trimmed.starts_with("mod ") {
                 in_test_module = true;
-                depth = 0;
+                // The module's own opening brace is on this discarded
+                // line, so start at one to track nesting correctly.
+                depth = 1;
                 saw_test_attr = false;
                 continue;
             }

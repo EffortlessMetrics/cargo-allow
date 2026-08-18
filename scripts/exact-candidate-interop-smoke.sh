@@ -7,7 +7,7 @@
 # Journeys:
 #   A — cargo-allow alone
 #   B — cargo-intent alone
-#   C — cargo-proof with fake/command provider (plan + dry-run)
+#   C — cargo-proof explicit-unavailable plan (no provider fabricated) + dry-run fixture
 #   D — cargo-proof dry-run then invoke installed cargo-allow
 #   E — legacy cargo-allow delegates staged precommit to installed cargo-intent
 #
@@ -819,7 +819,7 @@ receipt = {
         "outside_monorepo_consumer",
         "journey_a_cargo_allow_alone",
         "journey_b_cargo_intent_alone",
-        "journey_c_cargo_proof_fake_provider",
+        "journey_c_cargo_proof_explicit_unavailable_plan",
         "journey_d_cargo_proof_invokes_cargo_allow",
         "journey_e_cargo_allow_delegates_cargo_intent",
         "no_workspace_target_debug_binary",
