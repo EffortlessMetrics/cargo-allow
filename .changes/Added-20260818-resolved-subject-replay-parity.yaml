@@ -1,0 +1,19 @@
+kind: Added
+body: >-
+  Add the resolved-subject replay parity scenario (#3524 slice E
+  installment 5), implementing the design posted on the issue. The
+  legacy side is the REAL live compile — compile_self_hosted_graph over
+  the fixture repository resolves every authored subject against the
+  Rust test inventory through the actual resolution path. The engine
+  side replays exactly that registration assembly with the same
+  file-local helpers (authored_selector, resolve_rust_test_selector,
+  subject_registration over RepositorySourceView::filesystem and
+  inventory_rust_test_subjects_from_sources), crosses the assembled
+  compile input through the serde round-trip, and compiles with the
+  canonical compiler. The graphs must be fully identical — including
+  subject nodes built from resolved test sources and body identities —
+  so the self-hosted parity corpus is now a replay of live subject
+  resolution rather than only the authored-fallback arm. Guards prove
+  non-vacuity: the replay must resolve every subject exactly (no
+  resolution diagnostics), register a non-empty subject set, and use no
+  authored-selector fallback identity.

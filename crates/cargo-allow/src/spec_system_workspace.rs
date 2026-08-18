@@ -1608,4 +1608,163 @@ mod tests {
         let _ = fs::remove_dir_all(&root);
         Ok(())
     }
+
+    /// Resolved-subject replay parity (#3524 slice E): the legacy side is
+    /// the REAL live compile (compile_self_hosted_graph resolves every
+    /// authored subject against the fixture's Rust inventory through
+    /// authored_selector + resolve_rust_test_selector +
+    /// subject_registration); the engine side replays exactly that
+    /// registration assembly with the same helpers and compiles the
+    /// round-tripped canonical input. The graphs must be semantically
+    /// identical, including subject nodes built from resolved test
+    /// sources and body identities — so the self-hosted-full parity
+    /// scenario is a replay of live subject resolution, not only the
+    /// authored-fallback arm.
+    #[test]
+    fn graph_compiler_parity_replays_resolved_subjects() -> Result<(), String> {
+        let root = staged_fixture_repository()?;
+        run_git(&root, &["commit", "-qm", "parent"])?;
+
+        let legacy = compile_self_hosted_graph(&root).map_err(|error| error.to_string())?;
+
+        // Replay the live registration assembly over the same fixture.
+        let snapshot_failure = |error: SnapshotError| snapshot_error(error).to_string();
+        let view = RepositorySourceView::filesystem(&root).map_err(snapshot_failure)?;
+        let composition = &SELF_HOSTED_RUNTIME_PROMOTION;
+        let requirement_text = view
+            .read_text(Path::new(composition.requirement_path))
+            .map_err(snapshot_failure)?;
+        let slice_text = view
+            .read_text(Path::new(composition.slice_path))
+            .map_err(snapshot_failure)?;
+        let seams_text = view
+            .read_text(Path::new(composition.seams_path))
+            .map_err(snapshot_failure)?;
+        let evidence_text = view
+            .read_text(Path::new(composition.evidence_path))
+            .map_err(snapshot_failure)?;
+        let requirements = parse_requirement_blocks_at(
+            Some(Path::new(composition.requirement_path)),
+            &requirement_text,
+        )
+        .map_err(|error| error.to_string())?;
+        let slice =
+            parse_implementation_slice_at(Some(Path::new(composition.slice_path)), &slice_text)
+                .map_err(|error| error.to_string())?;
+        let seams = parse_authored_seams_at(Some(Path::new(composition.seams_path)), &seams_text)
+            .map_err(|error| error.to_string())?;
+        let evidence =
+            parse_authored_evidence_at(Some(Path::new(composition.evidence_path)), &evidence_text)
+                .map_err(|error| error.to_string())?;
+        let (manifests, sources) = view.rust_inputs().map_err(snapshot_failure)?;
+        let rust_inventory =
+            inventory_rust_test_subjects_from_sources(manifests, sources, &Default::default());
+
+        let mut replay_diagnostics = Vec::new();
+        let mut subjects = Vec::new();
+        let mut claims = Vec::new();
+        for claim in &evidence.evidence {
+            let mut subject_ids = Vec::new();
+            let mut related_subject_ids = Vec::new();
+            for authored_subject in &claim.subject {
+                let selector =
+                    authored_selector(authored_subject).map_err(|error| error.to_string())?;
+                let resolution = resolve_rust_test_selector(&rust_inventory, &selector);
+                let subject_id = EvidenceSubjectId(authored_subject.id.clone());
+                let registration = subject_registration(
+                    &subject_id,
+                    authored_subject.role,
+                    &selector,
+                    &claim.source,
+                    resolution,
+                    &mut replay_diagnostics,
+                );
+                subjects.push(registration);
+                if authored_subject.role == AuthoredSubjectRole::ExactEvidence {
+                    subject_ids.push(subject_id);
+                } else {
+                    related_subject_ids.push(subject_id);
+                }
+            }
+            claims.push(EvidenceClaimRegistration {
+                id: claim.id.clone(),
+                requirement_id: claim.requirement_id.clone(),
+                slice_id: claim.slice_id.clone(),
+                seam_id: claim.seam_id.clone(),
+                purpose: claim.purpose,
+                precondition: claim.precondition.clone(),
+                operation: claim.operation.clone(),
+                expected_observable: claim.expected_observable.clone(),
+                discriminator: claim.discriminator.clone(),
+                claim_boundary: claim.claim_boundary.clone(),
+                source: claim.source.clone(),
+                subject_ids,
+                related_subject_ids,
+            });
+        }
+        if !replay_diagnostics.is_empty() {
+            return Err(format!(
+                "replay expected every authored subject to resolve exactly; got diagnostics {:?}",
+                replay_diagnostics
+                    .iter()
+                    .map(|diagnostic| diagnostic.code)
+                    .collect::<Vec<_>>()
+            ));
+        }
+        if subjects.is_empty() {
+            return Err("replay registered no subjects; the scenario would be vacuous".to_string());
+        }
+        if subjects
+            .iter()
+            .any(|subject| subject.source_identity.starts_with("authored-selector:"))
+        {
+            return Err(
+                "replay fell back to authored selectors; resolved registration was expected"
+                    .to_string(),
+            );
+        }
+
+        let seam_registrations = seams
+            .seam
+            .iter()
+            .map(|seam| ImplementationSeamRegistration {
+                id: seam.id.clone(),
+                owner: seam.owner.clone(),
+                operation: seam.operation.clone(),
+                source: seam.source.clone(),
+            })
+            .collect::<Vec<_>>();
+        let legacy_input = allow_policy::spec_system::GraphCompileInput {
+            requirement_graphs: vec![requirements],
+            implementation_slices: vec![slice],
+            seams: seam_registrations,
+            evidence_claims: claims,
+            subjects,
+        };
+        let canonical_input: intent_model::GraphCompileInput = serde_json::from_value(
+            serde_json::to_value(&legacy_input).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| format!("compile-input families drifted: {error}"))?;
+        let canonical_graph = intent_engine::compile_spec_graph(canonical_input);
+
+        let converted: intent_model::CompiledSpecGraph = serde_json::from_value(
+            serde_json::to_value(&legacy.graph).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| format!("compiled-graph families drifted: {error}"))?;
+
+        if converted != canonical_graph {
+            return Err(format!(
+                "resolved-subject replay graphs differ: legacy snapshot {} subjects {} diagnostics {}, engine snapshot {} subjects {} diagnostics {}",
+                converted.snapshot_id.0,
+                converted.subjects.len(),
+                converted.diagnostics.len(),
+                canonical_graph.snapshot_id.0,
+                canonical_graph.subjects.len(),
+                canonical_graph.diagnostics.len()
+            ));
+        }
+
+        let _ = fs::remove_dir_all(&root);
+        Ok(())
+    }
 }
