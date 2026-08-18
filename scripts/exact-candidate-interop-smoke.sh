@@ -135,28 +135,6 @@ bin_ext() {
   esac
 }
 
-reject_workspace_provider_path() {
-  local candidate="$1"
-  local product="$2"
-  ROOT_NATIVE="$(to_cargo_path "${ROOT}")"
-  python3 - "${candidate}" "${ROOT_NATIVE}" "${product}" <<'PY'
-import sys
-from pathlib import Path
-
-candidate = Path(sys.argv[1]).resolve()
-root = Path(sys.argv[2]).resolve()
-product = sys.argv[3]
-for prefix in (root / "target", root / "crates"):
-    try:
-        candidate.relative_to(prefix.resolve())
-    except ValueError:
-        continue
-    print(f"ForbiddenWorkspaceLeak:{product}")
-    raise SystemExit(0)
-print("Allowed")
-PY
-}
-
 version="$(read_workspace_version)"
 [[ -n "${version}" ]] || fail "could not read workspace.package.version"
 intent_version="$(read_crate_version cargo-intent)"
