@@ -12157,3 +12157,24 @@ glob = ".changes/0.*.md"
 [allow.last_seen]
 line = 1
 column = 1
+[[allow]]
+id = "allow-11129"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/intent-engine/parity-graph-compiler-v1.toml"
+owner = "repo-infra"
+classification = "intent_engine_parity_fixture"
+reason = "Graph-compiler parity contract for the spec-system move (#3524 slice E): binds the repository self-hosted authority files as the compile-parity scenario and records every proven parity dimension with its lane."
+evidence = ["doc:tests/fixtures/intent-engine/README.md", "doc:policy/extraction-parity.toml"]
+created = "2026-08-18"
+review_after = "2026-11-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "tests/fixtures/intent-engine/parity-graph-compiler-v1.toml"
+target_fingerprint = "toml"
+glob = "tests/fixtures/intent-engine/parity-graph-compiler-v1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

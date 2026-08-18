@@ -1,0 +1,33 @@
+scenario_id = "parity-intent-engine-graph-compiler-v1"
+parity_case = "parity-intent-engine-graph-compiler-v1"
+move_ledger_entry = "move-cargo-allow-spec-system-workspace"
+intent_engine_module = "intent-engine::graph_compiler"
+requirement_path = "docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md"
+slice_path = ".allow/spec-system/slices/self-hosted-runtime-promotion-v1.toml"
+seams_path = ".allow/spec-system/seams/runtime-promotion-validator-v1.toml"
+evidence_path = ".allow/spec-system/evidence/runtime-promotion-v1.toml"
+
+# Parity dimensions proven for the spec-system move (#3307 slice 5) with
+# the lane that proved each. This scenario adds the graph-compiler
+# dimension; the seams/evidence registration mapping remains covered
+# end-to-end through the legacy orchestrator (#3645) and is corpus
+# extension material.
+[[covered_dimensions]]
+dimension = "paired-precommit-evaluation"
+proven_by = "#3643 (adapter parity) and #3645 (end-to-end, finding-for-finding)"
+
+[[covered_dimensions]]
+dimension = "workspace-composition"
+proven_by = "#2586 fixtures plus #3644 dispatch contract parity"
+
+[[covered_dimensions]]
+dimension = "command-dispatch"
+proven_by = "#3644 (table parity, six surfaces, fail-closed vocabulary)"
+
+[[covered_dimensions]]
+dimension = "view-render-report"
+proven_by = "#3642 (verbatim renderer move; output formats unchanged, verified byte-for-byte)"
+
+[[covered_dimensions]]
+dimension = "graph-compiler"
+proven_by = "this scenario: same authority files, both families' parsers, both compilers, serde round-trip conversion, semantic equality"

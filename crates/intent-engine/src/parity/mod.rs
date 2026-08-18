@@ -1,6 +1,7 @@
 mod corpus;
 mod domain_queries;
 mod graph_comparison;
+mod graph_compiler;
 mod phase_obligations;
 mod workspace;
 
@@ -17,6 +18,10 @@ pub use graph_comparison::{
     GraphComparisonParityContract, graph_comparison_parity_contract_path,
     graph_comparison_parity_contract_paths, graph_movement_kinds_fixture_path,
     load_graph_comparison_parity_contract, load_graph_movement_kinds_fixture,
+};
+pub use graph_compiler::{
+    GraphCompilerParityContract, ParityDimensionRecord, graph_compiler_parity_contract_path,
+    graph_compiler_parity_contract_paths, load_graph_compiler_parity_contract,
 };
 pub use phase_obligations::{
     PhaseObligationsParityContract, load_phase_obligations_parity_contract,
