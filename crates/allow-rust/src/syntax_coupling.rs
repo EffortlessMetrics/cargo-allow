@@ -230,17 +230,147 @@ fn item_is_test_cfg_gated(node: Node<'_>, source: &str) -> bool {
                 .and_then(|inner| inner.strip_suffix(")]"))
         {
             let compact: String = inner.chars().filter(|ch| !ch.is_whitespace()).collect();
-            let gated = compact == "test"
-                || (compact.starts_with("all(")
-                    && compact.contains("test")
-                    && !compact.contains("not("));
-            if gated {
+            if cfg_predicate_posture(&compact) == CfgPredicatePosture::RequiresTest {
                 return true;
             }
         }
         current = sibling.prev_sibling();
     }
     false
+}
+
+/// What a cfg predicate implies about the `test` configuration (#3646
+/// hardening). The scanner gates an item only when the predicate
+/// REQUIRES test — the item cannot compile into a production build.
+/// Identifiers are parsed structurally, so a feature or value string
+/// merely similar to `test` (for example `feature = "testing"`) never
+/// gates an item.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum CfgPredicatePosture {
+    /// The predicate can only hold when cfg(test) holds: dev-scope.
+    RequiresTest,
+    /// The predicate cannot hold when cfg(test) holds: the item exists
+    /// only in non-test builds and must contribute coupling facts.
+    ExcludesTest,
+    /// No test implication either way.
+    Independent,
+}
+
+fn cfg_predicate_posture(predicate: &str) -> CfgPredicatePosture {
+    let Some(head) = cfg_predicate_head(predicate) else {
+        return CfgPredicatePosture::Independent;
+    };
+    let Some(inner) = head.group else {
+        // Bare identifier or `key = "value"`: only the exact identifier
+        // `test` requires test; values are never inspected.
+        return if head.name == "test" {
+            CfgPredicatePosture::RequiresTest
+        } else {
+            CfgPredicatePosture::Independent
+        };
+    };
+    let arms = cfg_predicate_arms(inner);
+    match head.name {
+        "not" => match arms.first() {
+            Some(only) => match cfg_predicate_posture(only) {
+                CfgPredicatePosture::RequiresTest => CfgPredicatePosture::ExcludesTest,
+                CfgPredicatePosture::ExcludesTest => CfgPredicatePosture::RequiresTest,
+                CfgPredicatePosture::Independent => CfgPredicatePosture::Independent,
+            },
+            None => CfgPredicatePosture::Independent,
+        },
+        "all" => {
+            if arms.is_empty() {
+                return CfgPredicatePosture::Independent;
+            }
+            let postures = arms
+                .iter()
+                .map(|arm| cfg_predicate_posture(arm))
+                .collect::<Vec<_>>();
+            if postures.contains(&CfgPredicatePosture::ExcludesTest) {
+                return CfgPredicatePosture::ExcludesTest;
+            }
+            if postures.contains(&CfgPredicatePosture::RequiresTest) {
+                return CfgPredicatePosture::RequiresTest;
+            }
+            CfgPredicatePosture::Independent
+        }
+        "any" => {
+            // A disjunction requires test only when EVERY arm requires
+            // it. `any(test, feature = "x")` deliberately does not gate:
+            // the item still compiles into production when the other
+            // arm holds, so dropping its coupling facts would
+            // under-enforce.
+            if !arms.is_empty()
+                && arms
+                    .iter()
+                    .all(|arm| cfg_predicate_posture(arm) == CfgPredicatePosture::RequiresTest)
+            {
+                CfgPredicatePosture::RequiresTest
+            } else {
+                CfgPredicatePosture::Independent
+            }
+        }
+        _ => CfgPredicatePosture::Independent,
+    }
+}
+
+struct CfgPredicateHead<'a> {
+    name: &'a str,
+    group: Option<&'a str>,
+}
+
+/// Parse a cfg predicate into its head: `name(inner)`, a bare
+/// identifier, or `key = "value"` (group is None for the latter two).
+fn cfg_predicate_head(predicate: &str) -> Option<CfgPredicateHead<'_>> {
+    let Some(open) = predicate.find('(') else {
+        return Some(CfgPredicateHead {
+            name: predicate,
+            group: None,
+        });
+    };
+    if !predicate.ends_with(')') {
+        return None;
+    }
+    let name = predicate.get(..open)?;
+    if name.is_empty() || !name.chars().all(|ch| ch.is_alphanumeric() || ch == '_') {
+        return None;
+    }
+    let close = predicate.len().checked_sub(1)?;
+    let inner = predicate.get(open + 1..close)?;
+    Some(CfgPredicateHead {
+        name,
+        group: Some(inner),
+    })
+}
+
+/// Split a group body into top-level comma-separated arms, respecting
+/// nesting. Malformed nesting yields no arms.
+fn cfg_predicate_arms(inner: &str) -> Vec<&str> {
+    let mut arms = Vec::new();
+    let mut depth: usize = 0;
+    let mut start: usize = 0;
+    for (index, ch) in inner.char_indices() {
+        match ch {
+            '(' => depth = depth.saturating_add(1),
+            ')' => depth = depth.saturating_sub(1),
+            ',' if depth == 0 => {
+                if let Some(arm) = inner.get(start..index) {
+                    arms.push(arm);
+                }
+                start = index + 1;
+            }
+            _ => {}
+        }
+    }
+    if depth != 0 {
+        return Vec::new();
+    }
+    if let Some(arm) = inner.get(start..) {
+        arms.push(arm);
+    }
+    arms.retain(|arm| !arm.is_empty());
+    arms
 }
 
 fn strip_rust_comments(text: &str) -> Option<String> {
