@@ -79,8 +79,10 @@ pub use subject_resolution::{
 };
 pub use workspace::{
     AUTHORITY_COMPILE_PLAN_SCHEMA_ID, AuthorityCompilePlanV1, AuthoritySourceRoleV1,
-    AuthoritySourceV1, SELF_HOSTED_RUNTIME_PROMOTION_COMPOSITION_ID, WorkspaceCompositionV1,
-    composition_sources_present, load_workspace_composition_toml, plan_authority_compile,
+    AuthoritySourceV1, GraphDiagnosticV1, SELF_HOSTED_RUNTIME_PROMOTION_COMPOSITION_ID,
+    WorkspaceCompositionV1, composition_sources_present, evaluate_paired_precommit_objectives_v1,
+    graph_movement_kind_to_precommit, load_workspace_composition_toml, plan_authority_compile,
+    subject_resolution_from_diagnostic,
 };
 
 #[cfg(test)]

@@ -1,8 +1,9 @@
 use crate::spec_system_graph_movement::SpecGraphMovementKind;
 use crate::spec_system_parity_corpus::{SPEC_SYSTEM_PROFILE_ID, parity_corpus_anchors};
 use crate::spec_system_workspace_composition::SELF_HOSTED_RUNTIME_PROMOTION;
+use allow_policy::spec_system::PrecommitMovementKind as LegacyPrecommitMovementKind;
 use intent_engine::{
-    GraphMovementKindV1, bounded_domain_queries_parity_contract_paths,
+    GraphDiagnosticV1, GraphMovementKindV1, bounded_domain_queries_parity_contract_paths,
     bounded_domain_query_catalog_fixture_path, canonical_bounded_domain_query_kinds,
     canonical_graph_movement_kinds, evaluator_packet_parity_contract_paths,
     graph_comparison_parity_contract_paths, graph_movement_kinds_fixture_path,
@@ -10,6 +11,8 @@ use intent_engine::{
     phase_obligations_parity_contract_paths, precommit_obligation_plan_fixture_path,
     self_hosted_workspace_composition_fixture_path, workspace_composition_parity_contract_paths,
 };
+use intent_engine::{graph_movement_kind_to_precommit, subject_resolution_from_diagnostic};
+use intent_model::PrecommitMovementKind as CanonicalPrecommitMovementKind;
 use std::path::PathBuf;
 
 #[test]
@@ -249,6 +252,123 @@ fn spec_graph_movement_kind_as_str(kind: GraphMovementKindV1) -> &'static str {
         }
         GraphMovementKindV1::UnknownOrUncomparable => {
             SpecGraphMovementKind::UnknownOrUncomparable.as_str()
+        }
+    }
+}
+
+fn as_legacy_precommit_kind(
+    kind: CanonicalPrecommitMovementKind,
+) -> allow_policy::spec_system::PrecommitMovementKind {
+    use CanonicalPrecommitMovementKind as Canonical;
+    use allow_policy::spec_system::PrecommitMovementKind as Legacy;
+    match kind {
+        Canonical::RequirementAdded => Legacy::RequirementAdded,
+        Canonical::RequirementRemoved => Legacy::RequirementRemoved,
+        Canonical::RequirementChanged => Legacy::RequirementChanged,
+        Canonical::ImplementationSliceAdded => Legacy::ImplementationSliceAdded,
+        Canonical::ImplementationSliceRemoved => Legacy::ImplementationSliceRemoved,
+        Canonical::ImplementationSliceChanged => Legacy::ImplementationSliceChanged,
+        Canonical::SeamMappingAdded => Legacy::SeamMappingAdded,
+        Canonical::SeamMappingRemoved => Legacy::SeamMappingRemoved,
+        Canonical::SeamMappingChanged => Legacy::SeamMappingChanged,
+        Canonical::EvidencePurposeAdded => Legacy::EvidencePurposeAdded,
+        Canonical::EvidencePurposeRemoved => Legacy::EvidencePurposeRemoved,
+        Canonical::EvidencePurposeChanged => Legacy::EvidencePurposeChanged,
+        Canonical::EvidenceClaimChanged => Legacy::EvidenceClaimChanged,
+        Canonical::SubjectSelectorAdded => Legacy::SubjectSelectorAdded,
+        Canonical::SubjectSelectorRemoved => Legacy::SubjectSelectorRemoved,
+        Canonical::SubjectSelectorChanged => Legacy::SubjectSelectorChanged,
+        Canonical::SubjectBodyIdentityChanged => Legacy::SubjectBodyIdentityChanged,
+        Canonical::GeneratedSourceRelationAdded => Legacy::GeneratedSourceRelationAdded,
+        Canonical::GeneratedSourceRelationRemoved => Legacy::GeneratedSourceRelationRemoved,
+        Canonical::GeneratedSourceRelationChanged => Legacy::GeneratedSourceRelationChanged,
+        Canonical::ProfileOrDialectChanged => Legacy::ProfileOrDialectChanged,
+        Canonical::UnknownOrUncomparable => Legacy::UnknownOrUncomparable,
+    }
+}
+
+fn legacy_precommit_kind_for(kind: GraphMovementKindV1) -> LegacyPrecommitMovementKind {
+    use allow_policy::spec_system::PrecommitMovementKind as Legacy;
+    match kind {
+        GraphMovementKindV1::RequirementAdded => Legacy::RequirementAdded,
+        GraphMovementKindV1::RequirementRemoved => Legacy::RequirementRemoved,
+        GraphMovementKindV1::RequirementChanged => Legacy::RequirementChanged,
+        GraphMovementKindV1::ImplementationSliceAdded => Legacy::ImplementationSliceAdded,
+        GraphMovementKindV1::ImplementationSliceRemoved => Legacy::ImplementationSliceRemoved,
+        GraphMovementKindV1::ImplementationSliceChanged => Legacy::ImplementationSliceChanged,
+        GraphMovementKindV1::SeamMappingAdded => Legacy::SeamMappingAdded,
+        GraphMovementKindV1::SeamMappingRemoved => Legacy::SeamMappingRemoved,
+        GraphMovementKindV1::SeamMappingChanged => Legacy::SeamMappingChanged,
+        GraphMovementKindV1::EvidencePurposeAdded => Legacy::EvidencePurposeAdded,
+        GraphMovementKindV1::EvidencePurposeRemoved => Legacy::EvidencePurposeRemoved,
+        GraphMovementKindV1::EvidencePurposeChanged => Legacy::EvidencePurposeChanged,
+        GraphMovementKindV1::EvidenceClaimChanged => Legacy::EvidenceClaimChanged,
+        GraphMovementKindV1::SubjectSelectorAdded => Legacy::SubjectSelectorAdded,
+        GraphMovementKindV1::SubjectSelectorRemoved => Legacy::SubjectSelectorRemoved,
+        GraphMovementKindV1::SubjectSelectorChanged => Legacy::SubjectSelectorChanged,
+        GraphMovementKindV1::SubjectBodyIdentityChanged => Legacy::SubjectBodyIdentityChanged,
+        GraphMovementKindV1::ProfileOrDialectChanged => Legacy::ProfileOrDialectChanged,
+        GraphMovementKindV1::UnknownOrUncomparable => Legacy::UnknownOrUncomparable,
+    }
+}
+
+#[test]
+fn paired_precommit_movement_mapping_parity() {
+    for kind in canonical_graph_movement_kinds() {
+        let canonical = graph_movement_kind_to_precommit(*kind);
+        // The canonical mapping is string-stable with the movement kind it
+        // maps from, and the allow-policy mirror vocabulary receives the
+        // same kind through the engine mapping as through a direct mapping,
+        // binding engine mapping, movement parity fixture, and the legacy
+        // copy together.
+        assert_eq!(canonical.as_str(), kind.as_str());
+        assert_eq!(
+            as_legacy_precommit_kind(canonical),
+            legacy_precommit_kind_for(*kind),
+            "legacy precommit kind drift for {}",
+            kind.as_str()
+        );
+    }
+}
+
+#[test]
+fn paired_precommit_diagnostic_status_parity() {
+    use intent_model::PrecommitSubjectResolutionStatus as Status;
+    // Expected statuses mirror the legacy adapter's inline table in
+    // spec_system_workspace.rs (evaluate_paired_precommit_objectives).
+    let cases = [
+        ("spec_graph_selector_ambiguous", Some(Status::Ambiguous)),
+        ("spec_graph_selector_not_found", Some(Status::Missing)),
+        ("spec_graph_rust_inventory_partial", Some(Status::Partial)),
+        (
+            "spec_graph_subject_non_executable",
+            Some(Status::Unsupported),
+        ),
+        (
+            "spec_graph_subject_generated_or_parameterized",
+            Some(Status::Unsupported),
+        ),
+        ("spec_graph_selector_malformed", Some(Status::Unsupported)),
+        (
+            "spec_graph_selector_cfg_or_feature_unknown",
+            Some(Status::Unsupported),
+        ),
+        ("spec_graph_something_else", None),
+    ];
+    for (code, expected) in cases {
+        let diagnostic = GraphDiagnosticV1 {
+            code: code.to_string(),
+            subject: "subject-1".to_string(),
+            message: "diagnostic".to_string(),
+        };
+        let resolution = subject_resolution_from_diagnostic(&diagnostic);
+        assert_eq!(
+            resolution.as_ref().map(|r| r.status),
+            expected,
+            "code {code}"
+        );
+        if let Some(resolution) = resolution {
+            assert_eq!(resolution.id.as_str(), "subject-1", "code {code}");
         }
     }
 }
