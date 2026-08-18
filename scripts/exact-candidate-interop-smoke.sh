@@ -326,13 +326,15 @@ set -e
 if [[ -f "${ROOT}/tests/fixtures/cargo-proof/proof-plan-smoke-v1.toml" ]] && [[ "${baseline_exit}" -eq 0 ]]; then
   record_matrix "current_allow_current_intent_current_proof" "compatible" "compatible" "none"
 else
-  fail "matrix baseline dry-run failed: ${baseline_probe}"
+  fail "matrix baseline dry-run failed with exit ${baseline_exit}"
 fi
 
 log "matrix: missing optional provider (cargo-intent absent from an allow-only journey)"
-# Journey A already runs cargo-allow alone (no intent/proof installed in
-# its consumer); re-derive the posture from the absent negative above.
-record_matrix "current_allow_missing_intent" "compatible_optional_absent" "compatible_optional_absent" "provider_absent; no embedded fallback"
+# Derived posture: journey A (which runs unconditionally before any
+# delegation config exists) proves the allow-only journey green, and the
+# absent negative below proves the provider-absent boundary in the same
+# receipt; this cell aggregates both rather than re-running them.
+record_matrix "current_allow_missing_intent" "compatible_optional_absent" "compatible_optional_absent" "derived: journey A green + absent negative provider_absent (below)"
 
 log "matrix: future unsupported intent protocol (real protocol gate)"
 future_dir="${work_dir}/future-protocol-consumer"
@@ -358,30 +360,36 @@ future_err="$(env -u CARGO_INTENT_BIN "${cargo_allow_bin}" check \
   --output "${future_out}" 2>&1)"
 future_exit=$?
 set -e
-future_boundary="unknown"
-if [[ "${future_exit}" -ne 0 ]] && printf '%s' "${future_err}" | grep -q "schema_id"; then
-  future_boundary="loader rejects unknown delegation schema"
-elif [[ "${future_exit}" -ne 0 ]]; then
-  future_boundary="fails closed without schema acceptance: $(printf '%s' "${future_err}" | head -1)"
-fi
+# The schema-refusal evidence is REQUIRED: a non-zero exit alone could
+# come from a downstream failure (e.g. the bare executable resolving to
+# nothing) while the schema gate silently never fired — that masked
+# regression must fail the cell, not re-label the boundary.
 if [[ "${future_exit}" -eq 0 ]]; then
   fail "future-protocol cell accepted an unknown schema (exit 0)"
 fi
-record_matrix "current_allow_future_intent_protocol" "incompatible" "incompatible" "${future_boundary}"
+if ! printf '%s' "${future_err}" | grep -q "unexpected schema_id"; then
+  fail "future-protocol cell failed without schema-gate evidence: $(printf '%s' "${future_err}" | head -1)"
+fi
+record_matrix \
+  "current_allow_future_intent_protocol" \
+  "incompatible" \
+  "incompatible" \
+  "loader rejects unknown delegation schema"
 
 matrix_json="$(
   printf '%s\n' "${matrix_records[@]}" | python3 -c '
 import json, sys
 cells = []
 for line in sys.stdin:
-    parts = [p for p in line.strip().split("|")]
-    if len(parts) == 4:
-        cells.append({
-            "combination": parts[0],
-            "expected": parts[1],
-            "actual": parts[2],
-            "failure_boundary": parts[3],
-        })
+    parts = line.strip().split("|", 3)
+    if len(parts) != 4:
+        raise SystemExit(f"matrix record has unexpected shape: {line.strip()!r}")
+    cells.append({
+        "combination": parts[0],
+        "expected": parts[1],
+        "actual": parts[2],
+        "failure_boundary": parts[3],
+    })
 print(json.dumps(cells))
 '
 )"

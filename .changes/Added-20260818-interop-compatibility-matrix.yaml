@@ -3,10 +3,12 @@ body: >-
   Add the bounded, risk-based compatibility matrix to the exact-candidate
   interop harness (#2605 installment 4). Every cell is a real run of the
   installed candidates with expected/actual posture and failure boundary
-  recorded in the receipt: the baseline cell proves the current
-  allow + intent + proof set dry-runs green together; the
-  missing-optional-provider cell records the allow-only journey posture
-  (provider absent, no embedded fallback) already exercised for real;
+  recorded in the receipt: the baseline cell runs a real cargo-proof dry-run over the retained
+  fixture plan referencing cargo-allow (the trio posture is aggregated
+  with journeys A-E in the same receipt); the
+  missing-optional-provider cell aggregates the allow-only journey
+  posture (journey A green, absent-negative provider_absent boundary,
+  both real and recorded as derived in the cell);
   and the future-unsupported-protocol cell feeds a delegation config
   declaring a future schema generation through the real loader, which
   must fail closed refusing the unknown schema (verified locally:
