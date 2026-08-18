@@ -598,7 +598,14 @@ pub(crate) mod tests {
             path: Some("crates/example/src/lib.rs".to_string()),
             previous_path: Some("crates/example/src/old.rs".to_string()),
         };
-        serde_json::to_value(&mirror).map_err(|error| error.to_string())
+        let populated = serde_json::to_value(&mirror).map_err(|error| error.to_string())?;
+        let none_arm = StagedChangeV1 {
+            status: "deleted".to_string(),
+            path: None,
+            previous_path: None,
+        };
+        let none_arm = serde_json::to_value(&none_arm).map_err(|error| error.to_string())?;
+        serde_json::to_value([populated, none_arm]).map_err(|error| error.to_string())
     }
 
     fn output_path(label: &str) -> PathBuf {

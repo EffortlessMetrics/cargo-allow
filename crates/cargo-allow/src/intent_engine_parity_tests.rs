@@ -742,12 +742,18 @@ fn repo_root() -> PathBuf {
 #[test]
 fn staged_change_shape_mirror_matches_protocol_authority() -> Result<(), String> {
     let mirror_json = crate::spec_precommit::tests::sample_staged_change_shape_json()?;
-    let authority = intent_protocol::StagedChangeV1 {
+    let populated = intent_protocol::StagedChangeV1 {
         status: "modified".to_string(),
         path: Some("crates/example/src/lib.rs".to_string()),
         previous_path: Some("crates/example/src/old.rs".to_string()),
     };
-    let authority_json = serde_json::to_value(&authority).map_err(|error| error.to_string())?;
+    let none_arm = intent_protocol::StagedChangeV1 {
+        status: "deleted".to_string(),
+        path: None,
+        previous_path: None,
+    };
+    let authority_json =
+        serde_json::to_value([populated, none_arm]).map_err(|error| error.to_string())?;
     if mirror_json != authority_json {
         return Err(format!(
             "cargo-allow staged-change shape mirror drifted from the protocol authority: {mirror_json} != {authority_json}"
