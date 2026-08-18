@@ -356,6 +356,60 @@ if not delegated_unmapped:
 PY
 record_journey "PARITY" "cargo-intent+cargo-allow" "Passed"
 
+# --- Sentinel plants (#2605 final hardening): undeclared-read decoys ---
+# Poison the monorepo target tree (a dedicated subdirectory, so real
+# build outputs are untouched) with decoy product binaries that would
+# be selected by ANY path-based discovery leaking the workspace, and
+# plant marker files whose text must never appear in a retained
+# artifact. The PATH-poison control below then proves the strongest
+# form: even when a decoy IS discoverable, the real protocol handshake
+# rejects it — a workspace binary cannot impersonate a provider.
+log "sentinels: planting workspace decoys and markers"
+sentinel_marker="SENTINEL-2605-DO-NOT-READ"
+sentinel_dir="${ROOT}/target/interop-sentinel"
+mkdir -p "${sentinel_dir}"
+for product in cargo-allow cargo-intent cargo-proof; do
+  printf '#!/usr/bin/env bash\necho "%s 0.0.0-sentinel"\nexit 1\n' "${product}" \
+    >"${sentinel_dir}/${product}"
+  chmod +x "${sentinel_dir}/${product}"
+done
+printf '%s\n' "${sentinel_marker}" >"${sentinel_dir}/sentinel-marker.txt"
+printf '%s\n' "${sentinel_marker}" >"${ROOT}/crates/sentinel-marker.txt"
+
+log "sentinel: PATH-poisoned discovery cannot impersonate a provider"
+poison_dir="${work_dir}/path-poison-consumer"
+mkdir -p "${poison_dir}/.allow/compatibility"
+git -C "${poison_dir}" init -q 2>/dev/null || true
+git -C "${poison_dir}" config user.name "Interop Harness"
+git -C "${poison_dir}" config user.email "interop@example.invalid"
+printf 'poisoned\n' >"${poison_dir}/staged.txt"
+git -C "${poison_dir}" add staged.txt
+printf 'schema_id = "cargo-allow.intent-delegation.v1"\ndelegate_staged_precommit = true\ntimeout_secs = 30\n' \
+  >"${poison_dir}/.allow/compatibility/intent-delegation.toml"
+poison_out="${poison_dir}/precommit-poison.json"
+set +e
+poison_err="$(env -u CARGO_INTENT_BIN PATH="${sentinel_dir}:${PATH}" \
+  "${cargo_allow_bin}" check \
+  --root "${poison_dir}" \
+  --profile spec-system \
+  --phase precommit \
+  --staged \
+  --format json \
+  --output "${poison_out}" 2>&1)"
+poison_exit=$?
+set -e
+poison_passed=false
+if [[ "${poison_exit}" -ne 0 ]]; then
+  case "${poison_err}" in
+    *wrong_protocol*|*malformed_provider_output*|*provider_instrument_failure*|*not*found*)
+      poison_passed=true
+      ;;
+  esac
+fi
+[[ "${poison_passed}" == "true" ]] \
+  || fail "PATH-poison control: decoy was not rejected by the real handshake (exit=${poison_exit} err=${poison_err})"
+record_negative "E" "sentinel" "WorkspaceDecoyRejectedByHandshake" "${poison_passed}"
+
 # --- Compatibility matrix (#2605 installment 4): bounded, risk-based ---
 # Every cell is a REAL run of installed candidates; postures are
 # expected/actual/failure-boundary, not labels. Baseline = the exact
@@ -690,6 +744,15 @@ print(json.dumps(records))
 PY
   )"
 fi
+
+# Marker-leak scan: no retained artifact may embed the planted marker
+# (any read of the workspace marker files would surface its text).
+log "sentinel: scanning retained artifacts for marker leakage"
+leak_hits="$(grep -rl -- "${sentinel_marker}" "${work_dir}" "${consumer_dir}" 2>/dev/null || true)"
+if [[ -n "${leak_hits}" ]]; then
+  fail "sentinel marker leaked into retained artifacts: ${leak_hits}"
+fi
+record_negative "A" "sentinel" "NoUndeclaredCheckoutRead" "true"
 
 os_name="$(uname -s | tr '[:upper:]' '[:lower:]')"
 case "${os_name}" in
