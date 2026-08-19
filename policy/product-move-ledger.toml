@@ -2246,7 +2246,7 @@ deletion_output = "Deferred to extraction cutover and parity receipts."
 [[entry]]
 id = "introduce-proof-protocol-plan-dtos"
 source_kind = "RustModule"
-current_paths = ['crates/proof-protocol/src/plan_dtos.rs']
+current_paths = ['crates/proof-protocol/src/plan_dtos.rs', 'crates/proof-protocol/src/plan_v2.rs']
 current_refs = []
 current_identity = "crates/proof-protocol/src/plan_dtos.rs"
 current_product = "cargo-proof"
