@@ -39,6 +39,8 @@ pub struct ProviderAvailabilityV1 {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProviderRegistryError {
+    /// A provider identity is blank or whitespace-only.
+    InvalidProviderId { provider_id: String },
     /// A provider or catalog failed surface validation.
     InvalidProviderSurface { provider_id: String },
     /// Two selected providers declared the same identity.
@@ -50,6 +52,7 @@ pub enum ProviderRegistryError {
 impl ProviderRegistryError {
     pub const fn as_str(&self) -> &'static str {
         match self {
+            Self::InvalidProviderId { .. } => "invalid_provider_id",
             Self::InvalidProviderSurface { .. } => "provider_surface_invalid",
             Self::DuplicateProviderId { .. } => "duplicate_provider_id",
             Self::DuplicateCapabilityId { .. } => "duplicate_capability_id",
@@ -82,6 +85,11 @@ impl StaticProviderRegistryV1 {
         let mut provider_ids = std::collections::BTreeSet::new();
         let mut capability_ids = std::collections::BTreeSet::new();
         for provider in &providers {
+            if provider.provider_id().trim().is_empty() {
+                return Err(ProviderRegistryError::InvalidProviderId {
+                    provider_id: provider.provider_id().to_string(),
+                });
+            }
             validate_provider_surface(provider.as_ref()).map_err(|_| {
                 ProviderRegistryError::InvalidProviderSurface {
                     provider_id: provider.provider_id().to_string(),
@@ -230,6 +238,22 @@ mod tests {
             }
             other => Err(format!(
                 "unexpected duplicate result: {}",
+                other.err().map(|error| error.as_str()).unwrap_or("ok")
+            )),
+        }
+    }
+
+    #[test]
+    fn blank_provider_ids_fail_closed() -> Result<(), String> {
+        let provider = Box::new(TestProvider::new("  ", "blank-id-capability"));
+        match StaticProviderRegistryV1::from_providers(vec![provider]) {
+            Err(ProviderRegistryError::InvalidProviderId { provider_id })
+                if provider_id == "  " =>
+            {
+                Ok(())
+            }
+            other => Err(format!(
+                "unexpected blank provider result: {}",
                 other.err().map(|error| error.as_str()).unwrap_or("ok")
             )),
         }

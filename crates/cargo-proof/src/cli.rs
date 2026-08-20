@@ -91,10 +91,7 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
             cmd_identity(output_format)?;
             Ok(ProcessExitFamilyV1::Success)
         }
-        Some(CargoProofCommand::Providers) => {
-            cmd_providers(output_format)?;
-            Ok(ProcessExitFamilyV1::Success)
-        }
+        Some(CargoProofCommand::Providers) => provider_command_family(cmd_providers(output_format)),
         Some(CargoProofCommand::Plan(args)) => {
             let supplied = usize::from(args.provider_catalog.is_some())
                 + usize::from(args.receipt_inventory.is_some())
@@ -210,6 +207,32 @@ fn cmd_providers(format: OutputFormat) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+fn provider_command_family(result: Result<(), String>) -> Result<ProcessExitFamilyV1, String> {
+    match result {
+        Ok(()) => Ok(ProcessExitFamilyV1::Success),
+        Err(error) => {
+            eprintln!("error: provider registry: {error}");
+            Ok(ProcessExitFamilyV1::InstrumentFailure)
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::provider_command_family;
+    use cargo_proof::ProcessExitFamilyV1;
+
+    #[test]
+    fn provider_registry_failure_is_internal_not_usage() -> Result<(), String> {
+        if provider_command_family(Err("invalid provider surface".to_string()))?
+            != ProcessExitFamilyV1::InstrumentFailure
+        {
+            return Err("provider registry failure must map to instrument failure".to_string());
+        }
+        Ok(())
+    }
 }
 
 fn print_help() -> Result<(), String> {
