@@ -117,6 +117,7 @@ pub struct ProviderSelectionV1 {
 pub struct ExpectedReceiptContractV1 {
     pub receipt_schema: String,
     pub receipt_generation: u32,
+    pub config_identity: String,
     /// Currentness dimensions the receipt must bind exactly (snapshot,
     /// subject, provider request, config); reuse requires exact
     /// currentness, never filename or exit-code matching.
@@ -558,6 +559,7 @@ mod tests {
         selected.expected_receipt = Some(ExpectedReceiptContractV1 {
             receipt_schema: "cargo-allow.analysis-receipt.v1".to_string(),
             receipt_generation: 1,
+            config_identity: "config:test".to_string(),
             currentness_dimensions: vec![
                 "snapshot".to_string(),
                 "subject".to_string(),

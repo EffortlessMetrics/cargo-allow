@@ -167,9 +167,20 @@ fn receipt_contract_mismatch(
     for dimension in &expected.currentness_dimensions {
         let present = match dimension.as_str() {
             "snapshot" | "snapshot_identity" => true,
-            "subject" => !row.subject_identity.trim().is_empty(),
-            "provider_request" => !row.provider_request_identity.trim().is_empty(),
-            "config" => !row.config_identity.trim().is_empty(),
+            "subject" => item
+                .subject
+                .selector
+                .as_ref()
+                .or(item.subject.body_identity.as_ref())
+                .or(item.subject.revision.as_ref())
+                .map(|identity| identity == &row.subject_identity)
+                .unwrap_or(false),
+            "provider_request" => item
+                .selection
+                .as_ref()
+                .map(|selection| selection.request_digest == row.provider_request_identity)
+                .unwrap_or(false),
+            "config" => row.config_identity == expected.config_identity,
             _ => false,
         };
         if !present {
@@ -299,10 +310,10 @@ mod tests {
                 blocking: true,
                 evidence_purpose_ref: "purpose".to_string(),
                 required_capability_class: "capability-1".to_string(),
-                snapshot_identity,
+                snapshot_identity: snapshot_identity.clone(),
                 subject: ProofSubjectV1 {
                     subject_class: ProofSubjectClassV1::Commit,
-                    revision: Some("snapshot-1".to_string()),
+                    revision: Some(snapshot_identity.clone()),
                     selector: None,
                     body_identity: None,
                     limitations: Vec::new(),
@@ -318,6 +329,7 @@ mod tests {
                     receipt_schema: effortless_repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID
                         .to_string(),
                     receipt_generation: 1,
+                    config_identity: "config:test".to_string(),
                     currentness_dimensions: vec![
                         "snapshot_identity".to_string(),
                         "subject".to_string(),
@@ -351,9 +363,9 @@ mod tests {
                 provider_id: "provider-1".to_string(),
                 capability_id: "capability-1".to_string(),
                 snapshot_identity: snapshot_identity(),
-                subject_identity: "subject-1".to_string(),
+                subject_identity: snapshot_identity(),
                 provider_request_identity: "request-1".to_string(),
-                config_identity: "config-1".to_string(),
+                config_identity: "config:test".to_string(),
                 receipt_generation: 1,
                 receipt,
             }],

@@ -105,8 +105,10 @@ fn build_item(
                     request_digest,
                 }),
                 Some(ExpectedReceiptContractV1 {
-                    receipt_schema: "proof.receipt-set.v1".to_string(),
+                    receipt_schema: effortless_repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID
+                        .to_string(),
                     receipt_generation: 1,
+                    config_identity: "config:unspecified".to_string(),
                     currentness_dimensions: vec![
                         "snapshot_identity".to_string(),
                         "subject".to_string(),
