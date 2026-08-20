@@ -182,30 +182,31 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
             print!("{rendered}");
             Ok(ProcessExitFamilyV1::Success)
         }
-        Some(CargoProofCommand::Receipts(args)) => {
-            let report =
-                match cargo_proof::captured_receipt_status_from_paths(&args.plan, &args.receipts) {
-                    Ok(report) => report,
-                    Err(error) => {
-                        eprintln!("error: {}", error.message());
-                        return Ok(error.family());
-                    }
-                };
-            let rendered = match args.action {
-                ReceiptAction::Validate => {
-                    render_captured_receipt_validation(&report, output_format)?
-                }
-                ReceiptAction::Status => render_captured_receipt_status(&report, output_format)?,
-            };
-            print!("{rendered}");
-            if matches!(args.action, ReceiptAction::Validate)
-                && !receipt_validation_satisfies_plan(&report)
-            {
-                Ok(ProcessExitFamilyV1::Blocking)
-            } else {
-                Ok(ProcessExitFamilyV1::Success)
-            }
+        Some(CargoProofCommand::Receipts(args)) => run_receipts(args, output_format),
+    }
+}
+
+fn run_receipts(
+    args: ReceiptsArgs,
+    output_format: OutputFormat,
+) -> Result<ProcessExitFamilyV1, String> {
+    let report = match cargo_proof::captured_receipt_status_from_paths(&args.plan, &args.receipts) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("error: {}", error.message());
+            return Ok(error.family());
         }
+    };
+    let rendered = match args.action {
+        ReceiptAction::Validate => render_captured_receipt_validation(&report, output_format)?,
+        ReceiptAction::Status => render_captured_receipt_status(&report, output_format)?,
+    };
+    print!("{rendered}");
+    if matches!(args.action, ReceiptAction::Validate) && !receipt_validation_satisfies_plan(&report)
+    {
+        Ok(ProcessExitFamilyV1::Blocking)
+    } else {
+        Ok(ProcessExitFamilyV1::Success)
     }
 }
 
@@ -288,7 +289,9 @@ pub fn main_exit_code(result: Result<ProcessExitFamilyV1, String>) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::provider_command_family;
+    use super::{ReceiptAction, ReceiptsArgs, run_receipts};
     use cargo_proof::{ProcessExitFamilyV1, ReceiptCommandError};
+    use std::path::PathBuf;
 
     #[test]
     fn provider_registry_failure_is_internal_not_usage() -> Result<(), String> {
@@ -316,6 +319,42 @@ mod tests {
                 return Err("receipt semantic failures must not map to usage".to_string());
             }
         }
+        Ok(())
+    }
+
+    #[test]
+    fn receipt_command_maps_read_and_parse_failures_without_execution() -> Result<(), String> {
+        let root =
+            std::env::temp_dir().join(format!("cargo-proof-cli-receipts-{}", std::process::id()));
+        std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        let missing = run_receipts(
+            ReceiptsArgs {
+                plan: root.join("missing-plan.json"),
+                receipts: root.join("missing-receipts.json"),
+                action: ReceiptAction::Status,
+            },
+            cargo_proof::OutputFormat::Human,
+        )?;
+        if missing != ProcessExitFamilyV1::Usage {
+            return Err("missing receipt input must map to usage".to_string());
+        }
+
+        let plan = root.join("plan.json");
+        let receipts = root.join("receipts.json");
+        std::fs::write(&plan, b"{}").map_err(|error| error.to_string())?;
+        std::fs::write(&receipts, b"{}").map_err(|error| error.to_string())?;
+        let malformed = run_receipts(
+            ReceiptsArgs {
+                plan: PathBuf::from(&plan),
+                receipts: PathBuf::from(&receipts),
+                action: ReceiptAction::Validate,
+            },
+            cargo_proof::OutputFormat::Json,
+        )?;
+        if malformed != ProcessExitFamilyV1::InstrumentFailure {
+            return Err("malformed receipt input must map to instrument failure".to_string());
+        }
+        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
         Ok(())
     }
 }

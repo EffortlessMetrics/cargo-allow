@@ -338,6 +338,12 @@ mod tests {
     }
 
     fn path_inputs() -> (ProofPlanV2, CapturedReceiptManifestV1) {
+        path_inputs_for_result(ResultClassV1::Findings)
+    }
+
+    fn path_inputs_for_result(
+        result_class: ResultClassV1,
+    ) -> (ProofPlanV2, CapturedReceiptManifestV1) {
         let snapshot_identity = snapshot_identity();
         let plan = ProofPlanV2::new(
             "plan-1",
@@ -386,7 +392,7 @@ mod tests {
         let receipt = AnalysisReceiptEnvelopeV1::new(
             "provider-1",
             snapshot(),
-            ResultClassV1::Findings,
+            result_class,
             "provider.payload.v1",
             serde_json::json!({"payload": true}),
             ClaimBoundaryV1::new("captured test evidence"),
@@ -568,6 +574,28 @@ mod tests {
         }
         if receipt_validation_satisfies_plan(&report) {
             return Err("findings must remain non-satisfying after path loading".to_string());
+        }
+
+        for result_class in [
+            ResultClassV1::Completed,
+            ResultClassV1::NotProven,
+            ResultClassV1::PartialData,
+            ResultClassV1::StaleInput,
+            ResultClassV1::Unsupported,
+            ResultClassV1::MalformedInput,
+            ResultClassV1::InstrumentFailure,
+        ] {
+            let (_, manifest) = path_inputs_for_result(result_class);
+            std::fs::write(
+                &manifest_path,
+                serde_json::to_vec(&manifest).map_err(|error| error.to_string())?,
+            )
+            .map_err(|error| error.to_string())?;
+            let projected = captured_receipt_status_from_paths(&plan_path, &manifest_path)
+                .map_err(|error| error.message().to_string())?;
+            if projected.items.is_empty() {
+                return Err("path-loaded status report lost its item".to_string());
+            }
         }
 
         std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
