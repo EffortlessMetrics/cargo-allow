@@ -4,25 +4,71 @@ use proof_engine::{ReceiptStatusReportV1, evaluate_captured_receipt_status_from_
 use serde_json::Value;
 use std::path::Path;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ReceiptCommandError {
+    ReadPlan(String),
+    ReadManifest(String),
+    MalformedPlan(String),
+    MalformedManifest(String),
+    InvalidReceipt(String),
+    ProviderRegistry(String),
+}
+
+impl ReceiptCommandError {
+    pub fn message(&self) -> &str {
+        match self {
+            Self::ReadPlan(message)
+            | Self::ReadManifest(message)
+            | Self::MalformedPlan(message)
+            | Self::MalformedManifest(message)
+            | Self::InvalidReceipt(message)
+            | Self::ProviderRegistry(message) => message,
+        }
+    }
+
+    pub const fn family(&self) -> crate::ProcessExitFamilyV1 {
+        match self {
+            Self::ReadPlan(_) | Self::ReadManifest(_) => crate::ProcessExitFamilyV1::Usage,
+            Self::MalformedPlan(_)
+            | Self::MalformedManifest(_)
+            | Self::InvalidReceipt(_)
+            | Self::ProviderRegistry(_) => crate::ProcessExitFamilyV1::InstrumentFailure,
+        }
+    }
+}
+
 pub fn captured_receipt_status_from_paths(
     plan_path: &Path,
     manifest_path: &Path,
-) -> Result<ReceiptStatusReportV1, String> {
-    let plan_text = std::fs::read_to_string(plan_path)
-        .map_err(|error| format!("read proof plan {}: {error}", plan_path.display()))?;
-    let manifest_text = std::fs::read_to_string(manifest_path)
-        .map_err(|error| format!("read receipt manifest {}: {error}", manifest_path.display()))?;
+) -> Result<ReceiptStatusReportV1, ReceiptCommandError> {
+    let plan_text = std::fs::read_to_string(plan_path).map_err(|error| {
+        ReceiptCommandError::ReadPlan(format!("read proof plan {}: {error}", plan_path.display()))
+    })?;
+    let manifest_text = std::fs::read_to_string(manifest_path).map_err(|error| {
+        ReceiptCommandError::ReadManifest(format!(
+            "read receipt manifest {}: {error}",
+            manifest_path.display()
+        ))
+    })?;
     let mut report = evaluate_captured_receipt_status_from_json(&plan_text, &manifest_text)
         .map_err(|error| {
-            format!(
+            let message = format!(
                 "{} (plan {}; receipts {})",
                 error,
                 plan_path.display(),
                 manifest_path.display()
-            )
+            );
+            if error.starts_with("parse proof plan") {
+                ReceiptCommandError::MalformedPlan(message)
+            } else if error.starts_with("parse receipt manifest") {
+                ReceiptCommandError::MalformedManifest(message)
+            } else {
+                ReceiptCommandError::InvalidReceipt(message)
+            }
         })?;
-    let registry = StaticProviderRegistryV1::selected()
-        .map_err(|error| format!("provider registry: {}", error.as_str()))?;
+    let registry = StaticProviderRegistryV1::selected().map_err(|error| {
+        ReceiptCommandError::ProviderRegistry(format!("provider registry: {}", error.as_str()))
+    })?;
     for row in &mut report.items {
         let Some(provider_id) = row.provider_id.as_deref() else {
             continue;
@@ -51,7 +97,8 @@ pub fn captured_receipt_status_from_paths(
         if row.status != proof_engine::ProofItemReceiptStatusV1::ProviderUnavailable
             && let Err(reason) = validate_native_payload(
                 provider_id,
-                &manifest_value_for_item(&manifest_text, &row.proof_item_id)?,
+                &manifest_value_for_item(&manifest_text, &row.proof_item_id)
+                    .map_err(ReceiptCommandError::InvalidReceipt)?,
             )
         {
             row.status = proof_engine::ProofItemReceiptStatusV1::ReceiptMalformed;
@@ -59,6 +106,12 @@ pub fn captured_receipt_status_from_paths(
         }
     }
     Ok(report)
+}
+
+pub fn receipt_validation_satisfies_plan(report: &ReceiptStatusReportV1) -> bool {
+    report.items.iter().all(|item| {
+        item.status == proof_engine::ProofItemReceiptStatusV1::SatisfiedByCurrentReceipt
+    })
 }
 
 fn manifest_value_for_item(manifest_text: &str, proof_item_id: &str) -> Result<Value, String> {
@@ -184,10 +237,7 @@ pub fn render_captured_receipt_validation(
                 | proof_engine::ProofItemReceiptStatusV1::ProviderUnavailable
         )
     });
-    let satisfies_plan = structurally_valid
-        && report.items.iter().all(|item| {
-            item.status == proof_engine::ProofItemReceiptStatusV1::SatisfiedByCurrentReceipt
-        });
+    let satisfies_plan = structurally_valid && receipt_validation_satisfies_plan(report);
     match format {
         crate::OutputFormat::Json => serde_json::to_string_pretty(&serde_json::json!({
             "schema_id": "proof.receipt-validation.v1",
@@ -249,6 +299,14 @@ mod tests {
         let output = render_captured_receipt_validation(&report(), crate::OutputFormat::Human)?;
         if !output.contains("no provider executed") || !output.contains("no source was mutated") {
             return Err("validation claim boundary was not explicit".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn findings_do_not_satisfy_validation() -> Result<(), String> {
+        if receipt_validation_satisfies_plan(&report()) {
+            return Err("findings must not produce a successful validation exit".to_string());
         }
         Ok(())
     }

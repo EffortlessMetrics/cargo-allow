@@ -1,8 +1,9 @@
 use cargo_proof::{
     IdentityFrameV1, OutputFormat, ProcessExitFamilyV1, ProductIdentityV1, dry_run_from_plan_path,
     emit_frame, exit_code_for_family, exit_family_for_result_class, load_config,
-    plan_from_obligation_path, plan_v2_from_paths, render_captured_receipt_status,
-    render_captured_receipt_validation, render_dry_run_frame, render_plan_v2_frame,
+    plan_from_obligation_path, plan_v2_from_paths, receipt_validation_satisfies_plan,
+    render_captured_receipt_status, render_captured_receipt_validation, render_dry_run_frame,
+    render_plan_v2_frame,
 };
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
@@ -186,15 +187,8 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
                 match cargo_proof::captured_receipt_status_from_paths(&args.plan, &args.receipts) {
                     Ok(report) => report,
                     Err(error) => {
-                        eprintln!("error: {error}");
-                        let family = if error.starts_with("read proof plan")
-                            || error.starts_with("read receipt manifest")
-                        {
-                            ProcessExitFamilyV1::Usage
-                        } else {
-                            ProcessExitFamilyV1::InstrumentFailure
-                        };
-                        return Ok(family);
+                        eprintln!("error: {}", error.message());
+                        return Ok(error.family());
                     }
                 };
             let rendered = match args.action {
@@ -204,7 +198,13 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
                 ReceiptAction::Status => render_captured_receipt_status(&report, output_format)?,
             };
             print!("{rendered}");
-            Ok(ProcessExitFamilyV1::Success)
+            if matches!(args.action, ReceiptAction::Validate)
+                && !receipt_validation_satisfies_plan(&report)
+            {
+                Ok(ProcessExitFamilyV1::Blocking)
+            } else {
+                Ok(ProcessExitFamilyV1::Success)
+            }
         }
     }
 }
@@ -288,7 +288,7 @@ pub fn main_exit_code(result: Result<ProcessExitFamilyV1, String>) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::provider_command_family;
-    use cargo_proof::ProcessExitFamilyV1;
+    use cargo_proof::{ProcessExitFamilyV1, ReceiptCommandError};
 
     #[test]
     fn provider_registry_failure_is_internal_not_usage() -> Result<(), String> {
@@ -296,6 +296,25 @@ mod tests {
             != ProcessExitFamilyV1::InstrumentFailure
         {
             return Err("provider registry failure must map to instrument failure".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn receipt_failures_keep_typed_exit_families() -> Result<(), String> {
+        if ReceiptCommandError::ReadManifest("missing".to_string()).family()
+            != ProcessExitFamilyV1::Usage
+        {
+            return Err("missing receipt input must remain usage".to_string());
+        }
+        for error in [
+            ReceiptCommandError::MalformedManifest("malformed".to_string()),
+            ReceiptCommandError::InvalidReceipt("conflict".to_string()),
+            ReceiptCommandError::ProviderRegistry("unavailable".to_string()),
+        ] {
+            if error.family() != ProcessExitFamilyV1::InstrumentFailure {
+                return Err("receipt semantic failures must not map to usage".to_string());
+            }
         }
         Ok(())
     }

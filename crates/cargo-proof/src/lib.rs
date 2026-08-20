@@ -38,8 +38,8 @@ pub use providers::{
     ProviderProjectionV1, ProviderRegistryError, StaticProviderRegistryV1,
 };
 pub use receipt_status::{
-    captured_receipt_status_from_paths, render_captured_receipt_status,
-    render_captured_receipt_validation,
+    ReceiptCommandError, captured_receipt_status_from_paths, receipt_validation_satisfies_plan,
+    render_captured_receipt_status, render_captured_receipt_validation,
 };
 pub use render::{
     DryRunFrameV1, IdentityFrameV1, OutputFormat, PlanFrameV1, RenderFrame, emit_frame,
