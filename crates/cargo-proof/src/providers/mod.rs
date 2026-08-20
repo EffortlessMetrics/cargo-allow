@@ -10,3 +10,9 @@ pub mod cargo_allow;
 pub mod hawk;
 #[cfg(feature = "provider-ripr")]
 pub mod ripr;
+
+mod registry;
+pub use registry::{
+    PROVIDER_REGISTRY_SCHEMA_ID, ProviderAvailabilityV1, ProviderDispositionV1,
+    ProviderProjectionV1, ProviderRegistryError, StaticProviderRegistryV1,
+};

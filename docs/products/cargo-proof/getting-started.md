@@ -13,6 +13,7 @@ on the published install channel yet. Evaluate it from the source tree:
 
 ```bash
 cargo run -p cargo-proof -- identity
+cargo run -p cargo-proof -- --format json providers
 cargo run -p cargo-proof -- plan --obligation-plan <intent.obligation-plan.v1.json>
 cargo run -p cargo-proof -- dry-run --proof-plan <proof.plan.v1.toml>
 ```
@@ -22,6 +23,11 @@ intent side and projects a structured proof plan. `dry-run` validates a
 `proof.plan.v1` TOML file with structured argv only — it never executes
 the planned commands. Live provider execution is not part of the current
 surface.
+
+Use `providers --format json` to inspect the selected provider capability
+projection and explicit feature-disabled posture. The output is identified
+as `cargo-proof.provider-registry.v1`; it is read-only and does not execute
+or resolve provider processes.
 
 Claim boundary: cargo-proof orchestrates exact-snapshot evidence. It
 does not execute proof commands today, does not scan source trees, and

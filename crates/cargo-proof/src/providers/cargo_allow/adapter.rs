@@ -5,14 +5,14 @@ use proof_protocol::{
     ProofCapabilityCatalogV1, ProofCapabilityKindV1, ProofCapabilityV1, ProofPlanV1,
 };
 
-use super::process_protocol::{ProcessProtocolError, validate_process_protocol_plan};
-use super::provider_contract::{
+use super::contract::{
     CARGO_ALLOW_PROOF_PROVIDER_ID, default_cargo_allow_provider_contract,
     validate_provider_contract,
 };
-use super::provider_discovery::{
+use super::discovery::{
     CargoAllowProviderRequest, CargoAllowProviderResolution, discover_cargo_allow_provider,
 };
+use super::process_protocol::{ProcessProtocolError, validate_process_protocol_plan};
 
 pub struct CargoAllowProofProviderV1 {
     catalog: ProofCapabilityCatalogV1,
@@ -33,11 +33,11 @@ impl CargoAllowProofProviderV1 {
 
     pub fn with_discovery(
         request: &CargoAllowProviderRequest<'_>,
-    ) -> Result<Self, crate::provider_discovery::CargoAllowProviderFailure> {
+    ) -> Result<Self, super::discovery::CargoAllowProviderFailure> {
         let contract = default_cargo_allow_provider_contract();
         validate_provider_contract(&contract).map_err(|_| {
-            crate::provider_discovery::CargoAllowProviderFailure::new(
-                crate::provider_discovery::CargoAllowProviderFailureClass::MalformedConfig,
+            super::discovery::CargoAllowProviderFailure::new(
+                super::discovery::CargoAllowProviderFailureClass::MalformedConfig,
                 "provider contract invalid",
             )
         })?;
@@ -88,7 +88,7 @@ impl ProofProviderV1 for CargoAllowProofProviderV1 {
 }
 
 fn capability_catalog_from_contract(
-    contract: &crate::provider_contract::CargoAllowProviderContractV1,
+    contract: &super::contract::CargoAllowProviderContractV1,
 ) -> ProofCapabilityCatalogV1 {
     ProofCapabilityCatalogV1::new(
         CARGO_ALLOW_PROOF_PROVIDER_ID,

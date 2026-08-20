@@ -46,6 +46,8 @@ impl From<FormatArg> for OutputFormat {
 pub enum CargoProofCommand {
     /// Identity and capability surface.
     Identity,
+    /// Read-only deterministic selected-provider and capability projection.
+    Providers,
     /// Plan proof execution from an intent obligation plan JSON file.
     Plan(PlanArgs),
     /// Dry-run a proof plan TOML file (structured argv only).
@@ -89,6 +91,7 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
             cmd_identity(output_format)?;
             Ok(ProcessExitFamilyV1::Success)
         }
+        Some(CargoProofCommand::Providers) => provider_command_family(cmd_providers(output_format)),
         Some(CargoProofCommand::Plan(args)) => {
             let supplied = usize::from(args.provider_catalog.is_some())
                 + usize::from(args.receipt_inventory.is_some())
@@ -167,6 +170,55 @@ fn cmd_identity(format: OutputFormat) -> Result<(), String> {
     Ok(())
 }
 
+fn cmd_providers(format: OutputFormat) -> Result<(), String> {
+    let registry = cargo_proof::StaticProviderRegistryV1::selected()
+        .map_err(|error| format!("provider registry: {}", error.as_str()))?;
+    let projections = registry.projections();
+    let availability = registry.availability();
+    match format {
+        OutputFormat::Json => {
+            let frame = serde_json::json!({
+                "schema_id": cargo_proof::PROVIDER_REGISTRY_SCHEMA_ID,
+                "providers": projections,
+                "availability": availability,
+                "claim_boundary": "Read-only selected provider/capability projection; no provider execution occurred.",
+            });
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&frame).map_err(|error| error.to_string())?
+            );
+        }
+        OutputFormat::Human => {
+            if projections.is_empty() {
+                println!("providers: none selected (feature-disabled providers are unavailable)");
+            } else {
+                for provider in projections {
+                    println!("provider {}", provider.provider_id);
+                    for capability in provider.capabilities.capabilities {
+                        println!("  capability {}", capability.capability_id);
+                    }
+                }
+            }
+            for entry in availability {
+                if entry.disposition != cargo_proof::ProviderDispositionV1::Selected {
+                    println!("provider {}: {:?}", entry.provider_id, entry.disposition);
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn provider_command_family(result: Result<(), String>) -> Result<ProcessExitFamilyV1, String> {
+    match result {
+        Ok(()) => Ok(ProcessExitFamilyV1::Success),
+        Err(error) => {
+            eprintln!("error: provider registry: {error}");
+            Ok(ProcessExitFamilyV1::InstrumentFailure)
+        }
+    }
+}
+
 fn print_help() -> Result<(), String> {
     use clap::CommandFactory;
     CargoProofCli::command()
@@ -183,5 +235,21 @@ pub fn main_exit_code(result: Result<ProcessExitFamilyV1, String>) -> i32 {
             eprintln!("error: {message}");
             exit_code_for_family(ProcessExitFamilyV1::Usage)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::provider_command_family;
+    use cargo_proof::ProcessExitFamilyV1;
+
+    #[test]
+    fn provider_registry_failure_is_internal_not_usage() -> Result<(), String> {
+        if provider_command_family(Err("invalid provider surface".to_string()))?
+            != ProcessExitFamilyV1::InstrumentFailure
+        {
+            return Err("provider registry failure must map to instrument failure".to_string());
+        }
+        Ok(())
     }
 }
