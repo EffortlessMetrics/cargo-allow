@@ -4,33 +4,46 @@ use proof_engine::{ProofProviderV1, validate_provider_surface};
 use proof_protocol::{ProofCapabilityCatalogV1, validate_capability_catalog};
 use serde::Serialize;
 
+/// Schema identifier for the read-only provider registry projection.
 pub const PROVIDER_REGISTRY_SCHEMA_ID: &str = "cargo-proof.provider-registry.v1";
 const KNOWN_PROVIDER_IDS: [&str; 3] = ["proof.cargo-allow.v1", "proof.hawk.v1", "proof.ripr.v1"];
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ProviderProjectionV1 {
+    /// Stable provider identity.
     pub provider_id: String,
+    /// Provider-advertised capabilities.
     pub capabilities: ProofCapabilityCatalogV1,
 }
 
+/// Availability posture reported for a known provider.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ProviderDispositionV1 {
+    /// The provider is selected by the active cargo-proof feature set.
     Selected,
+    /// The provider is known but its feature is disabled.
     ProviderUnavailable,
+    /// The provider is recognized but unsupported by this registry version.
     ProviderUnsupported,
 }
 
+/// Stable provider identity and machine-readable availability posture.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ProviderAvailabilityV1 {
+    /// Stable provider identity.
     pub provider_id: String,
+    /// Current availability posture.
     pub disposition: ProviderDispositionV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProviderRegistryError {
+    /// A provider or catalog failed surface validation.
     InvalidProviderSurface { provider_id: String },
+    /// Two selected providers declared the same identity.
     DuplicateProviderId { provider_id: String },
+    /// Two selected providers declared the same capability identity.
     DuplicateCapabilityId { capability_id: String },
 }
 
@@ -49,6 +62,7 @@ pub struct StaticProviderRegistryV1 {
 }
 
 impl StaticProviderRegistryV1 {
+    /// Construct the providers selected by compile-time feature flags.
     pub fn selected() -> Result<Self, ProviderRegistryError> {
         let providers: Vec<Box<dyn ProofProviderV1>> = vec![
             #[cfg(feature = "provider-cargo-allow")]
@@ -61,6 +75,7 @@ impl StaticProviderRegistryV1 {
         Self::from_providers(providers)
     }
 
+    /// Validate and construct a registry from explicit provider implementations.
     pub fn from_providers(
         providers: Vec<Box<dyn ProofProviderV1>>,
     ) -> Result<Self, ProviderRegistryError> {
@@ -98,6 +113,7 @@ impl StaticProviderRegistryV1 {
         Ok(Self { providers })
     }
 
+    /// Return deterministic capability projections sorted by provider and capability ID.
     pub fn projections(&self) -> Vec<ProviderProjectionV1> {
         let mut projections = self
             .providers
@@ -117,6 +133,7 @@ impl StaticProviderRegistryV1 {
         projections
     }
 
+    /// Return selected provider IDs in deterministic order.
     pub fn provider_ids(&self) -> Vec<String> {
         self.projections()
             .into_iter()
@@ -124,6 +141,7 @@ impl StaticProviderRegistryV1 {
             .collect()
     }
 
+    /// Return whether a selected provider is available for read-only projection.
     pub fn provider_available(&self, provider_id: &str) -> bool {
         self.providers
             .iter()
