@@ -295,7 +295,9 @@ mod tests {
         AnalysisReceiptEnvelopeV1, ClaimBoundaryV1, RepositorySnapshotV1, ResolvedRevisionV1,
         ResultClassV1,
     };
-    use proof_engine::{ProofItemReceiptStatusRowV1, ProofItemReceiptStatusV1, RECEIPT_STATUS_REPORT_SCHEMA_ID};
+    use proof_engine::{
+        ProofItemReceiptStatusRowV1, ProofItemReceiptStatusV1, RECEIPT_STATUS_REPORT_SCHEMA_ID,
+    };
     use proof_protocol::{
         CapturedReceiptManifestRowV1, CapturedReceiptManifestV1, ExpectedReceiptContractV1,
         ProofItemDispositionV1, ProofItemExecutionPostureV1, ProofItemV1, ProofPlanV2,
@@ -505,10 +507,8 @@ mod tests {
 
     #[test]
     fn path_loader_covers_typed_io_and_unavailable_provider_projection() -> Result<(), String> {
-        let root = std::env::temp_dir().join(format!(
-            "cargo-proof-receipt-status-{}",
-            std::process::id()
-        ));
+        let root =
+            std::env::temp_dir().join(format!("cargo-proof-receipt-status-{}", std::process::id()));
         std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
         let plan_path = root.join("plan.json");
         let manifest_path = root.join("manifest.json");
@@ -549,12 +549,11 @@ mod tests {
 
     #[test]
     fn path_loader_classifies_missing_and_malformed_inputs() -> Result<(), String> {
-        let root = std::env::temp_dir().join(format!(
-            "cargo-proof-receipt-errors-{}",
-            std::process::id()
-        ));
+        let root =
+            std::env::temp_dir().join(format!("cargo-proof-receipt-errors-{}", std::process::id()));
         std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
-        let missing = captured_receipt_status_from_paths(&root.join("missing"), &root.join("also-missing"));
+        let missing =
+            captured_receipt_status_from_paths(&root.join("missing"), &root.join("also-missing"));
         if !matches!(missing, Err(ReceiptCommandError::ReadPlan(_))) {
             return Err("missing plan was not classified as usage input".to_string());
         }
