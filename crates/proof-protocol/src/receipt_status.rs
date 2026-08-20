@@ -126,3 +126,35 @@ pub fn validate_captured_receipt_manifest(
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ProofItemReceiptStatusV1;
+
+    #[test]
+    fn status_tokens_are_stable_for_every_variant() -> Result<(), String> {
+        let statuses = [
+            ProofItemReceiptStatusV1::SatisfiedByCurrentReceipt,
+            ProofItemReceiptStatusV1::CurrentFindings,
+            ProofItemReceiptStatusV1::CurrentFailed,
+            ProofItemReceiptStatusV1::CurrentPartial,
+            ProofItemReceiptStatusV1::CurrentUnsupported,
+            ProofItemReceiptStatusV1::CurrentNotProven,
+            ProofItemReceiptStatusV1::CurrentInstrumentFailure,
+            ProofItemReceiptStatusV1::ReceiptMissing,
+            ProofItemReceiptStatusV1::ReceiptMalformed,
+            ProofItemReceiptStatusV1::ReceiptStale,
+            ProofItemReceiptStatusV1::ReceiptForDifferentItem,
+            ProofItemReceiptStatusV1::ProviderUnavailable,
+            ProofItemReceiptStatusV1::ManualOrNativeOutstanding,
+            ProofItemReceiptStatusV1::NotApplicable,
+            ProofItemReceiptStatusV1::Conflict,
+        ];
+        for status in statuses {
+            if status.as_str().chars().any(char::is_uppercase) || status.as_str().is_empty() {
+                return Err(format!("unstable status token for {status:?}"));
+            }
+        }
+        Ok(())
+    }
+}

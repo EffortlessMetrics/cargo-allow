@@ -624,6 +624,67 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(feature = "provider-cargo-allow")]
+    #[test]
+    fn valid_cargo_allow_contract_uses_native_validator() -> Result<(), String> {
+        let row = serde_json::json!({
+            "receipt": {
+                "provider_payload_schema": crate::providers::cargo_allow::CARGO_ALLOW_PROVIDER_CONTRACT_SCHEMA_ID,
+                "provider_payload": {
+                    "schema_id": crate::providers::cargo_allow::CARGO_ALLOW_PROVIDER_CONTRACT_SCHEMA_ID,
+                    "schema_version": 1,
+                    "provider_id": crate::providers::cargo_allow::CARGO_ALLOW_PROOF_PROVIDER_ID,
+                    "product_name": "cargo-allow",
+                    "access_posture": "read_only",
+                    "snapshot_bound": true,
+                    "discovery_order": ["explicit_environment", "compatibility_config", "path_lookup"],
+                    "forbidden_path_prefixes": ["target/", "crates/"],
+                    "environment_variable": "CARGO_ALLOW_BIN",
+                    "config_relative_path": ".allow/compatibility/proof-delegation.toml",
+                    "required_capabilities": ["cargo-allow.check.no-new", "cargo-allow.capabilities.json"]
+                }
+            }
+        });
+        validate_native_payload("proof.cargo-allow.v1", &row)
+            .map_err(|error| format!("valid cargo-allow contract rejected: {error}"))
+    }
+
+    #[cfg(feature = "provider-hawk")]
+    #[test]
+    fn hawk_schema_mismatch_is_rejected_before_deserialization() -> Result<(), String> {
+        let row = serde_json::json!({
+            "receipt": {
+                "provider_payload_schema": "wrong.hawk.schema",
+                "provider_payload": {}
+            }
+        });
+        let error = validate_native_payload("proof.hawk.v1", &row)
+            .err()
+            .ok_or_else(|| "wrong Hawk schema was accepted".to_string())?;
+        if !error.contains("unsupported Hawk payload schema") {
+            return Err(format!("unexpected Hawk schema error: {error}"));
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "provider-ripr")]
+    #[test]
+    fn ripr_schema_mismatch_is_rejected_before_deserialization() -> Result<(), String> {
+        let row = serde_json::json!({
+            "receipt": {
+                "provider_payload_schema": "wrong.ripr.schema",
+                "provider_payload": {}
+            }
+        });
+        let error = validate_native_payload("proof.ripr.v1", &row)
+            .err()
+            .ok_or_else(|| "wrong RIPR schema was accepted".to_string())?;
+        if !error.contains("unsupported RIPR payload schema") {
+            return Err(format!("unexpected RIPR schema error: {error}"));
+        }
+        Ok(())
+    }
+
     #[cfg(feature = "provider-hawk")]
     #[test]
     fn malformed_hawk_payload_is_rejected_by_native_validator() -> Result<(), String> {
