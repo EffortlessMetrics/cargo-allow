@@ -74,8 +74,8 @@ pub fn captured_receipt_status_from_paths(
             continue;
         };
         if !registry.provider_available(provider_id) {
-            row.status = proof_engine::ProofItemReceiptStatusV1::ProviderUnavailable;
-            row.reason = format!("provider {provider_id} is unavailable in this registry build");
+            let context = format!("provider {provider_id} is unavailable in this registry build");
+            apply_provider_context(&mut row.status, &mut row.reason, context);
             continue;
         }
         if let Some(capability_id) = row.capability_id.as_deref() {
@@ -88,10 +88,10 @@ pub fn captured_receipt_status_from_paths(
                         .any(|capability| capability.capability_id == capability_id)
             });
             if !capability_selected {
-                row.status = proof_engine::ProofItemReceiptStatusV1::ProviderUnavailable;
-                row.reason = format!(
+                let context = format!(
                     "capability {capability_id} for {provider_id} is unavailable in this registry build"
                 );
+                apply_provider_context(&mut row.status, &mut row.reason, context);
             }
         }
         if row.status != proof_engine::ProofItemReceiptStatusV1::ProviderUnavailable
@@ -101,11 +101,36 @@ pub fn captured_receipt_status_from_paths(
                     .map_err(ReceiptCommandError::InvalidReceipt)?,
             )
         {
-            row.status = proof_engine::ProofItemReceiptStatusV1::ReceiptMalformed;
-            row.reason = reason;
+            apply_native_context(&mut row.status, &mut row.reason, reason);
         }
     }
     Ok(report)
+}
+
+fn apply_provider_context(
+    status: &mut proof_engine::ProofItemReceiptStatusV1,
+    reason: &mut String,
+    context: String,
+) {
+    if *status == proof_engine::ProofItemReceiptStatusV1::SatisfiedByCurrentReceipt {
+        *status = proof_engine::ProofItemReceiptStatusV1::ProviderUnavailable;
+        *reason = context;
+    } else {
+        *reason = format!("{reason}; {context}");
+    }
+}
+
+fn apply_native_context(
+    status: &mut proof_engine::ProofItemReceiptStatusV1,
+    reason: &mut String,
+    context: String,
+) {
+    if *status == proof_engine::ProofItemReceiptStatusV1::SatisfiedByCurrentReceipt {
+        *status = proof_engine::ProofItemReceiptStatusV1::ReceiptMalformed;
+        *reason = context;
+    } else {
+        *reason = format!("{reason}; {context}");
+    }
 }
 
 pub fn receipt_validation_satisfies_plan(report: &ReceiptStatusReportV1) -> bool {
@@ -213,8 +238,10 @@ pub fn render_captured_receipt_status(
             );
             for item in &report.items {
                 output.push_str(&format!(
-                    "{}: {:?} - {}\n",
-                    item.proof_item_id, item.status, item.reason
+                    "{}: {} - {}\n",
+                    item.proof_item_id,
+                    item.status.as_str(),
+                    item.reason
                 ));
             }
             output.push_str(&format!("claim boundary: {}\n", report.claim_boundary));
@@ -288,7 +315,7 @@ mod tests {
         let report = report();
         let human = render_captured_receipt_status(&report, crate::OutputFormat::Human)?;
         let json = render_captured_receipt_status(&report, crate::OutputFormat::Json)?;
-        if !human.contains("CurrentFindings") || !json.contains("current_findings") {
+        if !human.contains("current_findings") || !json.contains("current_findings") {
             return Err("status projections lost the typed result".to_string());
         }
         Ok(())
@@ -331,6 +358,35 @@ mod tests {
             if receipt_validation_satisfies_plan(&candidate) {
                 return Err(format!("{status:?} incorrectly satisfied validation"));
             }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn unavailable_context_does_not_hide_malformed_or_stale_status() -> Result<(), String> {
+        for status in [
+            ProofItemReceiptStatusV1::ReceiptMalformed,
+            ProofItemReceiptStatusV1::ReceiptStale,
+        ] {
+            let mut reason = "specific receipt state".to_string();
+            let mut current = status;
+            apply_provider_context(
+                &mut current,
+                &mut reason,
+                "provider unavailable".to_string(),
+            );
+            if current != status || !reason.contains("provider unavailable") {
+                return Err("availability context overwrote specific receipt status".to_string());
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn human_status_uses_stable_snake_case_token() -> Result<(), String> {
+        let output = render_captured_receipt_status(&report(), crate::OutputFormat::Human)?;
+        if !output.contains("current_findings") || output.contains("CurrentFindings") {
+            return Err("human status token drifted from JSON token".to_string());
         }
         Ok(())
     }

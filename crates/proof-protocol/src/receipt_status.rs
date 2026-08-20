@@ -25,6 +25,28 @@ pub enum ProofItemReceiptStatusV1 {
     Conflict,
 }
 
+impl ProofItemReceiptStatusV1 {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::SatisfiedByCurrentReceipt => "satisfied_by_current_receipt",
+            Self::CurrentFindings => "current_findings",
+            Self::CurrentFailed => "current_failed",
+            Self::CurrentPartial => "current_partial",
+            Self::CurrentUnsupported => "current_unsupported",
+            Self::CurrentNotProven => "current_not_proven",
+            Self::CurrentInstrumentFailure => "current_instrument_failure",
+            Self::ReceiptMissing => "receipt_missing",
+            Self::ReceiptMalformed => "receipt_malformed",
+            Self::ReceiptStale => "receipt_stale",
+            Self::ReceiptForDifferentItem => "receipt_for_different_item",
+            Self::ProviderUnavailable => "provider_unavailable",
+            Self::ManualOrNativeOutstanding => "manual_or_native_outstanding",
+            Self::NotApplicable => "not_applicable",
+            Self::Conflict => "conflict",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CapturedReceiptManifestRowV1 {
