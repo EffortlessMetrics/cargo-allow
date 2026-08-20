@@ -1,7 +1,8 @@
 use cargo_proof::{
     IdentityFrameV1, OutputFormat, ProcessExitFamilyV1, ProductIdentityV1, dry_run_from_plan_path,
     emit_frame, exit_code_for_family, exit_family_for_result_class, load_config,
-    plan_from_obligation_path, plan_v2_from_paths, render_dry_run_frame, render_plan_v2_frame,
+    plan_from_obligation_path, plan_v2_from_paths, render_captured_receipt_status,
+    render_captured_receipt_validation, render_dry_run_frame, render_plan_v2_frame,
 };
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
@@ -52,6 +53,8 @@ pub enum CargoProofCommand {
     Plan(PlanArgs),
     /// Dry-run a proof plan TOML file (structured argv only).
     DryRun(DryRunArgs),
+    /// Read-only validation and status for captured provider receipts.
+    Receipts(ReceiptsArgs),
 }
 
 #[derive(Debug, Parser)]
@@ -75,6 +78,25 @@ pub struct DryRunArgs {
     /// Path to the generated `proof.plan.v2` JSON artifact.
     #[arg(long)]
     pub proof_plan: PathBuf,
+}
+
+#[derive(Debug, Parser)]
+pub struct ReceiptsArgs {
+    /// Proof plan JSON artifact consumed as the semantic authority.
+    #[arg(long)]
+    pub plan: PathBuf,
+    /// Captured receipt manifest JSON artifact.
+    #[arg(long)]
+    pub receipts: PathBuf,
+    /// Print validation or status projection.
+    #[arg(long, value_enum, default_value_t = ReceiptAction::Status)]
+    pub action: ReceiptAction,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum ReceiptAction {
+    Validate,
+    Status,
 }
 
 pub fn run() -> Result<ProcessExitFamilyV1, String> {
@@ -156,6 +178,24 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
         Some(CargoProofCommand::DryRun(args)) => {
             let report = dry_run_from_plan_path(&args.proof_plan)?;
             let rendered = render_dry_run_frame(&report, output_format)?;
+            print!("{rendered}");
+            Ok(ProcessExitFamilyV1::Success)
+        }
+        Some(CargoProofCommand::Receipts(args)) => {
+            let report =
+                match cargo_proof::captured_receipt_status_from_paths(&args.plan, &args.receipts) {
+                    Ok(report) => report,
+                    Err(error) => {
+                        eprintln!("error: {error}");
+                        return Ok(ProcessExitFamilyV1::Usage);
+                    }
+                };
+            let rendered = match args.action {
+                ReceiptAction::Validate => {
+                    render_captured_receipt_validation(&report, output_format)?
+                }
+                ReceiptAction::Status => render_captured_receipt_status(&report, output_format)?,
+            };
             print!("{rendered}");
             Ok(ProcessExitFamilyV1::Success)
         }

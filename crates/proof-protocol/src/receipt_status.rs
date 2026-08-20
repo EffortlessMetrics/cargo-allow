@@ -1,0 +1,99 @@
+//! Captured receipt manifest and proof-item status contracts (#3600).
+
+use effortless_repo_protocol::{ANALYSIS_RECEIPT_SCHEMA_ID, AnalysisReceiptEnvelopeV1};
+use serde::{Deserialize, Serialize};
+
+pub const PROOF_RECEIPT_MANIFEST_SCHEMA_ID: &str = "proof.receipt-manifest.v1";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ProofItemReceiptStatusV1 {
+    SatisfiedByCurrentReceipt,
+    CurrentFindings,
+    CurrentFailed,
+    CurrentPartial,
+    CurrentUnsupported,
+    CurrentNotProven,
+    CurrentInstrumentFailure,
+    ReceiptMissing,
+    ReceiptMalformed,
+    ReceiptStale,
+    ReceiptForDifferentItem,
+    ProviderUnavailable,
+    ManualOrNativeOutstanding,
+    NotApplicable,
+    Conflict,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CapturedReceiptManifestRowV1 {
+    pub proof_item_id: String,
+    pub plan_id: String,
+    pub provider_id: String,
+    pub capability_id: String,
+    pub snapshot_identity: String,
+    pub receipt: AnalysisReceiptEnvelopeV1,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CapturedReceiptManifestV1 {
+    pub schema_id: String,
+    pub plan_id: String,
+    pub rows: Vec<CapturedReceiptManifestRowV1>,
+}
+
+impl CapturedReceiptManifestV1 {
+    pub fn new(plan_id: impl Into<String>, rows: Vec<CapturedReceiptManifestRowV1>) -> Self {
+        Self {
+            schema_id: PROOF_RECEIPT_MANIFEST_SCHEMA_ID.to_string(),
+            plan_id: plan_id.into(),
+            rows,
+        }
+    }
+}
+
+pub fn validate_captured_receipt_manifest(
+    manifest: &CapturedReceiptManifestV1,
+) -> Result<(), String> {
+    if manifest.schema_id != PROOF_RECEIPT_MANIFEST_SCHEMA_ID {
+        return Err(format!(
+            "unexpected receipt manifest schema_id {}",
+            manifest.schema_id
+        ));
+    }
+    let mut seen = std::collections::BTreeSet::new();
+    for row in &manifest.rows {
+        if row.proof_item_id.trim().is_empty()
+            || row.plan_id.trim().is_empty()
+            || row.provider_id.trim().is_empty()
+            || row.capability_id.trim().is_empty()
+            || row.snapshot_identity.trim().is_empty()
+        {
+            return Err("receipt manifest row contains a blank identity".to_string());
+        }
+        if row.plan_id != manifest.plan_id {
+            return Err(format!(
+                "receipt row {} belongs to plan {}, expected {}",
+                row.proof_item_id, row.plan_id, manifest.plan_id
+            ));
+        }
+        if row.receipt.schema_id != ANALYSIS_RECEIPT_SCHEMA_ID {
+            return Err(format!(
+                "receipt row {} has schema {}",
+                row.proof_item_id, row.receipt.schema_id
+            ));
+        }
+        if row.receipt.provider != row.provider_id {
+            return Err(format!(
+                "receipt row {} provider identity mismatch",
+                row.proof_item_id
+            ));
+        }
+        if !seen.insert(row.proof_item_id.as_str()) {
+            return Err(format!("duplicate receipt row {}", row.proof_item_id));
+        }
+    }
+    Ok(())
+}
