@@ -55,6 +55,7 @@ pub struct CapturedReceiptManifestRowV1 {
     pub provider_id: String,
     pub capability_id: String,
     pub snapshot_identity: String,
+    pub receipt_generation: u32,
     pub receipt: AnalysisReceiptEnvelopeV1,
 }
 

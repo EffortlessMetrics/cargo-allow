@@ -36,4 +36,6 @@ structurally valid receipt can therefore remain historical evidence without
 satisfying the current plan. Unknown provider rows, duplicate rows, malformed
 payloads, and identity mismatches fail closed. Provider-native receipt fields
 remain in the namespaced payload and are validated by the selected provider
-module; no provider process is started.
+module; the manifest's embedded snapshot root, provider payload schema, and
+receipt generation are checked against each plan item's expected contract; no
+provider process is started.
