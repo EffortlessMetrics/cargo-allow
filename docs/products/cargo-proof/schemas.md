@@ -8,6 +8,9 @@ The product's current artifact contracts are experimental:
 | `intent.obligation-plan.v1` | consumed input produced by the intent side |
 | `cargo-proof.identity.v1` | `identity --format json` |
 | `cargo-proof.provider-registry.v1` | `providers --format json` |
+| `proof.receipt-manifest.v1` | Captured receipt manifest input. |
+| `proof.receipt-status-report.v1` | `receipts --action status` output. |
+| `proof.receipt-validation.v1` | `receipts --action validate` output. |
 
 `proof.plan.v1` is structured-argv only: it names the provider request
 and its arguments, and `dry-run` validates shape without executing.
@@ -25,3 +28,12 @@ produced evidence.
 `selected` or `provider_unavailable` according to compile-time feature
 selection. `provider_unsupported` is reserved for a future registry version;
 the projection never claims provider execution.
+
+Receipt status is derived from one typed report for both human and JSON
+output. Findings, partial, unsupported, not-proven, instrument-failure,
+conflict, stale, and missing states are not successful plan satisfaction. A
+structurally valid receipt can therefore remain historical evidence without
+satisfying the current plan. Unknown provider rows, duplicate rows, malformed
+payloads, and identity mismatches fail closed. Provider-native receipt fields
+remain in the namespaced payload and are validated by the selected provider
+module; no provider process is started.

@@ -1,6 +1,7 @@
 //! Read-only validation and projection of captured proof receipts (#3600).
 
 use proof_engine::{ReceiptStatusReportV1, evaluate_captured_receipt_status_from_json};
+use serde_json::Value;
 use std::path::Path;
 
 pub fn captured_receipt_status_from_paths(
@@ -47,8 +48,100 @@ pub fn captured_receipt_status_from_paths(
                 );
             }
         }
+        if row.status != proof_engine::ProofItemReceiptStatusV1::ProviderUnavailable
+            && let Err(reason) = validate_native_payload(
+                provider_id,
+                &manifest_value_for_item(&manifest_text, &row.proof_item_id)?,
+            )
+        {
+            row.status = proof_engine::ProofItemReceiptStatusV1::ReceiptMalformed;
+            row.reason = reason;
+        }
     }
     Ok(report)
+}
+
+fn manifest_value_for_item(manifest_text: &str, proof_item_id: &str) -> Result<Value, String> {
+    let manifest: Value = serde_json::from_str(manifest_text)
+        .map_err(|error| format!("parse receipt manifest: {error}"))?;
+    let row = manifest
+        .get("rows")
+        .and_then(Value::as_array)
+        .and_then(|rows| {
+            rows.iter()
+                .find(|row| row.get("proof_item_id").and_then(Value::as_str) == Some(proof_item_id))
+        })
+        .ok_or_else(|| format!("receipt row {proof_item_id} is missing from manifest"))?;
+    Ok(row.clone())
+}
+
+fn validate_native_payload(provider_id: &str, row: &Value) -> Result<(), String> {
+    let receipt = row
+        .get("receipt")
+        .ok_or_else(|| "receipt row has no envelope".to_string())?;
+    let _schema = receipt
+        .get("provider_payload_schema")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "receipt payload schema is missing".to_string())?;
+    let _payload = receipt
+        .get("provider_payload")
+        .cloned()
+        .ok_or_else(|| "receipt provider payload is missing".to_string())?;
+    match provider_id {
+        "proof.hawk.v1" => {
+            #[cfg(feature = "provider-hawk")]
+            {
+                if _schema != crate::providers::hawk::HAWK_ANALYSIS_RECEIPT_SCHEMA_ID {
+                    return Err(format!("unsupported Hawk payload schema {_schema}"));
+                }
+                let parsed: crate::providers::hawk::HawkAnalysisReceiptV1 =
+                    serde_json::from_value(_payload)
+                        .map_err(|error| format!("malformed Hawk receipt: {error}"))?;
+                crate::providers::hawk::validate_hawk_analysis_receipt(&parsed)
+                    .map_err(|error| format!("invalid Hawk receipt: {}", error.as_str()))
+            }
+            #[cfg(not(feature = "provider-hawk"))]
+            {
+                Err("Hawk provider is unavailable in this registry build".to_string())
+            }
+        }
+        "proof.ripr.v1" => {
+            #[cfg(feature = "provider-ripr")]
+            {
+                if _schema != crate::providers::ripr::RIPR_GRIP_RECEIPT_SCHEMA_ID {
+                    return Err(format!("unsupported RIPR payload schema {_schema}"));
+                }
+                let parsed: crate::providers::ripr::RiprGripReceiptV1 =
+                    serde_json::from_value(_payload)
+                        .map_err(|error| format!("malformed RIPR receipt: {error}"))?;
+                crate::providers::ripr::validate_ripr_grip_receipt(&parsed)
+                    .map_err(|error| format!("invalid RIPR receipt: {}", error.as_str()))
+            }
+            #[cfg(not(feature = "provider-ripr"))]
+            {
+                Err("RIPR provider is unavailable in this registry build".to_string())
+            }
+        }
+        "proof.cargo-allow.v1" => {
+            #[cfg(feature = "provider-cargo-allow")]
+            {
+                if _schema != crate::providers::cargo_allow::CARGO_ALLOW_PROVIDER_CONTRACT_SCHEMA_ID
+                {
+                    return Err(format!("unsupported cargo-allow payload schema {_schema}"));
+                }
+                let parsed: crate::providers::cargo_allow::CargoAllowProviderContractV1 =
+                    serde_json::from_value(_payload)
+                        .map_err(|error| format!("malformed cargo-allow receipt: {error}"))?;
+                crate::providers::cargo_allow::validate_provider_contract(&parsed)
+                    .map_err(|error| format!("invalid cargo-allow receipt: {}", error.as_str()))
+            }
+            #[cfg(not(feature = "provider-cargo-allow"))]
+            {
+                Err("cargo-allow provider is unavailable in this registry build".to_string())
+            }
+        }
+        _ => Err(format!("unsupported provider {provider_id}")),
+    }
 }
 
 pub fn render_captured_receipt_status(
@@ -81,7 +174,7 @@ pub fn render_captured_receipt_validation(
     report: &ReceiptStatusReportV1,
     format: crate::OutputFormat,
 ) -> Result<String, String> {
-    let valid = report.items.iter().all(|item| {
+    let structurally_valid = report.items.iter().all(|item| {
         !matches!(
             item.status,
             proof_engine::ProofItemReceiptStatusV1::ReceiptMissing
@@ -91,11 +184,17 @@ pub fn render_captured_receipt_validation(
                 | proof_engine::ProofItemReceiptStatusV1::ProviderUnavailable
         )
     });
+    let satisfies_plan = structurally_valid
+        && report.items.iter().all(|item| {
+            item.status == proof_engine::ProofItemReceiptStatusV1::SatisfiedByCurrentReceipt
+        });
     match format {
         crate::OutputFormat::Json => serde_json::to_string_pretty(&serde_json::json!({
             "schema_id": "proof.receipt-validation.v1",
             "plan_id": report.plan_id,
-            "valid": valid,
+            "valid": satisfies_plan,
+            "structurally_valid": structurally_valid,
+            "satisfies_plan": satisfies_plan,
             "items": report.items,
             "claim_boundary": "Receipt files and provider bindings were validated read-only; no provider executed and no source was mutated."
         }))
@@ -103,7 +202,7 @@ pub fn render_captured_receipt_validation(
         .map_err(|error| error.to_string()),
         crate::OutputFormat::Human => Ok(format!(
             "receipts {} for {} ({} items)\nclaim boundary: receipt files and provider bindings were validated read-only; no provider executed and no source was mutated.\n",
-            if valid { "valid" } else { "invalid" },
+            if satisfies_plan { "satisfy the plan" } else if structurally_valid { "are structurally valid but do not satisfy the plan" } else { "are invalid" },
             report.plan_id,
             report.items.len()
         )),
@@ -152,5 +251,20 @@ mod tests {
             return Err("validation claim boundary was not explicit".to_string());
         }
         Ok(())
+    }
+
+    #[test]
+    fn unknown_provider_payload_is_rejected_without_execution() -> Result<(), String> {
+        let row = serde_json::json!({
+            "receipt": {
+                "provider_payload_schema": "unknown.provider.v1",
+                "provider_payload": {}
+            }
+        });
+        match validate_native_payload("unknown.provider.v1", &row) {
+            Err(message) if message.contains("unsupported provider") => Ok(()),
+            Err(message) => Err(format!("unexpected native validation error: {message}")),
+            Ok(()) => Err("unknown provider payload was accepted".to_string()),
+        }
     }
 }

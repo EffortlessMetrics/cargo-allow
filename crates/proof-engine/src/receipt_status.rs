@@ -37,6 +37,18 @@ pub fn evaluate_captured_receipt_status(
             manifest.plan_id, plan.plan_id
         ));
     }
+    for row in &manifest.rows {
+        if !plan
+            .items
+            .iter()
+            .any(|item| item.proof_item_id == row.proof_item_id)
+        {
+            return Err(format!(
+                "receipt row {} does not belong to proof plan {}",
+                row.proof_item_id, plan.plan_id
+            ));
+        }
+    }
 
     let rows = plan
         .items
@@ -300,5 +312,22 @@ mod tests {
             return Err("missing receipt became success".to_string());
         }
         Ok(())
+    }
+
+    #[test]
+    fn unknown_manifest_row_is_rejected() -> Result<(), String> {
+        let mut manifest = manifest(ResultClassV1::Completed);
+        let mut extra = manifest
+            .rows
+            .first()
+            .cloned()
+            .ok_or_else(|| "fixture row missing".to_string())?;
+        extra.proof_item_id = "unknown-item".to_string();
+        manifest.rows.push(extra);
+        match evaluate_captured_receipt_status(&plan(), &manifest) {
+            Err(message) if message.contains("does not belong") => Ok(()),
+            Err(message) => Err(format!("unexpected rejection: {message}")),
+            Ok(_) => Err("unknown manifest row was accepted".to_string()),
+        }
     }
 }

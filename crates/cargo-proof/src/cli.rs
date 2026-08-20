@@ -187,7 +187,14 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
                     Ok(report) => report,
                     Err(error) => {
                         eprintln!("error: {error}");
-                        return Ok(ProcessExitFamilyV1::Usage);
+                        let family = if error.starts_with("read proof plan")
+                            || error.starts_with("read receipt manifest")
+                        {
+                            ProcessExitFamilyV1::Usage
+                        } else {
+                            ProcessExitFamilyV1::InstrumentFailure
+                        };
+                        return Ok(family);
                     }
                 };
             let rendered = match args.action {
