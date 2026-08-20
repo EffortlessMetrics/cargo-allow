@@ -46,6 +46,8 @@ impl From<FormatArg> for OutputFormat {
 pub enum CargoProofCommand {
     /// Identity and capability surface.
     Identity,
+    /// Read-only deterministic selected-provider and capability projection.
+    Providers,
     /// Plan proof execution from an intent obligation plan JSON file.
     Plan(PlanArgs),
     /// Dry-run a proof plan TOML file (structured argv only).
@@ -87,6 +89,10 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
         }
         Some(CargoProofCommand::Identity) => {
             cmd_identity(output_format)?;
+            Ok(ProcessExitFamilyV1::Success)
+        }
+        Some(CargoProofCommand::Providers) => {
+            cmd_providers(output_format)?;
             Ok(ProcessExitFamilyV1::Success)
         }
         Some(CargoProofCommand::Plan(args)) => {
@@ -164,6 +170,38 @@ fn cmd_identity(format: OutputFormat) -> Result<(), String> {
     let frame = IdentityFrameV1::from_identity(&identity);
     let rendered = emit_frame(&frame, format)?;
     print!("{rendered}");
+    Ok(())
+}
+
+fn cmd_providers(format: OutputFormat) -> Result<(), String> {
+    let registry = cargo_proof::StaticProviderRegistryV1::selected()
+        .map_err(|error| format!("provider registry: {}", error.as_str()))?;
+    let projections = registry.projections();
+    match format {
+        OutputFormat::Json => {
+            let frame = serde_json::json!({
+                "schema_id": cargo_proof::PROVIDER_REGISTRY_SCHEMA_ID,
+                "providers": projections,
+                "claim_boundary": "Read-only selected provider/capability projection; no provider execution occurred.",
+            });
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&frame).map_err(|error| error.to_string())?
+            );
+        }
+        OutputFormat::Human => {
+            if projections.is_empty() {
+                println!("providers: none selected (feature-disabled providers are unavailable)");
+            } else {
+                for provider in projections {
+                    println!("provider {}", provider.provider_id);
+                    for capability in provider.capabilities.capabilities {
+                        println!("  capability {}", capability.capability_id);
+                    }
+                }
+            }
+        }
+    }
     Ok(())
 }
 
