@@ -651,6 +651,67 @@ mod tests {
 
     #[cfg(feature = "provider-hawk")]
     #[test]
+    fn valid_hawk_receipt_uses_native_validator() -> Result<(), String> {
+        let row = serde_json::json!({
+            "receipt": {
+                "provider_payload_schema": crate::providers::hawk::HAWK_ANALYSIS_RECEIPT_SCHEMA_ID,
+                "provider_payload": {
+                    "schema_id": crate::providers::hawk::HAWK_ANALYSIS_RECEIPT_SCHEMA_ID,
+                    "receipt_id": "receipt-1",
+                    "hawk_frontend_digest": "frontend-1",
+                    "hawk_driver_digest": "driver-1",
+                    "rustc_release": "rustc-1",
+                    "rustc_commit": "commit-1",
+                    "host_triple": "x86_64-pc-windows-msvc",
+                    "hawk_schema_generation": "generation-1",
+                    "config_path": "config.toml",
+                    "config_digest": "sha256:v1:config",
+                    "manifest_digest": "manifest-1",
+                    "lockfile_digest": "lockfile-1",
+                    "feature_profile": "default",
+                    "target_triple": "x86_64-pc-windows-msvc",
+                    "snapshot_digest": "sha256:v1:snapshot",
+                    "product_name": "cargo-allow",
+                    "raw_payload_digest": "sha256:v1:payload",
+                    "execution_mode": "captured_report",
+                    "findings": []
+                }
+            }
+        });
+        validate_native_payload("proof.hawk.v1", &row)
+            .map_err(|error| format!("valid Hawk receipt rejected: {error}"))
+    }
+
+    #[cfg(feature = "provider-ripr")]
+    #[test]
+    fn valid_ripr_receipt_uses_native_validator() -> Result<(), String> {
+        let row = serde_json::json!({
+            "receipt": {
+                "provider_payload_schema": crate::providers::ripr::RIPR_GRIP_RECEIPT_SCHEMA_ID,
+                "provider_payload": {
+                    "schema_id": crate::providers::ripr::RIPR_GRIP_RECEIPT_SCHEMA_ID,
+                    "receipt_id": "receipt-1",
+                    "ripr_provider_id": "ripr",
+                    "ripr_schema_generation": "generation-1",
+                    "analyzer_generation": "analyzer-1",
+                    "config_fingerprint": "config-1",
+                    "snapshot_digest": "sha256:v1:snapshot",
+                    "subject_ref": "subject-1",
+                    "seam_ref": "seam-1",
+                    "requirement_id": "requirement-1",
+                    "execution_mode": "captured_receipt",
+                    "completeness": "complete",
+                    "grip_disposition": "likely_discriminating",
+                    "receipt_digest": "sha256:v1:receipt"
+                }
+            }
+        });
+        validate_native_payload("proof.ripr.v1", &row)
+            .map_err(|error| format!("valid RIPR receipt rejected: {error}"))
+    }
+
+    #[cfg(feature = "provider-hawk")]
+    #[test]
     fn hawk_schema_mismatch_is_rejected_before_deserialization() -> Result<(), String> {
         let row = serde_json::json!({
             "receipt": {
