@@ -28,6 +28,7 @@ mod parity;
 mod phase_gate;
 #[cfg(test)]
 mod plan_semantics_tests;
+mod plan_v2;
 mod provider_api;
 mod provider_registry;
 mod ripr_routing;
@@ -72,7 +73,7 @@ pub use currentness::{
 };
 pub use dry_run::{
     DRY_RUN_PLAN_REPORT_SCHEMA_ID, DryRunError, DryRunPlanLineV1, DryRunPlanReportV1,
-    dry_run_proof_plan,
+    dry_run_plan_artifact, dry_run_proof_plan, dry_run_proof_plan_v2,
 };
 pub use execution::{
     EXECUTION_GATE_SCHEMA_ID, ExecutionApprovalV1, ExecutionError, ExecutionGateReportV1,
@@ -92,6 +93,7 @@ pub use phase_gate::{
     PHASE_GATE_EVALUATION_SCHEMA_ID, PhaseGateError, PhaseGateEvaluationV1, PhaseGateOutcomeV1,
     evaluate_phase_gate,
 };
+pub use plan_v2::{PLAN_V2_PLANNER_SCHEMA_ID, plan_proof_v2_from_intent};
 // Re-export the absorbed provider API contracts (#2937).
 pub use provider_api::{
     CONFORMANCE_SCENARIO_ID, FAKE_PROOF_PROVIDER_ID, FakeProofProviderV1,

@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use proof_engine::{DRY_RUN_PLAN_REPORT_SCHEMA_ID, dry_run_proof_plan};
+use proof_engine::{DRY_RUN_PLAN_REPORT_SCHEMA_ID, dry_run_plan_artifact};
 
 use crate::render::{DryRunFrameV1, OutputFormat, emit_frame};
 
@@ -13,8 +13,7 @@ pub const DRY_RUN_CLAIM_BOUNDARY: &str =
 pub fn dry_run_from_plan_path(path: &Path) -> Result<proof_engine::DryRunPlanReportV1, String> {
     let text =
         std::fs::read_to_string(path).map_err(|err| format!("read {}: {err}", path.display()))?;
-    let plan = proof_protocol::load_proof_plan_toml(&text)?;
-    dry_run_proof_plan(&plan).map_err(|err| err.as_str().to_string())
+    dry_run_plan_artifact(&text)
 }
 
 pub fn render_dry_run_frame(

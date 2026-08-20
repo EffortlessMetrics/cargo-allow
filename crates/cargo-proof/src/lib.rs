@@ -29,8 +29,8 @@ pub use identity::{
     load_product_identity_fixture_toml,
 };
 pub use plan::{
-    PLAN_CLAIM_BOUNDARY, PLAN_FRAME_SCHEMA_ID, PlanOutcomeV1, plan_from_obligation_path,
-    render_plan_frame,
+    PLAN_CLAIM_BOUNDARY, PLAN_FRAME_SCHEMA_ID, PlanOutcomeV1, PlanV2OutcomeV1,
+    plan_from_obligation_path, plan_v2_from_paths, render_plan_frame, render_plan_v2_frame,
 };
 pub use render::{
     DryRunFrameV1, IdentityFrameV1, OutputFormat, PlanFrameV1, RenderFrame, emit_frame,

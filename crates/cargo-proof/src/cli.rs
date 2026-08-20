@@ -1,7 +1,7 @@
 use cargo_proof::{
     IdentityFrameV1, OutputFormat, ProcessExitFamilyV1, ProductIdentityV1, dry_run_from_plan_path,
     emit_frame, exit_code_for_family, exit_family_for_result_class, load_config,
-    plan_from_obligation_path, render_dry_run_frame, render_plan_frame,
+    plan_v2_from_paths, render_dry_run_frame, render_plan_v2_frame,
 };
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
@@ -57,11 +57,20 @@ pub struct PlanArgs {
     /// Path to an `intent.obligation-plan.v1` JSON file.
     #[arg(long)]
     pub obligation_plan: PathBuf,
+    /// JSON provider capability catalogs, ordered deterministically by the planner.
+    #[arg(long)]
+    pub provider_catalog: PathBuf,
+    /// JSON captured-receipt inventory used only for exact plan-id reuse.
+    #[arg(long)]
+    pub receipt_inventory: PathBuf,
+    /// Explicit JSON output artifact path.
+    #[arg(long)]
+    pub output: PathBuf,
 }
 
 #[derive(Debug, Parser)]
 pub struct DryRunArgs {
-    /// Path to a `proof.plan.v1` TOML file.
+    /// Path to the generated `proof.plan.v2` JSON artifact.
     #[arg(long)]
     pub proof_plan: PathBuf,
 }
@@ -81,7 +90,12 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
             Ok(ProcessExitFamilyV1::Success)
         }
         Some(CargoProofCommand::Plan(args)) => {
-            let outcome = match plan_from_obligation_path(&args.obligation_plan) {
+            let outcome = match plan_v2_from_paths(
+                &args.obligation_plan,
+                &args.provider_catalog,
+                &args.receipt_inventory,
+                &args.output,
+            ) {
                 Ok(outcome) => outcome,
                 Err(plan_error) => {
                     // Map the exit family from the proof-corpus result
@@ -98,7 +112,7 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
                     return Ok(family);
                 }
             };
-            let rendered = render_plan_frame(&outcome, output_format)?;
+            let rendered = render_plan_v2_frame(&outcome, output_format)?;
             print!("{rendered}");
             Ok(ProcessExitFamilyV1::Success)
         }
