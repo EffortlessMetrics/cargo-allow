@@ -219,22 +219,6 @@ fn provider_command_family(result: Result<(), String>) -> Result<ProcessExitFami
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::provider_command_family;
-    use cargo_proof::ProcessExitFamilyV1;
-
-    #[test]
-    fn provider_registry_failure_is_internal_not_usage() -> Result<(), String> {
-        if provider_command_family(Err("invalid provider surface".to_string()))?
-            != ProcessExitFamilyV1::InstrumentFailure
-        {
-            return Err("provider registry failure must map to instrument failure".to_string());
-        }
-        Ok(())
-    }
-}
-
 fn print_help() -> Result<(), String> {
     use clap::CommandFactory;
     CargoProofCli::command()
@@ -251,5 +235,21 @@ pub fn main_exit_code(result: Result<ProcessExitFamilyV1, String>) -> i32 {
             eprintln!("error: {message}");
             exit_code_for_family(ProcessExitFamilyV1::Usage)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::provider_command_family;
+    use cargo_proof::ProcessExitFamilyV1;
+
+    #[test]
+    fn provider_registry_failure_is_internal_not_usage() -> Result<(), String> {
+        if provider_command_family(Err("invalid provider surface".to_string()))?
+            != ProcessExitFamilyV1::InstrumentFailure
+        {
+            return Err("provider registry failure must map to instrument failure".to_string());
+        }
+        Ok(())
     }
 }
