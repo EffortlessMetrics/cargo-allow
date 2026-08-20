@@ -589,7 +589,7 @@ jobs:
           cargo install cargo-tarpaulin --version 0.37.0 --locked
           # Cover the cargo-allow release set plus the captured-receipt
           # validation products; coverage does not gate this lane.
-          cargo tarpaulin --locked --engine llvm --out xml \
+          cargo tarpaulin --features cargo-proof/all-providers --locked --engine llvm --out xml \
             --output-dir target/cargo-allow \
             -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit \
             -p proof-protocol -p proof-orchestrator -p cargo-proof \

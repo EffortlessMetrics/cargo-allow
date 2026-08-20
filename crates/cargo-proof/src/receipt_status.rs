@@ -506,6 +506,33 @@ mod tests {
     }
 
     #[test]
+    fn known_provider_payloads_fail_closed_when_unavailable_or_schema_mismatched()
+    -> Result<(), String> {
+        for provider_id in ["proof.hawk.v1", "proof.ripr.v1", "proof.cargo-allow.v1"] {
+            let row = serde_json::json!({
+                "receipt": {
+                    "provider_payload_schema": "unsupported.provider.schema",
+                    "provider_payload": {}
+                }
+            });
+            let error = validate_native_payload(provider_id, &row)
+                .err()
+                .ok_or_else(|| format!("{provider_id} payload was accepted"))?;
+            if !error.contains("unavailable") && !error.contains("unsupported") {
+                return Err(format!(
+                    "unexpected {provider_id} validation error: {error}"
+                ));
+            }
+        }
+        for row in [serde_json::json!({}), serde_json::json!({"receipt": {}})] {
+            if validate_native_payload("proof.hawk.v1", &row).is_ok() {
+                return Err("incomplete native payload envelope was accepted".to_string());
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
     fn path_loader_covers_typed_io_and_unavailable_provider_projection() -> Result<(), String> {
         let root =
             std::env::temp_dir().join(format!("cargo-proof-receipt-status-{}", std::process::id()));
