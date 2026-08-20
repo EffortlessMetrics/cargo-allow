@@ -231,7 +231,11 @@ mod tests {
         if first != second {
             return Err("identical inputs must produce identical plans".to_string());
         }
-        if first.items[0].disposition != ProofItemDispositionV1::SelectedForExecution {
+        let first_item = first
+            .items
+            .first()
+            .ok_or_else(|| "deterministic plan must contain an item".to_string())?;
+        if first_item.disposition != ProofItemDispositionV1::SelectedForExecution {
             return Err("matching catalog capability must select execution".to_string());
         }
         Ok(())
@@ -269,7 +273,11 @@ mod tests {
             .capture(ProofReceiptSetV1::new(initial.plan_id, vec![binding]))
             .map_err(|error| error.as_str().to_string())?;
         let reused = plan_proof_v2_from_intent(&envelope(), &[catalog()], &receipts)?;
-        if reused.items[0].disposition != ProofItemDispositionV1::SatisfiedByCurrentReceipt {
+        let reused_item = reused
+            .items
+            .first()
+            .ok_or_else(|| "reused plan must contain an item".to_string())?;
+        if reused_item.disposition != ProofItemDispositionV1::SatisfiedByCurrentReceipt {
             return Err("matching plan identity must permit receipt reuse".to_string());
         }
         Ok(())
