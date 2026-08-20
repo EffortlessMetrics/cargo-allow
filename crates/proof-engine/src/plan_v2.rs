@@ -27,23 +27,25 @@ pub fn plan_proof_v2_from_intent(
     validate_captured_receipt_store(receipts).map_err(|error| error.as_str().to_string())?;
 
     let snapshot_identity = snapshot_identity(envelope)?;
+    let catalogs = canonical_catalogs(catalogs)?;
     let mut items = envelope
         .obligations
         .iter()
-        .map(|obligation| build_item(obligation, &snapshot_identity, catalogs))
+        .map(|obligation| build_item(obligation, &snapshot_identity, &catalogs))
         .collect::<Result<Vec<_>, _>>()?;
-    let plan_id = semantic_plan_id(&intent_digest, &snapshot_identity, catalogs, &items)?;
+    let plan_id = semantic_plan_id(&intent_digest, &snapshot_identity, &catalogs, &items)?;
 
     if let Some(set) = receipts.get(&plan_id) {
         for binding in &set.bindings {
-            if let Some(item) = items.get_mut(binding.command_index) {
-                if item.disposition == ProofItemDispositionV1::SelectedForExecution {
+            match items.get_mut(binding.command_index) {
+                Some(item) if item.disposition == ProofItemDispositionV1::SelectedForExecution => {
                     item.disposition = ProofItemDispositionV1::SatisfiedByCurrentReceipt;
                     item.execution_posture = ProofItemExecutionPostureV1::None;
                     item.selection = None;
                     item.current_receipt = Some(binding.receipt_digest.clone());
                     item.expected_receipt = None;
                 }
+                _ => {}
             }
         }
     }
@@ -144,6 +146,20 @@ fn build_item(
     })
 }
 
+fn canonical_catalogs(
+    catalogs: &[ProofCapabilityCatalogV1],
+) -> Result<Vec<ProofCapabilityCatalogV1>, String> {
+    let mut canonical = catalogs.to_vec();
+    for catalog in &mut canonical {
+        validate_capability_catalog(catalog).map_err(|error| error.as_str().to_string())?;
+        catalog
+            .capabilities
+            .sort_by(|left, right| left.capability_id.cmp(&right.capability_id));
+    }
+    canonical.sort_by(|left, right| left.provider_id.cmp(&right.provider_id));
+    Ok(canonical)
+}
+
 fn snapshot_identity(envelope: &IntentObligationPlanEnvelopeV1) -> Result<String, String> {
     let canonical = serde_json::to_string(&envelope.identity.snapshot)
         .map_err(|error| format!("serialize repository snapshot: {error}"))?;
@@ -237,6 +253,25 @@ mod tests {
             .ok_or_else(|| "deterministic plan must contain an item".to_string())?;
         if first_item.disposition != ProofItemDispositionV1::SelectedForExecution {
             return Err("matching catalog capability must select execution".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn catalog_permutations_have_one_semantic_identity() -> Result<(), String> {
+        let mut reversed = catalog();
+        reversed.provider_id = "provider-z".to_string();
+        let mut first_catalog = catalog();
+        first_catalog.provider_id = "provider-a".to_string();
+        let receipts = CapturedReceiptStoreV1::new();
+        let first = plan_proof_v2_from_intent(
+            &envelope(),
+            &[reversed.clone(), first_catalog.clone()],
+            &receipts,
+        )?;
+        let second = plan_proof_v2_from_intent(&envelope(), &[first_catalog, reversed], &receipts)?;
+        if first.plan_id != second.plan_id {
+            return Err("catalog order must not change semantic plan identity".to_string());
         }
         Ok(())
     }

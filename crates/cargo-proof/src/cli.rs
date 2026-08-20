@@ -1,7 +1,7 @@
 use cargo_proof::{
     IdentityFrameV1, OutputFormat, ProcessExitFamilyV1, ProductIdentityV1, dry_run_from_plan_path,
     emit_frame, exit_code_for_family, exit_family_for_result_class, load_config,
-    plan_v2_from_paths, render_dry_run_frame, render_plan_v2_frame,
+    plan_from_obligation_path, plan_v2_from_paths, render_dry_run_frame, render_plan_v2_frame,
 };
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
@@ -59,13 +59,13 @@ pub struct PlanArgs {
     pub obligation_plan: PathBuf,
     /// JSON provider capability catalogs, ordered deterministically by the planner.
     #[arg(long)]
-    pub provider_catalog: PathBuf,
+    pub provider_catalog: Option<PathBuf>,
     /// JSON captured-receipt inventory used only for exact plan-id reuse.
     #[arg(long)]
-    pub receipt_inventory: PathBuf,
+    pub receipt_inventory: Option<PathBuf>,
     /// Explicit JSON output artifact path.
     #[arg(long)]
-    pub output: PathBuf,
+    pub output: Option<PathBuf>,
 }
 
 #[derive(Debug, Parser)]
@@ -90,11 +90,34 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
             Ok(ProcessExitFamilyV1::Success)
         }
         Some(CargoProofCommand::Plan(args)) => {
+            let Some((provider_catalog, receipt_inventory, output)) = args
+                .provider_catalog
+                .as_ref()
+                .zip(args.receipt_inventory.as_ref())
+                .zip(args.output.as_ref())
+                .map(|((catalog, receipts), output)| (catalog, receipts, output))
+            else {
+                let plan_error = match plan_from_obligation_path(&args.obligation_plan) {
+                    Ok(_) => {
+                        eprintln!(
+                            "error: legacy planner unexpectedly produced a plan without explicit catalog inputs"
+                        );
+                        return Ok(ProcessExitFamilyV1::InstrumentFailure);
+                    }
+                    Err(error) => error,
+                };
+                let family = match plan_error.result_state {
+                    proof_protocol::ProofResultStateV1::Missing => ProcessExitFamilyV1::Usage,
+                    state => exit_family_for_result_class(state.as_str()),
+                };
+                eprintln!("error: {}", plan_error.message);
+                return Ok(family);
+            };
             let outcome = match plan_v2_from_paths(
                 &args.obligation_plan,
-                &args.provider_catalog,
-                &args.receipt_inventory,
-                &args.output,
+                provider_catalog,
+                receipt_inventory,
+                output,
             ) {
                 Ok(outcome) => outcome,
                 Err(plan_error) => {

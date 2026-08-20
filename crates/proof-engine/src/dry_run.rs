@@ -98,7 +98,9 @@ pub fn dry_run_proof_plan_v2(plan: &ProofPlanV2) -> Result<DryRunPlanReportV1, D
 /// Load the canonical V2 artifact (or a historical V1 fixture) inside the
 /// semantic engine boundary before projecting its dry-run view.
 pub fn dry_run_plan_artifact(text: &str) -> Result<DryRunPlanReportV1, String> {
-    if let Ok(plan) = serde_json::from_str::<ProofPlanV2>(text) {
+    if text.trim_start().starts_with('{') || text.trim_start().starts_with('[') {
+        let plan = serde_json::from_str::<ProofPlanV2>(text)
+            .map_err(|error| format!("parse proof.plan.v2 JSON: {error}"))?;
         return dry_run_proof_plan_v2(&plan).map_err(|error| error.as_str().to_string());
     }
     let plan = proof_protocol::load_proof_plan_toml(text)?;

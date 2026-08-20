@@ -117,10 +117,13 @@ pub fn plan_v2_from_paths(
         result_state: ProofResultStateV1::Unsupported,
         message: format!("write temporary plan artifact: {err}"),
     })?;
-    std::fs::rename(&temporary, output_path).map_err(|err| PlanErrorV1 {
-        result_state: ProofResultStateV1::Unsupported,
-        message: format!("commit plan artifact: {err}"),
-    })?;
+    if let Err(err) = std::fs::rename(&temporary, output_path) {
+        let _ = std::fs::remove_file(&temporary);
+        return Err(PlanErrorV1 {
+            result_state: ProofResultStateV1::Unsupported,
+            message: format!("commit plan artifact: {err}"),
+        });
+    }
     Ok(PlanV2OutcomeV1 {
         plan,
         output: output_path.display().to_string(),
