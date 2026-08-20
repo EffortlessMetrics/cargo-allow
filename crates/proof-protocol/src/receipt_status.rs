@@ -55,6 +55,9 @@ pub struct CapturedReceiptManifestRowV1 {
     pub provider_id: String,
     pub capability_id: String,
     pub snapshot_identity: String,
+    pub subject_identity: String,
+    pub provider_request_identity: String,
+    pub config_identity: String,
     pub receipt_generation: u32,
     pub receipt: AnalysisReceiptEnvelopeV1,
 }
@@ -93,6 +96,9 @@ pub fn validate_captured_receipt_manifest(
             || row.provider_id.trim().is_empty()
             || row.capability_id.trim().is_empty()
             || row.snapshot_identity.trim().is_empty()
+            || row.subject_identity.trim().is_empty()
+            || row.provider_request_identity.trim().is_empty()
+            || row.config_identity.trim().is_empty()
         {
             return Err("receipt manifest row contains a blank identity".to_string());
         }

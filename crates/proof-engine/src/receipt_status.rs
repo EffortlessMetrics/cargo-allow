@@ -1,5 +1,6 @@
 //! Provider-neutral captured receipt status evaluation (#3600).
 
+use effortless_repo_protocol::stable_digest_json;
 use proof_protocol::{
     CapturedReceiptManifestV1, ProofItemDispositionV1, ProofItemReceiptStatusV1, ProofPlanV2,
     validate_captured_receipt_manifest,
@@ -76,7 +77,6 @@ pub fn evaluate_captured_receipt_status(
 
             if row.plan_id != plan.plan_id
                 || row.snapshot_identity != plan.snapshot_identity
-                || row.receipt.snapshot.root_identity != row.snapshot_identity
                 || item
                     .selection
                     .as_ref()
@@ -92,6 +92,19 @@ pub fn evaluate_captured_receipt_status(
                     provider_id: Some(row.provider_id.clone()),
                     capability_id: Some(row.capability_id.clone()),
                     reason: "captured receipt identity does not match the selected proof item"
+                        .to_string(),
+                };
+            }
+
+            if let Ok(embedded_snapshot_identity) = stable_digest_json(&row.receipt.snapshot)
+                && row.snapshot_identity != embedded_snapshot_identity
+            {
+                return ProofItemReceiptStatusRowV1 {
+                    proof_item_id: item.proof_item_id.clone(),
+                    status: ProofItemReceiptStatusV1::ReceiptForDifferentItem,
+                    provider_id: Some(row.provider_id.clone()),
+                    capability_id: Some(row.capability_id.clone()),
+                    reason: "embedded receipt snapshot identity does not match the manifest"
                         .to_string(),
                 };
             }
@@ -132,10 +145,17 @@ fn receipt_contract_mismatch(
     row: &proof_protocol::CapturedReceiptManifestRowV1,
 ) -> Option<String> {
     let expected = item.expected_receipt.as_ref()?;
-    if expected.receipt_schema != row.receipt.provider_payload_schema {
+    let embedded_snapshot_identity = match stable_digest_json(&row.receipt.snapshot) {
+        Ok(identity) => identity,
+        Err(error) => return Some(format!("embedded snapshot identity failed: {error:?}")),
+    };
+    if row.snapshot_identity != embedded_snapshot_identity {
+        return Some("embedded snapshot identity does not match manifest identity".to_string());
+    }
+    if expected.receipt_schema != row.receipt.schema_id {
         return Some(format!(
             "receipt schema {} does not match expected {}",
-            row.receipt.provider_payload_schema, expected.receipt_schema
+            row.receipt.schema_id, expected.receipt_schema
         ));
     }
     if expected.receipt_generation != row.receipt_generation {
@@ -144,12 +164,19 @@ fn receipt_contract_mismatch(
             row.receipt_generation, expected.receipt_generation
         ));
     }
-    if !expected
-        .currentness_dimensions
-        .iter()
-        .any(|dimension| dimension == "snapshot" || dimension == "snapshot_identity")
-    {
-        return Some("expected receipt contract does not bind snapshot currentness".to_string());
+    for dimension in &expected.currentness_dimensions {
+        let present = match dimension.as_str() {
+            "snapshot" | "snapshot_identity" => true,
+            "subject" => !row.subject_identity.trim().is_empty(),
+            "provider_request" => !row.provider_request_identity.trim().is_empty(),
+            "config" => !row.config_identity.trim().is_empty(),
+            _ => false,
+        };
+        if !present {
+            return Some(format!(
+                "expected receipt currentness dimension {dimension} is not bound"
+            ));
+        }
     }
     None
 }
@@ -260,10 +287,11 @@ mod tests {
     };
 
     fn plan() -> ProofPlanV2 {
+        let snapshot_identity = snapshot_identity();
         ProofPlanV2::new(
             "plan-1",
             "intent-1",
-            "snapshot-1",
+            snapshot_identity.clone(),
             vec![ProofItemV1 {
                 proof_item_id: "item-1".to_string(),
                 intent_obligation_id: "obligation-1".to_string(),
@@ -271,7 +299,7 @@ mod tests {
                 blocking: true,
                 evidence_purpose_ref: "purpose".to_string(),
                 required_capability_class: "capability-1".to_string(),
-                snapshot_identity: "snapshot-1".to_string(),
+                snapshot_identity,
                 subject: ProofSubjectV1 {
                     subject_class: ProofSubjectClassV1::Commit,
                     revision: Some("snapshot-1".to_string()),
@@ -287,9 +315,15 @@ mod tests {
                 }),
                 current_receipt: None,
                 expected_receipt: Some(ExpectedReceiptContractV1 {
-                    receipt_schema: "provider.payload.v1".to_string(),
+                    receipt_schema: effortless_repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID
+                        .to_string(),
                     receipt_generation: 1,
-                    currentness_dimensions: vec!["snapshot_identity".to_string()],
+                    currentness_dimensions: vec![
+                        "snapshot_identity".to_string(),
+                        "subject".to_string(),
+                        "provider_request".to_string(),
+                        "config".to_string(),
+                    ],
                 }),
                 execution_posture: ProofItemExecutionPostureV1::Execute,
                 dependency_group: None,
@@ -300,17 +334,10 @@ mod tests {
     }
 
     fn manifest(result_class: ResultClassV1) -> CapturedReceiptManifestV1 {
+        let embedded_snapshot = snapshot();
         let receipt = AnalysisReceiptEnvelopeV1::new(
             "provider-1",
-            RepositorySnapshotV1::new_committed_head(
-                "snapshot-1",
-                "sha",
-                ResolvedRevisionV1 {
-                    requested: "HEAD".to_string(),
-                    commit: "commit".to_string(),
-                    tree: "tree".to_string(),
-                },
-            ),
+            embedded_snapshot,
             result_class,
             "provider.payload.v1",
             serde_json::json!({"payload": true}),
@@ -323,11 +350,30 @@ mod tests {
                 plan_id: "plan-1".to_string(),
                 provider_id: "provider-1".to_string(),
                 capability_id: "capability-1".to_string(),
-                snapshot_identity: "snapshot-1".to_string(),
+                snapshot_identity: snapshot_identity(),
+                subject_identity: "subject-1".to_string(),
+                provider_request_identity: "request-1".to_string(),
+                config_identity: "config-1".to_string(),
                 receipt_generation: 1,
                 receipt,
             }],
         )
+    }
+
+    fn snapshot() -> RepositorySnapshotV1 {
+        RepositorySnapshotV1::new_committed_head(
+            "snapshot-1",
+            "sha",
+            ResolvedRevisionV1 {
+                requested: "HEAD".to_string(),
+                commit: "commit".to_string(),
+                tree: "tree".to_string(),
+            },
+        )
+    }
+
+    fn snapshot_identity() -> String {
+        stable_digest_json(&snapshot()).unwrap_or_else(|_| "invalid-snapshot".to_string())
     }
 
     #[test]
@@ -391,16 +437,23 @@ mod tests {
     fn expected_schema_and_generation_mismatch_are_malformed() -> Result<(), String> {
         for mutate in [0_u8, 1_u8] {
             let mut manifest = manifest(ResultClassV1::Completed);
-            let row = manifest
-                .rows
-                .first_mut()
-                .ok_or_else(|| "fixture row missing".to_string())?;
+            let mut plan = plan();
             if mutate == 0 {
-                row.receipt.provider_payload_schema = "wrong.schema.v1".to_string();
+                let item = plan
+                    .items
+                    .first_mut()
+                    .ok_or_else(|| "fixture item missing".to_string())?;
+                if let Some(expected) = item.expected_receipt.as_mut() {
+                    expected.receipt_schema = "wrong.schema.v1".to_string();
+                }
             } else {
+                let row = manifest
+                    .rows
+                    .first_mut()
+                    .ok_or_else(|| "fixture row missing".to_string())?;
                 row.receipt_generation = 2;
             }
-            let report = evaluate_captured_receipt_status(&plan(), &manifest)?;
+            let report = evaluate_captured_receipt_status(&plan, &manifest)?;
             if report.items.first().map(|item| item.status)
                 != Some(ProofItemReceiptStatusV1::ReceiptMalformed)
             {
