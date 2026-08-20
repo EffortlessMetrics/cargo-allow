@@ -291,8 +291,15 @@ pub use crate::StaticProviderRegistryV1;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use proof_engine::{
-        ProofItemReceiptStatusRowV1, ProofItemReceiptStatusV1, RECEIPT_STATUS_REPORT_SCHEMA_ID,
+    use effortless_repo_protocol::{
+        AnalysisReceiptEnvelopeV1, ClaimBoundaryV1, RepositorySnapshotV1, ResolvedRevisionV1,
+        ResultClassV1,
+    };
+    use proof_engine::{ProofItemReceiptStatusRowV1, ProofItemReceiptStatusV1, RECEIPT_STATUS_REPORT_SCHEMA_ID};
+    use proof_protocol::{
+        CapturedReceiptManifestRowV1, CapturedReceiptManifestV1, ExpectedReceiptContractV1,
+        ProofItemDispositionV1, ProofItemExecutionPostureV1, ProofItemV1, ProofPlanV2,
+        ProofSubjectClassV1, ProofSubjectV1, ProviderSelectionV1,
     };
 
     fn report() -> ReceiptStatusReportV1 {
@@ -308,6 +315,96 @@ mod tests {
             }],
             claim_boundary: "read-only".to_string(),
         }
+    }
+
+    fn snapshot() -> RepositorySnapshotV1 {
+        RepositorySnapshotV1::new_committed_head(
+            "snapshot-1",
+            "sha",
+            ResolvedRevisionV1 {
+                requested: "HEAD".to_string(),
+                commit: "commit".to_string(),
+                tree: "tree".to_string(),
+            },
+        )
+    }
+
+    fn snapshot_identity() -> String {
+        effortless_repo_protocol::stable_digest_json(&snapshot())
+            .map_err(|error| error.message().to_string())
+            .unwrap_or_else(|_| "invalid-snapshot".to_string())
+    }
+
+    fn path_inputs() -> (ProofPlanV2, CapturedReceiptManifestV1) {
+        let snapshot_identity = snapshot_identity();
+        let plan = ProofPlanV2::new(
+            "plan-1",
+            "intent-1",
+            snapshot_identity.clone(),
+            vec![ProofItemV1 {
+                proof_item_id: "item-1".to_string(),
+                intent_obligation_id: "obligation-1".to_string(),
+                phase: "precommit".to_string(),
+                blocking: true,
+                evidence_purpose_ref: "purpose".to_string(),
+                required_capability_class: "capability-1".to_string(),
+                snapshot_identity: snapshot_identity.clone(),
+                subject: ProofSubjectV1 {
+                    subject_class: ProofSubjectClassV1::Commit,
+                    revision: Some(snapshot_identity.clone()),
+                    selector: None,
+                    body_identity: None,
+                    limitations: Vec::new(),
+                },
+                disposition: ProofItemDispositionV1::SelectedForExecution,
+                selection: Some(ProviderSelectionV1 {
+                    provider_id: "provider-1".to_string(),
+                    capability_id: "capability-1".to_string(),
+                    request_digest: "request-1".to_string(),
+                }),
+                current_receipt: None,
+                expected_receipt: Some(ExpectedReceiptContractV1 {
+                    receipt_schema: effortless_repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID
+                        .to_string(),
+                    receipt_generation: 1,
+                    config_identity: "config:test".to_string(),
+                    currentness_dimensions: vec![
+                        "snapshot_identity".to_string(),
+                        "subject".to_string(),
+                        "provider_request".to_string(),
+                        "config".to_string(),
+                    ],
+                }),
+                execution_posture: ProofItemExecutionPostureV1::Execute,
+                dependency_group: None,
+                limitations: Vec::new(),
+                claim_boundary: "test".to_string(),
+            }],
+        );
+        let receipt = AnalysisReceiptEnvelopeV1::new(
+            "provider-1",
+            snapshot(),
+            ResultClassV1::Findings,
+            "provider.payload.v1",
+            serde_json::json!({"payload": true}),
+            ClaimBoundaryV1::new("captured test evidence"),
+        );
+        let manifest = CapturedReceiptManifestV1::new(
+            "plan-1",
+            vec![CapturedReceiptManifestRowV1 {
+                proof_item_id: "item-1".to_string(),
+                plan_id: "plan-1".to_string(),
+                provider_id: "provider-1".to_string(),
+                capability_id: "capability-1".to_string(),
+                snapshot_identity: snapshot_identity.clone(),
+                subject_identity: snapshot_identity,
+                provider_request_identity: "request-1".to_string(),
+                config_identity: "config:test".to_string(),
+                receipt_generation: 1,
+                receipt,
+            }],
+        );
+        (plan, manifest)
     }
 
     #[test]
@@ -404,6 +501,73 @@ mod tests {
             Err(message) => Err(format!("unexpected native validation error: {message}")),
             Ok(()) => Err("unknown provider payload was accepted".to_string()),
         }
+    }
+
+    #[test]
+    fn path_loader_covers_typed_io_and_unavailable_provider_projection() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "cargo-proof-receipt-status-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        let plan_path = root.join("plan.json");
+        let manifest_path = root.join("manifest.json");
+        let (plan, manifest) = path_inputs();
+        std::fs::write(
+            &plan_path,
+            serde_json::to_vec(&plan).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        std::fs::write(
+            &manifest_path,
+            serde_json::to_vec(&manifest).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+
+        let report = captured_receipt_status_from_paths(&plan_path, &manifest_path)
+            .map_err(|error| error.message().to_string())?;
+        if !report
+            .items
+            .first()
+            .map(|item| item.reason.contains("unavailable"))
+            .unwrap_or(false)
+        {
+            return Err("unavailable provider context was not projected".to_string());
+        }
+        let human = render_captured_receipt_status(&report, crate::OutputFormat::Human)?;
+        let json = render_captured_receipt_validation(&report, crate::OutputFormat::Json)?;
+        if !human.contains("current_findings") || !json.contains("satisfies_plan") {
+            return Err("path-loaded report projections were incomplete".to_string());
+        }
+        if receipt_validation_satisfies_plan(&report) {
+            return Err("findings must remain non-satisfying after path loading".to_string());
+        }
+
+        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn path_loader_classifies_missing_and_malformed_inputs() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "cargo-proof-receipt-errors-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        let missing = captured_receipt_status_from_paths(&root.join("missing"), &root.join("also-missing"));
+        if !matches!(missing, Err(ReceiptCommandError::ReadPlan(_))) {
+            return Err("missing plan was not classified as usage input".to_string());
+        }
+        let plan_path = root.join("plan.json");
+        let manifest_path = root.join("manifest.json");
+        std::fs::write(&plan_path, b"{}").map_err(|error| error.to_string())?;
+        std::fs::write(&manifest_path, b"{}").map_err(|error| error.to_string())?;
+        let malformed = captured_receipt_status_from_paths(&plan_path, &manifest_path);
+        if !matches!(malformed, Err(ReceiptCommandError::MalformedPlan(_))) {
+            return Err("malformed plan was not typed as malformed".to_string());
+        }
+        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
     }
 
     #[cfg(feature = "provider-hawk")]
