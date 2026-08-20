@@ -1,7 +1,7 @@
 use cargo_proof::{
     IdentityFrameV1, OutputFormat, ProcessExitFamilyV1, ProductIdentityV1, dry_run_from_plan_path,
     emit_frame, exit_code_for_family, exit_family_for_result_class, load_config,
-    plan_from_obligation_path, render_dry_run_frame, render_plan_frame,
+    plan_from_obligation_path, plan_v2_from_paths, render_dry_run_frame, render_plan_v2_frame,
 };
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
@@ -57,11 +57,20 @@ pub struct PlanArgs {
     /// Path to an `intent.obligation-plan.v1` JSON file.
     #[arg(long)]
     pub obligation_plan: PathBuf,
+    /// JSON provider capability catalogs, ordered deterministically by the planner.
+    #[arg(long)]
+    pub provider_catalog: Option<PathBuf>,
+    /// JSON captured-receipt inventory used only for exact plan-id reuse.
+    #[arg(long)]
+    pub receipt_inventory: Option<PathBuf>,
+    /// Explicit JSON output artifact path.
+    #[arg(long)]
+    pub output: Option<PathBuf>,
 }
 
 #[derive(Debug, Parser)]
 pub struct DryRunArgs {
-    /// Path to a `proof.plan.v1` TOML file.
+    /// Path to the generated `proof.plan.v2` JSON artifact.
     #[arg(long)]
     pub proof_plan: PathBuf,
 }
@@ -81,7 +90,46 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
             Ok(ProcessExitFamilyV1::Success)
         }
         Some(CargoProofCommand::Plan(args)) => {
-            let outcome = match plan_from_obligation_path(&args.obligation_plan) {
+            let supplied = usize::from(args.provider_catalog.is_some())
+                + usize::from(args.receipt_inventory.is_some())
+                + usize::from(args.output.is_some());
+            if supplied == 1 || supplied == 2 {
+                eprintln!(
+                    "error: --provider-catalog, --receipt-inventory, and --output must be supplied together"
+                );
+                return Ok(ProcessExitFamilyV1::Usage);
+            }
+            if supplied == 0 {
+                let plan_error = match plan_from_obligation_path(&args.obligation_plan) {
+                    Ok(_) => {
+                        eprintln!(
+                            "error: legacy planner unexpectedly produced a plan without explicit catalog inputs"
+                        );
+                        return Ok(ProcessExitFamilyV1::InstrumentFailure);
+                    }
+                    Err(error) => error,
+                };
+                let family = match plan_error.result_state {
+                    proof_protocol::ProofResultStateV1::Missing => ProcessExitFamilyV1::Usage,
+                    state => exit_family_for_result_class(state.as_str()),
+                };
+                eprintln!("error: {}", plan_error.message);
+                return Ok(family);
+            }
+            let (Some(provider_catalog), Some(receipt_inventory), Some(output)) = (
+                args.provider_catalog.as_ref(),
+                args.receipt_inventory.as_ref(),
+                args.output.as_ref(),
+            ) else {
+                eprintln!("error: incomplete V2 plan inputs");
+                return Ok(ProcessExitFamilyV1::Usage);
+            };
+            let outcome = match plan_v2_from_paths(
+                &args.obligation_plan,
+                provider_catalog,
+                receipt_inventory,
+                output,
+            ) {
                 Ok(outcome) => outcome,
                 Err(plan_error) => {
                     // Map the exit family from the proof-corpus result
@@ -98,7 +146,7 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
                     return Ok(family);
                 }
             };
-            let rendered = render_plan_frame(&outcome, output_format)?;
+            let rendered = render_plan_v2_frame(&outcome, output_format)?;
             print!("{rendered}");
             Ok(ProcessExitFamilyV1::Success)
         }

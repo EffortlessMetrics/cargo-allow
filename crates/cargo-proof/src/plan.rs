@@ -8,15 +8,17 @@
 use std::path::Path;
 
 use proof_engine::{
-    IntentPlannerError, ProviderRegistryV1, intent_obligation_plan_digest,
-    plan_proof_execution_from_intent,
+    CapturedReceiptStoreV1, IntentPlannerError, ProviderRegistryV1, intent_obligation_plan_digest,
+    plan_proof_execution_from_intent, plan_proof_v2_from_intent,
 };
 
 /// The provider this product intends to select once the feature-gated
 /// registry lands (#2938). Named in every unavailable result so output
 /// states exactly what is missing; never constructed as a fake.
 pub const INTENDED_PROVIDER_ID: &str = "cargo-allow";
-use proof_protocol::{PROOF_PLAN_SCHEMA_ID, ProofPlanV1, ProofResultStateV1};
+use proof_protocol::{
+    PROOF_PLAN_SCHEMA_ID, ProofCapabilityCatalogV1, ProofPlanV1, ProofPlanV2, ProofResultStateV1,
+};
 
 use crate::render::{OutputFormat, PlanFrameV1, emit_frame};
 
@@ -29,6 +31,12 @@ pub const PLAN_CLAIM_BOUNDARY: &str =
 pub struct PlanOutcomeV1 {
     pub plan: ProofPlanV1,
     pub intent_plan_digest: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlanV2OutcomeV1 {
+    pub plan: ProofPlanV2,
+    pub output: String,
 }
 
 /// Plan failure carrying the proof-corpus result class so the CLI maps
@@ -58,6 +66,68 @@ pub fn plan_from_obligation_path(path: &Path) -> Result<PlanOutcomeV1, PlanError
             message: format!("parse intent envelope JSON: {err}"),
         })?;
     plan_from_intent_envelope(&envelope)
+}
+
+/// Generate and retain the complete deterministic `proof.plan.v2` artifact.
+pub fn plan_v2_from_paths(
+    obligation_path: &Path,
+    catalog_path: &Path,
+    receipt_path: &Path,
+    output_path: &Path,
+) -> Result<PlanV2OutcomeV1, PlanErrorV1> {
+    let envelope_text = std::fs::read_to_string(obligation_path).map_err(|err| PlanErrorV1 {
+        result_state: ProofResultStateV1::Missing,
+        message: format!("read {}: {err}", obligation_path.display()),
+    })?;
+    let envelope: intent_protocol::IntentObligationPlanEnvelopeV1 =
+        serde_json::from_str(&envelope_text).map_err(|err| PlanErrorV1 {
+            result_state: ProofResultStateV1::Missing,
+            message: format!("parse intent envelope JSON: {err}"),
+        })?;
+    let catalog_text = std::fs::read_to_string(catalog_path).map_err(|err| PlanErrorV1 {
+        result_state: ProofResultStateV1::Missing,
+        message: format!("read {}: {err}", catalog_path.display()),
+    })?;
+    let catalogs: Vec<ProofCapabilityCatalogV1> =
+        serde_json::from_str(&catalog_text).map_err(|err| PlanErrorV1 {
+            result_state: ProofResultStateV1::Missing,
+            message: format!("parse provider catalog JSON: {err}"),
+        })?;
+    let receipt_text = std::fs::read_to_string(receipt_path).map_err(|err| PlanErrorV1 {
+        result_state: ProofResultStateV1::Missing,
+        message: format!("read {}: {err}", receipt_path.display()),
+    })?;
+    let receipts: CapturedReceiptStoreV1 =
+        serde_json::from_str(&receipt_text).map_err(|err| PlanErrorV1 {
+            result_state: ProofResultStateV1::Missing,
+            message: format!("parse receipt inventory JSON: {err}"),
+        })?;
+    let plan = plan_proof_v2_from_intent(&envelope, &catalogs, &receipts).map_err(|message| {
+        PlanErrorV1 {
+            result_state: ProofResultStateV1::Unsupported,
+            message: format!("generate proof.plan.v2: {message}"),
+        }
+    })?;
+    let serialized = serde_json::to_string_pretty(&plan).map_err(|err| PlanErrorV1 {
+        result_state: ProofResultStateV1::Unsupported,
+        message: format!("serialize proof.plan.v2: {err}"),
+    })?;
+    let temporary = output_path.with_extension("json.tmp");
+    std::fs::write(&temporary, format!("{serialized}\n")).map_err(|err| PlanErrorV1 {
+        result_state: ProofResultStateV1::Unsupported,
+        message: format!("write temporary plan artifact: {err}"),
+    })?;
+    if let Err(err) = std::fs::rename(&temporary, output_path) {
+        let _ = std::fs::remove_file(&temporary);
+        return Err(PlanErrorV1 {
+            result_state: ProofResultStateV1::Unsupported,
+            message: format!("commit plan artifact: {err}"),
+        });
+    }
+    Ok(PlanV2OutcomeV1 {
+        plan,
+        output: output_path.display().to_string(),
+    })
 }
 
 /// Plan proof execution from an intent obligation plan envelope.
@@ -116,6 +186,28 @@ pub fn render_plan_frame(outcome: &PlanOutcomeV1, format: OutputFormat) -> Resul
     let mut output = rendered;
     output.push_str(&format!("schema: {PROOF_PLAN_SCHEMA_ID}\n"));
     Ok(output)
+}
+
+pub fn render_plan_v2_frame(
+    outcome: &PlanV2OutcomeV1,
+    format: OutputFormat,
+) -> Result<String, String> {
+    let frame = PlanFrameV1 {
+        schema_id: outcome.plan.schema_id.clone(),
+        plan_id: outcome.plan.plan_id.clone(),
+        intent_plan_digest: outcome.plan.intent_plan_digest.clone(),
+        command_count: outcome
+            .plan
+            .items
+            .iter()
+            .filter(|item| item.disposition.lowers_to_command())
+            .count(),
+        claim_boundary: format!(
+            "Complete proof.plan.v2 artifact retained at {}; no provider execution occurred.",
+            outcome.output
+        ),
+    };
+    emit_frame(&frame, format)
 }
 
 #[cfg(test)]

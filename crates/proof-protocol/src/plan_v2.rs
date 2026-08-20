@@ -211,8 +211,17 @@ impl ProofPlanV2 {
         if self.schema_id != PROOF_PLAN_V2_SCHEMA_ID {
             return Err(format!("unexpected schema_id {}", self.schema_id));
         }
+        if self.schema_version != PROOF_PLAN_V2_SCHEMA_VERSION {
+            return Err(format!("unexpected schema_version {}", self.schema_version));
+        }
         let mut seen = std::collections::BTreeSet::new();
         for item in &self.items {
+            if item.snapshot_identity != self.snapshot_identity {
+                return Err(format!(
+                    "item {} snapshot identity does not match plan snapshot",
+                    item.proof_item_id
+                ));
+            }
             if !seen.insert(item.proof_item_id.as_str()) {
                 return Err(format!("duplicate proof item id {}", item.proof_item_id));
             }
@@ -437,6 +446,25 @@ mod tests {
         let plan = plan(vec![]);
         if plan.validate().is_ok() {
             return Err("zero-item plan must fail".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn schema_and_item_snapshot_mismatches_fail_closed() -> Result<(), String> {
+        let mut versioned_plan = plan(vec![item("item-1", ProofItemDispositionV1::NotProven)]);
+        versioned_plan.schema_version += 1;
+        if versioned_plan.validate().is_ok() {
+            return Err("unsupported schema version must fail".to_string());
+        }
+        let mut mismatched_plan = plan(vec![item("item-1", ProofItemDispositionV1::NotProven)]);
+        mismatched_plan
+            .items
+            .first_mut()
+            .ok_or_else(|| "test plan missing item".to_string())?
+            .snapshot_identity = "different-snapshot".to_string();
+        if mismatched_plan.validate().is_ok() {
+            return Err("item snapshot mismatch must fail".to_string());
         }
         Ok(())
     }

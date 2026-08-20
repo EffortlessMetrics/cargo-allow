@@ -1,10 +1,12 @@
 //! Captured receipt store for proof-engine orchestration (#2589-A).
 
 use proof_protocol::{ProofReceiptError, ProofReceiptSetV1, validate_receipt_set};
+use serde::{Deserialize, Serialize};
 
 pub const CAPTURED_RECEIPT_STORE_SCHEMA_ID: &str = "proof.captured-receipt-store.v1";
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CapturedReceiptStoreV1 {
     pub schema_id: String,
     pub sets: Vec<ProofReceiptSetV1>,
