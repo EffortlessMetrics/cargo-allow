@@ -267,4 +267,36 @@ mod tests {
             Ok(()) => Err("unknown provider payload was accepted".to_string()),
         }
     }
+
+    #[cfg(feature = "provider-hawk")]
+    #[test]
+    fn malformed_hawk_payload_is_rejected_by_native_validator() -> Result<(), String> {
+        let row = serde_json::json!({
+            "receipt": {
+                "provider_payload_schema": crate::providers::hawk::HAWK_ANALYSIS_RECEIPT_SCHEMA_ID,
+                "provider_payload": {}
+            }
+        });
+        match validate_native_payload("proof.hawk.v1", &row) {
+            Err(message) if message.contains("malformed Hawk receipt") => Ok(()),
+            Err(message) => Err(format!("unexpected Hawk validation error: {message}")),
+            Ok(()) => Err("malformed Hawk payload was accepted".to_string()),
+        }
+    }
+
+    #[cfg(feature = "provider-ripr")]
+    #[test]
+    fn malformed_ripr_payload_is_rejected_by_native_validator() -> Result<(), String> {
+        let row = serde_json::json!({
+            "receipt": {
+                "provider_payload_schema": crate::providers::ripr::RIPR_GRIP_RECEIPT_SCHEMA_ID,
+                "provider_payload": {}
+            }
+        });
+        match validate_native_payload("proof.ripr.v1", &row) {
+            Err(message) if message.contains("malformed RIPR receipt") => Ok(()),
+            Err(message) => Err(format!("unexpected RIPR validation error: {message}")),
+            Ok(()) => Err("malformed RIPR payload was accepted".to_string()),
+        }
+    }
 }
