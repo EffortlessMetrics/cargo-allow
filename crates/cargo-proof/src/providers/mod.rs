@@ -13,6 +13,6 @@ pub mod ripr;
 
 mod registry;
 pub use registry::{
-    PROVIDER_REGISTRY_SCHEMA_ID, ProviderProjectionV1, ProviderRegistryError,
-    StaticProviderRegistryV1,
+    PROVIDER_REGISTRY_SCHEMA_ID, ProviderAvailabilityV1, ProviderDispositionV1,
+    ProviderProjectionV1, ProviderRegistryError, StaticProviderRegistryV1,
 };

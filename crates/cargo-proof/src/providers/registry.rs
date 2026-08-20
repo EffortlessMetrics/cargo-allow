@@ -5,11 +5,26 @@ use proof_protocol::{ProofCapabilityCatalogV1, validate_capability_catalog};
 use serde::Serialize;
 
 pub const PROVIDER_REGISTRY_SCHEMA_ID: &str = "cargo-proof.provider-registry.v1";
+const KNOWN_PROVIDER_IDS: [&str; 3] = ["proof.cargo-allow.v1", "proof.hawk.v1", "proof.ripr.v1"];
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ProviderProjectionV1 {
     pub provider_id: String,
     pub capabilities: ProofCapabilityCatalogV1,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ProviderDispositionV1 {
+    Selected,
+    ProviderUnavailable,
+    ProviderUnsupported,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ProviderAvailabilityV1 {
+    pub provider_id: String,
+    pub disposition: ProviderDispositionV1,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -113,6 +128,21 @@ impl StaticProviderRegistryV1 {
         self.providers
             .iter()
             .any(|provider| provider.provider_id() == provider_id)
+    }
+
+    /// Reports every known provider, including feature-disabled providers.
+    pub fn availability(&self) -> Vec<ProviderAvailabilityV1> {
+        KNOWN_PROVIDER_IDS
+            .iter()
+            .map(|provider_id| ProviderAvailabilityV1 {
+                provider_id: (*provider_id).to_string(),
+                disposition: if self.provider_available(provider_id) {
+                    ProviderDispositionV1::Selected
+                } else {
+                    ProviderDispositionV1::ProviderUnavailable
+                },
+            })
+            .collect()
     }
 }
 
@@ -224,6 +254,16 @@ mod tests {
         #[cfg(not(feature = "provider-hawk"))]
         if registry.provider_available("proof.hawk.v1") {
             return Err("disabled hawk provider was reported available".to_string());
+        }
+        #[cfg(not(feature = "provider-hawk"))]
+        if registry
+            .availability()
+            .into_iter()
+            .find(|entry| entry.provider_id == "proof.hawk.v1")
+            .map(|entry| entry.disposition)
+            != Some(ProviderDispositionV1::ProviderUnavailable)
+        {
+            return Err("disabled hawk provider lacked unavailable disposition".to_string());
         }
         Ok(())
     }

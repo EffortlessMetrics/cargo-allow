@@ -177,11 +177,13 @@ fn cmd_providers(format: OutputFormat) -> Result<(), String> {
     let registry = cargo_proof::StaticProviderRegistryV1::selected()
         .map_err(|error| format!("provider registry: {}", error.as_str()))?;
     let projections = registry.projections();
+    let availability = registry.availability();
     match format {
         OutputFormat::Json => {
             let frame = serde_json::json!({
                 "schema_id": cargo_proof::PROVIDER_REGISTRY_SCHEMA_ID,
                 "providers": projections,
+                "availability": availability,
                 "claim_boundary": "Read-only selected provider/capability projection; no provider execution occurred.",
             });
             println!(
@@ -198,6 +200,11 @@ fn cmd_providers(format: OutputFormat) -> Result<(), String> {
                     for capability in provider.capabilities.capabilities {
                         println!("  capability {}", capability.capability_id);
                     }
+                }
+            }
+            for entry in availability {
+                if entry.disposition != cargo_proof::ProviderDispositionV1::Selected {
+                    println!("provider {}: {:?}", entry.provider_id, entry.disposition);
                 }
             }
         }
