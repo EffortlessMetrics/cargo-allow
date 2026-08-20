@@ -312,6 +312,30 @@ mod tests {
     }
 
     #[test]
+    fn non_satisfying_receipt_states_fail_validation() -> Result<(), String> {
+        for status in [
+            ProofItemReceiptStatusV1::ReceiptMissing,
+            ProofItemReceiptStatusV1::ReceiptMalformed,
+            ProofItemReceiptStatusV1::ReceiptStale,
+            ProofItemReceiptStatusV1::ReceiptForDifferentItem,
+            ProofItemReceiptStatusV1::CurrentPartial,
+            ProofItemReceiptStatusV1::CurrentUnsupported,
+            ProofItemReceiptStatusV1::CurrentNotProven,
+            ProofItemReceiptStatusV1::CurrentInstrumentFailure,
+            ProofItemReceiptStatusV1::Conflict,
+        ] {
+            let mut candidate = report();
+            if let Some(item) = candidate.items.first_mut() {
+                item.status = status;
+            }
+            if receipt_validation_satisfies_plan(&candidate) {
+                return Err(format!("{status:?} incorrectly satisfied validation"));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
     fn unknown_provider_payload_is_rejected_without_execution() -> Result<(), String> {
         let row = serde_json::json!({
             "receipt": {
