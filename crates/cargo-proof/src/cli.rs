@@ -90,13 +90,16 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
             Ok(ProcessExitFamilyV1::Success)
         }
         Some(CargoProofCommand::Plan(args)) => {
-            let Some((provider_catalog, receipt_inventory, output)) = args
-                .provider_catalog
-                .as_ref()
-                .zip(args.receipt_inventory.as_ref())
-                .zip(args.output.as_ref())
-                .map(|((catalog, receipts), output)| (catalog, receipts, output))
-            else {
+            let supplied = usize::from(args.provider_catalog.is_some())
+                + usize::from(args.receipt_inventory.is_some())
+                + usize::from(args.output.is_some());
+            if supplied == 1 || supplied == 2 {
+                eprintln!(
+                    "error: --provider-catalog, --receipt-inventory, and --output must be supplied together"
+                );
+                return Ok(ProcessExitFamilyV1::Usage);
+            }
+            if supplied == 0 {
                 let plan_error = match plan_from_obligation_path(&args.obligation_plan) {
                     Ok(_) => {
                         eprintln!(
@@ -112,6 +115,14 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
                 };
                 eprintln!("error: {}", plan_error.message);
                 return Ok(family);
+            }
+            let (Some(provider_catalog), Some(receipt_inventory), Some(output)) = (
+                args.provider_catalog.as_ref(),
+                args.receipt_inventory.as_ref(),
+                args.output.as_ref(),
+            ) else {
+                eprintln!("error: incomplete V2 plan inputs");
+                return Ok(ProcessExitFamilyV1::Usage);
             };
             let outcome = match plan_v2_from_paths(
                 &args.obligation_plan,
