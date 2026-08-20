@@ -219,6 +219,8 @@ cp "${proof_plan_fixture}" "${proof_plan_path}"
 record_stage "cargo_proof_dry_run" "real" "Passed"
 
 log "stage evidence_cargo_allow"
+# This direct cargo-allow check is not evidence that cargo-proof executed or
+# reconciled a provider receipt (#3598).
 post_propose_check="$("${cargo_allow_bin}" check --root "${consumer_dir}" --config "${policy_path}" --kind panic --mode no-new --format json)"
 printf '%s\n' "${post_propose_check}" | python3 -c '
 import json, sys
