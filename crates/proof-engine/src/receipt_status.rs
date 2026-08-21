@@ -457,6 +457,106 @@ mod tests {
     }
 
     #[test]
+    fn stale_partial_and_unprobed_receipts_are_not_current() -> Result<(), String> {
+        let mut stale = manifest(ResultClassV1::Completed);
+        stale
+            .rows
+            .first_mut()
+            .ok_or_else(|| "stale fixture row missing".to_string())?
+            .receipt
+            .currentness = effortless_repo_protocol::CurrentnessV1::Stale;
+        if evaluate_captured_receipt_status(&plan(), &stale)?
+            .items
+            .first()
+            .map(|item| item.status)
+            != Some(ProofItemReceiptStatusV1::ReceiptStale)
+        {
+            return Err("stale receipt was not classified as stale".to_string());
+        }
+
+        let mut partial = manifest(ResultClassV1::Completed);
+        partial
+            .rows
+            .first_mut()
+            .ok_or_else(|| "partial fixture row missing".to_string())?
+            .receipt
+            .completeness = effortless_repo_protocol::CompletenessV1::Partial;
+        if evaluate_captured_receipt_status(&plan(), &partial)?
+            .items
+            .first()
+            .map(|item| item.status)
+            != Some(ProofItemReceiptStatusV1::CurrentPartial)
+        {
+            return Err("partial receipt was not classified as partial".to_string());
+        }
+
+        let mut unprobed = manifest(ResultClassV1::Completed);
+        unprobed
+            .rows
+            .first_mut()
+            .ok_or_else(|| "unprobed fixture row missing".to_string())?
+            .receipt
+            .currentness = effortless_repo_protocol::CurrentnessV1::NotProbed;
+        if evaluate_captured_receipt_status(&plan(), &unprobed)?
+            .items
+            .first()
+            .map(|item| item.status)
+            != Some(ProofItemReceiptStatusV1::CurrentNotProven)
+        {
+            return Err("unprobed receipt was not classified as not proven".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn currentness_dimensions_are_each_enforced() -> Result<(), String> {
+        for dimension in ["subject", "provider_request", "config", "unknown"] {
+            let mut candidate_plan = plan();
+            let mut candidate_manifest = manifest(ResultClassV1::Completed);
+            match dimension {
+                "subject" => {
+                    candidate_manifest
+                        .rows
+                        .first_mut()
+                        .ok_or_else(|| "subject fixture row missing".to_string())?
+                        .subject_identity = "wrong".to_string()
+                }
+                "provider_request" => {
+                    candidate_manifest
+                        .rows
+                        .first_mut()
+                        .ok_or_else(|| "request fixture row missing".to_string())?
+                        .provider_request_identity = "wrong".to_string()
+                }
+                "config" => {
+                    candidate_manifest
+                        .rows
+                        .first_mut()
+                        .ok_or_else(|| "config fixture row missing".to_string())?
+                        .config_identity = "wrong".to_string()
+                }
+                "unknown" => candidate_plan
+                    .items
+                    .first_mut()
+                    .ok_or_else(|| "fixture item missing".to_string())?
+                    .expected_receipt
+                    .as_mut()
+                    .ok_or_else(|| "expected receipt missing".to_string())?
+                    .currentness_dimensions
+                    .push("unknown".to_string()),
+                _ => {}
+            }
+            let report = evaluate_captured_receipt_status(&candidate_plan, &candidate_manifest)?;
+            if report.items.first().map(|item| item.status)
+                != Some(ProofItemReceiptStatusV1::ReceiptMalformed)
+            {
+                return Err(format!("{dimension} currentness mismatch was accepted"));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
     fn missing_receipt_is_not_success() -> Result<(), String> {
         let empty = CapturedReceiptManifestV1::new("plan-1", Vec::new());
         let report = evaluate_captured_receipt_status(&plan(), &empty)?;

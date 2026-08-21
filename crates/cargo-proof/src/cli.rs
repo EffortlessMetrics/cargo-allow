@@ -291,7 +291,98 @@ mod tests {
     use super::provider_command_family;
     use super::{ReceiptAction, ReceiptsArgs, run_receipts};
     use cargo_proof::{ProcessExitFamilyV1, ReceiptCommandError};
+    use effortless_repo_protocol::{
+        AnalysisReceiptEnvelopeV1, ClaimBoundaryV1, RepositorySnapshotV1, ResolvedRevisionV1,
+        ResultClassV1,
+    };
+    use proof_protocol::{
+        CapturedReceiptManifestRowV1, CapturedReceiptManifestV1, ExpectedReceiptContractV1,
+        ProofItemDispositionV1, ProofItemExecutionPostureV1, ProofItemV1, ProofPlanV2,
+        ProofSubjectClassV1, ProofSubjectV1, ProviderSelectionV1,
+    };
     use std::path::PathBuf;
+
+    fn receipt_cli_fixture() -> (ProofPlanV2, CapturedReceiptManifestV1) {
+        let snapshot = RepositorySnapshotV1::new_committed_head(
+            "snapshot-1",
+            "sha",
+            ResolvedRevisionV1 {
+                requested: "HEAD".to_string(),
+                commit: "commit".to_string(),
+                tree: "tree".to_string(),
+            },
+        );
+        let snapshot_identity = effortless_repo_protocol::stable_digest_json(&snapshot)
+            .unwrap_or_else(|_| "invalid-snapshot".to_string());
+        let plan = ProofPlanV2::new(
+            "plan-1",
+            "intent-1",
+            snapshot_identity.clone(),
+            vec![ProofItemV1 {
+                proof_item_id: "item-1".to_string(),
+                intent_obligation_id: "obligation-1".to_string(),
+                phase: "precommit".to_string(),
+                blocking: true,
+                evidence_purpose_ref: "purpose".to_string(),
+                required_capability_class: "capability-1".to_string(),
+                snapshot_identity: snapshot_identity.clone(),
+                subject: ProofSubjectV1 {
+                    subject_class: ProofSubjectClassV1::Commit,
+                    revision: Some(snapshot_identity.clone()),
+                    selector: None,
+                    body_identity: None,
+                    limitations: Vec::new(),
+                },
+                disposition: ProofItemDispositionV1::SelectedForExecution,
+                selection: Some(ProviderSelectionV1 {
+                    provider_id: "provider-1".to_string(),
+                    capability_id: "capability-1".to_string(),
+                    request_digest: "request-1".to_string(),
+                }),
+                current_receipt: None,
+                expected_receipt: Some(ExpectedReceiptContractV1 {
+                    receipt_schema: effortless_repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID
+                        .to_string(),
+                    receipt_generation: 1,
+                    config_identity: "config:test".to_string(),
+                    currentness_dimensions: vec![
+                        "snapshot_identity".to_string(),
+                        "subject".to_string(),
+                        "provider_request".to_string(),
+                        "config".to_string(),
+                    ],
+                }),
+                execution_posture: ProofItemExecutionPostureV1::Execute,
+                dependency_group: None,
+                limitations: Vec::new(),
+                claim_boundary: "test".to_string(),
+            }],
+        );
+        let receipt = AnalysisReceiptEnvelopeV1::new(
+            "provider-1",
+            snapshot,
+            ResultClassV1::Findings,
+            "provider.payload.v1",
+            serde_json::json!({"payload": true}),
+            ClaimBoundaryV1::new("captured"),
+        );
+        let manifest = CapturedReceiptManifestV1::new(
+            "plan-1",
+            vec![CapturedReceiptManifestRowV1 {
+                proof_item_id: "item-1".to_string(),
+                plan_id: "plan-1".to_string(),
+                provider_id: "provider-1".to_string(),
+                capability_id: "capability-1".to_string(),
+                snapshot_identity,
+                subject_identity: "invalid-subject".to_string(),
+                provider_request_identity: "request-1".to_string(),
+                config_identity: "config:test".to_string(),
+                receipt_generation: 1,
+                receipt,
+            }],
+        );
+        (plan, manifest)
+    }
 
     #[test]
     fn provider_registry_failure_is_internal_not_usage() -> Result<(), String> {
@@ -353,6 +444,52 @@ mod tests {
         )?;
         if malformed != ProcessExitFamilyV1::InstrumentFailure {
             return Err("malformed receipt input must map to instrument failure".to_string());
+        }
+        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn receipt_command_projects_status_and_validation_exit_families() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "cargo-proof-cli-receipts-success-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        let plan_path = root.join("plan.json");
+        let manifest_path = root.join("manifest.json");
+        let (plan, manifest) = receipt_cli_fixture();
+        std::fs::write(
+            &plan_path,
+            serde_json::to_vec(&plan).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        std::fs::write(
+            &manifest_path,
+            serde_json::to_vec(&manifest).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        let status = run_receipts(
+            ReceiptsArgs {
+                plan: plan_path.clone(),
+                receipts: manifest_path.clone(),
+                action: ReceiptAction::Status,
+            },
+            cargo_proof::OutputFormat::Human,
+        )?;
+        if status != ProcessExitFamilyV1::Success {
+            return Err("status projection did not return success".to_string());
+        }
+        let validation = run_receipts(
+            ReceiptsArgs {
+                plan: plan_path,
+                receipts: manifest_path,
+                action: ReceiptAction::Validate,
+            },
+            cargo_proof::OutputFormat::Json,
+        )?;
+        if validation != ProcessExitFamilyV1::Blocking {
+            return Err("non-satisfying validation did not return blocking".to_string());
         }
         std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
         Ok(())
