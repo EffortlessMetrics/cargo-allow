@@ -66,6 +66,10 @@ pub fn captured_receipt_status_from_paths(
                 ReceiptCommandError::InvalidReceipt(message)
             }
         })?;
+    let plan: Value = serde_json::from_str(&plan_text)
+        .map_err(|error| ReceiptCommandError::MalformedPlan(error.to_string()))?;
+    let manifest: Value = serde_json::from_str(&manifest_text)
+        .map_err(|error| ReceiptCommandError::MalformedManifest(error.to_string()))?;
     let registry = StaticProviderRegistryV1::selected().map_err(|error| {
         ReceiptCommandError::ProviderRegistry(format!("provider registry: {}", error.as_str()))
     })?;
@@ -102,6 +106,40 @@ pub fn captured_receipt_status_from_paths(
             )
         {
             apply_native_context(&mut row.status, &mut row.reason, reason);
+        } else if row.status != proof_engine::ProofItemReceiptStatusV1::ProviderUnavailable {
+            let plan_item = plan
+                .get("items")
+                .and_then(Value::as_array)
+                .and_then(|items| {
+                    items.iter().find(|item| {
+                        item.get("proof_item_id").and_then(Value::as_str)
+                            == Some(row.proof_item_id.as_str())
+                    })
+                })
+                .ok_or_else(|| {
+                    ReceiptCommandError::InvalidReceipt(format!(
+                        "receipt row {} has no proof-plan item",
+                        row.proof_item_id
+                    ))
+                })?;
+            let manifest_row = manifest
+                .get("rows")
+                .and_then(Value::as_array)
+                .and_then(|rows| {
+                    rows.iter().find(|manifest_row| {
+                        manifest_row.get("proof_item_id").and_then(Value::as_str)
+                            == Some(row.proof_item_id.as_str())
+                    })
+                })
+                .ok_or_else(|| {
+                    ReceiptCommandError::InvalidReceipt(format!(
+                        "receipt row {} has no manifest row",
+                        row.proof_item_id
+                    ))
+                })?;
+            if let Err(reason) = validate_native_currentness(provider_id, plan_item, manifest_row) {
+                apply_native_currentness_context(&mut row.status, &mut row.reason, reason);
+            }
         }
     }
     Ok(report)
@@ -125,11 +163,77 @@ fn apply_native_context(
     reason: &mut String,
     context: String,
 ) {
+    *status = proof_engine::ProofItemReceiptStatusV1::ReceiptMalformed;
+    *reason = context;
+}
+
+fn apply_native_currentness_context(
+    status: &mut proof_engine::ProofItemReceiptStatusV1,
+    reason: &mut String,
+    context: String,
+) {
     if *status == proof_engine::ProofItemReceiptStatusV1::SatisfiedByCurrentReceipt {
-        *status = proof_engine::ProofItemReceiptStatusV1::ReceiptMalformed;
+        *status = proof_engine::ProofItemReceiptStatusV1::CurrentNotProven;
         *reason = context;
     } else {
         *reason = format!("{reason}; {context}");
+    }
+}
+
+fn validate_native_currentness(
+    provider_id: &str,
+    plan_item: &Value,
+    manifest_row: &Value,
+) -> Result<(), String> {
+    let expected_requirement = plan_item
+        .get("intent_obligation_id")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "proof-plan item has no intent obligation identity".to_string())?;
+    let expected_snapshot = manifest_row
+        .get("snapshot_identity")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "receipt row has no snapshot identity".to_string())?;
+    let expected_subject = manifest_row
+        .get("subject_identity")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "receipt row has no subject identity".to_string())?;
+    let expected_request = manifest_row
+        .get("provider_request_identity")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "receipt row has no provider request identity".to_string())?;
+    match provider_id {
+        "proof.cargo-allow.v1" => Ok(()),
+        "proof.ripr.v1" => {
+            #[cfg(feature = "provider-ripr")]
+            {
+                let payload = manifest_row
+                    .get("receipt")
+                    .and_then(|receipt| receipt.get("provider_payload"))
+                    .cloned()
+                    .ok_or_else(|| "receipt row has no provider payload".to_string())?;
+                let receipt: crate::providers::ripr::RiprGripReceiptV1 =
+                    serde_json::from_value(payload)
+                        .map_err(|error| format!("malformed RIPR receipt: {error}"))?;
+                if receipt.snapshot_digest == expected_snapshot
+                    && receipt.subject_ref == expected_subject
+                    && receipt.seam_ref == expected_request
+                    && receipt.requirement_id == expected_requirement
+                {
+                    Ok(())
+                } else {
+                    Err("RIPR receipt currentness does not match expected identities".to_string())
+                }
+            }
+            #[cfg(not(feature = "provider-ripr"))]
+            {
+                Err("RIPR native currentness is unavailable in this registry build".to_string())
+            }
+        }
+        "proof.hawk.v1" => Err(
+            "Hawk native currentness is not proven: expected frontend and driver identities are not declared by the receipt manifest"
+                .to_string(),
+        ),
+        _ => Err(format!("native currentness is unsupported for provider {provider_id}")),
     }
 }
 
@@ -665,6 +769,99 @@ mod tests {
             return Err("malformed plan was not typed as malformed".to_string());
         }
         std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[cfg(feature = "provider-cargo-allow")]
+    #[test]
+    fn malformed_native_payload_from_paths_is_structurally_invalid() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "cargo-proof-receipt-native-malformed-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        let plan_path = root.join("plan.json");
+        let manifest_path = root.join("manifest.json");
+        let (mut plan, mut manifest) = path_inputs_for_result(ResultClassV1::Completed);
+        let item = plan
+            .items
+            .first_mut()
+            .ok_or_else(|| "fixture item missing".to_string())?;
+        let selection = item
+            .selection
+            .as_mut()
+            .ok_or_else(|| "fixture selection missing".to_string())?;
+        selection.provider_id =
+            crate::providers::cargo_allow::CARGO_ALLOW_PROOF_PROVIDER_ID.to_string();
+        selection.capability_id = "cargo-allow.check.no-new".to_string();
+        let row = manifest
+            .rows
+            .first_mut()
+            .ok_or_else(|| "fixture row missing".to_string())?;
+        row.provider_id = selection.provider_id.clone();
+        row.capability_id = selection.capability_id.clone();
+        row.receipt.provider = row.provider_id.clone();
+        row.receipt.provider_payload_schema =
+            crate::providers::cargo_allow::CARGO_ALLOW_PROVIDER_CONTRACT_SCHEMA_ID.to_string();
+        row.receipt.provider_payload = serde_json::json!({});
+        std::fs::write(
+            &plan_path,
+            serde_json::to_vec(&plan).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        std::fs::write(
+            &manifest_path,
+            serde_json::to_vec(&manifest).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        let report = captured_receipt_status_from_paths(&plan_path, &manifest_path)
+            .map_err(|error| error.message().to_string())?;
+        if report.items.first().map(|item| item.status)
+            != Some(ProofItemReceiptStatusV1::ReceiptMalformed)
+        {
+            return Err("malformed native payload remained structurally valid".to_string());
+        }
+        let validation = render_captured_receipt_validation(&report, crate::OutputFormat::Json)?;
+        if !validation.contains("\"valid\": false") {
+            return Err("malformed native payload was reported as valid".to_string());
+        }
+        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[cfg(feature = "provider-ripr")]
+    #[test]
+    fn ripr_native_currentness_rejects_identity_mismatch() -> Result<(), String> {
+        let plan_item = serde_json::json!({"intent_obligation_id": "requirement-1"});
+        let manifest_row = serde_json::json!({
+            "snapshot_identity": "sha256:v1:expected-snapshot",
+            "subject_identity": "subject-1",
+            "provider_request_identity": "seam-1",
+            "receipt": {
+                "provider_payload": {
+                    "schema_id": crate::providers::ripr::RIPR_GRIP_RECEIPT_SCHEMA_ID,
+                    "receipt_id": "receipt-1",
+                    "ripr_provider_id": "ripr",
+                    "ripr_schema_generation": "generation-1",
+                    "analyzer_generation": "analyzer-1",
+                    "config_fingerprint": "config-1",
+                    "snapshot_digest": "sha256:v1:wrong-snapshot",
+                    "subject_ref": "subject-1",
+                    "seam_ref": "seam-1",
+                    "requirement_id": "requirement-1",
+                    "execution_mode": "captured_receipt",
+                    "completeness": "complete",
+                    "grip_disposition": "likely_discriminating",
+                    "receipt_digest": "sha256:v1:receipt"
+                }
+            }
+        });
+        let error = validate_native_currentness("proof.ripr.v1", &plan_item, &manifest_row)
+            .err()
+            .ok_or_else(|| "mismatched RIPR snapshot was accepted".to_string())?;
+        if !error.contains("does not match expected identities") {
+            return Err(format!("unexpected RIPR mismatch: {error}"));
+        }
         Ok(())
     }
 
