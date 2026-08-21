@@ -1,0 +1,11 @@
+kind: Added
+body: >-
+  Add the read-only cargo-proof captured-receipt status path for #3600:
+  proof.receipt-manifest.v1, proof.receipt-status-report.v1, and
+  proof.receipt-validation.v1 validate an exact ProofPlanV2 manifest,
+  reject duplicate or unknown proof items, preserve typed findings, partial,
+  unsupported, not-proven, instrument, and conflict states, and dispatch
+  supported cargo-allow, RIPR, and Hawk payloads through their selected
+  provider-native validators. Human and JSON projections derive from the
+  same report. The command starts no provider, mutates no source, opens no
+  phase gate, and leaves explain/reconcile as follow-up surfaces on #3600.

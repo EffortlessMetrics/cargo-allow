@@ -1,7 +1,9 @@
 use cargo_proof::{
     IdentityFrameV1, OutputFormat, ProcessExitFamilyV1, ProductIdentityV1, dry_run_from_plan_path,
     emit_frame, exit_code_for_family, exit_family_for_result_class, load_config,
-    plan_from_obligation_path, plan_v2_from_paths, render_dry_run_frame, render_plan_v2_frame,
+    plan_from_obligation_path, plan_v2_from_paths, receipt_validation_satisfies_plan,
+    render_captured_receipt_status, render_captured_receipt_validation, render_dry_run_frame,
+    render_plan_v2_frame,
 };
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
@@ -52,6 +54,8 @@ pub enum CargoProofCommand {
     Plan(PlanArgs),
     /// Dry-run a proof plan TOML file (structured argv only).
     DryRun(DryRunArgs),
+    /// Read-only validation and status for captured provider receipts.
+    Receipts(ReceiptsArgs),
 }
 
 #[derive(Debug, Parser)]
@@ -75,6 +79,25 @@ pub struct DryRunArgs {
     /// Path to the generated `proof.plan.v2` JSON artifact.
     #[arg(long)]
     pub proof_plan: PathBuf,
+}
+
+#[derive(Debug, Parser)]
+pub struct ReceiptsArgs {
+    /// Proof plan JSON artifact consumed as the semantic authority.
+    #[arg(long)]
+    pub plan: PathBuf,
+    /// Captured receipt manifest JSON artifact.
+    #[arg(long)]
+    pub receipts: PathBuf,
+    /// Print validation or status projection.
+    #[arg(long, value_enum, default_value_t = ReceiptAction::Status)]
+    pub action: ReceiptAction,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum ReceiptAction {
+    Validate,
+    Status,
 }
 
 pub fn run() -> Result<ProcessExitFamilyV1, String> {
@@ -159,6 +182,31 @@ pub fn run() -> Result<ProcessExitFamilyV1, String> {
             print!("{rendered}");
             Ok(ProcessExitFamilyV1::Success)
         }
+        Some(CargoProofCommand::Receipts(args)) => run_receipts(args, output_format),
+    }
+}
+
+fn run_receipts(
+    args: ReceiptsArgs,
+    output_format: OutputFormat,
+) -> Result<ProcessExitFamilyV1, String> {
+    let report = match cargo_proof::captured_receipt_status_from_paths(&args.plan, &args.receipts) {
+        Ok(report) => report,
+        Err(error) => {
+            eprintln!("error: {}", error.message());
+            return Ok(error.family());
+        }
+    };
+    let rendered = match args.action {
+        ReceiptAction::Validate => render_captured_receipt_validation(&report, output_format)?,
+        ReceiptAction::Status => render_captured_receipt_status(&report, output_format)?,
+    };
+    print!("{rendered}");
+    if matches!(args.action, ReceiptAction::Validate) && !receipt_validation_satisfies_plan(&report)
+    {
+        Ok(ProcessExitFamilyV1::Blocking)
+    } else {
+        Ok(ProcessExitFamilyV1::Success)
     }
 }
 
@@ -241,7 +289,100 @@ pub fn main_exit_code(result: Result<ProcessExitFamilyV1, String>) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::provider_command_family;
-    use cargo_proof::ProcessExitFamilyV1;
+    use super::{ReceiptAction, ReceiptsArgs, run_receipts};
+    use cargo_proof::{ProcessExitFamilyV1, ReceiptCommandError};
+    use effortless_repo_protocol::{
+        AnalysisReceiptEnvelopeV1, ClaimBoundaryV1, RepositorySnapshotV1, ResolvedRevisionV1,
+        ResultClassV1,
+    };
+    use proof_protocol::{
+        CapturedReceiptManifestRowV1, CapturedReceiptManifestV1, ExpectedReceiptContractV1,
+        ProofItemDispositionV1, ProofItemExecutionPostureV1, ProofItemV1, ProofPlanV2,
+        ProofSubjectClassV1, ProofSubjectV1, ProviderSelectionV1,
+    };
+    use std::path::PathBuf;
+
+    fn receipt_cli_fixture() -> (ProofPlanV2, CapturedReceiptManifestV1) {
+        let snapshot = RepositorySnapshotV1::new_committed_head(
+            "snapshot-1",
+            "sha",
+            ResolvedRevisionV1 {
+                requested: "HEAD".to_string(),
+                commit: "commit".to_string(),
+                tree: "tree".to_string(),
+            },
+        );
+        let snapshot_identity = effortless_repo_protocol::stable_digest_json(&snapshot)
+            .unwrap_or_else(|_| "invalid-snapshot".to_string());
+        let plan = ProofPlanV2::new(
+            "plan-1",
+            "intent-1",
+            snapshot_identity.clone(),
+            vec![ProofItemV1 {
+                proof_item_id: "item-1".to_string(),
+                intent_obligation_id: "obligation-1".to_string(),
+                phase: "precommit".to_string(),
+                blocking: true,
+                evidence_purpose_ref: "purpose".to_string(),
+                required_capability_class: "capability-1".to_string(),
+                snapshot_identity: snapshot_identity.clone(),
+                subject: ProofSubjectV1 {
+                    subject_class: ProofSubjectClassV1::Commit,
+                    revision: Some(snapshot_identity.clone()),
+                    selector: None,
+                    body_identity: None,
+                    limitations: Vec::new(),
+                },
+                disposition: ProofItemDispositionV1::SelectedForExecution,
+                selection: Some(ProviderSelectionV1 {
+                    provider_id: "provider-1".to_string(),
+                    capability_id: "capability-1".to_string(),
+                    request_digest: "request-1".to_string(),
+                }),
+                current_receipt: None,
+                expected_receipt: Some(ExpectedReceiptContractV1 {
+                    receipt_schema: effortless_repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID
+                        .to_string(),
+                    receipt_generation: 1,
+                    config_identity: "config:test".to_string(),
+                    currentness_dimensions: vec![
+                        "snapshot_identity".to_string(),
+                        "subject".to_string(),
+                        "provider_request".to_string(),
+                        "config".to_string(),
+                    ],
+                }),
+                execution_posture: ProofItemExecutionPostureV1::Execute,
+                dependency_group: None,
+                limitations: Vec::new(),
+                claim_boundary: "test".to_string(),
+            }],
+        );
+        let receipt = AnalysisReceiptEnvelopeV1::new(
+            "provider-1",
+            snapshot,
+            ResultClassV1::Findings,
+            "provider.payload.v1",
+            serde_json::json!({"payload": true}),
+            ClaimBoundaryV1::new("captured"),
+        );
+        let manifest = CapturedReceiptManifestV1::new(
+            "plan-1",
+            vec![CapturedReceiptManifestRowV1 {
+                proof_item_id: "item-1".to_string(),
+                plan_id: "plan-1".to_string(),
+                provider_id: "provider-1".to_string(),
+                capability_id: "capability-1".to_string(),
+                snapshot_identity,
+                subject_identity: "invalid-subject".to_string(),
+                provider_request_identity: "request-1".to_string(),
+                config_identity: "config:test".to_string(),
+                receipt_generation: 1,
+                receipt,
+            }],
+        );
+        (plan, manifest)
+    }
 
     #[test]
     fn provider_registry_failure_is_internal_not_usage() -> Result<(), String> {
@@ -250,6 +391,107 @@ mod tests {
         {
             return Err("provider registry failure must map to instrument failure".to_string());
         }
+        Ok(())
+    }
+
+    #[test]
+    fn receipt_failures_keep_typed_exit_families() -> Result<(), String> {
+        if ReceiptCommandError::ReadManifest("missing".to_string()).family()
+            != ProcessExitFamilyV1::Usage
+        {
+            return Err("missing receipt input must remain usage".to_string());
+        }
+        for error in [
+            ReceiptCommandError::MalformedManifest("malformed".to_string()),
+            ReceiptCommandError::InvalidReceipt("conflict".to_string()),
+            ReceiptCommandError::ProviderRegistry("unavailable".to_string()),
+        ] {
+            if error.family() != ProcessExitFamilyV1::InstrumentFailure {
+                return Err("receipt semantic failures must not map to usage".to_string());
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn receipt_command_maps_read_and_parse_failures_without_execution() -> Result<(), String> {
+        let root =
+            std::env::temp_dir().join(format!("cargo-proof-cli-receipts-{}", std::process::id()));
+        std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        let missing = run_receipts(
+            ReceiptsArgs {
+                plan: root.join("missing-plan.json"),
+                receipts: root.join("missing-receipts.json"),
+                action: ReceiptAction::Status,
+            },
+            cargo_proof::OutputFormat::Human,
+        )?;
+        if missing != ProcessExitFamilyV1::Usage {
+            return Err("missing receipt input must map to usage".to_string());
+        }
+
+        let plan = root.join("plan.json");
+        let receipts = root.join("receipts.json");
+        std::fs::write(&plan, b"{}").map_err(|error| error.to_string())?;
+        std::fs::write(&receipts, b"{}").map_err(|error| error.to_string())?;
+        let malformed = run_receipts(
+            ReceiptsArgs {
+                plan: PathBuf::from(&plan),
+                receipts: PathBuf::from(&receipts),
+                action: ReceiptAction::Validate,
+            },
+            cargo_proof::OutputFormat::Json,
+        )?;
+        if malformed != ProcessExitFamilyV1::InstrumentFailure {
+            return Err("malformed receipt input must map to instrument failure".to_string());
+        }
+        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn receipt_command_projects_status_and_validation_exit_families() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "cargo-proof-cli-receipts-success-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        let plan_path = root.join("plan.json");
+        let manifest_path = root.join("manifest.json");
+        let (plan, manifest) = receipt_cli_fixture();
+        std::fs::write(
+            &plan_path,
+            serde_json::to_vec(&plan).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        std::fs::write(
+            &manifest_path,
+            serde_json::to_vec(&manifest).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        let status = run_receipts(
+            ReceiptsArgs {
+                plan: plan_path.clone(),
+                receipts: manifest_path.clone(),
+                action: ReceiptAction::Status,
+            },
+            cargo_proof::OutputFormat::Human,
+        )?;
+        if status != ProcessExitFamilyV1::Success {
+            return Err("status projection did not return success".to_string());
+        }
+        let validation = run_receipts(
+            ReceiptsArgs {
+                plan: plan_path,
+                receipts: manifest_path,
+                action: ReceiptAction::Validate,
+            },
+            cargo_proof::OutputFormat::Json,
+        )?;
+        if validation != ProcessExitFamilyV1::Blocking {
+            return Err("non-satisfying validation did not return blocking".to_string());
+        }
+        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
         Ok(())
     }
 }

@@ -10,6 +10,8 @@ commands may change before the first published release.
 | `providers` | Report the deterministic selected-provider/capability projection and explicit availability posture. |
 | `plan --obligation-plan <json>` | Project a proof plan from an `intent.obligation-plan.v1` file. |
 | `dry-run --proof-plan <toml>` | Validate a `proof.plan.v1` file with structured argv only. |
+| `receipts --action validate --plan <json> --receipts <json>` | Validate a captured receipt manifest read-only. |
+| `receipts --action status --plan <json> --receipts <json>` | Classify every proof item from captured receipts. |
 
 Global options: `--root <path>` (repository root, default `.`) and the
 shared format conventions.
@@ -25,4 +27,7 @@ error rather than an execution. There is no live-execution command in
 the current surface.
 
 Claim boundary: these commands plan and validate evidence structure.
-They do not execute proof commands, mutate policy, or release anything.
+Receipt commands dispatch provider-native payload validators when the selected
+feature is available. They do not execute proof commands, mutate policy,
+reconcile plans, open gates, or release anything. `explain` and `reconcile`
+remain follow-up surfaces tracked on issue #3600.

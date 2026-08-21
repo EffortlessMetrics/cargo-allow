@@ -122,3 +122,21 @@ lane = "compat-delegation"
 referenced_product = "cargo-intent"
 token = "cargo-intent"
 reason = "the delegation e2e is cargo-allow's compatibility contract with the cargo-intent binary; this required lane exists to run it outside core (#3369)"
+
+[[declared_cross_product_reference]]
+lane = "coverage"
+referenced_product = "cargo-proof"
+token = "proof-protocol"
+reason = "coverage instruments the captured-receipt protocol package owned by cargo-proof (#3600)"
+
+[[declared_cross_product_reference]]
+lane = "coverage"
+referenced_product = "cargo-proof"
+token = "proof-orchestrator"
+reason = "coverage instruments the captured-receipt evaluator package owned by cargo-proof (#3600)"
+
+[[declared_cross_product_reference]]
+lane = "coverage"
+referenced_product = "cargo-proof"
+token = "cargo-proof"
+reason = "coverage instruments the captured-receipt CLI package owned by cargo-proof (#3600)"

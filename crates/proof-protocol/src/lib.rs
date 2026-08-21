@@ -34,6 +34,7 @@ mod plan_dtos;
 mod plan_v2;
 mod proof_corpus;
 mod receipt_dtos;
+mod receipt_status;
 
 #[cfg(test)]
 mod tests;
@@ -67,4 +68,8 @@ pub use proof_corpus::{
 pub use receipt_dtos::{
     PROOF_RECEIPT_BINDING_SCHEMA_ID, PROOF_RECEIPT_SET_SCHEMA_ID, ProofReceiptBindingV1,
     ProofReceiptError, ProofReceiptSetV1, validate_receipt_set,
+};
+pub use receipt_status::{
+    CapturedReceiptManifestRowV1, CapturedReceiptManifestV1, PROOF_RECEIPT_MANIFEST_SCHEMA_ID,
+    ProofItemReceiptStatusV1, validate_captured_receipt_manifest,
 };

@@ -14,6 +14,7 @@ mod exit;
 mod identity;
 mod plan;
 mod providers;
+mod receipt_status;
 mod render;
 
 pub use config::{ConfigProfileV1, ProofConfigV1, load_config};
@@ -35,6 +36,10 @@ pub use plan::{
 pub use providers::{
     PROVIDER_REGISTRY_SCHEMA_ID, ProviderAvailabilityV1, ProviderDispositionV1,
     ProviderProjectionV1, ProviderRegistryError, StaticProviderRegistryV1,
+};
+pub use receipt_status::{
+    ReceiptCommandError, captured_receipt_status_from_paths, receipt_validation_satisfies_plan,
+    render_captured_receipt_status, render_captured_receipt_validation,
 };
 pub use render::{
     DryRunFrameV1, IdentityFrameV1, OutputFormat, PlanFrameV1, RenderFrame, emit_frame,
