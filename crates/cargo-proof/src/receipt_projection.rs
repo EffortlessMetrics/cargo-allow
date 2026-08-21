@@ -382,9 +382,21 @@ fn next_action_for(
     status: ProofItemReceiptStatusV1,
 ) -> &'static str {
     match disposition {
-        ProofItemDispositionV1::NotApplicableWithReason
-        | ProofItemDispositionV1::DeferredWithinExplicitPolicy => "none",
-        _ => next_action(status),
+        ProofItemDispositionV1::SatisfiedByCurrentReceipt
+        | ProofItemDispositionV1::DeferredWithinExplicitPolicy
+        | ProofItemDispositionV1::NotApplicableWithReason => "none",
+        ProofItemDispositionV1::UnsupportedCapability => "select a supported capability",
+        ProofItemDispositionV1::ProviderUnavailable => "enable the selected provider feature",
+        ProofItemDispositionV1::SelectorMissingOrAmbiguous => "resolve the proof-item selector",
+        ProofItemDispositionV1::RepositoryDecisionRequired => {
+            "record the required repository decision"
+        }
+        ProofItemDispositionV1::NotProven => "establish proof or record an explicit disposition",
+        ProofItemDispositionV1::ManualOrNativeOutstanding => {
+            "complete the manual or native evidence step"
+        }
+        ProofItemDispositionV1::SelectedForExecution
+        | ProofItemDispositionV1::SelectedForCapturedIngestion => next_action(status),
     }
 }
 
@@ -461,7 +473,7 @@ mod tests {
         )?;
         if projection.item.proof_item_id != "item-1"
             || projection.item.captured_status != ProofItemReceiptStatusV1::ReceiptMissing
-            || projection.item.next_action != "capture the required receipt"
+            || projection.item.next_action != "complete the manual or native evidence step"
         {
             return Err("explain projection lost typed item state".to_string());
         }
@@ -599,6 +611,56 @@ mod tests {
                 || !projection.outstanding.is_empty()
             {
                 return Err(format!("{disposition:?} was treated as outstanding"));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn every_plan_disposition_has_an_authoritative_action() -> Result<(), String> {
+        let expected = [
+            (
+                ProofItemDispositionV1::SelectedForExecution,
+                "capture the required receipt",
+            ),
+            (
+                ProofItemDispositionV1::SelectedForCapturedIngestion,
+                "capture the required receipt",
+            ),
+            (ProofItemDispositionV1::SatisfiedByCurrentReceipt, "none"),
+            (ProofItemDispositionV1::DeferredWithinExplicitPolicy, "none"),
+            (
+                ProofItemDispositionV1::ManualOrNativeOutstanding,
+                "complete the manual or native evidence step",
+            ),
+            (
+                ProofItemDispositionV1::UnsupportedCapability,
+                "select a supported capability",
+            ),
+            (
+                ProofItemDispositionV1::ProviderUnavailable,
+                "enable the selected provider feature",
+            ),
+            (
+                ProofItemDispositionV1::SelectorMissingOrAmbiguous,
+                "resolve the proof-item selector",
+            ),
+            (
+                ProofItemDispositionV1::RepositoryDecisionRequired,
+                "record the required repository decision",
+            ),
+            (ProofItemDispositionV1::NotApplicableWithReason, "none"),
+            (
+                ProofItemDispositionV1::NotProven,
+                "establish proof or record an explicit disposition",
+            ),
+        ];
+        for (disposition, expected_action) in expected {
+            let action = next_action_for(disposition, ProofItemReceiptStatusV1::ReceiptMissing);
+            if action != expected_action {
+                return Err(format!(
+                    "{disposition:?} action {action} did not match {expected_action}"
+                ));
             }
         }
         Ok(())
