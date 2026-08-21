@@ -14,5 +14,10 @@ The product's eventual role is exact-snapshot evidence orchestration
 over provider receipts. Until live execution lands (see the proof
 programme), every artifact it emits is a plan or a validation of one.
 
+Captured-receipt `status`, `validate`, `explain`, and `reconcile` commands
+remain read-only. Explain and reconcile describe current captured evidence
+and outstanding work; they do not execute providers, discover live tools,
+modify source, or authorize a phase gate.
+
 See the shared [claim-boundary guide](../../claim-boundaries.md) for
 the complete vocabulary and evidence rules.

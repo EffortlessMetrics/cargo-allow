@@ -1,9 +1,9 @@
 use cargo_proof::{
     IdentityFrameV1, OutputFormat, ProcessExitFamilyV1, ProductIdentityV1, dry_run_from_plan_path,
-    emit_frame, exit_code_for_family, exit_family_for_result_class, load_config,
-    plan_from_obligation_path, plan_v2_from_paths, receipt_validation_satisfies_plan,
-    render_captured_receipt_status, render_captured_receipt_validation, render_dry_run_frame,
-    render_plan_v2_frame,
+    emit_frame, exit_code_for_family, exit_family_for_result_class, explain_receipt_item,
+    load_config, plan_from_obligation_path, plan_v2_from_paths, receipt_validation_satisfies_plan,
+    reconcile_receipts, render_captured_receipt_status, render_captured_receipt_validation,
+    render_dry_run_frame, render_plan_v2_frame, render_receipt_explain, render_receipt_reconcile,
 };
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
@@ -92,12 +92,17 @@ pub struct ReceiptsArgs {
     /// Print validation or status projection.
     #[arg(long, value_enum, default_value_t = ReceiptAction::Status)]
     pub action: ReceiptAction,
+    /// Proof-item ID or intent-obligation ID required by the explain action.
+    #[arg(long)]
+    pub item: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum ReceiptAction {
     Validate,
     Status,
+    Explain,
+    Reconcile,
 }
 
 pub fn run() -> Result<ProcessExitFamilyV1, String> {
@@ -197,9 +202,44 @@ fn run_receipts(
             return Ok(error.family());
         }
     };
+    let plan_text = match std::fs::read_to_string(&args.plan) {
+        Ok(text) => text,
+        Err(error) => {
+            eprintln!("error: read proof plan {}: {error}", args.plan.display());
+            return Ok(ProcessExitFamilyV1::Usage);
+        }
+    };
+    let plan: proof_protocol::ProofPlanV2 = match serde_json::from_str(&plan_text) {
+        Ok(plan) => plan,
+        Err(error) => {
+            eprintln!("error: parse proof plan {}: {error}", args.plan.display());
+            return Ok(ProcessExitFamilyV1::InstrumentFailure);
+        }
+    };
+    let registry = match cargo_proof::StaticProviderRegistryV1::selected() {
+        Ok(registry) => registry,
+        Err(error) => {
+            eprintln!("error: provider registry: {}", error.as_str());
+            return Ok(ProcessExitFamilyV1::InstrumentFailure);
+        }
+    };
     let rendered = match args.action {
         ReceiptAction::Validate => render_captured_receipt_validation(&report, output_format)?,
         ReceiptAction::Status => render_captured_receipt_status(&report, output_format)?,
+        ReceiptAction::Explain => {
+            let Some(selector) = args.item.as_deref() else {
+                eprintln!("error: receipts explain requires --item");
+                return Ok(ProcessExitFamilyV1::Usage);
+            };
+            let projection = explain_receipt_item(&plan, &report, &registry, selector)
+                .map_err(|error| format!("receipt explain: {error}"))?;
+            render_receipt_explain(&projection, output_format)?
+        }
+        ReceiptAction::Reconcile => {
+            let projection = reconcile_receipts(&plan, &report, &registry)
+                .map_err(|error| format!("receipt reconcile: {error}"))?;
+            render_receipt_reconcile(&projection, output_format)?
+        }
     };
     print!("{rendered}");
     if matches!(args.action, ReceiptAction::Validate) && !receipt_validation_satisfies_plan(&report)
@@ -423,6 +463,7 @@ mod tests {
                 plan: root.join("missing-plan.json"),
                 receipts: root.join("missing-receipts.json"),
                 action: ReceiptAction::Status,
+                item: None,
             },
             cargo_proof::OutputFormat::Human,
         )?;
@@ -439,6 +480,7 @@ mod tests {
                 plan: PathBuf::from(&plan),
                 receipts: PathBuf::from(&receipts),
                 action: ReceiptAction::Validate,
+                item: None,
             },
             cargo_proof::OutputFormat::Json,
         )?;
@@ -474,6 +516,7 @@ mod tests {
                 plan: plan_path.clone(),
                 receipts: manifest_path.clone(),
                 action: ReceiptAction::Status,
+                item: None,
             },
             cargo_proof::OutputFormat::Human,
         )?;
@@ -485,11 +528,60 @@ mod tests {
                 plan: plan_path,
                 receipts: manifest_path,
                 action: ReceiptAction::Validate,
+                item: None,
             },
             cargo_proof::OutputFormat::Json,
         )?;
         if validation != ProcessExitFamilyV1::Blocking {
             return Err("non-satisfying validation did not return blocking".to_string());
+        }
+        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn receipt_command_projects_explain_and_reconcile_without_execution() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "cargo-proof-cli-receipts-projections-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        let plan_path = root.join("plan.json");
+        let manifest_path = root.join("manifest.json");
+        let (plan, manifest) = receipt_cli_fixture();
+        std::fs::write(
+            &plan_path,
+            serde_json::to_vec(&plan).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        std::fs::write(
+            &manifest_path,
+            serde_json::to_vec(&manifest).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        let explain = run_receipts(
+            ReceiptsArgs {
+                plan: plan_path.clone(),
+                receipts: manifest_path.clone(),
+                action: ReceiptAction::Explain,
+                item: Some("item-1".to_string()),
+            },
+            cargo_proof::OutputFormat::Json,
+        )?;
+        if explain != ProcessExitFamilyV1::Success {
+            return Err("explain projection did not return success".to_string());
+        }
+        let reconcile = run_receipts(
+            ReceiptsArgs {
+                plan: plan_path,
+                receipts: manifest_path,
+                action: ReceiptAction::Reconcile,
+                item: None,
+            },
+            cargo_proof::OutputFormat::Human,
+        )?;
+        if reconcile != ProcessExitFamilyV1::Success {
+            return Err("reconcile projection did not return success".to_string());
         }
         std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
         Ok(())
