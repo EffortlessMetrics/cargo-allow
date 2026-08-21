@@ -10,9 +10,11 @@ stages = [
   { id = "cargo_allow_check_no_new", product = "cargo-allow", execution = "real" },
   { id = "cargo_intent_change_status", product = "cargo-intent", execution = "real" },
   { id = "obligation_plan_bridge", product = "cargo-proof", execution = "bridged" },
-  { id = "cargo_proof_plan", product = "cargo-proof", execution = "real" },
+  # The provider-neutral plan path fails closed until an intended provider is selected.
+  { id = "cargo_proof_plan", product = "cargo-proof", execution = "explicit_unavailable" },
   { id = "cargo_proof_dry_run", product = "cargo-proof", execution = "real" },
-  { id = "evidence_cargo_allow", product = "cargo-proof", execution = "real" },
+  # This is a direct cargo-allow evidence check; cargo-proof does not invoke it.
+  { id = "evidence_cargo_allow", product = "cargo-allow", execution = "real" },
   { id = "evidence_ripr", product = "proof-adapter-ripr", execution = "stubbed" },
   { id = "evidence_hawk", product = "proof-adapter-hawk", execution = "stubbed" },
   { id = "evidence_test", product = "proof-adapter-command", execution = "stubbed" },
