@@ -40,11 +40,13 @@ pub use providers::{
 };
 pub use receipt_projection::{
     RECEIPT_EXPLAIN_SCHEMA_ID, RECEIPT_RECONCILE_SCHEMA_ID, ReceiptExplainItemV1,
-    ReceiptExplainProjectionV1, ReceiptReconcileItemV1, ReceiptReconcileProjectionV1,
-    explain_receipt_item, reconcile_receipts, render_receipt_explain, render_receipt_reconcile,
+    ReceiptExplainProjectionV1, ReceiptProjectionError, ReceiptReconcileItemV1,
+    ReceiptReconcileProjectionV1, explain_receipt_item, reconcile_receipts, render_receipt_explain,
+    render_receipt_reconcile,
 };
 pub use receipt_status::{
-    ReceiptCommandError, captured_receipt_status_from_paths, receipt_validation_satisfies_plan,
+    CapturedReceiptInputsV1, ReceiptCommandError, captured_receipt_inputs_from_paths,
+    captured_receipt_status_from_paths, receipt_validation_satisfies_plan,
     render_captured_receipt_status, render_captured_receipt_validation,
 };
 pub use render::{

@@ -1409,6 +1409,7 @@ source_kind = "RustModule"
 current_paths = [
     'crates/cargo-proof/src/lib.rs',
     'crates/cargo-proof/src/providers/registry.rs',
+    'crates/cargo-proof/src/receipt_projection.rs',
 ]
 current_refs = []
 current_identity = "crates/cargo-proof/src/lib.rs"

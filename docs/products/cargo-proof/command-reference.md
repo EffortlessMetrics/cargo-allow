@@ -30,7 +30,7 @@ the current surface.
 
 `receipts --action explain` selects exactly one proof item or obligation; an
 ambiguous selector is rejected. `reconcile` preserves plan order and reports
-provider availability and outstanding work without opening a phase gate.
+provider availability and outstanding work as a non-gating projection.
 
 Claim boundary: these commands plan, validate, explain, and reconcile explicit
 evidence structure. They do not execute providers, mutate source, open gates,

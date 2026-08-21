@@ -1,7 +1,10 @@
 //! Read-only explain and reconcile projections for captured receipt status.
 
 use crate::{ProviderAvailabilityV1, ProviderDispositionV1, StaticProviderRegistryV1};
-use proof_engine::{ProofItemReceiptStatusRowV1, ProofItemReceiptStatusV1, ReceiptStatusReportV1};
+use proof_engine::{
+    ProofItemReceiptStatusRowV1, ProofItemReceiptStatusV1, RECEIPT_STATUS_REPORT_SCHEMA_ID,
+    ReceiptStatusReportV1,
+};
 use proof_protocol::{ProofItemDispositionV1, ProofPlanV2, ProofSubjectV1};
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -9,6 +12,35 @@ use std::collections::BTreeMap;
 pub const RECEIPT_EXPLAIN_SCHEMA_ID: &str = "proof.receipt-explain.v1";
 pub const RECEIPT_RECONCILE_SCHEMA_ID: &str = "proof.receipt-reconcile.v1";
 const CLAIM_BOUNDARY: &str = "Captured receipt evidence was projected read-only; no provider executed, no source mutated, and no phase gate was opened.";
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ReceiptProjectionError {
+    MissingSelector(String),
+    AmbiguousSelector(String),
+    InvalidBinding(String),
+}
+
+impl ReceiptProjectionError {
+    pub fn message(&self) -> &str {
+        match self {
+            Self::MissingSelector(message)
+            | Self::AmbiguousSelector(message)
+            | Self::InvalidBinding(message) => message,
+        }
+    }
+}
+
+impl std::fmt::Display for ReceiptProjectionError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(self.message())
+    }
+}
+
+impl From<ReceiptProjectionError> for String {
+    fn from(error: ReceiptProjectionError) -> Self {
+        error.to_string()
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ReceiptExplainItemV1 {
@@ -53,7 +85,6 @@ pub struct ReceiptReconcileItemV1 {
 pub struct ReceiptReconcileProjectionV1 {
     pub schema_id: String,
     pub plan_id: String,
-    pub satisfies_plan: bool,
     pub items: Vec<ReceiptReconcileItemV1>,
     pub status_counts: BTreeMap<String, usize>,
     pub provider_availability: Vec<ProviderAvailabilityV1>,
@@ -66,14 +97,11 @@ pub fn explain_receipt_item(
     report: &ReceiptStatusReportV1,
     registry: &StaticProviderRegistryV1,
     selector: &str,
-) -> Result<ReceiptExplainProjectionV1, String> {
+) -> Result<ReceiptExplainProjectionV1, ReceiptProjectionError> {
     validate_report_binding(plan, report)?;
     let item = plan_item_for_selector(plan, selector)?;
     let row = report_row(report, &item.proof_item_id)?;
-    let provider_id = item
-        .selection
-        .as_ref()
-        .map(|selection| selection.provider_id.clone());
+    let provider_id = row.provider_id.clone();
     let provider_availability = provider_id
         .as_deref()
         .map(|provider| provider_disposition(registry, provider));
@@ -89,7 +117,7 @@ pub fn reconcile_receipts(
     plan: &ProofPlanV2,
     report: &ReceiptStatusReportV1,
     registry: &StaticProviderRegistryV1,
-) -> Result<ReceiptReconcileProjectionV1, String> {
+) -> Result<ReceiptReconcileProjectionV1, ReceiptProjectionError> {
     validate_report_binding(plan, report)?;
     let mut items = Vec::with_capacity(plan.items.len());
     let mut status_counts = BTreeMap::new();
@@ -115,10 +143,6 @@ pub fn reconcile_receipts(
     Ok(ReceiptReconcileProjectionV1 {
         schema_id: RECEIPT_RECONCILE_SCHEMA_ID.to_string(),
         plan_id: plan.plan_id.clone(),
-        satisfies_plan: report
-            .items
-            .iter()
-            .all(|row| row.status == ProofItemReceiptStatusV1::SatisfiedByCurrentReceipt),
         items,
         status_counts,
         provider_availability: registry.availability(),
@@ -136,12 +160,25 @@ pub fn render_receipt_explain(
             .map(|json| format!("{json}\n"))
             .map_err(|error| error.to_string()),
         crate::OutputFormat::Human => Ok(format!(
-            "proof item {}: {}\nobligation: {}\nprovider: {}\nreason: {}\nnext action: {}\nclaim boundary: {}\n",
+            "proof item {}\nobligation: {}\nphase: {}\nblocking: {}\ndisposition: {}\nprovider: {}\ncapability: {}\nprovider availability: {}\nsubject: {:?}\nsnapshot: {}\nexpected currentness: {:?}\ncaptured status: {}\nreason: {}\nlimitations: {:?}\nnext action: {}\nclaim boundary: {}\n",
             projection.item.proof_item_id,
-            projection.item.captured_status.as_str(),
             projection.item.intent_obligation_id,
+            projection.item.phase,
+            projection.item.blocking,
+            projection.item.disposition.as_str(),
             projection.item.provider_id.as_deref().unwrap_or("none"),
+            projection.item.capability_id.as_deref().unwrap_or("none"),
+            projection
+                .item
+                .provider_availability
+                .map(|availability| format!("{availability:?}"))
+                .unwrap_or_else(|| "none".to_string()),
+            projection.item.subject,
+            projection.item.snapshot_identity,
+            projection.item.expected_currentness_dimensions,
+            projection.item.captured_status.as_str(),
             projection.item.reason,
+            projection.item.limitations,
             projection.item.next_action,
             projection.claim_boundary
         )),
@@ -158,17 +195,23 @@ pub fn render_receipt_reconcile(
             .map_err(|error| error.to_string()),
         crate::OutputFormat::Human => {
             let mut output = format!(
-                "proof reconcile {} ({} items)\nsatisfies plan: {}\n",
+                "proof reconcile {} ({} items)\nstatus counts: {:?}\nprovider availability: {:?}\noutstanding: {:?}\n",
                 projection.plan_id,
                 projection.items.len(),
-                projection.satisfies_plan
+                projection.status_counts,
+                projection.provider_availability,
+                projection.outstanding,
             );
             for item in &projection.items {
                 output.push_str(&format!(
-                    "{}: {} - {}\n",
+                    "{}: blocking={} disposition={} provider={} status={} reason={} next_action={}\n",
                     item.proof_item_id,
+                    item.blocking,
+                    item.disposition.as_str(),
+                    item.provider_id.as_deref().unwrap_or("none"),
                     item.status.as_str(),
-                    item.reason
+                    item.reason,
+                    item.next_action
                 ));
             }
             output.push_str(&format!("claim boundary: {}\n", projection.claim_boundary));
@@ -180,49 +223,90 @@ pub fn render_receipt_reconcile(
 fn plan_item_for_selector<'a>(
     plan: &'a ProofPlanV2,
     selector: &str,
-) -> Result<&'a proof_protocol::ProofItemV1, String> {
+) -> Result<&'a proof_protocol::ProofItemV1, ReceiptProjectionError> {
     let matches = plan
         .items
         .iter()
         .filter(|item| item.proof_item_id == selector || item.intent_obligation_id == selector)
         .collect::<Vec<_>>();
     match matches.as_slice() {
-        [] => Err(format!("no proof item or obligation matches {selector}")),
+        [] => Err(ReceiptProjectionError::MissingSelector(format!(
+            "no proof item or obligation matches {selector}"
+        ))),
         [item] => Ok(item),
-        _ => Err(format!("selector {selector} matches multiple proof items")),
+        _ => Err(ReceiptProjectionError::AmbiguousSelector(format!(
+            "selector {selector} matches multiple proof items"
+        ))),
     }
 }
 
 fn report_row<'a>(
     report: &'a ReceiptStatusReportV1,
     proof_item_id: &str,
-) -> Result<&'a ProofItemReceiptStatusRowV1, String> {
+) -> Result<&'a ProofItemReceiptStatusRowV1, ReceiptProjectionError> {
     report
         .items
         .iter()
         .find(|row| row.proof_item_id == proof_item_id)
-        .ok_or_else(|| format!("receipt status report has no row for proof item {proof_item_id}"))
+        .ok_or_else(|| {
+            ReceiptProjectionError::InvalidBinding(format!(
+                "receipt status report has no row for proof item {proof_item_id}"
+            ))
+        })
 }
 
 fn validate_report_binding(
     plan: &ProofPlanV2,
     report: &ReceiptStatusReportV1,
-) -> Result<(), String> {
+) -> Result<(), ReceiptProjectionError> {
+    plan.validate()
+        .map_err(ReceiptProjectionError::InvalidBinding)?;
+    if report.schema_id != RECEIPT_STATUS_REPORT_SCHEMA_ID {
+        return Err(ReceiptProjectionError::InvalidBinding(format!(
+            "unexpected receipt status schema {}",
+            report.schema_id
+        )));
+    }
     if report.plan_id != plan.plan_id {
-        return Err(format!(
+        return Err(ReceiptProjectionError::InvalidBinding(format!(
             "receipt status report belongs to plan {}, expected {}",
             report.plan_id, plan.plan_id
+        )));
+    }
+    if report.items.len() != plan.items.len() {
+        return Err(ReceiptProjectionError::InvalidBinding(
+            "receipt status report must contain exactly one row per proof item".to_string(),
         ));
     }
-    if report.items.len() != plan.items.len()
-        || report.items.iter().any(|row| {
-            !plan
-                .items
-                .iter()
-                .any(|item| item.proof_item_id == row.proof_item_id)
-        })
-    {
-        return Err("receipt status report rows do not match the proof plan".to_string());
+    let mut seen = std::collections::BTreeSet::new();
+    for row in &report.items {
+        if !seen.insert(row.proof_item_id.as_str()) {
+            return Err(ReceiptProjectionError::InvalidBinding(format!(
+                "duplicate receipt status row {}",
+                row.proof_item_id
+            )));
+        }
+        let item = plan
+            .items
+            .iter()
+            .find(|item| item.proof_item_id == row.proof_item_id)
+            .ok_or_else(|| {
+                ReceiptProjectionError::InvalidBinding(format!(
+                    "receipt status row {} does not belong to the proof plan",
+                    row.proof_item_id
+                ))
+            })?;
+        let Some(selection) = item.selection.as_ref() else {
+            continue;
+        };
+        if row.provider_id.as_deref() != Some(selection.provider_id.as_str())
+            || row.capability_id.as_deref() != Some(selection.capability_id.as_str())
+        {
+            return Err(ReceiptProjectionError::InvalidBinding(format!(
+                "receipt status row {} provider identity does not match the plan",
+                row.proof_item_id
+            )));
+        }
     }
     Ok(())
 }
@@ -317,15 +401,11 @@ mod tests {
                     "body_identity": null,
                     "limitations": []
                 },
-                "disposition": "selected_for_captured_ingestion",
-                "selection": {
-                    "provider_id": "proof.cargo-allow.v1",
-                    "capability_id": "capability-1",
-                    "request_digest": "request-1"
-                },
+                "disposition": "manual_or_native_outstanding",
+                "selection": null,
                 "current_receipt": null,
                 "expected_receipt": null,
-                "execution_posture": "captured_ingest",
+                "execution_posture": "manual_native",
                 "dependency_group": null,
                 "limitations": ["captured-only"],
                 "claim_boundary": "read-only"
@@ -366,7 +446,13 @@ mod tests {
         }
         let json = render_receipt_explain(&projection, crate::OutputFormat::Json)?;
         let human = render_receipt_explain(&projection, crate::OutputFormat::Human)?;
-        if !json.contains("proof.receipt-explain.v1") || !human.contains("receipt_missing") {
+        if !json.contains("proof.receipt-explain.v1")
+            || !human.contains("receipt_missing")
+            || !human.contains("disposition:")
+            || !human.contains("snapshot:")
+            || !human.contains("expected currentness:")
+            || !human.contains("limitations:")
+        {
             return Err("explain projections diverged from the typed state".to_string());
         }
         Ok(())
@@ -380,12 +466,11 @@ mod tests {
             &report(ProofItemReceiptStatusV1::CurrentNotProven),
             &registry,
         )?;
-        if projection.satisfies_plan
-            || projection
-                .items
-                .first()
-                .map(|item| item.proof_item_id.as_str())
-                != Some("item-1")
+        if projection
+            .items
+            .first()
+            .map(|item| item.proof_item_id.as_str())
+            != Some("item-1")
             || projection.outstanding.len() != 1
             || projection.status_counts.get("current_not_proven") != Some(&1)
         {
@@ -393,7 +478,11 @@ mod tests {
         }
         let human = render_receipt_reconcile(&projection, crate::OutputFormat::Human)?;
         let json = render_receipt_reconcile(&projection, crate::OutputFormat::Json)?;
-        if !human.contains("current_not_proven") || !json.contains("proof.receipt-reconcile.v1") {
+        if !human.contains("current_not_proven")
+            || !human.contains("disposition=")
+            || !human.contains("status counts:")
+            || !json.contains("proof.receipt-reconcile.v1")
+        {
             return Err("reconcile projections diverged from the typed state".to_string());
         }
         Ok(())
@@ -413,22 +502,91 @@ mod tests {
             return Err("unknown explain selector was accepted".to_string());
         }
         let mut duplicate = plan()?;
+        let mut second = duplicate
+            .items
+            .first()
+            .cloned()
+            .ok_or_else(|| "fixture item missing".to_string())?;
+        second.proof_item_id = "item-2".to_string();
+        duplicate.items.push(second);
+        let mut duplicate_report = report(ProofItemReceiptStatusV1::ReceiptMissing);
+        duplicate_report.items.push(ProofItemReceiptStatusRowV1 {
+            proof_item_id: "item-2".to_string(),
+            status: ProofItemReceiptStatusV1::ReceiptMissing,
+            provider_id: Some("proof.cargo-allow.v1".to_string()),
+            capability_id: Some("capability-1".to_string()),
+            reason: "captured status".to_string(),
+        });
+        if explain_receipt_item(&duplicate, &duplicate_report, &registry, "obligation-1").is_ok() {
+            return Err("ambiguous explain selector was accepted".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn every_status_has_a_deterministic_remediation() -> Result<(), String> {
+        let statuses = [
+            ProofItemReceiptStatusV1::SatisfiedByCurrentReceipt,
+            ProofItemReceiptStatusV1::CurrentFindings,
+            ProofItemReceiptStatusV1::CurrentFailed,
+            ProofItemReceiptStatusV1::CurrentPartial,
+            ProofItemReceiptStatusV1::CurrentUnsupported,
+            ProofItemReceiptStatusV1::CurrentNotProven,
+            ProofItemReceiptStatusV1::CurrentInstrumentFailure,
+            ProofItemReceiptStatusV1::ReceiptMissing,
+            ProofItemReceiptStatusV1::ReceiptMalformed,
+            ProofItemReceiptStatusV1::ReceiptStale,
+            ProofItemReceiptStatusV1::ReceiptForDifferentItem,
+            ProofItemReceiptStatusV1::ProviderUnavailable,
+            ProofItemReceiptStatusV1::ManualOrNativeOutstanding,
+            ProofItemReceiptStatusV1::NotApplicable,
+            ProofItemReceiptStatusV1::Conflict,
+        ];
+        for status in statuses {
+            if next_action(status).is_empty() {
+                return Err(format!("status {status:?} has no remediation"));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn binding_rejects_duplicate_or_omitted_rows() -> Result<(), String> {
+        let registry = StaticProviderRegistryV1::selected().map_err(|error| error.as_str())?;
+        let plan = plan()?;
+        let mut duplicate = report(ProofItemReceiptStatusV1::ReceiptMissing);
         duplicate.items.push(
             duplicate
                 .items
                 .first()
                 .cloned()
-                .ok_or_else(|| "fixture item missing".to_string())?,
+                .ok_or_else(|| "fixture row missing".to_string())?,
         );
-        if explain_receipt_item(
-            &duplicate,
-            &report(ProofItemReceiptStatusV1::ReceiptMissing),
-            &registry,
-            "obligation-1",
-        )
-        .is_ok()
-        {
-            return Err("ambiguous explain selector was accepted".to_string());
+        if !matches!(
+            reconcile_receipts(&plan, &duplicate, &registry),
+            Err(ReceiptProjectionError::InvalidBinding(_))
+        ) {
+            return Err("duplicate report rows were accepted".to_string());
+        }
+        let mut omitted = plan.clone();
+        omitted.items.push({
+            let mut item = omitted
+                .items
+                .first()
+                .cloned()
+                .ok_or_else(|| "fixture item missing".to_string())?;
+            item.proof_item_id = "item-2".to_string();
+            item
+        });
+        if !matches!(
+            reconcile_receipts(
+                &omitted,
+                &report(ProofItemReceiptStatusV1::ReceiptMissing),
+                &registry
+            ),
+            Err(ReceiptProjectionError::InvalidBinding(_))
+        ) {
+            return Err("omitted report row was accepted".to_string());
         }
         Ok(())
     }

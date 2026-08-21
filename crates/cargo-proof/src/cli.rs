@@ -1,9 +1,10 @@
 use cargo_proof::{
-    IdentityFrameV1, OutputFormat, ProcessExitFamilyV1, ProductIdentityV1, dry_run_from_plan_path,
-    emit_frame, exit_code_for_family, exit_family_for_result_class, explain_receipt_item,
-    load_config, plan_from_obligation_path, plan_v2_from_paths, receipt_validation_satisfies_plan,
-    reconcile_receipts, render_captured_receipt_status, render_captured_receipt_validation,
-    render_dry_run_frame, render_plan_v2_frame, render_receipt_explain, render_receipt_reconcile,
+    IdentityFrameV1, OutputFormat, ProcessExitFamilyV1, ProductIdentityV1,
+    captured_receipt_inputs_from_paths, dry_run_from_plan_path, emit_frame, exit_code_for_family,
+    exit_family_for_result_class, explain_receipt_item, load_config, plan_from_obligation_path,
+    plan_v2_from_paths, receipt_validation_satisfies_plan, reconcile_receipts,
+    render_captured_receipt_status, render_captured_receipt_validation, render_dry_run_frame,
+    render_plan_v2_frame, render_receipt_explain, render_receipt_reconcile,
 };
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
@@ -195,27 +196,15 @@ fn run_receipts(
     args: ReceiptsArgs,
     output_format: OutputFormat,
 ) -> Result<ProcessExitFamilyV1, String> {
-    let report = match cargo_proof::captured_receipt_status_from_paths(&args.plan, &args.receipts) {
-        Ok(report) => report,
+    let inputs = match captured_receipt_inputs_from_paths(&args.plan, &args.receipts) {
+        Ok(inputs) => inputs,
         Err(error) => {
             eprintln!("error: {}", error.message());
             return Ok(error.family());
         }
     };
-    let plan_text = match std::fs::read_to_string(&args.plan) {
-        Ok(text) => text,
-        Err(error) => {
-            eprintln!("error: read proof plan {}: {error}", args.plan.display());
-            return Ok(ProcessExitFamilyV1::Usage);
-        }
-    };
-    let plan: proof_protocol::ProofPlanV2 = match serde_json::from_str(&plan_text) {
-        Ok(plan) => plan,
-        Err(error) => {
-            eprintln!("error: parse proof plan {}: {error}", args.plan.display());
-            return Ok(ProcessExitFamilyV1::InstrumentFailure);
-        }
-    };
+    let report = inputs.report;
+    let plan = inputs.plan;
     let registry = match cargo_proof::StaticProviderRegistryV1::selected() {
         Ok(registry) => registry,
         Err(error) => {
@@ -231,13 +220,31 @@ fn run_receipts(
                 eprintln!("error: receipts explain requires --item");
                 return Ok(ProcessExitFamilyV1::Usage);
             };
-            let projection = explain_receipt_item(&plan, &report, &registry, selector)
-                .map_err(|error| format!("receipt explain: {error}"))?;
+            let projection = match explain_receipt_item(&plan, &report, &registry, selector) {
+                Ok(projection) => projection,
+                Err(error) => {
+                    eprintln!("error: receipt explain: {}", error.message());
+                    return Ok(match error {
+                        cargo_proof::ReceiptProjectionError::MissingSelector(_)
+                        | cargo_proof::ReceiptProjectionError::AmbiguousSelector(_) => {
+                            ProcessExitFamilyV1::Usage
+                        }
+                        cargo_proof::ReceiptProjectionError::InvalidBinding(_) => {
+                            ProcessExitFamilyV1::InstrumentFailure
+                        }
+                    });
+                }
+            };
             render_receipt_explain(&projection, output_format)?
         }
         ReceiptAction::Reconcile => {
-            let projection = reconcile_receipts(&plan, &report, &registry)
-                .map_err(|error| format!("receipt reconcile: {error}"))?;
+            let projection = match reconcile_receipts(&plan, &report, &registry) {
+                Ok(projection) => projection,
+                Err(error) => {
+                    eprintln!("error: receipt reconcile: {}", error.message());
+                    return Ok(ProcessExitFamilyV1::InstrumentFailure);
+                }
+            };
             render_receipt_reconcile(&projection, output_format)?
         }
     };
@@ -548,12 +555,15 @@ mod tests {
         std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
         let plan_path = root.join("plan.json");
         let manifest_path = root.join("manifest.json");
+        let sentinel_path = root.join("source-sentinel.txt");
         let (plan, manifest) = receipt_cli_fixture();
         std::fs::write(
             &plan_path,
             serde_json::to_vec(&plan).map_err(|error| error.to_string())?,
         )
         .map_err(|error| error.to_string())?;
+        std::fs::write(&sentinel_path, b"must remain unchanged")
+            .map_err(|error| error.to_string())?;
         std::fs::write(
             &manifest_path,
             serde_json::to_vec(&manifest).map_err(|error| error.to_string())?,
@@ -582,6 +592,11 @@ mod tests {
         )?;
         if reconcile != ProcessExitFamilyV1::Success {
             return Err("reconcile projection did not return success".to_string());
+        }
+        if std::fs::read_to_string(&sentinel_path).map_err(|error| error.to_string())?
+            != "must remain unchanged"
+        {
+            return Err("projection changed the source sentinel".to_string());
         }
         std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
         Ok(())
