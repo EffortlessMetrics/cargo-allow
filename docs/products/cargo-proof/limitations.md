@@ -15,8 +15,9 @@ over provider receipts. Until live execution lands (see the proof
 programme), every artifact it emits is a plan or a validation of one.
 
 Captured-receipt `status`, `validate`, `explain`, and `reconcile` commands
-remain read-only. Explain and reconcile describe current captured evidence
-and outstanding work; they do not execute providers, discover live tools,
+and their typed human/JSON projections remain read-only. They project the
+current `ProofPlanV2` and `ReceiptStatusReportV1`, describe captured evidence
+and outstanding work, and do not execute providers, discover live tools,
 modify source, or authorize a phase gate.
 
 See the shared [claim-boundary guide](../../claim-boundaries.md) for

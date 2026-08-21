@@ -126,7 +126,7 @@ pub fn reconcile_receipts(
         let row = report_row(report, &plan_item.proof_item_id)?;
         let status_name = row.status.as_str().to_string();
         *status_counts.entry(status_name).or_insert(0) += 1;
-        let next_action = next_action(row.status);
+        let next_action = next_action_for(plan_item.disposition, row.status);
         if next_action != "none" {
             outstanding.push(format!("{}: {next_action}", plan_item.proof_item_id));
         }
@@ -160,7 +160,7 @@ pub fn render_receipt_explain(
             .map(|json| format!("{json}\n"))
             .map_err(|error| error.to_string()),
         crate::OutputFormat::Human => Ok(format!(
-            "proof item {}\nobligation: {}\nphase: {}\nblocking: {}\ndisposition: {}\nprovider: {}\ncapability: {}\nprovider availability: {}\nsubject: {:?}\nsnapshot: {}\nexpected currentness: {:?}\ncaptured status: {}\nreason: {}\nlimitations: {:?}\nnext action: {}\nclaim boundary: {}\n",
+            "proof item {}\nobligation: {}\nphase: {}\nblocking: {}\ndisposition: {}\nprovider: {}\ncapability: {}\nprovider availability: {}\nsubject: {:?}\nsnapshot: {}\nexpected currentness: {:?}\ncaptured status: {}\nreason: {}\nlimitations: {:?}\nnext action: {}\nitem claim boundary: {}\nclaim boundary: {}\n",
             projection.item.proof_item_id,
             projection.item.intent_obligation_id,
             projection.item.phase,
@@ -180,6 +180,7 @@ pub fn render_receipt_explain(
             projection.item.reason,
             projection.item.limitations,
             projection.item.next_action,
+            projection.item.claim_boundary,
             projection.claim_boundary
         )),
     }
@@ -299,8 +300,9 @@ fn validate_report_binding(
         let Some(selection) = item.selection.as_ref() else {
             continue;
         };
-        if row.provider_id.as_deref() != Some(selection.provider_id.as_str())
-            || row.capability_id.as_deref() != Some(selection.capability_id.as_str())
+        if row.status != ProofItemReceiptStatusV1::ReceiptForDifferentItem
+            && (row.provider_id.as_deref() != Some(selection.provider_id.as_str())
+                || row.capability_id.as_deref() != Some(selection.capability_id.as_str()))
         {
             return Err(ReceiptProjectionError::InvalidBinding(format!(
                 "receipt status row {} provider identity does not match the plan",
@@ -335,7 +337,7 @@ fn explain_item(
         captured_status: row.status,
         reason: row.reason.clone(),
         limitations: item.limitations.clone(),
-        next_action: next_action(row.status).to_string(),
+        next_action: next_action_for(item.disposition, row.status).to_string(),
         claim_boundary: item.claim_boundary.clone(),
     }
 }
@@ -375,9 +377,28 @@ fn next_action(status: ProofItemReceiptStatusV1) -> &'static str {
     }
 }
 
+fn next_action_for(
+    disposition: ProofItemDispositionV1,
+    status: ProofItemReceiptStatusV1,
+) -> &'static str {
+    match disposition {
+        ProofItemDispositionV1::NotApplicableWithReason
+        | ProofItemDispositionV1::DeferredWithinExplicitPolicy => "none",
+        _ => next_action(status),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use effortless_repo_protocol::{
+        AnalysisReceiptEnvelopeV1, ClaimBoundaryV1, RepositorySnapshotV1, ResolvedRevisionV1,
+        ResultClassV1,
+    };
+    use proof_protocol::{
+        CapturedReceiptManifestRowV1, CapturedReceiptManifestV1, ExpectedReceiptContractV1,
+        ProofItemExecutionPostureV1, ProofSubjectClassV1, ProviderSelectionV1,
+    };
 
     fn plan() -> Result<ProofPlanV2, String> {
         serde_json::from_value(serde_json::json!({
@@ -452,6 +473,7 @@ mod tests {
             || !human.contains("snapshot:")
             || !human.contains("expected currentness:")
             || !human.contains("limitations:")
+            || !human.contains("item claim boundary: read-only")
         {
             return Err("explain projections diverged from the typed state".to_string());
         }
@@ -546,6 +568,138 @@ mod tests {
             if next_action(status).is_empty() {
                 return Err(format!("status {status:?} has no remediation"));
             }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn non_outstanding_dispositions_override_status_remediation() -> Result<(), String> {
+        let registry = StaticProviderRegistryV1::selected().map_err(|error| error.as_str())?;
+        for disposition in [
+            ProofItemDispositionV1::NotApplicableWithReason,
+            ProofItemDispositionV1::DeferredWithinExplicitPolicy,
+        ] {
+            let mut candidate = plan()?;
+            let item = candidate
+                .items
+                .first_mut()
+                .ok_or_else(|| "fixture item missing".to_string())?;
+            item.disposition = disposition;
+            item.execution_posture = proof_protocol::ProofItemExecutionPostureV1::None;
+            let projection = reconcile_receipts(
+                &candidate,
+                &report(ProofItemReceiptStatusV1::ReceiptMissing),
+                &registry,
+            )?;
+            if projection
+                .items
+                .first()
+                .map(|item| item.next_action.as_str())
+                != Some("none")
+                || !projection.outstanding.is_empty()
+            {
+                return Err(format!("{disposition:?} was treated as outstanding"));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn engine_different_item_preserves_captured_identity() -> Result<(), String> {
+        let snapshot = RepositorySnapshotV1::new_committed_head(
+            "snapshot-1",
+            "sha",
+            ResolvedRevisionV1 {
+                requested: "HEAD".to_string(),
+                commit: "commit".to_string(),
+                tree: "tree".to_string(),
+            },
+        );
+        let snapshot_identity = effortless_repo_protocol::stable_digest_json(&snapshot)
+            .map_err(|_| "snapshot digest failed".to_string())?;
+        let selected_plan = ProofPlanV2 {
+            schema_id: "proof.plan.v2".to_string(),
+            schema_version: 1,
+            plan_id: "plan-selected".to_string(),
+            intent_plan_digest: "intent-selected".to_string(),
+            snapshot_identity: snapshot_identity.clone(),
+            items: vec![proof_protocol::ProofItemV1 {
+                proof_item_id: "item-selected".to_string(),
+                intent_obligation_id: "obligation-selected".to_string(),
+                phase: "precommit".to_string(),
+                blocking: true,
+                evidence_purpose_ref: "purpose-selected".to_string(),
+                required_capability_class: "capability-selected".to_string(),
+                snapshot_identity: snapshot_identity.clone(),
+                subject: ProofSubjectV1 {
+                    subject_class: ProofSubjectClassV1::Commit,
+                    revision: Some("snapshot-1".to_string()),
+                    selector: None,
+                    body_identity: None,
+                    limitations: Vec::new(),
+                },
+                disposition: ProofItemDispositionV1::SelectedForExecution,
+                selection: Some(ProviderSelectionV1 {
+                    provider_id: "provider-selected".to_string(),
+                    capability_id: "capability-selected".to_string(),
+                    request_digest: "request-selected".to_string(),
+                }),
+                current_receipt: None,
+                expected_receipt: Some(ExpectedReceiptContractV1 {
+                    receipt_schema: effortless_repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID
+                        .to_string(),
+                    receipt_generation: 1,
+                    config_identity: "config:selected".to_string(),
+                    currentness_dimensions: vec!["snapshot_identity".to_string()],
+                }),
+                execution_posture: ProofItemExecutionPostureV1::Execute,
+                dependency_group: None,
+                limitations: Vec::new(),
+                claim_boundary: "captured-only".to_string(),
+            }],
+        };
+        let receipt = AnalysisReceiptEnvelopeV1::new(
+            "provider-captured",
+            snapshot,
+            ResultClassV1::Completed,
+            "provider.payload.v1",
+            serde_json::json!({"captured": true}),
+            ClaimBoundaryV1::new("captured evidence"),
+        );
+        let manifest = CapturedReceiptManifestV1::new(
+            "plan-selected",
+            vec![CapturedReceiptManifestRowV1 {
+                proof_item_id: "item-selected".to_string(),
+                plan_id: "plan-selected".to_string(),
+                provider_id: "provider-captured".to_string(),
+                capability_id: "capability-captured".to_string(),
+                snapshot_identity,
+                subject_identity: "subject-selected".to_string(),
+                provider_request_identity: "request-selected".to_string(),
+                config_identity: "config:selected".to_string(),
+                receipt_generation: 1,
+                receipt,
+            }],
+        );
+        let report = proof_engine::evaluate_captured_receipt_status(&selected_plan, &manifest)?;
+        let row = report
+            .items
+            .first()
+            .ok_or_else(|| "engine row missing".to_string())?;
+        if row.status != ProofItemReceiptStatusV1::ReceiptForDifferentItem {
+            return Err(format!(
+                "engine did not produce different-item status: {:?}",
+                row.status
+            ));
+        }
+        let registry = StaticProviderRegistryV1::selected().map_err(|error| error.as_str())?;
+        let projection = explain_receipt_item(&selected_plan, &report, &registry, "item-selected")?;
+        if projection.item.provider_id.as_deref() != Some("provider-captured")
+            || projection.item.capability_id.as_deref() != Some("capability-captured")
+        {
+            return Err(
+                "captured mismatch identity was overwritten by expected identity".to_string(),
+            );
         }
         Ok(())
     }
