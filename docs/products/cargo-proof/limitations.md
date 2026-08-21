@@ -12,7 +12,14 @@ identity — nothing ran.
 
 The product's eventual role is exact-snapshot evidence orchestration
 over provider receipts. Until live execution lands (see the proof
-programme), every artifact it emits is a plan or a validation of one.
+programme), its artifacts are plans, validations, or read-only projections
+of captured evidence; none of them executes a provider or opens a phase gate.
+
+Captured-receipt `status`, `validate`, `explain`, and `reconcile` commands
+and their typed human/JSON projections remain read-only. They project the
+current `ProofPlanV2` and `ReceiptStatusReportV1`, describe captured evidence
+and outstanding work, and do not execute providers, discover live tools,
+modify source, or authorize a phase gate.
 
 See the shared [claim-boundary guide](../../claim-boundaries.md) for
 the complete vocabulary and evidence rules.
