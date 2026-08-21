@@ -532,8 +532,8 @@ mod tests {
         }
         let validation = run_receipts(
             ReceiptsArgs {
-                plan: plan_path,
-                receipts: manifest_path,
+                plan: plan_path.clone(),
+                receipts: manifest_path.clone(),
                 action: ReceiptAction::Validate,
                 item: None,
             },
@@ -581,10 +581,22 @@ mod tests {
         if explain != ProcessExitFamilyV1::Success {
             return Err("explain projection did not return success".to_string());
         }
+        let explain_human = run_receipts(
+            ReceiptsArgs {
+                plan: plan_path.clone(),
+                receipts: manifest_path.clone(),
+                action: ReceiptAction::Explain,
+                item: Some("item-1".to_string()),
+            },
+            cargo_proof::OutputFormat::Human,
+        )?;
+        if explain_human != ProcessExitFamilyV1::Success {
+            return Err("human explain projection did not return success".to_string());
+        }
         let reconcile = run_receipts(
             ReceiptsArgs {
-                plan: plan_path,
-                receipts: manifest_path,
+                plan: plan_path.clone(),
+                receipts: manifest_path.clone(),
                 action: ReceiptAction::Reconcile,
                 item: None,
             },
@@ -593,10 +605,89 @@ mod tests {
         if reconcile != ProcessExitFamilyV1::Success {
             return Err("reconcile projection did not return success".to_string());
         }
+        let reconcile_json = run_receipts(
+            ReceiptsArgs {
+                plan: plan_path.clone(),
+                receipts: manifest_path.clone(),
+                action: ReceiptAction::Reconcile,
+                item: None,
+            },
+            cargo_proof::OutputFormat::Json,
+        )?;
+        if reconcile_json != ProcessExitFamilyV1::Success {
+            return Err("json reconcile projection did not return success".to_string());
+        }
         if std::fs::read_to_string(&sentinel_path).map_err(|error| error.to_string())?
             != "must remain unchanged"
         {
             return Err("projection changed the source sentinel".to_string());
+        }
+        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn receipt_projection_errors_keep_usage_and_instrument_families() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "cargo-proof-cli-receipts-errors-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        let plan_path = root.join("plan.json");
+        let manifest_path = root.join("manifest.json");
+        let (plan, manifest) = receipt_cli_fixture();
+        std::fs::write(
+            &plan_path,
+            serde_json::to_vec(&plan).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        std::fs::write(
+            &manifest_path,
+            serde_json::to_vec(&manifest).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        let missing_item = run_receipts(
+            ReceiptsArgs {
+                plan: plan_path.clone(),
+                receipts: manifest_path.clone(),
+                action: ReceiptAction::Explain,
+                item: None,
+            },
+            cargo_proof::OutputFormat::Human,
+        )?;
+        if missing_item != ProcessExitFamilyV1::Usage {
+            return Err("explain without a selector must map to usage".to_string());
+        }
+        let unknown_item = run_receipts(
+            ReceiptsArgs {
+                plan: plan_path.clone(),
+                receipts: manifest_path.clone(),
+                action: ReceiptAction::Explain,
+                item: Some("unknown".to_string()),
+            },
+            cargo_proof::OutputFormat::Json,
+        )?;
+        if unknown_item != ProcessExitFamilyV1::Usage {
+            return Err("unknown explain selector must map to usage".to_string());
+        }
+        let mut invalid_plan = plan;
+        invalid_plan.schema_id = "wrong.schema".to_string();
+        std::fs::write(
+            &plan_path,
+            serde_json::to_vec(&invalid_plan).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        let invalid_binding = run_receipts(
+            ReceiptsArgs {
+                plan: plan_path,
+                receipts: manifest_path,
+                action: ReceiptAction::Reconcile,
+                item: None,
+            },
+            cargo_proof::OutputFormat::Json,
+        )?;
+        if invalid_binding != ProcessExitFamilyV1::InstrumentFailure {
+            return Err("invalid plan binding must map to instrument failure".to_string());
         }
         std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
         Ok(())
