@@ -383,7 +383,11 @@ fn next_action_for(
 ) -> &'static str {
     match disposition {
         ProofItemDispositionV1::SatisfiedByCurrentReceipt
-        | ProofItemDispositionV1::DeferredWithinExplicitPolicy
+            if status == ProofItemReceiptStatusV1::SatisfiedByCurrentReceipt =>
+        {
+            "none"
+        }
+        ProofItemDispositionV1::DeferredWithinExplicitPolicy
         | ProofItemDispositionV1::NotApplicableWithReason => "none",
         ProofItemDispositionV1::UnsupportedCapability => "select a supported capability",
         ProofItemDispositionV1::ProviderUnavailable => "enable the selected provider feature",
@@ -396,7 +400,8 @@ fn next_action_for(
             "complete the manual or native evidence step"
         }
         ProofItemDispositionV1::SelectedForExecution
-        | ProofItemDispositionV1::SelectedForCapturedIngestion => next_action(status),
+        | ProofItemDispositionV1::SelectedForCapturedIngestion
+        | ProofItemDispositionV1::SatisfiedByCurrentReceipt => next_action(status),
     }
 }
 
@@ -627,7 +632,10 @@ mod tests {
                 ProofItemDispositionV1::SelectedForCapturedIngestion,
                 "capture the required receipt",
             ),
-            (ProofItemDispositionV1::SatisfiedByCurrentReceipt, "none"),
+            (
+                ProofItemDispositionV1::SatisfiedByCurrentReceipt,
+                "capture the required receipt",
+            ),
             (ProofItemDispositionV1::DeferredWithinExplicitPolicy, "none"),
             (
                 ProofItemDispositionV1::ManualOrNativeOutstanding,
@@ -662,6 +670,13 @@ mod tests {
                     "{disposition:?} action {action} did not match {expected_action}"
                 ));
             }
+        }
+        if next_action_for(
+            ProofItemDispositionV1::SatisfiedByCurrentReceipt,
+            ProofItemReceiptStatusV1::SatisfiedByCurrentReceipt,
+        ) != "none"
+        {
+            return Err("current satisfied evidence was treated as outstanding".to_string());
         }
         Ok(())
     }
