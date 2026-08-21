@@ -98,12 +98,12 @@ pub fn captured_receipt_status_from_paths(
                 apply_provider_context(&mut row.status, &mut row.reason, context);
             }
         }
+        let Some(manifest_row) = manifest_value_for_item_value(&manifest, &row.proof_item_id)
+        else {
+            continue;
+        };
         if row.status != proof_engine::ProofItemReceiptStatusV1::ProviderUnavailable
-            && let Err(reason) = validate_native_payload(
-                provider_id,
-                &manifest_value_for_item(&manifest_text, &row.proof_item_id)
-                    .map_err(ReceiptCommandError::InvalidReceipt)?,
-            )
+            && let Err(reason) = validate_native_payload(provider_id, manifest_row)
         {
             apply_native_context(&mut row.status, &mut row.reason, reason);
         } else if row.status != proof_engine::ProofItemReceiptStatusV1::ProviderUnavailable {
@@ -119,21 +119,6 @@ pub fn captured_receipt_status_from_paths(
                 .ok_or_else(|| {
                     ReceiptCommandError::InvalidReceipt(format!(
                         "receipt row {} has no proof-plan item",
-                        row.proof_item_id
-                    ))
-                })?;
-            let manifest_row = manifest
-                .get("rows")
-                .and_then(Value::as_array)
-                .and_then(|rows| {
-                    rows.iter().find(|manifest_row| {
-                        manifest_row.get("proof_item_id").and_then(Value::as_str)
-                            == Some(row.proof_item_id.as_str())
-                    })
-                })
-                .ok_or_else(|| {
-                    ReceiptCommandError::InvalidReceipt(format!(
-                        "receipt row {} has no manifest row",
                         row.proof_item_id
                     ))
                 })?;
@@ -224,18 +209,17 @@ pub fn receipt_validation_satisfies_plan(report: &ReceiptStatusReportV1) -> bool
     })
 }
 
-fn manifest_value_for_item(manifest_text: &str, proof_item_id: &str) -> Result<Value, String> {
-    let manifest: Value = serde_json::from_str(manifest_text)
-        .map_err(|error| format!("parse receipt manifest: {error}"))?;
-    let row = manifest
+fn manifest_value_for_item_value<'a>(
+    manifest: &'a Value,
+    proof_item_id: &str,
+) -> Option<&'a Value> {
+    manifest
         .get("rows")
         .and_then(Value::as_array)
         .and_then(|rows| {
             rows.iter()
                 .find(|row| row.get("proof_item_id").and_then(Value::as_str) == Some(proof_item_id))
         })
-        .ok_or_else(|| format!("receipt row {proof_item_id} is missing from manifest"))?;
-    Ok(row.clone())
 }
 
 fn validate_native_payload(provider_id: &str, row: &Value) -> Result<(), String> {
@@ -748,6 +732,42 @@ mod tests {
         let malformed = captured_receipt_status_from_paths(&plan_path, &manifest_path);
         if !matches!(malformed, Err(ReceiptCommandError::MalformedPlan(_))) {
             return Err("malformed plan was not typed as malformed".to_string());
+        }
+        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn serialized_missing_row_is_reported_and_blocks_validation() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "cargo-proof-receipt-missing-row-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        let plan_path = root.join("plan.json");
+        let manifest_path = root.join("manifest.json");
+        let (plan, _) = path_inputs_for_result(ResultClassV1::Completed);
+        let manifest = CapturedReceiptManifestV1::new("plan-1", Vec::new());
+        std::fs::write(
+            &plan_path,
+            serde_json::to_vec(&plan).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        std::fs::write(
+            &manifest_path,
+            serde_json::to_vec(&manifest).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        let report = captured_receipt_status_from_paths(&plan_path, &manifest_path)
+            .map_err(|error| error.message().to_string())?;
+        if report.items.first().map(|item| item.status)
+            != Some(ProofItemReceiptStatusV1::ReceiptMissing)
+        {
+            return Err("missing serialized row was not reported".to_string());
+        }
+        let validation = render_captured_receipt_validation(&report, crate::OutputFormat::Json)?;
+        if !validation.contains("\"valid\": false") || !validation.contains("receipt_missing") {
+            return Err("missing serialized row did not block validation".to_string());
         }
         std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
         Ok(())
