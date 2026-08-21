@@ -1,0 +1,13 @@
+kind: Added
+body: >-
+  Bind cargo-allow's local StagedChangeV1 shape mirror to the
+  intent-protocol change-status DTO authority (#3309 installment 2).
+  The compatibility payload embeds a private local mirror of the
+  protocol staged-change entry; the mirror cannot import the
+  cargo-intent-owned protocol crate in production, so a dev-scope
+  shape-parity test now compares the serialized JSON of the local
+  mirror (constructed inside its own module where the private fields
+  live, exposed as a cfg-test JSON fixture) against the intent-protocol
+  authority DTO built from identical facts. A field rename, removal,
+  addition, or type change on either side changes the JSON shape and
+  fails the binding, so the mirror cannot drift silently.

@@ -162,7 +162,7 @@ jobs:
           toolchain: stable
       - name: Download original publication incident receipt
         if: needs.preflight.outputs.recovery == 'true'
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: release-publish-receipt
           path: target/cargo-allow/recovery-receipt
@@ -332,7 +332,7 @@ jobs:
       attestations: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: release-publish-receipt
           path: target/cargo-allow
@@ -366,7 +366,7 @@ jobs:
           archive="${OUTPUT_DIR}/cargo-allow-v${version}-x86_64-unknown-linux-gnu.tar.gz"
           bash scripts/verify-release-binary.sh --version "${version}" --receipt "${OUTPUT_DIR}/release-binary-install.receipt.json" "${archive}"
       - name: Attest tagged Linux executable archive
-        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: target/cargo-allow/release-assets/cargo-allow-${{ github.ref_name }}-x86_64-unknown-linux-gnu.tar.gz
       - name: Verify tagged Linux executable attestation
@@ -404,7 +404,7 @@ jobs:
           export TREE="$(git rev-parse "${GITHUB_SHA}^{tree}")"
           bash scripts/generate-release-manifest.sh
       - name: Attest release manifest
-        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: target/cargo-allow/release-manifest-v2.json
       - name: Resolve release notes

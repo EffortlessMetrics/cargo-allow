@@ -1,0 +1,19 @@
+kind: Added
+body: >-
+  Extend the graph-compiler parity corpus to authored-registration compile
+  inputs and a diagnostics-bearing mismatch scenario (#3524 slice E
+  installment 2). The parity contract now carries scenarios as data: the
+  full self-hosted scenario includes seams, evidence claims, and subject
+  registrations mapped exactly like the legacy orchestrator's
+  unresolved-selector path (claims field-for-field with role-partitioned
+  subject ids, subjects registered from authored selectors with the
+  authored fallback source identity), and the assembled compile input
+  itself crosses the DTO families through the serde round-trip,
+  extending the drift oracle to the registration types. A second
+  scenario pairs the real requirement document with a deliberately
+  generation-mismatched slice fixture, so both compilers must emit the
+  slice_requirement_generation_mismatch diagnostic — closing the prior
+  installment's vacuity note that the clean authority pair never
+  produced diagnostics — and every scenario's diagnostic codes are
+  compared against the recorded expectation. The mismatch fixture is
+  receipted (allow-11130).

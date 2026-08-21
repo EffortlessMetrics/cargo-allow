@@ -6,6 +6,7 @@ const EXAMPLE_RECEIPT: &str =
     include_str!("../../../docs/dogfood/receipts/three-product-dogfood-pass.example.json");
 const STAGE_FIXTURE: &str =
     include_str!("../../../tests/fixtures/three-product-dogfood/pipeline-stages-v1.toml");
+const STAGE_SCRIPT: &str = include_str!("../../../scripts/three-product-dogfood-smoke.sh");
 
 const EXPECTED_STAGE_IDS: &[&str] = &[
     "source_change",
@@ -74,10 +75,59 @@ fn dogfood_stage_fixture_lists_seventeen_pipeline_stages() {
             "stage fixture missing {stage_id}"
         );
     }
-    for execution in ["real", "bridged", "stubbed"] {
+    for execution in ["real", "bridged", "stubbed", "simulated"] {
         assert!(
             STAGE_FIXTURE.contains(execution),
             "stage fixture missing execution mode {execution}"
         );
     }
+}
+
+#[test]
+fn dogfood_script_and_fixture_preserve_stage_execution_modes() {
+    let expected = [
+        ("source_change", "real"),
+        ("cargo_allow_audit", "real"),
+        ("cargo_allow_propose", "real"),
+        ("cargo_allow_check_no_new", "real"),
+        ("cargo_intent_change_status", "real"),
+        ("obligation_plan_bridge", "bridged"),
+        ("cargo_proof_plan", "explicit_unavailable"),
+        ("cargo_proof_dry_run", "real"),
+        ("evidence_cargo_allow", "real"),
+        ("evidence_ripr", "stubbed"),
+        ("evidence_hawk", "stubbed"),
+        ("evidence_test", "stubbed"),
+        ("contradiction_eval", "simulated"),
+        ("repair", "real"),
+        ("precommit_gate", "real"),
+        ("merge_ready_gate", "simulated"),
+        ("reconciliation", "simulated"),
+    ];
+    for (stage_id, execution) in expected {
+        let stage_row = STAGE_FIXTURE
+            .lines()
+            .find(|line| line.contains(&format!("id = \"{stage_id}\"")))
+            .unwrap_or_else(|| std::panic::panic_any(format!("fixture missing {stage_id}")));
+        assert!(
+            stage_row.contains(&format!("execution = \"{execution}\"")),
+            "fixture mode drift for {stage_id}: {execution}"
+        );
+        assert!(
+            STAGE_SCRIPT.contains(&format!("record_stage \"{stage_id}\" \"{execution}\"")),
+            "script mode drift for {stage_id}: {execution}"
+        );
+    }
+    let evidence_row = STAGE_FIXTURE
+        .lines()
+        .find(|line| line.contains("id = \"evidence_cargo_allow\""))
+        .unwrap_or_else(|| std::panic::panic_any("evidence_cargo_allow fixture row missing"));
+    assert!(
+        evidence_row.contains("product = \"cargo-allow\""),
+        "direct evidence must be attributed to cargo-allow, not cargo-proof"
+    );
+    assert!(
+        STAGE_SCRIPT.contains("direct cargo-allow check is not evidence that cargo-proof"),
+        "evidence_cargo_allow claim boundary must remain explicit"
+    );
 }

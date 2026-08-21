@@ -137,7 +137,7 @@ impl RepositorySourceView {
         Ok((manifests, sources))
     }
 
-    fn read_bytes(&self, path: &Path) -> SnapshotResult<Vec<u8>> {
+    pub fn read_bytes(&self, path: &Path) -> SnapshotResult<Vec<u8>> {
         validate_relative_path(path)?;
         match self {
             Self::Filesystem { root, .. } => read_file_capped(&root.join(path)).map_err(|source| {

@@ -28,8 +28,10 @@ mod parity;
 mod phase_gate;
 #[cfg(test)]
 mod plan_semantics_tests;
+mod plan_v2;
 mod provider_api;
 mod provider_registry;
+mod receipt_status;
 mod ripr_routing;
 mod subject_reconciliation;
 
@@ -72,7 +74,7 @@ pub use currentness::{
 };
 pub use dry_run::{
     DRY_RUN_PLAN_REPORT_SCHEMA_ID, DryRunError, DryRunPlanLineV1, DryRunPlanReportV1,
-    dry_run_proof_plan,
+    dry_run_plan_artifact, dry_run_proof_plan, dry_run_proof_plan_v2,
 };
 pub use execution::{
     EXECUTION_GATE_SCHEMA_ID, ExecutionApprovalV1, ExecutionError, ExecutionGateReportV1,
@@ -92,7 +94,9 @@ pub use phase_gate::{
     PHASE_GATE_EVALUATION_SCHEMA_ID, PhaseGateError, PhaseGateEvaluationV1, PhaseGateOutcomeV1,
     evaluate_phase_gate,
 };
+pub use plan_v2::{PLAN_V2_PLANNER_SCHEMA_ID, plan_proof_v2_from_intent};
 // Re-export the absorbed provider API contracts (#2937).
+pub use proof_protocol::ProofItemReceiptStatusV1;
 pub use provider_api::{
     CONFORMANCE_SCENARIO_ID, FAKE_PROOF_PROVIDER_ID, FakeProofProviderV1,
     PROOF_PROVIDER_API_SCHEMA_ID, ProofProviderV1, ProviderApiError,
@@ -104,6 +108,10 @@ pub use provider_registry::{
     PROVIDER_REGISTRY_SCHEMA_ID, ProviderRegistryEntryV1, ProviderRegistryError,
     ProviderRegistryV1, register_validated_provider, require_registered_provider,
     validate_provider_registry,
+};
+pub use receipt_status::{
+    ProofItemReceiptStatusRowV1, RECEIPT_STATUS_REPORT_SCHEMA_ID, ReceiptStatusReportV1,
+    evaluate_captured_receipt_status, evaluate_captured_receipt_status_from_json,
 };
 pub use ripr_routing::{
     ProofClaimPostureV1, RIPR_PREFLIGHT_RECEIPT_SCHEMA_ID, RIPR_ROUTE_RECEIPT_SCHEMA_ID,

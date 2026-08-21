@@ -225,6 +225,19 @@ pub use report_text::{
     render_human, render_human_with_context, render_markdown, render_markdown_with_context,
 };
 pub use sarif::{render_sarif, render_sarif_with_context};
+pub use spec_system_render::{
+    SpecSystemRenderFormat, filter_spec_system_report_for_artifact, json_escape,
+    optional_bool_json, render_spec_system_explain_markdown, render_spec_system_json,
+    render_spec_system_markdown, render_spec_system_report, spec_system_mode_name,
+    spec_system_proof_commands,
+};
+pub use spec_system_report_types::{
+    SpecSystemArtifact, SpecSystemFederationSummary, SpecSystemFinding, SpecSystemImportDiagnostic,
+    SpecSystemImportEdge, SpecSystemImportGraphSummary, SpecSystemImportNode,
+    SpecSystemLedgerContributor, SpecSystemLink, SpecSystemReadiness, SpecSystemReadinessCheck,
+    SpecSystemReport, SpecSystemWorkItem, spec_system_blocking_reason,
+    spec_system_work_item_blocking_reason,
+};
 pub use style::{
     ColorChoice, Style, StyleEnv, StyleReason, resolve as resolve_style, sanitize_terminal_text,
 };
@@ -258,6 +271,8 @@ mod diff_json_tests;
 mod diff_markdown_tests;
 #[cfg(test)]
 mod schema_tests;
+mod spec_system_render;
+mod spec_system_report_types;
 #[cfg(test)]
 mod text_tests;
 #[cfg(test)]

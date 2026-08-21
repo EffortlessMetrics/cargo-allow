@@ -1,8 +1,9 @@
 use crate::spec_system_graph_movement::SpecGraphMovementKind;
 use crate::spec_system_parity_corpus::{SPEC_SYSTEM_PROFILE_ID, parity_corpus_anchors};
 use crate::spec_system_workspace_composition::SELF_HOSTED_RUNTIME_PROMOTION;
+use allow_policy::spec_system::PrecommitMovementKind as LegacyPrecommitMovementKind;
 use intent_engine::{
-    GraphMovementKindV1, bounded_domain_queries_parity_contract_paths,
+    GraphDiagnosticV1, GraphMovementKindV1, bounded_domain_queries_parity_contract_paths,
     bounded_domain_query_catalog_fixture_path, canonical_bounded_domain_query_kinds,
     canonical_graph_movement_kinds, evaluator_packet_parity_contract_paths,
     graph_comparison_parity_contract_paths, graph_movement_kinds_fixture_path,
@@ -10,6 +11,32 @@ use intent_engine::{
     phase_obligations_parity_contract_paths, precommit_obligation_plan_fixture_path,
     self_hosted_workspace_composition_fixture_path, workspace_composition_parity_contract_paths,
 };
+use intent_engine::{
+    SPEC_SYSTEM_COMMANDS, embedded_authority_surface, graph_compiler_parity_contract_paths,
+    graph_movement_kind_to_precommit, load_graph_compiler_parity_contract, spec_system_command,
+    subject_resolution_from_diagnostic,
+};
+
+/// End-to-end dispatch binding (#3523 slice D step iii): the command the
+/// real report assembly embeds in the contract sample must be a member of
+/// the canonical dispatched vocabulary.
+#[test]
+fn contract_sample_command_is_dispatched() -> Result<(), String> {
+    let sample = crate::spec_system::sample_spec_system_json_for_contract_test();
+    let value: serde_json::Value =
+        serde_json::from_str(&sample).map_err(|error| format!("parse sample: {error}"))?;
+    let command = value
+        .get("command")
+        .and_then(|command| command.as_str())
+        .ok_or_else(|| "contract sample lacks a command string".to_string())?;
+    if spec_system_command(command).is_none() {
+        return Err(format!(
+            "contract sample command {command} is outside the dispatched vocabulary"
+        ));
+    }
+    Ok(())
+}
+use intent_model::PrecommitMovementKind as CanonicalPrecommitMovementKind;
 use std::path::PathBuf;
 
 #[test]
@@ -26,6 +53,11 @@ fn intent_engine_parity_fixtures_registered() -> Result<(), String> {
         }
     }
     for path in graph_comparison_parity_contract_paths(&root) {
+        if !path.is_file() {
+            return Err(format!("missing parity fixture {}", path.display()));
+        }
+    }
+    for path in graph_compiler_parity_contract_paths(&root) {
         if !path.is_file() {
             return Err(format!("missing parity fixture {}", path.display()));
         }
@@ -253,6 +285,479 @@ fn spec_graph_movement_kind_as_str(kind: GraphMovementKindV1) -> &'static str {
     }
 }
 
+fn as_legacy_precommit_kind(
+    kind: CanonicalPrecommitMovementKind,
+) -> allow_policy::spec_system::PrecommitMovementKind {
+    use CanonicalPrecommitMovementKind as Canonical;
+    use allow_policy::spec_system::PrecommitMovementKind as Legacy;
+    match kind {
+        Canonical::RequirementAdded => Legacy::RequirementAdded,
+        Canonical::RequirementRemoved => Legacy::RequirementRemoved,
+        Canonical::RequirementChanged => Legacy::RequirementChanged,
+        Canonical::ImplementationSliceAdded => Legacy::ImplementationSliceAdded,
+        Canonical::ImplementationSliceRemoved => Legacy::ImplementationSliceRemoved,
+        Canonical::ImplementationSliceChanged => Legacy::ImplementationSliceChanged,
+        Canonical::SeamMappingAdded => Legacy::SeamMappingAdded,
+        Canonical::SeamMappingRemoved => Legacy::SeamMappingRemoved,
+        Canonical::SeamMappingChanged => Legacy::SeamMappingChanged,
+        Canonical::EvidencePurposeAdded => Legacy::EvidencePurposeAdded,
+        Canonical::EvidencePurposeRemoved => Legacy::EvidencePurposeRemoved,
+        Canonical::EvidencePurposeChanged => Legacy::EvidencePurposeChanged,
+        Canonical::EvidenceClaimChanged => Legacy::EvidenceClaimChanged,
+        Canonical::SubjectSelectorAdded => Legacy::SubjectSelectorAdded,
+        Canonical::SubjectSelectorRemoved => Legacy::SubjectSelectorRemoved,
+        Canonical::SubjectSelectorChanged => Legacy::SubjectSelectorChanged,
+        Canonical::SubjectBodyIdentityChanged => Legacy::SubjectBodyIdentityChanged,
+        Canonical::GeneratedSourceRelationAdded => Legacy::GeneratedSourceRelationAdded,
+        Canonical::GeneratedSourceRelationRemoved => Legacy::GeneratedSourceRelationRemoved,
+        Canonical::GeneratedSourceRelationChanged => Legacy::GeneratedSourceRelationChanged,
+        Canonical::ProfileOrDialectChanged => Legacy::ProfileOrDialectChanged,
+        Canonical::UnknownOrUncomparable => Legacy::UnknownOrUncomparable,
+    }
+}
+
+fn legacy_precommit_kind_for(kind: GraphMovementKindV1) -> LegacyPrecommitMovementKind {
+    use allow_policy::spec_system::PrecommitMovementKind as Legacy;
+    match kind {
+        GraphMovementKindV1::RequirementAdded => Legacy::RequirementAdded,
+        GraphMovementKindV1::RequirementRemoved => Legacy::RequirementRemoved,
+        GraphMovementKindV1::RequirementChanged => Legacy::RequirementChanged,
+        GraphMovementKindV1::ImplementationSliceAdded => Legacy::ImplementationSliceAdded,
+        GraphMovementKindV1::ImplementationSliceRemoved => Legacy::ImplementationSliceRemoved,
+        GraphMovementKindV1::ImplementationSliceChanged => Legacy::ImplementationSliceChanged,
+        GraphMovementKindV1::SeamMappingAdded => Legacy::SeamMappingAdded,
+        GraphMovementKindV1::SeamMappingRemoved => Legacy::SeamMappingRemoved,
+        GraphMovementKindV1::SeamMappingChanged => Legacy::SeamMappingChanged,
+        GraphMovementKindV1::EvidencePurposeAdded => Legacy::EvidencePurposeAdded,
+        GraphMovementKindV1::EvidencePurposeRemoved => Legacy::EvidencePurposeRemoved,
+        GraphMovementKindV1::EvidencePurposeChanged => Legacy::EvidencePurposeChanged,
+        GraphMovementKindV1::EvidenceClaimChanged => Legacy::EvidenceClaimChanged,
+        GraphMovementKindV1::SubjectSelectorAdded => Legacy::SubjectSelectorAdded,
+        GraphMovementKindV1::SubjectSelectorRemoved => Legacy::SubjectSelectorRemoved,
+        GraphMovementKindV1::SubjectSelectorChanged => Legacy::SubjectSelectorChanged,
+        GraphMovementKindV1::SubjectBodyIdentityChanged => Legacy::SubjectBodyIdentityChanged,
+        GraphMovementKindV1::ProfileOrDialectChanged => Legacy::ProfileOrDialectChanged,
+        GraphMovementKindV1::UnknownOrUncomparable => Legacy::UnknownOrUncomparable,
+    }
+}
+
+#[test]
+fn paired_precommit_movement_mapping_parity() {
+    for kind in canonical_graph_movement_kinds() {
+        let canonical = graph_movement_kind_to_precommit(*kind);
+        // The canonical mapping is string-stable with the movement kind it
+        // maps from, and the allow-policy mirror vocabulary receives the
+        // same kind through the engine mapping as through a direct mapping,
+        // binding engine mapping, movement parity fixture, and the legacy
+        // copy together.
+        assert_eq!(canonical.as_str(), kind.as_str());
+        assert_eq!(
+            as_legacy_precommit_kind(canonical),
+            legacy_precommit_kind_for(*kind),
+            "legacy precommit kind drift for {}",
+            kind.as_str()
+        );
+    }
+}
+
+#[test]
+fn paired_precommit_diagnostic_status_parity() {
+    use intent_model::PrecommitSubjectResolutionStatus as Status;
+    // Expected statuses mirror the legacy adapter's inline table in
+    // spec_system_workspace.rs (evaluate_paired_precommit_objectives).
+    let cases = [
+        ("spec_graph_selector_ambiguous", Some(Status::Ambiguous)),
+        ("spec_graph_selector_not_found", Some(Status::Missing)),
+        ("spec_graph_rust_inventory_partial", Some(Status::Partial)),
+        (
+            "spec_graph_subject_non_executable",
+            Some(Status::Unsupported),
+        ),
+        (
+            "spec_graph_subject_generated_or_parameterized",
+            Some(Status::Unsupported),
+        ),
+        ("spec_graph_selector_malformed", Some(Status::Unsupported)),
+        (
+            "spec_graph_selector_cfg_or_feature_unknown",
+            Some(Status::Unsupported),
+        ),
+        ("spec_graph_something_else", None),
+    ];
+    for (code, expected) in cases {
+        let diagnostic = GraphDiagnosticV1 {
+            code: code.to_string(),
+            subject: "subject-1".to_string(),
+            message: "diagnostic".to_string(),
+        };
+        let resolution = subject_resolution_from_diagnostic(&diagnostic);
+        assert_eq!(
+            resolution.as_ref().map(|r| r.status),
+            expected,
+            "code {code}"
+        );
+        if let Some(resolution) = resolution {
+            assert_eq!(resolution.id.as_str(), "subject-1", "code {code}");
+        }
+    }
+}
+
+#[test]
+fn spec_system_command_dispatch_parity() -> Result<(), String> {
+    // The literals below are the command and surface strings cargo-allow's
+    // dispatch passes today: check.rs/audit.rs route through cmd_spec_system
+    // with their command string as the rejection surface; doctor, explain,
+    // init, and worklist pass their own surface. Only `check` exposes a
+    // --mode override (audit is report-only). Drift on either side of the
+    // binding fails here.
+    let expected = [
+        ("check", "check", true),
+        ("audit", "audit", false),
+        ("doctor", "doctor", false),
+        ("explain", "explain", false),
+        ("init", "init", false),
+        ("worklist", "worklist", false),
+    ];
+    for (command, surface, exposes_mode) in expected {
+        let entry = spec_system_command(command)
+            .ok_or_else(|| format!("dispatch vocabulary missing command {command}"))?;
+        if entry.command != command {
+            return Err(format!("command mismatch: {} != {command}", entry.command));
+        }
+        if entry.surface != surface {
+            return Err(format!(
+                "surface mismatch for {command}: {} != {surface}",
+                entry.surface
+            ));
+        }
+        if entry.exposes_mode_override != exposes_mode {
+            return Err(format!(
+                "--mode exposure mismatch for {command}: {} != {exposes_mode}",
+                entry.exposes_mode_override
+            ));
+        }
+        if !embedded_authority_surface(surface) {
+            return Err(format!("surface {surface} is not a dispatched surface"));
+        }
+    }
+    if SPEC_SYSTEM_COMMANDS.len() != expected.len() {
+        return Err(format!(
+            "dispatch vocabulary has {} entries, expected {}",
+            SPEC_SYSTEM_COMMANDS.len(),
+            expected.len()
+        ));
+    }
+    if spec_system_command("not-a-command").is_some() {
+        return Err("unknown command resolved in the dispatch vocabulary".to_string());
+    }
+    if embedded_authority_surface("not-a-command") {
+        return Err("unknown surface counted as dispatched".to_string());
+    }
+    Ok(())
+}
+
+/// Graph-compiler parity (#3524 slice E): every scenario's authority
+/// files are parsed with BOTH families' own parsers (parser parity is
+/// asserted structurally), the authored seam/evidence/subject inputs are
+/// mapped to registrations exactly as the legacy orchestrator's
+/// unresolved-selector path does, the assembled input itself crosses the
+/// families through the serde round-trip (extending the drift oracle to
+/// the registration types), both compilers run, and the legacy graph
+/// converts back for semantic equality — including the scenario's
+/// expected diagnostic codes, which the mismatch scenario keeps
+/// non-vacuous.
+#[test]
+fn graph_compiler_parity_same_input_same_output() -> Result<(), String> {
+    let root = repo_root();
+    let contract = load_graph_compiler_parity_contract(
+        &intent_engine::graph_compiler_parity_contract_path(&root),
+    )?;
+    if contract.scenario_id != "parity-intent-engine-graph-compiler-v1" {
+        return Err(format!(
+            "unexpected graph-compiler parity scenario {}",
+            contract.scenario_id
+        ));
+    }
+    if contract.covered_dimensions.is_empty() {
+        return Err("parity contract records no covered dimensions".to_string());
+    }
+    if contract.scenarios.is_empty() {
+        return Err("parity contract records no scenarios".to_string());
+    }
+
+    for scenario in &contract.scenarios {
+        graph_compiler_parity_scenario(&root, scenario)?;
+    }
+    Ok(())
+}
+
+fn graph_compiler_parity_scenario(
+    root: &std::path::Path,
+    scenario: &intent_engine::GraphCompilerParityScenario,
+) -> Result<(), String> {
+    let label = &scenario.id;
+    let requirement_text = std::fs::read_to_string(root.join(&scenario.requirement_path))
+        .map_err(|error| format!("[{label}] read requirement: {error}"))?;
+    let slice_text = std::fs::read_to_string(root.join(&scenario.slice_path))
+        .map_err(|error| format!("[{label}] read slice: {error}"))?;
+
+    let legacy_requirements = allow_policy::spec_system::parse_requirement_blocks_at(
+        Some(std::path::Path::new(&scenario.requirement_path)),
+        &requirement_text,
+    )
+    .map_err(|error| format!("[{label}] legacy requirement parse: {error}"))?;
+    let legacy_slice = allow_policy::spec_system::parse_implementation_slice_at(
+        Some(std::path::Path::new(&scenario.slice_path)),
+        &slice_text,
+    )
+    .map_err(|error| format!("[{label}] legacy slice parse: {error}"))?;
+    let canonical_requirements = intent_model::parse_requirement_blocks_at(
+        Some(std::path::Path::new(&scenario.requirement_path)),
+        &requirement_text,
+    )
+    .map_err(|error| format!("[{label}] canonical requirement parse: {error}"))?;
+    let canonical_slice = intent_model::parse_implementation_slice_at(
+        Some(std::path::Path::new(&scenario.slice_path)),
+        &slice_text,
+    )
+    .map_err(|error| format!("[{label}] canonical slice parse: {error}"))?;
+
+    // Parser parity: the parsed requirement graph and slice must be
+    // structurally identical across families.
+    let round_requirements: intent_model::RequirementGraph = serde_json::from_value(
+        serde_json::to_value(&legacy_requirements).map_err(|error| error.to_string())?,
+    )
+    .map_err(|error| format!("[{label}] requirement-graph families drifted: {error}"))?;
+    if round_requirements != canonical_requirements {
+        return Err(format!(
+            "[{label}] requirement parser drift between families"
+        ));
+    }
+    let round_slice: intent_model::ImplementationSliceV1 = serde_json::from_value(
+        serde_json::to_value(&legacy_slice).map_err(|error| error.to_string())?,
+    )
+    .map_err(|error| format!("[{label}] implementation-slice families drifted: {error}"))?;
+    if round_slice != canonical_slice {
+        return Err(format!("[{label}] slice parser drift between families"));
+    }
+
+    // Authored-registration inputs, mapped exactly like the legacy
+    // orchestrator's unresolved-selector path: seams one-to-one, claims
+    // field-for-field with role-partitioned subject ids, subjects
+    // registered from the authored selector with the authored fallback
+    // source identity.
+    let mut seams = Vec::new();
+    let mut evidence_claims = Vec::new();
+    let mut subjects = Vec::new();
+    if let Some(seams_path) = &scenario.seams_path {
+        let seams_text = std::fs::read_to_string(root.join(seams_path))
+            .map_err(|error| format!("[{label}] read seams: {error}"))?;
+        let legacy_seams = allow_policy::spec_system::parse_authored_seams_at(
+            Some(std::path::Path::new(seams_path)),
+            &seams_text,
+        )
+        .map_err(|error| format!("[{label}] legacy seams parse: {error}"))?;
+        seams = legacy_seams
+            .seam
+            .iter()
+            .map(
+                |seam| allow_policy::spec_system::ImplementationSeamRegistration {
+                    id: seam.id.clone(),
+                    owner: seam.owner.clone(),
+                    operation: seam.operation.clone(),
+                    source: seam.source.clone(),
+                },
+            )
+            .collect();
+    }
+    if let Some(evidence_path) = &scenario.evidence_path {
+        let evidence_text = std::fs::read_to_string(root.join(evidence_path))
+            .map_err(|error| format!("[{label}] read evidence: {error}"))?;
+        let legacy_evidence = allow_policy::spec_system::parse_authored_evidence_at(
+            Some(std::path::Path::new(evidence_path)),
+            &evidence_text,
+        )
+        .map_err(|error| format!("[{label}] legacy evidence parse: {error}"))?;
+        for claim in &legacy_evidence.evidence {
+            let mut subject_ids = Vec::new();
+            let mut related_subject_ids = Vec::new();
+            for authored_subject in &claim.subject {
+                let subject_id =
+                    allow_policy::spec_system::EvidenceSubjectId(authored_subject.id.clone());
+                let target_name = authored_subject.target.rsplit(':').next().unwrap_or("");
+                subjects.push(allow_policy::spec_system::EvidenceSubjectRegistration {
+                    id: subject_id.clone(),
+                    role: match authored_subject.role {
+                        allow_policy::spec_system::AuthoredSubjectRole::ExactEvidence => {
+                            allow_policy::spec_system::EvidenceSubjectRole::ExactEvidence
+                        }
+                        allow_policy::spec_system::AuthoredSubjectRole::RelatedWeak => {
+                            allow_policy::spec_system::EvidenceSubjectRole::RelatedWeak
+                        }
+                    },
+                    package: authored_subject.package.clone(),
+                    target: target_name.to_string(),
+                    module_path: authored_subject.module_path.clone(),
+                    test_name: authored_subject.test_name.clone(),
+                    source: claim.source.clone(),
+                    source_identity: format!("authored-selector:{}", authored_subject.id.clone()),
+                });
+                if authored_subject.role
+                    == allow_policy::spec_system::AuthoredSubjectRole::ExactEvidence
+                {
+                    subject_ids.push(subject_id);
+                } else {
+                    related_subject_ids.push(subject_id);
+                }
+            }
+            evidence_claims.push(allow_policy::spec_system::EvidenceClaimRegistration {
+                id: claim.id.clone(),
+                requirement_id: claim.requirement_id.clone(),
+                slice_id: claim.slice_id.clone(),
+                seam_id: claim.seam_id.clone(),
+                purpose: claim.purpose,
+                precondition: claim.precondition.clone(),
+                operation: claim.operation.clone(),
+                expected_observable: claim.expected_observable.clone(),
+                discriminator: claim.discriminator.clone(),
+                claim_boundary: claim.claim_boundary.clone(),
+                source: claim.source.clone(),
+                subject_ids,
+                related_subject_ids,
+            });
+        }
+    }
+
+    let legacy_input = allow_policy::spec_system::GraphCompileInput {
+        requirement_graphs: vec![legacy_requirements],
+        implementation_slices: vec![legacy_slice],
+        seams,
+        evidence_claims,
+        subjects,
+    };
+    // The compile input itself crosses the families through the
+    // round-trip, extending the drift oracle to the registration types.
+    let canonical_input: intent_model::GraphCompileInput = serde_json::from_value(
+        serde_json::to_value(&legacy_input).map_err(|error| error.to_string())?,
+    )
+    .map_err(|error| format!("[{label}] compile-input families drifted: {error}"))?;
+
+    let legacy_graph = allow_policy::spec_system::compile_spec_graph(legacy_input);
+    let canonical_graph = intent_engine::compile_spec_graph(canonical_input);
+
+    let converted: intent_model::CompiledSpecGraph = serde_json::from_value(
+        serde_json::to_value(&legacy_graph).map_err(|error| error.to_string())?,
+    )
+    .map_err(|error| format!("[{label}] compiled-graph families drifted: {error}"))?;
+
+    if converted.snapshot_id != canonical_graph.snapshot_id {
+        return Err(format!(
+            "[{label}] snapshot id drift: legacy {} != canonical {}",
+            converted.snapshot_id.0, canonical_graph.snapshot_id.0
+        ));
+    }
+    if converted.requirements != canonical_graph.requirements {
+        return Err(format!(
+            "[{label}] requirement nodes drift between compilers"
+        ));
+    }
+    if converted.slices != canonical_graph.slices {
+        return Err(format!("[{label}] slice nodes drift between compilers"));
+    }
+    if converted.seams != canonical_graph.seams {
+        return Err(format!("[{label}] seam nodes drift between compilers"));
+    }
+    if converted.evidence_claims != canonical_graph.evidence_claims {
+        return Err(format!(
+            "[{label}] evidence-claim nodes drift between compilers"
+        ));
+    }
+    if converted.subjects != canonical_graph.subjects {
+        return Err(format!("[{label}] subject nodes drift between compilers"));
+    }
+
+    let mut legacy_codes = converted
+        .diagnostics
+        .iter()
+        .map(|diagnostic| diagnostic.code.as_str().to_string())
+        .collect::<Vec<_>>();
+    legacy_codes.sort();
+    let mut canonical_codes = canonical_graph
+        .diagnostics
+        .iter()
+        .map(|diagnostic| diagnostic.code.as_str().to_string())
+        .collect::<Vec<_>>();
+    canonical_codes.sort();
+    if legacy_codes != canonical_codes {
+        return Err(format!(
+            "[{label}] diagnostic codes drift: legacy {legacy_codes:?} != canonical {canonical_codes:?}"
+        ));
+    }
+    let mut expected = scenario.expect_diagnostics.clone();
+    expected.sort();
+    if legacy_codes != expected {
+        return Err(format!(
+            "[{label}] diagnostics {legacy_codes:?} do not match the recorded expectation {expected:?}"
+        ));
+    }
+    if converted.diagnostics != canonical_graph.diagnostics {
+        return Err(format!(
+            "[{label}] diagnostics drift between compilers: legacy {:?} != canonical {:?}",
+            converted.diagnostics, canonical_graph.diagnostics
+        ));
+    }
+    Ok(())
+}
+
+/// One-way compatibility schema mirror parity (#3309): cargo-allow's
+/// delegation consumer carries the change-status schema id as a literal
+/// (the dependency law forbids importing the cargo-intent-owned
+/// protocol crate in production); the authority constant lives in
+/// intent-protocol, and this dev-scope binding keeps the mirror honest.
+#[test]
+fn change_status_schema_mirror_matches_protocol_authority() -> Result<(), String> {
+    if crate::intent_delegate::CHANGE_STATUS_PAYLOAD_SCHEMA
+        != intent_protocol::CHANGE_STATUS_SCHEMA_ID
+    {
+        return Err(format!(
+            "cargo-allow mirror {} != protocol authority {}",
+            crate::intent_delegate::CHANGE_STATUS_PAYLOAD_SCHEMA,
+            intent_protocol::CHANGE_STATUS_SCHEMA_ID
+        ));
+    }
+    Ok(())
+}
+
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
+/// Shape-parity binding for cargo-allow's local StagedChangeV1 mirror
+/// (#3309 installment 2): the compatibility payload embeds a local
+/// mirror of the protocol change-status DTO's staged-change entry. The
+/// mirror cannot import the cargo-intent-owned protocol crate in
+/// production, so this dev-scope test binds the two shapes through
+/// their serialized form — a field rename, removal, addition, or type
+/// change on either side changes the JSON shape and fails the binding.
+#[test]
+fn staged_change_shape_mirror_matches_protocol_authority() -> Result<(), String> {
+    let mirror_json = crate::spec_precommit::tests::sample_staged_change_shape_json()?;
+    let populated = intent_protocol::StagedChangeV1 {
+        status: "modified".to_string(),
+        path: Some("crates/example/src/lib.rs".to_string()),
+        previous_path: Some("crates/example/src/old.rs".to_string()),
+    };
+    let none_arm = intent_protocol::StagedChangeV1 {
+        status: "deleted".to_string(),
+        path: None,
+        previous_path: None,
+    };
+    let authority_json =
+        serde_json::to_value([populated, none_arm]).map_err(|error| error.to_string())?;
+    if mirror_json != authority_json {
+        return Err(format!(
+            "cargo-allow staged-change shape mirror drifted from the protocol authority: {mirror_json} != {authority_json}"
+        ));
+    }
+    Ok(())
 }

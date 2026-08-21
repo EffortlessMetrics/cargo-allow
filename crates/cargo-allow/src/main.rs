@@ -149,6 +149,18 @@ mod artifact_schema_worklist_tests;
 mod artifact_top_level_contract_tests;
 #[cfg(test)]
 mod cargo_proof_parity_tests;
+mod changie;
+
+#[path = "changie_source_view.rs"]
+mod changie_source_view;
+
+#[cfg(test)]
+#[path = "changie_compat_matrix_tests.rs"]
+mod changie_compat_matrix_tests;
+
+#[cfg(test)]
+#[path = "allow_files_changie_admission_tests.rs"]
+mod allow_files_changie_admission_tests;
 #[cfg(test)]
 #[path = "ci_lane_topology_tests.rs"]
 mod ci_lane_topology_tests;
@@ -178,6 +190,7 @@ mod intent_engine_parity_tests;
 mod intent_model_parity_tests;
 #[cfg(test)]
 mod intent_protocol_parity_tests;
+
 #[cfg(test)]
 #[path = "package_topology_enforcement_tests.rs"]
 mod package_topology_enforcement_tests;

@@ -1,0 +1,53 @@
+scenario_id = "parity-intent-engine-graph-compiler-v1"
+parity_case = "parity-intent-engine-graph-compiler-v1"
+move_ledger_entry = "move-cargo-allow-spec-system-workspace"
+intent_engine_module = "intent-engine::graph_compiler"
+
+# Parity dimensions proven for the spec-system move (#3307 slice 5) with
+# the lane that proved each.
+[[covered_dimensions]]
+dimension = "paired-precommit-evaluation"
+proven_by = "#3643 (adapter parity) and #3645 (end-to-end, finding-for-finding)"
+
+[[covered_dimensions]]
+dimension = "workspace-composition"
+proven_by = "#2586 fixtures plus #3644 dispatch contract parity"
+
+[[covered_dimensions]]
+dimension = "command-dispatch"
+proven_by = "#3644 (table parity, six surfaces, fail-closed vocabulary)"
+
+[[covered_dimensions]]
+dimension = "view-render-report"
+proven_by = "#3642 (verbatim renderer move; output formats unchanged, verified byte-for-byte)"
+
+[[covered_dimensions]]
+dimension = "graph-compiler"
+proven_by = "these scenarios: same authority inputs, both families' parsers, both compilers, serde round-trip conversion, semantic equality"
+
+# The full self-hosted scenario includes authored-registration compile
+# inputs: seams and evidence parsed from the repository's real authority
+# files, claims mapped field-for-field, subjects registered through the
+# authored-selector fallback (no rust-inventory resolution, matching the
+# legacy orchestrator's unresolved path).
+[[scenarios]]
+id = "self-hosted-full"
+description = "real authority files with authored seam/evidence/subject registrations, clean resolution"
+requirement_path = "docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md"
+slice_path = ".allow/spec-system/slices/self-hosted-runtime-promotion-v1.toml"
+seams_path = ".allow/spec-system/seams/runtime-promotion-validator-v1.toml"
+evidence_path = ".allow/spec-system/evidence/runtime-promotion-v1.toml"
+expect_diagnostics = []
+
+# A deliberately mismatched slice: the requirement delta claims
+# generation 2 while the real requirement is at generation 1, so both
+# compilers must emit the generation-mismatch diagnostic. This scenario
+# exists so the diagnostics comparison is never vacuous.
+[[scenarios]]
+id = "requirement-generation-mismatch"
+description = "slice requirement delta at a generation the requirement never reached"
+requirement_path = "docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md"
+slice_path = "tests/fixtures/intent-engine/graph-compiler-parity/generation-mismatch.slice.toml"
+seams_path = ".allow/spec-system/seams/runtime-promotion-validator-v1.toml"
+evidence_path = ".allow/spec-system/evidence/runtime-promotion-v1.toml"
+expect_diagnostics = ["slice_requirement_generation_mismatch"]

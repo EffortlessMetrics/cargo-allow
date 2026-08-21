@@ -6,6 +6,7 @@
 //! executing repository code and does not invoke Cargo, rustc, Clippy, build
 //! scripts, proc macros, or proof commands.
 
+mod change_status;
 mod closure;
 mod diff;
 mod identity;
@@ -16,6 +17,9 @@ mod query;
 mod snapshot_package;
 mod view;
 
+pub use change_status::{
+    CHANGE_STATUS_CLAIM_BOUNDARY, CHANGE_STATUS_SCHEMA_ID, ChangeStatusReportV1, StagedChangeV1,
+};
 pub use closure::{
     INTENT_SOURCE_CLOSURE_RESPONSE_SCHEMA_ID, INTENT_SOURCE_CLOSURE_SCHEMA_ID,
     IntentSourceClosureEnvelopeV1, IntentSourceClosureResponseV1,

@@ -1,0 +1,13 @@
+kind: Added
+body: >-
+  Land the recorded slice-E parity follow-ups (#3524): a table-driven
+  converter test routes every one of the twelve change-class variants
+  through the general PrecommitChangeDeclaration converter and asserts
+  the canonical as_str destination, so any misrouted arm fails by name;
+  and the movement-bearing end-to-end scenario gains a movement-causal
+  variant — with no declared class, both adapters must INFER the
+  classification from the staged requirement-added movement (both sides
+  asserted to classify it spec_or_policy_change) so the compared change
+  class is causally load-bearing for the movements the scenario stages,
+  alongside the existing declared-class parity pass and the non-empty
+  movements and findings guards.

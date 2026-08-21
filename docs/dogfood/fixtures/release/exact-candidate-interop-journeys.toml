@@ -7,8 +7,8 @@ schema_version = 1
 journeys = [
   { id = "A", product = "cargo-allow", summary = "source product alone in isolated consumer" },
   { id = "B", product = "cargo-intent", summary = "intent product alone in isolated consumer" },
-  { id = "C", product = "cargo-proof", summary = "proof product with fake/command provider dry-run" },
-  { id = "D", product = "cargo-proof", summary = "proof dry-run then invoke installed cargo-allow" },
+  { id = "C", product = "cargo-proof", summary = "proof product: explicit-unavailable plan (no provider fabricated) + static dry-run fixture" },
+  { id = "D", product = "cargo-proof", summary = "independent cargo-allow execution plus independent proof dry-run on the same root" },
   { id = "E", product = "cargo-allow", summary = "legacy cargo-allow delegates staged precommit to installed cargo-intent" },
 ]
 

@@ -7,6 +7,9 @@
 
 #[cfg(feature = "changie")]
 pub mod changie;
+
+#[cfg(feature = "changie")]
+pub mod changie_lint;
 mod families;
 mod finding;
 mod finding_config;

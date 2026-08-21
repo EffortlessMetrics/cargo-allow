@@ -44,6 +44,7 @@ fn schema_contract_registry_covers_every_documented_artifact_schema() {
                 && name != "extraction-cutover-evidence"
                 && name != "extraction-cutover-ownership"
                 && name != "extraction-cutover-build-package"
+                && name != "allow-files-changie-package-admission"
         })
         .collect::<BTreeSet<_>>();
     let registered = schema_contracts()

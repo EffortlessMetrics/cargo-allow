@@ -1,0 +1,18 @@
+kind: Added
+body: >-
+  Add the graph-compiler parity dimension for the spec-system move
+  (#3524 slice E of #3307). The new intent-engine parity contract
+  (parity/graph_compiler.rs plus the parity-graph-compiler-v1 fixture)
+  points at the repository's real self-hosted authority files and
+  records every parity dimension proven for the move with the lane that
+  proved it — paired-precommit evaluation (#3643/#3645), workspace
+  composition (#2586/#3644), command dispatch (#3644), view/render/report
+  (#3642), and now graph compilation. The parity case parses the same
+  authority bytes with BOTH families' own parsers (proving parser parity
+  as part of the claim), compiles with BOTH compilers from structurally
+  identical inputs, converts the legacy graph through the serde
+  round-trip validated in #3645, and requires semantic equality across
+  every graph component — snapshot id, requirement, slice, seam,
+  evidence-claim, and subject nodes, and diagnostics. Seams/evidence
+  registration mapping remains covered end-to-end through the legacy
+  orchestrator (#3645) and is corpus extension material.

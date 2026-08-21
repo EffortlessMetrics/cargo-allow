@@ -47,7 +47,7 @@ controlling_issue = 2584
 latest_allowed_stage = 2
 removal_condition = "issue:#2606 stage-2 cutover receipt"
 parity_case = "parity-intent-model-spec-system-v1"
-claim_boundary = "Type and parsing re-exports via snapshot_package; graph compilation stays in allow-policy until intent-engine cutover."
+claim_boundary = "Type and parsing re-exports via snapshot_package; graph compilation parity proven (#3647/#3648) and the compiler moved to intent-engine, selected in cargo-allow only until the #2606 stage-2 cutover receipt."
 
 [[shim]]
 id = "shim-cargo-allow-spec-system-workspace"
@@ -61,7 +61,7 @@ controlling_issue = 2586
 latest_allowed_stage = 3
 removal_condition = "issue:#2606 stage-3 cutover receipt"
 parity_case = "parity-intent-engine-workspace-composition-v1"
-claim_boundary = "Composition and authority plan only; cargo-allow retains graph assembly and paired comparison until intent-engine cutover."
+claim_boundary = "Composition, dispatch, evaluation, and compilation parity proven (#3643-#3652); cargo-allow retains the legacy selected implementations until the #2606 stage-3 cutover receipt."
 
 [[shim]]
 id = "shim-cargo-allow-spec-system-delegate"

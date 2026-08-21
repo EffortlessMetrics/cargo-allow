@@ -4,7 +4,7 @@
   "tool": "cargo-proof",
   "result": "Passed",
   "claim_boundary": [
-    "five_crate_proof_package_graph",
+    "six_crate_proof_package_graph",
     "extracted_path_install_outside_workspace",
     "source_checkout_denied_during_decisive_install",
     "no_proof_or_test_invocation",
@@ -22,6 +22,7 @@
     "order": [
       "effortless-repo-protocol",
       "effortless-rust-source-index",
+      "intent-protocol",
       "proof-protocol",
       "proof-orchestrator",
       "cargo-proof"

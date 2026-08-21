@@ -1,0 +1,21 @@
+kind: Added
+body: >-
+  Adapt every exact cargo-allow repository source view into one static
+  Changie analysis request (#3622 PR C2). The feature-gated
+  `changie_source_view` adapter selects the configuration (explicit path
+  or the modeled generation's `.changie.yaml`-before-`.changie.yml`
+  precedence, with both-present ambiguity retained), parses it from the
+  selected view's bytes, derives the fragment population from the parsed
+  config's own path fields inside the same view, enumerates candidate
+  entries with typed staged states and deleted/renamed change records,
+  and calls the pure sensor — retaining view/config/population
+  identities, inventory completeness, limitations, and a
+  traversal-order-independent deterministic analysis identity in
+  `ChangieAnalysisResultV1`. Staged and committed analysis cannot read
+  dirty worktree bytes because every read goes through the single view
+  handle; malformed configs flow into the sensor instead of failing
+  before reporting; path-field escapes fail closed; unsupported views
+  are rejected explicitly. Thirteen falsifier-backed tests cover the
+  issue's required list, and a CI step compiles and proves the adapter
+  under the `changie-adapter` feature until the #3623 projection leaf
+  becomes its in-binary consumer.

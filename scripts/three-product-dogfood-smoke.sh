@@ -187,46 +187,29 @@ record_stage "obligation_plan_bridge" "bridged" "Passed"
 
 log "stage cargo_proof_plan"
 proof_plan_path="${work_dir}/proof-plan.toml"
-"${cargo_proof_bin}" --format json plan --obligation-plan "${obligation_plan_path}" >"${work_dir}/proof-plan-frame.json"
-# The intent plan digest must be load-bearing (#3316): the frame binds the
-# exact intent plan identity, identical envelopes plan identically, and a
-# changed envelope plans to a distinct identity.
-"${cargo_proof_bin}" --format json plan --obligation-plan "${obligation_plan_path}" >"${work_dir}/proof-plan-frame-repeat.json"
-modified_plan_path="${work_dir}/intent-obligation-plan-modified.json"
-python3 - "${obligation_plan_path}" "${modified_plan_path}" <<'PY'
-import json, sys
-from pathlib import Path
-
-envelope = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-obligations = envelope.get("obligations", [])
-if not obligations:
-    raise SystemExit("bridge envelope missing obligations")
-obligations[0]["statement"] = obligations[0].get("statement", "") + " (changed)"
-Path(sys.argv[2]).write_text(json.dumps(envelope, indent=2) + "\n", encoding="utf-8")
-PY
-"${cargo_proof_bin}" --format json plan --obligation-plan "${modified_plan_path}" >"${work_dir}/proof-plan-frame-modified.json"
-python3 - "${work_dir}/proof-plan-frame.json" "${work_dir}/proof-plan-frame-repeat.json" "${work_dir}/proof-plan-frame-modified.json" <<'PY'
-import json, sys
-from pathlib import Path
-
-def load(idx):
-    return json.loads(Path(sys.argv[idx]).read_text(encoding="utf-8"))
-
-base, repeat, modified = load(1), load(2), load(3)
-digest = base.get("intent_plan_digest", "")
-if not digest.startswith("sha256:v1:"):
-    raise SystemExit(f"plan frame missing intent_plan_digest: {digest!r}")
-if base.get("plan_id", "").find(digest) < 0:
-    raise SystemExit("plan_id must embed the intent plan digest")
-if base != repeat:
-    raise SystemExit("identical intent envelopes must produce identical plan frames")
-if modified.get("plan_id") == base.get("plan_id"):
-    raise SystemExit("changed intent envelope must produce a distinct plan identity")
-if modified.get("intent_plan_digest") == digest:
-    raise SystemExit("changed intent envelope must produce a distinct digest")
-print("intent_plan_digest_load_bearing_ok")
-PY
-record_stage "cargo_proof_plan" "real" "Passed"
+# #3598: the plan command no longer fabricates a provider. The dogfood
+# records the truthful interim result — the explicit-unavailable failure
+# naming the intended provider and the limitation, deterministically
+# across runs and envelope variants (the provider gate precedes any
+# envelope-specific planning). The intent-digest load-bearing property
+# (#3316) is proven by the proof-engine intent-digest suite; this stage
+# proves the product surface does not fabricate.
+set +e
+plan_err="$("${cargo_proof_bin}" --format json plan --obligation-plan "${obligation_plan_path}" 2>&1)"
+plan_exit=$?
+plan_err_repeat="$("${cargo_proof_bin}" --format json plan --obligation-plan "${obligation_plan_path}" 2>&1)"
+plan_exit_repeat=$?
+set -e
+plan_truthful=false
+if [[ "${plan_exit}" -ne 0 && "${plan_exit_repeat}" -ne 0 ]] \
+  && printf '%s' "${plan_err}" | grep -q "cargo-allow" \
+  && printf '%s' "${plan_err}" | grep -q "not yet established" \
+  && [[ "${plan_err}" == "${plan_err_repeat}" ]]; then
+  plan_truthful=true
+fi
+[[ "${plan_truthful}" == "true" ]] \
+  || fail "cargo-proof plan must fail explicitly, deterministically, naming the intended provider (exit=${plan_exit}/${plan_exit_repeat})"
+record_stage "cargo_proof_plan" "explicit_unavailable" "Passed"
 
 log "stage cargo_proof_dry_run"
 proof_plan_fixture="${ROOT}/tests/fixtures/cargo-proof/proof-plan-smoke-v1.toml"
@@ -236,6 +219,8 @@ cp "${proof_plan_fixture}" "${proof_plan_path}"
 record_stage "cargo_proof_dry_run" "real" "Passed"
 
 log "stage evidence_cargo_allow"
+# This direct cargo-allow check is not evidence that cargo-proof executed or
+# reconciled a provider receipt (#3598).
 post_propose_check="$("${cargo_allow_bin}" check --root "${consumer_dir}" --config "${policy_path}" --kind panic --mode no-new --format json)"
 printf '%s\n' "${post_propose_check}" | python3 -c '
 import json, sys
@@ -283,7 +268,9 @@ if digest != store_digest:
     raise SystemExit("contradiction_eval failed")
 print("contradiction_eval_ok")
 PY
-record_stage "contradiction_eval" "real" "Passed"
+# Simulated characterization (inline digest comparison), not the
+# proof-engine contradiction API (#3598 truth-in-execution labeling).
+record_stage "contradiction_eval" "simulated" "Passed"
 
 log "stage repair: refresh allow last_seen via check"
 "${cargo_allow_bin}" check --root "${consumer_dir}" --config "${policy_path}" --kind panic --mode no-new --format json >/dev/null
@@ -343,7 +330,9 @@ if not required.issubset(present):
     raise SystemExit("merge_ready_gate closed")
 print("merge_ready_open")
 PY
-record_stage "merge_ready_gate" "real" "Passed"
+# Simulated characterization (inline binding-set check), not the
+# proof-engine phase-gate API.
+record_stage "merge_ready_gate" "simulated" "Passed"
 
 log "stage reconciliation"
 python3 - "${check_json}" "${post_propose_check}" <<'PY'
@@ -355,7 +344,9 @@ if before.get("status") != "passed" or after.get("status") != "passed":
     raise SystemExit("reconciliation status drift")
 print("reconciliation_ok")
 PY
-record_stage "reconciliation" "real" "Passed"
+# Simulated characterization (cargo-allow status comparison), not the
+# proof-engine reconciliation API.
+record_stage "reconciliation" "simulated" "Passed"
 
 os_name="$(uname -s | tr '[:upper:]' '[:lower:]')"
 case "${os_name}" in

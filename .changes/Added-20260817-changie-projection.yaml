@@ -1,0 +1,24 @@
+kind: Added
+body: >-
+  Expose the Changie sensor through cargo-allow's product surface (#3623
+  PR C3). `cargo allow changie lint` runs the exact Rust-native analysis
+  over one deliberately selected source subject (saved worktree, staged
+  index, or committed revision) and projects the canonical
+  ChangieAnalysisResultV1 through human, deterministic JSON, and SARIF
+  2.1.0 surfaces that agree on rule, provenance, and analysis identity.
+  Exit code 0 requires a complete finding-free analysis; partial and
+  not-proven acquisitions never render as empty clean output. The sensor
+  is opt-in — the default source-exception ledger scan never touches
+  Changie — and the command starts no process, installs nothing, and
+  mutates no ledger: malformed Changie source is a source diagnostic,
+  not an exception users can approve away. The capability catalog gains
+  a `changie.static.authoring` row under a new `static_sensor` analysis
+  class for opt-in non-ledger sensors, with claims excluded covering
+  render/batch/merge and applicability. The adapter module retires its
+  dead-code expectation (allow-11122) because the command is its
+  in-binary consumer; the fragment population now feeds only
+  fragment-shaped entries (`.yaml`/`.yml`), so READMEs and version
+  archives under the changes directory are repository content, not
+  findings. A CI step self-dogfoods cargo-allow's own config and
+  complete fragment population with no Go, Aqua, or Changie on the
+  runner.

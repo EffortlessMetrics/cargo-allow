@@ -7,8 +7,8 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
+use super::contract::default_cargo_allow_provider_contract;
 use super::digest::sha256_v1_bytes;
-use super::provider_contract::default_cargo_allow_provider_contract;
 
 pub const PROOF_DELEGATION_CONFIG_SCHEMA_ID: &str = "proof.cargo-allow-delegation.v1";
 
@@ -114,7 +114,7 @@ pub fn discover_cargo_allow_provider(
 fn discover_from_config(
     root: &Path,
     config_path: Option<&Path>,
-    contract: &crate::provider_contract::CargoAllowProviderContractV1,
+    contract: &super::contract::CargoAllowProviderContractV1,
 ) -> Result<Option<PathBuf>, CargoAllowProviderFailure> {
     let path = config_path
         .map(Path::to_path_buf)

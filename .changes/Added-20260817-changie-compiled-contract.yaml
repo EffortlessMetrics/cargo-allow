@@ -1,0 +1,20 @@
+kind: Added
+body: >-
+  Compile the effective fragment contract and validate persisted
+  fragments against it (#3620). `compile_contract` turns one parsed
+  configuration into a deterministic `ChangieCompiledFragmentContractV1`
+  carrying canonical project keys/labels, components, kinds with
+  skipBody/skipGlobalChoices posture, body bounds with pinned UTF-8 byte
+  semantics, scoped custom choices, opaque render/template limitations,
+  exact config identity, and a digest over a canonical serialization —
+  failing closed on malformed or ambiguous configurations (duplicate
+  keys, kinds, projects, aliases) so a falsely complete contract is
+  never produced. Fragment validation consumes the contract only, the
+  canonical identity law reports a persisted project label as a
+  source-located not-canonical finding with a canonicalization action
+  instead of silently normalizing it, every diagnostic derives a stable
+  provenance authority class, and lint() reports the compile blocker
+  fail-honestly when semantics are skipped. The retained Perl fixture
+  compiles to its ruling shape; string-valued integers parse rather
+  than requiring YAML integers; post-generated keys are never required
+  input.

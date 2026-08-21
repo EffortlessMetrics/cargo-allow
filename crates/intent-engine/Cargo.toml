@@ -17,6 +17,7 @@ name = "intent_engine"
 path = "src/lib.rs"
 
 [dependencies]
+effortless-repo-snapshot.workspace = true
 effortless-rust-source-index.workspace = true
 intent-model.workspace = true
 intent-protocol.workspace = true

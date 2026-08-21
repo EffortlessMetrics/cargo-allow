@@ -231,8 +231,8 @@ shim_id = "shim-cargo-allow-spec-system-workspace"
 old_producer = "cargo-allow::spec_system_workspace"
 new_producer = "intent-engine::workspace_compiler"
 expected_result = "EquivalentWithCanonicalRenaming"
-disposition = "contract_only"
-claim_boundary = "Workspace composition and authority compile plan only; graph assembly remains in cargo-allow until later packets."
+disposition = "proven"
+claim_boundary = "Composition and authority compile plan parity by fixture (self-hosted-workspace-composition-v1) and dispatch-contract parity (#3644); graph assembly remains in cargo-allow until the #2606 stage-3 cutover receipt."
 
 [[case]]
 id = "parity-intent-engine-evaluator-packet-v1"
@@ -253,8 +253,8 @@ shim_id = "shim-cargo-allow-spec-system-workspace"
 old_producer = "cargo-allow::spec_system_workspace::compare_graphs"
 new_producer = "intent-engine::graph_comparison"
 expected_result = "EquivalentWithCanonicalRenaming"
-disposition = "contract_only"
-claim_boundary = "Graph movement taxonomy and comparison report DTOs only; paired comparison runtime remains in cargo-allow until later packets."
+disposition = "proven"
+claim_boundary = "Movement taxonomy string-parity plus end-to-end movement-bearing and movement-causal evaluation parity (#3645, #3650, #3651); paired comparison runtime remains in cargo-allow until the #2606 stage-3 cutover receipt."
 
 [[case]]
 id = "parity-intent-engine-phase-obligations-v1"
@@ -264,8 +264,8 @@ shim_id = "shim-cargo-allow-spec-system-workspace"
 old_producer = "cargo-allow::spec_system_workspace::evaluate_paired_precommit_objectives"
 new_producer = "intent-engine::phase_obligations"
 expected_result = "EquivalentWithCanonicalRenaming"
-disposition = "contract_only"
-claim_boundary = "Phase obligation compile plan only; authoritative precommit findings remain in allow-policy until intent-engine cutover."
+disposition = "proven"
+claim_boundary = "Adapter parity (#3643) and end-to-end finding-for-finding evaluation parity, movement-causal and resolved-subject variants included (#3645, #3650-#3652); the legacy evaluator stays selected in cargo-allow until the #2606 stage-3 cutover receipt."
 
 [[case]]
 id = "parity-intent-engine-bounded-domain-queries-v1"
@@ -288,6 +288,17 @@ new_producer = "intent-engine::parity_corpus"
 expected_result = "EquivalentWithCanonicalRenaming"
 disposition = "contract_only"
 claim_boundary = "Old/new parity corpus across profiles, selectors, staged movement, diagnostics, and exit posture; records dispositions without runtime replay."
+
+[[case]]
+id = "parity-intent-engine-graph-compiler-v1"
+stage = "IntentEngine"
+move_ledger_entry = "move-cargo-allow-spec-system-workspace"
+shim_id = "shim-cargo-allow-spec-system-workspace"
+old_producer = "allow-policy::spec_system::compile_spec_graph"
+new_producer = "intent-engine::graph_compiler"
+expected_result = "SemanticallyEquivalent"
+disposition = "proven"
+claim_boundary = "Same-input same-output graph compilation parity across clean, authored-registration, generation-mismatch, and resolved-subject replay scenarios, drift-oracled by the serde round-trip (#3647, #3648, #3652); the legacy compiler stays selected in cargo-allow until the #2606 stage-3 cutover receipt."
 
 [[case]]
 id = "parity-cargo-intent-change-status-precommit-v1"

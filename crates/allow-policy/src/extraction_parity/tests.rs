@@ -53,5 +53,14 @@ fn repository_parity_registry_links_shims_and_ledger() -> Result<(), String> {
     if report.case_count < 7 {
         return Err("seeded parity case inventory too small".to_string());
     }
+    // #3309 installment 3: the IntentEngine stage is promoted alongside
+    // RepoSnapshot/RepoEdit, so the live registry's proven IntentEngine
+    // cases must not emit NonContractDisposition.
+    if diagnostics
+        .iter()
+        .any(|diag| diag.kind == ParityDiagnosticKind::NonContractDisposition)
+    {
+        return Err(format!("non-contract dispositions: {diagnostics:?}"));
+    }
     Ok(())
 }

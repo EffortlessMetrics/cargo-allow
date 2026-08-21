@@ -1,0 +1,5 @@
+kind: Added
+body: >-
+  Add the read-only `cargo proof providers` command, which reports the
+  deterministic selected-provider capability projection and explicit
+  unavailable posture for feature-disabled providers.

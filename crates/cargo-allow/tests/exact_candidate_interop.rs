@@ -58,6 +58,9 @@ fn example_exact_candidate_interop_matches_schema_constants() {
     for required in [
         "outside_monorepo_consumer",
         "journey_a_cargo_allow_alone",
+        "journey_b_cargo_intent_alone",
+        "journey_c_cargo_proof_explicit_unavailable_plan",
+        "journey_d_independent_cargo_allow_and_proof_dry_run",
         "journey_e_cargo_allow_delegates_cargo_intent",
         "no_workspace_target_debug_binary",
     ] {

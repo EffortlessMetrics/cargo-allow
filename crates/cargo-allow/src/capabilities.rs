@@ -24,6 +24,8 @@ pub(crate) enum CapabilityClass {
     SupportedPresence,
     #[value(name = "compatibility-adapter")]
     CompatibilityAdapter,
+    #[value(name = "static-sensor")]
+    StaticSensor,
     #[value(name = "policy-derived")]
     PolicyDerived,
     #[value(name = "not-included")]
@@ -36,6 +38,7 @@ impl CapabilityClass {
             Self::SupportedSyntax => "supported_syntax",
             Self::SupportedPresence => "supported_presence",
             Self::CompatibilityAdapter => "compatibility_adapter",
+            Self::StaticSensor => "static_sensor",
             Self::PolicyDerived => "policy_derived",
             Self::NotIncluded => "not_included",
         }
@@ -158,6 +161,30 @@ const NOT_INCLUDED_LIMITATIONS: &[&str] = &["no_sensor_implemented"];
 const NOT_INCLUDED_CLAIMS: &[&str] = &["not_included_is_not_a_clean_result"];
 const NOT_INCLUDED_EXCLUDED: &[&str] = &["any_positive_detection_claim"];
 const NOT_INCLUDED_FIXTURES: &[&str] = &["crates/cargo-allow/src/capabilities.rs"];
+
+const CHANGIE_SENSOR_LIMITATIONS: &[&str] = &[
+    "static_authoring_contract_only",
+    "no_template_rendering",
+    "no_batch_or_merge_execution",
+    "config_and_fragment_bytes_from_one_exact_view",
+    "experimental_generation_pinned_to_1_25",
+];
+const CHANGIE_SENSOR_CLAIMS: &[&str] = &[
+    "changie config and fragment static authoring contract satisfied or violated",
+    "deterministic diagnostics with rule, provenance, and source locations",
+];
+const CHANGIE_SENSOR_EXCLUDED: &[&str] = &[
+    "changie_rendered_output",
+    "batch_or_merge_success",
+    "release_note_applicability",
+    "fragment_required_policy",
+    "upstream_process_execution",
+];
+const CHANGIE_SENSOR_FIXTURES: &[&str] = &[
+    "crates/cargo-allow/src/changie_source_view_tests.rs",
+    "crates/allow-files/src/changie_lint/compiled_contract_tests.rs",
+];
+const CHANGIE_SENSOR_DOCS: &[&str] = &["docs/how-to/run-changie-sensor.md"];
 const NOT_INCLUDED_DOCS: &[&str] = &["docs/claim-boundaries.md"];
 
 const fn source(
@@ -261,6 +288,29 @@ const fn not_included(sensor_id: &'static str, input: &'static str) -> SensorCap
         fixtures: NOT_INCLUDED_FIXTURES,
         docs: NOT_INCLUDED_DOCS,
         support_tier: "excluded",
+    }
+}
+
+const fn changie_sensor() -> SensorCapability {
+    SensorCapability {
+        sensor_id: "changie.static.authoring",
+        generation: 1,
+        owner: "cargo-allow",
+        kind: None,
+        family: None,
+        input: "caller-selected exact source view (.changie.yaml/.yml config and fragment population)",
+        selection: "explicit `changie lint` invocation; saved worktree, staged index, or committed revision",
+        analysis_class: "static_sensor",
+        precision: "source line/column with related config declaration ranges",
+        completeness: "complete for the static authoring contract of the pinned generation; partial, unsupported, and instrument-failed acquisitions stay non-clean",
+        platform: "Rust-native; no Go, Aqua, Changie, or network required",
+        profile: "changie lint (opt-in; not part of the default source-exception ledger scan)",
+        limitations: CHANGIE_SENSOR_LIMITATIONS,
+        claims_supported: CHANGIE_SENSOR_CLAIMS,
+        claims_excluded: CHANGIE_SENSOR_EXCLUDED,
+        fixtures: CHANGIE_SENSOR_FIXTURES,
+        docs: CHANGIE_SENSOR_DOCS,
+        support_tier: "experimental-opt-in",
     }
 }
 
@@ -392,6 +442,7 @@ const CAPABILITIES: &[SensorCapability] = &[
     policy("policy.process", "process_spawn", "policy_derived"),
     policy("policy.network", "network_destination", "policy_derived"),
     policy("policy.executable", "executable_file", "policy_derived"),
+    changie_sensor(),
     not_included(
         "excluded.workflow.rich_semantics",
         "workflow permissions, triggers, and expressions",
@@ -584,7 +635,9 @@ fn validate_catalog_entries(
                 format!("duplicate sensor capability id `{}`", capability.sensor_id),
             ));
         }
-        if capability.analysis_class == "not_included" {
+        if capability.analysis_class == "not_included"
+            || capability.analysis_class == "static_sensor"
+        {
             if capability.kind.is_some() || capability.family.is_some() {
                 return Err(CargoAllowError::with_kind(
                     CargoAllowErrorKind::Internal,

@@ -7,8 +7,8 @@
 # Journeys:
 #   A — cargo-allow alone
 #   B — cargo-intent alone
-#   C — cargo-proof with fake/command provider (plan + dry-run)
-#   D — cargo-proof dry-run then invoke installed cargo-allow
+#   C — cargo-proof explicit-unavailable plan (no provider fabricated) + dry-run fixture
+#   D — independent cargo-allow execution + independent proof dry-run
 #   E — legacy cargo-allow delegates staged precommit to installed cargo-intent
 #
 # Scenario classes covered (per journey where applicable):
@@ -128,26 +128,11 @@ print("ok")
 PY
 }
 
-reject_workspace_provider_path() {
-  local candidate="$1"
-  local product="$2"
-  ROOT_NATIVE="$(to_cargo_path "${ROOT}")"
-  python3 - "${candidate}" "${ROOT_NATIVE}" "${product}" <<'PY'
-import sys
-from pathlib import Path
-
-candidate = Path(sys.argv[1]).resolve()
-root = Path(sys.argv[2]).resolve()
-product = sys.argv[3]
-for prefix in (root / "target", root / "crates"):
-    try:
-        candidate.relative_to(prefix.resolve())
-    except ValueError:
-        continue
-    print(f"ForbiddenWorkspaceLeak:{product}")
-    raise SystemExit(0)
-print("Allowed")
-PY
+bin_ext() {
+  case "$(uname -s | tr '[:upper:]' '[:lower:]')" in
+    mingw*|msys*|cygwin*) printf '.exe' ;;
+    *) printf '' ;;
+  esac
 }
 
 version="$(read_workspace_version)"
@@ -205,6 +190,26 @@ record_negative() {
   negative_records+=("$1|$2|$3|$4")
 }
 
+# --- Sentinel plants (#2605 final hardening): undeclared-read decoys ---
+# Poison the monorepo target tree (a dedicated subdirectory, so real
+# build outputs are untouched) with decoy product binaries that would
+# be selected by ANY path-based discovery leaking the workspace, and
+# plant marker files whose text must never appear in a retained
+# artifact. The PATH-poison control below then proves the strongest
+# form: even when a decoy IS discoverable, the real protocol handshake
+# rejects it — a workspace binary cannot impersonate a provider.
+log "sentinels: planting workspace decoys and markers"
+sentinel_marker="SENTINEL-2605-DO-NOT-READ"
+sentinel_dir="${ROOT}/target/interop-sentinel"
+mkdir -p "${sentinel_dir}"
+for product in cargo-allow cargo-intent cargo-proof; do
+  printf '#!/usr/bin/env bash\necho "%s 0.0.0-sentinel"\nexit 1\n' "${product}" \
+    >"${sentinel_dir}/${product}"
+  chmod +x "${sentinel_dir}/${product}"
+done
+printf '%s\n' "${sentinel_marker}" >"${sentinel_dir}/sentinel-marker.txt"
+printf '%s\n' "${sentinel_marker}" >"${sentinel_dir}/crates-sentinel-marker.txt"
+
 # --- Journey A: cargo-allow alone ---
 log "journey A: cargo-allow alone (compatible)"
 a_version="$("${cargo_allow_bin}" --version | tr -d '\r')"
@@ -236,31 +241,39 @@ if not report.get("unmapped_staged_surface"):
 [[ "${b_status_exit}" -ne 0 ]] || fail "journey B expected non-zero exit for unmapped staged surface"
 record_journey "B" "cargo-intent" "Passed"
 
-# --- Journey C: cargo-proof fake/command provider ---
-log "journey C: cargo-proof plan + dry-run (fake provider)"
+# --- Journey C: cargo-proof explicit-unavailable plan + dry-run fixture ---
+# #3598: the plan command no longer fabricates a provider. The journey
+# asserts the truthful interim result — the failure names the intended
+# provider and the limitation — and the dry-run stays on the retained
+# static fixture (structured argv only, zero process execution).
+log "journey C: cargo-proof plan (explicit unavailable) + dry-run fixture"
 obligation_fixture="${ROOT}/tests/fixtures/cargo-proof/intent-obligation-plan-smoke-v1.json"
 proof_plan_fixture="${ROOT}/tests/fixtures/cargo-proof/proof-plan-smoke-v1.toml"
 [[ -f "${obligation_fixture}" ]] || fail "missing ${obligation_fixture}"
 [[ -f "${proof_plan_fixture}" ]] || fail "missing ${proof_plan_fixture}"
-"${cargo_proof_bin}" --format json plan --obligation-plan "${obligation_fixture}" >"${work_dir}/proof-plan-frame.json"
-python3 - "${work_dir}/proof-plan-frame.json" <<'PY'
-import json, sys
-from pathlib import Path
-
-frame = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-digest = frame.get("intent_plan_digest", "")
-if not digest.startswith("sha256:v1:"):
-    raise SystemExit(f"plan frame must bind intent_plan_digest, got {digest!r}")
-if digest not in frame.get("plan_id", ""):
-    raise SystemExit("plan_id must embed the intent plan digest (#3316)")
-PY
+set +e
+plan_err="$("${cargo_proof_bin}" --format json plan --obligation-plan "${obligation_fixture}" 2>&1)"
+plan_exit=$?
+set -e
+plan_truthful=false
+if [[ "${plan_exit}" -ne 0 ]] \
+  && printf '%s' "${plan_err}" | grep -q "cargo-allow" \
+  && printf '%s' "${plan_err}" | grep -q "not yet established"; then
+  plan_truthful=true
+fi
+[[ "${plan_truthful}" == "true" ]] \
+  || fail "journey C plan must fail explicitly naming the intended provider and limitation, got exit=${plan_exit} err=${plan_err}"
 dry_run_out="$("${cargo_proof_bin}" dry-run --proof-plan "${proof_plan_fixture}")"
 printf '%s\n' "${dry_run_out}" | grep -F "[structured argv]" >/dev/null \
   || fail "journey C dry-run missing structured argv marker"
 record_journey "C" "cargo-proof" "Passed"
 
-# --- Journey D: cargo-proof invokes installed cargo-allow ---
-log "journey D: cargo-proof dry-run then invoke installed cargo-allow"
+# --- Journey D: independent cargo-allow execution + independent proof dry-run ---
+# #3598 wording: cargo-proof does NOT invoke cargo-allow. The journey
+# proves the two installed candidates run independently against the same
+# consumer root — cargo-allow executes for real; cargo-proof dry-runs a
+# static plan fixture (zero process execution).
+log "journey D: installed cargo-allow executes; installed cargo-proof dry-runs (independent, same root)"
 policy_path="${consumer_dir}/policy/allow.toml"
 "${cargo_allow_bin}" propose --root "${consumer_dir}" --kind panic --write "${policy_path}"
 [[ -f "${policy_path}" ]] || fail "journey D propose did not write policy"
@@ -320,44 +333,314 @@ if not any(gate == "delegated via repo.analysis-receipt.v1" for gate in gates):
 [[ "${precommit_exit}" -ne 0 ]] || fail "journey E expected non-zero exit for unmapped staged surface"
 record_journey "E" "cargo-allow" "Passed"
 
+# --- Installed-journey parity (#3309 final installment) ---
+# The same staged state flows through BOTH surfaces of the installed
+# candidates: cargo-intent's own change-status command (journey B's
+# surface) and cargo-allow's one-way compatibility delegation (journey
+# E). Both must bind the same staged identity and classify the state
+# identically — the same protocol results end to end.
+log "installed-journey parity: direct change status on the delegated state"
+parity_out="${consumer_dir}/parity-direct.json"
+set +e
+"${cargo_intent_bin}" --root "${consumer_dir}" --format json change status \
+  --staged --phase precommit >"${parity_out}" 2>"${consumer_dir}/parity-direct.err"
+parity_exit=$?
+set -e
+[[ -f "${parity_out}" ]] || fail "parity direct change status wrote no output"
+PARITY_PRECOMMIT="${precommit_out}" PARITY_DIRECT="${parity_out}" python3 <<'PY'
+import json
+import os
+from pathlib import Path
+
+delegated = json.loads(Path(os.environ["PARITY_PRECOMMIT"]).read_text(encoding="utf-8"))
+direct = json.loads(Path(os.environ["PARITY_DIRECT"]).read_text(encoding="utf-8"))
+
+if direct.get("schema_id") != "cargo-intent.change-status.v1":
+    raise SystemExit(f"direct run is not change-status: {direct.get('schema_id')!r}")
+
+delegated_identity = delegated.get("staged_identity_after") or ""
+direct_identity = direct.get("staged_identity") or ""
+if not direct_identity:
+    raise SystemExit("direct change-status lacks staged_identity")
+if delegated_identity != direct_identity:
+    raise SystemExit(
+        "installed-journey parity drift: delegated "
+        f"{delegated_identity!r} != direct {direct_identity!r}"
+    )
+
+delegated_gate = "delegated via repo.analysis-receipt.v1" in (
+    delegated.get("remaining_gates") or []
+)
+delegated_unmapped = "provider reported unmapped staged surface" in (
+    delegated.get("remaining_gates") or []
+)
+direct_unmapped = bool(direct.get("unmapped_staged_surface"))
+if not direct_unmapped:
+    raise SystemExit("expected the unmapped staged surface in the direct run")
+if not delegated_gate:
+    raise SystemExit("expected the delegation gate in the delegated run")
+if not delegated_unmapped:
+    raise SystemExit("expected the delegated surface to classify the state unmapped")
+PY
+record_journey "PARITY" "cargo-intent+cargo-allow" "Passed"
+
+log "sentinel: PATH-poisoned discovery cannot impersonate a provider"
+poison_dir="${work_dir}/path-poison-consumer"
+mkdir -p "${poison_dir}/.allow/compatibility"
+git -C "${poison_dir}" init -q 2>/dev/null || true
+git -C "${poison_dir}" config user.name "Interop Harness"
+git -C "${poison_dir}" config user.email "interop@example.invalid"
+printf 'poisoned\n' >"${poison_dir}/staged.txt"
+git -C "${poison_dir}" add staged.txt
+printf 'schema_id = "cargo-allow.intent-delegation.v1"\ndelegate_staged_precommit = true\ntimeout_secs = 30\n' \
+  >"${poison_dir}/.allow/compatibility/intent-delegation.toml"
+poison_out="${poison_dir}/precommit-poison.json"
+set +e
+poison_err="$(env -u CARGO_INTENT_BIN PATH="${sentinel_dir}:${PATH}" \
+  "${cargo_allow_bin}" check \
+  --root "${poison_dir}" \
+  --profile spec-system \
+  --phase precommit \
+  --staged \
+  --format json \
+  --output "${poison_out}" 2>&1)"
+poison_exit=$?
+set -e
+poison_passed=false
+if [[ "${poison_exit}" -ne 0 ]]; then
+  case "${poison_err}" in
+    *wrong_protocol*|*malformed_provider_output*|*provider_instrument_failure*|*not*found*)
+      poison_passed=true
+      ;;
+  esac
+fi
+[[ "${poison_passed}" == "true" ]] \
+  || fail "PATH-poison control: decoy was not rejected by the real handshake (exit=${poison_exit} err=${poison_err})"
+record_negative "E" "sentinel" "WorkspaceDecoyRejectedByHandshake" "${poison_passed}"
+
+# --- Compatibility matrix (#2605 installment 4): bounded, risk-based ---
+# Every cell is a REAL run of installed candidates; postures are
+# expected/actual/failure-boundary, not labels. Baseline = the exact
+# current set; the risk cells cover missing-optional-provider and
+# future-unsupported-protocol, which do not require building historical
+# packages (previous-compatible-version cells are deferred to the
+# release lane where historical candidates exist).
+declare -a matrix_records=()
+record_matrix() {
+  # combination | expected | actual | failure_boundary
+  matrix_records+=("$1|$2|$3|$4")
+}
+
+log "matrix: baseline current allow + current intent + current proof"
+set +e
+"${cargo_proof_bin}" dry-run --proof-plan "${ROOT}/tests/fixtures/cargo-proof/proof-plan-smoke-v1.toml" >/dev/null 2>&1
+baseline_exit=$?
+set -e
+if [[ -f "${ROOT}/tests/fixtures/cargo-proof/proof-plan-smoke-v1.toml" ]] && [[ "${baseline_exit}" -eq 0 ]]; then
+  record_matrix "current_allow_current_intent_current_proof" "compatible" "compatible" "none"
+else
+  fail "matrix baseline dry-run failed with exit ${baseline_exit}"
+fi
+
+log "matrix: missing optional provider (cargo-intent absent from an allow-only journey)"
+# Derived posture: journey A (which runs unconditionally before any
+# delegation config exists) proves the allow-only journey green, and the
+# absent negative below proves the provider-absent boundary in the same
+# receipt; this cell aggregates both rather than re-running them.
+record_matrix "current_allow_missing_intent" "compatible_optional_absent" "compatible_optional_absent" "derived: journey A green + absent negative provider_absent (below)"
+
+log "matrix: future unsupported intent protocol (real protocol gate)"
+future_dir="${work_dir}/future-protocol-consumer"
+mkdir -p "${future_dir}/.allow/compatibility"
+git -C "${future_dir}" init -q 2>/dev/null || true
+git -C "${future_dir}" config user.name "Interop Harness"
+git -C "${future_dir}" config user.email "interop@example.invalid"
+printf 'future\n' >"${future_dir}/staged.txt"
+git -C "${future_dir}" add staged.txt
+# A delegation config declaring a schema generation beyond the current
+# contract is the smallest real future-protocol posture: the loader
+# itself must refuse it (no silent acceptance of an unknown schema).
+printf 'schema_id = "cargo-allow.intent-delegation.v99-future"\nexecutable = "cargo-intent"\ndelegate_staged_precommit = true\n' \
+  >"${future_dir}/.allow/compatibility/intent-delegation.toml"
+future_out="${future_dir}/precommit-future.json"
+set +e
+future_err="$(env -u CARGO_INTENT_BIN "${cargo_allow_bin}" check \
+  --root "${future_dir}" \
+  --profile spec-system \
+  --phase precommit \
+  --staged \
+  --format json \
+  --output "${future_out}" 2>&1)"
+future_exit=$?
+set -e
+# The schema-refusal evidence is REQUIRED: a non-zero exit alone could
+# come from a downstream failure (e.g. the bare executable resolving to
+# nothing) while the schema gate silently never fired — that masked
+# regression must fail the cell, not re-label the boundary.
+if [[ "${future_exit}" -eq 0 ]]; then
+  fail "future-protocol cell accepted an unknown schema (exit 0)"
+fi
+if ! printf '%s' "${future_err}" | grep -q "unexpected schema_id"; then
+  fail "future-protocol cell failed without schema-gate evidence: $(printf '%s' "${future_err}" | head -1)"
+fi
+record_matrix \
+  "current_allow_future_intent_protocol" \
+  "incompatible" \
+  "incompatible" \
+  "loader rejects unknown delegation schema"
+
+matrix_json="$(
+  printf '%s\n' "${matrix_records[@]}" | python3 -c '
+import json, sys
+cells = []
+for line in sys.stdin:
+    parts = line.strip().split("|", 3)
+    if len(parts) != 4:
+        raise SystemExit(f"matrix record has unexpected shape: {line.strip()!r}")
+    cells.append({
+        "combination": parts[0],
+        "expected": parts[1],
+        "actual": parts[2],
+        "failure_boundary": parts[3],
+    })
+print(json.dumps(cells))
+'
+)"
+
 negatives_json='[]'
 if [[ "${SKIP_NEGATIVES:-0}" != "1" ]]; then
   log "negative controls"
 
-  log "negative A: provider absent"
-  absent_class="$(
-    python3 <<'PY'
+  log "negative A: provider absent (real delegation discovery)"
+  absent_dir="${work_dir}/absent-consumer"
+  mkdir -p "${absent_dir}/.allow/compatibility"
+  git -C "${absent_dir}" init -q 2>/dev/null || true
+  git -C "${absent_dir}" config user.name "Interop Harness"
+  git -C "${absent_dir}" config user.email "interop@example.invalid"
+  printf 'absent\n' >"${absent_dir}/staged.txt"
+  git -C "${absent_dir}" add staged.txt
+  printf 'schema_id = "cargo-allow.intent-delegation.v1"\ndelegate_staged_precommit = true\ntimeout_secs = 30\n' \
+    >"${absent_dir}/.allow/compatibility/intent-delegation.toml"
+  absent_out="${absent_dir}/precommit-absent.json"
+  set +e
+  absent_err="$(env -u CARGO_INTENT_BIN "${cargo_allow_bin}" check \
+    --root "${absent_dir}" \
+    --profile spec-system \
+    --phase precommit \
+    --staged \
+    --format json \
+    --output "${absent_out}" 2>&1)"
+  absent_exit=$?
+  set -e
+  absent_passed=false
+  if [[ "${absent_exit}" -ne 0 ]]; then
+    if printf '%s' "${absent_err}" | grep -q "provider_absent"; then
+      absent_passed=true
+    elif [[ -f "${absent_out}" ]] && grep -q "provider_absent" "${absent_out}"; then
+      absent_passed=true
+    fi
+  fi
+  [[ "${absent_passed}" == "true" ]] \
+    || fail "absent negative expected real ProviderAbsent failure, got exit=${absent_exit} err=${absent_err}"
+  record_negative "A" "absent" "ProviderAbsent" "${absent_passed}"
+
+  log "negative A: workspace target leak rejected (real delegation discovery)"
+  leak_dir="${work_dir}/leak-consumer"
+  mkdir -p "${leak_dir}/.allow/compatibility" "${leak_dir}/target/debug"
+  git -C "${leak_dir}" init -q 2>/dev/null || true
+  git -C "${leak_dir}" config user.name "Interop Harness"
+  git -C "${leak_dir}" config user.email "interop@example.invalid"
+  printf 'leak\n' >"${leak_dir}/staged.txt"
+  git -C "${leak_dir}" add staged.txt
+  # Poison the consumer's own target dir with a workspace-style binary
+  # named for the expected product, so only the workspace-path rule —
+  # not the product-name rule — can reject it.
+  cp "${cargo_allow_bin}" "${leak_dir}/target/debug/cargo-intent$(bin_ext)"
+  LEAK_EXEC="${leak_dir}/target/debug/cargo-intent$(bin_ext)" \
+    LEAK_CONFIG="${leak_dir}/.allow/compatibility/intent-delegation.toml" python3 <<'PY'
 import os
-if not os.environ.get("PROBE_BIN"):
-    print("ProviderAbsent")
-else:
-    print("InstrumentFailure")
-PY
-  )"
-  [[ "${absent_class}" == "ProviderAbsent" ]] || fail "absent negative misclassified"
-  record_negative "A" "absent" "ProviderAbsent" "true"
-
-  log "negative A: workspace target leak rejected"
-  ws_target="${ROOT}/target/debug/cargo-allow"
-  leak_class="$(reject_workspace_provider_path "${ws_target}" "cargo-allow")"
-  [[ "${leak_class}" == "ForbiddenWorkspaceLeak:cargo-allow" ]] \
-    || fail "workspace target leak not rejected"
-  record_negative "A" "incompatible" "ForbiddenWorkspaceTarget" "true"
-
-  log "negative B: wrong product incompatible"
-  wrong_product_class="$(
-    python3 - "${cargo_proof_bin}" <<'PY'
-import sys
 from pathlib import Path
-candidate = Path(sys.argv[1]).name.replace(".exe", "")
-if candidate != "cargo-intent":
-    print("WrongProduct")
-else:
-    print("InstrumentFailure")
+path = Path(os.environ["LEAK_CONFIG"])
+executable = Path(os.environ["LEAK_EXEC"]).resolve()
+path.write_text(
+    "schema_id = \"cargo-allow.intent-delegation.v1\"\n"
+    f"executable = {str(executable)!r}\n"
+    "delegate_staged_precommit = true\n"
+    "timeout_secs = 30\n",
+    encoding="utf-8",
+)
 PY
-  )"
-  [[ "${wrong_product_class}" == "WrongProduct" ]] || fail "wrong product negative failed"
-  record_negative "B" "incompatible" "WrongProduct" "true"
+  leak_out="${leak_dir}/precommit-leak.json"
+  set +e
+  leak_err="$(env -u CARGO_INTENT_BIN "${cargo_allow_bin}" check \
+    --root "${leak_dir}" \
+    --profile spec-system \
+    --phase precommit \
+    --staged \
+    --format json \
+    --output "${leak_out}" 2>&1)"
+  leak_exit=$?
+  set -e
+  leak_passed=false
+  if [[ "${leak_exit}" -ne 0 ]] \
+    && printf '%s' "${leak_err}" | grep -q "workspace path, which is forbidden"; then
+    leak_passed=true
+  elif [[ -f "${leak_out}" ]] && grep -q "workspace path, which is forbidden" "${leak_out}"; then
+    leak_passed=true
+  fi
+  [[ "${leak_passed}" == "true" ]] \
+    || fail "workspace target leak negative expected real forbidden-workspace-path failure, got exit=${leak_exit} err=${leak_err}"
+  record_negative "A" "incompatible" "ForbiddenWorkspaceTarget" "${leak_passed}"
+
+  log "negative B: wrong product incompatible (real delegation discovery)"
+  wrong_dir="${work_dir}/wrong-product-consumer"
+  mkdir -p "${wrong_dir}/.allow/compatibility"
+  git -C "${wrong_dir}" init -q 2>/dev/null || true
+  git -C "${wrong_dir}" config user.name "Interop Harness"
+  git -C "${wrong_dir}" config user.email "interop@example.invalid"
+  printf 'wrong-product\n' >"${wrong_dir}/staged.txt"
+  git -C "${wrong_dir}" add staged.txt
+  PROOF_EXEC="${cargo_proof_bin}" WRONG_CONFIG="${wrong_dir}/.allow/compatibility/intent-delegation.toml" python3 <<'PY'
+import os
+from pathlib import Path
+path = Path(os.environ["WRONG_CONFIG"])
+executable = Path(os.environ["PROOF_EXEC"]).resolve()
+path.write_text(
+    "schema_id = \"cargo-allow.intent-delegation.v1\"\n"
+    f"executable = {str(executable)!r}\n"
+    "delegate_staged_precommit = true\n"
+    "timeout_secs = 30\n",
+    encoding="utf-8",
+)
+PY
+  wrong_out="${wrong_dir}/precommit-wrong-product.json"
+  set +e
+  # Scrub the CI-provided provider override so discovery reads the
+  # config wrong executable (env vars outrank the config in provider
+  # discovery); the negative tests config-based discovery specifically.
+  wrong_err="$(env -u CARGO_INTENT_BIN "${cargo_allow_bin}" check \
+    --root "${wrong_dir}" \
+    --profile spec-system \
+    --phase precommit \
+    --staged \
+    --format json \
+    --output "${wrong_out}" 2>&1)"
+  wrong_exit=$?
+  set -e
+  # The failure detail surfaces in the written delegated report and/or
+  # stderr depending on platform; accept either, but require the
+  # non-zero exit and the wrong_product classification somewhere real.
+  wrong_passed=false
+  if [[ "${wrong_exit}" -ne 0 ]]; then
+    if printf '%s' "${wrong_err}" | grep -q "wrong_product\|wrong product"; then
+      wrong_passed=true
+    elif [[ -f "${wrong_out}" ]] && grep -q "wrong_product" "${wrong_out}"; then
+      wrong_passed=true
+    fi
+  fi
+  [[ "${wrong_passed}" == "true" ]] \
+    || fail "wrong product negative expected real WrongProduct failure, got exit=${wrong_exit} err=${wrong_err}"
+  record_negative "B" "incompatible" "WrongProduct" "${wrong_passed}"
 
   log "negative C: malformed proof plan"
   malformed_plan="${work_dir}/malformed-plan.toml"
@@ -383,7 +666,10 @@ PY
   [[ "${wrong_exit}" -ne 0 ]] || fail "wrong snapshot negative expected failure"
   record_negative "C" "wrong_snapshot" "ProofPlanInvalid" "true"
 
-  log "negative D: partial proof-delegation config"
+  # Shape-level until cargo-proof exposes provider-discovery as a CLI
+  # surface (the journey-C registered-command installment); the config
+  # shape it validates is the one the real loader will reject/ignore.
+  log "negative D: partial proof-delegation config (shape-level; real path lands with the provider CLI)"
   partial_dir="${work_dir}/partial-consumer"
   mkdir -p "${partial_dir}/.allow/compatibility"
   printf 'schema_id = "proof.cargo-allow-delegation.v1"\n' >"${partial_dir}/.allow/compatibility/proof-delegation.toml"
@@ -401,27 +687,34 @@ PY
   [[ "${partial_class}" == "PartialConfig" ]] || fail "partial config negative failed"
   record_negative "D" "partial" "PartialConfig" "true"
 
-  log "negative E: malformed intent delegation config"
-  bad_config="${work_dir}/bad-intent-delegation.toml"
-  printf 'not_valid_toml [[[\n' >"${bad_config}"
-  malformed_delegate_class="$(
-    python3 - "${bad_config}" <<'PY'
-import sys
-from pathlib import Path
-try:
-    import tomllib
-except ImportError:
-    import tomli as tomllib
-path = Path(sys.argv[1])
-try:
-    tomllib.loads(path.read_text(encoding="utf-8"))
-    print("InstrumentFailure")
-except Exception:
-    print("MalformedConfig")
-PY
-  )"
-  [[ "${malformed_delegate_class}" == "MalformedConfig" ]] || fail "malformed delegation negative failed"
-  record_negative "E" "malformed" "MalformedConfig" "true"
+  log "negative E: malformed intent delegation config (real parse path)"
+  malformed_dir="${work_dir}/malformed-config-consumer"
+  mkdir -p "${malformed_dir}/.allow/compatibility"
+  git -C "${malformed_dir}" init -q 2>/dev/null || true
+  git -C "${malformed_dir}" config user.name "Interop Harness"
+  git -C "${malformed_dir}" config user.email "interop@example.invalid"
+  printf 'malformed\n' >"${malformed_dir}/staged.txt"
+  git -C "${malformed_dir}" add staged.txt
+  printf 'not_valid_toml [[[\n' >"${malformed_dir}/.allow/compatibility/intent-delegation.toml"
+  malformed_out="${malformed_dir}/precommit-malformed.json"
+  set +e
+  malformed_err="$(env -u CARGO_INTENT_BIN "${cargo_allow_bin}" check \
+    --root "${malformed_dir}" \
+    --profile spec-system \
+    --phase precommit \
+    --staged \
+    --format json \
+    --output "${malformed_out}" 2>&1)"
+  malformed_exit=$?
+  set -e
+  malformed_passed=false
+  if [[ "${malformed_exit}" -ne 0 ]] \
+    && printf '%s' "${malformed_err}" | grep -q "MalformedConfig.*intent-delegation.toml"; then
+    malformed_passed=true
+  fi
+  [[ "${malformed_passed}" == "true" ]] \
+    || fail "malformed delegation negative expected real MalformedConfig parse failure, got exit=${malformed_exit} err=${malformed_err}"
+  record_negative "E" "malformed" "MalformedConfig" "${malformed_passed}"
 
   log "negative E: stale provider path absent"
   stale_class="$(
@@ -460,6 +753,15 @@ PY
   )"
 fi
 
+# Marker-leak scan: no retained artifact may embed the planted marker
+# (any read of the workspace marker files would surface its text).
+log "sentinel: scanning retained artifacts for marker leakage"
+leak_hits="$(grep -rl -- "${sentinel_marker}" "${work_dir}" "${consumer_dir}" 2>/dev/null || true)"
+if [[ -n "${leak_hits}" ]]; then
+  fail "sentinel marker leaked into retained artifacts: ${leak_hits}"
+fi
+record_negative "A" "sentinel" "NoUndeclaredCheckoutRead" "true"
+
 os_name="$(uname -s | tr '[:upper:]' '[:lower:]')"
 case "${os_name}" in
   mingw*|msys*|cygwin*) os_name="windows" ;;
@@ -475,6 +777,7 @@ esac
 log "writing receipt ${receipt}"
 JOURNEY_RECORDS="$(printf '%s\n' "${journey_records[@]}")" \
 NEGATIVE_JSON="${negatives_json}" \
+MATRIX_JSON="${matrix_json}" \
 RECEIPT_PATH="${receipt}" \
 SCHEMA_ID="${schema_id}" \
 JOURNEY_SCHEMA_ID="${journey_schema_id}" \
@@ -490,13 +793,26 @@ import json
 import os
 
 journeys = []
+parity = None
 for line in os.environ.get("JOURNEY_RECORDS", "").splitlines():
     if not line.strip():
         continue
     journey_id, product, result = line.split("|", 2)
+    if journey_id == "PARITY":
+        parity = {
+            "surfaces": [
+                "cargo-intent change status (direct)",
+                "cargo-allow delegated precommit",
+            ],
+            "staged_state": "journey E consumer (delegated.txt staged)",
+            "agreement": "delegated staged_identity_after == direct staged_identity; both classify the state unmapped",
+            "result": result,
+        }
+        continue
     journeys.append({"id": journey_id, "product": product, "result": result})
 
 negatives = json.loads(os.environ.get("NEGATIVE_JSON", "[]"))
+matrix = json.loads(os.environ.get("MATRIX_JSON", "[]"))
 
 receipt = {
     "schema_version": 1,
@@ -507,8 +823,8 @@ receipt = {
         "outside_monorepo_consumer",
         "journey_a_cargo_allow_alone",
         "journey_b_cargo_intent_alone",
-        "journey_c_cargo_proof_fake_provider",
-        "journey_d_cargo_proof_invokes_cargo_allow",
+        "journey_c_cargo_proof_explicit_unavailable_plan",
+        "journey_d_independent_cargo_allow_and_proof_dry_run",
         "journey_e_cargo_allow_delegates_cargo_intent",
         "no_workspace_target_debug_binary",
         "no_workspace_crates_checkout",
@@ -531,6 +847,12 @@ receipt = {
         "cargo_intent_version": os.environ["B_VERSION"],
     },
     "journeys": journeys,
+    "installed_journey_parity": parity,
+    "compatibility_matrix": {
+        "selected": len(matrix),
+        "omitted": "previous-compatible-version cells deferred to the release lane (no historical candidates here)",
+        "cells": matrix,
+    },
     "negative_controls": negatives,
     "limitations": [
         "linux_hosted_claim_primary",

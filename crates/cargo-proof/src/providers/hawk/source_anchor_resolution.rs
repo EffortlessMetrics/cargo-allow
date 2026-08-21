@@ -27,7 +27,7 @@ pub struct HawkSourceAnchorResolutionV1 {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SourceAnchorResolutionError {
-    Receipt(crate::analysis_receipt::HawkAnalysisReceiptError),
+    Receipt(super::analysis_receipt::HawkAnalysisReceiptError),
 }
 
 impl SourceAnchorResolutionError {

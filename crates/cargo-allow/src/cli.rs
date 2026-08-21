@@ -5,7 +5,7 @@ use std::ffi::OsStr;
 use std::path::PathBuf;
 
 use crate::{
-    add, adoption, audit, capabilities, check, completions, diff, doctor, explain,
+    add, adoption, audit, capabilities, changie, check, completions, diff, doctor, explain,
     extraction_parity_command, hooks, init, list, migrate, precommit_tool, propose, prune,
     reference, refresh, vocabulary, why, worklist,
 };
@@ -107,6 +107,8 @@ pub(crate) enum CargoAllowCommand {
     Hooks(hooks::HooksArgs),
     /// Emit runtime parity evidence for extraction stages.
     ExtractionParity(extraction_parity_command::ParityArgs),
+    /// Run the Rust-native Changie static sensor over one exact source subject.
+    Changie(changie::ChangieArgs),
 }
 
 /// Resolve the process output style from the flag, the environment, and
@@ -196,6 +198,8 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::Reference(args) => reference::cmd_reference(&args),
         CargoAllowCommand::Hooks(args) => hooks::cmd_hooks(&args),
         CargoAllowCommand::ExtractionParity(args) => extraction_parity_command::cmd_parity(&args),
+
+        CargoAllowCommand::Changie(args) => changie::cmd_changie(&args.clone()),
     }
 }
 
@@ -390,5 +394,6 @@ impl CargoAllowCommand {
         "reference",
         "hooks",
         "extraction-parity",
+        "changie",
     ];
 }

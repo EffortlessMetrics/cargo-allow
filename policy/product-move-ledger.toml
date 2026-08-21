@@ -723,7 +723,7 @@ deletion_output = "Current intent schema authority leaves allow-report."
 [[entry]]
 id = "REMAIN-CARGO-ALLOW-PROVIDER-PAYLOADS"
 source_kind = "RustSurface"
-current_paths = ["crates/allow-report/src/artifacts.rs", "crates/allow-report/src/artifacts/why.rs", "crates/allow-report/src/artifacts/add_finding_plan.rs", "crates/allow-report/src/why_json.rs"]
+current_paths = ["crates/allow-report/src/artifacts.rs", "crates/allow-report/src/artifacts/why.rs", "crates/allow-report/src/artifacts/add_finding_plan.rs", "crates/allow-report/src/spec_system_render.rs", "crates/allow-report/src/spec_system_report_types.rs", "crates/allow-report/src/why_json.rs"]
 current_refs = []
 current_identity = "Cargo-allow source-exception reports, why/add plans, receipts, and provider payload semantics"
 current_product = "cargo-allow"
@@ -1406,7 +1406,11 @@ deletion_output = "Deferred to extraction cutover and parity receipts."
 [[entry]]
 id = "introduce-cargo-proof-crate"
 source_kind = "RustModule"
-current_paths = ['crates/cargo-proof/src/lib.rs']
+current_paths = [
+    'crates/cargo-proof/src/lib.rs',
+    'crates/cargo-proof/src/providers/registry.rs',
+    'crates/cargo-proof/src/receipt_projection.rs',
+]
 current_refs = []
 current_identity = "crates/cargo-proof/src/lib.rs"
 current_product = "cargo-proof"
@@ -2246,7 +2250,7 @@ deletion_output = "Deferred to extraction cutover and parity receipts."
 [[entry]]
 id = "introduce-proof-protocol-plan-dtos"
 source_kind = "RustModule"
-current_paths = ['crates/proof-protocol/src/plan_dtos.rs']
+current_paths = ['crates/proof-protocol/src/plan_dtos.rs', 'crates/proof-protocol/src/plan_v2.rs']
 current_refs = []
 current_identity = "crates/proof-protocol/src/plan_dtos.rs"
 current_product = "cargo-proof"
@@ -3081,7 +3085,7 @@ deletion_output = "Delete scaffold sources after parity cutover and old-path ret
 [[entry]]
 id = "INVENTORY-INTENT_PROTOCOL-SRC"
 source_kind = "RustModule"
-current_paths = ["crates/intent-protocol/src/closure.rs", "crates/intent-protocol/src/diff.rs", "crates/intent-protocol/src/identity.rs", "crates/intent-protocol/src/lib.rs", "crates/intent-protocol/src/obligation.rs", "crates/intent-protocol/src/packet.rs", "crates/intent-protocol/src/parity/mod.rs", "crates/intent-protocol/src/query.rs", "crates/intent-protocol/src/snapshot_package/mod.rs", "crates/intent-protocol/src/snapshot_package/repo_protocol/mod.rs", "crates/intent-protocol/src/tests.rs", "crates/intent-protocol/src/view.rs"]
+current_paths = ["crates/intent-protocol/src/change_status.rs", "crates/intent-protocol/src/closure.rs", "crates/intent-protocol/src/diff.rs", "crates/intent-protocol/src/identity.rs", "crates/intent-protocol/src/lib.rs", "crates/intent-protocol/src/obligation.rs", "crates/intent-protocol/src/packet.rs", "crates/intent-protocol/src/parity/mod.rs", "crates/intent-protocol/src/query.rs", "crates/intent-protocol/src/snapshot_package/mod.rs", "crates/intent-protocol/src/snapshot_package/repo_protocol/mod.rs", "crates/intent-protocol/src/tests.rs", "crates/intent-protocol/src/view.rs"]
 current_refs = []
 current_identity = "Extracted intent-protocol source tree under no-new intent/proof/shared enforcement (#2598)"
 current_product = "cargo-intent"
@@ -3115,12 +3119,12 @@ deletion_output = "Delete scaffold sources after parity cutover and old-path ret
 [[entry]]
 id = "INVENTORY-INTENT_ENGINE-SRC"
 source_kind = "RustModule"
-current_paths = ["crates/intent-engine/src/closure_validation.rs", "crates/intent-engine/src/domain_queries.rs", "crates/intent-engine/src/graph_comparison.rs", "crates/intent-engine/src/governance_reconciliation.rs", "crates/intent-engine/src/graph_compiler.rs", "crates/intent-engine/src/lib.rs", "crates/intent-engine/src/packet.rs", "crates/intent-engine/src/parity_corpus.rs", "crates/intent-engine/src/parity/corpus.rs", "crates/intent-engine/src/parity/domain_queries.rs", "crates/intent-engine/src/parity/graph_comparison.rs", "crates/intent-engine/src/parity/mod.rs", "crates/intent-engine/src/parity/phase_obligations.rs", "crates/intent-engine/src/parity/workspace.rs", "crates/intent-engine/src/phase_obligations.rs", "crates/intent-engine/src/precommit_evaluator.rs", "crates/intent-engine/src/subject_resolution.rs", "crates/intent-engine/src/tests.rs", "crates/intent-engine/src/workspace/authority_compiler.rs", "crates/intent-engine/src/workspace/composition.rs", "crates/intent-engine/src/workspace/mod.rs"]
+current_paths = ["crates/intent-engine/src/closure_validation.rs", "crates/intent-engine/src/domain_queries.rs", "crates/intent-engine/src/graph_comparison.rs", "crates/intent-engine/src/governance_reconciliation.rs", "crates/intent-engine/src/graph_compiler.rs", "crates/intent-engine/src/lib.rs", "crates/intent-engine/src/parity_corpus.rs", "crates/intent-engine/src/parity/corpus.rs", "crates/intent-engine/src/parity/graph_compiler.rs", "crates/intent-engine/src/parity/domain_queries.rs", "crates/intent-engine/src/parity/graph_comparison.rs", "crates/intent-engine/src/parity/mod.rs", "crates/intent-engine/src/parity/phase_obligations.rs", "crates/intent-engine/src/parity/workspace.rs", "crates/intent-engine/src/phase_obligations.rs", "crates/intent-engine/src/precommit_evaluator.rs", "crates/intent-engine/src/subject_resolution.rs", "crates/intent-engine/src/tests.rs", "crates/intent-engine/src/workspace/authority_compiler.rs", "crates/intent-engine/src/workspace/command_dispatch.rs", "crates/intent-engine/src/workspace/composition.rs", "crates/intent-engine/src/workspace/mod.rs", "crates/intent-engine/src/workspace/paired_precommit.rs", "crates/intent-engine/src/workspace/source_views.rs"]
 current_refs = []
 current_identity = "Extracted intent-engine source tree under no-new intent/proof/shared enforcement (#2598)"
 current_product = "cargo-intent"
 current_crate = "intent-engine"
-current_consumers = ["extraction parity harness", "no-new move-ledger guard"]
+current_consumers = ["extraction parity harness", "no-new move-ledger guard", "engine production surface for cargo-intent workspace orchestration (pending cutover, #3306)"]
 posture = "PrivateImplementation"
 target_product = "cargo-intent"
 target_crate = "intent-engine"
@@ -3217,7 +3221,7 @@ deletion_output = "Delete scaffold sources after parity cutover and old-path ret
 [[entry]]
 id = "INVENTORY-PROOF_PROTOCOL-SRC"
 source_kind = "RustModule"
-current_paths = ["crates/proof-protocol/src/boundary.rs", "crates/proof-protocol/src/parity/corpus.rs", "crates/proof-protocol/src/parity/mod.rs", "crates/proof-protocol/src/tests.rs"]
+current_paths = ["crates/proof-protocol/src/boundary.rs", "crates/proof-protocol/src/parity/corpus.rs", "crates/proof-protocol/src/parity/mod.rs", "crates/proof-protocol/src/receipt_status.rs", "crates/proof-protocol/src/tests.rs"]
 current_refs = []
 current_identity = "Extracted proof-protocol source tree under no-new intent/proof/shared enforcement (#2598)"
 current_product = "cargo-proof"
@@ -3285,7 +3289,7 @@ deletion_output = "Delete scaffold sources after parity cutover and old-path ret
 [[entry]]
 id = "INVENTORY-PROOF_ENGINE-SRC"
 source_kind = "RustModule"
-current_paths = ["crates/proof-engine/src/boundary.rs", "crates/proof-engine/src/cache.rs", "crates/proof-engine/src/captured_receipts.rs", "crates/proof-engine/src/command_adapter/boundary.rs", "crates/proof-engine/src/command_adapter/command_registry.rs", "crates/proof-engine/src/command_adapter/command_spec.rs", "crates/proof-engine/src/command_adapter/dry_run.rs", "crates/proof-engine/src/command_adapter/mod.rs", "crates/proof-engine/src/command_adapter/parity/mod.rs", "crates/proof-engine/src/command_adapter/receipt_interpretation.rs", "crates/proof-engine/src/command_adapter/tests.rs", "crates/proof-engine/src/contradiction.rs", "crates/proof-engine/src/corpus_semantics.rs", "crates/proof-engine/src/currentness.rs", "crates/proof-engine/src/dry_run.rs", "crates/proof-engine/src/execution.rs", "crates/proof-engine/src/intent_digest.rs", "crates/proof-engine/src/intent_planner.rs", "crates/proof-engine/src/obligation_authority_guard.rs", "crates/proof-engine/src/parity/mod.rs", "crates/proof-engine/src/parity/routing.rs", "crates/proof-engine/src/phase_gate.rs", "crates/proof-engine/src/plan_semantics_tests.rs", "crates/proof-engine/src/provider_api/boundary.rs", "crates/proof-engine/src/provider_api/conformance.rs", "crates/proof-engine/src/provider_api/contracts.rs", "crates/proof-engine/src/provider_api/fake_provider.rs", "crates/proof-engine/src/provider_api/mod.rs", "crates/proof-engine/src/provider_api/parity/mod.rs", "crates/proof-engine/src/provider_api/tests.rs", "crates/proof-engine/src/provider_registry.rs", "crates/proof-engine/src/subject_reconciliation.rs", "crates/proof-engine/src/tests.rs"]
+current_paths = ["crates/proof-engine/src/boundary.rs", "crates/proof-engine/src/cache.rs", "crates/proof-engine/src/captured_receipts.rs", "crates/proof-engine/src/command_adapter/boundary.rs", "crates/proof-engine/src/command_adapter/command_registry.rs", "crates/proof-engine/src/command_adapter/command_spec.rs", "crates/proof-engine/src/command_adapter/dry_run.rs", "crates/proof-engine/src/command_adapter/mod.rs", "crates/proof-engine/src/command_adapter/parity/mod.rs", "crates/proof-engine/src/command_adapter/receipt_interpretation.rs", "crates/proof-engine/src/command_adapter/tests.rs", "crates/proof-engine/src/contradiction.rs", "crates/proof-engine/src/corpus_semantics.rs", "crates/proof-engine/src/currentness.rs", "crates/proof-engine/src/dry_run.rs", "crates/proof-engine/src/execution.rs", "crates/proof-engine/src/intent_digest.rs", "crates/proof-engine/src/intent_planner.rs", "crates/proof-engine/src/obligation_authority_guard.rs", "crates/proof-engine/src/parity/mod.rs", "crates/proof-engine/src/parity/routing.rs", "crates/proof-engine/src/phase_gate.rs", "crates/proof-engine/src/plan_semantics_tests.rs", "crates/proof-engine/src/plan_v2.rs", "crates/proof-engine/src/provider_api/boundary.rs", "crates/proof-engine/src/provider_api/conformance.rs", "crates/proof-engine/src/provider_api/contracts.rs", "crates/proof-engine/src/provider_api/fake_provider.rs", "crates/proof-engine/src/provider_api/mod.rs", "crates/proof-engine/src/provider_api/parity/mod.rs", "crates/proof-engine/src/provider_api/tests.rs", "crates/proof-engine/src/provider_registry.rs", "crates/proof-engine/src/receipt_status.rs", "crates/proof-engine/src/subject_reconciliation.rs", "crates/proof-engine/src/tests.rs"]
 current_refs = []
 current_identity = "Extracted proof-engine source tree under no-new intent/proof/shared enforcement (#2598)"
 current_product = "cargo-proof"
@@ -3353,7 +3357,7 @@ deletion_output = "Delete scaffold sources after parity cutover and old-path ret
 [[entry]]
 id = "INVENTORY-CARGO_PROOF-SRC"
 source_kind = "RustModule"
-current_paths = ["crates/cargo-proof/src/cli.rs", "crates/cargo-proof/src/config.rs", "crates/cargo-proof/src/dry_run_cmd.rs", "crates/cargo-proof/src/exit.rs", "crates/cargo-proof/src/identity.rs", "crates/cargo-proof/src/lib.rs", "crates/cargo-proof/src/main.rs", "crates/cargo-proof/src/plan.rs", "crates/cargo-proof/src/providers/cargo_allow/adapter.rs", "crates/cargo-proof/src/providers/cargo_allow/contract.rs", "crates/cargo-proof/src/providers/cargo_allow/digest.rs", "crates/cargo-proof/src/providers/cargo_allow/discovery.rs", "crates/cargo-proof/src/providers/cargo_allow/mod.rs", "crates/cargo-proof/src/providers/cargo_allow/process_protocol.rs", "crates/cargo-proof/src/providers/hawk/adapter.rs", "crates/cargo-proof/src/providers/hawk/analysis_receipt.rs", "crates/cargo-proof/src/providers/hawk/finding_mapping.rs", "crates/cargo-proof/src/providers/hawk/mod.rs", "crates/cargo-proof/src/providers/hawk/receipt_currentness.rs", "crates/cargo-proof/src/providers/hawk/source_anchor_resolution.rs", "crates/cargo-proof/src/providers/mod.rs", "crates/cargo-proof/src/providers/ripr/adapter.rs", "crates/cargo-proof/src/providers/ripr/grip_comparison.rs", "crates/cargo-proof/src/providers/ripr/grip_receipt.rs", "crates/cargo-proof/src/providers/ripr/mod.rs", "crates/cargo-proof/src/providers/ripr/receipt_currentness.rs", "crates/cargo-proof/src/semantic_routing_guard_tests.rs", "crates/cargo-proof/src/render.rs", "crates/cargo-proof/src/tests.rs"]
+current_paths = ["crates/cargo-proof/src/cli.rs", "crates/cargo-proof/src/config.rs", "crates/cargo-proof/src/dry_run_cmd.rs", "crates/cargo-proof/src/exit.rs", "crates/cargo-proof/src/identity.rs", "crates/cargo-proof/src/lib.rs", "crates/cargo-proof/src/main.rs", "crates/cargo-proof/src/plan.rs", "crates/cargo-proof/src/providers/cargo_allow/adapter.rs", "crates/cargo-proof/src/providers/cargo_allow/contract.rs", "crates/cargo-proof/src/providers/cargo_allow/digest.rs", "crates/cargo-proof/src/providers/cargo_allow/discovery.rs", "crates/cargo-proof/src/providers/cargo_allow/mod.rs", "crates/cargo-proof/src/providers/cargo_allow/process_protocol.rs", "crates/cargo-proof/src/providers/hawk/adapter.rs", "crates/cargo-proof/src/providers/hawk/analysis_receipt.rs", "crates/cargo-proof/src/providers/hawk/finding_mapping.rs", "crates/cargo-proof/src/providers/hawk/mod.rs", "crates/cargo-proof/src/providers/hawk/receipt_currentness.rs", "crates/cargo-proof/src/providers/hawk/source_anchor_resolution.rs", "crates/cargo-proof/src/providers/mod.rs", "crates/cargo-proof/src/providers/ripr/adapter.rs", "crates/cargo-proof/src/providers/ripr/grip_comparison.rs", "crates/cargo-proof/src/providers/ripr/grip_receipt.rs", "crates/cargo-proof/src/providers/ripr/mod.rs", "crates/cargo-proof/src/providers/ripr/receipt_currentness.rs", "crates/cargo-proof/src/receipt_status.rs", "crates/cargo-proof/src/receipt_projection.rs", "crates/cargo-proof/src/semantic_routing_guard_tests.rs", "crates/cargo-proof/src/render.rs", "crates/cargo-proof/src/tests.rs"]
 current_refs = []
 current_identity = "Extracted cargo-proof source tree under no-new intent/proof/shared enforcement (#2598)"
 current_product = "cargo-proof"

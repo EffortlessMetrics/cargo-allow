@@ -1,0 +1,20 @@
+kind: Added
+body: >-
+  Add the end-to-end dev-scope parity harness for the engine-side
+  paired-precommit surface (#3523 slice D step iii). The real fixture
+  repository compiles through the legacy paired path, the paired facts
+  convert to canonical types through a serde round-trip converter (the
+  compiled-graph and implementation-slice families serialize the same
+  shape, so any field drift fails the conversion instead of silently
+  producing a wrong graph), and the engine-side
+  evaluate_paired_precommit_objectives_v1 must agree with the legacy
+  adapter finding-for-finding — change class, and every finding's code,
+  subject, posture, message, and action. A vacuity guard requires the
+  fixture to produce real findings on both sides. The inventory posture
+  is derived test-side through the documented legacy rules and passed
+  to the engine as a parameter; engine-side derivation parity belongs
+  to the future cargo-intent orchestrator. The dispatch surface gains an end-to-end
+  binding: the command the real report assembly embeds in the contract
+  sample must be a member of the canonical dispatched vocabulary. The
+  round-trip converter is the validated approach the slice-E
+  graph-converter lane (#3524) formalizes.

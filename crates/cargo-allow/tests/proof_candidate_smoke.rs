@@ -14,6 +14,7 @@ const CRATE_SET: &str =
 const EXPECTED_CRATES: &[&str] = &[
     "effortless-repo-protocol",
     "effortless-rust-source-index",
+    "intent-protocol",
     "proof-protocol",
     "proof-orchestrator",
     "cargo-proof",
@@ -44,8 +45,14 @@ fn example_proof_candidate_smoke_matches_contract() -> Result<(), String> {
     if observed != EXPECTED_CRATES {
         return Err(format!("proof candidate order mismatch: {observed:?}"));
     }
+    if EXPECTED_CRATES.len() != 6 {
+        return Err(format!(
+            "proof candidate crate count drifted from six: {}",
+            EXPECTED_CRATES.len()
+        ));
+    }
     for required in [
-        "five_crate_proof_package_graph",
+        "six_crate_proof_package_graph",
         "source_checkout_denied_during_decisive_install",
         "no_proof_or_test_invocation",
         "no_workspace_target_debug_binary",
@@ -70,7 +77,7 @@ fn example_proof_candidate_smoke_matches_contract() -> Result<(), String> {
 }
 
 #[test]
-fn proof_candidate_crate_set_fixture_lists_five_package_order_crates() -> Result<(), String> {
+fn proof_candidate_crate_set_fixture_lists_six_package_order_crates() -> Result<(), String> {
     for name in EXPECTED_CRATES {
         if !CRATE_SET.contains(&format!("\"{name}\"")) {
             return Err(format!("proof-candidate-crate-set.toml missing {name}"));

@@ -14,6 +14,8 @@ mod exit;
 mod identity;
 mod plan;
 mod providers;
+mod receipt_projection;
+mod receipt_status;
 mod render;
 
 pub use config::{ConfigProfileV1, ProofConfigV1, load_config};
@@ -29,8 +31,23 @@ pub use identity::{
     load_product_identity_fixture_toml,
 };
 pub use plan::{
-    PLAN_CLAIM_BOUNDARY, PLAN_FRAME_SCHEMA_ID, PlanOutcomeV1, plan_from_obligation_path,
-    render_plan_frame,
+    PLAN_CLAIM_BOUNDARY, PLAN_FRAME_SCHEMA_ID, PlanOutcomeV1, PlanV2OutcomeV1,
+    plan_from_obligation_path, plan_v2_from_paths, render_plan_frame, render_plan_v2_frame,
+};
+pub use providers::{
+    PROVIDER_REGISTRY_SCHEMA_ID, ProviderAvailabilityV1, ProviderDispositionV1,
+    ProviderProjectionV1, ProviderRegistryError, StaticProviderRegistryV1,
+};
+pub use receipt_projection::{
+    RECEIPT_EXPLAIN_SCHEMA_ID, RECEIPT_RECONCILE_SCHEMA_ID, ReceiptExplainItemV1,
+    ReceiptExplainProjectionV1, ReceiptProjectionError, ReceiptReconcileItemV1,
+    ReceiptReconcileProjectionV1, explain_receipt_item, reconcile_receipts, render_receipt_explain,
+    render_receipt_reconcile,
+};
+pub use receipt_status::{
+    CapturedReceiptInputsV1, ReceiptCommandError, captured_receipt_inputs_from_paths,
+    captured_receipt_status_from_paths, receipt_validation_satisfies_plan,
+    render_captured_receipt_status, render_captured_receipt_validation,
 };
 pub use render::{
     DryRunFrameV1, IdentityFrameV1, OutputFormat, PlanFrameV1, RenderFrame, emit_frame,

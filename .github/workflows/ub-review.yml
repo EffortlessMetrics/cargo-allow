@@ -88,6 +88,14 @@ jobs:
           cmp "${tmp}/before.worktree.diff" "${tmp}/after.worktree.diff"
           cmp "${tmp}/before.index.diff" "${tmp}/after.index.diff"
 
+      - name: Prove Changie history corpus roundtrip in isolation
+        env:
+          CHANGIE_BIN: ${{ runner.temp }}/changie-bin/changie
+        run: |
+          set -euo pipefail
+          bash scripts/test-changie-history-roundtrip.sh
+          cat target/changie-history-roundtrip/changie-history-roundtrip.receipt.json
+
   changelog-hook-contract:
     permissions:
       contents: read
@@ -124,7 +132,7 @@ jobs:
           EOF
       - name: Run ub-review
         if: env.UB_REVIEW_AVAILABLE == 'yes'
-        uses: EffortlessMetrics/ub-review@6b70acfffba9d6e818d7aac9a05a21c9d8c9d304
+        uses: EffortlessMetrics/ub-review@26b1094c2268ae10f2c73463e9c71d78664afae0
         with:
           profile: gh-runner
           posting: review

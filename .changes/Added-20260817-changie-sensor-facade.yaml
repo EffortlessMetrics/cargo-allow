@@ -1,0 +1,20 @@
+kind: Added
+body: >-
+  Stabilize the embeddable Changie sensor facade and prove isolated
+  packaged use (#3621 PR C1). `allow_files::changie_lint::sensor`
+  exposes `ChangieSensor` — parse_config, parse_fragment,
+  compile_contract, contract_text, lint, and a deterministic serialize
+  projection — over caller-supplied source documents only, with
+  compatibility, diagnostic-schema, and effective-rule schema
+  generations as the experimental 0.x stability seams, an explicit API
+  evolution policy, and no acquisition (no Git, filesystem walk,
+  network, or process) or cargo-allow application types in any public
+  signature. The packaged external-consumer proof packages the
+  workspace candidate set, extracts the exact packaged allow-files
+  bytes, patches crates-io to the packaged siblings (the candidate
+  harness's local-registry technique), and runs an isolated offline
+  fixture crate against the facade on valid and invalid Perl-derived
+  fixtures — no source checkout, no cargo-allow executable, no Go,
+  Aqua, or Changie, no network after preparation — retaining the crate
+  digest and source commit/tree in a receipt for the Perl qualification
+  consumer.

@@ -1,0 +1,8 @@
+kind: Added
+body: >-
+  Add read-only cargo-proof explain and reconcile projections over the typed
+  ProofPlanV2 and captured receipt-status report. Explain selects one proof
+  item or obligation with deterministic context and next action; reconcile
+  summarizes all statuses, provider availability, and outstanding work.
+  Human and JSON outputs share the same typed projection, and neither command
+  executes providers, mutates source, or opens a phase gate.

@@ -1,0 +1,20 @@
+kind: Changed
+body: >-
+  Remove the fake provider from cargo-proof's normal product path and
+  make the interim behavior truthful (#3598, P0 corrective leaf). The
+  plan command no longer registers FakeProofProviderV1 under the
+  cargo-allow id: the product registry is empty, planning fails
+  explicitly with a message naming the intended provider, the
+  not-yet-established limitation, and the planner's own result
+  (provider_registry_invalid), and a guard makes any plan produced from
+  an empty registry a hard failure. A recurrence check scans every
+  non-test cargo-proof source file for fake-provider references
+  (test-named files and #[cfg(test)] modules excluded), so the fake
+  cannot silently return to product code; it remains available in
+  proof-engine for conformance and fixtures. The interop harness's
+  journey C and the three-product dogfood smoke's plan stage are
+  corrected to assert the truthful result (explicit unavailable naming
+  the provider and limitation, deterministic across runs) with the
+  dry-run fixture unchanged; their receipts and logs no longer
+  describe a fake provider. Remaining #3598 scope (candidate-denominator and dogfood
+  claim corrections) recorded on the issue for the next installment.

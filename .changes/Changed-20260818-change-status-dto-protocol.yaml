@@ -1,0 +1,16 @@
+kind: Changed
+body: >-
+  Move the change-status operation DTOs to intent-protocol, the stable
+  operation DTO authority of the converged topology (#3309, slice 7 of
+  #2935, first installment). ChangeStatusReportV1, StagedChangeV1, the
+  CHANGE_STATUS_SCHEMA_ID authority constant, and the claim-boundary
+  constant now live in intent-protocol; cargo-intent re-exports them and
+  keeps only its rendering frame, and every producer and consumer path
+  compiles against the single protocol authority. The one-way
+  cargo-allow compatibility consumer keeps its schema-id literal (the
+  dependency law forbids importing the cargo-intent-owned protocol crate
+  in cargo-allow production) and is now bound to the authority constant
+  by a dev-scope mirror parity test, so the two sides cannot drift
+  apart silently. The new protocol module is registered in the product
+  move-ledger. Remaining for the slice: the installed-journey end-to-end
+  parity against #2605 and the move/shim/parity/V2 authority updates.
