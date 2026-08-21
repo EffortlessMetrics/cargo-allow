@@ -245,6 +245,7 @@ pub struct RustItemInventoryV1 {
     pub schema_version: String,
     pub repository_id: String,
     pub snapshot_id: String,
+    pub generation_identity: String,
     pub status: RustItemInventoryStatusV1,
     pub subjects: Vec<RustItemSubjectV1>,
     pub diagnostics: Vec<String>,
@@ -255,13 +256,14 @@ impl RustItemInventoryV1 {
         if self.schema_version != RUST_ITEM_SUBJECT_SCHEMA_VERSION
             || self.repository_id.trim().is_empty()
             || self.snapshot_id.trim().is_empty()
+            || self.generation_identity.trim().is_empty()
         {
             return false;
         }
 
         let mut subject_ids = BTreeSet::new();
         let mut declaration_ids = BTreeSet::new();
-        self.subjects.iter().all(|subject| {
+        let valid_subjects = self.subjects.iter().all(|subject| {
             subject.validate()
                 && subject.repository_id == self.repository_id
                 && subject.snapshot_id == self.snapshot_id
@@ -270,6 +272,40 @@ impl RustItemInventoryV1 {
                     .lint_declarations
                     .iter()
                     .all(|declaration| declaration_ids.insert(&declaration.subject_id))
+        });
+        valid_subjects && self.valid_container_links()
+    }
+
+    fn valid_container_links(&self) -> bool {
+        let ids = self
+            .subjects
+            .iter()
+            .map(|subject| subject.subject_id.clone())
+            .collect::<BTreeSet<_>>();
+        self.subjects.iter().all(|subject| {
+            let Some(container) = subject.container_subject_id.as_ref() else {
+                return true;
+            };
+            if container == &subject.subject_id || !ids.contains(container) {
+                return false;
+            }
+            let mut current = container.clone();
+            let mut seen = BTreeSet::new();
+            while seen.insert(current.clone()) {
+                let Some(next) = self
+                    .subjects
+                    .iter()
+                    .find(|candidate| candidate.subject_id == current)
+                    .and_then(|candidate| candidate.container_subject_id.clone())
+                else {
+                    return true;
+                };
+                if next == subject.subject_id {
+                    return false;
+                }
+                current = next;
+            }
+            false
         })
     }
 }

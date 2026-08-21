@@ -3493,7 +3493,7 @@ deletion_output = "Delete scaffold sources after parity cutover and old-path ret
 [[entry]]
 id = "INVENTORY-RUST_SOURCE_INDEX-SRC"
 source_kind = "RustModule"
-current_paths = ["crates/effortless-rust-source-index/src/error.rs", "crates/effortless-rust-source-index/src/inventory_tests.rs", "crates/effortless-rust-source-index/src/inventory.rs", "crates/effortless-rust-source-index/src/lib.rs", "crates/effortless-rust-source-index/src/parity/mod.rs", "crates/effortless-rust-source-index/src/syntax.rs", "crates/effortless-rust-source-index/src/test_subjects.rs", "crates/effortless-rust-source-index/src/tests.rs"]
+current_paths = ["crates/effortless-rust-source-index/src/error.rs", "crates/effortless-rust-source-index/src/inventory_tests.rs", "crates/effortless-rust-source-index/src/inventory.rs", "crates/effortless-rust-source-index/src/lib.rs", "crates/effortless-rust-source-index/src/item_subjects.rs", "crates/effortless-rust-source-index/src/item_subjects/model.rs", "crates/effortless-rust-source-index/src/item_subjects/resolve.rs", "crates/effortless-rust-source-index/src/item_subjects/tests.rs", "crates/effortless-rust-source-index/src/parity/mod.rs", "crates/effortless-rust-source-index/src/syntax.rs", "crates/effortless-rust-source-index/src/test_subjects.rs", "crates/effortless-rust-source-index/src/tests.rs"]
 current_refs = []
 current_identity = "Extracted rust-source-index source tree under no-new intent/proof/shared enforcement (#2598)"
 current_product = "shared"

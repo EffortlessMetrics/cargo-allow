@@ -81,6 +81,16 @@ pub fn resolve_rust_item_subject(
     if !inventory.validate() {
         return resolution(RustItemResolutionClassV1::NotProven, Vec::new());
     }
+    if inventory.status != RustItemInventoryStatusV1::Complete {
+        return resolution(
+            match inventory.status {
+                RustItemInventoryStatusV1::Partial => RustItemResolutionClassV1::Partial,
+                RustItemInventoryStatusV1::Unsupported => RustItemResolutionClassV1::NotProven,
+                RustItemInventoryStatusV1::Complete => RustItemResolutionClassV1::NotProven,
+            },
+            Vec::new(),
+        );
+    }
 
     let mut matching = inventory
         .subjects

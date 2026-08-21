@@ -64,6 +64,7 @@ fn inventory(
         schema_version: RUST_ITEM_SUBJECT_SCHEMA_VERSION.into(),
         repository_id: "repo".into(),
         snapshot_id: "tree:abc".into(),
+        generation_identity: "generation:1".into(),
         status,
         subjects,
         diagnostics: Vec::new(),
@@ -121,6 +122,28 @@ fn inventory_status_controls_missing_authority() {
         complete.class,
         RustItemResolutionClassV1::MissingWithinCompleteScope
     );
+}
+
+#[test]
+fn partial_inventory_never_resolves_an_existing_item_exactly() {
+    let subject = item("partial", &["partial"]);
+    let result = resolve_rust_item_subject(
+        &inventory(RustItemInventoryStatusV1::Partial, vec![subject]),
+        &selector(),
+    );
+    assert_eq!(result.class, RustItemResolutionClassV1::Partial);
+    assert!(result.subjects.is_empty());
+}
+
+#[test]
+fn container_links_require_existing_noncyclic_subjects() {
+    let mut child = item("child", &["child"]);
+    child.container_subject_id = Some(RustItemSubjectIdV1::new("missing"));
+    assert!(!inventory(RustItemInventoryStatusV1::Complete, vec![child]).validate());
+
+    let mut self_link = item("self", &["self"]);
+    self_link.container_subject_id = Some(RustItemSubjectIdV1::new("self"));
+    assert!(!inventory(RustItemInventoryStatusV1::Complete, vec![self_link]).validate());
 }
 
 #[test]
