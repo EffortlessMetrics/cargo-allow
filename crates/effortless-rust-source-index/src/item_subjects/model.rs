@@ -166,11 +166,12 @@ pub struct RustItemSubjectV1 {
     pub subject_id: RustItemSubjectIdV1,
     pub repository_id: String,
     pub snapshot_id: String,
+    pub generation_identity: String,
     pub target: RustItemTargetIdentityV1,
     pub module_path: Vec<String>,
     pub item_path: Vec<String>,
     pub definition_kind: RustItemDefinitionKindV1,
-    pub source: RustItemSourceIdentityV1,
+    pub source: Option<RustItemSourceIdentityV1>,
     pub container_subject_id: Option<RustItemSubjectIdV1>,
     pub visibility: RustVisibilityShapeV1,
     pub cfg_expressions: Vec<String>,
@@ -203,18 +204,27 @@ impl RustItemSubjectV1 {
             && !self.subject_id.as_str().trim().is_empty()
             && !self.repository_id.trim().is_empty()
             && !self.snapshot_id.trim().is_empty()
+            && !self.generation_identity.trim().is_empty()
             && !self.target.package.trim().is_empty()
             && !self.target.crate_name.trim().is_empty()
             && !self.target.name.trim().is_empty()
             && !self.item_path.is_empty()
-            && !self.source.source_path.trim().is_empty()
-            && !self.source.declaration_identity.trim().is_empty()
-            && self.source.declaration_range.validate()
-            && self
-                .source
-                .identifier_range
-                .as_ref()
-                .is_none_or(RustSourceRangeV1::validate)
+            && match (
+                &self.source,
+                !self.source_available || self.generated_or_macro_owned,
+            ) {
+                (Some(source), _) => {
+                    !source.source_path.trim().is_empty()
+                        && !source.declaration_identity.trim().is_empty()
+                        && source.declaration_range.validate()
+                        && source
+                            .identifier_range
+                            .as_ref()
+                            .is_none_or(RustSourceRangeV1::validate)
+                }
+                (None, true) => true,
+                (None, false) => false,
+            }
             && self
                 .module_path
                 .iter()
