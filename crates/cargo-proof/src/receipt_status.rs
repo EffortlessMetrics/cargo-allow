@@ -163,8 +163,17 @@ fn apply_native_context(
     reason: &mut String,
     context: String,
 ) {
-    *status = proof_engine::ProofItemReceiptStatusV1::ReceiptMalformed;
-    *reason = context;
+    match status {
+        proof_engine::ProofItemReceiptStatusV1::ReceiptStale
+        | proof_engine::ProofItemReceiptStatusV1::ReceiptForDifferentItem
+        | proof_engine::ProofItemReceiptStatusV1::ReceiptMalformed => {
+            *reason = format!("{reason}; {context}");
+        }
+        _ => {
+            *status = proof_engine::ProofItemReceiptStatusV1::ReceiptMalformed;
+            *reason = context;
+        }
+    }
 }
 
 fn apply_native_currentness_context(
@@ -172,63 +181,35 @@ fn apply_native_currentness_context(
     reason: &mut String,
     context: String,
 ) {
-    if *status == proof_engine::ProofItemReceiptStatusV1::SatisfiedByCurrentReceipt {
-        *status = proof_engine::ProofItemReceiptStatusV1::CurrentNotProven;
-        *reason = context;
-    } else {
-        *reason = format!("{reason}; {context}");
+    match status {
+        proof_engine::ProofItemReceiptStatusV1::SatisfiedByCurrentReceipt
+        | proof_engine::ProofItemReceiptStatusV1::CurrentFindings
+        | proof_engine::ProofItemReceiptStatusV1::CurrentFailed
+        | proof_engine::ProofItemReceiptStatusV1::CurrentPartial
+        | proof_engine::ProofItemReceiptStatusV1::CurrentUnsupported
+        | proof_engine::ProofItemReceiptStatusV1::CurrentNotProven
+        | proof_engine::ProofItemReceiptStatusV1::CurrentInstrumentFailure => {
+            *status = proof_engine::ProofItemReceiptStatusV1::CurrentNotProven;
+            *reason = context;
+        }
+        _ => *reason = format!("{reason}; {context}"),
     }
 }
 
 fn validate_native_currentness(
     provider_id: &str,
-    plan_item: &Value,
-    manifest_row: &Value,
+    _plan_item: &Value,
+    _manifest_row: &Value,
 ) -> Result<(), String> {
-    let expected_requirement = plan_item
-        .get("intent_obligation_id")
-        .and_then(Value::as_str)
-        .ok_or_else(|| "proof-plan item has no intent obligation identity".to_string())?;
-    let expected_snapshot = manifest_row
-        .get("snapshot_identity")
-        .and_then(Value::as_str)
-        .ok_or_else(|| "receipt row has no snapshot identity".to_string())?;
-    let expected_subject = manifest_row
-        .get("subject_identity")
-        .and_then(Value::as_str)
-        .ok_or_else(|| "receipt row has no subject identity".to_string())?;
-    let expected_request = manifest_row
-        .get("provider_request_identity")
-        .and_then(Value::as_str)
-        .ok_or_else(|| "receipt row has no provider request identity".to_string())?;
     match provider_id {
-        "proof.cargo-allow.v1" => Ok(()),
-        "proof.ripr.v1" => {
-            #[cfg(feature = "provider-ripr")]
-            {
-                let payload = manifest_row
-                    .get("receipt")
-                    .and_then(|receipt| receipt.get("provider_payload"))
-                    .cloned()
-                    .ok_or_else(|| "receipt row has no provider payload".to_string())?;
-                let receipt: crate::providers::ripr::RiprGripReceiptV1 =
-                    serde_json::from_value(payload)
-                        .map_err(|error| format!("malformed RIPR receipt: {error}"))?;
-                if receipt.snapshot_digest == expected_snapshot
-                    && receipt.subject_ref == expected_subject
-                    && receipt.seam_ref == expected_request
-                    && receipt.requirement_id == expected_requirement
-                {
-                    Ok(())
-                } else {
-                    Err("RIPR receipt currentness does not match expected identities".to_string())
-                }
-            }
-            #[cfg(not(feature = "provider-ripr"))]
-            {
-                Err("RIPR native currentness is unavailable in this registry build".to_string())
-            }
-        }
+        "proof.cargo-allow.v1" => Err(
+            "cargo-allow native currentness is not proven: static provider contract has no captured identity binding"
+                .to_string(),
+        ),
+        "proof.ripr.v1" => Err(
+            "RIPR native currentness is not proven: authoritative requirement evidence purpose/seam is not present in the receipt manifest"
+                .to_string(),
+        ),
         "proof.hawk.v1" => Err(
             "Hawk native currentness is not proven: expected frontend and driver identities are not declared by the receipt manifest"
                 .to_string(),
@@ -831,7 +812,7 @@ mod tests {
 
     #[cfg(feature = "provider-ripr")]
     #[test]
-    fn ripr_native_currentness_rejects_identity_mismatch() -> Result<(), String> {
+    fn ripr_native_currentness_fails_closed_without_typed_purpose() -> Result<(), String> {
         let plan_item = serde_json::json!({"intent_obligation_id": "requirement-1"});
         let manifest_row = serde_json::json!({
             "snapshot_identity": "sha256:v1:expected-snapshot",
@@ -859,7 +840,7 @@ mod tests {
         let error = validate_native_currentness("proof.ripr.v1", &plan_item, &manifest_row)
             .err()
             .ok_or_else(|| "mismatched RIPR snapshot was accepted".to_string())?;
-        if !error.contains("does not match expected identities") {
+        if !error.contains("not proven") {
             return Err(format!("unexpected RIPR mismatch: {error}"));
         }
         Ok(())
