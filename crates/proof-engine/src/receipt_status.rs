@@ -400,6 +400,63 @@ mod tests {
     }
 
     #[test]
+    fn every_provider_result_class_has_an_explicit_status() -> Result<(), String> {
+        let expected = [
+            (
+                ResultClassV1::Completed,
+                ProofItemReceiptStatusV1::SatisfiedByCurrentReceipt,
+            ),
+            (
+                ResultClassV1::Findings,
+                ProofItemReceiptStatusV1::CurrentFindings,
+            ),
+            (
+                ResultClassV1::PartialData,
+                ProofItemReceiptStatusV1::CurrentPartial,
+            ),
+            (
+                ResultClassV1::Unsupported,
+                ProofItemReceiptStatusV1::CurrentUnsupported,
+            ),
+            (
+                ResultClassV1::NotProven,
+                ProofItemReceiptStatusV1::CurrentNotProven,
+            ),
+            (
+                ResultClassV1::InstrumentFailure,
+                ProofItemReceiptStatusV1::CurrentInstrumentFailure,
+            ),
+            (
+                ResultClassV1::StaleInput,
+                ProofItemReceiptStatusV1::ReceiptStale,
+            ),
+            (ResultClassV1::Conflict, ProofItemReceiptStatusV1::Conflict),
+            (
+                ResultClassV1::MalformedInput,
+                ProofItemReceiptStatusV1::ReceiptMalformed,
+            ),
+            (
+                ResultClassV1::Cancelled,
+                ProofItemReceiptStatusV1::CurrentInstrumentFailure,
+            ),
+        ];
+        for (result_class, expected_status) in expected {
+            let report = evaluate_captured_receipt_status(&plan(), &manifest(result_class))?;
+            let actual = report
+                .items
+                .first()
+                .map(|item| item.status)
+                .ok_or_else(|| "result class produced no status row".to_string())?;
+            if actual != expected_status {
+                return Err(format!(
+                    "{result_class:?} mapped to {actual:?}, expected {expected_status:?}"
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
     fn missing_receipt_is_not_success() -> Result<(), String> {
         let empty = CapturedReceiptManifestV1::new("plan-1", Vec::new());
         let report = evaluate_captured_receipt_status(&plan(), &empty)?;

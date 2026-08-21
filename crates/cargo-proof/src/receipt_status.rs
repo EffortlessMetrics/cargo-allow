@@ -488,6 +488,50 @@ mod tests {
     }
 
     #[test]
+    fn provider_and_native_context_transition_only_verified_success() -> Result<(), String> {
+        let mut provider_status = ProofItemReceiptStatusV1::SatisfiedByCurrentReceipt;
+        let mut provider_reason = "verified receipt".to_string();
+        apply_provider_context(
+            &mut provider_status,
+            &mut provider_reason,
+            "provider unavailable".to_string(),
+        );
+        if provider_status != ProofItemReceiptStatusV1::ProviderUnavailable
+            || provider_reason != "provider unavailable"
+        {
+            return Err("provider context did not transition verified success".to_string());
+        }
+
+        let mut native_status = ProofItemReceiptStatusV1::SatisfiedByCurrentReceipt;
+        let mut native_reason = "verified receipt".to_string();
+        apply_native_context(
+            &mut native_status,
+            &mut native_reason,
+            "malformed native payload".to_string(),
+        );
+        if native_status != ProofItemReceiptStatusV1::ReceiptMalformed
+            || native_reason != "malformed native payload"
+        {
+            return Err("native context did not transition verified success".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn native_payload_shape_errors_fail_closed() -> Result<(), String> {
+        for row in [
+            serde_json::json!({}),
+            serde_json::json!({"receipt": {}}),
+            serde_json::json!({"receipt": {"provider_payload_schema": "schema"}}),
+        ] {
+            if validate_native_payload("proof.cargo-allow.v1", &row).is_ok() {
+                return Err("incomplete native payload was accepted".to_string());
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
     fn human_status_uses_stable_snake_case_token() -> Result<(), String> {
         let output = render_captured_receipt_status(&report(), crate::OutputFormat::Human)?;
         if !output.contains("current_findings") || output.contains("CurrentFindings") {
