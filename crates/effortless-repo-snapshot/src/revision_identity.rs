@@ -126,6 +126,34 @@ pub struct ResolvedRevisionIdentity {
     pub tree: String,
 }
 
+/// Opaque, root-bound capability for one resolved revision spelling.
+///
+/// Construct this value with [`resolve_revision_capability`]. Its private
+/// fields prevent callers from fabricating commit/tree evidence; consumers
+/// must use the same canonical repository root and exact requested spelling.
+/// For a committed range, the capability freezes the head while the explicit
+/// base is resolved separately for that range request.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResolvedRevisionCapability {
+    identity: ResolvedRevisionIdentity,
+    root: PathBuf,
+}
+
+impl ResolvedRevisionCapability {
+    /// Return the exact revision spelling resolved into this capability.
+    pub fn requested(&self) -> &str {
+        &self.identity.requested
+    }
+    /// Return the immutable commit object resolved for the requested spelling.
+    pub fn commit(&self) -> &str {
+        &self.identity.commit
+    }
+    /// Return the tree object belonging to [`Self::commit`].
+    pub fn tree(&self) -> &str {
+        &self.identity.tree
+    }
+}
+
 /// The identity of one caller-selected load-bearing path at the snapshot head.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SelectedPathIdentity {
@@ -230,6 +258,22 @@ pub fn resolve_revision_identity(
     })
 }
 
+/// Canonicalize the repository root before resolving the requested spelling.
+pub fn resolve_revision_capability(
+    root: impl AsRef<Path>,
+    revision: &str,
+) -> SnapshotResult<ResolvedRevisionCapability> {
+    let root = root.as_ref().canonicalize().map_err(|error| {
+        git_error(
+            SnapshotErrorKind::Inventory,
+            "repository_root_unavailable",
+            error.to_string(),
+        )
+    })?;
+    let identity = resolve_revision_identity(&root, revision)?;
+    Ok(ResolvedRevisionCapability { identity, root })
+}
+
 /// Probe worktree/index dirty state. Infallible: a Git failure or non-repository
 /// directory is encoded as an explicit state so a dirty or unavailable tree can
 /// never be mistaken for a clean committed snapshot.
@@ -329,14 +373,50 @@ pub fn repository_snapshot(
     root: impl AsRef<Path>,
     request: &RepositorySnapshotRequest,
 ) -> SnapshotResult<RepositorySnapshotIdentity> {
-    let root = root.as_ref();
     let head_spec = if request.head.trim().is_empty() {
         "HEAD"
     } else {
         request.head.as_str()
     };
-    let head = resolve_revision_identity(root, head_spec)?;
+    let capability = resolve_revision_capability(root, head_spec)?;
+    repository_snapshot_from_capability(capability.root.clone(), request, capability)
+}
 
+/// Build a snapshot from an opaque capability without re-resolving its head;
+/// committed ranges resolve only their explicit base revision.
+pub fn repository_snapshot_from_capability(
+    root: impl AsRef<Path>,
+    request: &RepositorySnapshotRequest,
+    capability: ResolvedRevisionCapability,
+) -> SnapshotResult<RepositorySnapshotIdentity> {
+    let root = root.as_ref();
+    let canonical_root = root.canonicalize().map_err(|error| {
+        git_error(
+            SnapshotErrorKind::Inventory,
+            "repository_root_unavailable",
+            error.to_string(),
+        )
+    })?;
+    if canonical_root != capability.root {
+        return Err(git_error(
+            SnapshotErrorKind::InvalidConfig,
+            "resolved_capability_root_mismatch",
+            "resolved revision capability belongs to a different repository root",
+        ));
+    }
+    let requested_head = if request.head.trim().is_empty() {
+        "HEAD"
+    } else {
+        request.head.as_str()
+    };
+    if requested_head != capability.requested() {
+        return Err(git_error(
+            SnapshotErrorKind::InvalidConfig,
+            "resolved_capability_revision_mismatch",
+            "snapshot request revision does not match the resolved capability",
+        ));
+    }
+    let head = capability.identity;
     let (base, merge_base) = match request.kind {
         RepositorySnapshotKind::CommittedHead => (None, None),
         RepositorySnapshotKind::CommittedRange => {
