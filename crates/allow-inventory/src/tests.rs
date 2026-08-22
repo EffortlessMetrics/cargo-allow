@@ -1,9 +1,40 @@
 use super::*;
-use crate::filesystem::visit_for_test;
+use crate::filesystem::{existing_regular_files_with_metadata, visit_for_test};
 use allow_core::source_tree_path_is_ignored;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
+#[test]
+fn inaccessible_paths_make_inventory_partial_but_git_failure_wins_fallback() {
+    let options = InventoryOptions {
+        ignored: Vec::new(),
+        generated: Vec::new(),
+        include_untracked: false,
+    };
+    assert_eq!(
+        super::inventory_completeness(
+            &options,
+            false,
+            &[],
+            &[],
+            &[PathBuf::from("blocked.rs")],
+            &[],
+        ),
+        InventoryCompleteness::Partial
+    );
+    assert_eq!(
+        super::inventory_completeness(
+            &options,
+            true,
+            &[],
+            &[],
+            &[PathBuf::from("blocked.rs")],
+            &[PathBuf::from("skipped.rs")],
+        ),
+        InventoryCompleteness::Fallback
+    );
+}
 
 #[test]
 fn ignores_target_paths() {
@@ -176,7 +207,7 @@ fn existing_regular_files_call_presence_observer() -> Result<(), Box<dyn std::er
     write_file(root.join("also-kept.txt"), "also kept");
     fs::create_dir_all(root.join("directory"))?;
 
-    let (existing, deleted_tracked, submodule_paths) = existing_regular_files(
+    let (existing, deleted_tracked, submodule_paths, inaccessible_paths) = existing_regular_files(
         &root,
         vec![
             PathBuf::from("kept.txt"),
@@ -194,8 +225,38 @@ fn existing_regular_files_call_presence_observer() -> Result<(), Box<dyn std::er
     assert_eq!(deleted_tracked, vec![PathBuf::from("missing.txt")]);
     // A tracked path that is a directory is a submodule candidate (#1846).
     assert_eq!(submodule_paths, vec![PathBuf::from("directory")]);
+    assert!(inaccessible_paths.is_empty());
     remove_dir(&root);
     Ok(())
+}
+
+#[test]
+fn existing_regular_files_discloses_non_not_found_metadata_errors() {
+    let root = temp_root("inaccessible-metadata");
+    write_file(root.join("kept.txt"), "kept");
+    let (existing, deleted, submodules, inaccessible) = existing_regular_files_with_metadata(
+        &root,
+        vec![
+            PathBuf::from("kept.txt"),
+            PathBuf::from("missing.txt"),
+            PathBuf::from("blocked.txt"),
+        ],
+        |path| {
+            if path.ends_with("missing.txt") {
+                Err(std::io::Error::from(std::io::ErrorKind::NotFound))
+            } else if path.ends_with("blocked.txt") {
+                Err(std::io::Error::from(std::io::ErrorKind::PermissionDenied))
+            } else {
+                fs::metadata(path)
+            }
+        },
+    );
+
+    assert_eq!(existing, vec![PathBuf::from("kept.txt")]);
+    assert_eq!(deleted, vec![PathBuf::from("missing.txt")]);
+    assert!(submodules.is_empty());
+    assert_eq!(inaccessible, vec![PathBuf::from("blocked.txt")]);
+    remove_dir(&root);
 }
 
 #[test]

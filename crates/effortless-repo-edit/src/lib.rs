@@ -41,12 +41,15 @@ pub use digest::sha256_v1_bytes;
 pub use error::{RepoEditError, RepoEditResult, json_escape, stable_hash_hex};
 pub use mutation_lock::MutationLock;
 pub use mutation_target::{
-    MutationTarget, MutationTargetOwnership, lock_path_for_target, resolve_mutation_target,
+    MutationTarget, MutationTargetOwnership, assert_target_identity_for_replace,
+    assert_target_leaf_identity_for_replace, assert_target_matches_held, lock_path_for_target,
+    resolve_mutation_target,
 };
 #[doc(hidden)]
 pub use parity::parity_contract_paths;
 pub use single_target_apply::{
-    SingleTargetApplyMode, SingleTargetApplyRequest, SingleTargetApplyResponse, apply_single_target,
+    SingleTargetApplyMode, SingleTargetApplyRequest, SingleTargetApplyResponse,
+    apply_single_target, apply_single_target_with_target,
 };
 pub use target_identity::canonicalize_lexically;
 

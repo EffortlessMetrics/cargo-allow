@@ -1,7 +1,11 @@
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_inventory::resolve_source_tree_root;
 use allow_policy::starter_policy;
-use effortless_repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
+#[cfg(test)]
+use effortless_repo_edit::apply_single_target;
+use effortless_repo_edit::{
+    SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target_with_target,
+};
 use std::path::{Path, PathBuf};
 
 #[path = "init_args.rs"]
@@ -31,24 +35,33 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
                 "--strict is not supported with --profile spec-system; remove --strict or drop --profile spec-system",
             ));
         }
-        let _mutation_lock = if args.dry_run {
-            None
+        let config = spec_system_config_arg(&args.config);
+        let (_mutation_lock, held_target) = if args.dry_run {
+            (None, None)
         } else {
             let cwd = current_dir()?;
             let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;
-            // Lock the spec-system profile config path, not a sidecar (#3224).
-            let lock_target = root.join(".allow/profiles/spec-system.toml");
-            Some(
-                MutationLock::acquire(&lock_target)
-                    .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?,
-            )
+            // Lock the selected primary config path, not a sidecar (#3224).
+            // Alias-convergent key: resolve through the canonical target
+            // authority so path spellings share one lock (#2487/#2491).
+            let primary_config = config
+                .as_deref()
+                .unwrap_or(Path::new(".allow/profiles/spec-system.toml"));
+            let lock_target = root_relative_path(&root, primary_config);
+            let resolved = effortless_repo_edit::resolve_mutation_target(&lock_target, &root)
+                .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+            let lock = MutationLock::acquire_for_target(&resolved)
+                .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+            // Keep the lock alive for the command and pass the exact target
+            // identity to the writer; a parent retarget must fail closed.
+            (Some(lock), Some(resolved))
         };
-        let config = spec_system_config_arg(&args.config);
         return spec_system::cmd_spec_system_init(spec_system::SpecSystemInitCommandArgs {
             root: &args.root,
             config: config.as_deref(),
             force: args.force,
             dry_run: args.dry_run,
+            held_target: held_target.as_ref(),
         });
     }
 
@@ -79,12 +92,15 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
         return Ok(());
     }
     // Lock the actual target file path, not a sidecar lock file (#3224).
-    // This matches add/propose/refresh/prune, which lock the mutation target
-    // directly so that concurrent mutations on the same file are serialized.
-    let _mutation_lock = MutationLock::acquire(&path)
-        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
-    // #2490: assert the write target is within the source-tree root.
+    // This matches add/propose/refresh/prune, which resolve the mutation
+    // target through the canonical authority and lock its identity so
+    // concurrent mutations on the same file serialize across spellings
+    // (#2487/#2491). Containment precedes the lock, matching add.rs.
     crate::policy_config::assert_path_within_root(&root, &path)?;
+    let resolved = effortless_repo_edit::resolve_mutation_target(&path, &root)
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+    let _mutation_lock = MutationLock::acquire_for_target(&resolved)
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     let path_existed = path.exists();
     if path_existed && !args.force {
         return Err(CargoAllowError::with_kind(
@@ -100,14 +116,17 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
     // verbatim, and the tracked-file inventory reports the repo-relative path,
     // so the self-receipt would never match its own ledger (#3032).
     let policy_contents = starter_policy(args.strict, &policy_rel_display(&root, &path)?);
-    apply_single_target(SingleTargetApplyRequest {
-        repository_root: &root,
-        target: &args.config,
-        contents: &policy_contents,
-        caller_reference: Some("cargo-allow:init"),
-        lock_identity: Some(created_path_display(&root, &path)),
-        mode: init_policy_apply_mode(args.force),
-    })
+    apply_single_target_with_target(
+        SingleTargetApplyRequest {
+            repository_root: &root,
+            target: &args.config,
+            contents: &policy_contents,
+            caller_reference: Some("cargo-allow:init"),
+            lock_identity: Some(created_path_display(&root, &path)),
+            mode: init_policy_apply_mode(args.force),
+        },
+        &resolved,
+    )
     .into_result()
     .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     // #2778: report the correct action word — "overwrote" for --force on

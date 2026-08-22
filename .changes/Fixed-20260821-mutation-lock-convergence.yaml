@@ -1,0 +1,11 @@
+kind: Fixed
+body: >-
+  Implement the #2491 A+B lock/write slice for umbrella #2487. The
+  pre-replace identity recheck from apply_single_target is now centralized
+  in the exported mutation-target authority, with coverage for symlink
+  substitution and disappeared targets. Default and spec-system primary
+  init configs, plus in-tree migrate output, resolve through MutationTarget,
+  acquire alias-convergent locks with acquire_for_target, and pass the held
+  normalized target through the final write. Parent retargets fail closed.
+  Secondary bootstrap files and external migrate output remain outside this
+  slice.
