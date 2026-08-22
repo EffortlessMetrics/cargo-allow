@@ -22,6 +22,19 @@ thread_local! {
     static SCAN_CACHE: RefCell<allow_rust::ScanCache> = RefCell::new(allow_rust::ScanCache::new());
 }
 
+const TOOL_OWNED_CACHE_GLOB: &str = "target/cargo-allow/cache/**";
+
+fn inventory_options_with_tool_cache_ignore(mut options: InventoryOptions) -> InventoryOptions {
+    if !options
+        .ignored
+        .iter()
+        .any(|glob| glob == TOOL_OWNED_CACHE_GLOB)
+    {
+        options.ignored.push(TOOL_OWNED_CACHE_GLOB.to_string());
+    }
+    options
+}
+
 use crate::{
     EvidenceValidationMode, InventoryFacts, canonical_companion_findings, current_dir,
     evidence_inventory::{
@@ -75,11 +88,11 @@ pub(crate) fn load_staged_world(
     let policy_digest = allow_core::sha256_v1_bytes(policy_text.as_bytes());
     let cfg = allow_policy::parse_policy_with_reportable_evidence_at(&policy_path, &policy_text)?;
     reject_unsupported_staged_companion_sensors(&cfg)?;
-    let options = InventoryOptions {
+    let options = inventory_options_with_tool_cache_ignore(InventoryOptions {
         ignored: cfg.workspace.ignored.clone(),
         generated: cfg.workspace.generated.clone(),
         include_untracked: false,
-    };
+    });
     let source_identity = snapshot.identity.semantic_hash.clone();
     let inventory = staged_inventory(&snapshot, &options);
     let inventory_facts =
@@ -355,11 +368,11 @@ pub(crate) fn load_world_with_evidence_mode(
     };
     let (cfg, policy_digest) =
         crate::policy_config::load_policy_at_path_with_digest(policy_path, evidence_validation)?;
-    let opts = InventoryOptions {
+    let opts = inventory_options_with_tool_cache_ignore(InventoryOptions {
         ignored: cfg.workspace.ignored.clone(),
         generated: cfg.workspace.generated.clone(),
         include_untracked,
-    };
+    });
     let inventory = inventory(&root, &opts)?;
     let inventory_facts =
         InventoryFacts::scanned_inventory(&inventory).with_policy_digest(policy_digest);
@@ -374,10 +387,19 @@ pub(crate) fn load_world_with_evidence_mode(
         )?;
     }
     let mut findings = Vec::new();
+    // Durable scan-fact store (#2571): advisory on every failure path. The
+    // store lives under target/ (never scanned) and is keyed by content
+    // digest, so a stale or corrupt store can only cost a cold re-scan.
+    let mut store = allow_rust::ScanCacheStore::open(
+        &allow_rust::ScanCacheStore::default_dir(&root),
+        allow_rust::scan_cache_generation(),
+    );
     let rust_scan = SCAN_CACHE.with(|cache| {
         let mut cache = cache.borrow_mut();
-        allow_rust::scan_rust_files_cached(&root, &files, &mut cache)
-    })?;
+        allow_rust::scan_rust_files_cached_with_store(&root, &files, &mut cache, &mut store)
+    });
+    let _ = store.flush();
+    let rust_scan = rust_scan?;
     let rust_files_skipped = rust_scan.files_skipped;
     let rust_files_with_parse_errors = rust_scan.files_with_parse_errors;
     findings.extend(rust_scan.findings);
@@ -447,11 +469,11 @@ pub(crate) fn load_world_for_path(
     let cfg = load_policy_at_path(policy_path, EvidenceValidationMode::ReportOnly)?;
     let inventory = inventory(
         &root,
-        &InventoryOptions {
+        &inventory_options_with_tool_cache_ignore(InventoryOptions {
             ignored: cfg.workspace.ignored.clone(),
             generated: cfg.workspace.generated.clone(),
             include_untracked,
-        },
+        }),
     )?;
     // Normalize the target path to repo-relative for the scan.
     let files = vec![normalize_to_repo_relative(&root, target_path)];
@@ -620,16 +642,28 @@ fn load_world_without_policy(
     FederationEvaluation,
 )> {
     let cfg = AllowConfig::empty();
-    let opts = InventoryOptions {
+    let opts = inventory_options_with_tool_cache_ignore(InventoryOptions {
         ignored: cfg.workspace.ignored.clone(),
         generated: cfg.workspace.generated.clone(),
         include_untracked,
-    };
+    });
     let inventory = inventory(root, &opts)?;
     let inventory_facts = InventoryFacts::scanned_inventory(&inventory);
     let files = inventory.files;
     let mut findings = Vec::new();
-    let rust_scan = allow_rust::scan_rust_files(root, &files)?;
+    let mut store = allow_rust::ScanCacheStore::open(
+        &allow_rust::ScanCacheStore::default_dir(root),
+        allow_rust::scan_cache_generation(),
+    );
+    let rust_scan = SCAN_CACHE.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        allow_rust::scan_rust_files_cached_with_store(root, &files, &mut cache, &mut store)
+    })?;
+    let _ = store.flush();
+    let inventory_facts = inventory_facts
+        .with_rust_files_considered(rust_scan.files_considered)
+        .with_rust_files_skipped(rust_scan.files_skipped)
+        .with_rust_files_with_parse_errors(rust_scan.files_with_parse_errors);
     findings.extend(rust_scan.findings);
     findings.extend(allow_files::scan_files_with_options(
         &files,
@@ -682,6 +716,54 @@ mod tests {
     use std::fs;
     use std::process::Command;
     use std::sync::atomic::{AtomicUsize, Ordering};
+    #[test]
+    fn no_policy_world_cache_exclusion_has_cold_warm_parity() {
+        let root = fixture_dir();
+        fs::create_dir_all(root.join("src"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("src dir: {err}")));
+        fs::write(root.join("src/lib.rs"), "fn cached() {}\n")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("source: {err}")));
+        git(root.as_path(), &["init"]);
+        let cache_dir = root.join("target/cargo-allow/cache");
+        let cache_file = cache_dir.join("scan-cache.v2.bin");
+        assert!(!cache_file.exists());
+        let cold = load_world_without_policy(
+            &root,
+            None,
+            true,
+            EvidenceValidationMode::ReportOnly,
+            empty_federation_evaluation(PrecedenceTier::DiscoveryFallback),
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("cold world: {err}")));
+        assert!(cache_file.exists());
+        assert_eq!(cold.3.completeness, InventoryCompleteness::Scoped);
+        assert_eq!(cold.3.files_scanned, Some(1));
+        assert!(!format!("{:?}", cold.2).contains("target/cargo-allow/cache"));
+        let warm = load_world_without_policy(
+            &root,
+            None,
+            true,
+            EvidenceValidationMode::ReportOnly,
+            empty_federation_evaluation(PrecedenceTier::DiscoveryFallback),
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("warm world: {err}")));
+        assert_eq!(warm.3.completeness, InventoryCompleteness::Scoped);
+        assert_eq!(warm.3.files_scanned, Some(1));
+        assert!(!format!("{:?}", warm.2).contains("target/cargo-allow/cache"));
+        assert_eq!(cold.2, warm.2);
+        assert_eq!(cold.3.completeness, warm.3.completeness);
+        assert_eq!(cold.3.files_scanned, warm.3.files_scanned);
+        assert_eq!(cold.3.rust_files_considered, warm.3.rust_files_considered);
+        assert_eq!(cold.3.rust_files_skipped, warm.3.rust_files_skipped);
+        assert_eq!(cold.3.rust_files_with_parse_errors, 0);
+        assert_eq!(warm.3.rust_files_with_parse_errors, 0);
+        assert_eq!(cold.3.rust_files_considered, 1);
+        assert_eq!(warm.3.rust_files_considered, 1);
+        assert_eq!(cold.3.rust_files_skipped, 0);
+        assert_eq!(warm.3.rust_files_skipped, 0);
+        fs::remove_dir_all(root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture: {err}")));
+    }
 
     #[test]
     fn load_world_abort_rejects_untracked_local_evidence_by_default() {

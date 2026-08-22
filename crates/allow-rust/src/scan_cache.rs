@@ -17,10 +17,12 @@
 
 #[cfg(feature = "syntax")]
 use crate::scan_rust_source_with_completeness;
-use allow_core::{CargoAllowResult, Finding};
+use allow_core::{CargoAllowResult, Finding, sha256_v1_bytes};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
+
+use crate::scan_cache_store::ScanCacheStore;
 
 /// In-memory cache of parsed Rust findings keyed by file identity.
 pub struct ScanCache {
@@ -30,6 +32,7 @@ pub struct ScanCache {
 struct CacheEntry {
     mtime: SystemTime,
     size: u64,
+    content_digest: Option<String>,
     findings: Vec<Finding>,
     has_parse_error: bool,
 }
@@ -104,9 +107,94 @@ impl ScanCache {
             CacheEntry {
                 mtime,
                 size,
+                content_digest: None,
                 findings: scan.findings.clone(),
                 has_parse_error: scan.has_parse_error,
             },
+        );
+
+        Ok((scan.findings, scan.has_parse_error, false))
+    }
+
+    /// Scan a single Rust file through the in-memory cache and the durable
+    /// content-addressed store (#2571).
+    ///
+    /// The file is always read (the digest is the invalidation authority), but
+    /// a digest match — in memory or on disk — skips the tree-sitter parse.
+    /// Returns `(findings, has_parse_error, skipped)` with the same skipped
+    /// semantics as [`ScanCache::scan_file`].
+    #[cfg(feature = "syntax")]
+    pub fn scan_file_with_store(
+        &mut self,
+        root: &Path,
+        rel: &Path,
+        store: &mut ScanCacheStore,
+    ) -> CargoAllowResult<(Vec<Finding>, bool, bool)> {
+        let abs = root.join(rel);
+        let text = match allow_core::read_text_file_capped(&abs) {
+            Ok(text) => text,
+            Err(_) => {
+                self.entries.remove(rel);
+                store.remove(rel);
+                return Ok((Vec::new(), false, true));
+            }
+        };
+        let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
+        let content_digest = sha256_v1_bytes(text.as_bytes());
+
+        // In-memory hit: same evaluated bytes inside this invocation.
+        if let Some(entry) = self.entries.get(rel)
+            && entry.content_digest.as_deref() == Some(content_digest.as_str())
+        {
+            store.put(
+                rel,
+                content_digest,
+                entry.has_parse_error,
+                entry.findings.clone(),
+            );
+            return Ok((entry.findings.clone(), entry.has_parse_error, false));
+        }
+
+        // Durable hit: a previous invocation parsed these exact bytes with
+        // this scanner generation.
+        if let Some((findings, has_parse_error)) = store.get(rel, &content_digest) {
+            let metadata = std::fs::metadata(&abs).ok();
+            self.entries.insert(
+                rel.to_path_buf(),
+                CacheEntry {
+                    mtime: metadata
+                        .as_ref()
+                        .and_then(|m| m.modified().ok())
+                        .unwrap_or(SystemTime::UNIX_EPOCH),
+                    size: metadata.map(|m| m.len()).unwrap_or(0),
+                    content_digest: Some(content_digest),
+                    findings: findings.clone(),
+                    has_parse_error,
+                },
+            );
+            return Ok((findings, has_parse_error, false));
+        }
+
+        let scan = scan_rust_source_with_completeness(rel, text);
+        let metadata = std::fs::metadata(&abs).ok();
+        self.entries.insert(
+            rel.to_path_buf(),
+            CacheEntry {
+                mtime: metadata
+                    .as_ref()
+                    .and_then(|m| m.modified().ok())
+                    .unwrap_or(SystemTime::UNIX_EPOCH),
+                size: metadata.map(|m| m.len()).unwrap_or(0),
+                content_digest: Some(content_digest.clone()),
+                findings: scan.findings.clone(),
+                has_parse_error: scan.has_parse_error,
+            },
+        );
+        store.put(
+            rel,
+            content_digest,
+            scan.has_parse_error,
+            scan.findings.clone(),
         );
 
         Ok((scan.findings, scan.has_parse_error, false))

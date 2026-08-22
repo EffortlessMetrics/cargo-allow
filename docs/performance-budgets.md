@@ -73,3 +73,22 @@ The `why` fast path (#2425) eliminates items 1-3 for one-file questions.
 Future optimization targets: bucket policy entries by kind/family/path before
 matching, compile globs once, and add bounded parallelism for independent file
 parses.
+
+## Persistent scan facts (#2571)
+
+`check` persists parsed Rust scan facts under
+`target/cargo-allow/cache/`, keyed by the SHA-256 of the exact text the
+scanner evaluated. A warm invocation skips the tree-sitter parse for
+unchanged files; invalidation is content-exact, so preserved mtimes cannot
+mask changed content and mtime churn alone never changes results. Entries
+are bound to a scanner generation (crate version plus scanner semantic epoch);
+an accidentally corrupted or truncated store fails open to an ordinary cold
+scan, and skipped files are never persisted. The checksum detects corruption
+and truncation; it is not an authenticity or anti-tamper mechanism.
+
+Claim boundary: the cache is trusted-local *performance state*, not authority.
+Every durable entry is re-validated against the current file digest before
+use; failed validation or decode falls back to ordinary scanning. The
+checksum detects accidental corruption and truncation but is not an
+authenticity mechanism. It lives under `target/`, is never part of the
+source-tree inventory, and every failure path degrades to ordinary scanning.
