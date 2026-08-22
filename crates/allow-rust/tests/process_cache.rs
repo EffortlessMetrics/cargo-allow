@@ -4,9 +4,10 @@ use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdout, Command, ExitStatus, Stdio};
 use std::sync::mpsc;
-use std::time::{Duration, SystemTime};
+use std::time::{Duration, Instant, SystemTime};
 
 const LOCK_FILE_NAME: &str = "scan-cache.v2.lock";
+const CHILD_WAIT_TIMEOUT: Duration = Duration::from_secs(10);
 
 struct RootGuard(PathBuf);
 impl RootGuard {
@@ -32,19 +33,41 @@ struct ChildGuard {
 }
 impl ChildGuard {
     fn wait(&mut self) -> Result<ExitStatus, String> {
-        self.child.wait().map_err(|e| e.to_string())
+        let deadline = Instant::now() + CHILD_WAIT_TIMEOUT;
+        loop {
+            match self.child.try_wait().map_err(|e| e.to_string())? {
+                Some(status) => return Ok(status),
+                None if Instant::now() >= deadline => {
+                    return Err("child did not exit before the deadline".to_string());
+                }
+                None => std::thread::yield_now(),
+            }
+        }
     }
     fn kill_and_wait(&mut self) -> Result<ExitStatus, String> {
-        let _ = self.child.kill();
+        if self.child.try_wait().map_err(|e| e.to_string())?.is_none() {
+            self.child
+                .kill()
+                .map_err(|error| format!("failed to kill child: {error}"))?;
+        }
         self.wait()
     }
 }
 impl Drop for ChildGuard {
     fn drop(&mut self) {
-        if self.child.try_wait().ok().flatten().is_none() {
-            let _ = self.child.kill();
+        if !matches!(self.child.try_wait(), Ok(None)) {
+            return;
         }
-        let _ = self.child.wait();
+        if self.child.kill().is_err() {
+            return;
+        }
+        let deadline = Instant::now() + CHILD_WAIT_TIMEOUT;
+        while Instant::now() < deadline {
+            match self.child.try_wait() {
+                Ok(Some(_)) | Err(_) => return,
+                Ok(None) => std::thread::yield_now(),
+            }
+        }
     }
 }
 
