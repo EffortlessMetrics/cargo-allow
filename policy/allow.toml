@@ -4197,6 +4197,27 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-11131"
+kind = "non_rust_file"
+family = "documentation"
+path = "crates/allow-inventory/CHARACTERIZATION.md"
+owner = "core/inventory"
+classification = "inventory_characterization_doc"
+reason = "Characterization doc stating exactly what the source-tree inventory includes and excludes; closes the #1783 umbrella acceptance alongside the fixture-parity test."
+evidence = ["issue:1783", "test:fixture_inventory_matches_git_ls_files_expectations", "test:submodule_fixture_reports_partial_completeness_with_disclosure"]
+created = "2026-08-22"
+review_after = "2027-02-22"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "md"
+glob = "crates/allow-inventory/CHARACTERIZATION.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0119"
 kind = "non_rust_file"
 family = "package_metadata"
