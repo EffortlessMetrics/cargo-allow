@@ -351,17 +351,38 @@ pub(crate) fn load_world_with_evidence_mode(
     include_untracked: bool,
     evidence_validation: EvidenceValidationMode,
 ) -> WorldLoadResult {
+    load_world_with_evidence_mode_and_cache(
+        explicit_root,
+        config,
+        require_config,
+        kind_filter,
+        include_untracked,
+        evidence_validation,
+        true,
+    )
+}
+
+pub(crate) fn load_world_with_evidence_mode_and_cache(
+    explicit_root: Option<&Path>,
+    config: Option<&Path>,
+    require_config: bool,
+    kind_filter: Option<&str>,
+    include_untracked: bool,
+    evidence_validation: EvidenceValidationMode,
+    persistent_cache: bool,
+) -> WorldLoadResult {
     let cwd = current_dir()?;
     let root = resolve_source_tree_root(explicit_root, cwd)?;
     let (policy_path, federation) = match evaluate_source_exception_policy(&root, config) {
         Ok(value) => value,
         Err(_err) if !require_config => {
-            return load_world_without_policy(
+            return load_world_without_policy_and_cache(
                 &root,
                 kind_filter,
                 include_untracked,
                 evidence_validation,
                 empty_federation_evaluation(PrecedenceTier::DiscoveryFallback),
+                persistent_cache,
             );
         }
         Err(err) => return Err(err),
@@ -390,15 +411,23 @@ pub(crate) fn load_world_with_evidence_mode(
     // Durable scan-fact store (#2571): advisory on every failure path. The
     // store lives under target/ (never scanned) and is keyed by content
     // digest, so a stale or corrupt store can only cost a cold re-scan.
-    let mut store = allow_rust::ScanCacheStore::open(
-        &allow_rust::ScanCacheStore::default_dir(&root),
-        allow_rust::scan_cache_generation(),
-    );
-    let rust_scan = SCAN_CACHE.with(|cache| {
-        let mut cache = cache.borrow_mut();
-        allow_rust::scan_rust_files_cached_with_store(&root, &files, &mut cache, &mut store)
-    });
-    let _ = store.flush();
+    let rust_scan = if persistent_cache {
+        let mut store = allow_rust::ScanCacheStore::open(
+            &allow_rust::ScanCacheStore::default_dir(&root),
+            allow_rust::scan_cache_generation(),
+        );
+        let result = SCAN_CACHE.with(|cache| {
+            let mut cache = cache.borrow_mut();
+            allow_rust::scan_rust_files_cached_with_store(&root, &files, &mut cache, &mut store)
+        });
+        let _ = store.flush();
+        result
+    } else {
+        SCAN_CACHE.with(|cache| {
+            let mut cache = cache.borrow_mut();
+            allow_rust::scan_rust_files_cached(&root, &files, &mut cache)
+        })
+    };
     let rust_scan = rust_scan?;
     let rust_files_skipped = rust_scan.files_skipped;
     let rust_files_with_parse_errors = rust_scan.files_with_parse_errors;
@@ -641,6 +670,30 @@ fn load_world_without_policy(
     InventoryFacts,
     FederationEvaluation,
 )> {
+    load_world_without_policy_and_cache(
+        root,
+        kind_filter,
+        include_untracked,
+        evidence_validation,
+        federation,
+        true,
+    )
+}
+
+fn load_world_without_policy_and_cache(
+    root: &Path,
+    kind_filter: Option<&str>,
+    include_untracked: bool,
+    evidence_validation: EvidenceValidationMode,
+    federation: FederationEvaluation,
+    persistent_cache: bool,
+) -> CargoAllowResult<(
+    PathBuf,
+    AllowConfig,
+    Vec<Finding>,
+    InventoryFacts,
+    FederationEvaluation,
+)> {
     let cfg = AllowConfig::empty();
     let opts = inventory_options_with_tool_cache_ignore(InventoryOptions {
         ignored: cfg.workspace.ignored.clone(),
@@ -651,15 +704,23 @@ fn load_world_without_policy(
     let inventory_facts = InventoryFacts::scanned_inventory(&inventory);
     let files = inventory.files;
     let mut findings = Vec::new();
-    let mut store = allow_rust::ScanCacheStore::open(
-        &allow_rust::ScanCacheStore::default_dir(root),
-        allow_rust::scan_cache_generation(),
-    );
-    let rust_scan = SCAN_CACHE.with(|cache| {
-        let mut cache = cache.borrow_mut();
-        allow_rust::scan_rust_files_cached_with_store(root, &files, &mut cache, &mut store)
-    })?;
-    let _ = store.flush();
+    let rust_scan = if persistent_cache {
+        let mut store = allow_rust::ScanCacheStore::open(
+            &allow_rust::ScanCacheStore::default_dir(root),
+            allow_rust::scan_cache_generation(),
+        );
+        let result = SCAN_CACHE.with(|cache| {
+            let mut cache = cache.borrow_mut();
+            allow_rust::scan_rust_files_cached_with_store(root, &files, &mut cache, &mut store)
+        })?;
+        let _ = store.flush();
+        result
+    } else {
+        SCAN_CACHE.with(|cache| {
+            let mut cache = cache.borrow_mut();
+            allow_rust::scan_rust_files_cached(root, &files, &mut cache)
+        })?
+    };
     let inventory_facts = inventory_facts
         .with_rust_files_considered(rust_scan.files_considered)
         .with_rust_files_skipped(rust_scan.files_skipped)
@@ -716,17 +777,150 @@ mod tests {
     use std::fs;
     use std::process::Command;
     use std::sync::atomic::{AtomicUsize, Ordering};
+
     #[test]
-    fn no_policy_world_cache_exclusion_has_cold_warm_parity() {
+    fn persistent_cache_off_no_policy_preserves_result_without_creating_store() -> Result<(), String>
+    {
         let root = fixture_dir();
-        fs::create_dir_all(root.join("src"))
-            .unwrap_or_else(|err| std::panic::panic_any(format!("src dir: {err}")));
+        fs::create_dir_all(root.join("src")).map_err(|err| format!("src dir: {err}"))?;
+        fs::write(root.join("src/lib.rs"), "fn disabled() {}\n")
+            .map_err(|err| format!("source: {err}"))?;
+        git(root.as_path(), &["init"]);
+        let enabled = load_world_without_policy_and_cache(
+            &root,
+            None,
+            true,
+            EvidenceValidationMode::ReportOnly,
+            empty_federation_evaluation(PrecedenceTier::DiscoveryFallback),
+            true,
+        )
+        .map_err(|err| format!("enabled world: {err}"))?;
+        let cache_dir = allow_rust::ScanCacheStore::default_dir(&root);
+        let cache_file = cache_dir.join("scan-cache.v2.bin");
+        let sentinel = b"persistent-cache-off-sentinel";
+        fs::write(&cache_file, sentinel).map_err(|err| format!("seed cache: {err}"))?;
+        let lock_file = cache_dir.join("scan-cache.v2.lock");
+        if lock_file.exists() {
+            fs::remove_file(&lock_file).map_err(|err| format!("remove lock: {err}"))?;
+        }
+        for entry in fs::read_dir(&cache_dir).map_err(|err| format!("list cache: {err}"))? {
+            let entry = entry.map_err(|err| format!("read cache entry: {err}"))?;
+            if entry
+                .file_name()
+                .to_string_lossy()
+                .starts_with("scan-cache.v2.bin.tmp-")
+            {
+                fs::remove_file(entry.path()).map_err(|err| format!("remove temp: {err}"))?;
+            }
+        }
+        let disabled = load_world_without_policy_and_cache(
+            &root,
+            None,
+            true,
+            EvidenceValidationMode::ReportOnly,
+            empty_federation_evaluation(PrecedenceTier::DiscoveryFallback),
+            false,
+        )
+        .map_err(|err| format!("disabled world: {err}"))?;
+        if enabled.2 != disabled.2 || enabled.3 != disabled.3 {
+            return Err("disabled and enabled no-policy results differ".to_string());
+        }
+        if fs::read(&cache_file).map_err(|err| format!("read cache: {err}"))? != sentinel {
+            return Err("disabled mode modified the cache".to_string());
+        }
+        if lock_file.exists()
+            || fs::read_dir(&cache_dir)
+                .map_err(|err| format!("list cache: {err}"))?
+                .filter_map(Result::ok)
+                .any(|entry| entry.file_name().to_string_lossy().contains(".tmp"))
+        {
+            return Err("disabled mode touched lock/temp cache files".to_string());
+        }
+        fs::remove_dir_all(root).map_err(|err| format!("remove fixture dir: {err}"))?;
+        Ok(())
+    }
+
+    #[test]
+    fn persistent_cache_off_policy_preserves_result_without_creating_store() -> Result<(), String> {
+        let root = fixture_dir();
+        fs::create_dir_all(root.join("src")).map_err(|err| format!("src dir: {err}"))?;
+        fs::create_dir_all(root.join("policy")).map_err(|err| format!("policy dir: {err}"))?;
+        fs::write(root.join("src/lib.rs"), "fn disabled() {}\n")
+            .map_err(|err| format!("source: {err}"))?;
+        fs::write(
+            root.join("policy/allow.toml"),
+            "schema_version = 1\n\n[workspace]\nignored = []\ngenerated = []\n",
+        )
+        .map_err(|err| format!("policy: {err}"))?;
+        git(root.as_path(), &["init"]);
+        let enabled = load_world_with_evidence_mode_and_cache(
+            Some(&root),
+            Some(Path::new("policy/allow.toml")),
+            true,
+            None,
+            true,
+            EvidenceValidationMode::ReportOnly,
+            true,
+        )
+        .map_err(|err| format!("enabled world: {err}"))?;
+        let cache_dir = allow_rust::ScanCacheStore::default_dir(&root);
+        let cache_file = cache_dir.join("scan-cache.v2.bin");
+        let sentinel = b"persistent-cache-off-sentinel";
+        fs::write(&cache_file, sentinel).map_err(|err| format!("seed cache: {err}"))?;
+        let lock_file = cache_dir.join("scan-cache.v2.lock");
+        if lock_file.exists() {
+            fs::remove_file(&lock_file).map_err(|err| format!("remove lock: {err}"))?;
+        }
+        for entry in fs::read_dir(&cache_dir).map_err(|err| format!("list cache: {err}"))? {
+            let entry = entry.map_err(|err| format!("read cache entry: {err}"))?;
+            if entry
+                .file_name()
+                .to_string_lossy()
+                .starts_with("scan-cache.v2.bin.tmp-")
+            {
+                fs::remove_file(entry.path()).map_err(|err| format!("remove temp: {err}"))?;
+            }
+        }
+        let disabled = load_world_with_evidence_mode_and_cache(
+            Some(&root),
+            Some(Path::new("policy/allow.toml")),
+            true,
+            None,
+            true,
+            EvidenceValidationMode::ReportOnly,
+            false,
+        )
+        .map_err(|err| format!("disabled world: {err}"))?;
+        if enabled.2 != disabled.2 || enabled.3 != disabled.3 {
+            return Err("disabled and enabled policy results differ".to_string());
+        }
+        if fs::read(&cache_file).map_err(|err| format!("read cache: {err}"))? != sentinel {
+            return Err("disabled mode modified the cache".to_string());
+        }
+        if lock_file.exists()
+            || fs::read_dir(&cache_dir)
+                .map_err(|err| format!("list cache: {err}"))?
+                .filter_map(Result::ok)
+                .any(|entry| entry.file_name().to_string_lossy().contains(".tmp"))
+        {
+            return Err("disabled mode touched lock/temp cache files".to_string());
+        }
+        fs::remove_dir_all(root).map_err(|err| format!("remove fixture dir: {err}"))?;
+        Ok(())
+    }
+
+    #[test]
+    fn no_policy_world_cache_exclusion_has_cold_warm_parity() -> Result<(), String> {
+        let root = fixture_dir();
+        fs::create_dir_all(root.join("src")).map_err(|err| format!("src dir: {err}"))?;
         fs::write(root.join("src/lib.rs"), "fn cached() {}\n")
-            .unwrap_or_else(|err| std::panic::panic_any(format!("source: {err}")));
+            .map_err(|err| format!("source: {err}"))?;
         git(root.as_path(), &["init"]);
         let cache_dir = root.join("target/cargo-allow/cache");
         let cache_file = cache_dir.join("scan-cache.v2.bin");
-        assert!(!cache_file.exists());
+        if cache_file.exists() {
+            return Err("cache unexpectedly existed before cold scan".to_string());
+        }
         let cold = load_world_without_policy(
             &root,
             None,
@@ -734,11 +928,16 @@ mod tests {
             EvidenceValidationMode::ReportOnly,
             empty_federation_evaluation(PrecedenceTier::DiscoveryFallback),
         )
-        .unwrap_or_else(|err| std::panic::panic_any(format!("cold world: {err}")));
-        assert!(cache_file.exists());
-        assert_eq!(cold.3.completeness, InventoryCompleteness::Scoped);
-        assert_eq!(cold.3.files_scanned, Some(1));
-        assert!(!format!("{:?}", cold.2).contains("target/cargo-allow/cache"));
+        .map_err(|err| format!("cold world: {err}"))?;
+        if !cache_file.exists()
+            || cold.3.completeness != InventoryCompleteness::Scoped
+            || cold.3.files_scanned != Some(1)
+            || format!("{:?}", cold.2).contains("target/cargo-allow/cache")
+        {
+            return Err(
+                "cold scan did not produce the expected scoped source-only result".to_string(),
+            );
+        }
         let warm = load_world_without_policy(
             &root,
             None,
@@ -746,23 +945,26 @@ mod tests {
             EvidenceValidationMode::ReportOnly,
             empty_federation_evaluation(PrecedenceTier::DiscoveryFallback),
         )
-        .unwrap_or_else(|err| std::panic::panic_any(format!("warm world: {err}")));
-        assert_eq!(warm.3.completeness, InventoryCompleteness::Scoped);
-        assert_eq!(warm.3.files_scanned, Some(1));
-        assert!(!format!("{:?}", warm.2).contains("target/cargo-allow/cache"));
-        assert_eq!(cold.2, warm.2);
-        assert_eq!(cold.3.completeness, warm.3.completeness);
-        assert_eq!(cold.3.files_scanned, warm.3.files_scanned);
-        assert_eq!(cold.3.rust_files_considered, warm.3.rust_files_considered);
-        assert_eq!(cold.3.rust_files_skipped, warm.3.rust_files_skipped);
-        assert_eq!(cold.3.rust_files_with_parse_errors, 0);
-        assert_eq!(warm.3.rust_files_with_parse_errors, 0);
-        assert_eq!(cold.3.rust_files_considered, 1);
-        assert_eq!(warm.3.rust_files_considered, 1);
-        assert_eq!(cold.3.rust_files_skipped, 0);
-        assert_eq!(warm.3.rust_files_skipped, 0);
-        fs::remove_dir_all(root)
-            .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture: {err}")));
+        .map_err(|err| format!("warm world: {err}"))?;
+        if warm.3.completeness != InventoryCompleteness::Scoped
+            || warm.3.files_scanned != Some(1)
+            || format!("{:?}", warm.2).contains("target/cargo-allow/cache")
+            || cold.2 != warm.2
+            || cold.3.completeness != warm.3.completeness
+            || cold.3.files_scanned != warm.3.files_scanned
+            || cold.3.rust_files_considered != warm.3.rust_files_considered
+            || cold.3.rust_files_skipped != warm.3.rust_files_skipped
+            || cold.3.rust_files_with_parse_errors != 0
+            || warm.3.rust_files_with_parse_errors != 0
+            || cold.3.rust_files_considered != 1
+            || warm.3.rust_files_considered != 1
+            || cold.3.rust_files_skipped != 0
+            || warm.3.rust_files_skipped != 0
+        {
+            return Err("cold and warm source-only results differ".to_string());
+        }
+        fs::remove_dir_all(root).map_err(|err| format!("remove fixture: {err}"))?;
+        Ok(())
     }
 
     #[test]

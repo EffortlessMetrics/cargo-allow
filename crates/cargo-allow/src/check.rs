@@ -11,6 +11,8 @@ use std::process;
 
 #[path = "check_args.rs"]
 mod check_args;
+#[cfg(test)]
+pub(crate) use check_args::PersistentCacheMode;
 pub(crate) use check_args::{CheckArgs, CheckPhase};
 #[path = "check_lane_posture.rs"]
 mod check_lane_posture;
@@ -38,12 +40,28 @@ use crate::{
     EvidenceReportSummary, EvidenceValidationMode, InventoryFacts, ProfileArg, ReportRenderArgs,
     SourceTreeReportContext, assert_path_within_root, config_path, current_dir,
     evidence_inventory::current_evidence_source_tree_files, load_compat_world, load_staged_world,
-    load_world_with_evidence_mode, policy_baseline_debt_entries, print_report, report_config,
-    spec_precommit, spec_system, write_file,
+    load_world_with_evidence_mode_and_cache, policy_baseline_debt_entries, print_report,
+    report_config, spec_precommit, spec_system, write_file,
 };
 use allow_inventory::{InventorySource, resolve_source_tree_root};
 
 pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
+    cmd_check_with_persistent_cache(
+        args,
+        matches!(args.persistent_cache, check_args::PersistentCacheMode::On),
+    )
+}
+
+pub(crate) fn cmd_check_with_persistent_cache(
+    args: &CheckArgs,
+    persistent_cache: bool,
+) -> CargoAllowResult<()> {
+    if !persistent_cache && (args.staged || args.phase.is_some() || args.staged_identity_only) {
+        return Err(CargoAllowError::with_kind(
+            allow_core::CargoAllowErrorKind::Usage,
+            "--persistent-cache off is supported only for source-tree checks",
+        ));
+    }
     if args.staged || args.phase.is_some() || args.staged_identity_only {
         if args.staged_identity_only {
             return spec_precommit::cmd_staged_identity(args);
@@ -95,6 +113,12 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
         };
     }
     if matches!(args.profile, Some(ProfileArg::SpecSystem)) {
+        if !persistent_cache {
+            return Err(CargoAllowError::with_kind(
+                allow_core::CargoAllowErrorKind::Usage,
+                "--persistent-cache off is supported only for source-tree checks",
+            ));
+        }
         reject_source_exception_options(
             args.compat,
             args.kind.as_deref(),
@@ -112,7 +136,7 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
         });
     }
 
-    match cmd_check_source_tree(args) {
+    match cmd_check_source_tree(args, persistent_cache) {
         Ok(()) => Ok(()),
         Err(err) => {
             if let Some(path) = &args.receipt {
@@ -130,7 +154,7 @@ pub(crate) fn cmd_check(args: &CheckArgs) -> CargoAllowResult<()> {
     }
 }
 
-fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
+fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllowResult<()> {
     // Infer format from output file extension when --format is not explicitly
     // set (#3210). Without this, `--output foo.md` silently writes human text
     // to a .md file. We only infer when the user didn't explicitly pass --format;
@@ -172,13 +196,14 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
             crate::world::default_federation_evaluation(),
         )
     } else {
-        load_world_with_evidence_mode(
+        load_world_with_evidence_mode_and_cache(
             args.root.root.as_deref(),
             args.config.as_deref(),
             true,
             args.kind.as_deref(),
             args.include_untracked,
             EvidenceValidationMode::ReportOnly,
+            persistent_cache,
         )?
     };
     let federation_bundle = FederationReportBundle::from_evaluation(&federation);

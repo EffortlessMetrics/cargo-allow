@@ -5,6 +5,7 @@ use crate::*;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::check::PersistentCacheMode;
     use crate::cli::ColorChoice;
     use clap::CommandFactory;
     use clap::Parser;
@@ -115,6 +116,55 @@ mod tests {
 
         assert_eq!(parsed.color, ColorChoice::Always);
         assert!(matches!(parsed.command, Some(CargoAllowCommand::Add(_))));
+    }
+
+    #[test]
+    fn clap_parses_explicit_persistent_cache_mode() -> Result<(), String> {
+        let parsed = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "check",
+            "--persistent-cache",
+            "off",
+        ]))
+        .map_err(|err| format!("persistent cache mode should parse: {err}"))?;
+        let Some(CargoAllowCommand::Check(args)) = parsed.command else {
+            return Err("expected check command".to_string());
+        };
+        if args.persistent_cache != PersistentCacheMode::Off {
+            return Err("persistent cache mode did not parse as off".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn clap_rejects_unknown_persistent_cache_mode() -> Result<(), String> {
+        let error = CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "check",
+            "--persistent-cache",
+            "sometimes",
+        ]))
+        .err()
+        .ok_or_else(|| "unknown persistent cache mode should fail".to_string())?;
+        if error.kind() != clap::error::ErrorKind::InvalidValue {
+            return Err("unknown mode returned the wrong parser error".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn clap_rejects_persistent_cache_mode_on_non_check_commands() -> Result<(), String> {
+        if CargoAllowCli::try_parse_from(argv(vec![
+            "cargo-allow",
+            "audit",
+            "--persistent-cache",
+            "off",
+        ]))
+        .is_ok()
+        {
+            return Err("persistent cache mode unexpectedly parsed for audit".to_string());
+        }
+        Ok(())
     }
 
     #[test]

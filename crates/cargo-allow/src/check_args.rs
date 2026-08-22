@@ -5,6 +5,9 @@ use crate::{OutputFormat, ProfileArg, RootArgs, parse_kind_filter_arg};
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct CheckArgs {
+    /// Control the trusted-local persistent scan cache.
+    #[arg(long, value_enum, default_value_t = PersistentCacheMode::On)]
+    pub(crate) persistent_cache: PersistentCacheMode,
     #[command(flatten)]
     pub(crate) root: RootArgs,
     /// Policy config path. With --profile spec-system, profile config path.
@@ -76,6 +79,13 @@ pub(crate) struct CheckArgs {
     /// Authorize source-preview evidence for an explicit tool-under-test.
     #[arg(long)]
     pub(crate) preview_authorized: bool,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, ValueEnum)]
+pub(crate) enum PersistentCacheMode {
+    #[default]
+    On,
+    Off,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]

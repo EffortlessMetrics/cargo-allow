@@ -1,0 +1,8 @@
+kind: Added
+body: >-
+  Add the explicit `check --persistent-cache on|off` control. The off mode
+  preserves findings, statuses, ordering, and receipt behavior while skipping
+  persistent-cache reads, creation, and writes on policy-backed checks and the
+  internal no-policy fallback. This does not change the trusted-local cache
+  contract or add
+  telemetry, global caching, performance, scan-loop, or release behavior.
