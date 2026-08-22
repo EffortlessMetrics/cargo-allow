@@ -142,6 +142,12 @@ pub(crate) fn cmd_spec_system_init(args: SpecSystemInitCommandArgs<'_>) -> Cargo
     reject_cutover_embedded_authority(args.root, "init")?;
     let cwd = current_dir()?;
     let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;
+    if !args.dry_run && args.held_target.is_none() {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            "spec-system primary init requires a held mutation target authority",
+        ));
+    }
     let config_path = args
         .config
         .unwrap_or_else(|| Path::new(super::DEFAULT_PROFILE_CONFIG));
