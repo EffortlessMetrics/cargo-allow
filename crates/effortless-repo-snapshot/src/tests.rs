@@ -291,18 +291,18 @@ fn batched_tree_blob_lookup_matches_per_path_lookups() -> Result<(), String> {
     fs::create_dir_all(root.join("adir")).map_err(|err| format!("mkdir adir: {err}"))?;
     write_file(&root, "adir/inner.txt", "dir entry\n")?;
     // Enough bulk paths that a 64-path chunk boundary is crossed.
-    for index in 0..40 {
+    for index in 0..80 {
         write_file(&root, &format!("bulk/f{index:02}.txt"), "bulk\n")?;
     }
     commit_all(&root, "seed")?;
 
     #[cfg(unix)]
-    let link_added = (|| -> Result<(), String> {
+    {
         std::os::unix::fs::symlink("src/present.rs", root.join("link.rs"))
             .map_err(|err| format!("symlink fixture: {err}"))?;
         git(&root, &["add", "link.rs"])?;
-        git(&root, &["commit", "-q", "-m", "link"])
-    })();
+        git(&root, &["commit", "-q", "-m", "link"])?;
+    }
 
     let head = crate::git::resolve_commit_oid(&root, "HEAD").map_err(|err| err.to_string())?;
 
@@ -315,6 +315,9 @@ fn batched_tree_blob_lookup_matches_per_path_lookups() -> Result<(), String> {
         PathBuf::from("bulk/f39.txt"),
         PathBuf::from("bulk/f63-missing.txt"),
     ];
+    for index in 40..80 {
+        paths.push(PathBuf::from(format!("bulk/f{index:02}.txt")));
+    }
     #[cfg(unix)]
     paths.push(PathBuf::from("link.rs"));
 
@@ -347,7 +350,6 @@ fn batched_tree_blob_lookup_matches_per_path_lookups() -> Result<(), String> {
     assert!(batched[4].is_some() && batched[5].is_some());
     #[cfg(unix)]
     {
-        let _ = link_added;
         // A symlink records mode 120000, never a `100...` regular blob.
         assert!(
             batched[7].is_none(),
@@ -356,6 +358,43 @@ fn batched_tree_blob_lookup_matches_per_path_lookups() -> Result<(), String> {
     }
 
     let _ = fs::remove_dir_all(&root);
+    Ok(())
+}
+
+#[test]
+fn batch_planner_enforces_count_bytes_and_long_path_boundaries() -> Result<(), String> {
+    let lengths = vec![1usize; 65];
+    let first =
+        crate::git::tree_blob_batch_end_for_test(&lengths, 0).map_err(|err| err.to_string())?;
+    let second =
+        crate::git::tree_blob_batch_end_for_test(&lengths, first).map_err(|err| err.to_string())?;
+    assert_eq!(first, 64);
+    assert_eq!(second, 65);
+
+    let long = vec![8192usize];
+    let error = crate::git::tree_blob_batch_end_for_test(&long, 0)
+        .expect_err("oversized encoded path must fail closed");
+    assert!(error.to_string().contains("tree path exceeds"));
+
+    let requested = vec![b"present.rs".to_vec()];
+    let requested_refs: Vec<&Vec<u8>> = requested.iter().collect();
+    let mut returned = std::collections::HashSet::new();
+    crate::git::validate_batch_record_path_for_test(b"present.rs", &requested_refs, &mut returned)
+        .map_err(|err| err.to_string())?;
+    let duplicate = crate::git::validate_batch_record_path_for_test(
+        b"present.rs",
+        &requested_refs,
+        &mut returned,
+    )
+    .expect_err("duplicate returned records must fail closed");
+    assert!(duplicate.to_string().contains("duplicate path"));
+    let unrequested = crate::git::validate_batch_record_path_for_test(
+        b"other.rs",
+        &requested_refs,
+        &mut returned,
+    )
+    .expect_err("unrequested returned records must fail closed");
+    assert!(unrequested.to_string().contains("not requested"));
     Ok(())
 }
 

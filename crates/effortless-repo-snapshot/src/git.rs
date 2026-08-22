@@ -5,7 +5,7 @@
 )]
 
 use crate::error::{SnapshotDiagnostic, SnapshotError, SnapshotErrorKind, SnapshotResult};
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Output};
 
@@ -162,6 +162,74 @@ pub(crate) fn tree_blob_oid_at_commit(
 /// `git ls-tree` process instead of one process per path; bounded so a large
 /// selected-path set cannot exceed platform argv or command-line limits.
 const TREE_BLOB_BATCH_CHUNK: usize = 64;
+const TREE_BLOB_BATCH_ARG_BYTES: usize = 8 * 1024;
+
+fn tree_blob_batch_end(path_lengths: &[usize], start: usize) -> SnapshotResult<usize> {
+    let mut end = start;
+    let mut argument_bytes = 0usize;
+    while end < path_lengths.len() && end - start < TREE_BLOB_BATCH_CHUNK {
+        let path_length = path_lengths.get(end).copied().ok_or_else(|| {
+            git_error(
+                SnapshotErrorKind::Inventory,
+                "batch_planner_state",
+                "git tree batch planner advanced beyond its path-length input",
+            )
+        })?;
+        let encoded_bytes = path_length.saturating_add(1);
+        if encoded_bytes > TREE_BLOB_BATCH_ARG_BYTES {
+            return Err(git_error(
+                SnapshotErrorKind::InvalidConfig,
+                "tree_path_too_long_for_batch",
+                "git tree path exceeds the bounded exact-lookup argument size",
+            ));
+        }
+        if end > start && argument_bytes.saturating_add(encoded_bytes) > TREE_BLOB_BATCH_ARG_BYTES {
+            break;
+        }
+        argument_bytes = argument_bytes.saturating_add(encoded_bytes);
+        end += 1;
+    }
+    Ok(end)
+}
+
+fn validate_batch_record_path(
+    raw_path: &[u8],
+    requested: &[&Vec<u8>],
+    returned: &mut HashSet<Vec<u8>>,
+) -> SnapshotResult<()> {
+    if !requested.iter().any(|path| path.as_slice() == raw_path) {
+        return Err(git_error(
+            SnapshotErrorKind::Inventory,
+            "git_output_malformed",
+            "git ls-tree returned a path that was not requested",
+        ));
+    }
+    if !returned.insert(raw_path.to_vec()) {
+        return Err(git_error(
+            SnapshotErrorKind::Inventory,
+            "git_output_malformed",
+            "git ls-tree returned a duplicate path record",
+        ));
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+pub(crate) fn tree_blob_batch_end_for_test(
+    path_lengths: &[usize],
+    start: usize,
+) -> SnapshotResult<usize> {
+    tree_blob_batch_end(path_lengths, start)
+}
+
+#[cfg(test)]
+pub(crate) fn validate_batch_record_path_for_test(
+    raw_path: &[u8],
+    requested: &[&Vec<u8>],
+    returned: &mut HashSet<Vec<u8>>,
+) -> SnapshotResult<()> {
+    validate_batch_record_path(raw_path, requested, returned)
+}
 
 /// Resolve blob object ids for many paths at one commit with batched
 /// `git ls-tree` invocations (#2515).
@@ -188,7 +256,17 @@ pub(crate) fn tree_blob_oids_at_commit(
     unique.dedup();
 
     let mut found: HashMap<Vec<u8>, String> = HashMap::with_capacity(unique.len());
-    for chunk in unique.chunks(TREE_BLOB_BATCH_CHUNK) {
+    let path_lengths: Vec<usize> = unique.iter().map(|path| path.len()).collect();
+    let mut start = 0;
+    while start < unique.len() {
+        let end = tree_blob_batch_end(&path_lengths, start)?;
+        let chunk = unique.get(start..end).ok_or_else(|| {
+            git_error(
+                SnapshotErrorKind::Inventory,
+                "batch_planner_state",
+                "git tree batch planner produced an invalid chunk range",
+            )
+        })?;
         let mut cmd = literal_pathspec_git_command(root);
         cmd.arg("ls-tree")
             .arg("-z")
@@ -202,6 +280,7 @@ pub(crate) fn tree_blob_oids_at_commit(
         if !output.status.success() {
             return Err(git_status_error("git ls-tree exact paths", &output));
         }
+        let mut returned = HashSet::with_capacity(chunk.len());
         for record in output
             .stdout
             .split(|byte| *byte == 0)
@@ -209,13 +288,7 @@ pub(crate) fn tree_blob_oids_at_commit(
         {
             match parse_git_tree_record_any(record) {
                 TreeRecordParse::Entry(entry) => {
-                    if unique.binary_search(&&entry.raw_path).is_err() {
-                        return Err(git_error(
-                            SnapshotErrorKind::Inventory,
-                            "git_output_malformed",
-                            "git ls-tree returned a path that was not requested",
-                        ));
-                    }
+                    validate_batch_record_path(&entry.raw_path, chunk, &mut returned)?;
                     if entry.mode.starts_with("100") {
                         found.insert(entry.raw_path, entry.object_oid);
                     }
@@ -239,6 +312,7 @@ pub(crate) fn tree_blob_oids_at_commit(
                 }
             }
         }
+        start = end;
     }
 
     Ok(requested
