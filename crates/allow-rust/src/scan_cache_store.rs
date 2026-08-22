@@ -22,7 +22,8 @@
 
 use allow_core::{Finding, read_file_capped_with_limit};
 use std::collections::HashMap;
-use std::io::{ErrorKind, Write};
+use std::fs::{File, TryLockError};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime};
@@ -37,7 +38,6 @@ const MAX_STORE_BYTES: usize = 128 * 1024 * 1024;
 const MAX_RELATIVE_PATH_BYTES: usize = 4 * 1024;
 const TEMP_FILE_PREFIX: &str = "scan-cache.v2.bin.tmp-";
 const LOCK_FILE_NAME: &str = "scan-cache.v2.lock";
-const REAPER_LOCK_FILE_NAME: &str = "scan-cache.v2.reaper.lock";
 const STALE_ARTIFACT_AGE: Duration = Duration::from_secs(60 * 60);
 static TEMP_NONCE: AtomicU64 = AtomicU64::new(0);
 
@@ -299,38 +299,27 @@ fn next_temp_path(dir: &Path) -> PathBuf {
 }
 
 struct WriterLock {
-    path: PathBuf,
-    token: String,
+    file: File,
 }
 
 impl WriterLock {
     fn acquire(dir: &Path, wait_hook: Option<&dyn Fn()>) -> Option<Self> {
         let path = dir.join(LOCK_FILE_NAME);
-        let token = format!(
-            "{}-{}",
-            std::process::id(),
-            TEMP_NONCE.fetch_add(1, Ordering::Relaxed)
-        );
+        let file = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(path)
+            .ok()?;
         for _ in 0..100 {
-            match std::fs::OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .open(&path)
-            {
-                Ok(mut file) => {
-                    if file.write_all(token.as_bytes()).is_err() || file.sync_all().is_err() {
-                        let _ = std::fs::remove_file(&path);
-                        return None;
-                    }
-                    return Some(Self { path, token });
-                }
-                Err(error) if error.kind() == ErrorKind::AlreadyExists => {
+            match file.try_lock() {
+                Ok(()) => return Some(Self { file }),
+                Err(TryLockError::WouldBlock) => {
                     if let Some(wait_hook) = wait_hook {
                         wait_hook();
                     }
-                    if !reap_stale_lock(&path) {
-                        std::thread::sleep(Duration::from_millis(5));
-                    }
+                    std::thread::sleep(Duration::from_millis(5));
                 }
                 Err(_) => return None,
             }
@@ -341,14 +330,8 @@ impl WriterLock {
 
 impl Drop for WriterLock {
     fn drop(&mut self) {
-        if lock_token(&self.path).as_deref() == Some(self.token.as_str()) {
-            let _ = std::fs::remove_file(&self.path);
-        }
+        let _ = self.file.unlock();
     }
-}
-
-fn lock_token(path: &Path) -> Option<String> {
-    std::fs::read_to_string(path).ok()
 }
 
 fn remove_if_stale(path: &Path) -> bool {
@@ -364,46 +347,6 @@ fn remove_if_stale(path: &Path) -> bool {
         .and_then(|modified| SystemTime::now().duration_since(modified).ok())
         .is_some_and(|age| age >= STALE_ARTIFACT_AGE);
     stale && std::fs::remove_file(path).is_ok()
-}
-
-fn reap_stale_lock(path: &Path) -> bool {
-    let Some(parent) = path.parent() else {
-        return false;
-    };
-    let guard_path = parent.join(REAPER_LOCK_FILE_NAME);
-    let token = format!(
-        "{}-{}",
-        std::process::id(),
-        TEMP_NONCE.fetch_add(1, Ordering::Relaxed)
-    );
-    let mut guard = None;
-    for _ in 0..2 {
-        match std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&guard_path)
-        {
-            Ok(file) => {
-                guard = Some(file);
-                break;
-            }
-            Err(error)
-                if error.kind() == ErrorKind::AlreadyExists && remove_if_stale(&guard_path) => {}
-            Err(_) => return false,
-        }
-    }
-    let Some(mut guard) = guard else {
-        return false;
-    };
-    if guard.write_all(token.as_bytes()).is_err() || guard.sync_all().is_err() {
-        let _ = std::fs::remove_file(&guard_path);
-        return false;
-    }
-    let result = remove_if_stale(path);
-    if lock_token(&guard_path).as_deref() == Some(token.as_str()) {
-        let _ = std::fs::remove_file(&guard_path);
-    }
-    result
 }
 
 fn remove_stale_artifacts(dir: &Path) {
@@ -887,130 +830,6 @@ mod tests {
     }
 
     #[test]
-    fn stale_lock_is_reclaimed_before_flush() -> Result<(), String> {
-        let root = std::env::temp_dir().join(format!(
-            "allow-rust-cache-stale-lock-{}-{}",
-            std::process::id(),
-            TEMP_NONCE.fetch_add(1, Ordering::Relaxed)
-        ));
-        std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
-        let lock = root.join(LOCK_FILE_NAME);
-        let file = std::fs::File::create(&lock).map_err(|error| error.to_string())?;
-        let old = SystemTime::now()
-            .checked_sub(STALE_ARTIFACT_AGE + Duration::from_secs(1))
-            .ok_or_else(|| "stale timestamp underflow".to_string())?;
-        file.set_times(std::fs::FileTimes::new().set_modified(old))
-            .map_err(|error| error.to_string())?;
-        drop(file);
-        let mut store = ScanCacheStore::open(&root, "generation");
-        store.put(
-            Path::new("src/lib.rs"),
-            "digest".to_string(),
-            false,
-            Vec::new(),
-        );
-        assert!(store.flush());
-        assert!(root.join("scan-cache.v2.bin").exists());
-        assert!(!lock.exists());
-        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
-        Ok(())
-    }
-
-    #[test]
-    fn concurrent_stale_reclaimers_have_one_winner() -> Result<(), String> {
-        let root = std::env::temp_dir().join(format!(
-            "allow-rust-cache-reclaimer-{}-{}",
-            std::process::id(),
-            TEMP_NONCE.fetch_add(1, Ordering::Relaxed)
-        ));
-        std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
-        let lock = root.join(LOCK_FILE_NAME);
-        let file = std::fs::File::create(&lock).map_err(|error| error.to_string())?;
-        let old = SystemTime::now()
-            .checked_sub(STALE_ARTIFACT_AGE + Duration::from_secs(1))
-            .ok_or_else(|| "stale timestamp underflow".to_string())?;
-        file.set_times(std::fs::FileTimes::new().set_modified(old))
-            .map_err(|error| error.to_string())?;
-        drop(file);
-        let barrier = std::sync::Arc::new(std::sync::Barrier::new(3));
-        let mut workers = Vec::new();
-        for _ in 0..2 {
-            let worker_lock = lock.clone();
-            let worker_barrier = barrier.clone();
-            workers.push(std::thread::spawn(move || {
-                worker_barrier.wait();
-                reap_stale_lock(&worker_lock)
-            }));
-        }
-        barrier.wait();
-        let winners = workers
-            .into_iter()
-            .map(|worker| worker.join().map_err(|_| "worker panicked".to_string()))
-            .collect::<Result<Vec<_>, _>>()?;
-        assert_eq!(winners.into_iter().filter(|winner| *winner).count(), 1);
-        assert!(!lock.exists());
-        assert!(!root.join(REAPER_LOCK_FILE_NAME).exists());
-        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
-        Ok(())
-    }
-
-    #[test]
-    fn stale_owner_drop_cannot_remove_replacement_lock() -> Result<(), String> {
-        let root = std::env::temp_dir().join(format!(
-            "allow-rust-cache-lock-aba-{}-{}",
-            std::process::id(),
-            TEMP_NONCE.fetch_add(1, Ordering::Relaxed)
-        ));
-        std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
-        let lock = root.join(LOCK_FILE_NAME);
-        let first =
-            WriterLock::acquire(&root, None).ok_or_else(|| "first lock failed".to_string())?;
-        let old = SystemTime::now()
-            .checked_sub(STALE_ARTIFACT_AGE + Duration::from_secs(1))
-            .ok_or_else(|| "stale timestamp underflow".to_string())?;
-        std::fs::OpenOptions::new()
-            .write(true)
-            .open(&lock)
-            .and_then(|file| file.set_times(std::fs::FileTimes::new().set_modified(old)))
-            .map_err(|error| error.to_string())?;
-        assert!(reap_stale_lock(&lock));
-        let second =
-            WriterLock::acquire(&root, None).ok_or_else(|| "second lock failed".to_string())?;
-        let second_token = second.token.clone();
-        drop(first);
-        assert_eq!(lock_token(&lock).as_deref(), Some(second_token.as_str()));
-        drop(second);
-        assert!(!lock.exists());
-        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
-        Ok(())
-    }
-
-    #[test]
-    fn orphaned_reaper_guard_is_recovered() -> Result<(), String> {
-        let root = std::env::temp_dir().join(format!(
-            "allow-rust-cache-orphan-reaper-{}-{}",
-            std::process::id(),
-            TEMP_NONCE.fetch_add(1, Ordering::Relaxed)
-        ));
-        std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
-        let lock = root.join(LOCK_FILE_NAME);
-        let guard = root.join(REAPER_LOCK_FILE_NAME);
-        let old = SystemTime::now()
-            .checked_sub(STALE_ARTIFACT_AGE + Duration::from_secs(1))
-            .ok_or_else(|| "stale timestamp underflow".to_string())?;
-        for path in [&lock, &guard] {
-            let file = std::fs::File::create(path).map_err(|error| error.to_string())?;
-            file.set_times(std::fs::FileTimes::new().set_modified(old))
-                .map_err(|error| error.to_string())?;
-        }
-        assert!(reap_stale_lock(&lock));
-        assert!(!lock.exists());
-        assert!(!guard.exists());
-        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
-        Ok(())
-    }
-
-    #[test]
     fn active_writer_lock_is_retried_deterministically() -> Result<(), String> {
         let root = std::env::temp_dir().join(format!(
             "allow-rust-cache-lock-contention-{}-{}",
@@ -1019,7 +838,14 @@ mod tests {
         ));
         std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
         let lock = root.join(LOCK_FILE_NAME);
-        std::fs::File::create(&lock).map_err(|error| error.to_string())?;
+        let held = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(&lock)
+            .map_err(|error| error.to_string())?;
+        held.lock().map_err(|error| error.to_string())?;
         let worker_root = root.clone();
         let (contention_tx, contention_rx) = std::sync::mpsc::channel();
         let worker = std::thread::spawn(move || {
@@ -1037,7 +863,8 @@ mod tests {
             Ok::<_, String>(flushed)
         });
         contention_rx.recv().map_err(|error| error.to_string())?;
-        std::fs::remove_file(&lock).map_err(|error| error.to_string())?;
+        held.unlock().map_err(|error| error.to_string())?;
+        drop(held);
         let flushed = worker.join().map_err(|_| "worker panicked".to_string())??;
         assert!(flushed);
         assert!(
@@ -1083,7 +910,7 @@ mod tests {
         // intentionally accepts last-writer wins instead of merging entries.
         assert_eq!(store.len(), 1);
         assert!(root.join("scan-cache.v2.bin").exists());
-        assert!(!root.join(LOCK_FILE_NAME).exists());
+        assert!(root.join(LOCK_FILE_NAME).exists());
         std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
         Ok(())
     }
