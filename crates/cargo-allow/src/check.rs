@@ -600,9 +600,10 @@ fn apply_receipt_run_metadata<'a>(
     // are NOT byte-stable across runs (documented).
     context.started_at = Some(started_at);
     context.run_id = Some(run_id);
-    // Integrity binding (#1850/#1781): bind the receipt to the exact commit and
-    // ledger bytes observed by this run so a corrupted or forged receipt cannot
-    // silently claim provenance it never had.
+    // Integrity binding (#1850/#1781): retain the contextual HEAD and exact
+    // evaluated policy bytes so an external verifier can detect mismatches.
+    // These unsigned fields do not authenticate the receipt, invocation, or
+    // source bytes.
     context.git_sha = bindings.git_sha.as_deref();
     context.policy_digest = bindings.policy_digest.as_deref();
 }

@@ -188,10 +188,13 @@ fn staged_check_receipt_hashes_staged_policy_bytes() {
     git(&root, &["add", "policy/allow.toml"]);
     git(&root, &["commit", "-m", "base policy"]);
 
-    let staged_policy = format!("{}\n# staged policy bytes\n", policy());
+    let staged_policy = format!("{}\n# staged policy A\n", policy());
     fs::write(root.join("policy/allow.toml"), &staged_policy)
         .unwrap_or_else(|err| std::panic::panic_any(format!("write staged policy: {err}")));
     git(&root, &["add", "policy/allow.toml"]);
+    let worktree_policy = format!("{}\n# worktree policy B\n", policy());
+    fs::write(root.join("policy/allow.toml"), &worktree_policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write worktree policy: {err}")));
 
     let receipt_output = root.join("target/cargo-allow/staged.receipt.json");
     let result = cargo_allow_command()
@@ -223,6 +226,11 @@ fn staged_check_receipt_hashes_staged_policy_bytes() {
             .and_then(serde_json::Value::as_str),
         Some(allow_core::sha256_v1_bytes(staged_policy.as_bytes()).as_str()),
         "staged receipt must hash the staged policy bytes"
+    );
+    assert_ne!(
+        allow_core::sha256_v1_bytes(staged_policy.as_bytes()),
+        allow_core::sha256_v1_bytes(worktree_policy.as_bytes()),
+        "staged and worktree policy fixtures must be distinct"
     );
 
     remove_temp_root(root);
@@ -308,6 +316,11 @@ callee = "unwrap"
         "/counts/matched",
         0,
         "error receipt should not preserve stale matched counts",
+    );
+    assert!(
+        receipt.pointer("/policy_digest").is_none(),
+        "error receipt must omit policy_digest when policy evaluation failed: {:?}",
+        receipt.pointer("/policy_digest")
     );
 
     remove_temp_root(root);

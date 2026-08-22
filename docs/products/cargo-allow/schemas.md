@@ -22,14 +22,17 @@ tree identity where present, and treat incomplete or stale evidence as not
 proven. The catalog is the source of truth; examples are characterization,
 not approval.
 
-### Receipt integrity binding (check receipts only)
+## Receipt integrity binding (check receipts only)
 
-The `cargo-allow.receipt.v1` artifact produced by `check` binds the run to the
-policy bytes actually evaluated and the source tree it scanned. Diff receipts
-are intentionally out of scope for this binding follow-up.
+The `cargo-allow.receipt.v1` artifact produced by `check` records the policy
+bytes actually evaluated and the contextual repository `HEAD` resolved for the
+requested root. These unsigned observations do not authenticate the source
+bytes or invocation. Diff receipts are intentionally out of scope for this
+binding follow-up.
 
-- `git_sha`: the resolved `HEAD` commit of the scanned source tree. Absent when
-  the tree is not a Git repository or the commit cannot be resolved.
+- `git_sha`: the contextual `HEAD` commit resolved for the requested root.
+  Absent when that root is not a Git repository or the commit cannot be
+  resolved.
 - `policy_digest`: a versioned SHA-256 (`sha256:v1:<hex>`) of the active ledger
   bytes loaded and evaluated for the check. Absent when no ledger path resolves
   or the resolved ledger bytes cannot be read.
