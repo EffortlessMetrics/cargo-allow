@@ -15,7 +15,7 @@ The receipt (`target/perf-budget/operator-latency.receipt.json`) records the
 tested binary digest and profile, host/toolchain, repository fixture counts,
 ordered argv, per-sample elapsed milliseconds, artifact digests, and semantic
 result checks. The receipt follows
-[`cargo-allow.operator-latency.v1`](schemas/operator-latency.schema.json), a
+[`cargo-allow.operator-latency.v2`](schemas/operator-latency.v2.schema.json), a
 supporting harness contract rather than a governed cargo-allow command
 artifact. The generated command artifacts are uploaded with the receipt in
 CI.

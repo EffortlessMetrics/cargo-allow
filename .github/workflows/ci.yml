@@ -249,12 +249,14 @@ jobs:
           from pathlib import Path
 
           receipt_path = Path("target/perf-budget/operator-latency.receipt.json")
-          schema_path = Path("docs/schemas/operator-latency.schema.json")
+          schema_path = Path("docs/schemas/operator-latency.v2.schema.json")
           assert receipt_path.is_file(), f"missing receipt: {receipt_path}; see the harness step output"
           receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
           schema = json.loads(schema_path.read_text(encoding="utf-8"))
-          assert schema["$id"].endswith("operator-latency.v1.schema.json")
-          assert receipt["schema_id"] == "cargo-allow.operator-latency.v1"
+          assert schema["$id"].endswith("operator-latency.v2.schema.json")
+          assert receipt["schema_id"] == "cargo-allow.operator-latency.v2"
+          assert receipt["schema_version"] == 2
+          assert all("cache_mode" in sample for sample in receipt["samples"])
           assert receipt["result"] == "pass"
           assert receipt["binary"]["profile"] == "release"
           samples = receipt["samples"]

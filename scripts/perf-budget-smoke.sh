@@ -167,8 +167,8 @@ def records():
 
 sample_rows = records()
 payload = {
-    "schema_version": 1,
-    "schema_id": "cargo-allow.operator-latency.v1",
+    "schema_version": 2,
+    "schema_id": "cargo-allow.operator-latency.v2",
     "tool": "cargo-allow",
     "command": "operator-latency",
     "result": result,
@@ -341,10 +341,14 @@ env -u GIT_DIR -u GIT_WORK_TREE git -C "${fixture_root}" commit -qm measurement 
 
 measure_cache_phase() {
   local phase="$1" name="$2" mode="$3"
-  local report="${artifact_dir}/${name}.report.json"
-  local receipt="${artifact_dir}/${name}.receipt.json"
-  local semantic_report="${artifact_dir}/${name}.semantic-report.json"
-  local semantic_receipt="${artifact_dir}/${name}.semantic-receipt.json"
+  local report_rel="artifacts/${name}.report.json"
+  local receipt_rel="artifacts/${name}.receipt.json"
+  local semantic_report_rel="artifacts/${name}.semantic-report.json"
+  local semantic_receipt_rel="artifacts/${name}.semantic-receipt.json"
+  local report="${output_dir}/${report_rel}"
+  local receipt="${output_dir}/${receipt_rel}"
+  local semantic_report="${output_dir}/${semantic_report_rel}"
+  local semantic_receipt="${output_dir}/${semantic_receipt_rel}"
   local stdout_path="${run_dir}/${name}.stdout"
   local stderr_path="${run_dir}/${name}.stderr"
   local fixture_artifact_dir="${fixture_root}/.measurement"
@@ -379,8 +383,8 @@ measure_cache_phase() {
   digest="$(sha256_file "${report}")"
   semantic_digest="$(sha256_file "${semantic_report}")"
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-    "${phase}" "${name}" "${elapsed}" "${report#${output_dir}/}" "${digest}" \
-    "${semantic_report#${output_dir}/}" "${semantic_digest}" "passed" "${argv_json}" >>"${metrics}"
+    "${phase}" "${name}" "${elapsed}" "${report_rel}" "${digest}" \
+    "${semantic_report_rel}" "${semantic_digest}" "passed" "${argv_json}" >>"${metrics}"
 }
 
 cache_dir="${fixture_root}/target/cargo-allow/cache"

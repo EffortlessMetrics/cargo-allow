@@ -2,6 +2,7 @@ kind: Added
 body: >-
   Extend the operator-latency smoke receipt with explicit persistent-cache
   on/off phase samples and semantic parity checks across disposable Git
-  fixtures. The off phase asserts no persistent-store creation. The harness
+  fixtures. The v2 receipt requires cache-mode fields while v1 remains a
+  historical compatibility schema. The off phase asserts no persistent-store creation. The harness
   retains only a catastrophic wall-clock ceiling and makes no universal
   performance or product-latency claim.

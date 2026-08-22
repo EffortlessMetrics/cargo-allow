@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/operator-latency.v1.schema.json",
-  "title": "cargo-allow operator latency receipt v1",
+  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/operator-latency.v2.schema.json",
+  "title": "cargo-allow operator latency receipt v2",
   "description": "Supporting harness receipt for the hosted operator-latency smoke. This is not a source-tree cargo-allow command artifact or a universal hardware-performance claim.",
   "type": "object",
   "additionalProperties": false,
@@ -21,8 +21,8 @@
     "limitations"
   ],
   "properties": {
-    "schema_version": { "const": 1 },
-    "schema_id": { "const": "cargo-allow.operator-latency.v1" },
+    "schema_version": { "const": 2 },
+    "schema_id": { "const": "cargo-allow.operator-latency.v2" },
     "tool": { "const": "cargo-allow" },
     "command": { "const": "operator-latency" },
     "result": { "enum": ["pass", "failed"] },
@@ -85,11 +85,21 @@
     "sample_policy": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["cold_process_samples", "warm_process_samples", "targeted_samples"],
+      "required": ["cold_process_samples", "warm_process_samples", "targeted_samples", "cache_mode_samples"],
       "properties": {
         "cold_process_samples": { "type": "integer", "minimum": 0 },
         "warm_process_samples": { "type": "integer", "minimum": 0 },
-        "targeted_samples": { "type": "integer", "minimum": 0 }
+        "targeted_samples": { "type": "integer", "minimum": 0 },
+        "cache_mode_samples": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["on", "off", "not_applicable"],
+          "properties": {
+            "on": { "type": "integer", "minimum": 0 },
+            "off": { "type": "integer", "minimum": 0 },
+            "not_applicable": { "type": "integer", "minimum": 0 }
+          }
+        }
       }
     },
     "budget": {
@@ -106,10 +116,11 @@
     "sample": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "phase", "argv", "elapsed_ms", "status", "artifact", "semantic_artifact"],
+      "required": ["name", "phase", "cache_mode", "argv", "elapsed_ms", "status", "artifact", "semantic_artifact"],
       "properties": {
         "name": { "type": "string" },
         "phase": { "enum": ["cold", "warm", "targeted"] },
+        "cache_mode": { "enum": ["on", "off", "not_applicable"] },
         "argv": {
           "type": "array",
           "items": { "type": "string" },

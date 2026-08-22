@@ -12,14 +12,20 @@ import json
 from pathlib import Path
 
 script = Path("scripts/perf-budget-smoke.sh").read_text(encoding="utf-8")
-schema = json.loads(Path("docs/schemas/operator-latency.schema.json").read_text(encoding="utf-8"))
+v1 = json.loads(Path("docs/schemas/operator-latency.schema.json").read_text(encoding="utf-8"))
+schema = json.loads(Path("docs/schemas/operator-latency.v2.schema.json").read_text(encoding="utf-8"))
 
-assert schema["$id"].endswith("operator-latency.v1.schema.json")
-assert schema["properties"]["schema_id"]["const"] == "cargo-allow.operator-latency.v1"
+assert v1["$id"].endswith("operator-latency.v1.schema.json")
+assert v1["properties"]["schema_id"]["const"] == "cargo-allow.operator-latency.v1"
+assert "cache_mode_samples" not in v1["$defs"]["sample_policy"]["properties"]
+assert schema["$id"].endswith("operator-latency.v2.schema.json")
+assert schema["properties"]["schema_version"]["const"] == 2
+assert schema["properties"]["schema_id"]["const"] == "cargo-allow.operator-latency.v2"
+assert "cache_mode_samples" in schema["$defs"]["sample_policy"]["required"]
+assert "cache_mode" in schema["$defs"]["sample"]["required"]
+assert set(schema["$defs"]["sample"]["properties"]["cache_mode"]["enum"]) == {"on", "off", "not_applicable"}
 assert "samples" in schema["required"]
-sample = schema["$defs"]["sample"]
-assert "cache_mode" in sample["properties"]
-assert set(sample["properties"]["cache_mode"]["enum"]) == {"on", "off", "not_applicable", "invalid"}
+assert "cache_mode_samples" in schema["$defs"]["sample_policy"]["properties"]
 for marker in (
     "HARD_CEILING_MS",
     "semantic_artifact",
