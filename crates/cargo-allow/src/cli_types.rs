@@ -168,7 +168,7 @@ impl InventoryFacts {
         if hex.len() != 64 {
             return self;
         }
-        for (index, pair) in hex.as_bytes().chunks_exact(2).enumerate() {
+        for (index, pair) in hex.as_bytes().as_chunks::<2>().0.iter().enumerate() {
             let Ok(pair_text) = std::str::from_utf8(pair) else {
                 return self;
             };
