@@ -1,0 +1,6 @@
+kind: Changed
+body: >-
+  Harden the persistent scanner-facts cache with checksummed payloads, strict
+  EOF validation, bounded decoding, and explicit stable finding-kind tags.
+  This remains a bounded persistence slice of #2571; it adds no global cache,
+  release behavior, or broad #2514 incremental evaluation.

@@ -637,7 +637,15 @@ fn load_world_without_policy(
     let inventory_facts = InventoryFacts::scanned_inventory(&inventory);
     let files = inventory.files;
     let mut findings = Vec::new();
-    let rust_scan = allow_rust::scan_rust_files(root, &files)?;
+    let mut store = allow_rust::ScanCacheStore::open(
+        &allow_rust::ScanCacheStore::default_dir(root),
+        allow_rust::scan_cache_generation(),
+    );
+    let rust_scan = SCAN_CACHE.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        allow_rust::scan_rust_files_cached_with_store(root, &files, &mut cache, &mut store)
+    })?;
+    let _ = store.flush();
     findings.extend(rust_scan.findings);
     findings.extend(allow_files::scan_files_with_options(
         &files,

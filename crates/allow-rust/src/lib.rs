@@ -271,7 +271,10 @@ mod tests;
 /// crate version invalidates every durable entry rather than mixing findings
 /// across scanner semantics.
 pub fn scan_cache_generation() -> String {
-    format!("allow-rust:{};syntax:v1", env!("CARGO_PKG_VERSION"))
+    format!(
+        "allow-rust:{};syntax:v1;grammar:tree-sitter-rust:v1",
+        env!("CARGO_PKG_VERSION")
+    )
 }
 
 /// Scan Rust files through the in-process cache plus the durable

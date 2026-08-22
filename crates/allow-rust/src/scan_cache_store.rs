@@ -27,6 +27,11 @@ use std::path::{Path, PathBuf};
 
 /// Store schema identifier; also the on-disk magic header line.
 const STORE_SCHEMA: &[u8] = b"cargo-allow.scan-cache.v2";
+const CHECKSUM_LEN: usize = 74;
+const MAX_ENTRY_COUNT: usize = 100_000;
+const MAX_FINDINGS_PER_ENTRY: usize = 100_000;
+const MAX_FIELD_BYTES: usize = 16 * 1024 * 1024;
+const MAX_STORE_BYTES: usize = 128 * 1024 * 1024;
 
 /// One persisted scan result: the digest it was produced from plus the
 /// scanner output for that exact input.
@@ -63,6 +68,9 @@ impl ScanCacheStore {
             entries: HashMap::new(),
             dirty: false,
         };
+        if path_has_symlink_component(dir) {
+            return store;
+        }
         let path = store.store_path();
         if let Ok(bytes) = std::fs::read(&path)
             && let Ok(decoded) = decode_store(&bytes, &store.generation)
@@ -161,6 +169,20 @@ impl ScanCacheStore {
     }
 }
 
+fn path_has_symlink_component(path: &Path) -> bool {
+    let mut current = PathBuf::new();
+    for component in path.components() {
+        current.push(component.as_os_str());
+        if std::fs::symlink_metadata(&current)
+            .map(|metadata| metadata.file_type().is_symlink())
+            .unwrap_or(false)
+        {
+            return true;
+        }
+    }
+    false
+}
+
 fn write_str(out: &mut Vec<u8>, value: &str) {
     out.extend_from_slice(&(value.len() as u32).to_le_bytes());
     out.extend_from_slice(value.as_bytes());
@@ -196,6 +218,11 @@ fn encode_store(generation: &str, entries: &HashMap<PathBuf, StoredEntry>) -> Re
             encode_finding(&mut out, finding)?;
         }
     }
+    if out.len() > MAX_STORE_BYTES {
+        return Err(());
+    }
+    let checksum = allow_core::sha256_v1_bytes(&out);
+    out.extend_from_slice(checksum.as_bytes());
     Ok(out)
 }
 
@@ -205,11 +232,7 @@ fn encode_finding(out: &mut Vec<u8>, finding: &Finding) -> Result<(), ()> {
         // attached later during policy matching and must not be persisted.
         return Err(());
     }
-    let kind_index = allow_core::FindingKind::ALL
-        .iter()
-        .position(|kind| *kind == finding.kind)
-        .ok_or(())?;
-    out.push(kind_index as u8);
+    out.push(finding_kind_tag(finding.kind));
     match &finding.family {
         Some(family) => {
             out.push(1);
@@ -284,8 +307,15 @@ impl<'a> Reader<'a> {
 
     fn str(&mut self) -> Result<String, ()> {
         let len = self.u32()? as usize;
+        if len > MAX_FIELD_BYTES {
+            return Err(());
+        }
         let bytes = self.take(len)?;
         String::from_utf8(bytes.to_vec()).map_err(|_| ())
+    }
+
+    fn remaining(&self) -> usize {
+        self.bytes.len().saturating_sub(self.cursor)
     }
 
     fn opt_u32(&mut self) -> Result<Option<u32>, ()> {
@@ -309,10 +339,20 @@ fn decode_store(
     bytes: &[u8],
     expected_generation: &str,
 ) -> Result<HashMap<PathBuf, StoredEntry>, ()> {
-    if !bytes.starts_with(STORE_SCHEMA) {
+    if bytes.len() > MAX_STORE_BYTES {
         return Err(());
     }
-    let mut reader = Reader::new(bytes);
+    if bytes.len() < CHECKSUM_LEN {
+        return Err(());
+    }
+    let (payload, checksum) = bytes.split_at(bytes.len() - CHECKSUM_LEN);
+    if checksum != allow_core::sha256_v1_bytes(payload).as_bytes() {
+        return Err(());
+    }
+    if !payload.starts_with(STORE_SCHEMA) {
+        return Err(());
+    }
+    let mut reader = Reader::new(payload);
     reader.take(STORE_SCHEMA.len())?;
     if reader.u8()? != b'\n' {
         return Err(());
@@ -322,9 +362,21 @@ fn decode_store(
         return Err(());
     }
     let entry_count = reader.u32()? as usize;
+    if entry_count > MAX_ENTRY_COUNT {
+        return Err(());
+    }
     let mut entries = HashMap::with_capacity(entry_count.min(65_536));
     for _ in 0..entry_count {
         let rel = reader.str()?;
+        let rel_path = PathBuf::from(&rel);
+        let invalid_path = rel.trim().is_empty()
+            || rel_path.is_absolute()
+            || rel_path.components().any(|component| {
+                matches!(
+                    component,
+                    std::path::Component::ParentDir | std::path::Component::CurDir
+                )
+            });
         let content_digest = reader.str()?;
         let has_parse_error = match reader.u8()? {
             0 => false,
@@ -332,27 +384,33 @@ fn decode_store(
             _ => return Err(()),
         };
         let finding_count = reader.u32()? as usize;
+        if finding_count > MAX_FINDINGS_PER_ENTRY {
+            return Err(());
+        }
         let mut findings = Vec::with_capacity(finding_count.min(4096));
         for _ in 0..finding_count {
             findings.push(decode_finding(&mut reader)?);
         }
-        entries.insert(
-            PathBuf::from(rel),
-            StoredEntry {
-                content_digest,
-                has_parse_error,
-                findings,
-            },
-        );
+        if !invalid_path {
+            entries.insert(
+                rel_path,
+                StoredEntry {
+                    content_digest,
+                    has_parse_error,
+                    findings,
+                },
+            );
+        }
+    }
+    if reader.remaining() != 0 {
+        return Err(());
     }
     Ok(entries)
 }
 
 fn decode_finding(reader: &mut Reader<'_>) -> Result<Finding, ()> {
     let kind_tag = reader.u8()?;
-    let kind = *allow_core::FindingKind::ALL
-        .get(kind_tag as usize)
-        .ok_or(())?;
+    let kind = finding_kind_from_tag(kind_tag).ok_or(())?;
     let family = reader.opt_str()?;
     let path = PathBuf::from(reader.str()?);
     let span = match reader.u8()? {
@@ -400,5 +458,28 @@ fn decode_finding(reader: &mut Reader<'_>) -> Result<Finding, ()> {
         identity,
         message,
         ledger: None,
+    })
+}
+
+fn finding_kind_tag(kind: allow_core::FindingKind) -> u8 {
+    match kind {
+        allow_core::FindingKind::Panic => 1,
+        allow_core::FindingKind::Unsafe => 2,
+        allow_core::FindingKind::LintException => 3,
+        allow_core::FindingKind::NonRustFile => 4,
+        allow_core::FindingKind::GeneratedCode => 5,
+        allow_core::FindingKind::PolicyException => 6,
+    }
+}
+
+fn finding_kind_from_tag(tag: u8) -> Option<allow_core::FindingKind> {
+    Some(match tag {
+        1 => allow_core::FindingKind::Panic,
+        2 => allow_core::FindingKind::Unsafe,
+        3 => allow_core::FindingKind::LintException,
+        4 => allow_core::FindingKind::NonRustFile,
+        5 => allow_core::FindingKind::GeneratedCode,
+        6 => allow_core::FindingKind::PolicyException,
+        _ => return None,
     })
 }
