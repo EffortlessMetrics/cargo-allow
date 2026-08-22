@@ -28,6 +28,9 @@ for marker in (
     "cache_disabled_off",
     "--persistent-cache",
     "normalize_json",
+    'output_dir="${output_dir%/}"',
+    'mkdir -p "${ROOT}/target"',
+    '[[ "${binary,,}" == *.exe ]]',
     "operator-latency.receipt.json",
     'write_receipt "pass" ""',
 ):

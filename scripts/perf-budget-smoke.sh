@@ -19,13 +19,14 @@ cd "${ROOT}"
 
 profile="${PROFILE:-debug}"
 output_dir="${OUTPUT_DIR:-${ROOT}/target/perf-budget}"
+output_dir="${output_dir%/}"
 artifact_dir="${output_dir}/artifacts"
 receipt="${output_dir}/operator-latency.receipt.json"
 metrics="${output_dir}/.operator-latency.samples.tsv"
 hard_ceiling_ms="${HARD_CEILING_MS:-60000}"
 failure_reason=""
 
-mkdir -p "${artifact_dir}"
+mkdir -p "${ROOT}/target" "${artifact_dir}"
 : >"${metrics}"
 run_dir="$(mktemp -d "${ROOT}/target/cargo-allow-operator-latency.XXXXXX")"
 
@@ -99,9 +100,9 @@ relative_path() {
 }
 
 native_path() {
-  if command -v cygpath >/dev/null 2>&1; then
+  if [[ "${binary,,}" == *.exe ]] && command -v cygpath >/dev/null 2>&1; then
     cygpath -w "$1"
-  elif command -v wslpath >/dev/null 2>&1; then
+  elif [[ "${binary,,}" == *.exe ]] && command -v wslpath >/dev/null 2>&1; then
     wslpath -w "$1" | tr -d '\r'
   else
     printf '%s' "$1"
