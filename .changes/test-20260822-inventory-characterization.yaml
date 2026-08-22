@@ -1,0 +1,6 @@
+kind: Added
+body: >-
+  Characterize allow-inventory coverage exactly in CHARACTERIZATION.md and lock
+  the contract with a cross-platform fixture-parity test covering git-tracked
+  scans, nested target pruning scope, gitignored artifacts, non-UTF-8
+  filenames, file symlinks, and submodule disclosure (#1783).
