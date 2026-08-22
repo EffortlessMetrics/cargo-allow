@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Harden global `--command-summary-output` collision handling by resolving
+  sidecar and command artifact paths through canonical mutation-target identity,
+  rejecting aliases before artifact writes, and rechecking sidecar identity at
+  the final write boundary. This bounded Slice D2 excludes legacy per-command
+  summaries, general writer TOCTOU, full #2491/#2487 closure, and release.

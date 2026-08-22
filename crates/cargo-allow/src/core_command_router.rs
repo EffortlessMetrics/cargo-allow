@@ -12,7 +12,10 @@ use crate::core_command_summary::{
     render_core_command_summary_json,
 };
 use crate::reporting::{ReportRenderArgs, SourceTreeReportContext};
-use crate::{OutputFormat, emit_text, write_file};
+use crate::{OutputFormat, emit_text};
+use effortless_repo_edit::{
+    SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target_with_target,
+};
 
 /// The base a command resolves one of its own artifact paths against.
 ///
@@ -34,6 +37,11 @@ pub(crate) enum ConflictBase {
 pub(crate) struct SummaryOutputConfig {
     path: PathBuf,
     conflicts: Vec<(ConflictBase, PathBuf)>,
+}
+
+struct ValidatedSummaryOutput {
+    requested_path: PathBuf,
+    target: effortless_repo_edit::MutationTarget,
 }
 
 impl SummaryOutputConfig {
@@ -96,7 +104,7 @@ fn write_summary_artifact_with_config(
     let Some(config) = summary_config else {
         return Ok(());
     };
-    let path = validate_summary_output_path(root, config)?;
+    let validated = validate_summary_output_path(root, config)?;
     let json = render_core_command_summary_json(summary).map_err(|error| {
         CargoAllowError::with_kind(
             CargoAllowErrorKind::Artifact,
@@ -106,8 +114,19 @@ fn write_summary_artifact_with_config(
     // `write_file` returns `RepoEditError` after the effortless-repo-edit
     // product-neutrality refactor (#3283); `?` coerces it into the command
     // error type, matching the other call sites.
-    write_file(&path, &format!("{json}\n"))
-        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+    apply_single_target_with_target(
+        SingleTargetApplyRequest {
+            repository_root: root,
+            target: &validated.requested_path,
+            contents: &format!("{json}\n"),
+            caller_reference: Some("cargo-allow:command-summary-output"),
+            lock_identity: Some(validated.target.target_fingerprint().to_string()),
+            mode: SingleTargetApplyMode::AtomicReplace,
+        },
+        &validated.target,
+    )
+    .into_result()
+    .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     Ok(())
 }
 
@@ -586,9 +605,29 @@ fn render_detail_json(args: &ReportRenderArgs<'_>) -> String {
 fn validate_summary_output_path(
     root: &Path,
     config: &SummaryOutputConfig,
-) -> CargoAllowResult<PathBuf> {
+) -> CargoAllowResult<ValidatedSummaryOutput> {
+    let target = resolve_summary_output_target(root, config)?;
+    Ok(ValidatedSummaryOutput {
+        requested_path: resolve_under_root(root, &config.path),
+        target,
+    })
+}
+
+fn resolve_summary_output_target(
+    root: &Path,
+    config: &SummaryOutputConfig,
+) -> CargoAllowResult<effortless_repo_edit::MutationTarget> {
     let path = resolve_under_root(root, &config.path);
     crate::assert_path_within_root(root, &path)?;
+    let summary_target = effortless_repo_edit::resolve_mutation_target(&path, root)
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+    if summary_target.ownership() != effortless_repo_edit::MutationTargetOwnership::SourceTreeOwned
+    {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            "--command-summary-output must resolve inside the source-tree root",
+        ));
+    }
     // Resolve each candidate against the base its own command writes with, so a
     // relative `--root` can neither hide a real collision nor invent one between
     // two paths that land on different files.
@@ -612,15 +651,17 @@ fn validate_summary_output_path(
                 resolve_under_root(&cwd, conflict)
             }
         };
-        if same_path(&path, &candidate) {
+        let candidate_target = effortless_repo_edit::resolve_mutation_target(&candidate, root)
+            .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+        if summary_target.target_fingerprint() == candidate_target.target_fingerprint() {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::Usage,
                 "--command-summary-output must differ from --output, --receipt, and --config",
             ));
         }
     }
-    reject_tracked_summary_output(root, &path)?;
-    Ok(path)
+    reject_tracked_summary_output(root, summary_target.normalized_absolute())?;
+    Ok(summary_target)
 }
 
 fn reject_tracked_summary_output(root: &Path, output: &Path) -> CargoAllowResult<()> {
@@ -655,23 +696,6 @@ fn resolve_under_root(root: &Path, path: &Path) -> PathBuf {
     } else {
         root.join(path)
     }
-}
-
-fn same_path(left: &Path, right: &Path) -> bool {
-    comparable_path(left) == comparable_path(right)
-}
-
-fn comparable_path(path: &Path) -> PathBuf {
-    if let Ok(path) = path.canonicalize() {
-        return path;
-    }
-    let Some(file_name) = path.file_name() else {
-        return path.to_path_buf();
-    };
-    path.parent()
-        .and_then(|parent| parent.canonicalize().ok())
-        .map(|parent| parent.join(file_name))
-        .unwrap_or_else(|| path.to_path_buf())
 }
 
 #[cfg(test)]
