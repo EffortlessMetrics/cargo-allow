@@ -96,8 +96,15 @@ pub(crate) fn git_tree_files_at_revision(
 ) -> CargoAllowResult<Vec<GitTreeFile>> {
     let root = root.as_ref();
     let oid = resolve_commit_oid(root, revision)?;
+    git_tree_files_at_commit(root, &oid)
+}
+
+pub(crate) fn git_tree_files_at_commit(
+    root: &Path,
+    oid: &str,
+) -> CargoAllowResult<Vec<GitTreeFile>> {
     let mut cmd = git_command(root);
-    cmd.arg("ls-tree").arg("-r").arg("-z").arg(&oid).arg("--");
+    cmd.arg("ls-tree").arg("-r").arg("-z").arg(oid).arg("--");
     let output = run_git(cmd, "git ls-tree")?;
     if !output.status.success() {
         return Err(git_status_error("git ls-tree", &output));

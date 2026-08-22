@@ -1,14 +1,14 @@
 use allow_core::{
-    AllowConfig, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding, FindingKind,
-    normalize_path, source_tree_path_is_ignored,
+    AllowConfig, CargoAllowDiagnostic, CargoAllowError, CargoAllowErrorKind, CargoAllowResult,
+    Finding, FindingKind, normalize_path, source_tree_path_is_ignored,
 };
 use std::collections::BTreeSet;
 use std::path::Path;
 
-use crate::revision_git::{git_tree_files_at_revision, read_files_at_revision};
+use crate::revision_git::{git_tree_files_at_commit, read_files_at_revision};
 use effortless_repo_snapshot::{
     RepositorySnapshotRequest, ResolvedRevisionIdentity, SnapshotError, SnapshotErrorKind,
-    repository_snapshot,
+    repository_snapshot_from_capability, resolve_revision_capability,
 };
 
 /// Facts retained for one exact revision scan. Base and head callers receive
@@ -42,8 +42,35 @@ pub fn scan_at_revision(
     revision: &str,
     cfg: &AllowConfig,
 ) -> CargoAllowResult<RevisionScanResult> {
+    scan_at_revision_inner(root, revision, cfg, |_| {})
+}
+
+#[cfg(test)]
+pub(crate) fn scan_at_revision_with_after_resolve<F>(
+    root: impl AsRef<Path>,
+    revision: &str,
+    cfg: &AllowConfig,
+    after_resolve: F,
+) -> CargoAllowResult<RevisionScanResult>
+where
+    F: FnOnce(&Path),
+{
+    scan_at_revision_inner(root, revision, cfg, after_resolve)
+}
+
+fn scan_at_revision_inner<F>(
+    root: impl AsRef<Path>,
+    revision: &str,
+    cfg: &AllowConfig,
+    after_resolve: F,
+) -> CargoAllowResult<RevisionScanResult>
+where
+    F: FnOnce(&Path),
+{
     let root = root.as_ref();
-    let all_tree_files = git_tree_files_at_revision(root, revision)?;
+    let resolved_revision = resolve_revision_capability(root, revision).map_err(snapshot_error)?;
+    after_resolve(root);
+    let all_tree_files = git_tree_files_at_commit(root, resolved_revision.commit())?;
     let mut tree_files = all_tree_files.clone();
     tree_files.retain(|entry| !source_tree_path_is_ignored(&entry.path, &cfg.workspace.ignored));
     let files = tree_files
@@ -65,10 +92,11 @@ pub fn scan_at_revision(
         source_paths.extend(files.iter().filter(|path| is_workflow_path(path)).cloned());
     }
     let source_paths = source_paths.into_iter().collect::<Vec<_>>();
-    let snapshot = repository_snapshot(
+    let snapshot = repository_snapshot_from_capability(
         root,
         &RepositorySnapshotRequest::committed_head(revision)
             .with_selected_paths(source_paths.clone()),
+        resolved_revision,
     )
     .map_err(snapshot_error)?;
     let source_texts = read_files_at_revision(root, &all_tree_files, &source_paths)?;
@@ -180,7 +208,16 @@ fn snapshot_error(error: SnapshotError) -> CargoAllowError {
         SnapshotErrorKind::Unknown => CargoAllowErrorKind::Unknown,
         SnapshotErrorKind::Scan => CargoAllowErrorKind::Scan,
     };
-    CargoAllowError::with_kind(kind, error.to_string())
+    let diagnostics = error.diagnostics().into_iter().map(|diagnostic| {
+        CargoAllowDiagnostic::error(
+            diagnostic.code.clone(),
+            diagnostic.category.clone(),
+            diagnostic.entry_id.as_deref(),
+            None,
+            diagnostic.message.clone(),
+        )
+    });
+    CargoAllowError::with_kind(kind, error.to_string()).with_diagnostics(diagnostics)
 }
 
 fn missing_revision_source(path: &Path) -> CargoAllowError {

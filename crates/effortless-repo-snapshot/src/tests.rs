@@ -2,7 +2,7 @@ use crate::parity::{ParityContract, load_parity_contract};
 use crate::protocol_adapter::repository_snapshot_v1;
 use crate::{
     RepositorySnapshotRequest, StagedPathRead, read_staged_path, repository_snapshot,
-    staged_repository_snapshot,
+    repository_snapshot_from_capability, resolve_revision_capability, staged_repository_snapshot,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -16,6 +16,126 @@ fn parity_contracts_load_from_fixtures() -> Result<(), String> {
         if contract.scenario_id.is_empty() {
             return Err(format!("empty scenario in {}", path.display()));
         }
+    }
+    Ok(())
+}
+
+#[test]
+fn resolved_capability_rejects_other_root_and_revision_spelling() -> Result<(), String> {
+    let first = init_git_repo("capability-root-a")?;
+    write_file(&first, "src/lib.rs", "fn a() {}\n")?;
+    commit_all(&first, "a")?;
+    let second = init_git_repo("capability-root-b")?;
+    write_file(&second, "src/lib.rs", "fn b() {}\n")?;
+    commit_all(&second, "b")?;
+    git(&first, &["branch", "moving"])?;
+    let capability = resolve_revision_capability(&first, "refs/heads/moving")
+        .map_err(|err| format!("capability: {err}"))?;
+    let mismatch = repository_snapshot_from_capability(
+        &second,
+        &RepositorySnapshotRequest::committed_head("refs/heads/moving"),
+        capability.clone(),
+    );
+    let mismatch = match mismatch {
+        Ok(_) => return Err("root mismatch must fail".into()),
+        Err(err) => err,
+    };
+    if mismatch.kind() != crate::SnapshotErrorKind::InvalidConfig
+        || mismatch.diagnostics().first().map(|d| d.code.as_str())
+            != Some("resolved_capability_root_mismatch")
+    {
+        return Err("root mismatch diagnostic was not typed".into());
+    }
+    let empty_head = repository_snapshot_from_capability(
+        &first,
+        &RepositorySnapshotRequest::committed_head(""),
+        capability,
+    );
+    let empty_head = match empty_head {
+        Ok(_) => return Err("empty HEAD must not accept moving capability".into()),
+        Err(err) => err,
+    };
+    if empty_head.kind() != crate::SnapshotErrorKind::InvalidConfig
+        || empty_head.diagnostics().first().map(|d| d.code.as_str())
+            != Some("resolved_capability_revision_mismatch")
+    {
+        return Err("revision mismatch diagnostic was not typed".into());
+    }
+    Ok(())
+}
+
+#[test]
+fn resolved_capability_preserves_committed_range_base_and_merge_base() -> Result<(), String> {
+    let repo = init_git_repo("capability-range")?;
+    write_file(&repo, "src/lib.rs", "fn base() {}\n")?;
+    commit_all(&repo, "base")?;
+    let base = String::from_utf8(
+        Command::new("git")
+            .arg("-C")
+            .arg(&repo)
+            .args(["rev-parse", "HEAD"])
+            .output()
+            .map_err(|err| format!("rev-parse: {err}"))?
+            .stdout,
+    )
+    .map_err(|err| format!("rev-parse utf8: {err}"))?;
+    write_file(&repo, "src/lib.rs", "fn head() {}\n")?;
+    commit_all(&repo, "head")?;
+    let base = base.trim().to_string();
+    let capability =
+        resolve_revision_capability(&repo, "HEAD").map_err(|err| format!("capability: {err}"))?;
+    let expected_head = capability.commit().to_string();
+    let snapshot = repository_snapshot_from_capability(
+        &repo,
+        &RepositorySnapshotRequest::committed_range(base.clone(), "HEAD"),
+        capability,
+    )
+    .map_err(|err| format!("range snapshot: {err}"))?;
+    if snapshot.base.as_ref().map(|value| value.commit.as_str()) != Some(base.trim()) {
+        return Err("range base identity was not preserved".into());
+    }
+    if snapshot.head.commit != expected_head
+        || snapshot.merge_base.as_deref() != Some(base.as_str())
+    {
+        return Err("range merge base missing".into());
+    }
+    Ok(())
+}
+
+#[test]
+fn resolved_capability_failures_are_typed() -> Result<(), String> {
+    let repo = init_git_repo("capability-failures")?;
+    write_file(&repo, "src/lib.rs", "fn stable() {}\n")?;
+    commit_all(&repo, "stable")?;
+    let capability =
+        resolve_revision_capability(&repo, "HEAD").map_err(|err| format!("capability: {err}"))?;
+
+    let missing_root = repo.join("missing-root");
+    let root_error = match repository_snapshot_from_capability(
+        &missing_root,
+        &RepositorySnapshotRequest::committed_head("HEAD"),
+        capability.clone(),
+    ) {
+        Ok(_) => return Err("missing root unexpectedly succeeded".into()),
+        Err(error) => error,
+    };
+    if root_error.kind() != crate::SnapshotErrorKind::Inventory {
+        return Err("missing root error kind was not Inventory".into());
+    }
+
+    let missing_base = RepositorySnapshotRequest {
+        kind: crate::RepositorySnapshotKind::CommittedRange,
+        head: "HEAD".to_string(),
+        base: None,
+        selected_paths: Vec::new(),
+        probe_dirty_state: false,
+    };
+    let base_error = match repository_snapshot_from_capability(&repo, &missing_base, capability) {
+        Ok(_) => return Err("missing base unexpectedly succeeded".into()),
+        Err(error) => error,
+    };
+    if base_error.kind() != crate::SnapshotErrorKind::InvalidConfig {
+        return Err("missing base error kind was not InvalidConfig".into());
     }
     Ok(())
 }

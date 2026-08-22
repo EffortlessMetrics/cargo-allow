@@ -119,3 +119,21 @@ fn snapshot_error_projects_every_neutral_kind() {
         assert!(err.to_string().contains("snapshot unavailable"));
     }
 }
+
+#[test]
+fn snapshot_error_preserves_stable_diagnostics() {
+    let err = snapshot_error(
+        SnapshotError::with_kind(SnapshotErrorKind::InvalidConfig, "invalid revision")
+            .with_diagnostic(effortless_repo_snapshot::SnapshotDiagnostic::error(
+                "invalid_revision_input",
+                "git_revision",
+                None,
+                None,
+                "revision syntax is invalid",
+            )),
+    );
+
+    assert_eq!(err.diagnostics().len(), 1);
+    assert_eq!(err.diagnostics()[0].code, "invalid_revision_input");
+    assert_eq!(err.diagnostics()[0].category, "git_revision");
+}
