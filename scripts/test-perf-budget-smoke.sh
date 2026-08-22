@@ -17,9 +17,17 @@ schema = json.loads(Path("docs/schemas/operator-latency.schema.json").read_text(
 assert schema["$id"].endswith("operator-latency.v1.schema.json")
 assert schema["properties"]["schema_id"]["const"] == "cargo-allow.operator-latency.v1"
 assert "samples" in schema["required"]
+sample = schema["$defs"]["sample"]
+assert "cache_mode" in sample["properties"]
+assert set(sample["properties"]["cache_mode"]["enum"]) == {"on", "off", "not_applicable", "invalid"}
 for marker in (
     "HARD_CEILING_MS",
     "semantic_artifact",
+    "cache_cold_on",
+    "cache_warm_on",
+    "cache_disabled_off",
+    "--persistent-cache",
+    "normalize_json",
     "operator-latency.receipt.json",
     'write_receipt "pass" ""',
 ):

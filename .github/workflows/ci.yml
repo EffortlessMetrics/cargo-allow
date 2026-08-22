@@ -257,7 +257,15 @@ jobs:
           assert receipt["schema_id"] == "cargo-allow.operator-latency.v1"
           assert receipt["result"] == "pass"
           assert receipt["binary"]["profile"] == "release"
-          assert len(receipt["samples"]) == 6
+          samples = receipt["samples"]
+          policy = receipt["sample_policy"]
+          assert len(samples) == (
+              policy["cold_process_samples"]
+              + policy["warm_process_samples"]
+              + policy["targeted_samples"]
+          )
+          assert policy["cache_mode_samples"] == {"on": 2, "off": 1, "not_applicable": 6}
+          assert (policy["cold_process_samples"], policy["warm_process_samples"], policy["targeted_samples"]) == (2, 3, 4)
           assert all(sample["status"] == "passed" for sample in receipt["samples"])
           ceiling = receipt["budget"]["ceiling_ms"]
           assert all(

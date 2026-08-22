@@ -89,7 +89,16 @@
       "properties": {
         "cold_process_samples": { "type": "integer", "minimum": 0 },
         "warm_process_samples": { "type": "integer", "minimum": 0 },
-        "targeted_samples": { "type": "integer", "minimum": 0 }
+        "targeted_samples": { "type": "integer", "minimum": 0 },
+        "cache_mode_samples": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "on": { "type": "integer", "minimum": 0 },
+            "off": { "type": "integer", "minimum": 0 },
+            "not_applicable": { "type": "integer", "minimum": 0 }
+          }
+        }
       }
     },
     "budget": {
@@ -110,6 +119,7 @@
       "properties": {
         "name": { "type": "string" },
         "phase": { "enum": ["cold", "warm", "targeted"] },
+        "cache_mode": { "enum": ["on", "off", "not_applicable", "invalid"] },
         "argv": {
           "type": "array",
           "items": { "type": "string" },
