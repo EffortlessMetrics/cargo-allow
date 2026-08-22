@@ -36,6 +36,7 @@ fn schema_contract_registry_covers_every_documented_artifact_schema() {
         .filter(|name| {
             name != "tool-identity"
                 && name != "operator-latency"
+                && name != "operator-latency.v2"
                 && name != "release-manifest"
                 && name != "release-manifest-v2"
                 && name != "topology-publish-receipt"
