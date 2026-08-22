@@ -296,7 +296,8 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
             findings.iter().map(|finding| finding.kind),
         );
         let provenance = run_provenance();
-        let bindings = receipt_provenance_bindings(&root, args.config.as_deref());
+        let policy_digest = inventory_facts.policy_digest_text();
+        let bindings = receipt_provenance_bindings(&root, policy_digest.as_deref());
         let receipt = federation_bundle.with_context(|federation_context| {
             let mut receipt_context = source_context.report(Some(baseline_debt_entries));
             evidence.apply_to(&mut receipt_context);
@@ -461,7 +462,8 @@ fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
             staged.findings.iter().map(|finding| finding.kind),
         );
         let provenance = run_provenance();
-        let bindings = receipt_provenance_bindings(&staged.root, args.config.as_deref());
+        let policy_digest = staged.inventory_facts.policy_digest_text();
+        let bindings = receipt_provenance_bindings(&staged.root, policy_digest.as_deref());
         let receipt = federation_bundle.with_context(|federation_context| {
             let mut receipt_context = source_context.report(Some(baseline_debt_entries));
             evidence.apply_to(&mut receipt_context);
@@ -527,7 +529,7 @@ fn write_check_error_receipt(
     );
     let mut context = source_context.report(None);
     let provenance = run_provenance();
-    let bindings = receipt_provenance_bindings(&root, args.config.as_deref());
+    let bindings = receipt_provenance_bindings(&root, None);
     apply_receipt_run_metadata(
         &mut context,
         effective_mode,
@@ -609,18 +611,21 @@ fn apply_receipt_run_metadata<'a>(
 ///
 /// `git_sha` resolves `HEAD` inside `root`; any failure (not a repository, git
 /// missing, detached/empty state) leaves it absent rather than failing the scan.
-/// `policy_digest` is the versioned SHA-256 of the active ledger file bytes as
-/// read when the receipt renders; it is absent when no ledger path resolves or
-/// the bytes cannot be read.
+/// `policy_digest` is the versioned SHA-256 of the exact active ledger bytes
+/// loaded and evaluated for the scan; it is absent when no policy was
+/// successfully evaluated (including unreadable policy bytes).
 struct ReceiptProvenanceBindings {
     git_sha: Option<String>,
     policy_digest: Option<String>,
 }
 
-fn receipt_provenance_bindings(root: &Path, config: Option<&Path>) -> ReceiptProvenanceBindings {
+fn receipt_provenance_bindings(
+    root: &Path,
+    policy_digest: Option<&str>,
+) -> ReceiptProvenanceBindings {
     ReceiptProvenanceBindings {
         git_sha: best_effort_head_commit(root),
-        policy_digest: best_effort_policy_digest(root, config),
+        policy_digest: policy_digest.map(str::to_owned),
     }
 }
 
@@ -629,6 +634,12 @@ fn best_effort_head_commit(root: &Path) -> Option<String> {
         .arg("-C")
         .arg(root)
         .args(["rev-parse", "HEAD"])
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_WORK_TREE")
+        .env_remove("GIT_INDEX_FILE")
+        .env_remove("GIT_COMMON_DIR")
+        .env_remove("GIT_OBJECT_DIRECTORY")
+        .env_remove("GIT_ALTERNATE_OBJECT_DIRECTORIES")
         .output()
         .ok()?;
     if !output.status.success() {
@@ -639,12 +650,6 @@ fn best_effort_head_commit(root: &Path) -> Option<String> {
         return None;
     }
     Some(commit)
-}
-
-fn best_effort_policy_digest(root: &Path, config: Option<&Path>) -> Option<String> {
-    let policy_path = config_path(root, config)?;
-    let bytes = std::fs::read(&policy_path).ok()?;
-    Some(allow_core::sha256_v1_bytes(&bytes))
 }
 
 /// Run provenance: a UTC timestamp + a process-unique run id (#1854).

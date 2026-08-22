@@ -22,22 +22,25 @@ tree identity where present, and treat incomplete or stale evidence as not
 proven. The catalog is the source of truth; examples are characterization,
 not approval.
 
-### Receipt integrity binding
+### Receipt integrity binding (check receipts only)
 
-The `cargo-allow.receipt.v1` artifact binds each run to what it observed:
+The `cargo-allow.receipt.v1` artifact produced by `check` binds the run to the
+policy bytes actually evaluated and the source tree it scanned. Diff receipts
+are intentionally out of scope for this binding follow-up.
 
 - `git_sha`: the resolved `HEAD` commit of the scanned source tree. Absent when
   the tree is not a Git repository or the commit cannot be resolved.
 - `policy_digest`: a versioned SHA-256 (`sha256:v1:<hex>`) of the active ledger
-  file bytes, read when the receipt is rendered. Absent when no ledger path
-  resolves.
+  bytes loaded and evaluated for the check. Absent when no ledger path resolves
+  or the resolved ledger bytes cannot be read.
 - `started_at` / `run_id`: wall-clock start time (RFC 3339 UTC) and a
   process-unique invocation id correlating a receipt to one run.
 
-Trust assumption: these fields are unsigned, best-effort provenance recorded by
-the tool itself. They make tampering or cross-run receipt substitution
-detectable by re-computing the digest at the named commit; they do not defend
-against an attacker who controls the machine writing the receipt. Receipts with
+Trust assumption: these fields are unsigned, best-effort observations recorded by
+the tool itself. An external verifier must independently resolve the expected
+repository HEAD and policy bytes before using them to detect mismatches; the
+fields do not authenticate the invocation, `started_at`, or `run_id`, and do not
+defend against an attacker who controls the writing machine. Receipts with
 timestamps are not byte-stable across runs.
 
 Claim boundary: a valid schema proves artifact shape and declared evidence

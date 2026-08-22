@@ -88,6 +88,7 @@ pub(crate) struct InventoryFacts {
     /// errors. When non-zero, `check --mode no-new` fails closed so partial
     /// parses cannot masquerade as complete scans (#2658).
     pub(crate) rust_files_with_parse_errors: usize,
+    pub(crate) policy_digest: Option<[u8; 32]>,
 }
 
 impl InventoryFacts {
@@ -105,6 +106,7 @@ impl InventoryFacts {
             rust_files_skipped: 0,
             rust_files_considered: 0,
             rust_files_with_parse_errors: 0,
+            policy_digest: None,
         }
     }
 
@@ -118,6 +120,7 @@ impl InventoryFacts {
             rust_files_skipped: 0,
             rust_files_considered: 0,
             rust_files_with_parse_errors: 0,
+            policy_digest: None,
         }
     }
 
@@ -155,6 +158,41 @@ impl InventoryFacts {
     pub(crate) fn with_rust_files_with_parse_errors(mut self, count: usize) -> Self {
         self.rust_files_with_parse_errors = count;
         self
+    }
+
+    pub(crate) fn with_policy_digest(mut self, digest: String) -> Self {
+        let Some(hex) = digest.strip_prefix("sha256:v1:") else {
+            return self;
+        };
+        let mut bytes = [0u8; 32];
+        if hex.len() != 64 {
+            return self;
+        }
+        for (index, pair) in hex.as_bytes().chunks_exact(2).enumerate() {
+            let Ok(pair_text) = std::str::from_utf8(pair) else {
+                return self;
+            };
+            let Ok(value) = u8::from_str_radix(pair_text, 16) else {
+                return self;
+            };
+            let Some(slot) = bytes.get_mut(index) else {
+                return self;
+            };
+            *slot = value;
+        }
+        self.policy_digest = Some(bytes);
+        self
+    }
+
+    pub(crate) fn policy_digest_text(&self) -> Option<String> {
+        self.policy_digest.map(|bytes| {
+            let mut text = String::from("sha256:v1:");
+            for byte in bytes {
+                use std::fmt::Write as _;
+                let _ = write!(text, "{byte:02x}");
+            }
+            text
+        })
     }
 }
 

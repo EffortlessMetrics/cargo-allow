@@ -93,6 +93,7 @@ fn check_receipt_includes_run_metadata() {
 #[test]
 fn check_receipt_binds_head_commit_and_policy_digest() {
     let root = temp_root("receipt-provenance-bindings");
+    let decoy = temp_root("receipt-provenance-decoy");
     fs::create_dir_all(root.join("policy"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
     fs::write(root.join("policy/allow.toml"), policy())
@@ -105,6 +106,18 @@ fn check_receipt_binds_head_commit_and_policy_digest() {
     git(&root, &["config", "user.name", "cargo-allow test"]);
     git(&root, &["add", "policy/allow.toml"]);
     git(&root, &["commit", "-m", "base policy"]);
+    fs::create_dir_all(decoy.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create decoy policy dir: {err}")));
+    fs::write(decoy.join("policy/allow.toml"), policy())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write decoy policy: {err}")));
+    git(&decoy, &["init"]);
+    git(
+        &decoy,
+        &["config", "user.email", "cargo-allow-decoy@example.invalid"],
+    );
+    git(&decoy, &["config", "user.name", "cargo-allow decoy"]);
+    git(&decoy, &["add", "policy/allow.toml"]);
+    git(&decoy, &["commit", "-m", "decoy policy"]);
 
     let head = Command::new("git")
         .arg("-C")
@@ -125,6 +138,7 @@ fn check_receipt_binds_head_commit_and_policy_digest() {
         .arg("json")
         .arg("--receipt")
         .arg(&receipt_output)
+        .env("GIT_DIR", decoy.join(".git"))
         .output()
         .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow check: {err}")));
 
@@ -149,9 +163,66 @@ fn check_receipt_binds_head_commit_and_policy_digest() {
         .and_then(serde_json::Value::as_str)
         .unwrap_or_else(|| std::panic::panic_any("receipt should bind ledger bytes"));
     assert_eq!(
-        policy_digest.len(),
-        "sha256:v1:".len() + 64,
-        "policy_digest should be a versioned sha256 hex digest: {policy_digest}"
+        policy_digest,
+        allow_core::sha256_v1_bytes(policy().as_bytes()),
+        "policy_digest must hash the exact evaluated ledger bytes"
+    );
+
+    remove_temp_root(root);
+    remove_temp_root(decoy);
+}
+
+#[test]
+fn staged_check_receipt_hashes_staged_policy_bytes() {
+    let root = temp_root("receipt-staged-policy");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::write(root.join("policy/allow.toml"), policy())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "policy/allow.toml"]);
+    git(&root, &["commit", "-m", "base policy"]);
+
+    let staged_policy = format!("{}\n# staged policy bytes\n", policy());
+    fs::write(root.join("policy/allow.toml"), &staged_policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write staged policy: {err}")));
+    git(&root, &["add", "policy/allow.toml"]);
+
+    let receipt_output = root.join("target/cargo-allow/staged.receipt.json");
+    let result = cargo_allow_command()
+        .arg("check")
+        .arg("--root")
+        .arg(&root)
+        .arg("--staged")
+        .arg("--phase")
+        .arg("precommit")
+        .arg("--mode")
+        .arg("audit")
+        .arg("--format")
+        .arg("json")
+        .arg("--receipt")
+        .arg(&receipt_output)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run staged check: {err}")));
+
+    assert_status("staged check", &result, true);
+    let receipt = assert_saved_json_artifact(
+        &receipt_output,
+        "staged check receipt",
+        "cargo-allow.receipt.v1",
+        "check",
+    );
+    assert_eq!(
+        receipt
+            .pointer("/policy_digest")
+            .and_then(serde_json::Value::as_str),
+        Some(allow_core::sha256_v1_bytes(staged_policy.as_bytes()).as_str()),
+        "staged receipt must hash the staged policy bytes"
     );
 
     remove_temp_root(root);
