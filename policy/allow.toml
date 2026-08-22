@@ -77,6 +77,28 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-11132"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/operator-latency.v2.schema.json"
+owner = "repo-infra"
+classification = "operator_latency_schema"
+reason = "Versioned operator-latency v2 receipt schema for the #2571 measurement harness; v1 remains the historical compatibility schema."
+evidence = ["issue:2571", "doc:docs/performance-budgets.md", "test:scripts/test-perf-budget-smoke.sh"]
+created = "2026-08-22"
+review_after = "2027-02-22"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/operator-latency.v2.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/operator-latency.v2.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-11111"
 kind = "non_rust_file"
 family = "documentation"
