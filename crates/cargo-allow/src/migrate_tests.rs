@@ -368,6 +368,46 @@ fn migrate_external_final_recheck_rejects_parent_retarget() {
     let _ = fs::remove_dir_all(&root);
 }
 
+#[cfg(unix)]
+#[test]
+fn migrate_external_final_recheck_rejects_file_to_directory_substitution() {
+    let root = migrate_fixture_dir();
+    let requested = root.join("candidate.toml");
+    fs::write(&requested, "original\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("original output: {err}")));
+    let held = effortless_repo_edit::resolve_mutation_target(&requested, &root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("held target: {err}")));
+    let _lock = effortless_repo_edit::MutationLock::acquire_for_target(&held)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("held lock: {err}")));
+    let sentinel = requested.join("sentinel.txt");
+    let mut substitute = || {
+        fs::remove_file(&requested)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("remove output: {err}")));
+        fs::create_dir(&requested)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("directory substitute: {err}")));
+        fs::write(&sentinel, "directory sentinel\n")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("directory sentinel: {err}")));
+    };
+    let error = write_external_migrate_output_with_test_hook(
+        &held,
+        &requested,
+        &root,
+        "replacement\n",
+        true,
+        &mut substitute,
+    )
+    .expect_err("file-to-directory substitution must fail closed");
+    assert!(error.to_string().contains("#2491"));
+    assert!(requested.is_dir());
+    assert_eq!(
+        fs::read_to_string(&sentinel).ok().as_deref(),
+        Some("directory sentinel\n")
+    );
+    assert!(!requested.with_extension("toml.bak").exists());
+    let _ = fs::remove_dir_all(&requested);
+    let _ = fs::remove_dir_all(&root);
+}
+
 #[test]
 fn migrate_repo_policy_writes_json_summary_with_inventory_context() {
     let dir = migrate_fixture_dir();

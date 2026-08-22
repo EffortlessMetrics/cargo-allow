@@ -270,6 +270,23 @@ fn write_external_migrate_output_with_hook(
     force: bool,
     hook: Option<&mut dyn FnMut()>,
 ) -> CargoAllowResult<()> {
+    assert_external_output_leaf_is_writable(requested, force)?;
+    assert_target_matches_held(held_target, requested, repository_root)
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+    if let Some(hook) = hook {
+        hook();
+    }
+    assert_external_output_leaf_is_writable(requested, force)?;
+    assert_target_matches_held(held_target, requested, repository_root)
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+    write_file_no_overwrite(held_target.normalized_absolute(), contents, force)
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)
+}
+
+fn assert_external_output_leaf_is_writable(
+    requested: &std::path::Path,
+    force: bool,
+) -> CargoAllowResult<()> {
     match std::fs::symlink_metadata(requested) {
         Ok(metadata) if metadata.file_type().is_symlink() => {
             return Err(CargoAllowError::with_kind(
@@ -293,15 +310,7 @@ fn write_external_migrate_output_with_hook(
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
         Err(error) => return Err(CargoAllowError::from(error)),
     }
-    assert_target_matches_held(held_target, requested, repository_root)
-        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
-    if let Some(hook) = hook {
-        hook();
-    }
-    assert_target_matches_held(held_target, requested, repository_root)
-        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
-    write_file_no_overwrite(held_target.normalized_absolute(), contents, force)
-        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)
+    Ok(())
 }
 
 #[cfg(test)]
