@@ -296,6 +296,7 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
             findings.iter().map(|finding| finding.kind),
         );
         let provenance = run_provenance();
+        let bindings = receipt_provenance_bindings(&root, args.config.as_deref());
         let receipt = federation_bundle.with_context(|federation_context| {
             let mut receipt_context = source_context.report(Some(baseline_debt_entries));
             evidence.apply_to(&mut receipt_context);
@@ -312,6 +313,7 @@ fn cmd_check_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
                 policy_config.as_deref(),
                 &provenance.started_at,
                 &provenance.run_id,
+                &bindings,
             );
             receipt_context.lane_posture = Some(&lane_posture);
             receipt_context.federation = Some(federation_context);
@@ -459,6 +461,7 @@ fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
             staged.findings.iter().map(|finding| finding.kind),
         );
         let provenance = run_provenance();
+        let bindings = receipt_provenance_bindings(&staged.root, args.config.as_deref());
         let receipt = federation_bundle.with_context(|federation_context| {
             let mut receipt_context = source_context.report(Some(baseline_debt_entries));
             evidence.apply_to(&mut receipt_context);
@@ -475,6 +478,7 @@ fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
                 policy_config.as_deref(),
                 &provenance.started_at,
                 &provenance.run_id,
+                &bindings,
             );
             receipt_context.lane_posture = Some(&lane_posture);
             receipt_context.federation = Some(federation_context);
@@ -523,6 +527,7 @@ fn write_check_error_receipt(
     );
     let mut context = source_context.report(None);
     let provenance = run_provenance();
+    let bindings = receipt_provenance_bindings(&root, args.config.as_deref());
     apply_receipt_run_metadata(
         &mut context,
         effective_mode,
@@ -530,6 +535,7 @@ fn write_check_error_receipt(
         policy_config.as_deref(),
         &provenance.started_at,
         &provenance.run_id,
+        &bindings,
     );
     write_file(path, &render_error_receipt(&err.to_string(), context))
         .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)
@@ -577,6 +583,7 @@ fn apply_receipt_run_metadata<'a>(
     policy_config: Option<&'a str>,
     started_at: &'a str,
     run_id: &'a str,
+    bindings: &'a ReceiptProvenanceBindings,
 ) {
     context.mode = Some(effective_mode);
     context.enforcement = Some(if mode.is_advisory() {
@@ -591,6 +598,53 @@ fn apply_receipt_run_metadata<'a>(
     // are NOT byte-stable across runs (documented).
     context.started_at = Some(started_at);
     context.run_id = Some(run_id);
+    // Integrity binding (#1850/#1781): bind the receipt to the exact commit and
+    // ledger bytes observed by this run so a corrupted or forged receipt cannot
+    // silently claim provenance it never had.
+    context.git_sha = bindings.git_sha.as_deref();
+    context.policy_digest = bindings.policy_digest.as_deref();
+}
+
+/// Best-effort receipt integrity binding (#1850/#1781).
+///
+/// `git_sha` resolves `HEAD` inside `root`; any failure (not a repository, git
+/// missing, detached/empty state) leaves it absent rather than failing the scan.
+/// `policy_digest` is the versioned SHA-256 of the active ledger file bytes as
+/// read when the receipt renders; it is absent when no ledger path resolves or
+/// the bytes cannot be read.
+struct ReceiptProvenanceBindings {
+    git_sha: Option<String>,
+    policy_digest: Option<String>,
+}
+
+fn receipt_provenance_bindings(root: &Path, config: Option<&Path>) -> ReceiptProvenanceBindings {
+    ReceiptProvenanceBindings {
+        git_sha: best_effort_head_commit(root),
+        policy_digest: best_effort_policy_digest(root, config),
+    }
+}
+
+fn best_effort_head_commit(root: &Path) -> Option<String> {
+    let output = process::Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(["rev-parse", "HEAD"])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let commit = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if commit.is_empty() || !commit.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return None;
+    }
+    Some(commit)
+}
+
+fn best_effort_policy_digest(root: &Path, config: Option<&Path>) -> Option<String> {
+    let policy_path = config_path(root, config)?;
+    let bytes = std::fs::read(&policy_path).ok()?;
+    Some(allow_core::sha256_v1_bytes(&bytes))
 }
 
 /// Run provenance: a UTC timestamp + a process-unique run id (#1854).

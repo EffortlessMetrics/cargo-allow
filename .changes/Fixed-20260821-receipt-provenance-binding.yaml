@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  Check receipts now carry the integrity binding that #1850 plumbed but
+  production never populated (#1781 residual). `git_sha` resolves HEAD in
+  the scanned source tree and stays absent outside a repository; `policy_digest`
+  is a versioned SHA-256 of the active ledger bytes read when the receipt
+  renders. The trust assumption (unsigned, best-effort provenance that makes
+  tampering detectable by recomputation, not attacker-proof) is documented
+  in docs/products/cargo-allow/schemas.md alongside the existing run
+  provenance fields.

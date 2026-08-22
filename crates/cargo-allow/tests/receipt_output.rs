@@ -72,6 +72,87 @@ fn check_receipt_includes_run_metadata() {
         "receipt should name the loaded policy path: {:?}",
         receipt.pointer("/policy_config")
     );
+    // #1781: outside any repository there is no commit to bind; the integrity
+    // keys must stay absent rather than carry empty or placeholder values.
+    assert!(
+        receipt.pointer("/git_sha").is_none(),
+        "receipt must not emit git_sha outside a repository: {:?}",
+        receipt.pointer("/git_sha")
+    );
+    assert!(
+        receipt.pointer("/policy_digest").is_some_and(|value| value
+            .as_str()
+            .is_some_and(|digest| digest.starts_with("sha256:v1:"))),
+        "receipt should bind the ledger bytes via policy_digest: {:?}",
+        receipt.pointer("/policy_digest")
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
+fn check_receipt_binds_head_commit_and_policy_digest() {
+    let root = temp_root("receipt-provenance-bindings");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::write(root.join("policy/allow.toml"), policy())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "policy/allow.toml"]);
+    git(&root, &["commit", "-m", "base policy"]);
+
+    let head = Command::new("git")
+        .arg("-C")
+        .arg(&root)
+        .args(["rev-parse", "HEAD"])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("resolve HEAD: {err}")));
+    let expected_head = String::from_utf8_lossy(&head.stdout).trim().to_string();
+
+    let receipt_output = root.join("target/cargo-allow/check.receipt.json");
+    let result = cargo_allow_command()
+        .arg("check")
+        .arg("--root")
+        .arg(&root)
+        .arg("--mode")
+        .arg("audit")
+        .arg("--format")
+        .arg("json")
+        .arg("--receipt")
+        .arg(&receipt_output)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow check: {err}")));
+
+    assert_status("check", &result, true);
+    let receipt = assert_saved_json_artifact(
+        &receipt_output,
+        "check receipt",
+        "cargo-allow.receipt.v1",
+        "check",
+    );
+    // #1850/#1781: the receipt binds to the exact commit and ledger bytes.
+    let git_sha = receipt
+        .pointer("/git_sha")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_else(|| std::panic::panic_any("receipt should bind HEAD as git_sha"));
+    assert_eq!(
+        git_sha, expected_head,
+        "git_sha must be the resolved HEAD commit"
+    );
+    let policy_digest = receipt
+        .pointer("/policy_digest")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_else(|| std::panic::panic_any("receipt should bind ledger bytes"));
+    assert_eq!(
+        policy_digest.len(),
+        "sha256:v1:".len() + 64,
+        "policy_digest should be a versioned sha256 hex digest: {policy_digest}"
+    );
 
     remove_temp_root(root);
 }
