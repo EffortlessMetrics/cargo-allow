@@ -401,8 +401,12 @@ impl<'a> Reader<'a> {
     }
 
     fn str(&mut self) -> Result<String, ()> {
+        self.str_with_limit(MAX_FIELD_BYTES)
+    }
+
+    fn str_with_limit(&mut self, max_bytes: usize) -> Result<String, ()> {
         let len = self.u32()? as usize;
-        if len > MAX_FIELD_BYTES {
+        if len > max_bytes {
             return Err(());
         }
         let bytes = self.take(len)?;
@@ -462,7 +466,7 @@ fn decode_store(
     }
     let mut entries = HashMap::with_capacity(entry_count.min(65_536));
     for _ in 0..entry_count {
-        let rel = reader.str()?;
+        let rel = reader.str_with_limit(MAX_RELATIVE_PATH_BYTES)?;
         let rel_path = PathBuf::from(&rel);
         let invalid_path = rel.trim().is_empty()
             || rel_path.is_absolute()
@@ -593,6 +597,21 @@ mod tests {
         let checksum = allow_core::sha256_v1_bytes(&payload);
         payload.extend_from_slice(checksum.as_bytes());
         assert!(decode_store(&payload, "generation").is_err());
+    }
+
+    #[test]
+    fn checksum_valid_oversized_relative_path_is_rejected() {
+        let mut entries = HashMap::new();
+        entries.insert(
+            PathBuf::from(format!("src/{}", "a".repeat(MAX_RELATIVE_PATH_BYTES))),
+            StoredEntry {
+                content_digest: "digest".to_string(),
+                has_parse_error: false,
+                findings: Vec::new(),
+            },
+        );
+        let encoded = encode_store("generation", &entries).unwrap_or_default();
+        assert!(decode_store(&encoded, "generation").is_err());
     }
 
     #[test]

@@ -660,6 +660,10 @@ fn load_world_without_policy(
         allow_rust::scan_rust_files_cached_with_store(root, &files, &mut cache, &mut store)
     })?;
     let _ = store.flush();
+    let inventory_facts = inventory_facts
+        .with_rust_files_considered(rust_scan.files_considered)
+        .with_rust_files_skipped(rust_scan.files_skipped)
+        .with_rust_files_with_parse_errors(rust_scan.files_with_parse_errors);
     findings.extend(rust_scan.findings);
     findings.extend(allow_files::scan_files_with_options(
         &files,
@@ -751,6 +755,12 @@ mod tests {
         assert_eq!(cold.3.files_scanned, warm.3.files_scanned);
         assert_eq!(cold.3.rust_files_considered, warm.3.rust_files_considered);
         assert_eq!(cold.3.rust_files_skipped, warm.3.rust_files_skipped);
+        assert_eq!(cold.3.rust_files_with_parse_errors, 0);
+        assert_eq!(warm.3.rust_files_with_parse_errors, 0);
+        assert_eq!(cold.3.rust_files_considered, 1);
+        assert_eq!(warm.3.rust_files_considered, 1);
+        assert_eq!(cold.3.rust_files_skipped, 0);
+        assert_eq!(warm.3.rust_files_skipped, 0);
         fs::remove_dir_all(root)
             .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture: {err}")));
     }
