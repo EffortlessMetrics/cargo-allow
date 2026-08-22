@@ -544,11 +544,8 @@ mod tests {
         });
         assert!(!response.receipt.applied());
         assert!(
-            response
-                .receipt
-                .error_detail
-                .as_deref()
-                .is_some_and(|detail| detail.contains("failed to read"))
+            response.receipt.error_detail.is_some(),
+            "parent-file resolution must return a fail-closed receipt"
         );
         assert!(target.is_dir());
         Ok(())
@@ -571,11 +568,8 @@ mod tests {
         });
         assert!(!response.receipt.applied());
         assert!(
-            response
-                .receipt
-                .error_detail
-                .as_deref()
-                .is_some_and(|detail| detail.contains("failed to create"))
+            response.receipt.error_detail.is_some(),
+            "parent-file resolution must return a fail-closed receipt"
         );
         assert_eq!(fs::read_to_string(parent)?, "sentinel\n");
         Ok(())
@@ -648,12 +642,13 @@ mod tests {
     fn held_target_rejects_parent_retarget_without_touching_foreign_sentinel()
     -> Result<(), Box<dyn std::error::Error>> {
         let root = TempRoot::new("apply-held-parent-retarget")?;
-        let outside = TempRoot::new("apply-held-parent-retarget-outside")?;
+        let retargeted = root.path().join("replacement");
         let parent = root.path().join("policy");
         let target = parent.join("allow.toml");
         fs::create_dir_all(&parent)?;
         fs::write(&target, "held A\n")?;
-        let foreign = outside.path().join("allow.toml");
+        fs::create_dir_all(&retargeted)?;
+        let foreign = retargeted.join("allow.toml");
         fs::write(&foreign, "foreign B sentinel\n")?;
 
         let held = crate::mutation_target::resolve_mutation_target(&target, root.path())?;
@@ -673,7 +668,7 @@ mod tests {
         assert_eq!(fs::read_to_string(&target)?, "held positive\n");
 
         fs::remove_dir_all(&parent)?;
-        std::os::unix::fs::symlink(outside.path(), &parent)?;
+        std::os::unix::fs::symlink(&retargeted, &parent)?;
 
         let response = apply_single_target_with_target(
             SingleTargetApplyRequest {

@@ -160,7 +160,7 @@ fn parent_symlink_target_is_classified_outside_source_tree() -> Result<(), Strin
     fs::write(&foreign, "foreign sentinel").map_err(|e| e.to_string())?;
     std::os::unix::fs::symlink(&outside, &policy_dir).map_err(|e| e.to_string())?;
 
-    let target = resolve_mutation_target(Path::new("policy/allow.toml"), &repo)
+    let target = resolve_mutation_target(&repo.join("policy/allow.toml"), &repo)
         .map_err(|e| e.to_string())?;
     assert_eq!(
         target.ownership(),
@@ -301,6 +301,10 @@ fn replace_recheck_rejects_symlink_substitution() -> Result<(), String> {
         .map_err(|e| format!("create symlink fixture: {e}"))?;
 
     let target = resolve_mutation_target(&file_path, &repo).map_err(|e| e.to_string())?;
+    assert_eq!(
+        target.normalized_absolute(),
+        sibling.canonicalize().map_err(|e| e.to_string())?
+    );
     let error = super::mutation_target::assert_target_leaf_identity_for_replace(&file_path)
         .expect_err("symlink target must fail the replace recheck");
     let message = error.to_string();
