@@ -73,3 +73,20 @@ The `why` fast path (#2425) eliminates items 1-3 for one-file questions.
 Future optimization targets: bucket policy entries by kind/family/path before
 matching, compile globs once, and add bounded parallelism for independent file
 parses.
+
+## Persistent scan facts (#2571)
+
+`check` persists parsed Rust scan facts under
+`target/cargo-allow/cache/`, keyed by the SHA-256 of the exact text the
+scanner evaluated. A warm invocation skips the tree-sitter parse for
+unchanged files; invalidation is content-exact, so preserved mtimes cannot
+mask changed content and mtime churn alone never changes results. Entries
+are bound to a scanner generation (crate version); a corrupted or
+truncated store fails open to an ordinary cold scan, and skipped files are
+never persisted.
+
+Claim boundary: the cache stores scanner *facts*, not authority. Every
+durable entry is re-validated against the current file digest before use,
+so the store can only reduce work, never change findings or enforcement
+outcomes. It lives under `target/`, is never part of the source-tree
+inventory, and every failure path degrades to ordinary scanning.

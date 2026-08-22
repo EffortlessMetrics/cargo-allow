@@ -11,6 +11,7 @@ mod lint;
 mod package;
 mod panic;
 mod parse_error;
+mod persistent_scan_cache;
 mod proptest_parser;
 mod safety_comment_nodes;
 mod scope;

@@ -373,10 +373,19 @@ pub(crate) fn load_world_with_evidence_mode(
         )?;
     }
     let mut findings = Vec::new();
+    // Durable scan-fact store (#2571): advisory on every failure path. The
+    // store lives under target/ (never scanned) and is keyed by content
+    // digest, so a stale or corrupt store can only cost a cold re-scan.
+    let mut store = allow_rust::ScanCacheStore::open(
+        &allow_rust::ScanCacheStore::default_dir(&root),
+        allow_rust::scan_cache_generation(),
+    );
     let rust_scan = SCAN_CACHE.with(|cache| {
         let mut cache = cache.borrow_mut();
-        allow_rust::scan_rust_files_cached(&root, &files, &mut cache)
-    })?;
+        allow_rust::scan_rust_files_cached_with_store(&root, &files, &mut cache, &mut store)
+    });
+    let _ = store.flush();
+    let rust_scan = rust_scan?;
     let rust_files_skipped = rust_scan.files_skipped;
     let rust_files_with_parse_errors = rust_scan.files_with_parse_errors;
     findings.extend(rust_scan.findings);

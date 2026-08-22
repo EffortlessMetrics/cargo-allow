@@ -24,6 +24,7 @@ mod line_unsafe_findings;
 mod package;
 mod safety_comments;
 mod scan_cache;
+mod scan_cache_store;
 mod scan_result;
 #[cfg(feature = "syntax")]
 mod syntax_coupling;
@@ -42,6 +43,7 @@ pub use package::{
     SourcePackageContext, apply_source_package_context, source_package_contexts_from_sources,
 };
 pub use scan_cache::ScanCache;
+pub use scan_cache_store::ScanCacheStore;
 pub use scan_result::{RustFileScanOutcome, RustFileScanStatus, RustScanResult};
 #[cfg(feature = "syntax")]
 pub use syntax_coupling::{
@@ -264,6 +266,80 @@ pub fn scan_rust_files_cached(
 
 #[cfg(test)]
 mod tests;
+
+/// Scanner generation binding persisted scan-fact stores (#2571): bumping the
+/// crate version invalidates every durable entry rather than mixing findings
+/// across scanner semantics.
+pub fn scan_cache_generation() -> String {
+    format!("allow-rust:{};syntax:v1", env!("CARGO_PKG_VERSION"))
+}
+
+/// Scan Rust files through the in-process cache plus the durable
+/// content-addressed store (#2571).
+///
+/// Behavior matches [`scan_rust_files_cached`], except that files whose
+/// exact evaluated bytes were already parsed by a previous invocation are
+/// served from disk without re-parsing. The store is advisory: open/flush
+/// failures degrade to ordinary scanning.
+#[cfg(feature = "syntax")]
+pub fn scan_rust_files_cached_with_store(
+    root: impl AsRef<Path>,
+    files: &[PathBuf],
+    cache: &mut ScanCache,
+    store: &mut ScanCacheStore,
+) -> CargoAllowResult<RustScanResult> {
+    use crate::RustFileScanOutcome;
+    let root = root.as_ref();
+    let mut out = Vec::new();
+    let packages = source_package_contexts(root, files)?;
+    let mut files_considered = 0usize;
+    let mut files_skipped = 0usize;
+    let mut files_with_parse_errors = 0usize;
+    let mut file_statuses = Vec::new();
+    for rel in files {
+        if rel.extension().and_then(|e| e.to_str()) != Some("rs") {
+            continue;
+        }
+        files_considered += 1;
+        let path = root.join(rel);
+        let (mut findings, has_parse_error, skipped) =
+            cache.scan_file_with_store(root, rel, store)?;
+        if skipped {
+            // Skipped files are never persisted: their bytes were not
+            // evaluated, so there are no facts to reuse.
+            files_skipped += 1;
+            eprintln!("warning: skipping {} (read error)", path.display());
+            file_statuses.push(RustFileScanStatus {
+                path: rel.clone(),
+                outcome: RustFileScanOutcome::Skipped {
+                    reason: "read failed, non-UTF-8, or file exceeded the scanner cap".to_string(),
+                },
+            });
+            continue;
+        }
+        if has_parse_error {
+            files_with_parse_errors += 1;
+        }
+        file_statuses.push(RustFileScanStatus {
+            path: rel.clone(),
+            outcome: if has_parse_error {
+                RustFileScanOutcome::ParseError
+            } else {
+                RustFileScanOutcome::Scanned
+            },
+        });
+        apply_source_package_context(rel, &packages, &mut findings);
+        out.extend(findings);
+    }
+    file_statuses.sort_by(|left, right| left.path.cmp(&right.path));
+    Ok(RustScanResult {
+        findings: out,
+        files_considered,
+        files_skipped,
+        files_with_parse_errors,
+        file_statuses,
+    })
+}
 
 /// Heuristically detect whether a path is a test-only source file (#1798).
 ///

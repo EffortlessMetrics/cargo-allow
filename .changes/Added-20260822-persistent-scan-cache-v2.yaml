@@ -1,0 +1,13 @@
+kind: Added
+body: >-
+  Persist content-addressed scanner facts across CLI invocations (#2571).
+  Parsed Rust findings are stored under target/cargo-allow/cache keyed by
+  the SHA-256 of the exact text the scanner evaluated, so warm runs skip
+  tree-sitter parsing for unchanged files while invalidation stays
+  content-exact: preserved mtimes cannot mask changed content and mtime
+  churn never causes re-parses to disagree. Entries are bound to a scanner
+  generation (crate version), corrupted or truncated stores fail open to a
+  cold scan, skipped files are never persisted, and the store lives under
+  gitignored target/ so durable facts never enter source-tree scans.
+  The store is advisory on every failure path and claims facts, not
+  authority.
