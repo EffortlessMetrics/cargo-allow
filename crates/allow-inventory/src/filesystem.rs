@@ -31,13 +31,37 @@ pub const INVENTORY_MAX_ENTRIES: usize = 250_000;
 pub(crate) fn existing_regular_files(
     root: &Path,
     files: Vec<PathBuf>,
-) -> (Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>) {
+) -> (Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>) {
+    classify_regular_files(root, files, |path| fs::metadata(path))
+}
+
+#[cfg(test)]
+pub(crate) fn existing_regular_files_with_metadata<F>(
+    root: &Path,
+    files: Vec<PathBuf>,
+    metadata: F,
+) -> (Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>)
+where
+    F: Fn(&Path) -> std::io::Result<fs::Metadata> + Sync,
+{
+    classify_regular_files(root, files, metadata)
+}
+
+fn classify_regular_files<F>(
+    root: &Path,
+    files: Vec<PathBuf>,
+    metadata: F,
+) -> (Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>)
+where
+    F: Fn(&Path) -> std::io::Result<fs::Metadata> + Sync,
+{
     let mut existing = Vec::with_capacity(files.len());
     let mut deleted_tracked = Vec::new();
     let mut submodule_paths = Vec::new();
+    let mut inaccessible_paths = Vec::new();
     let classified = files
         .into_par_iter()
-        .filter_map(|path| match fs::metadata(root.join(&path)) {
+        .filter_map(|path| match metadata(&root.join(&path)) {
             Ok(metadata) => {
                 if metadata.file_type().is_file() {
                     Some(PathDisposition::Existing(path))
@@ -52,11 +76,7 @@ pub(crate) fn existing_regular_files(
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
                 Some(PathDisposition::Deleted(path))
             }
-            Err(_) => {
-                // Other stat errors: treat as not-a-file (excluded), reserved
-                // for a separate inaccessible-file diagnostic.
-                None
-            }
+            Err(_) => Some(PathDisposition::Inaccessible(path)),
         })
         .collect::<Vec<_>>();
     for disposition in classified {
@@ -64,15 +84,22 @@ pub(crate) fn existing_regular_files(
             PathDisposition::Existing(path) => existing.push(path),
             PathDisposition::Deleted(path) => deleted_tracked.push(path),
             PathDisposition::Submodule(path) => submodule_paths.push(path),
+            PathDisposition::Inaccessible(path) => inaccessible_paths.push(path),
         }
     }
-    (existing, deleted_tracked, submodule_paths)
+    (
+        existing,
+        deleted_tracked,
+        submodule_paths,
+        inaccessible_paths,
+    )
 }
 
 enum PathDisposition {
     Existing(PathBuf),
     Deleted(PathBuf),
     Submodule(PathBuf),
+    Inaccessible(PathBuf),
 }
 
 pub(crate) fn recursive_files(root: &Path) -> CargoAllowResult<(Vec<PathBuf>, Vec<PathBuf>)> {

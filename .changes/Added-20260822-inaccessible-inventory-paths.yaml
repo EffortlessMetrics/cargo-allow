@@ -1,0 +1,7 @@
+kind: Added
+body: >-
+  Disclose non-NotFound metadata failures for Git-listed inventory paths via
+  `inaccessible_paths`, propagate the field through source-view and legacy
+  inventory bridges, and bind it into inventory plan identities. This is a
+  bounded pre-0.2 public API addition; it does not change ordinary no-new
+  policy semantics or claim ACL-dependent coverage.

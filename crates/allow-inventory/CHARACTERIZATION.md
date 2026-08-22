@@ -32,8 +32,9 @@ Each git-reported path is probed with `fs::metadata(root.join(path))`
   `submodule_paths`; its contents are never scanned (#1846).
 - Missing from disk: recorded in `deleted_tracked` (#2048) instead of being
   silently dropped.
-- Other stat errors (e.g. permission denied): excluded from all three lists;
-  currently neither scanned nor disclosed.
+- Other stat errors (e.g. permission denied): recorded in
+  `inaccessible_paths` instead of being silently dropped. These paths are
+  disclosed and make a successful Git-backed inventory `Partial`.
 
 The final list is sorted, deduplicated, then filtered through the
 `options.ignored` globs before being returned.

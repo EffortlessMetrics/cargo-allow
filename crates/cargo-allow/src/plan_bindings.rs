@@ -145,6 +145,12 @@ pub(crate) fn inventory_identity_from_inventory(
     for path in &inventory.deleted_tracked {
         push_bound_value(&mut canonical, &format!("deleted:{}", normalize_path(path)));
     }
+    for path in &inventory.inaccessible_paths {
+        push_bound_value(
+            &mut canonical,
+            &format!("inaccessible:{}", normalize_path(path)),
+        );
+    }
     for path in &inventory.skipped_paths {
         push_bound_value(&mut canonical, &format!("skipped:{}", normalize_path(path)));
     }
