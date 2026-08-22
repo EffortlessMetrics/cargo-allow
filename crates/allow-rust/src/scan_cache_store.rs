@@ -23,7 +23,7 @@
 use allow_core::{Finding, read_file_capped_with_limit};
 use std::collections::HashMap;
 use std::fs::{File, TryLockError};
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime};
@@ -182,6 +182,7 @@ impl ScanCacheStore {
         let dest = self.store_path();
         let tmp = injected_temp
             .map(PathBuf::from)
+            .or_else(|| std::env::var_os("CARGO_ALLOW_PROCESS_TEST_TEMP_PATH").map(PathBuf::from))
             .unwrap_or_else(|| next_temp_path(&self.dir));
         let write = std::fs::OpenOptions::new()
             .write(true)
@@ -195,6 +196,7 @@ impl ScanCacheStore {
             let _ = std::fs::remove_file(&tmp);
             return false;
         }
+        test_stop_after_temp_sync();
         // std::fs::rename does not replace an existing destination on
         // Windows; drop the previous store first. The cache is advisory, so
         // a lost race here only costs a future cold start.
@@ -247,6 +249,18 @@ impl ScanCacheStore {
             self.dirty = true;
         }
     }
+}
+
+/// Test-only process harness stop point. It is inert unless the integration
+/// harness explicitly opts in through its private environment variable.
+fn test_stop_after_temp_sync() {
+    if std::env::var_os("CARGO_ALLOW_PROCESS_TEST_STOP_AFTER_SYNC").is_none() {
+        return;
+    }
+    println!("READY");
+    let _ = std::io::stdout().flush();
+    let mut byte = [0_u8; 1];
+    let _ = std::io::stdin().read_exact(&mut byte);
 }
 
 fn path_has_symlink_component(path: &Path) -> bool {

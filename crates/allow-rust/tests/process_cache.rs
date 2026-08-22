@@ -4,6 +4,7 @@ use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdout, Command, ExitStatus, Stdio};
 use std::sync::mpsc;
+use std::thread;
 use std::time::{Duration, Instant, SystemTime};
 
 const LOCK_FILE_NAME: &str = "scan-cache.v2.lock";
@@ -40,7 +41,7 @@ impl ChildGuard {
                 None if Instant::now() >= deadline => {
                     return Err("child did not exit before the deadline".to_string());
                 }
-                None => std::thread::yield_now(),
+                None => std::thread::sleep(Duration::from_millis(1)),
             }
         }
     }
@@ -65,7 +66,7 @@ impl Drop for ChildGuard {
         while Instant::now() < deadline {
             match self.child.try_wait() {
                 Ok(Some(_)) | Err(_) => return,
-                Ok(None) => std::thread::yield_now(),
+                Ok(None) => std::thread::sleep(Duration::from_millis(1)),
             }
         }
     }
@@ -86,6 +87,10 @@ fn spawn_helper(
         .stderr(Stdio::inherit());
     if let Some(temp) = temp {
         command.env("CACHE_PROCESS_TEMP", temp);
+        if mode == "flush-temp" {
+            command.env("CARGO_ALLOW_PROCESS_TEST_STOP_AFTER_SYNC", "1");
+            command.env("CARGO_ALLOW_PROCESS_TEST_TEMP_PATH", temp);
+        }
     }
     let mut child = ChildGuard {
         child: command.spawn().map_err(|e| e.to_string())?,
@@ -141,19 +146,7 @@ fn child_process_lock_blocks_then_releases_for_flush() -> Result<(), String> {
         Err(std::fs::TryLockError::WouldBlock) => {}
         other => return Err(format!("unexpected child-lock probe result: {other:?}")),
     }
-    child
-        .child
-        .stdin
-        .take()
-        .ok_or_else(|| "child stdin missing".to_string())?
-        .write_all(&[1])
-        .map_err(|e| e.to_string())?;
-    let status = child.wait()?;
-    if !status.success() {
-        return Err(format!("lock child failed: {status}"));
-    }
-    lock.try_lock().map_err(|e| e.to_string())?;
-    lock.unlock().map_err(|e| e.to_string())?;
+    drop(lock);
     let mut store = ScanCacheStore::open(&root.0, "generation");
     store.put(
         Path::new("src/child.rs"),
@@ -161,7 +154,24 @@ fn child_process_lock_blocks_then_releases_for_flush() -> Result<(), String> {
         false,
         Vec::new(),
     );
-    assert!(store.flush());
+    let mut input = child
+        .child
+        .stdin
+        .take()
+        .ok_or_else(|| "child stdin missing".to_string())?;
+    let flush_thread = thread::spawn(move || store.flush());
+    thread::sleep(Duration::from_millis(50));
+    input.write_all(&[1]).map_err(|e| e.to_string())?;
+    let status = child.wait()?;
+    if !status.success() {
+        return Err(format!("lock child failed: {status}"));
+    }
+    if !flush_thread
+        .join()
+        .map_err(|_| "flush thread panicked".to_string())?
+    {
+        return Err("production flush did not recover after child released lock".to_string());
+    }
     Ok(())
 }
 
@@ -206,7 +216,7 @@ fn killed_child_after_temp_sync_preserves_destination_and_allows_next_flush() ->
     assert!(initial.flush());
     let destination = std::fs::read(root.0.join("scan-cache.v2.bin")).map_err(|e| e.to_string())?;
     let temp = root.0.join("scan-cache.v2.bin.tmp-child");
-    let (mut child, stdout) = spawn_helper(&root.0, "temp", Some(&temp))?;
+    let (mut child, stdout) = spawn_helper(&root.0, "flush-temp", Some(&temp))?;
     wait_ready(stdout)?;
     let status = child.kill_and_wait()?;
     assert!(!status.success());
@@ -232,30 +242,38 @@ fn killed_child_after_temp_sync_preserves_destination_and_allows_next_flush() ->
 }
 
 #[test]
+fn unknown_child_mode_fails_closed() -> Result<(), String> {
+    let root = RootGuard::new("unknown-mode");
+    std::fs::create_dir_all(&root.0).map_err(|e| e.to_string())?;
+    let (mut child, _stdout) = spawn_helper(&root.0, "unknown", None)?;
+    let status = child.wait()?;
+    if status.success() {
+        return Err("unknown CACHE_PROCESS_MODE unexpectedly succeeded".to_string());
+    }
+    Ok(())
+}
+
+#[test]
 fn child_helper() -> Result<(), String> {
     let Ok(root) = std::env::var("CACHE_PROCESS_ROOT") else {
         return Ok(());
     };
     let root = PathBuf::from(root);
     let mode = std::env::var("CACHE_PROCESS_MODE").map_err(|e| e.to_string())?;
-    if mode == "temp" {
-        let temp = PathBuf::from(std::env::var("CACHE_PROCESS_TEMP").map_err(|e| e.to_string())?);
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(temp)
-            .map_err(|e| e.to_string())?;
-        file.write_all(b"partially-written")
-            .map_err(|e| e.to_string())?;
-        file.sync_all().map_err(|e| e.to_string())?;
-        println!("READY");
-        std::io::stdout().flush().map_err(|e| e.to_string())?;
-        let mut input = [0_u8; 1];
-        std::io::stdin()
-            .read_exact(&mut input)
-            .map_err(|e| e.to_string())?;
-        Ok(())
-    } else {
+    if mode == "flush-temp" {
+        let mut store = ScanCacheStore::open(&root, "generation");
+        store.put(
+            Path::new("src/child.rs"),
+            "child".to_string(),
+            false,
+            Vec::new(),
+        );
+        if !store.flush() {
+            return Err("production flush failed before stop point".to_string());
+        }
+        return Ok(());
+    }
+    if mode == "hold" {
         let lock = OpenOptions::new()
             .read(true)
             .write(true)
@@ -272,5 +290,7 @@ fn child_helper() -> Result<(), String> {
             .map_err(|e| e.to_string())?;
         lock.unlock().map_err(|e| e.to_string())?;
         Ok(())
+    } else {
+        Err(format!("unknown CACHE_PROCESS_MODE: {mode}"))
     }
 }
