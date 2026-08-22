@@ -34,8 +34,9 @@ binding follow-up.
   Absent when that root is not a Git repository or the commit cannot be
   resolved.
 - `policy_digest`: a versioned SHA-256 (`sha256:v1:<hex>`) of the active ledger
-  bytes loaded and evaluated for the check. Absent when no ledger path resolves
-  or the resolved ledger bytes cannot be read.
+  bytes loaded and evaluated for a successful check. It is also absent from
+  generic error receipts because the error writer intentionally does not retain
+  evaluated provenance; absence is not evidence that evaluation never began.
 - `started_at` / `run_id`: wall-clock start time (RFC 3339 UTC) and a
   process-unique invocation id correlating a receipt to one run.
 

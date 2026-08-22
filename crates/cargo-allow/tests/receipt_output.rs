@@ -319,7 +319,7 @@ callee = "unwrap"
     );
     assert!(
         receipt.pointer("/policy_digest").is_none(),
-        "error receipt must omit policy_digest when policy evaluation failed: {:?}",
+        "generic error receipts intentionally omit policy_digest because the error writer does not retain evaluated provenance: {:?}",
         receipt.pointer("/policy_digest")
     );
 
