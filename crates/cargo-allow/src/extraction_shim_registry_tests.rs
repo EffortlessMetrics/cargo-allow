@@ -132,7 +132,8 @@ fn repo_edit_command_shims_match_live_apply_forwards() -> Result<(), String> {
             .map_err(|err| format!("read {source_path}: {err}"))?;
         if !source.contains("SingleTargetApplyMode")
             || (!source.contains("apply_single_target(SingleTargetApplyRequest")
-                && !source.contains("apply_single_target_with_target(SingleTargetApplyRequest"))
+                && !(source.contains("apply_single_target_with_target")
+                    && source.contains("SingleTargetApplyRequest")))
         {
             return Err(format!(
                 "repo-edit command shim {id} is missing live apply forwarding in {source_path}"

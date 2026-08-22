@@ -42,7 +42,8 @@ pub use error::{RepoEditError, RepoEditResult, json_escape, stable_hash_hex};
 pub use mutation_lock::MutationLock;
 pub use mutation_target::{
     MutationTarget, MutationTargetOwnership, assert_target_identity_for_replace,
-    assert_target_matches_held, lock_path_for_target, resolve_mutation_target,
+    assert_target_leaf_identity_for_replace, assert_target_matches_held, lock_path_for_target,
+    resolve_mutation_target,
 };
 #[doc(hidden)]
 pub use parity::parity_contract_paths;

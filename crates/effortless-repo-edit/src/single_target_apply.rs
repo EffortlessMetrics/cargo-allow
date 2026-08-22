@@ -10,8 +10,8 @@ use crate::atomic_write::{write_file, write_file_no_overwrite};
 use crate::containment::assert_path_within_root;
 use crate::digest::sha256_v1_bytes;
 use crate::mutation_target::{
-    MutationTargetOwnership, assert_target_identity_for_replace, assert_target_matches_held,
-    resolve_mutation_target,
+    MutationTargetOwnership, assert_target_identity_for_replace,
+    assert_target_leaf_identity_for_replace, assert_target_matches_held, resolve_mutation_target,
 };
 use crate::target_identity::canonicalize_lexically;
 
@@ -232,8 +232,9 @@ fn apply_single_target_inner(
             }
             None => resolve_mutation_target(&joined, request.repository_root),
         };
-        if let Err(error) =
-            current_target.and_then(|target| assert_target_identity_for_replace(&target))
+        if let Err(error) = current_target
+            .and_then(|target| assert_target_leaf_identity_for_replace(&joined).map(|()| target))
+            .and_then(|target| assert_target_identity_for_replace(&target))
         {
             return failed_response(FailedApplyContext {
                 tool_version,

@@ -216,6 +216,18 @@ pub fn assert_target_matches_held(
 /// was extracted from.
 pub fn assert_target_identity_for_replace(target: &MutationTarget) -> RepoEditResult<()> {
     let path = target.normalized_absolute();
+    assert_replace_leaf_metadata(path)
+}
+
+/// Recheck the caller's lexical leaf before replacing. Canonical resolution
+/// intentionally follows symlinks for lock convergence, so this separate
+/// check preserves the safety distinction between a symlink leaf and its
+/// referent.
+pub fn assert_target_leaf_identity_for_replace(path: &Path) -> RepoEditResult<()> {
+    assert_replace_leaf_metadata(path)
+}
+
+fn assert_replace_leaf_metadata(path: &Path) -> RepoEditResult<()> {
     match std::fs::symlink_metadata(path) {
         Ok(meta) => {
             if meta.file_type().is_symlink() {
