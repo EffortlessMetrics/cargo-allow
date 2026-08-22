@@ -498,6 +498,45 @@ fn spec_system_init_bootstraps_profile_files() {
 }
 
 #[test]
+fn spec_system_init_custom_config_is_the_held_primary_target() {
+    let root = init_fixture_dir();
+    let custom = PathBuf::from(".allow/profiles/../profiles/custom-spec.toml");
+
+    cmd_init(&InitArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        strict: false,
+        profile: Some(ProfileArg::SpecSystem),
+        dry_run: false,
+        force: false,
+        config: custom.clone(),
+    })
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!("custom spec-system init should pass: {err}"))
+    });
+
+    assert!(root.join(".allow/profiles/custom-spec.toml").is_file());
+    assert!(!root.join(".allow/profiles/spec-system.toml").exists());
+
+    cmd_init(&InitArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        strict: false,
+        profile: Some(ProfileArg::SpecSystem),
+        dry_run: false,
+        force: true,
+        config: custom,
+    })
+    .unwrap_or_else(|err| {
+        std::panic::panic_any(format!("forced custom spec-system init should pass: {err}"))
+    });
+    assert!(root.join(".allow/profiles/custom-spec.toml.bak").is_file());
+    remove_init_fixture_dir(root);
+}
+
+#[test]
 fn spec_system_init_explicit_legacy_profile_bootstraps_legacy_goal_files() {
     let root = init_fixture_dir();
     let config_path = root.join("legacy-profile.toml");

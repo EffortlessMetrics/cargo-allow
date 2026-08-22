@@ -182,3 +182,77 @@ pub fn lock_path_for_target(target: &MutationTarget) -> PathBuf {
         .join("cargo-allow-locks")
         .join(format!("{}.lock", target.target_fingerprint()))
 }
+
+/// Compare a requested target with the identity held when its lock was taken.
+///
+/// This is the write-side convergence check: if a parent is retargeted after
+/// lock acquisition, the newly resolved fingerprint differs and the write is
+/// rejected before reading or replacing the foreign target.
+pub fn assert_target_matches_held(
+    held: &MutationTarget,
+    requested: &Path,
+    source_tree_root: &Path,
+) -> RepoEditResult<MutationTarget> {
+    let current = resolve_mutation_target(requested, source_tree_root)?;
+    if current.target_fingerprint() != held.target_fingerprint() {
+        return Err(RepoEditError::new(format!(
+            "target identity changed between lock and write: held {} but resolved {} (#2491)",
+            held.repo_relative_display(),
+            current.repo_relative_display()
+        )));
+    }
+    Ok(current)
+}
+
+/// Recheck target identity immediately before an atomic replace (#2491).
+///
+/// Verifies the existing target has not been substituted (e.g., swapped for a
+/// symlink, renamed away, or made unreadable) between validation and the
+/// final rename. Every replace-mode writer routes through this check so a
+/// path substitution cannot redirect an authorized write onto another object.
+///
+/// On success the target is a regular file (not a symlink or directory). Errors
+/// carry the same `(#2491)` diagnostics as the inline check this authority
+/// was extracted from.
+pub fn assert_target_identity_for_replace(target: &MutationTarget) -> RepoEditResult<()> {
+    let path = target.normalized_absolute();
+    assert_replace_leaf_metadata(path)
+}
+
+/// Recheck the caller's lexical leaf before replacing. Canonical resolution
+/// intentionally follows symlinks for lock convergence, so this separate
+/// check preserves the safety distinction between a symlink leaf and its
+/// referent.
+pub fn assert_target_leaf_identity_for_replace(path: &Path) -> RepoEditResult<()> {
+    assert_replace_leaf_metadata(path)
+}
+
+fn assert_replace_leaf_metadata(path: &Path) -> RepoEditResult<()> {
+    match std::fs::symlink_metadata(path) {
+        Ok(meta) => {
+            if meta.file_type().is_symlink() {
+                return Err(RepoEditError::new(format!(
+                    "target {} is a symlink; refusing to follow for atomic replace (#2491)",
+                    path.display()
+                )));
+            }
+            if !meta.is_file() {
+                return Err(RepoEditError::new(format!(
+                    "target {} is not a regular file; refusing atomic replace (#2491)",
+                    path.display()
+                )));
+            }
+            Ok(())
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            Err(RepoEditError::new(format!(
+                "target {} disappeared between read and identity recheck (#2491)",
+                path.display()
+            )))
+        }
+        Err(error) => Err(RepoEditError::new(format!(
+            "failed to recheck target {} identity before replace (#2491): {error}",
+            path.display()
+        ))),
+    }
+}
