@@ -305,6 +305,9 @@ struct WriterLock {
 impl WriterLock {
     fn acquire(dir: &Path, wait_hook: Option<&dyn Fn()>) -> Option<Self> {
         let path = dir.join(LOCK_FILE_NAME);
+        if path_has_symlink_component(dir) || path_is_unsafe(&path) {
+            return None;
+        }
         let file = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
@@ -312,6 +315,9 @@ impl WriterLock {
             .truncate(false)
             .open(path)
             .ok()?;
+        if path_is_unsafe(&dir.join(LOCK_FILE_NAME)) {
+            return None;
+        }
         for _ in 0..100 {
             match file.try_lock() {
                 Ok(()) => return Some(Self { file }),
@@ -979,6 +985,33 @@ mod tests {
             std::fs::read(&outside).map_err(|error| error.to_string())?,
             b"sentinel"
         );
+        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn precreated_lock_symlink_is_rejected_without_outside_creation() -> Result<(), String> {
+        use std::os::unix::fs::symlink;
+
+        let root = std::env::temp_dir().join(format!(
+            "allow-rust-cache-lock-symlink-{}-{}",
+            std::process::id(),
+            TEMP_NONCE.fetch_add(1, Ordering::Relaxed)
+        ));
+        let outside = root.join("outside.lock");
+        let lock = root.join(LOCK_FILE_NAME);
+        std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        symlink(&outside, &lock).map_err(|error| error.to_string())?;
+        let mut store = ScanCacheStore::open(&root, "generation");
+        store.put(
+            Path::new("src/lib.rs"),
+            "digest".to_string(),
+            false,
+            Vec::new(),
+        );
+        assert!(!store.flush());
+        assert!(!outside.exists());
         std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
         Ok(())
     }
