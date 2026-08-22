@@ -44,12 +44,14 @@ pub fn inventory(
         git_error,
         skipped_paths,
         submodule_paths,
+        inaccessible_paths,
     ) = if options.include_untracked {
         // Prefer git's own .gitignore rules when available (#1843). Fall
         // back to raw filesystem walk only when not in a git repo.
         match git_ls_files_include_untracked(root) {
             Ok(files) => {
-                let (existing, deleted, submods) = existing_regular_files(root, files);
+                let (existing, deleted, submods, inaccessible) =
+                    existing_regular_files(root, files);
                 (
                     existing,
                     InventorySource::FilesystemIncludeUntracked,
@@ -58,6 +60,7 @@ pub fn inventory(
                     None,
                     Vec::new(),
                     submods,
+                    inaccessible,
                 )
             }
             Err(err) => {
@@ -70,6 +73,7 @@ pub fn inventory(
                     Some(err.to_string()),
                     skipped,
                     Vec::new(),
+                    Vec::new(),
                 )
             }
         }
@@ -77,7 +81,7 @@ pub fn inventory(
         match git_ls_files(root) {
             Ok(files) => {
                 let empty_git_tracked = files.is_empty();
-                let (existing, deleted_tracked, submodule_paths) =
+                let (existing, deleted_tracked, submodule_paths, inaccessible_paths) =
                     existing_regular_files(root, files);
                 (
                     existing,
@@ -87,6 +91,7 @@ pub fn inventory(
                     None,
                     Vec::new(),
                     submodule_paths,
+                    inaccessible_paths,
                 )
             }
             Err(err) => {
@@ -99,6 +104,7 @@ pub fn inventory(
                     Some(err.to_string()),
                     skipped,
                     Vec::new(),
+                    Vec::new(),
                 )
             }
         }
@@ -106,18 +112,14 @@ pub fn inventory(
     files.sort();
     files.dedup();
     files.retain(|path| !source_tree_path_is_ignored(path, &options.ignored));
-    let completeness = if git_error.is_some() {
-        options::InventoryCompleteness::Fallback
-    } else if !deleted_tracked.is_empty()
-        || !submodule_paths.is_empty()
-        || !skipped_paths.is_empty()
-    {
-        options::InventoryCompleteness::Partial
-    } else if !options.ignored.is_empty() || !options.generated.is_empty() {
-        options::InventoryCompleteness::Scoped
-    } else {
-        options::InventoryCompleteness::Complete
-    };
+    let completeness = inventory_completeness(
+        options,
+        git_error.is_some(),
+        &deleted_tracked,
+        &submodule_paths,
+        &inaccessible_paths,
+        &skipped_paths,
+    );
     Ok(Inventory {
         files,
         source,
@@ -127,7 +129,31 @@ pub fn inventory(
         git_error,
         skipped_paths,
         submodule_paths,
+        inaccessible_paths,
     })
+}
+
+fn inventory_completeness(
+    options: &InventoryOptions,
+    git_failed: bool,
+    deleted_tracked: &[PathBuf],
+    submodule_paths: &[PathBuf],
+    inaccessible_paths: &[PathBuf],
+    skipped_paths: &[PathBuf],
+) -> options::InventoryCompleteness {
+    if git_failed {
+        options::InventoryCompleteness::Fallback
+    } else if !deleted_tracked.is_empty()
+        || !submodule_paths.is_empty()
+        || !inaccessible_paths.is_empty()
+        || !skipped_paths.is_empty()
+    {
+        options::InventoryCompleteness::Partial
+    } else if !options.ignored.is_empty() || !options.generated.is_empty() {
+        options::InventoryCompleteness::Scoped
+    } else {
+        options::InventoryCompleteness::Complete
+    }
 }
 
 #[cfg(test)]

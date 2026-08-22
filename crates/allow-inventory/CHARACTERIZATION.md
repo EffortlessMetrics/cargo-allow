@@ -32,8 +32,13 @@ Each git-reported path is probed with `fs::metadata(root.join(path))`
   `submodule_paths`; its contents are never scanned (#1846).
 - Missing from disk: recorded in `deleted_tracked` (#2048) instead of being
   silently dropped.
-- Other stat errors (e.g. permission denied): excluded from all three lists;
-  currently neither scanned nor disclosed.
+- Other stat errors (e.g. permission denied): recorded in
+  `inaccessible_paths` instead of being silently dropped. These paths are
+  disclosed and make a successful Git-backed inventory `Partial`.
+
+`inaccessible_paths` is present in both the Git-tracked and
+include-untracked inventory shapes; filesystem fallback keeps the field empty
+because its `skipped_paths` disclosure and `Fallback` precedence are separate.
 
 The final list is sorted, deduplicated, then filtered through the
 `options.ignored` globs before being returned.
@@ -82,8 +87,8 @@ normalization and backslash folding apply during matching.
 `InventoryCompleteness` precedence (`src/lib.rs`):
 
 1. `Fallback` — git failed; the result came from the filesystem walk.
-2. `Partial` — any of `deleted_tracked`, `submodule_paths`, or
-   `skipped_paths` is non-empty.
+2. `Partial` — any of `deleted_tracked`, `submodule_paths`,
+   `inaccessible_paths`, or `skipped_paths` is non-empty.
 3. `Scoped` — the `ignored` or `generated` option lists are non-empty. The
    default options carry ignore globs, so default-option inventories report
    `Scoped`, never `Complete`.
@@ -95,13 +100,13 @@ scan (#1849).
 
 ## What this means for receipts
 
-Ordinary worktree checks record the inventory completeness and diagnostics in
+Ordinary worktree receipts record the inventory completeness and diagnostics in
 their report; `Partial` or `Fallback` does not fail that check solely because of
-the completeness value. In staged `check --mode no-new`, `Partial` inventory
-does block the check (`crates/cargo-allow/src/check.rs`) until the partial
-condition is resolved, such as by restoring/removing a deleted tracked path or
-removing the submodule condition. Git-backed submodule and deleted-but-tracked
-paths can produce `Partial`. During filesystem fallback, skipped paths are
-disclosed in `skipped_paths`, but completeness remains `Fallback` because
-`git_error` takes precedence. `Scoped` is surfaced as scope metadata rather
-than a completeness failure.
+the completeness value. Git-backed deleted, submodule, and inaccessible paths
+may therefore appear as `Partial` in that worktree report. Staged constructors
+initialize `inaccessible_paths` empty, and staged `check --mode no-new` retains
+its existing staged-only limitation behavior; this change does not make staged
+no-new resolve or classify inaccessible worktree paths. During filesystem
+fallback, skipped paths are disclosed in `skipped_paths`, but completeness
+remains `Fallback` because `git_error` takes precedence. `Scoped` is surfaced as
+scope metadata rather than a completeness failure.

@@ -74,6 +74,7 @@ fn legacy_inventory(value: &SourceInventory) -> Inventory {
         },
         empty_git_tracked: value.empty_git_tracked,
         deleted_tracked: value.deleted_tracked.clone(),
+        inaccessible_paths: value.inaccessible_paths.clone(),
         git_error: value.git_error.clone(),
         skipped_paths: value.skipped_paths.clone(),
         submodule_paths: value.submodule_paths.clone(),

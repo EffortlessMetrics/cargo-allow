@@ -179,6 +179,7 @@ fn staged_inventory(snapshot: &StagedRepositorySnapshot, options: &InventoryOpti
         completeness,
         empty_git_tracked: snapshot.entries.is_empty(),
         deleted_tracked: Vec::new(),
+        inaccessible_paths: Vec::new(),
         git_error: None,
         skipped_paths: Vec::new(),
         submodule_paths: Vec::new(),
