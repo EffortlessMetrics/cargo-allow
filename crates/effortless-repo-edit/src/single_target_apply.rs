@@ -148,7 +148,7 @@ fn apply_single_target_inner(
 
     if let Some(held_target) = held_target
         && let Err(error) =
-            assert_target_matches_held(held_target, request.target, request.repository_root)
+            assert_target_matches_held(held_target, &joined, request.repository_root)
     {
         return failed_response(FailedApplyContext {
             tool_version,
@@ -228,7 +228,7 @@ fn apply_single_target_inner(
     if operation == ApplyOperation::Replace {
         let current_target = match held_target {
             Some(held_target) => {
-                assert_target_matches_held(held_target, request.target, request.repository_root)
+                assert_target_matches_held(held_target, &joined, request.repository_root)
             }
             None => resolve_mutation_target(&joined, request.repository_root),
         };
@@ -657,6 +657,20 @@ mod tests {
 
         let held = crate::mutation_target::resolve_mutation_target(&target, root.path())?;
         let lock = MutationLock::acquire_for_target(&held)?;
+        let positive = apply_single_target_with_target(
+            SingleTargetApplyRequest {
+                repository_root: root.path(),
+                target: Path::new("policy/allow.toml"),
+                contents: "held positive\n",
+                caller_reference: Some("test:held-parent-positive"),
+                lock_identity: Some(held.repo_relative_display().to_string()),
+                mode: SingleTargetApplyMode::AtomicReplace,
+            },
+            &held,
+        );
+        assert!(positive.receipt.applied());
+        assert_eq!(fs::read_to_string(&target)?, "held positive\n");
+
         fs::remove_dir_all(&parent)?;
         std::os::unix::fs::symlink(outside.path(), &parent)?;
 

@@ -193,21 +193,44 @@ pub(crate) fn cmd_spec_system_init(args: SpecSystemInitCommandArgs<'_>) -> Cargo
                 )
             })?;
         }
-        if let Some(held_target) = args.held_target {
-            // Compare by the requested repository-relative identity rather
-            // than the newly resolved absolute path: a retargeted parent must
-            // still enter this check and fail before the write.
-            if display == held_target.repo_relative_display() {
-                effortless_repo_edit::assert_target_matches_held(held_target, &path, &root)
-                    .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
-            }
-        }
-        fs::write(&path, file.contents).map_err(|e| {
-            CargoAllowError::with_kind(
-                CargoAllowErrorKind::Artifact,
-                format!("failed to write {}: {e}", path.display()),
+        if let Some(held_target) = args.held_target
+            && display == held_target.repo_relative_display()
+        {
+            // Compare by requested repository-relative identity rather than
+            // the newly resolved absolute path, then write through the same
+            // held-target authority used by default init and migrate.
+            effortless_repo_edit::assert_target_matches_held(held_target, &path, &root)
+                .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+            effortless_repo_edit::apply_single_target_with_target(
+                effortless_repo_edit::SingleTargetApplyRequest {
+                    repository_root: &root,
+                    target: &path,
+                    contents: file.contents,
+                    caller_reference: Some("cargo-allow:init:spec-system"),
+                    lock_identity: Some(held_target.repo_relative_display().to_string()),
+                    mode: if args.force {
+                        effortless_repo_edit::SingleTargetApplyMode::ReplaceWithBackup
+                    } else {
+                        effortless_repo_edit::SingleTargetApplyMode::CreateNewOnly
+                    },
+                },
+                held_target,
             )
-        })?;
+            .into_result()
+            .map_err(|error| {
+                CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Artifact,
+                    format!("failed to write {}: {error}", path.display()),
+                )
+            })?;
+        } else {
+            fs::write(&path, file.contents).map_err(|e| {
+                CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Artifact,
+                    format!("failed to write {}: {e}", path.display()),
+                )
+            })?;
+        }
         let action = if args.force { "wrote" } else { "created" };
         println!("{action} {display}");
     }

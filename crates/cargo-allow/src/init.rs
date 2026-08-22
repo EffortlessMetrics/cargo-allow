@@ -35,15 +35,19 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
                 "--strict is not supported with --profile spec-system; remove --strict or drop --profile spec-system",
             ));
         }
+        let config = spec_system_config_arg(&args.config);
         let (_mutation_lock, held_target) = if args.dry_run {
             (None, None)
         } else {
             let cwd = current_dir()?;
             let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;
-            // Lock the spec-system profile config path, not a sidecar (#3224).
+            // Lock the selected primary config path, not a sidecar (#3224).
             // Alias-convergent key: resolve through the canonical target
             // authority so path spellings share one lock (#2487/#2491).
-            let lock_target = root.join(".allow/profiles/spec-system.toml");
+            let primary_config = config
+                .as_deref()
+                .unwrap_or(Path::new(".allow/profiles/spec-system.toml"));
+            let lock_target = root_relative_path(&root, primary_config);
             let resolved = effortless_repo_edit::resolve_mutation_target(&lock_target, &root)
                 .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
             let lock = MutationLock::acquire_for_target(&resolved)
@@ -52,7 +56,6 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
             // identity to the writer; a parent retarget must fail closed.
             (Some(lock), Some(resolved))
         };
-        let config = spec_system_config_arg(&args.config);
         return spec_system::cmd_spec_system_init(spec_system::SpecSystemInitCommandArgs {
             root: &args.root,
             config: config.as_deref(),
