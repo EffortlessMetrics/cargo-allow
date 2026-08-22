@@ -72,6 +72,166 @@ fn check_receipt_includes_run_metadata() {
         "receipt should name the loaded policy path: {:?}",
         receipt.pointer("/policy_config")
     );
+    // #1781: outside any repository there is no commit to bind; the integrity
+    // keys must stay absent rather than carry empty or placeholder values.
+    assert!(
+        receipt.pointer("/git_sha").is_none(),
+        "receipt must not emit git_sha outside a repository: {:?}",
+        receipt.pointer("/git_sha")
+    );
+    assert!(
+        receipt.pointer("/policy_digest").is_some_and(|value| value
+            .as_str()
+            .is_some_and(|digest| digest.starts_with("sha256:v1:"))),
+        "receipt should bind the ledger bytes via policy_digest: {:?}",
+        receipt.pointer("/policy_digest")
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
+fn check_receipt_binds_head_commit_and_policy_digest() {
+    let root = temp_root("receipt-provenance-bindings");
+    let decoy = temp_root("receipt-provenance-decoy");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::write(root.join("policy/allow.toml"), policy())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "policy/allow.toml"]);
+    git(&root, &["commit", "-m", "base policy"]);
+    fs::create_dir_all(decoy.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create decoy policy dir: {err}")));
+    fs::write(decoy.join("policy/allow.toml"), policy())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write decoy policy: {err}")));
+    git(&decoy, &["init"]);
+    git(
+        &decoy,
+        &["config", "user.email", "cargo-allow-decoy@example.invalid"],
+    );
+    git(&decoy, &["config", "user.name", "cargo-allow decoy"]);
+    git(&decoy, &["add", "policy/allow.toml"]);
+    git(&decoy, &["commit", "-m", "decoy policy"]);
+
+    let head = Command::new("git")
+        .arg("-C")
+        .arg(&root)
+        .args(["rev-parse", "HEAD"])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("resolve HEAD: {err}")));
+    let expected_head = String::from_utf8_lossy(&head.stdout).trim().to_string();
+
+    let receipt_output = root.join("target/cargo-allow/check.receipt.json");
+    let result = cargo_allow_command()
+        .arg("check")
+        .arg("--root")
+        .arg(&root)
+        .arg("--mode")
+        .arg("audit")
+        .arg("--format")
+        .arg("json")
+        .arg("--receipt")
+        .arg(&receipt_output)
+        .env("GIT_DIR", decoy.join(".git"))
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow check: {err}")));
+
+    assert_status("check", &result, true);
+    let receipt = assert_saved_json_artifact(
+        &receipt_output,
+        "check receipt",
+        "cargo-allow.receipt.v1",
+        "check",
+    );
+    // #1850/#1781: the receipt binds to the exact commit and ledger bytes.
+    let git_sha = receipt
+        .pointer("/git_sha")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_else(|| std::panic::panic_any("receipt should bind HEAD as git_sha"));
+    assert_eq!(
+        git_sha, expected_head,
+        "git_sha must be the resolved HEAD commit"
+    );
+    let policy_digest = receipt
+        .pointer("/policy_digest")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_else(|| std::panic::panic_any("receipt should bind ledger bytes"));
+    assert_eq!(
+        policy_digest,
+        allow_core::sha256_v1_bytes(policy().as_bytes()),
+        "policy_digest must hash the exact evaluated ledger bytes"
+    );
+
+    remove_temp_root(root);
+    remove_temp_root(decoy);
+}
+
+#[test]
+fn staged_check_receipt_hashes_staged_policy_bytes() {
+    let root = temp_root("receipt-staged-policy");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::write(root.join("policy/allow.toml"), policy())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    git(&root, &["init"]);
+    git(
+        &root,
+        &["config", "user.email", "cargo-allow@example.invalid"],
+    );
+    git(&root, &["config", "user.name", "cargo-allow test"]);
+    git(&root, &["add", "policy/allow.toml"]);
+    git(&root, &["commit", "-m", "base policy"]);
+
+    let staged_policy = format!("{}\n# staged policy A\n", policy());
+    fs::write(root.join("policy/allow.toml"), &staged_policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write staged policy: {err}")));
+    git(&root, &["add", "policy/allow.toml"]);
+    let worktree_policy = format!("{}\n# worktree policy B\n", policy());
+    fs::write(root.join("policy/allow.toml"), &worktree_policy)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write worktree policy: {err}")));
+
+    let receipt_output = root.join("target/cargo-allow/staged.receipt.json");
+    let result = cargo_allow_command()
+        .arg("check")
+        .arg("--root")
+        .arg(&root)
+        .arg("--staged")
+        .arg("--phase")
+        .arg("precommit")
+        .arg("--mode")
+        .arg("audit")
+        .arg("--format")
+        .arg("json")
+        .arg("--receipt")
+        .arg(&receipt_output)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run staged check: {err}")));
+
+    assert_status("staged check", &result, true);
+    let receipt = assert_saved_json_artifact(
+        &receipt_output,
+        "staged check receipt",
+        "cargo-allow.receipt.v1",
+        "check",
+    );
+    assert_eq!(
+        receipt
+            .pointer("/policy_digest")
+            .and_then(serde_json::Value::as_str),
+        Some(allow_core::sha256_v1_bytes(staged_policy.as_bytes()).as_str()),
+        "staged receipt must hash the staged policy bytes"
+    );
+    assert_ne!(
+        allow_core::sha256_v1_bytes(staged_policy.as_bytes()),
+        allow_core::sha256_v1_bytes(worktree_policy.as_bytes()),
+        "staged and worktree policy fixtures must be distinct"
+    );
 
     remove_temp_root(root);
 }
@@ -156,6 +316,11 @@ callee = "unwrap"
         "/counts/matched",
         0,
         "error receipt should not preserve stale matched counts",
+    );
+    assert!(
+        receipt.pointer("/policy_digest").is_none(),
+        "generic error receipts intentionally omit policy_digest because the error writer does not retain evaluated provenance: {:?}",
+        receipt.pointer("/policy_digest")
     );
 
     remove_temp_root(root);

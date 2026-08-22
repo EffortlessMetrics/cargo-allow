@@ -1,0 +1,13 @@
+kind: Fixed
+body: >-
+  Check receipts now carry the integrity binding that #1850 plumbed but
+  production never populated (#1781 residual). `git_sha` resolves HEAD in
+  the scanned source tree and stays absent outside a repository; `policy_digest`
+  is a versioned SHA-256 of the exact policy bytes loaded and evaluated for the
+  check (including staged-index bytes for staged checks). Generic error receipts
+  intentionally omit the digest because their error writer does not retain
+  evaluated provenance; omission does not prove that evaluation never began.
+  These unsigned, best-effort observations require an external verifier to
+  resolve expected HEAD and policy bytes independently; they do not authenticate
+  the invocation, run metadata, or writing machine. The bounded claim and
+  diff-receipt follow-up are documented in docs/products/cargo-allow/schemas.md.

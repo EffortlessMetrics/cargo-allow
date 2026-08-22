@@ -72,6 +72,7 @@ pub(crate) fn load_staged_world(
             ),
         )
     })?;
+    let policy_digest = allow_core::sha256_v1_bytes(policy_text.as_bytes());
     let cfg = allow_policy::parse_policy_with_reportable_evidence_at(&policy_path, &policy_text)?;
     reject_unsupported_staged_companion_sensors(&cfg)?;
     let options = InventoryOptions {
@@ -81,7 +82,8 @@ pub(crate) fn load_staged_world(
     };
     let source_identity = snapshot.identity.semantic_hash.clone();
     let inventory = staged_inventory(&snapshot, &options);
-    let inventory_facts = InventoryFacts::scanned_inventory(&inventory);
+    let inventory_facts =
+        InventoryFacts::scanned_inventory(&inventory).with_policy_digest(policy_digest);
     let evidence_source_tree_files = inventory
         .files
         .iter()
@@ -350,14 +352,16 @@ pub(crate) fn load_world_with_evidence_mode(
         }
         Err(err) => return Err(err),
     };
-    let cfg = load_policy_at_path(policy_path, evidence_validation)?;
+    let (cfg, policy_digest) =
+        crate::policy_config::load_policy_at_path_with_digest(policy_path, evidence_validation)?;
     let opts = InventoryOptions {
         ignored: cfg.workspace.ignored.clone(),
         generated: cfg.workspace.generated.clone(),
         include_untracked,
     };
     let inventory = inventory(&root, &opts)?;
-    let inventory_facts = InventoryFacts::scanned_inventory(&inventory);
+    let inventory_facts =
+        InventoryFacts::scanned_inventory(&inventory).with_policy_digest(policy_digest);
     let files = inventory.files;
     if evidence_validation.aborts_on_broken_local_evidence() {
         let evidence_source_tree_files =
