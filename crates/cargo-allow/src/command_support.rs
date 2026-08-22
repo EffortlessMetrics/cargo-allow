@@ -96,6 +96,40 @@ pub(crate) fn emit_text(output: Option<&Path>, contents: &str) -> CargoAllowResu
     Ok(())
 }
 
+/// Reject a legacy per-command summary path that aliases a file the command
+/// is about to mutate. These summaries are emitted after the mutation, so the
+/// check must use the same canonical target identity as the mutation lock.
+pub(crate) fn reject_legacy_summary_output_collision(
+    repository_root: &Path,
+    summary_output: Option<&Path>,
+    mutation_targets: &[&Path],
+) -> CargoAllowResult<()> {
+    let Some(summary_output) = summary_output else {
+        return Ok(());
+    };
+    let current = current_dir()?;
+    let summary_absolute = if summary_output.is_absolute() {
+        summary_output.to_path_buf()
+    } else {
+        current.join(summary_output)
+    };
+    let summary_target =
+        effortless_repo_edit::resolve_mutation_target(&summary_absolute, repository_root)
+            .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+    for mutation_target in mutation_targets {
+        let target =
+            effortless_repo_edit::resolve_mutation_target(mutation_target, repository_root)
+                .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+        if target.target_fingerprint() == summary_target.target_fingerprint() {
+            return Err(allow_core::CargoAllowError::with_kind(
+                allow_core::CargoAllowErrorKind::Usage,
+                "--summary-output must differ from the candidate or live policy output",
+            ));
+        }
+    }
+    Ok(())
+}
+
 pub(crate) fn emit_stderr_text(output: Option<&Path>, contents: &str) -> CargoAllowResult<()> {
     if let Some(path) = output {
         write_file(path, contents)
@@ -197,6 +231,34 @@ mod io_tests {
 
         assert!(result.is_ok());
         assert_eq!(fs::read_to_string(&output)?, "summary\n");
+        Ok(())
+    }
+
+    #[test]
+    fn legacy_summary_collision_rejects_canonical_alias_before_write() -> Result<(), String> {
+        let root = TempRoot::new("legacy-summary-collision").map_err(|error| error.to_string())?;
+        let policy_dir = root.path().join("policy");
+        fs::create_dir_all(&policy_dir).map_err(|error| error.to_string())?;
+        let policy = policy_dir.join("allow.toml");
+        fs::write(&policy, "original policy\n").map_err(|error| error.to_string())?;
+        let summary_alias = policy_dir.join(".").join("allow.toml");
+
+        let result = reject_legacy_summary_output_collision(
+            root.path(),
+            Some(&summary_alias),
+            &[policy.as_path()],
+        );
+        let error = match result {
+            Ok(()) => return Err("canonical summary collision was accepted".to_string()),
+            Err(error) => error,
+        };
+        if error.kind() != allow_core::CargoAllowErrorKind::Usage {
+            return Err(format!("unexpected collision error kind: {}", error.code()));
+        }
+        let contents = fs::read_to_string(&policy).map_err(|error| error.to_string())?;
+        if contents != "original policy\n" {
+            return Err("collision preflight changed the policy sentinel".to_string());
+        }
         Ok(())
     }
 

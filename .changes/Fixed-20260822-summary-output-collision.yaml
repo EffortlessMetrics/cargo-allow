@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Reject legacy per-command `--summary-output` paths that canonically alias
+  the candidate or live policy target for `add`, `add-from-plan`, `propose`,
+  and `migrate` before mutation. This bounded Slice D1 hardening preserves
+  distinct summary output and does not cover global command-summary-output,
+  receipts, general output paths, or full #2491/#2487 closure.

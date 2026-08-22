@@ -1,6 +1,6 @@
 use crate::{
-    EvidenceValidationMode, HumanJsonFormat, MutationLock, SourceTreeReportContext, current_dir,
-    emit_stderr_text, load_world_with_evidence_mode, portable_relative_under_root,
+    EvidenceValidationMode, HumanJsonFormat, MutationLock, SourceTreeReportContext, config_path,
+    current_dir, emit_stderr_text, load_world_with_evidence_mode, portable_relative_under_root,
     require_json_summary_output,
 };
 use allow_core::{CargoAllowError, CargoAllowResult, FindingKind, MatchStatus};
@@ -95,6 +95,19 @@ pub(crate) fn cmd_propose(args: &ProposeArgs) -> CargoAllowResult<()> {
     if let Some(target) = &write_target {
         crate::policy_config::assert_path_within_root(&mutation_root, target)?;
     }
+    let live_config = config_path(&mutation_root, args.config.as_deref());
+    let mut collision_targets = Vec::new();
+    if let Some(target) = write_target.as_deref() {
+        collision_targets.push(target);
+    }
+    if let Some(target) = live_config.as_deref() {
+        collision_targets.push(target);
+    }
+    crate::command_support::reject_legacy_summary_output_collision(
+        &mutation_root,
+        args.summary_output.as_deref(),
+        &collision_targets,
+    )?;
     let _mutation_lock = write_target
         .as_ref()
         .map(|target| {

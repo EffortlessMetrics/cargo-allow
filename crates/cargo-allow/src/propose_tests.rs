@@ -1,10 +1,11 @@
 use super::*;
 use crate::artifact_contract_support::parse_json_artifact;
-use crate::{CargoAllowCli, CargoAllowCommand, HumanJsonFormat};
-use allow_core::{CargoAllowErrorKind, Span, StructuralIdentity};
-use allow_policy::BASELINE_DEBT_MAX_DAYS;
+use crate::{CargoAllowCli, CargoAllowCommand, HumanJsonFormat, RootArgs};
+use allow_core::{AllowConfig, CargoAllowErrorKind, Span, StructuralIdentity};
+use allow_policy::{BASELINE_DEBT_MAX_DAYS, render_policy};
 use clap::Parser;
 use serde_json::Value;
+use std::fs;
 use std::path::Path;
 
 #[test]
@@ -33,6 +34,48 @@ fn clap_parses_propose_force() {
         })) if path == Path::new("target/proposed.toml")
             && summary_output == Path::new("target/propose-summary.json")
     ));
+}
+
+#[test]
+fn propose_summary_collision_rejects_before_touching_live_policy() -> Result<(), String> {
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-propose-summary-collision-{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&root);
+    let policy_dir = root.join("policy");
+    fs::create_dir_all(&policy_dir).map_err(|error| error.to_string())?;
+    let policy = policy_dir.join("allow.toml");
+    fs::write(&policy, render_policy(&AllowConfig::empty())).map_err(|error| error.to_string())?;
+    let summary_alias = policy_dir.join(".").join("allow.toml");
+    let result = cmd_propose(&ProposeArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(policy),
+        kind: None,
+        include_untracked: false,
+        expires: None,
+        write: None,
+        force: false,
+        summary_format: HumanJsonFormat::Human,
+        summary_output: Some(summary_alias),
+        max: 50,
+    });
+    let error = match result {
+        Ok(()) => return Err("summary collision was accepted".to_string()),
+        Err(error) => error,
+    };
+    if !error.to_string().contains("--summary-output") {
+        return Err(format!("unexpected collision error: {error}"));
+    }
+    let contents =
+        fs::read_to_string(root.join("policy/allow.toml")).map_err(|error| error.to_string())?;
+    if contents != render_policy(&AllowConfig::empty()) {
+        return Err("summary collision changed the live policy sentinel".to_string());
+    }
+    fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+    Ok(())
 }
 
 #[test]

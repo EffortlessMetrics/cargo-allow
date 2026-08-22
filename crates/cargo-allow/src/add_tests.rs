@@ -389,6 +389,54 @@ fn cmd_add_rejects_duplicate_allow_id() {
 }
 
 #[test]
+fn cmd_add_summary_collision_rejects_before_candidate_write() {
+    let root = add_fixture_dir();
+    write_add_fixture_with_new_panic_finding(&root);
+    let live_config = root.join("policy/allow.toml");
+    let summary_alias = root.join("policy").join(".").join("allow.toml");
+    let candidate = root.join("policy/allow.added.toml");
+    let sentinel = fs::read_to_string(&live_config)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read live policy: {err}")));
+
+    let error = cmd_add(&AddArgs {
+        root: RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(live_config),
+        kind: Some("panic".to_string()),
+        glob: None,
+        family: None,
+        callee: None,
+        path: Some(PathBuf::from("src/lib.rs")),
+        line: Some(1),
+        owner: "parser".to_string(),
+        classification: "reviewed_exception".to_string(),
+        reason: "Parser validates before unwrap.".to_string(),
+        evidence: vec!["test:parser_validates".to_string()],
+        id: None,
+        review_after: Some("2026-11-01".to_string()),
+        expires: None,
+        include_untracked: false,
+        write: Some(candidate.clone()),
+        force: false,
+        dry_run: false,
+        update: false,
+        from_plan: None,
+        summary_format: HumanJsonFormat::Human,
+        summary_output: Some(summary_alias),
+    })
+    .expect_err("summary alias must reject before add candidate write");
+    assert!(error.to_string().contains("--summary-output"));
+    assert_eq!(
+        fs::read_to_string(root.join("policy/allow.toml")).ok(),
+        Some(sentinel)
+    );
+    assert!(!candidate.exists());
+    fs::remove_dir_all(root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture dir: {err}")));
+}
+
+#[test]
 fn cmd_add_rejects_already_matched_finding() {
     let root = add_fixture_dir();
     write_add_fixture_with_matched_panic_finding(&root);
