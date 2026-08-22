@@ -1,0 +1,6 @@
+kind: Changed
+body: >-
+  Bind each committed revision scan to one canonical, root-bound resolution
+  capability and reuse its exact commit/tree for tree and snapshot consumers.
+  The slice has no global cache and does not cover the broader #2515 batching
+  closure.

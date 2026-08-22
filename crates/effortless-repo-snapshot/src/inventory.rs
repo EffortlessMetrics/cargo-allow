@@ -21,6 +21,9 @@ pub struct SourceInventory {
     pub empty_git_tracked: bool,
     /// Tracked paths absent from the worktree.
     pub deleted_tracked: Vec<PathBuf>,
+    /// Git-listed paths whose metadata probe failed for a reason other than
+    /// `NotFound`.
+    pub inaccessible_paths: Vec<PathBuf>,
     /// Git error retained when filesystem fallback was used.
     pub git_error: Option<String>,
     /// Paths skipped during filesystem traversal.
@@ -78,10 +81,11 @@ pub(crate) fn default_source_inventory(root: &Path) -> SnapshotResult<SourceInve
         git_error,
         skipped_paths,
         submodule_paths,
+        inaccessible_paths,
     ) = match git_tracked_files(root) {
         Ok(files) => {
             let empty = files.is_empty();
-            let (existing, deleted, submodules) = classify_tracked_files(root, files);
+            let (existing, deleted, submodules, inaccessible) = classify_tracked_files(root, files);
             (
                 existing,
                 SourceInventorySource::GitTracked,
@@ -90,6 +94,7 @@ pub(crate) fn default_source_inventory(root: &Path) -> SnapshotResult<SourceInve
                 None,
                 Vec::new(),
                 submodules,
+                inaccessible,
             )
         }
         Err(error) => {
@@ -102,22 +107,20 @@ pub(crate) fn default_source_inventory(root: &Path) -> SnapshotResult<SourceInve
                 Some(error),
                 skipped,
                 Vec::new(),
+                Vec::new(),
             )
         }
     };
     files.retain(|path| !source_inventory_path_is_ignored(path));
     files.sort();
     files.dedup();
-    let completeness = if git_error.is_some() {
-        SourceInventoryCompleteness::Fallback
-    } else if !deleted_tracked.is_empty()
-        || !submodule_paths.is_empty()
-        || !skipped_paths.is_empty()
-    {
-        SourceInventoryCompleteness::Partial
-    } else {
-        SourceInventoryCompleteness::Scoped
-    };
+    let completeness = source_inventory_completeness(
+        git_error.is_some(),
+        &deleted_tracked,
+        &submodule_paths,
+        &inaccessible_paths,
+        &skipped_paths,
+    );
     Ok(SourceInventory {
         files,
         source,
@@ -127,6 +130,7 @@ pub(crate) fn default_source_inventory(root: &Path) -> SnapshotResult<SourceInve
         git_error,
         skipped_paths,
         submodule_paths,
+        inaccessible_paths,
     })
 }
 
@@ -170,19 +174,52 @@ fn bytes_to_path(bytes: &[u8]) -> PathBuf {
 fn classify_tracked_files(
     root: &Path,
     files: Vec<PathBuf>,
-) -> (Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>) {
+) -> (Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>) {
+    classify_tracked_files_with_metadata(root, files, |path| fs::metadata(path))
+}
+
+fn source_inventory_completeness(
+    git_failed: bool,
+    deleted_tracked: &[PathBuf],
+    submodule_paths: &[PathBuf],
+    inaccessible_paths: &[PathBuf],
+    skipped_paths: &[PathBuf],
+) -> SourceInventoryCompleteness {
+    if git_failed {
+        SourceInventoryCompleteness::Fallback
+    } else if !deleted_tracked.is_empty()
+        || !submodule_paths.is_empty()
+        || !inaccessible_paths.is_empty()
+        || !skipped_paths.is_empty()
+    {
+        SourceInventoryCompleteness::Partial
+    } else {
+        SourceInventoryCompleteness::Scoped
+    }
+}
+
+fn classify_tracked_files_with_metadata<F>(
+    root: &Path,
+    files: Vec<PathBuf>,
+    metadata: F,
+) -> (Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>)
+where
+    F: Fn(&Path) -> std::io::Result<fs::Metadata>,
+{
     let mut existing = Vec::new();
     let mut deleted = Vec::new();
     let mut submodules = Vec::new();
+    let mut inaccessible = Vec::new();
     for path in files {
-        match fs::metadata(root.join(&path)) {
+        match metadata(&root.join(&path)) {
             Ok(metadata) if metadata.file_type().is_file() => existing.push(path),
             Ok(metadata) if metadata.file_type().is_dir() => submodules.push(path),
+            Ok(_) => {}
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => deleted.push(path),
-            _ => {}
+            Err(_) => inaccessible.push(path),
         }
     }
-    (existing, deleted, submodules)
+    (existing, deleted, submodules, inaccessible)
 }
 
 fn recursive_files(root: &Path) -> SnapshotResult<(Vec<PathBuf>, Vec<PathBuf>)> {
@@ -279,7 +316,10 @@ fn relative_path_for_entry_error(root: &Path, directory: &Path) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::{SourceInventoryCompleteness, SourceInventorySource, default_source_inventory};
+    use super::{
+        SourceInventoryCompleteness, SourceInventorySource, classify_tracked_files_with_metadata,
+        default_source_inventory,
+    };
     use std::fs;
     use std::path::{Path, PathBuf};
     use std::process::Command;
@@ -361,6 +401,59 @@ mod tests {
         assert_eq!(inventory.deleted_tracked, [PathBuf::from("deleted.rs")]);
         fs::remove_dir_all(root).map_err(|error| error.to_string())?;
         Ok(())
+    }
+
+    #[test]
+    fn metadata_errors_are_disclosed_without_acl_dependencies() -> Result<(), String> {
+        let root = temp_root("inaccessible-tracked").map_err(|error| error.to_string())?;
+        fs::write(root.join("kept.rs"), "fn kept() {}\n").map_err(|error| error.to_string())?;
+        let (existing, deleted, submodules, inaccessible) = classify_tracked_files_with_metadata(
+            &root,
+            vec![
+                PathBuf::from("kept.rs"),
+                PathBuf::from("deleted.rs"),
+                PathBuf::from("blocked.rs"),
+            ],
+            |path| {
+                if path.ends_with("deleted.rs") {
+                    Err(std::io::Error::from(std::io::ErrorKind::NotFound))
+                } else if path.ends_with("blocked.rs") {
+                    Err(std::io::Error::from(std::io::ErrorKind::PermissionDenied))
+                } else {
+                    fs::metadata(path)
+                }
+            },
+        );
+        assert_eq!(existing, [PathBuf::from("kept.rs")]);
+        assert_eq!(deleted, [PathBuf::from("deleted.rs")]);
+        assert!(submodules.is_empty());
+        assert_eq!(inaccessible, [PathBuf::from("blocked.rs")]);
+        fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn inaccessible_paths_are_partial_but_git_failure_is_fallback() {
+        assert_eq!(
+            super::source_inventory_completeness(
+                false,
+                &[],
+                &[],
+                &[PathBuf::from("blocked.rs")],
+                &[]
+            ),
+            SourceInventoryCompleteness::Partial
+        );
+        assert_eq!(
+            super::source_inventory_completeness(
+                true,
+                &[],
+                &[],
+                &[PathBuf::from("blocked.rs")],
+                &[]
+            ),
+            SourceInventoryCompleteness::Fallback
+        );
     }
 
     #[test]

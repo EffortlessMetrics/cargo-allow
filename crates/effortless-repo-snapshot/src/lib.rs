@@ -25,7 +25,7 @@ mod util;
 #[cfg(test)]
 mod protocol_adapter;
 
-pub use error::{SnapshotError, SnapshotErrorKind, SnapshotResult};
+pub use error::{SnapshotDiagnostic, SnapshotError, SnapshotErrorKind, SnapshotResult};
 pub use inventory::{SourceInventory, SourceInventoryCompleteness, SourceInventorySource};
 #[doc(hidden)]
 pub use parity::{ParityContract, load_parity_contract, parity_contract_paths};
@@ -33,8 +33,9 @@ pub use revision_identity::RevisionIdentitySurface;
 pub use revision_identity::{
     REPOSITORY_SNAPSHOT_SCHEMA, RepositoryDirtyState, RepositoryObjectFormat,
     RepositorySnapshotIdentity, RepositorySnapshotKind, RepositorySnapshotRequest,
-    ResolvedRevisionIdentity, SelectedPathIdentity, repository_object_format, repository_snapshot,
-    resolve_dirty_state, resolve_revision_identity,
+    ResolvedRevisionCapability, ResolvedRevisionIdentity, SelectedPathIdentity,
+    repository_object_format, repository_snapshot, repository_snapshot_from_capability,
+    resolve_dirty_state, resolve_revision_capability, resolve_revision_identity,
 };
 pub use source_view::RepositorySourceView;
 pub use staged_index::StagedIndexSurface;

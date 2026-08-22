@@ -2,7 +2,7 @@ use crate::parity::{ParityContract, load_parity_contract};
 use crate::protocol_adapter::repository_snapshot_v1;
 use crate::{
     RepositorySnapshotRequest, StagedPathRead, read_staged_path, repository_snapshot,
-    staged_repository_snapshot,
+    repository_snapshot_from_capability, resolve_revision_capability, staged_repository_snapshot,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -16,6 +16,126 @@ fn parity_contracts_load_from_fixtures() -> Result<(), String> {
         if contract.scenario_id.is_empty() {
             return Err(format!("empty scenario in {}", path.display()));
         }
+    }
+    Ok(())
+}
+
+#[test]
+fn resolved_capability_rejects_other_root_and_revision_spelling() -> Result<(), String> {
+    let first = init_git_repo("capability-root-a")?;
+    write_file(&first, "src/lib.rs", "fn a() {}\n")?;
+    commit_all(&first, "a")?;
+    let second = init_git_repo("capability-root-b")?;
+    write_file(&second, "src/lib.rs", "fn b() {}\n")?;
+    commit_all(&second, "b")?;
+    git(&first, &["branch", "moving"])?;
+    let capability = resolve_revision_capability(&first, "refs/heads/moving")
+        .map_err(|err| format!("capability: {err}"))?;
+    let mismatch = repository_snapshot_from_capability(
+        &second,
+        &RepositorySnapshotRequest::committed_head("refs/heads/moving"),
+        capability.clone(),
+    );
+    let mismatch = match mismatch {
+        Ok(_) => return Err("root mismatch must fail".into()),
+        Err(err) => err,
+    };
+    if mismatch.kind() != crate::SnapshotErrorKind::InvalidConfig
+        || mismatch.diagnostics().first().map(|d| d.code.as_str())
+            != Some("resolved_capability_root_mismatch")
+    {
+        return Err("root mismatch diagnostic was not typed".into());
+    }
+    let empty_head = repository_snapshot_from_capability(
+        &first,
+        &RepositorySnapshotRequest::committed_head(""),
+        capability,
+    );
+    let empty_head = match empty_head {
+        Ok(_) => return Err("empty HEAD must not accept moving capability".into()),
+        Err(err) => err,
+    };
+    if empty_head.kind() != crate::SnapshotErrorKind::InvalidConfig
+        || empty_head.diagnostics().first().map(|d| d.code.as_str())
+            != Some("resolved_capability_revision_mismatch")
+    {
+        return Err("revision mismatch diagnostic was not typed".into());
+    }
+    Ok(())
+}
+
+#[test]
+fn resolved_capability_preserves_committed_range_base_and_merge_base() -> Result<(), String> {
+    let repo = init_git_repo("capability-range")?;
+    write_file(&repo, "src/lib.rs", "fn base() {}\n")?;
+    commit_all(&repo, "base")?;
+    let base = String::from_utf8(
+        Command::new("git")
+            .arg("-C")
+            .arg(&repo)
+            .args(["rev-parse", "HEAD"])
+            .output()
+            .map_err(|err| format!("rev-parse: {err}"))?
+            .stdout,
+    )
+    .map_err(|err| format!("rev-parse utf8: {err}"))?;
+    write_file(&repo, "src/lib.rs", "fn head() {}\n")?;
+    commit_all(&repo, "head")?;
+    let base = base.trim().to_string();
+    let capability =
+        resolve_revision_capability(&repo, "HEAD").map_err(|err| format!("capability: {err}"))?;
+    let expected_head = capability.commit().to_string();
+    let snapshot = repository_snapshot_from_capability(
+        &repo,
+        &RepositorySnapshotRequest::committed_range(base.clone(), "HEAD"),
+        capability,
+    )
+    .map_err(|err| format!("range snapshot: {err}"))?;
+    if snapshot.base.as_ref().map(|value| value.commit.as_str()) != Some(base.trim()) {
+        return Err("range base identity was not preserved".into());
+    }
+    if snapshot.head.commit != expected_head
+        || snapshot.merge_base.as_deref() != Some(base.as_str())
+    {
+        return Err("range merge base missing".into());
+    }
+    Ok(())
+}
+
+#[test]
+fn resolved_capability_failures_are_typed() -> Result<(), String> {
+    let repo = init_git_repo("capability-failures")?;
+    write_file(&repo, "src/lib.rs", "fn stable() {}\n")?;
+    commit_all(&repo, "stable")?;
+    let capability =
+        resolve_revision_capability(&repo, "HEAD").map_err(|err| format!("capability: {err}"))?;
+
+    let missing_root = repo.join("missing-root");
+    let root_error = match repository_snapshot_from_capability(
+        &missing_root,
+        &RepositorySnapshotRequest::committed_head("HEAD"),
+        capability.clone(),
+    ) {
+        Ok(_) => return Err("missing root unexpectedly succeeded".into()),
+        Err(error) => error,
+    };
+    if root_error.kind() != crate::SnapshotErrorKind::Inventory {
+        return Err("missing root error kind was not Inventory".into());
+    }
+
+    let missing_base = RepositorySnapshotRequest {
+        kind: crate::RepositorySnapshotKind::CommittedRange,
+        head: "HEAD".to_string(),
+        base: None,
+        selected_paths: Vec::new(),
+        probe_dirty_state: false,
+    };
+    let base_error = match repository_snapshot_from_capability(&repo, &missing_base, capability) {
+        Ok(_) => return Err("missing base unexpectedly succeeded".into()),
+        Err(error) => error,
+    };
+    if base_error.kind() != crate::SnapshotErrorKind::InvalidConfig {
+        return Err("missing base error kind was not InvalidConfig".into());
     }
     Ok(())
 }
@@ -280,5 +400,199 @@ fn git(root: &Path, args: &[&str]) -> Result<(), String> {
             String::from_utf8_lossy(&output.stderr)
         ));
     }
+    Ok(())
+}
+
+#[test]
+fn batched_tree_blob_lookup_matches_per_path_lookups() -> Result<(), String> {
+    let root = init_git_repo("batched-tree-blobs")?;
+    write_file(&root, "src/present.rs", "pub fn present() {}\n")?;
+    write_file(&root, "src/nested/deep.rs", "pub fn deep() {}\n")?;
+    fs::create_dir_all(root.join("adir")).map_err(|err| format!("mkdir adir: {err}"))?;
+    write_file(&root, "adir/inner.txt", "dir entry\n")?;
+    // Enough bulk paths that a 64-path chunk boundary is crossed.
+    for index in 0..80 {
+        write_file(&root, &format!("bulk/f{index:02}.txt"), "bulk\n")?;
+    }
+    commit_all(&root, "seed")?;
+
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink("src/present.rs", root.join("link.rs"))
+            .map_err(|err| format!("symlink fixture: {err}"))?;
+        git(&root, &["add", "link.rs"])?;
+        git(&root, &["commit", "-q", "-m", "link"])?;
+    }
+
+    let head = crate::git::resolve_commit_oid(&root, "HEAD").map_err(|err| err.to_string())?;
+
+    let mut paths: Vec<PathBuf> = vec![
+        PathBuf::from("src/present.rs"),
+        PathBuf::from("src/missing.rs"),
+        PathBuf::from("src/nested/deep.rs"),
+        PathBuf::from("adir"),
+        PathBuf::from("bulk/f00.txt"),
+        PathBuf::from("bulk/f39.txt"),
+        PathBuf::from("bulk/f63-missing.txt"),
+    ];
+    for index in 0..80 {
+        paths.push(PathBuf::from(format!("bulk/f{index:02}.txt")));
+    }
+    paths.push(PathBuf::from("src/present.rs"));
+    #[cfg(unix)]
+    paths.push(PathBuf::from("link.rs"));
+
+    let path_refs: Vec<&Path> = paths.iter().map(|path| path.as_path()).collect();
+    let batched = crate::git::tree_blob_oids_at_commit(&root, &head, &path_refs)
+        .map_err(|err| err.to_string())?;
+    if batched.len() != paths.len() {
+        return Err(format!(
+            "batched lookup returned {} entries for {} paths",
+            batched.len(),
+            paths.len()
+        ));
+    }
+
+    for (index, path) in paths.iter().enumerate() {
+        let single = crate::git::tree_blob_oid_at_commit(&root, &head, path)
+            .map_err(|err| err.to_string())?;
+        assert_eq!(
+            batched[index], single,
+            "batched result must match the per-path lookup for {path:?}"
+        );
+    }
+
+    assert!(batched[0].is_some(), "tracked regular file resolves");
+    assert!(batched[1].is_none(), "absent path stays absent");
+    assert!(
+        batched[3].is_none(),
+        "directory entries are not regular blobs"
+    );
+    assert!(batched[4].is_some() && batched[5].is_some());
+    let duplicate_index = paths
+        .iter()
+        .rposition(|path| path == Path::new("src/present.rs"))
+        .ok_or_else(|| "duplicate fixture path missing from request".to_string())?;
+    assert_eq!(batched[0], batched[duplicate_index]);
+    #[cfg(unix)]
+    {
+        let symlink_index = paths
+            .iter()
+            .position(|path| path == Path::new("link.rs"))
+            .ok_or_else(|| "symlink fixture path missing from request".to_string())?;
+        assert!(batched[symlink_index].is_none());
+    }
+
+    let _ = fs::remove_dir_all(&root);
+    Ok(())
+}
+
+#[test]
+fn batch_planner_enforces_count_bytes_and_long_path_boundaries() -> Result<(), String> {
+    let lengths = vec![1usize; 65];
+    let first =
+        crate::git::tree_blob_batch_end_for_test(&lengths, 0).map_err(|err| err.to_string())?;
+    let second =
+        crate::git::tree_blob_batch_end_for_test(&lengths, first).map_err(|err| err.to_string())?;
+    assert_eq!(first, 64);
+    assert_eq!(second, 65);
+
+    let cumulative = vec![4000usize, 4000usize];
+    assert_eq!(
+        crate::git::tree_blob_batch_end_for_test(&cumulative, 0).map_err(|err| err.to_string())?,
+        1
+    );
+    let single_over_budget = vec![16384usize];
+    assert_eq!(
+        crate::git::tree_blob_batch_end_for_test(&single_over_budget, 0)
+            .map_err(|err| err.to_string())?,
+        1
+    );
+    let encoded_multibyte_and_path_syntax = vec![3usize, 1024usize, 2048usize];
+    assert_eq!(
+        crate::git::tree_blob_batch_end_for_test(&encoded_multibyte_and_path_syntax, 0)
+            .map_err(|err| err.to_string())?,
+        3
+    );
+
+    let requested = [b"present.rs".to_vec()];
+    let requested_refs: Vec<&Vec<u8>> = requested.iter().collect();
+    let mut returned = std::collections::HashSet::new();
+    crate::git::validate_batch_record_path_for_test(b"present.rs", &requested_refs, &mut returned)
+        .map_err(|err| err.to_string())?;
+    let duplicate = crate::git::validate_batch_record_path_for_test(
+        b"present.rs",
+        &requested_refs,
+        &mut returned,
+    )
+    .expect_err("duplicate returned records must fail closed");
+    assert!(duplicate.to_string().contains("duplicate path"));
+    let unrequested = crate::git::validate_batch_record_path_for_test(
+        b"other.rs",
+        &requested_refs,
+        &mut returned,
+    )
+    .expect_err("unrequested returned records must fail closed");
+    assert!(unrequested.to_string().contains("not requested"));
+
+    let requested = [b"present.rs".to_vec()];
+    let requested_refs: Vec<&Vec<u8>> = requested.iter().collect();
+    let mut returned = std::collections::HashSet::new();
+    let mut found = std::collections::HashMap::new();
+    crate::git::process_batch_record_for_test(
+        b"100644 blob 0123456789012345678901234567890123456789\tpresent.rs",
+        &requested_refs,
+        &mut returned,
+        &mut found,
+    )
+    .map_err(|err| err.to_string())?;
+    assert!(found.contains_key(b"present.rs".as_slice()));
+    let malformed = crate::git::process_batch_record_for_test(
+        b"malformed",
+        &requested_refs,
+        &mut returned,
+        &mut found,
+    )
+    .expect_err("malformed tree output must fail closed");
+    assert!(malformed.to_string().contains("malformed record"));
+    let unsupported = crate::git::process_unsupported_batch_record_for_test(
+        b"unsupported.rs".to_vec(),
+        &requested_refs,
+        &mut returned,
+        &mut found,
+    )
+    .expect_err("unsupported host path output must fail closed");
+    assert!(unsupported.to_string().contains("not representable"));
+    Ok(())
+}
+
+#[test]
+fn batched_tree_blob_lookup_error_paths_match_single_lookup() -> Result<(), String> {
+    let root = init_git_repo("batched-tree-blob-errors")?;
+    write_file(&root, "src/lib.rs", "pub fn demo() {}\n")?;
+    commit_all(&root, "seed")?;
+    let head = crate::git::resolve_commit_oid(&root, "HEAD").map_err(|err| err.to_string())?;
+
+    // Absolute host paths are rejected by the same source-tree path
+    // validation both entry points share.
+    let absolute = root.join("src/lib.rs");
+    let batched = crate::git::tree_blob_oids_at_commit(&root, &head, &[Path::new(&absolute)])
+        .map(|mut resolved| resolved.pop().flatten());
+    let single = crate::git::tree_blob_oid_at_commit(&root, &head, Path::new(&absolute));
+    match (&batched, &single) {
+        (Err(_), Err(_)) => {}
+        _ => return Err("absolute path must be rejected by both lookups".to_string()),
+    }
+
+    // An unresolvable revision fails closed for the whole batch.
+    let ok_ref = Path::new("src/lib.rs");
+    assert!(crate::git::tree_blob_oids_at_commit(&root, "0000deadbeef", &[ok_ref]).is_err());
+
+    // An empty request performs no work and returns no entries.
+    let empty =
+        crate::git::tree_blob_oids_at_commit(&root, &head, &[]).map_err(|err| err.to_string())?;
+    assert!(empty.is_empty());
+
+    let _ = fs::remove_dir_all(&root);
     Ok(())
 }

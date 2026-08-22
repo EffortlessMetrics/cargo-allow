@@ -852,6 +852,7 @@ mod tests {
             completeness,
             empty_git_tracked: false,
             deleted_tracked: Vec::new(),
+            inaccessible_paths: Vec::new(),
             git_error: None,
             skipped_paths: Vec::new(),
             submodule_paths: Vec::new(),
