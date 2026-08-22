@@ -41,7 +41,8 @@ pub use digest::sha256_v1_bytes;
 pub use error::{RepoEditError, RepoEditResult, json_escape, stable_hash_hex};
 pub use mutation_lock::MutationLock;
 pub use mutation_target::{
-    MutationTarget, MutationTargetOwnership, lock_path_for_target, resolve_mutation_target,
+    MutationTarget, MutationTargetOwnership, assert_target_identity_for_replace,
+    lock_path_for_target, resolve_mutation_target,
 };
 #[doc(hidden)]
 pub use parity::parity_contract_paths;

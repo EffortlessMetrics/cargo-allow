@@ -182,3 +182,37 @@ pub fn lock_path_for_target(target: &MutationTarget) -> PathBuf {
         .join("cargo-allow-locks")
         .join(format!("{}.lock", target.target_fingerprint()))
 }
+
+/// Recheck target identity immediately before an atomic replace (#2491).
+///
+/// Verifies the existing target has not been substituted (e.g., swapped for a
+/// symlink, renamed away, or made unreadable) between validation and the
+/// final rename. Every replace-mode writer routes through this check so a
+/// path substitution cannot redirect an authorized write onto another object.
+///
+/// On success the target is a regular (non-symlink) directory entry. Errors
+/// carry the same `(#2491)` diagnostics as the inline check this authority
+/// was extracted from.
+pub fn assert_target_identity_for_replace(target: &Path) -> RepoEditResult<()> {
+    match std::fs::symlink_metadata(target) {
+        Ok(meta) => {
+            if meta.file_type().is_symlink() {
+                return Err(RepoEditError::new(format!(
+                    "target {} is a symlink; refusing to follow for atomic replace (#2491)",
+                    target.display()
+                )));
+            }
+            Ok(())
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            Err(RepoEditError::new(format!(
+                "target {} disappeared between read and identity recheck (#2491)",
+                target.display()
+            )))
+        }
+        Err(error) => Err(RepoEditError::new(format!(
+            "failed to recheck target {} identity before replace (#2491): {error}",
+            target.display()
+        ))),
+    }
+}

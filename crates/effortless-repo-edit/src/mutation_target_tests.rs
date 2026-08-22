@@ -212,3 +212,59 @@ fn lock_key_matches_for_same_target() -> Result<(), String> {
     fs::remove_dir_all(&repo).ok();
     Ok(())
 }
+
+#[test]
+fn replace_recheck_accepts_regular_file_target() -> Result<(), String> {
+    let repo = make_temp_repo()?;
+    let file_path = repo.join("policy/allow.toml");
+    fs::create_dir_all(file_path.parent().unwrap_or(Path::new("."))).ok();
+    fs::write(&file_path, "test").ok();
+
+    super::mutation_target::assert_target_identity_for_replace(&file_path)
+        .map_err(|e| format!("regular file must pass the replace recheck: {e}"))?;
+    fs::remove_dir_all(&repo).ok();
+    Ok(())
+}
+
+#[test]
+fn replace_recheck_reports_disappeared_target() -> Result<(), String> {
+    let repo = make_temp_repo()?;
+    let file_path = repo.join("policy/allow.toml");
+    fs::create_dir_all(file_path.parent().unwrap_or(Path::new("."))).ok();
+
+    let error = super::mutation_target::assert_target_identity_for_replace(&file_path)
+        .expect_err("missing target must fail the replace recheck");
+    let message = error.to_string();
+    assert!(
+        message.contains("disappeared between read and identity recheck (#2491)"),
+        "disappearance diagnostic must name the failure: {message}"
+    );
+    fs::remove_dir_all(&repo).ok();
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn replace_recheck_rejects_symlink_substitution() -> Result<(), String> {
+    let repo = make_temp_repo()?;
+    let file_path = repo.join("policy/allow.toml");
+    let sibling = repo.join("outside-secrets.txt");
+    fs::create_dir_all(file_path.parent().unwrap_or(Path::new("."))).ok();
+    fs::write(&sibling, "not the ledger").ok();
+    std::os::unix::fs::symlink(&sibling, &file_path)
+        .map_err(|e| format!("create symlink fixture: {e}"))?;
+
+    let error = super::mutation_target::assert_target_identity_for_replace(&file_path)
+        .expect_err("symlink target must fail the replace recheck");
+    let message = error.to_string();
+    assert!(
+        message.contains("is a symlink; refusing to follow for atomic replace (#2491)"),
+        "symlink substitution must be rejected: {message}"
+    );
+    assert!(
+        !fs::read_to_string(&sibling).is_ok_and(|text| text == "replaced"),
+        "recheck alone must not write anything"
+    );
+    fs::remove_dir_all(&repo).ok();
+    Ok(())
+}

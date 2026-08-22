@@ -37,9 +37,13 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
             let cwd = current_dir()?;
             let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;
             // Lock the spec-system profile config path, not a sidecar (#3224).
+            // Alias-convergent key: resolve through the canonical target
+            // authority so path spellings share one lock (#2487/#2491).
             let lock_target = root.join(".allow/profiles/spec-system.toml");
+            let resolved = effortless_repo_edit::resolve_mutation_target(&lock_target, &root)
+                .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
             Some(
-                MutationLock::acquire(&lock_target)
+                MutationLock::acquire_for_target(&resolved)
                     .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?,
             )
         };
@@ -79,12 +83,15 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
         return Ok(());
     }
     // Lock the actual target file path, not a sidecar lock file (#3224).
-    // This matches add/propose/refresh/prune, which lock the mutation target
-    // directly so that concurrent mutations on the same file are serialized.
-    let _mutation_lock = MutationLock::acquire(&path)
-        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
-    // #2490: assert the write target is within the source-tree root.
+    // This matches add/propose/refresh/prune, which resolve the mutation
+    // target through the canonical authority and lock its identity so
+    // concurrent mutations on the same file serialize across spellings
+    // (#2487/#2491). Containment precedes the lock, matching add.rs.
     crate::policy_config::assert_path_within_root(&root, &path)?;
+    let resolved = effortless_repo_edit::resolve_mutation_target(&path, &root)
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+    let _mutation_lock = MutationLock::acquire_for_target(&resolved)
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     let path_existed = path.exists();
     if path_existed && !args.force {
         return Err(CargoAllowError::with_kind(

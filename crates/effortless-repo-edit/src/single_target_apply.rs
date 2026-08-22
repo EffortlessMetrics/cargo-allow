@@ -9,6 +9,7 @@ use crate::apply_receipt::{ApplyOperation, ApplyReceiptV1, AtomicityClass, Targe
 use crate::atomic_write::{write_file, write_file_no_overwrite};
 use crate::containment::assert_path_within_root;
 use crate::digest::sha256_v1_bytes;
+use crate::mutation_target::assert_target_identity_for_replace;
 use crate::target_identity::canonicalize_lexically;
 
 const PRECONDITION_CONTAINMENT: &str = "path_within_repository_root";
@@ -103,72 +104,25 @@ pub fn apply_single_target(request: SingleTargetApplyRequest<'_>) -> SingleTarge
     // #2491: Pre-replace identity recheck — verify the target hasn't been
     // substituted (e.g., symlink swap) between containment check and write.
     // This catches TOCTOU races where the path is replaced with a symlink
-    // between validation and the atomic rename.
-    if operation == ApplyOperation::Replace {
-        match fs::symlink_metadata(&joined) {
-            Ok(meta) => {
-                if meta.file_type().is_symlink() {
-                    return failed_response(FailedApplyContext {
-                        tool_version,
-                        repository_root_path: request
-                            .repository_root
-                            .to_string_lossy()
-                            .into_owned(),
-                        repository_root,
-                        target_requested,
-                        target_canonical,
-                        operation,
-                        preconditions_checked: preconditions,
-                        bytes_before_digest,
-                        caller_reference: request.caller_reference.map(str::to_string),
-                        lock_identity: request.lock_identity,
-                        limitations,
-                        error_detail: format!(
-                            "target {} is a symlink; refusing to follow for atomic replace (#2491)",
-                            joined.display()
-                        ),
-                    });
-                }
-            }
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                return failed_response(FailedApplyContext {
-                    tool_version,
-                    repository_root_path: request.repository_root.to_string_lossy().into_owned(),
-                    repository_root,
-                    target_requested,
-                    target_canonical,
-                    operation,
-                    preconditions_checked: preconditions,
-                    bytes_before_digest,
-                    caller_reference: request.caller_reference.map(str::to_string),
-                    lock_identity: request.lock_identity,
-                    limitations,
-                    error_detail: format!(
-                        "target {} disappeared between read and identity recheck (#2491)",
-                        joined.display()
-                    ),
-                });
-            }
-            Err(error) => {
-                return failed_response(FailedApplyContext {
-                    tool_version,
-                    repository_root_path: request.repository_root.to_string_lossy().into_owned(),
-                    repository_root,
-                    target_requested,
-                    target_canonical,
-                    operation,
-                    preconditions_checked: preconditions,
-                    bytes_before_digest,
-                    caller_reference: request.caller_reference.map(str::to_string),
-                    lock_identity: request.lock_identity,
-                    limitations,
-                    error_detail: format!(
-                        "failed to recheck target {} identity before replace (#2491): {error}",
-                        joined.display()
-                    ),
-                });
-            }
-        }
+    // between validation and the atomic rename. The check lives on the
+    // mutation-target authority so every replace-mode writer shares it.
+    if operation == ApplyOperation::Replace
+        && let Err(error) = assert_target_identity_for_replace(&joined)
+    {
+        return failed_response(FailedApplyContext {
+            tool_version,
+            repository_root_path: request.repository_root.to_string_lossy().into_owned(),
+            repository_root,
+            target_requested,
+            target_canonical,
+            operation,
+            preconditions_checked: preconditions,
+            bytes_before_digest,
+            caller_reference: request.caller_reference.map(str::to_string),
+            lock_identity: request.lock_identity,
+            limitations,
+            error_detail: error.to_string(),
+        });
     }
 
     match assert_path_within_root(request.repository_root, request.target) {
