@@ -349,7 +349,10 @@ fn batched_tree_blob_lookup_matches_per_path_lookups() -> Result<(), String> {
         "directory entries are not regular blobs"
     );
     assert!(batched[4].is_some() && batched[5].is_some());
-    let duplicate_index = paths.len() - 1;
+    let duplicate_index = paths
+        .iter()
+        .rposition(|path| path == Path::new("src/present.rs"))
+        .ok_or_else(|| "duplicate fixture path missing from request".to_string())?;
     assert_eq!(batched[0], batched[duplicate_index]);
     #[cfg(unix)]
     {
