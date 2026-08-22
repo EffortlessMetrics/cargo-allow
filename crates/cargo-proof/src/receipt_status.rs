@@ -1,6 +1,7 @@
 //! Read-only validation and projection of captured proof receipts (#3600).
 
 use proof_engine::{ReceiptStatusReportV1, evaluate_captured_receipt_status_from_json};
+use proof_protocol::ProofPlanV2;
 use serde_json::Value;
 use std::path::Path;
 
@@ -12,6 +13,12 @@ pub enum ReceiptCommandError {
     MalformedManifest(String),
     InvalidReceipt(String),
     ProviderRegistry(String),
+}
+
+#[derive(Debug, Clone)]
+pub struct CapturedReceiptInputsV1 {
+    pub plan: ProofPlanV2,
+    pub report: ReceiptStatusReportV1,
 }
 
 impl ReceiptCommandError {
@@ -41,6 +48,13 @@ pub fn captured_receipt_status_from_paths(
     plan_path: &Path,
     manifest_path: &Path,
 ) -> Result<ReceiptStatusReportV1, ReceiptCommandError> {
+    Ok(captured_receipt_inputs_from_paths(plan_path, manifest_path)?.report)
+}
+
+pub fn captured_receipt_inputs_from_paths(
+    plan_path: &Path,
+    manifest_path: &Path,
+) -> Result<CapturedReceiptInputsV1, ReceiptCommandError> {
     let plan_text = std::fs::read_to_string(plan_path).map_err(|error| {
         ReceiptCommandError::ReadPlan(format!("read proof plan {}: {error}", plan_path.display()))
     })?;
@@ -48,6 +62,12 @@ pub fn captured_receipt_status_from_paths(
         ReceiptCommandError::ReadManifest(format!(
             "read receipt manifest {}: {error}",
             manifest_path.display()
+        ))
+    })?;
+    let parsed_plan: ProofPlanV2 = serde_json::from_str(&plan_text).map_err(|error| {
+        ReceiptCommandError::MalformedPlan(format!(
+            "parse proof plan {}: {error}",
+            plan_path.display()
         ))
     })?;
     let mut report = evaluate_captured_receipt_status_from_json(&plan_text, &manifest_text)
@@ -127,7 +147,10 @@ pub fn captured_receipt_status_from_paths(
             }
         }
     }
-    Ok(report)
+    Ok(CapturedReceiptInputsV1 {
+        plan: parsed_plan,
+        report,
+    })
 }
 
 fn apply_provider_context(

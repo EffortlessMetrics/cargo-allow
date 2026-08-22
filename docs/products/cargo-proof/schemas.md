@@ -11,6 +11,8 @@ The product's current artifact contracts are experimental:
 | `proof.receipt-manifest.v1` | Captured receipt manifest input. |
 | `proof.receipt-status-report.v1` | `receipts --action status` output. |
 | `proof.receipt-validation.v1` | `receipts --action validate` output. |
+| `proof.receipt-explain.v1` | `receipts --action explain` output for one selected item. |
+| `proof.receipt-reconcile.v1` | `receipts --action reconcile` output for the complete plan. |
 
 `proof.plan.v1` is structured-argv only: it names the provider request
 and its arguments, and `dry-run` validates shape without executing.
@@ -39,3 +41,9 @@ remain in the namespaced payload and are validated by the selected provider
 module; the manifest's embedded snapshot root, provider payload schema, and
 receipt generation are checked against each plan item's expected contract; no
 provider process is started.
+
+Explain and reconcile are projections over the same `ProofPlanV2` and typed
+receipt-status report. Explain adds plan-item context and a bounded next
+action; reconcile adds deterministic status counts, provider availability, and
+outstanding work. Neither projection opens a phase gate or treats receipt
+presence as execution proof.

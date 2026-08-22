@@ -22,5 +22,30 @@ tree identity where present, and treat incomplete or stale evidence as not
 proven. The catalog is the source of truth; examples are characterization,
 not approval.
 
+## Receipt integrity binding (check receipts only)
+
+The `cargo-allow.receipt.v1` artifact produced by `check` records the policy
+bytes actually evaluated and the contextual repository `HEAD` resolved for the
+requested root. These unsigned observations do not authenticate the source
+bytes or invocation. Diff receipts are intentionally out of scope for this
+binding follow-up.
+
+- `git_sha`: the contextual `HEAD` commit resolved for the requested root.
+  Absent when that root is not a Git repository or the commit cannot be
+  resolved.
+- `policy_digest`: a versioned SHA-256 (`sha256:v1:<hex>`) of the active ledger
+  bytes loaded and evaluated for a successful check. It is also absent from
+  generic error receipts because the error writer intentionally does not retain
+  evaluated provenance; absence is not evidence that evaluation never began.
+- `started_at` / `run_id`: wall-clock start time (RFC 3339 UTC) and a
+  process-unique invocation id correlating a receipt to one run.
+
+Trust assumption: these fields are unsigned, best-effort observations recorded by
+the tool itself. An external verifier must independently resolve the expected
+repository HEAD and policy bytes before using them to detect mismatches; the
+fields do not authenticate the invocation, `started_at`, or `run_id`, and do not
+defend against an attacker who controls the writing machine. Receipts with
+timestamps are not byte-stable across runs.
+
 Claim boundary: a valid schema proves artifact shape and declared evidence
 identity only. It does not promote support, publication, or semantic coverage.

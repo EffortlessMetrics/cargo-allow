@@ -140,3 +140,9 @@ lane = "coverage"
 referenced_product = "cargo-proof"
 token = "cargo-proof"
 reason = "coverage instruments the captured-receipt CLI package owned by cargo-proof (#3600)"
+
+[[declared_cross_product_reference]]
+lane = "coverage"
+referenced_product = "shared-protocol"
+token = "effortless-rust-source-index"
+reason = "coverage instruments the source-structural Rust item contract package owned by the shared protocol rail (#3618)"

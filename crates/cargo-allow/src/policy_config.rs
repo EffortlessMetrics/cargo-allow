@@ -1,7 +1,8 @@
 use allow_core::{AllowConfig, CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_policy::{
     PrecedenceTier, SkippedPolicyCandidate, discover_config, evaluate_source_exception_policy,
-    load_policy, load_policy_with_reportable_evidence,
+    load_policy, load_policy_with_reportable_evidence, parse_policy_at,
+    parse_policy_with_reportable_evidence_at,
 };
 #[cfg(test)]
 use allow_policy::{SOURCE_CONVENTIONAL_PATH, SOURCE_PACKAGE_METADATA, SOURCE_WORKSPACE_METADATA};
@@ -97,6 +98,30 @@ pub(crate) fn load_policy_at_path(
     evidence_validation: EvidenceValidationMode,
 ) -> CargoAllowResult<AllowConfig> {
     load_policy_for_root(path, evidence_validation)
+}
+
+pub(crate) fn load_policy_at_path_with_digest(
+    path: PathBuf,
+    evidence_validation: EvidenceValidationMode,
+) -> CargoAllowResult<(AllowConfig, String)> {
+    let bytes = std::fs::read(&path).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!("could not read policy {}: {error}", path.display()),
+        )
+    })?;
+    let text = std::str::from_utf8(&bytes).map_err(|error| {
+        CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidConfig,
+            format!("policy {} is not UTF-8: {error}", path.display()),
+        )
+    })?;
+    let config = if evidence_validation.permits_reportable_policy_evidence() {
+        parse_policy_with_reportable_evidence_at(&path, text)?
+    } else {
+        parse_policy_at(&path, text)?
+    };
+    Ok((config, allow_core::sha256_v1_bytes(&bytes)))
 }
 
 pub(crate) fn config_path(root: &Path, config: Option<&Path>) -> Option<PathBuf> {
