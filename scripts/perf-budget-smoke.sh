@@ -19,15 +19,16 @@ cd "${ROOT}"
 
 profile="${PROFILE:-debug}"
 output_dir="${OUTPUT_DIR:-${ROOT}/target/perf-budget}"
+output_dir="${output_dir%/}"
 artifact_dir="${output_dir}/artifacts"
 receipt="${output_dir}/operator-latency.receipt.json"
 metrics="${output_dir}/.operator-latency.samples.tsv"
 hard_ceiling_ms="${HARD_CEILING_MS:-60000}"
 failure_reason=""
 
-mkdir -p "${artifact_dir}"
+mkdir -p "${ROOT}/target" "${artifact_dir}"
 : >"${metrics}"
-run_dir="$(mktemp -d "${TMPDIR:-/tmp}/cargo-allow-operator-latency.XXXXXX")"
+run_dir="$(mktemp -d "${ROOT}/target/cargo-allow-operator-latency.XXXXXX")"
 
 log() {
   printf 'operator-latency: %s\n' "$*"
@@ -68,12 +69,43 @@ print(json.dumps(sys.argv[1:], separators=(",", ":")))
 PY
 }
 
+normalize_json() {
+  local source="$1" destination="$2"
+  python3 - "${source}" "${destination}" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+source, destination = sys.argv[1:]
+value = json.loads(Path(source).read_text(encoding="utf-8"))
+if isinstance(value, dict):
+    value.pop("run_id", None)
+    value.pop("started_at", None)
+Path(destination).write_text(json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+PY
+}
+
+compare_semantic_json() {
+  local left="$1" right="$2" label="$3"
+  cmp -s "${left}" "${right}" || fail "${label} semantic JSON differs"
+}
+
 relative_path() {
   local path="$1"
   if [[ "${path}" == "${ROOT}/"* ]]; then
     printf '%s' "${path#"${ROOT}/"}"
   else
     printf '%s' "$(basename "${path}")"
+  fi
+}
+
+native_path() {
+  if [[ "${binary,,}" == *.exe ]] && command -v cygpath >/dev/null 2>&1; then
+    cygpath -w "$1"
+  elif [[ "${binary,,}" == *.exe ]] && command -v wslpath >/dev/null 2>&1; then
+    wslpath -w "$1" | tr -d '\r'
+  else
+    printf '%s' "$1"
   fi
 }
 
@@ -112,9 +144,16 @@ def records():
             continue
         if not isinstance(argv, list) or not all(isinstance(arg, str) for arg in argv):
             continue
+        cache_mode = "not_applicable"
+        if "--persistent-cache" in argv:
+            try:
+                cache_mode = argv[argv.index("--persistent-cache") + 1]
+            except IndexError:
+                cache_mode = "invalid"
         rows.append({
             "name": name,
             "phase": phase,
+            "cache_mode": cache_mode,
             "argv": argv,
             "elapsed_ms": int(elapsed) if elapsed else None,
             "status": status,
@@ -126,9 +165,10 @@ def records():
         })
     return rows
 
+sample_rows = records()
 payload = {
-    "schema_version": 1,
-    "schema_id": "cargo-allow.operator-latency.v1",
+    "schema_version": 2,
+    "schema_id": "cargo-allow.operator-latency.v2",
     "tool": "cargo-allow",
     "command": "operator-latency",
     "result": result,
@@ -149,9 +189,13 @@ payload = {
         "policy_entries": int(os.environ.get("PERF_POLICY_ENTRIES", "0")),
     },
     "sample_policy": {
-        "cold_process_samples": 1,
-        "warm_process_samples": 2,
-        "targeted_samples": 3,
+        "cold_process_samples": sum(row["phase"] == "cold" for row in sample_rows),
+        "warm_process_samples": sum(row["phase"] == "warm" for row in sample_rows),
+        "targeted_samples": sum(row["phase"] == "targeted" for row in sample_rows),
+        "cache_mode_samples": {
+            mode: sum(row["cache_mode"] == mode for row in sample_rows)
+            for mode in ("on", "off", "not_applicable")
+        },
     },
     "budget": {
         "name": "operator_loop_hard_ceiling",
@@ -159,17 +203,19 @@ payload = {
         "ceiling_ms": int(ceiling),
         "disposition": "passed" if result == "pass" else "failed",
     },
-    "samples": records(),
+    "samples": sample_rows,
     "claim_boundary": [
         "selected_repository_fixture",
         "end_to_end_wall_clock",
         "semantic_artifact_verified",
+        "persistent_cache_phase_compared",
         "binary_and_profile_identified",
     ],
     "limitations": [
         "first_process_sample is not an operating-system-cold cache measurement",
         "advisory product targets are not blocking in this harness",
         "receipt does not establish latency on every repository or machine",
+        "off phase verifies no persistent-store creation, not absence of filesystem reads",
     ],
 }
 if failure:
@@ -276,6 +322,88 @@ measure() {
 measure_posture() {
   POSTURE_OK=1 measure "$@"
 }
+
+fixture_root="${run_dir}/cache-fixture"
+mkdir -p "${fixture_root}/src" "${fixture_root}/policy"
+printf '%s\n' 'fn measured(value: Option<u8>) -> u8 { value.unwrap() }' >"${fixture_root}/src/lib.rs"
+cat >"${fixture_root}/policy/allow.toml" <<'EOF'
+schema_version = 1
+
+[workspace]
+ignored = []
+generated = []
+EOF
+env -u GIT_DIR -u GIT_WORK_TREE git -C "${fixture_root}" init -q || fail "cache fixture git init failed"
+env -u GIT_DIR -u GIT_WORK_TREE git -C "${fixture_root}" config user.email cargo-allow@example.invalid || fail "cache fixture git email failed"
+env -u GIT_DIR -u GIT_WORK_TREE git -C "${fixture_root}" config user.name cargo-allow || fail "cache fixture git name failed"
+env -u GIT_DIR -u GIT_WORK_TREE git -C "${fixture_root}" add --all || fail "cache fixture git add failed"
+env -u GIT_DIR -u GIT_WORK_TREE git -C "${fixture_root}" commit -qm measurement || fail "cache fixture git commit failed"
+
+measure_cache_phase() {
+  local phase="$1" name="$2" mode="$3"
+  local report_rel="artifacts/${name}.report.json"
+  local receipt_rel="artifacts/${name}.receipt.json"
+  local semantic_report_rel="artifacts/${name}.semantic-report.json"
+  local semantic_receipt_rel="artifacts/${name}.semantic-receipt.json"
+  local report="${output_dir}/${report_rel}"
+  local receipt="${output_dir}/${receipt_rel}"
+  local semantic_report="${output_dir}/${semantic_report_rel}"
+  local semantic_receipt="${output_dir}/${semantic_receipt_rel}"
+  local stdout_path="${run_dir}/${name}.stdout"
+  local stderr_path="${run_dir}/${name}.stderr"
+  local fixture_artifact_dir="${fixture_root}/.measurement"
+  local fixture_report="${fixture_artifact_dir}/${name}.report.json"
+  local fixture_receipt="${fixture_artifact_dir}/${name}.receipt.json"
+  local fixture_root_arg="$(native_path "${fixture_root}")"
+  local fixture_report_arg="$(native_path "${fixture_report}")"
+  local fixture_receipt_arg="$(native_path "${fixture_receipt}")"
+  local start end elapsed rc=0 digest semantic_digest argv_json
+  local -a argv=(check --root "${fixture_root_arg}" --config policy/allow.toml
+    --persistent-cache "${mode}" --format json --receipt "${fixture_receipt_arg}"
+    --output "${fixture_report_arg}")
+  mkdir -p "${fixture_artifact_dir}"
+  argv_json="$(encode_argv "${argv[@]}")"
+  start="$(now_ms)"
+  "${binary}" "${argv[@]}" >"${stdout_path}" 2>"${stderr_path}" || rc=$?
+  if (( rc != 1 )); then
+    cat "${stdout_path}" >&2
+    cat "${stderr_path}" >&2
+    fail "${name} cache phase failed (exit ${rc})"
+  fi
+  end="$(now_ms)"
+  elapsed=$(( end - start ))
+  [[ -s "${fixture_report}" && -s "${fixture_receipt}" ]] || fail "${name} cache phase omitted report/receipt"
+  cp "${fixture_report}" "${report}"
+  cp "${fixture_receipt}" "${receipt}"
+  normalize_json "${report}" "${semantic_report}"
+  normalize_json "${receipt}" "${semantic_receipt}"
+  grep -Fq 'src/lib.rs' "${semantic_report}" || fail "${name} omitted the measured source path"
+  grep -Fq '"family":"unwrap"' "${semantic_report}" || fail "${name} omitted the measured unwrap finding"
+  (( elapsed <= hard_ceiling_ms )) || fail "${name} exceeded the ${hard_ceiling_ms}ms catastrophic ceiling"
+  digest="$(sha256_file "${report}")"
+  semantic_digest="$(sha256_file "${semantic_report}")"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "${phase}" "${name}" "${elapsed}" "${report_rel}" "${digest}" \
+    "${semantic_report_rel}" "${semantic_digest}" "passed" "${argv_json}" >>"${metrics}"
+}
+
+cache_dir="${fixture_root}/target/cargo-allow/cache"
+[[ ! -e "${cache_dir}" ]] || fail "cache fixture unexpectedly had a preexisting store"
+measure_cache_phase "cold" "cache_cold_on" "on"
+[[ -s "${cache_dir}/scan-cache.v2.bin" ]] || fail "cold-on did not create the persistent store"
+measure_cache_phase "warm" "cache_warm_on" "on"
+[[ -s "${cache_dir}/scan-cache.v2.bin" ]] || fail "warm-on lost the persistent store"
+rm -rf "${cache_dir}"
+measure_cache_phase "targeted" "cache_disabled_off" "off"
+[[ ! -e "${cache_dir}" ]] || fail "off mode created a persistent store"
+compare_semantic_json "${artifact_dir}/cache_cold_on.semantic-report.json" \
+  "${artifact_dir}/cache_warm_on.semantic-report.json" "cold/warm report"
+compare_semantic_json "${artifact_dir}/cache_cold_on.semantic-report.json" \
+  "${artifact_dir}/cache_disabled_off.semantic-report.json" "on/off report"
+compare_semantic_json "${artifact_dir}/cache_cold_on.semantic-receipt.json" \
+  "${artifact_dir}/cache_warm_on.semantic-receipt.json" "cold/warm receipt"
+compare_semantic_json "${artifact_dir}/cache_cold_on.semantic-receipt.json" \
+  "${artifact_dir}/cache_disabled_off.semantic-receipt.json" "on/off receipt"
 
 log "measuring first process audit"
 measure "cold" "first_audit" \

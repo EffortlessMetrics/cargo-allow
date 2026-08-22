@@ -139,7 +139,7 @@ source-tree scan result.
 
 | Receipt | Schema ID | Producer |
 |---|---|---|
-| Operator latency | `cargo-allow.operator-latency.v1` | `scripts/perf-budget-smoke.sh` |
+| Operator latency | `cargo-allow.operator-latency.v2` | `scripts/perf-budget-smoke.sh` |
 | Redacted support bundle | `cargo-allow.support-bundle.v1` | `cargo-allow doctor --support-bundle <path>` |
 | Extraction cutover evidence manifest | `cargo-allow.extraction-cutover-evidence.v2` | `scripts/extraction-cutover-status.sh` / `cargo-allow extraction-parity --cutover-evidence` |
 | Extraction cutover ownership receipt | `cargo-allow.extraction-cutover-ownership.v1` | `scripts/extraction-cutover-status.sh` |
@@ -192,7 +192,7 @@ promote policy, authorize publication, or establish release readiness.
 - [spec-system.schema.json](spec-system.schema.json)
 - [worklist.schema.json](worklist.schema.json)
 - [tool-identity.schema.json](tool-identity.schema.json) self-description contract (not a governed artifact)
-- [operator-latency.schema.json](operator-latency.schema.json) supporting hosted performance receipt (not a governed artifact)
+- [operator-latency.schema.json](operator-latency.schema.json) v1 historical compatibility schema; [operator-latency.v2.schema.json](operator-latency.v2.schema.json) current hosted performance receipt (not governed artifacts)
 - [extraction-cutover-evidence.schema.json](extraction-cutover-evidence.schema.json), [extraction-cutover-ownership.schema.json](extraction-cutover-ownership.schema.json), and [extraction-cutover-build-package.schema.json](extraction-cutover-build-package.schema.json) supporting cutover evidence-input contracts (not governed source-tree artifacts)
 - [release-manifest-v2.schema.json](release-manifest-v2.schema.json) topology-derived release contract (contract-only; not a publication authorization)
 - [common.v1.json](common.v1.json) shared source-tree fragments used as the
