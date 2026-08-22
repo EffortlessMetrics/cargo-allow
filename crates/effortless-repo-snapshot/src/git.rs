@@ -5,7 +5,7 @@
 )]
 
 use crate::error::{SnapshotDiagnostic, SnapshotError, SnapshotErrorKind, SnapshotResult};
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Output};
 
@@ -156,6 +156,212 @@ pub(crate) fn tree_blob_oid_at_commit(
             }
         }
     }
+}
+
+/// Chunk size for batched exact-path tree lookups (#2515). Each chunk is one
+/// `git ls-tree` process instead of one process per path; bounded so a large
+/// selected-path set cannot exceed platform argv or command-line limits.
+const TREE_BLOB_BATCH_CHUNK: usize = 64;
+const TREE_BLOB_BATCH_COMMAND_BYTES: usize = 8 * 1024;
+const TREE_BLOB_BATCH_FIXED_BYTES: usize = 512;
+
+fn tree_blob_batch_end(
+    path_lengths: &[usize],
+    start: usize,
+    fixed_bytes: usize,
+) -> SnapshotResult<usize> {
+    let mut end = start;
+    let mut argument_bytes = 0usize;
+    let path_budget = TREE_BLOB_BATCH_COMMAND_BYTES.saturating_sub(fixed_bytes);
+    for path_length in path_lengths
+        .iter()
+        .skip(start)
+        .take(TREE_BLOB_BATCH_CHUNK)
+        .copied()
+    {
+        let encoded_bytes = path_length.saturating_add(1);
+        if end > start && argument_bytes.saturating_add(encoded_bytes) > path_budget {
+            break;
+        }
+        argument_bytes = argument_bytes.saturating_add(encoded_bytes);
+        end += 1;
+    }
+    Ok(end)
+}
+
+fn validate_batch_record_path(
+    raw_path: &[u8],
+    requested: &[&Vec<u8>],
+    returned: &mut HashSet<Vec<u8>>,
+) -> SnapshotResult<()> {
+    if !requested.iter().any(|path| path.as_slice() == raw_path) {
+        return Err(git_error(
+            SnapshotErrorKind::Inventory,
+            "git_output_malformed",
+            "git ls-tree returned a path that was not requested",
+        ));
+    }
+    if !returned.insert(raw_path.to_vec()) {
+        return Err(git_error(
+            SnapshotErrorKind::Inventory,
+            "git_output_malformed",
+            "git ls-tree returned a duplicate path record",
+        ));
+    }
+    Ok(())
+}
+
+fn process_batch_outcome(
+    outcome: TreeRecordParse,
+    chunk: &[&Vec<u8>],
+    returned: &mut HashSet<Vec<u8>>,
+    found: &mut HashMap<Vec<u8>, String>,
+) -> SnapshotResult<()> {
+    match outcome {
+        TreeRecordParse::Entry(entry) => {
+            validate_batch_record_path(&entry.raw_path, chunk, returned)?;
+            if entry.mode.starts_with("100") {
+                found.insert(entry.raw_path, entry.object_oid);
+            }
+            Ok(())
+        }
+        TreeRecordParse::UnsupportedPath { raw_path, .. } => Err(git_error(
+            SnapshotErrorKind::InvalidConfig,
+            "tree_path_unsupported_on_platform",
+            format!(
+                "git tree path `{}` is not representable on this platform",
+                display_raw_path(&raw_path)
+            ),
+        )),
+        TreeRecordParse::Malformed => Err(git_error(
+            SnapshotErrorKind::Inventory,
+            "git_output_malformed",
+            "git ls-tree returned a malformed record",
+        )),
+    }
+}
+
+fn process_batch_record(
+    record: &[u8],
+    chunk: &[&Vec<u8>],
+    returned: &mut HashSet<Vec<u8>>,
+    found: &mut HashMap<Vec<u8>, String>,
+) -> SnapshotResult<()> {
+    process_batch_outcome(parse_git_tree_record_any(record), chunk, returned, found)
+}
+
+#[cfg(test)]
+pub(crate) fn tree_blob_batch_end_for_test(
+    path_lengths: &[usize],
+    start: usize,
+) -> SnapshotResult<usize> {
+    tree_blob_batch_end(path_lengths, start, TREE_BLOB_BATCH_FIXED_BYTES)
+}
+
+#[cfg(test)]
+pub(crate) fn validate_batch_record_path_for_test(
+    raw_path: &[u8],
+    requested: &[&Vec<u8>],
+    returned: &mut HashSet<Vec<u8>>,
+) -> SnapshotResult<()> {
+    validate_batch_record_path(raw_path, requested, returned)
+}
+
+#[cfg(test)]
+pub(crate) fn process_batch_record_for_test(
+    record: &[u8],
+    chunk: &[&Vec<u8>],
+    returned: &mut HashSet<Vec<u8>>,
+    found: &mut HashMap<Vec<u8>, String>,
+) -> SnapshotResult<()> {
+    process_batch_record(record, chunk, returned, found)
+}
+
+#[cfg(test)]
+pub(crate) fn process_unsupported_batch_record_for_test(
+    raw_path: Vec<u8>,
+    chunk: &[&Vec<u8>],
+    returned: &mut HashSet<Vec<u8>>,
+    found: &mut HashMap<Vec<u8>, String>,
+) -> SnapshotResult<()> {
+    process_batch_outcome(
+        TreeRecordParse::UnsupportedPath {
+            mode: "100644".to_string(),
+            object_oid: "0".repeat(40),
+            raw_path,
+        },
+        chunk,
+        returned,
+        found,
+    )
+}
+
+/// Resolve blob object ids for many paths at one commit with batched
+/// `git ls-tree` invocations (#2515).
+///
+/// Returns one entry per requested path, in request order: the blob oid when
+/// the path is a regular file (mode `100...`) at `commit_oid`, else `None`.
+/// Classification matches [`tree_blob_oid_at_commit`] exactly — absent paths,
+/// non-regular modes, and unresolvable revisions behave identically, and a
+/// returned record that was not requested is rejected as malformed output.
+pub(crate) fn tree_blob_oids_at_commit(
+    root: &Path,
+    commit_oid: &str,
+    paths: &[&Path],
+) -> SnapshotResult<Vec<Option<String>>> {
+    let requested: Vec<Vec<u8>> = paths
+        .iter()
+        .map(|path| source_tree_path_bytes(path))
+        .collect::<SnapshotResult<Vec<_>>>()?;
+
+    // Unique requested path bytes; duplicate spellings share one ls-tree
+    // argument and one resolved value.
+    let mut unique: Vec<&Vec<u8>> = requested.iter().collect();
+    unique.sort();
+    unique.dedup();
+
+    let mut found: HashMap<Vec<u8>, String> = HashMap::with_capacity(unique.len());
+    let path_lengths: Vec<usize> = unique.iter().map(|path| path.len()).collect();
+    let fixed_bytes = TREE_BLOB_BATCH_FIXED_BYTES
+        .saturating_add(root.as_os_str().to_string_lossy().len())
+        .saturating_add(commit_oid.len());
+    let mut start = 0;
+    while start < unique.len() {
+        let end = tree_blob_batch_end(&path_lengths, start, fixed_bytes)?;
+        let chunk: Vec<&Vec<u8>> = unique
+            .iter()
+            .skip(start)
+            .take(end - start)
+            .copied()
+            .collect();
+        let mut cmd = literal_pathspec_git_command(root);
+        cmd.arg("ls-tree")
+            .arg("-z")
+            .arg("--full-tree")
+            .arg(commit_oid)
+            .arg("--");
+        for path_bytes in chunk.iter() {
+            append_literal_path_arg(&mut cmd, path_bytes)?;
+        }
+        let output = run_git(cmd, "git ls-tree exact paths")?;
+        if !output.status.success() {
+            return Err(git_status_error("git ls-tree exact paths", &output));
+        }
+        let mut returned = HashSet::with_capacity(chunk.len());
+        for record in output
+            .stdout
+            .split(|byte| *byte == 0)
+            .filter(|record| !record.is_empty())
+        {
+            process_batch_record(record, &chunk, &mut returned, &mut found)?;
+        }
+        start = end;
+    }
+
+    Ok(requested
+        .iter()
+        .map(|path| found.get(path.as_slice()).cloned())
+        .collect())
 }
 
 pub(crate) fn resolve_commit_oid(root: &Path, revision: &str) -> SnapshotResult<String> {

@@ -28,7 +28,7 @@ use crate::error::{SnapshotErrorKind, SnapshotResult, sha256_v1_bytes};
 
 use crate::git::{
     git_command, git_error, git_status_error, is_full_oid, parse_single_oid, resolve_commit_oid,
-    run_git, tree_blob_oid_at_commit,
+    run_git, tree_blob_oids_at_commit,
 };
 
 /// Semantic schema/generation tag for the snapshot identity contract.
@@ -362,15 +362,25 @@ pub fn repository_snapshot(
         RepositoryDirtyState::NotProbed
     };
 
-    let mut selected_paths = Vec::new();
-    for path in &request.selected_paths {
-        let blob_oid = tree_blob_oid_at_commit(root, &head.commit, path)?;
-        selected_paths.push(SelectedPathIdentity {
+    // One batched ls-tree per chunk instead of one exact-path lookup per
+    // selected path (#2515): the revision is constant across the loop, so
+    // only the paths vary.
+    let selected_path_refs: Vec<&Path> = request
+        .selected_paths
+        .iter()
+        .map(|path| path.as_path())
+        .collect();
+    let selected_blob_oids = tree_blob_oids_at_commit(root, &head.commit, &selected_path_refs)?;
+    let mut selected_paths: Vec<SelectedPathIdentity> = request
+        .selected_paths
+        .iter()
+        .zip(selected_blob_oids)
+        .map(|(path, blob_oid)| SelectedPathIdentity {
             path: normalize_selected_path(path),
             present: blob_oid.is_some(),
             blob_oid,
-        });
-    }
+        })
+        .collect();
     selected_paths.sort_by(|left, right| left.path.cmp(&right.path));
 
     let selected_source_closure = selected_source_closure_hash(&selected_paths);

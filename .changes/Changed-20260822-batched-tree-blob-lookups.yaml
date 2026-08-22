@@ -1,0 +1,12 @@
+kind: Changed
+body: >-
+  Partial implementation of #2515: batch the exact-path tree lookups behind
+  repository snapshot identities. Selected-path blob resolution now issues
+  bounded git ls-tree -z --full-tree processes with count and encoded-byte
+  caps, maps results back in request order, and rejects duplicate, unrequested,
+  malformed, or oversized records. Classification remains identical to the
+  per-path lookup for absent paths, non-regular modes, and unsupported platform
+  paths. Current main already supplies cat-file batching; this slice is limited
+  to selected-path ls-tree batching and does not add cross-call revision-OID
+  memoization. The implementation is index-free, so it introduces no new
+  panic-family findings against the ledger.
