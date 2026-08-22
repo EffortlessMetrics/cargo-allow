@@ -50,6 +50,66 @@ fn ignores_target_paths() {
 }
 
 #[test]
+fn inventory_does_not_intrinsically_exclude_tool_owned_cache() {
+    if !git_available() {
+        eprintln!("skipped: git not available");
+        return;
+    }
+    let root = temp_root("tool-owned-cache");
+    write_file(root.join("tracked.txt"), "tracked");
+    fs::create_dir_all(root.join("target/cargo-allow/cache"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("cache dir: {err}")));
+    write_file(
+        root.join("target/cargo-allow/cache/fact.rs"),
+        "fn cached() {}",
+    );
+    run_git(&root, &["init"]);
+    run_git(&root, &["add", "tracked.txt"]);
+    let options = InventoryOptions {
+        ignored: Vec::new(),
+        generated: Vec::new(),
+        include_untracked: false,
+    };
+    let first = inventory(&root, &options)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("first inventory: {err}")));
+    assert_eq!(first.completeness, InventoryCompleteness::Complete);
+    let include_untracked = inventory(
+        &root,
+        &InventoryOptions {
+            ignored: vec![".git/**".to_string()],
+            include_untracked: true,
+            ..options.clone()
+        },
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("untracked inventory: {err}")));
+    assert_eq!(
+        include_untracked.completeness,
+        InventoryCompleteness::Scoped
+    );
+    run_git(&root, &["add", "-f", "target/cargo-allow/cache/fact.rs"]);
+    let second = inventory(&root, &options)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("second inventory: {err}")));
+    assert_eq!(second.completeness, InventoryCompleteness::Complete);
+    assert!(first.files.contains(&PathBuf::from("tracked.txt")));
+    assert!(
+        second
+            .files
+            .contains(&PathBuf::from("target/cargo-allow/cache/fact.rs"))
+    );
+    std::fs::remove_file(root.join("target/cargo-allow/cache/fact.rs"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove cache fixture: {err}")));
+    let deleted = inventory(&root, &options)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("deleted inventory: {err}")));
+    assert_eq!(deleted.completeness, InventoryCompleteness::Partial);
+    assert!(
+        deleted
+            .deleted_tracked
+            .contains(&PathBuf::from("target/cargo-allow/cache/fact.rs"))
+    );
+    remove_dir(&root);
+}
+
+#[test]
 fn dot_git_ignore_does_not_swallow_dot_github() {
     let opts = InventoryOptions::default();
     assert!(!source_tree_path_is_ignored(

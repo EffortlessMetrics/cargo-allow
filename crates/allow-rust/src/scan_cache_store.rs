@@ -213,6 +213,13 @@ impl ScanCacheStore {
             .retain(|path, _| retained.contains(path.as_path()));
         self.dirty |= before != self.entries.len();
     }
+
+    /// Remove facts for a path that could not be evaluated in this scan.
+    pub fn remove(&mut self, rel: &Path) {
+        if self.entries.remove(rel).is_some() {
+            self.dirty = true;
+        }
+    }
 }
 
 fn path_has_symlink_component(path: &Path) -> bool {
@@ -246,7 +253,7 @@ fn valid_relative_path(path: &Path) -> bool {
         })
 }
 
-fn reserve(out: &mut Vec<u8>, additional: usize) -> Result<(), ()> {
+fn reserve(out: &[u8], additional: usize) -> Result<(), ()> {
     let limit = MAX_STORE_BYTES.checked_sub(CHECKSUM_LEN).ok_or(())?;
     let next = out.len().checked_add(additional).ok_or(())?;
     if next > limit {
@@ -283,18 +290,18 @@ fn encode_store(generation: &str, entries: &HashMap<PathBuf, StoredEntry>) -> Re
     ordered.sort_by(|left, right| left.0.cmp(right.0));
 
     let mut out = Vec::new();
-    reserve(&mut out, STORE_SCHEMA.len())?;
+    reserve(&out, STORE_SCHEMA.len())?;
     out.extend_from_slice(STORE_SCHEMA);
-    reserve(&mut out, 1)?;
+    reserve(&out, 1)?;
     out.push(b'\n');
     write_str(&mut out, generation)?;
-    reserve(&mut out, 4)?;
+    reserve(&out, 4)?;
     out.extend_from_slice(&(ordered.len() as u32).to_le_bytes());
     for (rel, entry) in ordered {
         let rel_text = rel.to_str().ok_or(())?;
         write_str(&mut out, rel_text)?;
         write_str(&mut out, &entry.content_digest)?;
-        reserve(&mut out, 1 + 4)?;
+        reserve(&out, 1 + 4)?;
         out.push(u8::from(entry.has_parse_error));
         out.extend_from_slice(&(entry.findings.len() as u32).to_le_bytes());
         for finding in &entry.findings {

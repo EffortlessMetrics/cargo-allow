@@ -32,7 +32,7 @@ pub struct ScanCache {
 struct CacheEntry {
     mtime: SystemTime,
     size: u64,
-    content_digest: String,
+    content_digest: Option<String>,
     findings: Vec<Finding>,
     has_parse_error: bool,
 }
@@ -107,7 +107,7 @@ impl ScanCache {
             CacheEntry {
                 mtime,
                 size,
-                content_digest: sha256_v1_bytes(text.as_bytes()),
+                content_digest: None,
                 findings: scan.findings.clone(),
                 has_parse_error: scan.has_parse_error,
             },
@@ -133,15 +133,25 @@ impl ScanCache {
         let abs = root.join(rel);
         let text = match allow_core::read_text_file_capped(&abs) {
             Ok(text) => text,
-            Err(_) => return Ok((Vec::new(), false, true)),
+            Err(_) => {
+                self.entries.remove(rel);
+                store.remove(rel);
+                return Ok((Vec::new(), false, true));
+            }
         };
         let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
         let content_digest = sha256_v1_bytes(text.as_bytes());
 
         // In-memory hit: same evaluated bytes inside this invocation.
         if let Some(entry) = self.entries.get(rel)
-            && entry.content_digest == content_digest
+            && entry.content_digest.as_deref() == Some(content_digest.as_str())
         {
+            store.put(
+                rel,
+                content_digest,
+                entry.has_parse_error,
+                entry.findings.clone(),
+            );
             return Ok((entry.findings.clone(), entry.has_parse_error, false));
         }
 
@@ -157,7 +167,7 @@ impl ScanCache {
                         .and_then(|m| m.modified().ok())
                         .unwrap_or(SystemTime::UNIX_EPOCH),
                     size: metadata.map(|m| m.len()).unwrap_or(0),
-                    content_digest,
+                    content_digest: Some(content_digest),
                     findings: findings.clone(),
                     has_parse_error,
                 },
@@ -175,7 +185,7 @@ impl ScanCache {
                     .and_then(|m| m.modified().ok())
                     .unwrap_or(SystemTime::UNIX_EPOCH),
                 size: metadata.map(|m| m.len()).unwrap_or(0),
-                content_digest: content_digest.clone(),
+                content_digest: Some(content_digest.clone()),
                 findings: scan.findings.clone(),
                 has_parse_error: scan.has_parse_error,
             },

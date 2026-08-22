@@ -251,5 +251,18 @@ fn skipped_files_are_never_persisted() {
         "only the evaluated file may be persisted; skipped files carry no reusable facts"
     );
 
+    fs::write(&good, [b'f', b'n', 0xFF, b'(', b')', b'{', b'}'])
+        .unwrap_or_else(|err| std::panic::panic_any(format!("rewrite non-utf8: {err}")));
+    let mut cache2 = ScanCache::new();
+    let mut store2 = ScanCacheStore::open(&dir, &generation);
+    let _ = scan_rust_files_cached_with_store(&root, &files, &mut cache2, &mut store2)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("rescan skipped: {err}")));
+    assert!(store2.flush());
+    let reopened_after_skip = ScanCacheStore::open(&dir, &generation);
+    assert!(
+        reopened_after_skip.is_empty(),
+        "a previously cached path must be pruned when it becomes unreadable"
+    );
+
     let _ = fs::remove_dir_all(&root);
 }
