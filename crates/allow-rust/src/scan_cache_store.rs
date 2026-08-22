@@ -9,9 +9,9 @@
 //!
 //! Trust rules:
 //!
-//! - The store is **facts, not authority**: every entry is validated against
-//!   the current file digest before use, so a corrupted, truncated, or
-//!   tampered store can only cause a cold re-scan, never wrong findings.
+//! - The store is trusted-local **performance state**, not authority: every
+//!   entry is validated against the current file digest before use, so an
+//!   accidentally corrupted or truncated store only causes a cold re-scan.
 //! - Any read/decode failure discards the store (fail-open cold start).
 //! - A generation string binds entries to one scanner build; scanner changes
 //!   invalidate the whole store rather than silently mixing semantics.
@@ -20,7 +20,7 @@
 //! The store lives under `target/`, which cargo gitignores, so persisted
 //! facts never enter source-tree scans or receipts.
 
-use allow_core::Finding;
+use allow_core::{Finding, read_file_capped_with_limit};
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -32,6 +32,7 @@ const MAX_ENTRY_COUNT: usize = 100_000;
 const MAX_FINDINGS_PER_ENTRY: usize = 100_000;
 const MAX_FIELD_BYTES: usize = 16 * 1024 * 1024;
 const MAX_STORE_BYTES: usize = 128 * 1024 * 1024;
+const MAX_RELATIVE_PATH_BYTES: usize = 4 * 1024;
 
 /// One persisted scan result: the digest it was produced from plus the
 /// scanner output for that exact input.
@@ -50,6 +51,7 @@ pub struct ScanCacheStore {
     generation: String,
     entries: HashMap<PathBuf, StoredEntry>,
     dirty: bool,
+    writable: bool,
 }
 
 impl ScanCacheStore {
@@ -62,17 +64,20 @@ impl ScanCacheStore {
     /// different `generation` are discarded rather than reused.
     pub fn open(dir: &Path, generation: impl Into<String>) -> Self {
         let generation = generation.into();
+        let writable =
+            !path_has_symlink_component(dir) && !path_is_symlink(&dir.join("scan-cache.v2.bin"));
         let mut store = Self {
             dir: dir.to_path_buf(),
             generation,
             entries: HashMap::new(),
             dirty: false,
+            writable,
         };
-        if path_has_symlink_component(dir) {
+        if !store.writable {
             return store;
         }
         let path = store.store_path();
-        if let Ok(bytes) = std::fs::read(&path)
+        if let Ok(bytes) = read_file_capped_with_limit(&path, MAX_STORE_BYTES as u64)
             && let Ok(decoded) = decode_store(&bytes, &store.generation)
         {
             store.entries = decoded;
@@ -101,6 +106,17 @@ impl ScanCacheStore {
         has_parse_error: bool,
         findings: Vec<Finding>,
     ) {
+        if !valid_relative_path(rel)
+            || rel
+                .to_str()
+                .is_none_or(|text| text.len() > MAX_RELATIVE_PATH_BYTES)
+            || findings.len() > MAX_FINDINGS_PER_ENTRY
+        {
+            return;
+        }
+        if !self.entries.contains_key(rel) && self.entries.len() >= MAX_ENTRY_COUNT {
+            return;
+        }
         let stored = StoredEntry {
             content_digest,
             has_parse_error,
@@ -117,14 +133,23 @@ impl ScanCacheStore {
         self.dirty = true;
     }
 
-    /// Persist pending changes atomically enough for a best-effort cache:
+    /// Persist pending changes as a best-effort cache replacement:
     /// write a sibling temp file, then replace the store. Failure returns
     /// `false`; callers treat flush as advisory.
     pub fn flush(&mut self) -> bool {
+        if !self.writable
+            || path_has_symlink_component(&self.dir)
+            || path_is_symlink(&self.store_path())
+        {
+            return false;
+        }
         if !self.dirty {
             return true;
         }
         if std::fs::create_dir_all(&self.dir).is_err() {
+            return false;
+        }
+        if path_has_symlink_component(&self.dir) || path_is_symlink(&self.store_path()) {
             return false;
         }
         let bytes = match encode_store(&self.generation, &self.entries) {
@@ -135,10 +160,14 @@ impl ScanCacheStore {
         let tmp = self
             .dir
             .join(format!("scan-cache.v2.bin.tmp-{}", std::process::id()));
-        let write = std::fs::File::create(&tmp).and_then(|mut file| {
-            file.write_all(&bytes)?;
-            file.sync_all()
-        });
+        let write = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&tmp)
+            .and_then(|mut file| {
+                file.write_all(&bytes)?;
+                file.sync_all()
+            });
         if write.is_err() {
             let _ = std::fs::remove_file(&tmp);
             return false;
@@ -146,6 +175,10 @@ impl ScanCacheStore {
         // std::fs::rename does not replace an existing destination on
         // Windows; drop the previous store first. The cache is advisory, so
         // a lost race here only costs a future cold start.
+        if path_is_symlink(&dest) {
+            let _ = std::fs::remove_file(&tmp);
+            return false;
+        }
         if dest.exists() {
             let _ = std::fs::remove_file(&dest);
         }
@@ -167,6 +200,19 @@ impl ScanCacheStore {
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
+
+    /// Drop entries which are not part of the current deterministic scan set.
+    pub fn retain_paths(&mut self, paths: &[PathBuf]) {
+        let retained: std::collections::HashSet<&Path> = paths
+            .iter()
+            .filter(|path| valid_relative_path(path))
+            .map(PathBuf::as_path)
+            .collect();
+        let before = self.entries.len();
+        self.entries
+            .retain(|path, _| retained.contains(path.as_path()));
+        self.dirty |= before != self.entries.len();
+    }
 }
 
 fn path_has_symlink_component(path: &Path) -> bool {
@@ -183,19 +229,52 @@ fn path_has_symlink_component(path: &Path) -> bool {
     false
 }
 
-fn write_str(out: &mut Vec<u8>, value: &str) {
-    out.extend_from_slice(&(value.len() as u32).to_le_bytes());
-    out.extend_from_slice(value.as_bytes());
+fn path_is_symlink(path: &Path) -> bool {
+    std::fs::symlink_metadata(path)
+        .map(|metadata| metadata.file_type().is_symlink())
+        .unwrap_or(false)
 }
 
-fn write_opt_u32(out: &mut Vec<u8>, value: Option<u32>) {
+fn valid_relative_path(path: &Path) -> bool {
+    !path.as_os_str().is_empty()
+        && !path.is_absolute()
+        && path.components().all(|component| {
+            !matches!(
+                component,
+                std::path::Component::ParentDir | std::path::Component::CurDir
+            )
+        })
+}
+
+fn reserve(out: &mut Vec<u8>, additional: usize) -> Result<(), ()> {
+    let limit = MAX_STORE_BYTES.checked_sub(CHECKSUM_LEN).ok_or(())?;
+    let next = out.len().checked_add(additional).ok_or(())?;
+    if next > limit {
+        return Err(());
+    }
+    Ok(())
+}
+
+fn write_str(out: &mut Vec<u8>, value: &str) -> Result<(), ()> {
+    reserve(out, 4usize.checked_add(value.len()).ok_or(())?)?;
+    out.extend_from_slice(&(value.len() as u32).to_le_bytes());
+    out.extend_from_slice(value.as_bytes());
+    Ok(())
+}
+
+fn write_opt_u32(out: &mut Vec<u8>, value: Option<u32>) -> Result<(), ()> {
     match value {
         Some(value) => {
+            reserve(out, 5)?;
             out.push(1);
             out.extend_from_slice(&value.to_le_bytes());
         }
-        None => out.push(0),
+        None => {
+            reserve(out, 1)?;
+            out.push(0);
+        }
     }
+    Ok(())
 }
 
 fn encode_store(generation: &str, entries: &HashMap<PathBuf, StoredEntry>) -> Result<Vec<u8>, ()> {
@@ -204,22 +283,23 @@ fn encode_store(generation: &str, entries: &HashMap<PathBuf, StoredEntry>) -> Re
     ordered.sort_by(|left, right| left.0.cmp(right.0));
 
     let mut out = Vec::new();
+    reserve(&mut out, STORE_SCHEMA.len())?;
     out.extend_from_slice(STORE_SCHEMA);
+    reserve(&mut out, 1)?;
     out.push(b'\n');
-    write_str(&mut out, generation);
+    write_str(&mut out, generation)?;
+    reserve(&mut out, 4)?;
     out.extend_from_slice(&(ordered.len() as u32).to_le_bytes());
     for (rel, entry) in ordered {
         let rel_text = rel.to_str().ok_or(())?;
-        write_str(&mut out, rel_text);
-        write_str(&mut out, &entry.content_digest);
+        write_str(&mut out, rel_text)?;
+        write_str(&mut out, &entry.content_digest)?;
+        reserve(&mut out, 1 + 4)?;
         out.push(u8::from(entry.has_parse_error));
         out.extend_from_slice(&(entry.findings.len() as u32).to_le_bytes());
         for finding in &entry.findings {
             encode_finding(&mut out, finding)?;
         }
-    }
-    if out.len() > MAX_STORE_BYTES {
-        return Err(());
     }
     let checksum = allow_core::sha256_v1_bytes(&out);
     out.extend_from_slice(checksum.as_bytes());
@@ -236,23 +316,27 @@ fn encode_finding(out: &mut Vec<u8>, finding: &Finding) -> Result<(), ()> {
     match &finding.family {
         Some(family) => {
             out.push(1);
-            write_str(out, family);
+            write_str(out, family)?;
         }
         None => out.push(0),
     }
     let path_text = finding.path.to_str().ok_or(())?;
-    write_str(out, path_text);
+    write_str(out, path_text)?;
     match &finding.span {
         Some(span) => {
+            reserve(out, 1 + 8)?;
             out.push(1);
             out.extend_from_slice(&span.line.to_le_bytes());
             out.extend_from_slice(&span.column.to_le_bytes());
         }
-        None => out.push(0),
+        None => {
+            reserve(out, 1)?;
+            out.push(0)
+        }
     }
     let identity = &finding.identity;
-    write_str(out, &identity.language);
-    write_str(out, &identity.ast_kind);
+    write_str(out, &identity.language)?;
+    write_str(out, &identity.ast_kind)?;
     for value in [
         &identity.crate_name,
         &identity.module,
@@ -267,15 +351,19 @@ fn encode_finding(out: &mut Vec<u8>, finding: &Finding) -> Result<(), ()> {
     ] {
         match value {
             Some(text) => {
+                reserve(out, 1)?;
                 out.push(1);
-                write_str(out, text);
+                write_str(out, text)?;
             }
-            None => out.push(0),
+            None => {
+                reserve(out, 1)?;
+                out.push(0)
+            }
         }
     }
-    write_opt_u32(out, identity.line_hint);
-    write_opt_u32(out, identity.column_hint);
-    write_str(out, &finding.message);
+    write_opt_u32(out, identity.line_hint)?;
+    write_opt_u32(out, identity.column_hint)?;
+    write_str(out, &finding.message)?;
     Ok(())
 }
 
@@ -482,4 +570,149 @@ fn finding_kind_from_tag(tag: u8) -> Option<allow_core::FindingKind> {
         6 => allow_core::FindingKind::PolicyException,
         _ => return None,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::SystemTime;
+
+    #[test]
+    fn checksum_valid_but_trailing_payload_is_rejected() {
+        let encoded = encode_store("generation", &HashMap::new()).unwrap_or_default();
+        let payload_len = encoded.len() - CHECKSUM_LEN;
+        let mut payload = encoded.get(..payload_len).unwrap_or_default().to_vec();
+        payload.push(0);
+        let checksum = allow_core::sha256_v1_bytes(&payload);
+        payload.extend_from_slice(checksum.as_bytes());
+        assert!(decode_store(&payload, "generation").is_err());
+    }
+
+    #[test]
+    fn put_rejects_invalid_paths_and_entry_or_finding_overflow() {
+        let mut store = ScanCacheStore::open(Path::new("target/cache-test"), "generation");
+        store.put(
+            Path::new("../escape.rs"),
+            "digest".to_string(),
+            false,
+            Vec::new(),
+        );
+        assert!(store.is_empty());
+        store.put(
+            Path::new("src/lib.rs"),
+            "digest".to_string(),
+            false,
+            (0..=MAX_FINDINGS_PER_ENTRY)
+                .map(|_| Finding {
+                    kind: allow_core::FindingKind::Panic,
+                    family: None,
+                    path: PathBuf::from("src/lib.rs"),
+                    span: None,
+                    identity: allow_core::StructuralIdentity::new("rust", "function"),
+                    message: String::new(),
+                    ledger: None,
+                })
+                .collect(),
+        );
+        assert!(store.is_empty());
+    }
+
+    #[test]
+    fn retain_paths_prunes_stale_entries_deterministically() {
+        let mut store = ScanCacheStore::open(Path::new("target/cache-test"), "generation");
+        store.put(Path::new("src/a.rs"), "a".to_string(), false, Vec::new());
+        store.put(Path::new("src/b.rs"), "b".to_string(), false, Vec::new());
+        store.retain_paths(&[PathBuf::from("src/a.rs")]);
+        assert!(store.get(Path::new("src/a.rs"), "a").is_some());
+        assert!(store.get(Path::new("src/b.rs"), "b").is_none());
+    }
+
+    #[test]
+    fn oversized_store_fails_open_before_decode_allocation() -> Result<(), String> {
+        let nonce = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map_err(|error| error.to_string())?
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "allow-rust-cache-oversized-{}-{nonce}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        let path = root.join("scan-cache.v2.bin");
+        let file = std::fs::File::create(&path).map_err(|error| error.to_string())?;
+        file.set_len((MAX_STORE_BYTES as u64) + 1)
+            .map_err(|error| error.to_string())?;
+        drop(file);
+        let store = ScanCacheStore::open(&root, "generation");
+        assert!(store.is_empty());
+        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn flush_fails_closed_when_cache_root_becomes_symlink() -> Result<(), String> {
+        use std::os::unix::fs::symlink;
+
+        let nonce = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or_default();
+        let root = std::env::temp_dir().join(format!(
+            "allow-rust-cache-symlink-{}-{nonce}",
+            std::process::id()
+        ));
+        let cache_dir = root.join("cache");
+        let outside = root.join("outside");
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&cache_dir).map_err(|error| error.to_string())?;
+        std::fs::create_dir_all(&outside).map_err(|error| error.to_string())?;
+        let mut store = ScanCacheStore::open(&cache_dir, "generation");
+        store.put(
+            Path::new("src/lib.rs"),
+            "digest".to_string(),
+            false,
+            Vec::new(),
+        );
+        std::fs::remove_dir_all(&cache_dir).map_err(|error| error.to_string())?;
+        symlink(&outside, &cache_dir).map_err(|error| error.to_string())?;
+        assert!(!store.flush());
+        assert!(!outside.join("scan-cache.v2.bin").exists());
+        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn precreated_temp_symlink_cannot_redirect_create_new_write() -> Result<(), String> {
+        use std::os::unix::fs::symlink;
+
+        let nonce = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map_err(|error| error.to_string())?
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "allow-rust-cache-temp-symlink-{}-{nonce}",
+            std::process::id()
+        ));
+        let outside = root.join("outside.bin");
+        std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        std::fs::write(&outside, b"sentinel").map_err(|error| error.to_string())?;
+        let temp = root.join(format!("scan-cache.v2.bin.tmp-{}", std::process::id()));
+        symlink(&outside, &temp).map_err(|error| error.to_string())?;
+        let mut store = ScanCacheStore::open(&root, "generation");
+        store.put(
+            Path::new("src/lib.rs"),
+            "digest".to_string(),
+            false,
+            Vec::new(),
+        );
+        assert!(!store.flush());
+        assert_eq!(
+            std::fs::read(&outside).map_err(|error| error.to_string())?,
+            b"sentinel"
+        );
+        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
 }

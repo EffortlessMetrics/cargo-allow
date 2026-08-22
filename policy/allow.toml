@@ -22,8 +22,14 @@ stale_entries_fail = false
 
 [requirements.unsafe]
 evidence_required = true
-verified_evidence_required = true
 safety_comment_required = false
+# #3237 mandate: every unsafe entry requires at least one verified
+# local-file evidence reference (doc:, spec:, adr:, ripr:, coverage:,
+# unsafe-review:); traceability-only references (test:, issue:, pr:) are
+# supplementary. The rollout grandfathering window was retired after all
+# twelve pre-mandate entries gained per-entry safety analysis in
+# docs/dogfood/unsafe-fixture-safety-analysis.md.
+verified_evidence_required = true
 
 [[allow]]
 id = "allow-0038"
@@ -1484,6 +1490,7 @@ glob = "tests/fixtures/intent-model/parity-spec-system-v1.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
 
 [[allow]]
 id = "allow-9064"
@@ -11412,6 +11419,34 @@ glob = "docs/schemas/shared-package-candidate.v1.schema.json"
 line = 1
 column = 1
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 [[allow]]
 id = "allow-9252"
 kind = "panic"
@@ -11423,9 +11458,9 @@ created = "2026-08-13"
 review_after = "2027-02-01"
 
 [allow.selector]
+glob = "crates/**/*.rs"
 ast_kind = "macro_call"
 macro_name = "assert"
-glob = "crates/**/*.rs"
 
 [[allow]]
 id = "allow-9253"
@@ -11438,9 +11473,9 @@ created = "2026-08-13"
 review_after = "2027-02-01"
 
 [allow.selector]
+glob = "crates/**/*.rs"
 ast_kind = "macro_call"
 macro_name = "assert_eq"
-glob = "crates/**/*.rs"
 
 [[allow]]
 id = "allow-9254"
@@ -11453,9 +11488,9 @@ created = "2026-08-13"
 review_after = "2027-02-01"
 
 [allow.selector]
+glob = "crates/**/*.rs"
 ast_kind = "macro_call"
 macro_name = "assert_ne"
-glob = "crates/**/*.rs"
 
 [[allow]]
 id = "allow-9255"
@@ -11679,6 +11714,7 @@ glob = "scripts/test-changie-sensor-external-consumer.sh"
 [allow.last_seen]
 line = 1
 column = 1
+
 
 [[allow]]
 id = "allow-11123"
@@ -12130,9 +12166,9 @@ owner = "core/release"
 classification = "release_automation"
 reason = "#3160 retained Changie history corpus version files (0.1.6 through 0.2.0), generated deterministically from the reviewed CHANGELOG.md; merge reproduces the reviewed changelog byte-for-byte."
 evidence = ["doc:docs/how-to/manage-changelog.md", "issue:3160"]
-occurrence_limit = 7
 created = "2026-08-17"
 review_after = "2026-11-14"
+occurrence_limit = 7
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -12142,7 +12178,6 @@ glob = ".changes/0.*.md"
 [allow.last_seen]
 line = 1
 column = 1
-
 [[allow]]
 id = "allow-11129"
 kind = "non_rust_file"
@@ -12164,7 +12199,6 @@ glob = "tests/fixtures/intent-engine/parity-graph-compiler-v1.toml"
 [allow.last_seen]
 line = 1
 column = 1
-
 [[allow]]
 id = "allow-11130"
 kind = "non_rust_file"
@@ -12186,26 +12220,3 @@ glob = "tests/fixtures/intent-engine/graph-compiler-parity/generation-mismatch.s
 [allow.last_seen]
 line = 1
 column = 1
-
-[[allow]]
-id = "allow-0579"
-kind = "panic"
-family = "expect"
-path = "crates/allow-rust/src/tests/persistent_scan_cache.rs"
-owner = "core/scanner"
-classification = "reviewed_exception"
-reason = "Persistent-cache fixture reads through read_text_file_capped with expect so a fixture-read failure fails the invalidation test immediately instead of asserting on empty facts."
-evidence = ["test:mtime_churn_without_content_change_keeps_facts_valid"]
-created = "2026-08-22"
-review_after = "2026-11-20"
-
-[allow.selector]
-ast_kind = "method_call"
-container = "mtime_churn_without_content_change_keeps_facts_valid"
-callee = "expect"
-receiver_fingerprint = "allow_core::read_text_file_capped(&source_path)"
-normalized_snippet_hash = "fnv1a64:a190ded5a9ad650b"
-
-[allow.last_seen]
-line = 135
-column = 68

@@ -81,12 +81,14 @@ parses.
 scanner evaluated. A warm invocation skips the tree-sitter parse for
 unchanged files; invalidation is content-exact, so preserved mtimes cannot
 mask changed content and mtime churn alone never changes results. Entries
-are bound to a scanner generation (crate version); a corrupted or
-truncated store fails open to an ordinary cold scan, and skipped files are
-never persisted.
+are bound to a scanner generation (crate version plus scanner semantic epoch);
+an accidentally corrupted or truncated store fails open to an ordinary cold
+scan, and skipped files are never persisted. The checksum detects corruption
+and truncation; it is not an authenticity or anti-tamper mechanism.
 
-Claim boundary: the cache stores scanner *facts*, not authority. Every
-durable entry is re-validated against the current file digest before use,
-so the store can only reduce work, never change findings or enforcement
-outcomes. It lives under `target/`, is never part of the source-tree
-inventory, and every failure path degrades to ordinary scanning.
+Claim boundary: the cache is trusted-local *performance state*, not authority.
+Every durable entry is re-validated against the current file digest before
+use; failed validation or decode falls back to ordinary scanning. The
+checksum detects accidental corruption and truncation but is not an
+authenticity mechanism. It lives under `target/`, is never part of the
+source-tree inventory, and every failure path degrades to ordinary scanning.

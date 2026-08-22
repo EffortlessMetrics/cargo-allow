@@ -272,7 +272,7 @@ mod tests;
 /// across scanner semantics.
 pub fn scan_cache_generation() -> String {
     format!(
-        "allow-rust:{};syntax:v1;grammar:tree-sitter-rust:v1",
+        "allow-rust:{};epoch:scanner-contract-v2;syntax:v1;grammar:tree-sitter-rust:v1;read-cap:16MiB",
         env!("CARGO_PKG_VERSION")
     )
 }
@@ -293,6 +293,13 @@ pub fn scan_rust_files_cached_with_store(
 ) -> CargoAllowResult<RustScanResult> {
     use crate::RustFileScanOutcome;
     let root = root.as_ref();
+    store.retain_paths(
+        &files
+            .iter()
+            .filter(|path| path.extension().and_then(|e| e.to_str()) == Some("rs"))
+            .cloned()
+            .collect::<Vec<_>>(),
+    );
     let mut out = Vec::new();
     let packages = source_package_contexts(root, files)?;
     let mut files_considered = 0usize;

@@ -132,12 +132,14 @@ fn mtime_churn_without_content_change_keeps_facts_valid() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("cold scan: {err}")));
     assert!(store.flush());
     let persisted_digest_hit = {
-        let text = allow_core::read_text_file_capped(&source_path).expect("fixture reads");
-        store
-            .get(
-                Path::new("src/lib.rs"),
-                &allow_core::sha256_v1_bytes(text.as_bytes()),
-            )
+        allow_core::read_text_file_capped(&source_path)
+            .ok()
+            .and_then(|text| {
+                store.get(
+                    Path::new("src/lib.rs"),
+                    &allow_core::sha256_v1_bytes(text.as_bytes()),
+                )
+            })
             .is_some()
     };
     assert!(persisted_digest_hit, "facts must be persisted by digest");

@@ -6,8 +6,14 @@ body: >-
   tree-sitter parsing for unchanged files while invalidation stays
   content-exact: preserved mtimes cannot mask changed content and mtime
   churn never causes re-parses to disagree. Entries are bound to a scanner
-  generation (crate version), corrupted or truncated stores fail open to a
-  cold scan, skipped files are never persisted, and the store lives under
+  generation (crate version plus scanner semantic epoch), accidentally
+  corrupted or truncated stores fail open to a cold scan, skipped files are
+  never persisted, and the store lives under
   gitignored target/ so durable facts never enter source-tree scans.
   The store is advisory on every failure path and claims facts, not
-  authority.
+  authority. The cache is trusted-local performance state. The checksum
+  detects corruption and truncation; it is not an
+  authenticity or anti-tamper mechanism. Payloads use strict EOF validation,
+  bounded decoding, explicit stable finding-kind tags, and cache-root symlink
+  confinement. This remains a bounded persistence slice of #2571; it adds no
+  global cache, release behavior, or broad #2514 incremental evaluation.
