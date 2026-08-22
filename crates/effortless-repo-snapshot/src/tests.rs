@@ -358,3 +358,39 @@ fn batched_tree_blob_lookup_matches_per_path_lookups() -> Result<(), String> {
     let _ = fs::remove_dir_all(&root);
     Ok(())
 }
+
+#[test]
+fn batched_tree_blob_lookup_error_paths_match_single_lookup() -> Result<(), String> {
+    let root = init_git_repo("batched-tree-blob-errors")?;
+    write_file(&root, "src/lib.rs", "pub fn demo() {}\n")?;
+    commit_all(&root, "seed")?;
+    let head = crate::git::resolve_commit_oid(&root, "HEAD").map_err(|err| err.to_string())?;
+
+    // Absolute host paths are rejected by the same source-tree path
+    // validation both entry points share.
+    let absolute = root.join("src/lib.rs");
+    let batched = crate::git::tree_blob_oids_at_commit(
+        &root,
+        &head,
+        &[Path::new(&absolute)],
+    )
+    .map(|mut resolved| resolved.pop().flatten());
+    let single =
+        crate::git::tree_blob_oid_at_commit(&root, &head, Path::new(&absolute));
+    match (&batched, &single) {
+        (Err(_), Err(_)) => {}
+        _ => return Err("absolute path must be rejected by both lookups".to_string()),
+    }
+
+    // An unresolvable revision fails closed for the whole batch.
+    let ok_ref = Path::new("src/lib.rs");
+    assert!(crate::git::tree_blob_oids_at_commit(&root, "0000deadbeef", &[ok_ref]).is_err());
+
+    // An empty request performs no work and returns no entries.
+    let empty =
+        crate::git::tree_blob_oids_at_commit(&root, &head, &[]).map_err(|err| err.to_string())?;
+    assert!(empty.is_empty());
+
+    let _ = fs::remove_dir_all(&root);
+    Ok(())
+}
