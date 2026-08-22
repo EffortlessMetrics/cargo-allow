@@ -1,0 +1,8 @@
+kind: Changed
+body: >-
+  Add integration proof for the trusted-local persistent scan cache's
+  cross-process OS lock behavior and interrupted-write fallback. Child-process
+  fixtures verify lock blocking/release, lock-holder termination recovery, and
+  destination preservation after a synced temporary artifact is interrupted
+  before replacement. This adds no production API, telemetry, global cache,
+  CLI control, or evaluation-result cache semantics.
