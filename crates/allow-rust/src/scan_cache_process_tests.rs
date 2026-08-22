@@ -222,6 +222,35 @@ fn killed_child_after_temp_sync_preserves_destination_and_allows_next_flush() ->
     if std::fs::read(root.0.join("scan-cache.v2.bin")).map_err(|e| e.to_string())? != destination {
         return Err("destination changed during interrupted flush".to_string());
     }
+    let orphaned: Vec<PathBuf> = std::fs::read_dir(&root.0)
+        .map_err(|e| e.to_string())?
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.starts_with(TEMP_FILE_PREFIX))
+        })
+        .collect();
+    if orphaned.len() != 1 {
+        return Err(format!(
+            "expected exactly one orphaned temp, found {}",
+            orphaned.len()
+        ));
+    }
+    let orphan = orphaned
+        .first()
+        .ok_or_else(|| "orphan temp missing".to_string())?;
+    let metadata = std::fs::symlink_metadata(orphan).map_err(|e| e.to_string())?;
+    if metadata.file_type().is_symlink() || !metadata.is_file() || metadata.len() == 0 {
+        return Err("orphaned temp is not a nonempty regular file".to_string());
+    }
+    std::fs::File::open(orphan)
+        .and_then(|mut file| {
+            let mut bytes = [0_u8; 1];
+            file.read_exact(&mut bytes)
+        })
+        .map_err(|e| format!("orphaned temp is unreadable: {e}"))?;
     let mut next = ScanCacheStore::open(&root.0, "generation");
     next.put(
         Path::new("src/next.rs"),
