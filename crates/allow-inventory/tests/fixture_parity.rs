@@ -2,11 +2,11 @@
 //! public inventory API and `git ls-files` expectations.
 //!
 //! The fixture is built programmatically in a temp directory (no tempfile
-//! dependency) and exercises every silent-coverage-gap lane closed by the
-//! defect children: gitignored artifacts, nested `target` dirs (prune is
-//! root-only), non-UTF-8 filenames (#1841), file symlinks (#1842), and
-//! submodules (#1846). Environmental gaps degrade to explicit skips with a
-//! message; they never turn into silently passing assertions.
+//! dependency) and covers selected parity dimensions: gitignored artifacts,
+//! nested `target` dirs (prune is root-only), non-UTF-8 filenames (#1841),
+//! file symlinks (#1842), and submodule disclosure (#1846). Symlink and
+//! submodule capability gaps are explicit and conditional; unexpected setup
+//! failures are hard failures rather than passing assertions.
 
 use std::ffi::{OsStr, OsString};
 use std::fs;
@@ -339,28 +339,28 @@ fn submodule_fixture_reports_partial_completeness_with_disclosure() {
         .arg(&child_url)
         .arg("nested-sub")
         .output();
-    if let Ok(output) = added {
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            if submodule_capability_unsupported(&stderr) {
-                eprintln!(
-                    "skipped: submodule capability unavailable: {}",
+    match added {
+        Ok(output) => {
+            if !output.status.success() {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                if submodule_capability_unsupported(&stderr) {
+                    eprintln!(
+                        "skipped: submodule capability unavailable: {}",
+                        stderr.trim()
+                    );
+                    drop_root_best_effort(&parent);
+                    drop_root_best_effort(&child);
+                    return;
+                }
+                std::panic::panic_any(format!(
+                    "git submodule add failed unexpectedly: {}",
                     stderr.trim()
-                );
-                drop_root_best_effort(&parent);
-                drop_root_best_effort(&child);
-                return;
+                ));
             }
-            std::panic::panic_any(format!(
-                "git submodule add failed unexpectedly: {}",
-                stderr.trim()
-            ));
         }
-    } else {
-        eprintln!("skipped: git subprocess unavailable for submodule lane");
-        drop_root_best_effort(&parent);
-        drop_root_best_effort(&child);
-        return;
+        Err(error) => {
+            std::panic::panic_any(format!("spawn git submodule add unexpectedly: {error}"))
+        }
     }
 
     let snapshot = run_inventory(&parent, &scope_free_options(false));

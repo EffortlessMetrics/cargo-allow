@@ -95,9 +95,12 @@ scan (#1849).
 
 ## What this means for receipts
 
-In `check --mode no-new`, a receipt whose inventory completeness is `Partial`
-fails the check (`crates/cargo-allow/src/check.rs`). A submodule anywhere in
-the tree, a deleted-but-tracked path, or — under filesystem fallback — a
-skipped subdirectory each force `Partial` and therefore block no-new until the
-gap is resolved or explicitly scoped. `Fallback` and `Scoped` results do not
-fail no-new through this rule; they are surfaced as diagnostics instead.
+Ordinary worktree checks record the inventory completeness and diagnostics in
+their report; `Partial` or `Fallback` does not fail that check solely because of
+the completeness value. In staged `check --mode no-new`, `Partial` inventory
+does block the check (`crates/cargo-allow/src/check.rs`) until the missing path
+is resolved or explicitly scoped. A submodule, deleted-but-tracked path, or
+filesystem-walk skipped directory can produce `Partial`; a git error takes
+precedence and keeps the result `Fallback`, even if the fallback walk also
+records skipped paths. `Scoped` is surfaced as scope metadata rather than a
+completeness failure.
