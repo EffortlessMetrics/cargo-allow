@@ -94,6 +94,7 @@ fn check_spec_system_profile_does_not_require_allow_policy() {
     let receipt = root.join("receipt.json");
 
     let result = check::cmd_check(&check::CheckArgs {
+        persistent_cache: check::PersistentCacheMode::On,
         root: RootArgs {
             root: Some(root.clone()),
         },
@@ -196,6 +197,7 @@ fn check_spec_system_profile_reports_explicit_missing_config() {
     let output = root.join("check.md");
 
     let result = check::cmd_check(&check::CheckArgs {
+        persistent_cache: check::PersistentCacheMode::On,
         root: RootArgs {
             root: Some(root.clone()),
         },
@@ -237,6 +239,7 @@ fn check_spec_system_profile_rejects_source_exception_kind_filter() {
     write_valid_spec_system_fixture(&root);
 
     let result = check::cmd_check(&check::CheckArgs {
+        persistent_cache: check::PersistentCacheMode::On,
         root: RootArgs {
             root: Some(root.clone()),
         },
@@ -307,6 +310,7 @@ fn check_spec_system_profile_json_report_uses_v1_graph_artifact() {
     let output = root.join("check.json");
 
     let result = check::cmd_check(&check::CheckArgs {
+        persistent_cache: check::PersistentCacheMode::On,
         root: RootArgs {
             root: Some(root.clone()),
         },
@@ -386,6 +390,7 @@ fn spec_system_profile_reports_advisory_findings_without_failing() {
     let output = root.join("check.md");
 
     let result = check::cmd_check(&check::CheckArgs {
+        persistent_cache: check::PersistentCacheMode::On,
         root: RootArgs {
             root: Some(root.clone()),
         },
@@ -437,6 +442,7 @@ fn spec_system_profile_reports_shadow_mode_without_failing_command() {
     let output = root.join("check.json");
 
     let result = check::cmd_check(&check::CheckArgs {
+        persistent_cache: check::PersistentCacheMode::On,
         root: RootArgs {
             root: Some(root.clone()),
         },
@@ -753,6 +759,7 @@ fn spec_system_profile_renders_configured_shadow_mode_in_markdown() {
     let output = root.join("check.md");
 
     let result = check::cmd_check(&check::CheckArgs {
+        persistent_cache: check::PersistentCacheMode::On,
         root: RootArgs {
             root: Some(root.clone()),
         },
@@ -924,6 +931,7 @@ fn profile_resolution_honors_explicit_config_override() {
     let output = root.join("check.json");
 
     let result = check::cmd_check(&check::CheckArgs {
+        persistent_cache: check::PersistentCacheMode::On,
         root: RootArgs {
             root: Some(root.clone()),
         },
@@ -1029,6 +1037,7 @@ fn write_valid_spec_system_fixture(root: &Path) {
 
 fn spec_system_check_json(root: &Path, output: &Path) -> CargoAllowResult<()> {
     check::cmd_check(&check::CheckArgs {
+        persistent_cache: check::PersistentCacheMode::On,
         root: RootArgs {
             root: Some(root.to_path_buf()),
         },

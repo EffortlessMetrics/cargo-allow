@@ -628,6 +628,7 @@ fn spec_system_init_bootstrapped_profile_loads_via_check() {
 
     let output = root.join("check.json");
     let result = crate::check::cmd_check(&crate::check::CheckArgs {
+        persistent_cache: crate::check::PersistentCacheMode::On,
         root: RootArgs {
             root: Some(root.clone()),
         },

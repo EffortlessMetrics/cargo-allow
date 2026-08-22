@@ -617,6 +617,7 @@ pub(crate) mod tests {
 
     fn check_args(output: Option<PathBuf>, receipt: Option<PathBuf>) -> CheckArgs {
         CheckArgs {
+            persistent_cache: crate::check::PersistentCacheMode::On,
             root: RootArgs::default(),
             config: None,
             profile: Some(crate::ProfileArg::SpecSystem),
