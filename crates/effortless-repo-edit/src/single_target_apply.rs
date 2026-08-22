@@ -544,16 +544,19 @@ mod tests {
         });
         assert!(!response.receipt.applied());
         assert!(
-            response.receipt.error_detail.is_some(),
-            "parent-file resolution must return a fail-closed receipt"
+            response
+                .receipt
+                .error_detail
+                .as_deref()
+                .is_some_and(|detail| detail.contains("failed to read"))
         );
         assert!(target.is_dir());
         Ok(())
     }
 
     #[test]
-    fn apply_reports_write_failure_when_parent_is_a_file() -> Result<(), Box<dyn std::error::Error>>
-    {
+    fn apply_reports_parent_file_preflight_failure_without_mutating_target()
+    -> Result<(), Box<dyn std::error::Error>> {
         let root = TempRoot::new("apply-write-failure")?;
         let parent = root.path().join("not-a-directory");
         fs::write(&parent, "sentinel\n")?;
@@ -568,8 +571,11 @@ mod tests {
         });
         assert!(!response.receipt.applied());
         assert!(
-            response.receipt.error_detail.is_some(),
-            "parent-file resolution must return a fail-closed receipt"
+            response
+                .receipt
+                .error_detail
+                .as_deref()
+                .is_some_and(|detail| detail.starts_with("failed to "))
         );
         assert_eq!(fs::read_to_string(parent)?, "sentinel\n");
         Ok(())
