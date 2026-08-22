@@ -216,6 +216,54 @@ fn migrate_external_output_uses_held_target_and_preserves_force_backup() {
     let _ = fs::remove_file(out.with_extension("toml.bak"));
 }
 
+#[test]
+fn migrate_summary_collision_rejects_before_touching_destination_or_backup() {
+    let dir = migrate_fixture_dir();
+    let policy_dir = dir.join("policy");
+    fs::create_dir_all(&policy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+    fs::write(
+        policy_dir.join("network-allowlist.toml"),
+        network_policy_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("network fixture write: {err}")));
+    let out = dir.with_file_name("summary-collision-output.toml");
+    fs::write(&out, "destination sentinel\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("destination write: {err}")));
+    let summary_alias = out
+        .parent()
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| std::panic::panic_any("destination has no parent"))
+        .join(".")
+        .join(
+            out.file_name()
+                .map(OsStr::to_os_string)
+                .unwrap_or_else(|| std::panic::panic_any("destination has no name")),
+        );
+    let error = cmd_migrate(&MigrateArgs {
+        root: RootArgs {
+            root: Some(dir.clone()),
+        },
+        from: None,
+        repo_policy: Some(policy_dir),
+        out: out.clone(),
+        force: true,
+        update: false,
+        summary_format: HumanJsonFormat::Human,
+        summary_output: Some(summary_alias),
+    })
+    .expect_err("summary collision must reject before migration");
+    assert!(error.to_string().contains("--summary-output"));
+    assert_eq!(
+        fs::read_to_string(&out).ok().as_deref(),
+        Some("destination sentinel\n")
+    );
+    assert!(!out.with_extension("toml.bak").exists());
+    let _ = fs::remove_file(&out);
+    let _ = fs::remove_file(out.with_extension("toml.bak"));
+    let _ = fs::remove_dir_all(&dir);
+}
+
 #[cfg(unix)]
 #[test]
 fn migrate_external_output_rejects_leaf_symlink_without_touching_sentinel() {

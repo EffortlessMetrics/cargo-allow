@@ -119,6 +119,13 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     if let Some(target) = &mutation_target {
         crate::policy_config::assert_path_within_root(&mutation_root, target)?;
     }
+    if let Some(target) = mutation_target.as_deref() {
+        crate::command_support::reject_legacy_summary_output_collision(
+            &mutation_root,
+            args.summary_output.as_deref(),
+            &[target],
+        )?;
+    }
     // #2487: use canonical MutationTarget identity for lock key so path
     // aliases share one lock file.
     let _mutation_lock = mutation_target

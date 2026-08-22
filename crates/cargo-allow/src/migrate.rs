@@ -64,6 +64,11 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
     } else {
         cwd.join(&args.out)
     };
+    crate::command_support::reject_legacy_summary_output_collision(
+        &repository_root,
+        args.summary_output.as_deref(),
+        &[&output_absolute],
+    )?;
     let mutation_target =
         effortless_repo_edit::resolve_mutation_target(&output_absolute, &repository_root)
             .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;

@@ -148,6 +148,13 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
     if let Some(target) = &mutation_target {
         crate::policy_config::assert_path_within_root(&mutation_root, target)?;
     }
+    if let Some(target) = mutation_target.as_deref() {
+        crate::command_support::reject_legacy_summary_output_collision(
+            &mutation_root,
+            args.summary_output.as_deref(),
+            &[target],
+        )?;
+    }
     let _mutation_lock = mutation_target
         .as_ref()
         .map(|target| {
