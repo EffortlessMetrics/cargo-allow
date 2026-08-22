@@ -9,7 +9,10 @@ use crate::apply_receipt::{ApplyOperation, ApplyReceiptV1, AtomicityClass, Targe
 use crate::atomic_write::{write_file, write_file_no_overwrite};
 use crate::containment::assert_path_within_root;
 use crate::digest::sha256_v1_bytes;
-use crate::mutation_target::assert_target_identity_for_replace;
+use crate::mutation_target::{
+    MutationTargetOwnership, assert_target_identity_for_replace, assert_target_matches_held,
+    resolve_mutation_target,
+};
 use crate::target_identity::canonicalize_lexically;
 
 const PRECONDITION_CONTAINMENT: &str = "path_within_repository_root";
@@ -63,6 +66,24 @@ impl SingleTargetApplyResponse {
 
 /// Apply `contents` to `target` under `repository_root`, emitting a generic receipt.
 pub fn apply_single_target(request: SingleTargetApplyRequest<'_>) -> SingleTargetApplyResponse {
+    apply_single_target_inner(request, None)
+}
+
+/// Apply a target while rechecking the canonical identity held by its lock.
+///
+/// Mutation commands that acquire a `MutationTarget` should use this entry
+/// point so parent retargeting cannot redirect the final write.
+pub fn apply_single_target_with_target(
+    request: SingleTargetApplyRequest<'_>,
+    held_target: &crate::mutation_target::MutationTarget,
+) -> SingleTargetApplyResponse {
+    apply_single_target_inner(request, Some(held_target))
+}
+
+fn apply_single_target_inner(
+    request: SingleTargetApplyRequest<'_>,
+    held_target: Option<&crate::mutation_target::MutationTarget>,
+) -> SingleTargetApplyResponse {
     let tool_version = env!("CARGO_PKG_VERSION").to_string();
     let repository_root = portable_path(request.repository_root, request.repository_root);
     let target_requested = portable_path(request.repository_root, request.target);
@@ -72,6 +93,81 @@ pub fn apply_single_target(request: SingleTargetApplyRequest<'_>) -> SingleTarge
     let mut limitations = Vec::new();
     if request.mode == SingleTargetApplyMode::ReplaceWithBackup {
         limitations.push(LIMITATION_BACKUP_SUFFIX.to_string());
+    }
+
+    // Resolve before reading through the requested spelling. A parent symlink
+    // can otherwise make a lexical in-tree path read/write an outside target.
+    // This is the unheld-wrapper guard; held callers additionally compare the
+    // resulting identity to the lock's MutationTarget below.
+    match resolve_mutation_target(&joined, request.repository_root) {
+        Ok(target) if target.ownership() == MutationTargetOwnership::SourceTreeOwned => {}
+        Ok(target) => {
+            return failed_response(FailedApplyContext {
+                tool_version,
+                repository_root_path: request.repository_root.to_string_lossy().into_owned(),
+                repository_root,
+                target_requested,
+                target_canonical,
+                operation: if joined.exists() {
+                    ApplyOperation::Replace
+                } else {
+                    ApplyOperation::Create
+                },
+                preconditions_checked: preconditions,
+                bytes_before_digest: None,
+                caller_reference: request.caller_reference.map(str::to_string),
+                lock_identity: request.lock_identity,
+                limitations,
+                error_detail: format!(
+                    "resolved target {} is outside the source-tree root (#2491)",
+                    target.repo_relative_display()
+                ),
+            });
+        }
+        Err(error) => {
+            return failed_response(FailedApplyContext {
+                tool_version,
+                repository_root_path: request.repository_root.to_string_lossy().into_owned(),
+                repository_root,
+                target_requested,
+                target_canonical,
+                operation: if joined.exists() {
+                    ApplyOperation::Replace
+                } else {
+                    ApplyOperation::Create
+                },
+                preconditions_checked: preconditions,
+                bytes_before_digest: None,
+                caller_reference: request.caller_reference.map(str::to_string),
+                lock_identity: request.lock_identity,
+                limitations,
+                error_detail: error.to_string(),
+            });
+        }
+    }
+
+    if let Some(held_target) = held_target
+        && let Err(error) =
+            assert_target_matches_held(held_target, request.target, request.repository_root)
+    {
+        return failed_response(FailedApplyContext {
+            tool_version,
+            repository_root_path: request.repository_root.to_string_lossy().into_owned(),
+            repository_root,
+            target_requested,
+            target_canonical,
+            operation: if joined.exists() {
+                ApplyOperation::Replace
+            } else {
+                ApplyOperation::Create
+            },
+            preconditions_checked: preconditions,
+            bytes_before_digest: None,
+            caller_reference: request.caller_reference.map(str::to_string),
+            lock_identity: request.lock_identity,
+            limitations,
+            error_detail: error.to_string(),
+        });
     }
 
     let bytes_before_digest = match fs::read(&joined) {
@@ -106,25 +202,6 @@ pub fn apply_single_target(request: SingleTargetApplyRequest<'_>) -> SingleTarge
     // This catches TOCTOU races where the path is replaced with a symlink
     // between validation and the atomic rename. The check lives on the
     // mutation-target authority so every replace-mode writer shares it.
-    if operation == ApplyOperation::Replace
-        && let Err(error) = assert_target_identity_for_replace(&joined)
-    {
-        return failed_response(FailedApplyContext {
-            tool_version,
-            repository_root_path: request.repository_root.to_string_lossy().into_owned(),
-            repository_root,
-            target_requested,
-            target_canonical,
-            operation,
-            preconditions_checked: preconditions,
-            bytes_before_digest,
-            caller_reference: request.caller_reference.map(str::to_string),
-            lock_identity: request.lock_identity,
-            limitations,
-            error_detail: error.to_string(),
-        });
-    }
-
     match assert_path_within_root(request.repository_root, request.target) {
         Ok(()) => {
             preconditions.push(PRECONDITION_CONTAINMENT);
@@ -148,13 +225,47 @@ pub fn apply_single_target(request: SingleTargetApplyRequest<'_>) -> SingleTarge
         }
     }
 
+    if operation == ApplyOperation::Replace {
+        let current_target = match held_target {
+            Some(held_target) => {
+                assert_target_matches_held(held_target, request.target, request.repository_root)
+            }
+            None => resolve_mutation_target(&joined, request.repository_root),
+        };
+        if let Err(error) =
+            current_target.and_then(|target| assert_target_identity_for_replace(&target))
+        {
+            return failed_response(FailedApplyContext {
+                tool_version,
+                repository_root_path: request.repository_root.to_string_lossy().into_owned(),
+                repository_root,
+                target_requested,
+                target_canonical,
+                operation,
+                preconditions_checked: preconditions,
+                bytes_before_digest,
+                caller_reference: request.caller_reference.map(str::to_string),
+                lock_identity: request.lock_identity,
+                limitations,
+                error_detail: error.to_string(),
+            });
+        }
+    }
+
+    // A lock-bound caller must write the path whose identity it held, not a
+    // fresh lexical spelling that could be redirected through a retargeted
+    // parent after the final comparison.
+    let write_path = held_target
+        .map(|target| target.normalized_absolute())
+        .unwrap_or(joined.as_path());
+
     let write_result = match request.mode {
-        SingleTargetApplyMode::AtomicReplace => write_file(&joined, request.contents),
+        SingleTargetApplyMode::AtomicReplace => write_file(write_path, request.contents),
         SingleTargetApplyMode::CreateNewOnly => {
-            write_file_no_overwrite(&joined, request.contents, false)
+            write_file_no_overwrite(write_path, request.contents, false)
         }
         SingleTargetApplyMode::ReplaceWithBackup => {
-            write_file_no_overwrite(&joined, request.contents, true)
+            write_file_no_overwrite(write_path, request.contents, true)
         }
     };
 
@@ -528,6 +639,48 @@ mod tests {
         );
         assert_eq!(fs::read_to_string(foreign)?, "foreign sentinel\n");
         assert!(fs::symlink_metadata(target)?.file_type().is_symlink());
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn held_target_rejects_parent_retarget_without_touching_foreign_sentinel()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = TempRoot::new("apply-held-parent-retarget")?;
+        let outside = TempRoot::new("apply-held-parent-retarget-outside")?;
+        let parent = root.path().join("policy");
+        let target = parent.join("allow.toml");
+        fs::create_dir_all(&parent)?;
+        fs::write(&target, "held A\n")?;
+        let foreign = outside.path().join("allow.toml");
+        fs::write(&foreign, "foreign B sentinel\n")?;
+
+        let held = crate::mutation_target::resolve_mutation_target(&target, root.path())?;
+        let lock = MutationLock::acquire_for_target(&held)?;
+        fs::remove_dir_all(&parent)?;
+        std::os::unix::fs::symlink(outside.path(), &parent)?;
+
+        let response = apply_single_target_with_target(
+            SingleTargetApplyRequest {
+                repository_root: root.path(),
+                target: Path::new("policy/allow.toml"),
+                contents: "attacker replacement\n",
+                caller_reference: Some("test:held-parent-retarget"),
+                lock_identity: Some(held.repo_relative_display().to_string()),
+                mode: SingleTargetApplyMode::AtomicReplace,
+            },
+            &held,
+        );
+        assert!(!response.receipt.applied());
+        assert!(
+            response
+                .receipt
+                .error_detail
+                .as_deref()
+                .is_some_and(|detail| detail.contains("identity changed"))
+        );
+        assert_eq!(fs::read_to_string(foreign)?, "foreign B sentinel\n");
+        drop(lock);
         Ok(())
     }
 

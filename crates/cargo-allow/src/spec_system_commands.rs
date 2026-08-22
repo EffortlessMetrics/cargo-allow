@@ -135,6 +135,7 @@ pub(crate) struct SpecSystemInitCommandArgs<'a> {
     pub(crate) config: Option<&'a Path>,
     pub(crate) force: bool,
     pub(crate) dry_run: bool,
+    pub(crate) held_target: Option<&'a effortless_repo_edit::MutationTarget>,
 }
 
 pub(crate) fn cmd_spec_system_init(args: SpecSystemInitCommandArgs<'_>) -> CargoAllowResult<()> {
@@ -191,6 +192,15 @@ pub(crate) fn cmd_spec_system_init(args: SpecSystemInitCommandArgs<'_>) -> Cargo
                     format!("failed to create {}: {e}", parent.display()),
                 )
             })?;
+        }
+        if let Some(held_target) = args.held_target {
+            // Compare by the requested repository-relative identity rather
+            // than the newly resolved absolute path: a retargeted parent must
+            // still enter this check and fail before the write.
+            if display == held_target.repo_relative_display() {
+                effortless_repo_edit::assert_target_matches_held(held_target, &path, &root)
+                    .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+            }
         }
         fs::write(&path, file.contents).map_err(|e| {
             CargoAllowError::with_kind(

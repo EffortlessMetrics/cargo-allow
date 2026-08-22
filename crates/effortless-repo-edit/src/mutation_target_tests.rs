@@ -250,7 +250,8 @@ fn replace_recheck_accepts_regular_file_target() -> Result<(), String> {
     fs::create_dir_all(file_path.parent().unwrap_or(Path::new("."))).ok();
     fs::write(&file_path, "test").ok();
 
-    super::mutation_target::assert_target_identity_for_replace(&file_path)
+    let target = resolve_mutation_target(&file_path, &repo).map_err(|e| e.to_string())?;
+    super::mutation_target::assert_target_identity_for_replace(&target)
         .map_err(|e| format!("regular file must pass the replace recheck: {e}"))?;
     fs::remove_dir_all(&repo).ok();
     Ok(())
@@ -262,13 +263,28 @@ fn replace_recheck_reports_disappeared_target() -> Result<(), String> {
     let file_path = repo.join("policy/allow.toml");
     fs::create_dir_all(file_path.parent().unwrap_or(Path::new("."))).ok();
 
-    let error = super::mutation_target::assert_target_identity_for_replace(&file_path)
+    let target = resolve_mutation_target(&file_path, &repo).map_err(|e| e.to_string())?;
+    let error = super::mutation_target::assert_target_identity_for_replace(&target)
         .expect_err("missing target must fail the replace recheck");
     let message = error.to_string();
     assert!(
         message.contains("disappeared between read and identity recheck (#2491)"),
         "disappearance diagnostic must name the failure: {message}"
     );
+    fs::remove_dir_all(&repo).ok();
+    Ok(())
+}
+
+#[test]
+fn replace_recheck_rejects_directory_target() -> Result<(), String> {
+    let repo = make_temp_repo()?;
+    let directory = repo.join("policy/allow.toml");
+    fs::create_dir_all(&directory).map_err(|e| e.to_string())?;
+
+    let target = resolve_mutation_target(&directory, &repo).map_err(|e| e.to_string())?;
+    let error = super::mutation_target::assert_target_identity_for_replace(&target)
+        .expect_err("directory target must fail the replace recheck");
+    assert!(error.to_string().contains("not a regular file"));
     fs::remove_dir_all(&repo).ok();
     Ok(())
 }
@@ -284,7 +300,8 @@ fn replace_recheck_rejects_symlink_substitution() -> Result<(), String> {
     std::os::unix::fs::symlink(&sibling, &file_path)
         .map_err(|e| format!("create symlink fixture: {e}"))?;
 
-    let error = super::mutation_target::assert_target_identity_for_replace(&file_path)
+    let target = resolve_mutation_target(&file_path, &repo).map_err(|e| e.to_string())?;
+    let error = super::mutation_target::assert_target_identity_for_replace(&target)
         .expect_err("symlink target must fail the replace recheck");
     let message = error.to_string();
     assert!(

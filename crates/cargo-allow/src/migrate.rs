@@ -10,7 +10,9 @@ use crate::{
     portable_relative_under_root, require_json_summary_output, resolve_source_tree_root,
     write_file_no_overwrite,
 };
-use effortless_repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
+use effortless_repo_edit::{
+    SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target_with_target,
+};
 #[path = "migrate_args.rs"]
 mod migrate_args;
 #[path = "migrate_load.rs"]
@@ -129,22 +131,25 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
             } else {
                 SingleTargetApplyMode::CreateNewOnly
             };
-            apply_single_target(SingleTargetApplyRequest {
-                repository_root: &repository_root,
-                target: &target,
-                contents: &rendered,
-                caller_reference: Some(if args.update {
-                    "cargo-allow:migrate"
-                } else {
-                    "cargo-allow:migrate:out"
-                }),
-                lock_identity: Some(
-                    target
-                        .to_string_lossy()
-                        .replace(std::path::MAIN_SEPARATOR, "/"),
-                ),
-                mode,
-            })
+            apply_single_target_with_target(
+                SingleTargetApplyRequest {
+                    repository_root: &repository_root,
+                    target: &target,
+                    contents: &rendered,
+                    caller_reference: Some(if args.update {
+                        "cargo-allow:migrate"
+                    } else {
+                        "cargo-allow:migrate:out"
+                    }),
+                    lock_identity: Some(
+                        target
+                            .to_string_lossy()
+                            .replace(std::path::MAIN_SEPARATOR, "/"),
+                    ),
+                    mode,
+                },
+                &mutation_target,
+            )
             .into_result()
             .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
         }

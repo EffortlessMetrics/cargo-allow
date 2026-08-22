@@ -1,7 +1,11 @@
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_inventory::resolve_source_tree_root;
 use allow_policy::starter_policy;
-use effortless_repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
+#[cfg(test)]
+use effortless_repo_edit::apply_single_target;
+use effortless_repo_edit::{
+    SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target_with_target,
+};
 use std::path::{Path, PathBuf};
 
 #[path = "init_args.rs"]
@@ -31,8 +35,8 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
                 "--strict is not supported with --profile spec-system; remove --strict or drop --profile spec-system",
             ));
         }
-        let _mutation_lock = if args.dry_run {
-            None
+        let (_mutation_lock, held_target) = if args.dry_run {
+            (None, None)
         } else {
             let cwd = current_dir()?;
             let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;
@@ -42,10 +46,11 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
             let lock_target = root.join(".allow/profiles/spec-system.toml");
             let resolved = effortless_repo_edit::resolve_mutation_target(&lock_target, &root)
                 .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
-            Some(
-                MutationLock::acquire_for_target(&resolved)
-                    .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?,
-            )
+            let lock = MutationLock::acquire_for_target(&resolved)
+                .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+            // Keep the lock alive for the command and pass the exact target
+            // identity to the writer; a parent retarget must fail closed.
+            (Some(lock), Some(resolved))
         };
         let config = spec_system_config_arg(&args.config);
         return spec_system::cmd_spec_system_init(spec_system::SpecSystemInitCommandArgs {
@@ -53,6 +58,7 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
             config: config.as_deref(),
             force: args.force,
             dry_run: args.dry_run,
+            held_target: held_target.as_ref(),
         });
     }
 
@@ -107,14 +113,17 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
     // verbatim, and the tracked-file inventory reports the repo-relative path,
     // so the self-receipt would never match its own ledger (#3032).
     let policy_contents = starter_policy(args.strict, &policy_rel_display(&root, &path)?);
-    apply_single_target(SingleTargetApplyRequest {
-        repository_root: &root,
-        target: &args.config,
-        contents: &policy_contents,
-        caller_reference: Some("cargo-allow:init"),
-        lock_identity: Some(created_path_display(&root, &path)),
-        mode: init_policy_apply_mode(args.force),
-    })
+    apply_single_target_with_target(
+        SingleTargetApplyRequest {
+            repository_root: &root,
+            target: &args.config,
+            contents: &policy_contents,
+            caller_reference: Some("cargo-allow:init"),
+            lock_identity: Some(created_path_display(&root, &path)),
+            mode: init_policy_apply_mode(args.force),
+        },
+        &resolved,
+    )
     .into_result()
     .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     // #2778: report the correct action word — "overwrote" for --force on
