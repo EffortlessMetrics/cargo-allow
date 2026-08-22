@@ -414,6 +414,35 @@ fn batch_planner_enforces_count_bytes_and_long_path_boundaries() -> Result<(), S
     )
     .expect_err("unrequested returned records must fail closed");
     assert!(unrequested.to_string().contains("not requested"));
+
+    let requested = [b"present.rs".to_vec()];
+    let requested_refs: Vec<&Vec<u8>> = requested.iter().collect();
+    let mut returned = std::collections::HashSet::new();
+    let mut found = std::collections::HashMap::new();
+    crate::git::process_batch_record_for_test(
+        b"100644 blob 0123456789012345678901234567890123456789\tpresent.rs",
+        &requested_refs,
+        &mut returned,
+        &mut found,
+    )
+    .map_err(|err| err.to_string())?;
+    assert!(found.contains_key(b"present.rs".as_slice()));
+    let malformed = crate::git::process_batch_record_for_test(
+        b"malformed",
+        &requested_refs,
+        &mut returned,
+        &mut found,
+    )
+    .expect_err("malformed tree output must fail closed");
+    assert!(malformed.to_string().contains("malformed record"));
+    let unsupported = crate::git::process_unsupported_batch_record_for_test(
+        b"unsupported.rs".to_vec(),
+        &requested_refs,
+        &mut returned,
+        &mut found,
+    )
+    .expect_err("unsupported host path output must fail closed");
+    assert!(unsupported.to_string().contains("not representable"));
     Ok(())
 }
 

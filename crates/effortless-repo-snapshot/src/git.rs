@@ -173,22 +173,17 @@ fn tree_blob_batch_end(
     let mut end = start;
     let mut argument_bytes = 0usize;
     let path_budget = TREE_BLOB_BATCH_COMMAND_BYTES.saturating_sub(fixed_bytes);
-    while end < path_lengths.len() && end - start < TREE_BLOB_BATCH_CHUNK {
-        let path_length = path_lengths.get(end).copied().ok_or_else(|| {
-            git_error(
-                SnapshotErrorKind::Inventory,
-                "batch_planner_state",
-                "git tree batch planner advanced beyond its path-length input",
-            )
-        })?;
+    for path_length in path_lengths
+        .iter()
+        .skip(start)
+        .take(TREE_BLOB_BATCH_CHUNK)
+        .copied()
+    {
         let encoded_bytes = path_length.saturating_add(1);
         if end > start && argument_bytes.saturating_add(encoded_bytes) > path_budget {
             break;
         }
         argument_bytes = argument_bytes.saturating_add(encoded_bytes);
-        end += 1;
-    }
-    if end == start && start < path_lengths.len() {
         end += 1;
     }
     Ok(end)
@@ -216,6 +211,45 @@ fn validate_batch_record_path(
     Ok(())
 }
 
+fn process_batch_outcome(
+    outcome: TreeRecordParse,
+    chunk: &[&Vec<u8>],
+    returned: &mut HashSet<Vec<u8>>,
+    found: &mut HashMap<Vec<u8>, String>,
+) -> SnapshotResult<()> {
+    match outcome {
+        TreeRecordParse::Entry(entry) => {
+            validate_batch_record_path(&entry.raw_path, chunk, returned)?;
+            if entry.mode.starts_with("100") {
+                found.insert(entry.raw_path, entry.object_oid);
+            }
+            Ok(())
+        }
+        TreeRecordParse::UnsupportedPath { raw_path, .. } => Err(git_error(
+            SnapshotErrorKind::InvalidConfig,
+            "tree_path_unsupported_on_platform",
+            format!(
+                "git tree path `{}` is not representable on this platform",
+                display_raw_path(&raw_path)
+            ),
+        )),
+        TreeRecordParse::Malformed => Err(git_error(
+            SnapshotErrorKind::Inventory,
+            "git_output_malformed",
+            "git ls-tree returned a malformed record",
+        )),
+    }
+}
+
+fn process_batch_record(
+    record: &[u8],
+    chunk: &[&Vec<u8>],
+    returned: &mut HashSet<Vec<u8>>,
+    found: &mut HashMap<Vec<u8>, String>,
+) -> SnapshotResult<()> {
+    process_batch_outcome(parse_git_tree_record_any(record), chunk, returned, found)
+}
+
 #[cfg(test)]
 pub(crate) fn tree_blob_batch_end_for_test(
     path_lengths: &[usize],
@@ -231,6 +265,35 @@ pub(crate) fn validate_batch_record_path_for_test(
     returned: &mut HashSet<Vec<u8>>,
 ) -> SnapshotResult<()> {
     validate_batch_record_path(raw_path, requested, returned)
+}
+
+#[cfg(test)]
+pub(crate) fn process_batch_record_for_test(
+    record: &[u8],
+    chunk: &[&Vec<u8>],
+    returned: &mut HashSet<Vec<u8>>,
+    found: &mut HashMap<Vec<u8>, String>,
+) -> SnapshotResult<()> {
+    process_batch_record(record, chunk, returned, found)
+}
+
+#[cfg(test)]
+pub(crate) fn process_unsupported_batch_record_for_test(
+    raw_path: Vec<u8>,
+    chunk: &[&Vec<u8>],
+    returned: &mut HashSet<Vec<u8>>,
+    found: &mut HashMap<Vec<u8>, String>,
+) -> SnapshotResult<()> {
+    process_batch_outcome(
+        TreeRecordParse::UnsupportedPath {
+            mode: "100644".to_string(),
+            object_oid: "0".repeat(40),
+            raw_path,
+        },
+        chunk,
+        returned,
+        found,
+    )
 }
 
 /// Resolve blob object ids for many paths at one commit with batched
@@ -265,20 +328,19 @@ pub(crate) fn tree_blob_oids_at_commit(
     let mut start = 0;
     while start < unique.len() {
         let end = tree_blob_batch_end(&path_lengths, start, fixed_bytes)?;
-        let chunk = unique.get(start..end).ok_or_else(|| {
-            git_error(
-                SnapshotErrorKind::Inventory,
-                "batch_planner_state",
-                "git tree batch planner produced an invalid chunk range",
-            )
-        })?;
+        let chunk: Vec<&Vec<u8>> = unique
+            .iter()
+            .skip(start)
+            .take(end - start)
+            .copied()
+            .collect();
         let mut cmd = literal_pathspec_git_command(root);
         cmd.arg("ls-tree")
             .arg("-z")
             .arg("--full-tree")
             .arg(commit_oid)
             .arg("--");
-        for path_bytes in chunk {
+        for path_bytes in chunk.iter() {
             append_literal_path_arg(&mut cmd, path_bytes)?;
         }
         let output = run_git(cmd, "git ls-tree exact paths")?;
@@ -291,31 +353,7 @@ pub(crate) fn tree_blob_oids_at_commit(
             .split(|byte| *byte == 0)
             .filter(|record| !record.is_empty())
         {
-            match parse_git_tree_record_any(record) {
-                TreeRecordParse::Entry(entry) => {
-                    validate_batch_record_path(&entry.raw_path, chunk, &mut returned)?;
-                    if entry.mode.starts_with("100") {
-                        found.insert(entry.raw_path, entry.object_oid);
-                    }
-                }
-                TreeRecordParse::UnsupportedPath { raw_path, .. } => {
-                    return Err(git_error(
-                        SnapshotErrorKind::InvalidConfig,
-                        "tree_path_unsupported_on_platform",
-                        format!(
-                            "git tree path `{}` is not representable on this platform",
-                            display_raw_path(&raw_path)
-                        ),
-                    ));
-                }
-                TreeRecordParse::Malformed => {
-                    return Err(git_error(
-                        SnapshotErrorKind::Inventory,
-                        "git_output_malformed",
-                        "git ls-tree returned a malformed record",
-                    ));
-                }
-            }
+            process_batch_record(record, &chunk, &mut returned, &mut found)?;
         }
         start = end;
     }
