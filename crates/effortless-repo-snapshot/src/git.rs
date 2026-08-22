@@ -162,11 +162,17 @@ pub(crate) fn tree_blob_oid_at_commit(
 /// `git ls-tree` process instead of one process per path; bounded so a large
 /// selected-path set cannot exceed platform argv or command-line limits.
 const TREE_BLOB_BATCH_CHUNK: usize = 64;
-const TREE_BLOB_BATCH_ARG_BYTES: usize = 8 * 1024;
+const TREE_BLOB_BATCH_COMMAND_BYTES: usize = 8 * 1024;
+const TREE_BLOB_BATCH_FIXED_BYTES: usize = 512;
 
-fn tree_blob_batch_end(path_lengths: &[usize], start: usize) -> SnapshotResult<usize> {
+fn tree_blob_batch_end(
+    path_lengths: &[usize],
+    start: usize,
+    fixed_bytes: usize,
+) -> SnapshotResult<usize> {
     let mut end = start;
     let mut argument_bytes = 0usize;
+    let path_budget = TREE_BLOB_BATCH_COMMAND_BYTES.saturating_sub(fixed_bytes);
     while end < path_lengths.len() && end - start < TREE_BLOB_BATCH_CHUNK {
         let path_length = path_lengths.get(end).copied().ok_or_else(|| {
             git_error(
@@ -176,17 +182,13 @@ fn tree_blob_batch_end(path_lengths: &[usize], start: usize) -> SnapshotResult<u
             )
         })?;
         let encoded_bytes = path_length.saturating_add(1);
-        if encoded_bytes > TREE_BLOB_BATCH_ARG_BYTES {
-            return Err(git_error(
-                SnapshotErrorKind::InvalidConfig,
-                "tree_path_too_long_for_batch",
-                "git tree path exceeds the bounded exact-lookup argument size",
-            ));
-        }
-        if end > start && argument_bytes.saturating_add(encoded_bytes) > TREE_BLOB_BATCH_ARG_BYTES {
+        if end > start && argument_bytes.saturating_add(encoded_bytes) > path_budget {
             break;
         }
         argument_bytes = argument_bytes.saturating_add(encoded_bytes);
+        end += 1;
+    }
+    if end == start && start < path_lengths.len() {
         end += 1;
     }
     Ok(end)
@@ -219,7 +221,7 @@ pub(crate) fn tree_blob_batch_end_for_test(
     path_lengths: &[usize],
     start: usize,
 ) -> SnapshotResult<usize> {
-    tree_blob_batch_end(path_lengths, start)
+    tree_blob_batch_end(path_lengths, start, TREE_BLOB_BATCH_FIXED_BYTES)
 }
 
 #[cfg(test)]
@@ -257,9 +259,12 @@ pub(crate) fn tree_blob_oids_at_commit(
 
     let mut found: HashMap<Vec<u8>, String> = HashMap::with_capacity(unique.len());
     let path_lengths: Vec<usize> = unique.iter().map(|path| path.len()).collect();
+    let fixed_bytes = TREE_BLOB_BATCH_FIXED_BYTES
+        .saturating_add(root.as_os_str().to_string_lossy().len())
+        .saturating_add(commit_oid.len());
     let mut start = 0;
     while start < unique.len() {
-        let end = tree_blob_batch_end(&path_lengths, start)?;
+        let end = tree_blob_batch_end(&path_lengths, start, fixed_bytes)?;
         let chunk = unique.get(start..end).ok_or_else(|| {
             git_error(
                 SnapshotErrorKind::Inventory,

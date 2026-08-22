@@ -315,9 +315,10 @@ fn batched_tree_blob_lookup_matches_per_path_lookups() -> Result<(), String> {
         PathBuf::from("bulk/f39.txt"),
         PathBuf::from("bulk/f63-missing.txt"),
     ];
-    for index in 40..80 {
+    for index in 0..80 {
         paths.push(PathBuf::from(format!("bulk/f{index:02}.txt")));
     }
+    paths.push(PathBuf::from("src/present.rs"));
     #[cfg(unix)]
     paths.push(PathBuf::from("link.rs"));
 
@@ -348,13 +349,15 @@ fn batched_tree_blob_lookup_matches_per_path_lookups() -> Result<(), String> {
         "directory entries are not regular blobs"
     );
     assert!(batched[4].is_some() && batched[5].is_some());
+    let duplicate_index = paths.len() - 1;
+    assert_eq!(batched[0], batched[duplicate_index]);
     #[cfg(unix)]
     {
-        // A symlink records mode 120000, never a `100...` regular blob.
-        assert!(
-            batched[7].is_none(),
-            "symlink entries must not classify as regular-file blobs"
-        );
+        let symlink_index = paths
+            .iter()
+            .position(|path| path == Path::new("link.rs"))
+            .ok_or_else(|| "symlink fixture path missing from request".to_string())?;
+        assert!(batched[symlink_index].is_none());
     }
 
     let _ = fs::remove_dir_all(&root);
@@ -371,10 +374,23 @@ fn batch_planner_enforces_count_bytes_and_long_path_boundaries() -> Result<(), S
     assert_eq!(first, 64);
     assert_eq!(second, 65);
 
-    let long = vec![8192usize];
-    let error = crate::git::tree_blob_batch_end_for_test(&long, 0)
-        .expect_err("oversized encoded path must fail closed");
-    assert!(error.to_string().contains("tree path exceeds"));
+    let cumulative = vec![4000usize, 4000usize];
+    assert_eq!(
+        crate::git::tree_blob_batch_end_for_test(&cumulative, 0).map_err(|err| err.to_string())?,
+        1
+    );
+    let single_over_budget = vec![16384usize];
+    assert_eq!(
+        crate::git::tree_blob_batch_end_for_test(&single_over_budget, 0)
+            .map_err(|err| err.to_string())?,
+        1
+    );
+    let encoded_multibyte_and_path_syntax = vec![3usize, 1024usize, 2048usize];
+    assert_eq!(
+        crate::git::tree_blob_batch_end_for_test(&encoded_multibyte_and_path_syntax, 0)
+            .map_err(|err| err.to_string())?,
+        3
+    );
 
     let requested = vec![b"present.rs".to_vec()];
     let requested_refs: Vec<&Vec<u8>> = requested.iter().collect();
