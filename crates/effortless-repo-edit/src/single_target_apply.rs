@@ -66,7 +66,7 @@ impl SingleTargetApplyResponse {
 
 /// Apply `contents` to `target` under `repository_root`, emitting a generic receipt.
 pub fn apply_single_target(request: SingleTargetApplyRequest<'_>) -> SingleTargetApplyResponse {
-    apply_single_target_inner(request, None)
+    apply_single_target_inner(request, None, None)
 }
 
 /// Apply a target while rechecking the canonical identity held by its lock.
@@ -77,12 +77,13 @@ pub fn apply_single_target_with_target(
     request: SingleTargetApplyRequest<'_>,
     held_target: &crate::mutation_target::MutationTarget,
 ) -> SingleTargetApplyResponse {
-    apply_single_target_inner(request, Some(held_target))
+    apply_single_target_inner(request, Some(held_target), None)
 }
 
 fn apply_single_target_inner(
     request: SingleTargetApplyRequest<'_>,
     held_target: Option<&crate::mutation_target::MutationTarget>,
+    mut pre_write_hook: Option<&mut dyn FnMut()>,
 ) -> SingleTargetApplyResponse {
     let tool_version = env!("CARGO_PKG_VERSION").to_string();
     let repository_root = portable_path(request.repository_root, request.repository_root);
@@ -251,6 +252,10 @@ fn apply_single_target_inner(
                 error_detail: error.to_string(),
             });
         }
+    }
+
+    if let Some(hook) = pre_write_hook.as_deref_mut() {
+        hook();
     }
 
     if let Some(held_target) = held_target
@@ -729,25 +734,37 @@ mod tests {
         let retargeted = root.path().join("replacement");
         fs::create_dir_all(&parent)?;
         fs::create_dir_all(&retargeted)?;
-        let foreign = retargeted.join("allow.toml");
-        fs::write(&foreign, "create sentinel\n")?;
+        let sentinel = retargeted.join("neighbor.sentinel");
+        fs::write(&sentinel, "create sentinel\n")?;
         let target = parent.join("allow.toml");
         let held = crate::mutation_target::resolve_mutation_target(&target, root.path())?;
         let lock = MutationLock::acquire_for_target(&held)?;
 
-        fs::remove_dir_all(&parent)?;
-        std::os::unix::fs::symlink(&retargeted, &parent)?;
-        let response = apply_single_target_with_target(
+        let mut hook_error = None;
+        let mut retarget = || {
+            if let Err(error) = fs::remove_dir_all(&parent) {
+                hook_error = Some(error.to_string());
+                return;
+            }
+            if let Err(error) = std::os::unix::fs::symlink(&retargeted, &parent) {
+                hook_error = Some(error.to_string());
+            }
+        };
+        let response = super::apply_single_target_inner(
             SingleTargetApplyRequest {
                 repository_root: root.path(),
                 target: Path::new("policy/allow.toml"),
                 contents: "must not create\n",
                 caller_reference: Some("test:held-create-retarget"),
                 lock_identity: Some(held.repo_relative_display().to_string()),
-                mode: SingleTargetApplyMode::AtomicReplace,
+                mode: SingleTargetApplyMode::CreateNewOnly,
             },
-            &held,
+            Some(&held),
+            Some(&mut retarget),
         );
+        if let Some(error) = hook_error {
+            return Err(error.into());
+        }
         assert!(!response.receipt.applied());
         assert!(
             response
@@ -756,7 +773,8 @@ mod tests {
                 .as_deref()
                 .is_some_and(|detail| detail.contains("identity changed"))
         );
-        assert_eq!(fs::read_to_string(foreign)?, "create sentinel\n");
+        assert!(!retargeted.join("allow.toml").exists());
+        assert_eq!(fs::read_to_string(sentinel)?, "create sentinel\n");
         drop(lock);
         Ok(())
     }

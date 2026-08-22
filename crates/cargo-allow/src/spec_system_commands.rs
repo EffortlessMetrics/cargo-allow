@@ -206,11 +206,9 @@ pub(crate) fn cmd_spec_system_init(args: SpecSystemInitCommandArgs<'_>) -> Cargo
         if let Some(held_target) = args.held_target
             && is_primary
         {
-            // Compare by requested repository-relative identity rather than
-            // the newly resolved absolute path, then write through the same
-            // held-target authority used by default init and migrate.
-            effortless_repo_edit::assert_target_matches_held(held_target, &path, &root)
-                .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+            // The shared apply authority compares the selected primary
+            // against the held target before reading and immediately before
+            // the final write.
             effortless_repo_edit::apply_single_target_with_target(
                 effortless_repo_edit::SingleTargetApplyRequest {
                     repository_root: &root,
