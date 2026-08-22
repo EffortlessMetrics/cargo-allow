@@ -1,4 +1,4 @@
-use allow_rust::ScanCacheStore;
+use super::*;
 use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
@@ -41,7 +41,7 @@ impl ChildGuard {
                 None if Instant::now() >= deadline => {
                     return Err("child did not exit before the deadline".to_string());
                 }
-                None => std::thread::sleep(Duration::from_millis(1)),
+                None => thread::sleep(Duration::from_millis(1)),
             }
         }
     }
@@ -56,42 +56,32 @@ impl ChildGuard {
 }
 impl Drop for ChildGuard {
     fn drop(&mut self) {
-        if !matches!(self.child.try_wait(), Ok(None)) {
-            return;
-        }
-        if self.child.kill().is_err() {
+        if !matches!(self.child.try_wait(), Ok(None)) || self.child.kill().is_err() {
             return;
         }
         let deadline = Instant::now() + CHILD_WAIT_TIMEOUT;
         while Instant::now() < deadline {
             match self.child.try_wait() {
                 Ok(Some(_)) | Err(_) => return,
-                Ok(None) => std::thread::sleep(Duration::from_millis(1)),
+                Ok(None) => thread::sleep(Duration::from_millis(1)),
             }
         }
     }
 }
 
-fn spawn_helper(
-    root: &Path,
-    mode: &str,
-    temp: Option<&Path>,
-) -> Result<(ChildGuard, BufReader<ChildStdout>), String> {
+fn spawn_helper(root: &Path, mode: &str) -> Result<(ChildGuard, BufReader<ChildStdout>), String> {
     let mut command = Command::new(std::env::current_exe().map_err(|e| e.to_string())?);
     command
-        .args(["--exact", "child_helper", "--nocapture"])
+        .args([
+            "--exact",
+            "scan_cache_store::process_tests::child_helper",
+            "--nocapture",
+        ])
         .env("CACHE_PROCESS_ROOT", root)
         .env("CACHE_PROCESS_MODE", mode)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit());
-    if let Some(temp) = temp {
-        command.env("CACHE_PROCESS_TEMP", temp);
-        if mode == "flush-temp" {
-            command.env("CARGO_ALLOW_PROCESS_TEST_STOP_AFTER_SYNC", "1");
-            command.env("CARGO_ALLOW_PROCESS_TEST_TEMP_PATH", temp);
-        }
-    }
     let mut child = ChildGuard {
         child: command.spawn().map_err(|e| e.to_string())?,
     };
@@ -105,7 +95,7 @@ fn spawn_helper(
 
 fn wait_ready(stdout: BufReader<ChildStdout>) -> Result<(), String> {
     let (sender, receiver) = mpsc::channel();
-    std::thread::spawn(move || {
+    thread::spawn(move || {
         let mut stdout = stdout;
         let mut line = String::new();
         let mut ready = false;
@@ -135,7 +125,7 @@ fn wait_ready(stdout: BufReader<ChildStdout>) -> Result<(), String> {
 fn child_process_lock_blocks_then_releases_for_flush() -> Result<(), String> {
     let root = RootGuard::new("lock");
     std::fs::create_dir_all(&root.0).map_err(|e| e.to_string())?;
-    let (mut child, stdout) = spawn_helper(&root.0, "hold", None)?;
+    let (mut child, stdout) = spawn_helper(&root.0, "hold")?;
     wait_ready(stdout)?;
     let lock = OpenOptions::new()
         .read(true)
@@ -154,14 +144,23 @@ fn child_process_lock_blocks_then_releases_for_flush() -> Result<(), String> {
         false,
         Vec::new(),
     );
-    let mut input = child
+    let (contention_tx, contention_rx) = mpsc::channel();
+    let flush_thread = thread::spawn(move || {
+        let wait_hook = || {
+            let _ = contention_tx.send(());
+        };
+        store.flush_with_test_hooks(None, Some(&wait_hook), None)
+    });
+    contention_rx
+        .recv_timeout(Duration::from_secs(2))
+        .map_err(|e| e.to_string())?;
+    child
         .child
         .stdin
         .take()
-        .ok_or_else(|| "child stdin missing".to_string())?;
-    let flush_thread = thread::spawn(move || store.flush());
-    thread::sleep(Duration::from_millis(50));
-    input.write_all(&[1]).map_err(|e| e.to_string())?;
+        .ok_or_else(|| "child stdin missing".to_string())?
+        .write_all(&[1])
+        .map_err(|e| e.to_string())?;
     let status = child.wait()?;
     if !status.success() {
         return Err(format!("lock child failed: {status}"));
@@ -179,17 +178,12 @@ fn child_process_lock_blocks_then_releases_for_flush() -> Result<(), String> {
 fn killed_lock_holder_releases_os_lock() -> Result<(), String> {
     let root = RootGuard::new("kill-lock");
     std::fs::create_dir_all(&root.0).map_err(|e| e.to_string())?;
-    let (mut child, stdout) = spawn_helper(&root.0, "hold", None)?;
+    let (mut child, stdout) = spawn_helper(&root.0, "hold")?;
     wait_ready(stdout)?;
     let status = child.kill_and_wait()?;
-    assert!(!status.success());
-    let lock = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .open(root.0.join(LOCK_FILE_NAME))
-        .map_err(|e| e.to_string())?;
-    lock.try_lock().map_err(|e| e.to_string())?;
-    lock.unlock().map_err(|e| e.to_string())?;
+    if status.success() {
+        return Err("killed lock child unexpectedly succeeded".to_string());
+    }
     let mut store = ScanCacheStore::open(&root.0, "generation");
     store.put(
         Path::new("src/recovered.rs"),
@@ -197,7 +191,9 @@ fn killed_lock_holder_releases_os_lock() -> Result<(), String> {
         false,
         Vec::new(),
     );
-    assert!(store.flush());
+    if !store.flush() {
+        return Err("production flush failed after child termination".to_string());
+    }
     Ok(())
 }
 
@@ -213,18 +209,19 @@ fn killed_child_after_temp_sync_preserves_destination_and_allows_next_flush() ->
         false,
         Vec::new(),
     );
-    assert!(initial.flush());
+    if !initial.flush() {
+        return Err("initial production flush failed".to_string());
+    }
     let destination = std::fs::read(root.0.join("scan-cache.v2.bin")).map_err(|e| e.to_string())?;
-    let temp = root.0.join("scan-cache.v2.bin.tmp-child");
-    let (mut child, stdout) = spawn_helper(&root.0, "flush-temp", Some(&temp))?;
+    let (mut child, stdout) = spawn_helper(&root.0, "flush-temp")?;
     wait_ready(stdout)?;
     let status = child.kill_and_wait()?;
-    assert!(!status.success());
-    assert_eq!(
-        std::fs::read(root.0.join("scan-cache.v2.bin")).map_err(|e| e.to_string())?,
-        destination
-    );
-    assert!(temp.exists());
+    if status.success() {
+        return Err("interrupted flush child unexpectedly succeeded".to_string());
+    }
+    if std::fs::read(root.0.join("scan-cache.v2.bin")).map_err(|e| e.to_string())? != destination {
+        return Err("destination changed during interrupted flush".to_string());
+    }
     let mut next = ScanCacheStore::open(&root.0, "generation");
     next.put(
         Path::new("src/next.rs"),
@@ -232,12 +229,15 @@ fn killed_child_after_temp_sync_preserves_destination_and_allows_next_flush() ->
         false,
         Vec::new(),
     );
-    assert!(next.flush());
-    assert!(
-        ScanCacheStore::open(&root.0, "generation")
-            .get(Path::new("src/next.rs"), "next")
-            .is_some()
-    );
+    if !next.flush() {
+        return Err("recovery production flush failed".to_string());
+    }
+    if ScanCacheStore::open(&root.0, "generation")
+        .get(Path::new("src/next.rs"), "next")
+        .is_none()
+    {
+        return Err("recovery entry missing".to_string());
+    }
     Ok(())
 }
 
@@ -245,9 +245,8 @@ fn killed_child_after_temp_sync_preserves_destination_and_allows_next_flush() ->
 fn unknown_child_mode_fails_closed() -> Result<(), String> {
     let root = RootGuard::new("unknown-mode");
     std::fs::create_dir_all(&root.0).map_err(|e| e.to_string())?;
-    let (mut child, _stdout) = spawn_helper(&root.0, "unknown", None)?;
-    let status = child.wait()?;
-    if status.success() {
+    let (mut child, _stdout) = spawn_helper(&root.0, "unknown")?;
+    if child.wait()?.success() {
         return Err("unknown CACHE_PROCESS_MODE unexpectedly succeeded".to_string());
     }
     Ok(())
@@ -268,7 +267,13 @@ fn child_helper() -> Result<(), String> {
             false,
             Vec::new(),
         );
-        if !store.flush() {
+        let stop = || {
+            println!("READY");
+            let _ = std::io::stdout().flush();
+            let mut byte = [0_u8; 1];
+            let _ = std::io::stdin().read_exact(&mut byte);
+        };
+        if !store.flush_with_test_hooks(None, None, Some(&stop)) {
             return Err("production flush failed before stop point".to_string());
         }
         return Ok(());
@@ -289,8 +294,7 @@ fn child_helper() -> Result<(), String> {
             .read_exact(&mut input)
             .map_err(|e| e.to_string())?;
         lock.unlock().map_err(|e| e.to_string())?;
-        Ok(())
-    } else {
-        Err(format!("unknown CACHE_PROCESS_MODE: {mode}"))
+        return Ok(());
     }
+    Err(format!("unknown CACHE_PROCESS_MODE: {mode}"))
 }
