@@ -428,7 +428,7 @@ fn cmd_add_summary_collision_rejects_before_candidate_write() {
     .expect_err("summary alias must reject before add candidate write");
     assert!(error.to_string().contains("--summary-output"));
     assert_eq!(
-        fs::read_to_string(&root.join("policy/allow.toml")).ok(),
+        fs::read_to_string(root.join("policy/allow.toml")).ok(),
         Some(sentinel)
     );
     assert!(!candidate.exists());
