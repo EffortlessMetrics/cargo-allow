@@ -227,7 +227,11 @@ fn migrate_summary_collision_rejects_before_touching_destination_or_backup() {
         network_policy_fixture_text(),
     )
     .unwrap_or_else(|err| std::panic::panic_any(format!("network fixture write: {err}")));
-    let out = dir.with_file_name("summary-collision-output.toml");
+    let dir_name = dir
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_else(|| std::panic::panic_any("fixture directory has no final component"));
+    let out = dir.with_file_name(format!("{dir_name}-summary-collision-output.toml"));
     fs::write(&out, "destination sentinel\n")
         .unwrap_or_else(|err| std::panic::panic_any(format!("destination write: {err}")));
     let summary_alias = out
