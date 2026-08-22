@@ -282,3 +282,79 @@ fn git(root: &Path, args: &[&str]) -> Result<(), String> {
     }
     Ok(())
 }
+
+#[test]
+fn batched_tree_blob_lookup_matches_per_path_lookups() -> Result<(), String> {
+    let root = init_git_repo("batched-tree-blobs")?;
+    write_file(&root, "src/present.rs", "pub fn present() {}\n")?;
+    write_file(&root, "src/nested/deep.rs", "pub fn deep() {}\n")?;
+    fs::create_dir_all(root.join("adir")).map_err(|err| format!("mkdir adir: {err}"))?;
+    write_file(&root, "adir/inner.txt", "dir entry\n")?;
+    // Enough bulk paths that a 64-path chunk boundary is crossed.
+    for index in 0..40 {
+        write_file(&root, &format!("bulk/f{index:02}.txt"), "bulk\n")?;
+    }
+    commit_all(&root, "seed")?;
+
+    #[cfg(unix)]
+    let link_added = (|| -> Result<(), String> {
+        std::os::unix::fs::symlink("src/present.rs", root.join("link.rs"))
+            .map_err(|err| format!("symlink fixture: {err}"))?;
+        git(&root, &["add", "link.rs"])?;
+        git(&root, &["commit", "-q", "-m", "link"])
+    })();
+
+    let head = crate::git::resolve_commit_oid(&root, "HEAD").map_err(|err| err.to_string())?;
+
+    let mut paths: Vec<PathBuf> = vec![
+        PathBuf::from("src/present.rs"),
+        PathBuf::from("src/missing.rs"),
+        PathBuf::from("src/nested/deep.rs"),
+        PathBuf::from("adir"),
+        PathBuf::from("bulk/f00.txt"),
+        PathBuf::from("bulk/f39.txt"),
+        PathBuf::from("bulk/f63-missing.txt"),
+    ];
+    #[cfg(unix)]
+    paths.push(PathBuf::from("link.rs"));
+
+    let path_refs: Vec<&Path> = paths.iter().map(|path| path.as_path()).collect();
+    let batched = crate::git::tree_blob_oids_at_commit(&root, &head, &path_refs)
+        .map_err(|err| err.to_string())?;
+    if batched.len() != paths.len() {
+        return Err(format!(
+            "batched lookup returned {} entries for {} paths",
+            batched.len(),
+            paths.len()
+        ));
+    }
+
+    for (index, path) in paths.iter().enumerate() {
+        let single = crate::git::tree_blob_oid_at_commit(&root, &head, path)
+            .map_err(|err| err.to_string())?;
+        assert_eq!(
+            batched[index], single,
+            "batched result must match the per-path lookup for {path:?}"
+        );
+    }
+
+    assert!(batched[0].is_some(), "tracked regular file resolves");
+    assert!(batched[1].is_none(), "absent path stays absent");
+    assert!(
+        batched[3].is_none(),
+        "directory entries are not regular blobs"
+    );
+    assert!(batched[4].is_some() && batched[5].is_some());
+    #[cfg(unix)]
+    {
+        let _ = link_added;
+        // A symlink records mode 120000, never a `100...` regular blob.
+        assert!(
+            batched[7].is_none(),
+            "symlink entries must not classify as regular-file blobs"
+        );
+    }
+
+    let _ = fs::remove_dir_all(&root);
+    Ok(())
+}

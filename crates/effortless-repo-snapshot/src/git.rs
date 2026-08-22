@@ -5,7 +5,7 @@
 )]
 
 use crate::error::{SnapshotDiagnostic, SnapshotError, SnapshotErrorKind, SnapshotResult};
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Output};
 
@@ -156,6 +156,95 @@ pub(crate) fn tree_blob_oid_at_commit(
             }
         }
     }
+}
+
+/// Chunk size for batched exact-path tree lookups (#2515). Each chunk is one
+/// `git ls-tree` process instead of one process per path; bounded so a large
+/// selected-path set cannot exceed platform argv or command-line limits.
+const TREE_BLOB_BATCH_CHUNK: usize = 64;
+
+/// Resolve blob object ids for many paths at one commit with batched
+/// `git ls-tree` invocations (#2515).
+///
+/// Returns one entry per requested path, in request order: the blob oid when
+/// the path is a regular file (mode `100...`) at `commit_oid`, else `None`.
+/// Classification matches [`tree_blob_oid_at_commit`] exactly — absent paths,
+/// non-regular modes, and unresolvable revisions behave identically, and a
+/// returned record that was not requested is rejected as malformed output.
+pub(crate) fn tree_blob_oids_at_commit(
+    root: &Path,
+    commit_oid: &str,
+    paths: &[&Path],
+) -> SnapshotResult<Vec<Option<String>>> {
+    let requested: Vec<Vec<u8>> = paths
+        .iter()
+        .map(|path| source_tree_path_bytes(path))
+        .collect::<SnapshotResult<Vec<_>>>()?;
+
+    // Unique requested path bytes; duplicate spellings share one ls-tree
+    // argument and one resolved value.
+    let mut unique: Vec<&Vec<u8>> = requested.iter().collect();
+    unique.sort();
+    unique.dedup();
+
+    let mut found: HashMap<Vec<u8>, String> = HashMap::with_capacity(unique.len());
+    for chunk in unique.chunks(TREE_BLOB_BATCH_CHUNK) {
+        let mut cmd = literal_pathspec_git_command(root);
+        cmd.arg("ls-tree")
+            .arg("-z")
+            .arg("--full-tree")
+            .arg(commit_oid)
+            .arg("--");
+        for path_bytes in chunk {
+            append_literal_path_arg(&mut cmd, path_bytes)?;
+        }
+        let output = run_git(cmd, "git ls-tree exact paths")?;
+        if !output.status.success() {
+            return Err(git_status_error("git ls-tree exact paths", &output));
+        }
+        for record in output
+            .stdout
+            .split(|byte| *byte == 0)
+            .filter(|record| !record.is_empty())
+        {
+            match parse_git_tree_record_any(record) {
+                TreeRecordParse::Entry(entry) => {
+                    if unique.binary_search(&&entry.raw_path).is_err() {
+                        return Err(git_error(
+                            SnapshotErrorKind::Inventory,
+                            "git_output_malformed",
+                            "git ls-tree returned a path that was not requested",
+                        ));
+                    }
+                    if entry.mode.starts_with("100") {
+                        found.insert(entry.raw_path, entry.object_oid);
+                    }
+                }
+                TreeRecordParse::UnsupportedPath { raw_path, .. } => {
+                    return Err(git_error(
+                        SnapshotErrorKind::InvalidConfig,
+                        "tree_path_unsupported_on_platform",
+                        format!(
+                            "git tree path `{}` is not representable on this platform",
+                            display_raw_path(&raw_path)
+                        ),
+                    ));
+                }
+                TreeRecordParse::Malformed => {
+                    return Err(git_error(
+                        SnapshotErrorKind::Inventory,
+                        "git_output_malformed",
+                        "git ls-tree returned a malformed record",
+                    ));
+                }
+            }
+        }
+    }
+
+    Ok(requested
+        .iter()
+        .map(|path| found.get(path.as_slice()).cloned())
+        .collect())
 }
 
 pub(crate) fn resolve_commit_oid(root: &Path, revision: &str) -> SnapshotResult<String> {

@@ -1,0 +1,10 @@
+kind: Changed
+body: >-
+  Batch the exact-path tree lookups behind repository snapshot identities
+  (#2515). Selected-path blob resolution now issues one chunked
+  git ls-tree -z --full-tree process per up-to-64 paths instead of one
+  rev-parse + ls-tree subprocess pair per path, with results mapped back
+  in request order and classification identical to the per-path lookup
+  (absent paths, non-regular modes, unsupported platform paths, and
+  malformed output behave the same). The implementation is index-free,
+  so it introduces no new panic-family findings against the ledger.
