@@ -135,12 +135,19 @@ pub(crate) struct SpecSystemInitCommandArgs<'a> {
     pub(crate) config: Option<&'a Path>,
     pub(crate) force: bool,
     pub(crate) dry_run: bool,
+    pub(crate) held_target: Option<&'a effortless_repo_edit::MutationTarget>,
 }
 
 pub(crate) fn cmd_spec_system_init(args: SpecSystemInitCommandArgs<'_>) -> CargoAllowResult<()> {
     reject_cutover_embedded_authority(args.root, "init")?;
     let cwd = current_dir()?;
     let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;
+    if !args.dry_run && args.held_target.is_none() {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Artifact,
+            "spec-system primary init requires a held mutation target authority",
+        ));
+    }
     let config_path = args
         .config
         .unwrap_or_else(|| Path::new(super::DEFAULT_PROFILE_CONFIG));
@@ -165,10 +172,10 @@ pub(crate) fn cmd_spec_system_init(args: SpecSystemInitCommandArgs<'_>) -> Cargo
         }
     }
     let files = spec_system_bootstrap_files(config_path, legacy_compatibility);
-
-    for file in files {
+    for (index, file) in files.into_iter().enumerate() {
         let path = root_relative_path(&root, &file.path);
         let display = root_relative_display(&root, &path);
+        let is_primary = index == 0;
         if args.dry_run {
             let action = if path.exists() && args.force {
                 "would overwrite"
@@ -192,12 +199,42 @@ pub(crate) fn cmd_spec_system_init(args: SpecSystemInitCommandArgs<'_>) -> Cargo
                 )
             })?;
         }
-        fs::write(&path, file.contents).map_err(|e| {
-            CargoAllowError::with_kind(
-                CargoAllowErrorKind::Artifact,
-                format!("failed to write {}: {e}", path.display()),
+        if let Some(held_target) = args.held_target
+            && is_primary
+        {
+            // The shared apply authority compares the selected primary
+            // against the held target before reading and immediately before
+            // the final write.
+            effortless_repo_edit::apply_single_target_with_target(
+                effortless_repo_edit::SingleTargetApplyRequest {
+                    repository_root: &root,
+                    target: &path,
+                    contents: &file.contents,
+                    caller_reference: Some("cargo-allow:init:spec-system"),
+                    lock_identity: Some(held_target.repo_relative_display().to_string()),
+                    mode: if args.force {
+                        effortless_repo_edit::SingleTargetApplyMode::ReplaceWithBackup
+                    } else {
+                        effortless_repo_edit::SingleTargetApplyMode::CreateNewOnly
+                    },
+                },
+                held_target,
             )
-        })?;
+            .into_result()
+            .map_err(|error| {
+                CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Artifact,
+                    format!("failed to write {}: {error}", path.display()),
+                )
+            })?;
+        } else {
+            fs::write(&path, file.contents).map_err(|e| {
+                CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Artifact,
+                    format!("failed to write {}: {e}", path.display()),
+                )
+            })?;
+        }
         let action = if args.force { "wrote" } else { "created" };
         println!("{action} {display}");
     }

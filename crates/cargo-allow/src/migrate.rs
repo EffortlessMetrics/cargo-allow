@@ -10,7 +10,9 @@ use crate::{
     portable_relative_under_root, require_json_summary_output, resolve_source_tree_root,
     write_file_no_overwrite,
 };
-use effortless_repo_edit::{SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target};
+use effortless_repo_edit::{
+    SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target_with_target,
+};
 #[path = "migrate_args.rs"]
 mod migrate_args;
 #[path = "migrate_load.rs"]
@@ -52,7 +54,19 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
             "pass either --update or --force, not both",
         ));
     }
-    let _mutation_lock = MutationLock::acquire(&args.out)
+    // Resolve the canonical output identity before locking (#2487/#2491):
+    // alias spellings of the same destination must converge on one lock key.
+    let cwd = current_dir()?;
+    let repository_root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
+    let output_absolute = if args.out.is_absolute() {
+        args.out.clone()
+    } else {
+        cwd.join(&args.out)
+    };
+    let mutation_target =
+        effortless_repo_edit::resolve_mutation_target(&output_absolute, &repository_root)
+            .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+    let _mutation_lock = MutationLock::acquire_for_target(&mutation_target)
         .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     let migration = match (&args.from, &args.repo_policy) {
         (Some(from), None) => load_single_file_migration_config(args.root.root.as_deref(), from)?,
@@ -98,13 +112,6 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
             evidence_source_tree_files.as_ref(),
         )?;
     }
-    let cwd = current_dir()?;
-    let repository_root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
-    let output_absolute = if args.out.is_absolute() {
-        args.out.clone()
-    } else {
-        cwd.join(&args.out)
-    };
     let rendered = render_policy(&cfg);
     let output_target = portable_relative_under_root(&repository_root, &output_absolute);
     let portable_output = output_target.as_ref().ok().map(|path| {
@@ -124,22 +131,25 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
             } else {
                 SingleTargetApplyMode::CreateNewOnly
             };
-            apply_single_target(SingleTargetApplyRequest {
-                repository_root: &repository_root,
-                target: &target,
-                contents: &rendered,
-                caller_reference: Some(if args.update {
-                    "cargo-allow:migrate"
-                } else {
-                    "cargo-allow:migrate:out"
-                }),
-                lock_identity: Some(
-                    target
-                        .to_string_lossy()
-                        .replace(std::path::MAIN_SEPARATOR, "/"),
-                ),
-                mode,
-            })
+            apply_single_target_with_target(
+                SingleTargetApplyRequest {
+                    repository_root: &repository_root,
+                    target: &target,
+                    contents: &rendered,
+                    caller_reference: Some(if args.update {
+                        "cargo-allow:migrate"
+                    } else {
+                        "cargo-allow:migrate:out"
+                    }),
+                    lock_identity: Some(
+                        target
+                            .to_string_lossy()
+                            .replace(std::path::MAIN_SEPARATOR, "/"),
+                    ),
+                    mode,
+                },
+                &mutation_target,
+            )
             .into_result()
             .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
         }
