@@ -269,22 +269,15 @@ fn path_is_symlink(path: &Path) -> bool {
 fn path_is_reparse_point(path: &Path) -> bool {
     #[cfg(windows)]
     {
-        use std::os::windows::fs::MetadataExt;
+        use std::os::windows::fs::{FileTypeExt, MetadataExt};
         const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0400;
-        let is_reparse = std::fs::symlink_metadata(path)
-            .map(|metadata| metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0)
-            .unwrap_or(false);
-        if !is_reparse {
-            return false;
-        }
-        // The standard library does not expose the reparse tag. A name
-        // surrogate (junction/mount-point) resolves to a different absolute
-        // path; non-name-surrogate cloud placeholders resolve in place and
-        // remain usable. Relative reparse paths are rejected conservatively.
-        path.is_absolute()
-            && std::fs::canonicalize(path)
-                .map(|resolved| resolved != path)
-                .unwrap_or(true)
+        std::fs::symlink_metadata(path)
+            .map(|metadata| {
+                metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
+                    && (metadata.file_type().is_symlink_dir()
+                        || metadata.file_type().is_symlink_file())
+            })
+            .unwrap_or(false)
     }
     #[cfg(not(windows))]
     {
@@ -307,18 +300,30 @@ fn next_temp_path(dir: &Path) -> PathBuf {
 
 struct WriterLock {
     path: PathBuf,
+    token: String,
 }
 
 impl WriterLock {
     fn acquire(dir: &Path, wait_hook: Option<&dyn Fn()>) -> Option<Self> {
         let path = dir.join(LOCK_FILE_NAME);
+        let token = format!(
+            "{}-{}",
+            std::process::id(),
+            TEMP_NONCE.fetch_add(1, Ordering::Relaxed)
+        );
         for _ in 0..100 {
             match std::fs::OpenOptions::new()
                 .write(true)
                 .create_new(true)
                 .open(&path)
             {
-                Ok(_) => return Some(Self { path }),
+                Ok(mut file) => {
+                    if file.write_all(token.as_bytes()).is_err() || file.sync_all().is_err() {
+                        let _ = std::fs::remove_file(&path);
+                        return None;
+                    }
+                    return Some(Self { path, token });
+                }
                 Err(error) if error.kind() == ErrorKind::AlreadyExists => {
                     if let Some(wait_hook) = wait_hook {
                         wait_hook();
@@ -336,8 +341,14 @@ impl WriterLock {
 
 impl Drop for WriterLock {
     fn drop(&mut self) {
-        let _ = std::fs::remove_file(&self.path);
+        if lock_token(&self.path).as_deref() == Some(self.token.as_str()) {
+            let _ = std::fs::remove_file(&self.path);
+        }
     }
+}
+
+fn lock_token(path: &Path) -> Option<String> {
+    std::fs::read_to_string(path).ok()
 }
 
 fn remove_if_stale(path: &Path) -> bool {
@@ -360,15 +371,38 @@ fn reap_stale_lock(path: &Path) -> bool {
         return false;
     };
     let guard_path = parent.join(REAPER_LOCK_FILE_NAME);
-    let Ok(_guard) = std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&guard_path)
-    else {
+    let token = format!(
+        "{}-{}",
+        std::process::id(),
+        TEMP_NONCE.fetch_add(1, Ordering::Relaxed)
+    );
+    let mut guard = None;
+    for _ in 0..2 {
+        match std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&guard_path)
+        {
+            Ok(file) => {
+                guard = Some(file);
+                break;
+            }
+            Err(error)
+                if error.kind() == ErrorKind::AlreadyExists && remove_if_stale(&guard_path) => {}
+            Err(_) => return false,
+        }
+    }
+    let Some(mut guard) = guard else {
         return false;
     };
+    if guard.write_all(token.as_bytes()).is_err() || guard.sync_all().is_err() {
+        let _ = std::fs::remove_file(&guard_path);
+        return false;
+    }
     let result = remove_if_stale(path);
-    let _ = std::fs::remove_file(&guard_path);
+    if lock_token(&guard_path).as_deref() == Some(token.as_str()) {
+        let _ = std::fs::remove_file(&guard_path);
+    }
     result
 }
 
@@ -921,6 +955,62 @@ mod tests {
     }
 
     #[test]
+    fn stale_owner_drop_cannot_remove_replacement_lock() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "allow-rust-cache-lock-aba-{}-{}",
+            std::process::id(),
+            TEMP_NONCE.fetch_add(1, Ordering::Relaxed)
+        ));
+        std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        let lock = root.join(LOCK_FILE_NAME);
+        let first =
+            WriterLock::acquire(&root, None).ok_or_else(|| "first lock failed".to_string())?;
+        let old = SystemTime::now()
+            .checked_sub(STALE_ARTIFACT_AGE + Duration::from_secs(1))
+            .ok_or_else(|| "stale timestamp underflow".to_string())?;
+        std::fs::OpenOptions::new()
+            .write(true)
+            .open(&lock)
+            .and_then(|file| file.set_times(std::fs::FileTimes::new().set_modified(old)))
+            .map_err(|error| error.to_string())?;
+        assert!(reap_stale_lock(&lock));
+        let second =
+            WriterLock::acquire(&root, None).ok_or_else(|| "second lock failed".to_string())?;
+        let second_token = second.token.clone();
+        drop(first);
+        assert_eq!(lock_token(&lock).as_deref(), Some(second_token.as_str()));
+        drop(second);
+        assert!(!lock.exists());
+        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn orphaned_reaper_guard_is_recovered() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "allow-rust-cache-orphan-reaper-{}-{}",
+            std::process::id(),
+            TEMP_NONCE.fetch_add(1, Ordering::Relaxed)
+        ));
+        std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        let lock = root.join(LOCK_FILE_NAME);
+        let guard = root.join(REAPER_LOCK_FILE_NAME);
+        let old = SystemTime::now()
+            .checked_sub(STALE_ARTIFACT_AGE + Duration::from_secs(1))
+            .ok_or_else(|| "stale timestamp underflow".to_string())?;
+        for path in [&lock, &guard] {
+            let file = std::fs::File::create(path).map_err(|error| error.to_string())?;
+            file.set_times(std::fs::FileTimes::new().set_modified(old))
+                .map_err(|error| error.to_string())?;
+        }
+        assert!(reap_stale_lock(&lock));
+        assert!(!lock.exists());
+        assert!(!guard.exists());
+        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
     fn active_writer_lock_is_retried_deterministically() -> Result<(), String> {
         let root = std::env::temp_dir().join(format!(
             "allow-rust-cache-lock-contention-{}-{}",
@@ -1076,6 +1166,13 @@ mod tests {
         ));
         let outside = root.join("outside");
         let junction = root.join("cache");
+        struct Cleanup(PathBuf);
+        impl Drop for Cleanup {
+            fn drop(&mut self) {
+                let _ = std::fs::remove_dir_all(&self.0);
+            }
+        }
+        let _cleanup = Cleanup(root.clone());
         std::fs::create_dir_all(&outside).map_err(|error| error.to_string())?;
         let status = std::process::Command::new("cmd")
             .args([
@@ -1099,8 +1196,6 @@ mod tests {
         );
         assert!(!store.flush());
         assert!(!outside.join("scan-cache.v2.bin").exists());
-        std::fs::remove_dir_all(&junction).map_err(|error| error.to_string())?;
-        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
         Ok(())
     }
 }
