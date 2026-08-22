@@ -76,11 +76,9 @@ fn configure_empty_excludes_file(root: &Path) {
 }
 
 fn submodule_capability_unsupported(stderr: &str) -> bool {
-    let stderr = stderr.to_ascii_lowercase();
-    stderr.contains("'submodule' is not a git command")
-        || stderr.contains("unknown subcommand")
-        || stderr.contains("submodule is not supported")
-        || stderr.contains("does not support submodule")
+    stderr.lines().next().is_some_and(|line| {
+        line.trim() == "git: 'submodule' is not a git command. See 'git --help'."
+    })
 }
 
 fn write_file(path: PathBuf, contents: &str) {
@@ -394,9 +392,15 @@ fn submodule_fixture_reports_partial_completeness_with_disclosure() {
 #[test]
 fn submodule_skip_requires_a_known_unsupported_capability() {
     assert!(submodule_capability_unsupported(
+        "git: 'submodule' is not a git command. See 'git --help'."
+    ));
+    assert!(!submodule_capability_unsupported(
         "git: 'submodule' is not a git command"
     ));
-    assert!(submodule_capability_unsupported(
+    assert!(!submodule_capability_unsupported(
+        "fatal: unknown subcommand: submodule"
+    ));
+    assert!(!submodule_capability_unsupported(
         "submodule is not supported"
     ));
     assert!(!submodule_capability_unsupported(

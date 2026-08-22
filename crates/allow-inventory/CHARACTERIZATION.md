@@ -99,8 +99,8 @@ Ordinary worktree checks record the inventory completeness and diagnostics in
 their report; `Partial` or `Fallback` does not fail that check solely because of
 the completeness value. In staged `check --mode no-new`, `Partial` inventory
 does block the check (`crates/cargo-allow/src/check.rs`) until the missing path
-is resolved or explicitly scoped. A submodule, deleted-but-tracked path, or
-filesystem-walk skipped directory can produce `Partial`; a git error takes
-precedence and keeps the result `Fallback`, even if the fallback walk also
-records skipped paths. `Scoped` is surfaced as scope metadata rather than a
-completeness failure.
+is resolved or explicitly scoped. Git-backed submodule and deleted-but-tracked
+paths can produce `Partial`. During filesystem fallback, skipped paths are
+disclosed in `skipped_paths`, but completeness remains `Fallback` because
+`git_error` takes precedence. `Scoped` is surfaced as scope metadata rather
+than a completeness failure.
