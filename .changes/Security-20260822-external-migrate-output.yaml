@@ -1,0 +1,7 @@
+kind: Security
+body: >-
+  Harden external `migrate --out` create and force-replace writes by binding
+  the final write to the held target identity and rejecting lexical symlink,
+  directory, and other non-regular leaf substitutions. This is the bounded
+  Slice C portion of #2491; Slice D, general external-output authorization,
+  and full #2491 closure remain out of scope.

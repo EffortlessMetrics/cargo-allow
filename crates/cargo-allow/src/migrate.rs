@@ -12,6 +12,7 @@ use crate::{
 };
 use effortless_repo_edit::{
     SingleTargetApplyMode, SingleTargetApplyRequest, apply_single_target_with_target,
+    assert_target_matches_held,
 };
 #[path = "migrate_args.rs"]
 mod migrate_args;
@@ -157,8 +158,13 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
             if args.update {
                 return Err(error);
             }
-            write_file_no_overwrite(&output_absolute, &rendered, args.force)
-                .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+            write_external_migrate_output(
+                &mutation_target,
+                &output_absolute,
+                &repository_root,
+                &rendered,
+                args.force,
+            )?;
         }
     }
     let core_summary = crate::core_command_summary::core_command_summary_from_migrate(
@@ -214,6 +220,96 @@ pub(crate) fn cmd_migrate(args: &MigrateArgs) -> CargoAllowResult<()> {
         ),
     };
     emit_stderr_text(args.summary_output.as_deref(), &summary)?;
+    Ok(())
+}
+
+/// Write an external migration candidate through the same held target identity
+/// used for in-tree output. Slice C keeps this compatibility path private to
+/// `migrate --out`; other candidate writers remain source-tree-contained.
+fn write_external_migrate_output(
+    held_target: &effortless_repo_edit::MutationTarget,
+    requested: &std::path::Path,
+    repository_root: &std::path::Path,
+    contents: &str,
+    force: bool,
+) -> CargoAllowResult<()> {
+    write_external_migrate_output_with_hook(
+        held_target,
+        requested,
+        repository_root,
+        contents,
+        force,
+        None,
+    )
+}
+
+#[cfg(test)]
+fn write_external_migrate_output_with_test_hook(
+    held_target: &effortless_repo_edit::MutationTarget,
+    requested: &std::path::Path,
+    repository_root: &std::path::Path,
+    contents: &str,
+    force: bool,
+    hook: &mut dyn FnMut(),
+) -> CargoAllowResult<()> {
+    write_external_migrate_output_with_hook(
+        held_target,
+        requested,
+        repository_root,
+        contents,
+        force,
+        Some(hook),
+    )
+}
+
+fn write_external_migrate_output_with_hook(
+    held_target: &effortless_repo_edit::MutationTarget,
+    requested: &std::path::Path,
+    repository_root: &std::path::Path,
+    contents: &str,
+    force: bool,
+    hook: Option<&mut dyn FnMut()>,
+) -> CargoAllowResult<()> {
+    assert_external_output_leaf_is_writable(requested, force)?;
+    assert_target_matches_held(held_target, requested, repository_root)
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+    if let Some(hook) = hook {
+        hook();
+    }
+    assert_target_matches_held(held_target, requested, repository_root)
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+    assert_external_output_leaf_is_writable(requested, force)?;
+    write_file_no_overwrite(held_target.normalized_absolute(), contents, force)
+        .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)
+}
+
+fn assert_external_output_leaf_is_writable(
+    requested: &std::path::Path,
+    force: bool,
+) -> CargoAllowResult<()> {
+    match std::fs::symlink_metadata(requested) {
+        Ok(metadata) if metadata.file_type().is_symlink() => {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                "external migrate output leaf is a symlink; refusing replacement (#2491)",
+            ));
+        }
+        Ok(metadata) if !metadata.is_file() => {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                "external migrate output is not a regular file (#2491)",
+            ));
+        }
+        Ok(_) if !force => {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                "external migrate output already exists; use --force to overwrite",
+            ));
+        }
+        Ok(_) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(CargoAllowError::from(error)),
+    }
     Ok(())
 }
 

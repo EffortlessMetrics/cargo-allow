@@ -2,7 +2,9 @@ use super::*;
 use crate::{CargoAllowCli, CargoAllowCommand, HumanJsonFormat};
 use clap::Parser;
 use serde_json::Value;
+use std::ffi::OsStr;
 use std::fs;
+use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[test]
@@ -139,6 +141,271 @@ fn migrate_repo_policy_writes_combined_canonical_policy() {
         .unwrap_or_else(|err| std::panic::panic_any(format!("read migrated policy: {err}")));
     assert!(rendered.contains("process_spawn"));
     assert!(rendered.contains("network_destination"));
+}
+
+#[test]
+fn migrate_external_output_uses_held_target_and_preserves_force_backup() {
+    let dir = migrate_fixture_dir();
+    let policy_dir = dir.join("policy");
+    fs::create_dir_all(&policy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+    fs::write(
+        policy_dir.join("network-allowlist.toml"),
+        network_policy_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("network fixture write: {err}")));
+    let dir_name = dir
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_else(|| std::panic::panic_any("fixture directory has no final component"));
+    let out = dir.with_file_name(format!("{dir_name}-external.toml"));
+    let out_parent = out
+        .parent()
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| std::panic::panic_any("external output has no parent"));
+    let out_name = out
+        .file_name()
+        .map(OsStr::to_os_string)
+        .unwrap_or_else(|| std::panic::panic_any("external output has no final component"));
+    let out_alias = out_parent.join(".").join(out_name);
+    let _ = fs::remove_file(&out);
+    let _ = fs::remove_file(out.with_extension("toml.bak"));
+
+    cmd_migrate(&MigrateArgs {
+        root: RootArgs {
+            root: Some(dir.clone()),
+        },
+        from: None,
+        repo_policy: Some(policy_dir.clone()),
+        out: out_alias.clone(),
+        force: false,
+        update: false,
+        summary_format: HumanJsonFormat::Human,
+        summary_output: None,
+    })
+    .unwrap_or_else(|err| std::panic::panic_any(format!("external create: {err}")));
+    let first = fs::read_to_string(&out)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read external output: {err}")));
+    assert!(first.contains("network_destination"));
+    let changed_network = network_policy_fixture_text().replace("crates.io", "example.invalid");
+    fs::write(policy_dir.join("network-allowlist.toml"), changed_network)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("change network fixture: {err}")));
+
+    cmd_migrate(&MigrateArgs {
+        root: RootArgs { root: Some(dir) },
+        from: None,
+        repo_policy: Some(policy_dir),
+        out: out_alias,
+        force: true,
+        update: false,
+        summary_format: HumanJsonFormat::Human,
+        summary_output: None,
+    })
+    .unwrap_or_else(|err| std::panic::panic_any(format!("external force replace: {err}")));
+    assert!(out.with_extension("toml.bak").is_file());
+    assert_eq!(
+        fs::read_to_string(out.with_extension("toml.bak")).ok(),
+        Some(first.clone())
+    );
+    let second = fs::read_to_string(&out)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read replaced output: {err}")));
+    assert!(second.contains("example.invalid"));
+    assert!(!second.contains("crates.io"));
+    assert_ne!(second, first);
+    let _ = fs::remove_file(&out);
+    let _ = fs::remove_file(out.with_extension("toml.bak"));
+}
+
+#[cfg(unix)]
+#[test]
+fn migrate_external_output_rejects_leaf_symlink_without_touching_sentinel() {
+    use std::os::unix::fs::symlink;
+
+    let dir = migrate_fixture_dir();
+    let policy_dir = dir.join("policy");
+    fs::create_dir_all(&policy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+    fs::write(
+        policy_dir.join("network-allowlist.toml"),
+        network_policy_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("network fixture write: {err}")));
+    let sentinel = dir.with_file_name(format!(
+        "{}-sentinel.toml",
+        dir.file_name().unwrap().to_string_lossy()
+    ));
+    let out = dir.with_file_name(format!(
+        "{}-symlink.toml",
+        dir.file_name().unwrap().to_string_lossy()
+    ));
+    fs::write(&sentinel, "sentinel\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("sentinel write: {err}")));
+    let _ = fs::remove_file(&out);
+    symlink(&sentinel, &out)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("symlink setup: {err}")));
+
+    let error = cmd_migrate(&MigrateArgs {
+        root: RootArgs { root: Some(dir) },
+        from: None,
+        repo_policy: Some(policy_dir),
+        out: out.clone(),
+        force: true,
+        update: false,
+        summary_format: HumanJsonFormat::Human,
+        summary_output: None,
+    })
+    .expect_err("external leaf symlink must fail closed");
+    assert!(error.to_string().contains("symlink"));
+    assert_eq!(
+        fs::read_to_string(&sentinel).ok().as_deref(),
+        Some("sentinel\n")
+    );
+    let _ = fs::remove_file(&out);
+    let _ = fs::remove_file(&sentinel);
+}
+
+#[test]
+fn migrate_external_output_rejects_directory_without_touching_neighbor() {
+    let dir = migrate_fixture_dir();
+    let policy_dir = dir.join("policy");
+    fs::create_dir_all(&policy_dir)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+    fs::write(
+        policy_dir.join("network-allowlist.toml"),
+        network_policy_fixture_text(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("network fixture write: {err}")));
+    let out = dir.with_file_name(format!(
+        "{}-directory.toml",
+        dir.file_name().unwrap().to_string_lossy()
+    ));
+    let neighbor = dir.with_file_name(format!(
+        "{}-neighbor.txt",
+        dir.file_name().unwrap().to_string_lossy()
+    ));
+    let _ = fs::remove_dir_all(&out);
+    fs::create_dir_all(&out)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("directory setup: {err}")));
+    fs::write(&neighbor, "neighbor\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("neighbor write: {err}")));
+
+    let error = cmd_migrate(&MigrateArgs {
+        root: RootArgs { root: Some(dir) },
+        from: None,
+        repo_policy: Some(policy_dir),
+        out: out.clone(),
+        force: true,
+        update: false,
+        summary_format: HumanJsonFormat::Human,
+        summary_output: None,
+    })
+    .expect_err("external directory output must fail closed");
+    assert!(error.to_string().contains("regular file"));
+    assert!(out.is_dir());
+    assert_eq!(
+        fs::read_to_string(&neighbor).ok().as_deref(),
+        Some("neighbor\n")
+    );
+    let _ = fs::remove_dir_all(&out);
+    let _ = fs::remove_file(&neighbor);
+}
+
+#[cfg(unix)]
+#[test]
+fn migrate_external_final_recheck_rejects_parent_retarget() {
+    use std::os::unix::fs::symlink;
+
+    let root = migrate_fixture_dir();
+    let parent_a = root.with_file_name(format!(
+        "{}-parent-a",
+        root.file_name().unwrap().to_string_lossy()
+    ));
+    let parent_b = root.with_file_name(format!(
+        "{}-parent-b",
+        root.file_name().unwrap().to_string_lossy()
+    ));
+    fs::create_dir_all(&parent_a)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("parent A: {err}")));
+    fs::create_dir_all(&parent_b)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("parent B: {err}")));
+    let sentinel = parent_b.join("sentinel.txt");
+    fs::write(&sentinel, "foreign\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("foreign sentinel: {err}")));
+    let requested = parent_a.join("candidate.toml");
+    let held = effortless_repo_edit::resolve_mutation_target(&requested, &root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("held target: {err}")));
+    let _lock = effortless_repo_edit::MutationLock::acquire_for_target(&held)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("held lock: {err}")));
+    let parent_a_old = root.with_file_name(format!(
+        "{}-parent-a-old",
+        root.file_name().unwrap().to_string_lossy()
+    ));
+    let mut retarget = || {
+        fs::rename(&parent_a, &parent_a_old)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("retarget rename: {err}")));
+        symlink(&parent_b, &parent_a)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("retarget symlink: {err}")));
+    };
+    let error = write_external_migrate_output_with_test_hook(
+        &held,
+        &requested,
+        &root,
+        "new\n",
+        false,
+        &mut retarget,
+    )
+    .expect_err("parent retarget must fail closed");
+    assert!(error.to_string().contains("#2491"));
+    assert_eq!(
+        fs::read_to_string(&sentinel).ok().as_deref(),
+        Some("foreign\n")
+    );
+    assert!(!parent_b.join("candidate.toml").exists());
+    assert!(!parent_a_old.join("candidate.toml").exists());
+    let _ = fs::remove_file(&parent_a);
+    let _ = fs::remove_dir_all(&parent_a_old);
+    let _ = fs::remove_dir_all(&parent_b);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[cfg(unix)]
+#[test]
+fn migrate_external_final_recheck_rejects_file_to_directory_substitution() {
+    let root = migrate_fixture_dir();
+    let requested = root.join("candidate.toml");
+    fs::write(&requested, "original\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("original output: {err}")));
+    let held = effortless_repo_edit::resolve_mutation_target(&requested, &root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("held target: {err}")));
+    let _lock = effortless_repo_edit::MutationLock::acquire_for_target(&held)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("held lock: {err}")));
+    let sentinel = requested.join("sentinel.txt");
+    let mut substitute = || {
+        fs::remove_file(&requested)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("remove output: {err}")));
+        fs::create_dir(&requested)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("directory substitute: {err}")));
+        fs::write(&sentinel, "directory sentinel\n")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("directory sentinel: {err}")));
+    };
+    let error = write_external_migrate_output_with_test_hook(
+        &held,
+        &requested,
+        &root,
+        "replacement\n",
+        true,
+        &mut substitute,
+    )
+    .expect_err("file-to-directory substitution must fail closed");
+    assert!(error.to_string().contains("#2491"));
+    assert!(requested.is_dir());
+    assert_eq!(
+        fs::read_to_string(&sentinel).ok().as_deref(),
+        Some("directory sentinel\n")
+    );
+    assert!(!requested.with_extension("toml.bak").exists());
+    let _ = fs::remove_dir_all(&requested);
+    let _ = fs::remove_dir_all(&root);
 }
 
 #[test]
