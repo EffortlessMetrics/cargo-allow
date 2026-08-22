@@ -73,6 +73,10 @@ fn inventory(
 }
 
 fn selector() -> RustItemSelectorV1 {
+    selector_for("left", &["left"])
+}
+
+fn selector_for(id: &str, module: &[&str]) -> RustItemSelectorV1 {
     RustItemSelectorV1 {
         repository_id: Some("repo".into()),
         snapshot_id: Some("tree:abc".into()),
@@ -81,8 +85,10 @@ fn selector() -> RustItemSelectorV1 {
         target_kind: Some(RustItemTargetKindV1::Library),
         target_name: Some("demo".into()),
         item_path: Some(vec!["run".into()]),
-        module_path: Some(vec!["left".into()]),
+        module_path: Some(module.iter().map(|segment| (*segment).into()).collect()),
         definition_kind: Some(RustItemDefinitionKindV1::Function),
+        declaration_identity: Some(format!("decl:{id}")),
+        subject_id: Some(RustItemSubjectIdV1::new(id)),
         generation_identity: Some("generation:1".into()),
         ..Default::default()
     }
@@ -108,22 +114,7 @@ fn exact_resolution_requires_structural_identity() {
         RustItemResolutionClassV1::MalformedSelector
     );
 
-    let exact = resolve_rust_item_subject(
-        &inventory,
-        &RustItemSelectorV1 {
-            module_path: Some(vec!["right".into()]),
-            item_path: Some(vec!["run".into()]),
-            definition_kind: Some(RustItemDefinitionKindV1::Function),
-            generation_identity: Some("generation:1".into()),
-            repository_id: Some("repo".into()),
-            snapshot_id: Some("tree:abc".into()),
-            package: Some("demo".into()),
-            crate_name: Some("demo".into()),
-            target_kind: Some(RustItemTargetKindV1::Library),
-            target_name: Some("demo".into()),
-            ..Default::default()
-        },
-    );
+    let exact = resolve_rust_item_subject(&inventory, &selector_for("right", &["right"]));
     assert_eq!(exact.class, RustItemResolutionClassV1::Exact);
     assert_eq!(exact.candidate_ids, vec![RustItemSubjectIdV1::new("right")]);
 }
@@ -142,6 +133,8 @@ fn inventory_status_controls_missing_authority() {
             item_path: Some(vec!["missing".into()]),
             module_path: Some(vec!["missing".into()]),
             definition_kind: Some(RustItemDefinitionKindV1::Function),
+            declaration_identity: Some("decl:missing".into()),
+            subject_id: Some(RustItemSubjectIdV1::new("missing")),
             generation_identity: Some("generation:1".into()),
             ..Default::default()
         },
@@ -160,6 +153,8 @@ fn inventory_status_controls_missing_authority() {
             item_path: Some(vec!["missing".into()]),
             module_path: Some(vec!["missing".into()]),
             definition_kind: Some(RustItemDefinitionKindV1::Function),
+            declaration_identity: Some("decl:missing".into()),
+            subject_id: Some(RustItemSubjectIdV1::new("missing")),
             generation_identity: Some("generation:1".into()),
             ..Default::default()
         },
@@ -175,7 +170,7 @@ fn partial_inventory_never_resolves_an_existing_item_exactly() {
     let subject = item("partial", &["partial"]);
     let result = resolve_rust_item_subject(
         &inventory(RustItemInventoryStatusV1::Partial, vec![subject]),
-        &selector(),
+        &selector_for("partial", &["partial"]),
     );
     assert_eq!(result.class, RustItemResolutionClassV1::Partial);
     assert!(result.subjects.is_empty());
@@ -271,7 +266,7 @@ fn exact_selector_binds_target_identity() {
             target_kind: Some(RustItemTargetKindV1::Binary),
             target_name: Some("demo-bin".into()),
             crate_name: Some("demo".into()),
-            ..selector()
+            ..selector_for("bin", &["left"])
         },
     );
     assert_eq!(exact.class, RustItemResolutionClassV1::Exact);
@@ -283,7 +278,7 @@ fn exact_selector_binds_target_identity() {
         &stale,
         &RustItemSelectorV1 {
             generation_identity: Some("generation:2".into()),
-            ..selector()
+            ..selector_for("stale", &["same"])
         },
     );
     assert_eq!(mismatch.class, RustItemResolutionClassV1::NotProven);
@@ -300,7 +295,7 @@ fn inventory_rejects_subject_generation_substitution() {
     }
     assert!(!stale.validate());
     assert_eq!(
-        resolve_rust_item_subject(&stale, &selector()).class,
+        resolve_rust_item_subject(&stale, &selector_for("stale", &["same"])).class,
         RustItemResolutionClassV1::NotProven
     );
 }
@@ -314,15 +309,15 @@ fn selector_inventory_identity_mismatch_is_not_proven() {
     for mismatched in [
         RustItemSelectorV1 {
             repository_id: Some("other-repo".into()),
-            ..selector()
+            ..selector_for("current", &["left"])
         },
         RustItemSelectorV1 {
             snapshot_id: Some("tree:def".into()),
-            ..selector()
+            ..selector_for("current", &["left"])
         },
         RustItemSelectorV1 {
             generation_identity: Some("generation:2".into()),
-            ..selector()
+            ..selector_for("current", &["left"])
         },
     ] {
         assert_eq!(
@@ -341,19 +336,63 @@ fn one_record_target_substitution_is_never_exact() {
     for substituted in [
         RustItemSelectorV1 {
             package: Some("other-package".into()),
-            ..selector()
+            ..selector_for("current", &["left"])
         },
         RustItemSelectorV1 {
             crate_name: Some("other_crate".into()),
-            ..selector()
+            ..selector_for("current", &["left"])
         },
         RustItemSelectorV1 {
             target_kind: Some(RustItemTargetKindV1::Binary),
-            ..selector()
+            ..selector_for("current", &["left"])
         },
         RustItemSelectorV1 {
             target_name: Some("other-target".into()),
-            ..selector()
+            ..selector_for("current", &["left"])
+        },
+    ] {
+        assert_ne!(
+            resolve_rust_item_subject(&inventory, &substituted).class,
+            RustItemResolutionClassV1::Exact
+        );
+    }
+}
+
+#[test]
+fn exact_selector_binds_subject_and_declaration_identity() {
+    let inventory = inventory(
+        RustItemInventoryStatusV1::Complete,
+        vec![item("current", &["left"])],
+    );
+    assert_eq!(
+        resolve_rust_item_subject(&inventory, &selector_for("current", &["left"])).class,
+        RustItemResolutionClassV1::Exact
+    );
+
+    for under_bound in [
+        RustItemSelectorV1 {
+            subject_id: None,
+            ..selector_for("current", &["left"])
+        },
+        RustItemSelectorV1 {
+            declaration_identity: None,
+            ..selector_for("current", &["left"])
+        },
+    ] {
+        assert_eq!(
+            resolve_rust_item_subject(&inventory, &under_bound).class,
+            RustItemResolutionClassV1::MalformedSelector
+        );
+    }
+
+    for substituted in [
+        RustItemSelectorV1 {
+            subject_id: Some(RustItemSubjectIdV1::new("other")),
+            ..selector_for("current", &["left"])
+        },
+        RustItemSelectorV1 {
+            declaration_identity: Some("decl:other".into()),
+            ..selector_for("current", &["left"])
         },
     ] {
         assert_ne!(
@@ -372,8 +411,8 @@ fn generated_cfg_and_source_unavailable_items_are_not_exact() {
         resolve_rust_item_subject(
             &inventory(RustItemInventoryStatusV1::Complete, vec![generated]),
             &RustItemSelectorV1 {
-                module_path: Some(vec!["generated".into()]),
-                ..selector()
+                declaration_identity: None,
+                ..selector_for("generated", &["generated"])
             },
         )
         .class,
@@ -385,10 +424,7 @@ fn generated_cfg_and_source_unavailable_items_are_not_exact() {
     assert_eq!(
         resolve_rust_item_subject(
             &inventory(RustItemInventoryStatusV1::Complete, vec![cfg]),
-            &RustItemSelectorV1 {
-                module_path: Some(vec!["cfg".into()]),
-                ..selector()
-            },
+            &selector_for("cfg", &["cfg"]),
         )
         .class,
         RustItemResolutionClassV1::CfgOrFeatureUnknown
@@ -401,8 +437,8 @@ fn generated_cfg_and_source_unavailable_items_are_not_exact() {
         resolve_rust_item_subject(
             &inventory(RustItemInventoryStatusV1::Complete, vec![unavailable]),
             &RustItemSelectorV1 {
-                module_path: Some(vec!["unavailable".into()]),
-                ..selector()
+                declaration_identity: None,
+                ..selector_for("unavailable", &["unavailable"])
             },
         )
         .class,
@@ -413,13 +449,7 @@ fn generated_cfg_and_source_unavailable_items_are_not_exact() {
 #[test]
 fn root_module_is_a_valid_structural_identity() {
     let root = inventory(RustItemInventoryStatusV1::Complete, vec![item("root", &[])]);
-    let result = resolve_rust_item_subject(
-        &root,
-        &RustItemSelectorV1 {
-            module_path: Some(Vec::new()),
-            ..selector()
-        },
-    );
+    let result = resolve_rust_item_subject(&root, &selector_for("root", &[]));
     assert_eq!(result.class, RustItemResolutionClassV1::Exact);
 }
 
@@ -434,7 +464,11 @@ fn diagnostics_and_limitations_never_resolve_exactly() {
         .push("incomplete source".into());
     assert!(!diagnostic_inventory.validate());
     assert_eq!(
-        resolve_rust_item_subject(&diagnostic_inventory, &selector()).class,
+        resolve_rust_item_subject(
+            &diagnostic_inventory,
+            &selector_for("diagnostic", &["diagnostic"]),
+        )
+        .class,
         RustItemResolutionClassV1::NotProven
     );
 
@@ -443,10 +477,7 @@ fn diagnostics_and_limitations_never_resolve_exactly() {
     assert_eq!(
         resolve_rust_item_subject(
             &inventory(RustItemInventoryStatusV1::Complete, vec![limited]),
-            &RustItemSelectorV1 {
-                module_path: Some(vec!["limited".into()]),
-                ..selector()
-            },
+            &selector_for("limited", &["limited"]),
         )
         .class,
         RustItemResolutionClassV1::NotProven
@@ -464,8 +495,8 @@ fn diagnostics_and_limitations_never_resolve_exactly() {
                 vec![generated_with_context]
             ),
             &RustItemSelectorV1 {
-                module_path: Some(vec!["generated".into()]),
-                ..selector()
+                declaration_identity: None,
+                ..selector_for("generated", &["generated"])
             },
         )
         .class,

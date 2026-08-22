@@ -157,6 +157,7 @@ pub fn resolve_rust_item_subject(
         || selector.item_path.is_none()
         || selector.definition_kind.is_none()
         || selector.module_path.is_none()
+        || selector.subject_id.is_none()
         || selector.generation_identity.is_none()
     {
         return resolution(RustItemResolutionClassV1::MalformedSelector, Vec::new());
@@ -194,6 +195,14 @@ pub fn resolve_rust_item_subject(
     }
 
     if let Some(subject) = matching.first() {
+        let exact_capable = !subject.generated_or_macro_owned
+            && subject.source_available
+            && !matches!(&subject.definition_kind, RustItemDefinitionKindV1::Other(_))
+            && subject.cfg_expressions.is_empty()
+            && subject.limitations.is_empty();
+        if exact_capable && selector.declaration_identity.is_none() {
+            return resolution(RustItemResolutionClassV1::MalformedSelector, Vec::new());
+        }
         let class = if subject.generated_or_macro_owned {
             RustItemResolutionClassV1::GeneratedOrMacroOwned
         } else if !subject.source_available {
