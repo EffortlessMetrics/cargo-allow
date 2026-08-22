@@ -1,14 +1,11 @@
 kind: Fixed
 body: >-
-  Implement the #2491 A+B lock/write slice for umbrella #2487. The pre-replace
-  identity recheck that lived inline in apply_single_target is now the
-  exported assert_target_identity_for_replace authority on the
-  mutation-target module, with byte-identical #2491 diagnostics and new
-  unit coverage for symlink substitution and disappeared targets.
-  init (both the spec-system profile path and the main policy path) and
-  in-tree migrate output now resolves its mutation target through the
-  canonical MutationTarget authority and acquire alias-convergent locks via
-  acquire_for_target. The default and spec-system primary init configs use
-  the held normalized target through final write, so relative/absolute/
-  dot-dot aliases and parent retargets fail closed. Secondary bootstrap
-  files and external migrate output remain outside this slice.
+  Implement the #2491 A+B lock/write slice for umbrella #2487. The
+  pre-replace identity recheck from apply_single_target is now centralized
+  in the exported mutation-target authority, with coverage for symlink
+  substitution and disappeared targets. Default and spec-system primary
+  init configs, plus in-tree migrate output, resolve through MutationTarget,
+  acquire alias-convergent locks with acquire_for_target, and pass the held
+  normalized target through the final write. Parent retargets fail closed.
+  Secondary bootstrap files and external migrate output remain outside this
+  slice.

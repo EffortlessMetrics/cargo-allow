@@ -83,7 +83,7 @@ pub fn apply_single_target_with_target(
 fn apply_single_target_inner(
     request: SingleTargetApplyRequest<'_>,
     held_target: Option<&crate::mutation_target::MutationTarget>,
-    mut pre_write_hook: Option<&mut dyn FnMut()>,
+    pre_write_hook: Option<&mut dyn FnMut()>,
 ) -> SingleTargetApplyResponse {
     let tool_version = env!("CARGO_PKG_VERSION").to_string();
     let repository_root = portable_path(request.repository_root, request.repository_root);
@@ -198,11 +198,9 @@ fn apply_single_target_inner(
         ApplyOperation::Create
     };
 
-    // #2491: Pre-replace identity recheck — verify the target hasn't been
-    // substituted (e.g., symlink swap) between containment check and write.
-    // This catches TOCTOU races where the path is replaced with a symlink
-    // between validation and the atomic rename. The check lives on the
-    // mutation-target authority so every replace-mode writer shares it.
+    // Record containment before the final operation-specific identity checks.
+    // The lexical leaf and held-target checks below run immediately before
+    // the write.
     match assert_path_within_root(request.repository_root, request.target) {
         Ok(()) => {
             preconditions.push(PRECONDITION_CONTAINMENT);
@@ -227,6 +225,8 @@ fn apply_single_target_inner(
     }
 
     if operation == ApplyOperation::Replace {
+        // #2491: reject lexical leaf substitution and canonical target drift
+        // before replacing an existing file.
         let current_target = match held_target {
             Some(held_target) => {
                 assert_target_matches_held(held_target, &joined, request.repository_root)
@@ -254,7 +254,7 @@ fn apply_single_target_inner(
         }
     }
 
-    if let Some(hook) = pre_write_hook.as_deref_mut() {
+    if let Some(hook) = pre_write_hook {
         hook();
     }
 

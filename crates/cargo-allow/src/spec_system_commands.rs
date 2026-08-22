@@ -172,14 +172,10 @@ pub(crate) fn cmd_spec_system_init(args: SpecSystemInitCommandArgs<'_>) -> Cargo
         }
     }
     let files = spec_system_bootstrap_files(config_path, legacy_compatibility);
-    let primary_path = files.first().map(|file| file.path.clone());
-
-    for file in files {
+    for (index, file) in files.into_iter().enumerate() {
         let path = root_relative_path(&root, &file.path);
         let display = root_relative_display(&root, &path);
-        let is_primary = primary_path
-            .as_deref()
-            .is_some_and(|primary| primary == file.path.as_path());
+        let is_primary = index == 0;
         if args.dry_run {
             let action = if path.exists() && args.force {
                 "would overwrite"
