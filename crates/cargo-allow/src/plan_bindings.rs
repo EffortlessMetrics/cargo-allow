@@ -225,6 +225,8 @@ pub(crate) fn selector_values(selector: &Selector) -> BTreeMap<String, Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use allow_inventory::{Inventory, InventoryCompleteness, InventorySource};
+    use std::path::PathBuf;
 
     #[test]
     fn inaccessible_path_changes_inventory_identity() {

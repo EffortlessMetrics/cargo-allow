@@ -87,8 +87,8 @@ normalization and backslash folding apply during matching.
 `InventoryCompleteness` precedence (`src/lib.rs`):
 
 1. `Fallback` — git failed; the result came from the filesystem walk.
-2. `Partial` — any of `deleted_tracked`, `submodule_paths`, or
-   `skipped_paths` is non-empty.
+2. `Partial` — any of `deleted_tracked`, `submodule_paths`,
+   `inaccessible_paths`, or `skipped_paths` is non-empty.
 3. `Scoped` — the `ignored` or `generated` option lists are non-empty. The
    default options carry ignore globs, so default-option inventories report
    `Scoped`, never `Complete`.
@@ -104,9 +104,10 @@ Ordinary worktree checks record the inventory completeness and diagnostics in
 their report; `Partial` or `Fallback` does not fail that check solely because of
 the completeness value. In staged `check --mode no-new`, `Partial` inventory
 does block the check (`crates/cargo-allow/src/check.rs`) until the partial
-condition is resolved, such as by restoring/removing a deleted tracked path or
-removing the submodule condition. Git-backed submodule and deleted-but-tracked
-paths can produce `Partial`. During filesystem fallback, skipped paths are
+condition is resolved, such as by restoring/removing a deleted tracked path,
+removing the submodule condition, or resolving an inaccessible path. Git-backed
+submodule, deleted-but-tracked, and inaccessible paths can produce `Partial`.
+During filesystem fallback, skipped paths are
 disclosed in `skipped_paths`, but completeness remains `Fallback` because
 `git_error` takes precedence. `Scoped` is surfaced as scope metadata rather
 than a completeness failure.

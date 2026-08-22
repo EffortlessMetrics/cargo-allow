@@ -114,17 +114,13 @@ pub(crate) fn default_source_inventory(root: &Path) -> SnapshotResult<SourceInve
     files.retain(|path| !source_inventory_path_is_ignored(path));
     files.sort();
     files.dedup();
-    let completeness = if git_error.is_some() {
-        SourceInventoryCompleteness::Fallback
-    } else if !deleted_tracked.is_empty()
-        || !submodule_paths.is_empty()
-        || !inaccessible_paths.is_empty()
-        || !skipped_paths.is_empty()
-    {
-        SourceInventoryCompleteness::Partial
-    } else {
-        SourceInventoryCompleteness::Scoped
-    };
+    let completeness = source_inventory_completeness(
+        git_error.is_some(),
+        &deleted_tracked,
+        &submodule_paths,
+        &inaccessible_paths,
+        &skipped_paths,
+    );
     Ok(SourceInventory {
         files,
         source,
@@ -180,6 +176,26 @@ fn classify_tracked_files(
     files: Vec<PathBuf>,
 ) -> (Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>) {
     classify_tracked_files_with_metadata(root, files, |path| fs::metadata(path))
+}
+
+fn source_inventory_completeness(
+    git_failed: bool,
+    deleted_tracked: &[PathBuf],
+    submodule_paths: &[PathBuf],
+    inaccessible_paths: &[PathBuf],
+    skipped_paths: &[PathBuf],
+) -> SourceInventoryCompleteness {
+    if git_failed {
+        SourceInventoryCompleteness::Fallback
+    } else if !deleted_tracked.is_empty()
+        || !submodule_paths.is_empty()
+        || !inaccessible_paths.is_empty()
+        || !skipped_paths.is_empty()
+    {
+        SourceInventoryCompleteness::Partial
+    } else {
+        SourceInventoryCompleteness::Scoped
+    }
 }
 
 fn classify_tracked_files_with_metadata<F>(
@@ -414,6 +430,30 @@ mod tests {
         assert_eq!(inaccessible, [PathBuf::from("blocked.rs")]);
         fs::remove_dir_all(root).map_err(|error| error.to_string())?;
         Ok(())
+    }
+
+    #[test]
+    fn inaccessible_paths_are_partial_but_git_failure_is_fallback() {
+        assert_eq!(
+            super::source_inventory_completeness(
+                false,
+                &[],
+                &[],
+                &[PathBuf::from("blocked.rs")],
+                &[]
+            ),
+            SourceInventoryCompleteness::Partial
+        );
+        assert_eq!(
+            super::source_inventory_completeness(
+                true,
+                &[],
+                &[],
+                &[PathBuf::from("blocked.rs")],
+                &[]
+            ),
+            SourceInventoryCompleteness::Fallback
+        );
     }
 
     #[test]
