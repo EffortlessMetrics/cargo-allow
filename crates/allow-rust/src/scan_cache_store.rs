@@ -156,6 +156,15 @@ impl ScanCacheStore {
         injected_temp: Option<&Path>,
         wait_hook: Option<&dyn Fn()>,
     ) -> bool {
+        self.flush_with_test_hooks(injected_temp, wait_hook, None)
+    }
+
+    fn flush_with_test_hooks(
+        &mut self,
+        injected_temp: Option<&Path>,
+        wait_hook: Option<&dyn Fn()>,
+        temp_sync_hook: Option<&dyn Fn()>,
+    ) -> bool {
         if !self.writable
             || path_has_symlink_component(&self.dir)
             || path_is_unsafe(&self.store_path())
@@ -194,6 +203,9 @@ impl ScanCacheStore {
         if write.is_err() {
             let _ = std::fs::remove_file(&tmp);
             return false;
+        }
+        if let Some(temp_sync_hook) = temp_sync_hook {
+            temp_sync_hook();
         }
         // std::fs::rename does not replace an existing destination on
         // Windows; drop the previous store first. The cache is advisory, so
@@ -1059,3 +1071,7 @@ mod tests {
         Ok(())
     }
 }
+
+#[cfg(test)]
+#[path = "scan_cache_process_tests.rs"]
+mod process_tests;
