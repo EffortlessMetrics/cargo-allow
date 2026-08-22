@@ -613,8 +613,9 @@ fn apply_receipt_run_metadata<'a>(
 /// `git_sha` resolves `HEAD` inside `root`; any failure (not a repository, git
 /// missing, detached/empty state) leaves it absent rather than failing the scan.
 /// `policy_digest` is the versioned SHA-256 of the exact active ledger bytes
-/// loaded and evaluated for the scan; it is absent when no policy was
-/// successfully evaluated (including unreadable policy bytes).
+/// loaded and evaluated for a successful check. Generic error receipts omit it
+/// because the error writer does not retain evaluated provenance; absence does
+/// not prove that evaluation never began.
 struct ReceiptProvenanceBindings {
     git_sha: Option<String>,
     policy_digest: Option<String>,
