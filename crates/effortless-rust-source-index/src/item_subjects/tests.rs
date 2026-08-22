@@ -220,17 +220,36 @@ fn exact_selector_binds_target_identity() {
         },
     );
     assert_eq!(exact.class, RustItemResolutionClassV1::Exact);
+    let stale = inventory(
+        RustItemInventoryStatusV1::Complete,
+        vec![item("stale", &["same"])],
+    );
+    let mismatch = resolve_rust_item_subject(
+        &stale,
+        &RustItemSelectorV1 {
+            generation_identity: Some("generation:2".into()),
+            ..selector()
+        },
+    );
+    assert_eq!(
+        mismatch.class,
+        RustItemResolutionClassV1::MissingWithinCompleteScope
+    );
+}
+
+#[test]
+fn inventory_rejects_subject_generation_substitution() {
     let mut stale = inventory(
         RustItemInventoryStatusV1::Complete,
         vec![item("stale", &["same"])],
     );
-    if let Some(subject) = stale.subjects.iter_mut().next() {
+    if let Some(subject) = stale.subjects.first_mut() {
         subject.generation_identity = "generation:2".into();
     }
-    let mismatch = resolve_rust_item_subject(&stale, &selector());
+    assert!(!stale.validate());
     assert_eq!(
-        mismatch.class,
-        RustItemResolutionClassV1::MissingWithinCompleteScope
+        resolve_rust_item_subject(&stale, &selector()).class,
+        RustItemResolutionClassV1::NotProven
     );
 }
 

@@ -277,6 +277,7 @@ impl RustItemInventoryV1 {
             subject.validate()
                 && subject.repository_id == self.repository_id
                 && subject.snapshot_id == self.snapshot_id
+                && subject.generation_identity == self.generation_identity
                 && subject_ids.insert(&subject.subject_id)
                 && subject
                     .lint_declarations
