@@ -415,6 +415,122 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn apply_reports_read_failure_without_mutating_target() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let root = TempRoot::new("apply-read-failure")?;
+        let target = root.path().join("policy");
+        fs::create_dir_all(&target)?;
+
+        let response = apply_single_target(SingleTargetApplyRequest {
+            repository_root: root.path(),
+            target: Path::new("policy"),
+            contents: "replacement\n",
+            caller_reference: Some("test:read-failure"),
+            lock_identity: None,
+            mode: SingleTargetApplyMode::AtomicReplace,
+        });
+        assert!(!response.receipt.applied());
+        assert!(
+            response
+                .receipt
+                .error_detail
+                .as_deref()
+                .is_some_and(|detail| detail.contains("failed to read"))
+        );
+        assert!(target.is_dir());
+        Ok(())
+    }
+
+    #[test]
+    fn apply_reports_write_failure_when_parent_is_a_file() -> Result<(), Box<dyn std::error::Error>>
+    {
+        let root = TempRoot::new("apply-write-failure")?;
+        let parent = root.path().join("not-a-directory");
+        fs::write(&parent, "sentinel\n")?;
+
+        let response = apply_single_target(SingleTargetApplyRequest {
+            repository_root: root.path(),
+            target: Path::new("not-a-directory/allow.toml"),
+            contents: "replacement\n",
+            caller_reference: Some("test:write-failure"),
+            lock_identity: None,
+            mode: SingleTargetApplyMode::AtomicReplace,
+        });
+        assert!(!response.receipt.applied());
+        assert!(
+            response
+                .receipt
+                .error_detail
+                .as_deref()
+                .is_some_and(|detail| detail.contains("failed to create"))
+        );
+        assert_eq!(fs::read_to_string(parent)?, "sentinel\n");
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn apply_rejects_parent_symlink_before_replacing_foreign_sentinel()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = TempRoot::new("apply-parent-symlink")?;
+        let outside = TempRoot::new("apply-parent-symlink-outside")?;
+        let foreign = outside.path().join("allow.toml");
+        fs::write(&foreign, "foreign sentinel\n")?;
+        std::os::unix::fs::symlink(outside.path(), root.path().join("policy"))?;
+
+        let response = apply_single_target(SingleTargetApplyRequest {
+            repository_root: root.path(),
+            target: Path::new("policy/allow.toml"),
+            contents: "replacement\n",
+            caller_reference: Some("test:parent-symlink"),
+            lock_identity: None,
+            mode: SingleTargetApplyMode::AtomicReplace,
+        });
+        assert!(!response.receipt.applied());
+        assert!(
+            response
+                .receipt
+                .error_detail
+                .as_deref()
+                .is_some_and(|detail| detail.contains("outside"))
+        );
+        assert_eq!(fs::read_to_string(foreign)?, "foreign sentinel\n");
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn apply_rejects_symlink_target_before_replacing_foreign_sentinel()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = TempRoot::new("apply-target-symlink")?;
+        let foreign = root.path().join("foreign.toml");
+        let target = root.path().join("policy/allow.toml");
+        fs::create_dir_all(target.parent().ok_or("target needs a parent")?)?;
+        fs::write(&foreign, "foreign sentinel\n")?;
+        std::os::unix::fs::symlink(&foreign, &target)?;
+
+        let response = apply_single_target(SingleTargetApplyRequest {
+            repository_root: root.path(),
+            target: Path::new("policy/allow.toml"),
+            contents: "replacement\n",
+            caller_reference: Some("test:target-symlink"),
+            lock_identity: None,
+            mode: SingleTargetApplyMode::AtomicReplace,
+        });
+        assert!(!response.receipt.applied());
+        assert!(
+            response
+                .receipt
+                .error_detail
+                .as_deref()
+                .is_some_and(|detail| detail.contains("is a symlink"))
+        );
+        assert_eq!(fs::read_to_string(foreign)?, "foreign sentinel\n");
+        assert!(fs::symlink_metadata(target)?.file_type().is_symlink());
+        Ok(())
+    }
+
     struct TempRoot {
         path: PathBuf,
     }

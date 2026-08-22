@@ -150,6 +150,36 @@ fn out_of_tree_target_is_classified() -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(unix)]
+#[test]
+fn parent_symlink_target_is_classified_outside_source_tree() -> Result<(), String> {
+    let repo = make_temp_repo()?;
+    let outside = make_temp_repo()?;
+    let policy_dir = repo.join("policy");
+    let foreign = outside.join("allow.toml");
+    fs::write(&foreign, "foreign sentinel").map_err(|e| e.to_string())?;
+    std::os::unix::fs::symlink(&outside, &policy_dir).map_err(|e| e.to_string())?;
+
+    let target = resolve_mutation_target(Path::new("policy/allow.toml"), &repo)
+        .map_err(|e| e.to_string())?;
+    assert_eq!(
+        target.ownership(),
+        MutationTargetOwnership::OutsideSourceTree,
+        "a symlinked parent must not make a foreign target source-tree owned"
+    );
+    assert_eq!(
+        target.normalized_absolute(),
+        foreign.canonicalize().map_err(|e| e.to_string())?
+    );
+    assert_eq!(
+        fs::read_to_string(&foreign).map_err(|e| e.to_string())?,
+        "foreign sentinel"
+    );
+    fs::remove_dir_all(&repo).map_err(|e| e.to_string())?;
+    fs::remove_dir_all(&outside).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[test]
 fn distinct_files_have_distinct_fingerprints() -> Result<(), String> {
     let repo = make_temp_repo()?;
