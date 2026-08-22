@@ -276,9 +276,9 @@ fn write_external_migrate_output_with_hook(
     if let Some(hook) = hook {
         hook();
     }
-    assert_external_output_leaf_is_writable(requested, force)?;
     assert_target_matches_held(held_target, requested, repository_root)
         .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+    assert_external_output_leaf_is_writable(requested, force)?;
     write_file_no_overwrite(held_target.normalized_absolute(), contents, force)
         .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)
 }
