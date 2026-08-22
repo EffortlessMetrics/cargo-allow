@@ -4203,8 +4203,8 @@ family = "documentation"
 path = "crates/allow-inventory/CHARACTERIZATION.md"
 owner = "core/inventory"
 classification = "inventory_characterization_doc"
-reason = "Characterization doc stating exactly what the source-tree inventory includes and excludes; closes the #1783 umbrella acceptance alongside the fixture-parity test."
-evidence = ["issue:1783", "test:fixture_inventory_matches_git_ls_files_expectations", "test:submodule_fixture_reports_partial_completeness_with_disclosure"]
+reason = "Characterization doc stating exactly what the source-tree inventory includes and excludes for the landed inventory slice; the inaccessible-stat gap remains tracked separately under #3679."
+evidence = ["issue:1783", "test:fixture_inventory_matches_git_ls_files_expectations", "test:submodule_fixture_reports_partial_completeness_with_disclosure", "issue:3679"]
 created = "2026-08-22"
 review_after = "2027-02-22"
 

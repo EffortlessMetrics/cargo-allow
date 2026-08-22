@@ -68,6 +68,21 @@ fn run_git<S: AsRef<OsStr> + std::fmt::Debug>(root: &Path, args: &[S]) {
     );
 }
 
+fn configure_empty_excludes_file(root: &Path) {
+    let excludes = root.join(".git").join("empty-excludes");
+    write_file(excludes.clone(), "");
+    let excludes = excludes.to_string_lossy().into_owned();
+    run_git(root, &["config", "core.excludesFile", excludes.as_str()]);
+}
+
+fn submodule_capability_unsupported(stderr: &str) -> bool {
+    let stderr = stderr.to_ascii_lowercase();
+    stderr.contains("'submodule' is not a git command")
+        || stderr.contains("unknown subcommand")
+        || stderr.contains("submodule is not supported")
+        || stderr.contains("does not support submodule")
+}
+
 fn write_file(path: PathBuf, contents: &str) {
     fs::write(&path, contents)
         .unwrap_or_else(|err| std::panic::panic_any(format!("write {}: {err}", path.display())));
@@ -169,6 +184,7 @@ fn build_parity_fixture(label: &str) -> Fixture {
     }
 
     run_git(&root, &["init"]);
+    configure_empty_excludes_file(&root);
     run_git(&root, &["config", "user.email", "test@example.com"]);
     run_git(&root, &["config", "user.name", "Test"]);
     run_git(
@@ -294,6 +310,7 @@ fn submodule_fixture_reports_partial_completeness_with_disclosure() {
 
     write_file(child.join("inner-lib.rs"), "pub fn inner() {}\n");
     run_git(&child, &["init"]);
+    configure_empty_excludes_file(&child);
     run_git(&child, &["config", "user.email", "test@example.com"]);
     run_git(&child, &["config", "user.name", "Test"]);
     run_git(&child, &["add", "inner-lib.rs"]);
@@ -301,6 +318,7 @@ fn submodule_fixture_reports_partial_completeness_with_disclosure() {
 
     write_file(parent.join("README.md"), "# parent\n");
     run_git(&parent, &["init"]);
+    configure_empty_excludes_file(&parent);
     run_git(&parent, &["config", "user.email", "test@example.com"]);
     run_git(&parent, &["config", "user.name", "Test"]);
     run_git(&parent, &["add", "README.md"]);
@@ -308,11 +326,9 @@ fn submodule_fixture_reports_partial_completeness_with_disclosure() {
 
     // Local-path submodule adds require the file protocol opt-in since the
     // git 2.38.1 security release.
-    let child_url = child
-        .canonicalize()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("canonicalize child repo: {err}")))
-        .to_string_lossy()
-        .replace('\\', "/");
+    // Avoid the Windows `\\?\` canonical path prefix: Git treats it as a
+    // different URL and reports a misleading repository-not-found error.
+    let child_url = child.to_string_lossy().replace('\\', "/");
     let added = Command::new("git")
         .arg("-c")
         .arg("protocol.file.allow=always")
@@ -325,13 +341,20 @@ fn submodule_fixture_reports_partial_completeness_with_disclosure() {
         .output();
     if let Ok(output) = added {
         if !output.status.success() {
-            eprintln!(
-                "skipped: git submodule add failed environmentally: {}",
-                String::from_utf8_lossy(&output.stderr).trim()
-            );
-            drop_root_best_effort(&parent);
-            drop_root_best_effort(&child);
-            return;
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            if submodule_capability_unsupported(&stderr) {
+                eprintln!(
+                    "skipped: submodule capability unavailable: {}",
+                    stderr.trim()
+                );
+                drop_root_best_effort(&parent);
+                drop_root_best_effort(&child);
+                return;
+            }
+            std::panic::panic_any(format!(
+                "git submodule add failed unexpectedly: {}",
+                stderr.trim()
+            ));
         }
     } else {
         eprintln!("skipped: git subprocess unavailable for submodule lane");
@@ -366,4 +389,17 @@ fn submodule_fixture_reports_partial_completeness_with_disclosure() {
 
     drop_root_best_effort(&parent);
     drop_root_best_effort(&child);
+}
+
+#[test]
+fn submodule_skip_requires_a_known_unsupported_capability() {
+    assert!(submodule_capability_unsupported(
+        "git: 'submodule' is not a git command"
+    ));
+    assert!(submodule_capability_unsupported(
+        "submodule is not supported"
+    ));
+    assert!(!submodule_capability_unsupported(
+        "fatal: repository setup failed"
+    ));
 }

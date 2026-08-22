@@ -40,7 +40,7 @@ The final list is sorted, deduplicated, then filtered through the
 
 ## Filesystem fallback walk
 
-Used only when git is unavailable, or when explicitly scanning outside a
+Used after any `git ls-files*()` error, or when explicitly scanning outside a
 worktree. The walk:
 
 - Treats an unreadable root as a hard error; unreadable subdirectories are
@@ -53,9 +53,11 @@ worktree. The walk:
 - Prunes `.git` directories at any depth by name.
 - Prunes a `target` directory only when it is a direct child of the inventory
   root; nested directories named `target` (e.g. `src/target/`) are inventoried.
-- Stops at a depth limit of 64 segments (`INVENTORY_MAX_DEPTH`) and an entry
-  limit of 250,000 files (`INVENTORY_MAX_ENTRIES`), recording synthetic skip
-  markers in `skipped_paths` rather than growing without bound (#1917).
+- Stops descending when directory depth exceeds 64 (`INVENTORY_MAX_DEPTH`),
+  while files below a directory at depth 64 may still be included with 65
+  path components. It also enforces an entry limit of 250,000 files
+  (`INVENTORY_MAX_ENTRIES`), recording synthetic skip markers in
+  `skipped_paths` rather than growing without bound (#1917).
 
 `skipped_paths` is populated only by this walk; git-backed sources always
 return it empty.
