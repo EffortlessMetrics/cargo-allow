@@ -10,7 +10,10 @@ use super::{
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct RustItemSelectorV1 {
+    pub repository_id: Option<String>,
+    pub snapshot_id: Option<String>,
     pub package: Option<String>,
+    pub crate_name: Option<String>,
     pub target_kind: Option<RustItemTargetKindV1>,
     pub target_name: Option<String>,
     pub module_path: Option<Vec<String>>,
@@ -18,12 +21,16 @@ pub struct RustItemSelectorV1 {
     pub definition_kind: Option<RustItemDefinitionKindV1>,
     pub source_path: Option<String>,
     pub declaration_identity: Option<String>,
+    pub subject_id: Option<RustItemSubjectIdV1>,
     pub generation_identity: Option<String>,
 }
 
 impl RustItemSelectorV1 {
     pub fn is_empty(&self) -> bool {
-        self.package.is_none()
+        self.repository_id.is_none()
+            && self.snapshot_id.is_none()
+            && self.package.is_none()
+            && self.crate_name.is_none()
             && self.target_kind.is_none()
             && self.target_name.is_none()
             && self.module_path.is_none()
@@ -31,23 +38,41 @@ impl RustItemSelectorV1 {
             && self.definition_kind.is_none()
             && self.source_path.is_none()
             && self.declaration_identity.is_none()
+            && self.subject_id.is_none()
             && self.generation_identity.is_none()
     }
 
     fn is_malformed(&self) -> bool {
-        self.item_path.as_ref().is_some_and(|path| path.is_empty())
-            || self
-                .module_path
-                .as_ref()
-                .is_some_and(|path| path.is_empty())
+        self.item_path.as_ref().is_some_and(|path| {
+            path.is_empty() || path.iter().any(|segment| segment.trim().is_empty())
+        }) || self
+            .module_path
+            .as_ref()
+            .is_some_and(|path| path.iter().any(|segment| segment.trim().is_empty()))
             || self
                 .package
+                .as_ref()
+                .is_some_and(|value| value.trim().is_empty())
+            || self
+                .repository_id
+                .as_ref()
+                .is_some_and(|value| value.trim().is_empty())
+            || self
+                .snapshot_id
+                .as_ref()
+                .is_some_and(|value| value.trim().is_empty())
+            || self
+                .crate_name
                 .as_ref()
                 .is_some_and(|value| value.trim().is_empty())
             || self
                 .target_name
                 .as_ref()
                 .is_some_and(|value| value.trim().is_empty())
+            || self
+                .subject_id
+                .as_ref()
+                .is_some_and(|value| value.as_str().trim().is_empty())
             || self
                 .source_path
                 .as_ref()
@@ -63,7 +88,10 @@ impl RustItemSelectorV1 {
     }
 
     fn matches(&self, subject: &RustItemSubjectV1) -> bool {
-        optional_eq(self.package.as_ref(), &subject.target.package)
+        optional_eq(self.repository_id.as_ref(), &subject.repository_id)
+            && optional_eq(self.snapshot_id.as_ref(), &subject.snapshot_id)
+            && optional_eq(self.package.as_ref(), &subject.target.package)
+            && optional_eq(self.crate_name.as_ref(), &subject.target.crate_name)
             && optional_eq(self.target_kind.as_ref(), &subject.target.kind)
             && optional_eq(self.target_name.as_ref(), &subject.target.name)
             && optional_eq(self.module_path.as_ref(), &subject.module_path)
@@ -81,6 +109,7 @@ impl RustItemSelectorV1 {
                     .as_ref()
                     .is_some_and(|source| selected == &source.declaration_identity)
             })
+            && optional_eq(self.subject_id.as_ref(), &subject.subject_id)
             && optional_eq(
                 self.generation_identity.as_ref(),
                 &subject.generation_identity,
@@ -119,14 +148,24 @@ pub fn resolve_rust_item_subject(
     if selector.is_empty() || selector.is_malformed() {
         return resolution(RustItemResolutionClassV1::MalformedSelector, Vec::new());
     }
-    if selector.item_path.is_none()
+    if selector.repository_id.is_none()
+        || selector.snapshot_id.is_none()
+        || selector.package.is_none()
+        || selector.crate_name.is_none()
+        || selector.target_kind.is_none()
+        || selector.target_name.is_none()
+        || selector.item_path.is_none()
         || selector.definition_kind.is_none()
         || selector.module_path.is_none()
         || selector.generation_identity.is_none()
     {
         return resolution(RustItemResolutionClassV1::MalformedSelector, Vec::new());
     }
-    if !inventory.validate() {
+    if !inventory.validate()
+        || selector.repository_id.as_deref() != Some(&inventory.repository_id)
+        || selector.snapshot_id.as_deref() != Some(&inventory.snapshot_id)
+        || selector.generation_identity.as_deref() != Some(&inventory.generation_identity)
+    {
         return resolution(RustItemResolutionClassV1::NotProven, Vec::new());
     }
     if inventory.status != RustItemInventoryStatusV1::Complete {
@@ -163,6 +202,8 @@ pub fn resolve_rust_item_subject(
             RustItemResolutionClassV1::UnsupportedDefinitionKind
         } else if !subject.cfg_expressions.is_empty() {
             RustItemResolutionClassV1::CfgOrFeatureUnknown
+        } else if !subject.limitations.is_empty() {
+            RustItemResolutionClassV1::NotProven
         } else {
             RustItemResolutionClassV1::Exact
         };

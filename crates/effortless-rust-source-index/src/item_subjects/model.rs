@@ -235,6 +235,10 @@ impl RustItemSubjectV1 {
                 .iter()
                 .all(|expression| !expression.trim().is_empty())
             && self
+                .limitations
+                .iter()
+                .all(|limitation| !limitation.trim().is_empty())
+            && self
                 .lint_declarations
                 .iter()
                 .all(|declaration| declaration.validate_for(&self.subject_id))
@@ -267,6 +271,11 @@ impl RustItemInventoryV1 {
             || self.repository_id.trim().is_empty()
             || self.snapshot_id.trim().is_empty()
             || self.generation_identity.trim().is_empty()
+            || self
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.trim().is_empty())
+            || (self.status == RustItemInventoryStatusV1::Complete && !self.diagnostics.is_empty())
         {
             return false;
         }

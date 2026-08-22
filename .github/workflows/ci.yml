@@ -593,6 +593,7 @@ jobs:
             --output-dir target/cargo-allow \
             -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit \
             -p proof-protocol -p proof-orchestrator -p cargo-proof \
+            -p effortless-rust-source-index \
             -- --test-threads 1
 
       - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0

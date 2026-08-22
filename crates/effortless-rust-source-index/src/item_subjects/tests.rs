@@ -74,6 +74,12 @@ fn inventory(
 
 fn selector() -> RustItemSelectorV1 {
     RustItemSelectorV1 {
+        repository_id: Some("repo".into()),
+        snapshot_id: Some("tree:abc".into()),
+        package: Some("demo".into()),
+        crate_name: Some("demo".into()),
+        target_kind: Some(RustItemTargetKindV1::Library),
+        target_name: Some("demo".into()),
         item_path: Some(vec!["run".into()]),
         module_path: Some(vec!["left".into()]),
         definition_kind: Some(RustItemDefinitionKindV1::Function),
@@ -109,6 +115,12 @@ fn exact_resolution_requires_structural_identity() {
             item_path: Some(vec!["run".into()]),
             definition_kind: Some(RustItemDefinitionKindV1::Function),
             generation_identity: Some("generation:1".into()),
+            repository_id: Some("repo".into()),
+            snapshot_id: Some("tree:abc".into()),
+            package: Some("demo".into()),
+            crate_name: Some("demo".into()),
+            target_kind: Some(RustItemTargetKindV1::Library),
+            target_name: Some("demo".into()),
             ..Default::default()
         },
     );
@@ -121,6 +133,12 @@ fn inventory_status_controls_missing_authority() {
     let partial = resolve_rust_item_subject(
         &inventory(RustItemInventoryStatusV1::Partial, Vec::new()),
         &RustItemSelectorV1 {
+            repository_id: Some("repo".into()),
+            snapshot_id: Some("tree:abc".into()),
+            package: Some("demo".into()),
+            crate_name: Some("demo".into()),
+            target_kind: Some(RustItemTargetKindV1::Library),
+            target_name: Some("demo".into()),
             item_path: Some(vec!["missing".into()]),
             module_path: Some(vec!["missing".into()]),
             definition_kind: Some(RustItemDefinitionKindV1::Function),
@@ -133,6 +151,12 @@ fn inventory_status_controls_missing_authority() {
     let complete = resolve_rust_item_subject(
         &inventory(RustItemInventoryStatusV1::Complete, Vec::new()),
         &RustItemSelectorV1 {
+            repository_id: Some("repo".into()),
+            snapshot_id: Some("tree:abc".into()),
+            package: Some("demo".into()),
+            crate_name: Some("demo".into()),
+            target_kind: Some(RustItemTargetKindV1::Library),
+            target_name: Some("demo".into()),
             item_path: Some(vec!["missing".into()]),
             module_path: Some(vec!["missing".into()]),
             definition_kind: Some(RustItemDefinitionKindV1::Function),
@@ -184,17 +208,38 @@ fn container_links_require_existing_noncyclic_subjects() {
 
 #[test]
 fn malformed_selector_fields_fail_closed() {
-    let result = resolve_rust_item_subject(
-        &inventory(
-            RustItemInventoryStatusV1::Complete,
-            vec![item("one", &["one"])],
-        ),
-        &RustItemSelectorV1 {
+    let malformed = [
+        RustItemSelectorV1 {
             item_path: Some(Vec::new()),
-            ..Default::default()
+            ..selector()
         },
+        RustItemSelectorV1 {
+            item_path: Some(vec![" ".into()]),
+            ..selector()
+        },
+        RustItemSelectorV1 {
+            module_path: Some(vec!["".into()]),
+            ..selector()
+        },
+        RustItemSelectorV1 {
+            package: Some(" ".into()),
+            ..selector()
+        },
+        RustItemSelectorV1 {
+            source_path: Some(String::new()),
+            ..selector()
+        },
+    ];
+    let inventory = inventory(
+        RustItemInventoryStatusV1::Complete,
+        vec![item("one", &["one"])],
     );
-    assert_eq!(result.class, RustItemResolutionClassV1::MalformedSelector);
+    for selector in malformed {
+        assert_eq!(
+            resolve_rust_item_subject(&inventory, &selector).class,
+            RustItemResolutionClassV1::MalformedSelector
+        );
+    }
 }
 
 #[test]
@@ -209,13 +254,23 @@ fn exact_selector_binds_target_identity() {
             binary
         }],
     );
-    let under_targeted = resolve_rust_item_subject(&candidate, &selector());
-    assert_eq!(under_targeted.class, RustItemResolutionClassV1::Ambiguous);
+    let under_targeted = resolve_rust_item_subject(
+        &candidate,
+        &RustItemSelectorV1 {
+            target_name: None,
+            ..selector()
+        },
+    );
+    assert_eq!(
+        under_targeted.class,
+        RustItemResolutionClassV1::MalformedSelector
+    );
     let exact = resolve_rust_item_subject(
         &candidate,
         &RustItemSelectorV1 {
             target_kind: Some(RustItemTargetKindV1::Binary),
             target_name: Some("demo-bin".into()),
+            crate_name: Some("demo".into()),
             ..selector()
         },
     );
@@ -231,10 +286,7 @@ fn exact_selector_binds_target_identity() {
             ..selector()
         },
     );
-    assert_eq!(
-        mismatch.class,
-        RustItemResolutionClassV1::MissingWithinCompleteScope
-    );
+    assert_eq!(mismatch.class, RustItemResolutionClassV1::NotProven);
 }
 
 #[test]
@@ -251,6 +303,64 @@ fn inventory_rejects_subject_generation_substitution() {
         resolve_rust_item_subject(&stale, &selector()).class,
         RustItemResolutionClassV1::NotProven
     );
+}
+
+#[test]
+fn selector_inventory_identity_mismatch_is_not_proven() {
+    let inventory = inventory(
+        RustItemInventoryStatusV1::Complete,
+        vec![item("current", &["left"])],
+    );
+    for mismatched in [
+        RustItemSelectorV1 {
+            repository_id: Some("other-repo".into()),
+            ..selector()
+        },
+        RustItemSelectorV1 {
+            snapshot_id: Some("tree:def".into()),
+            ..selector()
+        },
+        RustItemSelectorV1 {
+            generation_identity: Some("generation:2".into()),
+            ..selector()
+        },
+    ] {
+        assert_eq!(
+            resolve_rust_item_subject(&inventory, &mismatched).class,
+            RustItemResolutionClassV1::NotProven
+        );
+    }
+}
+
+#[test]
+fn one_record_target_substitution_is_never_exact() {
+    let inventory = inventory(
+        RustItemInventoryStatusV1::Complete,
+        vec![item("current", &["left"])],
+    );
+    for substituted in [
+        RustItemSelectorV1 {
+            package: Some("other-package".into()),
+            ..selector()
+        },
+        RustItemSelectorV1 {
+            crate_name: Some("other_crate".into()),
+            ..selector()
+        },
+        RustItemSelectorV1 {
+            target_kind: Some(RustItemTargetKindV1::Binary),
+            ..selector()
+        },
+        RustItemSelectorV1 {
+            target_name: Some("other-target".into()),
+            ..selector()
+        },
+    ] {
+        assert_ne!(
+            resolve_rust_item_subject(&inventory, &substituted).class,
+            RustItemResolutionClassV1::Exact
+        );
+    }
 }
 
 #[test]
@@ -297,6 +407,69 @@ fn generated_cfg_and_source_unavailable_items_are_not_exact() {
         )
         .class,
         RustItemResolutionClassV1::SourceUnavailable
+    );
+}
+
+#[test]
+fn root_module_is_a_valid_structural_identity() {
+    let root = inventory(RustItemInventoryStatusV1::Complete, vec![item("root", &[])]);
+    let result = resolve_rust_item_subject(
+        &root,
+        &RustItemSelectorV1 {
+            module_path: Some(Vec::new()),
+            ..selector()
+        },
+    );
+    assert_eq!(result.class, RustItemResolutionClassV1::Exact);
+}
+
+#[test]
+fn diagnostics_and_limitations_never_resolve_exactly() {
+    let mut diagnostic_inventory = inventory(
+        RustItemInventoryStatusV1::Complete,
+        vec![item("diagnostic", &["diagnostic"])],
+    );
+    diagnostic_inventory
+        .diagnostics
+        .push("incomplete source".into());
+    assert!(!diagnostic_inventory.validate());
+    assert_eq!(
+        resolve_rust_item_subject(&diagnostic_inventory, &selector()).class,
+        RustItemResolutionClassV1::NotProven
+    );
+
+    let mut limited = item("limited", &["limited"]);
+    limited.limitations.push("unresolved cfg".into());
+    assert_eq!(
+        resolve_rust_item_subject(
+            &inventory(RustItemInventoryStatusV1::Complete, vec![limited]),
+            &RustItemSelectorV1 {
+                module_path: Some(vec!["limited".into()]),
+                ..selector()
+            },
+        )
+        .class,
+        RustItemResolutionClassV1::NotProven
+    );
+
+    let mut generated_with_context = item("generated", &["generated"]);
+    generated_with_context.generated_or_macro_owned = true;
+    generated_with_context
+        .limitations
+        .push("macro expansion is not source-owned".into());
+    assert_eq!(
+        resolve_rust_item_subject(
+            &inventory(
+                RustItemInventoryStatusV1::Complete,
+                vec![generated_with_context]
+            ),
+            &RustItemSelectorV1 {
+                module_path: Some(vec!["generated".into()]),
+                ..selector()
+            },
+        )
+        .class,
+        RustItemResolutionClassV1::GeneratedOrMacroOwned
     );
 }
 
