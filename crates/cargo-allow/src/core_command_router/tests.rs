@@ -195,6 +195,86 @@ fn summary_sidecar_is_structured_and_rejects_output_collision() -> Result<(), St
     fs::remove_dir_all(root).map_err(|error| error.to_string())
 }
 
+#[test]
+fn summary_sidecar_rejects_canonical_alias_collision_before_detail_write() -> Result<(), String> {
+    let root = temp_root("alias-sidecar").map_err(|error| error.to_string())?;
+    let detail = root.join("report.json");
+    fs::write(&detail, "detail sentinel\n").map_err(|error| error.to_string())?;
+    let summary_alias = root.join(".").join("report.json");
+    let config = SummaryOutputConfig::new(
+        summary_alias,
+        vec![(ConflictBase::WorkingDirectory, detail.clone())],
+    );
+    let error = print_report_with_summary_config(
+        report_args(
+            &root,
+            Some(&detail),
+            OutputFormat::Json,
+            &[],
+            &[],
+            crate::InventoryFacts::scanned(InventorySource::GitTracked, 1),
+        ),
+        Some(&config),
+    )
+    .err()
+    .ok_or_else(|| "canonical alias collision should fail".to_string())?;
+    require(
+        error.kind() == CargoAllowErrorKind::Usage,
+        format!(
+            "alias collision used the wrong error kind: {}",
+            error.code()
+        ),
+    )?;
+    require(
+        fs::read_to_string(&detail).map_err(|error| error.to_string())? == "detail sentinel\n",
+        "alias collision changed the detail sentinel",
+    )?;
+    fs::remove_dir_all(root).map_err(|error| error.to_string())
+}
+
+#[cfg(unix)]
+#[test]
+fn summary_sidecar_rejects_parent_symlink_escape_before_emit() -> Result<(), String> {
+    use std::os::unix::fs::symlink;
+
+    let root = temp_root("symlink-sidecar").map_err(|error| error.to_string())?;
+    let foreign = temp_root("symlink-sidecar-foreign").map_err(|error| error.to_string())?;
+    let sentinel = foreign.join("sentinel.txt");
+    fs::write(&sentinel, "foreign sentinel\n").map_err(|error| error.to_string())?;
+    let link_parent = root.join("out");
+    symlink(&foreign, &link_parent).map_err(|error| error.to_string())?;
+    let config = SummaryOutputConfig::new(link_parent.join("summary.json"), Vec::new());
+
+    let error = print_report_with_summary_config(
+        report_args(
+            &root,
+            None,
+            OutputFormat::Json,
+            &[],
+            &[],
+            crate::InventoryFacts::scanned(InventorySource::GitTracked, 1),
+        ),
+        Some(&config),
+    )
+    .err()
+    .ok_or_else(|| "parent symlink escape should fail closed".to_string())?;
+    require(
+        error.kind() == CargoAllowErrorKind::Usage,
+        format!("symlink escape used the wrong error kind: {}", error.code()),
+    )?;
+    require(
+        fs::read_to_string(&sentinel).map_err(|error| error.to_string())? == "foreign sentinel\n",
+        "parent symlink escape changed the foreign sentinel",
+    )?;
+    require(
+        !foreign.join("summary.json").exists(),
+        "parent symlink escape emitted a foreign sidecar",
+    )?;
+    let _ = fs::remove_file(&link_parent);
+    fs::remove_dir_all(root).map_err(|error| error.to_string())?;
+    fs::remove_dir_all(foreign).map_err(|error| error.to_string())
+}
+
 /// An absolute working-directory conflict resolves to itself, so the collision
 /// must be found without consulting the process working directory. This pins the
 /// case that matters if `current_dir()` is ever unavailable: the guard must still
