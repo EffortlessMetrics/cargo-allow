@@ -166,10 +166,14 @@ pub(crate) fn cmd_spec_system_init(args: SpecSystemInitCommandArgs<'_>) -> Cargo
         }
     }
     let files = spec_system_bootstrap_files(config_path, legacy_compatibility);
+    let primary_path = files.first().map(|file| file.path.clone());
 
     for file in files {
         let path = root_relative_path(&root, &file.path);
         let display = root_relative_display(&root, &path);
+        let is_primary = primary_path
+            .as_deref()
+            .is_some_and(|primary| primary == file.path.as_path());
         if args.dry_run {
             let action = if path.exists() && args.force {
                 "would overwrite"
@@ -194,7 +198,7 @@ pub(crate) fn cmd_spec_system_init(args: SpecSystemInitCommandArgs<'_>) -> Cargo
             })?;
         }
         if let Some(held_target) = args.held_target
-            && display == held_target.repo_relative_display()
+            && is_primary
         {
             // Compare by requested repository-relative identity rather than
             // the newly resolved absolute path, then write through the same
@@ -205,7 +209,7 @@ pub(crate) fn cmd_spec_system_init(args: SpecSystemInitCommandArgs<'_>) -> Cargo
                 effortless_repo_edit::SingleTargetApplyRequest {
                     repository_root: &root,
                     target: &path,
-                    contents: file.contents,
+                    contents: &file.contents,
                     caller_reference: Some("cargo-allow:init:spec-system"),
                     lock_identity: Some(held_target.repo_relative_display().to_string()),
                     mode: if args.force {

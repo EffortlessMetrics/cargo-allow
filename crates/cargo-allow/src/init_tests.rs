@@ -500,7 +500,7 @@ fn spec_system_init_bootstraps_profile_files() {
 #[test]
 fn spec_system_init_custom_config_is_the_held_primary_target() {
     let root = init_fixture_dir();
-    let custom = PathBuf::from(".allow/profiles/custom-spec.toml");
+    let custom = PathBuf::from(".allow/profiles/../profiles/custom-spec.toml");
 
     cmd_init(&InitArgs {
         root: RootArgs {
@@ -516,7 +516,7 @@ fn spec_system_init_custom_config_is_the_held_primary_target() {
         std::panic::panic_any(format!("custom spec-system init should pass: {err}"))
     });
 
-    assert!(root.join(&custom).is_file());
+    assert!(root.join(".allow/profiles/custom-spec.toml").is_file());
     assert!(!root.join(".allow/profiles/spec-system.toml").exists());
     remove_init_fixture_dir(root);
 }
