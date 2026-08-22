@@ -3,9 +3,12 @@
 //! Most users should use [cargo-allow](https://github.com/EffortlessMetrics/cargo-allow);
 //! `rust-source-index` is an internal shared crate for structural subject facts.
 //!
-//! This crate will own package/target/module/test subject discovery and selector
-//! resolution from supplied source-tree bytes. It does not invoke Cargo, rustc,
-//! Clippy, build scripts, proc macros, or repository code execution.
+//! This crate owns package/target/module/test subject discovery and selector
+//! resolution from supplied source-tree bytes. It now also exposes the exact
+//! source-structural Rust item denominator used to join independent provider
+//! evidence without relying on path, line, symbol name, or aggregate count.
+//! It does not invoke Cargo, rustc, Clippy, build scripts, proc macros, or
+//! repository code execution.
 //!
 //! ## Product-neutrality contract (#3147)
 //!
@@ -19,6 +22,7 @@
 
 mod error;
 mod inventory;
+mod item_subjects;
 mod parity;
 mod syntax;
 mod test_subjects;
@@ -26,6 +30,14 @@ mod test_subjects;
 pub use inventory::{
     inventory_rust_test_subjects, inventory_rust_test_subjects_from_sources,
     resolve_rust_test_selector,
+};
+pub use item_subjects::{
+    RUST_ITEM_SUBJECT_SCHEMA_VERSION, RustItemDefinitionKindV1, RustItemInventoryStatusV1,
+    RustItemInventoryV1, RustItemResolutionClassV1, RustItemResolutionV1, RustItemSelectorV1,
+    RustItemSourceIdentityV1, RustItemSubjectIdV1, RustItemSubjectV1, RustItemTargetIdentityV1,
+    RustItemTargetKindV1, RustLintDeclarationFamilyV1, RustLintDeclarationSubjectIdV1,
+    RustLintDeclarationSubjectV1, RustSourceRangeV1, RustVisibilityShapeV1,
+    resolve_rust_item_subject,
 };
 pub use parity::{
     TestSubjectsParityContract, load_test_subjects_parity_contract,
