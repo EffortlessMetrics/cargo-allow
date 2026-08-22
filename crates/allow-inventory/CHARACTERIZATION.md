@@ -100,14 +100,13 @@ scan (#1849).
 
 ## What this means for receipts
 
-Ordinary worktree checks record the inventory completeness and diagnostics in
+Ordinary worktree receipts record the inventory completeness and diagnostics in
 their report; `Partial` or `Fallback` does not fail that check solely because of
-the completeness value. In staged `check --mode no-new`, `Partial` inventory
-does block the check (`crates/cargo-allow/src/check.rs`) until the partial
-condition is resolved, such as by restoring/removing a deleted tracked path,
-removing the submodule condition, or resolving an inaccessible path. Git-backed
-submodule, deleted-but-tracked, and inaccessible paths can produce `Partial`.
-During filesystem fallback, skipped paths are
-disclosed in `skipped_paths`, but completeness remains `Fallback` because
-`git_error` takes precedence. `Scoped` is surfaced as scope metadata rather
-than a completeness failure.
+the completeness value. Git-backed deleted, submodule, and inaccessible paths
+may therefore appear as `Partial` in that worktree report. Staged constructors
+initialize `inaccessible_paths` empty, and staged `check --mode no-new` retains
+its existing staged-only limitation behavior; this change does not make staged
+no-new resolve or classify inaccessible worktree paths. During filesystem
+fallback, skipped paths are disclosed in `skipped_paths`, but completeness
+remains `Fallback` because `git_error` takes precedence. `Scoped` is surfaced as
+scope metadata rather than a completeness failure.
