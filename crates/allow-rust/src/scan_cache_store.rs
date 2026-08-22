@@ -143,6 +143,18 @@ impl ScanCacheStore {
     /// write a sibling temp file, then replace the store. Failure returns
     /// `false`; callers treat flush as advisory.
     pub fn flush(&mut self) -> bool {
+        self.flush_with_temp_path(None)
+    }
+
+    fn flush_with_temp_path(&mut self, injected_temp: Option<&Path>) -> bool {
+        self.flush_with_temp_path_and_wait_hook(injected_temp, None)
+    }
+
+    fn flush_with_temp_path_and_wait_hook(
+        &mut self,
+        injected_temp: Option<&Path>,
+        wait_hook: Option<&dyn Fn()>,
+    ) -> bool {
         if !self.writable
             || path_has_symlink_component(&self.dir)
             || path_is_unsafe(&self.store_path())
@@ -158,7 +170,7 @@ impl ScanCacheStore {
         if path_has_symlink_component(&self.dir) || path_is_unsafe(&self.store_path()) {
             return false;
         }
-        let Some(_lock) = WriterLock::acquire(&self.dir) else {
+        let Some(_lock) = WriterLock::acquire(&self.dir, wait_hook) else {
             return false;
         };
         remove_stale_artifacts(&self.dir);
@@ -167,11 +179,9 @@ impl ScanCacheStore {
             Err(_) => return false,
         };
         let dest = self.store_path();
-        let tmp = self.dir.join(format!(
-            "{TEMP_FILE_PREFIX}{}-{}",
-            std::process::id(),
-            TEMP_NONCE.fetch_add(1, Ordering::Relaxed)
-        ));
+        let tmp = injected_temp
+            .map(PathBuf::from)
+            .unwrap_or_else(|| next_temp_path(&self.dir));
         let write = std::fs::OpenOptions::new()
             .write(true)
             .create_new(true)
@@ -275,12 +285,20 @@ fn path_is_unsafe(path: &Path) -> bool {
     path_is_symlink(path) || path_is_reparse_point(path)
 }
 
+fn temp_path(dir: &Path, nonce: u64) -> PathBuf {
+    dir.join(format!("{TEMP_FILE_PREFIX}{}-{nonce}", std::process::id()))
+}
+
+fn next_temp_path(dir: &Path) -> PathBuf {
+    temp_path(dir, TEMP_NONCE.fetch_add(1, Ordering::Relaxed))
+}
+
 struct WriterLock {
     path: PathBuf,
 }
 
 impl WriterLock {
-    fn acquire(dir: &Path) -> Option<Self> {
+    fn acquire(dir: &Path, wait_hook: Option<&dyn Fn()>) -> Option<Self> {
         let path = dir.join(LOCK_FILE_NAME);
         for _ in 0..100 {
             match std::fs::OpenOptions::new()
@@ -290,6 +308,9 @@ impl WriterLock {
             {
                 Ok(_) => return Some(Self { path }),
                 Err(error) if error.kind() == ErrorKind::AlreadyExists => {
+                    if let Some(wait_hook) = wait_hook {
+                        wait_hook();
+                    }
                     if !remove_if_stale(&path) {
                         std::thread::sleep(Duration::from_millis(5));
                     }
@@ -803,16 +824,87 @@ mod tests {
     }
 
     #[test]
-    fn concurrent_flushes_leave_a_decodable_store() -> Result<(), String> {
+    fn stale_lock_is_reclaimed_before_flush() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "allow-rust-cache-stale-lock-{}-{}",
+            std::process::id(),
+            TEMP_NONCE.fetch_add(1, Ordering::Relaxed)
+        ));
+        std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        let lock = root.join(LOCK_FILE_NAME);
+        let file = std::fs::File::create(&lock).map_err(|error| error.to_string())?;
+        let old = SystemTime::now()
+            .checked_sub(STALE_ARTIFACT_AGE + Duration::from_secs(1))
+            .ok_or_else(|| "stale timestamp underflow".to_string())?;
+        file.set_times(std::fs::FileTimes::new().set_modified(old))
+            .map_err(|error| error.to_string())?;
+        drop(file);
+        let mut store = ScanCacheStore::open(&root, "generation");
+        store.put(
+            Path::new("src/lib.rs"),
+            "digest".to_string(),
+            false,
+            Vec::new(),
+        );
+        assert!(store.flush());
+        assert!(root.join("scan-cache.v2.bin").exists());
+        assert!(!lock.exists());
+        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn active_writer_lock_is_retried_deterministically() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "allow-rust-cache-lock-contention-{}-{}",
+            std::process::id(),
+            TEMP_NONCE.fetch_add(1, Ordering::Relaxed)
+        ));
+        std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        let lock = root.join(LOCK_FILE_NAME);
+        std::fs::File::create(&lock).map_err(|error| error.to_string())?;
+        let worker_root = root.clone();
+        let (contention_tx, contention_rx) = std::sync::mpsc::channel();
+        let worker = std::thread::spawn(move || {
+            let mut store = ScanCacheStore::open(&worker_root, "generation");
+            store.put(
+                Path::new("src/worker.rs"),
+                "worker".to_string(),
+                false,
+                Vec::new(),
+            );
+            let wait_hook = || {
+                let _ = contention_tx.send(());
+            };
+            let flushed = store.flush_with_temp_path_and_wait_hook(None, Some(&wait_hook));
+            Ok::<_, String>(flushed)
+        });
+        contention_rx.recv().map_err(|error| error.to_string())?;
+        std::fs::remove_file(&lock).map_err(|error| error.to_string())?;
+        let flushed = worker.join().map_err(|_| "worker panicked".to_string())??;
+        assert!(flushed);
+        assert!(
+            ScanCacheStore::open(&root, "generation")
+                .get(Path::new("src/worker.rs"), "worker")
+                .is_some()
+        );
+        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn concurrent_flushes_are_serialized_and_last_writer_wins() -> Result<(), String> {
         let root = std::env::temp_dir().join(format!(
             "allow-rust-cache-concurrent-{}-{}",
             std::process::id(),
             TEMP_NONCE.fetch_add(1, Ordering::Relaxed)
         ));
         std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        let ready = std::sync::Arc::new(std::sync::Barrier::new(3));
         let mut workers = Vec::new();
-        for index in 0..8_u8 {
+        for index in 0..2_u8 {
             let worker_root = root.clone();
+            let worker_ready = ready.clone();
             workers.push(std::thread::spawn(move || {
                 let mut store = ScanCacheStore::open(&worker_root, "generation");
                 store.put(
@@ -821,14 +913,18 @@ mod tests {
                     false,
                     Vec::new(),
                 );
+                worker_ready.wait();
                 store.flush()
             }));
         }
+        ready.wait();
         for worker in workers {
             assert!(worker.join().map_err(|_| "worker panicked")?);
         }
         let store = ScanCacheStore::open(&root, "generation");
-        assert!(!store.is_empty());
+        // Both writers started from the same snapshot. The advisory cache
+        // intentionally accepts last-writer wins instead of merging entries.
+        assert_eq!(store.len(), 1);
         assert!(root.join("scan-cache.v2.bin").exists());
         assert!(!root.join(LOCK_FILE_NAME).exists());
         std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
@@ -884,7 +980,8 @@ mod tests {
         let outside = root.join("outside.bin");
         std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
         std::fs::write(&outside, b"sentinel").map_err(|error| error.to_string())?;
-        let temp = root.join(format!("scan-cache.v2.bin.tmp-{}", std::process::id()));
+        let nonce = TEMP_NONCE.fetch_add(1, Ordering::Relaxed);
+        let temp = temp_path(&root, nonce);
         symlink(&outside, &temp).map_err(|error| error.to_string())?;
         let mut store = ScanCacheStore::open(&root, "generation");
         store.put(
@@ -893,11 +990,49 @@ mod tests {
             false,
             Vec::new(),
         );
-        assert!(!store.flush());
+        assert!(!store.flush_with_temp_path(Some(&temp)));
         assert_eq!(
             std::fs::read(&outside).map_err(|error| error.to_string())?,
             b"sentinel"
         );
+        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn junction_cache_root_is_rejected_without_outside_write() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "allow-rust-cache-junction-{}-{}",
+            std::process::id(),
+            TEMP_NONCE.fetch_add(1, Ordering::Relaxed)
+        ));
+        let outside = root.join("outside");
+        let junction = root.join("cache");
+        std::fs::create_dir_all(&outside).map_err(|error| error.to_string())?;
+        let status = std::process::Command::new("cmd")
+            .args([
+                "/C",
+                "mklink",
+                "/J",
+                &junction.to_string_lossy(),
+                &outside.to_string_lossy(),
+            ])
+            .status()
+            .map_err(|error| error.to_string())?;
+        if !status.success() {
+            return Err("mklink /J failed; Windows reparse-point proof unavailable".to_string());
+        }
+        let mut store = ScanCacheStore::open(&junction, "generation");
+        store.put(
+            Path::new("src/lib.rs"),
+            "digest".to_string(),
+            false,
+            Vec::new(),
+        );
+        assert!(!store.flush());
+        assert!(!outside.join("scan-cache.v2.bin").exists());
+        std::fs::remove_dir_all(&junction).map_err(|error| error.to_string())?;
         std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
         Ok(())
     }
