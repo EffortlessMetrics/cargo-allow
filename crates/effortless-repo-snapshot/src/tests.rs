@@ -395,7 +395,7 @@ fn batch_planner_enforces_count_bytes_and_long_path_boundaries() -> Result<(), S
         3
     );
 
-    let requested = vec![b"present.rs".to_vec()];
+    let requested = [b"present.rs".to_vec()];
     let requested_refs: Vec<&Vec<u8>> = requested.iter().collect();
     let mut returned = std::collections::HashSet::new();
     crate::git::validate_batch_record_path_for_test(b"present.rs", &requested_refs, &mut returned)
