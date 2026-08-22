@@ -22,8 +22,10 @@
 
 use allow_core::{Finding, read_file_capped_with_limit};
 use std::collections::HashMap;
-use std::io::Write;
+use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, SystemTime};
 
 /// Store schema identifier; also the on-disk magic header line.
 const STORE_SCHEMA: &[u8] = b"cargo-allow.scan-cache.v2";
@@ -33,6 +35,10 @@ const MAX_FINDINGS_PER_ENTRY: usize = 100_000;
 const MAX_FIELD_BYTES: usize = 16 * 1024 * 1024;
 const MAX_STORE_BYTES: usize = 128 * 1024 * 1024;
 const MAX_RELATIVE_PATH_BYTES: usize = 4 * 1024;
+const TEMP_FILE_PREFIX: &str = "scan-cache.v2.bin.tmp-";
+const LOCK_FILE_NAME: &str = "scan-cache.v2.lock";
+const STALE_ARTIFACT_AGE: Duration = Duration::from_secs(60 * 60);
+static TEMP_NONCE: AtomicU64 = AtomicU64::new(0);
 
 /// One persisted scan result: the digest it was produced from plus the
 /// scanner output for that exact input.
@@ -65,7 +71,7 @@ impl ScanCacheStore {
     pub fn open(dir: &Path, generation: impl Into<String>) -> Self {
         let generation = generation.into();
         let writable =
-            !path_has_symlink_component(dir) && !path_is_symlink(&dir.join("scan-cache.v2.bin"));
+            !path_has_symlink_component(dir) && !path_is_unsafe(&dir.join("scan-cache.v2.bin"));
         let mut store = Self {
             dir: dir.to_path_buf(),
             generation,
@@ -139,7 +145,7 @@ impl ScanCacheStore {
     pub fn flush(&mut self) -> bool {
         if !self.writable
             || path_has_symlink_component(&self.dir)
-            || path_is_symlink(&self.store_path())
+            || path_is_unsafe(&self.store_path())
         {
             return false;
         }
@@ -149,17 +155,23 @@ impl ScanCacheStore {
         if std::fs::create_dir_all(&self.dir).is_err() {
             return false;
         }
-        if path_has_symlink_component(&self.dir) || path_is_symlink(&self.store_path()) {
+        if path_has_symlink_component(&self.dir) || path_is_unsafe(&self.store_path()) {
             return false;
         }
+        let Some(_lock) = WriterLock::acquire(&self.dir) else {
+            return false;
+        };
+        remove_stale_artifacts(&self.dir);
         let bytes = match encode_store(&self.generation, &self.entries) {
             Ok(bytes) => bytes,
             Err(_) => return false,
         };
         let dest = self.store_path();
-        let tmp = self
-            .dir
-            .join(format!("scan-cache.v2.bin.tmp-{}", std::process::id()));
+        let tmp = self.dir.join(format!(
+            "{TEMP_FILE_PREFIX}{}-{}",
+            std::process::id(),
+            TEMP_NONCE.fetch_add(1, Ordering::Relaxed)
+        ));
         let write = std::fs::OpenOptions::new()
             .write(true)
             .create_new(true)
@@ -175,14 +187,18 @@ impl ScanCacheStore {
         // std::fs::rename does not replace an existing destination on
         // Windows; drop the previous store first. The cache is advisory, so
         // a lost race here only costs a future cold start.
-        if path_is_symlink(&dest) {
+        if path_is_unsafe(&dest) {
             let _ = std::fs::remove_file(&tmp);
             return false;
         }
-        if dest.exists() {
-            let _ = std::fs::remove_file(&dest);
+        let mut moved = std::fs::rename(&tmp, &dest);
+        if moved.is_err() {
+            if path_is_unsafe(&dest) || std::fs::remove_file(&dest).is_err() {
+                let _ = std::fs::remove_file(&tmp);
+                return false;
+            }
+            moved = std::fs::rename(&tmp, &dest);
         }
-        let moved = std::fs::rename(&tmp, &dest);
         if moved.is_err() {
             let _ = std::fs::remove_file(&tmp);
             return false;
@@ -226,10 +242,7 @@ fn path_has_symlink_component(path: &Path) -> bool {
     let mut current = PathBuf::new();
     for component in path.components() {
         current.push(component.as_os_str());
-        if std::fs::symlink_metadata(&current)
-            .map(|metadata| metadata.file_type().is_symlink())
-            .unwrap_or(false)
-        {
+        if path_is_unsafe(&current) {
             return true;
         }
     }
@@ -240,6 +253,89 @@ fn path_is_symlink(path: &Path) -> bool {
     std::fs::symlink_metadata(path)
         .map(|metadata| metadata.file_type().is_symlink())
         .unwrap_or(false)
+}
+
+fn path_is_reparse_point(path: &Path) -> bool {
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0400;
+        std::fs::symlink_metadata(path)
+            .map(|metadata| metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0)
+            .unwrap_or(false)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = path;
+        false
+    }
+}
+
+fn path_is_unsafe(path: &Path) -> bool {
+    path_is_symlink(path) || path_is_reparse_point(path)
+}
+
+struct WriterLock {
+    path: PathBuf,
+}
+
+impl WriterLock {
+    fn acquire(dir: &Path) -> Option<Self> {
+        let path = dir.join(LOCK_FILE_NAME);
+        for _ in 0..100 {
+            match std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&path)
+            {
+                Ok(_) => return Some(Self { path }),
+                Err(error) if error.kind() == ErrorKind::AlreadyExists => {
+                    if !remove_if_stale(&path) {
+                        std::thread::sleep(Duration::from_millis(5));
+                    }
+                }
+                Err(_) => return None,
+            }
+        }
+        None
+    }
+}
+
+impl Drop for WriterLock {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.path);
+    }
+}
+
+fn remove_if_stale(path: &Path) -> bool {
+    let Ok(metadata) = std::fs::symlink_metadata(path) else {
+        return false;
+    };
+    if metadata.file_type().is_symlink() || path_is_reparse_point(path) {
+        return false;
+    }
+    let stale = metadata
+        .modified()
+        .ok()
+        .and_then(|modified| SystemTime::now().duration_since(modified).ok())
+        .is_some_and(|age| age >= STALE_ARTIFACT_AGE);
+    stale && std::fs::remove_file(path).is_ok()
+}
+
+fn remove_stale_artifacts(dir: &Path) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let is_temp = entry
+            .file_name()
+            .to_str()
+            .is_some_and(|name| name.starts_with(TEMP_FILE_PREFIX));
+        if is_temp {
+            let _ = remove_if_stale(&path);
+        }
+    }
 }
 
 fn valid_relative_path(path: &Path) -> bool {
@@ -671,6 +767,70 @@ mod tests {
         drop(file);
         let store = ScanCacheStore::open(&root, "generation");
         assert!(store.is_empty());
+        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn stale_temp_is_removed_before_atomic_flush() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "allow-rust-cache-stale-temp-{}-{}",
+            std::process::id(),
+            TEMP_NONCE.fetch_add(1, Ordering::Relaxed)
+        ));
+        std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        let stale = root.join(format!("{TEMP_FILE_PREFIX}stale"));
+        let file = std::fs::File::create(&stale).map_err(|error| error.to_string())?;
+        let old = SystemTime::now()
+            .checked_sub(STALE_ARTIFACT_AGE + Duration::from_secs(1))
+            .ok_or_else(|| "stale timestamp underflow".to_string())?;
+        file.set_times(std::fs::FileTimes::new().set_modified(old))
+            .map_err(|error| error.to_string())?;
+        drop(file);
+
+        let mut store = ScanCacheStore::open(&root, "generation");
+        store.put(
+            Path::new("src/lib.rs"),
+            "digest".to_string(),
+            false,
+            Vec::new(),
+        );
+        assert!(store.flush());
+        assert!(!stale.exists());
+        assert!(root.join("scan-cache.v2.bin").exists());
+        std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn concurrent_flushes_leave_a_decodable_store() -> Result<(), String> {
+        let root = std::env::temp_dir().join(format!(
+            "allow-rust-cache-concurrent-{}-{}",
+            std::process::id(),
+            TEMP_NONCE.fetch_add(1, Ordering::Relaxed)
+        ));
+        std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        let mut workers = Vec::new();
+        for index in 0..8_u8 {
+            let worker_root = root.clone();
+            workers.push(std::thread::spawn(move || {
+                let mut store = ScanCacheStore::open(&worker_root, "generation");
+                store.put(
+                    &PathBuf::from(format!("src/{index}.rs")),
+                    format!("digest-{index}"),
+                    false,
+                    Vec::new(),
+                );
+                store.flush()
+            }));
+        }
+        for worker in workers {
+            assert!(worker.join().map_err(|_| "worker panicked")?);
+        }
+        let store = ScanCacheStore::open(&root, "generation");
+        assert!(!store.is_empty());
+        assert!(root.join("scan-cache.v2.bin").exists());
+        assert!(!root.join(LOCK_FILE_NAME).exists());
         std::fs::remove_dir_all(&root).map_err(|error| error.to_string())?;
         Ok(())
     }

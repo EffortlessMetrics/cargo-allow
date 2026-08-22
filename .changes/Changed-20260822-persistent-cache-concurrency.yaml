@@ -1,0 +1,8 @@
+kind: Changed
+body: >-
+  Harden the trusted-local persistent scan-cache write path for concurrent and
+  interrupted CLI processes: unique temporary files, bounded writer locking,
+  stale-artifact cleanup, rename-first replacement, and Windows reparse-point
+  confinement. Cache corruption or write races remain advisory cold-scan
+  fallbacks; this does not add telemetry, a global cache, or an evaluation
+  result cache.
