@@ -36,6 +36,10 @@ Each git-reported path is probed with `fs::metadata(root.join(path))`
   `inaccessible_paths` instead of being silently dropped. These paths are
   disclosed and make a successful Git-backed inventory `Partial`.
 
+`inaccessible_paths` is present in both the Git-tracked and
+include-untracked inventory shapes; filesystem fallback keeps the field empty
+because its `skipped_paths` disclosure and `Fallback` precedence are separate.
+
 The final list is sorted, deduplicated, then filtered through the
 `options.ignored` globs before being returned.
 

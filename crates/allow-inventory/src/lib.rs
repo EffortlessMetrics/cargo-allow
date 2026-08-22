@@ -112,19 +112,14 @@ pub fn inventory(
     files.sort();
     files.dedup();
     files.retain(|path| !source_tree_path_is_ignored(path, &options.ignored));
-    let completeness = if git_error.is_some() {
-        options::InventoryCompleteness::Fallback
-    } else if !deleted_tracked.is_empty()
-        || !submodule_paths.is_empty()
-        || !inaccessible_paths.is_empty()
-        || !skipped_paths.is_empty()
-    {
-        options::InventoryCompleteness::Partial
-    } else if !options.ignored.is_empty() || !options.generated.is_empty() {
-        options::InventoryCompleteness::Scoped
-    } else {
-        options::InventoryCompleteness::Complete
-    };
+    let completeness = inventory_completeness(
+        options,
+        git_error.is_some(),
+        &deleted_tracked,
+        &submodule_paths,
+        &inaccessible_paths,
+        &skipped_paths,
+    );
     Ok(Inventory {
         files,
         source,
@@ -136,6 +131,29 @@ pub fn inventory(
         submodule_paths,
         inaccessible_paths,
     })
+}
+
+fn inventory_completeness(
+    options: &InventoryOptions,
+    git_failed: bool,
+    deleted_tracked: &[PathBuf],
+    submodule_paths: &[PathBuf],
+    inaccessible_paths: &[PathBuf],
+    skipped_paths: &[PathBuf],
+) -> options::InventoryCompleteness {
+    if git_failed {
+        options::InventoryCompleteness::Fallback
+    } else if !deleted_tracked.is_empty()
+        || !submodule_paths.is_empty()
+        || !inaccessible_paths.is_empty()
+        || !skipped_paths.is_empty()
+    {
+        options::InventoryCompleteness::Partial
+    } else if !options.ignored.is_empty() || !options.generated.is_empty() {
+        options::InventoryCompleteness::Scoped
+    } else {
+        options::InventoryCompleteness::Complete
+    }
 }
 
 #[cfg(test)]

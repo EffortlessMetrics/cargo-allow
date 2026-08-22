@@ -6,6 +6,37 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 #[test]
+fn inaccessible_paths_make_inventory_partial_but_git_failure_wins_fallback() {
+    let options = InventoryOptions {
+        ignored: Vec::new(),
+        generated: Vec::new(),
+        include_untracked: false,
+    };
+    assert_eq!(
+        super::inventory_completeness(
+            &options,
+            false,
+            &[],
+            &[],
+            &[PathBuf::from("blocked.rs")],
+            &[],
+        ),
+        InventoryCompleteness::Partial
+    );
+    assert_eq!(
+        super::inventory_completeness(
+            &options,
+            true,
+            &[],
+            &[],
+            &[PathBuf::from("blocked.rs")],
+            &[PathBuf::from("skipped.rs")],
+        ),
+        InventoryCompleteness::Fallback
+    );
+}
+
+#[test]
 fn ignores_target_paths() {
     let opts = InventoryOptions::default();
     assert!(source_tree_path_is_ignored(

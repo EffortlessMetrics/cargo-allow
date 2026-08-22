@@ -197,6 +197,35 @@ pub(crate) fn identity_values(finding: &Finding) -> BTreeMap<String, Value> {
     ])
 }
 
+#[cfg(test)]
+mod tests {
+    use super::inventory_identity_from_inventory;
+    use allow_inventory::{Inventory, InventoryCompleteness, InventorySource};
+    use std::path::PathBuf;
+
+    #[test]
+    fn inaccessible_path_changes_inventory_identity() {
+        let base = Inventory {
+            files: Vec::new(),
+            source: InventorySource::GitTracked,
+            completeness: InventoryCompleteness::Partial,
+            empty_git_tracked: false,
+            deleted_tracked: Vec::new(),
+            inaccessible_paths: Vec::new(),
+            git_error: None,
+            skipped_paths: Vec::new(),
+            submodule_paths: Vec::new(),
+        };
+        let mut changed = base.clone();
+        changed.inaccessible_paths = vec![PathBuf::from("blocked.rs")];
+        let first = inventory_identity_from_inventory(PathBuf::from(".").as_path(), &base)
+            .unwrap_or_else(|error| std::panic::panic_any(error.to_string()));
+        let second = inventory_identity_from_inventory(PathBuf::from(".").as_path(), &changed)
+            .unwrap_or_else(|error| std::panic::panic_any(error.to_string()));
+        assert_ne!(first, second);
+    }
+}
+
 pub(crate) fn selector_values(selector: &Selector) -> BTreeMap<String, Value> {
     BTreeMap::from([
         ("ast_kind".to_string(), json!(selector.ast_kind)),
