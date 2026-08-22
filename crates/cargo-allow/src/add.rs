@@ -103,29 +103,32 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
             "no policy config found to update; run `cargo-allow init` or pass --config",
         ));
     }
-    let mutation_target = args
-        .write
-        .as_deref()
-        .map(|path| {
-            if path.is_absolute() {
-                path.to_path_buf()
-            } else {
-                cwd.join(path)
-            }
-        })
-        .or_else(|| config_path(&mutation_root, args.config.as_deref()));
+    let live_config = config_path(&mutation_root, args.config.as_deref());
+    let write_target = args.write.as_deref().map(|path| {
+        if path.is_absolute() {
+            path.to_path_buf()
+        } else {
+            cwd.join(path)
+        }
+    });
+    let mutation_target = write_target.clone().or_else(|| live_config.clone());
     // #2487: assert the mutation target is within the source-tree root
     // before acquiring the lock, preventing out-of-tree writes.
     if let Some(target) = &mutation_target {
         crate::policy_config::assert_path_within_root(&mutation_root, target)?;
     }
-    if let Some(target) = mutation_target.as_deref() {
-        crate::command_support::reject_legacy_summary_output_collision(
-            &mutation_root,
-            args.summary_output.as_deref(),
-            &[target],
-        )?;
+    let mut collision_targets = Vec::new();
+    if let Some(target) = write_target.as_deref() {
+        collision_targets.push(target);
     }
+    if let Some(target) = live_config.as_deref() {
+        collision_targets.push(target);
+    }
+    crate::command_support::reject_legacy_summary_output_collision(
+        &mutation_root,
+        args.summary_output.as_deref(),
+        &collision_targets,
+    )?;
     // #2487: use canonical MutationTarget identity for lock key so path
     // aliases share one lock file.
     let _mutation_lock = mutation_target
