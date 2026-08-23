@@ -35,5 +35,19 @@ run_expect_success "current workspace dry-run" \
 run_expect_success "current workspace full artifacts" \
   bash scripts/release-version-preflight.sh "${workspace_version}"
 
+run_expect_success "matching observed tag uses typed identity" \
+  env DRY_RUN=true GITHUB_EVENT_NAME=push GITHUB_REF_NAME="v${workspace_version}" \
+  bash scripts/release-version-preflight.sh "${workspace_version}"
+
+run_expect_failure "observed tag mismatch fails closed" \
+  env DRY_RUN=true GITHUB_EVENT_NAME=push GITHUB_REF_NAME="v9.9.9" \
+  bash scripts/release-version-preflight.sh "${workspace_version}"
+
 run_expect_failure "release version mismatch" \
   bash scripts/release-version-preflight.sh "0.0.0-missing"
+
+grep -q 'release-identity --version' scripts/release-version-preflight.sh || {
+  printf 'fail typed release identity invocation missing\n' >&2
+  exit 1
+}
+printf 'ok typed release identity invocation retained\n'
