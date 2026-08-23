@@ -264,22 +264,14 @@ fn validate_core(core: &str, full_version: &str) -> Result<(), ReleaseIdentityEr
     Ok(())
 }
 
-fn parse_rc_ordinal(
-    prerelease: &str,
-    full_version: &str,
-) -> Result<u32, ReleaseIdentityErrorV1> {
+fn parse_rc_ordinal(prerelease: &str, full_version: &str) -> Result<u32, ReleaseIdentityErrorV1> {
     let Some(identifier) = prerelease.strip_prefix("rc.") else {
-        return malformed(
-            full_version,
-            "the only supported prerelease form is rc.N",
-        );
+        return malformed(full_version, "the only supported prerelease form is rc.N");
     };
     let ordinal = parse_numeric_identifier(identifier, full_version)?;
-    let ordinal = u32::try_from(ordinal).map_err(|_| {
-        ReleaseIdentityErrorV1::MalformedVersion {
-            value: full_version.to_string(),
-            reason: "rc ordinal exceeds the supported range",
-        }
+    let ordinal = u32::try_from(ordinal).map_err(|_| ReleaseIdentityErrorV1::MalformedVersion {
+        value: full_version.to_string(),
+        reason: "rc ordinal exceeds the supported range",
     })?;
     if ordinal == 0 {
         return malformed(full_version, "rc ordinal must be greater than zero");
