@@ -23,100 +23,43 @@ impl ReleaseChannelV1 {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseVersionV1 {
     canonical: String,
-    major: u64,
-    minor: u64,
-    patch: u64,
     channel: ReleaseChannelV1,
 }
 
 impl ReleaseVersionV1 {
     pub fn parse(value: &str) -> Result<Self, ReleaseIdentityErrorV1> {
         if value.is_empty() || value.trim() != value {
-            return Err(ReleaseIdentityErrorV1::MalformedVersion {
-                value: value.to_string(),
-                reason: "version must be non-empty and contain no surrounding whitespace",
-            });
+            return malformed(
+                value,
+                "version must be non-empty and contain no surrounding whitespace",
+            );
         }
         if value.contains('+') {
-            return Err(ReleaseIdentityErrorV1::MalformedVersion {
-                value: value.to_string(),
-                reason: "build metadata is not supported by the release identity contract",
-            });
+            return malformed(
+                value,
+                "build metadata is not supported by the release identity contract",
+            );
         }
 
         let (core, channel) = match value.split_once('-') {
-            Some((core, prerelease)) => {
-                let Some(ordinal) = prerelease.strip_prefix("rc.") else {
-                    return Err(ReleaseIdentityErrorV1::MalformedVersion {
-                        value: value.to_string(),
-                        reason: "the only supported prerelease form is rc.N",
-                    });
-                };
-                let ordinal = parse_numeric_identifier("rc ordinal", ordinal, value)?;
-                let ordinal = u32::try_from(ordinal).map_err(|_| {
-                    ReleaseIdentityErrorV1::MalformedVersion {
-                        value: value.to_string(),
-                        reason: "rc ordinal exceeds the supported range",
-                    }
-                })?;
-                if ordinal == 0 {
-                    return Err(ReleaseIdentityErrorV1::MalformedVersion {
-                        value: value.to_string(),
-                        reason: "rc ordinal must be greater than zero",
-                    });
-                }
-                (core, ReleaseChannelV1::ReleaseCandidate { ordinal })
-            }
+            Some((core, prerelease)) => (
+                core,
+                ReleaseChannelV1::ReleaseCandidate {
+                    ordinal: parse_rc_ordinal(prerelease, value)?,
+                },
+            ),
             None => (value, ReleaseChannelV1::Stable),
         };
-
-        let mut identifiers = core.split('.');
-        let major = parse_required_identifier("major", identifiers.next(), value)?;
-        let minor = parse_required_identifier("minor", identifiers.next(), value)?;
-        let patch = parse_required_identifier("patch", identifiers.next(), value)?;
-        if identifiers.next().is_some() {
-            return Err(ReleaseIdentityErrorV1::MalformedVersion {
-                value: value.to_string(),
-                reason: "version core must contain exactly major.minor.patch",
-            });
-        }
-
-        let canonical = match channel {
-            ReleaseChannelV1::Stable => format!("{major}.{minor}.{patch}"),
-            ReleaseChannelV1::ReleaseCandidate { ordinal } => {
-                format!("{major}.{minor}.{patch}-rc.{ordinal}")
-            }
-        };
-        if canonical != value {
-            return Err(ReleaseIdentityErrorV1::MalformedVersion {
-                value: value.to_string(),
-                reason: "version is not in canonical form",
-            });
-        }
+        validate_core(core, value)?;
 
         Ok(Self {
-            canonical,
-            major,
-            minor,
-            patch,
+            canonical: value.to_string(),
             channel,
         })
     }
 
     pub fn as_str(&self) -> &str {
         &self.canonical
-    }
-
-    pub const fn major(&self) -> u64 {
-        self.major
-    }
-
-    pub const fn minor(&self) -> u64 {
-        self.minor
-    }
-
-    pub const fn patch(&self) -> u64 {
-        self.patch
     }
 
     pub const fn channel(&self) -> ReleaseChannelV1 {
@@ -150,6 +93,7 @@ impl ReleaseIdentityV1 {
                 actual: tag.to_string(),
             });
         }
+
         let expected_prerelease = version.channel().github_prerelease();
         if github_prerelease != expected_prerelease {
             return Err(ReleaseIdentityErrorV1::GithubPrereleaseMismatch {
@@ -177,14 +121,14 @@ impl ReleaseIdentityV1 {
         self.github_prerelease
     }
 
-    /// Validate a package on the release-candidate line against the release bytes.
+    /// Validate a package on the candidate line against the exact release bytes.
     pub fn validate_candidate_package_version(
         &self,
         package_name: &str,
         package_version: &str,
     ) -> Result<(), ReleaseIdentityErrorV1> {
-        let parsed = ReleaseVersionV1::parse(package_version)?;
-        if parsed != self.version {
+        let actual = ReleaseVersionV1::parse(package_version)?;
+        if actual != self.version {
             return Err(ReleaseIdentityErrorV1::CandidatePackageVersionMismatch {
                 package_name: package_name.to_string(),
                 expected: self.version.as_str().to_string(),
@@ -194,9 +138,8 @@ impl ReleaseIdentityV1 {
         Ok(())
     }
 
-    /// Validate an independently versioned prerequisite against its exact stable line.
+    /// Validate an independently versioned prerequisite against an exact stable line.
     pub fn validate_independent_stable_package_version(
-        &self,
         package_name: &str,
         expected_version: &str,
         package_version: &str,
@@ -208,6 +151,7 @@ impl ReleaseIdentityV1 {
                 version: expected_version.to_string(),
             });
         }
+
         let actual = ReleaseVersionV1::parse(package_version)?;
         if actual != expected {
             return Err(ReleaseIdentityErrorV1::IndependentPackageVersionMismatch {
@@ -293,35 +237,72 @@ impl fmt::Display for ReleaseIdentityErrorV1 {
 
 impl std::error::Error for ReleaseIdentityErrorV1 {}
 
-fn parse_required_identifier(
-    field: &'static str,
-    value: Option<&str>,
+fn malformed<T>(value: &str, reason: &'static str) -> Result<T, ReleaseIdentityErrorV1> {
+    Err(ReleaseIdentityErrorV1::MalformedVersion {
+        value: value.to_string(),
+        reason,
+    })
+}
+
+fn validate_core(core: &str, full_version: &str) -> Result<(), ReleaseIdentityErrorV1> {
+    let mut identifiers = core.split('.');
+    for _ in 0..3 {
+        let Some(identifier) = identifiers.next() else {
+            return malformed(
+                full_version,
+                "version core must contain exactly major.minor.patch",
+            );
+        };
+        parse_numeric_identifier(identifier, full_version)?;
+    }
+    if identifiers.next().is_some() {
+        return malformed(
+            full_version,
+            "version core must contain exactly major.minor.patch",
+        );
+    }
+    Ok(())
+}
+
+fn parse_rc_ordinal(
+    prerelease: &str,
     full_version: &str,
-) -> Result<u64, ReleaseIdentityErrorV1> {
-    let Some(value) = value else {
-        return Err(ReleaseIdentityErrorV1::MalformedVersion {
-            value: full_version.to_string(),
-            reason: "version core must contain exactly major.minor.patch",
-        });
+) -> Result<u32, ReleaseIdentityErrorV1> {
+    let Some(identifier) = prerelease.strip_prefix("rc.") else {
+        return malformed(
+            full_version,
+            "the only supported prerelease form is rc.N",
+        );
     };
-    parse_numeric_identifier(field, value, full_version)
+    let ordinal = parse_numeric_identifier(identifier, full_version)?;
+    let ordinal = u32::try_from(ordinal).map_err(|_| {
+        ReleaseIdentityErrorV1::MalformedVersion {
+            value: full_version.to_string(),
+            reason: "rc ordinal exceeds the supported range",
+        }
+    })?;
+    if ordinal == 0 {
+        return malformed(full_version, "rc ordinal must be greater than zero");
+    }
+    Ok(ordinal)
 }
 
 fn parse_numeric_identifier(
-    _field: &'static str,
-    value: &str,
+    identifier: &str,
     full_version: &str,
 ) -> Result<u64, ReleaseIdentityErrorV1> {
-    if value.is_empty()
-        || (value.len() > 1 && value.starts_with('0'))
-        || !value.chars().all(|character| character.is_ascii_digit())
+    if identifier.is_empty()
+        || (identifier.len() > 1 && identifier.starts_with('0'))
+        || !identifier
+            .chars()
+            .all(|character| character.is_ascii_digit())
     {
-        return Err(ReleaseIdentityErrorV1::MalformedVersion {
-            value: full_version.to_string(),
-            reason: "numeric identifiers must be canonical unsigned integers",
-        });
+        return malformed(
+            full_version,
+            "numeric identifiers must be canonical unsigned integers",
+        );
     }
-    value
+    identifier
         .parse::<u64>()
         .map_err(|_| ReleaseIdentityErrorV1::MalformedVersion {
             value: full_version.to_string(),
@@ -338,9 +319,6 @@ mod tests {
         let identity = ReleaseIdentityV1::parse("0.2.0", "v0.2.0", false)
             .map_err(|error| error.to_string())?;
         if identity.version().channel() != ReleaseChannelV1::Stable
-            || identity.version().major() != 0
-            || identity.version().minor() != 2
-            || identity.version().patch() != 0
             || identity.tag() != "v0.2.0"
             || identity.github_prerelease()
         {
@@ -353,8 +331,7 @@ mod tests {
     fn rc_identity_binds_version_tag_and_prerelease_state() -> Result<(), String> {
         let identity = ReleaseIdentityV1::parse("0.2.0-rc.1", "v0.2.0-rc.1", true)
             .map_err(|error| error.to_string())?;
-        if identity.version().channel()
-            != (ReleaseChannelV1::ReleaseCandidate { ordinal: 1 })
+        if identity.version().channel() != (ReleaseChannelV1::ReleaseCandidate { ordinal: 1 })
             || !identity.github_prerelease()
         {
             return Err(format!("RC identity lost channel state: {identity:?}"));
@@ -362,35 +339,31 @@ mod tests {
         identity
             .validate_candidate_package_version("cargo-allow", "0.2.0-rc.1")
             .map_err(|error| error.to_string())?;
-        identity
-            .validate_independent_stable_package_version(
-                "effortless-repo-edit",
-                "0.1.0",
-                "0.1.0",
-            )
-            .map_err(|error| error.to_string())
+        ReleaseIdentityV1::validate_independent_stable_package_version(
+            "effortless-repo-edit",
+            "0.1.0",
+            "0.1.0",
+        )
+        .map_err(|error| error.to_string())
     }
 
     #[test]
-    fn rc_tag_over_stable_candidate_bytes_is_rejected() -> Result<(), String> {
+    fn tag_and_candidate_byte_mismatches_fail_closed() -> Result<(), String> {
         let identity = ReleaseIdentityV1::parse("0.2.0-rc.1", "v0.2.0-rc.1", true)
             .map_err(|error| error.to_string())?;
-        match identity.validate_candidate_package_version("cargo-allow", "0.2.0") {
-            Err(ReleaseIdentityErrorV1::CandidatePackageVersionMismatch { .. }) => Ok(()),
-            other => Err(format!(
-                "stable candidate bytes were not rejected under the RC tag: {other:?}"
-            )),
+        if !matches!(
+            identity.validate_candidate_package_version("cargo-allow", "0.2.0"),
+            Err(ReleaseIdentityErrorV1::CandidatePackageVersionMismatch { .. })
+        ) {
+            return Err("stable candidate bytes were accepted under an RC tag".to_string());
         }
-    }
-
-    #[test]
-    fn stable_tag_over_rc_identity_is_rejected() -> Result<(), String> {
-        match ReleaseIdentityV1::parse("0.2.0-rc.1", "v0.2.0", true) {
-            Err(ReleaseIdentityErrorV1::TagMismatch { .. }) => Ok(()),
-            other => Err(format!(
-                "stable tag was not rejected for RC package identity: {other:?}"
-            )),
+        if !matches!(
+            ReleaseIdentityV1::parse("0.2.0-rc.1", "v0.2.0", true),
+            Err(ReleaseIdentityErrorV1::TagMismatch { .. })
+        ) {
+            return Err("stable tag was accepted for RC package identity".to_string());
         }
+        Ok(())
     }
 
     #[test]
@@ -413,30 +386,27 @@ mod tests {
 
     #[test]
     fn independent_package_line_must_remain_exact_and_stable() -> Result<(), String> {
-        let identity = ReleaseIdentityV1::parse("0.2.0-rc.1", "v0.2.0-rc.1", true)
-            .map_err(|error| error.to_string())?;
-        match identity.validate_independent_stable_package_version(
-            "effortless-repo-edit",
-            "0.1.0",
-            "0.2.0-rc.1",
+        if !matches!(
+            ReleaseIdentityV1::validate_independent_stable_package_version(
+                "effortless-repo-edit",
+                "0.1.0",
+                "0.2.0-rc.1",
+            ),
+            Err(ReleaseIdentityErrorV1::IndependentPackageVersionMismatch { .. })
         ) {
-            Err(ReleaseIdentityErrorV1::IndependentPackageVersionMismatch { .. }) => {}
-            other => {
-                return Err(format!(
-                    "candidate version leaked into an independent line: {other:?}"
-                ));
-            }
+            return Err("candidate version leaked into an independent line".to_string());
         }
-        match identity.validate_independent_stable_package_version(
-            "effortless-repo-edit",
-            "0.1.0-rc.1",
-            "0.1.0-rc.1",
+        if !matches!(
+            ReleaseIdentityV1::validate_independent_stable_package_version(
+                "effortless-repo-edit",
+                "0.1.0-rc.1",
+                "0.1.0-rc.1",
+            ),
+            Err(ReleaseIdentityErrorV1::IndependentPackageLineNotStable { .. })
         ) {
-            Err(ReleaseIdentityErrorV1::IndependentPackageLineNotStable { .. }) => Ok(()),
-            other => Err(format!(
-                "independent prerelease line was not rejected: {other:?}"
-            )),
+            return Err("independent prerelease line was accepted".to_string());
         }
+        Ok(())
     }
 
     #[test]
