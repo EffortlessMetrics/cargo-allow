@@ -1,0 +1,5 @@
+kind: Added
+body: >-
+  Add a hidden, deterministic release-identity projection for repository
+  automation that validates stable and numbered RC versions, canonical tags,
+  and GitHub prerelease posture without mutating release state.
