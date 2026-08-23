@@ -1,0 +1,96 @@
+name: One-shot cut cargo-allow v0.2.0-rc.1
+
+on:
+  push:
+    branches:
+      - release/v0.2.0-rc1-3694
+    paths:
+      - .github/workflows/one-shot-cut-rc1.yml
+      - scripts/one-shot-cut-rc1.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: one-shot-cut-rc1-3694
+  cancel-in-progress: false
+
+jobs:
+  converge:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: release/v0.2.0-rc1-3694
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@a5f673d0ba8626c3977bb416a1612774bc82181b
+        with:
+          toolchain: 1.95.0
+          components: rustfmt,clippy
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: '1.25.0'
+          cache: false
+      - name: Cut exact RC identity
+        run: python3 scripts/one-shot-cut-rc1.py prepare
+      - name: Batch and merge the RC changelog with pinned Changie
+        env:
+          GOBIN: ${{ runner.temp }}/changie-bin
+          GOPROXY: https://proxy.golang.org
+          GOSUMDB: sum.golang.org
+          GOTOOLCHAIN: local
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(go env GOVERSION)" = 'go1.25.0'
+          mkdir -p "${GOBIN}"
+          go install github.com/miniscruff/changie@v1.25.2
+          go version -m "${GOBIN}/changie" | grep -Eq $'^\tmod\tgithub\.com/miniscruff/changie\tv1\.25\.2(\t|$)'
+          "${GOBIN}/changie" batch 0.2.0-rc.1
+          python3 scripts/one-shot-cut-rc1.py merge
+          "${GOBIN}/changie" merge
+      - name: Refresh generated package state
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo metadata --format-version 1 >/dev/null
+          cargo fmt --all
+          python3 scripts/one-shot-cut-rc1.py verify
+      - name: Remove temporary convergence surfaces
+        run: |
+          git rm .github/workflows/one-shot-cut-rc1.yml
+          git rm scripts/one-shot-cut-rc1.py
+      - name: Prove exact prerelease identity and package graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo fmt --all -- --check
+          bash scripts/test-release-version-preflight.sh
+          bash scripts/release-version-preflight.sh 0.2.0-rc.1
+          python3 scripts/release-topology-publisher.py --mode cargo-allow --list \
+            > target/cargo-allow/rc1-candidate-rows.txt
+          test "$(wc -l < target/cargo-allow/rc1-candidate-rows.txt)" -eq 13
+          test "$(grep -c '0.2.0-rc.1' target/cargo-allow/rc1-candidate-rows.txt)" -eq 10
+          test "$(grep -c '0.1.0' target/cargo-allow/rc1-candidate-rows.txt)" -eq 3
+          cargo check --workspace --all-targets --locked
+          cargo clippy --workspace --all-targets --locked -- -D warnings
+          cargo test -p cargo-allow --bin cargo-allow release_prep --locked -- --nocapture
+          cargo test -p cargo-allow --test support_matrix --locked -- --nocapture
+          cargo test -p allow-report release_manifest --locked -- --nocapture
+          cargo test --workspace --locked
+          cargo run -p cargo-allow -- check --mode no-new \
+            --format markdown \
+            --receipt target/cargo-allow/check.receipt.json \
+            --output target/cargo-allow/check.md
+          git diff --check
+      - name: Commit the reviewed RC candidate source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -A
+          git diff --cached --check
+          git config user.name "EffortlessSteven"
+          git config user.email "git@effortlesssteven.com"
+          git commit -m "build(release): cut cargo-allow 0.2.0-rc.1 on Rust 1.95"
+          git push origin HEAD:release/v0.2.0-rc1-3694
