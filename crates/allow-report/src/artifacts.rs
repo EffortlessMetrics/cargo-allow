@@ -11,6 +11,7 @@ mod migrate;
 mod propose;
 mod prune;
 mod refresh;
+mod release_identity_v1;
 mod release_manifest_v2;
 mod why;
 mod worklist;
@@ -48,6 +49,9 @@ pub use migrate::MigrateReport;
 pub use propose::ProposeReport;
 pub use prune::{PruneCandidate, PruneModeContext};
 pub use refresh::{RefreshModeContext, RefreshReport};
+pub use release_identity_v1::{
+    ReleaseChannelV1, ReleaseIdentityErrorV1, ReleaseIdentityV1, ReleaseVersionV1,
+};
 pub use release_manifest_v2::{
     RELEASE_MANIFEST_V2_SCHEMA_ID, RELEASE_MANIFEST_V2_SCHEMA_VERSION,
     ReleaseManifestAuthenticationV2, ReleaseManifestEnvelopeV2, ReleaseManifestOperationV2,
