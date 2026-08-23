@@ -7,6 +7,7 @@ const RELEASE_IDENTITY_SCHEMA: &str = "cargo-allow.release-identity.v1";
 
 /// Validate and project one release identity for repository automation.
 #[derive(Debug, Clone, Parser)]
+#[command(disable_version_flag = true)]
 pub(crate) struct ReleaseIdentityArgs {
     /// Canonical stable or numbered release-candidate version.
     #[arg(long)]
