@@ -10,6 +10,8 @@ use crate::{
     reference, refresh, vocabulary, why, worklist,
 };
 
+mod release_identity_command;
+
 #[derive(Debug, Parser)]
 #[command(
     name = "cargo-allow",
@@ -109,6 +111,9 @@ pub(crate) enum CargoAllowCommand {
     ExtractionParity(extraction_parity_command::ParityArgs),
     /// Run the Rust-native Changie static sensor over one exact source subject.
     Changie(changie::ChangieArgs),
+    /// Validate and project release identity for repository automation.
+    #[command(hide = true)]
+    ReleaseIdentity(release_identity_command::ReleaseIdentityArgs),
 }
 
 /// Resolve the process output style from the flag, the environment, and
@@ -198,8 +203,10 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::Reference(args) => reference::cmd_reference(&args),
         CargoAllowCommand::Hooks(args) => hooks::cmd_hooks(&args),
         CargoAllowCommand::ExtractionParity(args) => extraction_parity_command::cmd_parity(&args),
-
         CargoAllowCommand::Changie(args) => changie::cmd_changie(&args.clone()),
+        CargoAllowCommand::ReleaseIdentity(args) => {
+            release_identity_command::cmd_release_identity(&args)
+        }
     }
 }
 
@@ -395,5 +402,6 @@ impl CargoAllowCommand {
         "hooks",
         "extraction-parity",
         "changie",
+        "release-identity",
     ];
 }
