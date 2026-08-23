@@ -54,9 +54,7 @@ fn build_release_identity_projection(
         .map_err(invalid_release_identity)?;
     let (channel, rc_ordinal) = match identity.version().channel() {
         ReleaseChannelV1::Stable => ("stable", None),
-        ReleaseChannelV1::ReleaseCandidate { ordinal } => {
-            ("release_candidate", Some(ordinal))
-        }
+        ReleaseChannelV1::ReleaseCandidate { ordinal } => ("release_candidate", Some(ordinal)),
     };
 
     Ok(ReleaseIdentityProjectionV1 {
@@ -106,11 +104,8 @@ mod tests {
 
     #[test]
     fn observed_rc_tag_projects_prerelease_posture() -> Result<(), String> {
-        let projection = build_release_identity_projection(
-            "0.2.0-rc.1",
-            Some("v0.2.0-rc.1"),
-        )
-        .map_err(|error| error.to_string())?;
+        let projection = build_release_identity_projection("0.2.0-rc.1", Some("v0.2.0-rc.1"))
+            .map_err(|error| error.to_string())?;
         if projection.tag_source != "observed"
             || projection.channel != "release_candidate"
             || projection.rc_ordinal != Some(1)
