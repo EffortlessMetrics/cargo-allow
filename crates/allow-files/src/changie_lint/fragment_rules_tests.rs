@@ -7,21 +7,9 @@ const ROOTS: &str = "changesDir: .changes\nunreleasedDir: .\n";
 
 // Keep this representative fragment independent from `.changes`: Changie removes live
 // fragments when it batches a release.
-const REPOSITORY_FRAGMENT_FIXTURE: &str = r##"kind: Changed
-body: 'Change-status reporting now resolves typed subjects through a new,
-  standalone subject-resolution layer before building the view: graph-validation
-  failures and setup failures are classified separately, identical subject IDs must
-  resolve to byte-identical content, graph content is projected from stored
-  diagnostics rather than recompiled from mutable files, CLI JSON reports the resolved
-  subject ID and source-state identity, and staged pre-commit parity, relocation,
-  missing-required-subject, dirty-worktree, nested-scope, idempotence, and malformed-root
-  fixtures now close the first consumer boundary.'
-time: 2026-08-11T15:45:00.000Z
-custom:
-  Issue: '#2982'
-  PR: '#3114'
-  Components: cargo-allow
-"##;
+const REPOSITORY_FRAGMENT_FIXTURE: &str = r#"kind: Changed
+body: 'Representative repository fragment retained outside the live Changie batch.'
+"#;
 
 fn source(path: &str, text: &str) -> ChangieSourceDocument {
     ChangieSourceDocument::from_bytes(
