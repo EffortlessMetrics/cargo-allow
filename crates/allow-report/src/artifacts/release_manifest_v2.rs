@@ -4,6 +4,7 @@
 //! discover workspace packages, read policy authorities, inspect registries, or
 //! authorize publication. Those integrations belong to later release slices.
 
+use super::release_identity_v1::ReleaseVersionV1;
 use serde::{Deserialize, Serialize};
 
 pub const RELEASE_MANIFEST_V2_SCHEMA_VERSION: u32 = 2;
@@ -289,7 +290,7 @@ fn validate_package_rows(rows: &[ReleaseManifestPackageRowV2], gaps: &mut Vec<St
         if row.package_name.trim().is_empty() || !package_names.insert(row.package_name.clone()) {
             gaps.push("package row package_name is empty or duplicated".to_string());
         }
-        if !is_semver(&row.package_version) {
+        if !is_supported_release_version(&row.package_version) {
             gaps.push(format!(
                 "package row {} has malformed version",
                 row.package_name
@@ -327,10 +328,8 @@ fn contains_credential_material(value: &str) -> bool {
         .any(|marker| value.contains(marker))
 }
 
-fn is_semver(value: &str) -> bool {
-    let mut parts = value.split('.');
-    parts.clone().count() == 3
-        && parts.all(|part| !part.is_empty() && part.chars().all(|c| c.is_ascii_digit()))
+fn is_supported_release_version(value: &str) -> bool {
+    ReleaseVersionV1::parse(value).is_ok()
 }
 
 #[cfg(test)]
@@ -388,6 +387,41 @@ mod tests {
         let validation = validate_release_manifest_v2(&envelope());
         if validation.result != ReleaseManifestResultV2::Complete {
             return Err(format!("expected complete V2 payload: {validation:?}"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn v2_accepts_numbered_rc_rows_and_rejects_other_prerelease_forms() -> Result<(), String> {
+        let mut candidate = envelope();
+        candidate.payload.tag_or_authorization = "v0.2.0-rc.1".to_string();
+        candidate
+            .payload
+            .package_rows
+            .first_mut()
+            .ok_or_else(|| "fixture lost its first package row".to_string())?
+            .package_version = "0.2.0-rc.1".to_string();
+        let validation = validate_release_manifest_v2(&candidate);
+        if validation.result != ReleaseManifestResultV2::Complete {
+            return Err(format!("numbered RC row was rejected: {validation:?}"));
+        }
+
+        candidate
+            .payload
+            .package_rows
+            .first_mut()
+            .ok_or_else(|| "fixture lost its first package row".to_string())?
+            .package_version = "0.2.0-beta.1".to_string();
+        let validation = validate_release_manifest_v2(&candidate);
+        if validation.result == ReleaseManifestResultV2::Complete
+            || !validation
+                .gaps
+                .iter()
+                .any(|gap| gap.contains("cargo-allow has malformed version"))
+        {
+            return Err(format!(
+                "unsupported prerelease row was accepted: {validation:?}"
+            ));
         }
         Ok(())
     }
@@ -602,6 +636,14 @@ mod tests {
             != Some(&serde_json::Value::from(RELEASE_MANIFEST_V2_SCHEMA_VERSION))
         {
             return Err("V2 schema version is out of sync with the Rust contract".to_string());
+        }
+        if schema.pointer("/$defs/package_row/properties/package_version/pattern")
+            != Some(&serde_json::Value::String(
+                r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-rc\.[1-9][0-9]*)?$"
+                    .to_string(),
+            ))
+        {
+            return Err("V2 package-version grammar is out of sync".to_string());
         }
         Ok(())
     }

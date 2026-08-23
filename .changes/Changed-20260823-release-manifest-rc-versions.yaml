@@ -1,0 +1,4 @@
+kind: Changed
+body: >-
+  ReleaseManifestV2 now accepts canonical numbered release-candidate package
+  versions such as 0.2.0-rc.1 while rejecting unsupported prerelease forms.
