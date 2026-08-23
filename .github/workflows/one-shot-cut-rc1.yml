@@ -1,12 +1,6 @@
 name: One-shot cut cargo-allow v0.2.0-rc.1
 
 on:
-  push:
-    branches:
-      - release/v0.2.0-rc1-3694
-    paths:
-      - .github/workflows/one-shot-cut-rc1.yml
-      - scripts/one-shot-cut-rc1.py
   pull_request:
     types: [opened, synchronize, reopened]
     branches: [main]
@@ -18,12 +12,12 @@ permissions:
   contents: write
 
 concurrency:
-  group: one-shot-cut-rc1-3694
+  group: one-shot-cut-rc1-3694-pr
   cancel-in-progress: false
 
 jobs:
   converge:
-    if: github.event_name == 'push' || github.head_ref == 'release/v0.2.0-rc1-3694'
+    if: github.head_ref == 'release/v0.2.0-rc1-3694'
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
