@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/one-shot-cut-rc1.yml
       - scripts/one-shot-cut-rc1.py
+      - scripts/one-shot-preserve-changie-fixture.py
 
 permissions:
   contents: write
@@ -33,6 +34,8 @@ jobs:
         with:
           go-version: '1.25.0'
           cache: false
+      - name: Preserve a stable Changie lint fixture
+        run: python3 scripts/one-shot-preserve-changie-fixture.py
       - name: Cut exact RC identity
         run: python3 scripts/one-shot-cut-rc1.py prepare
       - name: Batch and merge the RC changelog with pinned Changie
@@ -62,6 +65,7 @@ jobs:
         run: |
           git rm .github/workflows/one-shot-cut-rc1.yml
           git rm scripts/one-shot-cut-rc1.py
+          git rm scripts/one-shot-preserve-changie-fixture.py
       - name: Prove exact prerelease identity and package graph
         shell: bash
         run: |
