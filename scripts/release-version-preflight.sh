@@ -47,6 +47,26 @@ read_workspace_dependency_versions() {
   ' Cargo.toml
 }
 
+validate_typed_release_identity() {
+  local release_version="$1"
+  local -a command=(
+    cargo run --quiet -p cargo-allow --locked --
+    release-identity --version "${release_version}"
+  )
+
+  if [[ "${GITHUB_EVENT_NAME:-}" == "push" && "${GITHUB_REF_NAME:-}" == v* ]]; then
+    command+=(--tag "${GITHUB_REF_NAME}")
+  fi
+
+  local projection
+  if ! projection="$("${command[@]}")"; then
+    fail "typed release identity rejected version/tag inputs"
+  fi
+  printf '%s\n' "${projection}" | grep -q '"result": "validated"' \
+    || fail "typed release identity did not return a validated projection"
+  log "typed release identity accepted ${release_version}"
+}
+
 version="${1:-${RELEASE_VERSION:-}}"
 if [[ -z "${version}" ]]; then
   version="$(read_workspace_version)"
@@ -55,6 +75,12 @@ fi
 
 workspace_version="$(read_workspace_version)"
 [[ -n "${workspace_version}" ]] || fail "could not read [workspace.package].version from Cargo.toml"
+
+# Version grammar, canonical tag identity, and stable-versus-RC channel semantics
+# belong to the Rust release identity contract. Shell retains only source-file
+# equality checks needed to ensure the selected workspace is the candidate being
+# released.
+validate_typed_release_identity "${version}"
 
 if [[ "${GITHUB_EVENT_NAME:-}" == "push" && "${GITHUB_REF_NAME:-}" == v* ]]; then
   tag_version="${GITHUB_REF_NAME#v}"
