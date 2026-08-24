@@ -17,7 +17,8 @@ Before broad implementation, read and reconcile:
 2. `docs/campaigns/cargo-allow-0.2.0.md` and controller issue `#3768`;
 3. the selected issue body, current comments, dependencies, acceptance criteria, non-goals, and claim boundary;
 4. current `main`, the exact merge base, open pull requests, active branches where observable, and the full current repository state relevant to the issue;
-5. current external state when the issue depends on a registry, GitHub setting, public release, or another repository.
+5. current CI state and required check identities for the selected branch or pull request;
+6. current external state when the issue depends on a registry, GitHub setting, public release, or another repository.
 
 Do not use an old issue title, remembered source location, prior branch, prior receipt, or latest green run as current authority. Missing, unavailable, stale, conflicting, quota-limited, or ambiguous evidence remains non-clean.
 
