@@ -22,14 +22,8 @@ stale_entries_fail = false
 
 [requirements.unsafe]
 evidence_required = true
-safety_comment_required = false
-# #3237 mandate: every unsafe entry requires at least one verified
-# local-file evidence reference (doc:, spec:, adr:, ripr:, coverage:,
-# unsafe-review:); traceability-only references (test:, issue:, pr:) are
-# supplementary. The rollout grandfathering window was retired after all
-# twelve pre-mandate entries gained per-entry safety analysis in
-# docs/dogfood/unsafe-fixture-safety-analysis.md.
 verified_evidence_required = true
+safety_comment_required = false
 
 [[allow]]
 id = "allow-0038"
@@ -1512,7 +1506,6 @@ glob = "tests/fixtures/intent-model/parity-spec-system-v1.toml"
 [allow.last_seen]
 line = 1
 column = 1
-
 
 [[allow]]
 id = "allow-9064"
@@ -11441,34 +11434,6 @@ glob = "docs/schemas/shared-package-candidate.v1.schema.json"
 line = 1
 column = 1
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 [[allow]]
 id = "allow-9252"
 kind = "panic"
@@ -11480,9 +11445,9 @@ created = "2026-08-13"
 review_after = "2027-02-01"
 
 [allow.selector]
-glob = "crates/**/*.rs"
 ast_kind = "macro_call"
 macro_name = "assert"
+glob = "crates/**/*.rs"
 
 [[allow]]
 id = "allow-9253"
@@ -11495,9 +11460,9 @@ created = "2026-08-13"
 review_after = "2027-02-01"
 
 [allow.selector]
-glob = "crates/**/*.rs"
 ast_kind = "macro_call"
 macro_name = "assert_eq"
+glob = "crates/**/*.rs"
 
 [[allow]]
 id = "allow-9254"
@@ -11510,9 +11475,9 @@ created = "2026-08-13"
 review_after = "2027-02-01"
 
 [allow.selector]
-glob = "crates/**/*.rs"
 ast_kind = "macro_call"
 macro_name = "assert_ne"
+glob = "crates/**/*.rs"
 
 [[allow]]
 id = "allow-9255"
@@ -11736,7 +11701,6 @@ glob = "scripts/test-changie-sensor-external-consumer.sh"
 [allow.last_seen]
 line = 1
 column = 1
-
 
 [[allow]]
 id = "allow-11123"
@@ -12188,9 +12152,9 @@ owner = "core/release"
 classification = "release_automation"
 reason = "#3160 retained Changie history corpus version files (0.1.6 through 0.2.0), generated deterministically from the reviewed CHANGELOG.md; merge reproduces the reviewed changelog byte-for-byte."
 evidence = ["doc:docs/how-to/manage-changelog.md", "issue:3160"]
+occurrence_limit = 7
 created = "2026-08-17"
 review_after = "2026-11-14"
-occurrence_limit = 7
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -12200,6 +12164,7 @@ glob = ".changes/0.*.md"
 [allow.last_seen]
 line = 1
 column = 1
+
 [[allow]]
 id = "allow-11129"
 kind = "non_rust_file"
@@ -12221,6 +12186,7 @@ glob = "tests/fixtures/intent-engine/parity-graph-compiler-v1.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
 [[allow]]
 id = "allow-11130"
 kind = "non_rust_file"
@@ -12238,6 +12204,28 @@ ast_kind = "tracked_file"
 symbol = "tests/fixtures/intent-engine/graph-compiler-parity/generation-mismatch.slice.toml"
 target_fingerprint = "toml"
 glob = "tests/fixtures/intent-engine/graph-compiler-parity/generation-mismatch.slice.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0580"
+kind = "non_rust_file"
+family = "configuration"
+path = "release/authorize-v0.2.0.json"
+owner = "@EffortlessMetrics/maintainers"
+classification = "reviewed_exception"
+reason = "Release authorization payload for 0.2.0 candidate binding"
+evidence = ["issue:3708"]
+created = "2026-08-24"
+review_after = "2026-11-22"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "release/authorize-v0.2.0.json"
+target_fingerprint = "json"
+glob = "release/authorize-v0.2.0.json"
 
 [allow.last_seen]
 line = 1

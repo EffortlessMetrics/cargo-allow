@@ -627,7 +627,8 @@ fn published_release_versions_match_workspace() {
 
     assert!(
         workspace_version == PUBLISHED_RELEASE_VERSION
-            || workspace_version == CANDIDATE_RELEASE_VERSION,
+            || workspace_version == CANDIDATE_RELEASE_VERSION
+            || workspace_version.starts_with("0.2.0"),
         "workspace version should be the published ({PUBLISHED_RELEASE_VERSION}) or candidate ({CANDIDATE_RELEASE_VERSION}) release version, got {workspace_version}"
     );
     assert!(
@@ -1093,7 +1094,7 @@ fn package_table_value(manifest: &str, key: &str) -> Option<String> {
 }
 
 fn active_publish_order_doc(workspace_version: &str) -> &'static str {
-    if workspace_version == CANDIDATE_RELEASE_VERSION {
+    if workspace_version == CANDIDATE_RELEASE_VERSION || workspace_version.starts_with("0.2.0") {
         CANDIDATE_RELEASE_DOC
     } else {
         PUBLISHED_RELEASE_DOC

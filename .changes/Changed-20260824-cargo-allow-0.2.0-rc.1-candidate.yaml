@@ -1,0 +1,4 @@
+kind: Changed
+body: >-
+  Set cargo-allow product workspace packages to 0.2.0-rc.1 candidate version
+  with exact locked topology and receipt authorization.

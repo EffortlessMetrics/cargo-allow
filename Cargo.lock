@@ -33,7 +33,7 @@ checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
 name = "allow-core"
-version = "0.2.0"
+version = "0.2.0-rc.1"
 dependencies = [
  "proptest",
  "sha2",
@@ -42,7 +42,7 @@ dependencies = [
 
 [[package]]
 name = "allow-diff"
-version = "0.2.0"
+version = "0.2.0-rc.1"
 dependencies = [
  "allow-core",
  "allow-files",
@@ -55,7 +55,7 @@ dependencies = [
 
 [[package]]
 name = "allow-files"
-version = "0.2.0"
+version = "0.2.0-rc.1"
 dependencies = [
  "allow-core",
  "yaml-rust2",
@@ -63,7 +63,7 @@ dependencies = [
 
 [[package]]
 name = "allow-inventory"
-version = "0.2.0"
+version = "0.2.0-rc.1"
 dependencies = [
  "allow-core",
  "rayon",
@@ -71,7 +71,7 @@ dependencies = [
 
 [[package]]
 name = "allow-match"
-version = "0.2.0"
+version = "0.2.0-rc.1"
 dependencies = [
  "allow-core",
  "allow-policy",
@@ -81,7 +81,7 @@ dependencies = [
 
 [[package]]
 name = "allow-policy"
-version = "0.2.0"
+version = "0.2.0-rc.1"
 dependencies = [
  "allow-core",
  "proptest",
@@ -93,7 +93,7 @@ dependencies = [
 
 [[package]]
 name = "allow-policy-legacy"
-version = "0.2.0"
+version = "0.2.0-rc.1"
 dependencies = [
  "allow-core",
  "allow-files",
@@ -104,7 +104,7 @@ dependencies = [
 
 [[package]]
 name = "allow-report"
-version = "0.2.0"
+version = "0.2.0-rc.1"
 dependencies = [
  "allow-core",
  "allow-policy",
@@ -116,7 +116,7 @@ dependencies = [
 
 [[package]]
 name = "allow-rust"
-version = "0.2.0"
+version = "0.2.0-rc.1"
 dependencies = [
  "allow-core",
  "proptest",
@@ -238,7 +238,7 @@ checksum = "175812e0be2bccb6abe50bb8d566126198344f707e304f45c648fd8f2cc0365e"
 
 [[package]]
 name = "cargo-allow"
-version = "0.2.0"
+version = "0.2.0-rc.1"
 dependencies = [
  "allow-core",
  "allow-diff",
