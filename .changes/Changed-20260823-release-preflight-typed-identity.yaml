@@ -1,0 +1,5 @@
+kind: Changed
+body: >-
+  Route release-version preflight through cargo-allow's typed stable and
+  numbered-RC release identity contract instead of independently accepting tag
+  and prerelease semantics in shell.
