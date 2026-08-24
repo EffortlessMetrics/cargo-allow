@@ -8596,6 +8596,28 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-11140"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/pilots/0.2.0-rc.1-pilot-selection.md"
+owner = "core/devex"
+classification = "pilot_selection_record"
+reason = "Documents the candidate selection and decision packets for clean and brownfield 0.2 pilots for #3771."
+evidence = ["issue:3771", "issue:3768", "issue:2466", "issue:2467", "test:pilot_selection_contract_is_recorded"]
+created = "2026-08-24"
+review_after = "2027-02-24"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/pilots/0.2.0-rc.1-pilot-selection.md"
+target_fingerprint = "md"
+glob = "docs/pilots/0.2.0-rc.1-pilot-selection.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0308"
 kind = "non_rust_file"
 family = "documentation"
