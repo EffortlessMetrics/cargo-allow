@@ -8,6 +8,8 @@ inventory without executing repository code.
 
 ## [Unreleased]
 
+## [0.2.0-rc.1] - 2026-08-24
+
 ## [0.2.0] - 2026-07-19
 
 ### Added
