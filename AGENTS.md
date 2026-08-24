@@ -36,6 +36,14 @@ unsafe-proof, test-adequacy, or coverage-proof behavior until implemented.
 For exploratory, review-only, or analysis-only work, stop at findings unless
 the user turns it into an implementation lane.
 
+When implementing one reversible issue selected by the active `#3768`
+campaign, follow
+[`.agents/skills/cargo-allow-0.2-campaign/SKILL.md`](.agents/skills/cargo-allow-0.2-campaign/SKILL.md).
+Use it to reload exact live state, classify the task, avoid a competing writer,
+post the issue execution packet, validate proportionally, and stop at every
+root-decision or irreversible boundary. It is the implementation router, not an
+independent reviewer.
+
 When asked to review or re-review a pull request, validate review feedback, or
 decide merge readiness, follow
 [`.agents/skills/review-current-head/SKILL.md`](.agents/skills/review-current-head/SKILL.md).
