@@ -24,10 +24,11 @@ fn topology_v2_retains_expected_checksums_for_shared_prerequisites() -> Result<(
     let mut shared_count = 0;
 
     for row in rows {
-        let is_candidate = row
-            .get("candidate_inclusion")
-            .and_then(serde_json::Value::as_bool)
-            .unwrap_or(false);
+        let is_candidate = matches!(
+            row.get("candidate_inclusion")
+                .and_then(serde_json::Value::as_bool),
+            Some(true)
+        );
         if !is_candidate {
             continue;
         }
@@ -42,15 +43,14 @@ fn topology_v2_retains_expected_checksums_for_shared_prerequisites() -> Result<(
                 let expected_checksum = row
                     .get("expected_registry_checksum")
                     .and_then(serde_json::Value::as_str);
-                assert!(
-                    expected_checksum.is_some(),
-                    "shared prerequisite row {} must have expected_registry_checksum",
-                    row.get("cargo_package_name")
-                        .and_then(serde_json::Value::as_str)
-                        .unwrap_or("unknown")
-                );
-                let cs = expected_checksum.unwrap();
-                assert!(cs.starts_with("sha256:") && cs.len() == 71);
+                if let Some(cs) = expected_checksum {
+                    assert!(cs.starts_with("sha256:") && cs.len() == 71);
+                } else {
+                    return Err(io::Error::other(
+                        "shared prerequisite row missing expected_registry_checksum",
+                    )
+                    .into());
+                }
             }
             _ => {}
         }
