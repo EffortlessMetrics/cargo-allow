@@ -9,6 +9,12 @@ Controlling issue: [#3768](https://github.com/EffortlessMetrics/cargo-allow/issu
 - Stable rollback baseline: `0.1.11`
 - Experimental sibling line: `0.1.0` (`cargo-intent`, `cargo-proof`)
 
+## Workspace Skill Routing
+
+- [`.agents/skills/cargo-allow-0.2-campaign/SKILL.md`](../../.agents/skills/cargo-allow-0.2-campaign/SKILL.md) owns reversible issue-first implementation routing for one currently selected campaign lane.
+- [`.agents/skills/review-current-head/SKILL.md`](../../.agents/skills/review-current-head/SKILL.md) owns independent exact-base/head review and merge-readiness verification.
+- Implementation must hand the full current diff and exact base/head/merge-base identity to the review skill. Neither skill authorizes a tag, package upload, GitHub Release mutation, live setting change, external pilot mutation, or release authorization.
+
 ## Child Rails and Issue Graph
 
 1. **Agent Control Plane**
@@ -53,7 +59,7 @@ Controlling issue: [#3768](https://github.com/EffortlessMetrics/cargo-allow/issu
 ## Immediate Next Unblocked Work
 
 - [#3731](https://github.com/EffortlessMetrics/cargo-allow/issues/3731): Agent control plane landed
-- [#3770](https://github.com/EffortlessMetrics/cargo-allow/issues/3770): Campaign execution skill in `.agents/skills/cargo-allow-0.2-campaign/`
+- [#3770](https://github.com/EffortlessMetrics/cargo-allow/issues/3770): Campaign execution skill at [`.agents/skills/cargo-allow-0.2-campaign/SKILL.md`](../../.agents/skills/cargo-allow-0.2-campaign/SKILL.md)
 - [#3747](https://github.com/EffortlessMetrics/cargo-allow/issues/3747): Machine-visible review blocking
 - Parallel read-only [#3759](https://github.com/EffortlessMetrics/cargo-allow/issues/3759) (RC.1 reconciliation) and [#3771](https://github.com/EffortlessMetrics/cargo-allow/issues/3771) (pilot comparisons)
 
