@@ -1,0 +1,9 @@
+{
+  "authorization": "issue-3708-authorized-by-maintainer",
+  "candidate_parent_commit": "970fd5edf6fb345f2bf0ea9eb8111fde93b85258",
+  "candidate_parent_tree": "131d1d240fdd87237e0272eba0af98a4f2951cc6",
+  "cargo_lock_sha256": "1262f25c182d12eeb8716df9429395db1a686208ec696e0f3a6af3525356ab29",
+  "release": "v0.2.0",
+  "schema_id": "cargo-allow.release-authorization.v1",
+  "topology_sha256": "82d4aa46a192b535f6506ddf1b1484f1ebd1452dac4df5baa84ce8ae2aa7c2cd"
+}
