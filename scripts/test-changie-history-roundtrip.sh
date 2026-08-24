@@ -101,16 +101,20 @@ corpus_versions() {
 import re
 from pathlib import Path
 
+def parse_semver(s):
+    m = re.match(r'^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$', s)
+    if not m:
+        return (0, 0, 0, (0, ''))
+    major, minor, patch, prerelease = m.groups()
+    pre_tuple = (1, '') if prerelease is None else (0, prerelease)
+    return (int(major), int(minor), int(patch), pre_tuple)
+
 names = [
-    p.name for p in Path('.changes').glob('*.md')
-    if re.fullmatch(r'\d+\.\d+\.\d+\.md', p.name)
+    p.stem for p in Path('.changes').glob('*.md')
+    if p.name != 'header.md' and p.name != 'README.md' and re.match(r'^\d+\.\d+\.\d+', p.name)
 ]
-for name in sorted(
-    names,
-    key=lambda n: tuple(int(part) for part in n[:-3].split('.')),
-    reverse=True,
-):
-    print(name[:-3])
+for name in sorted(names, key=parse_semver, reverse=True):
+    print(name)
 PYEOF
 }
 
@@ -157,7 +161,8 @@ RETAINED_VERSIONS="$(corpus_versions)"
 NEWEST_RETAINED="$(printf '%s\n' "${RETAINED_VERSIONS}" | head -1)"
 # Candidate batch version: next patch after the newest retained release.
 BATCH_VERSION="$("${PY}" -c "
-parts = '${NEWEST_RETAINED}'.split('.')
+import re
+parts = re.split(r'[-.]', '${NEWEST_RETAINED}')
 major, minor, patch = int(parts[0]), int(parts[1]), int(parts[2])
 print(f'{major}.{minor}.{patch + 1}')" | tr -d '\r')"
 [ -n "${BATCH_VERSION}" ] || fail "could not derive a candidate batch version"
