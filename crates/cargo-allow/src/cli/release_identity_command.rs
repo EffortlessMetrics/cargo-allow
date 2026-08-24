@@ -13,7 +13,7 @@ pub(crate) struct ReleaseIdentityArgs {
     #[arg(long)]
     pub(super) version: String,
     /// Observed Git tag. Omit only for nonpublishing rehearsal; the canonical tag is derived.
-    #[arg(long)]
+    #[arg(long, alias = "observed-tag")]
     pub(super) tag: Option<String>,
 }
 
