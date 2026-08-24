@@ -201,7 +201,6 @@ glob = "docs/schemas/operator-latency.v2.schema.json"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-11112"
 kind = "non_rust_file"
@@ -1417,7 +1416,6 @@ glob = "crates/effortless-repo-snapshot/src/git.rs"
 [allow.last_seen]
 line = 2
 column = 1
-
 
 [[allow]]
 id = "allow-9058"
@@ -12313,6 +12311,28 @@ ast_kind = "tracked_file"
 symbol = "release/authorize-v0.2.0.json"
 target_fingerprint = "json"
 glob = "release/authorize-v0.2.0.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0585"
+kind = "non_rust_file"
+family = "documentation"
+path = ".agents/skills/cargo-allow-0.2-campaign/SKILL.md"
+owner = "core/devex"
+classification = "agent_skill"
+reason = "Defines the repository-native implementation router for the selected cargo-allow 0.2 campaign while preserving one-writer, reversible-work, independent-review, and irreversible-operation boundaries."
+evidence = ["issue:3770", "doc:AGENTS.md", "doc:GEMINI.md", "doc:docs/campaigns/cargo-allow-0.2.0.md", "test:cargo_allow_0_2_campaign_skill_contract_is_wired"]
+created = "2026-08-24"
+review_after = "2027-02-24"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".agents/skills/cargo-allow-0.2-campaign/SKILL.md"
+target_fingerprint = "md"
+glob = ".agents/skills/cargo-allow-0.2-campaign/SKILL.md"
 
 [allow.last_seen]
 line = 1
