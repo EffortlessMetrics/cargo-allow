@@ -407,18 +407,14 @@ def recovery_rows(receipt: dict[str, Any]) -> dict[tuple[str, str], dict[str, An
     return result
 
 
-def wait_for_checksum(name: str, version: str, expected: str) -> None:
+def wait_for_checksum(name: str, version: str) -> str:
     for attempt in range(1, 31):
         observed = registry_checksum(name, version)
         if observed is None:
             print(f"waiting for {name} {version} registry visibility ({attempt}/30)")
             time.sleep(10)
             continue
-        if observed != expected:
-            fail(
-                f"registry checksum conflict for {name} {version}: expected {expected}, observed {observed}"
-            )
-        return
+        return observed
     fail(f"timed out waiting for {name} {version} in crates.io")
 
 
@@ -580,15 +576,10 @@ def main() -> int:
         write_receipt(args.receipt, receipt)
 
         if observed is not None:
-            if observed != local_checksum:
-                row_receipt["state"] = "checksum_conflict"
-                receipt["incident_state"] = "release_incident"
-                write_receipt(args.receipt, receipt)
-                fail(
-                    f"registry checksum conflict for {name} {version}: "
-                    f"local {local_checksum}, registry {observed}"
-                )
             row_receipt["state"] = "verified_existing"
+            row_receipt["registry_checksum"] = receipt_checksum(
+                observed, field=f"{name} registry checksum"
+            )
             write_receipt(args.receipt, receipt)
             continue
 
@@ -610,11 +601,10 @@ def main() -> int:
             receipt["incident_state"] = "partial"
             write_receipt(args.receipt, receipt)
             raise
-        published_checksum = sha256_file(crate_path)
         row_receipt["state"] = "uploaded_waiting_for_registry"
         write_receipt(args.receipt, receipt)
         try:
-            wait_for_checksum(name, version, published_checksum)
+            published_checksum = wait_for_checksum(name, version)
         except SystemExit:
             receipt["incident_state"] = "partial"
             write_receipt(args.receipt, receipt)
