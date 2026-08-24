@@ -1,45 +1,35 @@
+use std::error::Error;
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 
-fn workspace_root() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .ancestors()
-        .nth(2)
-        .expect("cargo-allow crate should be nested below the workspace root")
-        .to_path_buf()
-}
-
-fn read_workspace_file(path: &str) -> String {
-    let full_path = workspace_root().join(path);
-    fs::read_to_string(&full_path)
-        .unwrap_or_else(|error| panic!("failed to read {}: {error}", full_path.display()))
-}
-
-fn frontmatter(source: &str) -> &str {
-    let rest = source
-        .strip_prefix("---\n")
-        .expect("skill must start with YAML frontmatter");
-    rest.split_once("\n---\n")
-        .map(|(frontmatter, _)| frontmatter)
-        .expect("skill frontmatter must have a closing delimiter")
-}
-
 #[test]
-fn cargo_allow_0_2_campaign_skill_contract_is_wired() {
+fn cargo_allow_0_2_campaign_skill_contract_is_wired() -> Result<(), Box<dyn Error>> {
+    let root = repository_root()?;
+
+    // Packaged cargo-allow tests run without the repository guidance tree. The
+    // source checkout is the authority for this repository-local contract.
+    if !root.join(".git").exists() {
+        return Ok(());
+    }
+
     let skill_path = ".agents/skills/cargo-allow-0.2-campaign/SKILL.md";
     let review_skill_path = ".agents/skills/review-current-head/SKILL.md";
 
-    let skill = read_workspace_file(skill_path);
-    let review_skill = read_workspace_file(review_skill_path);
-    let agents = read_workspace_file("AGENTS.md");
-    let gemini = read_workspace_file("GEMINI.md");
-    let campaign = read_workspace_file("docs/campaigns/cargo-allow-0.2.0.md");
+    let skill = read(&root, skill_path)?;
+    let review_skill = read(&root, review_skill_path)?;
+    let agents = read(&root, "AGENTS.md")?;
+    let gemini = read(&root, "GEMINI.md")?;
+    let campaign = read(&root, "docs/campaigns/cargo-allow-0.2.0.md")?;
 
     let expected_frontmatter = concat!(
         "name: cargo-allow-0.2-campaign\n",
         "description: Implement the currently selected cargo-allow 0.2.0 campaign issue from exact live repository and issue state, stay within one semantic owner and PR lane, validate proportionally, and hand the resulting exact head to the independent review skill."
     );
-    assert_eq!(frontmatter(&skill), expected_frontmatter);
+    require(
+        frontmatter(&skill)? == expected_frontmatter,
+        "campaign skill must retain its exact canonical frontmatter",
+    )?;
 
     for marker in [
         "ReversibleImplementation",
@@ -67,50 +57,102 @@ fn cargo_allow_0_2_campaign_skill_contract_is_wired() {
         "final release authorization",
         "Claim boundary",
     ] {
-        assert!(
-            skill.contains(marker),
-            "campaign skill is missing required contract marker: {marker}"
-        );
+        require_contains(&skill, marker, "campaign skill")?;
     }
 
-    let review_frontmatter = frontmatter(&review_skill);
-    assert!(
+    let review_frontmatter = frontmatter(&review_skill)?;
+    require(
         review_frontmatter.contains("name: review-current-head"),
-        "independent review skill must retain its own identity"
-    );
-    assert_ne!(
-        frontmatter(&skill),
-        review_frontmatter,
-        "implementation and independent review must not collapse into one skill contract"
-    );
-    assert!(
-        skill.contains("It does not perform independent review"),
-        "implementation skill must disclaim independent review authority"
-    );
-    assert!(
-        review_skill.contains("independent"),
-        "review skill must remain explicitly independent"
-    );
+        "independent review skill must retain its own identity",
+    )?;
+    require(
+        frontmatter(&skill)? != review_frontmatter,
+        "implementation and independent review must not collapse into one skill contract",
+    )?;
+    require_contains(
+        &skill,
+        "It does not perform independent review",
+        "campaign skill",
+    )?;
+    require_contains(
+        &review_skill,
+        "independent",
+        "independent review skill",
+    )?;
 
     for (path, source) in [
         ("AGENTS.md", &agents),
         ("GEMINI.md", &gemini),
         ("docs/campaigns/cargo-allow-0.2.0.md", &campaign),
     ] {
-        assert!(
-            source.contains(skill_path),
-            "{path} must route implementation work through the campaign skill"
-        );
-        assert!(
-            source.contains(review_skill_path),
-            "{path} must keep the independent review handoff visible"
-        );
+        require_contains(
+            source,
+            skill_path,
+            &format!("{path} implementation routing"),
+        )?;
+        require_contains(
+            source,
+            review_skill_path,
+            &format!("{path} review routing"),
+        )?;
     }
 
     for forbidden in ['\u{200b}', '\u{200c}', '\u{200d}', '\u{2060}', '\u{feff}'] {
-        assert!(
+        require(
             !skill.contains(forbidden),
-            "campaign skill contains a zero-width formatting character"
-        );
+            "campaign skill contains a zero-width formatting character",
+        )?;
+    }
+
+    Ok(())
+}
+
+fn repository_root() -> Result<PathBuf, Box<dyn Error>> {
+    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let crates_dir = manifest_dir
+        .parent()
+        .ok_or_else(|| io::Error::other("cargo-allow manifest has no crates parent"))?;
+    let root = crates_dir
+        .parent()
+        .ok_or_else(|| io::Error::other("cargo-allow crates directory has no repository parent"))?;
+    Ok(root.to_path_buf())
+}
+
+fn read(root: &Path, relative: &str) -> Result<String, Box<dyn Error>> {
+    let path = root.join(relative);
+    fs::read_to_string(&path)
+        .map(|text| text.replace("\r\n", "\n"))
+        .map_err(|error| {
+            io::Error::other(format!("failed to read {}: {error}", path.display())).into()
+        })
+}
+
+fn frontmatter(source: &str) -> Result<&str, Box<dyn Error>> {
+    let rest = source
+        .strip_prefix("---\n")
+        .ok_or_else(|| io::Error::other("skill must start with YAML frontmatter"))?;
+    rest.split_once("\n---\n")
+        .map(|(frontmatter, _)| frontmatter)
+        .ok_or_else(|| io::Error::other("skill frontmatter must have a closing delimiter").into())
+}
+
+fn require_contains(haystack: &str, needle: &str, owner: &str) -> Result<(), Box<dyn Error>> {
+    let normalized_haystack = normalize_whitespace(haystack);
+    let normalized_needle = normalize_whitespace(needle);
+    require(
+        normalized_haystack.contains(&normalized_needle),
+        &format!("{owner} is missing required campaign-contract marker: {needle}"),
+    )
+}
+
+fn normalize_whitespace(value: &str) -> String {
+    value.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn require(condition: bool, message: &str) -> Result<(), Box<dyn Error>> {
+    if condition {
+        Ok(())
+    } else {
+        Err(io::Error::other(message.to_string()).into())
     }
 }
