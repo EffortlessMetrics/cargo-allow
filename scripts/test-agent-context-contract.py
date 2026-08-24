@@ -19,7 +19,7 @@ def test_gemini_settings() -> None:
     file_filtering = context.get("fileFiltering", {})
     assert file_filtering.get("respectGitIgnore") is True, "must respect .gitignore"
     assert file_filtering.get("respectGeminiIgnore") is True, "must respect .geminiignore"
-    
+
     # Negative control: no credentials, yolo mode, or unknown execution bypasses
     forbidden_keys = {"apiKey", "token", "yolo", "autoApprove", "model"}
     for key in forbidden_keys:
@@ -33,7 +33,7 @@ def test_gemini_ignore() -> None:
     content = ignore_file.read_text(encoding="utf-8")
     assert "target/" in content, ".geminiignore must ignore target/"
     assert ".system_generated/" in content, ".geminiignore must ignore .system_generated/"
-    
+
     # Negative control: must not ignore essential repository roots
     for critical in ("AGENTS.md", "CLAUDE.md", "policy/", "crates/", "docs/", "scripts/"):
         assert critical not in content, f".geminiignore must not ignore {critical}"
@@ -43,7 +43,7 @@ def test_gemini_md_imports() -> None:
     gemini_md = ROOT / "GEMINI.md"
     assert gemini_md.is_file(), f"missing GEMINI.md: {gemini_md}"
     content = gemini_md.read_text(encoding="utf-8")
-    
+
     expected_imports = [
         "@./AGENTS.md",
         "@./CLAUDE.md",
@@ -54,7 +54,7 @@ def test_gemini_md_imports() -> None:
         rel_path = imp.removeprefix("@./")
         target = ROOT / rel_path
         assert target.is_file(), f"imported target does not exist: {target}"
-    
+
     # Ensure operating guidelines and boundaries are present
     assert "#3768" in content, "GEMINI.md must reference #3768 campaign controller"
     assert "/memory reload" in content, "GEMINI.md must mention memory reload command"
@@ -68,7 +68,7 @@ def test_agents_md_routing_and_lanes() -> None:
     agents_md = ROOT / "AGENTS.md"
     assert agents_md.is_file(), f"missing AGENTS.md: {agents_md}"
     content = agents_md.read_text(encoding="utf-8")
-    
+
     # Check #3768 priorities
     assert "#3768" in content, "AGENTS.md must reference #3768 priority train"
     assert "0. Agent context, skill, and readiness controls" in content
@@ -79,7 +79,7 @@ def test_agents_md_routing_and_lanes() -> None:
     assert "5. Final 0.2.0 candidate refreeze" in content
     assert "6. Hard STOP for separate explicit release authorization" in content
     assert "7. Final release execution and closeout only under #2502 authority" in content
-    
+
     # Check session lane classes
     for lane in (
         "ReversibleImplementation",
@@ -90,7 +90,7 @@ def test_agents_md_routing_and_lanes() -> None:
         "BlockedOrStale",
     ):
         assert lane in content, f"AGENTS.md must define lane {lane}"
-    
+
     # Check release immutability law
     assert "Release Immutability Law" in content, "AGENTS.md must define Release Immutability Law"
     assert "never delete, move, retag, or overwrite" in content
@@ -114,7 +114,7 @@ def test_pull_request_template() -> None:
     template = ROOT / ".github" / "PULL_REQUEST_TEMPLATE.md"
     assert template.is_file(), f"missing PR template: {template}"
     content = template.read_text(encoding="utf-8")
-    
+
     required_fields = [
         "#3768 campaign rail / controlling child",
         "Execution role: author | reviewer | observer | reconciliation",
@@ -134,6 +134,29 @@ def test_pull_request_template() -> None:
         assert field in content, f"PR template missing required field: {field}"
 
 
+def test_campaign_skill_contract() -> None:
+    skill_file = ROOT / ".agents" / "skills" / "cargo-allow-0.2-campaign" / "SKILL.md"
+    assert skill_file.is_file(), f"missing campaign skill file: {skill_file}"
+    content = skill_file.read_text(encoding="utf-8")
+    assert content.startswith("---\nname: cargo-allow-0.2-campaign\n"), "frontmatter name missing"
+    assert "description:" in content
+    assert "## Trigger" in content
+    assert "## Required Live Inputs" in content
+    assert "## Session Lane Classification" in content
+    assert "ReversibleImplementation" in content
+    assert "ReadOnlyReview" in content
+    assert "ExternalObservation" in content
+    assert "RootDecision" in content
+    assert "IrreversibleOperation" in content
+    assert "BlockedOrStale" in content
+    assert "## Issue Selection Algorithm" in content
+    assert "## Implementation Packet" in content
+    assert "## PR Lifecycle and Merge Rules" in content
+    assert "## Release Immutability Law" in content
+    assert "## Evidence and Post-Merge Reporting" in content
+    assert "## Claim Boundary" in content
+
+
 def main() -> int:
     test_gemini_settings()
     test_gemini_ignore()
@@ -141,6 +164,7 @@ def main() -> int:
     test_agents_md_routing_and_lanes()
     test_campaign_document()
     test_pull_request_template()
+    test_campaign_skill_contract()
     print("agent context contract tests: passed")
     return 0
 

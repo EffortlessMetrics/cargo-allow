@@ -7,6 +7,8 @@ state, repo guidance, and dirty worktree state before choosing a lane.
 
 Work one coherent lane at a time. Keep each change narrow, reviewable, and tied
 to a clear proof obligation. Prefer one PR per product or maintenance slice.
+For campaign execution and issue routing, follow
+[`.agents/skills/cargo-allow-0.2-campaign/SKILL.md`](.agents/skills/cargo-allow-0.2-campaign/SKILL.md).
 
 When the user says to proceed in an active swarm, PR, or release lane, treat
 that as authorization to carry the lane through its normal lifecycle unless
