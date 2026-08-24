@@ -1187,12 +1187,18 @@ fn test_policy_entry_with_untracked_evidence() -> AllowEntry {
     }
 }
 
+static FIXTURE_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 fn add_fixture_dir() -> std::path::PathBuf {
+    let count = FIXTURE_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let stamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|duration| duration.as_nanos())
         .unwrap_or(0);
-    let dir = std::env::temp_dir().join(format!("cargo-allow-add-{}-{stamp}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!(
+        "cargo-allow-add-{}-{count}-{stamp}",
+        std::process::id()
+    ));
     match fs::remove_dir_all(&dir) {
         Ok(()) => {}
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
@@ -1204,10 +1210,14 @@ fn add_fixture_dir() -> std::path::PathBuf {
 }
 
 fn git(root: &std::path::Path, args: &[&str]) {
-    let output = Command::new("git")
-        .arg("-C")
-        .arg(root)
-        .args(args)
+    let mut cmd = Command::new("git");
+    cmd.arg("-C").arg(root);
+    if args == ["init"] {
+        cmd.args(["init", "--template="]);
+    } else {
+        cmd.args(args);
+    }
+    let output = cmd
         .output()
         .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
     if !output.status.success() {
