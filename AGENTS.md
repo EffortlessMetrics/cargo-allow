@@ -141,13 +141,43 @@ not as proof of abandonment:
 Do not use issue age alone. A fresh comment with no code movement does not make
 stale candidate bytes current, and an old branch can still contain valid work.
 
-### Current lane order
+### Immediate namespace state gate
 
-Foundation slices can proceed independently:
+#3729 merged commit `3942873eb18b9f88dfdfcc013ca013452fdb23b1`,
+adding the legacy `release/authorize-v0.2.0.json` artifact with the stated intent
+to trigger the twelve-package `0.1.0` namespace publisher. A release-safety
+review had already identified that this cargo-allow stable-release identity was
+the wrong authority for the independent namespace operation.
+
+The path matched the then-current `release-authorized.yml` push trigger. Until
+#3733 observes the actual GitHub Actions run and all twelve crates.io rows,
+namespace state is **unknown external state**:
 
 ```text
-#3730  durable namespace authorization-identity PR replacing superseded #3716
-#3718  typed release-version preflight
+#3733 read-only reconciliation
+  -> NoPublication
+  |  Partial / ReleaseIncident
+  |  Complete with exact checksum reconciliation
+  |  Conflict / InstrumentFailure / ProviderUnavailable
+```
+
+Do not infer publication success from the authorization source, and do not
+repeat/recover the publication operation without the exact authorization
+required by #3708/#3390 for the observed state.
+
+`release/authorize-v0.2.0.json` is also currently an unreceipted governed file
+on `main`. Do **not** delete, move, or receipt it merely to make the no-new guard
+green before #3733 retains the #3729 run/registry state and artifact identity.
+After observation, #3733 owns the reviewed historical/removal disposition.
+
+### Current lane order
+
+Current foundation state:
+
+```text
+#3718  merged: typed release-version preflight is on main
+#3733  immediate read-only namespace external-state reconciliation
+#3730  active durable namespace-authority repair; repair/re-review, do not fork
 ```
 
 Writer closure:
@@ -162,26 +192,36 @@ Writer closure:
 
 Do not treat #3717's Markdown inventory as writer closure by itself.
 
-Sibling package and namespace rail:
+Sibling package and namespace rail depends on #3733's observed result:
 
 ```text
 #3703 shared package qualification
 #3704 cargo-intent ownership/package qualification
 #3706 cargo-proof ownership/package qualification
     (these may proceed in parallel when they do not edit one authority)
+
+if #3733 = NoPublication:
   -> #3722 exact 12-row candidate + zero-upload rehearsal
-  -> #3708 / #3390 exact namespace authorization + publication boundary
+  -> #3708 / #3390 fresh exact namespace authorization + publication
   -> #3705 and #3707 exact crates.io-installed product proofs
+
+if #3733 = Complete with all exact checksums:
+  -> V2/docs/support reconciliation
+  -> #3705 and #3707 exact crates.io-installed product proofs
+
+if #3733 = Partial / Conflict:
+  -> #3708 / #3390 incident-preserving recovery or version/name decision
+  -> do not rebuild from moving main or erase the first irreversible run
 ```
 
-Stop before creating the namespace authorization artifact or reading the
-registry token unless the exact twelve-package publication operation has been
-separately authorized.
+A namespace recovery/upload remains an irreversible operation and requires the
+separately named exact authorization. A prior broad release instruction does
+not authorize altered bytes or a new recovery candidate.
 
 RC identity and workflow rail:
 
 ```text
-#3718 typed preflight
+#3718 merged typed preflight
   -> #3723 exact ten-package 0.2.0-rc.1 candidate cut
   -> #3725 Changie prerelease-history proof/live corpus update
   -> #3724 typed RC/stable propagation through release.yml
@@ -256,8 +296,9 @@ Stop and return evidence rather than guessing when:
 - exact external registry or GitHub settings evidence is unavailable;
 - a proposed repair would change the package architecture outside the issue;
 - candidate identity moved and retained proof is stale;
-- the next action is an authorization artifact, tag, upload, yank, or public
-  release operation without the separately named authorization.
+- the next action is an authorization artifact, tag, upload, yank, recovery
+  upload, or public release operation without the separately named
+  authorization.
 
 ## Validation
 
@@ -288,17 +329,21 @@ problem cleanly. Avoid unrelated refactors.
 
 Current priority order:
 
-1. Land/reconcile #3730 and #3718 without crossing publication boundaries.
-2. Drive writer closure (#3719 -> #3720 -> #3721) and sibling family
-   qualification (#3703/#3704/#3706 -> #3722) in parallel where source
-   ownership allows.
-3. Cut and prove the RC identity (#3723/#3725/#3724) after load-bearing source
+1. Complete #3733's read-only #3729 run/registry reconciliation; until then,
+   treat namespace external state as unknown and do not clean up the triggering
+   artifact merely for CI.
+2. Repair and re-review active #3730; typed release preflight #3718 is already
+   merged.
+3. Drive writer closure (#3719 -> #3720 -> #3721) and sibling family
+   qualification (#3703/#3704/#3706) in parallel where source ownership allows;
+   route namespace candidate/public-install work from #3733's observed result.
+4. Cut and prove the RC identity (#3723/#3725/#3724) after load-bearing source
    convergence; finish #3693/#3726 in parallel.
-4. Close RC qualification inputs (#3727, #2263, #2283/#2284, #3151) and public
-   sibling install proof after the separately authorized namespace publication.
-5. Produce #3728's exact reversible freeze and stop for the separate #3695
-   authorization before any tag/upload/public-release action.
-6. After the public RC, reconcile #3709/#3710 and use RC findings to drive the
+5. Close RC qualification inputs (#3727, #2263, #2283/#2284, #3151) and any
+   required public sibling install proof.
+6. Produce #3728's exact reversible freeze and stop for the separate #3695
+   authorization before any RC tag/upload/public-release action.
+7. After the public RC, reconcile #3709/#3710 and use RC findings to drive the
    later fresh final `0.2.0` refreeze rather than treating RC success as final
    authorization.
 
