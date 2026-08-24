@@ -557,7 +557,7 @@ def main() -> int:
                     "family": row["product_family"],
                     "release_order": row["release_order"],
                     "crate": str(crate_path.relative_to(ROOT)),
-                    "local_checksum": local_checksum,
+                    "local_checksum": local_receipt_checksum,
                     "state": "packaged",
                 }
             )
