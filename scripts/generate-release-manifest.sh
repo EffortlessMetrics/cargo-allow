@@ -66,6 +66,7 @@ python3 - "${output}" "${version}" "${repository}" "${tag}" "${commit}" \
 import hashlib
 import json
 import pathlib
+import re
 import sys
 
 (
@@ -197,6 +198,10 @@ for raw in raw_rows:
         if not registry_checksum or not valid_digest(registry_checksum):
             raise SystemExit(
                 f"release-manifest: registry checksum missing or malformed for published row {name}"
+            )
+        if raw.get("state") == "published_verified" and registry_checksum != raw["local_checksum"]:
+            raise SystemExit(
+                f"release-manifest: registry checksum disagrees for published row {name}"
             )
     row = {
         "logical_id": raw["logical_id"],
