@@ -1,20 +1,20 @@
 name: Temporary campaign-skill policy receipt
 
 on:
-  push:
-    branches:
-      - feat/3770-campaign-skill
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
   pull-requests: write
 
 concurrency:
-  group: temporary-receipt-campaign-skill
+  group: temporary-receipt-campaign-skill-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
   receipt:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feat/3770-campaign-skill'
     runs-on: ubuntu-latest
     env:
       RUSTUP_TOOLCHAIN: "1.95.0"
@@ -22,11 +22,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Install the declared Rust toolchain
         run: rustup toolchain install 1.95.0 --profile minimal
 
-      - name: Receipt the campaign skill through the installed source tree
+      - name: Receipt the campaign skill through the exact PR head
         run: |
           set -euo pipefail
           mkdir -p target/cargo-allow
