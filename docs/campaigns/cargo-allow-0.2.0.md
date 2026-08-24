@@ -14,6 +14,7 @@ Controlling issue: [#3768](https://github.com/EffortlessMetrics/cargo-allow/issu
 - [`.agents/skills/cargo-allow-0.2-campaign/SKILL.md`](../../.agents/skills/cargo-allow-0.2-campaign/SKILL.md) owns reversible issue-first implementation routing for one currently selected campaign lane.
 - [`.agents/skills/review-current-head/SKILL.md`](../../.agents/skills/review-current-head/SKILL.md) owns independent exact-base/head review and merge-readiness verification.
 - Implementation must hand the full current diff and exact base/head/merge-base identity to the review skill. Neither skill authorizes a tag, package upload, GitHub Release mutation, live setting change, external pilot mutation, or release authorization.
+- Repository files establish the shared skill contract; Gemini/Antigravity runtime discovery remains separately observed through `/memory reload`, `/skills reload`, and `/skills list`.
 
 ## Child Rails and Issue Graph
 
