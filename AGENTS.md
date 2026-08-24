@@ -48,7 +48,10 @@ review. Do not mutate the branch while claiming independent review. If the
 reviewer pushes a repair, the prior review is stale and the new head requires
 fresh affected review. If the base or merge base changes, recompute the
 effective diff and rerun every affected review dimension before preserving the
-verdict.
+verdict. When a review identifies a merge-blocking defect, the PR must be
+converted to draft in the same pass (`gh pr ready --undo`); only a fresh
+re-review on the repaired head confirming zero blocking findings may restore it
+to ready (`gh pr ready`).
 
 For a user-authorized swarm, PR, or release lane, scoped commits, branch pushes,
 PR creation, PR updates, PR merge, post-merge sync, and cleanup are normal once
