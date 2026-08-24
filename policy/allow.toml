@@ -92,27 +92,6 @@ glob = "docs/schemas/operator-latency.v2.schema.json"
 line = 1
 column = 1
 
-[[allow]]
-id = "allow-11111"
-kind = "non_rust_file"
-family = "documentation"
-path = ".changes/Added-20260815-cargo-allow-product-docs.yaml"
-owner = "core/docs"
-classification = "cargo_allow_product_docs_changelog"
-reason = "Changie fragment records the independently linked cargo-allow product documentation slice for issue #3447."
-evidence = ["issue:3447", "doc:docs/README.md", "test:cargo_allow_product_docs_are_independent_and_indexed"]
-created = "2026-08-15"
-review_after = "2027-02-15"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".changes/Added-20260815-cargo-allow-product-docs.yaml"
-target_fingerprint = "yaml"
-glob = ".changes/Added-20260815-cargo-allow-product-docs.yaml"
-
-[allow.last_seen]
-line = 1
-column = 1
 
 [[allow]]
 id = "allow-11112"
@@ -1330,51 +1309,6 @@ glob = "crates/effortless-repo-snapshot/src/git.rs"
 line = 2
 column = 1
 
-[[allow]]
-id = "allow-9056"
-kind = "lint_exception"
-family = "expect_attribute"
-path = "crates/allow-diff/src/snapshot_package/revision_identity.rs"
-owner = "repo-infra"
-classification = "extraction_shim"
-reason = "Publish facade keeps revision-identity surface marker for parity registry (#2583-D)."
-evidence = ["doc:policy/extraction-shims.toml", "doc:policy/product-move-ledger.toml"]
-created = "2026-07-22"
-review_after = "2026-11-01"
-
-[allow.selector]
-ast_kind = "attribute"
-lint = "dead_code"
-symbol = "#[expect( dead_code, reason = \"policy:allow-9056: revision-identity facade marker (#2583-D)\" )]"
-target_fingerprint = "policy:allow-9056"
-glob = "crates/allow-diff/src/snapshot_package/revision_identity.rs"
-
-[allow.last_seen]
-line = 548
-column = 1
-
-[[allow]]
-id = "allow-9057"
-kind = "lint_exception"
-family = "expect_attribute"
-path = "crates/allow-diff/src/snapshot_package/staged_index.rs"
-owner = "repo-infra"
-classification = "extraction_shim"
-reason = "Publish facade keeps staged-index surface marker for parity registry (#2583-D)."
-evidence = ["doc:policy/extraction-shims.toml", "doc:policy/product-move-ledger.toml"]
-created = "2026-07-22"
-review_after = "2026-11-01"
-
-[allow.selector]
-ast_kind = "attribute"
-lint = "dead_code"
-symbol = "#[expect( dead_code, reason = \"policy:allow-9057: staged-index facade marker (#2583-D)\" )]"
-target_fingerprint = "policy:allow-9057"
-glob = "crates/allow-diff/src/snapshot_package/staged_index.rs"
-
-[allow.last_seen]
-line = 1013
-column = 1
 
 [[allow]]
 id = "allow-9058"
@@ -10868,7 +10802,7 @@ container = "run"
 normalized_snippet_hash = "fnv1a64:2944683783674e0a"
 
 [allow.last_seen]
-line = 152
+line = 162
 column = 9
 
 [[allow]]

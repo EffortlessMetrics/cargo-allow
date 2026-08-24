@@ -428,7 +428,7 @@ jobs:
           cd target/cargo-allow
           sha256sum -c release-manifest-v2.sha256
       - name: Create GitHub Release (draft until manifest attached)
-        uses: softprops/action-gh-release@42dc69e1aa15d09112580998cf2ef0119e2e91ae # v2.4.2
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
         with:
           tag_name: ${{ github.ref_name }}
           name: cargo-allow ${{ github.ref_name }}
@@ -436,7 +436,7 @@ jobs:
           draft: true
           prerelease: false
       - name: Attach release manifest to GitHub Release
-        uses: softprops/action-gh-release@42dc69e1aa15d09112580998cf2ef0119e2e91ae # v2.4.2
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
         with:
           tag_name: ${{ github.ref_name }}
           files: |
@@ -448,7 +448,7 @@ jobs:
             target/cargo-allow/release-assets/release-binary.receipt.json
             target/cargo-allow/release-assets/release-binary-install.receipt.json
       - name: Publish release after manifest attached
-        uses: softprops/action-gh-release@42dc69e1aa15d09112580998cf2ef0119e2e91ae # v2.4.2
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
         with:
           tag_name: ${{ github.ref_name }}
           draft: false
