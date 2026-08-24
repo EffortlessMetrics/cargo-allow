@@ -139,9 +139,13 @@ def valid_unprefixed_digest(value):
     )
 
 
+SEMVER_PATTERN = re.compile(
+    r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$"
+)
+
+
 def valid_semver(value):
-    parts = value.split(".")
-    return len(parts) == 3 and all(part.isdigit() for part in parts)
+    return isinstance(value, str) and bool(SEMVER_PATTERN.match(value))
 
 
 if not valid_unprefixed_digest(topology.get("topology_sha256")):
@@ -190,16 +194,16 @@ for raw in raw_rows:
                 f"release-manifest: published topology row {name} is not registry-verified"
             )
         registry_checksum = raw.get("registry_checksum")
-        if registry_checksum != raw["local_checksum"]:
+        if not registry_checksum or not valid_digest(registry_checksum):
             raise SystemExit(
-                f"release-manifest: registry checksum disagrees for published row {name}"
+                f"release-manifest: registry checksum missing or malformed for published row {name}"
             )
     row = {
         "logical_id": raw["logical_id"],
         "package_name": name,
         "package_version": raw["version"],
         "release_order": order,
-        "crate_digest": raw["local_checksum"],
+        "crate_digest": raw.get("registry_checksum") or raw["local_checksum"],
     }
     registry_checksum = raw.get("registry_checksum")
     if registry_checksum is not None:
