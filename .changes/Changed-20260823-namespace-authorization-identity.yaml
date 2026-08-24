@@ -1,0 +1,5 @@
+kind: Changed
+body: >-
+  Decouple the twelve-package 0.1.0 namespace publication authorization from
+  cargo-allow release tags and require an operation-specific authorization
+  artifact before token access.

@@ -4,14 +4,14 @@ on:
   push:
     branches: [main]
     paths:
-      - release/authorize-v0.2.0.json
+      - release/authorize-namespace-0.1.0.json
 
 permissions:
   actions: read
   contents: read
 
 concurrency:
-  group: authorized-release-v0.2.0
+  group: authorized-namespace-publication-0.1.0
   cancel-in-progress: false
 
 env:
@@ -36,7 +36,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772
         with:
           toolchain: stable
-      - name: Verify exact release authorization
+      - name: Verify exact namespace publication authorization
         id: authorization
         shell: bash
         run: |
@@ -48,20 +48,23 @@ jobs:
           import subprocess
 
           root = Path('.')
-          authorization_path = root / 'release/authorize-v0.2.0.json'
+          authorization_path = root / 'release/authorize-namespace-0.1.0.json'
           authorization = json.loads(authorization_path.read_text(encoding='utf-8'))
           required = {
-              'schema_id', 'release', 'candidate_parent_commit',
-              'candidate_parent_tree', 'cargo_lock_sha256',
-              'topology_sha256', 'authorization',
+              'schema_id', 'operation', 'namespace_version',
+              'candidate_parent_commit', 'candidate_parent_tree',
+              'cargo_lock_sha256', 'topology_sha256',
+              'candidate_receipt_sha256', 'authorization',
           }
           missing = sorted(required - authorization.keys())
           if missing:
               raise SystemExit(f'authorization missing fields: {missing}')
-          if authorization['schema_id'] != 'cargo-allow.release-authorization.v1':
-              raise SystemExit('unexpected authorization schema')
-          if authorization['release'] != 'v0.2.0':
-              raise SystemExit('authorization is not for v0.2.0')
+          if authorization['schema_id'] != 'cargo-allow.namespace-publication-authorization.v1':
+              raise SystemExit('unexpected namespace authorization schema')
+          if authorization['operation'] != 'publish_namespace_0.1.0':
+              raise SystemExit('authorization operation is not namespace publication')
+          if authorization['namespace_version'] != '0.1.0':
+              raise SystemExit('namespace authorization is not for the exact 0.1.0 line')
           parent_commit = subprocess.check_output(
               ['git', 'rev-parse', 'HEAD^1^{commit}'], text=True
           ).strip()
@@ -69,13 +72,13 @@ jobs:
               ['git', 'rev-parse', 'HEAD^1^{tree}'], text=True
           ).strip()
           if parent_commit != authorization['candidate_parent_commit']:
-              raise SystemExit('authorization parent commit differs from the selected candidate')
+              raise SystemExit('authorization parent commit differs from the selected namespace candidate')
           if parent_tree != authorization['candidate_parent_tree']:
-              raise SystemExit('authorization parent tree differs from the selected candidate')
+              raise SystemExit('authorization parent tree differs from the selected namespace candidate')
           changed = subprocess.check_output(
               ['git', 'diff', '--name-only', 'HEAD^1', 'HEAD'], text=True
           ).splitlines()
-          if changed != ['release/authorize-v0.2.0.json']:
+          if changed != ['release/authorize-namespace-0.1.0.json']:
               raise SystemExit(f'authorization commit changed unexpected paths: {changed}')
           for path, field in [
               (Path('Cargo.lock'), 'cargo_lock_sha256'),
@@ -83,7 +86,13 @@ jobs:
           ]:
               observed = hashlib.sha256(path.read_bytes()).hexdigest()
               if observed != authorization[field]:
-                  raise SystemExit(f'{path} digest differs from authorization')
+                  raise SystemExit(f'{path} digest differs from namespace authorization')
+          for field in ['cargo_lock_sha256', 'topology_sha256', 'candidate_receipt_sha256']:
+              digest = authorization[field]
+              if not isinstance(digest, str) or len(digest) != 64 or any(
+                  character not in '0123456789abcdef' for character in digest
+              ):
+                  raise SystemExit(f'{field} must be exactly 64 lowercase hexadecimal characters')
           token = authorization['authorization']
           if not isinstance(token, str) or not token or any(
               character not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._:/#-'
@@ -92,19 +101,40 @@ jobs:
               raise SystemExit('authorization reference is not a bounded token')
           print(json.dumps(authorization, indent=2, sort_keys=True))
           PY
-          echo "candidate_commit=$(jq -r .candidate_parent_commit release/authorize-v0.2.0.json)" >> "${GITHUB_OUTPUT}"
-          echo "candidate_tree=$(jq -r .candidate_parent_tree release/authorize-v0.2.0.json)" >> "${GITHUB_OUTPUT}"
-          echo "authorization=$(jq -r .authorization release/authorize-v0.2.0.json)" >> "${GITHUB_OUTPUT}"
-      - name: Check out the exact authorized candidate
+          echo "candidate_commit=$(jq -r .candidate_parent_commit release/authorize-namespace-0.1.0.json)" >> "${GITHUB_OUTPUT}"
+          echo "candidate_tree=$(jq -r .candidate_parent_tree release/authorize-namespace-0.1.0.json)" >> "${GITHUB_OUTPUT}"
+          echo "authorization=$(jq -r .authorization release/authorize-namespace-0.1.0.json)" >> "${GITHUB_OUTPUT}"
+      - name: Check out the exact authorized namespace candidate
         run: git checkout --detach "${{ steps.authorization.outputs.candidate_commit }}"
-      - name: Reject an existing v0.2.0 tag before first publication
+      - name: Re-prove exact namespace candidate before token access
+        shell: bash
         run: |
           set -euo pipefail
-          git fetch --tags origin
-          if git rev-parse refs/tags/v0.2.0 >/dev/null 2>&1; then
-            echo '::error::v0.2.0 already exists; use the guarded recovery path' >&2
+          cargo fmt --all --check
+          cargo clippy --workspace --all-targets --locked -- -D warnings
+          cargo test --workspace --locked
+          python3 scripts/release-topology-publisher.py \
+            --mode namespace \
+            --package-only \
+            --receipt target/cargo-allow/namespace-candidate.receipt.json
+          jq -e '
+            .schema_id == "cargo-allow.topology-publish-receipt.v1"
+            and .mode == "namespace"
+            and .publish == false
+            and .complete == true
+            and (.rows | length) == 12
+            and ([.rows[].version] | all(. == "0.1.0"))
+            and ([.rows[].state] | all(. == "packaged"))
+          ' target/cargo-allow/namespace-candidate.receipt.json >/dev/null
+          expected="$(jq -r .candidate_receipt_sha256 "${GITHUB_WORKSPACE}/release/authorize-namespace-0.1.0.json")"
+          observed="$(sha256sum target/cargo-allow/namespace-candidate.receipt.json | cut -d' ' -f1)"
+          if [ "${observed}" != "${expected}" ]; then
+            echo "::error::namespace candidate receipt differs from authorization" >&2
             exit 1
           fi
+          cargo run -p cargo-allow -- check --mode no-new --format markdown \
+            --receipt target/cargo-allow/check.receipt.json \
+            --output target/cargo-allow/check.md
       - name: Require token-backed crates.io authentication
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
@@ -114,15 +144,6 @@ jobs:
             echo '::error::CARGO_REGISTRY_TOKEN is absent; no upload was attempted' >&2
             exit 1
           }
-      - name: Re-prove exact candidate before upload
-        run: |
-          set -euo pipefail
-          cargo fmt --all --check
-          cargo clippy --workspace --all-targets --locked -- -D warnings
-          cargo test --workspace --locked
-          cargo run -p cargo-allow -- check --mode no-new --format markdown \
-            --receipt target/cargo-allow/check.receipt.json \
-            --output target/cargo-allow/check.md
       - name: Publish and verify shared, intent, and proof 0.1.0 rows
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
@@ -139,6 +160,7 @@ jobs:
         with:
           name: namespace-publication-receipt
           path: |
+            target/cargo-allow/namespace-candidate.receipt.json
             target/cargo-allow/namespace-publish.receipt.json
             target/cargo-allow/check.receipt.json
             target/cargo-allow/check.md
