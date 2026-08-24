@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: temporary-receipt-campaign-skill
@@ -69,3 +70,10 @@ jobs:
 
       - name: Push the validated self-cleaning commit
         run: git push origin HEAD:feat/3770-campaign-skill
+
+      - name: Report a failed bootstrap run on the draft PR
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment 3778 --body "Temporary campaign-skill policy receipt failed on \`${GITHUB_SHA}\`. Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
