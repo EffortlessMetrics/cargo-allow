@@ -2,6 +2,19 @@
 
 <!-- Briefly describe what changed and why. -->
 
+## Scope and claim boundary
+
+<!--
+Make the lane independently understandable from this PR. Separate what the
+change establishes from adjacent work and from external/irreversible actions.
+Do not imply authorization merely because implementation is complete.
+-->
+
+- This PR owns:
+- Explicit non-goals / deferred owner:
+- Irreversible or external actions performed: `none` unless separately authorized and named here
+- Claim boundary — what this PR proves, and what it does not prove:
+
 ## Controlling authority and reviewer focus
 
 <!--
@@ -10,6 +23,7 @@ when the change is deliberately mechanical or docs-only; do not invent a spec.
 -->
 
 - Controlling issue/spec/requirement:
+- Parent/controller and predecessor receipt, when applicable:
 - Intended base:
 - Exact head intended for review (fill after the final author push):
 - Changed seams and semantic owners:
@@ -33,12 +47,19 @@ cargo-allow diff/audit output or explain why it does not apply.
 
 ## Validation
 
-<!-- List commands run locally or in CI, and note any intentionally skipped checks. -->
+<!--
+List commands actually run locally or in CI and record pass/fail/not-run rather
+than leaving a checked box to imply evidence. Retain receipt/run identities for
+load-bearing release or platform proof.
+-->
 
 - [ ] `cargo fmt --all --check`
 - [ ] `cargo clippy --workspace --all-targets -- -D warnings`
 - [ ] `cargo test --workspace`
 - [ ] `cargo run -p cargo-allow -- diff --base origin/main --format markdown`
+- [ ] `cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md`
+
+Commands/results/receipt or hosted-run identities:
 
 ## Review readiness
 
