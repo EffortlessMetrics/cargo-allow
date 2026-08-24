@@ -25,7 +25,7 @@ published_version = "0.1.11"
 published_evidence = "docs/dogfood/fixtures/getting-started/published-command-registry.toml"
 # Workspace version on main. Deliberately unpublished pending the 0.2.0
 # blocker set; see docs/release/0.2.0.md and issue #2501.
-candidate_version = "0.2.0"
+candidate_version = "0.2.0-rc.1"
 candidate_published = false
 candidate_evidence = "docs/release/0.2.0.md"
 

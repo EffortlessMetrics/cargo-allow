@@ -595,7 +595,7 @@ mod tests {
         assert_eq!(support.source, SUPPORT_MATRIX_SOURCE);
         assert_eq!(support.schema, "cargo-allow.support-matrix.v1");
         assert_eq!(support.published_version, "0.1.11");
-        assert_eq!(support.candidate_version, "0.2.0");
+        assert_eq!(support.candidate_version, env!("CARGO_PKG_VERSION"));
         assert_eq!(support.channels.len(), 3);
         assert_eq!(support.channels[0].name, "crates.io");
         assert!(support.channels[0].available);

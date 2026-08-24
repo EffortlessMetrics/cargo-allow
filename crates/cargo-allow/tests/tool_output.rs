@@ -42,8 +42,8 @@ fn tool_identity_json_reports_schema_and_digest() {
     );
     assert_eq!(
         json.pointer("/reported_version").and_then(Value::as_str),
-        Some("0.2.0"),
-        "reported_version should be 0.2.0: {json}"
+        Some(env!("CARGO_PKG_VERSION")),
+        "reported_version should match CARGO_PKG_VERSION: {json}"
     );
     // The digest is the SHA-256 of the running binary, prefixed with "sha256:v1:".
     let digest = json
