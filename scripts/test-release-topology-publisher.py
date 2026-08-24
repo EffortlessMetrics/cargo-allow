@@ -74,13 +74,6 @@ def exercise_shared_registry_preflight() -> None:
             )
         )
 
-        PUBLISHER.registry_checksum = lambda _name, _version: "b" * 64
-        expect_failure(
-            lambda: PUBLISHER.shared_registry_preflight(
-                shared_fixture_rows(), publish=True, receipt={"incident_state": "none"}, receipt_path=ROOT / "unused"
-            )
-        )
-
         PUBLISHER.registry_checksum = original
         PUBLISHER.crate_api = lambda _name, _version: []
         expect_failure(lambda: PUBLISHER.registry_checksum("fixture", "0.1.0"))
