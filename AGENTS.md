@@ -146,7 +146,7 @@ stale candidate bytes current, and an old branch can still contain valid work.
 Foundation slices can proceed independently:
 
 ```text
-#3716  namespace authorization identity
+#3730  durable namespace authorization-identity PR replacing superseded #3716
 #3718  typed release-version preflight
 ```
 
@@ -288,7 +288,7 @@ problem cleanly. Avoid unrelated refactors.
 
 Current priority order:
 
-1. Land/reconcile #3716 and #3718 without crossing publication boundaries.
+1. Land/reconcile #3730 and #3718 without crossing publication boundaries.
 2. Drive writer closure (#3719 -> #3720 -> #3721) and sibling family
    qualification (#3703/#3704/#3706 -> #3722) in parallel where source
    ownership allows.
