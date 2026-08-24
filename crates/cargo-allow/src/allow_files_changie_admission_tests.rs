@@ -283,7 +283,10 @@ fn topology_carries_the_sensor_surface_in_the_release_candidate() {
         "must be in the candidate"
     );
     assert!(
-        row.contains(&format!("package_version = \"{}\"", env!("CARGO_PKG_VERSION"))),
+        row.contains(&format!(
+            "package_version = \"{}\"",
+            env!("CARGO_PKG_VERSION")
+        )),
         "the admitted version is the candidate version"
     );
 }
