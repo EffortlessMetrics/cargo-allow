@@ -13,7 +13,7 @@ categories.workspace = true
 
 [dependencies]
 allow-core.workspace = true
-yaml-rust2 = { version = "0.11", optional = true }
+yaml-rust2 = { version = "0.12", optional = true }
 
 [features]
 # Embeddable Changie source sensor (#3587/#3588). Feature-disabled
