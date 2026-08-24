@@ -8487,6 +8487,50 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-0581"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/0.2.0-rc.1.md"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "0.2.0-rc.1 release record"
+evidence = ["doc:docs/release/0.2.0.md"]
+created = "2026-08-24"
+review_after = "2026-11-22"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/0.2.0-rc.1.md"
+target_fingerprint = "md"
+glob = "docs/release/0.2.0-rc.1.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0582"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/github/v0.2.0-rc.1.md"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "0.2.0-rc.1 GitHub release notes"
+evidence = ["doc:docs/release/0.2.0-rc.1.md"]
+created = "2026-08-24"
+review_after = "2026-11-22"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/github/v0.2.0-rc.1.md"
+target_fingerprint = "md"
+glob = "docs/release/github/v0.2.0-rc.1.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0308"
 kind = "non_rust_file"
 family = "documentation"
@@ -12152,7 +12196,7 @@ owner = "core/release"
 classification = "release_automation"
 reason = "#3160 retained Changie history corpus version files (0.1.6 through 0.2.0), generated deterministically from the reviewed CHANGELOG.md; merge reproduces the reviewed changelog byte-for-byte."
 evidence = ["doc:docs/how-to/manage-changelog.md", "issue:3160"]
-occurrence_limit = 7
+occurrence_limit = 8
 created = "2026-08-17"
 review_after = "2026-11-14"
 
