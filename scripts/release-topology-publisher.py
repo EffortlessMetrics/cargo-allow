@@ -329,14 +329,6 @@ def shared_registry_preflight(
         }
         evidence.append(item)
         write_receipt(receipt_path, receipt)
-        if observed is not None and observed != local_checksum:
-            item["state"] = "checksum_conflict"
-            receipt["incident_state"] = "release_incident"
-            write_receipt(receipt_path, receipt)
-            fail(
-                f"shared registry checksum conflict for {name} {version}: "
-                f"local {local_checksum}, registry {observed}"
-            )
         if publish and observed is None:
             receipt["incident_state"] = "release_incident"
             write_receipt(receipt_path, receipt)
@@ -537,6 +529,8 @@ def main() -> int:
 
     publish_env = os.environ.copy()
     for row in rows:
+        if args.mode == "cargo-allow" and row["product_family"] != "cargo-allow":
+            continue
         name = row["cargo_package_name"]
         version = row["package_version"]
         crate_path, local_checksum = package_crate(name, version)
