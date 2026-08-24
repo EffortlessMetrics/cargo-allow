@@ -71,6 +71,115 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-11133"
+kind = "non_rust_file"
+family = "configuration"
+path = ".gemini/settings.json"
+owner = "repo-infra"
+classification = "gemini_workspace_settings"
+reason = "Project configuration for Gemini CLI project context root and file filtering rules for issue #3731."
+evidence = ["issue:3731", "doc:GEMINI.md", "test:scripts/test-agent-context-contract.py"]
+created = "2026-08-24"
+review_after = "2027-02-24"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".gemini/settings.json"
+target_fingerprint = "json"
+glob = ".gemini/settings.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11134"
+kind = "non_rust_file"
+family = "unknown_non_rust"
+path = ".geminiignore"
+owner = "repo-infra"
+classification = "gemini_ignore_patterns"
+reason = "File filtering exclusions for Gemini CLI workspace context for issue #3731."
+evidence = ["issue:3731", "doc:GEMINI.md", "test:scripts/test-agent-context-contract.py"]
+created = "2026-08-24"
+review_after = "2027-02-24"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = ".geminiignore"
+glob = ".geminiignore"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11135"
+kind = "non_rust_file"
+family = "documentation"
+path = "GEMINI.md"
+owner = "repo-infra"
+classification = "gemini_agent_context"
+reason = "Gemini CLI context entrypoint importing AGENTS.md, CLAUDE.md, and the #3768 campaign map."
+evidence = ["issue:3731", "doc:GEMINI.md", "test:scripts/test-agent-context-contract.py"]
+created = "2026-08-24"
+review_after = "2027-02-24"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "GEMINI.md"
+target_fingerprint = "md"
+glob = "GEMINI.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11136"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/campaigns/cargo-allow-0.2.0.md"
+owner = "repo-infra"
+classification = "campaign_0_2_0_roadmap"
+reason = "Human and agent campaign routing overview for controller #3768."
+evidence = ["issue:3731", "issue:3768", "doc:docs/campaigns/cargo-allow-0.2.0.md", "test:scripts/test-agent-context-contract.py"]
+created = "2026-08-24"
+review_after = "2027-02-24"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/campaigns/cargo-allow-0.2.0.md"
+target_fingerprint = "md"
+glob = "docs/campaigns/cargo-allow-0.2.0.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11137"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test-agent-context-contract.py"
+owner = "repo-infra"
+classification = "agent_context_contract_test"
+reason = "Validation test script for Gemini settings, ignore patterns, and PR template contract for issue #3731."
+evidence = ["issue:3731", "test:scripts/test-agent-context-contract.py"]
+created = "2026-08-24"
+review_after = "2027-02-24"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-agent-context-contract.py"
+target_fingerprint = "py"
+glob = "scripts/test-agent-context-contract.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-11132"
 kind = "non_rust_file"
 family = "documentation"

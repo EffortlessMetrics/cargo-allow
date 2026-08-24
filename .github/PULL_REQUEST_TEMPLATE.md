@@ -9,13 +9,22 @@ Give reviewers the smallest durable map for the current PR. Use `not applicable`
 when the change is deliberately mechanical or docs-only; do not invent a spec.
 -->
 
-- Controlling issue/spec/requirement:
-- Intended base:
+- #3768 campaign rail / controlling child:
+- Execution role: author | reviewer | observer | reconciliation
+- Predecessor evidence consumed:
+- Current base / head / merge-base:
 - Exact head intended for review (fill after the final author push):
+- Scope and non-goals:
 - Changed seams and semantic owners:
+- Highest-risk false-green route:
 - Highest-risk invariants or failure modes:
-- Required negative, adversarial, replay, or platform proof:
-- Schema, docs, package, support, release, or migration impact:
+- Negative controls:
+- External state observed:
+- Incident / recovery lineage:
+- Irreversible actions performed: none | exact authorized reference
+- Claim boundary:
+- Post-merge child / controller handoff:
+
 
 ## Source-exception ledger impact
 

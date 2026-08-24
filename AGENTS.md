@@ -111,13 +111,41 @@ artifacts, and lockfiles only when the change requires it.
 Do not add dependencies when the repo or standard library already solves the
 problem cleanly. Avoid unrelated refactors.
 
-Current priority order:
+## Active Priorities (#3768 Campaign Train)
 
-1. Publish or close the current patch-release loop when authorized.
-2. Strengthen migration and evidence parity for `0.2.0`.
-3. Improve PR posture weakening and improvement detection for `0.3.0`.
-4. Continue small, fixture-backed scanner identity hardening for `0.4.0`.
-5. Stabilize the governance surface for `1.0`.
+0. Agent context, skill, and readiness controls (#3731, #3770, #3747)
+1. RC.1 external reconciliation (#3759)
+2. Release safety kernel (#3744, #3755, #3752, #3761, #3760)
+3. Installed usability and pilots (#3771, #2466, #2467, #3151, #2485)
+4. Candidate preparation, verification, and CI economy (#3750, #3773, #3774, #3753, #3751)
+5. Final 0.2.0 candidate refreeze (#2501)
+6. Hard STOP for separate explicit release authorization (#3760)
+7. Final release execution and closeout only under #2502 authority
+
+## Public Release Identities and Claim Boundaries
+
+- `cargo-allow` public prerelease: `0.2.0-rc.1` (usable pilot evidence with incident lineage; not reusable as final package bytes or authorization).
+- Stable rollback baseline: `0.1.11`.
+- Prospective final: `0.2.0`.
+- Shared substrate / `cargo-intent` / `cargo-proof` package line: `0.1.0`.
+- `cargo-intent` and `cargo-proof` are independently experimental siblings and do not gate `cargo-allow`.
+- Public `rc.1` is usable pilot evidence with incident lineage, not final exact-byte proof.
+- Dormant contingency: `0.2.0-rc.2` is selected only if RC dogfood uncovers package-byte defects requiring an additional public prerelease before final support decisions.
+
+## Session Lane Classification
+
+Every work session operates in one of the following lane classes:
+
+- `ReversibleImplementation`: Scoped code, doc, test, or config changes with proof, PR, exact-head handoff, and merge verification.
+- `ReadOnlyReview`: Independent exact-head PR review and merge-readiness verification following `.agents/skills/review-current-head/SKILL.md`.
+- `ExternalObservation`: Read-only queries of external registries, CI runs, or issue states without local mutation.
+- `RootDecision`: Escalation of policy, architectural, or release choices requiring human operator selection.
+- `IrreversibleOperation`: Prohibited for autonomous sessions (tag mutation, crates.io publish/yank, GitHub release publish/replace, live branch/secret changes).
+- `BlockedOrStale`: Halting when dependencies, base refs, or prerequisites are stale or blocked.
+
+## Release Immutability Law
+
+Once a release tag triggers an external CI run or any crate row is uploaded to crates.io, that tag is immutable: never delete, move, retag, or overwrite it. Any downstream repair requires a new version candidate under a fresh freeze and separate authorization.
 
 ## Windows Shell
 
