@@ -243,6 +243,20 @@ New defects can be introduced by a correct repair or by interaction with newly
 merged base changes. Do not limit re-review to checking that old comments were
 mechanically addressed.
 
+## Draft-State Law and Blocking Disposition
+
+In a solo-maintainer workflow, same-account review comments do not trigger GitHub branch protection change-request blocking. To make blocking review findings machine-visible and prevent premature merge:
+
+When `review-current-head` identifies a merge-blocking defect:
+- submit the review findings with exact base/head and merge-base identities;
+- **convert the PR to draft immediately in the same review pass** (`gh pr ready --undo`);
+- post the smallest actionable repair packet for the author/writer;
+- do not mark the PR ready merely because CI turns green or the author claims the defect is resolved;
+- any subsequent author commit or base movement invalidates the prior review;
+- only a fresh exact-head review confirming zero unresolved blocking findings may restore the PR to `Ready for review` (`gh pr ready`).
+
+A blocking review retains real control authority through draft state even when API restrictions prevent a formal `REQUEST_CHANGES` submission.
+
 ## Merge Readiness
 
 A PR is merge-ready only when all applicable statements are true:

@@ -43,6 +43,9 @@ fn current_head_review_skill_contract_is_wired() -> Result<(), Box<dyn Error>> {
         "StaleAfterHeadChange",
         "StaleAfterBaseChange",
         "Green CI alone is not merge readiness.",
+        "## Draft-State Law and Blocking Disposition",
+        "convert the PR to draft immediately in the same review pass",
+        "only a fresh exact-head review confirming zero unresolved blocking findings may restore the PR to `Ready for review`",
     ] {
         require_contains(&skill, marker, "canonical review skill")?;
     }
@@ -61,6 +64,11 @@ fn current_head_review_skill_contract_is_wired() -> Result<(), Box<dyn Error>> {
     require_contains(
         &agents,
         "Green CI alone is not merge readiness.",
+        "AGENTS.md",
+    )?;
+    require_contains(
+        &agents,
+        "When a review identifies a merge-blocking defect, the PR must be converted to draft",
         "AGENTS.md",
     )?;
 
