@@ -50,11 +50,7 @@ fn campaign_skill_contract_is_wired() -> Result<(), Box<dyn Error>> {
     )?;
 
     let gemini = read(&root, "GEMINI.md")?;
-    require_contains(
-        &gemini,
-        "cargo-allow-0.2-campaign",
-        "GEMINI.md",
-    )?;
+    require_contains(&gemini, "cargo-allow-0.2-campaign", "GEMINI.md")?;
 
     Ok(())
 }
