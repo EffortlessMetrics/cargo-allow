@@ -304,9 +304,9 @@ def shared_registry_preflight(
     """Prove the shared overlap before the cargo-allow upload loop begins.
 
     A rehearsal records read-only observations, but a publishing run requires
-    all three topology-selected shared rows to be exact.  The complete batch is
-    queried before returning so a later cargo-allow row can never upload after
-    an unexamined shared prerequisite.
+    all three topology-selected shared rows to be exact against retained namespace
+    evidence. The complete batch is queried before returning so a later cargo-allow
+    row can never upload after an unexamined or conflicting shared prerequisite.
     """
     shared = [row for row in rows if row["product_family"] == "shared"]
     if len(shared) != 3:
@@ -316,16 +316,35 @@ def shared_registry_preflight(
     for row in shared:
         name = row["cargo_package_name"]
         version = row["package_version"]
+        expected = row.get("expected_registry_checksum")
+        if expected is not None:
+            expected = canonical_receipt_checksum(expected, f"{name} expected registry checksum")
         crate_path, local_checksum = package_crate(name, version)
         observed = registry_checksum(name, version)
+        observed_canonical = (
+            canonical_receipt_checksum(
+                receipt_checksum(observed, field=f"{name} registry checksum"),
+                f"{name} registry checksum",
+            )
+            if observed is not None
+            else None
+        )
+
+        if observed is None:
+            state = "missing"
+        elif expected is not None and observed_canonical != expected:
+            state = "checksum_conflict"
+        else:
+            state = "already_published_exact"
+
         item = {
             "logical_id": row["logical_id"],
             "name": name,
             "version": version,
             "release_order": row["release_order"],
             "local_checksum": receipt_checksum(local_checksum, field=f"{name} local checksum"),
-            "registry_checksum": receipt_checksum(observed, field=f"{name} registry checksum"),
-            "state": "missing" if observed is None else "already_published_exact",
+            "registry_checksum": observed_canonical,
+            "state": state,
         }
         evidence.append(item)
         write_receipt(receipt_path, receipt)
@@ -333,6 +352,13 @@ def shared_registry_preflight(
             receipt["incident_state"] = "release_incident"
             write_receipt(receipt_path, receipt)
             fail(f"shared registry preflight missing {name} {version}")
+        if publish and state == "checksum_conflict":
+            receipt["incident_state"] = "release_incident"
+            write_receipt(receipt_path, receipt)
+            fail(
+                f"shared registry preflight checksum conflict for {name} {version}: "
+                f"expected {expected}, observed {observed_canonical}"
+            )
     receipt["shared_registry_preflight_complete"] = True
     write_receipt(receipt_path, receipt)
 
@@ -565,22 +591,37 @@ def main() -> int:
             continue
 
         observed = registry_checksum(name, version)
+        observed_canonical = (
+            receipt_checksum(observed, field=f"{name} registry checksum")
+            if observed is not None
+            else None
+        )
+
+        if observed is None:
+            state = "missing"
+        elif observed_canonical == local_receipt_checksum:
+            state = "verified_existing"
+        else:
+            state = "checksum_conflict"
+
         row_receipt: dict[str, Any] = receipt_row(
             row,
             crate_path=crate_path,
             local_checksum=local_receipt_checksum,
-            registry_checksum=observed,
-            state="missing" if observed is None else "already_visible",
+            registry_checksum=observed_canonical,
+            state=state,
         )
         receipt["rows"].append(row_receipt)
         write_receipt(args.receipt, receipt)
 
         if observed is not None:
-            row_receipt["state"] = "verified_existing"
-            row_receipt["registry_checksum"] = receipt_checksum(
-                observed, field=f"{name} registry checksum"
-            )
-            write_receipt(args.receipt, receipt)
+            if state == "checksum_conflict":
+                receipt["incident_state"] = "release_incident"
+                write_receipt(args.receipt, receipt)
+                fail(
+                    f"existing registry checksum conflict for {name} {version}: "
+                    f"expected {local_receipt_checksum}, observed {observed_canonical}"
+                )
             continue
 
         if not args.publish:
@@ -609,9 +650,18 @@ def main() -> int:
             receipt["incident_state"] = "partial"
             write_receipt(args.receipt, receipt)
             raise
-        row_receipt["registry_checksum"] = receipt_checksum(
+        published_canonical = receipt_checksum(
             published_checksum, field=f"{name} registry checksum"
         )
+        row_receipt["registry_checksum"] = published_canonical
+        if published_canonical != local_receipt_checksum:
+            row_receipt["state"] = "checksum_conflict"
+            receipt["incident_state"] = "partial"
+            write_receipt(args.receipt, receipt)
+            fail(
+                f"newly published registry checksum conflict for {name} {version}: "
+                f"expected {local_receipt_checksum}, observed {published_canonical}"
+            )
         row_receipt["state"] = "published_verified"
         write_receipt(args.receipt, receipt)
 

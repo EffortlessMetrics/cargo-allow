@@ -67,6 +67,26 @@ def exercise_shared_registry_preflight() -> None:
         assert receipt["shared_registry_preflight_complete"] is True
         assert all(item["state"] == "already_published_exact" for item in receipt["shared_registry_preflight"])
 
+        # Expected checksum matching
+        rows_with_expected = [
+            dict(r, expected_registry_checksum=CANONICAL) for r in shared_fixture_rows()
+        ]
+        receipt = {"incident_state": "none"}
+        PUBLISHER.shared_registry_preflight(
+            rows_with_expected, publish=True, receipt=receipt, receipt_path=ROOT / "unused"
+        )
+        assert all(item["state"] == "already_published_exact" for item in receipt["shared_registry_preflight"])
+
+        # Expected checksum conflict fails closed
+        rows_with_conflict = [
+            dict(r, expected_registry_checksum="sha256:" + ("b" * 64)) for r in shared_fixture_rows()
+        ]
+        expect_failure(
+            lambda: PUBLISHER.shared_registry_preflight(
+                rows_with_conflict, publish=True, receipt={"incident_state": "none"}, receipt_path=ROOT / "unused"
+            )
+        )
+
         PUBLISHER.registry_checksum = lambda _name, _version: None
         expect_failure(
             lambda: PUBLISHER.shared_registry_preflight(
@@ -241,6 +261,100 @@ def exercise_main_receipt_shapes() -> None:
             setattr(PUBLISHER, name, value)
 
 
+def exercise_cargo_allow_checksum_equality() -> None:
+    original = {
+        name: getattr(PUBLISHER, name)
+        for name in (
+            "cargo_packages",
+            "git_identity",
+            "load_rows",
+            "package_crate",
+            "package_workspace",
+            "registry_checksum",
+            "sha256_text",
+            "validate_rows",
+            "shared_registry_preflight",
+            "run",
+            "wait_for_checksum",
+        )
+    }
+    original_argv = sys.argv
+    try:
+        PUBLISHER.cargo_packages = lambda: {"cargo-allow": {}}
+        PUBLISHER.git_identity = lambda _kind: DIGEST
+        PUBLISHER.load_rows = lambda _path, mode: (
+            {"topology_id": "fixture-topology"},
+            [
+                {
+                    "logical_id": "cargo-allow",
+                    "cargo_package_name": "cargo-allow",
+                    "package_version": "0.2.0-rc.1",
+                    "product_family": "cargo-allow",
+                    "release_order": 100,
+                }
+            ],
+        )
+        PUBLISHER.package_crate = lambda name, version: (
+            ROOT / f"target/package/{name}-{version}.crate",
+            DIGEST,
+        )
+        PUBLISHER.package_workspace = lambda _selected, _packages: None
+        PUBLISHER.sha256_text = lambda _path: DIGEST
+        PUBLISHER.validate_rows = lambda _rows, _packages: None
+        PUBLISHER.shared_registry_preflight = lambda *_args, **_kwargs: None
+        PUBLISHER.run = lambda *args, **kwargs: ""
+
+        # Existing row with matching checksum -> verified_existing
+        PUBLISHER.registry_checksum = lambda _name, _version: DIGEST
+        with tempfile.TemporaryDirectory() as directory:
+            receipt = Path(directory) / "topology.json"
+            sys.argv = [
+                str(PUBLISHER_PATH),
+                "--mode",
+                "cargo-allow",
+                "--receipt",
+                str(receipt),
+            ]
+            with redirect_stdout(io.StringIO()):
+                assert PUBLISHER.main() == 0
+            data = json.loads(receipt.read_text(encoding="utf-8"))
+            assert data["rows"][0]["state"] == "verified_existing"
+
+        # Existing row with conflicting checksum -> fails closed
+        PUBLISHER.registry_checksum = lambda _name, _version: "b" * 64
+        with tempfile.TemporaryDirectory() as directory:
+            receipt = Path(directory) / "topology.json"
+            sys.argv = [
+                str(PUBLISHER_PATH),
+                "--mode",
+                "cargo-allow",
+                "--receipt",
+                str(receipt),
+            ]
+            expect_failure(lambda: PUBLISHER.main())
+
+        # Newly published row with conflicting post-upload checksum -> fails closed
+        PUBLISHER.registry_checksum = lambda _name, _version: None
+        PUBLISHER.wait_for_checksum = lambda _name, _version: "b" * 64
+        with tempfile.TemporaryDirectory() as directory:
+            receipt = Path(directory) / "topology.json"
+            sys.argv = [
+                str(PUBLISHER_PATH),
+                "--mode",
+                "cargo-allow",
+                "--publish",
+                "--authorization",
+                "issue:3760",
+                "--receipt",
+                str(receipt),
+            ]
+            expect_failure(lambda: PUBLISHER.main())
+    finally:
+        sys.argv = original_argv
+        for name, value in original.items():
+            setattr(PUBLISHER, name, value)
+
+
 def main() -> None:
     assert PUBLISHER.receipt_checksum(DIGEST, field="fresh local checksum") == CANONICAL
     assert PUBLISHER.receipt_checksum(CANONICAL, field="published registry checksum") == CANONICAL
@@ -278,6 +392,7 @@ def main() -> None:
     exercise_main_receipt_shapes()
     exercise_shared_registry_preflight()
     exercise_preflight_schema_contract()
+    exercise_cargo_allow_checksum_equality()
     source = PUBLISHER_PATH.read_text(encoding="utf-8")
     main_start = source.index("def main()")
     assert source.index("shared_registry_preflight(", main_start) < source.index(
