@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use super::*;
 
+#[cfg(feature = "syntax")]
 mod cache_root_alias;
 mod capped_read;
 mod finding_builder;
