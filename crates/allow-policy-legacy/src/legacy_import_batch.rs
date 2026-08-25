@@ -518,3 +518,11 @@ review_after = "2026-09-09"
         );
         assert!(
             ids.iter().any(|id| id.starts_with("no-panic-allowlist--")),
+            "no-panic lane entry should be namespaced: {ids:?}"
+        );
+        assert!(
+            ids.iter().any(|id| id.starts_with("unsafe-allowlist--")),
+            "unsafe lane entry should be namespaced: {ids:?}"
+        );
+    }
+}
