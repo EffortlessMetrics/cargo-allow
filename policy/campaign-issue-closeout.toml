@@ -1,0 +1,132 @@
+# Checked denominator for the cargo-allow 0.2.0 campaign issue guard.
+# Keep membership explicit: this file is an authority for scope, not a copy of
+# issue acceptance criteria or a priority system.
+
+[campaign]
+id = 3768
+base_branch = "main"
+
+[[children]]
+issue = 3731
+required = "Complete"
+accepted = ["Complete", "NotPlanned", "Duplicate"]
+
+[[children]]
+issue = 3770
+required = "Complete"
+accepted = ["Complete", "NotPlanned", "Duplicate"]
+
+[[children]]
+issue = 3747
+required = "Complete"
+accepted = ["Complete", "NotPlanned", "Duplicate"]
+
+[[children]]
+issue = 3759
+required = "Complete"
+accepted = ["Complete", "NotPlanned", "Duplicate"]
+
+[[children]]
+issue = 3771
+required = "Complete"
+accepted = ["Complete", "NotPlanned", "Duplicate"]
+
+[[children]]
+issue = 3744
+required = "Complete"
+accepted = ["Complete", "NotPlanned", "Duplicate"]
+
+[[children]]
+issue = 3755
+required = "Complete"
+accepted = ["Complete", "NotPlanned", "Duplicate"]
+
+[[children]]
+issue = 3752
+required = "Complete"
+accepted = ["Complete", "NotPlanned", "Duplicate"]
+
+[[children]]
+issue = 3761
+required = "Complete"
+accepted = ["Complete", "NotPlanned", "Duplicate"]
+
+[[children]]
+issue = 3760
+required = "Complete"
+accepted = ["Complete", "NotPlanned", "Duplicate"]
+
+[[children]]
+issue = 2497
+required = "Complete"
+accepted = ["Complete", "NotPlanned", "Duplicate"]
+
+[[children]]
+issue = 3724
+required = "Complete"
+accepted = ["Complete", "NotPlanned", "Duplicate"]
+
+[[children]]
+issue = 3726
+required = "Complete"
+accepted = ["Complete", "NotPlanned", "Duplicate"]
+
+[[children]]
+issue = 3751
+required = "Complete"
+accepted = ["Complete", "NotPlanned", "Duplicate"]
+
+[[children]]
+issue = 2466
+required = "Complete"
+accepted = ["Complete", "NotPlanned", "Duplicate"]
+
+[[children]]
+issue = 2467
+required = "Complete"
+accepted = ["Complete", "NotPlanned", "Duplicate"]
+
+[[children]]
+issue = 3151
+required = "Complete"
+accepted = ["Complete", "NotPlanned", "Duplicate"]
+
+[[children]]
+issue = 2485
+required = "Complete"
+accepted = ["Complete", "NotPlanned", "Duplicate"]
+
+[[children]]
+issue = 3750
+required = "Complete"
+accepted = ["Complete", "NotPlanned", "Duplicate"]
+
+[[children]]
+issue = 3773
+required = "Complete"
+accepted = ["Complete", "NotPlanned", "Duplicate"]
+
+[[children]]
+issue = 3774
+required = "Complete"
+accepted = ["Complete", "NotPlanned", "Duplicate"]
+
+[[children]]
+issue = 3753
+required = "Complete"
+accepted = ["Complete", "NotPlanned", "Duplicate"]
+
+[[children]]
+issue = 2501
+required = "Complete"
+accepted = ["Complete", "NotPlanned", "Duplicate"]
+
+[[children]]
+issue = 2502
+required = "Complete"
+accepted = ["Complete", "NotPlanned", "Duplicate"]
+
+[[children]]
+issue = 3846
+required = "Complete"
+accepted = ["Complete", "NotPlanned", "Duplicate"]
