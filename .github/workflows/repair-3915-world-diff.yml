@@ -27,7 +27,19 @@ jobs:
           toolchain: stable
           components: rustfmt
       - name: Restore base bytes and reapply bounded edits
-        run: python scripts/repair-3915-world-diff.py
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("scripts/repair-3915-world-diff.py")
+          text = path.read_text(encoding="utf-8")
+          old = '["git", "diff", "--numstat", "--", PATH.as_posix()]'
+          new = '["git", "diff", "--numstat", BASE, "--", PATH.as_posix()]'
+          if text.count(old) != 1:
+              raise SystemExit("repair assertion source drift")
+          path.write_text(text.replace(old, new, 1), encoding="utf-8")
+          PY
+          python scripts/repair-3915-world-diff.py
       - name: Check repaired source
         shell: bash
         run: |
