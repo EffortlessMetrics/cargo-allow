@@ -19,7 +19,10 @@ fn scan() {
     for _ in 0..10 {
         findings += scan_rust_source("benches/fixture.rs", &source).len();
     }
-    println!("scan_rust_source_2000_lines: {:?} ({findings} findings)", start.elapsed());
+    println!(
+        "scan_rust_source_2000_lines: {:?} ({findings} findings)",
+        start.elapsed()
+    );
 }
 
 fn main() {
