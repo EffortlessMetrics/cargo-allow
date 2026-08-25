@@ -709,6 +709,9 @@ fn finding_kind_tag(kind: allow_core::FindingKind) -> u8 {
         allow_core::FindingKind::NonRustFile => 4,
         allow_core::FindingKind::GeneratedCode => 5,
         allow_core::FindingKind::PolicyException => 6,
+        // Keep unknown future finding categories out of the known cache-tag
+        // space. They will miss the cache rather than aliasing another kind.
+        _ => 0,
     }
 }
 

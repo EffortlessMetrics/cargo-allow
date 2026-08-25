@@ -316,7 +316,7 @@ fn every_ci_proven_platform_names_a_runner_that_exists() {
             .unwrap_or_else(|| std::panic::panic_any("platform row has no tier"));
 
         match tier.as_str() {
-            "ci_proven" | "install_proven" => {
+            "ci_proven" | "ci_proven_bounded" | "install_proven" => {
                 assert!(
                     workflows.contains(&format!("runs-on: {runner}"))
                         || workflows.contains(&runner),

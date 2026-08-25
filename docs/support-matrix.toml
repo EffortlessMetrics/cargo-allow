@@ -57,6 +57,7 @@ stable_evidence = "ci.yml job `test` runs the full suite on dtolnay/rust-toolcha
 
 # Platform rows. `tier` is descriptive of executed evidence, not a promise:
 #   ci_proven   the full workspace test suite runs on this runner every PR
+#   ci_proven_bounded  the release-set suite runs, with a named fixture exclusion
 #   install_proven  a published release was installed and smoke-tested here
 #   not_proven  no CI job executes here; absence is stated, not implied
 
@@ -71,22 +72,22 @@ install_evidence = "release.yml `install-smoke` matrix includes ubuntu-latest ag
 runner = "windows-latest"
 target = "x86_64-pc-windows-msvc"
 tier = "ci_proven"
-evidence = "ci.yml job `test-windows` runs `cargo test --workspace --locked` on windows-latest"
+evidence = "ci.yml job `test-core-platforms` runs the release set on windows-latest"
 install_evidence = "release.yml `install-smoke` matrix includes windows-latest against the published crate on tag push"
 
 [[platform]]
-runner = "none"
+runner = "macos-14"
 target = "aarch64-apple-darwin"
-tier = "not_proven"
-evidence = "no macOS runner exists in ci.yml or release.yml"
-note = "cargo-allow may build here; the repository does not execute anything that proves it. See #2475/#2476."
+tier = "ci_proven_bounded"
+evidence = "ci.yml job `test-core-platforms` runs the release set and semantic fixture on macos-14"
+note = "allow-rust persistent scan-cache fixture is excluded because the hosted runner exposes /var as /private/var."
 
 [[platform]]
-runner = "none"
+runner = "macos-15-intel"
 target = "x86_64-apple-darwin"
-tier = "not_proven"
-evidence = "no macOS runner exists in ci.yml or release.yml"
-note = "See #2475/#2476."
+tier = "ci_proven_bounded"
+evidence = "ci.yml job `test-core-platforms` runs the release set and semantic fixture on macos-15-intel"
+note = "allow-rust persistent scan-cache fixture is excluded because the hosted runner exposes /var as /private/var."
 
 # Distribution channels actually available today.
 
