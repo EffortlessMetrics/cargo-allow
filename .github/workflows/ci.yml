@@ -42,9 +42,10 @@ jobs:
       # this action alone (.github/dependabot.yml); bumping it would keep CI
       # green while proving a Rust version the workspace does not claim.
       - uses: dtolnay/rust-toolchain@1.95.0
-      - uses: Swatinem/rust-cache@258712b0b7b1ddf8bddc9fc3b0faca682b2736c3 # v2
+      - uses: ./.github/actions/rust-cache
         with:
-          key: msrv-1.95
+          lane: msrv
+          toolchain: 1.95.0
       # The pin above is configuration; this is the evidence. Asks the resolved
       # compiler what it is and fails closed unless it matches the declared
       # `rust-version`, so no future toolchain-selection change can leave this
@@ -76,9 +77,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@258712b0b7b1ddf8bddc9fc3b0faca682b2736c3 # v2
+      - uses: ./.github/actions/rust-cache
         with:
-          key: package-smoke
+          lane: package-smoke
       - name: Package candidate smoke (Stage A)
         run: bash scripts/package-candidate-smoke.sh
       - name: Linux release binary packaging contract (#2464)
@@ -153,9 +154,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@258712b0b7b1ddf8bddc9fc3b0faca682b2736c3 # v2
+      - uses: ./.github/actions/rust-cache
         with:
-          key: product-candidates-interop
+          lane: product-candidates-interop
       - name: Exact candidate package set for interop (#2372)
         run: |
           mkdir -p target/exact-candidate-package-set/packages
@@ -210,9 +211,9 @@ jobs:
         with:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@258712b0b7b1ddf8bddc9fc3b0faca682b2736c3 # v2
+      - uses: ./.github/actions/rust-cache
         with:
-          key: shallow-diff-smoke
+          lane: shallow-diff-smoke
       - name: Shallow diff base smoke
         run: bash scripts/shallow-diff-base-smoke.sh
       - name: Shallow diff failure artifact characterization (#3566)
@@ -238,9 +239,9 @@ jobs:
         with:
           fetch-depth: 2
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@258712b0b7b1ddf8bddc9fc3b0faca682b2736c3 # v2
+      - uses: ./.github/actions/rust-cache
         with:
-          key: operator-latency
+          lane: operator-latency
       - name: Operator latency harness contract (#2468)
         run: bash scripts/test-perf-budget-smoke.sh
       - name: Build release cargo-allow binary
@@ -308,7 +309,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@258712b0b7b1ddf8bddc9fc3b0faca682b2736c3 # v2
+      - uses: ./.github/actions/rust-cache
+        with:
+          lane: release-set
       - run: cargo fmt --all --check
       - name: cargo-allow release-set clippy (#3358)
         run: |
@@ -443,9 +446,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@258712b0b7b1ddf8bddc9fc3b0faca682b2736c3 # v2
+      - uses: ./.github/actions/rust-cache
         with:
-          key: integrated-dogfood
+          lane: integrated-dogfood
       - name: Build three-product binaries for dogfood (#2558)
         run: cargo build -p cargo-allow -p cargo-intent -p cargo-proof --locked
       - name: Governance validation receipt (#2942 step 5)
@@ -474,17 +477,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@258712b0b7b1ddf8bddc9fc3b0faca682b2736c3 # v2
+      - uses: ./.github/actions/rust-cache
         with:
-          # Keep this cache namespace deliberately separate from every other
-          # lane. rust-cache adds the resolved toolchain, target, lockfile,
-          # and runner OS to its key; the explicit generation is the manual
-          # compatibility boundary for the Windows runner image/native
-          # compiler contract. Bump it when that contract changes.
-          shared-key: test-windows-v2-${{ runner.arch }}
-          # A fork must be able to restore compatible public cache state, but
-          # must never publish objects into the trusted repository namespace.
-          save-if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+          lane: release-set
       - name: Cargo-allow release-set test suite (#3358)
         # Single line: this job runs under PowerShell, which has no
         # backslash line continuation.
@@ -505,9 +500,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@258712b0b7b1ddf8bddc9fc3b0faca682b2736c3 # v2
+      - uses: ./.github/actions/rust-cache
         with:
-          key: compat-delegation-${{ matrix.os }}
+          lane: compat-delegation
       - name: Core independence graph proof (#3369)
         # cargo-allow has no dependency edge on the cargo-intent
         # application; the delegation e2e lives in the
@@ -556,9 +551,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      - uses: Swatinem/rust-cache@258712b0b7b1ddf8bddc9fc3b0faca682b2736c3 # v2
+      - uses: ./.github/actions/rust-cache
         with:
-          key: test-intent-experimental
+          lane: test-intent-experimental
       - name: cargo-intent clippy
         run: cargo clippy --locked --all-targets -p intent-model -p intent-protocol -p intent-compiler -p intent-edit -p cargo-intent -- -D warnings
       - name: cargo-intent test suite
@@ -573,9 +568,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      - uses: Swatinem/rust-cache@258712b0b7b1ddf8bddc9fc3b0faca682b2736c3 # v2
+      - uses: ./.github/actions/rust-cache
         with:
-          key: test-proof-experimental
+          lane: test-proof-experimental
       - name: cargo-proof clippy
         run: cargo clippy --locked --all-targets -p proof-protocol -p proof-orchestrator -p cargo-proof -- -D warnings
       - name: cargo-proof test suite
@@ -591,9 +586,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@258712b0b7b1ddf8bddc9fc3b0faca682b2736c3 # v2
+      - uses: ./.github/actions/rust-cache
         with:
-          key: test-shared-protocol
+          lane: test-shared-protocol
       - name: Shared protocol test suite
         run: cargo test --locked -p effortless-rust-source-index
 
@@ -605,9 +600,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@258712b0b7b1ddf8bddc9fc3b0faca682b2736c3 # v2
+      - uses: ./.github/actions/rust-cache
         with:
-          key: coverage
+          lane: coverage
       - name: Generate coverage report
         run: |
           coverage_temp="$RUNNER_TEMP/cargo-allow-coverage"
