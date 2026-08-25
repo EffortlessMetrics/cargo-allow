@@ -110,12 +110,16 @@ pub const GLOB_MATCH_MAX_STEPS: u32 = 10_000;
 
 pub fn glob_matches_str(pattern: &str, path: &str) -> bool {
     let p = normalize_glob_pattern(pattern);
-    let mut steps = 0;
-    glob_match_tokens(&split_glob(&p), &split_glob(path), &mut steps)
+    glob_matches_normalized_str(&p, path)
 }
 
 fn normalize_glob_pattern(pattern: &str) -> String {
     pattern.replace('\\', "/").nfc().collect()
+}
+
+fn glob_matches_normalized_str(pattern: &str, path: &str) -> bool {
+    let mut steps = 0;
+    glob_match_tokens(&split_glob(pattern), &split_glob(path), &mut steps)
 }
 
 pub fn source_tree_path_matches_filter(item_path: &str, filter_path: &str) -> bool {
@@ -143,12 +147,7 @@ pub fn source_tree_path_is_ignored(path: impl AsRef<Path>, patterns: &[String]) 
     let normalized = normalize_path(path);
     patterns.iter().any(|pattern| {
         let normalized_pattern = normalize_glob_pattern(pattern);
-        let mut steps = 0;
-        glob_match_tokens(
-            &split_glob(&normalized_pattern),
-            &split_glob(&normalized),
-            &mut steps,
-        )
+        glob_matches_normalized_str(&normalized_pattern, &normalized)
     })
 }
 
