@@ -248,7 +248,12 @@ impl LedgerPosture {
         Self { movement, delta }
     }
 
-    /// PR-summary movement projection honoring `touched_in_diff` attribution.
+    /// Projects a ledger row into the PR-summary movement vocabulary.
+    ///
+    /// `touched_in_diff` only affects retained rows whose posture delta is
+    /// unchanged: an untouched row is inherited, while a touched row is
+    /// retained. Introduced and removed rows remain `new` and `resolved`
+    /// regardless of the flag or posture delta.
     pub fn movement_projection(self, touched_in_diff: bool) -> &'static str {
         match self.movement {
             PresenceMovement::Introduced => "new",

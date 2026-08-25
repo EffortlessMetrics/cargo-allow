@@ -34,16 +34,34 @@ fn movement_projection_labels_match_spec_contract() {
     }
 }
 
-/// Characterization: inherited projection requires retained + unchanged + not touched.
+/// Characterization: only retained + unchanged rows depend on diff attribution.
 #[test]
-fn inherited_projection_requires_retained_unchanged_and_not_touched() {
-    let inherited = LedgerPosture::new(PresenceMovement::Retained, PostureDelta::Unchanged);
-    assert_eq!(inherited.movement_projection(false), "inherited");
-    assert_eq!(inherited.movement_projection(true), "retained");
+fn movement_projection_is_exhaustive_over_movement_delta_and_diff() {
+    let expected = [
+        (PresenceMovement::Introduced, "new"),
+        (PresenceMovement::Retained, "retained"),
+        (PresenceMovement::Removed, "resolved"),
+    ];
 
-    let touched_retained = LedgerPosture::new(PresenceMovement::Retained, PostureDelta::Improved);
-    assert_eq!(touched_retained.movement_projection(false), "retained");
-    assert_eq!(touched_retained.movement_projection(true), "retained");
+    for &(movement, introduced_or_removed_projection) in &expected {
+        for &delta in &PostureDelta::ALL {
+            let posture = LedgerPosture::new(movement, delta);
+            assert_eq!(
+                posture.movement_projection(false),
+                if movement == PresenceMovement::Retained && delta == PostureDelta::Unchanged {
+                    "inherited"
+                } else {
+                    introduced_or_removed_projection
+                },
+                "untouched projection for {movement:?}/{delta:?}"
+            );
+            assert_eq!(
+                posture.movement_projection(true),
+                introduced_or_removed_projection,
+                "touched projection for {movement:?}/{delta:?}"
+            );
+        }
+    }
 }
 
 /// Characterization: coverage-movement classification uses the four-value vocabulary.
