@@ -35,6 +35,27 @@ fn inventory_options_with_tool_cache_ignore(mut options: InventoryOptions) -> In
     options
 }
 
+fn scan_rust_files_with_cache_mode(
+    root: &Path,
+    files: &[PathBuf],
+    persistent_cache: bool,
+) -> CargoAllowResult<allow_rust::RustScanResult> {
+    SCAN_CACHE.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        if persistent_cache
+            && let Ok(mut store) =
+                allow_rust::RootBoundScanCacheStore::open(root, allow_rust::scan_cache_generation())
+        {
+            let result = allow_rust::scan_rust_files_cached_with_root_bound_store(
+                root, files, &mut cache, &mut store,
+            );
+            let _ = store.flush();
+            return result;
+        }
+        allow_rust::scan_rust_files_cached(root, files, &mut cache)
+    })
+}
+
 use crate::{
     EvidenceValidationMode, InventoryFacts, canonical_companion_findings, current_dir,
     evidence_inventory::{
@@ -411,24 +432,7 @@ pub(crate) fn load_world_with_evidence_mode_and_cache(
     // Durable scan-fact store (#2571): advisory on every failure path. The
     // store lives under target/ (never scanned) and is keyed by content
     // digest, so a stale or corrupt store can only cost a cold re-scan.
-    let rust_scan = if persistent_cache {
-        let mut store = allow_rust::ScanCacheStore::open(
-            &allow_rust::ScanCacheStore::default_dir(&root),
-            allow_rust::scan_cache_generation(),
-        );
-        let result = SCAN_CACHE.with(|cache| {
-            let mut cache = cache.borrow_mut();
-            allow_rust::scan_rust_files_cached_with_store(&root, &files, &mut cache, &mut store)
-        });
-        let _ = store.flush();
-        result
-    } else {
-        SCAN_CACHE.with(|cache| {
-            let mut cache = cache.borrow_mut();
-            allow_rust::scan_rust_files_cached(&root, &files, &mut cache)
-        })
-    };
-    let rust_scan = rust_scan?;
+    let rust_scan = scan_rust_files_with_cache_mode(&root, &files, persistent_cache)?;
     let rust_files_skipped = rust_scan.files_skipped;
     let rust_files_with_parse_errors = rust_scan.files_with_parse_errors;
     findings.extend(rust_scan.findings);
@@ -704,23 +708,7 @@ fn load_world_without_policy_and_cache(
     let inventory_facts = InventoryFacts::scanned_inventory(&inventory);
     let files = inventory.files;
     let mut findings = Vec::new();
-    let rust_scan = if persistent_cache {
-        let mut store = allow_rust::ScanCacheStore::open(
-            &allow_rust::ScanCacheStore::default_dir(root),
-            allow_rust::scan_cache_generation(),
-        );
-        let result = SCAN_CACHE.with(|cache| {
-            let mut cache = cache.borrow_mut();
-            allow_rust::scan_rust_files_cached_with_store(root, &files, &mut cache, &mut store)
-        })?;
-        let _ = store.flush();
-        result
-    } else {
-        SCAN_CACHE.with(|cache| {
-            let mut cache = cache.borrow_mut();
-            allow_rust::scan_rust_files_cached(root, &files, &mut cache)
-        })?
-    };
+    let rust_scan = scan_rust_files_with_cache_mode(root, &files, persistent_cache)?;
     let inventory_facts = inventory_facts
         .with_rust_files_considered(rust_scan.files_considered)
         .with_rust_files_skipped(rust_scan.files_skipped)

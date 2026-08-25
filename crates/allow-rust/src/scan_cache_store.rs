@@ -732,6 +732,12 @@ mod tests {
     use super::*;
     use std::time::SystemTime;
 
+    fn canonical_temp_dir() -> PathBuf {
+        std::env::temp_dir()
+            .canonicalize()
+            .unwrap_or_else(|_| std::env::temp_dir())
+    }
+
     #[test]
     fn checksum_valid_but_trailing_payload_is_rejected() {
         let encoded = encode_store("generation", &HashMap::new()).unwrap_or_default();
@@ -803,7 +809,7 @@ mod tests {
             .duration_since(SystemTime::UNIX_EPOCH)
             .map_err(|error| error.to_string())?
             .as_nanos();
-        let root = std::env::temp_dir().join(format!(
+        let root = canonical_temp_dir().join(format!(
             "allow-rust-cache-oversized-{}-{nonce}",
             std::process::id()
         ));
@@ -821,7 +827,7 @@ mod tests {
 
     #[test]
     fn stale_temp_is_removed_before_atomic_flush() -> Result<(), String> {
-        let root = std::env::temp_dir().join(format!(
+        let root = canonical_temp_dir().join(format!(
             "allow-rust-cache-stale-temp-{}-{}",
             std::process::id(),
             TEMP_NONCE.fetch_add(1, Ordering::Relaxed)
@@ -852,7 +858,7 @@ mod tests {
 
     #[test]
     fn active_writer_lock_is_retried_deterministically() -> Result<(), String> {
-        let root = std::env::temp_dir().join(format!(
+        let root = canonical_temp_dir().join(format!(
             "allow-rust-cache-lock-contention-{}-{}",
             std::process::id(),
             TEMP_NONCE.fetch_add(1, Ordering::Relaxed)
@@ -899,7 +905,7 @@ mod tests {
 
     #[test]
     fn concurrent_flushes_are_serialized_and_last_writer_wins() -> Result<(), String> {
-        let root = std::env::temp_dir().join(format!(
+        let root = canonical_temp_dir().join(format!(
             "allow-rust-cache-concurrent-{}-{}",
             std::process::id(),
             TEMP_NONCE.fetch_add(1, Ordering::Relaxed)
@@ -945,7 +951,7 @@ mod tests {
             .duration_since(SystemTime::UNIX_EPOCH)
             .map(|duration| duration.as_nanos())
             .unwrap_or_default();
-        let root = std::env::temp_dir().join(format!(
+        let root = canonical_temp_dir().join(format!(
             "allow-rust-cache-symlink-{}-{nonce}",
             std::process::id()
         ));
@@ -978,7 +984,7 @@ mod tests {
             .duration_since(SystemTime::UNIX_EPOCH)
             .map_err(|error| error.to_string())?
             .as_nanos();
-        let root = std::env::temp_dir().join(format!(
+        let root = canonical_temp_dir().join(format!(
             "allow-rust-cache-temp-symlink-{}-{nonce}",
             std::process::id()
         ));
@@ -1009,7 +1015,7 @@ mod tests {
     fn precreated_lock_symlink_is_rejected_without_outside_creation() -> Result<(), String> {
         use std::os::unix::fs::symlink;
 
-        let root = std::env::temp_dir().join(format!(
+        let root = canonical_temp_dir().join(format!(
             "allow-rust-cache-lock-symlink-{}-{}",
             std::process::id(),
             TEMP_NONCE.fetch_add(1, Ordering::Relaxed)
@@ -1034,7 +1040,7 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn junction_cache_root_is_rejected_without_outside_write() -> Result<(), String> {
-        let root = std::env::temp_dir().join(format!(
+        let root = canonical_temp_dir().join(format!(
             "allow-rust-cache-junction-{}-{}",
             std::process::id(),
             TEMP_NONCE.fetch_add(1, Ordering::Relaxed)

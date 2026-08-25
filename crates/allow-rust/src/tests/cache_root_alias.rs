@@ -173,7 +173,11 @@ fn changed_root_identity_fails_before_persistence() -> Result<(), String> {
         store.flush_with_disposition(),
         Err(ScanCacheTargetDispositionV1::RootIdentityChanged)
     );
-    assert!(!root.join("target/cargo-allow/cache/scan-cache.v2.bin").exists());
+    assert!(
+        !root
+            .join("target/cargo-allow/cache/scan-cache.v2.bin")
+            .exists()
+    );
     Ok(())
 }
 
@@ -252,13 +256,8 @@ fn macos_temp_root_accepts_hosted_alias_when_present() -> Result<(), String> {
     };
     assert_eq!(store.root_disposition(), expected);
     let mut memory = ScanCache::new();
-    scan_rust_files_cached_with_root_bound_store(
-        &fixture.0,
-        &files,
-        &mut memory,
-        &mut store,
-    )
-    .map_err(|error| error.to_string())?;
+    scan_rust_files_cached_with_root_bound_store(&fixture.0, &files, &mut memory, &mut store)
+        .map_err(|error| error.to_string())?;
     store
         .flush_with_disposition()
         .map_err(|disposition| disposition.as_str().to_string())?;

@@ -215,8 +215,8 @@ impl RootBoundScanCacheStore {
 }
 
 fn validate_initial_root(root: &Path) -> Result<(), ScanCacheTargetDispositionV1> {
-    let metadata = fs::symlink_metadata(root)
-        .map_err(|_| ScanCacheTargetDispositionV1::InstrumentFailure)?;
+    let metadata =
+        fs::symlink_metadata(root).map_err(|_| ScanCacheTargetDispositionV1::InstrumentFailure)?;
     if metadata_is_indirection(&metadata) {
         return Err(ScanCacheTargetDispositionV1::InRootSymlinkOrReparseEscape);
     }
@@ -226,10 +226,7 @@ fn validate_initial_root(root: &Path) -> Result<(), ScanCacheTargetDispositionV1
     Ok(())
 }
 
-fn validate_current_root(
-    root: &Path,
-    bound: &Handle,
-) -> Result<(), ScanCacheTargetDispositionV1> {
+fn validate_current_root(root: &Path, bound: &Handle) -> Result<(), ScanCacheTargetDispositionV1> {
     let metadata = match fs::symlink_metadata(root) {
         Ok(metadata) => metadata,
         Err(error) if error.kind() == ErrorKind::NotFound => {
@@ -269,8 +266,8 @@ fn bind_deepest_existing_parent(
         .map_err(|_| ScanCacheTargetDispositionV1::UnsupportedFilesystem)?;
     let mut current = root.to_path_buf();
     let mut deepest_path = current.clone();
-    let mut deepest_handle = Handle::from_path(&current)
-        .map_err(|_| ScanCacheTargetDispositionV1::InstrumentFailure)?;
+    let mut deepest_handle =
+        Handle::from_path(&current).map_err(|_| ScanCacheTargetDispositionV1::InstrumentFailure)?;
 
     for component in relative.components() {
         let Component::Normal(segment) = component else {
