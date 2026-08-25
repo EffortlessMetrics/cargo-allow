@@ -768,6 +768,33 @@ linked_proposal = "CARGO-ALLOW-PROP-0010"
 linked_adr = "CARGO-ALLOW-ADR-0002"
 
 [[artifact]]
+id = "CARGO-ALLOW-SPEC-0012"
+kind = "spec"
+path = "docs/specs/CARGO-ALLOW-SPEC-0012-source-exception-ledger.md"
+status = "draft"
+owner = "repo-infra"
+created = "2026-08-24"
+standalone_reason = "The source-exception ledger is an existing core product contract that predates the spec series."
+
+[[artifact]]
+id = "CARGO-ALLOW-SPEC-0013"
+kind = "spec"
+path = "docs/specs/CARGO-ALLOW-SPEC-0013-diff-posture.md"
+status = "draft"
+owner = "repo-infra"
+created = "2026-08-24"
+standalone_reason = "Diff posture is an existing reviewer-facing core contract that predates the spec series."
+
+[[artifact]]
+id = "CARGO-ALLOW-SPEC-0014"
+kind = "spec"
+path = "docs/specs/CARGO-ALLOW-SPEC-0014-policy-matching.md"
+status = "draft"
+owner = "repo-infra"
+created = "2026-08-24"
+standalone_reason = "Policy matching is an existing source-exception authorization contract that predates the spec series."
+
+[[artifact]]
 id = "CARGO-ALLOW-PLAN-0010"
 kind = "implementation_plan"
 path = "plans/three-product-crate-extraction.md"
