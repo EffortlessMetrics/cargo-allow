@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use super::*;
 
+mod cache_root_alias;
 mod capped_read;
 mod finding_builder;
 mod indexing;
