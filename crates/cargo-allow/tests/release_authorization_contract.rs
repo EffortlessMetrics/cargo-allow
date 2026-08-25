@@ -118,6 +118,14 @@ impl CargoAllowReleaseAuthorizationV1 {
     }
 }
 
+fn require(cond: bool, msg: &str) -> Result<(), io::Error> {
+    if !cond {
+        Err(io::Error::other(msg))
+    } else {
+        Ok(())
+    }
+}
+
 #[test]
 fn valid_authorization_passes_validation() -> Result<(), Box<dyn Error>> {
     let commit = "0123456789abcdef0123456789abcdef01234567";
@@ -136,7 +144,10 @@ fn valid_authorization_passes_validation() -> Result<(), Box<dyn Error>> {
         single_use: true,
     };
 
-    assert!(auth.validate_for_execution(commit).is_ok());
+    require(
+        auth.validate_for_execution(commit).is_ok(),
+        "valid auth must pass",
+    )?;
     Ok(())
 }
 
@@ -163,7 +174,7 @@ fn state_transitions_and_replay_protection() -> Result<(), Box<dyn Error>> {
     auth.transition_to(ReleaseAuthorizationState::ConsumedComplete)?;
 
     let replay_err = auth.validate_for_execution(commit);
-    assert!(replay_err.is_err());
+    require(replay_err.is_err(), "replayed auth must fail")?;
 
     Ok(())
 }
@@ -188,19 +199,31 @@ fn negative_controls_reject_invalid_authorization() -> Result<(), Box<dyn Error>
 
     let mut mismatched_commit = base_auth.clone();
     mismatched_commit.commit_sha = "ffffffffffffffffffffffffffffffffffffffff".to_string();
-    assert!(mismatched_commit.validate_for_execution(commit).is_err());
+    require(
+        mismatched_commit.validate_for_execution(commit).is_err(),
+        "mismatched commit must fail",
+    )?;
 
     let mut expired = base_auth.clone();
     expired.state = ReleaseAuthorizationState::Expired;
-    assert!(expired.validate_for_execution(commit).is_err());
+    require(
+        expired.validate_for_execution(commit).is_err(),
+        "expired auth must fail",
+    )?;
 
     let mut revoked = base_auth.clone();
     revoked.state = ReleaseAuthorizationState::Revoked;
-    assert!(revoked.validate_for_execution(commit).is_err());
+    require(
+        revoked.validate_for_execution(commit).is_err(),
+        "revoked auth must fail",
+    )?;
 
     let mut bad_tag = base_auth.clone();
     bad_tag.target_tag = "v0.1.11".to_string();
-    assert!(bad_tag.validate_for_execution(commit).is_err());
+    require(
+        bad_tag.validate_for_execution(commit).is_err(),
+        "bad tag must fail",
+    )?;
 
     Ok(())
 }

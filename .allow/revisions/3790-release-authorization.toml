@@ -1,0 +1,31 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11145"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:c1cc967ccd4f2a7b6a5324e32b030299707b32f2a1db9eba490d81a68a618d82"
+reason = "receipt for docs/interop/sibling-tools.md (#3790)"
+
+[[records]]
+allow_ids = ["allow-11146"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:0b824f8653f0bb65a43f13fad19ef7231c2c22a66fd7ab7ee671ff9287a48926"
+reason = "receipt for .github/workflows/campaign-issue-closeout.yml (#3790)"
+
+[[records]]
+allow_ids = ["allow-11147"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:8918488c3af2d41fc13d885d5363cb423c779341dacd4cbc641638280706f450"
+reason = "receipt for policy/campaign-issue-closeout.toml (#3790)"
+
+[[records]]
+allow_ids = ["allow-11148"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:30455712e2ff5ac90faa0a50fc5112383e4b20ffcf4613469ac3f39430a54069"
+reason = "receipt for scripts/test-campaign-issue-closeout.py (#3790)"
+
+[[records]]
+allow_ids = ["allow-11149"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d7c4aad2cde0c21464e5c90f8aa8cbc428c035882f4ee78e8711b2567162711b"
+reason = "receipt for scripts/verify-campaign-issue-closeout.py (#3790)"
