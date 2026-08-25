@@ -9,7 +9,7 @@
 
 use crate::ScanCacheStore;
 use same_file::Handle;
-use std::fs::{self, Metadata};
+use std::fs::{self, Metadata, OpenOptions};
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
 
@@ -42,7 +42,8 @@ pub enum ScanCacheTargetDispositionV1 {
     RootIdentityChanged,
     /// The platform or supplied root shape cannot support this identity law.
     UnsupportedFilesystem,
-    /// Metadata or handle acquisition failed, so persistence is not proven.
+    /// Metadata, handle acquisition, encoding, locking, or I/O failed while
+    /// all observed target identities remained current.
     InstrumentFailure,
 }
 
@@ -170,24 +171,7 @@ impl RootBoundScanCacheStore {
     /// Recheck root, parent, cache directory, lock, temp, and destination
     /// posture, then persist through the existing atomic store implementation.
     pub fn flush_with_disposition(&mut self) -> Result<(), ScanCacheTargetDispositionV1> {
-        self.validate_current_binding()?;
-        bind_deepest_existing_parent(&self.canonical_root, &self.store_dir)?;
-        validate_known_artifacts(&self.store_dir)?;
-
-        if !self.store.flush() {
-            self.validate_current_binding()?;
-            bind_deepest_existing_parent(&self.canonical_root, &self.store_dir)?;
-            validate_known_artifacts(&self.store_dir)?;
-            return Err(ScanCacheTargetDispositionV1::InstrumentFailure);
-        }
-
-        self.validate_current_binding()?;
-        let (current_parent_path, current_parent_handle) =
-            bind_deepest_existing_parent(&self.canonical_root, &self.store_dir)?;
-        validate_known_artifacts(&self.store_dir)?;
-        self.bound_parent_path = current_parent_path;
-        self.bound_parent_handle = current_parent_handle;
-        Ok(())
+        self.flush_with_hook(None)
     }
 
     /// Boolean compatibility projection for existing advisory flush callers.
@@ -197,6 +181,79 @@ impl RootBoundScanCacheStore {
 
     pub(crate) fn inner_mut(&mut self) -> &mut ScanCacheStore {
         &mut self.store
+    }
+
+    #[cfg(test)]
+    pub(crate) fn flush_with_test_hook(
+        &mut self,
+        hook: &dyn Fn(&Path),
+    ) -> Result<(), ScanCacheTargetDispositionV1> {
+        self.flush_with_hook(Some(hook))
+    }
+
+    fn flush_with_hook(
+        &mut self,
+        hook: Option<&dyn Fn(&Path)>,
+    ) -> Result<(), ScanCacheTargetDispositionV1> {
+        let snapshot = self.prepare_flush_snapshot()?;
+        if let Some(hook) = hook {
+            hook(&self.store_dir);
+        }
+
+        self.validate_current_binding()?;
+        snapshot.validate_before_flush(&self.store_dir)?;
+
+        if !self.store.flush() {
+            self.validate_current_binding()?;
+            return match snapshot.validate_after_failed_flush(&self.store_dir) {
+                Ok(()) => Err(ScanCacheTargetDispositionV1::InstrumentFailure),
+                Err(disposition) => Err(disposition),
+            };
+        }
+
+        self.validate_current_binding()?;
+        snapshot.validate_after_successful_flush(&self.store_dir)?;
+        validate_known_artifacts(&self.store_dir)?;
+        self.rebind_deepest_parent()?;
+        Ok(())
+    }
+
+    fn prepare_flush_snapshot(
+        &mut self,
+    ) -> Result<FlushArtifactSnapshot, ScanCacheTargetDispositionV1> {
+        self.validate_current_binding()?;
+        bind_deepest_existing_parent(&self.canonical_root, &self.store_dir)?;
+        validate_known_artifacts(&self.store_dir)?;
+
+        fs::create_dir_all(&self.store_dir)
+            .map_err(|_| ScanCacheTargetDispositionV1::InstrumentFailure)?;
+        self.validate_current_binding()?;
+        self.rebind_deepest_parent()?;
+        if self.bound_parent_path != self.store_dir {
+            return Err(ScanCacheTargetDispositionV1::DestinationAliasOrTypeChange);
+        }
+        validate_known_artifacts(&self.store_dir)?;
+
+        let lock_path = self.store_dir.join(LOCK_FILE_NAME);
+        let lock_handle = ensure_bound_regular_file(&lock_path)?;
+        let destination_path = self.store_dir.join(STORE_FILE_NAME);
+        let destination_handle = bind_optional_regular_file(&destination_path)?;
+        let temp_files = bind_temp_files(&self.store_dir)?;
+
+        Ok(FlushArtifactSnapshot {
+            lock_path,
+            lock_handle,
+            destination_path,
+            destination_handle,
+            temp_files,
+        })
+    }
+
+    fn rebind_deepest_parent(&mut self) -> Result<(), ScanCacheTargetDispositionV1> {
+        let (path, handle) = bind_deepest_existing_parent(&self.canonical_root, &self.store_dir)?;
+        self.bound_parent_path = path;
+        self.bound_parent_handle = handle;
+        Ok(())
     }
 
     fn validate_current_binding(&self) -> Result<(), ScanCacheTargetDispositionV1> {
@@ -211,6 +268,45 @@ impl RootBoundScanCacheStore {
             &self.bound_parent_handle,
             ScanCacheTargetDispositionV1::DestinationAliasOrTypeChange,
         )
+    }
+}
+
+struct BoundTempFile {
+    path: PathBuf,
+    handle: Handle,
+}
+
+struct FlushArtifactSnapshot {
+    lock_path: PathBuf,
+    lock_handle: Handle,
+    destination_path: PathBuf,
+    destination_handle: Option<Handle>,
+    temp_files: Vec<BoundTempFile>,
+}
+
+impl FlushArtifactSnapshot {
+    fn validate_before_flush(&self, store_dir: &Path) -> Result<(), ScanCacheTargetDispositionV1> {
+        validate_bound_regular_file(&self.lock_path, &self.lock_handle)?;
+        validate_optional_regular_file(&self.destination_path, self.destination_handle.as_ref())?;
+        validate_temp_files(store_dir, &self.temp_files, true)
+    }
+
+    fn validate_after_failed_flush(
+        &self,
+        store_dir: &Path,
+    ) -> Result<(), ScanCacheTargetDispositionV1> {
+        validate_bound_regular_file(&self.lock_path, &self.lock_handle)?;
+        validate_optional_regular_file(&self.destination_path, self.destination_handle.as_ref())?;
+        validate_temp_files(store_dir, &self.temp_files, false)
+    }
+
+    fn validate_after_successful_flush(
+        &self,
+        store_dir: &Path,
+    ) -> Result<(), ScanCacheTargetDispositionV1> {
+        validate_bound_regular_file(&self.lock_path, &self.lock_handle)?;
+        validate_file_candidate(&self.destination_path)?;
+        validate_temp_files(store_dir, &self.temp_files, false)
     }
 }
 
@@ -257,6 +353,18 @@ fn validate_handle(
     }
 }
 
+fn validate_bound_regular_file(
+    path: &Path,
+    bound: &Handle,
+) -> Result<(), ScanCacheTargetDispositionV1> {
+    validate_file_candidate(path)?;
+    validate_handle(
+        path,
+        bound,
+        ScanCacheTargetDispositionV1::DestinationAliasOrTypeChange,
+    )
+}
+
 fn bind_deepest_existing_parent(
     root: &Path,
     target: &Path,
@@ -290,6 +398,124 @@ fn bind_deepest_existing_parent(
         deepest_path = current.clone();
     }
     Ok((deepest_path, deepest_handle))
+}
+
+fn ensure_bound_regular_file(path: &Path) -> Result<Handle, ScanCacheTargetDispositionV1> {
+    match fs::symlink_metadata(path) {
+        Ok(_) => validate_file_candidate(path)?,
+        Err(error) if error.kind() == ErrorKind::NotFound => {}
+        Err(_) => return Err(ScanCacheTargetDispositionV1::InstrumentFailure),
+    }
+
+    let file = match OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create_new(true)
+        .open(path)
+    {
+        Ok(file) => file,
+        Err(error) if error.kind() == ErrorKind::AlreadyExists => {
+            validate_file_candidate(path)?;
+            OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(path)
+                .map_err(|_| ScanCacheTargetDispositionV1::InstrumentFailure)?
+        }
+        Err(_) => return Err(ScanCacheTargetDispositionV1::InstrumentFailure),
+    };
+    if !file
+        .metadata()
+        .map_err(|_| ScanCacheTargetDispositionV1::InstrumentFailure)?
+        .is_file()
+    {
+        return Err(ScanCacheTargetDispositionV1::DestinationAliasOrTypeChange);
+    }
+    let handle = Handle::from_file(
+        file.try_clone()
+            .map_err(|_| ScanCacheTargetDispositionV1::InstrumentFailure)?,
+    )
+    .map_err(|_| ScanCacheTargetDispositionV1::InstrumentFailure)?;
+    validate_bound_regular_file(path, &handle)?;
+    Ok(handle)
+}
+
+fn bind_optional_regular_file(
+    path: &Path,
+) -> Result<Option<Handle>, ScanCacheTargetDispositionV1> {
+    match fs::symlink_metadata(path) {
+        Ok(metadata) => {
+            if metadata_is_indirection(&metadata) || !metadata.is_file() {
+                return Err(ScanCacheTargetDispositionV1::DestinationAliasOrTypeChange);
+            }
+            Handle::from_path(path)
+                .map(Some)
+                .map_err(|_| ScanCacheTargetDispositionV1::InstrumentFailure)
+        }
+        Err(error) if error.kind() == ErrorKind::NotFound => Ok(None),
+        Err(_) => Err(ScanCacheTargetDispositionV1::InstrumentFailure),
+    }
+}
+
+fn validate_optional_regular_file(
+    path: &Path,
+    expected: Option<&Handle>,
+) -> Result<(), ScanCacheTargetDispositionV1> {
+    match expected {
+        Some(handle) => validate_bound_regular_file(path, handle),
+        None => match fs::symlink_metadata(path) {
+            Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
+            Ok(_) => Err(ScanCacheTargetDispositionV1::DestinationAliasOrTypeChange),
+            Err(_) => Err(ScanCacheTargetDispositionV1::InstrumentFailure),
+        },
+    }
+}
+
+fn bind_temp_files(store_dir: &Path) -> Result<Vec<BoundTempFile>, ScanCacheTargetDispositionV1> {
+    let entries =
+        fs::read_dir(store_dir).map_err(|_| ScanCacheTargetDispositionV1::InstrumentFailure)?;
+    let mut files = Vec::new();
+    for entry in entries {
+        let entry = entry.map_err(|_| ScanCacheTargetDispositionV1::InstrumentFailure)?;
+        if !entry
+            .file_name()
+            .to_string_lossy()
+            .starts_with(TEMP_FILE_PREFIX)
+        {
+            continue;
+        }
+        let path = entry.path();
+        validate_file_candidate(&path)?;
+        let handle = Handle::from_path(&path)
+            .map_err(|_| ScanCacheTargetDispositionV1::InstrumentFailure)?;
+        files.push(BoundTempFile { path, handle });
+    }
+    files.sort_by(|left, right| left.path.cmp(&right.path));
+    Ok(files)
+}
+
+fn validate_temp_files(
+    store_dir: &Path,
+    expected: &[BoundTempFile],
+    require_existing: bool,
+) -> Result<(), ScanCacheTargetDispositionV1> {
+    let current = bind_temp_files(store_dir)?;
+    for file in &current {
+        let Some(bound) = expected.iter().find(|bound| bound.path == file.path) else {
+            return Err(ScanCacheTargetDispositionV1::DestinationAliasOrTypeChange);
+        };
+        if bound.handle != file.handle {
+            return Err(ScanCacheTargetDispositionV1::DestinationAliasOrTypeChange);
+        }
+    }
+    if require_existing
+        && expected
+            .iter()
+            .any(|bound| !current.iter().any(|file| file.path == bound.path))
+    {
+        return Err(ScanCacheTargetDispositionV1::DestinationAliasOrTypeChange);
+    }
+    Ok(())
 }
 
 fn validate_known_artifacts(store_dir: &Path) -> Result<(), ScanCacheTargetDispositionV1> {

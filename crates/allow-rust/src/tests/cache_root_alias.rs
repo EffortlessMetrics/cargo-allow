@@ -39,6 +39,18 @@ fn prepare_source(root: &Path) -> Result<Vec<PathBuf>, String> {
     Ok(vec![PathBuf::from("src/lib.rs")])
 }
 
+fn dirty_root_bound_store(
+    root: &Path,
+    files: &[PathBuf],
+) -> Result<RootBoundScanCacheStore, String> {
+    let mut store = RootBoundScanCacheStore::open(root, "generation")
+        .map_err(|disposition| disposition.as_str().to_string())?;
+    let mut memory = ScanCache::new();
+    scan_rust_files_cached_with_root_bound_store(root, files, &mut memory, &mut store)
+        .map_err(|error| error.to_string())?;
+    Ok(store)
+}
+
 fn assert_scan_parity(left: &RustScanResult, right: &RustScanResult) {
     assert_eq!(left.findings, right.findings);
     assert_eq!(left.file_statuses, right.file_statuses);
@@ -92,6 +104,156 @@ fn root_bound_store_preserves_cached_and_uncached_scan_semantics() -> Result<(),
     )
     .map_err(|error| error.to_string())?;
     assert_scan_parity(&uncached, &second);
+    Ok(())
+}
+
+#[test]
+fn injected_temp_artifact_is_a_destination_change_not_an_instrument_failure() -> Result<(), String> {
+    let fixture = TempRoot::new("temp-injection")?;
+    let files = prepare_source(&fixture.0)?;
+    let mut store = dirty_root_bound_store(&fixture.0, &files)?;
+
+    let result = store.flush_with_test_hook(&|store_dir| {
+        let injected = store_dir.join("scan-cache.v2.bin.tmp-injected");
+        fs::write(&injected, b"replacement temp").unwrap_or_else(|error| {
+            std::panic::panic_any(format!("write {}: {error}", injected.display()))
+        });
+    });
+
+    assert_eq!(
+        result,
+        Err(ScanCacheTargetDispositionV1::DestinationAliasOrTypeChange)
+    );
+    assert!(
+        !ScanCacheStore::default_dir(&fixture.0)
+            .join("scan-cache.v2.bin")
+            .exists()
+    );
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn replaced_lock_file_is_a_destination_change_not_an_instrument_failure() -> Result<(), String> {
+    let fixture = TempRoot::new("lock-replacement")?;
+    let files = prepare_source(&fixture.0)?;
+    let mut store = dirty_root_bound_store(&fixture.0, &files)?;
+
+    let result = store.flush_with_test_hook(&|store_dir| {
+        let lock = store_dir.join("scan-cache.v2.lock");
+        let original = store_dir.join("scan-cache.v2.lock.original");
+        fs::rename(&lock, &original).unwrap_or_else(|error| {
+            std::panic::panic_any(format!(
+                "rename {} to {}: {error}",
+                lock.display(),
+                original.display()
+            ))
+        });
+        fs::write(&lock, b"replacement lock").unwrap_or_else(|error| {
+            std::panic::panic_any(format!("write {}: {error}", lock.display()))
+        });
+    });
+
+    assert_eq!(
+        result,
+        Err(ScanCacheTargetDispositionV1::DestinationAliasOrTypeChange)
+    );
+    assert!(
+        !ScanCacheStore::default_dir(&fixture.0)
+            .join("scan-cache.v2.bin")
+            .exists()
+    );
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn lock_symlink_back_to_bound_inode_is_still_rejected() -> Result<(), String> {
+    use std::os::unix::fs::symlink;
+
+    let fixture = TempRoot::new("lock-symlink")?;
+    let files = prepare_source(&fixture.0)?;
+    let mut store = dirty_root_bound_store(&fixture.0, &files)?;
+
+    let result = store.flush_with_test_hook(&|store_dir| {
+        let lock = store_dir.join("scan-cache.v2.lock");
+        let original = store_dir.join("scan-cache.v2.lock.original");
+        fs::rename(&lock, &original).unwrap_or_else(|error| {
+            std::panic::panic_any(format!(
+                "rename {} to {}: {error}",
+                lock.display(),
+                original.display()
+            ))
+        });
+        symlink(&original, &lock).unwrap_or_else(|error| {
+            std::panic::panic_any(format!(
+                "symlink {} to {}: {error}",
+                lock.display(),
+                original.display()
+            ))
+        });
+    });
+
+    assert_eq!(
+        result,
+        Err(ScanCacheTargetDispositionV1::DestinationAliasOrTypeChange)
+    );
+    assert!(
+        !ScanCacheStore::default_dir(&fixture.0)
+            .join("scan-cache.v2.bin")
+            .exists()
+    );
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn replaced_destination_is_a_destination_change_not_an_instrument_failure() -> Result<(), String> {
+    let fixture = TempRoot::new("destination-replacement")?;
+    let files = prepare_source(&fixture.0)?;
+    let mut store = dirty_root_bound_store(&fixture.0, &files)?;
+    store
+        .flush_with_disposition()
+        .map_err(|disposition| disposition.as_str().to_string())?;
+
+    fs::write(
+        fixture.0.join("src/lib.rs"),
+        "fn load(value: Result<(), ()>) { value.expect(\"changed\"); }\n",
+    )
+    .map_err(|error| error.to_string())?;
+    let mut memory = ScanCache::new();
+    scan_rust_files_cached_with_root_bound_store(
+        &fixture.0,
+        &files,
+        &mut memory,
+        &mut store,
+    )
+    .map_err(|error| error.to_string())?;
+
+    let result = store.flush_with_test_hook(&|store_dir| {
+        let destination = store_dir.join("scan-cache.v2.bin");
+        let original = store_dir.join("scan-cache.v2.bin.original");
+        fs::rename(&destination, &original).unwrap_or_else(|error| {
+            std::panic::panic_any(format!(
+                "rename {} to {}: {error}",
+                destination.display(),
+                original.display()
+            ))
+        });
+        fs::write(&destination, b"replacement destination").unwrap_or_else(|error| {
+            std::panic::panic_any(format!("write {}: {error}", destination.display()))
+        });
+    });
+
+    assert_eq!(
+        result,
+        Err(ScanCacheTargetDispositionV1::DestinationAliasOrTypeChange)
+    );
+    let replacement = fs::read(
+        ScanCacheStore::default_dir(&fixture.0).join("scan-cache.v2.bin"),
+    )
+    .map_err(|error| error.to_string())?;
+    assert_eq!(replacement, b"replacement destination");
     Ok(())
 }
 
