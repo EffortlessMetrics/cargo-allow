@@ -430,7 +430,15 @@ fn validate_optional_status(status: Option<&str>) -> CargoAllowResult<()> {
     Ok(())
 }
 
+/// The result of matching a finding against the policy ledger.
+///
+/// This is a public cross-crate contract. It is `#[non_exhaustive]` so new
+/// result states can be added without forcing every consumer to update in the
+/// same release. Consumers should treat unknown future states as requiring
+/// review or otherwise non-clean; [`ALL`](Self::ALL) contains the variants
+/// known by this crate generation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[non_exhaustive]
 pub enum MatchStatus {
     Matched,
     New,

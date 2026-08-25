@@ -11,7 +11,14 @@ pub struct Span {
     pub column: u32,
 }
 
+/// The category of a source-tree finding.
+///
+/// This is a public cross-crate contract. It is `#[non_exhaustive]` so adding
+/// a finding category does not require downstream consumers to release in
+/// lockstep. Consumers should handle unknown future variants conservatively;
+/// [`ALL`](Self::ALL) contains the variants known by this crate generation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[non_exhaustive]
 pub enum FindingKind {
     Panic,
     Unsafe,

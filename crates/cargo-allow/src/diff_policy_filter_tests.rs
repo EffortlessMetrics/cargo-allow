@@ -298,6 +298,7 @@ fn family_for(kind: FindingKind) -> &'static str {
         FindingKind::LintException => "allow",
         FindingKind::GeneratedCode => "generated_code",
         FindingKind::PolicyException => "policy",
+        _ => "unknown",
     }
 }
 
@@ -309,6 +310,7 @@ fn ast_kind_for(kind: FindingKind) -> &'static str {
         FindingKind::LintException => "attribute",
         FindingKind::GeneratedCode => "tracked_file",
         FindingKind::PolicyException => "policy_exception",
+        _ => "unknown",
     }
 }
 
@@ -320,5 +322,6 @@ fn path_for(kind: FindingKind) -> &'static str {
         FindingKind::LintException => "src/lints.rs",
         FindingKind::GeneratedCode => "generated/schema.rs",
         FindingKind::PolicyException => "policy/allow.toml",
+        _ => "unknown/unknown",
     }
 }
