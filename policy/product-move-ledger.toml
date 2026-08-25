@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 50303)
+Total output lines: 3767
+
 schema_id = "cargo-allow.three-product-move-ledger.v1"
 schema_version = 1
 ledger_id = "CARGO-ALLOW-MOVE-LEDGER-0001"
@@ -1929,35 +1932,7 @@ rollback = "Retain shim-linked row until extraction cutover receipts land."
 status = "TargetRatified"
 claim_boundary = "Finding-to-adapter result mapping with absence-as-NotProven (#2555 Stage A)."
 next_move = "Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607."
-deletion_output = "Deferred to extraction cutover and parity receipts."
-
-
-[[entry]]
-id = "introduce-proof-adapter-ripr-crate"
-source_kind = "RustModule"
-current_paths = ['crates/cargo-proof/src/providers/ripr/mod.rs']
-current_refs = []
-current_identity = "crates/cargo-proof/src/providers/ripr/mod.rs"
-current_product = "cargo-proof"
-current_crate = "cargo-proof"
-current_consumers = ["extraction shims", "parity harness"]
-posture = "PrivateImplementation"
-target_product = "cargo-proof"
-target_crate = "cargo-proof"
-target_module = "proof_adapter_ripr"
-disposition = "MoveToProofAdapter"
-compatibility_strategy = "ParallelParityThenDelete"
-schema_producer_impact = "shim-linked operational row; canonical producer deferred to extraction cutover"
-parity_case_ids = ['PARITY-INTRODUCE_PROOF_ADAPTER_RIPR_CRATE']
-cutover_stage = "ArchitectureInventory"
-expected_cutover_receipt = "CUTOVER-ARCHITECTURE-INVENTORY"
-old_path_reachability_disposition = "OldPathStillReachable"
-active_shim_ids = []
-latest_allowed_shim_stage = "ArchitectureInventory"
-duplicate_authority_class = "BoundedParityOnly"
-selected_public_producer_after_cutover = "repository"
-package_ci_docs_impact = ["extraction shims", "parity fixtures"]
-removal_issue_or_condition = "issue:#2606 proof-adapter-ripr stage-1 cutover receipt"
+deletion_output = "Deferred to…303 tokens truncated…emoval_issue_or_condition = "issue:#2606 proof-adapter-ripr stage-1 cutover receipt"
 migration_owner_issue = "#2556"
 risk = "Medium"
 rollback = "Retain shim-linked row until extraction cutover receipts land."
@@ -2718,12 +2693,12 @@ target_module = "rust_source_index"
 disposition = "MoveToSharedProtocol"
 compatibility_strategy = "ParallelParityThenDelete"
 schema_producer_impact = "shim-linked operational row; canonical producer deferred to extraction cutover"
-parity_case_ids = []
-cutover_stage = "ArchitectureInventory"
-expected_cutover_receipt = "CUTOVER-ARCHITECTURE-INVENTORY"
-old_path_reachability_disposition = "OldPathStillReachable"
-active_shim_ids = []
-latest_allowed_shim_stage = "ArchitectureInventory"
+parity_case_ids = ["parity-rust-source-index-test-subjects-v1"]
+cutover_stage = "RustSourceIndex"
+expected_cutover_receipt = "CUTOVER-RUST-SOURCE-INDEX"
+old_path_reachability_disposition = "ExplicitlyDeferredWithinBound"
+active_shim_ids = ["shim-allow-rust-test-subjects"]
+latest_allowed_shim_stage = "RustSourceIndex"
 duplicate_authority_class = "None"
 selected_public_producer_after_cutover = "repository"
 package_ci_docs_impact = ["extraction shims", "parity fixtures"]

@@ -15,7 +15,7 @@
 #     matching sha256
 #
 # Usage:
-#   bash scripts/extraction-cutover-build-receipt.sh <repo-snapshot|repo-edit>
+#   bash scripts/extraction-cutover-build-receipt.sh <repo-snapshot|repo-edit|rust-source-index>
 # Optional:
 #   PACKAGE_SET_DIR=<path>   package-set smoke work dir
 #                            (default target/exact-candidate-package-set)
@@ -28,8 +28,9 @@ stage_arg="${1:-}"
 case "${stage_arg}" in
   repo-snapshot) stage="RepoSnapshot" ;;
   repo-edit) stage="RepoEdit" ;;
+  rust-source-index) stage="RustSourceIndex" ;;
   *)
-    printf 'usage: %s <repo-snapshot|repo-edit>\n' "$0" >&2
+    printf 'usage: %s <repo-snapshot|repo-edit|rust-source-index>\n' "$0" >&2
     exit 2
     ;;
 esac

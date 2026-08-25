@@ -1156,10 +1156,10 @@
 - Current: crates/allow-rust/src/test_subjects.rs
 - Target: `shared / effortless-rust-source-index::rust_source_index`
 - Disposition: `MoveToSharedProtocol`
-- Stage/status: `ArchitectureInventory` / `TargetRatified`
-- Old path: `OldPathStillReachable`
+- Stage/status: `RustSourceIndex` / `TargetRatified`
+- Old path: `ExplicitlyDeferredWithinBound`
 - Removal: issue:#2587 rust-source-index parity
-- Next: Honor shim linkage during architecture inventory; physical move tracked by #2580/#2607.
+- Next: Retain the bounded allow-rust compatibility facade until the RustSourceIndex cutover receipt is current.
 - Deletion output: Deferred to extraction cutover and parity receipts.
 
 ### `move-cargo-allow-atomic-write`

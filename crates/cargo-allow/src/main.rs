@@ -24,6 +24,7 @@ mod exit_code;
 mod explain;
 mod extraction_parity_command;
 mod extraction_parity_runtime;
+mod rust_source_index_parity_runtime;
 mod extraction_repo_edit_runtime;
 #[cfg(test)]
 mod extraction_repo_edit_runtime_tests;

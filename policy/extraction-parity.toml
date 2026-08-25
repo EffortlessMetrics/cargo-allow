@@ -176,8 +176,8 @@ shim_id = "shim-allow-rust-test-subjects"
 old_producer = "allow-rust::test_subjects"
 new_producer = "rust-source-index::test_subjects"
 expected_result = "SemanticallyEquivalent"
-disposition = "contract_only"
-claim_boundary = "Structural subject inventory parity contract."
+disposition = "proven"
+claim_boundary = "Structural subject inventory parity for the shared contract and subject-types facade; no test-execution or adequacy claim."
 
 [[case]]
 id = "parity-intent-protocol-spec-system-schema-v1"
@@ -696,6 +696,16 @@ required_fields = [
 
 [[stage_receipt]]
 stage = "RepoEdit"
+required_fields = [
+  "stage",
+  "parity_corpus_digest",
+  "old_path_reachability",
+  "duplicate_authority",
+  "rollback",
+]
+
+[[stage_receipt]]
+stage = "RustSourceIndex"
 required_fields = [
   "stage",
   "parity_corpus_digest",

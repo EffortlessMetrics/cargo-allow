@@ -1,0 +1,9 @@
+kind: Added
+body: >-
+  Add a runnable RustSourceIndex extraction-parity stage (#3375). The stage
+  validates the shared structural test-subject contract and the bounded
+  allow-rust compatibility facade against the canonical
+  effortless-rust-source-index subject types, derives its ownership inputs,
+  and includes the stage in cutover status and package-receipt workflows.
+  The resulting evidence remains explicitly structural: it does not claim
+  test execution, test adequacy, publication, or release readiness.

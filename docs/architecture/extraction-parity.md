@@ -58,3 +58,9 @@ command fails closed when any executed case is not semantically equivalent.
 This artifact is runtime parity evidence only; it does not promote policy
 dispositions, prove reachability or package ownership, or constitute an
 `ExtractionCutoverReceiptV1`.
+
+The `RustSourceIndex` stage is independently runnable once its shared
+test-subject contract and facade copy agree. That receipt remains a bounded
+structural-parity claim: the `allow-rust` compatibility facade is still
+tracked as reachable, and the result does not claim test execution or test
+adequacy.

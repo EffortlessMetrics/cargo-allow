@@ -38,7 +38,7 @@ import tomllib
 from pathlib import Path
 
 output, stage_arg, mode = sys.argv[1:]
-stage = {"repo-snapshot": "RepoSnapshot", "repo-edit": "RepoEdit"}[stage_arg]
+stage = {"repo-snapshot": "RepoSnapshot", "repo-edit": "RepoEdit", "rust-source-index": "RustSourceIndex"}[stage_arg]
 source = "commit:{}/tree:{}".format(
     subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
     subprocess.check_output(["git", "rev-parse", "HEAD^{tree}"], text=True).strip(),
@@ -98,9 +98,10 @@ EXTRACTION_CARGO_ALLOW_BIN="${fake}" EXTRACTION_CUTOVER_DIR="${missing_dir}" \
 [[ ! -e "${missing_dir}/repo-snapshot/cutover-receipt.json" ]]
 
 default_dir="${work}/default"
-mkdir -p "${default_dir}/repo-snapshot" "${default_dir}/repo-edit"
+mkdir -p "${default_dir}/repo-snapshot" "${default_dir}/repo-edit" "${default_dir}/rust-source-index"
 printf '{}\n' >"${default_dir}/repo-snapshot/build-package.json"
 printf '{}\n' >"${default_dir}/repo-edit/build-package.json"
+printf '{}\n' >"${default_dir}/rust-source-index/build-package.json"
 EXTRACTION_CARGO_ALLOW_BIN="${fake}" EXTRACTION_CUTOVER_DIR="${default_dir}" \
   bash scripts/extraction-cutover-status.sh >/dev/null
 [[ -f "${default_dir}/repo-snapshot/cutover-evidence.json" ]]
@@ -112,8 +113,9 @@ printf '{}\n' >"${configured_dir}/independent.json"
 EXTRACTION_CARGO_ALLOW_BIN="${fake}" EXTRACTION_CUTOVER_DIR="${configured_dir}" \
   EXTRACTION_BUILD_PACKAGE_RECEIPT_REPO_SNAPSHOT="${configured_dir}/independent.json" \
   EXTRACTION_BUILD_PACKAGE_RECEIPT_REPO_EDIT="${configured_dir}/independent.json" \
+  EXTRACTION_BUILD_PACKAGE_RECEIPT_RUST_SOURCE_INDEX="${configured_dir}/independent.json" \
   bash scripts/extraction-cutover-status.sh >/dev/null
-for stage in repo-snapshot repo-edit; do
+for stage in repo-snapshot repo-edit rust-source-index; do
   [[ -f "${configured_dir}/${stage}/cutover-evidence.json" ]]
   [[ -f "${configured_dir}/${stage}/cutover-receipt.log" ]]
   [[ ! -e "${configured_dir}/${stage}/cutover-receipt.json" ]]

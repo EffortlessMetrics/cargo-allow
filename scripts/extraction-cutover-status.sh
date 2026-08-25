@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Extraction cutover status artifact (#3469).
 #
-# Runs both current runtime parity stages and emits a truthful, fail-closed
+# Runs the current runtime parity stages and emits a truthful, fail-closed
 # status artifact. This lane is observational: a blocked status is expected
 # until parity, old-path, ownership, and package/build prerequisites are proven.
 set -euo pipefail
@@ -45,7 +45,12 @@ cargo_allow extraction-parity \
   --stage repo-edit \
   --output "${output_dir}/repo-edit-parity.json" || edit_exit=$?
 
-python3 - "${ROOT}" "${output_dir}" "${snapshot_exit}" "${edit_exit}" <<'PY'
+rust_source_index_exit=0
+cargo_allow extraction-parity \
+  --stage rust-source-index \
+  --output "${output_dir}/rust-source-index-parity.json" || rust_source_index_exit=$?
+
+python3 - "${ROOT}" "${output_dir}" "${snapshot_exit}" "${edit_exit}" "${rust_source_index_exit}" <<'PY'
 import json
 import os
 import re
@@ -56,10 +61,11 @@ from pathlib import Path
 
 root = Path(sys.argv[1]).resolve()
 output_dir = Path(sys.argv[2]).resolve()
-exit_codes = {"RepoSnapshot": int(sys.argv[3]), "RepoEdit": int(sys.argv[4])}
+exit_codes = {"RepoSnapshot": int(sys.argv[3]), "RepoEdit": int(sys.argv[4]), "RustSourceIndex": int(sys.argv[5])}
 stage_paths = {
     "RepoSnapshot": output_dir / "repo-snapshot-parity.json",
     "RepoEdit": output_dir / "repo-edit-parity.json",
+    "RustSourceIndex": output_dir / "rust-source-index-parity.json",
 }
 
 
@@ -118,7 +124,7 @@ def expected_ownership(stage: str, selected_entries: list[dict]) -> dict[str, li
             "tests/fixtures/repo-snapshot/parity-source-view-staged-v1.toml",
         ]
         stage_doc = "docs/architecture/repo-snapshot.md"
-    else:
+    elif stage == "RepoEdit":
         asset_paths = [
             "tests/fixtures/repo-edit/parity-mutation-lock-alias-v1.toml",
             "tests/fixtures/repo-edit/parity-path-containment-v1.toml",
@@ -133,6 +139,11 @@ def expected_ownership(stage: str, selected_entries: list[dict]) -> dict[str, li
             "tests/fixtures/repo-edit/parity-propose-command-v1.toml",
         ]
         stage_doc = "docs/architecture/repo-edit.md"
+    else:
+        asset_paths = [
+            "tests/fixtures/rust-source-index/parity-test-subjects-v1.toml",
+        ]
+        stage_doc = "docs/architecture/rust-source-index.md"
     return {
         "package_paths": sorted(package_paths),
         "asset_paths": sorted(asset_paths),
@@ -259,7 +270,12 @@ for stage, path in stage_paths.items():
         blockers.append(
             f"missing_package_identity:{stage}:{','.join(ownership['missing_package_names'])}"
         )
-    stage_dir = output_dir / stage.lower().replace("repo", "repo-")
+    stage_dir_name = {
+        "RepoSnapshot": "repo-snapshot",
+        "RepoEdit": "repo-edit",
+        "RustSourceIndex": "rust-source-index",
+    }[stage]
+    stage_dir = output_dir / stage_dir_name
     stage_dir.mkdir(parents=True, exist_ok=True)
     ownership_receipt_path = stage_dir / "ownership.json"
     ownership_result = "Passed" if (
@@ -286,7 +302,11 @@ for stage, path in stage_paths.items():
     )
     if missing_ownership:
         blockers.append(f"ownership_not_complete:{stage}")
-    env_suffix = stage.replace("Repo", "Repo_").upper().strip("_")
+    env_suffix = {
+        "RepoSnapshot": "REPO_SNAPSHOT",
+        "RepoEdit": "REPO_EDIT",
+        "RustSourceIndex": "RUST_SOURCE_INDEX",
+    }[stage]
     build_env = os.environ.get(f"EXTRACTION_BUILD_PACKAGE_RECEIPT_{env_suffix}")
     build_receipt_path = Path(build_env) if build_env else stage_dir / "build-package.json"
     if not build_receipt_path.is_absolute():
@@ -386,7 +406,7 @@ PY
 # (F:/...) can fail the CLI's root containment check on a local host, while
 # relative paths resolve identically on hosted Linux CI (#3552).
 rel_output_dir="$(python3 -c "from pathlib import Path; import sys; sys.stdout.write(str(Path('${output_dir}').resolve().relative_to(Path('${ROOT}').resolve())).replace(chr(92), '/'))")"
-for stage in repo-snapshot repo-edit; do
+for stage in repo-snapshot repo-edit rust-source-index; do
   manifest="${rel_output_dir}/${stage}/cutover-evidence.json"
   receipt="${rel_output_dir}/${stage}/cutover-receipt.json"
   log="${output_dir}/${stage}/cutover-receipt.log"

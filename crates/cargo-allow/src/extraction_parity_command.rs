@@ -22,6 +22,7 @@ pub(crate) enum ParityStageArg {
     All,
     RepoSnapshot,
     RepoEdit,
+    RustSourceIndex,
 }
 
 #[derive(Debug, Args)]
@@ -91,6 +92,19 @@ pub(crate) fn cmd_parity(args: &ParityArgs) -> CargoAllowResult<()> {
                 case.new_output,
             );
         }
+    }
+    if matches!(
+        args.stage,
+        ParityStageArg::All | ParityStageArg::RustSourceIndex
+    ) {
+        let run = crate::rust_source_index_parity_runtime::run_rust_source_index_parity(&root)?;
+        append_record(
+            &mut records,
+            "parity-rust-source-index-test-subjects-v1".to_string(),
+            run.test_subjects.comparison,
+            run.test_subjects.old_output,
+            run.test_subjects.new_output,
+        );
     }
 
     if source_identity(&root)? != initial_source_identity {
@@ -735,6 +749,9 @@ fn derive_ownership(
     let asset_paths = match stage {
         ExtractionStage::RepoSnapshot => effortless_repo_snapshot::parity_contract_paths(root),
         ExtractionStage::RepoEdit => effortless_repo_edit::parity_contract_paths(root),
+        ExtractionStage::RustSourceIndex => {
+            effortless_rust_source_index::test_subjects_parity_contract_paths(root)
+        }
         other => {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::InvalidConfig,
@@ -753,6 +770,7 @@ fn derive_ownership(
         match stage {
             ExtractionStage::RepoSnapshot => "docs/architecture/repo-snapshot.md",
             ExtractionStage::RepoEdit => "docs/architecture/repo-edit.md",
+            ExtractionStage::RustSourceIndex => "docs/architecture/rust-source-index.md",
             other => {
                 return Err(CargoAllowError::with_kind(
                     CargoAllowErrorKind::InvalidConfig,
@@ -793,6 +811,7 @@ fn requested_extraction_stage(requested: ParityStageArg) -> CargoAllowResult<Ext
     match requested {
         ParityStageArg::RepoSnapshot => Ok(ExtractionStage::RepoSnapshot),
         ParityStageArg::RepoEdit => Ok(ExtractionStage::RepoEdit),
+        ParityStageArg::RustSourceIndex => Ok(ExtractionStage::RustSourceIndex),
         ParityStageArg::All => Err(CargoAllowError::with_kind(
             CargoAllowErrorKind::InvalidConfig,
             "cutover receipts require one extraction stage, not `all`",
@@ -828,6 +847,11 @@ fn cutover_source_input_paths(
             paths.insert("crates/effortless-repo-edit/src".to_string());
             "crates/cargo-allow/src/extraction_repo_edit_runtime.rs".to_string()
         }
+        ExtractionStage::RustSourceIndex => {
+            paths.insert("crates/allow-rust/src/snapshot_package".to_string());
+            paths.insert("crates/effortless-rust-source-index/src".to_string());
+            "crates/cargo-allow/src/rust_source_index_parity_runtime.rs".to_string()
+        }
         other => {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::InvalidConfig,
@@ -856,6 +880,9 @@ fn cutover_source_input_paths(
     let parity_paths = match stage {
         ExtractionStage::RepoSnapshot => effortless_repo_snapshot::parity_contract_paths(root),
         ExtractionStage::RepoEdit => effortless_repo_edit::parity_contract_paths(root),
+        ExtractionStage::RustSourceIndex => {
+            effortless_rust_source_index::test_subjects_parity_contract_paths(root)
+        }
         other => {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::InvalidConfig,
@@ -1266,14 +1293,18 @@ fn stage_name(stage: ParityStageArg) -> &'static str {
         ParityStageArg::All => "All",
         ParityStageArg::RepoSnapshot => "RepoSnapshot",
         ParityStageArg::RepoEdit => "RepoEdit",
+        ParityStageArg::RustSourceIndex => "RustSourceIndex",
     }
 }
 
 fn stage_matches(registered: &str, requested: ParityStageArg) -> bool {
     match requested {
-        ParityStageArg::All => matches!(registered, "RepoSnapshot" | "RepoEdit"),
+        ParityStageArg::All => {
+            matches!(registered, "RepoSnapshot" | "RepoEdit" | "RustSourceIndex")
+        }
         ParityStageArg::RepoSnapshot => registered == "RepoSnapshot",
         ParityStageArg::RepoEdit => registered == "RepoEdit",
+        ParityStageArg::RustSourceIndex => registered == "RustSourceIndex",
     }
 }
 
