@@ -207,6 +207,72 @@ fn detects_panic_macros_from_syntax() {
 }
 
 #[test]
+fn detects_assertion_macros_with_distinct_families_and_paths() {
+    let src = r#"
+        fn validate(left: i32, right: i32) {
+            assert!(left < right);
+            assert_eq!(left, right);
+            std::assert_ne!(left, right);
+        }
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+    let assertion_findings = findings
+        .iter()
+        .filter(|finding| {
+            finding.kind == FindingKind::Panic
+                && ["assert", "assert_eq", "assert_ne"]
+                    .contains(&finding.family.as_deref().unwrap_or_default())
+        })
+        .map(|finding| {
+            (
+                finding.family.as_deref(),
+                finding.identity.ast_kind.as_str(),
+                finding.identity.macro_name.as_deref(),
+                finding.identity.target_fingerprint.as_deref(),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        assertion_findings,
+        vec![
+            (Some("assert"), "macro_call", Some("assert"), Some("assert")),
+            (
+                Some("assert_eq"),
+                "macro_call",
+                Some("assert_eq"),
+                Some("assert_eq"),
+            ),
+            (
+                Some("assert_ne"),
+                "macro_call",
+                Some("assert_ne"),
+                Some("std::assert_ne"),
+            ),
+        ]
+    );
+}
+
+#[test]
+fn assertion_macro_names_in_strings_and_comments_are_not_findings() {
+    let src = r##"
+        fn text_only() {
+            // assert!(comment)
+            let text = r#"assert_eq!(string) assert_ne!(string)"#;
+            let other = "assert!(string)";
+            let _ = (text, other);
+        }
+        "##;
+    let findings = scan_rust_source("src/lib.rs", src);
+
+    assert!(!findings.iter().any(|finding| {
+        finding.kind == FindingKind::Panic
+            && ["assert", "assert_eq", "assert_ne"]
+                .contains(&finding.family.as_deref().unwrap_or_default())
+    }));
+}
+
+#[test]
 fn syntax_panic_macros_record_visible_macro_path() {
     let src = r#"
         fn load() {
