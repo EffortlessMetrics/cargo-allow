@@ -74,7 +74,10 @@ cargo-proof = { path = "crates/cargo-proof", version = "0.1.0" }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
 sha2 = "0.11.0"
-toml = "1.1.2"
+# Keep policy/config parsing on the released TOML 1.0 specification.  The
+# TOML 1.1 line is still draft-spec support and would make the accepted
+# policy language drift with a non-final specification.
+toml = "0.8.12"
 clap = { version = "4.6.1", features = ["derive", "env"] }
 clap_complete = "4.6.8"
 rayon = "1.12.0"
