@@ -170,7 +170,7 @@ fn build_parity_fixture(label: &str) -> Fixture {
     let non_utf8_path = root.join(&non_utf8_name);
     let non_utf8_supported = match fs::write(&non_utf8_path, b"non-utf8 content\n") {
         Ok(()) => true,
-        Err(err) if cfg!(target_os = "macos") => {
+        Err(err) if cfg!(target_os = "macos") && err.kind() == std::io::ErrorKind::InvalidInput => {
             eprintln!(
                 "skipped: macOS filesystem cannot materialize the non-UTF-8 filename fixture: {err}"
             );
