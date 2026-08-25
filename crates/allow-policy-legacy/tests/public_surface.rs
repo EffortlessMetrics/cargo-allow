@@ -50,7 +50,10 @@ fn public_lane_descriptors_have_unique_ids_and_explicit_debt_policy() {
     for (index, descriptor) in descriptors.iter().enumerate() {
         assert!(!descriptor.compat_kind_id().is_empty());
         assert!(!descriptor.legacy_filename.is_empty());
-        assert_eq!(migration_debt_classes(descriptor).is_empty(), descriptor.debt_policy == DebtPolicy::None);
+        assert_eq!(
+            migration_debt_classes(descriptor).is_empty(),
+            descriptor.debt_policy == DebtPolicy::None
+        );
 
         for other in descriptors.iter().skip(index + 1) {
             assert_ne!(
