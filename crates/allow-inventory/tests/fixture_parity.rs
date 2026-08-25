@@ -134,7 +134,7 @@ fn create_file_symlink(_target: &Path, _link: &Path) -> bool {
 struct Fixture {
     root: PathBuf,
     symlink_supported: bool,
-    non_utf8_rel: PathBuf,
+    non_utf8_rel: Option<PathBuf>,
 }
 
 fn build_parity_fixture(label: &str) -> Fixture {
@@ -167,9 +167,25 @@ fn build_parity_fixture(label: &str) -> Fixture {
 
     let non_utf8_name = non_utf8_file_name();
     let non_utf8_path = root.join(&non_utf8_name);
-    fs::write(&non_utf8_path, b"non-utf8 content\n").unwrap_or_else(|err| {
-        std::panic::panic_any(format!("write {}: {err}", non_utf8_path.display()))
-    });
+    let non_utf8_rel = match fs::write(&non_utf8_path, b"non-utf8 content\n") {
+        Ok(()) => Some(PathBuf::from(&non_utf8_name)),
+        Err(err) if err.kind() == std::io::ErrorKind::InvalidInput => {
+            // Some Unix filesystems, including the hosted macOS runner's
+            // filesystem, reject raw non-UTF-8 path bytes even though the
+            // platform exposes Unix path APIs. The inventory contract still
+            // covers such names where the filesystem can represent them;
+            // this fixture reports the capability gap instead of failing
+            // before Git or inventory can be exercised.
+            eprintln!(
+                "skipped: filesystem cannot represent non-UTF-8 filename {}: {err}",
+                non_utf8_path.display()
+            );
+            None
+        }
+        Err(err) => {
+            std::panic::panic_any(format!("write {}: {err}", non_utf8_path.display()))
+        }
+    };
 
     let symlink_supported = create_file_symlink(
         &root.join("src").join("lib.rs"),
@@ -195,7 +211,9 @@ fn build_parity_fixture(label: &str) -> Fixture {
             "target/debug.txt",
         ],
     );
-    run_git(&root, &[OsStr::new("add"), non_utf8_name.as_os_str()]);
+    if non_utf8_rel.is_some() {
+        run_git(&root, &[OsStr::new("add"), non_utf8_name.as_os_str()]);
+    }
     if symlink_supported {
         run_git(&root, &["add", "link-to-lib.rs"]);
     }
@@ -203,7 +221,7 @@ fn build_parity_fixture(label: &str) -> Fixture {
     Fixture {
         root,
         symlink_supported,
-        non_utf8_rel: PathBuf::from(non_utf8_name),
+        non_utf8_rel,
     }
 }
 
@@ -227,11 +245,13 @@ fn fixture_inventory_matches_git_ls_files_expectations() {
 
     let mut expected_tracked = vec![
         PathBuf::from(".gitignore"),
-        fixture.non_utf8_rel.clone(),
         PathBuf::from("src/lib.rs"),
         PathBuf::from("src/target/mod.rs"),
         PathBuf::from("target/debug.txt"),
     ];
+    if let Some(non_utf8_rel) = &fixture.non_utf8_rel {
+        expected_tracked.push(non_utf8_rel.clone());
+    }
     if fixture.symlink_supported {
         expected_tracked.push(PathBuf::from("link-to-lib.rs"));
     }
