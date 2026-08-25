@@ -58,11 +58,24 @@ class CloseoutTests(unittest.TestCase):
                 "state": "closed", "merged_at": "2026-08-25T00:00:00Z",
                 "base": {"ref": "main"}, "merge_commit_sha": "a" * 40,
             },
-            "/compare/main..." + "a" * 40: {"status": "behind"},
+            "/compare/" + "a" * 40 + "...main": {"status": "behind"},
             "/issues/3846/comments?per_page=100": [],
         })
         closeout.handle(event(body), api, {3846: ("Complete", {"Complete"})}, "main")
         self.assertTrue(any(call[1] == "PATCH" for call in api.calls))
+
+        api = FakeApi({
+            "/pulls/3854": {
+                "state": "closed", "merged_at": "2026-08-25T00:00:00Z",
+                "base": {"ref": "main"}, "merge_commit_sha": "a" * 40,
+            },
+            "/compare/" + "a" * 40 + "...main": {"status": "ahead"},
+        })
+        closeout.handle(event(body), api, {3846: ("Complete", {"Complete"})}, "main")
+        self.assertEqual(api.calls, [
+            ("/pulls/3854", "GET", None),
+            ("/compare/" + "a" * 40 + "...main", "GET", None),
+        ])
 
     def test_accepted_non_code_outcomes_do_not_call_github(self):
         membership = {3846: ("Complete", {"Complete", "NotPlanned", "Duplicate"})}

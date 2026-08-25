@@ -111,7 +111,9 @@ def verify_complete(api: GitHub, payload: dict[str, Any], base_branch: str) -> l
         errors.append("merge_commit_missing")
     if errors:
         return errors
-    comparison = api.request(f"/compare/{base_branch}...{merge_sha}")
+    # Put the candidate commit on the base side: a merge commit is reachable
+    # when main is identical to it or contains it with later commits.
+    comparison = api.request(f"/compare/{merge_sha}...{base_branch}")
     if comparison.get("status") not in {"ahead", "identical"}:
         errors.append("merge_commit_not_reachable_from_main")
     return errors
