@@ -134,6 +134,7 @@ fn create_file_symlink(_target: &Path, _link: &Path) -> bool {
 struct Fixture {
     root: PathBuf,
     symlink_supported: bool,
+    non_utf8_supported: bool,
     non_utf8_rel: PathBuf,
 }
 
@@ -167,9 +168,16 @@ fn build_parity_fixture(label: &str) -> Fixture {
 
     let non_utf8_name = non_utf8_file_name();
     let non_utf8_path = root.join(&non_utf8_name);
-    fs::write(&non_utf8_path, b"non-utf8 content\n").unwrap_or_else(|err| {
-        std::panic::panic_any(format!("write {}: {err}", non_utf8_path.display()))
-    });
+    let non_utf8_supported = match fs::write(&non_utf8_path, b"non-utf8 content\n") {
+        Ok(()) => true,
+        Err(err) if cfg!(target_os = "macos") && err.kind() == std::io::ErrorKind::InvalidInput => {
+            eprintln!(
+                "skipped: macOS filesystem cannot materialize the non-UTF-8 filename fixture: {err}"
+            );
+            false
+        }
+        Err(err) => std::panic::panic_any(format!("write {}: {err}", non_utf8_path.display())),
+    };
 
     let symlink_supported = create_file_symlink(
         &root.join("src").join("lib.rs"),
@@ -195,7 +203,9 @@ fn build_parity_fixture(label: &str) -> Fixture {
             "target/debug.txt",
         ],
     );
-    run_git(&root, &[OsStr::new("add"), non_utf8_name.as_os_str()]);
+    if non_utf8_supported {
+        run_git(&root, &[OsStr::new("add"), non_utf8_name.as_os_str()]);
+    }
     if symlink_supported {
         run_git(&root, &["add", "link-to-lib.rs"]);
     }
@@ -203,6 +213,7 @@ fn build_parity_fixture(label: &str) -> Fixture {
     Fixture {
         root,
         symlink_supported,
+        non_utf8_supported,
         non_utf8_rel: PathBuf::from(non_utf8_name),
     }
 }
@@ -227,11 +238,13 @@ fn fixture_inventory_matches_git_ls_files_expectations() {
 
     let mut expected_tracked = vec![
         PathBuf::from(".gitignore"),
-        fixture.non_utf8_rel.clone(),
         PathBuf::from("src/lib.rs"),
         PathBuf::from("src/target/mod.rs"),
         PathBuf::from("target/debug.txt"),
     ];
+    if fixture.non_utf8_supported {
+        expected_tracked.push(fixture.non_utf8_rel.clone());
+    }
     if fixture.symlink_supported {
         expected_tracked.push(PathBuf::from("link-to-lib.rs"));
     }
