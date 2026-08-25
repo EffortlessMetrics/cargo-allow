@@ -22,6 +22,7 @@ mod line_panic_findings;
 mod line_scan;
 mod line_unsafe_findings;
 mod package;
+#[cfg(feature = "syntax")]
 mod root_bound_scan_cache;
 mod safety_comments;
 mod scan_cache;
@@ -43,6 +44,7 @@ use package::source_package_contexts;
 pub use package::{
     SourcePackageContext, apply_source_package_context, source_package_contexts_from_sources,
 };
+#[cfg(feature = "syntax")]
 pub use root_bound_scan_cache::{RootBoundScanCacheStore, ScanCacheTargetDispositionV1};
 pub use scan_cache::ScanCache;
 pub use scan_cache_store::ScanCacheStore;
