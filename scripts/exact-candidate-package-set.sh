@@ -1042,10 +1042,11 @@ for line in os.environ["CRATE_RECORDS"].splitlines():
     if not line.strip():
         continue
     name, crate_file, sha256, size, extracted = line.split("|", 4)
+    crate_version = crate_file.removesuffix(".crate").rsplit("-", 1)[1]
     records.append(
         {
             "name": name,
-            "version": os.environ["WORKSPACE_VERSION"],
+            "version": crate_version,
             "crate_file": crate_file,
             "sha256": sha256,
             "size_bytes": int(size),

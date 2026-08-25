@@ -115,21 +115,28 @@ def main() -> int:
     parser.add_argument("--package-set-receipt", type=Path, required=True)
     parser.add_argument("--packages-dir", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--expected-version", required=True)
+    parser.add_argument("--expected-version", required=False)
     args = parser.parse_args()
 
     package_set = json.loads(args.package_set_receipt.read_text(encoding="utf-8"))
-    expected = [row["name"] for row in package_set["package_set"]["crates"]]
+    expected_rows = package_set["package_set"]["crates"]
+    expected = [row["name"] for row in expected_rows]
+    expected_versions = {row["name"]: row["version"] for row in expected_rows}
     archives = sorted(args.packages_dir.glob("*.crate"))
     by_name = {}
     for archive in archives:
-        row = surface(archive, args.expected_version)
+        archive_name = archive.name.removesuffix(".crate").rsplit("-", 1)[0]
+        row = surface(archive, expected_versions.get(archive_name, ""))
         if row["name"] in by_name:
             raise ValueError(f"duplicate packaged crate: {row['name']}")
         by_name[row["name"]] = row
     if set(by_name) != set(expected):
         raise ValueError(f"package set mismatch: expected {expected}, got {sorted(by_name)}")
     rows = [by_name[name] for name in expected]
+    if args.expected_version:
+        candidate_version = package_set.get("candidate", {}).get("workspace_version")
+        if candidate_version and candidate_version != args.expected_version:
+            raise ValueError("candidate workspace version does not match requested version")
     result = "Complete" if all(row["result"] == "Complete" for row in rows) else "Incomplete"
     receipt = {
         "schema_id": "cargo-allow.final-packaged-surface.v1",

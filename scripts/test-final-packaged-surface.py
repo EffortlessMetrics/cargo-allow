@@ -54,7 +54,7 @@ class FinalPackagedSurfaceTests(unittest.TestCase):
             root = Path(directory)
             archive, packages = self.make_crate(root)
             package_set = root / "package-set.json"
-            package_set.write_text(json.dumps({"candidate": {}, "package_set": {"crates": [{"name": "demo"}]}}))
+            package_set.write_text(json.dumps({"candidate": {}, "package_set": {"crates": [{"name": "demo", "version": "0.2.0"}]}}))
             output = root / "surface.json"
             import subprocess
             subprocess.run([
