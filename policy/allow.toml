@@ -12405,3 +12405,68 @@ glob = "release/authorize-v0.2.0.json"
 [allow.last_seen]
 line = 1
 column = 1
+[[allow]]
+id = "allow-11142"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/specs/CARGO-ALLOW-SPEC-0012-source-exception-ledger.md"
+owner = "core/policy"
+classification = "core_contract_spec"
+reason = "Draft normative contract for the source-exception ledger, added for issue #1883."
+evidence = ["issue:1883", "doc:docs/source-exception-ledger.md", "doc:.allow/artifacts/doc-artifacts.toml"]
+created = "2026-08-24"
+review_after = "2027-02-24"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/specs/CARGO-ALLOW-SPEC-0012-source-exception-ledger.md"
+target_fingerprint = "md"
+glob = "docs/specs/CARGO-ALLOW-SPEC-0012-source-exception-ledger.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11143"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/specs/CARGO-ALLOW-SPEC-0013-diff-posture.md"
+owner = "core/policy"
+classification = "core_contract_spec"
+reason = "Draft normative contract for reviewer-facing diff posture, added for issue #1883."
+evidence = ["issue:1883", "doc:docs/pr-posture.md", "doc:docs/policy-weakening.md"]
+created = "2026-08-24"
+review_after = "2027-02-24"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/specs/CARGO-ALLOW-SPEC-0013-diff-posture.md"
+target_fingerprint = "md"
+glob = "docs/specs/CARGO-ALLOW-SPEC-0013-diff-posture.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11144"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/specs/CARGO-ALLOW-SPEC-0014-policy-matching.md"
+owner = "core/policy"
+classification = "core_contract_spec"
+reason = "Draft normative contract for structural policy matching, added for issue #1883."
+evidence = ["issue:1883", "doc:docs/identity.md", "doc:docs/source-exception-ledger.md"]
+created = "2026-08-24"
+review_after = "2027-02-24"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/specs/CARGO-ALLOW-SPEC-0014-policy-matching.md"
+target_fingerprint = "md"
+glob = "docs/specs/CARGO-ALLOW-SPEC-0014-policy-matching.md"
+
+[allow.last_seen]
+line = 1
+column = 1

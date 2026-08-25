@@ -52,6 +52,12 @@ governance profile model around it.
   semantics.
 - [Policy weakening](policy-weakening.md): policy edits that broaden, weaken,
   or improve retained source exceptions.
+- [Source-exception ledger spec](specs/CARGO-ALLOW-SPEC-0012-source-exception-ledger.md):
+  draft contract for the retained exception policy model.
+- [Diff posture spec](specs/CARGO-ALLOW-SPEC-0013-diff-posture.md): draft
+  contract for reviewer-facing source and policy movement.
+- [Policy matching spec](specs/CARGO-ALLOW-SPEC-0014-policy-matching.md): draft
+  contract for structural finding-to-entry matching.
 - [Roadmap](roadmap.md): the PR-sized path from source-tree ledger to mature
   product.
 
