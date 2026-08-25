@@ -1,0 +1,19 @@
+# Small deterministic repository input for the exact installed transition.
+schema_version = 1
+policy = "unsafe-allowlist"
+owner = "cargo-allow-release-proof"
+status = "advisory"
+
+[workspace]
+root = "."
+inventory = "git-tracked"
+default_mode = "no-new"
+ignored = [".git/**", "target/**"]
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+stale_entries_fail = false

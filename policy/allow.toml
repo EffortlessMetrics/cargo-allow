@@ -12470,3 +12470,113 @@ glob = "docs/specs/CARGO-ALLOW-SPEC-0014-policy-matching.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11141"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "docs/dogfood/fixtures/release/exact-upgrade-rollback-journey.v1.schema.json"
+owner = "core/release"
+classification = "exact_upgrade_rollback_journey_schema"
+reason = "Defines the typed receipt contract for the isolated 0.1.11 to candidate and rollback journey; it records bounded evidence and does not authorize publication."
+evidence = ["issue:3853", "doc:docs/release/README.md", "workflow:.github/workflows/ci.yml"]
+created = "2026-08-25"
+review_after = "2027-02-25"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/dogfood/fixtures/release/exact-upgrade-rollback-journey.v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/dogfood/fixtures/release/exact-upgrade-rollback-journey.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11142"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "docs/dogfood/fixtures/release/upgrade-rollback-repository.toml"
+owner = "core/release"
+classification = "exact_upgrade_rollback_repository_fixture"
+reason = "Provides the deterministic committed repository input used by each exact installed transition leg and its unrelated-file rollback control."
+evidence = ["issue:3853", "workflow:.github/workflows/ci.yml"]
+created = "2026-08-25"
+review_after = "2027-02-25"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/dogfood/fixtures/release/upgrade-rollback-repository.toml"
+target_fingerprint = "toml"
+glob = "docs/dogfood/fixtures/release/upgrade-rollback-repository.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11143"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/exact-upgrade-rollback-journey.sh"
+owner = "core/release"
+classification = "exact_upgrade_rollback_journey_harness"
+reason = "Runs the exact installed 0.1.11, candidate, and restored 0.1.11 read-only legs with absolute binary paths, preimage restoration, and digest-bound receipt validation."
+evidence = ["issue:3853", "doc:docs/release/README.md", "workflow:.github/workflows/ci.yml"]
+created = "2026-08-25"
+review_after = "2027-02-25"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/exact-upgrade-rollback-journey.sh"
+target_fingerprint = "sh"
+glob = "scripts/exact-upgrade-rollback-journey.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11144"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/test-exact-upgrade-rollback-journey.sh"
+owner = "core/release"
+classification = "exact_upgrade_rollback_journey_characterization"
+reason = "Offline schema and forged-identity characterization for the exact installed upgrade and rollback receipt; hosted CI supplies the executable journey proof."
+evidence = ["issue:3853", "workflow:.github/workflows/ci.yml"]
+created = "2026-08-25"
+review_after = "2027-02-25"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-exact-upgrade-rollback-journey.sh"
+target_fingerprint = "sh"
+glob = "scripts/test-exact-upgrade-rollback-journey.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11145"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/validate-upgrade-rollback-journey.py"
+owner = "core/release"
+classification = "exact_upgrade_rollback_receipt_validator"
+reason = "Standard-library validator for exact binary identity, three-leg completeness, fixture binding, and rollback negative controls."
+evidence = ["issue:3853", "doc:docs/release/README.md", "workflow:.github/workflows/ci.yml"]
+created = "2026-08-25"
+review_after = "2027-02-25"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/validate-upgrade-rollback-journey.py"
+target_fingerprint = "py"
+glob = "scripts/validate-upgrade-rollback-journey.py"
+
+[allow.last_seen]
+line = 1
+column = 1
