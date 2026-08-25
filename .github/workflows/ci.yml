@@ -476,7 +476,15 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@258712b0b7b1ddf8bddc9fc3b0faca682b2736c3 # v2
         with:
-          key: test-windows
+          # Keep this cache namespace deliberately separate from every other
+          # lane. rust-cache adds the resolved toolchain, target, lockfile,
+          # and runner OS to its key; the explicit generation is the manual
+          # compatibility boundary for the Windows runner image/native
+          # compiler contract. Bump it when that contract changes.
+          shared-key: test-windows-v2-${{ runner.arch }}
+          # A fork must be able to restore compatible public cache state, but
+          # must never publish objects into the trusted repository namespace.
+          save-if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
       - name: Cargo-allow release-set test suite (#3358)
         # Single line: this job runs under PowerShell, which has no
         # backslash line continuation.
