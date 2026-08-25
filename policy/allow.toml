@@ -12779,3 +12779,70 @@ glob = ".allow/revisions/3790-release-authorization.toml"
 line = 1
 column = 1
 
+[[allow]]
+id = "allow-11159"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/release-rehearsal.py"
+owner = "core/release"
+classification = "release_script"
+reason = "Exact-subject zero-upload release rehearsal harness for #3792."
+evidence = ["issue:3792"]
+created = "2026-08-25"
+review_after = "2027-02-25"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/release-rehearsal.py"
+target_fingerprint = "py"
+glob = "scripts/release-rehearsal.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11160"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/test-release-rehearsal.py"
+owner = "core/release"
+classification = "release_script"
+reason = "Tests and negative controls for release rehearsal harness for #3792."
+evidence = ["issue:3792"]
+created = "2026-08-25"
+review_after = "2027-02-25"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-release-rehearsal.py"
+target_fingerprint = "py"
+glob = "scripts/test-release-rehearsal.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11161"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3792-release-rehearsal.toml"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3792 revision note authorizing release rehearsal receipts; covers the note file itself as tracked configuration."
+evidence = ["issue:3792", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-08-25"
+review_after = "2027-02-25"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3792-release-rehearsal.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3792-release-rehearsal.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
