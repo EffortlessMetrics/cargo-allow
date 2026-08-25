@@ -57,7 +57,10 @@ fn matching() {
             })
             .sum::<usize>();
     }
-    println!("classify_match_500x2000: {:?} ({matches} matches)", start.elapsed());
+    println!(
+        "classify_match_500x2000: {:?} ({matches} matches)",
+        start.elapsed()
+    );
 }
 
 fn main() {
