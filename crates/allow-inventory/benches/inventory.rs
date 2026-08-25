@@ -13,11 +13,8 @@ fn fixture() -> PathBuf {
     for index in 0..2_000 {
         let dir = root.join(format!("src/module_{}", index % 100));
         fs::create_dir_all(&dir).expect("create benchmark fixture");
-        fs::write(
-            dir.join(format!("file_{index}.rs")),
-            "fn item() {}\n",
-        )
-        .expect("write benchmark fixture");
+        fs::write(dir.join(format!("file_{index}.rs")), "fn item() {}\n")
+            .expect("write benchmark fixture");
     }
     root
 }
@@ -35,7 +32,10 @@ fn inventory() {
             .expect("inventory benchmark")
             .len();
     }
-    println!("inventory_files_2000: {:?} ({files} files)", start.elapsed());
+    println!(
+        "inventory_files_2000: {:?} ({files} files)",
+        start.elapsed()
+    );
 }
 
 fn main() {
