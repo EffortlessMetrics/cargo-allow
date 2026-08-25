@@ -16,12 +16,12 @@ categories.workspace = true
 # build with --no-default-features and skip the tree-sitter C parser
 # (#2821). Default surface is identical.
 default = ["syntax"]
-syntax = ["dep:tree-sitter", "dep:tree-sitter-rust"]
+syntax = ["dep:same-file", "dep:tree-sitter", "dep:tree-sitter-rust"]
 
 [dependencies]
 allow-core.workspace = true
 rayon.workspace = true
-same-file.workspace = true
+same-file = { workspace = true, optional = true }
 toml.workspace = true
 tree-sitter = { workspace = true, optional = true }
 tree-sitter-rust = { workspace = true, optional = true }
