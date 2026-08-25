@@ -384,7 +384,7 @@ fn seeded_experimental_failure_cannot_block_required_lanes() {
 #[test]
 fn cargo_scoped_required_lanes_carry_the_complete_release_set() {
     let (sets, _, jobs) = manifest_and_jobs();
-    for lane_id in ["msrv", "test", "test-windows", "coverage"] {
+    for lane_id in ["msrv", "test", "test-core-platforms", "coverage"] {
         let body = jobs
             .iter()
             .find(|(id, _)| id == lane_id)
