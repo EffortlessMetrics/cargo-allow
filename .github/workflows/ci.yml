@@ -454,7 +454,7 @@ jobs:
       - name: Three-product simplification audit (#2208)
         run: bash scripts/three-product-simplification-audit.sh
 
-  test-core-platforms:
+  test-windows:
     strategy:
       fail-fast: false
       matrix:
