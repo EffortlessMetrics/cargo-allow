@@ -41,48 +41,20 @@ const LOCK_FILE_NAME: &str = "scan-cache.v2.lock";
 const STALE_ARTIFACT_AGE: Duration = Duration::from_secs(60 * 60);
 static TEMP_NONCE: AtomicU64 = AtomicU64::new(0);
 
-#[cfg(feature = "syntax")]
 struct PathIdentity(same_file::Handle);
-
-#[cfg(not(feature = "syntax"))]
-struct PathIdentity;
 
 impl PathIdentity {
     fn from_path(path: &Path) -> Option<Self> {
-        #[cfg(feature = "syntax")]
-        {
-            same_file::Handle::from_path(path).ok().map(Self)
-        }
-        #[cfg(not(feature = "syntax"))]
-        {
-            let _ = path;
-            Some(Self)
-        }
+        same_file::Handle::from_path(path).ok().map(Self)
     }
 
     fn from_file(file: &File) -> Option<Self> {
-        #[cfg(feature = "syntax")]
-        {
-            let cloned = file.try_clone().ok()?;
-            same_file::Handle::from_file(cloned).ok().map(Self)
-        }
-        #[cfg(not(feature = "syntax"))]
-        {
-            let _ = file;
-            Some(Self)
-        }
+        let cloned = file.try_clone().ok()?;
+        same_file::Handle::from_file(cloned).ok().map(Self)
     }
 
     fn matches_path(&self, path: &Path) -> bool {
-        #[cfg(feature = "syntax")]
-        {
-            same_file::Handle::from_path(path).is_ok_and(|current| current == self.0)
-        }
-        #[cfg(not(feature = "syntax"))]
-        {
-            let _ = (self, path);
-            true
-        }
+        same_file::Handle::from_path(path).is_ok_and(|current| current == self.0)
     }
 }
 
@@ -335,6 +307,7 @@ impl ScanCacheStore {
             return false;
         };
         if !regular_file_identity_matches(&tmp, &temp_identity) {
+            remove_bound_file(&tmp, &temp_identity);
             return false;
         }
         if temp_file
@@ -1267,7 +1240,6 @@ mod tests {
         Ok(())
     }
 
-    #[cfg(feature = "syntax")]
     #[test]
     fn temp_regular_file_replacement_after_sync_is_rejected() -> Result<(), String> {
         let root = canonical_temp_dir().join(format!(
@@ -1312,7 +1284,6 @@ mod tests {
         Ok(())
     }
 
-    #[cfg(feature = "syntax")]
     #[test]
     fn destination_regular_file_replacement_after_temp_sync_is_rejected() -> Result<(), String> {
         let root = canonical_temp_dir().join(format!(
@@ -1353,7 +1324,7 @@ mod tests {
         Ok(())
     }
 
-    #[cfg(all(feature = "syntax", unix))]
+    #[cfg(unix)]
     #[test]
     fn lock_regular_file_replacement_while_waiting_is_rejected() -> Result<(), String> {
         let root = canonical_temp_dir().join(format!(

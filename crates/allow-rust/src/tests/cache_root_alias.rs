@@ -181,6 +181,42 @@ fn changed_root_identity_fails_before_persistence() -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(unix)]
+#[test]
+fn changed_cache_directory_identity_fails_before_persistence() -> Result<(), String> {
+    let fixture = TempRoot::new("cache-dir-change")?;
+    let root = fixture.0.join("repo");
+    let files = prepare_source(&root)?;
+    let mut store = RootBoundScanCacheStore::open(&root, "generation")
+        .map_err(|disposition| disposition.as_str().to_string())?;
+    let mut memory = ScanCache::new();
+    scan_rust_files_cached_with_root_bound_store(&root, &files, &mut memory, &mut store)
+        .map_err(|error| error.to_string())?;
+    store
+        .flush_with_disposition()
+        .map_err(|disposition| disposition.as_str().to_string())?;
+
+    fs::write(
+        root.join("src/lib.rs"),
+        "fn load(value: Result<(), ()>) { value.expect(\"changed\"); }\n",
+    )
+    .map_err(|error| error.to_string())?;
+    scan_rust_files_cached_with_root_bound_store(&root, &files, &mut memory, &mut store)
+        .map_err(|error| error.to_string())?;
+
+    let cache_dir = ScanCacheStore::default_dir(&root);
+    let moved = root.join("moved-cache");
+    fs::rename(&cache_dir, &moved).map_err(|error| error.to_string())?;
+    fs::create_dir_all(&cache_dir).map_err(|error| error.to_string())?;
+    assert_eq!(
+        store.flush_with_disposition(),
+        Err(ScanCacheTargetDispositionV1::DestinationAliasOrTypeChange)
+    );
+    assert!(!cache_dir.join("scan-cache.v2.bin").exists());
+    assert!(moved.join("scan-cache.v2.bin").exists());
+    Ok(())
+}
+
 #[test]
 fn unsupported_or_missing_roots_never_admit_persistence() -> Result<(), String> {
     let fixture = TempRoot::new("invalid-root")?;

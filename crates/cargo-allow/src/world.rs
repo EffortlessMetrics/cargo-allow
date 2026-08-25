@@ -828,6 +828,43 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn persistent_cache_admission_failure_falls_back_without_outside_write() -> Result<(), String> {
+        use std::os::unix::fs::symlink;
+
+        let root = fixture_dir();
+        fs::create_dir_all(root.join("src")).map_err(|err| format!("src dir: {err}"))?;
+        fs::write(
+            root.join("src/lib.rs"),
+            "fn fallback(value: Result<(), ()>) { value.unwrap(); }\n",
+        )
+        .map_err(|err| format!("source: {err}"))?;
+        let outside = root.join("outside-target");
+        fs::create_dir_all(&outside).map_err(|err| format!("outside dir: {err}"))?;
+        symlink(&outside, root.join("target")).map_err(|err| format!("target alias: {err}"))?;
+        let files = vec![PathBuf::from("src/lib.rs")];
+
+        let persistent = scan_rust_files_with_cache_mode(&root, &files, true)
+            .map_err(|err| format!("persistent fallback scan: {err}"))?;
+        let ordinary = scan_rust_files_with_cache_mode(&root, &files, false)
+            .map_err(|err| format!("ordinary scan: {err}"))?;
+        if persistent.findings != ordinary.findings
+            || persistent.file_statuses != ordinary.file_statuses
+            || persistent.files_considered != ordinary.files_considered
+            || persistent.files_skipped != ordinary.files_skipped
+            || persistent.files_with_parse_errors != ordinary.files_with_parse_errors
+        {
+            return Err("cache admission failure changed scan semantics".to_string());
+        }
+        if outside.join("cargo-allow/cache/scan-cache.v2.bin").exists() {
+            return Err("cache admission failure wrote through in-root alias".to_string());
+        }
+        fs::remove_file(root.join("target")).map_err(|err| format!("remove alias: {err}"))?;
+        fs::remove_dir_all(root).map_err(|err| format!("remove fixture: {err}"))?;
+        Ok(())
+    }
+
     #[test]
     fn persistent_cache_off_policy_preserves_result_without_creating_store() -> Result<(), String> {
         let root = fixture_dir();
