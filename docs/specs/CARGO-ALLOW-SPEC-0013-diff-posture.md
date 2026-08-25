@@ -30,8 +30,8 @@ Posture](../pr-posture.md) and [Policy Weakening](../policy-weakening.md).
 
 The system must:
 
-- compare a declared base and head using the same source-tree and policy
-  selection rules, with revision provenance visible in the result;
+- compare a declared base and head using the same source-tree and selected
+  policy path, with revision provenance visible in the result;
 - classify net posture as `worse`, `review-required`, `unchanged`, or
   `improved` according to the highest-severity observed signal;
 - distinguish source finding movement from policy posture changes;
@@ -62,7 +62,7 @@ The system must not:
 | --- | --- | --- |
 | Base revision | yes | Git revision or supported equivalent. |
 | Head/current revision | yes | The comparison target. |
-| Source-exception policy | yes when applicable | Resolved independently for each revision. |
+| Source-exception policy | yes when applicable | One selected policy path is used for both revisions; missing-side state is explicit. |
 | Selected source inventory | yes | Must preserve partial/error posture. |
 
 | Output | Required | Notes |
@@ -75,6 +75,10 @@ The system must not:
 
 - A complete comparison identifies both revisions and reports any scanner or
   policy-resolution limitation instead of silently omitting it.
+- The current comparison resolver selects one policy path for the comparison
+  (preferring the head when supported paths differ), reads that path at both
+  revisions, and represents a missing side explicitly rather than claiming
+  independent per-revision policy discovery.
 - A removed finding is represented as movement, while evidence or selector
   changes remain policy posture signals.
 - A weakening signal yields at least `review-required` and uses `worse` where

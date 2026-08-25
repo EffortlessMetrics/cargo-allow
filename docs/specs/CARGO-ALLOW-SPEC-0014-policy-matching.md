@@ -35,11 +35,12 @@ The system must:
 - require compatible kind/family identity before a policy entry can match;
 - use exact paths and bounded globs only as scope, not as a substitute for
   source-code structural identity;
-- compare the strongest available selector fields, including AST kind,
-  container, callee/macro/lint/symbol, fingerprints, and normalized snippet
-  identity as applicable;
-- treat line and column as hints for review and tie-breaking, never as stable
-  identity;
+- compare every selector field supplied by the policy entry as a hard gate,
+  including AST kind, container, callee/macro/lint/symbol, fingerprints, and
+  normalized snippet identity as applicable; stronger available selectors are
+  recommended but are not silently required of existing migration entries;
+- treat line and column as review/navigation hints only, never as stable
+  identity or tie-breakers;
 - preserve deterministic matching across reports, audit, check, explain, and
   diff;
 - fail closed or report ambiguity when multiple entries remain plausible after
