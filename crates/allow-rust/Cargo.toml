@@ -21,6 +21,7 @@ syntax = ["dep:tree-sitter", "dep:tree-sitter-rust"]
 [dependencies]
 allow-core.workspace = true
 rayon.workspace = true
+same-file.workspace = true
 toml.workspace = true
 tree-sitter = { workspace = true, optional = true }
 tree-sitter-rust = { workspace = true, optional = true }
