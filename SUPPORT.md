@@ -44,15 +44,16 @@ the declared MSRV series.
 ## Platforms
 
 `ci_proven` means the workspace test suite executes on that runner on every
-pull request. It is a statement of executed evidence, not a support promise —
-see *Not yet decided* below.
+pull request. `ci_proven_bounded` means the release-set suite executes with a
+named fixture exclusion. Both are statements of executed evidence, not support
+promises — see *Not yet decided* below.
 
 | Target | Tier | Evidence |
 | --- | --- | --- |
 | `x86_64-unknown-linux-gnu` | ci_proven | `test`, `msrv`, `package-smoke`, `shallow-diff-smoke` jobs on `ubuntu-latest`; release install-smoke on tag push |
-| `x86_64-pc-windows-msvc` | ci_proven | `test-windows` job runs the full workspace suite; release install-smoke on tag push |
-| `aarch64-apple-darwin` | **not proven** | no macOS runner exists in any workflow ([#2475](https://github.com/EffortlessMetrics/cargo-allow/issues/2475)) |
-| `x86_64-apple-darwin` | **not proven** | no macOS runner exists in any workflow ([#2475](https://github.com/EffortlessMetrics/cargo-allow/issues/2475)) |
+| `x86_64-pc-windows-msvc` | ci_proven | `test-core-platforms` runs the full release set; release install-smoke on tag push |
+| `aarch64-apple-darwin` | ci_proven_bounded | `test-core-platforms` runs the release set and semantic fixture on `macos-14`; persistent scan-cache fixture is excluded |
+| `x86_64-apple-darwin` | ci_proven_bounded | `test-core-platforms` runs the release set and semantic fixture on `macos-15-intel`; persistent scan-cache fixture is excluded |
 
 macOS is listed explicitly rather than omitted. cargo-allow may well build
 there; this repository executes nothing that proves it.
