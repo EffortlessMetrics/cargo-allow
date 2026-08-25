@@ -108,6 +108,59 @@ fn root_bound_store_preserves_cached_and_uncached_scan_semantics() -> Result<(),
 }
 
 #[test]
+fn root_bound_store_replaces_an_existing_destination_on_second_dirty_flush() -> Result<(), String> {
+    let fixture = TempRoot::new("second-dirty-flush")?;
+    let files = prepare_source(&fixture.0)?;
+    let generation = scan_cache_generation();
+    let mut store = RootBoundScanCacheStore::open(&fixture.0, &generation)
+        .map_err(|disposition| disposition.as_str().to_string())?;
+    let mut memory = ScanCache::new();
+
+    scan_rust_files_cached_with_root_bound_store(&fixture.0, &files, &mut memory, &mut store)
+        .map_err(|error| error.to_string())?;
+    store
+        .flush_with_disposition()
+        .map_err(|disposition| disposition.as_str().to_string())?;
+    let store_path = ScanCacheStore::default_dir(&fixture.0).join("scan-cache.v2.bin");
+    let first_bytes = fs::read(&store_path).map_err(|error| error.to_string())?;
+
+    fs::write(
+        fixture.0.join("src/lib.rs"),
+        "fn load(value: Result<(), ()>) { value.expect(\"changed\"); }\n",
+    )
+    .map_err(|error| error.to_string())?;
+    let mut expected_memory = ScanCache::new();
+    let expected = scan_rust_files_cached(&fixture.0, &files, &mut expected_memory)
+        .map_err(|error| error.to_string())?;
+    let second =
+        scan_rust_files_cached_with_root_bound_store(&fixture.0, &files, &mut memory, &mut store)
+            .map_err(|error| error.to_string())?;
+    assert_scan_parity(&expected, &second);
+    store
+        .flush_with_disposition()
+        .map_err(|disposition| disposition.as_str().to_string())?;
+    let second_bytes = fs::read(&store_path).map_err(|error| error.to_string())?;
+    assert_ne!(
+        first_bytes, second_bytes,
+        "second dirty flush must replace bytes"
+    );
+    drop(store);
+
+    let mut reopened = RootBoundScanCacheStore::open(&fixture.0, &generation)
+        .map_err(|disposition| disposition.as_str().to_string())?;
+    let mut reopened_memory = ScanCache::new();
+    let persisted = scan_rust_files_cached_with_root_bound_store(
+        &fixture.0,
+        &files,
+        &mut reopened_memory,
+        &mut reopened,
+    )
+    .map_err(|error| error.to_string())?;
+    assert_scan_parity(&expected, &persisted);
+    Ok(())
+}
+
+#[test]
 fn injected_temp_artifact_is_a_destination_change_not_an_instrument_failure() -> Result<(), String>
 {
     let fixture = TempRoot::new("temp-injection")?;
