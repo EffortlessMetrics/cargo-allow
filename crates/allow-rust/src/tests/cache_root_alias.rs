@@ -110,9 +110,7 @@ fn pre_root_alias_and_in_root_alias_have_distinct_safety_outcomes() -> Result<()
         "an alias at or below the selected root must remain fail-closed"
     );
     assert!(
-        !outside
-            .join("cargo-allow/cache/scan-cache.v2.bin")
-            .exists(),
+        !outside.join("cargo-allow/cache/scan-cache.v2.bin").exists(),
         "the in-root alias must not redirect cache persistence"
     );
     Ok(())
