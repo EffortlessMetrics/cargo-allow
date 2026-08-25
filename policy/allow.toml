@@ -12472,7 +12472,7 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11141"
+id = "allow-11145"
 kind = "non_rust_file"
 family = "test_fixture"
 path = "docs/dogfood/fixtures/release/exact-upgrade-rollback-journey.v1.schema.json"
@@ -12494,7 +12494,7 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11142"
+id = "allow-11146"
 kind = "non_rust_file"
 family = "test_fixture"
 path = "docs/dogfood/fixtures/release/upgrade-rollback-repository.toml"
@@ -12516,7 +12516,7 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11143"
+id = "allow-11147"
 kind = "non_rust_file"
 family = "shell_script"
 path = "scripts/exact-upgrade-rollback-journey.sh"
@@ -12538,7 +12538,7 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11144"
+id = "allow-11148"
 kind = "non_rust_file"
 family = "shell_script"
 path = "scripts/test-exact-upgrade-rollback-journey.sh"
@@ -12560,7 +12560,7 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11145"
+id = "allow-11149"
 kind = "non_rust_file"
 family = "python_tool"
 path = "scripts/validate-upgrade-rollback-journey.py"
@@ -12580,3 +12580,180 @@ glob = "scripts/validate-upgrade-rollback-journey.py"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11150"
+kind = "non_rust_file"
+family = "configuration"
+path = ".github/actions/rust-cache/action.yml"
+owner = "core/ci"
+classification = "ci_action"
+reason = "Composite action for rust-cache with trust boundary."
+evidence = ["issue:3768"]
+created = "2026-08-25"
+review_after = "2027-02-25"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".github/actions/rust-cache/action.yml"
+target_fingerprint = "yml"
+glob = ".github/actions/rust-cache/action.yml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11151"
+kind = "non_rust_file"
+family = "ci_declarative"
+path = ".github/workflows/campaign-issue-closeout.yml"
+owner = "core/ci"
+classification = "ci_workflow"
+reason = "Workflow to automate campaign issue closeout verification."
+evidence = ["issue:3768"]
+created = "2026-08-25"
+review_after = "2027-02-25"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".github/workflows/campaign-issue-closeout.yml"
+target_fingerprint = "yml"
+glob = ".github/workflows/campaign-issue-closeout.yml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11152"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/interop/sibling-tools.md"
+owner = "core/devex"
+classification = "interop_guide"
+reason = "Documents interop boundaries and contracts between cargo-allow and sibling tools."
+evidence = ["issue:3768"]
+created = "2026-08-25"
+review_after = "2027-02-25"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/interop/sibling-tools.md"
+target_fingerprint = "md"
+glob = "docs/interop/sibling-tools.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11153"
+kind = "non_rust_file"
+family = "configuration"
+path = "policy/campaign-issue-closeout.toml"
+owner = "core/policy"
+classification = "campaign_policy"
+reason = "Policy configuration for campaign issue closeout verification."
+evidence = ["issue:3768"]
+created = "2026-08-25"
+review_after = "2027-02-25"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "policy/campaign-issue-closeout.toml"
+target_fingerprint = "toml"
+glob = "policy/campaign-issue-closeout.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11154"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/final-packaged-surface.py"
+owner = "core/release"
+classification = "release_script"
+reason = "Script for final packaged surface verification."
+evidence = ["issue:3768"]
+created = "2026-08-25"
+review_after = "2027-02-25"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/final-packaged-surface.py"
+target_fingerprint = "py"
+glob = "scripts/final-packaged-surface.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11155"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test-campaign-issue-closeout.py"
+owner = "core/ci"
+classification = "ci_script"
+reason = "Test suite for campaign issue closeout verification."
+evidence = ["issue:3768"]
+created = "2026-08-25"
+review_after = "2027-02-25"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-campaign-issue-closeout.py"
+target_fingerprint = "py"
+glob = "scripts/test-campaign-issue-closeout.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11156"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/test-final-packaged-surface.py"
+owner = "core/release"
+classification = "release_script"
+reason = "Tests for final packaged surface verification."
+evidence = ["issue:3768"]
+created = "2026-08-25"
+review_after = "2027-02-25"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-final-packaged-surface.py"
+target_fingerprint = "py"
+glob = "scripts/test-final-packaged-surface.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11157"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/verify-campaign-issue-closeout.py"
+owner = "core/ci"
+classification = "ci_script"
+reason = "Verification script for campaign issue closeout verification."
+evidence = ["issue:3768"]
+created = "2026-08-25"
+review_after = "2027-02-25"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/verify-campaign-issue-closeout.py"
+target_fingerprint = "py"
+glob = "scripts/verify-campaign-issue-closeout.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
