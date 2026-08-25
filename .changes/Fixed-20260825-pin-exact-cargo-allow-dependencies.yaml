@@ -1,0 +1,4 @@
+kind: Fixed
+body: >-
+  Pin all internal cargo-allow-family workspace dependencies to exact version
+  requirements (=0.2.0-rc.1 / =0.2.0) to prevent broad resolution drift.
