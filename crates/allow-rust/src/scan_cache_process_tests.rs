@@ -17,7 +17,10 @@ impl RootGuard {
             .duration_since(SystemTime::UNIX_EPOCH)
             .map(|d| d.as_nanos())
             .unwrap_or_default();
-        Self(std::env::temp_dir().join(format!(
+        let temp_parent = std::env::temp_dir()
+            .canonicalize()
+            .unwrap_or_else(|_| std::env::temp_dir());
+        Self(temp_parent.join(format!(
             "allow-rust-process-cache-{label}-{}-{stamp}",
             std::process::id()
         )))
