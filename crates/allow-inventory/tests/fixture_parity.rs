@@ -183,8 +183,8 @@ fn build_parity_fixture(label: &str) -> Fixture {
         Ok(()) => Some(PathBuf::from(&non_utf8_name)),
         Err(err) if non_utf8_path_unsupported(&err) => {
             // Some Unix filesystems, including the hosted macOS runner's
-            // filesystem, reject raw non-UTF-8 path bytes even though the
-            // platform exposes Unix path APIs. The inventory contract still
+            // filesystem, reject raw non-UTF-8 path bytes with EILSEQ even
+            // though the platform exposes Unix path APIs. The inventory contract still
             // covers such names where the filesystem can represent them;
             // this fixture reports the capability gap instead of failing
             // before Git or inventory can be exercised.
