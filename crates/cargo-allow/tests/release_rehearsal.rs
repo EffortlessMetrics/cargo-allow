@@ -4,34 +4,34 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct ZeroMutationProof {
-    pub tag_mutation_prevented: bool,
-    pub token_read_prevented: bool,
-    pub cargo_publish_prevented: bool,
-    pub registry_mutation_prevented: bool,
-    pub github_release_mutation_prevented: bool,
-    pub live_setting_mutation_prevented: bool,
-    pub external_repository_mutation_prevented: bool,
+struct ZeroMutationProof {
+    tag_mutation_prevented: bool,
+    token_read_prevented: bool,
+    cargo_publish_prevented: bool,
+    registry_mutation_prevented: bool,
+    github_release_mutation_prevented: bool,
+    live_setting_mutation_prevented: bool,
+    external_repository_mutation_prevented: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct ReleaseRehearsalReceiptV1 {
-    pub schema_version: String,
-    pub receipt_id: String,
-    pub commit_sha: String,
-    pub subject_lockfile_digest: String,
-    pub subject_topology_digest: String,
-    pub zero_mutation_proof: ZeroMutationProof,
-    pub phases: std::collections::BTreeMap<String, String>,
-    pub aggregate_status: String,
-    pub claim_boundary: String,
+struct ReleaseRehearsalReceiptV1 {
+    schema_version: String,
+    receipt_id: String,
+    commit_sha: String,
+    subject_lockfile_digest: String,
+    subject_topology_digest: String,
+    zero_mutation_proof: ZeroMutationProof,
+    phases: std::collections::BTreeMap<String, String>,
+    aggregate_status: String,
+    claim_boundary: String,
 }
 
-fn require(cond: bool, msg: &str) -> Result<(), io::Error> {
-    if !cond {
-        Err(io::Error::other(msg))
-    } else {
+fn require(condition: bool, message: &str) -> Result<(), io::Error> {
+    if condition {
         Ok(())
+    } else {
+        Err(io::Error::other(message))
     }
 }
 
@@ -47,23 +47,23 @@ fn repo_root() -> Result<PathBuf, Box<dyn Error>> {
 }
 
 #[test]
-fn rehearsal_harness_generates_valid_receipt() -> Result<(), Box<dyn Error>> {
+fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
     let root = repo_root()?;
     let script = root.join("scripts/release-rehearsal.py");
-    if !script.exists() {
-        return Ok(());
-    }
+    require(script.is_file(), "release rehearsal script is missing")?;
 
     let output = Command::new("python")
         .arg(&script)
         .arg("--commit")
-        .arg("0123456789abcdef0123456789abcdef01234567")
+        .arg("HEAD")
+        .current_dir(&root)
         .output()?;
 
     require(
-        output.status.success(),
+        output.status.code() == Some(1),
         &format!(
-            "harness execution failed: {}",
+            "characterization must exit one, got {:?}: {}",
+            output.status.code(),
             String::from_utf8_lossy(&output.stderr)
         ),
     )?;
@@ -74,35 +74,48 @@ fn rehearsal_harness_generates_valid_receipt() -> Result<(), Box<dyn Error>> {
         "schema version must be 1.0",
     )?;
     require(
-        receipt.aggregate_status == "Complete",
-        "aggregate status must be Complete",
+        receipt.receipt_id.starts_with("REHEARSAL-"),
+        "receipt ID must name the resolved commit",
+    )?;
+    require(
+        receipt.aggregate_status != "Complete",
+        "characterization must not report Complete",
+    )?;
+    require(
+        receipt.claim_boundary.contains("Characterization only"),
+        "claim boundary must retain the characterization limitation",
+    )?;
+    require(
+        receipt.subject_lockfile_digest.starts_with("sha256:v1:"),
+        "lockfile digest must use canonical SHA-256 text",
+    )?;
+    require(
+        receipt.subject_topology_digest.starts_with("sha256:v1:"),
+        "topology digest must use canonical SHA-256 text",
+    )?;
+    require(
+        matches!(receipt.commit_sha.len(), 40 | 64)
+            && receipt
+                .commit_sha
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)),
+        "commit identity must be canonical lowercase hexadecimal",
     )?;
 
     let proof = &receipt.zero_mutation_proof;
     require(
-        proof.tag_mutation_prevented,
-        "tag mutation must be prevented",
-    )?;
-    require(proof.token_read_prevented, "token read must be prevented")?;
-    require(
-        proof.cargo_publish_prevented,
-        "cargo publish must be prevented",
-    )?;
-    require(
-        proof.registry_mutation_prevented,
-        "registry mutation must be prevented",
-    )?;
-    require(
-        proof.github_release_mutation_prevented,
-        "github release mutation must be prevented",
-    )?;
-    require(
-        proof.live_setting_mutation_prevented,
-        "live setting mutation must be prevented",
-    )?;
-    require(
-        proof.external_repository_mutation_prevented,
-        "external repository mutation must be prevented",
+        [
+            proof.tag_mutation_prevented,
+            proof.token_read_prevented,
+            proof.cargo_publish_prevented,
+            proof.registry_mutation_prevented,
+            proof.github_release_mutation_prevented,
+            proof.live_setting_mutation_prevented,
+            proof.external_repository_mutation_prevented,
+        ]
+        .into_iter()
+        .all(|value| !value),
+        "unproven zero-mutation facts must remain false",
     )?;
 
     for required_phase in [
@@ -116,8 +129,11 @@ fn rehearsal_harness_generates_valid_receipt() -> Result<(), Box<dyn Error>> {
         "workflow_graph_permissions",
     ] {
         require(
-            receipt.phases.get(required_phase).map(|s| s.as_str()) == Some("Complete"),
-            &format!("phase {required_phase} must be Complete"),
+            receipt
+                .phases
+                .get(required_phase)
+                .is_some_and(|status| status != "Complete"),
+            &format!("phase {required_phase} must exist and remain non-Complete"),
         )?;
     }
 
