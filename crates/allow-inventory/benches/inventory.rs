@@ -1,4 +1,4 @@
-use allow_inventory::{inventory_files, InventoryOptions};
+use allow_inventory::{InventoryOptions, inventory_files};
 use std::fs;
 use std::hint::black_box;
 use std::path::PathBuf;
