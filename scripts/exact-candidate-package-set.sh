@@ -1042,10 +1042,11 @@ for line in os.environ["CRATE_RECORDS"].splitlines():
     if not line.strip():
         continue
     name, crate_file, sha256, size, extracted = line.split("|", 4)
+    crate_version = crate_file.removesuffix(".crate").rsplit("-", 1)[1]
     records.append(
         {
             "name": name,
-            "version": os.environ["WORKSPACE_VERSION"],
+            "version": crate_version,
             "crate_file": crate_file,
             "sha256": sha256,
             "size_bytes": int(size),
@@ -1105,6 +1106,13 @@ with open(os.environ["RECEIPT_PATH"], "w", encoding="utf-8") as handle:
     json.dump(receipt, handle, indent=2)
     handle.write("\n")
 PY
+
+log "reconciling actual .crate bytes into ${exact_parent}/final-packaged-surface.receipt.json"
+python3 "${SCRIPT_ROOT}/scripts/final-packaged-surface.py" \
+  --package-set-receipt "${receipt}" \
+  --packages-dir "${packages_dir}" \
+  --output "${exact_parent}/final-packaged-surface.receipt.json" \
+  --expected-version "${version}"
 
 log "ExactCandidatePackageSetV1 Passed for workspace ${version}"
 log "receipt: ${receipt}"

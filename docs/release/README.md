@@ -113,6 +113,19 @@ negatives, a finding/rollback path, and cleanup of the temporary consumer and
 journey artifacts. It proves a pre-publication exact-candidate journey only;
 it does not publish, tag, or install from a registry.
 
+The exact installed upgrade/rollback slice extends that proof across the
+published `0.1.11` binary and the candidate binary:
+
+```bash
+bash scripts/exact-upgrade-rollback-journey.sh
+```
+
+It installs `0.1.11` into a separate root, invokes both binaries by absolute
+path, restores a captured repository preimage, and reruns the old binary. The
+receipt proves binary identity, candidate package-set binding, and preservation
+of an unrelated file. It is deliberately read-only with respect to the
+fixture's policy state; migration-write compatibility remains a separate claim.
+
 Schema/example characterization remains
 `cargo test -p cargo-allow --test source_candidate_smoke --locked`.
 

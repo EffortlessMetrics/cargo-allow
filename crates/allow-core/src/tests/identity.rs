@@ -1,6 +1,40 @@
 use std::path::PathBuf;
 
-use crate::{Finding, FindingKind, Selector, Span, StructuralIdentity, finding_identity_key};
+use crate::{
+    Finding, FindingKind, Selector, Span, StructuralIdentity, finding_identity_key, normalize_path,
+    source_tree_path_is_ignored, source_tree_path_matches_filter,
+};
+
+#[test]
+fn cross_platform_semantics() {
+    let nfc = "src/café.rs";
+    let nfd = "src/cafe\u{301}.rs";
+    assert_eq!(normalize_path(nfc), normalize_path(nfd));
+    assert!(source_tree_path_matches_filter(
+        "crates/allow-core/src/lib.rs",
+        "crates/*/src/*.rs"
+    ));
+    assert!(source_tree_path_is_ignored(
+        "target/debug/cargo-allow",
+        &["target/**".to_string()]
+    ));
+
+    let mut identity = StructuralIdentity::new("rust", "method_call");
+    identity.container = Some("parse".to_string());
+    identity.callee = Some("unwrap".to_string());
+    let first = Finding {
+        kind: FindingKind::Panic,
+        family: Some("unwrap".to_string()),
+        path: "src/lib.rs".into(),
+        span: Some(Span { line: 10, column: 2 }),
+        identity,
+        message: "test".to_string(),
+        ledger: None,
+    };
+    let mut moved = first.clone();
+    moved.span = Some(Span { line: 99, column: 8 });
+    assert_eq!(finding_identity_key(&first), finding_identity_key(&moved));
+}
 
 #[test]
 fn selector_structural_identity_excludes_scope_and_location_hints() {

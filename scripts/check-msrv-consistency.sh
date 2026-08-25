@@ -50,13 +50,14 @@ if ! grep -qF "dtolnay/rust-toolchain@${msrv}.0" "${ci_workflow}"; then
 fi
 printf 'ok %s pins dtolnay/rust-toolchain@%s.0\n' "${ci_workflow}" "${msrv}"
 
-if ! grep -qF "key: msrv-${msrv}" "${ci_workflow}"; then
-  actual="$(grep -o 'key: msrv-[^ ]*' "${ci_workflow}" | head -n 1 || true)"
+if ! grep -qF "key: msrv-${msrv}" "${ci_workflow}" \
+  && ! grep -qE '^[[:space:]]+lane:[[:space:]]+msrv[[:space:]]*$' "${ci_workflow}"; then
+  actual="$(grep -oE 'key: msrv-[^ ]*|lane: msrv[^[:space:]]*' "${ci_workflow}" | head -n 1 || true)"
   fail "$(printf '%s uses cache %s but the MSRV is %s.\n%s' \
     "${ci_workflow}" "${actual:-no msrv cache key}" "${msrv}" \
-    "       Use key: msrv-${msrv}.")"
+    "       Use the cache lane: msrv (or key: msrv-${msrv} for inline configuration).")"
 fi
-printf 'ok %s uses cache key msrv-%s\n' "${ci_workflow}" "${msrv}"
+printf 'ok %s uses cache namespace msrv-%s\n' "${ci_workflow}" "${msrv}"
 
 # The action tag above is stated configuration, not the resolved toolchain.
 # rustup ranks `rust-toolchain.toml` above `rustup default`, and `rustup

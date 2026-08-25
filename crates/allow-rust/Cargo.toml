@@ -27,3 +27,7 @@ tree-sitter-rust = { workspace = true, optional = true }
 
 [dev-dependencies]
 proptest = { version = "1.11.0", default-features = false, features = ["std"] }
+
+[[bench]]
+name = "scan"
+harness = false
