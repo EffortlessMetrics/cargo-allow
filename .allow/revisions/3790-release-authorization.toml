@@ -29,3 +29,9 @@ allow_ids = ["allow-11149"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:d7c4aad2cde0c21464e5c90f8aa8cbc428c035882f4ee78e8711b2567162711b"
 reason = "receipt for scripts/verify-campaign-issue-closeout.py (#3790)"
+
+[[records]]
+allow_ids = ["allow-11150"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5df8e0949d100967d4afe161451d78c2080d0b1607733b12eeaee2b643a6a17d"
+reason = "receipt for .allow/revisions/3790-release-authorization.toml (#3790)"
