@@ -12,7 +12,7 @@ fn source() -> String {
         .collect()
 }
 
-fn scan() {
+fn scan() -> usize {
     let source = source();
     let start = Instant::now();
     let mut findings = 0;
@@ -23,6 +23,7 @@ fn scan() {
         "scan_rust_source_2000_lines: {:?} ({findings} findings)",
         start.elapsed()
     );
+    findings
 }
 
 fn main() {
