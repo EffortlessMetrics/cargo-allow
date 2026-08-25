@@ -26,8 +26,24 @@ jobs:
         with:
           toolchain: stable
           components: rustfmt, clippy
-      - name: Apply exact closeout patch
-        run: python scripts/apply-3915-cache-identity-closeout.py
+      - name: Repair generator escapes and apply exact closeout patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("scripts/apply-3915-cache-identity-closeout.py")
+          text = path.read_text(encoding="utf-8")
+          replacements = {
+              "new_test = '''": "new_test = r'''",
+              "world_test = '''": "world_test = r'''",
+          }
+          for old, new in replacements.items():
+              if text.count(old) != 1:
+                  raise SystemExit(f"generator source drift: {old}")
+              text = text.replace(old, new, 1)
+          path.write_text(text, encoding="utf-8")
+          PY
+          python scripts/apply-3915-cache-identity-closeout.py
       - name: Format changed Rust files
         shell: bash
         run: |
