@@ -21,7 +21,10 @@ fn classification() {
     for _ in 0..10 {
         classified += paths.iter().filter_map(|path| classify_path(path)).count();
     }
-    println!("classify_path_2000: {:?} ({classified} classified)", start.elapsed());
+    println!(
+        "classify_path_2000: {:?} ({classified} classified)",
+        start.elapsed()
+    );
 }
 
 fn main() {
