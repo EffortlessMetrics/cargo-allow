@@ -309,7 +309,9 @@ fn recovery_negative_controls() -> Result<(), Box<dyn Error>> {
 
     // 3. Checksum mismatch in registry (rebuilt package differed from published row)
     let mut conflict_plan = plan.clone();
-    conflict_plan.rows[0].observed_checksum = Some("sha256:corrupted_or_different".to_string());
+    if let Some(row) = conflict_plan.rows.get_mut(0) {
+        row.observed_checksum = Some("sha256:corrupted_or_different".to_string());
+    }
     require(
         conflict_plan.compute_status() == RecoveryPlanStatus::Conflict,
         "mismatched row checksum must produce conflict plan status",
@@ -323,7 +325,9 @@ fn recovery_negative_controls() -> Result<(), Box<dyn Error>> {
 
     // 4. Yanked row in registry
     let mut yanked_plan = plan.clone();
-    yanked_plan.rows[0].is_yanked = true;
+    if let Some(row) = yanked_plan.rows.get_mut(0) {
+        row.is_yanked = true;
+    }
     require(
         yanked_plan.compute_status() == RecoveryPlanStatus::Conflict,
         "yanked row must produce conflict plan status",
@@ -337,7 +341,9 @@ fn recovery_negative_controls() -> Result<(), Box<dyn Error>> {
 
     // 5. Already fully published (NoOp)
     let mut noop_plan = plan.clone();
-    noop_plan.rows[1].observed_checksum = Some("sha256:bbbb".to_string());
+    if let Some(row) = noop_plan.rows.get_mut(1) {
+        row.observed_checksum = Some("sha256:bbbb".to_string());
+    }
     require(
         noop_plan.compute_status() == RecoveryPlanStatus::NoOpComplete,
         "all exact rows must produce NoOpComplete plan status",
