@@ -41,7 +41,7 @@ fn finding(index: usize) -> Finding {
     }
 }
 
-fn matching() {
+fn matching() -> usize {
     let entries: Vec<_> = (0..2_000).map(entry).collect();
     let findings: Vec<_> = (0..500).map(finding).collect();
     let start = Instant::now();
@@ -61,6 +61,7 @@ fn matching() {
         "classify_match_500x2000: {:?} ({matches} matches)",
         start.elapsed()
     );
+    matches
 }
 
 fn main() {
