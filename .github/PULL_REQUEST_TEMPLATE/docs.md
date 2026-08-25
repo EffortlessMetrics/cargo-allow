@@ -20,4 +20,4 @@
 - [ ] Documentation reviewed for current command names and claim boundaries
 - [ ] Links or referenced paths checked
 - [ ] `cargo clippy --workspace --all-targets -- -D warnings` when code is affected
-- [ ] `cargo run -p cargo-allow -- diff --base origin/main --format markdown` when applicable
+- [ ] `cargo run -p cargo-allow -- diff --base origin/main --format markdown --require-change-note` when applicable

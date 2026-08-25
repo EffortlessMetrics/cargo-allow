@@ -99,6 +99,18 @@ fn non_utf8_file_name() -> OsString {
     OsString::from_vec(b"nonutf8-\xff.rs".to_vec())
 }
 
+#[cfg(target_os = "macos")]
+fn unsupported_non_utf8_path(error: &std::io::Error) -> bool {
+    // Darwin reports EILSEQ (illegal byte sequence) as errno 92 when its
+    // filesystem rejects a path containing invalid UTF-8 bytes.
+    error.raw_os_error() == Some(92)
+}
+
+#[cfg(not(target_os = "macos"))]
+fn unsupported_non_utf8_path(_error: &std::io::Error) -> bool {
+    false
+}
+
 #[cfg(windows)]
 fn non_utf8_file_name() -> OsString {
     use std::os::windows::ffi::OsStringExt;
@@ -134,7 +146,7 @@ fn create_file_symlink(_target: &Path, _link: &Path) -> bool {
 struct Fixture {
     root: PathBuf,
     symlink_supported: bool,
-    non_utf8_rel: PathBuf,
+    non_utf8_rel: Option<PathBuf>,
 }
 
 fn build_parity_fixture(label: &str) -> Fixture {
@@ -167,9 +179,23 @@ fn build_parity_fixture(label: &str) -> Fixture {
 
     let non_utf8_name = non_utf8_file_name();
     let non_utf8_path = root.join(&non_utf8_name);
-    fs::write(&non_utf8_path, b"non-utf8 content\n").unwrap_or_else(|err| {
-        std::panic::panic_any(format!("write {}: {err}", non_utf8_path.display()))
-    });
+    let non_utf8_rel = match fs::write(&non_utf8_path, b"non-utf8 content\n") {
+        Ok(()) => Some(PathBuf::from(&non_utf8_name)),
+        Err(err) => {
+            // Some Unix filesystems, notably the macOS filesystem used by
+            // the cross-platform CI lane, reject invalid UTF-8 filename
+            // bytes before Git can see them. Keep this capability gap
+            // explicit rather than making the entire parity fixture fail.
+            if unsupported_non_utf8_path(&err) {
+                eprintln!(
+                    "skipped: filesystem cannot create non-UTF-8 fixture path ({err})"
+                );
+                None
+            } else {
+                std::panic::panic_any(format!("write {non_utf8_path:?}: {err}"));
+            }
+        }
+    };
 
     let symlink_supported = create_file_symlink(
         &root.join("src").join("lib.rs"),
@@ -195,7 +221,9 @@ fn build_parity_fixture(label: &str) -> Fixture {
             "target/debug.txt",
         ],
     );
-    run_git(&root, &[OsStr::new("add"), non_utf8_name.as_os_str()]);
+    if non_utf8_rel.is_some() {
+        run_git(&root, &[OsStr::new("add"), non_utf8_name.as_os_str()]);
+    }
     if symlink_supported {
         run_git(&root, &["add", "link-to-lib.rs"]);
     }
@@ -203,7 +231,7 @@ fn build_parity_fixture(label: &str) -> Fixture {
     Fixture {
         root,
         symlink_supported,
-        non_utf8_rel: PathBuf::from(non_utf8_name),
+        non_utf8_rel,
     }
 }
 
@@ -227,11 +255,13 @@ fn fixture_inventory_matches_git_ls_files_expectations() {
 
     let mut expected_tracked = vec![
         PathBuf::from(".gitignore"),
-        fixture.non_utf8_rel.clone(),
         PathBuf::from("src/lib.rs"),
         PathBuf::from("src/target/mod.rs"),
         PathBuf::from("target/debug.txt"),
     ];
+    if let Some(non_utf8_rel) = &fixture.non_utf8_rel {
+        expected_tracked.push(non_utf8_rel.clone());
+    }
     if fixture.symlink_supported {
         expected_tracked.push(PathBuf::from("link-to-lib.rs"));
     }

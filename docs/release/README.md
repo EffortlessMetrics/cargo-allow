@@ -140,12 +140,14 @@ This writes `SharedPackageCandidateV1`
 does not query crates.io or upload a crate; publication remains a separate
 authorized operation.
 
-That harness packages the shared
+That rehearsal packages the four rows selected by the V2 `shared` topology
+mode, extracts each `.crate`, and records the exact package-byte digests. The
+separate cargo-allow exact-candidate harness uses
 [`candidate-crate-set.toml`](../dogfood/fixtures/release/candidate-crate-set.toml),
-extracts each `.crate`, warms externals via patched `cargo fetch`, assembles a
-classic Cargo local-registry (`.crate` + index) for the lockfile graph with
-candidate crates injected, installs `cargo-allow` offline with crates-io
-replaced by that local-registry while renaming workspace `crates/` away
+warms externals via patched `cargo fetch`, assembles a classic Cargo
+local-registry (`.crate` + index) for the lockfile graph with candidate crates
+injected, installs `cargo-allow` offline with crates-io replaced by that
+local-registry while renaming workspace `crates/` away
 (`source_checkout_denied` / `CheckoutIsolated`), verifies internal manifests
 unpack under the install registry src (not `crates/`), runs omit-crate /
 workspace-path / checksum / injected-path / version-conflict / local-registry

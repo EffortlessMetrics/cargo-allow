@@ -121,6 +121,16 @@ fn source_tree_ignore_matches_git_target_and_custom_subtrees() {
 }
 
 #[test]
+fn source_tree_ignore_normalizes_unicode_pattern_and_path() {
+    let decomposed_pattern = "src/cafe\u{301}/**".to_string();
+
+    assert!(source_tree_path_is_ignored(
+        "src/café/file.rs",
+        &[decomposed_pattern]
+    ));
+}
+
+#[test]
 fn source_tree_ignore_does_not_swallow_github() {
     let patterns = vec![".git/**".to_string()];
 

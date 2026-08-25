@@ -249,6 +249,11 @@ impl LedgerPosture {
     }
 
     /// PR-summary movement projection honoring `touched_in_diff` attribution.
+    ///
+    /// The flag only affects retained, unchanged entries: an untouched entry
+    /// is `inherited`, while a touched entry is `retained`. Introduced and
+    /// removed entries remain `new` and `resolved`, respectively, regardless
+    /// of their posture delta or diff attribution.
     pub fn movement_projection(self, touched_in_diff: bool) -> &'static str {
         match self.movement {
             PresenceMovement::Introduced => "new",

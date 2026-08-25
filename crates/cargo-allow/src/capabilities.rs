@@ -126,7 +126,10 @@ const SOURCE_EXCLUDED: &[&str] = &[
     "runtime_reachability",
     "test_adequacy",
 ];
-const SOURCE_FIXTURES: &[&str] = &["crates/allow-rust/src/line_findings.rs"];
+const SOURCE_FIXTURES: &[&str] = &[
+    "crates/allow-rust/src/line_findings.rs",
+    "crates/allow-rust/src/tests/panic.rs",
+];
 const SOURCE_DOCS: &[&str] = &["docs/claim-boundaries.md", "docs/identity.md"];
 const FILE_LIMITATIONS: &[&str] = &[
     "path_presence_only",
