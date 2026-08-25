@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  Performance: source-tree ignore matching now normalizes each candidate path
+  once and relies on the existing recursive glob matcher for `/**` patterns,
+  removing a redundant normalization and an allocation from the hot path
+  without changing subtree-boundary behavior (#1938).
