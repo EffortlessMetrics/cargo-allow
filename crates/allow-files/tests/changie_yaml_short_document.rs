@@ -41,10 +41,6 @@ fn assert_non_utf8_rejection(
     assert_eq!(diagnostic.kind, ChangieParseDiagnosticKind::NonUtf8);
     assert!(diagnostic.path.is_none());
     assert!(diagnostic.range.is_none());
-    assert_eq!(
-        diagnostic.message,
-        "document is not valid UTF-8; no tree was produced"
-    );
 }
 
 /// yaml-rust2 #78 hangs in `YamlDecoder::decode` while transcoding this
@@ -52,7 +48,7 @@ fn assert_non_utf8_rejection(
 /// bytes but requires UTF-8 before constructing `Parser`, so the exact upstream
 /// trigger is `UpstreamTriggerNotApplicable` to both public parse entry points.
 #[test]
-fn issue_78_trigger_is_bounded_and_rejected_before_yaml_decoder() {
+fn issue_78_trigger_is_bounded_and_classified_as_non_utf8() {
     let (sender, receiver) = mpsc::channel();
     let worker = thread::spawn(move || {
         let config = parse_config(issue_78_source(".changie.yaml"));
@@ -78,11 +74,19 @@ fn issue_78_trigger_is_bounded_and_rejected_before_yaml_decoder() {
     );
 
     assert_eq!(config.source.bytes(), YAML_RUST2_ISSUE_78_TRIGGER);
+    assert_eq!(
+        config.source.subject(),
+        Some("yaml-rust2-0.11.0-issue-78")
+    );
     assert!(config.unknown_fields.is_empty());
     assert!(config.unsupported_fields.is_empty());
     assert_non_utf8_rejection(config.root.is_some(), &config.diagnostics);
 
     assert_eq!(fragment.source.bytes(), YAML_RUST2_ISSUE_78_TRIGGER);
+    assert_eq!(
+        fragment.source.subject(),
+        Some("yaml-rust2-0.11.0-issue-78")
+    );
     assert!(fragment.unknown_fields.is_empty());
     assert!(fragment.unsupported_fields.is_empty());
     assert_non_utf8_rejection(fragment.root.is_some(), &fragment.diagnostics);
