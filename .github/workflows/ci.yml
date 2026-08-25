@@ -415,11 +415,10 @@ jobs:
           path: |
             target/cargo-allow/
 
-  # Cross-platform workspace test proof (#1825): run the workspace test suite
-  # on Windows to guard the platform-specific code paths (path separators,
-  # verbatim prefixes, CRLF, MAIN_SEPARATOR_STR). Kept separate from the main
-  # `test` job so lint/doc/audit feedback stays fast on Linux. Windows-only
-  # for now; macOS can be added when the cost/benefit shifts.
+  # Cross-platform release-set test proof (#1825): run the cargo-allow support
+  # set on Windows and macOS to guard platform-specific code paths (path
+  # separators, verbatim prefixes, CRLF, MAIN_SEPARATOR_STR). Kept separate
+  # from the main `test` job so lint/doc/audit feedback stays fast on Linux.
   # Integrated dogfood lane (#3358): cross-product contracts change here.
   # Governance validation, three-product dogfood, and the simplification
   # audit exercise the products together and stay out of the
@@ -455,14 +454,18 @@ jobs:
       - name: Three-product simplification audit (#2208)
         run: bash scripts/three-product-simplification-audit.sh
 
-  test-windows:
-    runs-on: windows-latest
+  test-cross-platform:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@258712b0b7b1ddf8bddc9fc3b0faca682b2736c3 # v2
         with:
-          key: test-windows
+          key: test-cross-platform-${{ matrix.os }}
       - name: Cargo-allow release-set test suite (#3358)
         # Single line: this job runs under PowerShell, which has no
         # backslash line continuation.
@@ -623,3 +626,4 @@ jobs:
         with:
           arguments: --workspace
           command: check
+
