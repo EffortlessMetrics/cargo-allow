@@ -12,6 +12,7 @@ const ROLLBACK: &str = include_str!("../../../docs/how-to/rollback-cargo-allow-a
 const CI_DOC: &str = include_str!("../../../docs/ci.md");
 const DIFF_WORKFLOW: &str = include_str!("../../../examples/github-actions/cargo-allow-diff.yml");
 const CHECK_WORKFLOW: &str = include_str!("../../../examples/github-actions/cargo-allow-check.yml");
+const RUST_CACHE_ACTION: &str = include_str!("../../../.github/actions/rust-cache/action.yml");
 const SHALLOW_NEGATIVE: &str =
     include_str!("../../../docs/dogfood/fixtures/ci/shallow-checkout-missing-base.yml");
 const PARTIAL_DIFF_ARTIFACTS: &str =
@@ -252,6 +253,36 @@ fn committed_workflow_examples_parse_and_meet_semantic_contract() {
             "partial workflow fixture must preserve `{required}`"
         );
     }
+}
+
+#[test]
+fn ci_cache_contract_is_platform_scoped_and_pr_save_closed() {
+    for required in [
+        "using: composite",
+        "Swatinem/rust-cache@258712b0b7b1ddf8bddc9fc3b0faca682b2736c3",
+        "prefix-key: cargo-allow-cache-v1-${{ runner.os }}-${{ runner.arch }}-${{ inputs.toolchain }}-${{ hashFiles('Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml') }}",
+        "shared-key: ${{ inputs.lane }}",
+        "save-if: ${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}",
+    ] {
+        assert!(
+            RUST_CACHE_ACTION.contains(required),
+            "Rust cache action is missing `{required}`"
+        );
+    }
+
+    let workflow = normalize_lf(include_str!("../../../.github/workflows/ci.yml"));
+    assert!(
+        !workflow.contains("Swatinem/rust-cache@"),
+        "CI lanes must consume the shared cache policy, not configure rust-cache directly"
+    );
+
+    let cache_steps = workflow.matches("uses: ./.github/actions/rust-cache").count();
+    assert!(cache_steps >= 10, "expected the shared cache policy on Linux proof lanes");
+    assert_eq!(
+        cache_steps,
+        workflow.matches("lane:").count(),
+        "every cache step must declare a stable lane namespace"
+    );
 }
 
 #[test]
