@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use crate::AllowEntry;
+use unicode_normalization::UnicodeNormalization;
 
 /// Normalize a path for source-tree identity and matching.
 ///
@@ -45,7 +46,6 @@ pub fn normalize_path(path: impl AsRef<Path>) -> String {
     // NFC-normalize the text so that composed/decomposed Unicode forms of the
     // same path produce the same identity key (#1823). This prevents
     // cross-platform (macOS NFD vs Linux NFC) matching divergence.
-    use unicode_normalization::UnicodeNormalization;
     let nfc: String = text.nfc().collect();
     // Strip the Windows verbatim prefix (\\?\) so it doesn't survive as path
     // segments. Drive letters and plain UNC roots are preserved (see docs).
@@ -109,9 +109,13 @@ pub fn glob_matches(pattern: &str, path: &Path) -> bool {
 pub const GLOB_MATCH_MAX_STEPS: u32 = 10_000;
 
 pub fn glob_matches_str(pattern: &str, path: &str) -> bool {
-    let p = pattern.replace('\\', "/");
+    let p = normalize_glob_pattern(pattern);
     let mut steps = 0;
     glob_match_tokens(&split_glob(&p), &split_glob(path), &mut steps)
+}
+
+fn normalize_glob_pattern(pattern: &str) -> String {
+    pattern.replace('\\', "/").nfc().collect()
 }
 
 pub fn source_tree_path_matches_filter(item_path: &str, filter_path: &str) -> bool {
@@ -137,9 +141,15 @@ pub fn source_tree_path_matches_filter(item_path: &str, filter_path: &str) -> bo
 
 pub fn source_tree_path_is_ignored(path: impl AsRef<Path>, patterns: &[String]) -> bool {
     let normalized = normalize_path(path);
-    patterns
-        .iter()
-        .any(|pattern| glob_matches_str(pattern, &normalized))
+    patterns.iter().any(|pattern| {
+        let normalized_pattern = normalize_glob_pattern(pattern);
+        let mut steps = 0;
+        glob_match_tokens(
+            &split_glob(&normalized_pattern),
+            &split_glob(&normalized),
+            &mut steps,
+        )
+    })
 }
 
 pub fn source_tree_scope_has_wildcard(scope: &str) -> bool {
