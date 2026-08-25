@@ -293,6 +293,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -400,6 +402,8 @@ jobs:
           RUSTDOCFLAGS: -D warnings
       - run: cargo run -p cargo-allow -- audit --format json --output target/cargo-allow/audit.json
       - run: cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
+      - name: Verify PR template diff evidence
+        run: cargo run -p cargo-allow -- diff --base origin/main --format markdown
       - name: Spec-system cutover receipt (#2568)
         run: bash scripts/spec-system-cutover-receipt.sh
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
