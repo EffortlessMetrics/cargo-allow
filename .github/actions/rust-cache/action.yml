@@ -1,0 +1,26 @@
+name: cargo-allow Rust cache
+description: Restore a platform- and toolchain-scoped Rust cache without letting PRs publish reusable state.
+
+inputs:
+  lane:
+    description: Stable cache namespace for the proof lane.
+    required: true
+  toolchain:
+    description: Rust toolchain identity used by the lane.
+    required: false
+    default: stable
+
+runs:
+  using: composite
+  steps:
+    - uses: Swatinem/rust-cache@258712b0b7b1ddf8bddc9fc3b0faca682b2736c3 # v2
+      with:
+        # rust-cache adds its own lockfile and toolchain inputs. Keep the
+        # repository identity explicit here as well so a lane cannot silently
+        # share a target directory after a workspace/toolchain movement.
+        prefix-key: cargo-allow-cache-v1-${{ runner.os }}-${{ runner.arch }}-${{ inputs.toolchain }}-${{ hashFiles('Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml') }}
+        shared-key: ${{ inputs.lane }}
+        # Pull requests may restore the default-branch cache but never save or
+        # overwrite reusable state. Cache hits remain performance evidence;
+        # every proof step below still executes.
+        save-if: ${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
