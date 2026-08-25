@@ -106,6 +106,10 @@ jobs:
         run: bash scripts/exact-candidate-install-journey.sh
       - name: Exact candidate journey contract characterization (#3357)
         run: bash scripts/test-exact-candidate-install-journey.sh
+      - name: Exact installed upgrade and rollback journey (#3853)
+        run: bash scripts/exact-upgrade-rollback-journey.sh
+      - name: Exact upgrade and rollback contract characterization (#3853)
+        run: bash scripts/test-exact-upgrade-rollback-journey.sh
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
@@ -131,6 +135,12 @@ jobs:
         with:
           name: exact-candidate-install-journey-receipt
           path: target/exact-candidate-install-journey/exact-candidate-install-journey.receipt.json
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: exact-upgrade-rollback-journey-receipt
+          path: target/exact-upgrade-rollback-journey/exact-upgrade-rollback-journey.receipt.json
           if-no-files-found: warn
   # Product-scoped candidate lanes (#3358): one product's experimental
   # packaging failure must not block the cargo-allow patch/release lanes.
