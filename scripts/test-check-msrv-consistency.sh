@@ -77,8 +77,8 @@ msrv="$(awk '
 
 drift_case "toolchain pin drift" ".github/workflows/ci.yml" \
   "dtolnay/rust-toolchain@${msrv}.0" "dtolnay/rust-toolchain@1.100.0"
-drift_case "cache key drift" ".github/workflows/ci.yml" \
-  "key: msrv-${msrv}" "key: msrv-1.100"
+drift_case "cache namespace drift" ".github/workflows/ci.yml" \
+  "lane: msrv" "lane: msrv-drift"
 drift_case "attested release manifest drift" ".github/workflows/release.yml" \
   "MSRV: \"${msrv}\"" "MSRV: \"1.100\""
 # The toolchain tag is applied via `rustup default`, which rust-toolchain.toml
