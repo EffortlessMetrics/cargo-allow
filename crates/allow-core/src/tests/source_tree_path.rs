@@ -1,10 +1,69 @@
 use std::path::PathBuf;
 
 use crate::{
-    AllowEntry, FindingKind, Lifecycle, Selector, allow_entry_broad_scope, glob_matches_str,
-    normalize_path, source_tree_path_is_ignored, source_tree_path_matches_filter,
-    source_tree_scope_has_wildcard,
+    AllowEntry, Finding, FindingKind, Lifecycle, Selector, Span, StructuralIdentity,
+    allow_entry_broad_scope, finding_identity_key, glob_matches_str, normalize_path,
+    source_tree_path_is_ignored, source_tree_path_matches_filter, source_tree_scope_has_wildcard,
 };
+
+/// Exercise the platform-shaped inputs at the owning semantic seams. The
+/// projection retains repository-relative identity and matching posture while
+/// excluding host path spelling that is not part of the contract.
+#[test]
+fn cross_platform_semantics() {
+    let paths = [
+        "src\\unicode\\café.rs",
+        "src/unicode/café.rs",
+        "./src//unicode/café.rs",
+    ];
+    let normalized: Vec<_> = paths.iter().map(|path| normalize_path(path)).collect();
+
+    assert_eq!(
+        normalized,
+        vec![
+            "src/unicode/café.rs",
+            "src/unicode/café.rs",
+            "src/unicode/café.rs",
+        ]
+    );
+    assert!(normalized.iter().all(|path| {
+        glob_matches_str("src/**/café.rs", path)
+            && source_tree_path_matches_filter(path, "src/**/*.rs")
+            && !source_tree_path_is_ignored(path, &["target/**".to_string()])
+    }));
+
+    let identity = StructuralIdentity {
+        language: "rust".to_string(),
+        crate_name: Some("fixture".to_string()),
+        module: Some("unicode".to_string()),
+        container: None,
+        ast_kind: "function".to_string(),
+        symbol: Some("unwrap".to_string()),
+        callee: None,
+        macro_name: None,
+        lint: None,
+        receiver_fingerprint: None,
+        target_fingerprint: None,
+        normalized_snippet_hash: Some("fnv1a64:fixture".to_string()),
+        line_hint: None,
+        column_hint: None,
+    };
+    let findings: Vec<_> = normalized
+        .iter()
+        .map(|path| Finding {
+            kind: FindingKind::Panic,
+            family: Some("unwrap".to_string()),
+            path: path.as_str().into(),
+            span: Some(Span { line: 2, column: 4 }),
+            identity: identity.clone(),
+            message: "fixture".to_string(),
+            ledger: None,
+        })
+        .map(|finding| finding_identity_key(&finding))
+        .collect();
+
+    assert!(findings.windows(2).all(|pair| pair[0] == pair[1]));
+}
 
 #[test]
 fn glob_supports_double_star() {
