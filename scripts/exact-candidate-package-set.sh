@@ -1106,6 +1106,13 @@ with open(os.environ["RECEIPT_PATH"], "w", encoding="utf-8") as handle:
     handle.write("\n")
 PY
 
+log "reconciling actual .crate bytes into ${exact_parent}/final-packaged-surface.receipt.json"
+python3 "${SCRIPT_ROOT}/scripts/final-packaged-surface.py" \
+  --package-set-receipt "${receipt}" \
+  --packages-dir "${packages_dir}" \
+  --output "${exact_parent}/final-packaged-surface.receipt.json" \
+  --expected-version "${version}"
+
 log "ExactCandidatePackageSetV1 Passed for workspace ${version}"
 log "receipt: ${receipt}"
 
