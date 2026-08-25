@@ -99,6 +99,18 @@ fn non_utf8_file_name() -> OsString {
     OsString::from_vec(b"nonutf8-\xff.rs".to_vec())
 }
 
+#[cfg(target_os = "macos")]
+fn unsupported_non_utf8_path(error: &std::io::Error) -> bool {
+    // Darwin reports EILSEQ (illegal byte sequence) as errno 92 when its
+    // filesystem rejects a path containing invalid UTF-8 bytes.
+    error.raw_os_error() == Some(92)
+}
+
+#[cfg(not(target_os = "macos"))]
+fn unsupported_non_utf8_path(_error: &std::io::Error) -> bool {
+    false
+}
+
 #[cfg(windows)]
 fn non_utf8_file_name() -> OsString {
     use std::os::windows::ffi::OsStringExt;
@@ -174,10 +186,14 @@ fn build_parity_fixture(label: &str) -> Fixture {
             // the cross-platform CI lane, reject invalid UTF-8 filename
             // bytes before Git can see them. Keep this capability gap
             // explicit rather than making the entire parity fixture fail.
-            eprintln!(
-                "skipped: filesystem cannot create non-UTF-8 fixture path ({err})"
-            );
-            None
+            if unsupported_non_utf8_path(&err) {
+                eprintln!(
+                    "skipped: filesystem cannot create non-UTF-8 fixture path ({err})"
+                );
+                None
+            } else {
+                std::panic::panic_any(format!("write {non_utf8_path:?}: {err}"));
+            }
         }
     };
 
