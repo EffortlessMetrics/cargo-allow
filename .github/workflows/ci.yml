@@ -626,4 +626,3 @@ jobs:
         with:
           arguments: --workspace
           command: check
-
