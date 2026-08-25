@@ -1,0 +1,3 @@
+kind: Added
+body: >-
+  Derive the exact package publication DAG and row-unlock plan for the frozen release graph.
