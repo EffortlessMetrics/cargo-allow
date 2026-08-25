@@ -1,10 +1,18 @@
-use allow_inventory::{InventoryOptions, inventory_files};
+use allow_inventory::{inventory_files, InventoryOptions};
 use std::fs;
 use std::hint::black_box;
 use std::path::PathBuf;
 use std::time::Instant;
 
-fn fixture() -> Option<PathBuf> {
+struct Fixture(PathBuf);
+
+impl Drop for Fixture {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.0);
+    }
+}
+
+fn fixture() -> Option<Fixture> {
     let root = std::env::temp_dir().join(format!(
         "cargo-allow-inventory-bench-{}",
         std::process::id()
@@ -18,11 +26,11 @@ fn fixture() -> Option<PathBuf> {
             return None;
         }
     }
-    Some(root)
+    Some(Fixture(root))
 }
 
 fn inventory() -> usize {
-    let Some(root) = fixture() else {
+    let fixture = fixture() else {
         eprintln!("unable to create inventory benchmark fixture");
         return 0;
     };
@@ -33,7 +41,7 @@ fn inventory() -> usize {
     let start = Instant::now();
     let mut files = 0;
     for _ in 0..10 {
-        match inventory_files(&root, &options) {
+        match inventory_files(&fixture.0, &options) {
             Ok(inventory) => files += inventory.len(),
             Err(error) => {
                 eprintln!("inventory benchmark failed: {error}");
