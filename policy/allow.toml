@@ -8640,6 +8640,28 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-11142"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/interop/sibling-tools.md"
+owner = "core/devex"
+classification = "interop_guide"
+reason = "Documents interop boundaries and contracts between cargo-allow and sibling tools."
+evidence = ["issue:3768", "issue:3790"]
+created = "2026-08-24"
+review_after = "2027-02-24"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/interop/sibling-tools.md"
+target_fingerprint = "md"
+glob = "docs/interop/sibling-tools.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-0308"
 kind = "non_rust_file"
 family = "documentation"
