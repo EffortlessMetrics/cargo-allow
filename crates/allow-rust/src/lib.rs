@@ -268,7 +268,7 @@ pub fn scan_rust_files_cached(
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "syntax"))]
 mod tests;
 
 /// Scanner generation binding persisted scan-fact stores (#2571): bumping the
