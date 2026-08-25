@@ -26,7 +26,7 @@ jobs:
         with:
           toolchain: stable
           components: rustfmt, clippy
-      - name: Repair generator escapes and apply exact closeout patch
+      - name: Repair generator output and apply exact closeout patch
         shell: bash
         run: |
           python - <<'PY'
@@ -36,6 +36,7 @@ jobs:
           replacements = {
               "new_test = '''": "new_test = r'''",
               "world_test = '''": "world_test = r'''",
+              '        if outside\n            .join("cargo-allow/cache/scan-cache.v2.bin")\n            .exists()\n        {': '        if outside.join("cargo-allow/cache/scan-cache.v2.bin").exists() {',
           }
           for old, new in replacements.items():
               if text.count(old) != 1:
