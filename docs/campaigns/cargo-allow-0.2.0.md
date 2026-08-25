@@ -60,3 +60,30 @@ Controlling issue: [#3768](https://github.com/EffortlessMetrics/cargo-allow/issu
 ## Claim Boundary
 
 This campaign map provides a structured overview of active controller #3768. Live GitHub issues own authoritative acceptance criteria and execution state.
+
+## Closeout contract
+
+The checked active-child denominator is enforced by
+`.github/workflows/campaign-issue-closeout.yml`. Before closing a checked child,
+the issue body must retain one bounded `CampaignIssueCloseoutV1` payload after
+the marker below:
+
+~~~text
+<!-- cargo-allow:campaign-closeout.v1 -->
+~~~
+```json
+{
+  "schema_id": "cargo-allow.campaign-issue-closeout.v1",
+  "issue": 3846,
+  "result": "Complete",
+  "closeout_id": "CARGO-ALLOW-CLOSEOUT-3846",
+  "merged_pr": 3854
+}
+```
+
+`Complete` requires a merged PR targeting `main` whose merge commit remains
+reachable from `main`. `Duplicate` requires an accepted replacement issue;
+`NotPlanned` requires a bounded reason. Missing, malformed, stale, or
+instrument-failure evidence posts one bounded diagnostic and reopens the issue.
+The guard is scoped to the checked denominator, is idempotent, and cannot
+merge, publish, tag, close issues, or change release/live controls.

@@ -77,10 +77,13 @@ analyze:
 If a future scanner adds any of these capabilities, the report wording should
 name the exact capability and the version that introduced it.
 
-For example, a syntax-visible `unwrap()` call can be reported, but an `unwrap()`
-written inside an `assert!(...)` token tree is outside the current scanner
-surface. That boundary is intentional until cargo-allow has a parser lane that
-explicitly understands macro token-tree contents without executing macros.
+For example, syntax-visible panic-family macro invocations, including
+`assert!(...)`, `assert_eq!(...)`, and `assert_ne!(...)`, can be reported by
+their outer macro identity. An `unwrap()` written inside an assertion's token
+tree remains outside the current scanner surface: cargo-allow does not claim to
+parse arbitrary macro arguments or expand macros. That boundary is intentional
+until a parser lane explicitly understands macro token-tree contents without
+executing macros.
 
 Root and inventory discovery is source-tree based: explicit root, git root, then
 current directory, with git-tracked inventory preferred and symlink-safe
