@@ -3,7 +3,7 @@ use std::hint::black_box;
 use std::path::PathBuf;
 use std::time::Instant;
 
-fn classification() {
+fn classification() -> usize {
     let paths: Vec<_> = (0..2_000)
         .map(|index| {
             let path = match index % 5 {
@@ -25,6 +25,7 @@ fn classification() {
         "classify_path_2000: {:?} ({classified} classified)",
         start.elapsed()
     );
+    classified
 }
 
 fn main() {
