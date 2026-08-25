@@ -187,9 +187,7 @@ fn build_parity_fixture(label: &str) -> Fixture {
             // bytes before Git can see them. Keep this capability gap
             // explicit rather than making the entire parity fixture fail.
             if unsupported_non_utf8_path(&err) {
-                eprintln!(
-                    "skipped: filesystem cannot create non-UTF-8 fixture path ({err})"
-                );
+                eprintln!("skipped: filesystem cannot create non-UTF-8 fixture path ({err})");
                 None
             } else {
                 std::panic::panic_any(format!("write {non_utf8_path:?}: {err}"));
