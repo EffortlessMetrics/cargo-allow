@@ -1,8 +1,8 @@
 use allow_core::FindingKind;
 use allow_policy_legacy::{
-    all_legacy_lane_descriptors, generated_findings_from_gitattributes_text,
-    legacy_policy_source_for_path, migration_debt_classes, workflow_findings_from_sources,
-    DebtPolicy, MigrationDebtClass,
+    DebtPolicy, MigrationDebtClass, all_legacy_lane_descriptors,
+    generated_findings_from_gitattributes_text, legacy_policy_source_for_path,
+    migration_debt_classes, workflow_findings_from_sources,
 };
 use std::path::{Path, PathBuf};
 
@@ -15,12 +15,10 @@ fn public_finding_facade_keeps_file_surface_families_available() {
     assert_eq!(generated[0].kind, FindingKind::GeneratedCode);
     assert_eq!(generated[0].path, PathBuf::from("generated/schema.json"));
 
-    let workflow = workflow_findings_from_sources(vec![
-        (
-            PathBuf::from(".github/workflows/ci.yml"),
-            "steps:\n  - uses: actions/checkout@v4\n".to_string(),
-        ),
-    ]);
+    let workflow = workflow_findings_from_sources(vec![(
+        PathBuf::from(".github/workflows/ci.yml"),
+        "steps:\n  - uses: actions/checkout@v4\n".to_string(),
+    )]);
     assert!(workflow.iter().any(|finding| {
         finding.family.as_deref() == Some("github_workflow")
             && finding.path == Path::new(".github/workflows/ci.yml")
