@@ -32,17 +32,33 @@ fn require(cond: bool, msg: &str) -> Result<(), io::Error> {
 fn parse_rc_tag(tag: &str) -> Result<(u64, u64, u64, u64), io::Error> {
     // Expected format: major.minor.patch-rc.N
     let parts: Vec<&str> = tag.split("-rc.").collect();
-    if parts.len() != 2 {
-        return Err(io::Error::other("invalid rc format"));
-    }
-    let ver_parts: Vec<&str> = parts[0].split(".").collect();
-    if ver_parts.len() != 3 {
-        return Err(io::Error::other("invalid semver"));
-    }
-    let major: u64 = ver_parts[0].parse().map_err(io::Error::other)?;
-    let minor: u64 = ver_parts[1].parse().map_err(io::Error::other)?;
-    let patch: u64 = ver_parts[2].parse().map_err(io::Error::other)?;
-    let rc_num: u64 = parts[1].parse().map_err(io::Error::other)?;
+    let prefix = parts
+        .first()
+        .copied()
+        .ok_or_else(|| io::Error::other("invalid rc format"))?;
+    let rc_str = parts
+        .get(1)
+        .copied()
+        .ok_or_else(|| io::Error::other("missing rc num"))?;
+
+    let ver_parts: Vec<&str> = prefix.split('.').collect();
+    let major_str = ver_parts
+        .first()
+        .copied()
+        .ok_or_else(|| io::Error::other("missing major"))?;
+    let minor_str = ver_parts
+        .get(1)
+        .copied()
+        .ok_or_else(|| io::Error::other("missing minor"))?;
+    let patch_str = ver_parts
+        .get(2)
+        .copied()
+        .ok_or_else(|| io::Error::other("missing patch"))?;
+
+    let major: u64 = major_str.parse().map_err(io::Error::other)?;
+    let minor: u64 = minor_str.parse().map_err(io::Error::other)?;
+    let patch: u64 = patch_str.parse().map_err(io::Error::other)?;
+    let rc_num: u64 = rc_str.parse().map_err(io::Error::other)?;
     Ok((major, minor, patch, rc_num))
 }
 
