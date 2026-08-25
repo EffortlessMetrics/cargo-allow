@@ -1,0 +1,4 @@
+kind: Added
+body: >-
+  Add typed CargoAllowReleaseRecoveryAuthorizationV1 and recovery plan schemas,
+  separating incident-bound recovery authority from clean publication authority.
