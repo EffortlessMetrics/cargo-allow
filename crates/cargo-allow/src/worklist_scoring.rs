@@ -43,6 +43,7 @@ pub(crate) fn work_item_kind_for_status(
         MatchStatus::BaselineDebt => BASELINE_DEBT.to_string(),
         MatchStatus::ReviewDue | MatchStatus::LocationDrift => REVIEW_DUE.to_string(),
         MatchStatus::Matched => MATCHED.to_string(),
+        _ => "unknown_match_status".to_string(),
     }
 }
 

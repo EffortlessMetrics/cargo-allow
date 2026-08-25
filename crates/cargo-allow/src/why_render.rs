@@ -344,6 +344,12 @@ no candidate is selected as authoritative.\n\n",
 Use `cargo-allow explain <id>` when an allow ID is present, or `cargo-allow check --mode strict` for the full gate view.\n\n",
             );
         }
+        _ => {
+            out.push_str("## Unknown match status\n\n");
+            out.push_str(
+                "This result state is newer than the renderer. Treat the finding as requiring review and inspect the machine-readable outcome before taking action.\n\n",
+            );
+        }
     }
 
     out.push_str("## Suggested next steps\n\n");

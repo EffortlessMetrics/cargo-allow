@@ -362,6 +362,7 @@ fn sarif_rule_description(status: MatchStatus) -> &'static str {
         MatchStatus::EvidenceMissing => "Allow entry is missing required evidence.",
         MatchStatus::BaselineDebt => "Generated baseline debt remains in policy.",
         MatchStatus::Matched => "Finding matched policy.",
+        _ => "Unknown match status requires review.",
     }
 }
 
@@ -378,5 +379,6 @@ fn sarif_level(status: MatchStatus) -> &'static str {
         }
         MatchStatus::Stale => "note",
         MatchStatus::Matched => "none",
+        _ => "warning",
     }
 }

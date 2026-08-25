@@ -365,6 +365,7 @@ fn worklist_kind_arg(
                 .and_then(|finding| finding.family.as_deref())
                 .or_else(|| entry.and_then(|entry| entry.family.as_deref())),
         ),
+        _ => None,
     }
 }
 
