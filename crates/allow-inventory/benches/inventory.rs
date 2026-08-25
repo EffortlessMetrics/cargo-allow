@@ -30,7 +30,7 @@ fn fixture() -> Option<Fixture> {
 }
 
 fn inventory() -> usize {
-    let fixture = fixture() else {
+    let Some(fixture) = fixture() else {
         eprintln!("unable to create inventory benchmark fixture");
         return 0;
     };
