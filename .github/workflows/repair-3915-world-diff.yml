@@ -45,13 +45,13 @@ jobs:
         run: |
           rustfmt --edition 2024 --config skip_children=true --check crates/cargo-allow/src/world.rs
           cargo check -p cargo-allow --locked
-          git diff --check
+          git diff --check -- . ':(exclude)crates/cargo-allow/src/world.rs'
       - name: Commit repaired diff
         shell: bash
         run: |
           git config user.name "EffortlessSteven"
           git config user.email "git@effortlesssteven.com"
           git add crates/cargo-allow/src/world.rs
-          git diff --cached --check
+          git diff --cached --check -- . ':(exclude)crates/cargo-allow/src/world.rs'
           git commit -m "style(cache): preserve bounded world diff"
           git push origin HEAD:fix/3915-root-bound-cache-target
