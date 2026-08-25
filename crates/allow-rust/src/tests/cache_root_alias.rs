@@ -108,7 +108,8 @@ fn root_bound_store_preserves_cached_and_uncached_scan_semantics() -> Result<(),
 }
 
 #[test]
-fn injected_temp_artifact_is_a_destination_change_not_an_instrument_failure() -> Result<(), String> {
+fn injected_temp_artifact_is_a_destination_change_not_an_instrument_failure() -> Result<(), String>
+{
     let fixture = TempRoot::new("temp-injection")?;
     let files = prepare_source(&fixture.0)?;
     let mut store = dirty_root_bound_store(&fixture.0, &files)?;
@@ -222,13 +223,8 @@ fn replaced_destination_is_a_destination_change_not_an_instrument_failure() -> R
     )
     .map_err(|error| error.to_string())?;
     let mut memory = ScanCache::new();
-    scan_rust_files_cached_with_root_bound_store(
-        &fixture.0,
-        &files,
-        &mut memory,
-        &mut store,
-    )
-    .map_err(|error| error.to_string())?;
+    scan_rust_files_cached_with_root_bound_store(&fixture.0, &files, &mut memory, &mut store)
+        .map_err(|error| error.to_string())?;
 
     let result = store.flush_with_test_hook(&|store_dir| {
         let destination = store_dir.join("scan-cache.v2.bin");
@@ -249,10 +245,8 @@ fn replaced_destination_is_a_destination_change_not_an_instrument_failure() -> R
         result,
         Err(ScanCacheTargetDispositionV1::DestinationAliasOrTypeChange)
     );
-    let replacement = fs::read(
-        ScanCacheStore::default_dir(&fixture.0).join("scan-cache.v2.bin"),
-    )
-    .map_err(|error| error.to_string())?;
+    let replacement = fs::read(ScanCacheStore::default_dir(&fixture.0).join("scan-cache.v2.bin"))
+        .map_err(|error| error.to_string())?;
     assert_eq!(replacement, b"replacement destination");
     Ok(())
 }

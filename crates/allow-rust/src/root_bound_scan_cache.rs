@@ -440,9 +440,7 @@ fn ensure_bound_regular_file(path: &Path) -> Result<Handle, ScanCacheTargetDispo
     Ok(handle)
 }
 
-fn bind_optional_regular_file(
-    path: &Path,
-) -> Result<Option<Handle>, ScanCacheTargetDispositionV1> {
+fn bind_optional_regular_file(path: &Path) -> Result<Option<Handle>, ScanCacheTargetDispositionV1> {
     match fs::symlink_metadata(path) {
         Ok(metadata) => {
             if metadata_is_indirection(&metadata) || !metadata.is_file() {
