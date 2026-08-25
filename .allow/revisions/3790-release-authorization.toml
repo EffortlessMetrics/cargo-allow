@@ -1,0 +1,7 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11158"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:cd4df6a118fb7fc0ec0ecf2a67fa1e442ae1e962ddd29566417f1e27d6d45581"
+reason = "receipt for .allow/revisions/3790-release-authorization.toml (#3790)"
