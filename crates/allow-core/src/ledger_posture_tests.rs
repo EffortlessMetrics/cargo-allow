@@ -44,7 +44,7 @@ fn movement_projection_is_exhaustive_over_movement_delta_and_diff() {
     ];
 
     for &(movement, introduced_or_removed_projection) in &expected {
-        for &delta in &PostureDelta::ALL {
+        for &delta in PostureDelta::ALL {
             let posture = LedgerPosture::new(movement, delta);
             assert_eq!(
                 posture.movement_projection(false),
