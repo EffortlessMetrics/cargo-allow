@@ -19,7 +19,7 @@ fn fixture() -> PathBuf {
     root
 }
 
-fn inventory() {
+fn inventory() -> usize {
     let root = fixture();
     let options = InventoryOptions {
         include_untracked: true,
@@ -36,6 +36,7 @@ fn inventory() {
         "inventory_files_2000: {:?} ({files} files)",
         start.elapsed()
     );
+    files
 }
 
 fn main() {
