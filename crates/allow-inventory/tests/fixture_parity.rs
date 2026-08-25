@@ -10,6 +10,7 @@
 
 use std::ffi::{OsStr, OsString};
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -84,6 +85,17 @@ fn submodule_capability_unsupported(stderr: &str) -> bool {
 fn write_file(path: PathBuf, contents: &str) {
     fs::write(&path, contents)
         .unwrap_or_else(|err| std::panic::panic_any(format!("write {}: {err}", path.display())));
+}
+
+#[cfg(unix)]
+fn non_utf8_path_unsupported(err: &io::Error) -> bool {
+    // EILSEQ is 84 on Linux and 92 on macOS/BSD.
+    matches!(err.raw_os_error(), Some(84 | 92))
+}
+
+#[cfg(not(unix))]
+fn non_utf8_path_unsupported(_err: &io::Error) -> bool {
+    false
 }
 
 fn run_inventory(root: &Path, options: &InventoryOptions) -> Inventory {
@@ -169,7 +181,7 @@ fn build_parity_fixture(label: &str) -> Fixture {
     let non_utf8_path = root.join(&non_utf8_name);
     let non_utf8_rel = match fs::write(&non_utf8_path, b"non-utf8 content\n") {
         Ok(()) => Some(PathBuf::from(&non_utf8_name)),
-        Err(err) if err.kind() == std::io::ErrorKind::InvalidInput => {
+        Err(err) if non_utf8_path_unsupported(&err) => {
             // Some Unix filesystems, including the hosted macOS runner's
             // filesystem, reject raw non-UTF-8 path bytes even though the
             // platform exposes Unix path APIs. The inventory contract still
