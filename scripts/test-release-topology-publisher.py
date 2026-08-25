@@ -131,6 +131,32 @@ def exercise_preflight_schema_contract() -> None:
     )
 
 
+def exercise_shared_topology_contract() -> None:
+    """Keep the shared rehearsal bound to the four V2 package identities.
+
+    The cargo-allow release candidate intentionally overlaps only three shared
+    packages.  The standalone shared rehearsal must remain a distinct,
+    complete four-package candidate, including the source-index package that
+    is not part of the cargo-allow install closure.
+    """
+    topology, rows = PUBLISHER.load_rows(PUBLISHER.DEFAULT_TOPOLOGY, "shared")
+    assert topology["topology_id"]
+    assert [row["cargo_package_name"] for row in rows] == [
+        "effortless-repo-protocol",
+        "effortless-repo-snapshot",
+        "effortless-repo-edit",
+        "effortless-rust-source-index",
+    ]
+    assert [row["release_order"] for row in rows] == [80, 85, 90, 230]
+    assert all(row["product_family"] == "shared" for row in rows)
+    assert all(row["package_version"] == "0.1.0" for row in rows)
+
+    cargo_allow_rows = PUBLISHER.load_rows(PUBLISHER.DEFAULT_TOPOLOGY, "cargo-allow")[1]
+    assert "effortless-rust-source-index" not in {
+        row["cargo_package_name"] for row in cargo_allow_rows
+    }
+
+
 def row(state: str, *, local: str, registry: str | None) -> dict[str, Any]:
     return PUBLISHER.receipt_row(
         {
@@ -392,6 +418,7 @@ def main() -> None:
     exercise_main_receipt_shapes()
     exercise_shared_registry_preflight()
     exercise_preflight_schema_contract()
+    exercise_shared_topology_contract()
     exercise_cargo_allow_checksum_equality()
     source = PUBLISHER_PATH.read_text(encoding="utf-8")
     main_start = source.index("def main()")
