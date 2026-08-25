@@ -11,7 +11,6 @@ use crate::ScanCacheStore;
 use same_file::Handle;
 use std::fs::{self, Metadata};
 use std::io::ErrorKind;
-use std::ops::{Deref, DerefMut};
 use std::path::{Component, Path, PathBuf};
 
 const STORE_FILE_NAME: &str = "scan-cache.v2.bin";
@@ -74,6 +73,7 @@ pub struct RootBoundScanCacheStore {
     requested_root: PathBuf,
     canonical_root: PathBuf,
     root_handle: Handle,
+    store_dir: PathBuf,
     bound_parent_path: PathBuf,
     bound_parent_handle: Handle,
     root_disposition: ScanCacheTargetDispositionV1,
@@ -149,6 +149,7 @@ impl RootBoundScanCacheStore {
             requested_root: requested_root.to_path_buf(),
             canonical_root,
             root_handle,
+            store_dir,
             bound_parent_path,
             bound_parent_handle,
             root_disposition,
@@ -170,31 +171,22 @@ impl RootBoundScanCacheStore {
     /// posture, then persist through the existing atomic store implementation.
     pub fn flush_with_disposition(&mut self) -> Result<(), ScanCacheTargetDispositionV1> {
         self.validate_current_binding()?;
-        let (parent_path, parent_handle) =
-            bind_deepest_existing_parent(&self.canonical_root, self.store_dir())?;
-        validate_known_artifacts(self.store_dir())?;
+        bind_deepest_existing_parent(&self.canonical_root, &self.store_dir)?;
+        validate_known_artifacts(&self.store_dir)?;
 
         if !self.store.flush() {
             self.validate_current_binding()?;
-            bind_deepest_existing_parent(&self.canonical_root, self.store_dir())?;
-            validate_known_artifacts(self.store_dir())?;
+            bind_deepest_existing_parent(&self.canonical_root, &self.store_dir)?;
+            validate_known_artifacts(&self.store_dir)?;
             return Err(ScanCacheTargetDispositionV1::InstrumentFailure);
         }
 
         self.validate_current_binding()?;
         let (current_parent_path, current_parent_handle) =
-            bind_deepest_existing_parent(&self.canonical_root, self.store_dir())?;
-        validate_known_artifacts(self.store_dir())?;
-        self.bound_parent_path = if current_parent_path == parent_path {
-            parent_path
-        } else {
-            current_parent_path
-        };
-        self.bound_parent_handle = if self.bound_parent_path == parent_path {
-            parent_handle
-        } else {
-            current_parent_handle
-        };
+            bind_deepest_existing_parent(&self.canonical_root, &self.store_dir)?;
+        validate_known_artifacts(&self.store_dir)?;
+        self.bound_parent_path = current_parent_path;
+        self.bound_parent_handle = current_parent_handle;
         Ok(())
     }
 
@@ -203,22 +195,8 @@ impl RootBoundScanCacheStore {
         self.flush_with_disposition().is_ok()
     }
 
-    fn store_dir(&self) -> &Path {
-        self.store_dir_path()
-    }
-
-    fn store_dir_path(&self) -> &Path {
-        // The inner store intentionally keeps its path private. Re-derive the
-        // destination from the already-bound canonical root instead of
-        // exposing or trusting another path source.
-        //
-        // ScanCacheStore::default_dir is deterministic and side-effect free.
-        // Retaining the derived path in this method avoids a second authority.
-        self.canonical_root
-            .join("target")
-            .join("cargo-allow")
-            .join("cache")
-            .as_path()
+    pub(crate) fn inner_mut(&mut self) -> &mut ScanCacheStore {
+        &mut self.store
     }
 
     fn validate_current_binding(&self) -> Result<(), ScanCacheTargetDispositionV1> {
@@ -233,20 +211,6 @@ impl RootBoundScanCacheStore {
             &self.bound_parent_handle,
             ScanCacheTargetDispositionV1::DestinationAliasOrTypeChange,
         )
-    }
-}
-
-impl Deref for RootBoundScanCacheStore {
-    type Target = ScanCacheStore;
-
-    fn deref(&self) -> &Self::Target {
-        &self.store
-    }
-}
-
-impl DerefMut for RootBoundScanCacheStore {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.store
     }
 }
 
