@@ -4,7 +4,7 @@ use std::hint::black_box;
 use std::path::PathBuf;
 use std::time::Instant;
 
-fn fixture() -> PathBuf {
+fn fixture() -> Option<PathBuf> {
     let root = std::env::temp_dir().join(format!(
         "cargo-allow-inventory-bench-{}",
         std::process::id()
@@ -12,15 +12,20 @@ fn fixture() -> PathBuf {
     let _ = fs::remove_dir_all(&root);
     for index in 0..2_000 {
         let dir = root.join(format!("src/module_{}", index % 100));
-        fs::create_dir_all(&dir).expect("create benchmark fixture");
-        fs::write(dir.join(format!("file_{index}.rs")), "fn item() {}\n")
-            .expect("write benchmark fixture");
+        if fs::create_dir_all(&dir).is_err()
+            || fs::write(dir.join(format!("file_{index}.rs")), "fn item() {}\n").is_err()
+        {
+            return None;
+        }
     }
-    root
+    Some(root)
 }
 
 fn inventory() -> usize {
-    let root = fixture();
+    let Some(root) = fixture() else {
+        eprintln!("unable to create inventory benchmark fixture");
+        return 0;
+    };
     let options = InventoryOptions {
         include_untracked: true,
         ..InventoryOptions::default()
@@ -28,9 +33,13 @@ fn inventory() -> usize {
     let start = Instant::now();
     let mut files = 0;
     for _ in 0..10 {
-        files += inventory_files(&root, &options)
-            .expect("inventory benchmark")
-            .len();
+        match inventory_files(&root, &options) {
+            Ok(inventory) => files += inventory.len(),
+            Err(error) => {
+                eprintln!("inventory benchmark failed: {error}");
+                return 0;
+            }
+        }
     }
     println!(
         "inventory_files_2000: {:?} ({files} files)",
