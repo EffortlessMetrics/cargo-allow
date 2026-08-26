@@ -11,6 +11,7 @@ mod migrate;
 mod propose;
 mod prune;
 mod refresh;
+mod release_artifact_transfer_v1;
 mod release_identity_v1;
 mod release_manifest_v2;
 mod release_operation_v1;
@@ -50,6 +51,11 @@ pub use migrate::MigrateReport;
 pub use propose::ProposeReport;
 pub use prune::{PruneCandidate, PruneModeContext};
 pub use refresh::{RefreshModeContext, RefreshReport};
+pub use release_artifact_transfer_v1::{
+    ActualDownloadedFileV1, ArtifactTransferDispositionV1, ArtifactTransferFileV1,
+    ArtifactTransferInitV1, CargoAllowReleaseArtifactTransferV1, ConsumerContextV1,
+    ProducerIdentityV1, TrustClassV1, UntrustedInputPostureV1,
+};
 pub use release_identity_v1::{
     ReleaseChannelV1, ReleaseIdentityErrorV1, ReleaseIdentityV1, ReleaseVersionV1,
 };
