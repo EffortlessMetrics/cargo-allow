@@ -35,6 +35,7 @@ set -euo pipefail
 SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 lifecycle="${SCRIPT_ROOT}/scripts/candidate-harness-owned-dir.py"
 command -v python3 >/dev/null 2>&1 || { printf 'exact-candidate-package-set: error: python3 is required\n' >&2; exit 1; }
+python3 "${SCRIPT_ROOT}/scripts/test-exact-candidate-package-identity.py"
 
 if [[ "${1:-}" != "--internal" ]]; then
   package_input_source="${PACKAGE_INPUT_DIR:-${SCRIPT_ROOT}/target/package-candidate-smoke/packages}"
@@ -1029,6 +1030,7 @@ OS_NAME="${os_name}" \
 ARCH_NAME="${arch_name}" \
 RUSTC_VERSION="${rustc_version}" \
 CARGO_VERSION="${cargo_version}" \
+SCRIPT_ROOT="${SCRIPT_ROOT}" \
 VERSION_OUTPUT="${version_output}" \
 INSTALL_CODE="${install_code}" \
 NEGATIVES_JSON="${negatives_json}" \
@@ -1036,13 +1038,18 @@ CRATE_ORDER="$(printf '%s\n' "${crates[@]}")" \
 python3 <<'PY'
 import json
 import os
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(os.environ["SCRIPT_ROOT"]) / "scripts"))
+from exact_candidate_package_identity import crate_version_from_filename
 
 records = []
 for line in os.environ["CRATE_RECORDS"].splitlines():
     if not line.strip():
         continue
     name, crate_file, sha256, size, extracted = line.split("|", 4)
-    crate_version = crate_file.removesuffix(".crate").rsplit("-", 1)[1]
+    crate_version = crate_version_from_filename(name, crate_file)
     records.append(
         {
             "name": name,

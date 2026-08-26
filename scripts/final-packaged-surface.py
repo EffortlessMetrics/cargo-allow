@@ -15,6 +15,8 @@ import tarfile
 import tomllib
 from pathlib import Path, PurePosixPath
 
+from exact_candidate_package_identity import crate_version_from_filename
+
 
 def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
@@ -33,11 +35,13 @@ def asset_record(files: dict[str, bytes], prefix: str, candidates: list[str]) ->
     return {"path": None, "sha256": None, "present": False}
 
 
-def surface(crate: Path, expected_version: str) -> dict[str, object]:
-    archive_stem = crate.name.removesuffix(".crate")
-    stem, separator, version = archive_stem.rpartition("-")
-    if not separator or not stem or version != expected_version:
+def surface(
+    crate: Path, expected_name: str, expected_version: str
+) -> dict[str, object]:
+    version = crate_version_from_filename(expected_name, crate.name)
+    if version != expected_version:
         raise ValueError(f"archive identity mismatch: {crate.name}")
+    stem = expected_name
 
     with tarfile.open(crate, "r:gz") as archive:
         members = archive.getmembers()
@@ -122,11 +126,19 @@ def main() -> int:
     expected_rows = package_set["package_set"]["crates"]
     expected = [row["name"] for row in expected_rows]
     expected_versions = {row["name"]: row["version"] for row in expected_rows}
+    expected_by_file = {
+        f"{row["name"]}-{row["version"]}.crate": row["name"]
+        for row in expected_rows
+    }
     archives = sorted(args.packages_dir.glob("*.crate"))
     by_name = {}
     for archive in archives:
-        archive_name = archive.name.removesuffix(".crate").rsplit("-", 1)[0]
-        row = surface(archive, expected_versions.get(archive_name, ""))
+        archive_name = expected_by_file.get(archive.name)
+        if archive_name is None:
+            raise ValueError(f"unexpected packaged crate: {archive.name}")
+        row = surface(
+            archive, archive_name, expected_versions[archive_name]
+        )
         if row["name"] in by_name:
             raise ValueError(f"duplicate packaged crate: {row['name']}")
         by_name[row["name"]] = row
