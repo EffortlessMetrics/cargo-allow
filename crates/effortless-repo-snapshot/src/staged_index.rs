@@ -1397,12 +1397,14 @@ mod tests {
             Ok(()) => {}
             Err(error) if error.raw_os_error() == Some(92) => {
                 // macOS APFS enforces UTF-8 paths and rejects invalid byte sequences with EILSEQ (os error 92)
-                let snapshot = staged_repository_snapshot(&repo.root).map_err(|error| error.to_string())?;
+                let snapshot =
+                    staged_repository_snapshot(&repo.root).map_err(|error| error.to_string())?;
                 if snapshot.completeness != StagedSnapshotCompleteness::Partial {
                     return Err("expected Partial completeness".to_string());
                 }
                 if !matches!(
-                    read_staged_path(&snapshot, Path::new("link.txt")).map_err(|error| error.to_string())?,
+                    read_staged_path(&snapshot, Path::new("link.txt"))
+                        .map_err(|error| error.to_string())?,
                     StagedPathRead::Unsupported {
                         kind: StagedEntryKind::Symlink,
                         ..
