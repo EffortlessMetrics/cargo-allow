@@ -9,6 +9,7 @@ pub(crate) mod federation;
 mod frozen_candidate_custody_v1;
 mod list;
 mod migrate;
+mod post_merge_qualification_v1;
 mod propose;
 mod prune;
 mod refresh;
@@ -53,6 +54,10 @@ pub use frozen_candidate_custody_v1::{
 pub(crate) use list::truncate_with_ellipsis;
 pub use list::{ListColumn, ListFilters, ListRow};
 pub use migrate::MigrateReport;
+pub use post_merge_qualification_v1::{
+    CargoAllowPostMergeQualificationV1, MergeMethodV1, MergedStateV1,
+    PostMergeEquivalenceVerdictV1, PostMergeQualificationInitV1, ReviewedContextV1,
+};
 pub use propose::ProposeReport;
 pub use prune::{PruneCandidate, PruneModeContext};
 pub use refresh::{RefreshModeContext, RefreshReport};
