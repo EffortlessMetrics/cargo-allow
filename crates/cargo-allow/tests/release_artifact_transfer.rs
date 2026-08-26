@@ -13,11 +13,11 @@ fn require(condition: bool, message: &str) -> Result<(), io::Error> {
 }
 
 fn make_valid_transfer(trust: TrustClassV1) -> CargoAllowReleaseArtifactTransferV1 {
-    CargoAllowReleaseArtifactTransferV1::new(
-        "transfer-20260826-001".to_string(),
-        "candidate-crate-bundle".to_string(),
-        "stable-bundle-id-42".to_string(),
-        ProducerIdentityV1 {
+    CargoAllowReleaseArtifactTransferV1::new(allow_report::ArtifactTransferInitV1 {
+        transfer_id: "transfer-20260826-001".to_string(),
+        role: "candidate-crate-bundle".to_string(),
+        stable_artifact_id: "stable-bundle-id-42".to_string(),
+        producer: ProducerIdentityV1 {
             repository: "EffortlessMetrics/cargo-allow".to_string(),
             workflow_path: ".github/workflows/release.yml".to_string(),
             git_ref: "refs/tags/v0.2.0".to_string(),
@@ -31,9 +31,9 @@ fn make_valid_transfer(trust: TrustClassV1) -> CargoAllowReleaseArtifactTransfer
             schema_id: "cargo-allow.exact-candidate-package-set.v1".to_string(),
             producer_generation: 1,
         },
-        "actions/upload-artifact@v4".to_string(),
-        "release-candidates-0.2.0".to_string(),
-        vec![
+        provider_id: "actions/upload-artifact@v4".to_string(),
+        provider_artifact_name: "release-candidates-0.2.0".to_string(),
+        files: vec![
             ArtifactTransferFileV1 {
                 path: "packages/allow-core-0.2.0.crate".to_string(),
                 size_bytes: 5120,
@@ -53,11 +53,11 @@ fn make_valid_transfer(trust: TrustClassV1) -> CargoAllowReleaseArtifactTransfer
                     .to_string(),
             },
         ],
-        Some("sha256:bundle-manifest-digest-001".to_string()),
-        trust,
-        UntrustedInputPostureV1::StrictByteMatch,
-        "2026-08-26T04:00:00Z".to_string(),
-    )
+        semantic_payload_digest: Some("sha256:bundle-manifest-digest-001".to_string()),
+        trust_class: trust,
+        untrusted_input_posture: UntrustedInputPostureV1::StrictByteMatch,
+        created_at_utc: "2026-08-26T04:00:00Z".to_string(),
+    })
 }
 
 fn valid_downloaded_files() -> Vec<ActualDownloadedFileV1> {

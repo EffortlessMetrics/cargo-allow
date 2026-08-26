@@ -88,37 +88,40 @@ pub struct CargoAllowReleaseArtifactTransferV1 {
     pub limitations: Vec<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ArtifactTransferInitV1 {
+    pub transfer_id: String,
+    pub role: String,
+    pub stable_artifact_id: String,
+    pub producer: ProducerIdentityV1,
+    pub provider_id: String,
+    pub provider_artifact_name: String,
+    pub files: Vec<ArtifactTransferFileV1>,
+    pub semantic_payload_digest: Option<String>,
+    pub trust_class: TrustClassV1,
+    pub untrusted_input_posture: UntrustedInputPostureV1,
+    pub created_at_utc: String,
+}
+
 impl CargoAllowReleaseArtifactTransferV1 {
     pub const CURRENT_SCHEMA_ID: &'static str = "cargo-allow.release-artifact-transfer.v1";
     pub const CURRENT_SCHEMA_VERSION: u32 = 1;
 
-    pub fn new(
-        transfer_id: String,
-        role: String,
-        stable_artifact_id: String,
-        producer: ProducerIdentityV1,
-        provider_id: String,
-        provider_artifact_name: String,
-        files: Vec<ArtifactTransferFileV1>,
-        semantic_payload_digest: Option<String>,
-        trust_class: TrustClassV1,
-        untrusted_input_posture: UntrustedInputPostureV1,
-        created_at_utc: String,
-    ) -> Self {
+    pub fn new(init: ArtifactTransferInitV1) -> Self {
         Self {
             schema_id: Self::CURRENT_SCHEMA_ID.to_string(),
             schema_version: Self::CURRENT_SCHEMA_VERSION,
-            transfer_id,
-            role,
-            stable_artifact_id,
-            producer,
-            provider_id,
-            provider_artifact_name,
-            files,
-            semantic_payload_digest,
-            trust_class,
-            untrusted_input_posture,
-            created_at_utc,
+            transfer_id: init.transfer_id,
+            role: init.role,
+            stable_artifact_id: init.stable_artifact_id,
+            producer: init.producer,
+            provider_id: init.provider_id,
+            provider_artifact_name: init.provider_artifact_name,
+            files: init.files,
+            semantic_payload_digest: init.semantic_payload_digest,
+            trust_class: init.trust_class,
+            untrusted_input_posture: init.untrusted_input_posture,
+            created_at_utc: init.created_at_utc,
             claim_boundary: vec![
                 "exact_producer_identity".to_string(),
                 "file_set_sha256_and_size_binding".to_string(),
@@ -212,6 +215,7 @@ impl CargoAllowReleaseArtifactTransferV1 {
 }
 
 fn has_injection_chars(text: &str) -> bool {
-    text.chars()
-        .any(|c| c == '\0' || c == '\n' || c == '\r' || c == ';' || c == '|' || c == '`' || c == '$')
+    text.chars().any(|c| {
+        c == '\0' || c == '\n' || c == '\r' || c == ';' || c == '|' || c == '`' || c == '$'
+    })
 }

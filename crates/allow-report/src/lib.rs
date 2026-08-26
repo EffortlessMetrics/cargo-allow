@@ -115,14 +115,14 @@ pub use add_plan_application::render_add_plan_application_json;
 pub use advisory_class::{ADVISORY_DENY_FIELD_NAMES, AdvisoryClass, advisory_count_for_deny_field};
 pub use allow_entry_json::{render_allow_entry_json, render_last_seen_json, render_selector_json};
 pub use artifacts::{
-    AddFindingPlanCandidate, AddFindingPlanFinding, AddFindingPlanOutcome, AddFindingPlanPolicy,
-    AddFindingPlanProofPlan, AddFindingPlanRepository, AddFindingPlanV1, AddPlanApplicationV1,
-    ActualDownloadedFileV1, AddReport, AdoptionAction, AdoptionActionKind, AdoptionFacts,
+    ActualDownloadedFileV1, AddFindingPlanCandidate, AddFindingPlanFinding, AddFindingPlanOutcome,
+    AddFindingPlanPolicy, AddFindingPlanProofPlan, AddFindingPlanRepository, AddFindingPlanV1,
+    AddPlanApplicationV1, AddReport, AdoptionAction, AdoptionActionKind, AdoptionFacts,
     AdoptionInventoryFacts, AdoptionPolicyFacts, AggregateOperationStateV1,
-    ArtifactTransferDispositionV1, ArtifactTransferFileV1, BootstrapDisposition,
-    CargoAllowReleaseArtifactTransferV1, CargoAllowReleaseOperationV1, ConfigProvenanceSummary,
-    ConfiguredLedgerSummary, ConsumerContextV1, CoreAdoptionPlanV1, DiffEvidenceChange,
-    DiffExceptionIdentityChange, DiffFindingChange, DiffLedgerMovementSummary,
+    ArtifactTransferDispositionV1, ArtifactTransferFileV1, ArtifactTransferInitV1,
+    BootstrapDisposition, CargoAllowReleaseArtifactTransferV1, CargoAllowReleaseOperationV1,
+    ConfigProvenanceSummary, ConfiguredLedgerSummary, ConsumerContextV1, CoreAdoptionPlanV1,
+    DiffEvidenceChange, DiffExceptionIdentityChange, DiffFindingChange, DiffLedgerMovementSummary,
     DiffLifecycleChange, DiffMetadataChange, DiffMovementCounts, DiffOccurrenceLimitChange,
     DiffPolicyChange, DiffPolicyStatusChange, DiffPostureDeltaCounts, DiffPostureSummary,
     DiffReport, DiffRequirementChange, DiffScopeChange, DiffSelectorIdentityChange,

@@ -40,14 +40,14 @@ fn sample_consumer() -> ConsumerContextV1 {
 }
 
 fn sample_transfer() -> CargoAllowReleaseArtifactTransferV1 {
-    CargoAllowReleaseArtifactTransferV1::new(
-        "xfer-001".to_string(),
-        "package-bundle".to_string(),
-        "stable-pkg-001".to_string(),
-        sample_producer(),
-        "actions/upload-artifact@v4".to_string(),
-        "release-package-bundle".to_string(),
-        vec![
+    CargoAllowReleaseArtifactTransferV1::new(allow_report::ArtifactTransferInitV1 {
+        transfer_id: "xfer-001".to_string(),
+        role: "package-bundle".to_string(),
+        stable_artifact_id: "stable-pkg-001".to_string(),
+        producer: sample_producer(),
+        provider_id: "actions/upload-artifact@v4".to_string(),
+        provider_artifact_name: "release-package-bundle".to_string(),
+        files: vec![
             ArtifactTransferFileV1 {
                 path: "allow-core-0.2.0.crate".to_string(),
                 size_bytes: 1024,
@@ -61,11 +61,11 @@ fn sample_transfer() -> CargoAllowReleaseArtifactTransferV1 {
                     .to_string(),
             },
         ],
-        Some("sha256:payload-digest-001".to_string()),
-        TrustClassV1::CleanRelease,
-        UntrustedInputPostureV1::StrictByteMatch,
-        "2026-08-26T00:00:00Z".to_string(),
-    )
+        semantic_payload_digest: Some("sha256:payload-digest-001".to_string()),
+        trust_class: TrustClassV1::CleanRelease,
+        untrusted_input_posture: UntrustedInputPostureV1::StrictByteMatch,
+        created_at_utc: "2026-08-26T00:00:00Z".to_string(),
+    })
 }
 
 #[test]
@@ -177,7 +177,8 @@ fn test_artifact_transfer_stale_commit() -> Result<(), io::Error> {
         },
     ];
 
-    let result = transfer.evaluate_transfer(&consumer, "new-commit-hash-different", "0.2.0", &downloaded);
+    let result =
+        transfer.evaluate_transfer(&consumer, "new-commit-hash-different", "0.2.0", &downloaded);
 
     require(
         result == ArtifactTransferDispositionV1::Stale,
@@ -248,9 +249,6 @@ fn test_artifact_transfer_serde_roundtrip() -> Result<(), io::Error> {
     let parsed: CargoAllowReleaseArtifactTransferV1 =
         serde_json::from_str(&json).map_err(io::Error::other)?;
 
-    require(
-        parsed == transfer,
-        "expected exact deserialization match",
-    )?;
+    require(parsed == transfer, "expected exact deserialization match")?;
     Ok(())
 }

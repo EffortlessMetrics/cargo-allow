@@ -7,6 +7,7 @@ use std::fs;
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+#[cfg(unix)]
 fn write_external_migrate_output_with_test_hook(
     held_target: &effortless_repo_edit::MutationTarget,
     requested: &std::path::Path,

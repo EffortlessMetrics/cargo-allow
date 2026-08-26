@@ -11,9 +11,9 @@ mod migrate;
 mod propose;
 mod prune;
 mod refresh;
+mod release_artifact_transfer_v1;
 mod release_identity_v1;
 mod release_manifest_v2;
-mod release_artifact_transfer_v1;
 mod release_operation_v1;
 mod why;
 mod worklist;
@@ -51,6 +51,11 @@ pub use migrate::MigrateReport;
 pub use propose::ProposeReport;
 pub use prune::{PruneCandidate, PruneModeContext};
 pub use refresh::{RefreshModeContext, RefreshReport};
+pub use release_artifact_transfer_v1::{
+    ActualDownloadedFileV1, ArtifactTransferDispositionV1, ArtifactTransferFileV1,
+    ArtifactTransferInitV1, CargoAllowReleaseArtifactTransferV1, ConsumerContextV1,
+    ProducerIdentityV1, TrustClassV1, UntrustedInputPostureV1,
+};
 pub use release_identity_v1::{
     ReleaseChannelV1, ReleaseIdentityErrorV1, ReleaseIdentityV1, ReleaseVersionV1,
 };
@@ -62,11 +67,6 @@ pub use release_manifest_v2::{
     render_release_manifest_v2_envelope, render_release_manifest_v2_envelope_bytes,
     render_release_manifest_v2_payload, render_release_manifest_v2_payload_bytes,
     validate_release_manifest_v2,
-};
-pub use release_artifact_transfer_v1::{
-    ActualDownloadedFileV1, ArtifactTransferDispositionV1, ArtifactTransferFileV1,
-    CargoAllowReleaseArtifactTransferV1, ConsumerContextV1, ProducerIdentityV1, TrustClassV1,
-    UntrustedInputPostureV1,
 };
 pub use release_operation_v1::{
     AggregateOperationStateV1, CargoAllowReleaseOperationV1, OperationClassV1,
