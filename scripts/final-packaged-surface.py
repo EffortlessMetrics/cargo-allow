@@ -127,7 +127,7 @@ def main() -> int:
     expected = [row["name"] for row in expected_rows]
     expected_versions = {row["name"]: row["version"] for row in expected_rows}
     expected_by_file = {
-        f"{row["name"]}-{row["version"]}.crate": row["name"]
+        f"{row['name']}-{row['version']}.crate": row["name"]
         for row in expected_rows
     }
     archives = sorted(args.packages_dir.glob("*.crate"))
