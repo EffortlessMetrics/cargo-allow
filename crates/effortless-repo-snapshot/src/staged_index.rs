@@ -1393,7 +1393,27 @@ mod tests {
         symlink("target.txt", repo.root.join("link.txt")).map_err(|error| error.to_string())?;
         repo.git(&["add", "--", "link.txt"])?;
         let raw_name = OsString::from_vec(b"non-utf8-\xff.txt".to_vec());
-        fs::write(repo.root.join(&raw_name), b"bytes\n").map_err(|error| error.to_string())?;
+        match fs::write(repo.root.join(&raw_name), b"bytes\n") {
+            Ok(()) => {}
+            Err(error) if error.raw_os_error() == Some(92) => {
+                // macOS APFS enforces UTF-8 paths and rejects invalid byte sequences with EILSEQ (os error 92)
+                let snapshot = staged_repository_snapshot(&repo.root).map_err(|error| error.to_string())?;
+                if snapshot.completeness != StagedSnapshotCompleteness::Partial {
+                    return Err("expected Partial completeness".to_string());
+                }
+                if !matches!(
+                    read_staged_path(&snapshot, Path::new("link.txt")).map_err(|error| error.to_string())?,
+                    StagedPathRead::Unsupported {
+                        kind: StagedEntryKind::Symlink,
+                        ..
+                    }
+                ) {
+                    return Err("expected Unsupported Symlink".to_string());
+                }
+                return Ok(());
+            }
+            Err(error) => return Err(error.to_string()),
+        }
         let output = Command::new("git")
             .arg("-C")
             .arg(&repo.root)
