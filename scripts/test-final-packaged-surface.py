@@ -36,7 +36,7 @@ class FinalPackagedSurfaceTests(unittest.TestCase):
     def test_surface_binds_archive_digest_and_assets(self):
         with tempfile.TemporaryDirectory() as directory:
             archive, _ = self.make_crate(Path(directory))
-            row = surface.surface(archive, "0.2.0")
+            row = surface.surface(archive, "demo", "0.2.0")
             self.assertEqual(row["result"], "Complete")
             self.assertEqual(row["version"], "0.2.0")
             self.assertEqual(row["size_bytes"], archive.stat().st_size)
@@ -45,7 +45,7 @@ class FinalPackagedSurfaceTests(unittest.TestCase):
     def test_missing_declared_asset_is_incomplete(self):
         with tempfile.TemporaryDirectory() as directory:
             archive, _ = self.make_crate(Path(directory), readme=False)
-            row = surface.surface(archive, "0.2.0")
+            row = surface.surface(archive, "demo", "0.2.0")
             self.assertEqual(row["result"], "Incomplete")
             self.assertFalse(row["assets"]["readme"]["present"])
 
