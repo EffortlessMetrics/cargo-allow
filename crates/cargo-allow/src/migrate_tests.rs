@@ -7,6 +7,24 @@ use std::fs;
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+fn write_external_migrate_output_with_test_hook(
+    held_target: &effortless_repo_edit::MutationTarget,
+    requested: &std::path::Path,
+    repository_root: &std::path::Path,
+    contents: &str,
+    force: bool,
+    hook: &mut dyn FnMut(),
+) -> CargoAllowResult<()> {
+    write_external_migrate_output_with_hook(
+        held_target,
+        requested,
+        repository_root,
+        contents,
+        force,
+        Some(hook),
+    )
+}
+
 #[test]
 fn clap_parses_repo_policy_migrate() {
     let parsed = CargoAllowCli::try_parse_from(argv(vec![

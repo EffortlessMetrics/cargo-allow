@@ -35,9 +35,13 @@ def asset_record(files: dict[str, bytes], prefix: str, candidates: list[str]) ->
 
 def surface(crate: Path, expected_version: str) -> dict[str, object]:
     archive_stem = crate.name.removesuffix(".crate")
-    stem, separator, version = archive_stem.rpartition("-")
-    if not separator or not stem or version != expected_version:
-        raise ValueError(f"archive identity mismatch: {crate.name}")
+    if expected_version and archive_stem.endswith(f"-{expected_version}"):
+        stem = archive_stem[: -len(expected_version) - 1]
+        version = expected_version
+    else:
+        stem, separator, version = archive_stem.rpartition("-")
+        if not separator or not stem or version != expected_version:
+            raise ValueError(f"archive identity mismatch: {crate.name}")
 
     with tarfile.open(crate, "r:gz") as archive:
         members = archive.getmembers()
@@ -125,8 +129,15 @@ def main() -> int:
     archives = sorted(args.packages_dir.glob("*.crate"))
     by_name = {}
     for archive in archives:
-        archive_name = archive.name.removesuffix(".crate").rsplit("-", 1)[0]
-        row = surface(archive, expected_versions.get(archive_name, ""))
+        archive_stem = archive.name.removesuffix(".crate")
+        matching_name = None
+        for exp_name in expected:
+            if archive_stem.startswith(f"{exp_name}-"):
+                matching_name = exp_name
+                break
+        if not matching_name:
+            matching_name = archive_stem.rsplit("-", 1)[0]
+        row = surface(archive, expected_versions.get(matching_name, ""))
         if row["name"] in by_name:
             raise ValueError(f"duplicate packaged crate: {row['name']}")
         by_name[row["name"]] = row

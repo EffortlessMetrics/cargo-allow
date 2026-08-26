@@ -26,13 +26,19 @@ fn cross_platform_semantics() {
         kind: FindingKind::Panic,
         family: Some("unwrap".to_string()),
         path: "src/lib.rs".into(),
-        span: Some(Span { line: 10, column: 2 }),
+        span: Some(Span {
+            line: 10,
+            column: 2,
+        }),
         identity,
         message: "test".to_string(),
         ledger: None,
     };
     let mut moved = first.clone();
-    moved.span = Some(Span { line: 99, column: 8 });
+    moved.span = Some(Span {
+        line: 99,
+        column: 8,
+    });
     assert_eq!(finding_identity_key(&first), finding_identity_key(&moved));
 }
 
