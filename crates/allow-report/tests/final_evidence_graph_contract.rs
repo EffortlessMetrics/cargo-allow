@@ -149,6 +149,54 @@ fn test_evidence_graph_cycle_detection() -> Result<(), io::Error> {
 }
 
 #[test]
+fn test_evidence_graph_incident_and_provider_unavailable() -> Result<(), io::Error> {
+    let mut graph = sample_graph();
+    if let Some(src) = graph.nodes.first_mut() {
+        src.result_class = EvidenceResultClassV1::Incident;
+    }
+    let eval = graph.evaluate();
+    require(
+        eval.overall_result == EvidenceResultClassV1::Incident,
+        "incident node must yield Incident result",
+    )?;
+
+    let mut graph2 = sample_graph();
+    if let Some(src) = graph2.nodes.first_mut() {
+        src.result_class = EvidenceResultClassV1::ProviderUnavailable;
+    }
+    let eval2 = graph2.evaluate();
+    require(
+        eval2.overall_result == EvidenceResultClassV1::ProviderUnavailable,
+        "provider unavailable node must yield ProviderUnavailable result",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn test_evidence_graph_invalid_edges_and_empty_inputs() -> Result<(), io::Error> {
+    let mut graph = sample_graph();
+    graph.edges.push(CargoAllowFinalEvidenceEdgeV1 {
+        from_node: "nonexistent".to_string(),
+        to_node: "src:main".to_string(),
+        edge_kind: EvidenceEdgeKindV1::ProducedFrom,
+    });
+    let eval = graph.evaluate();
+    require(
+        eval.overall_result == EvidenceResultClassV1::InstrumentFailure,
+        "missing node in edge must yield InstrumentFailure",
+    )?;
+
+    let mut empty_graph = sample_graph();
+    empty_graph.nodes.clear();
+    let eval_empty = empty_graph.evaluate();
+    require(
+        eval_empty.overall_result == EvidenceResultClassV1::InstrumentFailure,
+        "empty nodes must yield InstrumentFailure",
+    )?;
+    Ok(())
+}
+
+#[test]
 fn test_evidence_graph_serde_roundtrip() -> Result<(), io::Error> {
     let graph = sample_graph();
     let json = serde_json::to_string(&graph).map_err(io::Error::other)?;
