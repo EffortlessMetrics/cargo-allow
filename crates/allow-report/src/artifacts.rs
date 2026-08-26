@@ -6,6 +6,7 @@ mod diff;
 mod doctor;
 mod explain;
 pub(crate) mod federation;
+mod frozen_candidate_custody_v1;
 mod list;
 mod migrate;
 mod propose;
@@ -44,6 +45,10 @@ pub use explain::{EvidenceReference, ExplainReport};
 pub use federation::{
     FederationDivergenceKindCount, FederationDivergenceRecordSummary, FederationDivergenceSummary,
     FederationReportContext, LedgerContributorSummary,
+};
+pub use frozen_candidate_custody_v1::{
+    CandidateCustodyInitV1, CargoAllowFrozenCandidateCustodyV1, ConfidentialityClassV1,
+    CustodyDispositionV1, CustodyFileV1, RetainedCustodyItemV1,
 };
 pub(crate) use list::truncate_with_ellipsis;
 pub use list::{ListColumn, ListFilters, ListRow};
