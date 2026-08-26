@@ -649,8 +649,14 @@ fn published_release_versions_match_workspace() {
     // Generation-2 topology is the version authority, not the workspace version
     // alone: product-neutral and intent crates carry their own version source
     // while the cargo-allow family stays on the workspace version.
-    let topology_versions =
-        topology_package_versions(&read_workspace_file(&root, PACKAGE_TOPOLOGY));
+    let topology_source = read_workspace_file(&root, PACKAGE_TOPOLOGY);
+    let topology_versions = topology_package_versions(&topology_source);
+    let exact_workspace_dependency_names = parse_package_postures_v1(&topology_source)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("parse {PACKAGE_TOPOLOGY}: {err}")))
+        .into_iter()
+        .filter(|row| row.product_family == "cargo-allow")
+        .map(|row| row.cargo_package_name)
+        .collect::<BTreeSet<_>>();
     let package_names = package_manifests.keys().cloned().collect::<BTreeSet<_>>();
     let undeclared = package_names
         .iter()
@@ -682,11 +688,15 @@ fn published_release_versions_match_workspace() {
         expected_workspace_dependency_names,
         "workspace dependencies should version every internal library crate"
     );
-    for (dependency, version) in workspace_dependency_versions {
+    for (dependency, requirement) in workspace_dependency_versions {
+        let package_version = expected_package_version(&topology_versions, &dependency);
+        let expected_requirement = expected_workspace_dependency_requirement(
+            package_version,
+            exact_workspace_dependency_names.contains(&dependency),
+        );
         assert_eq!(
-            &version,
-            expected_package_version(&topology_versions, &dependency),
-            "{dependency} workspace dependency should require its declared topology version"
+            requirement, expected_requirement,
+            "{dependency} workspace dependency should preserve its selected exactness and topology version"
         );
     }
 
@@ -994,6 +1004,44 @@ fn expected_package_version<'a>(
     } else {
         std::panic::panic_any(format!("{PACKAGE_TOPOLOGY} should declare {package}"));
     }
+}
+
+fn expected_workspace_dependency_requirement(version: &str, exact: bool) -> String {
+    if exact {
+        format!("={version}")
+    } else {
+        version.to_string()
+    }
+}
+
+#[test]
+fn workspace_dependency_requirement_keeps_selected_exactness() {
+    let exact = expected_workspace_dependency_requirement("0.2.0-rc.1", true);
+    assert_eq!(exact, "=0.2.0-rc.1");
+    for invalid in [
+        "0.2.0-rc.1",
+        "^0.2.0-rc.1",
+        "~0.2.0-rc.1",
+        ">=0.2.0-rc.1",
+        "0.2.*",
+        "*",
+        "=0.2.0",
+    ] {
+        assert_ne!(
+            invalid, exact,
+            "cargo-allow internal requirements must reject {invalid}"
+        );
+    }
+    assert_eq!(
+        expected_workspace_dependency_requirement("0.1.0", false),
+        "0.1.0",
+        "independently versioned product families keep their existing requirement posture"
+    );
+    assert_eq!(
+        expected_workspace_dependency_requirement("0.2.0-rc.1+build.7", true),
+        "=0.2.0-rc.1+build.7",
+        "exact requirements preserve complete SemVer identity"
+    );
 }
 
 #[test]
