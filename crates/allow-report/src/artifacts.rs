@@ -6,6 +6,7 @@ mod diff;
 mod doctor;
 mod explain;
 pub(crate) mod federation;
+mod final_evidence_graph_v1;
 mod frozen_candidate_custody_v1;
 mod list;
 mod migrate;
@@ -46,6 +47,11 @@ pub use explain::{EvidenceReference, ExplainReport};
 pub use federation::{
     FederationDivergenceKindCount, FederationDivergenceRecordSummary, FederationDivergenceSummary,
     FederationReportContext, LedgerContributorSummary,
+};
+pub use final_evidence_graph_v1::{
+    CargoAllowFinalEvidenceEdgeV1, CargoAllowFinalEvidenceEvaluationV1,
+    CargoAllowFinalEvidenceGraphV1, CargoAllowFinalEvidenceNodeV1, EvidenceEdgeKindV1,
+    EvidenceNodeClassV1, EvidenceResultClassV1, FinalEvidenceGraphInitV1,
 };
 pub use frozen_candidate_custody_v1::{
     CandidateCustodyInitV1, CargoAllowFrozenCandidateCustodyV1, ConfidentialityClassV1,
