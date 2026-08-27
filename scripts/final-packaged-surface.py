@@ -35,9 +35,7 @@ def asset_record(files: dict[str, bytes], prefix: str, candidates: list[str]) ->
     return {"path": None, "sha256": None, "present": False}
 
 
-def surface(
-    crate: Path, expected_name: str, expected_version: str
-) -> dict[str, object]:
+def surface(crate: Path, expected_name: str, expected_version: str) -> dict[str, object]:
     version = crate_version_from_filename(expected_name, crate.name)
     if version != expected_version:
         raise ValueError(f"archive identity mismatch: {crate.name}")
@@ -136,9 +134,7 @@ def main() -> int:
         archive_name = expected_by_file.get(archive.name)
         if archive_name is None:
             raise ValueError(f"unexpected packaged crate: {archive.name}")
-        row = surface(
-            archive, archive_name, expected_versions[archive_name]
-        )
+        row = surface(archive, archive_name, expected_versions[archive_name])
         if row["name"] in by_name:
             raise ValueError(f"duplicate packaged crate: {row['name']}")
         by_name[row["name"]] = row
