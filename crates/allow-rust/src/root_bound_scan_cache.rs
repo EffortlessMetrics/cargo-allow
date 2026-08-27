@@ -434,7 +434,7 @@ fn ensure_owned_descendant(
         let Component::Normal(segment) = component else {
             return Err(ScanCacheTargetDispositionV1::UnsupportedFilesystem);
         };
-        let name = CString::new(segment.as_os_str().as_bytes())
+        let name = CString::new(segment.as_bytes())
             .map_err(|_| ScanCacheTargetDispositionV1::UnsupportedFilesystem)?;
         let mut fd = unsafe { openat(parent.as_raw_fd(), name.as_ptr(), O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC, 0) };
         if fd < 0 {
