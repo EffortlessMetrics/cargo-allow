@@ -41,21 +41,30 @@ impl BoundedDomainQueryKindV1 {
 pub struct BoundedDomainQueryRequestV1 {
     pub schema_id: String,
     pub kind: BoundedDomainQueryKindV1,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub composition_id: Option<String>,
+    pub identity: intent_protocol::IntentIdentityEnvelopeV1,
+    pub selector: String,
 }
 
 impl BoundedDomainQueryRequestV1 {
-    pub fn new(kind: BoundedDomainQueryKindV1) -> Self {
+    pub fn new(
+        identity: intent_protocol::IntentIdentityEnvelopeV1,
+        kind: BoundedDomainQueryKindV1,
+        selector: impl Into<String>,
+    ) -> Self {
         Self {
             schema_id: BOUNDED_DOMAIN_QUERY_SCHEMA_ID.to_string(),
             kind,
-            composition_id: None,
+            identity,
+            selector: selector.into(),
         }
     }
 
-    pub fn with_composition_id(mut self, composition_id: impl Into<String>) -> Self {
-        self.composition_id = Some(composition_id.into());
+    pub fn composition_id(&self) -> &str {
+        &self.identity.artifact_id
+    }
+
+    pub fn with_selector(mut self, selector: impl Into<String>) -> Self {
+        self.selector = selector.into();
         self
     }
 }
@@ -107,30 +116,9 @@ pub fn to_intent_query_response_json(response: &BoundedDomainQueryResponseV1) ->
         "schema_id": intent_protocol::INTENT_QUERY_RESPONSE_SCHEMA_ID,
         "query": {
             "schema_id": intent_protocol::INTENT_QUERY_SCHEMA_ID,
-            "kind": "validate_artifact",
-            "selector": response.query.kind.as_str(),
-            "identity": {
-                "schema_id": "intent.identity.v1",
-                "snapshot": {
-                    "schema_id": "repo.repository-snapshot.v1",
-                    "kind": "committed_head",
-                    "root_identity": "intent-engine-bounded-query",
-                    "object_format": "sha1",
-                    "head": {
-                        "requested": "HEAD",
-                        "commit": "0000000000000000000000000000000000000000",
-                        "tree": "0000000000000000000000000000000000000000",
-                    },
-                    "dirty_state": "clean",
-                    "selected_source_closure": "intent-engine::domain_queries",
-                },
-                "artifact_kind": "spec_system_config",
-                "artifact_id": response.query.composition_id.clone().unwrap_or_else(|| {
-                    SELF_HOSTED_RUNTIME_PROMOTION_COMPOSITION_ID.to_string()
-                }),
-                "source_path": "intent-engine::domain_queries",
-                "content_identity": response.query.kind.as_str(),
-            },
+            "kind": "domain_query",
+            "selector": response.query.selector,
+            "identity": response.query.identity,
         },
         "result_class": response.result_class,
         "payload_schema": response.payload_schema,
@@ -219,7 +207,7 @@ fn phase_obligation_kinds_catalog_response(
 }
 
 fn resolve_composition(request: &BoundedDomainQueryRequestV1) -> WorkspaceCompositionV1 {
-    match request.composition_id.as_deref() {
+    match Some(request.composition_id()) {
         Some(id) if id != SELF_HOSTED_RUNTIME_PROMOTION_COMPOSITION_ID => WorkspaceCompositionV1 {
             composition_id: id.to_string(),
             requirement_path: String::new(),
