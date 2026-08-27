@@ -1,0 +1,14 @@
+# Reviewed authorization for the one ledger addition in #4002. The diff
+# classifies any added entry as review_required until a matching note exists.
+#
+# `docs/repository-metadata.md` landed in a8eeac7 without a receipt, which
+# left the repository's own `check --mode no-new` gate red on main. This entry
+# receipts that governed documentation surface through the plan-then-apply
+# route; it does not widen policy, extend an expiry, or launder baseline_debt.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-0609"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:75f5384d812f8e262327395d1704c759b98a8e5b6b03549d2a2a24f872167827"
+reason = "receipts docs/repository-metadata.md (added by a8eeac7 without a ledger entry) as a reviewed cargo_allow_product_documentation surface; owner core/docs, evidence issue:3910 and doc:docs/README.md"
