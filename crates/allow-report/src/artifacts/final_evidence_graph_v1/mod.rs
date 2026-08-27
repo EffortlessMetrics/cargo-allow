@@ -14,9 +14,8 @@ pub use model::{
     FinalEvidenceGraphV1, FinalEvidenceInvalidationDimensionV1, FinalEvidenceNodeClassV1,
     FinalEvidenceNodeDispositionV1, FinalEvidenceNodeResultV1, FinalEvidenceNodeV1,
     FinalEvidenceOriginV1, FinalEvidencePackageRoleV1, FinalEvidencePackageSubjectV1,
-    FinalEvidenceProducerExpectationV1, FinalEvidenceProducerV1,
-    FinalEvidenceReleaseIdentityV1, FinalEvidenceSelectedSubjectV1,
-    FinalEvidenceSubjectBindingV1,
+    FinalEvidenceProducerExpectationV1, FinalEvidenceProducerV1, FinalEvidenceReleaseIdentityV1,
+    FinalEvidenceSelectedSubjectV1, FinalEvidenceSubjectBindingV1,
 };
 pub use render::{
     final_evidence_graph_digest, render_final_evidence_evaluation_json,
