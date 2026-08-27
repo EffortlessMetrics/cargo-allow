@@ -14,9 +14,9 @@ use support::{
 fn check_receipt_includes_run_metadata() {
     let root = temp_root("receipt-run-metadata");
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     fs::write(root.join("policy/allow.toml"), policy())
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 
     let receipt_output = root.join("target/cargo-allow/check.receipt.json");
     let result = cargo_allow_command()
@@ -30,7 +30,7 @@ fn check_receipt_includes_run_metadata() {
         .arg("--receipt")
         .arg(&receipt_output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow check: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow check: {err}"));
 
     assert_status("check", &result, true);
     let receipt = assert_saved_json_artifact(
@@ -95,9 +95,9 @@ fn check_receipt_binds_head_commit_and_policy_digest() {
     let root = temp_root("receipt-provenance-bindings");
     let decoy = temp_root("receipt-provenance-decoy");
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     fs::write(root.join("policy/allow.toml"), policy())
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
     git(&root, &["init"]);
     git(
         &root,
@@ -107,9 +107,9 @@ fn check_receipt_binds_head_commit_and_policy_digest() {
     git(&root, &["add", "policy/allow.toml"]);
     git(&root, &["commit", "-m", "base policy"]);
     fs::create_dir_all(decoy.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create decoy policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create decoy policy dir: {err}"));
     fs::write(decoy.join("policy/allow.toml"), policy())
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write decoy policy: {err}")));
+        .unwrap_or_else(|err| panic!("write decoy policy: {err}"));
     git(&decoy, &["init"]);
     git(
         &decoy,
@@ -124,7 +124,7 @@ fn check_receipt_binds_head_commit_and_policy_digest() {
         .arg(&root)
         .args(["rev-parse", "HEAD"])
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("resolve HEAD: {err}")));
+        .unwrap_or_else(|err| panic!("resolve HEAD: {err}"));
     let expected_head = String::from_utf8_lossy(&head.stdout).trim().to_string();
 
     let receipt_output = root.join("target/cargo-allow/check.receipt.json");
@@ -140,7 +140,7 @@ fn check_receipt_binds_head_commit_and_policy_digest() {
         .arg(&receipt_output)
         .env("GIT_DIR", decoy.join(".git"))
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow check: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow check: {err}"));
 
     assert_status("check", &result, true);
     let receipt = assert_saved_json_artifact(
@@ -176,9 +176,9 @@ fn check_receipt_binds_head_commit_and_policy_digest() {
 fn staged_check_receipt_hashes_staged_policy_bytes() {
     let root = temp_root("receipt-staged-policy");
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     fs::write(root.join("policy/allow.toml"), policy())
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
     git(&root, &["init"]);
     git(
         &root,
@@ -190,11 +190,11 @@ fn staged_check_receipt_hashes_staged_policy_bytes() {
 
     let staged_policy = format!("{}\n# staged policy A\n", policy());
     fs::write(root.join("policy/allow.toml"), &staged_policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write staged policy: {err}")));
+        .unwrap_or_else(|err| panic!("write staged policy: {err}"));
     git(&root, &["add", "policy/allow.toml"]);
     let worktree_policy = format!("{}\n# worktree policy B\n", policy());
     fs::write(root.join("policy/allow.toml"), &worktree_policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write worktree policy: {err}")));
+        .unwrap_or_else(|err| panic!("write worktree policy: {err}"));
 
     let receipt_output = root.join("target/cargo-allow/staged.receipt.json");
     let result = cargo_allow_command()
@@ -211,7 +211,7 @@ fn staged_check_receipt_hashes_staged_policy_bytes() {
         .arg("--receipt")
         .arg(&receipt_output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run staged check: {err}")));
+        .unwrap_or_else(|err| panic!("run staged check: {err}"));
 
     assert_status("staged check", &result, true);
     let receipt = assert_saved_json_artifact(
@@ -240,9 +240,9 @@ fn staged_check_receipt_hashes_staged_policy_bytes() {
 fn check_validation_error_writes_error_receipt_instead_of_leaving_stale_file() {
     let root = temp_root("receipt-validation-error");
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     fs::write(root.join("policy/allow.toml"), policy())
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 
     let receipt_output = root.join("target/cargo-allow/check.receipt.json");
     let passing = cargo_allow_command()
@@ -254,7 +254,7 @@ fn check_validation_error_writes_error_receipt_instead_of_leaving_stale_file() {
         .arg("--receipt")
         .arg(&receipt_output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run passing check: {err}")));
+        .unwrap_or_else(|err| panic!("run passing check: {err}"));
     assert_status("check", &passing, true);
 
     let invalid_policy = format!(
@@ -278,7 +278,7 @@ callee = "unwrap"
         policy()
     );
     fs::write(root.join("policy/allow.toml"), invalid_policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write invalid policy: {err}")));
+        .unwrap_or_else(|err| panic!("write invalid policy: {err}"));
 
     let failing = cargo_allow_command()
         .arg("check")
@@ -289,7 +289,7 @@ callee = "unwrap"
         .arg("--receipt")
         .arg(&receipt_output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run failing check: {err}")));
+        .unwrap_or_else(|err| panic!("run failing check: {err}"));
     assert_eq!(
         failing.status.code(),
         Some(1),
@@ -330,9 +330,9 @@ callee = "unwrap"
 fn check_receipt_file_exposes_saved_json_contract() {
     let root = temp_root("receipt-output");
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     fs::write(root.join("policy/allow.toml"), policy())
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 
     let report_output = root.join("target/cargo-allow/check.md");
     let receipt_output = root.join("target/cargo-allow/check.receipt.json");
@@ -349,7 +349,7 @@ fn check_receipt_file_exposes_saved_json_contract() {
         .arg("--receipt")
         .arg(&receipt_output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow check: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow check: {err}"));
 
     assert_status("check", &result, true);
     assert_stdout_empty(
@@ -376,16 +376,16 @@ fn check_receipt_file_exposes_saved_json_contract() {
 fn check_success_reports_policy_missing_evidence_counts() {
     let root = temp_root("receipt-policy-missing-evidence");
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     fs::create_dir_all(root.join("docs"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
+        .unwrap_or_else(|err| panic!("create docs dir: {err}"));
     fs::write(root.join("docs/policy.md"), "# Policy\n")
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write doc fixture: {err}")));
+        .unwrap_or_else(|err| panic!("write doc fixture: {err}"));
     fs::write(
         root.join("policy/allow.toml"),
         policy_with_missing_evidence(),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    .unwrap_or_else(|err| panic!("write policy: {err}"));
 
     let report_output = root.join("target/cargo-allow/check.json");
     let receipt_output = root.join("target/cargo-allow/check.receipt.json");
@@ -402,7 +402,7 @@ fn check_success_reports_policy_missing_evidence_counts() {
         .arg("--receipt")
         .arg(&receipt_output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow check: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow check: {err}"));
 
     assert_status("check", &result, true);
     assert_stdout_empty(
@@ -464,13 +464,13 @@ fn check_success_reports_policy_missing_evidence_counts() {
 fn check_success_reports_policy_baseline_debt_counts() {
     let root = temp_root("receipt-policy-baseline-debt");
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     fs::create_dir_all(root.join("docs"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
+        .unwrap_or_else(|err| panic!("create docs dir: {err}"));
     fs::write(root.join("docs/baseline.md"), "# Baseline\n")
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write baseline doc: {err}")));
+        .unwrap_or_else(|err| panic!("write baseline doc: {err}"));
     fs::write(root.join("policy/allow.toml"), policy_with_baseline_debt())
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 
     let report_output = root.join("target/cargo-allow/check.json");
     let receipt_output = root.join("target/cargo-allow/check.receipt.json");
@@ -487,7 +487,7 @@ fn check_success_reports_policy_baseline_debt_counts() {
         .arg("--receipt")
         .arg(&receipt_output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow check: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow check: {err}"));
 
     assert_status("check", &result, true);
     assert_stdout_empty(
@@ -585,7 +585,7 @@ fn check_failure_with_untracked_local_evidence_still_writes_report_and_receipt_b
         .arg("--receipt")
         .arg(&receipt_output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow check: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow check: {err}"));
 
     assert_status("check", &result, false);
     assert_stdout_empty(
@@ -645,7 +645,7 @@ fn check_include_untracked_accepts_untracked_local_evidence() {
         .arg("--receipt")
         .arg(&receipt_output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow check: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow check: {err}"));
 
     assert_status("check", &result, true);
     assert_stdout_empty(
@@ -682,12 +682,12 @@ fn check_include_untracked_accepts_untracked_local_evidence() {
 
 fn write_git_policy_with_untracked_evidence(root: &std::path::Path) {
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     fs::write(
         root.join("policy/allow.toml"),
         policy_with_untracked_local_evidence(),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    .unwrap_or_else(|err| panic!("write policy: {err}"));
     git(root, &["init"]);
     git(
         root,
@@ -697,15 +697,15 @@ fn write_git_policy_with_untracked_evidence(root: &std::path::Path) {
     git(root, &["add", "policy/allow.toml"]);
     git(root, &["commit", "-m", "base policy"]);
     fs::write(root.join("policy/evidence.md"), "untracked evidence")
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write evidence: {err}")));
+        .unwrap_or_else(|err| panic!("write evidence: {err}"));
 }
 
 fn assert_check_failure_reports_broken_evidence(fixture: &str, policy: &str) {
     let root = temp_root(fixture);
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     fs::write(root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 
     let report_output = root.join("target/cargo-allow/check.json");
     let receipt_output = root.join("target/cargo-allow/check.receipt.json");
@@ -722,7 +722,7 @@ fn assert_check_failure_reports_broken_evidence(fixture: &str, policy: &str) {
         .arg("--receipt")
         .arg(&receipt_output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow check: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow check: {err}"));
 
     assert_status("check", &result, false);
     assert_stdout_empty(
@@ -774,13 +774,13 @@ fn git(root: &std::path::Path, args: &[&str]) {
         .arg(root)
         .args(args)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
+        .unwrap_or_else(|err| panic!("git {args:?}: {err}"));
     if !output.status.success() {
-        std::panic::panic_any(format!(
+        panic!(
             "git {args:?} failed: stdout=`{}` stderr=`{}`",
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
-        ));
+        );
     }
 }
 

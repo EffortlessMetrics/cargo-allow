@@ -23,7 +23,7 @@ fn temp_root(label: &str) -> PathBuf {
         std::process::id()
     ));
     fs::create_dir_all(&root)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create temp root: {err}")));
+        .unwrap_or_else(|err| panic!("create temp root: {err}"));
     root
 }
 
@@ -31,7 +31,7 @@ fn drop_root(root: PathBuf) {
     match fs::remove_dir_all(&root) {
         Ok(()) => {}
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
-        Err(err) => std::panic::panic_any(format!("remove temp root {}: {err}", root.display())),
+        Err(err) => panic!("remove temp root {}: {err}", root.display()),
     }
 }
 
@@ -64,21 +64,21 @@ fn assert_success(label: &str, output: &Output) {
 
 fn write_panic_source(root: &Path) {
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create src: {err}")));
+        .unwrap_or_else(|err| panic!("create src: {err}"));
     fs::write(
         root.join("src/lib.rs"),
         "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write src/lib.rs: {err}")));
+    .unwrap_or_else(|err| panic!("write src/lib.rs: {err}"));
 }
 
 fn write_empty_policy(root: &Path) -> PathBuf {
     let policy_dir = root.join("policy");
     fs::create_dir_all(&policy_dir)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     let path = policy_dir.join("allow.toml");
     fs::write(&path, "policy = \"cargo-allow\"\n")
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write empty policy: {err}")));
+        .unwrap_or_else(|err| panic!("write empty policy: {err}"));
     path
 }
 
@@ -109,7 +109,7 @@ fn exit_matrix_unknown_clap_flag_is_2() {
         .arg("doctor")
         .arg("--not-a-real-flag")
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run unknown flag: {err}")));
+        .unwrap_or_else(|err| panic!("run unknown flag: {err}"));
     assert_exit(
         "unknown clap flag",
         &output,
@@ -124,7 +124,7 @@ fn exit_matrix_missing_required_clap_value_is_2() {
         .arg("check")
         .arg("--mode")
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run missing mode value: {err}")));
+        .unwrap_or_else(|err| panic!("run missing mode value: {err}"));
     assert_exit("missing required clap value", &output, 2, "--mode");
 }
 
@@ -139,7 +139,7 @@ fn exit_matrix_clap_conflicting_list_status_shortcuts_is_2() {
         .arg("--expired")
         .arg("--stale")
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run list conflict: {err}")));
+        .unwrap_or_else(|err| panic!("run list conflict: {err}"));
     assert_exit("list --expired --stale", &output, 2, "--expired");
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
@@ -168,7 +168,7 @@ fn exit_matrix_post_parse_structured_usage_is_2() {
         .arg(&summary)
         .arg("vocabulary")
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run post-parse usage: {err}")));
+        .unwrap_or_else(|err| panic!("run post-parse usage: {err}"));
     assert_exit(
         "post-parse structured Usage (--command-summary-output on an unsupported command)",
         &output,
@@ -193,7 +193,7 @@ fn exit_matrix_command_summary_output_without_a_subcommand_is_2() {
         .arg("--command-summary-output")
         .arg(&summary)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run bare usage: {err}")));
+        .unwrap_or_else(|err| panic!("run bare usage: {err}"));
     assert_exit(
         "post-parse structured Usage (--command-summary-output with no subcommand)",
         &output,
@@ -221,7 +221,7 @@ fn exit_matrix_missing_config_is_1() {
         .arg("--config")
         .arg(&missing)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run missing config: {err}")));
+        .unwrap_or_else(|err| panic!("run missing config: {err}"));
     assert_exit("missing config", &output, 1, "error[");
     drop_root(root);
 }
@@ -230,7 +230,7 @@ fn exit_matrix_missing_config_is_1() {
 fn exit_matrix_invalid_policy_content_is_1() {
     let root = temp_root("exit-invalid-policy");
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     let invalid = format!(
         r#"{}
 
@@ -252,7 +252,7 @@ callee = "unwrap"
         fixture_policy()
     );
     fs::write(root.join("policy/allow.toml"), invalid)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write invalid policy: {err}")));
+        .unwrap_or_else(|err| panic!("write invalid policy: {err}"));
     let output = cargo_allow()
         .arg("check")
         .arg("--root")
@@ -260,7 +260,7 @@ callee = "unwrap"
         .arg("--mode")
         .arg("audit")
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run invalid policy: {err}")));
+        .unwrap_or_else(|err| panic!("run invalid policy: {err}"));
     assert_exit("invalid policy content", &output, 1, "review_after");
     drop_root(root);
 }
@@ -279,7 +279,7 @@ fn exit_matrix_check_policy_violation_is_1() {
         .arg("--kind")
         .arg("panic")
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run strict check: {err}")));
+        .unwrap_or_else(|err| panic!("run strict check: {err}"));
     assert_eq!(
         output.status.code(),
         Some(1),
@@ -299,7 +299,7 @@ fn exit_matrix_successful_doctor_is_0() {
         .arg("--root")
         .arg(&root)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run doctor: {err}")));
+        .unwrap_or_else(|err| panic!("run doctor: {err}"));
     assert_success("doctor success", &output);
     drop_root(root);
 }

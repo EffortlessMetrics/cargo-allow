@@ -3,7 +3,7 @@ use crate::parse_rust_syntax;
 #[test]
 fn parser_foundation_parses_valid_rust() {
     let tree = parse_rust_syntax("fn load() { let value = 1; }")
-        .unwrap_or_else(|err| std::panic::panic_any(format!("parser should load: {err}")));
+        .unwrap_or_else(|err| panic!("parser should load: {err}"));
 
     assert_eq!(tree.root_kind(), "source_file");
     assert!(!tree.has_error());
@@ -13,7 +13,7 @@ fn parser_foundation_parses_valid_rust() {
 #[test]
 fn parser_foundation_reports_invalid_rust_without_compilation() {
     let tree = parse_rust_syntax("fn broken( { let value = ;")
-        .unwrap_or_else(|err| std::panic::panic_any(format!("parser should load: {err}")));
+        .unwrap_or_else(|err| panic!("parser should load: {err}"));
 
     assert_eq!(tree.root_kind(), "source_file");
     assert!(tree.has_error());
@@ -31,7 +31,7 @@ fn syntax_containers_include_nested_module_functions() {
         }
         "#;
     let tree = parse_rust_syntax(source)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("parser should load: {err}")));
+        .unwrap_or_else(|err| panic!("parser should load: {err}"));
     let containers = tree.containers(source);
 
     let parse_span = containers
@@ -62,7 +62,7 @@ fn syntax_containers_include_inherent_impl_methods() {
         }
         "#;
     let tree = parse_rust_syntax(source)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("parser should load: {err}")));
+        .unwrap_or_else(|err| panic!("parser should load: {err}"));
     let containers = tree.containers(source);
 
     let method = containers
@@ -89,7 +89,7 @@ fn syntax_containers_include_trait_impl_methods() {
         }
         "#;
     let tree = parse_rust_syntax(source)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("parser should load: {err}")));
+        .unwrap_or_else(|err| panic!("parser should load: {err}"));
     let containers = tree.containers(source);
 
     let method = containers
@@ -110,7 +110,7 @@ fn syntax_containers_include_trait_definition_methods() {
         }
         "#;
     let tree = parse_rust_syntax(source)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("parser should load: {err}")));
+        .unwrap_or_else(|err| panic!("parser should load: {err}"));
     let containers = tree.containers(source);
 
     let method = containers
@@ -131,7 +131,7 @@ fn syntax_containers_include_trait_method_signatures() {
         }
         "#;
     let tree = parse_rust_syntax(source)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("parser should load: {err}")));
+        .unwrap_or_else(|err| panic!("parser should load: {err}"));
     let containers = tree.containers(source);
 
     let method = containers
@@ -154,7 +154,7 @@ fn syntax_containers_include_extern_function_signatures_with_abi() {
         }
         "#;
     let tree = parse_rust_syntax(source)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("parser should load: {err}")));
+        .unwrap_or_else(|err| panic!("parser should load: {err}"));
     let names = tree
         .containers(source)
         .into_iter()
@@ -177,7 +177,7 @@ fn syntax_containers_recover_from_invalid_source() {
         fn broken( {
         "#;
     let tree = parse_rust_syntax(source)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("parser should load: {err}")));
+        .unwrap_or_else(|err| panic!("parser should load: {err}"));
     let containers = tree.containers(source);
 
     assert!(tree.has_error());

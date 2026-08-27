@@ -29,12 +29,12 @@ fn shadow_lane_does_not_fail_check_but_receipt_records_posture() {
         .arg("--receipt")
         .arg(&receipt_output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow check: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow check: {err}"));
 
     assert_status("check", &result, true);
     assert_stderr_empty("check", &result, "shadow lane should not add stderr noise");
     let report = serde_json::from_slice::<serde_json::Value>(&result.stdout)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("check stdout should be JSON: {err}")));
+        .unwrap_or_else(|err| panic!("check stdout should be JSON: {err}"));
     assert_json_str(&report, "/status", "passed", "shadow lane report status");
     assert_json_u64(
         &report,
@@ -84,11 +84,11 @@ fn blocking_lane_still_fails_no_new() {
         .arg("--format")
         .arg("json")
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow check: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow check: {err}"));
 
     assert_status("check", &result, false);
     let report = serde_json::from_slice::<serde_json::Value>(&result.stdout)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("check stdout should be JSON: {err}")));
+        .unwrap_or_else(|err| panic!("check stdout should be JSON: {err}"));
     assert_json_str(&report, "/status", "failed", "blocking lane report status");
     assert_json_u64(&report, "/summary/new", 1, "blocking lane new count");
 
@@ -102,11 +102,11 @@ fn integration_support_links_stdout_helper() {
 
 fn write_lane_posture_fixture(root: &std::path::Path, source: &str) {
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+        .unwrap_or_else(|err| panic!("create src dir: {err}"));
     fs::write(root.join("src/lib.rs"), source)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write source fixture: {err}")));
+        .unwrap_or_else(|err| panic!("write source fixture: {err}"));
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     fs::write(
         root.join("policy/allow.toml"),
         r#"policy = "cargo-allow"
@@ -121,5 +121,5 @@ mode = "blocking"
 mode = "shadow"
 "#,
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    .unwrap_or_else(|err| panic!("write policy: {err}"));
 }

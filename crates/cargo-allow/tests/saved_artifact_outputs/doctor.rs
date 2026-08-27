@@ -162,7 +162,7 @@ fn assert_doctor_evidence_repair_queue(
     let queue = queues
         .iter()
         .find(|queue| queue.get("signal").and_then(serde_json::Value::as_str) == Some(signal))
-        .unwrap_or_else(|| std::panic::panic_any(format!("missing doctor queue for {signal}")));
+        .unwrap_or_else(|| panic!("missing doctor queue for {signal}"));
     assert_eq!(
         queue.get("route_kind").and_then(serde_json::Value::as_str),
         Some("worklist_filter")
@@ -218,7 +218,7 @@ fn saved_doctor_output_suggests_init_when_config_is_missing() {
     let canonical_root = fixture
         .root
         .canonicalize()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("canonicalize fixture root: {err}")));
+        .unwrap_or_else(|err| panic!("canonicalize fixture root: {err}"));
     let canonical_root_str = canonical_root
         .to_str()
         .unwrap_or_else(|| std::panic::panic_any("non-UTF-8 canonical root"))

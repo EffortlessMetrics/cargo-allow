@@ -25,7 +25,7 @@ fn temp_root(label: &str) -> PathBuf {
         std::process::id()
     ));
     fs::create_dir_all(&root)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create temp root: {err}")));
+        .unwrap_or_else(|err| panic!("create temp root: {err}"));
     root
 }
 
@@ -33,7 +33,7 @@ fn remove_temp_root(root: PathBuf) {
     match fs::remove_dir_all(&root) {
         Ok(()) => {}
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
-        Err(err) => std::panic::panic_any(format!("remove temp root {}: {err}", root.display())),
+        Err(err) => panic!("remove temp root {}: {err}", root.display()),
     }
 }
 
@@ -41,7 +41,7 @@ fn remove_temp_root(root: PathBuf) {
 /// `lint_exception` entry receipting a bare `#[allow(...)]` — the #2057 repro.
 fn write_conflict_policy(root: &std::path::Path) {
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     fs::write(
         root.join("policy/allow.toml"),
         r#"schema_version = "0.1"
@@ -71,7 +71,7 @@ lint = "clippy::expect_used"
 glob = "src/lib.rs"
 "#,
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    .unwrap_or_else(|err| panic!("write policy: {err}"));
 }
 
 /// All three commands (doctor, audit, check) must fail and surface the same
@@ -91,7 +91,7 @@ fn doctor_audit_check_agree_on_bare_allow_conflict() {
         .arg("--config")
         .arg(cfg)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run doctor: {err}")));
+        .unwrap_or_else(|err| panic!("run doctor: {err}"));
     // doctor reports health and (without --require-clean) exits 0 even when the
     // config is invalid; the agreement contract is that it REPORTS the conflict
     // (config.valid=false + the diagnostic), not a matching exit code.
@@ -120,7 +120,7 @@ fn doctor_audit_check_agree_on_bare_allow_conflict() {
         .arg(cfg)
         .arg("--require-clean")
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run doctor --require-clean: {err}")));
+        .unwrap_or_else(|err| panic!("run doctor --require-clean: {err}"));
     assert!(
         !doctor_gate.status.success(),
         "doctor --require-clean should fail on the invalid config; stderr=`{}`",
@@ -134,7 +134,7 @@ fn doctor_audit_check_agree_on_bare_allow_conflict() {
         .arg("--config")
         .arg(cfg)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run audit: {err}")));
+        .unwrap_or_else(|err| panic!("run audit: {err}"));
     assert!(
         !audit.status.success(),
         "audit should fail on the bare-allow conflict; stderr=`{}`",
@@ -156,7 +156,7 @@ fn doctor_audit_check_agree_on_bare_allow_conflict() {
         .arg("--mode")
         .arg("no-new")
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run check: {err}")));
+        .unwrap_or_else(|err| panic!("run check: {err}"));
     assert!(
         !check.status.success(),
         "check should fail on the bare-allow conflict; stderr=`{}`",
@@ -181,13 +181,13 @@ fn no_conflict_when_bare_allows_explicitly_allowed() {
     // Flip the requirement so bare allows are explicitly permitted.
     let policy_path = root.join("policy/allow.toml");
     let policy = fs::read_to_string(&policy_path)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        .unwrap_or_else(|err| panic!("read policy: {err}"));
     let policy = policy.replace(
         "allow_bare_allow_attributes = false",
         "allow_bare_allow_attributes = true",
     );
     fs::write(&policy_path, policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 
     let doctor = cargo_allow_command()
         .arg("doctor")
@@ -196,7 +196,7 @@ fn no_conflict_when_bare_allows_explicitly_allowed() {
         .arg("--config")
         .arg("policy/allow.toml")
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run doctor: {err}")));
+        .unwrap_or_else(|err| panic!("run doctor: {err}"));
     assert!(
         doctor.status.success(),
         "doctor should pass when bare allows are explicitly allowed; stderr=`{}`",

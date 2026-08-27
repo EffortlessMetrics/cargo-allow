@@ -5,7 +5,7 @@ fn root_version_flag_prints_package_version() {
     let result = cargo_allow_command()
         .arg("--version")
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow --version: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow --version: {err}"));
 
     assert_status("--version", &result, true);
     assert_stderr_empty("--version", &result, "should not emit stderr");
@@ -22,7 +22,7 @@ fn cargo_subcommand_compat_version_flag_prints_package_version() {
         .arg("--version")
         .output()
         .unwrap_or_else(|err| {
-            std::panic::panic_any(format!("run cargo-allow allow --version: {err}"))
+            panic!("run cargo-allow allow --version: {err}")
         });
 
     assert_status("allow --version", &result, true);

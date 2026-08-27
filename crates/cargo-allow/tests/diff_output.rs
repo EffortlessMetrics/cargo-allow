@@ -35,15 +35,15 @@ fn core_command_summary_installed_diff_projection() {
         .arg("--format")
         .arg("human")
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run diff summary: {err}")));
+        .unwrap_or_else(|err| panic!("run diff summary: {err}"));
     assert_status("diff summary", &output, false);
     let text = String::from_utf8_lossy(&output.stdout);
     assert!(text.starts_with("Result: findings (blocking)"), "{text}");
     let summary: Value = serde_json::from_str(
         &fs::read_to_string(&sidecar)
-            .unwrap_or_else(|err| std::panic::panic_any(format!("read diff summary: {err}"))),
+            .unwrap_or_else(|err| panic!("read diff summary: {err}")),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("parse diff summary: {err}")));
+    .unwrap_or_else(|err| panic!("parse diff summary: {err}"));
     assert_eq!(summary["operation"], "diff");
     assert_eq!(summary["subject"]["base"], "HEAD");
     assert_eq!(summary["posture"], "blocking");
@@ -77,7 +77,7 @@ fn diff_human_statuses_style_only_terminal_labels() {
         }
         command
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run colored diff: {err}")))
+            .unwrap_or_else(|err| panic!("run colored diff: {err}"))
     };
 
     let plain = run("never", None);
@@ -97,7 +97,7 @@ fn diff_human_statuses_style_only_terminal_labels() {
     let written = run("always", Some(&output));
     assert_status("written diff", &written, false);
     let written_text = fs::read_to_string(&output)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read written diff: {err}")));
+        .unwrap_or_else(|err| panic!("read written diff: {err}"));
     assert!(!written_text.contains('\u{1b}'));
 
     remove_temp_root(root);
@@ -310,9 +310,9 @@ fn diff_json_reports_untracked_local_evidence_added_policy_failure_by_default() 
         policy_with_evidence(Some("doc:docs/untracked.md")),
     );
     fs::create_dir_all(root.join("docs"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
+        .unwrap_or_else(|err| panic!("create docs dir: {err}"));
     fs::write(root.join("docs/untracked.md"), "untracked evidence")
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write untracked evidence: {err}")));
+        .unwrap_or_else(|err| panic!("write untracked evidence: {err}"));
     let output = root.join("diff.json");
 
     let value = assert_saved_json_diff_failure(&root, &output);
@@ -450,23 +450,23 @@ fn diff_json_reports_local_link_removed_policy_failure() {
 fn diff_json_reports_missing_retained_local_link_current_failure() {
     let root = temp_root("diff-missing-retained-local-link");
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+        .unwrap_or_else(|err| panic!("create src dir: {err}"));
     fs::create_dir_all(root.join("docs"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
+        .unwrap_or_else(|err| panic!("create docs dir: {err}"));
     fs::write(
         root.join("src/lib.rs"),
         "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    .unwrap_or_else(|err| panic!("write source: {err}"));
     fs::write(root.join("docs/rationale.md"), "linked rationale")
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write rationale: {err}")));
+        .unwrap_or_else(|err| panic!("write rationale: {err}"));
     fs::write(
         root.join("policy/allow.toml"),
         policy_with_links(Some("doc:docs/rationale.md")),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    .unwrap_or_else(|err| panic!("write policy: {err}"));
     git(&root, &["init"]);
     git(
         &root,
@@ -476,7 +476,7 @@ fn diff_json_reports_missing_retained_local_link_current_failure() {
     git(&root, &["add", "."]);
     git(&root, &["commit", "-m", "base"]);
     fs::remove_file(root.join("docs/rationale.md"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("remove rationale: {err}")));
+        .unwrap_or_else(|err| panic!("remove rationale: {err}"));
     let output = root.join("diff.json");
 
     let value = assert_saved_json_diff_failure(&root, &output);
@@ -514,7 +514,7 @@ fn diff_json_include_untracked_accepts_untracked_local_evidence_added() {
         root.join("policy/untracked-evidence.md"),
         "untracked evidence",
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write untracked evidence: {err}")));
+    .unwrap_or_else(|err| panic!("write untracked evidence: {err}"));
     let output = root.join("diff.json");
 
     let result = cargo_allow_command()
@@ -529,7 +529,7 @@ fn diff_json_include_untracked_accepts_untracked_local_evidence_added() {
         .arg("--output")
         .arg(&output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow diff: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow diff: {err}"));
 
     assert_status("diff", &result, true);
     assert_stdout_empty(
@@ -566,12 +566,12 @@ fn diff_json_with_explicit_head_validates_added_evidence_at_head_revision() {
     git(&root, &["commit", "-m", "add missing evidence reference"]);
     git(&root, &["tag", "head-missing-evidence"]);
     fs::create_dir_all(root.join("docs"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
+        .unwrap_or_else(|err| panic!("create docs dir: {err}"));
     fs::write(
         root.join("docs/head-only-missing.md"),
         "working tree only evidence",
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write working-tree evidence: {err}")));
+    .unwrap_or_else(|err| panic!("write working-tree evidence: {err}"));
     let output = root.join("diff.json");
 
     let result = cargo_allow_command()
@@ -587,7 +587,7 @@ fn diff_json_with_explicit_head_validates_added_evidence_at_head_revision() {
         .arg("--output")
         .arg(&output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow diff: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow diff: {err}"));
 
     assert_status("diff", &result, false);
     assert_stdout_empty(
@@ -655,7 +655,7 @@ fn diff_json_with_explicit_head_counts_invalid_local_evidence_as_broken() {
         .arg("--output")
         .arg(&output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow diff: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow diff: {err}"));
 
     assert_status("diff", &result, false);
     assert_stdout_empty(
@@ -700,12 +700,12 @@ fn diff_json_with_explicit_head_does_not_parse_working_tree_policy() {
         policy_with_evidence(Some("doc:policy/head-evidence.md")),
     );
     fs::write(root.join("policy/head-evidence.md"), "head evidence")
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write head evidence: {err}")));
+        .unwrap_or_else(|err| panic!("write head evidence: {err}"));
     git(&root, &["add", "."]);
     git(&root, &["commit", "-m", "add valid evidence reference"]);
     git(&root, &["tag", "head-valid-evidence"]);
     fs::write(root.join("policy/allow.toml"), "this is not valid toml = [")
-        .unwrap_or_else(|err| std::panic::panic_any(format!("corrupt working policy: {err}")));
+        .unwrap_or_else(|err| panic!("corrupt working policy: {err}"));
     let output = root.join("diff.json");
 
     let result = cargo_allow_command()
@@ -721,7 +721,7 @@ fn diff_json_with_explicit_head_does_not_parse_working_tree_policy() {
         .arg("--output")
         .arg(&output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow diff: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow diff: {err}"));
 
     assert_status("diff", &result, true);
     assert_stdout_empty(
@@ -758,7 +758,7 @@ fn diff_json_with_explicit_head_finds_policy_path_in_revision_when_working_polic
     git(&root, &["commit", "-m", "add traceability evidence"]);
     git(&root, &["tag", "head-with-policy"]);
     fs::remove_file(root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("remove working policy: {err}")));
+        .unwrap_or_else(|err| panic!("remove working policy: {err}"));
     let output = root.join("diff.json");
 
     let result = cargo_allow_command()
@@ -774,7 +774,7 @@ fn diff_json_with_explicit_head_finds_policy_path_in_revision_when_working_polic
         .arg("--output")
         .arg(&output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow diff: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow diff: {err}"));
 
     assert_status("diff", &result, true);
     assert_stdout_empty(
@@ -812,7 +812,7 @@ fn diff_json_with_explicit_head_finds_policy_path_in_revision_when_working_polic
         .arg("--output")
         .arg(&explicit_config_output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow diff: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow diff: {err}"));
 
     assert_status("diff", &explicit_config_result, true);
     assert_stdout_empty(
@@ -851,14 +851,14 @@ fn diff_json_with_explicit_head_finds_policy_path_in_revision_when_working_polic
 fn diff_json_with_explicit_head_prefers_revision_policy_path_over_working_tree_default() {
     let root = temp_root("diff-head-revision-policy-path");
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+        .unwrap_or_else(|err| panic!("create src dir: {err}"));
     fs::write(
         root.join("src/lib.rs"),
         "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    .unwrap_or_else(|err| panic!("write source: {err}"));
     fs::write(root.join("allow.toml"), root_policy_with_evidence(None))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write base root policy: {err}")));
+        .unwrap_or_else(|err| panic!("write base root policy: {err}"));
     git(&root, &["init"]);
     git(
         &root,
@@ -872,17 +872,17 @@ fn diff_json_with_explicit_head_prefers_revision_policy_path_over_working_tree_d
         root.join("allow.toml"),
         root_policy_with_evidence(Some("test:revision_policy_path")),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write head root policy: {err}")));
+    .unwrap_or_else(|err| panic!("write head root policy: {err}"));
     git(&root, &["add", "-A"]);
     git(&root, &["commit", "-m", "add evidence to root policy"]);
     git(&root, &["tag", "head-root-policy"]);
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create stale policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create stale policy dir: {err}"));
     fs::write(
         root.join("policy/allow.toml"),
         policy_with_evidence(Some("test:working_tree_policy_should_not_be_used")),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write working policy: {err}")));
+    .unwrap_or_else(|err| panic!("write working policy: {err}"));
     let output = root.join("diff.json");
 
     let result = cargo_allow_command()
@@ -898,7 +898,7 @@ fn diff_json_with_explicit_head_prefers_revision_policy_path_over_working_tree_d
         .arg("--output")
         .arg(&output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow diff: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow diff: {err}"));
 
     assert_status("diff", &result, true);
     assert_stdout_empty(
@@ -927,19 +927,19 @@ fn diff_json_with_explicit_head_prefers_revision_policy_path_over_working_tree_d
 fn diff_json_with_explicit_head_prefers_head_policy_path_over_base_only_default() {
     let root = temp_root("diff-head-policy-path-moved");
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+        .unwrap_or_else(|err| panic!("create src dir: {err}"));
     fs::write(
         root.join("src/lib.rs"),
         "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    .unwrap_or_else(|err| panic!("write source: {err}"));
     fs::write(
         root.join("policy/allow.toml"),
         policy_with_evidence(Some("test:base_policy_path")),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write base policy: {err}")));
+    .unwrap_or_else(|err| panic!("write base policy: {err}"));
     git(&root, &["init"]);
     git(
         &root,
@@ -950,12 +950,12 @@ fn diff_json_with_explicit_head_prefers_head_policy_path_over_base_only_default(
     git(&root, &["commit", "-m", "base policy path"]);
     git(&root, &["tag", "base-default-policy"]);
     fs::remove_file(root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("remove base policy: {err}")));
+        .unwrap_or_else(|err| panic!("remove base policy: {err}"));
     fs::write(
         root.join("allow.toml"),
         root_policy_with_evidence(Some("test:head_policy_path")),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write head root policy: {err}")));
+    .unwrap_or_else(|err| panic!("write head root policy: {err}"));
     git(&root, &["add", "-A"]);
     git(&root, &["commit", "-m", "move policy path"]);
     git(&root, &["tag", "head-root-policy"]);
@@ -974,7 +974,7 @@ fn diff_json_with_explicit_head_prefers_head_policy_path_over_base_only_default(
         .arg("--output")
         .arg(&output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow diff: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow diff: {err}"));
 
     assert_status("diff", &result, false);
     assert_stdout_empty(
@@ -1009,26 +1009,26 @@ fn diff_json_with_explicit_head_prefers_head_policy_path_over_base_only_default(
 fn diff_json_with_explicit_head_inventory_count_respects_head_ignored_scopes() {
     let root = temp_root("diff-head-inventory-ignored");
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+        .unwrap_or_else(|err| panic!("create src dir: {err}"));
     fs::create_dir_all(root.join("ignored"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create ignored dir: {err}")));
+        .unwrap_or_else(|err| panic!("create ignored dir: {err}"));
     fs::write(
         root.join("src/lib.rs"),
         "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    .unwrap_or_else(|err| panic!("write source: {err}"));
     fs::write(
         root.join("ignored/panic.rs"),
         "fn ignored(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write ignored source: {err}")));
+    .unwrap_or_else(|err| panic!("write ignored source: {err}"));
     fs::write(
         root.join("policy/allow.toml"),
         policy_with_workspace_ignored(&["policy/**"]),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write base policy: {err}")));
+    .unwrap_or_else(|err| panic!("write base policy: {err}"));
     git(&root, &["init"]);
     git(
         &root,
@@ -1042,7 +1042,7 @@ fn diff_json_with_explicit_head_inventory_count_respects_head_ignored_scopes() {
         root.join("policy/allow.toml"),
         policy_with_workspace_ignored(&["policy/**", "ignored/**"]),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write head policy: {err}")));
+    .unwrap_or_else(|err| panic!("write head policy: {err}"));
     git(&root, &["add", "-A"]);
     git(&root, &["commit", "-m", "ignore fixture source"]);
     git(&root, &["tag", "head-inventory"]);
@@ -1061,7 +1061,7 @@ fn diff_json_with_explicit_head_inventory_count_respects_head_ignored_scopes() {
         .arg("--output")
         .arg(&output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow diff: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow diff: {err}"));
 
     assert_status("diff", &result, false);
     assert_stdout_empty(
@@ -1113,7 +1113,7 @@ fn diff_json_with_explicit_head_rejects_missing_explicit_config_path() {
         .arg("--output")
         .arg(&output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow diff: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow diff: {err}"));
 
     assert_status("diff", &result, false);
     assert_stdout_empty(
@@ -1409,19 +1409,19 @@ fn diff_json_reports_policy_owner_removed_policy_failure() {
 fn diff_json_reports_removed_policy_when_explicit_head_has_no_policy() {
     let root = temp_root("diff-head-missing-policy");
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+        .unwrap_or_else(|err| panic!("create src dir: {err}"));
     fs::write(
         root.join("src/lib.rs"),
         "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    .unwrap_or_else(|err| panic!("write source: {err}"));
     fs::write(
         root.join("policy/allow.toml"),
         policy_with_evidence(Some("test:diff_head_missing_policy")),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    .unwrap_or_else(|err| panic!("write policy: {err}"));
     git(&root, &["init"]);
     git(
         &root,
@@ -1432,7 +1432,7 @@ fn diff_json_reports_removed_policy_when_explicit_head_has_no_policy() {
     git(&root, &["commit", "-m", "base policy"]);
     git(&root, &["tag", "base-policy"]);
     fs::remove_file(root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("remove policy: {err}")));
+        .unwrap_or_else(|err| panic!("remove policy: {err}"));
     git(&root, &["add", "-A"]);
     git(&root, &["commit", "-m", "remove policy"]);
     git(&root, &["tag", "head-no-policy"]);
@@ -1455,7 +1455,7 @@ fn diff_json_reports_removed_policy_when_explicit_head_has_no_policy() {
         .arg("--output")
         .arg(&output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow diff: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow diff: {err}"));
 
     assert_status("diff", &result, false);
     assert_stdout_empty(
@@ -1478,14 +1478,14 @@ fn diff_json_reports_removed_policy_when_explicit_head_has_no_policy() {
 fn diff_json_scans_missing_base_policy_with_empty_policy_not_head_policy() {
     let root = temp_root("diff-base-findings-empty-policy");
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+        .unwrap_or_else(|err| panic!("create src dir: {err}"));
     fs::write(
         root.join("src/lib.rs"),
         "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    .unwrap_or_else(|err| panic!("write source: {err}"));
     git(&root, &["init"]);
     git(
         &root,
@@ -1496,7 +1496,7 @@ fn diff_json_scans_missing_base_policy_with_empty_policy_not_head_policy() {
     git(&root, &["commit", "-m", "base without policy"]);
     let head_policy = policy_with_workspace_ignored(&["policy/**", "src/**"]);
     fs::write(root.join("policy/allow.toml"), head_policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write head policy: {err}")));
+        .unwrap_or_else(|err| panic!("write head policy: {err}"));
     let output = root.join("diff.json");
 
     let value = assert_saved_json_diff_failure(&root, &output);
@@ -1722,7 +1722,7 @@ callee = "unwrap"
 
 fn assert_file_contains(path: &std::path::Path, needle: &str, message: &str) {
     let contents = fs::read_to_string(path)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read {}: {err}", path.display())));
+        .unwrap_or_else(|err| panic!("read {}: {err}", path.display()));
     assert!(contents.contains(needle), "{message}");
 }
 

@@ -16,7 +16,7 @@ fn git(root: &Path, args: &[&str]) {
         .arg(root)
         .args(args)
         .output()
-        .unwrap_or_else(|error| std::panic::panic_any(format!("git {args:?}: {error}")));
+        .unwrap_or_else(|error| panic!("git {args:?}: {error}"));
     assert_status("git fixture", &output, true);
 }
 
@@ -25,7 +25,7 @@ fn git(root: &Path, args: &[&str]) {
 fn init_fixture(label: &str) -> PathBuf {
     let root = temp_root(label);
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|error| std::panic::panic_any(format!("create source dir: {error}")));
+        .unwrap_or_else(|error| panic!("create source dir: {error}"));
     git(&root, &["init"]);
     git(&root, &["config", "user.email", "fixture@example.com"]);
     git(&root, &["config", "user.name", "fixture"]);
@@ -33,13 +33,13 @@ fn init_fixture(label: &str) -> PathBuf {
         .args(["init", "--root"])
         .arg(&root)
         .output()
-        .unwrap_or_else(|error| std::panic::panic_any(format!("init fixture: {error}")));
+        .unwrap_or_else(|error| panic!("init fixture: {error}"));
     assert_status("init fixture", &init, true);
     fs::write(
         root.join("src/lib.rs"),
         "pub fn load() -> usize { Some(1).unwrap() }\n",
     )
-    .unwrap_or_else(|error| std::panic::panic_any(format!("write source: {error}")));
+    .unwrap_or_else(|error| panic!("write source: {error}"));
     // Commit so the inventory is the stable `git_tracked` set; untracked
     // artifacts written into the tree later (the plan, the receipt) then do not
     // perturb the recomputed inventory basis between generation and application.
@@ -57,7 +57,7 @@ fn generate_plan(root: &Path) -> PathBuf {
         .arg("--plan")
         .arg(&plan_path)
         .output()
-        .unwrap_or_else(|error| std::panic::panic_any(format!("why plan: {error}")));
+        .unwrap_or_else(|error| panic!("why plan: {error}"));
     assert_status("why plan", &why, true);
     assert!(plan_path.exists(), "plan should be written");
     plan_path
@@ -74,7 +74,7 @@ fn add_from_plan_applies_a_verified_plan_and_binds_a_receipt()
     let plan_path = generate_plan(&root);
     let policy_path = root.join("policy/allow.toml");
     let policy_before = fs::read_to_string(&policy_path)
-        .unwrap_or_else(|error| std::panic::panic_any(format!("read policy: {error}")));
+        .unwrap_or_else(|error| panic!("read policy: {error}"));
 
     let receipt_path = root.join("receipt.json");
     let common_summary_path = root.join("common-summary.json");
@@ -95,7 +95,7 @@ fn add_from_plan_applies_a_verified_plan_and_binds_a_receipt()
         .arg("--summary-output")
         .arg(&receipt_path)
         .output()
-        .unwrap_or_else(|error| std::panic::panic_any(format!("add from-plan: {error}")));
+        .unwrap_or_else(|error| panic!("add from-plan: {error}"));
     assert_status("add from-plan", &apply, true);
     assert_stdout_empty(
         "add from-plan",
@@ -110,7 +110,7 @@ fn add_from_plan_applies_a_verified_plan_and_binds_a_receipt()
 
     let common_summary: Value = serde_json::from_str(
         &fs::read_to_string(&common_summary_path)
-            .unwrap_or_else(|error| std::panic::panic_any(format!("read common summary: {error}"))),
+            .unwrap_or_else(|error| panic!("read common summary: {error}")),
     )?;
     assert_eq!(
         common_summary.get("schema_id").and_then(Value::as_str),
@@ -203,7 +203,7 @@ fn add_from_plan_applies_a_verified_plan_and_binds_a_receipt()
     );
 
     let policy_after = fs::read_to_string(&policy_path)
-        .unwrap_or_else(|error| std::panic::panic_any(format!("reread policy: {error}")));
+        .unwrap_or_else(|error| panic!("reread policy: {error}"));
     assert_ne!(policy_before, policy_after, "policy should have changed");
     assert!(
         policy_after.contains("fixture"),
@@ -225,10 +225,10 @@ fn add_from_plan_applies_a_verified_plan_and_binds_a_receipt()
             "--update",
         ])
         .output()
-        .unwrap_or_else(|error| std::panic::panic_any(format!("replay: {error}")));
+        .unwrap_or_else(|error| panic!("replay: {error}"));
     assert_status("replay", &replay, false);
     let policy_after_replay = fs::read_to_string(&policy_path)
-        .unwrap_or_else(|error| std::panic::panic_any(format!("reread policy: {error}")));
+        .unwrap_or_else(|error| panic!("reread policy: {error}"));
     assert_eq!(
         policy_after, policy_after_replay,
         "a rejected replay must not mutate policy"
@@ -249,11 +249,11 @@ fn add_from_plan_rejects_source_drift_without_mutation() {
         root.join("src/lib.rs"),
         "// drifted\npub fn load() -> usize { Some(1).unwrap() }\n",
     )
-    .unwrap_or_else(|error| std::panic::panic_any(format!("rewrite source: {error}")));
+    .unwrap_or_else(|error| panic!("rewrite source: {error}"));
     git(&root, &["add", "src/lib.rs"]);
 
     let policy_before = fs::read_to_string(&policy_path)
-        .unwrap_or_else(|error| std::panic::panic_any(format!("read policy: {error}")));
+        .unwrap_or_else(|error| panic!("read policy: {error}"));
     let apply = cargo_allow_command()
         .args(["add", "--root"])
         .arg(&root)
@@ -267,10 +267,10 @@ fn add_from_plan_rejects_source_drift_without_mutation() {
             "--update",
         ])
         .output()
-        .unwrap_or_else(|error| std::panic::panic_any(format!("add from-plan drift: {error}")));
+        .unwrap_or_else(|error| panic!("add from-plan drift: {error}"));
     assert_status("add from-plan drift", &apply, false);
     let policy_after = fs::read_to_string(&policy_path)
-        .unwrap_or_else(|error| std::panic::panic_any(format!("reread policy: {error}")));
+        .unwrap_or_else(|error| panic!("reread policy: {error}"));
     assert_eq!(
         policy_before, policy_after,
         "a stale plan must not mutate policy"
@@ -292,7 +292,7 @@ fn add_from_plan_requires_update_and_conflicts_with_write() {
         .arg(&plan_path)
         .args(["--owner", "fixture", "--reason", "no update flag"])
         .output()
-        .unwrap_or_else(|error| std::panic::panic_any(format!("add from-plan no update: {error}")));
+        .unwrap_or_else(|error| panic!("add from-plan no update: {error}"));
     assert_status("add from-plan without --update", &no_update, false);
 
     // Conflict with a candidate-file write target.
@@ -311,7 +311,7 @@ fn add_from_plan_requires_update_and_conflicts_with_write() {
         .arg("--write")
         .arg(root.join("candidate.toml"))
         .output()
-        .unwrap_or_else(|error| std::panic::panic_any(format!("add from-plan write: {error}")));
+        .unwrap_or_else(|error| panic!("add from-plan write: {error}"));
     assert_status("add from-plan with --write", &with_write, false);
 
     // Conflict with a manual target selector.
@@ -330,7 +330,7 @@ fn add_from_plan_requires_update_and_conflicts_with_write() {
             "panic",
         ])
         .output()
-        .unwrap_or_else(|error| std::panic::panic_any(format!("add from-plan kind: {error}")));
+        .unwrap_or_else(|error| panic!("add from-plan kind: {error}"));
     assert_status("add from-plan with --kind", &with_kind, false);
 
     remove_temp_root(root);

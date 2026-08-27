@@ -850,7 +850,7 @@ fn detect_attr_returns_text_after_outer_and_inner_prefixes() {
 fn last_column(line: &str, needle: &str) -> u32 {
     let index = line
         .rfind(needle)
-        .unwrap_or_else(|| std::panic::panic_any(format!("missing `{needle}` in `{line}`")));
+        .unwrap_or_else(|| panic!("missing `{needle}` in `{line}`"));
     line.char_indices()
         .take_while(|(byte, _)| *byte < index)
         .count() as u32

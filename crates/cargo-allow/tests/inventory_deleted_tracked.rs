@@ -25,7 +25,7 @@ fn temp_root(label: &str) -> PathBuf {
         std::process::id()
     ));
     fs::create_dir_all(&root)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create temp root: {err}")));
+        .unwrap_or_else(|err| panic!("create temp root: {err}"));
     root
 }
 
@@ -33,7 +33,7 @@ fn drop_root(root: PathBuf) {
     match fs::remove_dir_all(&root) {
         Ok(()) => {}
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
-        Err(err) => std::panic::panic_any(format!("remove temp root {}: {err}", root.display())),
+        Err(err) => panic!("remove temp root {}: {err}", root.display()),
     }
 }
 
@@ -46,12 +46,12 @@ fn repo_with_deleted_tracked_file(root: &Path) {
             .arg(root)
             .args(args)
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("git {:?}: {err}", args)))
+            .unwrap_or_else(|err| panic!("git {:?}: {err}", args))
     };
     fs::write(root.join("kept.txt"), "kept\n")
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write kept.txt: {err}")));
+        .unwrap_or_else(|err| panic!("write kept.txt: {err}"));
     fs::write(root.join("deleted.txt"), "gone\n")
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write deleted.txt: {err}")));
+        .unwrap_or_else(|err| panic!("write deleted.txt: {err}"));
     let _ = git(&["init"]);
     // git needs an identity for the commit.
     let _ = git(&["config", "user.email", "test@example.com"]);
@@ -59,18 +59,18 @@ fn repo_with_deleted_tracked_file(root: &Path) {
     let _ = git(&["add", "kept.txt", "deleted.txt"]);
     let _ = git(&["commit", "-m", "seed"]);
     fs::remove_file(root.join("deleted.txt"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("delete tracked file: {err}")));
+        .unwrap_or_else(|err| panic!("delete tracked file: {err}"));
 }
 
 fn repo_with_empty_tracked_set(root: &Path) {
     fs::write(root.join("untracked.txt"), "untracked\n")
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write untracked.txt: {err}")));
+        .unwrap_or_else(|err| panic!("write untracked.txt: {err}"));
     let output = Command::new("git")
         .arg("-C")
         .arg(root)
         .arg("init")
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("git init: {err}")));
+        .unwrap_or_else(|err| panic!("git init: {err}"));
     assert!(
         output.status.success(),
         "git init should succeed: stderr=`{}`",
@@ -90,7 +90,7 @@ fn doctor_discloses_deleted_tracked_files() {
         .arg("--root")
         .arg(&root)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run doctor: {err}")));
+        .unwrap_or_else(|err| panic!("run doctor: {err}"));
     assert!(
         human.status.success(),
         "doctor should still exit 0 (advisory): stderr=`{}`",
@@ -110,7 +110,7 @@ fn doctor_discloses_deleted_tracked_files() {
         .arg("--format")
         .arg("json")
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run doctor json: {err}")));
+        .unwrap_or_else(|err| panic!("run doctor json: {err}"));
     let json_text = String::from_utf8_lossy(&json.stdout) + String::from_utf8_lossy(&json.stderr);
     assert!(
         json_text.contains("\"deleted_tracked_files\": 1"),
@@ -130,7 +130,7 @@ fn doctor_discloses_empty_git_tracked_inventory() {
         .arg("--root")
         .arg(&root)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run doctor: {err}")));
+        .unwrap_or_else(|err| panic!("run doctor: {err}"));
     assert!(
         human.status.success(),
         "doctor should still exit 0 (advisory): stderr=`{}`",
@@ -150,7 +150,7 @@ fn doctor_discloses_empty_git_tracked_inventory() {
         .arg("--format")
         .arg("json")
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run doctor json: {err}")));
+        .unwrap_or_else(|err| panic!("run doctor json: {err}"));
     let json_text = String::from_utf8_lossy(&json.stdout) + String::from_utf8_lossy(&json.stderr);
     assert!(
         json_text.contains("\"empty_git_tracked\": true"),

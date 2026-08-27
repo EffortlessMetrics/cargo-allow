@@ -143,9 +143,9 @@ fn saved_diff_output_covers_occurrence_limit_loosening_details() {
                     == Some("allow-unwrap-occurrence-limit")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected occurrence-limit loosening policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -227,9 +227,9 @@ fn saved_diff_output_covers_occurrence_limit_tightening_details() {
                     == Some("allow-unwrap-occurrence-limit")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected occurrence-limit tightening policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -313,9 +313,9 @@ fn saved_diff_output_covers_scope_broadening_details() {
                     == Some("allow-unwrap-scope")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected scope broadening policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -417,9 +417,9 @@ fn saved_diff_output_covers_scope_narrowing_details() {
                     == Some("allow-unwrap-scope")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected scope narrowing policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -513,9 +513,9 @@ fn saved_diff_output_covers_scope_retarget_details() {
                     == Some("allow-unwrap-scope")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected scope retarget policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -607,9 +607,9 @@ fn saved_diff_output_covers_selector_precision_decrease_details() {
                     == Some("allow-unwrap-selector-precision")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected selector precision decrease policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -713,9 +713,9 @@ fn saved_diff_output_covers_selector_precision_increase_details() {
                     == Some("allow-unwrap-selector-precision")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected selector precision increase policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -821,9 +821,9 @@ fn saved_diff_output_covers_selector_identity_change_details() {
                     == Some("allow-unwrap-selector-identity")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected selector identity policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -903,9 +903,9 @@ fn saved_diff_output_covers_exception_kind_change_details() {
                     == Some("allow-exception-identity")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected exception kind policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -1002,9 +1002,9 @@ fn saved_diff_output_covers_exception_family_change_details() {
                     == Some("allow-exception-identity")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected exception family policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -1109,9 +1109,9 @@ fn saved_diff_output_covers_evidence_removal_details() {
                     == Some("allow-unwrap-evidence")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected evidence removal policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -1214,9 +1214,9 @@ fn saved_diff_output_covers_weak_evidence_addition_details() {
                     == Some("allow-unwrap-evidence")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected weak evidence addition policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -1325,9 +1325,9 @@ fn saved_diff_output_covers_valid_local_evidence_addition_details() {
                     == Some("allow-unwrap-evidence")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected valid local evidence addition policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -1441,9 +1441,9 @@ fn saved_diff_output_covers_include_untracked_local_evidence_addition_details() 
                     == Some("allow-unwrap-evidence")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected include-untracked evidence addition policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -1580,9 +1580,9 @@ fn saved_diff_output_covers_explicit_head_missing_local_evidence_details() {
                     == Some("allow-unwrap-evidence")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected explicit-head evidence addition policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -1638,7 +1638,7 @@ fn saved_diff_output_covers_explicit_head_ignores_invalid_working_policy() {
         fixture.root.join("policy/allow.toml"),
         "this is not valid toml = [",
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("corrupt working policy: {err}")));
+    .unwrap_or_else(|err| panic!("corrupt working policy: {err}"));
 
     let artifact_dir = fixture.root.join("target/cargo-allow");
     let diff = artifact_dir.join("diff.json");
@@ -1696,9 +1696,9 @@ fn saved_diff_output_covers_explicit_head_ignores_invalid_working_policy() {
                     == Some("allow-unwrap-evidence")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected explicit-head evidence addition policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -1746,7 +1746,7 @@ fn saved_diff_output_covers_explicit_head_finds_policy_when_working_policy_missi
     );
     git_for_saved_diff(&fixture.root, &["tag", "saved-head-with-policy"]);
     fs::remove_file(fixture.root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("remove working policy: {err}")));
+        .unwrap_or_else(|err| panic!("remove working policy: {err}"));
 
     let artifact_dir = fixture.root.join("target/cargo-allow");
     let diff = artifact_dir.join("diff.json");
@@ -1816,9 +1816,9 @@ fn saved_diff_output_covers_explicit_head_finds_policy_when_working_policy_missi
                     == Some("allow-unwrap-evidence")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected explicit-head revision evidence addition; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -1857,16 +1857,16 @@ fn saved_diff_output_covers_explicit_head_policy_path_move_details() {
         fixture.root.join("policy/allow.toml"),
         default_policy_with_optional_evidence(Some("test:saved-base-policy-path")),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write base default policy: {err}")));
+    .unwrap_or_else(|err| panic!("write base default policy: {err}"));
     commit_fixture_base(&fixture.root);
     git_for_saved_diff(&fixture.root, &["tag", "saved-base-default-policy"]);
     fs::remove_file(fixture.root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("remove base policy: {err}")));
+        .unwrap_or_else(|err| panic!("remove base policy: {err}"));
     fs::write(
         fixture.root.join("allow.toml"),
         root_policy_with_optional_evidence(Some("test:saved-head-policy-path")),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write head root policy: {err}")));
+    .unwrap_or_else(|err| panic!("write head root policy: {err}"));
     git_for_saved_diff(&fixture.root, &["add", "-A"]);
     git_for_saved_diff(&fixture.root, &["commit", "-m", "move policy path"]);
     git_for_saved_diff(&fixture.root, &["tag", "saved-head-root-policy"]);
@@ -1938,9 +1938,9 @@ fn saved_diff_output_covers_explicit_head_policy_path_move_details() {
                     == Some("allow-unwrap")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected explicit-head policy-path added allow; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -1961,12 +1961,12 @@ fn saved_diff_output_covers_explicit_head_inventory_ignored_scopes() {
     let fixture = SourceTreeFixture::new("saved-diff-explicit-head-inventory-ignored");
     fixture.write_panic_source();
     fs::create_dir_all(fixture.root.join("ignored"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create ignored dir: {err}")));
+        .unwrap_or_else(|err| panic!("create ignored dir: {err}"));
     fs::write(
         fixture.root.join("ignored/panic.rs"),
         "pub fn ignored(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write ignored source: {err}")));
+    .unwrap_or_else(|err| panic!("write ignored source: {err}"));
     write_policy_with_workspace_ignored(&fixture, &["policy/**", "target/**"]);
     commit_fixture_base(&fixture.root);
     write_policy_with_workspace_ignored(&fixture, &["policy/**", "target/**", "ignored/**"]);
@@ -2041,9 +2041,9 @@ fn saved_diff_output_covers_explicit_head_inventory_ignored_scopes() {
                     == Some("workspace.ignored")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected explicit-head ignored-scope policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -2142,9 +2142,9 @@ fn saved_diff_output_covers_redundant_segment_evidence_addition_details() {
                     == Some("allow-unwrap-evidence")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected redundant-segment evidence addition policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -2264,9 +2264,9 @@ fn saved_diff_output_covers_broken_evidence_addition_details() {
                     == Some("allow-unwrap-evidence")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected broken evidence addition policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -2386,9 +2386,9 @@ fn saved_diff_output_covers_weak_evidence_removal_improvement_details() {
                     == Some("allow-unwrap-evidence")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected weak evidence removal policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -2508,9 +2508,9 @@ fn saved_diff_output_covers_traceability_link_change_details() {
                     == Some("allow-unwrap-links")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected traceability link removal policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         removed.get("severity").and_then(serde_json::Value::as_str),
@@ -2548,9 +2548,9 @@ fn saved_diff_output_covers_traceability_link_change_details() {
                     == Some("allow-unwrap-links")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected traceability link addition policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         added.get("severity").and_then(serde_json::Value::as_str),
@@ -2588,7 +2588,7 @@ fn saved_diff_output_covers_missing_retained_traceability_link_current_failure_d
     write_policy_with_traceability_links(&fixture, &["doc:docs/rationale.md"]);
     commit_fixture_base(&fixture.root);
     fs::remove_file(fixture.root.join("docs/rationale.md"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("remove traceability doc: {err}")));
+        .unwrap_or_else(|err| panic!("remove traceability doc: {err}"));
 
     let artifact_dir = fixture.root.join("target/cargo-allow");
     let diff = artifact_dir.join("diff.json");
@@ -2729,9 +2729,9 @@ fn saved_diff_output_covers_broken_traceability_link_addition_details() {
                     == Some("allow-unwrap-links")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected broken traceability link addition policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         added.get("severity").and_then(serde_json::Value::as_str),
@@ -2853,9 +2853,9 @@ fn saved_diff_output_covers_redundant_segment_traceability_link_addition_details
                     == Some("allow-unwrap-links")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected redundant-segment traceability link addition policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         added.get("severity").and_then(serde_json::Value::as_str),
@@ -2968,9 +2968,9 @@ fn saved_diff_output_covers_weak_traceability_link_addition_details() {
                     == Some("allow-unwrap-links")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected weak traceability link addition policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         added.get("severity").and_then(serde_json::Value::as_str),
@@ -3087,9 +3087,9 @@ fn saved_diff_output_covers_weak_traceability_link_removal_improvement_details()
                     == Some("allow-unwrap-links")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected weak traceability link removal policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         removed.get("severity").and_then(serde_json::Value::as_str),
@@ -3199,9 +3199,9 @@ fn saved_diff_output_covers_weak_traceability_link_removal_review_details() {
                     == Some("allow-unwrap-links")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected weak traceability link removal review policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         removed.get("severity").and_then(serde_json::Value::as_str),
@@ -3311,9 +3311,9 @@ fn saved_diff_output_covers_typed_traceability_link_removal_review_details() {
                     == Some("allow-unwrap-links")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected typed traceability link removal review policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         removed.get("severity").and_then(serde_json::Value::as_str),
@@ -3545,9 +3545,9 @@ fn saved_diff_output_covers_created_removal_details() {
                     == Some("allow-unwrap-lifecycle")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected created-removal policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -3641,9 +3641,9 @@ fn saved_diff_output_covers_created_change_details() {
                     == Some("allow-unwrap-lifecycle")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected created-change policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -3738,9 +3738,9 @@ fn saved_diff_output_covers_created_addition_details() {
                     == Some("allow-unwrap-lifecycle")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected created-addition policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -3838,9 +3838,9 @@ fn saved_diff_output_covers_baseline_debt_normalization_details() {
                     == Some("allow-unwrap-baseline-classification")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected baseline-debt normalization policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -3928,9 +3928,9 @@ fn saved_diff_output_covers_added_allow_details() {
                     == Some("allow-added-review")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected added allow policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -3953,7 +3953,7 @@ fn saved_diff_output_covers_removed_allow_details() {
     write_policy_with_reviewed_allow(&fixture);
     commit_fixture_base(&fixture.root);
     fs::remove_file(fixture.root.join("src/lib.rs"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("remove source fixture: {err}")));
+        .unwrap_or_else(|err| panic!("remove source fixture: {err}"));
     fixture.write_minimal_policy();
 
     let artifact_dir = fixture.root.join("target/cargo-allow");
@@ -4006,9 +4006,9 @@ fn saved_diff_output_covers_removed_allow_details() {
                     == Some("allow-added-review")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected removed allow policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -4032,7 +4032,7 @@ fn saved_diff_output_covers_explicit_head_removed_policy_details() {
     commit_fixture_base(&fixture.root);
     git_for_saved_diff(&fixture.root, &["tag", "saved-base-policy"]);
     fs::remove_file(fixture.root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("remove policy fixture: {err}")));
+        .unwrap_or_else(|err| panic!("remove policy fixture: {err}"));
     git_for_saved_diff(&fixture.root, &["add", "-A"]);
     git_for_saved_diff(&fixture.root, &["commit", "-m", "remove policy"]);
     git_for_saved_diff(&fixture.root, &["tag", "saved-head-no-policy"]);
@@ -4103,9 +4103,9 @@ fn saved_diff_output_covers_explicit_head_removed_policy_details() {
                     == Some("allow-added-review")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected explicit-head removed policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -4182,9 +4182,9 @@ fn saved_diff_output_covers_added_baseline_debt_details() {
                     == Some("allow-unwrap-baseline-classification")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected added baseline-debt policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -4262,9 +4262,9 @@ fn saved_diff_output_covers_baseline_debt_introduction_details() {
                     == Some("allow-unwrap-baseline-classification")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected baseline-debt introduction policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -4355,9 +4355,9 @@ fn saved_diff_output_covers_policy_owner_removal_details() {
                     == Some("policy.owner")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected policy owner removal policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -4451,9 +4451,9 @@ fn saved_diff_output_covers_policy_owner_addition_details() {
                     == Some("policy.owner")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected policy owner addition policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -4551,9 +4551,9 @@ fn saved_diff_output_covers_policy_owner_unassigned_details() {
                     == Some("policy.owner")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected policy owner unassigned policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -4648,9 +4648,9 @@ fn saved_diff_output_covers_policy_owner_change_details() {
                     == Some("policy.owner")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected policy owner change policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -4748,9 +4748,9 @@ fn saved_diff_output_covers_policy_status_weakening_details() {
                     == Some("policy.status")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected policy status weakening policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -4839,9 +4839,9 @@ fn saved_diff_output_covers_policy_status_tightening_details() {
                     == Some("policy.status")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected policy status tightening policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -4931,9 +4931,9 @@ fn saved_diff_output_covers_requirement_loosening_details() {
                     == Some("requirements.owner_required")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected requirement loosening policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -5027,9 +5027,9 @@ fn saved_diff_output_covers_requirement_tightening_details() {
                     == Some("requirements.owner_required")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected requirement tightening policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -5128,9 +5128,9 @@ fn saved_diff_output_covers_workspace_ignored_addition_details() {
                     == Some("workspace.ignored")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected workspace ignored addition policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -5225,9 +5225,9 @@ fn saved_diff_output_covers_workspace_ignored_removal_details() {
                     == Some("workspace.ignored")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected workspace ignored removal policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -5322,9 +5322,9 @@ fn saved_diff_output_covers_workspace_generated_addition_details() {
                     == Some("workspace.generated")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected workspace generated addition policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -5419,9 +5419,9 @@ fn saved_diff_output_covers_workspace_generated_removal_details() {
                     == Some("workspace.generated")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected workspace generated removal policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -5518,9 +5518,9 @@ fn saved_diff_output_covers_owner_removal_details() {
                     == Some("allow-unwrap-owner")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected owner removal policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -5607,9 +5607,9 @@ fn saved_diff_output_covers_owner_addition_details() {
                     == Some("allow-unwrap-owner")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected owner addition policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -5696,9 +5696,9 @@ fn saved_diff_output_covers_owner_change_details() {
                     == Some("allow-unwrap-owner")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected owner change policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -5789,9 +5789,9 @@ fn saved_diff_output_covers_owner_unassigned_details() {
                     == Some("allow-unwrap-owner")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected owner-unassigned policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -5891,9 +5891,9 @@ fn saved_diff_output_covers_reason_removal_details() {
                     == Some("allow-unwrap-reason")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected reason removal policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -5983,9 +5983,9 @@ fn saved_diff_output_covers_reason_addition_details() {
                     == Some("allow-unwrap-reason")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected reason addition policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -6078,9 +6078,9 @@ fn saved_diff_output_covers_reason_change_details() {
                     == Some("allow-unwrap-reason")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected reason change policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -6171,9 +6171,9 @@ fn saved_diff_output_covers_classification_removal_details() {
                     == Some("allow-unwrap-classification")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected classification removal policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -6260,9 +6260,9 @@ fn saved_diff_output_covers_classification_addition_details() {
                     == Some("allow-unwrap-classification")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected classification addition policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -6349,9 +6349,9 @@ fn saved_diff_output_covers_classification_change_details() {
                     == Some("allow-unwrap-classification")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected classification change policy change; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -6384,7 +6384,7 @@ fn saved_diff_output_covers_classification_change_details() {
 fn write_policy_with_occurrence_limit(fixture: &SourceTreeFixture, occurrence_limit: u32) {
     fixture.write_minimal_policy();
     let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        .unwrap_or_else(|err| panic!("read policy: {err}"));
     policy.push_str(&format!(
         r#"
 
@@ -6408,13 +6408,13 @@ callee = "unwrap"
 "#
     ));
     fs::write(fixture.root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 }
 
 fn write_policy_with_lifecycle(fixture: &SourceTreeFixture, expires: &str, review_after: &str) {
     fixture.write_minimal_policy();
     let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        .unwrap_or_else(|err| panic!("read policy: {err}"));
     policy.push_str(&format!(
         r#"
 
@@ -6438,13 +6438,13 @@ callee = "unwrap"
 "#
     ));
     fs::write(fixture.root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 }
 
 fn write_policy_with_optional_created(fixture: &SourceTreeFixture, created: Option<&str>) {
     fixture.write_minimal_policy();
     let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        .unwrap_or_else(|err| panic!("read policy: {err}"));
     let created = created
         .map(|created| format!("created = \"{created}\"\n"))
         .unwrap_or_default();
@@ -6470,13 +6470,13 @@ callee = "unwrap"
 "#
     ));
     fs::write(fixture.root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 }
 
 fn write_policy_with_baseline_classification(fixture: &SourceTreeFixture, classification: &str) {
     fixture.write_minimal_policy();
     let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        .unwrap_or_else(|err| panic!("read policy: {err}"));
     policy.push_str(&format!(
         r#"
 
@@ -6498,13 +6498,13 @@ callee = "unwrap"
 "#
     ));
     fs::write(fixture.root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 }
 
 fn write_policy_with_reviewed_allow(fixture: &SourceTreeFixture) {
     fixture.write_minimal_policy();
     let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        .unwrap_or_else(|err| panic!("read policy: {err}"));
     policy.push_str(
         r#"
 
@@ -6527,13 +6527,13 @@ callee = "unwrap"
 "#,
     );
     fs::write(fixture.root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 }
 
 fn write_policy_with_optional_policy_owner(fixture: &SourceTreeFixture, owner: Option<&str>) {
     fixture.write_minimal_policy();
     let policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        .unwrap_or_else(|err| panic!("read policy: {err}"));
     let owner = owner
         .map(|owner| format!("owner = \"{owner}\"\n"))
         .unwrap_or_default();
@@ -6560,13 +6560,13 @@ callee = "unwrap"
 "#,
     );
     fs::write(fixture.root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 }
 
 fn write_policy_with_policy_status(fixture: &SourceTreeFixture, status: &str) {
     fixture.write_minimal_policy();
     let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        .unwrap_or_else(|err| panic!("read policy: {err}"));
     policy = policy.replace("status = \"active\"", &format!("status = \"{status}\""));
     policy.push_str(
         r#"
@@ -6590,13 +6590,13 @@ callee = "unwrap"
 "#,
     );
     fs::write(fixture.root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 }
 
 fn write_policy_with_owner_required(fixture: &SourceTreeFixture, owner_required: bool) {
     fixture.write_minimal_policy();
     let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        .unwrap_or_else(|err| panic!("read policy: {err}"));
     policy = policy.replace(
         "owner_required = true",
         &format!("owner_required = {owner_required}"),
@@ -6623,13 +6623,13 @@ callee = "unwrap"
 "#,
     );
     fs::write(fixture.root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 }
 
 fn write_policy_with_workspace_ignored(fixture: &SourceTreeFixture, ignored: &[&str]) {
     fixture.write_minimal_policy();
     let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        .unwrap_or_else(|err| panic!("read policy: {err}"));
     let ignored = ignored
         .iter()
         .map(|value| format!("\"{value}\""))
@@ -6661,13 +6661,13 @@ callee = "unwrap"
 "#,
     );
     fs::write(fixture.root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 }
 
 fn write_policy_with_workspace_generated(fixture: &SourceTreeFixture, generated: &[&str]) {
     fixture.write_minimal_policy();
     let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        .unwrap_or_else(|err| panic!("read policy: {err}"));
     let generated = generated
         .iter()
         .map(|value| format!("\"{value}\""))
@@ -6699,13 +6699,13 @@ callee = "unwrap"
 "#,
     );
     fs::write(fixture.root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 }
 
 fn write_policy_with_optional_owner(fixture: &SourceTreeFixture, owner: Option<&str>) {
     fixture.write_minimal_policy();
     let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        .unwrap_or_else(|err| panic!("read policy: {err}"));
     policy = policy.replace("owner_required = true", "owner_required = false");
     let owner = owner
         .map(|owner| format!("owner = \"{owner}\"\n"))
@@ -6731,13 +6731,13 @@ callee = "unwrap"
 "#
     ));
     fs::write(fixture.root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 }
 
 fn write_policy_with_optional_reason(fixture: &SourceTreeFixture, reason: Option<&str>) {
     fixture.write_minimal_policy();
     let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        .unwrap_or_else(|err| panic!("read policy: {err}"));
     policy = policy.replace("reason_required = true", "reason_required = false");
     let reason = reason
         .map(|reason| format!("reason = \"{reason}\"\n"))
@@ -6763,7 +6763,7 @@ callee = "unwrap"
 "#
     ));
     fs::write(fixture.root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 }
 
 fn write_policy_with_optional_classification(
@@ -6772,7 +6772,7 @@ fn write_policy_with_optional_classification(
 ) {
     fixture.write_minimal_policy();
     let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        .unwrap_or_else(|err| panic!("read policy: {err}"));
     policy = policy.replace(
         "classification_required = true",
         "classification_required = false",
@@ -6801,7 +6801,7 @@ callee = "unwrap"
 "#
     ));
     fs::write(fixture.root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 }
 
 fn assert_lifecycle_change(
@@ -6824,9 +6824,9 @@ fn assert_lifecycle_change(
                     == Some("allow-unwrap-lifecycle")
         })
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "expected lifecycle policy change kind={kind}; got {changes:?}"
-            ))
+            )
         });
     assert_eq!(
         change.get("severity").and_then(serde_json::Value::as_str),
@@ -6860,10 +6860,10 @@ fn write_diff_evidence_fixture_doc(fixture: &SourceTreeFixture, relative_path: &
     let path = fixture.root.join(relative_path);
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
-            .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
+            .unwrap_or_else(|err| panic!("create docs dir: {err}"));
     }
     fs::write(path, "# Safety evidence\n\nFixture evidence artifact.\n")
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write evidence fixture: {err}")));
+        .unwrap_or_else(|err| panic!("write evidence fixture: {err}"));
 }
 
 fn git_for_saved_diff(root: &std::path::Path, args: &[&str]) {
@@ -6872,13 +6872,13 @@ fn git_for_saved_diff(root: &std::path::Path, args: &[&str]) {
         .arg(root)
         .args(args)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
+        .unwrap_or_else(|err| panic!("git {args:?}: {err}"));
     if !output.status.success() {
-        std::panic::panic_any(format!(
+        panic!(
             "git {args:?} failed: stdout=`{}` stderr=`{}`",
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
-        ));
+        );
     }
 }
 
@@ -6886,14 +6886,14 @@ fn write_diff_traceability_fixture_doc(fixture: &SourceTreeFixture, relative_pat
     let path = fixture.root.join(relative_path);
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).unwrap_or_else(|err| {
-            std::panic::panic_any(format!("create traceability link dir: {err}"))
+            panic!("create traceability link dir: {err}")
         });
     }
     fs::write(
         path,
         "# Traceability link\n\nFixture traceability artifact.\n",
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write traceability link fixture: {err}")));
+    .unwrap_or_else(|err| panic!("write traceability link fixture: {err}"));
 }
 
 fn write_policy_with_optional_evidence(fixture: &SourceTreeFixture, evidence: Option<&str>) {
@@ -6914,7 +6914,7 @@ fn write_policy_with_optional_evidence_inner(
 ) {
     fixture.write_minimal_policy();
     let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        .unwrap_or_else(|err| panic!("read policy: {err}"));
     if let Some(path) = evidence
         .filter(|_| create_local_file)
         .and_then(|reference| reference.strip_prefix("doc:"))
@@ -6945,7 +6945,7 @@ callee = "unwrap"
 "#
     ));
     fs::write(fixture.root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 }
 
 fn root_policy_with_optional_evidence(evidence: Option<&str>) -> String {
@@ -6995,7 +6995,7 @@ callee = "unwrap"
 
 fn append_evidence_doc_allow(fixture: &SourceTreeFixture, relative_path: &str) {
     let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        .unwrap_or_else(|err| panic!("read policy: {err}"));
     policy.push_str(&format!(
         r#"
 
@@ -7018,13 +7018,13 @@ glob = "{relative_path}"
 "#
     ));
     fs::write(fixture.root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 }
 
 fn write_policy_with_evidence_references(fixture: &SourceTreeFixture, evidence: &[&str]) {
     fixture.write_minimal_policy();
     let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        .unwrap_or_else(|err| panic!("read policy: {err}"));
     for path in evidence
         .iter()
         .filter_map(|reference| reference.strip_prefix("doc:"))
@@ -7064,7 +7064,7 @@ callee = "unwrap"
 "#
     ));
     fs::write(fixture.root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 }
 
 fn write_policy_with_traceability_links(fixture: &SourceTreeFixture, links: &[&str]) {
@@ -7082,7 +7082,7 @@ fn write_policy_with_traceability_links_inner(
 ) {
     fixture.write_minimal_policy();
     let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        .unwrap_or_else(|err| panic!("read policy: {err}"));
     if create_local_files {
         for path in links
             .iter()
@@ -7092,7 +7092,7 @@ fn write_policy_with_traceability_links_inner(
             let path = fixture.root.join(path);
             if let Some(parent) = path.parent() {
                 fs::create_dir_all(parent).unwrap_or_else(|err| {
-                    std::panic::panic_any(format!("create traceability link dir: {err}"))
+                    panic!("create traceability link dir: {err}")
                 });
             }
             fs::write(
@@ -7100,7 +7100,7 @@ fn write_policy_with_traceability_links_inner(
                 "# Traceability link\n\nFixture traceability artifact.\n",
             )
             .unwrap_or_else(|err| {
-                std::panic::panic_any(format!("write traceability link fixture: {err}"))
+                panic!("write traceability link fixture: {err}")
             });
         }
     }
@@ -7138,7 +7138,7 @@ callee = "unwrap"
 "#
     ));
     fs::write(fixture.root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 }
 
 fn local_traceability_link_target(reference: &str) -> Option<&str> {
@@ -7151,7 +7151,7 @@ fn local_traceability_link_target(reference: &str) -> Option<&str> {
 fn write_policy_with_selector_container(fixture: &SourceTreeFixture, include_container: bool) {
     fixture.write_minimal_policy();
     let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        .unwrap_or_else(|err| panic!("read policy: {err}"));
     let container = if include_container {
         "container = \"load\"\n"
     } else {
@@ -7178,13 +7178,13 @@ ast_kind = "method_call"
 "#
     ));
     fs::write(fixture.root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 }
 
 fn write_policy_with_selector_receiver(fixture: &SourceTreeFixture, receiver: &str) {
     fixture.write_minimal_policy();
     let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        .unwrap_or_else(|err| panic!("read policy: {err}"));
     policy.push_str(&format!(
         r#"
 
@@ -7208,13 +7208,13 @@ receiver_fingerprint = "{receiver}"
 "#
     ));
     fs::write(fixture.root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 }
 
 fn write_policy_with_exception_identity(fixture: &SourceTreeFixture, kind: &str, family: &str) {
     fixture.write_minimal_policy();
     let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        .unwrap_or_else(|err| panic!("read policy: {err}"));
     policy.push_str(&format!(
         r#"
 
@@ -7237,13 +7237,13 @@ callee = "unwrap"
 "#
     ));
     fs::write(fixture.root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 }
 
 fn write_policy_with_scope(fixture: &SourceTreeFixture, scope: &str) {
     fixture.write_minimal_policy();
     let mut policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        .unwrap_or_else(|err| panic!("read policy: {err}"));
     policy.push_str(&format!(
         r#"
 
@@ -7266,5 +7266,5 @@ callee = "unwrap"
 "#
     ));
     fs::write(fixture.root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 }

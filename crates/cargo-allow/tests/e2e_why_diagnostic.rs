@@ -64,7 +64,7 @@ ast_kind = "method_call"
 callee = "expect"
 "#;
     fs::write(root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 
     git(&root, &["add", "."]);
     git(&root, &["commit", "-m", "fixture with near-miss entry"]);
@@ -85,7 +85,7 @@ callee = "expect"
         .arg("--output")
         .arg(&why_output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run why: {err}")));
+        .unwrap_or_else(|err| panic!("run why: {err}"));
 
     assert_status("why", &why, true);
     assert_stdout_empty("why", &why, "--output should not emit JSON to stdout");
@@ -179,7 +179,7 @@ callee = "expect"
         ])
         .arg(&subdir_output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run why from subdirectory: {err}")));
+        .unwrap_or_else(|err| panic!("run why from subdirectory: {err}"));
     assert_status("why from subdirectory", &subdir_why, true);
     let subdir_report = assert_saved_json_artifact(
         &subdir_output,
@@ -201,14 +201,14 @@ callee = "expect"
 fn why_diagnostic_falls_back_for_broad_policy_scope() {
     let root = temp_root("e2e-why-fallback");
     fs::create_dir_all(root.join("src/nested"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+        .unwrap_or_else(|err| panic!("create src dir: {err}"));
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     fs::write(
         root.join("src/nested/lib.rs"),
         "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    .unwrap_or_else(|err| panic!("write source: {err}"));
     fs::write(
         root.join("policy/allow.toml"),
         r#"schema_version = "0.1"
@@ -245,7 +245,7 @@ ast_kind = "method_call"
 callee = "unwrap"
 "#,
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    .unwrap_or_else(|err| panic!("write policy: {err}"));
     git(&root, &["init"]);
     git(
         &root,
@@ -272,7 +272,7 @@ callee = "unwrap"
         ])
         .arg(&why_output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run why fallback: {err}")));
+        .unwrap_or_else(|err| panic!("run why fallback: {err}"));
     assert_status("why fallback", &why, true);
 
     let report =
@@ -302,14 +302,14 @@ callee = "unwrap"
 fn why_diagnostic_explains_inventory_exclusion_and_accepts_include_untracked() {
     let root = temp_root("e2e-why-untracked");
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+        .unwrap_or_else(|err| panic!("create src dir: {err}"));
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     fs::write(
         root.join("src/untracked.rs"),
         "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    .unwrap_or_else(|err| panic!("write source: {err}"));
     fs::write(
         root.join("policy/allow.toml"),
         r#"schema_version = "0.1"
@@ -346,7 +346,7 @@ ast_kind = "method_call"
 callee = "unwrap"
 "#,
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    .unwrap_or_else(|err| panic!("write policy: {err}"));
     git(&root, &["init"]);
     git(
         &root,
@@ -369,7 +369,7 @@ callee = "unwrap"
             "1",
         ])
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run why without untracked: {err}")));
+        .unwrap_or_else(|err| panic!("run why without untracked: {err}"));
     assert_status("why without untracked", &missing, false);
     let missing_stderr = String::from_utf8_lossy(&missing.stderr);
     assert!(
@@ -396,7 +396,7 @@ callee = "unwrap"
         ])
         .arg(&why_output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run why with untracked: {err}")));
+        .unwrap_or_else(|err| panic!("run why with untracked: {err}"));
     assert_status("why with untracked", &included, true);
     let report = assert_saved_json_artifact(
         &why_output,
@@ -502,14 +502,14 @@ safety_comment_required = false
 
 fn write_source_fixture(root: &Path) {
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+        .unwrap_or_else(|err| panic!("create src dir: {err}"));
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     fs::write(
         root.join("src/lib.rs"),
         "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write source fixture: {err}")));
+    .unwrap_or_else(|err| panic!("write source fixture: {err}"));
 }
 
 fn git(root: &Path, args: &[&str]) {
@@ -518,12 +518,12 @@ fn git(root: &Path, args: &[&str]) {
         .arg(root)
         .args(args)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
+        .unwrap_or_else(|err| panic!("git {args:?}: {err}"));
     if !output.status.success() {
-        std::panic::panic_any(format!(
+        panic!(
             "git {args:?} failed: stdout=`{}` stderr=`{}`",
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
-        ));
+        );
     }
 }
