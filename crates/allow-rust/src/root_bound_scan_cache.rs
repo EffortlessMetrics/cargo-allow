@@ -408,14 +408,22 @@ fn ensure_owned_descendant(
     use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
     use std::os::unix::ffi::OsStrExt;
 
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     const O_CLOEXEC: i32 = 0o2000000;
+    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "freebsd"))]
+    const O_CLOEXEC: i32 = 0x1000000;
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     const O_DIRECTORY: i32 = 0o200000;
+    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "freebsd"))]
+    const O_DIRECTORY: i32 = 0x100000;
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     const O_NOFOLLOW: i32 = 0o400000;
+    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "freebsd"))]
+    const O_NOFOLLOW: i32 = 0x100;
     const ENOENT: i32 = 2;
     unsafe extern "C" {
         fn openat(dirfd: i32, path: *const std::ffi::c_char, flags: i32, mode: i32) -> i32;
         fn mkdirat(dirfd: i32, path: *const std::ffi::c_char, mode: u32) -> i32;
-        fn __errno_location() -> *mut i32;
     }
     let relative = target
         .strip_prefix(root)
@@ -430,12 +438,12 @@ fn ensure_owned_descendant(
             .map_err(|_| ScanCacheTargetDispositionV1::UnsupportedFilesystem)?;
         let mut fd = unsafe { openat(parent.as_raw_fd(), name.as_ptr(), O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC, 0) };
         if fd < 0 {
-            let errno = unsafe { *__errno_location() };
+            let errno = std::io::Error::last_os_error().raw_os_error().unwrap_or(-1);
             if errno != ENOENT {
                 return Err(ScanCacheTargetDispositionV1::DestinationAliasOrTypeChange);
             }
             if unsafe { mkdirat(parent.as_raw_fd(), name.as_ptr(), 0o700) } < 0 {
-                let errno = unsafe { *__errno_location() };
+                let errno = std::io::Error::last_os_error().raw_os_error().unwrap_or(-1);
                 if errno != 17 {
                     return Err(ScanCacheTargetDispositionV1::InstrumentFailure);
                 }

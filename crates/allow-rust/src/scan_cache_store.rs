@@ -300,7 +300,7 @@ impl ScanCacheStore {
         #[cfg(unix)]
         {
             use std::os::unix::fs::OpenOptionsExt;
-            temp_options.custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC);
+            temp_options.custom_flags(no_follow_flag() | close_on_exec_flag());
         }
         let mut temp_file = match temp_options.open(&tmp)
         {
@@ -403,6 +403,22 @@ fn path_is_symlink(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
+#[cfg(unix)]
+const fn no_follow_flag() -> i32 {
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    { 0o400000 }
+    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "freebsd"))]
+    { 0x100 }
+}
+
+#[cfg(unix)]
+const fn close_on_exec_flag() -> i32 {
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    { 0o2000000 }
+    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "freebsd"))]
+    { 0x1000000 }
+}
+
 fn path_is_reparse_point(path: &Path) -> bool {
     #[cfg(windows)]
     {
@@ -448,7 +464,7 @@ impl WriterLock {
         #[cfg(unix)]
         {
             use std::os::unix::fs::OpenOptionsExt;
-            options.custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC);
+            options.custom_flags(no_follow_flag() | close_on_exec_flag());
         }
         let file = options
             .open(&path)
