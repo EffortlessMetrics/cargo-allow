@@ -2,23 +2,48 @@
 # Each line is a path glob followed by the GitHub team or username that owns it.
 # GitHub uses this to automatically request review on PRs touching these paths.
 
-# Core workspace and release infrastructure
+# Core workspace and repository controls
 * @EffortlessSteven
 
-# Policy validation and matching engine
+# cargo-allow source-exception product
 /crates/allow-core/         @EffortlessSteven
 /crates/allow-policy/       @EffortlessSteven
 /crates/allow-match/        @EffortlessSteven
-
-# Scanner
 /crates/allow-rust/         @EffortlessSteven
 /crates/allow-files/        @EffortlessSteven
 /crates/allow-inventory/    @EffortlessSteven
+/crates/allow-report/       @EffortlessSteven
+/crates/allow-diff/         @EffortlessSteven
+/crates/allow-policy-legacy/ @EffortlessSteven
 
-# CLI
+# cargo-allow command surface
 /crates/cargo-allow/        @EffortlessSteven
 
-# CI and release
+# Shared repository and source-index packages
+/crates/effortless-repo-protocol/ @EffortlessSteven
+/crates/effortless-repo-snapshot/ @EffortlessSteven
+/crates/effortless-repo-edit/     @EffortlessSteven
+/crates/effortless-rust-source-index/ @EffortlessSteven
+
+# cargo-intent packages (separate product family)
+/crates/intent-model/       @EffortlessSteven
+/crates/intent-protocol/    @EffortlessSteven
+/crates/intent-engine/      @EffortlessSteven
+/crates/intent-edit/        @EffortlessSteven
+/crates/cargo-intent/       @EffortlessSteven
+
+# cargo-proof packages (separate product family)
+/crates/proof-protocol/     @EffortlessSteven
+/crates/proof-engine/       @EffortlessSteven
+/crates/cargo-proof/        @EffortlessSteven
+
+# Policy, schemas, documentation, and source-of-truth artifacts
+/policy/                    @EffortlessSteven
+/docs/                      @EffortlessSteven
+/plans/                     @EffortlessSteven
+/schemas/                   @EffortlessSteven
+
+# CI, release, and repository automation
 /.github/                   @EffortlessSteven
 /docs/release/              @EffortlessSteven
 /scripts/                   @EffortlessSteven
