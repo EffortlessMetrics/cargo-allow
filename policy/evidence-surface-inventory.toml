@@ -1,0 +1,343 @@
+# Evidence strength is explicit. A projection test remains useful, but cannot
+# satisfy a typed, production, external, or live-control acceptance row alone.
+schema = "cargo-allow.evidence-surface-inventory.v1"
+
+[[surfaces]]
+id = "campaign-skill-contract"
+owner_issue = 3770
+semantic_authority = "campaign skill"
+path = "crates/cargo-allow/tests/campaign_skill_contract.rs"
+subject = ".agents/skills/cargo-allow-0.2-campaign/SKILL.md"
+producer = "Rust integration test"
+consumer = "campaign agent context"
+claimed_acceptance_row = "campaign skill is wired"
+assertion_mechanism = "source-text marker assertions"
+evidence_class = "LexicalProjectionOnly"
+disposition = "bounded projection"
+required_stronger_owner = "#3770"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "The selected skill markers remain present; no agent execution is proven."
+
+[[surfaces]]
+id = "exact-candidate-install-journey"
+owner_issue = 3357
+semantic_authority = "installed candidate journey"
+path = "crates/cargo-allow/tests/exact_candidate_install_journey.rs"
+subject = "scripts/exact-candidate-install-journey.sh"
+producer = "Rust integration test"
+consumer = "package smoke"
+claimed_acceptance_row = "installed candidate journey contract"
+assertion_mechanism = "source-text and fixture assertions"
+evidence_class = "StructuredShapeValidation"
+disposition = "projection plus fixture shape"
+required_stronger_owner = "#3357"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "The checked fixture contract is present; a hosted installation is not observed here."
+
+[[surfaces]]
+id = "exact-candidate-interop"
+owner_issue = 3357
+semantic_authority = "candidate interoperability"
+path = "crates/cargo-allow/tests/exact_candidate_interop.rs"
+subject = "candidate interop smoke"
+producer = "Rust integration test"
+consumer = "package smoke"
+claimed_acceptance_row = "candidate interop contract"
+assertion_mechanism = "source-text assertions and fixture inspection"
+evidence_class = "StructuredShapeValidation"
+disposition = "bounded fixture validation"
+required_stronger_owner = "#3357"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "The local interop contract is characterized; external consumers are not observed."
+
+[[surfaces]]
+id = "exact-candidate-package-set"
+owner_issue = 2372
+semantic_authority = "exact package set"
+path = "crates/cargo-allow/tests/exact_candidate_package_set.rs"
+subject = "package candidate set"
+producer = "Rust integration test"
+consumer = "release packaging"
+claimed_acceptance_row = "package set contract"
+assertion_mechanism = "source-text and package-row assertions"
+evidence_class = "StructuredShapeValidation"
+disposition = "bounded local contract"
+required_stronger_owner = "#2372"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "Expected local package identities are checked; publication is not proven."
+
+[[surfaces]]
+id = "final-evidence-graph"
+owner_issue = 3913
+semantic_authority = "final evidence graph"
+path = "crates/cargo-allow/tests/final_evidence_graph.rs"
+subject = "release evidence graph"
+producer = "Rust integration test"
+consumer = "release readiness"
+claimed_acceptance_row = "evidence graph projection"
+assertion_mechanism = "source-text assertions"
+evidence_class = "LexicalProjectionOnly"
+disposition = "bounded projection"
+required_stronger_owner = "#3913"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "The documented graph markers exist; graph completeness is not established."
+
+[[surfaces]]
+id = "final-publication-plan"
+owner_issue = 2502
+semantic_authority = "final publication plan"
+path = "crates/cargo-allow/tests/final_publication_plan.rs"
+subject = "release publication plan"
+producer = "Rust integration test"
+consumer = "release execution"
+claimed_acceptance_row = "publication plan contract"
+assertion_mechanism = "source-text assertions"
+evidence_class = "LexicalProjectionOnly"
+disposition = "bounded projection"
+required_stronger_owner = "#2502"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "The plan wording is retained; no irreversible publication is authorized."
+
+[[surfaces]]
+id = "pilot-selection"
+owner_issue = 3771
+semantic_authority = "pilot selection record"
+path = "crates/cargo-allow/tests/pilot_selection_contract.rs"
+subject = "docs/pilots/0.2.0-rc.1-pilot-selection.md"
+producer = "Rust integration test"
+consumer = "pilot decision packet"
+claimed_acceptance_row = "pilot comparison record"
+assertion_mechanism = "source-text marker assertions"
+evidence_class = "LexicalProjectionOnly"
+disposition = "bounded projection"
+required_stronger_owner = "#3771"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "The named pilot record is documented; external repository state is not observed."
+
+[[surfaces]]
+id = "proof-candidate-smoke"
+owner_issue = 2557
+semantic_authority = "proof candidate smoke"
+path = "crates/cargo-allow/tests/proof_candidate_smoke.rs"
+subject = "proof candidate smoke"
+producer = "Rust integration test"
+consumer = "cargo-proof candidate qualification"
+claimed_acceptance_row = "proof candidate contract"
+assertion_mechanism = "source-text and fixture assertions"
+evidence_class = "StructuredShapeValidation"
+disposition = "bounded local contract"
+required_stronger_owner = "#2557"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "The local proof-candidate shape is checked; provider execution is not proven."
+
+[[surfaces]]
+id = "rc1-incident-reconciliation"
+owner_issue = 3759
+semantic_authority = "RC.1 incident record"
+path = "crates/cargo-allow/tests/rc1_incident_reconciliation.rs"
+subject = "docs/release/incidents/2026-08-24-rc1-tag-movement.md"
+producer = "Rust integration test"
+consumer = "release incident closeout"
+claimed_acceptance_row = "incident lineage is documented"
+assertion_mechanism = "source-text marker assertions"
+evidence_class = "LexicalProjectionOnly"
+disposition = "historical projection"
+required_stronger_owner = "#3759"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "Historical incident markers are present; the typed record and live tag are not proven."
+
+[[surfaces]]
+id = "release-manifest-evidence-v2"
+owner_issue = 3761
+semantic_authority = "release manifest evidence v2"
+path = "crates/cargo-allow/tests/release_manifest_evidence_v2.rs"
+subject = "ReleaseManifestEnvelopeV2"
+producer = "Rust integration test"
+consumer = "release manifest validation"
+claimed_acceptance_row = "manifest validation behavior"
+assertion_mechanism = "typed fixture construction and validation"
+evidence_class = "TypedModelValidation"
+disposition = "local typed-model validation"
+required_stronger_owner = "#3761"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "The Rust validator rejects selected malformed envelopes; production generation and publication are not proven."
+
+[[surfaces]]
+id = "release-package-metadata"
+owner_issue = 3773
+semantic_authority = "package metadata"
+path = "crates/cargo-allow/tests/release_package_metadata.rs"
+subject = "package metadata"
+producer = "Rust integration test"
+consumer = "release package qualification"
+claimed_acceptance_row = "package metadata projection"
+assertion_mechanism = "source-text marker assertions"
+evidence_class = "LexicalProjectionOnly"
+disposition = "bounded projection"
+required_stronger_owner = "#3773"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "Metadata markers are checked; built archive contents are not observed here."
+
+[[surfaces]]
+id = "release-rehearsal-impact"
+owner_issue = 3751
+semantic_authority = "release rehearsal impact"
+path = "crates/cargo-allow/tests/release_rehearsal_impact.rs"
+subject = "release rehearsal impact classifier"
+producer = "Rust integration test"
+consumer = "release rehearsal"
+claimed_acceptance_row = "impact classification"
+assertion_mechanism = "typed classifier fixtures"
+evidence_class = "StructuredShapeValidation"
+disposition = "local classifier validation"
+required_stronger_owner = "#3751"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "The classifier's local cases are checked; a real rehearsal is not observed."
+
+[[surfaces]]
+id = "release-rehearsal-incident-corpus"
+owner_issue = 3751
+semantic_authority = "release rehearsal incident corpus"
+path = "crates/cargo-allow/tests/release_rehearsal_incident_corpus.rs"
+subject = "release incident fixtures"
+producer = "Rust integration test"
+consumer = "release rehearsal"
+claimed_acceptance_row = "incident corpus coverage"
+assertion_mechanism = "source-text and fixture assertions"
+evidence_class = "HistoricalFixtureOnly"
+disposition = "historical fixture"
+required_stronger_owner = "#3751"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "Retained incident fixtures exercise local paths; they are not current provider observations."
+
+[[surfaces]]
+id = "release-upgrade-rollback"
+owner_issue = 3853
+semantic_authority = "upgrade and rollback journey"
+path = "crates/cargo-allow/tests/release_upgrade_011_to_020.rs"
+subject = "upgrade and rollback guide"
+producer = "Rust integration test"
+consumer = "installed upgrade journey"
+claimed_acceptance_row = "upgrade rollback documentation"
+assertion_mechanism = "source-text marker assertions"
+evidence_class = "LexicalProjectionOnly"
+disposition = "bounded projection"
+required_stronger_owner = "#3853"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "The documented journey is checked; a completed installation journey is not proven."
+
+[[surfaces]]
+id = "release-workflow-contract"
+owner_issue = 3760
+semantic_authority = "release workflow contract"
+path = "crates/cargo-allow/tests/release_workflow_contract.rs"
+subject = ".github/workflows/release.yml"
+producer = "Rust integration test"
+consumer = "release workflow"
+claimed_acceptance_row = "workflow intent"
+assertion_mechanism = "source-text marker assertions"
+evidence_class = "LexicalProjectionOnly"
+disposition = "configuration projection"
+required_stronger_owner = "#3760"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "Workflow source intent is checked; effective GitHub controls are not read back."
+
+[[surfaces]]
+id = "review-current-head-skill"
+owner_issue = 3747
+semantic_authority = "current-head review skill"
+path = "crates/cargo-allow/tests/review_current_head_skill.rs"
+subject = ".agents/skills/review-current-head/SKILL.md"
+producer = "Rust integration test"
+consumer = "review process"
+claimed_acceptance_row = "review skill contract"
+assertion_mechanism = "source-text marker assertions"
+evidence_class = "LexicalProjectionOnly"
+disposition = "bounded projection"
+required_stronger_owner = "#3747"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "Review guidance markers are present; a current review disposition is not produced."
+
+[[surfaces]]
+id = "source-candidate-smoke"
+owner_issue = 2256
+semantic_authority = "source candidate smoke"
+path = "crates/cargo-allow/tests/source_candidate_smoke.rs"
+subject = "source candidate smoke"
+producer = "Rust integration test"
+consumer = "package qualification"
+claimed_acceptance_row = "candidate smoke contract"
+assertion_mechanism = "source-text and fixture assertions"
+evidence_class = "StructuredShapeValidation"
+disposition = "bounded local contract"
+required_stronger_owner = "#2256"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "The local smoke contract is checked; hosted candidate evidence is not produced here."
+
+[[surfaces]]
+id = "final-registry-preflight"
+owner_issue = 3774
+semantic_authority = "registry preflight"
+path = "crates/cargo-allow/tests/final_registry_preflight.rs"
+subject = "policy/product-package-topology-v2.toml"
+producer = "Rust integration test"
+consumer = "release registry preflight"
+claimed_acceptance_row = "candidate package topology"
+assertion_mechanism = "TOML parse and typed field assertions"
+evidence_class = "StructuredShapeValidation"
+disposition = "bounded local contract"
+required_stronger_owner = "#3774"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "The checked topology has expected local rows and checksum shape; registry state is not observed."
+
+[[surfaces]]
+id = "intent-candidate-smoke"
+owner_issue = 2599
+semantic_authority = "intent candidate smoke"
+path = "crates/cargo-allow/tests/intent_candidate_smoke.rs"
+subject = "intent candidate smoke receipt"
+producer = "Rust integration test"
+consumer = "intent candidate packaging"
+claimed_acceptance_row = "intent candidate fixture"
+assertion_mechanism = "JSON fixture and source-text assertions"
+evidence_class = "StructuredShapeValidation"
+disposition = "offline characterization"
+required_stronger_owner = "#2599"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "The retained receipt shape is checked offline; package installation is not observed."
+
+[[surfaces]]
+id = "support-matrix"
+owner_issue = 2478
+semantic_authority = "support matrix"
+path = "crates/cargo-allow/tests/support_matrix.rs"
+subject = "docs/status/SUPPORT_TIERS.md"
+producer = "Rust integration test"
+consumer = "support claims"
+claimed_acceptance_row = "support matrix projection"
+assertion_mechanism = "source-text marker assertions"
+evidence_class = "LexicalProjectionOnly"
+disposition = "bounded projection"
+required_stronger_owner = "#2478"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "Support wording is checked; package, platform, and external evidence are not established."
