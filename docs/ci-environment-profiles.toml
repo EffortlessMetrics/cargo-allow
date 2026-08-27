@@ -1,0 +1,127 @@
+schema_version = 1
+schema_id = "cargo-allow.ci-environment-profiles.v1"
+controlling_issue = 3926
+
+# This is an inventory and claim-boundary manifest. It records what the
+# selected workflow rows say about their environment; it does not make a
+# hosted runner image immutable or resolve a moving toolchain.
+
+[[profile]]
+id = "ci-msrv"
+workflow = ".github/workflows/ci.yml"
+job = "msrv"
+posture = "ExactToolchainQualification"
+runner = "ubuntu-latest"
+toolchain = "1.95.0"
+result_posture = "required"
+claim = "Rust 1.95 compatibility for the MSRV-selected cargo-allow proof"
+
+[[profile]]
+id = "ci-cargo-allow-release-set"
+workflow = ".github/workflows/ci.yml"
+job = "test"
+posture = "MovingStableCompatibilityCanary"
+runner = "ubuntu-latest"
+toolchain = "stable"
+result_posture = "required"
+claim = "Current release-set tests, lint, docs, and source-tree checks in the observed stable environment"
+
+[[profile]]
+id = "ci-core-platforms"
+workflow = ".github/workflows/ci.yml"
+job = "test-core-platforms"
+posture = "PlatformCharacterization"
+runner = "matrix.os"
+toolchain = "stable"
+result_posture = "required"
+claim = "Release-set behavior on the declared Linux, Windows, and macOS matrix rows"
+
+[[profile]]
+id = "ci-package-smoke"
+workflow = ".github/workflows/ci.yml"
+job = "package-smoke"
+posture = "MovingStableCompatibilityCanary"
+runner = "ubuntu-latest"
+toolchain = "stable"
+result_posture = "required"
+claim = "Candidate packaging and install journey in the observed stable environment"
+
+[[profile]]
+id = "ci-shallow-diff-smoke"
+workflow = ".github/workflows/ci.yml"
+job = "shallow-diff-smoke"
+posture = "MovingStableCompatibilityCanary"
+runner = "ubuntu-latest"
+toolchain = "stable"
+result_posture = "required"
+claim = "Shallow-checkout behavior in the observed stable environment"
+
+[[profile]]
+id = "ci-operator-latency"
+workflow = ".github/workflows/ci.yml"
+job = "operator-latency"
+posture = "MovingStableCompatibilityCanary"
+runner = "ubuntu-latest"
+toolchain = "stable"
+result_posture = "required"
+claim = "Bounded operator-latency characterization in the observed stable environment"
+
+[[profile]]
+id = "ci-compat-delegation"
+workflow = ".github/workflows/ci.yml"
+job = "compat-delegation"
+posture = "MovingStableCompatibilityCanary"
+runner = "matrix.os"
+toolchain = "stable"
+result_posture = "required"
+claim = "cargo-allow compatibility delegation on the declared Linux and Windows rows"
+
+[[profile]]
+id = "ci-cargo-deny"
+workflow = ".github/workflows/ci.yml"
+job = "cargo-deny"
+posture = "MovingRunnerCompatibilityCanary"
+runner = "ubuntu-latest"
+toolchain = "not-selected"
+result_posture = "required"
+claim = "Workspace dependency policy under the observed hosted runner"
+
+[[profile]]
+id = "release-preflight"
+workflow = ".github/workflows/release.yml"
+job = "preflight"
+posture = "MovingStableCompatibilityCanary"
+runner = "ubuntu-latest"
+toolchain = "stable"
+result_posture = "release-gate"
+claim = "Release preflight in the observed stable environment"
+
+[[profile]]
+id = "release-install-smoke"
+workflow = ".github/workflows/release.yml"
+job = "install-smoke"
+posture = "PlatformCharacterization"
+runner = "matrix.os"
+toolchain = "stable"
+result_posture = "release-gate"
+claim = "Installed release behavior on the declared platform matrix"
+
+[[profile]]
+id = "authorized-release-namespace"
+workflow = ".github/workflows/release-authorized.yml"
+job = "publish-namespace"
+posture = "FixedMajorRunnerObservation"
+runner = "ubuntu-24.04"
+toolchain = "stable"
+result_posture = "authorized-release"
+claim = "Authorized namespace release operation in the observed fixed-label environment"
+
+[[profile]]
+id = "ub-review-contract"
+workflow = ".github/workflows/ub-review.yml"
+job = "changie-contract"
+posture = "MovingRunnerCompatibilityCanary"
+runner = "ubuntu-latest"
+toolchain = "not-selected"
+result_posture = "advisory"
+claim = "Changelog contract review in the observed hosted runner"
