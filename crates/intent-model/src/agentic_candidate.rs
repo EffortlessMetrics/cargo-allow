@@ -80,9 +80,11 @@ pub enum CandidateDispositionV1 {
 #[serde(rename_all = "snake_case")]
 pub enum CandidateStateV1 {
     Suitable,
+    Recoverable,
     NeedsRepair,
     StaleBase,
     ActiveWriter,
+    Conflicting,
     Satisfied,
 }
 
@@ -178,6 +180,14 @@ impl CandidateObservationSetV1 {
             };
         }
         if let Some((index, candidate)) = matching.into_iter().next() {
+            if candidate.state == CandidateStateV1::Conflicting {
+                return CandidateAdmissionDecisionV1 {
+                    disposition: CandidateDispositionV1::Reconcile,
+                    claim_identity,
+                    candidate_index: Some(index),
+                    reasons: vec!["matching candidate conflicts with the claim".into()],
+                };
+            }
             if candidate.active_writer {
                 return CandidateAdmissionDecisionV1 {
                     disposition: CandidateDispositionV1::Wait,
@@ -188,8 +198,10 @@ impl CandidateObservationSetV1 {
             }
             let disposition = match candidate.state {
                 CandidateStateV1::Suitable => CandidateDispositionV1::Reuse,
+                CandidateStateV1::Recoverable => CandidateDispositionV1::Resume,
                 CandidateStateV1::NeedsRepair => CandidateDispositionV1::Repair,
                 CandidateStateV1::StaleBase => CandidateDispositionV1::Restack,
+                CandidateStateV1::Conflicting => CandidateDispositionV1::Reconcile,
                 CandidateStateV1::Satisfied => CandidateDispositionV1::Stop,
                 CandidateStateV1::ActiveWriter => CandidateDispositionV1::Wait,
             };
@@ -267,6 +279,34 @@ mod tests {
             repository_matches: true,
         });
         assert_eq!(set.admit().disposition, CandidateDispositionV1::Wait);
+    }
+
+    #[test]
+    fn recoverable_candidate_resumes() {
+        let mut set = observations();
+        set.candidates.push(CandidateObservationV1 {
+            claim_identity: set.claim.identity().unwrap(),
+            base: set.claim.accepted_base.clone(),
+            head: "fedcba9876543210fedcba9876543210fedcba98".into(),
+            state: CandidateStateV1::Recoverable,
+            active_writer: false,
+            repository_matches: true,
+        });
+        assert_eq!(set.admit().disposition, CandidateDispositionV1::Resume);
+    }
+
+    #[test]
+    fn conflicting_candidate_reconciles() {
+        let mut set = observations();
+        set.candidates.push(CandidateObservationV1 {
+            claim_identity: set.claim.identity().unwrap(),
+            base: set.claim.accepted_base.clone(),
+            head: "fedcba9876543210fedcba9876543210fedcba98".into(),
+            state: CandidateStateV1::Conflicting,
+            active_writer: false,
+            repository_matches: true,
+        });
+        assert_eq!(set.admit().disposition, CandidateDispositionV1::Reconcile);
     }
 
     #[test]
