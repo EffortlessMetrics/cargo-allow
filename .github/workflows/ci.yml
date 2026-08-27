@@ -417,6 +417,8 @@ jobs:
       - run: cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
       - name: Verify PR template diff evidence
         run: cargo run -p cargo-allow -- diff --base origin/main --format markdown --require-change-note
+      - name: Validate CI environment profiles (#3926)
+        run: python scripts/check-ci-environment-profiles.py
       - name: Spec-system cutover receipt (#2568)
         run: bash scripts/spec-system-cutover-receipt.sh
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
