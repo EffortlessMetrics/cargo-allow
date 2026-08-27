@@ -246,6 +246,76 @@ fn doctor_still_reports_a_genuinely_absent_ledger_as_not_found() {
     remove_temp_root(root);
 }
 
+fn write_federation_config(root: &Path, contents: &str) {
+    fs::create_dir_all(root.join(".allow"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create .allow dir: {err}")));
+    fs::write(root.join(".allow/config.toml"), contents)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write federation config: {err}")));
+}
+
+/// The federation config selects which ledger is canonical, so a broken one
+/// discards the whole ledger just as surely as a broken ledger does. It reaches
+/// the fallback by a different route than a malformed candidate, so it needs
+/// its own coverage (#1952).
+#[test]
+fn audit_rejects_a_federation_config_that_cannot_be_parsed() {
+    let root = seed_repository("malformed-federation-parse");
+    write_policy(&root, "schema_version = \"1\"\npolicy = \"cargo-allow\"\n");
+    write_federation_config(&root, "this is not valid toml [[[\n");
+
+    let result = run_audit(&root);
+
+    assert_status("audit", &result, false);
+    assert!(
+        combined(&result).contains("federation config"),
+        "the operator must be told the federation config is at fault: {}",
+        combined(&result)
+    );
+
+    remove_temp_root(root);
+}
+
+/// A federation config that parses but fails validation is equally unusable:
+/// it names ledgers whose precedence cannot be resolved, so it cannot select
+/// one. Falling back here silently ignores a ledger the repository declared.
+#[test]
+fn audit_rejects_a_federation_config_that_fails_validation() {
+    let root = seed_repository("malformed-federation-invalid");
+    write_policy(&root, "schema_version = \"1\"\npolicy = \"cargo-allow\"\n");
+    // Missing the required explicit `priority`.
+    write_federation_config(
+        &root,
+        "schema_version = \"1.0\"\n\n[[ledgers]]\nid = \"source-policy\"\n\
+         path = \"policy/allow.toml\"\ndialect = \"cargo-allow\"\nrole = \"canonical\"\n\
+         lanes = [\"source_exception\"]\n",
+    );
+
+    let result = run_audit(&root);
+
+    assert_status("audit", &result, false);
+
+    remove_temp_root(root);
+}
+
+/// Negative control: a well-formed federation config must still resolve.
+#[test]
+fn audit_accepts_a_valid_federation_config() {
+    let root = seed_repository("valid-federation");
+    write_policy(&root, "schema_version = \"1\"\npolicy = \"cargo-allow\"\n");
+    write_federation_config(
+        &root,
+        "schema_version = \"1.0\"\n\n[[ledgers]]\nid = \"source-policy\"\n\
+         path = \"policy/allow.toml\"\ndialect = \"cargo-allow\"\nrole = \"canonical\"\n\
+         lanes = [\"source_exception\"]\npriority = 1\n",
+    );
+
+    let result = run_audit(&root);
+
+    assert_status("audit", &result, true);
+
+    remove_temp_root(root);
+}
+
 #[test]
 fn an_unreadable_ledger_is_rejected_rather_than_skipped() {
     // Distinct from a parse failure: the bytes never arrive, so the dialect

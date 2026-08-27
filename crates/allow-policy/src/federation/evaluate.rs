@@ -210,14 +210,31 @@ fn load_mirror_divergences(root: &Path) -> CargoAllowResult<Vec<FederationDiverg
     Ok(load_validated_federation_config(root)?
         .filter(|validated| validated.valid)
         .map(|validated| detect_mirror_divergences(root, &validated.config))
-        .transpose()?
+        .transpose()
+        .map_err(federation_config_unusable)?
         .unwrap_or_default())
+}
+
+/// Re-kind a federation-config failure as a present-but-unusable policy.
+///
+/// An absent `.allow/config.toml` is reported as a `Missing` outcome, never an
+/// error, so reaching this path means the file exists and could not be used.
+/// That is the same fail-open shape as an unreadable ledger: the federation
+/// config selects which ledger is canonical, so failing to load it discards the
+/// whole exception ledger. Without the `InvalidPolicy` kind, the no-policy
+/// fallback in cargo-allow's world loader would scan against an empty policy
+/// and report success anyway (#1952).
+///
+/// The message, diagnostics, and TOML span are preserved; only the kind
+/// changes, so the operator still sees the exact parse failure.
+fn federation_config_unusable(error: CargoAllowError) -> CargoAllowError {
+    error.with_kind_preserving_metadata(CargoAllowErrorKind::InvalidPolicy)
 }
 
 fn load_validated_federation_config(
     root: &Path,
 ) -> CargoAllowResult<Option<ValidatedFederationConfig>> {
-    let loaded = load_federation_config(root)?;
+    let loaded = load_federation_config(root).map_err(federation_config_unusable)?;
     Ok(match loaded.outcome {
         FederationLoadOutcome::Missing => None,
         FederationLoadOutcome::Parsed(validated) => Some(validated),
