@@ -276,8 +276,13 @@ fn ci_cache_contract_is_platform_scoped_and_pr_save_closed() {
         "CI lanes must consume the shared cache policy, not configure rust-cache directly"
     );
 
-    let cache_steps = workflow.matches("uses: ./.github/actions/rust-cache").count();
-    assert!(cache_steps >= 10, "expected the shared cache policy on Linux proof lanes");
+    let cache_steps = workflow
+        .matches("uses: ./.github/actions/rust-cache")
+        .count();
+    assert!(
+        cache_steps >= 10,
+        "expected the shared cache policy on Linux proof lanes"
+    );
     assert_eq!(
         cache_steps,
         workflow.matches("lane:").count(),

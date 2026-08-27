@@ -123,9 +123,8 @@ pub fn derive_publication_plan(
                     prerequisite_package_ids: deps.iter().map(|d| d.to_string()).collect(),
                     publication_order: order,
                     current_status: RowStatus::Pending,
-                    tie_break_reason: format!(
-                        "Topologically unblocked with all dependencies in visited set"
-                    ),
+                    tie_break_reason:
+                        "Topologically unblocked with all dependencies in visited set".to_string(),
                 });
                 visited.insert(key.to_string());
                 remaining.remove(key);

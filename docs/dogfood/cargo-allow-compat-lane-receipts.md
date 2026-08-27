@@ -1,5 +1,23 @@
 # cargo-allow Compat Lane Characterization
 
+## Repository self-check posture
+
+The repository's own `cargo-allow check --mode no-new` run is intentionally
+advisory with respect to this characterization document. CI executes the
+check against the exact pull-request or `main` source tree and retains its
+generated report/receipt as run evidence; it does not compare that output to
+a committed receipt baseline. A receipt contains source-relative findings,
+inventory state, policy digest, and other candidate-specific facts, so a
+single checked-in snapshot would drift whenever source, policy, or tool
+generation changes and would not prove the current candidate.
+
+The authoritative CI contract is therefore the fresh run's own result:
+`check --mode no-new` must fail on new unreceipted findings, while this
+document and the fixture matrix below characterize the expected workflow and
+field-preservation behavior. A committed baseline may be introduced later
+only with an explicit identity and refresh contract; this lane does not
+silently treat its absence as proof of source-tree integrity.
+
 Characterization of migration parity for compat lanes that have fixture
 matrices but lacked a standalone dogfood receipt (criterion 6 from
 `plans/migration-parity/pr-queue.md`). Each lane follows the same pipeline:

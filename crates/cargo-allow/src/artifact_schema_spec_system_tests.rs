@@ -133,6 +133,9 @@ fn spec_system_schema_locks_profile_commands_and_readiness() {
         "/$defs/blocking_reason/enum",
         &[
             "profile_config_parse_failure",
+            "federation_config_invalid",
+            "dialect_conflict",
+            "federation_config_parse_failure",
             "doc_artifact_ledger_missing",
             "doc_artifact_ledger_parse_failure",
             "duplicate_id",

@@ -889,7 +889,15 @@ mod tests {
         root_bytes.extend_from_slice(b"/repo-");
         root_bytes.push(0xff);
         let root = PathBuf::from(OsString::from_vec(root_bytes));
-        std::fs::create_dir_all(&root).map_err(|err| err.to_string())?;
+        match std::fs::create_dir_all(&root) {
+            Ok(()) => {}
+            Err(err) if err.raw_os_error() == Some(92) => {
+                // macOS APFS enforces UTF-8 paths and rejects invalid byte sequences with EILSEQ (os error 92)
+                let _ = std::fs::remove_dir_all(fixture_root);
+                return Ok(());
+            }
+            Err(err) => return Err(err.to_string()),
+        }
 
         let output = run_provider_change_status(&script, &root, Duration::from_secs(5))
             .map_err(|failure| failure.to_string())?;

@@ -1,0 +1,4 @@
+kind: Fixed
+body: >-
+  Keep the release rehearsal non-Complete until exact typed phase execution and
+  zero-mutation reachability are proven instead of asserting them from markers.

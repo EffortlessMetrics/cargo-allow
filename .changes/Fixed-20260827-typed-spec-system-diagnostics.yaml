@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Preserve typed blocking-diagnostic identities when spec-system profile and
+  federation validation findings enter the report projection. Missing explicit
+  profile configuration remains advisory, while parse failures and blocking
+  federation diagnostics no longer depend on rendered error-message wording
+  (#1942).

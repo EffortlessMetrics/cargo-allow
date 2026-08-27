@@ -90,7 +90,7 @@ impl CargoAllowGitHubReleaseRecoveryV1 {
 
         // Check for missing assets
         let mut missing_any = false;
-        for (name, _) in &self.expected_assets {
+        for name in self.expected_assets.keys() {
             if !state.assets.contains_key(name) {
                 missing_any = true;
                 break;
