@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -56,6 +57,22 @@ class TestReleaseRehearsal(unittest.TestCase):
             REHEARSAL.build_rehearsal_receipt(
                 "0123456789abcdef0123456789abcdef01234567"
             )
+
+    def test_option_like_commit_is_rejected_before_git(self) -> None:
+        with self.assertRaises(ValueError):
+            REHEARSAL.resolve_commit("--help")
+
+    def test_receipt_output_rejects_symlink_leaf(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / "target.json"
+            target.write_text("sentinel", encoding="utf-8")
+            output = root / "receipt.json"
+            output.symlink_to(target)
+
+            with self.assertRaises(OSError):
+                REHEARSAL._write_receipt(output, "{}")
+            self.assertEqual(target.read_text(encoding="utf-8"), "sentinel")
 
     def test_registry_token_presence_is_non_clean(self) -> None:
         old_value = os.environ.get("CARGO_REGISTRY_TOKEN")

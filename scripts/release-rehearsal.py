@@ -31,8 +31,12 @@ def compute_sha256(path: Path) -> str:
 
 def resolve_commit(commit_ref: str) -> str:
     """Resolve one caller-supplied Git commit ref or fail without substitution."""
-    if not commit_ref or any(char in commit_ref for char in "\r\n\0"):
-        raise ValueError("commit ref must be non-empty and single-line")
+    if (
+        not commit_ref
+        or commit_ref.startswith("-")
+        or any(char in commit_ref for char in "\r\n\0")
+    ):
+        raise ValueError("commit ref must be non-empty, single-line, and not start with a dash")
     result = subprocess.run(
         ["git", "rev-parse", "--verify", f"{commit_ref}^{{commit}}"],
         cwd=ROOT,
@@ -134,6 +138,26 @@ def _aggregate_phase_status(phases: dict[str, str]) -> str:
     return PHASE_INCOMPLETE
 
 
+def _write_receipt(path: Path, json_text: str) -> None:
+    """Write a receipt without following a symlink at the output leaf."""
+    if path.is_symlink() or path.is_dir():
+        raise OSError("output path cannot be a symlink or directory")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.is_symlink() or path.is_dir():
+        raise OSError("output path cannot be a symlink or directory")
+
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(path, flags, 0o600)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as output:
+            descriptor = -1
+            output.write(json_text + "\n")
+    finally:
+        if descriptor != -1:
+            os.close(descriptor)
+
+
 def build_rehearsal_receipt(commit_ref: str) -> dict[str, Any]:
     """Build an honest characterization receipt for one verified commit."""
     commit_sha = resolve_commit(commit_ref)
@@ -200,8 +224,7 @@ def main() -> int:
     json_text = json.dumps(receipt, indent=2, sort_keys=True)
     if args.output:
         output_path = Path(args.output)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(json_text + "\n", encoding="utf-8")
+        _write_receipt(output_path, json_text)
         print(f"Receipt written to {output_path}")
     else:
         print(json_text)
@@ -211,3 +234,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+
