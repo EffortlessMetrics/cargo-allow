@@ -9,8 +9,8 @@ standalone_reason:
 linked_adrs: []
 support_tier_impact: advisory
 policy_impact:
-  - policy/doc-artifacts.toml
-  - policy/spec-system.toml
+  - .allow/artifacts/doc-artifacts.toml
+  - .allow/profiles/spec-system.toml
   - policy/allow.toml
 ---
 
@@ -35,8 +35,12 @@ The system must:
 - Build a graph from ledgers, machine-readable artifact headers, and configured
   source-tree roots, then validate node identity and edge integrity.
 - Read repository source-tree files and policy ledgers directly.
-- Support a machine-readable artifact registry at `policy/doc-artifacts.toml`.
-- Support a profile configuration file at `policy/spec-system.toml`.
+- Support a machine-readable artifact registry at
+  `.allow/artifacts/doc-artifacts.toml`; resolve `policy/doc-artifacts.toml` as
+  a legacy compatibility fallback when the canonical file is absent.
+- Support a profile configuration file at
+  `.allow/profiles/spec-system.toml`; resolve `policy/spec-system.toml` as a
+  legacy compatibility fallback when the canonical file is absent.
 - Validate artifact IDs, kinds, paths, owners, statuses, linked artifacts,
   support-tier references, active-goal references, and closeout references.
 - Emit source-tree claim boundaries and scanner limitations in profile reports
@@ -68,8 +72,8 @@ The system must not:
 | Input | Required | Notes |
 | --- | --- | --- |
 | `--profile spec-system` | yes | Explicit profile selector for supported commands. |
-| `policy/spec-system.toml` | profile-dependent | Defines roots, requirements, and advisory/shadow/blocking posture. |
-| `policy/doc-artifacts.toml` | profile-dependent | Registers governed proposal, spec, ADR, plan, active-goal, support-tier, policy, and closeout artifacts. |
+| `.allow/profiles/spec-system.toml` | profile-dependent | Defines roots, requirements, and advisory/shadow/blocking posture. The legacy `policy/spec-system.toml` path is a compatibility fallback. |
+| `.allow/artifacts/doc-artifacts.toml` | profile-dependent | Registers governed proposal, spec, ADR, plan, active-goal, support-tier, policy, and closeout artifacts. The legacy `policy/doc-artifacts.toml` path is a compatibility fallback. |
 | Artifact Markdown files | profile-dependent | Proposal, spec, ADR, implementation plan, plan item, closeout, and related source-of-truth docs. |
 | `.allow/goals/active.toml` | profile-dependent | Active goal manifest when profile requirements enable active-goal checks. |
 | `docs/status/SUPPORT_TIERS.md` | profile-dependent | Support-tier claim to proof-command map when profile requirements enable support-tier checks. |
@@ -215,13 +219,16 @@ reliable. It must not lint prose quality or general Markdown style.
   [CARGO-ALLOW-GOAL-0001](../../.allow/goals/active.toml).
 - Linked closeout:
   [CARGO-ALLOW-CLOSEOUT-0001](../../plans/spec-system/closeout.md).
-- Linked policy ledgers: this spec declares policy impact for
-  `policy/doc-artifacts.toml`, `policy/spec-system.toml`, and
-  `policy/allow.toml`.
+- Linked profile and artifact ledgers: this spec declares policy impact for
+  `.allow/artifacts/doc-artifacts.toml`, `.allow/profiles/spec-system.toml`,
+  and `policy/allow.toml`. The `policy/` profile paths remain compatibility
+  fallbacks only.
 
 ## Profile Config
 
-The profile configuration should be TOML at `policy/spec-system.toml`.
+The canonical profile configuration is TOML at
+`.allow/profiles/spec-system.toml`. The legacy `policy/spec-system.toml` path
+remains a compatibility fallback when the canonical file is absent.
 
 Minimum shape:
 
@@ -237,7 +244,7 @@ adrs = "docs/adr"
 plans = "plans"
 goals = ".allow/goals"
 support_tiers = "docs/status/SUPPORT_TIERS.md"
-artifact_ledger = "policy/doc-artifacts.toml"
+artifact_ledger = ".allow/artifacts/doc-artifacts.toml"
 
 [requirements]
 ledger_required = true
@@ -258,7 +265,9 @@ be deliberate and limited to checks that have burned in.
 
 ## Doc Artifact Ledger
 
-The artifact registry should be TOML at `policy/doc-artifacts.toml`.
+The canonical artifact registry is TOML at
+`.allow/artifacts/doc-artifacts.toml`. The legacy `policy/doc-artifacts.toml`
+path remains a compatibility fallback when the canonical file is absent.
 
 Minimum shape:
 
@@ -398,8 +407,10 @@ findings, extend lifecycle dates, or claim proof execution.
 
 The spec uses these policy surfaces:
 
-- `policy/doc-artifacts.toml` for artifact registration.
-- `policy/spec-system.toml` for profile roots and requirements.
+- `.allow/artifacts/doc-artifacts.toml` for artifact registration. The legacy
+  `policy/doc-artifacts.toml` path remains a compatibility fallback.
+- `.allow/profiles/spec-system.toml` for profile roots and requirements. The
+  legacy `policy/spec-system.toml` path remains a compatibility fallback.
 - `policy/allow.toml` entries for tracked docs, TOML, JSON schema, config, or
   support files introduced while dogfooding.
 
@@ -410,8 +421,10 @@ exceptions.
 
 Profile implementation and ongoing maintenance evidence should include:
 
-- config parsing tests for `policy/spec-system.toml`.
-- artifact ledger parsing tests for `policy/doc-artifacts.toml`.
+- config parsing tests for `.allow/profiles/spec-system.toml`, including the
+  legacy `policy/spec-system.toml` compatibility fallback.
+- artifact ledger parsing tests for `.allow/artifacts/doc-artifacts.toml`,
+  including the legacy `policy/doc-artifacts.toml` compatibility fallback.
 - validation tests for duplicate IDs, missing files, missing IDs in files,
   invalid kinds, invalid statuses, unknown links, and superseded replacements.
 - support-tier structural tests for non-empty proof-command fields.
@@ -536,8 +549,9 @@ Spec-system reports must not claim:
 ## Rollback Or Compatibility
 
 The profile must remain removable or disabled by deleting or disabling
-`policy/spec-system.toml`. Default cargo-allow source-exception behavior must
-continue to work without spec-system profile files.
+`.allow/profiles/spec-system.toml`. Default cargo-allow source-exception
+behavior must continue to work without spec-system profile files. The legacy
+`policy/spec-system.toml` path remains a compatibility fallback only.
 
 If this spec is superseded, the replacement spec should link back to
 `CARGO-ALLOW-SPEC-0001`, update the doc artifact ledger, and preserve the
