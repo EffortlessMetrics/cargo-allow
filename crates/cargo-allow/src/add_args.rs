@@ -85,6 +85,8 @@ pub(crate) struct AddArgs {
     /// Preview the entry that would be added without writing any file (#3189).
     /// Compatible with --write and --update: computes and validates the entry,
     /// prints it to stdout, but skips the atomic write/replace.
+    /// Not available with `--from-plan`, which has no preview mode; use
+    /// `cargo-allow why --plan` to inspect the target before applying.
     #[arg(long)]
     pub(super) dry_run: bool,
     /// Apply a versioned add-finding plan produced by `why --plan`. Re-scans the
@@ -92,11 +94,11 @@ pub(crate) struct AddArgs {
     /// exact finding to remain uniquely `New`, and atomically replaces the live
     /// ledger. Consumes only operator judgment fields (owner/reason/etc.);
     /// target selectors come from the plan. Requires `--update`; conflicts with
-    /// manual target selectors, `--write`, and `--force`.
+    /// manual target selectors, `--write`, `--force`, and `--dry-run`.
     #[arg(
         long = "from-plan",
         requires = "update",
-        conflicts_with_all = ["write", "force", "path", "line", "glob", "family", "callee"]
+        conflicts_with_all = ["write", "force", "dry_run", "path", "line", "glob", "family", "callee"]
     )]
     pub(crate) from_plan: Option<PathBuf>,
     /// Summary output format. JSON requires --summary-output so it cannot be
