@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  Commands that tolerate a source tree with no policy config (`audit`,
+  `propose`, and scoped `why`) no longer treat an unloadable policy or
+  federation config as "this repository has no policy". A malformed
+  `.allow/config.toml` previously discarded the whole exception ledger and
+  still reported a complete, clean, exit-0 result; it now fails closed with the
+  same `E0002_INVALID_CONFIG` diagnostic the config-requiring commands already
+  reported. A source tree with genuinely no policy config still falls back to a
+  no-policy scan.

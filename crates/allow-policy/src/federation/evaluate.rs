@@ -100,10 +100,42 @@ impl LedgerContributor {
     }
 }
 
-pub fn evaluate_source_exception_policy(
+/// Outcome of resolving the active source-exception ledger for a source tree.
+///
+/// This separates the two situations that [`evaluate_source_exception_policy`]
+/// flattens into a single `Err`: a source tree that simply has no cargo-allow
+/// policy config, and a source tree whose policy or federation config exists
+/// but cannot be read, parsed, or validated.
+///
+/// Only the first is a benign "there is nothing to enforce" state that a
+/// no-policy-tolerant command (`audit`, `propose`, scoped `why`) may fall back
+/// on. The second must fail closed everywhere: falling back there would
+/// silently discard the whole ledger and report an unreceipted tree as a
+/// complete, clean result (#1952, #1782).
+#[derive(Debug)]
+#[non_exhaustive]
+pub enum SourceExceptionPolicyOutcome {
+    /// A cargo-allow policy ledger was resolved for this source tree.
+    Resolved {
+        path: PathBuf,
+        evaluation: FederationEvaluation,
+    },
+    /// No cargo-allow policy config was discovered. `error` is the diagnostic
+    /// a config-requiring command reports; it names the skipped candidates.
+    Missing { error: CargoAllowError },
+}
+
+/// Resolve the active source-exception ledger, distinguishing "no policy
+/// config exists" from "policy config exists but is unusable".
+///
+/// Returns `Ok(Missing)` only when discovery found no cargo-allow policy
+/// config at all. Every other failure — an unreadable, unparseable, or invalid
+/// federation config among them — is returned as `Err` so callers cannot
+/// silently degrade to a no-policy scan.
+pub fn resolve_source_exception_policy(
     root: &Path,
     cli_config: Option<&Path>,
-) -> CargoAllowResult<(PathBuf, FederationEvaluation)> {
+) -> CargoAllowResult<SourceExceptionPolicyOutcome> {
     let contributors = load_ledger_contributors(root)?;
     let divergences = load_mirror_divergences(root)?;
     if let Some(config) = cli_config {
@@ -114,16 +146,16 @@ pub fn evaluate_source_exception_policy(
             .map(|contributor| {
                 ledger_provenance_from_lane_contributor(contributor, SOURCE_EXCEPTION_LANE)
             });
-        return Ok((
+        return Ok(SourceExceptionPolicyOutcome::Resolved {
             path,
-            FederationEvaluation {
+            evaluation: FederationEvaluation {
                 federation_version: FEDERATION_VERSION,
                 precedence_applied: PrecedenceTier::CliOverride,
                 active_provenance,
                 ledger_contributors: contributors,
                 divergences,
             },
-        ));
+        });
     }
 
     if let Some(validated) = load_validated_federation_config(root)?
@@ -132,9 +164,9 @@ pub fn evaluate_source_exception_policy(
             resolve_canonical_ledger_for_lane(&validated.config, SOURCE_EXCEPTION_LANE)
     {
         let path = root.join(&ledger.path);
-        return Ok((
+        return Ok(SourceExceptionPolicyOutcome::Resolved {
             path,
-            FederationEvaluation {
+            evaluation: FederationEvaluation {
                 federation_version: FEDERATION_VERSION,
                 precedence_applied: PrecedenceTier::FederationRegistry,
                 active_provenance: Some(ledger_provenance_from_entry(
@@ -144,29 +176,41 @@ pub fn evaluate_source_exception_policy(
                 ledger_contributors: ledger_contributors_from_config(&validated.config),
                 divergences: divergences.clone(),
             },
-        ));
+        });
     }
 
     let discovery = discover_config(root);
-    let path = discovery
-        .selected
-        .ok_or_else(|| missing_policy_config_error(&discovery.skipped))?;
+    let Some(path) = discovery.selected else {
+        return Ok(SourceExceptionPolicyOutcome::Missing {
+            error: missing_policy_config_error(&discovery.skipped),
+        });
+    };
     let active_provenance = contributors
         .iter()
         .find(|contributor| contributor.path == normalize_repo_relative_path(&path, root))
         .map(|contributor| {
             ledger_provenance_from_lane_contributor(contributor, SOURCE_EXCEPTION_LANE)
         });
-    Ok((
+    Ok(SourceExceptionPolicyOutcome::Resolved {
         path,
-        FederationEvaluation {
+        evaluation: FederationEvaluation {
             federation_version: FEDERATION_VERSION,
             precedence_applied: PrecedenceTier::DiscoveryFallback,
             active_provenance,
             ledger_contributors: contributors,
             divergences,
         },
-    ))
+    })
+}
+
+pub fn evaluate_source_exception_policy(
+    root: &Path,
+    cli_config: Option<&Path>,
+) -> CargoAllowResult<(PathBuf, FederationEvaluation)> {
+    match resolve_source_exception_policy(root, cli_config)? {
+        SourceExceptionPolicyOutcome::Resolved { path, evaluation } => Ok((path, evaluation)),
+        SourceExceptionPolicyOutcome::Missing { error } => Err(error),
+    }
 }
 
 pub fn evaluate_spec_system_ledger(root: &Path) -> Option<FederationEvaluation> {

@@ -7,7 +7,8 @@ use allow_inventory::{
     resolve_source_tree_root,
 };
 use allow_policy::federation::{
-    FederationEvaluation, PrecedenceTier, evaluate_source_exception_policy,
+    FederationEvaluation, PrecedenceTier, SourceExceptionPolicyOutcome,
+    evaluate_source_exception_policy, resolve_source_exception_policy,
 };
 use std::cell::RefCell;
 use std::collections::BTreeSet;
@@ -373,9 +374,17 @@ pub(crate) fn load_world_with_evidence_mode_and_cache(
 ) -> WorldLoadResult {
     let cwd = current_dir()?;
     let root = resolve_source_tree_root(explicit_root, cwd)?;
-    let (policy_path, federation) = match evaluate_source_exception_policy(&root, config) {
-        Ok(value) => value,
-        Err(_err) if !require_config => {
+    // Only an absent policy config may fall back to a no-policy scan. A policy
+    // or federation config that exists but cannot be read, parsed, or validated
+    // fails closed even when `require_config` is false: degrading there would
+    // silently discard the whole ledger and report the tree as complete and
+    // clean (#1952).
+    let (policy_path, federation) = match resolve_source_exception_policy(&root, config)? {
+        SourceExceptionPolicyOutcome::Resolved { path, evaluation } => (path, evaluation),
+        SourceExceptionPolicyOutcome::Missing { error } => {
+            if require_config {
+                return Err(error);
+            }
             return load_world_without_policy_and_cache(
                 &root,
                 kind_filter,
@@ -385,7 +394,9 @@ pub(crate) fn load_world_with_evidence_mode_and_cache(
                 persistent_cache,
             );
         }
-        Err(err) => return Err(err),
+        // `SourceExceptionPolicyOutcome` is `#[non_exhaustive]`: an outcome this
+        // build does not understand is never treated as "no policy to enforce".
+        _ => return Err(unrecognized_policy_outcome_error()),
     };
     let (cfg, policy_digest) =
         crate::policy_config::load_policy_at_path_with_digest(policy_path, evidence_validation)?;
@@ -481,9 +492,15 @@ pub(crate) fn load_world_for_path(
 ) -> ScopedWorldLoadResult {
     let cwd = current_dir()?;
     let root = resolve_source_tree_root(explicit_root, cwd)?;
-    let (policy_path, federation) = match evaluate_source_exception_policy(&root, config) {
-        Ok(value) => value,
-        Err(_err) if !require_config => {
+    // See `load_world_with_evidence_mode_and_cache`: an unusable policy or
+    // federation config fails closed here too, so a scoped `why` cannot report
+    // a finding as unreceipted because the ledger silently failed to load.
+    let (policy_path, federation) = match resolve_source_exception_policy(&root, config)? {
+        SourceExceptionPolicyOutcome::Resolved { path, evaluation } => (path, evaluation),
+        SourceExceptionPolicyOutcome::Missing { error } => {
+            if require_config {
+                return Err(error);
+            }
             let (root, cfg, findings, facts, federation) = load_world_without_policy(
                 &root,
                 kind_filter,
@@ -493,7 +510,9 @@ pub(crate) fn load_world_for_path(
             )?;
             return Ok((root, cfg, findings, facts, federation, None));
         }
-        Err(err) => return Err(err),
+        // `SourceExceptionPolicyOutcome` is `#[non_exhaustive]`: an outcome this
+        // build does not understand is never treated as "no policy to enforce".
+        _ => return Err(unrecognized_policy_outcome_error()),
     };
     let cfg = load_policy_at_path(policy_path, EvidenceValidationMode::ReportOnly)?;
     let inventory = inventory(
@@ -753,6 +772,18 @@ fn load_world_without_policy_and_cache(
         inventory_facts,
         federation,
     ))
+}
+
+/// Fail-closed response to a policy-resolution outcome this build does not
+/// recognize. `SourceExceptionPolicyOutcome` is `#[non_exhaustive]`, so a newer
+/// `allow-policy` may report an outcome that is not "resolved" and not
+/// "missing"; treating that as an empty policy would silently drop the ledger.
+fn unrecognized_policy_outcome_error() -> CargoAllowError {
+    CargoAllowError::with_kind(
+        CargoAllowErrorKind::Internal,
+        "unrecognized source-exception policy resolution outcome; \
+         refusing to scan without a policy ledger",
+    )
 }
 
 fn empty_federation_evaluation(precedence: PrecedenceTier) -> FederationEvaluation {
