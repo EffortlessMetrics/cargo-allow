@@ -334,16 +334,22 @@ mod tests {
     fn federation_findings_use_diagnostic_kinds_not_rendered_messages() -> Result<(), String> {
         use allow_policy::federation::{FederationDiagnostic, FederationDiagnosticKind};
 
-        let config = tempfile::tempdir().map_err(|err| format!("temp dir: {err}"))?;
-        std::fs::create_dir_all(config.path().join(".allow"))
+        let config = std::env::temp_dir().join(format!(
+            "cargo-allow-federation-findings-{}",
+            std::process::id()
+        ));
+        if config.exists() {
+            std::fs::remove_dir_all(&config).map_err(|err| format!("stale temp dir: {err}"))?;
+        }
+        std::fs::create_dir_all(config.join(".allow"))
             .map_err(|err| format!("allow dir: {err}"))?;
         std::fs::write(
-            config.path().join(".allow/config.toml"),
+            config.join(".allow/config.toml"),
             "schema_version = \"1.0\"\n\n[[ledgers]]\nid = \"a\"\npath = \"policy/a.toml\"\ndialect = \"cargo-allow\"\nrole = \"canonical\"\nlanes = [\"source-exception\"]\npriority = 1\n\n[[ledgers]]\nid = \"b\"\npath = \"policy/b.toml\"\ndialect = \"cargo-allow\"\nrole = \"canonical\"\nlanes = [\"source-exception\"]\npriority = 1\n",
         )
         .map_err(|err| format!("config: {err}"))?;
 
-        let findings = federation_config_findings(config.path());
+        let findings = federation_config_findings(&config);
         check(findings.len() == 2, "expected duplicate-lane and priority-tie findings")?;
         check(
             findings.iter().all(|finding| finding.blocking_eligible),
@@ -369,6 +375,7 @@ mod tests {
         check(
             finding.blocking_reason == Some("federation_config_invalid"),
             "priority ties must not depend on rendered message wording",
-        )
+        )?;
+        std::fs::remove_dir_all(config).map_err(|err| format!("cleanup temp dir: {err}"))
     }
 }
