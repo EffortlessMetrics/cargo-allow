@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
+"""Focused regression tests for packaged-surface identity and assets (#3968)."""
+
 import importlib.util
+import io
 import json
+import subprocess
+import tarfile
 import tempfile
 import unittest
 from pathlib import Path
-import tarfile
-
 
 ROOT = Path(__file__).resolve().parent
 SPEC = importlib.util.spec_from_file_location("surface", ROOT / "final-packaged-surface.py")
@@ -21,7 +24,9 @@ class FinalPackagedSurfaceTests(unittest.TestCase):
         archive_path = package / f"{name}-{version}.crate"
         with tarfile.open(archive_path, "w:gz") as archive:
             files = {
-                f"{name}-{version}/Cargo.toml": b"[package]\nname = 'demo'\nversion = '0.2.0'\n",
+                f"{name}-{version}/Cargo.toml": (
+                    f"[package]\nname = '{name}'\nversion = '{version}'\n"
+                ).encode(),
                 f"{name}-{version}/LICENSE": b"MIT\n",
             }
             if readme:
@@ -29,7 +34,6 @@ class FinalPackagedSurfaceTests(unittest.TestCase):
             for path, data in files.items():
                 info = tarfile.TarInfo(path)
                 info.size = len(data)
-                import io
                 archive.addfile(info, io.BytesIO(data))
         return archive_path, package
 
@@ -54,18 +58,78 @@ class FinalPackagedSurfaceTests(unittest.TestCase):
             root = Path(directory)
             archive, packages = self.make_crate(root)
             package_set = root / "package-set.json"
-            package_set.write_text(json.dumps({"candidate": {}, "package_set": {"crates": [{"name": "demo", "version": "0.2.0"}]}}))
+            package_set.write_text(
+                json.dumps(
+                    {
+                        "candidate": {},
+                        "package_set": {
+                            "crates": [{"name": "demo", "version": "0.2.0"}]
+                        },
+                    }
+                )
+            )
             output = root / "surface.json"
-            import subprocess
-            subprocess.run([
-                "python3", str(ROOT / "final-packaged-surface.py"),
-                "--package-set-receipt", str(package_set),
-                "--packages-dir", str(packages),
-                "--output", str(output),
-                "--expected-version", "0.2.0",
-            ], check=True)
+            subprocess.run(
+                [
+                    "python3",
+                    str(ROOT / "final-packaged-surface.py"),
+                    "--package-set-receipt",
+                    str(package_set),
+                    "--packages-dir",
+                    str(packages),
+                    "--output",
+                    str(output),
+                    "--expected-version",
+                    "0.2.0",
+                ],
+                check=True,
+            )
             self.assertEqual(json.loads(output.read_text())["result"], "Complete")
             self.assertTrue(archive.exists())
+
+
+class ArchiveIdentityTests(unittest.TestCase):
+    def test_preserves_prerelease_and_build_metadata(self):
+        self.assertEqual(
+            surface.archive_identity(
+                "allow-core-0.2.0-rc.1+build.7.crate",
+                expected_name="allow-core",
+            ),
+            ("allow-core", "0.2.0-rc.1+build.7"),
+        )
+
+    def test_preserves_hyphens_in_package_name(self):
+        self.assertEqual(
+            surface.archive_identity(
+                "allow-policy-legacy-0.2.0-rc.1.crate",
+                expected_name="allow-policy-legacy",
+            ),
+            ("allow-policy-legacy", "0.2.0-rc.1"),
+        )
+
+    def test_rejects_missing_suffix_or_prefix(self):
+        for filename in (
+            "allow-core-0.2.0-rc.1.tar.gz",
+            "other-crate-0.2.0-rc.1.crate",
+            "allow-core-.crate",
+        ):
+            with self.subTest(filename=filename):
+                with self.assertRaises(ValueError):
+                    surface.archive_identity(filename, expected_name="allow-core")
+
+    def test_expected_version_is_checked_as_a_complete_suffix(self):
+        self.assertEqual(
+            surface.archive_identity(
+                "allow-core-0.2.0-rc.1.crate",
+                expected_version="0.2.0-rc.1",
+            ),
+            ("allow-core", "0.2.0-rc.1"),
+        )
+        with self.assertRaises(ValueError):
+            surface.archive_identity(
+                "allow-core-0.2.0-rc.1.crate",
+                expected_version="rc.1",
+            )
 
 
 if __name__ == "__main__":
