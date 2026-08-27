@@ -134,3 +134,90 @@ policy = "cargo-allow"
     assert_status("list", &output, true);
     remove_temp_root(root);
 }
+
+/// A ledger that exists but cannot be selected is not an unconfigured tree.
+///
+/// `audit` tolerates a missing policy so first-run adoption works, but the
+/// same fallback used to swallow an unusable ledger: the scan ran against an
+/// empty config and the report claimed an advisory pass over receipts nobody
+/// could read (#1952).
+#[test]
+fn audit_fails_closed_when_a_policy_candidate_cannot_be_selected() {
+    let root = temp_root("policy-discovery-audit-unusable");
+    write_foreign_allow_toml(&root);
+
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args(["audit", "--format", "markdown"])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run audit: {err}")));
+
+    assert_status("audit", &output, false);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("skipped 1 foreign-dialect candidate"),
+        "expected the skipped candidate to be named, got: {stderr}"
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        !stdout.contains("passed (advisory)"),
+        "audit must not claim an advisory pass over an unusable ledger, got: {stdout}"
+    );
+    remove_temp_root(root);
+}
+
+/// `propose --write` regenerates the ledger from the loaded policy. Under the
+/// no-policy fallback that policy was empty, so writing over an unusable
+/// ledger destroyed every receipt it held (#1952).
+#[test]
+fn propose_write_preserves_a_ledger_it_cannot_read() {
+    let root = temp_root("policy-discovery-propose-unusable");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::write(
+        root.join("src/main.rs"),
+        "fn main() { let v = vec![1]; println!(\"{}\", v[0]); }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    let ledger = root.join("policy/allow.toml");
+    let original = "this is not valid toml {{{\nid = \"allow-9001\"\n";
+    fs::write(&ledger, original)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write ledger: {err}")));
+
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args(["propose", "--write", "policy/allow.toml", "--force"])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run propose: {err}")));
+
+    assert_status("propose", &output, false);
+    let written = fs::read_to_string(&ledger)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read ledger: {err}")));
+    assert_eq!(
+        written, original,
+        "propose must not overwrite a ledger it could not read"
+    );
+    remove_temp_root(root);
+}
+
+/// The adoption path stays open: a tree with no policy candidate at all still
+/// scans under the no-policy fallback.
+#[test]
+fn audit_still_scans_a_tree_with_no_policy_candidate() {
+    let root = temp_root("policy-discovery-audit-unconfigured");
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::write(root.join("src/main.rs"), "fn main() {}\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args(["audit", "--format", "markdown"])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run audit: {err}")));
+
+    assert_status("audit", &output, true);
+    remove_temp_root(root);
+}

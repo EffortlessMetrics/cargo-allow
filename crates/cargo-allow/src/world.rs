@@ -8,6 +8,7 @@ use allow_inventory::{
 };
 use allow_policy::federation::{
     FederationEvaluation, PrecedenceTier, evaluate_source_exception_policy,
+    source_exception_policy_configuration_present,
 };
 use std::cell::RefCell;
 use std::collections::BTreeSet;
@@ -375,7 +376,16 @@ pub(crate) fn load_world_with_evidence_mode_and_cache(
     let root = resolve_source_tree_root(explicit_root, cwd)?;
     let (policy_path, federation) = match evaluate_source_exception_policy(&root, config) {
         Ok(value) => value,
-        Err(_err) if !require_config => {
+        Err(err) if !require_config => {
+            // The no-policy fallback exists for trees that have no ledger yet
+            // (first-run adoption). It must not swallow a ledger that *is*
+            // present but unusable: scanning those with an empty config is
+            // fail-open, so `audit` reports an advisory pass over receipts it
+            // could not read and `propose --write` replaces them all with a
+            // freshly generated policy (#1952).
+            if source_exception_policy_configuration_present(&root) {
+                return Err(err);
+            }
             return load_world_without_policy_and_cache(
                 &root,
                 kind_filter,
@@ -483,7 +493,16 @@ pub(crate) fn load_world_for_path(
     let root = resolve_source_tree_root(explicit_root, cwd)?;
     let (policy_path, federation) = match evaluate_source_exception_policy(&root, config) {
         Ok(value) => value,
-        Err(_err) if !require_config => {
+        Err(err) if !require_config => {
+            // The no-policy fallback exists for trees that have no ledger yet
+            // (first-run adoption). It must not swallow a ledger that *is*
+            // present but unusable: scanning those with an empty config is
+            // fail-open, so `audit` reports an advisory pass over receipts it
+            // could not read and `propose --write` replaces them all with a
+            // freshly generated policy (#1952).
+            if source_exception_policy_configuration_present(&root) {
+                return Err(err);
+            }
             let (root, cfg, findings, facts, federation) = load_world_without_policy(
                 &root,
                 kind_filter,
@@ -742,7 +761,10 @@ fn load_world_without_policy_and_cache(
     }
     // evidence_validation is intentionally unused here: this is the no-policy
     // fallback path where cfg = AllowConfig::empty(), so there are zero allow
-    // entries to validate evidence against. The parameter exists for API
+    // entries to validate evidence against. Callers only reach it for a tree
+    // that carries no source-exception policy configuration at all — a tree
+    // whose ledger exists but cannot be read fails closed instead of arriving
+    // here with its evidence unchecked (#1952). The parameter exists for API
     // symmetry with load_world_with_evidence_mode and will be wired in if
     // a future caller needs evidence validation without a full policy (#2831).
     let _ = evidence_validation;
