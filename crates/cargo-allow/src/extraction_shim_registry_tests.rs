@@ -130,11 +130,12 @@ fn repo_edit_command_shims_match_live_apply_forwards() -> Result<(), String> {
 
         let source = std::fs::read_to_string(root.join(source_path))
             .map_err(|err| format!("read {source_path}: {err}"))?;
-        if !source.contains("SingleTargetApplyMode")
-            || (!source.contains("apply_single_target(SingleTargetApplyRequest")
-                && !(source.contains("apply_single_target_with_target")
-                    && source.contains("SingleTargetApplyRequest")))
-        {
+        // Either forwarding shape counts as live apply forwarding: the direct
+        // call, or the with-target variant paired with the request type.
+        let forwards_apply = source.contains("apply_single_target(SingleTargetApplyRequest")
+            || (source.contains("apply_single_target_with_target")
+                && source.contains("SingleTargetApplyRequest"));
+        if !source.contains("SingleTargetApplyMode") || !forwards_apply {
             return Err(format!(
                 "repo-edit command shim {id} is missing live apply forwarding in {source_path}"
             ));
