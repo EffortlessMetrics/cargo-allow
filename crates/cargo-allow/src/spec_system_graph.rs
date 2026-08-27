@@ -68,12 +68,34 @@ pub(super) fn federation_config_findings(root: &Path) -> Vec<SpecSystemFinding> 
             )
         })
         .map(|diagnostic| {
-            SpecSystemFinding::new(
+            SpecSystemFinding::new_typed(
                 "federation_config",
                 format!("{}: {}", diagnostic.kind.as_str(), diagnostic.message),
+                federation_diagnostic_kind(diagnostic.kind),
             )
         })
         .collect()
+}
+
+fn federation_diagnostic_kind(
+    kind: allow_policy::federation::FederationDiagnosticKind,
+) -> &'static str {
+    match kind {
+        allow_policy::federation::FederationDiagnosticKind::DuplicateId => "duplicate_id",
+        allow_policy::federation::FederationDiagnosticKind::DuplicatePath
+        | allow_policy::federation::FederationDiagnosticKind::DuplicateCanonicalLane
+        | allow_policy::federation::FederationDiagnosticKind::MirrorMissingTarget
+        | allow_policy::federation::FederationDiagnosticKind::UnknownMirrorTarget
+        | allow_policy::federation::FederationDiagnosticKind::UnknownDrainMirrorLedger
+        | allow_policy::federation::FederationDiagnosticKind::DrainWindowMissingField
+        | allow_policy::federation::FederationDiagnosticKind::DrainWindowInvalidDate
+        | allow_policy::federation::FederationDiagnosticKind::DrainWindowNotMirror
+        | allow_policy::federation::FederationDiagnosticKind::PriorityTie => {
+            "federation_config_invalid"
+        }
+        allow_policy::federation::FederationDiagnosticKind::DialectConflict => "dialect_conflict",
+        allow_policy::federation::FederationDiagnosticKind::DialectSkipped => "dialect_skipped",
+    }
 }
 
 pub(super) fn import_graph_findings(graph: &ImportGraph) -> Vec<SpecSystemFinding> {

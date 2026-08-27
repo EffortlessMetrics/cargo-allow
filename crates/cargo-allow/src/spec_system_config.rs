@@ -90,12 +90,17 @@ pub(super) fn profile_config_findings(
     explicit_config: bool,
 ) -> Vec<SpecSystemFinding> {
     if loaded.valid == Some(false) || (explicit_config && !loaded.found) {
-        return vec![SpecSystemFinding::new(
+        return vec![SpecSystemFinding::new_typed(
             "profile_config",
             loaded
                 .diagnostic
                 .clone()
                 .unwrap_or_else(|| "spec-system profile config is invalid".to_string()),
+            if explicit_config && !loaded.found {
+                "profile_config_missing"
+            } else {
+                "profile_config_parse_failure"
+            },
         )];
     }
     Vec::new()
