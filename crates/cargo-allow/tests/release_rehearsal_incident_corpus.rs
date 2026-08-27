@@ -129,7 +129,7 @@ fn rc1_incident_corpus_1_to_8() -> Result<(), Box<dyn Error>> {
 #[test]
 fn rc1_incident_corpus_9_to_16() -> Result<(), Box<dyn Error>> {
     // 9. Attestation job lacks required permission (id-token: write)
-    let permissions = vec!["contents: read".to_string()];
+    let permissions = ["contents: read".to_string()];
     require(
         !permissions.iter().any(|p| p == "id-token: write"),
         "missing id-token: write permission detected",

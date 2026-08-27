@@ -54,10 +54,11 @@ scope = "cargo-allow-release-set"
 note = "fmt stays workspace-wide (repo hygiene); clippy, tests, and docs are release-set scoped"
 
 [[lane]]
-id = "test-windows"
+id = "test-core-platforms"
 product = "cargo-allow"
 posture = "required"
 scope = "cargo-allow-release-set"
+note = "release-set suite on Linux, Windows, macOS arm64, and macOS x86_64; macOS cache exclusions remain bounded by #3915"
 
 [[lane]]
 id = "compat-delegation"

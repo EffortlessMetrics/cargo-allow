@@ -374,7 +374,8 @@ linked_spec = "CARGO-ALLOW-SPEC-0007"
 id = "CARGO-ALLOW-PLAN-0007"
 kind = "implementation_plan"
 path = "plans/federation/implementation-plan.md"
-status = "draft"
+status = "done"
+linked_closeout = "CARGO-ALLOW-CLOSEOUT-0012"
 owner = "repo-infra"
 created = "2026-06-18"
 linked_proposal = "CARGO-ALLOW-PROP-0007"
@@ -745,6 +746,43 @@ owner = "repo-infra"
 created = "2026-07-29"
 linked_proposal = "CARGO-ALLOW-PROP-0010"
 linked_spec = "CARGO-ALLOW-SPEC-0011"
+
+[[artifact]]
+id = "CARGO-ALLOW-ADR-0004"
+kind = "adr"
+path = "docs/adr/CARGO-ALLOW-ADR-0004-source-syntax-only-scan.md"
+status = "accepted"
+owner = "repo-infra"
+created = "2026-08-27"
+linked_spec = "CARGO-ALLOW-SPEC-0005"
+
+[[artifact]]
+id = "CARGO-ALLOW-ADR-0005"
+kind = "adr"
+path = "docs/adr/CARGO-ALLOW-ADR-0005-baseline-debt-window.md"
+status = "accepted"
+owner = "repo-infra"
+created = "2026-08-27"
+linked_spec = "CARGO-ALLOW-SPEC-0012"
+
+[[artifact]]
+id = "CARGO-ALLOW-ADR-0006"
+kind = "adr"
+path = "docs/adr/CARGO-ALLOW-ADR-0006-structural-identity-v1.md"
+status = "accepted"
+owner = "repo-infra"
+created = "2026-08-27"
+linked_proposal = "CARGO-ALLOW-PROP-0005"
+linked_spec = "CARGO-ALLOW-SPEC-0005"
+
+[[artifact]]
+id = "CARGO-ALLOW-ADR-0007"
+kind = "adr"
+path = "docs/adr/CARGO-ALLOW-ADR-0007-crate-namespace-policy.md"
+status = "accepted"
+owner = "repo-infra"
+created = "2026-08-27"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
 
 [[artifact]]
 id = "CARGO-ALLOW-SPEC-0010"

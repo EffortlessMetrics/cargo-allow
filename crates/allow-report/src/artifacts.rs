@@ -5,6 +5,7 @@ mod adoption_plan;
 mod diff;
 mod doctor;
 mod explain;
+mod final_evidence_graph_v1;
 pub(crate) mod federation;
 mod list;
 mod migrate;
@@ -39,6 +40,7 @@ pub use doctor::{
     FileFamilyConflictSummary, FileFamilyRuleSummary,
 };
 pub use explain::{EvidenceReference, ExplainReport};
+pub use final_evidence_graph_v1::*;
 pub use federation::{
     FederationDivergenceKindCount, FederationDivergenceRecordSummary, FederationDivergenceSummary,
     FederationReportContext, LedgerContributorSummary,

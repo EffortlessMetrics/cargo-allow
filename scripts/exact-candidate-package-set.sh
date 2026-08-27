@@ -1042,7 +1042,13 @@ for line in os.environ["CRATE_RECORDS"].splitlines():
     if not line.strip():
         continue
     name, crate_file, sha256, size, extracted = line.split("|", 4)
-    crate_version = crate_file.removesuffix(".crate").rsplit("-", 1)[1]
+    suffix = ".crate"
+    prefix = name + "-"
+    if not crate_file.endswith(suffix) or not crate_file.startswith(prefix):
+        raise SystemExit(f"malformed crate filename for {name}: {crate_file}")
+    crate_version = crate_file[len(prefix):-len(suffix)]
+    if not crate_version:
+        raise SystemExit(f"empty crate version for {name}: {crate_file}")
     records.append(
         {
             "name": name,
