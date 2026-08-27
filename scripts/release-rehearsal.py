@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic exact-subject zero-upload release rehearsal harness."""
+"""Fail-closed characterization of the exact-subject release rehearsal."""
 
 from __future__ import annotations
 
@@ -10,133 +10,186 @@ import os
 from pathlib import Path
 import subprocess
 import sys
-from typing import Any, Dict, List
+from typing import Any, Callable
 
 ROOT = Path(__file__).resolve().parent.parent
+PHASE_COMPLETE = "Complete"
+PHASE_INCOMPLETE = "Incomplete"
+PHASE_MISMATCH = "Mismatch"
+PHASE_INSTRUMENT_FAILURE = "InstrumentFailure"
+CARGO_TOKEN_ENV = "CARGO_REGISTRY_TOKEN"
+
 
 def compute_sha256(path: Path) -> str:
-    h = hashlib.sha256()
-    with path.open("rb") as f:
-        while chunk := f.read(65536):
-            h.update(chunk)
-    return f"sha256:{h.hexdigest()}"
+    """Return the repository's canonical SHA-256 text for one exact file."""
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        while chunk := source.read(65536):
+            digest.update(chunk)
+    return f"sha256:v1:{digest.hexdigest()}"
 
-def run_phase_release_identity(receipt: Dict[str, Any]) -> str:
-    # Phase 1: Verify release identity consistency
-    try:
-        support_matrix = ROOT / "docs/support-matrix.toml"
-        if not support_matrix.exists():
-            return "Mismatch"
-        return "Complete"
-    except Exception:
-        return "InstrumentFailure"
 
-def run_phase_candidate_package_set(receipt: Dict[str, Any]) -> str:
-    # Phase 2: Verify candidate package set topology
-    try:
-        topology_path = ROOT / "policy/product-package-topology-v2.toml"
-        if not topology_path.exists():
-            return "Mismatch"
-        text = topology_path.read_text(encoding="utf-8")
-        if "cargo-allow" not in text:
-            return "Mismatch"
-        return "Complete"
-    except Exception:
-        return "InstrumentFailure"
+def resolve_commit(commit_ref: str) -> str:
+    """Resolve one caller-supplied Git commit ref or fail without substitution."""
+    if (
+        not commit_ref
+        or commit_ref.startswith("-")
+        or any(char in commit_ref for char in "\r\n\0")
+    ):
+        raise ValueError("commit ref must be non-empty, single-line, and not start with a dash")
+    result = subprocess.run(
+        ["git", "rev-parse", "--verify", f"{commit_ref}^{{commit}}"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise ValueError(f"commit ref is not an exact repository commit: {commit_ref}")
+    commit_sha = result.stdout.strip().lower()
+    if len(commit_sha) not in (40, 64) or any(
+        char not in "0123456789abcdef" for char in commit_sha
+    ):
+        raise ValueError("resolved commit identity is not canonical hexadecimal Git output")
+    return commit_sha
 
-def run_phase_shared_prerequisites(receipt: Dict[str, Any]) -> str:
-    # Phase 3: Verify shared prerequisite checksums
-    try:
-        topology_path = ROOT / "policy/product-package-topology-v2.toml"
-        text = topology_path.read_text(encoding="utf-8")
-        if "expected_registry_checksum" not in text:
-            return "Mismatch"
-        return "Complete"
-    except Exception:
-        return "InstrumentFailure"
 
-def run_phase_publisher_state_machine(receipt: Dict[str, Any]) -> str:
-    # Phase 4: Run publisher state machine tests
+def _file_characterization(path: Path) -> str:
+    """Keep file presence explicit without upgrading it to semantic proof."""
     try:
-        res = subprocess.run(
-            [sys.executable, str(ROOT / "scripts/test-release-topology-publisher.py")],
+        return PHASE_INCOMPLETE if path.is_file() else PHASE_MISMATCH
+    except OSError:
+        return PHASE_INSTRUMENT_FAILURE
+
+
+def _sanitized_environment() -> dict[str, str]:
+    """Prevent child characterizations from receiving the registry secret."""
+    environment = dict(os.environ)
+    environment.pop(CARGO_TOKEN_ENV, None)
+    return environment
+
+
+def _run_characterization(command: list[str]) -> str:
+    """Run a bounded characterization without treating exit zero as Complete."""
+    try:
+        result = subprocess.run(
+            command,
+            cwd=ROOT,
+            env=_sanitized_environment(),
             capture_output=True,
             text=True,
+            timeout=300,
+            check=False,
         )
-        if res.returncode != 0:
-            return "Mismatch"
-        return "Complete"
-    except Exception:
-        return "InstrumentFailure"
+    except (OSError, subprocess.SubprocessError):
+        return PHASE_INSTRUMENT_FAILURE
+    return PHASE_INCOMPLETE if result.returncode == 0 else PHASE_MISMATCH
 
-def run_phase_docs_and_support(receipt: Dict[str, Any]) -> str:
-    # Phase 5: Check docs & support matrix consistency
+
+def run_phase_release_identity(_receipt: dict[str, Any]) -> str:
+    return _file_characterization(ROOT / "docs/support-matrix.toml")
+
+
+def run_phase_candidate_package_set(_receipt: dict[str, Any]) -> str:
+    return _file_characterization(ROOT / "policy/product-package-topology-v2.toml")
+
+
+def run_phase_shared_prerequisites(_receipt: dict[str, Any]) -> str:
+    return _file_characterization(ROOT / "policy/product-package-topology-v2.toml")
+
+
+def run_phase_publisher_state_machine(_receipt: dict[str, Any]) -> str:
+    return _run_characterization(
+        [sys.executable, str(ROOT / "scripts/test-release-topology-publisher.py")]
+    )
+
+
+def run_phase_docs_and_support(_receipt: dict[str, Any]) -> str:
+    return _file_characterization(ROOT / "SUPPORT.md")
+
+
+def run_phase_manifest_and_assets(_receipt: dict[str, Any]) -> str:
+    return _run_characterization(
+        [sys.executable, str(ROOT / "scripts/test-final-packaged-surface.py")]
+    )
+
+
+def run_phase_authorization_boundary(_receipt: dict[str, Any]) -> str:
     try:
-        support_doc = ROOT / "SUPPORT.md"
-        if not support_doc.exists():
-            return "Mismatch"
-        return "Complete"
-    except Exception:
-        return "InstrumentFailure"
+        if os.environ.get(CARGO_TOKEN_ENV):
+            return PHASE_INSTRUMENT_FAILURE
+        return PHASE_INCOMPLETE
+    except OSError:
+        return PHASE_INSTRUMENT_FAILURE
 
-def run_phase_manifest_and_assets(receipt: Dict[str, Any]) -> str:
-    # Phase 6: Check manifest & packaged surface tests
+
+def run_phase_workflow_graph_permissions(_receipt: dict[str, Any]) -> str:
+    return _file_characterization(ROOT / ".github/workflows/release.yml")
+
+
+def _aggregate_phase_status(phases: dict[str, str]) -> str:
+    """Return a fail-closed aggregate until real typed phase adapters exist."""
+    values = set(phases.values())
+    if PHASE_INSTRUMENT_FAILURE in values:
+        return PHASE_INSTRUMENT_FAILURE
+    if PHASE_MISMATCH in values:
+        return PHASE_MISMATCH
+    return PHASE_INCOMPLETE
+
+
+def _write_receipt(path: Path, json_text: str) -> None:
+    """Write a receipt without following a symlink at the output leaf."""
+    if path.is_symlink() or path.is_dir():
+        raise OSError("output path cannot be a symlink or directory")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.is_symlink() or path.is_dir():
+        raise OSError("output path cannot be a symlink or directory")
+
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(path, flags, 0o600)
     try:
-        res = subprocess.run(
-            [sys.executable, str(ROOT / "scripts/test-final-packaged-surface.py")],
-            capture_output=True,
-            text=True,
-        )
-        if res.returncode != 0:
-            return "Mismatch"
-        return "Complete"
-    except Exception:
-        return "InstrumentFailure"
+        with os.fdopen(descriptor, "w", encoding="utf-8") as output:
+            descriptor = -1
+            output.write(json_text + "\n")
+    finally:
+        if descriptor != -1:
+            os.close(descriptor)
 
-def run_phase_authorization_boundary(receipt: Dict[str, Any]) -> str:
-    # Phase 7: Check authorization boundary
-    try:
-        if "CARGO_REGISTRY_TOKEN" in os.environ and os.environ["CARGO_REGISTRY_TOKEN"]:
-            return "InstrumentFailure"
-        return "Complete"
-    except Exception:
-        return "InstrumentFailure"
 
-def run_phase_workflow_graph_permissions(receipt: Dict[str, Any]) -> str:
-    # Phase 8: Verify workflow permissions
-    try:
-        release_wf = ROOT / ".github/workflows/release.yml"
-        if not release_wf.exists():
-            return "Mismatch"
-        return "Complete"
-    except Exception:
-        return "InstrumentFailure"
+def build_rehearsal_receipt(commit_ref: str) -> dict[str, Any]:
+    """Build an honest characterization receipt for one verified commit."""
+    commit_sha = resolve_commit(commit_ref)
+    lockfile_digest = compute_sha256(ROOT / "Cargo.lock")
+    topology_digest = compute_sha256(
+        ROOT / "policy/product-package-topology-v2.toml"
+    )
 
-def build_rehearsal_receipt(commit_sha: str) -> Dict[str, Any]:
-    lockfile_digest = compute_sha256(ROOT / "Cargo.lock") if (ROOT / "Cargo.lock").exists() else "sha256:none"
-    topology_digest = compute_sha256(ROOT / "policy/product-package-topology-v2.toml") if (ROOT / "policy/product-package-topology-v2.toml").exists() else "sha256:none"
-
-    receipt: Dict[str, Any] = {
+    receipt: dict[str, Any] = {
         "schema_version": "1.0",
         "receipt_id": f"REHEARSAL-{commit_sha[:8]}",
         "commit_sha": commit_sha,
         "subject_lockfile_digest": lockfile_digest,
         "subject_topology_digest": topology_digest,
         "zero_mutation_proof": {
-            "tag_mutation_prevented": True,
-            "token_read_prevented": True,
-            "cargo_publish_prevented": True,
-            "registry_mutation_prevented": True,
-            "github_release_mutation_prevented": True,
-            "live_setting_mutation_prevented": True,
-            "external_repository_mutation_prevented": True,
+            "tag_mutation_prevented": False,
+            "token_read_prevented": False,
+            "cargo_publish_prevented": False,
+            "registry_mutation_prevented": False,
+            "github_release_mutation_prevented": False,
+            "live_setting_mutation_prevented": False,
+            "external_repository_mutation_prevented": False,
         },
         "phases": {},
-        "aggregate_status": "Incomplete",
-        "claim_boundary": "Reversible exact-subject rehearsal only; does not perform or authorize real publication.",
+        "aggregate_status": PHASE_INCOMPLETE,
+        "claim_boundary": (
+            "Characterization only: current phases do not yet prove exact-subject "
+            "semantics or zero mutation and cannot satisfy a release gate."
+        ),
     }
 
-    phases = {
+    phases: dict[str, Callable[[dict[str, Any]], str]] = {
         "release_identity": run_phase_release_identity,
         "candidate_package_set": run_phase_candidate_package_set,
         "shared_prerequisites": run_phase_shared_prerequisites,
@@ -147,42 +200,38 @@ def build_rehearsal_receipt(commit_sha: str) -> Dict[str, Any]:
         "workflow_graph_permissions": run_phase_workflow_graph_permissions,
     }
 
-    all_complete = True
     for phase_name, runner in phases.items():
-        status = runner(receipt)
-        receipt["phases"][phase_name] = status
-        if status != "Complete":
-            all_complete = False
+        receipt["phases"][phase_name] = runner(receipt)
 
-    receipt["aggregate_status"] = "Complete" if all_complete else "Incomplete"
+    receipt["aggregate_status"] = _aggregate_phase_status(receipt["phases"])
     return receipt
 
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run exact-subject release rehearsal")
-    parser.add_argument("--commit", default="HEAD", help="Commit SHA or ref")
+    parser = argparse.ArgumentParser(
+        description="Characterize the exact-subject release rehearsal fail-closed"
+    )
+    parser.add_argument("--commit", default="HEAD", help="Exact Git commit or ref")
     parser.add_argument("--output", help="Path to write receipt JSON")
     args = parser.parse_args()
 
-    commit_sha = args.commit
-    if commit_sha == "HEAD":
-        try:
-            out = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
-            commit_sha = out
-        except Exception:
-            commit_sha = "0" * 40
+    try:
+        receipt = build_rehearsal_receipt(args.commit)
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        print(f"release rehearsal instrumentation failed: {error}", file=sys.stderr)
+        return 2
 
-    receipt = build_rehearsal_receipt(commit_sha)
-    json_str = json.dumps(receipt, indent=2)
-
+    json_text = json.dumps(receipt, indent=2, sort_keys=True)
     if args.output:
-        out_path = Path(args.output)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(json_str + "\n", encoding="utf-8")
-        print(f"Receipt written to {out_path}")
+        output_path = Path(args.output)
+        _write_receipt(output_path, json_text)
+        print(f"Receipt written to {output_path}")
     else:
-        print(json_str)
+        print(json_text)
 
-    return 0 if receipt["aggregate_status"] == "Complete" else 1
+    return 0 if receipt["aggregate_status"] == PHASE_COMPLETE else 1
+
 
 if __name__ == "__main__":
     sys.exit(main())
+
