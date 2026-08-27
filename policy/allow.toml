@@ -12865,3 +12865,25 @@ glob = "docs/repository-metadata.md"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0610"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4002-repository-metadata-doc.toml"
+owner = "core/policy"
+classification = "policy_revision_note"
+reason = "Reviewed revision note authorizing the allow-0609 ledger addition in #4002; append-only evidence retained alongside the sibling notes in .allow/revisions/."
+evidence = ["issue:1952", "doc:docs/source-exception-ledger.md"]
+created = "2026-08-27"
+review_after = "2027-02-27"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4002-repository-metadata-doc.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4002-repository-metadata-doc.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

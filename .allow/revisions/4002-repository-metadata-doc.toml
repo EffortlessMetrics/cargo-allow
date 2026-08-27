@@ -12,3 +12,9 @@ allow_ids = ["allow-0609"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:75f5384d812f8e262327395d1704c759b98a8e5b6b03549d2a2a24f872167827"
 reason = "receipts docs/repository-metadata.md (added by a8eeac7 without a ledger entry) as a reviewed cargo_allow_product_documentation surface; owner core/docs, evidence issue:3910 and doc:docs/README.md"
+
+[[records]]
+allow_ids = ["allow-0610"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:00f8ca5cee31c5938176a8213cf0eba84dedcd1952a0f48eabe0f86cf74bf982"
+reason = "receipts this revision-note file itself, which the git-tracked inventory scans as a governed configuration surface once committed; owner core/policy, sibling of the existing .allow/revisions entries"
