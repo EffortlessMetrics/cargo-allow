@@ -167,8 +167,25 @@ fn bounded_domain_query_catalog_matches_fixture() -> Result<(), String> {
 
 #[test]
 fn bounded_domain_query_returns_protocol_shaped_response() -> Result<(), String> {
+    let identity = intent_protocol::IntentIdentityEnvelopeV1::new(
+        intent_protocol::RepositorySnapshotV1::new_committed_head(
+            "fixture-root",
+            "sha1",
+            intent_protocol::ResolvedRevisionV1 {
+                requested: "HEAD".to_string(),
+                commit: "cccccccccccccccccccccccccccccccccccccccc".to_string(),
+                tree: "tttttttttttttttttttttttttttttttttttttttt".to_string(),
+            },
+        ),
+        intent_protocol::IntentArtifactKindV1::SpecSystemConfig,
+        "self-hosted-runtime-promotion",
+        "policy/spec-system.toml",
+        "sha256:fixture-config",
+    );
     let request = crate::BoundedDomainQueryRequestV1::new(
+        identity.clone(),
         crate::BoundedDomainQueryKindV1::MovementKindsCatalog,
+        "movement-kinds",
     );
     let response = crate::execute_bounded_domain_query(&request);
     if response.result_class != crate::RESULT_CLASS_COMPLETED {
@@ -185,6 +202,15 @@ fn bounded_domain_query_returns_protocol_shaped_response() -> Result<(), String>
             .map_err(|err| format!("deserialize intent-protocol response: {err}"))?;
     if projected.payload_schema != response.payload_schema {
         return Err("payload schema mismatch in protocol projection".to_string());
+    }
+    if projected.query.kind != intent_protocol::IntentQueryKindV1::DomainQuery {
+        return Err("domain query projection must retain its query kind".to_string());
+    }
+    if projected.query.identity != identity {
+        return Err("domain query projection must retain source identity".to_string());
+    }
+    if projected.query.selector != "movement-kinds" {
+        return Err("domain query projection must retain its selector".to_string());
     }
     Ok(())
 }
