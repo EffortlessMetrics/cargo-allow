@@ -9,6 +9,8 @@ def crate_version_from_filename(package_name: str, crate_file: str) -> str:
     """
     if not package_name:
         raise ValueError("package name must not be empty")
+    if "/" in package_name or "\\" in package_name:
+        raise ValueError(f"package name must be a Cargo package name: {package_name!r}")
     if "/" in crate_file or "\\" in crate_file:
         raise ValueError(f"crate archive must be a filename, got {crate_file!r}")
 
