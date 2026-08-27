@@ -32,6 +32,7 @@ class CrateVersionFromFilenameTests(unittest.TestCase):
         cases = [
             ("", "allow-core-0.2.0-rc.1.crate"),
             ("nested/allow-core", "nested/allow-core-0.2.0-rc.1.crate"),
+            ("nested/allow-core", "nested/allow-core-0.2.0-rc.1.crate"),
             ("allow-core", "allow-core-0.2.0-rc.1.tar.gz"),
             ("allow-core", "allow-policy-0.2.0-rc.1.crate"),
             ("allow-core", "allow-core-.crate"),
