@@ -329,4 +329,46 @@ mod tests {
             "missing federation config should remain non-fatal",
         )
     }
+
+    #[test]
+    fn federation_findings_use_diagnostic_kinds_not_rendered_messages() -> Result<(), String> {
+        use allow_policy::federation::{FederationDiagnostic, FederationDiagnosticKind};
+
+        let config = tempfile::tempdir().map_err(|err| format!("temp dir: {err}"))?;
+        std::fs::create_dir_all(config.path().join(".allow"))
+            .map_err(|err| format!("allow dir: {err}"))?;
+        std::fs::write(
+            config.path().join(".allow/config.toml"),
+            "schema_version = \"1.0\"\n\n[[ledgers]]\nid = \"a\"\npath = \"policy/a.toml\"\ndialect = \"cargo-allow\"\nrole = \"canonical\"\nlanes = [\"source-exception\"]\npriority = 1\n\n[[ledgers]]\nid = \"b\"\npath = \"policy/b.toml\"\ndialect = \"cargo-allow\"\nrole = \"canonical\"\nlanes = [\"source-exception\"]\npriority = 1\n",
+        )
+        .map_err(|err| format!("config: {err}"))?;
+
+        let findings = federation_config_findings(config.path());
+        check(findings.len() == 2, "expected duplicate-lane and priority-tie findings")?;
+        check(
+            findings.iter().all(|finding| finding.blocking_eligible),
+            "all blocking federation diagnostics must remain blocking",
+        )?;
+        check(
+            findings
+                .iter()
+                .all(|finding| finding.blocking_reason.is_some()),
+            "typed federation diagnostics must carry blocking reasons",
+        )?;
+
+        let synthetic = FederationDiagnostic {
+            kind: FederationDiagnosticKind::PriorityTie,
+            message: "renamed upstream wording".to_string(),
+            ledger_ids: vec!["a".to_string(), "b".to_string()],
+        };
+        let finding = SpecSystemFinding::new_typed(
+            "federation_config",
+            synthetic.message,
+            federation_diagnostic_kind(synthetic.kind),
+        );
+        check(
+            finding.blocking_reason == Some("federation_config_invalid"),
+            "priority ties must not depend on rendered message wording",
+        )
+    }
 }
