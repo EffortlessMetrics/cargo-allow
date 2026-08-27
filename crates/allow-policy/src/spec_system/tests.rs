@@ -690,7 +690,7 @@ fn validates_current_repository_support_tier_claims() {
         return;
     };
 
-    assert_eq!(rows.len(), 14);
+    assert_eq!(rows.len(), 15);
     for (surface, tier) in [
         (
             "cargo-allow published source-exception ledger",
@@ -700,6 +700,7 @@ fn validates_current_repository_support_tier_claims() {
             "cargo-allow 0.2 source candidate",
             SupportTierLevel::Stabilizing,
         ),
+        ("Multi-ledger federation", SupportTierLevel::Advisory),
         ("cargo-intent", SupportTierLevel::Experimental),
         ("cargo-proof", SupportTierLevel::Experimental),
         (
