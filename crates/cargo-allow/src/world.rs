@@ -381,10 +381,8 @@ pub(crate) fn load_world_with_evidence_mode_and_cache(
     // clean (#1952).
     let (policy_path, federation) = match resolve_source_exception_policy(&root, config)? {
         SourceExceptionPolicyOutcome::Resolved { path, evaluation } => (path, evaluation),
-        SourceExceptionPolicyOutcome::Missing { error } => {
-            if require_config {
-                return Err(error);
-            }
+        SourceExceptionPolicyOutcome::Missing { error } if require_config => return Err(error),
+        SourceExceptionPolicyOutcome::Missing { .. } => {
             return load_world_without_policy_and_cache(
                 &root,
                 kind_filter,
@@ -394,9 +392,6 @@ pub(crate) fn load_world_with_evidence_mode_and_cache(
                 persistent_cache,
             );
         }
-        // `SourceExceptionPolicyOutcome` is `#[non_exhaustive]`: an outcome this
-        // build does not understand is never treated as "no policy to enforce".
-        _ => return Err(unrecognized_policy_outcome_error()),
     };
     let (cfg, policy_digest) =
         crate::policy_config::load_policy_at_path_with_digest(policy_path, evidence_validation)?;
@@ -497,10 +492,8 @@ pub(crate) fn load_world_for_path(
     // a finding as unreceipted because the ledger silently failed to load.
     let (policy_path, federation) = match resolve_source_exception_policy(&root, config)? {
         SourceExceptionPolicyOutcome::Resolved { path, evaluation } => (path, evaluation),
-        SourceExceptionPolicyOutcome::Missing { error } => {
-            if require_config {
-                return Err(error);
-            }
+        SourceExceptionPolicyOutcome::Missing { error } if require_config => return Err(error),
+        SourceExceptionPolicyOutcome::Missing { .. } => {
             let (root, cfg, findings, facts, federation) = load_world_without_policy(
                 &root,
                 kind_filter,
@@ -510,9 +503,6 @@ pub(crate) fn load_world_for_path(
             )?;
             return Ok((root, cfg, findings, facts, federation, None));
         }
-        // `SourceExceptionPolicyOutcome` is `#[non_exhaustive]`: an outcome this
-        // build does not understand is never treated as "no policy to enforce".
-        _ => return Err(unrecognized_policy_outcome_error()),
     };
     let cfg = load_policy_at_path(policy_path, EvidenceValidationMode::ReportOnly)?;
     let inventory = inventory(
@@ -772,18 +762,6 @@ fn load_world_without_policy_and_cache(
         inventory_facts,
         federation,
     ))
-}
-
-/// Fail-closed response to a policy-resolution outcome this build does not
-/// recognize. `SourceExceptionPolicyOutcome` is `#[non_exhaustive]`, so a newer
-/// `allow-policy` may report an outcome that is not "resolved" and not
-/// "missing"; treating that as an empty policy would silently drop the ledger.
-fn unrecognized_policy_outcome_error() -> CargoAllowError {
-    CargoAllowError::with_kind(
-        CargoAllowErrorKind::Internal,
-        "unrecognized source-exception policy resolution outcome; \
-         refusing to scan without a policy ledger",
-    )
 }
 
 fn empty_federation_evaluation(precedence: PrecedenceTier) -> FederationEvaluation {
@@ -1411,5 +1389,51 @@ mod tests {
             "scoped and full scans must agree on the finding identity key"
         );
         cleanup(&root);
+    }
+    /// The scoped loader's tolerant path: with `require_config = false` and no
+    /// policy config anywhere, it scans without a ledger instead of erroring.
+    /// No production caller passes `false` today (`why` requires a config), so
+    /// this pins the documented contract of the parameter directly (#1952).
+    #[test]
+    fn scoped_load_without_require_config_falls_back_when_no_policy_exists() {
+        let root = fixture_dir();
+        fs::create_dir_all(root.join("src"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("src dir: {err}")));
+        fs::write(
+            root.join("src/lib.rs"),
+            "pub fn probe(value: Option<u32>) -> u32 {\n    value.unwrap()\n}\n",
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("source write: {err}")));
+        git(root.as_path(), &["init"]);
+        git(
+            root.as_path(),
+            &["config", "user.email", "cargo-allow@example.invalid"],
+        );
+        git(root.as_path(), &["config", "user.name", "cargo-allow test"]);
+        git(root.as_path(), &["add", "--all"]);
+        git(
+            root.as_path(),
+            &["commit", "-m", "no-policy scoped fixture"],
+        );
+
+        let target = root.join("src/lib.rs");
+        let scoped = load_world_for_path(Some(&root), None, false, Some("panic"), false, &target)
+            .unwrap_or_else(|err| {
+                std::panic::panic_any(format!("scoped load without policy: {err}"))
+            });
+
+        assert!(
+            scoped.1.allow.is_empty(),
+            "the no-policy fallback must yield an empty ledger"
+        );
+        assert!(
+            scoped
+                .2
+                .iter()
+                .any(|finding| finding.identity.callee.as_deref() == Some("unwrap")),
+            "the scoped no-policy scan must still report the probe finding"
+        );
+
+        let _ = fs::remove_dir_all(&root);
     }
 }

@@ -112,8 +112,12 @@ impl LedgerContributor {
 /// on. The second must fail closed everywhere: falling back there would
 /// silently discard the whole ledger and report an unreceipted tree as a
 /// complete, clean result (#1952, #1782).
+///
+/// Deliberately exhaustive: the only consumer must handle every outcome at
+/// compile time. A `#[non_exhaustive]` wildcard would be a permanently
+/// unreachable runtime arm, and a compiler error on a new variant is the
+/// stronger fail-closed guarantee.
 #[derive(Debug)]
-#[non_exhaustive]
 pub enum SourceExceptionPolicyOutcome {
     /// A cargo-allow policy ledger was resolved for this source tree.
     Resolved {

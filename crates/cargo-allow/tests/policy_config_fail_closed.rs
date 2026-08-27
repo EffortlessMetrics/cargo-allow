@@ -175,3 +175,56 @@ fn audit_still_reads_the_ledger_when_the_federation_config_is_valid() {
 
     let _ = fs::remove_dir_all(&root);
 }
+
+fn assert_reports_missing_config(command: &str, result: &Output) {
+    let stderr = String::from_utf8_lossy(&result.stderr);
+    assert!(
+        !result.status.success(),
+        "{command} requires a policy config, got stderr=`{stderr}`"
+    );
+    assert!(
+        stderr.contains("no policy config found")
+            || stderr.contains("no cargo-allow policy config found"),
+        "{command} should say no policy config was found, got stderr=`{stderr}`"
+    );
+}
+
+#[test]
+fn check_requires_a_policy_config_when_none_exists() {
+    // The config-requiring side of the same decision: `check` must not scan a
+    // tree it has no ledger for, so `Missing` is an error rather than a
+    // fallback here.
+    let root = temp_root("check-no-policy");
+    write(&root.join("src/lib.rs"), "pub fn f() {}\n");
+
+    assert_reports_missing_config("check", &run("check", &root));
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn scoped_why_requires_a_policy_config_when_none_exists() {
+    // `why` resolves policy through the scoped loader, which requires a config.
+    let root = temp_root("why-no-policy");
+    write(
+        &root.join("src/lib.rs"),
+        "pub fn f(v: Option<u32>) -> u32 { v.unwrap() }\n",
+    );
+
+    let result = Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+        .arg("why")
+        .arg("--root")
+        .arg(&root)
+        .arg("--kind")
+        .arg("panic")
+        .arg("--path")
+        .arg("src/lib.rs")
+        .arg("--line")
+        .arg("1")
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow why: {err}")));
+
+    assert_reports_missing_config("why", &result);
+
+    let _ = fs::remove_dir_all(&root);
+}
