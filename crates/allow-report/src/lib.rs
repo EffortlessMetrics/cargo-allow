@@ -115,43 +115,35 @@ pub use add_plan_application::render_add_plan_application_json;
 pub use advisory_class::{ADVISORY_DENY_FIELD_NAMES, AdvisoryClass, advisory_count_for_deny_field};
 pub use allow_entry_json::{render_allow_entry_json, render_last_seen_json, render_selector_json};
 pub use artifacts::{
-    ActualDownloadedFileV1, AddFindingPlanCandidate, AddFindingPlanFinding, AddFindingPlanOutcome,
-    AddFindingPlanPolicy, AddFindingPlanProofPlan, AddFindingPlanRepository, AddFindingPlanV1,
-    AddPlanApplicationV1, AddReport, AdoptionAction, AdoptionActionKind, AdoptionFacts,
-    AdoptionInventoryFacts, AdoptionPolicyFacts, AggregateOperationStateV1,
-    ArtifactTransferDispositionV1, ArtifactTransferFileV1, ArtifactTransferInitV1,
-    BootstrapDisposition, CandidateCustodyInitV1, CargoAllowFinalEvidenceEdgeV1,
-    CargoAllowFinalEvidenceEvaluationV1, CargoAllowFinalEvidenceGraphV1,
-    CargoAllowFinalEvidenceNodeV1, CargoAllowFrozenCandidateCustodyV1,
-    CargoAllowPostMergeQualificationV1, CargoAllowReleaseArtifactTransferV1,
-    CargoAllowReleaseOperationV1, ConfidentialityClassV1, ConfigProvenanceSummary,
-    ConfiguredLedgerSummary, ConsumerContextV1, CoreAdoptionPlanV1, CustodyDispositionV1,
-    CustodyFileV1, DiffEvidenceChange, DiffExceptionIdentityChange, DiffFindingChange,
+    AddFindingPlanCandidate, AddFindingPlanFinding, AddFindingPlanOutcome, AddFindingPlanPolicy,
+    AddFindingPlanProofPlan, AddFindingPlanRepository, AddFindingPlanV1, AddPlanApplicationV1,
+    AddReport, AdoptionAction, AdoptionActionKind, AdoptionFacts, AdoptionInventoryFacts,
+    AdoptionPolicyFacts, BootstrapDisposition, ConfigProvenanceSummary, ConfiguredLedgerSummary,
+    CoreAdoptionPlanV1, DiffEvidenceChange, DiffExceptionIdentityChange, DiffFindingChange,
     DiffLedgerMovementSummary, DiffLifecycleChange, DiffMetadataChange, DiffMovementCounts,
     DiffOccurrenceLimitChange, DiffPolicyChange, DiffPolicyStatusChange, DiffPostureDeltaCounts,
     DiffPostureSummary, DiffReport, DiffRequirementChange, DiffScopeChange,
     DiffSelectorIdentityChange, DiffSelectorPrecisionChange, DoctorReport, EvaluationContext,
-    EvaluationResultClass, EvidenceEdgeKindV1, EvidenceNodeClassV1, EvidenceReference,
-    EvidenceResultClassV1, ExplainReport, FederationDiagnosticSummary,
+    EvaluationResultClass, EvidenceReference, ExplainReport, FederationDiagnosticSummary,
     FederationDivergenceKindCount, FederationDivergenceRecordSummary, FederationDivergenceSummary,
     FederationReportContext, FileFamilyConflictSummary, FileFamilyRuleSummary,
-    FinalEvidenceGraphInitV1, InventoryCompleteness, InventoryMode, LandedEffectStatusV1,
-    LandedEffectV1, LedgerContributorSummary, ListColumn, ListFilters, ListRow, MergeMethodV1,
-    MergedStateV1, MigrateReport, NextFrontierV1, OperationClassV1, OperationEventKindV1,
-    OperationEventV1, PolicyState, PostMergeEquivalenceVerdictV1, PostMergeQualificationInitV1,
-    PostMergeReconciliationRequestV1, PostMergeReconciliationResultV1, ProducerIdentityV1,
-    ProposeReport, PruneCandidate, PruneModeContext, RELEASE_MANIFEST_V2_SCHEMA_ID,
-    RELEASE_MANIFEST_V2_SCHEMA_VERSION, ReconciliationDispositionV1, RefreshModeContext,
+    InventoryCompleteness, InventoryMode, LedgerContributorSummary, ListColumn, ListFilters,
+    ListRow, MigrateReport, PolicyState, ProposeReport, PruneCandidate, PruneModeContext,
+    RELEASE_MANIFEST_V2_SCHEMA_ID, RELEASE_MANIFEST_V2_SCHEMA_VERSION, RefreshModeContext,
     RefreshReport, ReleaseChannelV1, ReleaseIdentityErrorV1, ReleaseIdentityV1,
     ReleaseManifestAuthenticationV2, ReleaseManifestEnvelopeV2, ReleaseManifestOperationV2,
     ReleaseManifestPackageRowV2, ReleaseManifestPayloadV2, ReleaseManifestPublicationPostureV2,
     ReleaseManifestResultV2, ReleaseManifestSupportPostureV2, ReleaseManifestV2Validation,
-    ReleaseVersionV1, RetainedCustodyItemV1, ReviewedContextV1, TrustClassV1,
-    UntrustedInputPostureV1, WhyCandidateEntry, WhyProofPlan, WhyReport, WhyTargetScan,
+    ReleaseVersionV1, WhyCandidateEntry, WhyProofPlan, WhyReport, WhyTargetScan,
     WhyTargetScanReport, WorklistFilters, WorklistItem, WritePosture, recommend_core_adoption_plan,
     render_release_manifest_v2_envelope, render_release_manifest_v2_envelope_bytes,
     render_release_manifest_v2_payload, render_release_manifest_v2_payload_bytes,
     validate_release_manifest_v2,
+};
+
+pub use artifacts::{
+    LandedEffectStatusV1, LandedEffectV1, NextFrontierV1, PostMergeReconciliationRequestV1,
+    PostMergeReconciliationResultV1, ReconciliationDispositionV1,
 };
 pub use contracts::{
     ADD_FINDING_PLAN_CLAIM_BOUNDARY, ADD_FINDING_PLAN_SCHEMA_ID, ADD_FINDING_PLAN_SCHEMA_VERSION,
@@ -291,3 +283,21 @@ mod spec_system_report_types;
 mod text_tests;
 #[cfg(test)]
 mod worklist_tests;
+
+pub use artifacts::{
+    FINAL_EVIDENCE_EDGE_SCHEMA_ID, FINAL_EVIDENCE_EDGE_SCHEMA_VERSION,
+    FINAL_EVIDENCE_EVALUATION_SCHEMA_ID, FINAL_EVIDENCE_EVALUATION_SCHEMA_VERSION,
+    FINAL_EVIDENCE_GRAPH_SCHEMA_ID, FINAL_EVIDENCE_GRAPH_SCHEMA_VERSION,
+    FINAL_EVIDENCE_NODE_SCHEMA_ID, FINAL_EVIDENCE_NODE_SCHEMA_VERSION,
+    FinalEvidenceAuthorityScopeV1, FinalEvidenceCurrentnessV1, FinalEvidenceEdgeKindV1,
+    FinalEvidenceEdgeV1, FinalEvidenceEvaluationResultV1, FinalEvidenceFindingKindV1,
+    FinalEvidenceFindingV1, FinalEvidenceGraphEvaluationV1, FinalEvidenceGraphModeV1,
+    FinalEvidenceGraphV1, FinalEvidenceInvalidationDimensionV1, FinalEvidenceNodeClassV1,
+    FinalEvidenceNodeDispositionV1, FinalEvidenceNodeResultV1, FinalEvidenceNodeV1,
+    FinalEvidenceOriginV1, FinalEvidencePackageRoleV1, FinalEvidencePackageSubjectV1,
+    FinalEvidenceProducerExpectationV1, FinalEvidenceProducerV1, FinalEvidenceReleaseIdentityV1,
+    FinalEvidenceSelectedSubjectV1, FinalEvidenceSubjectBindingV1, evaluate_final_evidence_graph,
+    final_evidence_graph_digest, render_final_evidence_evaluation_json,
+    render_final_evidence_evaluation_markdown, render_final_evidence_graph_canonical_bytes,
+    render_final_evidence_graph_canonical_json,
+};
