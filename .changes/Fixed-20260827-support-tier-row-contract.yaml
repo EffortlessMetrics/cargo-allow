@@ -1,0 +1,5 @@
+kind: Fixed
+body: >-
+  Realign the `SUPPORT_TIERS.md` claim-row contract test with the documented
+  multi-ledger federation row, which was added to the table without updating
+  the test that pins its row count.
