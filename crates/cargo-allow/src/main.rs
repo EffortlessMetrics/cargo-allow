@@ -60,6 +60,15 @@ mod why;
 mod worklist;
 mod world;
 
+#[doc(hidden)]
+pub fn run_from<I, S>(args: I) -> allow_core::CargoAllowResult<()>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<std::ffi::OsStr> + Into<std::ffi::OsString> + Clone,
+{
+    cli::run_from(args)
+}
+
 pub(crate) use crate::command_support::*;
 
 fn main() {

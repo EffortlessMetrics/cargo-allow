@@ -149,7 +149,22 @@ pub(crate) fn run() -> CargoAllowResult<()> {
     // when any argument is not valid UTF-8, which rejected otherwise supported
     // Unix repository roots before staged delegation could pass the path to
     // `Command::arg` as an `OsStr` (#2883).
-    let cli = CargoAllowCli::parse_from(normalized_args(env::args_os()));
+    run_from(normalized_args(env::args_os()))
+}
+
+/// Run cargo-allow from an explicit argument vector.
+///
+/// The binary entry point delegates here so integration tests and other
+/// repository-native callers can exercise the command dispatcher without
+/// paying for a child process. The first argument is treated like argv[0],
+/// and the cargo-plugin `allow` shim is normalized in the same way as the
+/// executable path.
+pub(crate) fn run_from<I, S>(args: I) -> CargoAllowResult<()>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr> + Into<std::ffi::OsString> + Clone,
+{
+    let cli = CargoAllowCli::parse_from(normalized_args(args));
     // One shared style decision for the whole process (#2572). Renderers do
     // not read the environment themselves; `print_report` applies this only to
     // human output going to stdout.

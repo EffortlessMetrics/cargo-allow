@@ -2,6 +2,7 @@ mod e2e_support;
 mod json_assertions;
 mod support;
 
+use std::ffi::OsString;
 use std::fs;
 
 use e2e_support::{assert_success_and_quiet, write_file};
@@ -21,23 +22,24 @@ fn propose_list_and_check_round_trip_with_cargo_prefix() {
 
     let policy_output = root.join("policy/allow.toml");
     let propose_summary = root.join("target/cargo-allow/propose.json");
-    let propose = cargo_allow_command()
-        .arg("allow")
-        .arg("propose")
-        .arg("--root")
-        .arg(&root)
-        .arg("--kind")
-        .arg("panic")
-        .arg("--write")
-        .arg(&policy_output)
-        .arg("--summary-format")
-        .arg("json")
-        .arg("--summary-output")
-        .arg(&propose_summary)
-        .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow propose: {err}")));
-
-    assert_success_and_quiet("propose", &propose);
+    run_in_process(
+        vec![
+            "cargo-allow".into(),
+            "allow".into(),
+            "propose".into(),
+            "--root".into(),
+            root.as_os_str().to_owned(),
+            "--kind".into(),
+            "panic".into(),
+            "--write".into(),
+            policy_output.as_os_str().to_owned(),
+            "--summary-format".into(),
+            "json".into(),
+            "--summary-output".into(),
+            propose_summary.as_os_str().to_owned(),
+        ],
+        "propose",
+    );
     let proposed = assert_saved_json_artifact(
         &propose_summary,
         "propose",
@@ -63,25 +65,26 @@ fn propose_list_and_check_round_trip_with_cargo_prefix() {
     );
 
     let list_output = root.join("target/cargo-allow/list.json");
-    let list = cargo_allow_command()
-        .arg("allow")
-        .arg("list")
-        .arg("--root")
-        .arg(&root)
-        .arg("--config")
-        .arg(&policy_output)
-        .arg("--kind")
-        .arg("panic")
-        .arg("--status")
-        .arg("baseline_debt")
-        .arg("--format")
-        .arg("json")
-        .arg("--output")
-        .arg(&list_output)
-        .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow list: {err}")));
-
-    assert_success_and_quiet("list", &list);
+    run_in_process(
+        vec![
+            "cargo-allow".into(),
+            "allow".into(),
+            "list".into(),
+            "--root".into(),
+            root.as_os_str().to_owned(),
+            "--config".into(),
+            policy_output.as_os_str().to_owned(),
+            "--kind".into(),
+            "panic".into(),
+            "--status".into(),
+            "baseline_debt".into(),
+            "--format".into(),
+            "json".into(),
+            "--output".into(),
+            list_output.as_os_str().to_owned(),
+        ],
+        "list",
+    );
     let listed = assert_saved_json_artifact(&list_output, "list", "cargo-allow.list.v1", "list");
     assert_json_u64(
         &listed,
@@ -97,25 +100,26 @@ fn propose_list_and_check_round_trip_with_cargo_prefix() {
     );
 
     let check_output = root.join("target/cargo-allow/check.json");
-    let check = cargo_allow_command()
-        .arg("allow")
-        .arg("check")
-        .arg("--root")
-        .arg(&root)
-        .arg("--config")
-        .arg(&policy_output)
-        .arg("--kind")
-        .arg("panic")
-        .arg("--mode")
-        .arg("no-new")
-        .arg("--format")
-        .arg("json")
-        .arg("--output")
-        .arg(&check_output)
-        .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow check: {err}")));
-
-    assert_success_and_quiet("check", &check);
+    run_in_process(
+        vec![
+            "cargo-allow".into(),
+            "allow".into(),
+            "check".into(),
+            "--root".into(),
+            root.as_os_str().to_owned(),
+            "--config".into(),
+            policy_output.as_os_str().to_owned(),
+            "--kind".into(),
+            "panic".into(),
+            "--mode".into(),
+            "no-new".into(),
+            "--format".into(),
+            "json".into(),
+            "--output".into(),
+            check_output.as_os_str().to_owned(),
+        ],
+        "check",
+    );
     let checked =
         assert_saved_json_artifact(&check_output, "check", "cargo-allow.report.v1", "check");
     assert_json_str(&checked, "/status", "passed", "check should pass");
@@ -343,4 +347,9 @@ fn assert_file_contains(path: &std::path::Path, needle: &str, message: &str) {
     let contents = fs::read_to_string(path)
         .unwrap_or_else(|err| std::panic::panic_any(format!("read {}: {err}", path.display())));
     assert!(contents.contains(needle), "{message}");
+}
+
+fn run_in_process(args: Vec<OsString>, command: &str) {
+    cargo_allow::run_from(args)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow {command}: {err}")));
 }
