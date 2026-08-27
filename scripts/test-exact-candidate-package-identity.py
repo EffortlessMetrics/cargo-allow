@@ -31,6 +31,7 @@ class CrateVersionFromFilenameTests(unittest.TestCase):
     def test_rejects_malformed_or_mismatched_filenames(self) -> None:
         cases = [
             ("", "allow-core-0.2.0-rc.1.crate"),
+            ("nested/allow-core", "nested/allow-core-0.2.0-rc.1.crate"),
             ("allow-core", "allow-core-0.2.0-rc.1.tar.gz"),
             ("allow-core", "allow-policy-0.2.0-rc.1.crate"),
             ("allow-core", "allow-core-.crate"),
