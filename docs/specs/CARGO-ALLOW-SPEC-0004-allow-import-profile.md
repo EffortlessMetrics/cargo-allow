@@ -86,10 +86,10 @@ than restoring these items as current non-goals.
   [plans/spec-system/allow-import-plan.md](../../plans/spec-system/allow-import-plan.md)
 - Parent profile spec:
   [CARGO-ALLOW-SPEC-0001](CARGO-ALLOW-SPEC-0001-spec-system-profile.md)
-- Documentation/governance umbrella:
-  [issue #1785](https://github.com/EffortlessMetrics/cargo-allow/issues/1785)
-- Supersession correction:
-  [issue #1972](https://github.com/EffortlessMetrics/cargo-allow/issues/1972)
+- Implementation closeouts:
+  [C2](../../plans/spec-system/closeouts/profile-resolution-c2.md),
+  [C3](../../plans/spec-system/closeouts/init-writes-c3.md),
+  [C4](../../plans/spec-system/closeouts/dogfood-migration-c4.md)
 
 ## Claim Boundary
 
