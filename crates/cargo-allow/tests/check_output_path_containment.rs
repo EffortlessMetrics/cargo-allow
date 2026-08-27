@@ -29,7 +29,7 @@ fn temp_root(label: &str) -> PathBuf {
         std::process::id()
     ));
     fs::create_dir_all(&root)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create temp root: {err}")));
+        .unwrap_or_else(|err| panic!("create temp root: {err}"));
     root
 }
 
@@ -37,15 +37,15 @@ fn remove_temp_root(root: PathBuf) {
     match fs::remove_dir_all(&root) {
         Ok(()) => {}
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
-        Err(err) => std::panic::panic_any(format!("remove temp root {}: {err}", root.display())),
+        Err(err) => panic!("remove temp root {}: {err}", root.display()),
     }
 }
 
 fn write_minimal_policy(root: &std::path::Path) {
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     fs::write(root.join("policy/allow.toml"), "policy = \"cargo-allow\"\n")
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 }
 
 /// A receipt nested under an out-of-tree `--root`, with a not-yet-existing
@@ -65,7 +65,7 @@ fn receipt_under_out_of_tree_root_is_accepted() {
         .arg("--receipt")
         .arg(&receipt_output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run check: {err}")));
+        .unwrap_or_else(|err| panic!("run check: {err}"));
 
     // Audit mode is informational -> check succeeds (exit 0) and writes the
     // receipt even though its parent dir did not pre-exist.
@@ -110,7 +110,7 @@ fn output_escaping_root_via_parent_traversal_is_rejected() {
         .arg("--output")
         .arg(&escaping)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run check: {err}")));
+        .unwrap_or_else(|err| panic!("run check: {err}"));
 
     assert!(
         !result.status.success(),
@@ -160,7 +160,7 @@ fn receipt_escaping_root_via_parent_traversal_is_rejected() {
         .arg("--receipt")
         .arg(&escaping_arg)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run check: {err}")));
+        .unwrap_or_else(|err| panic!("run check: {err}"));
 
     assert!(
         !result.status.success(),

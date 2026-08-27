@@ -29,7 +29,7 @@ fn run(root: &Path, envs: &[(&str, &str)], args: &[&str]) -> Output {
     command
         .args(args)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow {args:?}: {err}")))
+        .unwrap_or_else(|err| panic!("run cargo-allow {args:?}: {err}"))
 }
 
 fn stdout_of(result: &Output) -> String {
@@ -49,7 +49,7 @@ fn git(root: &Path, args: &[&str]) {
         .current_dir(root)
         .args(args)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
+        .unwrap_or_else(|err| panic!("git {args:?}: {err}"));
     assert!(out.status.success(), "git {args:?} should succeed");
 }
 
@@ -59,9 +59,9 @@ fn fixture(label: &str) -> std::path::PathBuf {
         std::env::temp_dir().join(format!("cargo-allow-color-{label}-{}", std::process::id()));
     let _ = fs::remove_dir_all(&root);
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create fixture: {err}")));
+        .unwrap_or_else(|err| panic!("create fixture: {err}"));
     fs::write(root.join("src/lib.rs"), "pub fn ok() -> u32 {\n    1\n}\n")
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+        .unwrap_or_else(|err| panic!("write source: {err}"));
 
     git(&root, &["init"]);
     git(&root, &["config", "user.email", "t@example.invalid"]);
@@ -99,19 +99,19 @@ fn refresh_fixture(label: &str) -> std::path::PathBuf {
     ));
     let _ = fs::remove_dir_all(&root);
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create refresh policy: {err}")));
+        .unwrap_or_else(|err| panic!("create refresh policy: {err}"));
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create refresh source: {err}")));
+        .unwrap_or_else(|err| panic!("create refresh source: {err}"));
     fs::write(
         root.join("policy/allow.toml"),
         include_str!("../../../tests/fixtures/refresh/advisory-drift/policy/allow.toml"),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write refresh policy: {err}")));
+    .unwrap_or_else(|err| panic!("write refresh policy: {err}"));
     fs::write(
         root.join("src/lib.rs"),
         include_str!("../../../tests/fixtures/refresh/advisory-drift/src/lib.rs"),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write refresh source: {err}")));
+    .unwrap_or_else(|err| panic!("write refresh source: {err}"));
     root
 }
 
@@ -122,16 +122,16 @@ fn prune_fixture(label: &str) -> std::path::PathBuf {
     ));
     let _ = fs::remove_dir_all(&root);
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create prune policy: {err}")));
+        .unwrap_or_else(|err| panic!("create prune policy: {err}"));
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create prune source: {err}")));
+        .unwrap_or_else(|err| panic!("create prune source: {err}"));
     fs::write(
         root.join("policy/allow.toml"),
         "schema_version = 1\n\n[workspace]\nignored = []\ngenerated = []\n",
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write prune policy: {err}")));
+    .unwrap_or_else(|err| panic!("write prune policy: {err}"));
     fs::write(root.join("src/lib.rs"), "pub fn ok() -> u32 {\n    1\n}\n")
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write prune source: {err}")));
+        .unwrap_or_else(|err| panic!("write prune source: {err}"));
     root
 }
 
@@ -186,7 +186,7 @@ fn list_human_statuses_use_shared_style_but_files_stay_plain() {
     );
 
     fs::create_dir_all(root.join("target/cargo-allow"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create list output dir: {err}")));
+        .unwrap_or_else(|err| panic!("create list output dir: {err}"));
     let written = run(
         &root,
         &[],
@@ -200,7 +200,7 @@ fn list_human_statuses_use_shared_style_but_files_stay_plain() {
     );
     assert!(written.status.success(), "written list should succeed");
     let text = fs::read_to_string(root.join("target/cargo-allow/list.txt"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read list output: {err}")));
+        .unwrap_or_else(|err| panic!("read list output: {err}"));
     assert!(!has_ansi(&text), "written list output must stay plain");
 
     let _ = fs::remove_dir_all(&root);
@@ -296,7 +296,7 @@ fn explain_human_statuses_use_shared_style_but_files_stay_plain() {
     );
 
     fs::create_dir_all(root.join("target/cargo-allow"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create explain output dir: {err}")));
+        .unwrap_or_else(|err| panic!("create explain output dir: {err}"));
     let written = run(
         &root,
         &[],
@@ -311,7 +311,7 @@ fn explain_human_statuses_use_shared_style_but_files_stay_plain() {
     );
     assert!(written.status.success(), "written explain should succeed");
     let text = fs::read_to_string(root.join("target/cargo-allow/explain.txt"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read explain output: {err}")));
+        .unwrap_or_else(|err| panic!("read explain output: {err}"));
     assert!(!has_ansi(&text), "written explain output must stay plain");
 
     let _ = fs::remove_dir_all(&root);
@@ -324,7 +324,7 @@ fn why_human_statuses_use_shared_style_but_files_stay_plain() {
         root.join("src/lib.rs"),
         "pub fn fail(value: Option<u8>) -> u8 {\n    value.unwrap()\n}\n",
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write why source: {err}")));
+    .unwrap_or_else(|err| panic!("write why source: {err}"));
 
     let plain_result = run(
         &root,
@@ -395,7 +395,7 @@ fn why_human_statuses_use_shared_style_but_files_stay_plain() {
     );
 
     fs::create_dir_all(root.join("target/cargo-allow"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create why output dir: {err}")));
+        .unwrap_or_else(|err| panic!("create why output dir: {err}"));
     let output_path = root.join("target/cargo-allow/why.txt");
     let written = run(
         &root,
@@ -416,7 +416,7 @@ fn why_human_statuses_use_shared_style_but_files_stay_plain() {
     );
     assert!(written.status.success(), "written why should succeed");
     let text = fs::read_to_string(output_path)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read why output: {err}")));
+        .unwrap_or_else(|err| panic!("read why output: {err}"));
     assert!(!has_ansi(&text), "written why output must stay plain");
 
     let _ = fs::remove_dir_all(&root);
@@ -448,7 +448,7 @@ fn doctor_human_statuses_use_shared_style_but_files_stay_plain() {
     );
 
     fs::create_dir_all(root.join("target/cargo-allow"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create doctor output dir: {err}")));
+        .unwrap_or_else(|err| panic!("create doctor output dir: {err}"));
     let written = run(
         &root,
         &[],
@@ -462,7 +462,7 @@ fn doctor_human_statuses_use_shared_style_but_files_stay_plain() {
     );
     assert!(written.status.success(), "written doctor should succeed");
     let text = fs::read_to_string(root.join("target/cargo-allow/doctor.txt"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read doctor output: {err}")));
+        .unwrap_or_else(|err| panic!("read doctor output: {err}"));
     assert!(!has_ansi(&text), "written doctor output must stay plain");
 
     let _ = fs::remove_dir_all(&root);
@@ -475,7 +475,7 @@ fn propose_human_summary_status_uses_shared_style_but_policy_stays_plain() {
         root.join("src/lib.rs"),
         "pub fn fail(value: Option<u8>) -> u8 {\n    value.unwrap()\n}\n",
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write propose source: {err}")));
+    .unwrap_or_else(|err| panic!("write propose source: {err}"));
 
     let args = ["propose", "--max", "1"];
     let mut plain_args = args.to_vec();
@@ -494,7 +494,7 @@ fn propose_human_summary_status_uses_shared_style_but_policy_stays_plain() {
     );
 
     fs::create_dir_all(root.join("target/cargo-allow"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create propose output dir: {err}")));
+        .unwrap_or_else(|err| panic!("create propose output dir: {err}"));
     let json = run(
         &root,
         &[],
@@ -512,7 +512,7 @@ fn propose_human_summary_status_uses_shared_style_but_policy_stays_plain() {
     );
     assert!(json.status.success(), "JSON propose should succeed");
     let summary = fs::read_to_string(root.join("target/cargo-allow/propose.json"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read propose summary: {err}")));
+        .unwrap_or_else(|err| panic!("read propose summary: {err}"));
     assert!(!has_ansi(&summary), "JSON propose summary must stay plain");
 
     let _ = fs::remove_dir_all(&root);
@@ -574,7 +574,7 @@ fn refresh_human_lifecycle_status_uses_shared_style_but_artifacts_stay_plain() {
     );
 
     fs::create_dir_all(root.join("target/cargo-allow"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create refresh output dir: {err}")));
+        .unwrap_or_else(|err| panic!("create refresh output dir: {err}"));
     let written = run(
         &root,
         &[],
@@ -594,7 +594,7 @@ fn refresh_human_lifecycle_status_uses_shared_style_but_artifacts_stay_plain() {
     );
     assert!(written.status.success(), "written refresh should succeed");
     let text = fs::read_to_string(root.join("target/cargo-allow/refresh.txt"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read refresh output: {err}")));
+        .unwrap_or_else(|err| panic!("read refresh output: {err}"));
     assert!(!has_ansi(&text), "written refresh output must stay plain");
 
     let _ = fs::remove_dir_all(&root);
@@ -650,7 +650,7 @@ fn prune_human_stale_status_uses_shared_style_but_artifacts_stay_plain() {
     );
 
     fs::create_dir_all(root.join("target/cargo-allow"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create prune output dir: {err}")));
+        .unwrap_or_else(|err| panic!("create prune output dir: {err}"));
     let written = run(
         &root,
         &[],
@@ -669,7 +669,7 @@ fn prune_human_stale_status_uses_shared_style_but_artifacts_stay_plain() {
     );
     assert!(written.status.success(), "written prune should succeed");
     let text = fs::read_to_string(root.join("target/cargo-allow/prune.txt"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read prune output: {err}")));
+        .unwrap_or_else(|err| panic!("read prune output: {err}"));
     assert!(!has_ansi(&text), "written prune output must stay plain");
 
     let _ = fs::remove_dir_all(&root);
@@ -682,7 +682,7 @@ fn add_human_review_status_uses_shared_style_but_policy_and_summaries_stay_plain
         root.join("src/lib.rs"),
         "pub fn fail(value: Option<u8>) -> u8 {\n    value.unwrap()\n}\n",
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write add source: {err}")));
+    .unwrap_or_else(|err| panic!("write add source: {err}"));
 
     let args = [
         "add",
@@ -718,7 +718,7 @@ fn add_human_review_status_uses_shared_style_but_policy_and_summaries_stay_plain
     );
 
     fs::create_dir_all(root.join("target/cargo-allow"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create add output dir: {err}")));
+        .unwrap_or_else(|err| panic!("create add output dir: {err}"));
     let written = run(
         &root,
         &[],
@@ -746,7 +746,7 @@ fn add_human_review_status_uses_shared_style_but_policy_and_summaries_stay_plain
     );
     assert!(written.status.success(), "written add should succeed");
     let text = fs::read_to_string(root.join("target/cargo-allow/add-summary.txt"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read add output: {err}")));
+        .unwrap_or_else(|err| panic!("read add output: {err}"));
     assert!(!has_ansi(&text), "written add summary must stay plain");
 
     let json = run(
@@ -778,7 +778,7 @@ fn add_human_review_status_uses_shared_style_but_policy_and_summaries_stay_plain
     );
     assert!(json.status.success(), "JSON add should succeed");
     let json_text = fs::read_to_string(root.join("target/cargo-allow/add-summary.json"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read add JSON: {err}")));
+        .unwrap_or_else(|err| panic!("read add JSON: {err}"));
     assert!(!has_ansi(&json_text), "JSON add summary must stay plain");
 
     let _ = fs::remove_dir_all(&root);
@@ -813,7 +813,7 @@ fn worklist_human_statuses_use_shared_style_but_files_stay_plain() {
     );
 
     fs::create_dir_all(root.join("target/cargo-allow"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create worklist output dir: {err}")));
+        .unwrap_or_else(|err| panic!("create worklist output dir: {err}"));
     let written = run(
         &root,
         &[],
@@ -827,7 +827,7 @@ fn worklist_human_statuses_use_shared_style_but_files_stay_plain() {
     );
     assert!(written.status.success(), "written worklist should succeed");
     let text = fs::read_to_string(root.join("target/cargo-allow/worklist.txt"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read worklist output: {err}")));
+        .unwrap_or_else(|err| panic!("read worklist output: {err}"));
     assert!(!has_ansi(&text), "written worklist output must stay plain");
 
     let _ = fs::remove_dir_all(&root);
@@ -930,7 +930,7 @@ fn machine_formats_are_never_styled_even_with_color_always() {
 fn written_files_and_receipts_are_never_styled() {
     let root = fixture("files");
     fs::create_dir_all(root.join("target/cargo-allow"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create artifact dir: {err}")));
+        .unwrap_or_else(|err| panic!("create artifact dir: {err}"));
 
     let human = run(
         &root,

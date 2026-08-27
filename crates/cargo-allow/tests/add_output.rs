@@ -6,11 +6,11 @@ use std::process::{Command, Output};
 fn add_rejects_unsafe_entry_without_evidence() {
     let root = temp_root("add-unsafe-evidence");
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create source dir: {err}")));
+        .unwrap_or_else(|err| panic!("create source dir: {err}"));
     fs::write(root.join("src/lib.rs"), "pub fn read() { unsafe {} }\n")
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+        .unwrap_or_else(|err| panic!("write source: {err}"));
     fs::write(
         root.join("policy/allow.toml"),
         r#"schema_version = "0.1"
@@ -40,7 +40,7 @@ evidence_required = true
 safety_comment_required = false
 "#,
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    .unwrap_or_else(|err| panic!("write policy: {err}"));
 
     let output_policy = root.join("policy/allow.added.toml");
     let result = cargo_allow_command()
@@ -62,7 +62,7 @@ safety_comment_required = false
         .arg("--write")
         .arg(&output_policy)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run add: {err}")));
+        .unwrap_or_else(|err| panic!("run add: {err}"));
 
     assert_status("add unsafe without evidence", &result, false);
     let stderr = String::from_utf8_lossy(&result.stderr);
@@ -95,14 +95,14 @@ fn assert_status(command: &str, result: &Output, should_succeed: bool) {
 fn temp_root(label: &str) -> PathBuf {
     let unique = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("system clock: {err}")))
+        .unwrap_or_else(|err| panic!("system clock: {err}"))
         .as_nanos();
     let root = std::env::temp_dir().join(format!(
         "cargo-allow-{label}-{}-{unique}",
         std::process::id()
     ));
     fs::create_dir_all(&root)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create temp root: {err}")));
+        .unwrap_or_else(|err| panic!("create temp root: {err}"));
     root
 }
 
@@ -110,6 +110,6 @@ fn remove_temp_root(root: PathBuf) {
     match fs::remove_dir_all(&root) {
         Ok(()) => {}
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
-        Err(err) => std::panic::panic_any(format!("remove temp root {}: {err}", root.display())),
+        Err(err) => panic!("remove temp root {}: {err}", root.display()),
     }
 }

@@ -99,7 +99,7 @@ fn saved_prune_write_output_records_written_policy() {
         "prune write artifact should preserve the stale-entry count"
     );
     let policy = fs::read_to_string(fixture.root.join("policy/allow.toml"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read pruned policy: {err}")));
+        .unwrap_or_else(|err| panic!("read pruned policy: {err}"));
     assert!(policy.contains("allow-panic-fixture"));
     assert!(!policy.contains("allow-stale-fixture"));
 }

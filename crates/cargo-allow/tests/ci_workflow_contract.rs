@@ -332,9 +332,9 @@ fn ci_surfaces_exist_on_disk_and_stay_in_published_command_set() {
                     continue;
                 }
                 if token == "why" {
-                    std::panic::panic_any(format!(
+                    panic!(
                         "Published CI surfaces must not teach `why` without a separate candidate guide: {line}"
-                    ));
+                    );
                 }
                 if !published.contains(token) {
                     // Prose such as "Use cargo-allow in CI" is not a subcommand teaching.

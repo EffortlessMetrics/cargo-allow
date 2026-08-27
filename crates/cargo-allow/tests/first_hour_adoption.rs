@@ -28,7 +28,7 @@ fn temp_root(label: &str) -> PathBuf {
         std::process::id()
     ));
     fs::create_dir_all(&root)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create temp root: {err}")));
+        .unwrap_or_else(|err| panic!("create temp root: {err}"));
     root
 }
 
@@ -36,34 +36,34 @@ fn drop_root(root: PathBuf) {
     match fs::remove_dir_all(&root) {
         Ok(()) => {}
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
-        Err(err) => std::panic::panic_any(format!("remove temp root {}: {err}", root.display())),
+        Err(err) => panic!("remove temp root {}: {err}", root.display()),
     }
 }
 
 fn write_source(root: &Path, body: &str) {
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create src: {err}")));
+        .unwrap_or_else(|err| panic!("create src: {err}"));
     fs::write(root.join("src/lib.rs"), body)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write src/lib.rs: {err}")));
+        .unwrap_or_else(|err| panic!("write src/lib.rs: {err}"));
 }
 
 fn run(output: Output, label: &str) -> Output {
     if !output.status.success() {
-        std::panic::panic_any(format!(
+        panic!(
             "{label} failed (exit {:?}); stderr=`{}`",
             output.status.code(),
             String::from_utf8_lossy(&output.stderr)
-        ));
+        );
     }
     output
 }
 
 fn run_fail(output: Output, label: &str) -> Output {
     if output.status.success() {
-        std::panic::panic_any(format!(
+        panic!(
             "{label} unexpectedly succeeded; stderr=`{}`",
             String::from_utf8_lossy(&output.stderr)
-        ));
+        );
     }
     output
 }
@@ -256,7 +256,7 @@ fn first_hour_expected_markers_match_live_renderer() {
             .arg("--format")
             .arg("json")
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run doctor: {err}"))),
+            .unwrap_or_else(|err| panic!("run doctor: {err}")),
         "doctor json",
     );
     let doctor_text = combined(&doctor);
@@ -276,7 +276,7 @@ fn first_hour_expected_markers_match_live_renderer() {
             .arg("--root")
             .arg(&clean)
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run doctor human: {err}"))),
+            .unwrap_or_else(|err| panic!("run doctor human: {err}")),
         "doctor human",
     );
     assert!(
@@ -294,11 +294,11 @@ fn first_hour_expected_markers_match_live_renderer() {
             .arg("--format")
             .arg("json")
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run audit clean: {err}"))),
+            .unwrap_or_else(|err| panic!("run audit clean: {err}")),
         "audit clean",
     );
     let audit_clean_json: serde_json::Value = serde_json::from_slice(&audit_clean.stdout)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("audit clean json: {err}")));
+        .unwrap_or_else(|err| panic!("audit clean json: {err}"));
     assert_eq!(
         audit_clean_json
             .pointer("/summary/findings")
@@ -329,11 +329,11 @@ fn first_hour_expected_markers_match_live_renderer() {
             .arg("--format")
             .arg("json")
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run audit: {err}"))),
+            .unwrap_or_else(|err| panic!("run audit: {err}")),
         "audit finding",
     );
     let audit_json: serde_json::Value = serde_json::from_slice(&audit.stdout)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("audit json: {err}")));
+        .unwrap_or_else(|err| panic!("audit json: {err}"));
     assert_eq!(
         audit_json
             .pointer("/summary/new")
@@ -356,7 +356,7 @@ fn first_hour_expected_markers_match_live_renderer() {
             .arg("--write")
             .arg(&policy)
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run propose: {err}"))),
+            .unwrap_or_else(|err| panic!("run propose: {err}")),
         "propose",
     );
 
@@ -374,11 +374,11 @@ fn first_hour_expected_markers_match_live_renderer() {
             .arg("--format")
             .arg("json")
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run check pass: {err}"))),
+            .unwrap_or_else(|err| panic!("run check pass: {err}")),
         "check pass json",
     );
     let check_pass_json: serde_json::Value = serde_json::from_slice(&check_pass.stdout)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("check pass json: {err}")));
+        .unwrap_or_else(|err| panic!("check pass json: {err}"));
     assert_eq!(
         check_pass_json
             .get("status")
@@ -404,7 +404,7 @@ fn first_hour_expected_markers_match_live_renderer() {
             .arg("--mode")
             .arg("no-new")
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run check pass human: {err}"))),
+            .unwrap_or_else(|err| panic!("run check pass human: {err}")),
         "check pass human",
     );
     assert!(
@@ -431,7 +431,7 @@ fn first_hour_expected_markers_match_live_renderer() {
             .arg("--mode")
             .arg("no-new")
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run check fail: {err}"))),
+            .unwrap_or_else(|err| panic!("run check fail: {err}")),
         "check fail",
     );
     let fail_text = combined(&check_fail);
@@ -458,7 +458,7 @@ fn first_hour_clean_audit_branch_does_not_require_propose() {
             .arg("--root")
             .arg(&root)
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run doctor: {err}"))),
+            .unwrap_or_else(|err| panic!("run doctor: {err}")),
         "doctor",
     );
 
@@ -472,11 +472,11 @@ fn first_hour_clean_audit_branch_does_not_require_propose() {
             .arg("--format")
             .arg("json")
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run audit: {err}"))),
+            .unwrap_or_else(|err| panic!("run audit: {err}")),
         "audit clean",
     );
     let audit_json: serde_json::Value = serde_json::from_slice(&audit.stdout)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("audit json: {err}")));
+        .unwrap_or_else(|err| panic!("audit json: {err}"));
     assert_eq!(
         audit_json
             .pointer("/summary/new")
@@ -504,7 +504,7 @@ fn first_hour_init_bootstrap_passes_no_new_without_propose() {
             .arg("--root")
             .arg(&root)
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run init: {err}"))),
+            .unwrap_or_else(|err| panic!("run init: {err}")),
         "init",
     );
     let policy = root.join("policy/allow.toml");
@@ -524,11 +524,11 @@ fn first_hour_init_bootstrap_passes_no_new_without_propose() {
             .arg("--format")
             .arg("json")
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run check: {err}"))),
+            .unwrap_or_else(|err| panic!("run check: {err}")),
         "check after init",
     );
     let check_json: serde_json::Value = serde_json::from_slice(&check.stdout)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("check json: {err}")));
+        .unwrap_or_else(|err| panic!("check json: {err}"));
     assert_eq!(
         check_json.get("status").and_then(serde_json::Value::as_str),
         Some("passed")
@@ -561,7 +561,7 @@ fn the_written_ledger_receipts_itself_and_keeps_the_gate_green() {
             .arg("--write")
             .arg(root.join("policy/allow.toml"))
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run propose: {err}"))),
+            .unwrap_or_else(|err| panic!("run propose: {err}")),
         "propose --write",
     );
 
@@ -585,11 +585,11 @@ fn the_written_ledger_receipts_itself_and_keeps_the_gate_green() {
             .arg("--format")
             .arg("json")
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run check: {err}"))),
+            .unwrap_or_else(|err| panic!("run check: {err}")),
         "check after writing the ledger",
     );
     let check_json: serde_json::Value = serde_json::from_slice(&check.stdout)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("check json: {err}")));
+        .unwrap_or_else(|err| panic!("check json: {err}"));
     assert_eq!(
         check_json.get("status").and_then(serde_json::Value::as_str),
         Some("passed"),
@@ -631,7 +631,7 @@ fn writing_a_ledger_while_skipping_a_finding_allocates_a_free_id() {
             .arg("--write")
             .arg(root.join("policy/allow.toml"))
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run propose: {err}"))),
+            .unwrap_or_else(|err| panic!("run propose: {err}")),
         "propose --write with a skipped finding",
     );
 
@@ -666,14 +666,14 @@ fn force_rewriting_an_unreceipted_ledger_gives_it_the_durable_receipt() {
     let root = temp_root("ledger-force-rewrite");
     write_source(&root, "pub fn boom() -> u8 { None::<u8>.unwrap() }\n");
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     // A ledger that already exists and does not receipt itself.
     fs::write(
         root.join("policy/allow.toml"),
         "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\nowner = \"core/policy\"\n\
          status = \"active\"\n\n[workspace]\nroot = \".\"\ndefault_mode = \"no-new\"\n",
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write legacy ledger: {err}")));
+    .unwrap_or_else(|err| panic!("write legacy ledger: {err}"));
 
     run(
         cargo_allow()
@@ -684,7 +684,7 @@ fn force_rewriting_an_unreceipted_ledger_gives_it_the_durable_receipt() {
             .arg(root.join("policy/allow.toml"))
             .arg("--force")
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run propose --force: {err}"))),
+            .unwrap_or_else(|err| panic!("run propose --force: {err}")),
         "propose --write --force",
     );
 
@@ -730,7 +730,7 @@ fn init_then_propose_skips_findings_the_policy_forbids_receipting() {
             .arg("--root")
             .arg(&root)
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run init: {err}"))),
+            .unwrap_or_else(|err| panic!("run init: {err}")),
         "init",
     );
     let policy = root.join("policy/allow.toml");
@@ -747,14 +747,14 @@ fn init_then_propose_skips_findings_the_policy_forbids_receipting() {
             .arg("--summary-output")
             .arg(root.join("propose.json"))
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run propose: {err}"))),
+            .unwrap_or_else(|err| panic!("run propose: {err}")),
         "propose after init",
     );
     let _ = propose;
 
     let summary: serde_json::Value =
         serde_json::from_slice(&fs::read(root.join("propose.json")).unwrap_or_default())
-            .unwrap_or_else(|err| std::panic::panic_any(format!("propose json: {err}")));
+            .unwrap_or_else(|err| panic!("propose json: {err}"));
 
     // The bare `#[allow(dead_code)]` is reported as skipped, with the reason,
     // rather than aborting the run.
@@ -811,12 +811,12 @@ fn first_hour_adoption_path_doctor_audit_propose_check_list_explain_worklist() {
             .arg("--format")
             .arg("json")
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run doctor: {err}"))),
+            .unwrap_or_else(|err| panic!("run doctor: {err}")),
         "doctor (no policy)",
     );
     let doctor_json: serde_json::Value =
         serde_json::from_slice(&doctor.stdout).unwrap_or_else(|err| {
-            std::panic::panic_any(format!("doctor stdout should be JSON: {err}"))
+            panic!("doctor stdout should be JSON: {err}")
         });
     assert_eq!(
         doctor_json
@@ -837,11 +837,11 @@ fn first_hour_adoption_path_doctor_audit_propose_check_list_explain_worklist() {
             .arg("--format")
             .arg("json")
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run audit: {err}"))),
+            .unwrap_or_else(|err| panic!("run audit: {err}")),
         "audit",
     );
     let audit_json: serde_json::Value = serde_json::from_slice(&audit.stdout)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("audit stdout should be JSON: {err}")));
+        .unwrap_or_else(|err| panic!("audit stdout should be JSON: {err}"));
     assert_eq!(
         audit_json.get("status").and_then(serde_json::Value::as_str),
         Some("passed"),
@@ -867,11 +867,11 @@ fn first_hour_adoption_path_doctor_audit_propose_check_list_explain_worklist() {
             .arg("--write")
             .arg(&policy)
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run propose: {err}"))),
+            .unwrap_or_else(|err| panic!("run propose: {err}")),
         "propose",
     );
     let policy_text = fs::read_to_string(&policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+        .unwrap_or_else(|err| panic!("read policy: {err}"));
     assert!(
         policy_text.contains("classification = \"baseline_debt\""),
         "propose writes a baseline-debt entry"
@@ -893,11 +893,11 @@ fn first_hour_adoption_path_doctor_audit_propose_check_list_explain_worklist() {
             .arg("--format")
             .arg("json")
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run check: {err}"))),
+            .unwrap_or_else(|err| panic!("run check: {err}")),
         "check no-new (baseline)",
     );
     let check_json: serde_json::Value = serde_json::from_slice(&check.stdout)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("check stdout should be JSON: {err}")));
+        .unwrap_or_else(|err| panic!("check stdout should be JSON: {err}"));
     assert_eq!(
         check_json.get("status").and_then(serde_json::Value::as_str),
         Some("passed"),
@@ -924,11 +924,11 @@ fn first_hour_adoption_path_doctor_audit_propose_check_list_explain_worklist() {
             .arg("--format")
             .arg("json")
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run list: {err}"))),
+            .unwrap_or_else(|err| panic!("run list: {err}")),
         "list",
     );
     let list_json: serde_json::Value = serde_json::from_slice(&list.stdout)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("list stdout should be JSON: {err}")));
+        .unwrap_or_else(|err| panic!("list stdout should be JSON: {err}"));
     let first_status = list_json
         .pointer("/allow_entries/0/status")
         .and_then(serde_json::Value::as_str);
@@ -952,7 +952,7 @@ fn first_hour_adoption_path_doctor_audit_propose_check_list_explain_worklist() {
             .arg("--config")
             .arg(&policy)
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run explain: {err}"))),
+            .unwrap_or_else(|err| panic!("run explain: {err}")),
         "explain",
     );
 
@@ -969,7 +969,7 @@ fn first_hour_adoption_path_doctor_audit_propose_check_list_explain_worklist() {
             .arg("--format")
             .arg("json")
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run worklist: {err}"))),
+            .unwrap_or_else(|err| panic!("run worklist: {err}")),
         "worklist",
     );
 
@@ -998,7 +998,7 @@ fn first_hour_new_in_scope_exception_fails_no_new_with_guidance() {
             .arg("--write")
             .arg(&policy)
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run propose: {err}"))),
+            .unwrap_or_else(|err| panic!("run propose: {err}")),
         "propose baseline",
     );
 
@@ -1015,7 +1015,7 @@ fn first_hour_new_in_scope_exception_fails_no_new_with_guidance() {
             .arg("--mode")
             .arg("no-new")
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run check baseline: {err}"))),
+            .unwrap_or_else(|err| panic!("run check baseline: {err}")),
         "check no-new (baseline)",
     );
 
@@ -1042,7 +1042,7 @@ fn first_hour_new_in_scope_exception_fails_no_new_with_guidance() {
             .arg("--mode")
             .arg("no-new")
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run check (new debt): {err}"))),
+            .unwrap_or_else(|err| panic!("run check (new debt): {err}")),
         "check no-new (new debt)",
     );
     let human = combined(&fail);

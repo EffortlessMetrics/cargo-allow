@@ -19,7 +19,7 @@ fn tool_identity_json_reports_schema_and_digest() {
         .arg("--format")
         .arg("json")
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("cargo-allow tool identity: {err}")));
+        .unwrap_or_else(|err| panic!("cargo-allow tool identity: {err}"));
 
     assert!(
         output.status.success(),
@@ -28,7 +28,7 @@ fn tool_identity_json_reports_schema_and_digest() {
     );
 
     let json: Value = serde_json::from_slice(&output.stdout)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("tool identity JSON parses: {err}")));
+        .unwrap_or_else(|err| panic!("tool identity JSON parses: {err}"));
 
     assert_eq!(
         json.pointer("/schema_id").and_then(Value::as_str),
@@ -50,7 +50,7 @@ fn tool_identity_json_reports_schema_and_digest() {
         .pointer("/executable_digest")
         .and_then(Value::as_str)
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!("executable_digest field missing: {json}"))
+            panic!("executable_digest field missing: {json}")
         });
     assert!(
         digest.starts_with("sha256:v1:"),
@@ -67,7 +67,7 @@ fn tool_identity_json_reports_schema_and_digest() {
         .pointer("/supported_schema_generations")
         .and_then(Value::as_array)
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!("supported_schema_generations missing: {json}"))
+            panic!("supported_schema_generations missing: {json}")
         });
     assert!(
         !schemas.is_empty(),
@@ -81,7 +81,7 @@ fn tool_identity_human_is_non_empty() {
         .arg("tool")
         .arg("identity")
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("cargo-allow tool identity: {err}")));
+        .unwrap_or_else(|err| panic!("cargo-allow tool identity: {err}"));
 
     assert!(
         output.status.success(),
