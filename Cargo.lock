@@ -84,6 +84,7 @@ name = "allow-policy"
 version = "0.2.0-rc.1"
 dependencies = [
  "allow-core",
+ "libc",
  "proptest",
  "serde",
  "serde_json",

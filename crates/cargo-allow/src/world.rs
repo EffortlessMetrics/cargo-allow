@@ -42,15 +42,30 @@ fn scan_rust_files_with_cache_mode(
 ) -> CargoAllowResult<allow_rust::RustScanResult> {
     SCAN_CACHE.with(|cache| {
         let mut cache = cache.borrow_mut();
-        if persistent_cache
-            && let Ok(mut store) =
-                allow_rust::RootBoundScanCacheStore::open(root, allow_rust::scan_cache_generation())
-        {
-            let result = allow_rust::scan_rust_files_cached_with_root_bound_store(
-                root, files, &mut cache, &mut store,
-            );
-            let _ = store.flush();
-            return result;
+        if persistent_cache {
+            match allow_rust::RootBoundScanCacheStore::open(
+                root,
+                allow_rust::scan_cache_generation(),
+            ) {
+                Ok(mut store) => {
+                    let result = allow_rust::scan_rust_files_cached_with_root_bound_store(
+                        root, files, &mut cache, &mut store,
+                    );
+                    if let Err(disposition) = store.flush_with_disposition() {
+                        eprintln!(
+                            "warning: persistent Rust scan cache disabled for this run ({})",
+                            disposition.as_str()
+                        );
+                    }
+                    return result;
+                }
+                Err(disposition) => {
+                    eprintln!(
+                        "warning: persistent Rust scan cache unavailable ({})",
+                        disposition.as_str()
+                    );
+                }
+            }
         }
         allow_rust::scan_rust_files_cached(root, files, &mut cache)
     })

@@ -295,10 +295,14 @@ impl ScanCacheStore {
             return false;
         }
 
-        let mut temp_file = match std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&tmp)
+        let mut temp_options = std::fs::OpenOptions::new();
+        temp_options.write(true).create_new(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            temp_options.custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC);
+        }
+        let mut temp_file = match temp_options.open(&tmp)
         {
             Ok(file) => file,
             Err(_) => return false,
@@ -439,11 +443,14 @@ impl WriterLock {
         if path_has_symlink_component(dir) || path_is_unsafe(&path) {
             return None;
         }
-        let file = std::fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .truncate(false)
+        let mut options = std::fs::OpenOptions::new();
+        options.read(true).write(true).create(true).truncate(false);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC);
+        }
+        let file = options
             .open(&path)
             .ok()?;
         let identity = bind_open_regular_file(&file)?;

@@ -225,8 +225,7 @@ impl RootBoundScanCacheStore {
         bind_deepest_existing_parent(&self.canonical_root, &self.store_dir)?;
         validate_known_artifacts(&self.store_dir)?;
 
-        fs::create_dir_all(&self.store_dir)
-            .map_err(|_| ScanCacheTargetDispositionV1::InstrumentFailure)?;
+        ensure_owned_descendant(&self.canonical_root, &self.store_dir)?;
         self.validate_current_binding()?;
         self.rebind_deepest_parent()?;
         if self.bound_parent_path != self.store_dir {
@@ -398,6 +397,72 @@ fn bind_deepest_existing_parent(
         deepest_path = current.clone();
     }
     Ok((deepest_path, deepest_handle))
+}
+
+#[cfg(unix)]
+fn ensure_owned_descendant(
+    root: &Path,
+    target: &Path,
+) -> Result<(), ScanCacheTargetDispositionV1> {
+    use std::ffi::CString;
+    use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
+    use std::os::unix::ffi::OsStrExt;
+
+    const O_CLOEXEC: i32 = 0o2000000;
+    const O_DIRECTORY: i32 = 0o200000;
+    const O_NOFOLLOW: i32 = 0o400000;
+    const ENOENT: i32 = 2;
+    unsafe extern "C" {
+        fn openat(dirfd: i32, path: *const std::ffi::c_char, flags: i32, mode: i32) -> i32;
+        fn mkdirat(dirfd: i32, path: *const std::ffi::c_char, mode: u32) -> i32;
+        fn __errno_location() -> *mut i32;
+    }
+    let relative = target
+        .strip_prefix(root)
+        .map_err(|_| ScanCacheTargetDispositionV1::UnsupportedFilesystem)?;
+    let mut parent = std::fs::File::open(root)
+        .map_err(|_| ScanCacheTargetDispositionV1::InstrumentFailure)?;
+    for component in relative.components() {
+        let Component::Normal(segment) = component else {
+            return Err(ScanCacheTargetDispositionV1::UnsupportedFilesystem);
+        };
+        let name = CString::new(segment.as_os_str().as_bytes())
+            .map_err(|_| ScanCacheTargetDispositionV1::UnsupportedFilesystem)?;
+        let mut fd = unsafe { openat(parent.as_raw_fd(), name.as_ptr(), O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC, 0) };
+        if fd < 0 {
+            let errno = unsafe { *__errno_location() };
+            if errno != ENOENT {
+                return Err(ScanCacheTargetDispositionV1::DestinationAliasOrTypeChange);
+            }
+            if unsafe { mkdirat(parent.as_raw_fd(), name.as_ptr(), 0o700) } < 0 {
+                let errno = unsafe { *__errno_location() };
+                if errno != 17 {
+                    return Err(ScanCacheTargetDispositionV1::InstrumentFailure);
+                }
+            }
+            fd = unsafe { openat(parent.as_raw_fd(), name.as_ptr(), O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC, 0) };
+        }
+        if fd < 0 {
+            return Err(ScanCacheTargetDispositionV1::DestinationAliasOrTypeChange);
+        }
+        let owned = unsafe { OwnedFd::from_raw_fd(fd) };
+        parent = std::fs::File::from(owned);
+    }
+    Ok(())
+}
+
+#[cfg(windows)]
+fn ensure_owned_descendant(
+    root: &Path,
+    target: &Path,
+) -> Result<(), ScanCacheTargetDispositionV1> {
+    // Windows has no stable std-only handle-relative mkdir primitive. Refuse
+    // the first path mutation unless every component already exists; this
+    // preserves the fail-closed boundary rather than racing create_dir_all.
+    let _ = root;
+    let _ = fs::metadata(target)
+        .map_err(|_| ScanCacheTargetDispositionV1::InstrumentFailure)?;
+    Ok(())
 }
 
 fn ensure_bound_regular_file(path: &Path) -> Result<Handle, ScanCacheTargetDispositionV1> {
