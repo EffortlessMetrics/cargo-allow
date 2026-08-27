@@ -36,8 +36,9 @@ The system must:
   source-tree roots, then validate node identity and edge integrity.
 - Read repository source-tree files and policy ledgers directly.
 - Support a machine-readable artifact registry at
-  `.allow/artifacts/doc-artifacts.toml`; resolve `policy/doc-artifacts.toml` as
-  a legacy compatibility fallback when the canonical file is absent.
+  `.allow/artifacts/doc-artifacts.toml`; preserve
+  `policy/doc-artifacts.toml` as a legacy compatibility path when selected by
+  a resolved legacy profile configuration.
 - Support a profile configuration file at
   `.allow/profiles/spec-system.toml`; resolve `policy/spec-system.toml` as a
   legacy compatibility fallback when the canonical file is absent.
@@ -73,7 +74,7 @@ The system must not:
 | --- | --- | --- |
 | `--profile spec-system` | yes | Explicit profile selector for supported commands. |
 | `.allow/profiles/spec-system.toml` | profile-dependent | Defines roots, requirements, and advisory/shadow/blocking posture. The legacy `policy/spec-system.toml` path is a compatibility fallback. |
-| `.allow/artifacts/doc-artifacts.toml` | profile-dependent | Registers governed proposal, spec, ADR, plan, active-goal, support-tier, policy, and closeout artifacts. The legacy `policy/doc-artifacts.toml` path is a compatibility fallback. |
+| `.allow/artifacts/doc-artifacts.toml` | profile-dependent | Registers governed proposal, spec, ADR, plan, active-goal, support-tier, policy, and closeout artifacts. The legacy `policy/doc-artifacts.toml` path remains available when selected by a resolved legacy profile configuration. |
 | Artifact Markdown files | profile-dependent | Proposal, spec, ADR, implementation plan, plan item, closeout, and related source-of-truth docs. |
 | `.allow/goals/active.toml` | profile-dependent | Active goal manifest when profile requirements enable active-goal checks. |
 | `docs/status/SUPPORT_TIERS.md` | profile-dependent | Support-tier claim to proof-command map when profile requirements enable support-tier checks. |
@@ -222,7 +223,7 @@ reliable. It must not lint prose quality or general Markdown style.
 - Linked profile and artifact ledgers: this spec declares policy impact for
   `.allow/artifacts/doc-artifacts.toml`, `.allow/profiles/spec-system.toml`,
   and `policy/allow.toml`. The `policy/` profile paths remain compatibility
-  fallbacks only.
+  paths only when selected by the resolved legacy configuration.
 
 ## Profile Config
 
@@ -267,7 +268,8 @@ be deliberate and limited to checks that have burned in.
 
 The canonical artifact registry is TOML at
 `.allow/artifacts/doc-artifacts.toml`. The legacy `policy/doc-artifacts.toml`
-path remains a compatibility fallback when the canonical file is absent.
+path remains available when selected by a resolved legacy profile
+configuration; the profile does not independently probe that path.
 
 Minimum shape:
 
@@ -408,7 +410,8 @@ findings, extend lifecycle dates, or claim proof execution.
 The spec uses these policy surfaces:
 
 - `.allow/artifacts/doc-artifacts.toml` for artifact registration. The legacy
-  `policy/doc-artifacts.toml` path remains a compatibility fallback.
+  `policy/doc-artifacts.toml` path remains available when selected by a
+  resolved legacy profile configuration.
 - `.allow/profiles/spec-system.toml` for profile roots and requirements. The
   legacy `policy/spec-system.toml` path remains a compatibility fallback.
 - `policy/allow.toml` entries for tracked docs, TOML, JSON schema, config, or
@@ -424,7 +427,8 @@ Profile implementation and ongoing maintenance evidence should include:
 - config parsing tests for `.allow/profiles/spec-system.toml`, including the
   legacy `policy/spec-system.toml` compatibility fallback.
 - artifact ledger parsing tests for `.allow/artifacts/doc-artifacts.toml`,
-  including the legacy `policy/doc-artifacts.toml` compatibility fallback.
+  including the legacy `policy/doc-artifacts.toml` path when selected by a
+  resolved legacy profile configuration.
 - validation tests for duplicate IDs, missing files, missing IDs in files,
   invalid kinds, invalid statuses, unknown links, and superseded replacements.
 - support-tier structural tests for non-empty proof-command fields.
