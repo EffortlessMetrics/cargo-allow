@@ -37,13 +37,11 @@
 /crates/proof-engine/       @EffortlessSteven
 /crates/cargo-proof/        @EffortlessSteven
 
-# Policy, schemas, documentation, and source-of-truth artifacts
+# Policy, documentation, and source-of-truth artifacts
 /policy/                    @EffortlessSteven
 /docs/                      @EffortlessSteven
 /plans/                     @EffortlessSteven
-/schemas/                   @EffortlessSteven
 
 # CI, release, and repository automation
 /.github/                   @EffortlessSteven
-/docs/release/              @EffortlessSteven
 /scripts/                   @EffortlessSteven
