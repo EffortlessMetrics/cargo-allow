@@ -350,7 +350,10 @@ mod tests {
         .map_err(|err| format!("config: {err}"))?;
 
         let findings = federation_config_findings(&config);
-        check(findings.len() == 2, "expected duplicate-lane and priority-tie findings")?;
+        check(
+            findings.len() == 2,
+            "expected duplicate-lane and priority-tie findings",
+        )?;
         check(
             findings.iter().all(|finding| finding.blocking_eligible),
             "all blocking federation diagnostics must remain blocking",
