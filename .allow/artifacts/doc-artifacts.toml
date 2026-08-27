@@ -782,6 +782,7 @@ path = "docs/adr/CARGO-ALLOW-ADR-0007-crate-namespace-policy.md"
 status = "accepted"
 owner = "repo-infra"
 created = "2026-08-27"
+linked_spec = "CARGO-ALLOW-SPEC-0004"
 
 [[artifact]]
 id = "CARGO-ALLOW-SPEC-0010"

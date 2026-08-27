@@ -4,6 +4,7 @@ kind: adr
 status: accepted
 owner: repo-infra
 created: 2026-08-27
+linked_spec: CARGO-ALLOW-SPEC-0004
 supersedes: none
 superseded_by: none
 support_tier_impact: advisory
