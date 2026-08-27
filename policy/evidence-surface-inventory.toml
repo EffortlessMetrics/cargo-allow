@@ -241,6 +241,23 @@ last_reconciled_commit = "main@current"
 claim_boundary = "The documented journey is checked; a completed installation journey is not proven."
 
 [[surfaces]]
+id = "release-rehearsal"
+owner_issue = 3751
+semantic_authority = "release rehearsal"
+path = "crates/cargo-allow/tests/release_rehearsal.rs"
+subject = "scripts/release-rehearsal.py"
+producer = "Rust integration test"
+consumer = "release rehearsal"
+claimed_acceptance_row = "rehearsal contract"
+assertion_mechanism = "source-text and fixture assertions"
+evidence_class = "StructuredShapeValidation"
+disposition = "bounded local contract"
+required_stronger_owner = "#3751"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "The rehearsal contract is checked; no external release operation is performed."
+
+[[surfaces]]
 id = "release-workflow-contract"
 owner_issue = 3760
 semantic_authority = "release workflow contract"

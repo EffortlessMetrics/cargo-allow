@@ -65,7 +65,7 @@ def candidate_paths(root: Path) -> set[str]:
         if not CANDIDATE_NAME.search(path.name):
             continue
         text = path.read_text(encoding="utf-8")
-        if path.name == "release_manifest_evidence_v2.rs" or any(
+        if path.name in {"release_manifest_evidence_v2.rs", "release_rehearsal.rs"} or any(
             marker in text for marker in LEXICAL_MARKERS
         ):
             result.add(path.relative_to(root).as_posix())
