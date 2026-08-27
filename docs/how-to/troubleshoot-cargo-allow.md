@@ -11,6 +11,7 @@ Channel note: `why` shipped in Published `0.1.11`. Use it freely alongside
 | Symptom | Meaning | Next command |
 | --- | --- | --- |
 | `no policy config found` / doctor suggests init | Policy file missing | `cargo-allow doctor`, then `cargo-allow init` or `cargo-allow propose` (preview, then `--write`) |
+| `policy config is present but unusable` | The ledger exists but could not be read or parsed, so it was not applied | Fix the reported TOML or file permissions, or pass `--config` to select a different ledger; do **not** run `init` — the file already exists |
 | Empty inventory / no tracked files | Fresh or empty tree, or inventory cannot see sources | `cargo-allow doctor --format json`; confirm checkout and `--root` |
 | Inventory `completeness: fallback` or partial | Git inventory failed or scan was capped | `cargo-allow doctor`; read inventory warning; fix git checkout or narrow scope |
 | Invalid revision / missing base ref | `diff --base` cannot resolve the base (often shallow checkout) | Re-run with `fetch-depth: 0` (see [Run in CI](run-in-ci.md)); confirm `origin/<base>` exists |

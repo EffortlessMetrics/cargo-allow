@@ -248,6 +248,28 @@ fn normalize_repo_relative_path(path: &Path, root: &Path) -> String {
 }
 
 fn missing_policy_config_error(skipped: &[SkippedPolicyCandidate]) -> CargoAllowError {
+    // A candidate that exists but could not be read or parsed is a broken
+    // ledger, not an absent one. It must surface as InvalidPolicy so callers
+    // that tolerate a missing policy cannot silently fall back past it and
+    // report success against an ignored exception ledger (#1952).
+    let malformed = skipped
+        .iter()
+        .filter(|candidate| candidate.malformed)
+        .collect::<Vec<_>>();
+    if !malformed.is_empty() {
+        let details = malformed
+            .iter()
+            .map(|candidate| format!("{} ({})", candidate.path.display(), candidate.reason))
+            .collect::<Vec<_>>()
+            .join("; ");
+        return CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidPolicy,
+            format!(
+                "policy config is present but unusable: {}; fix the file or pass --config to select a different ledger",
+                details
+            ),
+        );
+    }
     if skipped.is_empty() {
         return CargoAllowError::with_kind(
             CargoAllowErrorKind::InvalidConfig,
@@ -280,13 +302,49 @@ mod tests {
         assert_eq!(missing.kind(), CargoAllowErrorKind::InvalidConfig);
         assert_eq!(missing.code(), "E0002_INVALID_CONFIG");
 
-        let skipped = missing_policy_config_error(&[SkippedPolicyCandidate {
-            path: PathBuf::from("foreign/allow.toml"),
-            reason: "foreign policy dialect".to_string(),
-        }]);
+        let skipped = missing_policy_config_error(&[SkippedPolicyCandidate::foreign(
+            PathBuf::from("foreign/allow.toml"),
+            "foreign policy dialect".to_string(),
+        )]);
         assert_eq!(skipped.kind(), CargoAllowErrorKind::InvalidConfig);
         assert_eq!(skipped.code(), "E0002_INVALID_CONFIG");
         assert!(skipped.to_string().contains("foreign/allow.toml"));
+    }
+
+    /// A ledger that exists but cannot be parsed is a broken policy, not an
+    /// absent one. The kind is what stops the no-policy fallback in
+    /// `world.rs`, so it is pinned here rather than the message text (#1952).
+    #[test]
+    fn malformed_policy_candidates_are_invalid_policy_not_missing_config() {
+        let malformed = missing_policy_config_error(&[SkippedPolicyCandidate::malformed(
+            PathBuf::from("policy/allow.toml"),
+            "failed to parse policy header: expected `=`".to_string(),
+        )]);
+        assert_eq!(malformed.kind(), CargoAllowErrorKind::InvalidPolicy);
+        assert!(malformed.to_string().contains("policy/allow.toml"));
+        assert!(
+            malformed.to_string().contains("present but unusable"),
+            "operator must be told the ledger was found and rejected: {malformed}"
+        );
+    }
+
+    /// A malformed candidate outranks foreign siblings: the broken ledger is
+    /// the actionable fact, and reporting only the foreign skips would send the
+    /// operator to `init` for a file that already exists.
+    #[test]
+    fn malformed_candidate_outranks_foreign_siblings() {
+        let mixed = missing_policy_config_error(&[
+            SkippedPolicyCandidate::foreign(
+                PathBuf::from("foreign/allow.toml"),
+                "foreign policy dialect".to_string(),
+            ),
+            SkippedPolicyCandidate::malformed(
+                PathBuf::from("policy/allow.toml"),
+                "failed to read policy config: permission denied".to_string(),
+            ),
+        ]);
+        assert_eq!(mixed.kind(), CargoAllowErrorKind::InvalidPolicy);
+        assert!(mixed.to_string().contains("policy/allow.toml"));
     }
 
     #[test]

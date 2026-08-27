@@ -161,6 +161,27 @@ pub(crate) fn discover_config_path(root: &Path, config: Option<&Path>) -> Config
 }
 
 fn missing_config_error(skipped: &[SkippedPolicyCandidate]) -> CargoAllowError {
+    // A present-but-unreadable ledger is a broken policy, not a missing one
+    // (#1952). Kind matters here: InvalidPolicy is what stops the no-policy
+    // fallback in world.rs from scanning against an empty policy.
+    let malformed = skipped
+        .iter()
+        .filter(|candidate| candidate.malformed)
+        .collect::<Vec<_>>();
+    if !malformed.is_empty() {
+        let details = malformed
+            .iter()
+            .map(|candidate| format!("{} ({})", candidate.path.display(), candidate.reason))
+            .collect::<Vec<_>>()
+            .join("; ");
+        return CargoAllowError::with_kind(
+            CargoAllowErrorKind::InvalidPolicy,
+            format!(
+                "policy config is present but unusable: {}; fix the file or pass --config to select a different ledger",
+                details
+            ),
+        );
+    }
     if skipped.is_empty() {
         return missing_policy_config_error();
     }
@@ -316,13 +337,26 @@ mod tests {
             .expect_err("missing config should fail git relativization");
         assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
 
-        let err = missing_config_error(&[SkippedPolicyCandidate {
-            path: PathBuf::from("foreign/allow.toml"),
-            reason: "foreign policy dialect".to_string(),
-        }]);
+        let err = missing_config_error(&[SkippedPolicyCandidate::foreign(
+            PathBuf::from("foreign/allow.toml"),
+            "foreign policy dialect".to_string(),
+        )]);
         assert_eq!(err.kind(), allow_core::CargoAllowErrorKind::InvalidConfig);
         assert_eq!(err.code(), "E0002_INVALID_CONFIG");
         assert!(err.to_string().contains("foreign/allow.toml"));
+
+        // A present-but-unreadable ledger must not be reported as a missing
+        // one: the kind is what keeps the no-policy fallback from running
+        // (#1952).
+        let malformed = missing_config_error(&[SkippedPolicyCandidate::malformed(
+            PathBuf::from("policy/allow.toml"),
+            "failed to parse policy header: expected `=`".to_string(),
+        )]);
+        assert_eq!(
+            malformed.kind(),
+            allow_core::CargoAllowErrorKind::InvalidPolicy
+        );
+        assert!(malformed.to_string().contains("policy/allow.toml"));
 
         remove_test_dir(&missing_root);
     }

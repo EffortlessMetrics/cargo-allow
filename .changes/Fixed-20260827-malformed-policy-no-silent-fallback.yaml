@@ -1,0 +1,12 @@
+kind: Fixed
+body: >-
+  A policy ledger that exists but cannot be read or parsed is no longer treated
+  as an absent one. Commands that tolerate a missing policy (`audit`, `why`,
+  `explain`, `worklist`) previously fell back to a no-policy scan when
+  discovery rejected the ledger, so a single TOML typo in `policy/allow.toml`
+  silently disabled every recorded exception while the run still reported
+  success with all evidence counters at zero. Discovery now separates a
+  genuinely foreign-dialect candidate, which is still skipped, from a candidate
+  whose dialect could never be determined, which fails with an `InvalidPolicy`
+  error naming the file and the parse or read failure. Repositories with no
+  ledger at all keep the advisory adoption fallback.

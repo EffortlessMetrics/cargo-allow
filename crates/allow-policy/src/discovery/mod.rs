@@ -29,6 +29,39 @@ pub const SOURCE_CONVENTIONAL_PATH: &str = "conventional_path";
 pub struct SkippedPolicyCandidate {
     pub path: PathBuf,
     pub reason: String,
+    /// `true` when this candidate is a policy file that exists on a discovery
+    /// path but could not be read or parsed, so its dialect could never be
+    /// determined.
+    ///
+    /// The distinction is load-bearing. A candidate that parsed and declared
+    /// itself as another tool's is genuinely foreign, and skipping it to report
+    /// "no policy config found" is correct. A candidate that is merely
+    /// unreadable has undetermined ownership, and the overwhelmingly likely
+    /// case is a cargo-allow ledger with a typo. Reporting that as "no policy
+    /// config found" lets the no-policy fallback silently disable the whole
+    /// exception ledger while the run still reports success (#1952).
+    pub malformed: bool,
+}
+
+impl SkippedPolicyCandidate {
+    /// Record a candidate that belongs to another tool, or that discovery
+    /// could not use for a reason that does not prove a broken ledger.
+    pub fn foreign(path: PathBuf, reason: String) -> Self {
+        Self {
+            path,
+            reason,
+            malformed: false,
+        }
+    }
+
+    /// Record a policy candidate that is present but unreadable or unparseable.
+    pub fn malformed(path: PathBuf, reason: String) -> Self {
+        Self {
+            path,
+            reason,
+            malformed: true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -95,10 +128,12 @@ pub fn discover_config(start: impl AsRef<Path>) -> DiscoverConfigResult {
                         skipped,
                     };
                 }
-                CandidateClass::Skip(reason) => skipped.push(SkippedPolicyCandidate {
-                    path: candidate,
-                    reason,
-                }),
+                CandidateClass::Skip(reason) => {
+                    skipped.push(SkippedPolicyCandidate::foreign(candidate, reason));
+                }
+                CandidateClass::Malformed(reason) => {
+                    skipped.push(SkippedPolicyCandidate::malformed(candidate, reason));
+                }
             }
         }
         if !dir.pop() {
@@ -150,20 +185,20 @@ fn discover_cargo_metadata_config(
     let text = match read_text_file_capped(&manifest_path) {
         Ok(text) => text,
         Err(err) => {
-            skipped.push(SkippedPolicyCandidate {
-                path: manifest_path,
-                reason: format!("cargo-allow metadata could not be read: {err}"),
-            });
+            skipped.push(SkippedPolicyCandidate::foreign(
+                manifest_path,
+                format!("cargo-allow metadata could not be read: {err}"),
+            ));
             return None;
         }
     };
     let manifest = match toml::from_str::<CargoManifestProbe>(&text) {
         Ok(manifest) => manifest,
         Err(err) => {
-            skipped.push(SkippedPolicyCandidate {
-                path: manifest_path,
-                reason: format!("cargo-allow metadata could not be parsed: {err}"),
-            });
+            skipped.push(SkippedPolicyCandidate::foreign(
+                manifest_path,
+                format!("cargo-allow metadata could not be parsed: {err}"),
+            ));
             return None;
         }
     };
@@ -188,29 +223,36 @@ fn discover_cargo_metadata_config(
             .components()
             .any(|component| component == Component::ParentDir)
     {
-        skipped.push(SkippedPolicyCandidate {
-            path: manifest_path,
-            reason: format!(
+        skipped.push(SkippedPolicyCandidate::foreign(
+            manifest_path,
+            format!(
                 "cargo-allow metadata config `{config}` must be a non-empty relative path without `..`"
             ),
-        });
+        ));
         return None;
     }
     let candidate = dir.join(config_path);
     if !candidate.exists() {
-        skipped.push(SkippedPolicyCandidate {
-            path: candidate,
-            reason: "cargo-allow metadata config path does not exist".to_string(),
-        });
+        skipped.push(SkippedPolicyCandidate::foreign(
+            candidate,
+            "cargo-allow metadata config path does not exist".to_string(),
+        ));
         return None;
     }
     match classify_candidate(&candidate, true) {
         CandidateClass::Accept => Some((candidate, source)),
         CandidateClass::Skip(reason) => {
-            skipped.push(SkippedPolicyCandidate {
-                path: candidate,
-                reason: format!("cargo-allow metadata config {reason}"),
-            });
+            skipped.push(SkippedPolicyCandidate::foreign(
+                candidate,
+                format!("cargo-allow metadata config {reason}"),
+            ));
+            None
+        }
+        CandidateClass::Malformed(reason) => {
+            skipped.push(SkippedPolicyCandidate::malformed(
+                candidate,
+                format!("cargo-allow metadata config {reason}"),
+            ));
             None
         }
     }
@@ -218,24 +260,23 @@ fn discover_cargo_metadata_config(
 
 enum CandidateClass {
     Accept,
+    /// Parsed, and declared itself as belonging to another tool.
     Skip(String),
+    /// Present on a discovery path but unreadable or unparseable.
+    Malformed(String),
 }
 
 fn classify_candidate(path: &Path, native: bool) -> CandidateClass {
     let text = match read_text_file_capped(path) {
         Ok(text) => text,
         Err(err) => {
-            return CandidateClass::Skip(format!(
-                "not cargo-allow dialect (failed to read policy config: {err})"
-            ));
+            return CandidateClass::Malformed(format!("failed to read policy config: {err}"));
         }
     };
     let header = match toml::from_str::<PolicyHeaderProbe>(&text) {
         Ok(header) => header,
         Err(err) => {
-            return CandidateClass::Skip(format!(
-                "not cargo-allow dialect (failed to parse policy header: {err})"
-            ));
+            return CandidateClass::Malformed(format!("failed to parse policy header: {err}"));
         }
     };
     if !supported_schema_version(header.schema_version.as_deref()) {

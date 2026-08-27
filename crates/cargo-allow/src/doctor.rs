@@ -74,7 +74,16 @@ pub(crate) fn cmd_doctor(args: &DoctorArgs) -> CargoAllowResult<()> {
     let root_discovery = root_discovery_kind(args.root.root.as_deref(), &root);
     let config_discovery =
         crate::policy_config::discover_config_path(&root, args.config.as_deref());
-    let config = config_discovery.path.clone();
+    // Discovery selects nothing when a ledger exists but could not be read or
+    // parsed. Reporting that as "config: not found; run `cargo-allow init`"
+    // sends the operator to create a file that is already there, and hides the
+    // fact that their exception ledger is not being applied. Point doctor at
+    // the broken candidate instead so it loads, fails, and reports the parse
+    // error through the ordinary invalid-config diagnostic (#1952).
+    let config = config_discovery
+        .path
+        .clone()
+        .or_else(|| malformed_candidate_path(&config_discovery));
     let policy = load_doctor_policy(config.as_deref());
     let opts = doctor_inventory_options(policy.as_ref());
     let inventory = inventory(&root, &opts)?;
@@ -455,6 +464,21 @@ fn render_intent_provider_failure(
     format!(
         "\nIntent provider\n  status: {status}\n  detected binary/version: {detected}\n  required version range: {INTENT_PROVIDER_REQUIRED_VERSION_RANGE}\n  required protocol: {INTENT_PROVIDER_REQUIRED_PROTOCOL}\n  canonical command: {INTENT_PROVIDER_CANONICAL_COMMAND}\n  support reference: {INTENT_PROVIDER_SUPPORT_REFERENCE}\n  intent evaluation: not performed\n  clean claim: not available\n  reason: {failure}\n"
     )
+}
+
+/// The first policy candidate that exists on a discovery path but could not be
+/// read or parsed, if any.
+///
+/// Only malformed candidates qualify: a genuinely foreign-dialect file belongs
+/// to another tool and must not be reported as this repository's broken ledger.
+fn malformed_candidate_path(
+    discovery: &crate::policy_config::ConfigDiscovery,
+) -> Option<std::path::PathBuf> {
+    discovery
+        .skipped
+        .iter()
+        .find(|candidate| candidate.malformed)
+        .map(|candidate| candidate.path.clone())
 }
 
 fn load_doctor_policy(config: Option<&Path>) -> Option<CargoAllowResult<AllowConfig>> {

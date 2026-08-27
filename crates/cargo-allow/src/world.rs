@@ -375,7 +375,15 @@ pub(crate) fn load_world_with_evidence_mode_and_cache(
     let root = resolve_source_tree_root(explicit_root, cwd)?;
     let (policy_path, federation) = match evaluate_source_exception_policy(&root, config) {
         Ok(value) => value,
-        Err(_err) if !require_config => {
+        // The no-policy fallback exists for repositories that genuinely have no
+        // ledger yet (the adoption path). It must never absorb a ledger that is
+        // present but broken: falling back there would scan with an empty
+        // policy and report success while every recorded exception is silently
+        // ignored (#1952).
+        Err(err) => {
+            if require_config || policy_is_present_but_unusable(&err) {
+                return Err(err);
+            }
             return load_world_without_policy_and_cache(
                 &root,
                 kind_filter,
@@ -385,7 +393,6 @@ pub(crate) fn load_world_with_evidence_mode_and_cache(
                 persistent_cache,
             );
         }
-        Err(err) => return Err(err),
     };
     let (cfg, policy_digest) =
         crate::policy_config::load_policy_at_path_with_digest(policy_path, evidence_validation)?;
@@ -483,7 +490,12 @@ pub(crate) fn load_world_for_path(
     let root = resolve_source_tree_root(explicit_root, cwd)?;
     let (policy_path, federation) = match evaluate_source_exception_policy(&root, config) {
         Ok(value) => value,
-        Err(_err) if !require_config => {
+        // Same fallback law as load_world_with_evidence_mode_and_cache: a
+        // broken ledger is not an absent one (#1952).
+        Err(err) => {
+            if require_config || policy_is_present_but_unusable(&err) {
+                return Err(err);
+            }
             let (root, cfg, findings, facts, federation) = load_world_without_policy(
                 &root,
                 kind_filter,
@@ -493,7 +505,6 @@ pub(crate) fn load_world_for_path(
             )?;
             return Ok((root, cfg, findings, facts, federation, None));
         }
-        Err(err) => return Err(err),
     };
     let cfg = load_policy_at_path(policy_path, EvidenceValidationMode::ReportOnly)?;
     let inventory = inventory(
@@ -753,6 +764,15 @@ fn load_world_without_policy_and_cache(
         inventory_facts,
         federation,
     ))
+}
+
+/// `true` when policy resolution failed because a ledger is present but
+/// unusable, rather than because no ledger exists.
+///
+/// Kind-based, never message-based, matching the exit-code contract in
+/// `exit_code.rs`.
+fn policy_is_present_but_unusable(error: &CargoAllowError) -> bool {
+    error.kind() == CargoAllowErrorKind::InvalidPolicy
 }
 
 fn empty_federation_evaluation(precedence: PrecedenceTier) -> FederationEvaluation {
