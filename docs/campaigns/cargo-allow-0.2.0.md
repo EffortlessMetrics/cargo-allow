@@ -77,13 +77,20 @@ the marker below:
   "issue": 3846,
   "result": "Complete",
   "closeout_id": "CARGO-ALLOW-CLOSEOUT-3846",
-  "merged_pr": 3854
+  "merged_pr": 3854,
+  "evidence_surfaces": ["typed-surface-id"]
 }
 ```
 
 `Complete` requires a merged PR targeting `main` whose merge commit remains
-reachable from `main`. `Duplicate` requires an accepted replacement issue;
-`NotPlanned` requires a bounded reason. Missing, malformed, stale, or
-instrument-failure evidence posts one bounded diagnostic and reopens the issue.
-The guard is scoped to the checked denominator, is idempotent, and cannot
-merge, publish, tag, close issues, or change release/live controls.
+reachable from `main`, and a non-empty `evidence_surfaces` list naming the
+checked `policy/evidence-surface-inventory.toml` rows that back the issue's
+acceptance. Every named row must exist, and at least one must carry an
+evidence class outside the insufficient set (`LexicalProjectionOnly`,
+`HistoricalFixtureOnly`, `DeferredWithNamedOwner`,
+`UnsupportedOrMisclassified`) — acceptance backed only by an insufficient
+class is rejected (#3810 criterion 7). `Duplicate` requires an accepted
+replacement issue; `NotPlanned` requires a bounded reason. Missing, malformed,
+stale, or instrument-failure evidence posts one bounded diagnostic and reopens
+the issue. The guard is scoped to the checked denominator, is idempotent, and
+cannot merge, publish, tag, close issues, or change release/live controls.

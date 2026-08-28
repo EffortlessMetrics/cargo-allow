@@ -15,6 +15,17 @@ from typing import Any
 MARKER = "<!-- cargo-allow:campaign-closeout.v1 -->"
 SCHEMA = "cargo-allow.campaign-issue-closeout.v1"
 ALLOWED_RESULTS = {"Complete", "NotPlanned", "Duplicate"}
+INVENTORY_SCHEMA = "cargo-allow.evidence-surface-inventory.v1"
+# Evidence classes that explicitly do not prove the named authority exists or
+# that production consumed it (#3810). A `Complete` closeout whose acceptance
+# backing consists only of these classes is rejected (criterion 7; negative
+# control 12 names the LexicalProjectionOnly shape).
+INSUFFICIENT_EVIDENCE_CLASSES = {
+    "LexicalProjectionOnly",
+    "HistoricalFixtureOnly",
+    "DeferredWithNamedOwner",
+    "UnsupportedOrMisclassified",
+}
 
 
 class GitHub:
@@ -99,6 +110,49 @@ def validate_closeout(payload: dict[str, Any] | None, issue_number: int, accepte
     return errors
 
 
+def load_evidence_surfaces(path: Path) -> dict[str, str]:
+    """Load the checked evidence-surface inventory as `id -> evidence_class`."""
+    import tomllib
+
+    data = tomllib.loads(path.read_text(encoding="utf-8"))
+    if data.get("schema") != INVENTORY_SCHEMA:
+        raise ValueError("evidence surface inventory schema mismatch")
+    result: dict[str, str] = {}
+    for surface in data.get("surfaces", []):
+        surface_id = surface.get("id")
+        evidence_class = surface.get("evidence_class")
+        if not isinstance(surface_id, str) or not surface_id.strip():
+            raise ValueError("evidence surface inventory contains an invalid id")
+        if not isinstance(evidence_class, str) or not evidence_class.strip():
+            raise ValueError(f"evidence surface {surface_id} has an invalid class")
+        if surface_id in result:
+            raise ValueError(f"evidence surface inventory duplicates id {surface_id}")
+        result[surface_id] = evidence_class
+    return result
+
+
+def verify_acceptance_evidence(payload: dict[str, Any], surfaces: dict[str, str]) -> list[str]:
+    """Reject `Complete` when the declared acceptance backing is insufficient.
+
+    The closeout must name the inventory surfaces that back its acceptance
+    rows; every named surface must exist, and at least one must carry an
+    evidence class outside the insufficient set (#3810 criterion 7).
+    """
+    declared = payload.get("evidence_surfaces")
+    if not isinstance(declared, list) or not declared:
+        return ["evidence_surfaces_missing"]
+    if not all(isinstance(item, str) and item.strip() for item in declared):
+        return ["evidence_surfaces_invalid"]
+    if len(set(declared)) != len(declared):
+        return ["evidence_surfaces_invalid"]
+    if any(item not in surfaces for item in declared):
+        return ["evidence_surface_unknown"]
+    classes = {surfaces[item] for item in declared}
+    if classes <= INSUFFICIENT_EVIDENCE_CLASSES:
+        return ["insufficient_evidence_class"]
+    return []
+
+
 def verify_complete(api: GitHub, payload: dict[str, Any], base_branch: str) -> list[str]:
     pr = api.request(f"/pulls/{payload['merged_pr']}")
     errors: list[str] = []
@@ -137,7 +191,13 @@ def bounded_comment(issue_number: int, errors: list[str], payload: dict[str, Any
     )
 
 
-def handle(event: dict[str, Any], api: GitHub, membership: dict[int, tuple[str, set[str]]], base_branch: str) -> int:
+def handle(
+    event: dict[str, Any],
+    api: GitHub,
+    membership: dict[int, tuple[str, set[str]]],
+    base_branch: str,
+    inventory_path: Path,
+) -> int:
     if event.get("action") != "closed" or not isinstance(event.get("issue"), dict):
         return 0
     issue = event["issue"]
@@ -151,6 +211,7 @@ def handle(event: dict[str, Any], api: GitHub, membership: dict[int, tuple[str, 
         errors = validate_closeout(payload, number, accepted)
         if not errors and payload and payload.get("result") == "Complete":
             errors.extend(verify_complete(api, payload, base_branch))
+            errors.extend(verify_acceptance_evidence(payload, load_evidence_surfaces(inventory_path)))
     except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
         errors = ["instrument_failure"]
     if not errors:
@@ -167,11 +228,12 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--event", type=Path, default=Path(os.environ["GITHUB_EVENT_PATH"]))
     parser.add_argument("--membership", type=Path, default=Path("policy/campaign-issue-closeout.toml"))
+    parser.add_argument("--inventory", type=Path, default=Path("policy/evidence-surface-inventory.toml"))
     args = parser.parse_args()
     event = json.loads(args.event.read_text(encoding="utf-8"))
     membership = load_membership(args.membership)
     api = GitHub(os.environ.get("GITHUB_API_URL", "https://api.github.com"), os.environ["GITHUB_REPOSITORY"], os.environ["GITHUB_TOKEN"])
-    return handle(event, api, membership, "main")
+    return handle(event, api, membership, "main", args.inventory)
 
 
 if __name__ == "__main__":
