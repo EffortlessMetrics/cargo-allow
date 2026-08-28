@@ -1,0 +1,25 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11177"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:3c44a112c6dcc6191429b5b1c2dac7900fc27f8044532287622958141b5ca8a0"
+reason = "receipt for docs/ci-environment-profiles.toml, the checked qualification-profile inventory (#3926)"
+
+[[records]]
+allow_ids = ["allow-11178"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:faa02479aa7554a08f7530e8873fc588b407b693ea2a37d69ade489309f40d11"
+reason = "receipt for docs/ci-environment-profiles.md, the inventory documentation (#3926)"
+
+[[records]]
+allow_ids = ["allow-11179"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ed39d34f0760a2a1a7f0823a4755a0a1169608b1d1958ca30647aadf26b497ef"
+reason = "receipt for scripts/check-ci-environment-profiles.py, the row-vs-workflow validator (#3926)"
+
+[[records]]
+allow_ids = ["allow-11180"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:eb481d51c14a1abc6454d28c6cf19b0935401a5faa5ccd1269f3c9ed1d77fef9"
+reason = "self-receipt for this revision note file, matching the #3792 precedent"

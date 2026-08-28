@@ -1,0 +1,7 @@
+kind: Added
+body: >-
+  Add a source-controlled inventory that distinguishes exact toolchain
+  qualification, fixed-label observations, moving compatibility canaries, and
+  platform characterization for selected CI proof rows. The inventory is
+  validated against workflow job and environment selectors without changing
+  runner, toolchain, required-check, or release behavior.

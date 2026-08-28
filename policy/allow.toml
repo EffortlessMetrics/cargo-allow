@@ -13266,3 +13266,90 @@ glob = ".allow/revisions/3810-evidence-surface-inventory.toml"
 [allow.last_seen]
 line = 1
 column = 1
+[[allow]]
+id = "allow-11177"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/ci-environment-profiles.toml"
+owner = "repo-infra"
+classification = "ci_environment_inventory"
+reason = "Checked qualification-profile inventory for selected CI jobs, with declared evidence and result postures for #3926."
+evidence = ["issue:3926"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/ci-environment-profiles.toml"
+target_fingerprint = "toml"
+glob = "docs/ci-environment-profiles.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11178"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/ci-environment-profiles.md"
+owner = "repo-infra"
+classification = "ci_environment_documentation"
+reason = "Documents the qualification-profile inventory, its claim boundary, and its deliberately descriptive posture for #3926."
+evidence = ["issue:3926"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/ci-environment-profiles.md"
+target_fingerprint = "md"
+glob = "docs/ci-environment-profiles.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11179"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/check-ci-environment-profiles.py"
+owner = "repo-infra"
+classification = "policy_guard_script"
+reason = "Validates each qualification-profile row against the declared workflow job source for #3926."
+evidence = ["issue:3926"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/check-ci-environment-profiles.py"
+target_fingerprint = "py"
+glob = "scripts/check-ci-environment-profiles.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11180"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3926-ci-environment-profiles.toml"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3926 revision note authorizing the CI environment profile receipts; covers the note file itself as tracked configuration."
+evidence = ["issue:3926", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3926-ci-environment-profiles.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3926-ci-environment-profiles.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
