@@ -159,11 +159,11 @@ const INTENT_OBLIGATION_FAMILY_TYPES: &[&str] = &[
 
 fn flags_obligation_redeclaration(sample: &str) -> bool {
     for name in INTENT_OBLIGATION_FAMILY_TYPES {
-        for keyword in ["struct ", "enum ", "type "] {
-            for prefix in ["", "pub "] {
-                if sample.contains(&format!("{keyword}{prefix}{name}")) {
-                    return true;
-                }
+        // Substring matching covers both `struct Name` and `pub struct Name`;
+        // ` as Name` catches proof-family aliases of the family.
+        for keyword in ["struct ", "enum ", "type ", " as "] {
+            if sample.contains(&format!("{keyword}{name}")) {
+                return true;
             }
         }
     }
@@ -180,6 +180,7 @@ fn proof_family_never_redeclares_the_intent_obligation_family() -> Result<(), St
         "pub enum IntentObligationPostureV1 {".to_string(),
         "type IntentObligationHandoffV1 =".to_string(),
         "struct IntentProofHandoffDispositionV1;".to_string(),
+        "use some::Other as IntentPhaseObligationV1;".to_string(),
     ] {
         if !flags_obligation_redeclaration(&seeded) {
             return Err(format!(
@@ -215,10 +216,10 @@ fn proof_family_never_redeclares_the_intent_obligation_family() -> Result<(), St
         let text = std::fs::read_to_string(path)
             .map_err(|err| format!("read {}: {err}", path.display()))?;
         for name in INTENT_OBLIGATION_FAMILY_TYPES {
-            for keyword in ["struct ", "enum ", "type "] {
-                if text.contains(&format!("{keyword}{name}"))
-                    || text.contains(&format!("{keyword}pub {name}"))
-                {
+            // Substring matching covers `struct Name` and `pub struct Name`
+            // alike; ` as Name` catches proof-family aliases of the family.
+            for keyword in ["struct ", "enum ", "type ", " as "] {
+                if text.contains(&format!("{keyword}{name}")) {
                     return Err(format!(
                         "{} redeclares the intent-protocol obligation family type `{name}`; \
                          the canonical exchange stays intent-owned (#2936/#3964)",

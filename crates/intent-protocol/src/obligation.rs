@@ -244,6 +244,32 @@ impl IntentObligationHandoffV1 {
                 return Err(format!("handoff {label} must be non-empty when present"));
             }
         }
+        if self.disposition.is_none() {
+            return Err(
+                "a present handoff block must state one explicit disposition; \
+                 absence of the whole block is the only honest way to predate the enrichment"
+                    .to_string(),
+            );
+        }
+        for label in [
+            (
+                "evidence_purpose_refs",
+                self.evidence_purpose_refs.as_slice(),
+            ),
+            ("discriminator_refs", self.discriminator_refs.as_slice()),
+            (
+                "forbidden_or_alternate_observable_refs",
+                self.forbidden_or_alternate_observable_refs.as_slice(),
+            ),
+            ("counterfactual_refs", self.counterfactual_refs.as_slice()),
+        ] {
+            if label.1.iter().any(|reference| reference.trim().is_empty()) {
+                return Err(format!(
+                    "handoff {} must not contain blank references",
+                    label.0
+                ));
+            }
+        }
         let ready =
             self.disposition == Some(IntentProofHandoffDispositionV1::ReadyForProofPlanning);
         if ready {

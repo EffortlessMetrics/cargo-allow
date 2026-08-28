@@ -565,6 +565,30 @@ fn not_applicable_disposition_requires_a_reason() -> Result<(), String> {
 }
 
 #[test]
+fn present_handoff_requires_an_explicit_disposition() -> Result<(), String> {
+    let empty = IntentObligationHandoffV1::default();
+    if empty.validate().is_ok() {
+        return Err("an empty handoff block must not validate".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn blank_references_are_rejected() -> Result<(), String> {
+    let mut blank_purpose = ready_handoff();
+    blank_purpose.evidence_purpose_refs = vec!["   ".to_string()];
+    if blank_purpose.validate().is_ok() {
+        return Err("a blank evidence purpose reference was accepted".to_string());
+    }
+    let mut blank_discriminator = ready_handoff();
+    blank_discriminator.discriminator_refs = vec![" ".to_string()];
+    if blank_discriminator.validate().is_ok() {
+        return Err("a blank discriminator reference was accepted".to_string());
+    }
+    Ok(())
+}
+
+#[test]
 fn enrichment_validates_generation_and_reference_hygiene() -> Result<(), String> {
     let mut enrichment = IntentPlanEnrichmentV1 {
         protocol_generation: Some(0),
