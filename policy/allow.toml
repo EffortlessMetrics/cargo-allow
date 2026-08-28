@@ -201,7 +201,6 @@ glob = "docs/schemas/operator-latency.v2.schema.json"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-11112"
 kind = "non_rust_file"
@@ -1417,7 +1416,6 @@ glob = "crates/effortless-repo-snapshot/src/git.rs"
 [allow.last_seen]
 line = 2
 column = 1
-
 
 [[allow]]
 id = "allow-9058"
@@ -12405,6 +12403,7 @@ glob = "release/authorize-v0.2.0.json"
 [allow.last_seen]
 line = 1
 column = 1
+
 [[allow]]
 id = "allow-11142"
 kind = "non_rust_file"
@@ -12845,8 +12844,6 @@ glob = ".allow/revisions/3792-release-rehearsal.toml"
 line = 1
 column = 1
 
-
-
 [[allow]]
 id = "allow-11162"
 kind = "non_rust_file"
@@ -13088,6 +13085,7 @@ glob = ".allow/revisions/3968-prerelease-package-identity.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
 [[allow]]
 id = "allow-0617"
 kind = "panic"
@@ -13179,6 +13177,7 @@ glob = ".allow/revisions/3745-yaml-rust2-reachability.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
 [[allow]]
 id = "allow-11173"
 kind = "non_rust_file"
@@ -13266,6 +13265,7 @@ glob = ".allow/revisions/3810-evidence-surface-inventory.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
 [[allow]]
 id = "allow-11177"
 kind = "non_rust_file"
@@ -13349,6 +13349,28 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/3926-ci-environment-profiles.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/3926-ci-environment-profiles.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0632"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4014-precommit-hook-contract-rename.toml"
+owner = "core/devex"
+classification = "ledger_change_note"
+reason = "Revision note authorizing the allow-0498 evidence-pointer and reason transition for the two-subject pre-commit manifest realignment (#4014)."
+evidence = ["doc:docs/how-to/manage-an-exception.md", "issue:4011"]
+created = "2026-08-28"
+review_after = "2026-11-26"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4014-precommit-hook-contract-rename.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4014-precommit-hook-contract-rename.toml"
 
 [allow.last_seen]
 line = 1

@@ -22,3 +22,9 @@ change_kinds = ["reason_changed"]
 before_fingerprint = "sha256:v1:9490910ff7a17e784b63983f96c95b462489831f19ab1058cab4cf0046902f4d"
 after_fingerprint = "sha256:v1:a4c62e408c266ab276a87b4e12529e3d97fa9f4e978be695fcb5cfe724bc1e78"
 reason = "Re-authors the reason so it describes both published hook subjects of the realigned manifest (exact staged pre-commit candidate check plus advisory tracked-worktree hook) instead of the single worktree subject it described before #4014."
+
+[[records]]
+allow_ids = ["allow-0632"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:bce992bb8c9fc37ad11e50dd7ff5d0dbb8c87e752ae57f1ac8e128d6926de687"
+reason = "self-receipt for this revision note file, matching the #3792 precedent: the note is a tracked non-rust file and its own ledger entry is part of the authorized transition."
