@@ -42,7 +42,7 @@ fn json_summary_without_file_is_rejected_before_command_work() {
         let result = cargo_allow_command()
             .args(args)
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow: {err}")));
+            .unwrap_or_else(|err| panic!("run cargo-allow: {err}"));
         assert!(!result.status.success(), "JSON without output must fail");
         assert!(
             String::from_utf8_lossy(&result.stderr).contains(
@@ -88,7 +88,7 @@ fn assert_quiet_add_summary_output() {
         .arg("--summary-output")
         .arg(&summary_output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow add: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow add: {err}"));
 
     assert_success_and_quiet("add", &result);
     assert_file_contains(
@@ -119,7 +119,7 @@ fn assert_quiet_propose_summary_output() {
         .arg("--summary-output")
         .arg(&summary_output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow propose: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow propose: {err}"));
 
     assert_success_and_quiet("propose", &result);
     assert_file_contains(
@@ -141,17 +141,17 @@ fn assert_quiet_migrate_summary_output() {
     let root = temp_root("summary-migrate-output");
     let repo_policy = root.join("legacy-policy");
     fs::create_dir_all(&repo_policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create legacy policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create legacy policy dir: {err}"));
     fs::write(
         repo_policy.join("process-allowlist.toml"),
         process_policy_fixture_text(),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write process fixture: {err}")));
+    .unwrap_or_else(|err| panic!("write process fixture: {err}"));
     fs::write(
         repo_policy.join("network-allowlist.toml"),
         network_policy_fixture_text(),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write network fixture: {err}")));
+    .unwrap_or_else(|err| panic!("write network fixture: {err}"));
 
     let policy_output = root.join("policy/allow.migrated.toml");
     let summary_output = root.join("target/cargo-allow/migrate-summary.json");
@@ -168,7 +168,7 @@ fn assert_quiet_migrate_summary_output() {
         .arg("--summary-output")
         .arg(&summary_output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow migrate: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow migrate: {err}"));
 
     assert_success_and_quiet("migrate", &result);
     assert_file_contains(
@@ -202,25 +202,25 @@ fn assert_success_and_quiet(command: &str, result: &std::process::Output) {
 
 fn write_source_fixture(root: &std::path::Path) {
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create source dir: {err}")));
+        .unwrap_or_else(|err| panic!("create source dir: {err}"));
     fs::write(
         root.join("src/lib.rs"),
         "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write source fixture: {err}")));
+    .unwrap_or_else(|err| panic!("write source fixture: {err}"));
 }
 
 fn assert_file_contains(path: &std::path::Path, needle: &str, message: &str) {
     let contents = fs::read_to_string(path)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read {}: {err}", path.display())));
+        .unwrap_or_else(|err| panic!("read {}: {err}", path.display()));
     assert!(contents.contains(needle), "{message}");
 }
 
 fn write_policy(root: &std::path::Path, policy: &str) {
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     fs::write(root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+        .unwrap_or_else(|err| panic!("write policy: {err}"));
 }
 
 fn empty_policy() -> &'static str {

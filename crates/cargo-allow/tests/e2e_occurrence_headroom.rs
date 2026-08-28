@@ -86,7 +86,7 @@ glob = "crates/*/Cargo.toml"
         .arg("--receipt")
         .arg(&receipt_output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow check: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow check: {err}"));
 
     assert_status("check", &check, true);
     assert_stdout_empty(
@@ -143,7 +143,7 @@ glob = "crates/*/Cargo.toml"
         .arg("--output")
         .arg(&worklist_output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow worklist: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow worklist: {err}"));
 
     assert_success_and_quiet("worklist", &worklist);
     let worklisted = assert_saved_json_artifact(
@@ -197,7 +197,7 @@ glob = "crates/*/Cargo.toml"
         .arg("occurrence_headroom")
         .output()
         .unwrap_or_else(|err| {
-            std::panic::panic_any(format!("run cargo-allow check --deny: {err}"))
+            panic!("run cargo-allow check --deny: {err}")
         });
     assert_status("check --deny occurrence_headroom", &deny, false);
 

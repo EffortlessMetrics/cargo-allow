@@ -14,7 +14,7 @@ fn run(root: &Path, args: &[&str]) -> Output {
         .current_dir(root)
         .args(args)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow {args:?}: {err}")))
+        .unwrap_or_else(|err| panic!("run cargo-allow {args:?}: {err}"))
 }
 
 fn git_add(root: &Path) {
@@ -22,7 +22,7 @@ fn git_add(root: &Path) {
         .current_dir(root)
         .args(["add", "."])
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("git add: {err}")));
+        .unwrap_or_else(|err| panic!("git add: {err}"));
     assert!(out.status.success(), "git add should succeed");
 }
 
@@ -41,9 +41,9 @@ fn fixture(label: &str) -> std::path::PathBuf {
     ));
     let _ = fs::remove_dir_all(&root);
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create fixture: {err}")));
+        .unwrap_or_else(|err| panic!("create fixture: {err}"));
     fs::write(root.join("src/lib.rs"), "pub fn ok() -> u32 {\n    1\n}\n")
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+        .unwrap_or_else(|err| panic!("write source: {err}"));
 
     for args in [
         vec!["init"],
@@ -54,7 +54,7 @@ fn fixture(label: &str) -> std::path::PathBuf {
             .current_dir(&root)
             .args(&args)
             .output()
-            .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
+            .unwrap_or_else(|err| panic!("git {args:?}: {err}"));
         assert!(out.status.success(), "git {args:?} should succeed");
     }
 

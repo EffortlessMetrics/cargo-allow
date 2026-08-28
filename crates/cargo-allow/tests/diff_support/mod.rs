@@ -30,7 +30,7 @@ fn assert_saved_json_diff(root: &Path, output: &Path, should_succeed: bool) -> V
         .arg("--output")
         .arg(output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow diff: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow diff: {err}"));
 
     assert_status("diff", &result, should_succeed);
     assert_stdout_empty(
@@ -48,16 +48,16 @@ fn assert_saved_json_diff(root: &Path, output: &Path, should_succeed: bool) -> V
 
 pub fn write_diff_fixture(root: &Path, base_policy: String, head_policy: String) {
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+        .unwrap_or_else(|err| panic!("create src dir: {err}"));
     fs::write(
         root.join("src/lib.rs"),
         "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    .unwrap_or_else(|err| panic!("write source: {err}"));
     fs::write(root.join("policy/allow.toml"), base_policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write base policy: {err}")));
+        .unwrap_or_else(|err| panic!("write base policy: {err}"));
     git(root, &["init"]);
     git(
         root,
@@ -67,7 +67,7 @@ pub fn write_diff_fixture(root: &Path, base_policy: String, head_policy: String)
     git(root, &["add", "."]);
     git(root, &["commit", "-m", "base"]);
     fs::write(root.join("policy/allow.toml"), head_policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write head policy: {err}")));
+        .unwrap_or_else(|err| panic!("write head policy: {err}"));
 }
 
 pub fn policy_with_evidence(evidence: Option<&str>) -> String {
@@ -106,12 +106,12 @@ pub fn git(root: &Path, args: &[&str]) {
         .arg(root)
         .args(args)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
+        .unwrap_or_else(|err| panic!("git {args:?}: {err}"));
     if !output.status.success() {
-        std::panic::panic_any(format!(
+        panic!(
             "git {args:?} failed: stdout=`{}` stderr=`{}`",
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
-        ));
+        );
     }
 }

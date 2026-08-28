@@ -51,13 +51,13 @@ struct PublishedQuickStartV1 {
 fn parse_string_list(body: &str, key: &str) -> BTreeSet<String> {
     let marker = format!("{key} = [");
     let Some(start) = body.find(&marker) else {
-        std::panic::panic_any(format!("registry missing `{key}` list"));
+        panic!("registry missing `{key}` list");
     };
     let after = body
         .get(start.saturating_add(marker.len())..)
         .unwrap_or_else(|| std::panic::panic_any("registry slice after list marker"));
     let Some(end) = after.find(']') else {
-        std::panic::panic_any(format!("registry `{key}` list missing closing `]`"));
+        panic!("registry `{key}` list missing closing `]`");
     };
     let list_body = after
         .get(..end)
@@ -79,13 +79,13 @@ fn parse_string_list(body: &str, key: &str) -> BTreeSet<String> {
 fn parse_string_field(body: &str, key: &str) -> String {
     let marker = format!("{key} = \"");
     let Some(start) = body.find(&marker) else {
-        std::panic::panic_any(format!("registry missing `{key}`"));
+        panic!("registry missing `{key}`");
     };
     let after = body
         .get(start.saturating_add(marker.len())..)
         .unwrap_or_else(|| std::panic::panic_any("registry field slice"));
     let Some(end) = after.find('"') else {
-        std::panic::panic_any(format!("registry `{key}` missing closing quote"));
+        panic!("registry `{key}` missing closing quote");
     };
     after
         .get(..end)
@@ -395,10 +395,10 @@ fn published_quick_start_docs_respect_command_registry() {
     );
 
     evaluate_published_path(&registry, &all_taught).unwrap_or_else(|errors| {
-        std::panic::panic_any(format!(
+        panic!(
             "PublishedQuickStartV1 failed:\n{}",
             errors.join("\n")
-        ))
+        )
     });
 
     // `why` is promoted into the exact Published 0.1.11 command registry.
@@ -466,9 +466,9 @@ cargo-allow why --kind panic --path src/lib.rs --line 1
 "#;
     let taught = extract_taught_commands("candidate-fixture.md", ok);
     evaluate_published_path(&registry, &taught).unwrap_or_else(|errors| {
-        std::panic::panic_any(format!(
+        panic!(
             "candidate use of published why should pass: {errors:?}"
-        ))
+        )
     });
 }
 

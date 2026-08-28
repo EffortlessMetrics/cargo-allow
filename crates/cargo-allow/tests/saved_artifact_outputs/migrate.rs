@@ -7,17 +7,17 @@ fn saved_migrate_output_covers_policy_migration_summary_contract() {
     let fixture = SourceTreeFixture::new("saved-migrate-summary");
     let legacy_dir = fixture.root.join("legacy-policy");
     fs::create_dir_all(&legacy_dir)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create legacy policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create legacy policy dir: {err}"));
     fs::write(
         legacy_dir.join("process-allowlist.toml"),
         process_policy_fixture_text(),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write process policy fixture: {err}")));
+    .unwrap_or_else(|err| panic!("write process policy fixture: {err}"));
     fs::write(
         legacy_dir.join("unsafe-allowlist.toml"),
         unsafe_policy_fixture_text(),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write unsafe policy fixture: {err}")));
+    .unwrap_or_else(|err| panic!("write unsafe policy fixture: {err}"));
 
     let artifact_dir = fixture.root.join("target/cargo-allow");
     let migrated_policy = artifact_dir.join("allow.migrated.toml");
@@ -225,17 +225,17 @@ fn saved_migrate_output_preserves_legacy_evidence_and_links() {
     let fixture = SourceTreeFixture::new("saved-migrate-evidence-preserved");
     let legacy_dir = fixture.root.join("legacy-policy");
     fs::create_dir_all(&legacy_dir)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create legacy policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create legacy policy dir: {err}"));
     fs::write(
         legacy_dir.join("generated-allowlist.toml"),
         generated_policy_with_evidence_fixture_text(),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write generated policy fixture: {err}")));
+    .unwrap_or_else(|err| panic!("write generated policy fixture: {err}"));
     fs::write(
         legacy_dir.join("executable-allowlist.toml"),
         executable_policy_with_covered_by_fixture_text(),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write executable policy fixture: {err}")));
+    .unwrap_or_else(|err| panic!("write executable policy fixture: {err}"));
 
     let artifact_dir = fixture.root.join("target/cargo-allow");
     let migrated_policy = artifact_dir.join("allow.migrated.toml");
@@ -292,10 +292,10 @@ fn saved_migrate_output_preserves_legacy_evidence_and_links() {
     );
 
     let cfg = allow_policy::load_policy(&migrated_policy).unwrap_or_else(|err| {
-        std::panic::panic_any(format!(
+        panic!(
             "load migrated policy {}: {err}",
             migrated_policy.display()
-        ))
+        )
     });
     let generated = migrated_entry(&cfg, "saved-generated-evidence");
     assert_eq!(generated.kind, allow_core::FindingKind::GeneratedCode);
@@ -357,7 +357,7 @@ fn saved_migrate_output_preserves_non_rust_evidence_matrix() {
     let fixture = SourceTreeFixture::new("saved-migrate-non-rust-evidence-matrix");
     let legacy_dir = fixture.root.join("legacy-policy");
     fs::create_dir_all(&legacy_dir)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create legacy policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create legacy policy dir: {err}"));
     write_fixture_doc(&fixture.root, "docs/source-exception-ledger.md");
     write_fixture_doc(&fixture.root, "docs/source-exception-ledger-evidence.md");
     write_fixture_doc(&fixture.root, "docs/source-exception-ledger-review.md");
@@ -367,7 +367,7 @@ fn saved_migrate_output_preserves_non_rust_evidence_matrix() {
         legacy_dir.join("non-rust-allowlist.toml"),
         non_rust_policy_with_evidence_fixture_text(),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write non-rust policy fixture: {err}")));
+    .unwrap_or_else(|err| panic!("write non-rust policy fixture: {err}"));
 
     let artifact_dir = fixture.root.join("target/cargo-allow");
     let compat_audit = artifact_dir.join("non-rust-compat-audit.json");
@@ -478,10 +478,10 @@ fn saved_migrate_output_preserves_non_rust_evidence_matrix() {
     );
 
     let cfg = allow_policy::load_policy(&migrated_policy).unwrap_or_else(|err| {
-        std::panic::panic_any(format!(
+        panic!(
             "load migrated policy {}: {err}",
             migrated_policy.display()
-        ))
+        )
     });
     let docs = migrated_entry_by_path(&cfg, Path::new("docs/source-exception-ledger.md"));
     assert!(docs.id.starts_with("saved-non-rust-doc--"), "docs id");
@@ -569,7 +569,7 @@ fn saved_migrate_output_is_deterministic_for_shuffled_non_rust_rows() {
     let fixture = SourceTreeFixture::new("saved-migrate-non-rust-shuffled-rows");
     let legacy_dir = fixture.root.join("legacy-policy");
     fs::create_dir_all(&legacy_dir)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create legacy policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create legacy policy dir: {err}"));
     write_fixture_doc(&fixture.root, "docs/guide.md");
     write_fixture_doc(&fixture.root, "docs/reference.md");
     write_fixture_doc(&fixture.root, "migration-evidence.md");
@@ -586,7 +586,7 @@ fn saved_migrate_output_is_deterministic_for_shuffled_non_rust_rows() {
     );
 
     fs::write(&legacy_policy, &forward).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("write forward policy fixture: {err}"))
+        panic!("write forward policy fixture: {err}")
     });
     run_cargo_allow(&[
         "migrate",
@@ -609,13 +609,13 @@ fn saved_migrate_output_is_deterministic_for_shuffled_non_rust_rows() {
         "filesystem_fallback",
     );
     let first_policy_text = fs::read_to_string(&migrated_policy).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("read forward migrated policy: {err}"))
+        panic!("read forward migrated policy: {err}")
     });
     let first_summary_text = fs::read_to_string(&migrate_summary).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("read forward migrate summary: {err}"))
+        panic!("read forward migrate summary: {err}")
     });
     let first_cfg = allow_policy::load_policy(&migrated_policy).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("load forward migrated policy: {err}"))
+        panic!("load forward migrated policy: {err}")
     });
     assert_eq!(
         first_cfg
@@ -635,13 +635,13 @@ fn saved_migrate_output_is_deterministic_for_shuffled_non_rust_rows() {
     );
 
     fs::remove_file(&migrated_policy).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("remove first migrated policy: {err}"))
+        panic!("remove first migrated policy: {err}")
     });
     fs::remove_file(&migrate_summary).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("remove first migrate summary: {err}"))
+        panic!("remove first migrate summary: {err}")
     });
     fs::write(&legacy_policy, &reverse).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("write reverse policy fixture: {err}"))
+        panic!("write reverse policy fixture: {err}")
     });
     run_cargo_allow(&[
         "migrate",
@@ -664,10 +664,10 @@ fn saved_migrate_output_is_deterministic_for_shuffled_non_rust_rows() {
         "filesystem_fallback",
     );
     let second_policy_text = fs::read_to_string(&migrated_policy).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("read reverse migrated policy: {err}"))
+        panic!("read reverse migrated policy: {err}")
     });
     let second_summary_text = fs::read_to_string(&migrate_summary).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("read reverse migrate summary: {err}"))
+        panic!("read reverse migrate summary: {err}")
     });
 
     assert_eq!(
@@ -723,7 +723,7 @@ fn saved_migrate_non_rust_negative_controls_fail_closed_or_surface_debt() {
     let fixture = SourceTreeFixture::new("saved-migrate-non-rust-missing-evidence");
     let legacy_dir = fixture.root.join("legacy-policy");
     fs::create_dir_all(&legacy_dir)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create legacy policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create legacy policy dir: {err}"));
     write_fixture_doc(&fixture.root, "docs/missing-evidence.md");
     let legacy_policy = legacy_dir.join("non-rust-allowlist.toml");
     copy_non_rust_negative_fixture("non-rust-missing-evidence.toml", &legacy_policy);
@@ -782,11 +782,11 @@ fn saved_migrate_non_rust_negative_controls_fail_closed_or_surface_debt() {
         "missing legacy evidence must remain visible in the migration summary: {summary}"
     );
     let policy_text = fs::read_to_string(&migrated_policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read migrated policy: {err}")));
+        .unwrap_or_else(|err| panic!("read migrated policy: {err}"));
     let summary_text = fs::read_to_string(&migrate_summary)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read migrate summary: {err}")));
+        .unwrap_or_else(|err| panic!("read migrate summary: {err}"));
     let cfg = allow_policy::load_policy(&migrated_policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("load migrated policy: {err}")));
+        .unwrap_or_else(|err| panic!("load migrated policy: {err}"));
     let entry = migrated_entry_by_path(&cfg, Path::new("docs/missing-evidence.md"));
     assert!(
         entry
@@ -861,19 +861,19 @@ fn saved_migrate_non_rust_negative_controls_fail_closed_or_surface_debt() {
     );
 
     fs::remove_file(&migrated_policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("remove migrated policy: {err}")));
+        .unwrap_or_else(|err| panic!("remove migrated policy: {err}"));
     fs::remove_file(&migrate_summary)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("remove migrate summary: {err}")));
+        .unwrap_or_else(|err| panic!("remove migrate summary: {err}"));
     run_cargo_allow(&migrate_args);
     assert_eq!(
         fs::read_to_string(&migrated_policy)
-            .unwrap_or_else(|err| std::panic::panic_any(format!("read rerun policy: {err}"))),
+            .unwrap_or_else(|err| panic!("read rerun policy: {err}")),
         policy_text,
         "unchanged missing-evidence migration must reproduce canonical policy bytes"
     );
     assert_eq!(
         fs::read_to_string(&migrate_summary)
-            .unwrap_or_else(|err| std::panic::panic_any(format!("read rerun summary: {err}"))),
+            .unwrap_or_else(|err| panic!("read rerun summary: {err}")),
         summary_text,
         "unchanged missing-evidence migration must reproduce summary bytes"
     );
@@ -883,7 +883,7 @@ fn assert_non_rust_dual_evidence_preserved() {
     let fixture = SourceTreeFixture::new("saved-migrate-non-rust-dual-evidence");
     let legacy_dir = fixture.root.join("legacy-policy");
     fs::create_dir_all(&legacy_dir)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create legacy policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create legacy policy dir: {err}"));
     let legacy_policy = legacy_dir.join("non-rust-allowlist.toml");
     copy_non_rust_negative_fixture("non-rust-dual-evidence.toml", &legacy_policy);
     write_fixture_doc(&fixture.root, "docs/dual-evidence.md");
@@ -912,7 +912,7 @@ fn assert_non_rust_dual_evidence_preserved() {
         "filesystem_fallback",
     );
     let cfg = allow_policy::load_policy(&migrated_policy)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("load migrated policy: {err}")));
+        .unwrap_or_else(|err| panic!("load migrated policy: {err}"));
     let entry = migrated_entry_by_path(&cfg, Path::new("docs/dual-evidence.md"));
     assert_eq!(
         entry.evidence,
@@ -933,7 +933,7 @@ fn assert_non_rust_fixture_rejected(
     let fixture = SourceTreeFixture::new(&format!("saved-migrate-{fixture_name}"));
     let legacy_dir = fixture.root.join("legacy-policy");
     fs::create_dir_all(&legacy_dir)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create legacy policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create legacy policy dir: {err}"));
     let legacy_policy = legacy_dir.join("non-rust-allowlist.toml");
     copy_non_rust_negative_fixture(fixture_name, &legacy_policy);
     let artifact_dir = fixture.root.join("target/cargo-allow");
@@ -980,7 +980,7 @@ fn assert_non_rust_fixture_rejected(
             .args(&args)
             .output()
             .unwrap_or_else(|err| {
-                std::panic::panic_any(format!("run {command} for {fixture_name}: {err}"))
+                panic!("run {command} for {fixture_name}: {err}")
             });
         assert!(
             !output.status.success(),
@@ -1005,11 +1005,11 @@ fn copy_non_rust_negative_fixture(name: &str, destination: &Path) {
         .join("../../tests/fixtures/migration")
         .join(name);
     fs::copy(&source, destination).unwrap_or_else(|err| {
-        std::panic::panic_any(format!(
+        panic!(
             "copy negative migration fixture {} to {}: {err}",
             source.display(),
             destination.display()
-        ))
+        )
     });
 }
 
@@ -1018,7 +1018,7 @@ fn saved_migrate_output_preserves_policy_exception_evidence_matrix() {
     let fixture = SourceTreeFixture::new("saved-migrate-policy-exception-evidence-matrix");
     let legacy_dir = fixture.root.join("legacy-policy");
     fs::create_dir_all(&legacy_dir)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create legacy policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create legacy policy dir: {err}"));
     write_fixture_doc(&fixture.root, "docs/ci.md");
     write_fixture_doc(&fixture.root, "docs/dependencies.md");
     write_fixture_doc(&fixture.root, "docs/release/process.md");
@@ -1027,22 +1027,22 @@ fn saved_migrate_output_preserves_policy_exception_evidence_matrix() {
         legacy_dir.join("workflow-allowlist.toml"),
         workflow_policy_with_evidence_fixture_text(),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write workflow policy fixture: {err}")));
+    .unwrap_or_else(|err| panic!("write workflow policy fixture: {err}"));
     fs::write(
         legacy_dir.join("dependency-surface-allowlist.toml"),
         dependency_policy_with_evidence_fixture_text(),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write dependency policy fixture: {err}")));
+    .unwrap_or_else(|err| panic!("write dependency policy fixture: {err}"));
     fs::write(
         legacy_dir.join("process-allowlist.toml"),
         process_policy_with_evidence_fixture_text(),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write process policy fixture: {err}")));
+    .unwrap_or_else(|err| panic!("write process policy fixture: {err}"));
     fs::write(
         legacy_dir.join("network-allowlist.toml"),
         network_policy_with_evidence_fixture_text(),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write network policy fixture: {err}")));
+    .unwrap_or_else(|err| panic!("write network policy fixture: {err}"));
 
     let artifact_dir = fixture.root.join("target/cargo-allow");
     let migrated_policy = artifact_dir.join("allow.migrated.toml");
@@ -1127,10 +1127,10 @@ fn saved_migrate_output_preserves_policy_exception_evidence_matrix() {
     );
 
     let cfg = allow_policy::load_policy(&migrated_policy).unwrap_or_else(|err| {
-        std::panic::panic_any(format!(
+        panic!(
             "load migrated policy {}: {err}",
             migrated_policy.display()
-        ))
+        )
     });
     let workflow = migrated_entry(
         &cfg,
@@ -1269,25 +1269,25 @@ fn saved_migrate_output_preserves_source_exception_evidence_matrix() {
     let fixture = SourceTreeFixture::new("saved-migrate-source-exception-evidence-matrix");
     let legacy_dir = fixture.root.join("legacy-policy");
     fs::create_dir_all(&legacy_dir)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create legacy policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create legacy policy dir: {err}"));
     write_fixture_doc(&fixture.root, "docs/evidence/unsafe/read.json");
     fs::write(
         legacy_dir.join("clippy-exceptions.toml"),
         clippy_policy_with_evidence_fixture_text(),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write clippy policy fixture: {err}")));
+    .unwrap_or_else(|err| panic!("write clippy policy fixture: {err}"));
     fs::write(
         legacy_dir.join("no-panic-allowlist.toml"),
         no_panic_allowlist_with_covered_by_fixture_text(),
     )
     .unwrap_or_else(|err| {
-        std::panic::panic_any(format!("write no-panic allowlist fixture: {err}"))
+        panic!("write no-panic allowlist fixture: {err}")
     });
     fs::write(
         legacy_dir.join("unsafe-allowlist.toml"),
         unsafe_policy_with_evidence_fixture_text(),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write unsafe policy fixture: {err}")));
+    .unwrap_or_else(|err| panic!("write unsafe policy fixture: {err}"));
 
     let artifact_dir = fixture.root.join("target/cargo-allow");
     let migrated_policy = artifact_dir.join("allow.migrated.toml");
@@ -1366,10 +1366,10 @@ fn saved_migrate_output_preserves_source_exception_evidence_matrix() {
     );
 
     let cfg = allow_policy::load_policy(&migrated_policy).unwrap_or_else(|err| {
-        std::panic::panic_any(format!(
+        panic!(
             "load migrated policy {}: {err}",
             migrated_policy.display()
-        ))
+        )
     });
     let clippy = migrated_entry(&cfg, "saved-clippy-evidence");
     assert_eq!(clippy.kind, allow_core::FindingKind::LintException);
@@ -1425,12 +1425,12 @@ fn saved_migrate_output_routes_unsafe_baseline_debt_closeout() {
     let fixture = SourceTreeFixture::new("saved-migrate-unsafe-baseline-debt-closeout");
     let legacy_dir = fixture.root.join("legacy-policy");
     fs::create_dir_all(&legacy_dir)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create legacy policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create legacy policy dir: {err}"));
     fs::write(
         legacy_dir.join("unsafe-allowlist.toml"),
         unsafe_policy_fixture_text(),
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write unsafe policy fixture: {err}")));
+    .unwrap_or_else(|err| panic!("write unsafe policy fixture: {err}"));
 
     let artifact_dir = fixture.root.join("target/cargo-allow");
     let migrated_policy = artifact_dir.join("allow.migrated.toml");
@@ -1537,10 +1537,10 @@ fn saved_migrate_output_routes_unsafe_baseline_debt_closeout() {
             )
         });
     let [baseline_debt] = follow_up_queues.as_slice() else {
-        std::panic::panic_any(format!(
+        panic!(
             "expected one migrate unsafe baseline-debt follow-up queue, got {}",
             follow_up_queues.len()
-        ));
+        );
     };
     assert_eq!(
         baseline_debt
@@ -1608,10 +1608,10 @@ fn saved_migrate_output_routes_unsafe_baseline_debt_closeout() {
     );
 
     let cfg = allow_policy::load_policy(&migrated_policy).unwrap_or_else(|err| {
-        std::panic::panic_any(format!(
+        panic!(
             "load migrated policy {}: {err}",
             migrated_policy.display()
-        ))
+        )
     });
     let unsafe_entry = migrated_entry(&cfg, "unsafe-ffi-boundary");
     assert_eq!(unsafe_entry.kind, allow_core::FindingKind::Unsafe);
@@ -1661,13 +1661,13 @@ fn saved_migrate_output_routes_baseline_debt_follow_up() {
     let fixture = SourceTreeFixture::new("saved-migrate-baseline-debt-follow-up");
     let legacy_dir = fixture.root.join("legacy-policy");
     fs::create_dir_all(&legacy_dir)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create legacy policy dir: {err}")));
+        .unwrap_or_else(|err| panic!("create legacy policy dir: {err}"));
     fs::write(
         legacy_dir.join("no-panic-baseline.toml"),
         no_panic_baseline_policy_fixture_text(),
     )
     .unwrap_or_else(|err| {
-        std::panic::panic_any(format!("write no-panic baseline policy fixture: {err}"))
+        panic!("write no-panic baseline policy fixture: {err}")
     });
 
     let artifact_dir = fixture.root.join("target/cargo-allow");
@@ -1744,10 +1744,10 @@ fn saved_migrate_output_routes_baseline_debt_follow_up() {
             std::panic::panic_any("migrate summary should route baseline-debt follow-up queues")
         });
     let [baseline_debt] = follow_up_queues.as_slice() else {
-        std::panic::panic_any(format!(
+        panic!(
             "expected one migrate baseline-debt follow-up queue, got {}",
             follow_up_queues.len()
-        ));
+        );
     };
     assert_eq!(
         baseline_debt
@@ -1786,10 +1786,10 @@ fn saved_migrate_output_routes_baseline_debt_follow_up() {
     );
 
     let cfg = allow_policy::load_policy(&migrated_policy).unwrap_or_else(|err| {
-        std::panic::panic_any(format!(
+        panic!(
             "load migrated policy {}: {err}",
             migrated_policy.display()
-        ))
+        )
     });
     let baseline = migrated_entry(&cfg, "panic-baseline-0001");
     assert_eq!(baseline.kind, allow_core::FindingKind::Panic);
@@ -2120,18 +2120,18 @@ fn write_fixture_doc(root: &Path, relative_path: &str) {
     let path = root.join(relative_path);
     let parent = path
         .parent()
-        .unwrap_or_else(|| std::panic::panic_any(format!("fixture doc parent: {relative_path}")));
+        .unwrap_or_else(|| panic!("fixture doc parent: {relative_path}"));
     fs::create_dir_all(parent)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create fixture doc dir: {err}")));
+        .unwrap_or_else(|err| panic!("create fixture doc dir: {err}"));
     fs::write(&path, "fixture evidence\n")
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write fixture doc: {err}")));
+        .unwrap_or_else(|err| panic!("write fixture doc: {err}"));
 }
 
 fn migrated_entry<'a>(cfg: &'a allow_core::AllowConfig, id: &str) -> &'a allow_core::AllowEntry {
     cfg.allow
         .iter()
         .find(|entry| entry.id == id)
-        .unwrap_or_else(|| std::panic::panic_any(format!("missing migrated entry {id}")))
+        .unwrap_or_else(|| panic!("missing migrated entry {id}"))
 }
 
 fn migrated_entry_by_path<'a>(
@@ -2142,14 +2142,14 @@ fn migrated_entry_by_path<'a>(
         .iter()
         .find(|entry| entry.path.as_deref() == Some(path))
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "missing migrated entry for path {}; got {:?}",
                 path.display(),
                 cfg.allow
                     .iter()
                     .map(|entry| (&entry.id, entry.path.as_deref()))
                     .collect::<Vec<_>>()
-            ))
+            )
         })
 }
 
@@ -2158,9 +2158,9 @@ fn migrate_queue<'a>(queues: &'a [serde_json::Value], item_kind: &str) -> &'a se
         .iter()
         .find(|queue| queue.get("item_kind").and_then(serde_json::Value::as_str) == Some(item_kind))
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!(
+            panic!(
                 "missing migrate evidence repair queue {item_kind}; got {queues:?}"
-            ))
+            )
         })
 }
 

@@ -58,7 +58,7 @@ fn inventory_does_not_intrinsically_exclude_tool_owned_cache() {
     let root = temp_root("tool-owned-cache");
     write_file(root.join("tracked.txt"), "tracked");
     fs::create_dir_all(root.join("target/cargo-allow/cache"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("cache dir: {err}")));
+        .unwrap_or_else(|err| panic!("cache dir: {err}"));
     write_file(
         root.join("target/cargo-allow/cache/fact.rs"),
         "fn cached() {}",
@@ -71,7 +71,7 @@ fn inventory_does_not_intrinsically_exclude_tool_owned_cache() {
         include_untracked: false,
     };
     let first = inventory(&root, &options)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("first inventory: {err}")));
+        .unwrap_or_else(|err| panic!("first inventory: {err}"));
     assert_eq!(first.completeness, InventoryCompleteness::Complete);
     let include_untracked = inventory(
         &root,
@@ -81,14 +81,14 @@ fn inventory_does_not_intrinsically_exclude_tool_owned_cache() {
             ..options.clone()
         },
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("untracked inventory: {err}")));
+    .unwrap_or_else(|err| panic!("untracked inventory: {err}"));
     assert_eq!(
         include_untracked.completeness,
         InventoryCompleteness::Scoped
     );
     run_git(&root, &["add", "-f", "target/cargo-allow/cache/fact.rs"]);
     let second = inventory(&root, &options)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("second inventory: {err}")));
+        .unwrap_or_else(|err| panic!("second inventory: {err}"));
     assert_eq!(second.completeness, InventoryCompleteness::Complete);
     assert!(first.files.contains(&PathBuf::from("tracked.txt")));
     assert!(
@@ -97,9 +97,9 @@ fn inventory_does_not_intrinsically_exclude_tool_owned_cache() {
             .contains(&PathBuf::from("target/cargo-allow/cache/fact.rs"))
     );
     std::fs::remove_file(root.join("target/cargo-allow/cache/fact.rs"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("remove cache fixture: {err}")));
+        .unwrap_or_else(|err| panic!("remove cache fixture: {err}"));
     let deleted = inventory(&root, &options)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("deleted inventory: {err}")));
+        .unwrap_or_else(|err| panic!("deleted inventory: {err}"));
     assert_eq!(deleted.completeness, InventoryCompleteness::Partial);
     assert!(
         deleted
@@ -135,9 +135,9 @@ fn inventory_defaults_to_git_tracked_and_can_include_untracked() {
     run_git(&root, &["add", "tracked.txt"]);
 
     let tracked = inventory_files(&root, &InventoryOptions::default())
-        .unwrap_or_else(|err| std::panic::panic_any(format!("tracked inventory: {err}")));
+        .unwrap_or_else(|err| panic!("tracked inventory: {err}"));
     let tracked_inventory = inventory(&root, &InventoryOptions::default())
-        .unwrap_or_else(|err| std::panic::panic_any(format!("tracked inventory: {err}")));
+        .unwrap_or_else(|err| panic!("tracked inventory: {err}"));
     let with_untracked = inventory_files(
         &root,
         &InventoryOptions {
@@ -145,7 +145,7 @@ fn inventory_defaults_to_git_tracked_and_can_include_untracked() {
             ..InventoryOptions::default()
         },
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("untracked-inclusive inventory: {err}")));
+    .unwrap_or_else(|err| panic!("untracked-inclusive inventory: {err}"));
 
     assert!(tracked.contains(&PathBuf::from("tracked.txt")));
     assert!(!tracked.contains(&PathBuf::from("untracked.txt")));
@@ -179,7 +179,7 @@ fn inventory_without_scope_reports_complete() {
             include_untracked: false,
         },
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("complete inventory: {err}")));
+    .unwrap_or_else(|err| panic!("complete inventory: {err}"));
 
     assert_eq!(inventory.completeness, InventoryCompleteness::Complete);
     remove_dir(&root);
@@ -196,7 +196,7 @@ fn git_tracked_inventory_reports_empty_tracked_set() {
     run_git(&root, &["init"]);
 
     let tracked_inventory = inventory(&root, &InventoryOptions::default())
-        .unwrap_or_else(|err| std::panic::panic_any(format!("tracked inventory: {err}")));
+        .unwrap_or_else(|err| panic!("tracked inventory: {err}"));
 
     assert_eq!(tracked_inventory.source, InventorySource::GitTracked);
     assert_eq!(
@@ -233,10 +233,10 @@ fn git_tracked_inventory_skips_deleted_worktree_files() {
     run_git(&root, &["init"]);
     run_git(&root, &["add", "kept.txt", "deleted.txt"]);
     fs::remove_file(root.join("deleted.txt"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("delete tracked file: {err}")));
+        .unwrap_or_else(|err| panic!("delete tracked file: {err}"));
 
     let tracked_inventory = inventory(&root, &InventoryOptions::default())
-        .unwrap_or_else(|err| std::panic::panic_any(format!("tracked inventory: {err}")));
+        .unwrap_or_else(|err| panic!("tracked inventory: {err}"));
 
     assert_eq!(tracked_inventory.source, InventorySource::GitTracked);
     assert_eq!(
@@ -441,7 +441,7 @@ fn inventory_reports_filesystem_fallback_source_without_git() {
     write_file(root.join("tracked.txt"), "tracked");
 
     let snapshot = inventory(&root, &InventoryOptions::default())
-        .unwrap_or_else(|err| std::panic::panic_any(format!("snapshot inventory: {err}")));
+        .unwrap_or_else(|err| panic!("snapshot inventory: {err}"));
 
     assert_eq!(snapshot.source, InventorySource::FilesystemFallback);
     assert_eq!(snapshot.completeness, InventoryCompleteness::Fallback);
@@ -461,7 +461,7 @@ fn include_untracked_fallback_preserves_git_error() {
             ..InventoryOptions::default()
         },
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("snapshot inventory: {err}")));
+    .unwrap_or_else(|err| panic!("snapshot inventory: {err}"));
 
     assert_eq!(snapshot.source, InventorySource::FilesystemIncludeUntracked);
     assert_eq!(snapshot.completeness, InventoryCompleteness::Fallback);
@@ -501,15 +501,15 @@ fn source_tree_root_uses_nearest_git_root_without_cargo_manifest() {
     let root = temp_root("git-root-no-cargo");
     let nested = root.join("src").join("nested");
     fs::create_dir_all(&nested)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("nested dir: {err}")));
+        .unwrap_or_else(|err| panic!("nested dir: {err}"));
     run_git(&root, &["init"]);
 
     let discovered = discover_source_tree_root(&nested)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("discover source tree root: {err}")));
+        .unwrap_or_else(|err| panic!("discover source tree root: {err}"));
 
     let canonical = root
         .canonicalize()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("canonical root: {err}")));
+        .unwrap_or_else(|err| panic!("canonical root: {err}"));
     assert_eq!(discovered, canonical);
     remove_dir(&root);
 }
@@ -519,15 +519,15 @@ fn source_tree_root_accepts_gitfile_worktree_marker_without_cargo_manifest() {
     let root = temp_root("gitfile-root-no-cargo");
     let nested = root.join("src").join("nested");
     fs::create_dir_all(&nested)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("nested dir: {err}")));
+        .unwrap_or_else(|err| panic!("nested dir: {err}"));
     write_file(root.join(".git"), "gitdir: ../.git/worktrees/cargo-allow\n");
 
     let discovered = discover_source_tree_root(&nested)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("discover source tree root: {err}")));
+        .unwrap_or_else(|err| panic!("discover source tree root: {err}"));
 
     let canonical = root
         .canonicalize()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("canonical root: {err}")));
+        .unwrap_or_else(|err| panic!("canonical root: {err}"));
     assert_eq!(discovered, canonical);
     remove_dir(&root);
 }
@@ -541,16 +541,16 @@ fn source_tree_root_ignores_broken_cargo_manifest() {
     let root = temp_root("broken-cargo");
     let nested = root.join("crates").join("demo");
     fs::create_dir_all(&nested)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("nested dir: {err}")));
+        .unwrap_or_else(|err| panic!("nested dir: {err}"));
     write_file(root.join("Cargo.toml"), "this is not toml");
     run_git(&root, &["init"]);
 
     let discovered = discover_source_tree_root(&nested)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("discover source tree root: {err}")));
+        .unwrap_or_else(|err| panic!("discover source tree root: {err}"));
 
     let canonical = root
         .canonicalize()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("canonical root: {err}")));
+        .unwrap_or_else(|err| panic!("canonical root: {err}"));
     assert_eq!(discovered, canonical);
     remove_dir(&root);
 }
@@ -560,14 +560,14 @@ fn source_tree_root_falls_back_to_start_without_git() {
     let root = temp_root("snapshot-no-git");
     let nested = root.join("snapshot").join("src");
     fs::create_dir_all(&nested)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("nested dir: {err}")));
+        .unwrap_or_else(|err| panic!("nested dir: {err}"));
 
     let discovered = discover_source_tree_root(&nested)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("discover source tree root: {err}")));
+        .unwrap_or_else(|err| panic!("discover source tree root: {err}"));
 
     let canonical = nested
         .canonicalize()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("canonical nested: {err}")));
+        .unwrap_or_else(|err| panic!("canonical nested: {err}"));
     assert_eq!(discovered, canonical);
     remove_dir(&root);
 }
@@ -578,15 +578,15 @@ fn explicit_source_tree_root_wins_over_git_ancestor() {
     let explicit = root.join("snapshot");
     let nested = explicit.join("src");
     fs::create_dir_all(&nested)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("nested dir: {err}")));
+        .unwrap_or_else(|err| panic!("nested dir: {err}"));
     run_git(&root, &["init"]);
 
     let discovered = resolve_source_tree_root(Some(&explicit), &nested)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("resolve source tree root: {err}")));
+        .unwrap_or_else(|err| panic!("resolve source tree root: {err}"));
 
     let canonical = explicit
         .canonicalize()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("canonical explicit: {err}")));
+        .unwrap_or_else(|err| panic!("canonical explicit: {err}"));
     assert_eq!(discovered, canonical);
     remove_dir(&root);
 }
@@ -687,20 +687,20 @@ fn recursive_inventory_stops_at_entry_limit() -> Result<(), Box<dyn std::error::
 fn temp_root(label: &str) -> PathBuf {
     let unique = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("system clock: {err}")))
+        .unwrap_or_else(|err| panic!("system clock: {err}"))
         .as_nanos();
     let root = std::env::temp_dir().join(format!(
         "cargo-allow-{label}-{}-{unique}",
         std::process::id()
     ));
     fs::create_dir_all(&root)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create temp root: {err}")));
+        .unwrap_or_else(|err| panic!("create temp root: {err}"));
     root
 }
 
 fn write_file(path: PathBuf, contents: &str) {
     fs::write(&path, contents)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("write {}: {err}", path.display())));
+        .unwrap_or_else(|err| panic!("write {}: {err}", path.display()));
 }
 
 fn run_git(root: &Path, args: &[&str]) {
@@ -709,7 +709,7 @@ fn run_git(root: &Path, args: &[&str]) {
         .arg(root)
         .args(args)
         .status()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("invoke git: {err}")));
+        .unwrap_or_else(|err| panic!("invoke git: {err}"));
     assert!(status.success(), "git command failed: {args:?}");
 }
 
@@ -727,7 +727,7 @@ fn git_available() -> bool {
 
 fn remove_dir(path: &Path) {
     fs::remove_dir_all(path)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("remove temp root: {err}")));
+        .unwrap_or_else(|err| panic!("remove temp root: {err}"));
 }
 
 #[test]
@@ -745,9 +745,9 @@ fn inventory_include_untracked_uses_filesystem_and_applies_default_ignores() {
     let root = temp_root("include-untracked");
     write_file(root.join("tracked.txt"), "tracked");
     fs::create_dir_all(root.join("target"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("target dir: {err}")));
+        .unwrap_or_else(|err| panic!("target dir: {err}"));
     fs::create_dir_all(root.join(".git"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("git dir: {err}")));
+        .unwrap_or_else(|err| panic!("git dir: {err}"));
     write_file(root.join("target").join("ignored.txt"), "ignored");
     write_file(root.join(".git").join("ignored.txt"), "ignored");
 
@@ -756,7 +756,7 @@ fn inventory_include_untracked_uses_filesystem_and_applies_default_ignores() {
         ..InventoryOptions::default()
     };
     let snapshot = inventory(&root, &options)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("include untracked inventory: {err}")));
+        .unwrap_or_else(|err| panic!("include untracked inventory: {err}"));
 
     assert_eq!(snapshot.source, InventorySource::FilesystemIncludeUntracked);
     assert_eq!(snapshot.files, vec![PathBuf::from("tracked.txt")]);
@@ -772,7 +772,7 @@ fn inventory_sorts_and_deduplicates_git_tracked_files() {
     run_git(&root, &["add", "b.txt", "a.txt"]);
 
     let snapshot = inventory(&root, &InventoryOptions::default())
-        .unwrap_or_else(|err| std::panic::panic_any(format!("git inventory: {err}")));
+        .unwrap_or_else(|err| panic!("git inventory: {err}"));
 
     assert_eq!(snapshot.source, InventorySource::GitTracked);
     assert_eq!(
@@ -787,17 +787,17 @@ fn source_tree_root_accepts_start_file_by_using_parent_directory() {
     let root = temp_root("start-file");
     let nested = root.join("src");
     fs::create_dir_all(&nested)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("nested dir: {err}")));
+        .unwrap_or_else(|err| panic!("nested dir: {err}"));
     let file = nested.join("lib.rs");
     write_file(file.clone(), "fn main() {}\n");
     run_git(&root, &["init"]);
 
     let discovered = discover_source_tree_root(&file)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("discover source tree root: {err}")));
+        .unwrap_or_else(|err| panic!("discover source tree root: {err}"));
 
     let canonical = root
         .canonicalize()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("canonical root: {err}")));
+        .unwrap_or_else(|err| panic!("canonical root: {err}"));
     assert_eq!(discovered, canonical);
     remove_dir(&root);
 }

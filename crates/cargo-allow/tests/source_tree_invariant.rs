@@ -8,7 +8,7 @@ fn rust_sources_do_not_spawn_cargo_or_compiler_tools() {
 
     for path in rust_files(&root) {
         let text = fs::read_to_string(&path)
-            .unwrap_or_else(|err| std::panic::panic_any(format!("read {}: {err}", path.display())));
+            .unwrap_or_else(|err| panic!("read {}: {err}", path.display()));
         let compact_text = compact_for_token_scan(&text);
         for tool in forbidden_tool_literals() {
             let forbidden = format!("Command::new({tool}");
@@ -99,7 +99,7 @@ fn cargo_dependency_files_do_not_add_cargo_metadata_dependencies() {
 
     for path in cargo_dependency_files(&root) {
         let text = fs::read_to_string(&path)
-            .unwrap_or_else(|err| std::panic::panic_any(format!("read {}: {err}", path.display())));
+            .unwrap_or_else(|err| panic!("read {}: {err}", path.display()));
         for token in [
             ["cargo", "_metadata"].concat(),
             ["cargo", "-metadata"].concat(),
@@ -140,7 +140,7 @@ fn published_library_crates_document_source_tree_boundary() {
 
     for path in library_crate_roots(&root) {
         let text = fs::read_to_string(&path)
-            .unwrap_or_else(|err| std::panic::panic_any(format!("read {}: {err}", path.display())));
+            .unwrap_or_else(|err| panic!("read {}: {err}", path.display()));
         let docs = crate_level_docs(&text);
         let relative = source_tree_path(&root, &path);
         if docs.is_empty() {
@@ -197,11 +197,11 @@ fn library_crate_roots(root: &Path) -> Vec<PathBuf> {
     let crates_dir = root.join("crates");
     let mut files = Vec::new();
     let entries = fs::read_dir(&crates_dir).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("read {}: {err}", crates_dir.display()))
+        panic!("read {}: {err}", crates_dir.display())
     });
     for entry in entries {
         let entry = entry.unwrap_or_else(|err| {
-            std::panic::panic_any(format!("read entry under {}: {err}", crates_dir.display()))
+            panic!("read entry under {}: {err}", crates_dir.display())
         });
         let lib = entry.path().join("src/lib.rs");
         if lib.is_file() {
@@ -239,10 +239,10 @@ fn documents_source_tree_boundary(docs: &str) -> bool {
 
 fn collect_files(root: &Path, files: &mut Vec<PathBuf>, include: impl Fn(&Path) -> bool + Copy) {
     let entries = fs::read_dir(root)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read {}: {err}", root.display())));
+        .unwrap_or_else(|err| panic!("read {}: {err}", root.display()));
     for entry in entries {
         let entry = entry.unwrap_or_else(|err| {
-            std::panic::panic_any(format!("read entry under {}: {err}", root.display()))
+            panic!("read entry under {}: {err}", root.display())
         });
         let path = entry.path();
         let name = entry.file_name();
@@ -250,7 +250,7 @@ fn collect_files(root: &Path, files: &mut Vec<PathBuf>, include: impl Fn(&Path) 
             continue;
         }
         let file_type = entry.file_type().unwrap_or_else(|err| {
-            std::panic::panic_any(format!("read file type {}: {err}", path.display()))
+            panic!("read file type {}: {err}", path.display())
         });
         if file_type.is_dir() {
             collect_files(&path, files, include);

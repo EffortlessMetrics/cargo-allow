@@ -31,7 +31,7 @@ const EXPECTED_STAGE_IDS: &[&str] = &[
 #[test]
 fn example_three_product_dogfood_matches_schema_constants() {
     let example: serde_json::Value = serde_json::from_str(EXAMPLE_RECEIPT)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("example receipt json: {err}")));
+        .unwrap_or_else(|err| panic!("example receipt json: {err}"));
     assert_eq!(
         example.get("schema_id").and_then(serde_json::Value::as_str),
         Some(SCHEMA_ID)
@@ -108,7 +108,7 @@ fn dogfood_script_and_fixture_preserve_stage_execution_modes() {
         let stage_row = STAGE_FIXTURE
             .lines()
             .find(|line| line.contains(&format!("id = \"{stage_id}\"")))
-            .unwrap_or_else(|| std::panic::panic_any(format!("fixture missing {stage_id}")));
+            .unwrap_or_else(|| panic!("fixture missing {stage_id}"));
         assert!(
             stage_row.contains(&format!("execution = \"{execution}\"")),
             "fixture mode drift for {stage_id}: {execution}"

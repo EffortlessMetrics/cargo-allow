@@ -38,6 +38,7 @@
 - `MoveToSharedProtocol`: **4**
 - `MoveToSharedSnapshot`: **19**
 - `RemainCargoAllowCore`: **4**
+- `RemainCargoIntent`: **1**
 - `RemainProviderOwned`: **1**
 - `RepositoryDecisionRequired`: **1**
 
@@ -50,6 +51,17 @@
 5. **#2582** — first real move: minimal `repo-protocol` envelope with parity evidence.
 
 ## Entries
+
+### `ADD-INTENT-MODEL-AGENTIC-CANDIDATE`
+
+- Current: Pure ClaimRef and candidate-admission contracts for one-writer repository work
+- Target: `cargo-intent / intent-model::agentic_candidate`
+- Disposition: `RemainCargoIntent`
+- Stage/status: `IntentModel` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: Retain while the agentic candidate contract is supported
+- Next: #3975 consumes Create eligibility through atomic reservation.
+- Deletion output: No compatibility deletion; this is a new intent-model contract.
 
 ### `INVENTORY-CARGO_INTENT-SRC`
 

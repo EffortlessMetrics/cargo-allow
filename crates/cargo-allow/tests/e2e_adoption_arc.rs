@@ -35,7 +35,7 @@ fn full_adoption_arc_from_init_to_passing_check() {
         .arg("init")
         .arg("--strict")
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run init: {err}")));
+        .unwrap_or_else(|err| panic!("run init: {err}"));
     assert_status("init", &init, true);
     assert!(
         init.stdout.windows(7).any(|w| w == b"created"),
@@ -56,7 +56,7 @@ fn full_adoption_arc_from_init_to_passing_check() {
         .arg("--output")
         .arg(&audit_output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run audit: {err}")));
+        .unwrap_or_else(|err| panic!("run audit: {err}"));
     assert_status("audit", &audit, true);
     let audit_report =
         assert_saved_json_artifact(&audit_output, "audit", "cargo-allow.report.v1", "audit");
@@ -78,10 +78,10 @@ fn full_adoption_arc_from_init_to_passing_check() {
         .arg("--format")
         .arg("json")
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run check (fail): {err}")));
+        .unwrap_or_else(|err| panic!("run check (fail): {err}"));
     assert_status("check (fail)", &check_fail, false);
     let fail_report = serde_json::from_slice::<Value>(&check_fail.stdout)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("check fail JSON: {err}")));
+        .unwrap_or_else(|err| panic!("check fail JSON: {err}"));
     assert_eq!(
         fail_report.pointer("/failed").and_then(Value::as_bool),
         Some(true),
@@ -110,7 +110,7 @@ fn full_adoption_arc_from_init_to_passing_check() {
         .arg("--output")
         .arg(&why_output)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run why: {err}")));
+        .unwrap_or_else(|err| panic!("run why: {err}"));
     assert_status("why", &why, true);
     assert_stdout_empty("why", &why, "--output should not emit JSON to stdout");
     assert_stderr_empty(
@@ -148,7 +148,7 @@ fn full_adoption_arc_from_init_to_passing_check() {
         .arg("test:e2e_adoption_arc")
         .arg("--update")
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run add: {err}")));
+        .unwrap_or_else(|err| panic!("run add: {err}"));
     assert_status("add", &add, true);
     assert_file_contains(
         &root.join("policy/allow.toml"),
@@ -171,10 +171,10 @@ fn full_adoption_arc_from_init_to_passing_check() {
         .arg("--format")
         .arg("json")
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run check (pass): {err}")));
+        .unwrap_or_else(|err| panic!("run check (pass): {err}"));
     assert_status("check (pass)", &check_pass, true);
     let pass_report = serde_json::from_slice::<Value>(&check_pass.stdout)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("check pass JSON: {err}")));
+        .unwrap_or_else(|err| panic!("check pass JSON: {err}"));
     assert_eq!(
         pass_report.pointer("/failed").and_then(Value::as_bool),
         Some(false),
@@ -191,12 +191,12 @@ fn full_adoption_arc_from_init_to_passing_check() {
 
 fn write_source_fixture(root: &Path) {
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+        .unwrap_or_else(|err| panic!("create src dir: {err}"));
     fs::write(
         root.join("src/lib.rs"),
         "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| std::panic::panic_any(format!("write source fixture: {err}")));
+    .unwrap_or_else(|err| panic!("write source fixture: {err}"));
 }
 
 fn git(root: &Path, args: &[&str]) {
@@ -205,19 +205,19 @@ fn git(root: &Path, args: &[&str]) {
         .arg(root)
         .args(args)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
+        .unwrap_or_else(|err| panic!("git {args:?}: {err}"));
     if !output.status.success() {
-        std::panic::panic_any(format!(
+        panic!(
             "git {args:?} failed: stdout=`{}` stderr=`{}`",
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
-        ));
+        );
     }
 }
 
 fn assert_file_contains(path: &Path, needle: &str, message: &str) {
     let contents = fs::read_to_string(path)
-        .unwrap_or_else(|err| std::panic::panic_any(format!("read {}: {err}", path.display())));
+        .unwrap_or_else(|err| panic!("read {}: {err}", path.display()));
     assert!(
         contents.contains(needle),
         "{message}: expected `{needle}` in {path:?}:\n{contents}"

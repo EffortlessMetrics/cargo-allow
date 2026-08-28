@@ -35,7 +35,7 @@ pub(crate) fn run_cargo_allow_expect_status(
     let output = cargo_allow_command()
         .args(args)
         .output()
-        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow: {err}")));
+        .unwrap_or_else(|err| panic!("run cargo-allow: {err}"));
     let command = format!("cargo-allow {}", args.join(" "));
     assert_status(&command, &output, should_succeed);
     assert_stdout_empty(
@@ -115,7 +115,7 @@ fn assert_inventory(value: &serde_json::Value, expected_scanner: &str, expected_
 
 pub(crate) fn assert_policy_output(path: &Path) {
     let text = fs::read_to_string(path).unwrap_or_else(|err| {
-        std::panic::panic_any(format!("read policy output {}: {err}", path.display()))
+        panic!("read policy output {}: {err}", path.display())
     });
     assert!(
         text.contains("schema_version = \"0.1\""),
@@ -134,7 +134,7 @@ pub(crate) fn assert_proof_commands_stay_cargo_allow(value: &serde_json::Value, 
         .pointer(pointer)
         .and_then(serde_json::Value::as_array)
         .unwrap_or_else(|| {
-            std::panic::panic_any(format!("{pointer} should point to proof_commands array"))
+            panic!("{pointer} should point to proof_commands array")
         });
     assert!(
         !commands.is_empty(),
@@ -143,7 +143,7 @@ pub(crate) fn assert_proof_commands_stay_cargo_allow(value: &serde_json::Value, 
 
     for command in commands {
         let command = command.as_str().unwrap_or_else(|| {
-            std::panic::panic_any(format!("{pointer} proof command should be a string"))
+            panic!("{pointer} proof command should be a string")
         });
         assert!(
             command.starts_with("cargo-allow "),
@@ -166,5 +166,5 @@ fn forbidden_tool_token_matches(token: &str, forbidden: &str) -> bool {
 
 pub(crate) fn path_arg(path: &Path) -> &str {
     path.to_str()
-        .unwrap_or_else(|| std::panic::panic_any(format!("non-UTF-8 path: {}", path.display())))
+        .unwrap_or_else(|| panic!("non-UTF-8 path: {}", path.display()))
 }
