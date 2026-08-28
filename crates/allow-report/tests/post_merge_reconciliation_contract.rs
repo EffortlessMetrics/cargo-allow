@@ -81,7 +81,10 @@ fn partial_and_missing_effects_cannot_complete_the_claim() {
 #[test]
 fn unknown_facts_are_not_a_clean_result() {
     let mut input = request();
-    input.expected_effects[0].status = LandedEffectStatusV1::Unknown;
+    input.expected_effects = vec![LandedEffectV1 {
+        effect_id: "effect-001".to_string(),
+        status: LandedEffectStatusV1::Unknown,
+    }];
     let result = PostMergeReconciliationResultV1::evaluate(input);
     assert_eq!(result.disposition, ReconciliationDispositionV1::NotProven);
     assert_eq!(result.next_frontier, NextFrontierV1::RunPostMergeProof);
@@ -97,9 +100,10 @@ fn malformed_and_duplicate_inputs_fail_closed() {
     );
 
     let mut duplicate = request();
-    duplicate
-        .expected_effects
-        .push(duplicate.expected_effects[0].clone());
+    duplicate.expected_effects.push(LandedEffectV1 {
+        effect_id: "effect-001".to_string(),
+        status: LandedEffectStatusV1::Present,
+    });
     assert_eq!(
         PostMergeReconciliationResultV1::evaluate(duplicate).disposition,
         ReconciliationDispositionV1::InstrumentFailure

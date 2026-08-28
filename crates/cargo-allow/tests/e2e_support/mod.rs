@@ -20,11 +20,11 @@ pub fn assert_success_and_quiet(command: &str, result: &Output) {
 pub fn write_file(root: &std::path::Path, relative: &str, contents: &str) {
     let path = root.join(relative);
     fs::create_dir_all(path.parent().unwrap_or_else(|| {
-        panic!("fixture path has no parent: {}", path.display())
+        std::panic::panic_any(format!("fixture path has no parent: {}", path.display()))
     }))
     .unwrap_or_else(|err| {
-        panic!("create fixture parent {}: {err}", path.display())
+        std::panic::panic_any(format!("create fixture parent {}: {err}", path.display()))
     });
     fs::write(&path, contents)
-        .unwrap_or_else(|err| panic!("write {}: {err}", path.display()));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write {}: {err}", path.display())));
 }

@@ -1,0 +1,49 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11162"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:555a719f24953562fa2ab4db2f312ce3833f7f19555f6e10c16fa8d5f9152f70"
+reason = "receipt for docs/adr/CARGO-ALLOW-ADR-0004-source-syntax-only-scan.md restored by the release-gate repair (#4010, cites #3997)"
+
+[[records]]
+allow_ids = ["allow-11163"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:8869802ef362bf9190d8d85e35ad7b1b023e99df393e029b22a8ed5f25634dec"
+reason = "receipt for docs/adr/CARGO-ALLOW-ADR-0005-baseline-debt-window.md restored by the release-gate repair (#4010, cites #3997)"
+
+[[records]]
+allow_ids = ["allow-11164"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ac2e8063e483157b31ed7bc6b99aa5573d58fc87183c4be8884f8cdc5632bd07"
+reason = "receipt for docs/adr/CARGO-ALLOW-ADR-0006-structural-identity-v1.md restored by the release-gate repair (#4010, cites #3997)"
+
+[[records]]
+allow_ids = ["allow-11165"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:75d7a84f28184ac1bdba301db88ae024baa74cc373289c730cdb2bc4e6879011"
+reason = "receipt for docs/adr/CARGO-ALLOW-ADR-0007-crate-namespace-policy.md restored by the release-gate repair (#4010, cites #3997)"
+
+[[records]]
+allow_ids = ["allow-11166"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e4dd1976ac691a5defef485e9b6d1f37e76b43d6e1bd086f39b0959dd3b0db0e"
+reason = "receipt for docs/repository-metadata.md restored by the release-gate repair (#4010, cites #3991)"
+
+[[records]]
+allow_ids = ["allow-11167"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:b0ba72d929aea6e57c41a42256638cb9413bf6fefd6b720216933eae90646ed0"
+reason = "receipt for scripts/check-toolchain-profile.sh restored by the release-gate repair (#4010, cites #3454)"
+
+[[records]]
+allow_ids = ["allow-11168"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:12fb9e8ce1233259a3d4b53fb4684bfbc4db1bceb58042378a183ef6536573fa"
+reason = "receipt for scripts/test-check-toolchain-profile.sh restored by the release-gate repair (#4010, cites #3454)"
+
+[[records]]
+allow_ids = ["allow-11169"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:7c6f37ce4c00b0d718b8792582af4ec281766bcb2cc39a7e88ba2546ed01da3a"
+reason = "self-receipt for this revision note file, matching the #3792 precedent"

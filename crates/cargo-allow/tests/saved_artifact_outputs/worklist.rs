@@ -961,7 +961,7 @@ fn assert_proof_command_present(value: &serde_json::Value, pointer: &str, expect
         .pointer(pointer)
         .and_then(serde_json::Value::as_array)
         .unwrap_or_else(|| {
-            panic!("{pointer} should point to proof_commands array")
+            std::panic::panic_any(format!("{pointer} should point to proof_commands array"))
         });
     assert!(
         commands

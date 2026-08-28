@@ -173,11 +173,10 @@ impl PostMergeReconciliationResultV1 {
 }
 
 fn has_duplicate_effect_ids(effects: &[LandedEffectV1]) -> bool {
-    effects.iter().enumerate().any(|(index, effect)| {
-        effects[..index]
-            .iter()
-            .any(|previous| previous.effect_id == effect.effect_id)
-    })
+    let mut effect_ids = std::collections::BTreeSet::new();
+    effects
+        .iter()
+        .any(|effect| !effect_ids.insert(effect.effect_id.as_str()))
 }
 
 fn has_forbidden_token(value: &str) -> bool {

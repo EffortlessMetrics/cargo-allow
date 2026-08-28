@@ -573,7 +573,7 @@ fn detects_multiple_unsafe_attributes_on_one_line() {
 fn last_column(line: &str, needle: &str) -> u32 {
     let index = line
         .rfind(needle)
-        .unwrap_or_else(|| panic!("missing `{needle}` in `{line}`"));
+        .unwrap_or_else(|| std::panic::panic_any(format!("missing `{needle}` in `{line}`")));
     line.char_indices()
         .take_while(|(byte, _)| *byte < index)
         .count() as u32
