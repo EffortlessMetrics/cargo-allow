@@ -217,12 +217,20 @@ def main() -> int:
     )
     parser.add_argument("--params", type=Path)
     parser.add_argument("--metadata", type=Path)
-    parser.add_argument("--candidate-artifact", type=Path, required=True)
+    parser.add_argument("--candidate-artifact", type=Path)
     parser.add_argument("--receipt-out", type=Path)
     parser.add_argument("--input-receipt", type=Path)
     args = parser.parse_args()
 
-    artifact = json.loads(args.candidate_artifact.read_text(encoding="utf-8"))
+    modes_requiring_artifact = {"compare", "receipt", "assemble"}
+    if args.mode in modes_requiring_artifact and args.candidate_artifact is None:
+        print(f"--candidate-artifact is required for --mode {args.mode}", file=sys.stderr)
+        return 2
+    artifact = (
+        json.loads(args.candidate_artifact.read_text(encoding="utf-8"))
+        if args.candidate_artifact is not None
+        else None
+    )
     if args.mode == "compare":
         metadata = json.loads(args.metadata.read_text(encoding="utf-8"))
         comparison = compare_resolution(metadata, artifact["rows"])
