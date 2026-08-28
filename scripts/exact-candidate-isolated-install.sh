@@ -134,7 +134,12 @@ for row in rows:
     print(f"{row['cargo_package_name']} = {{ path = {json.dumps(str(directory))} }}")
 PY
 } > "${warm_home}/config.toml"
-CARGO_HOME="$warm_home" cargo fetch --locked --manifest-path "${extracted_bin_pkg}/Cargo.toml"
+# The patch rewrites path vs registry lock entries by design; the packaged
+# lock is restored afterward so the decisive install stays checksum-aligned.
+(
+    cd "${extracted_bin_pkg}"
+    CARGO_HOME="$warm_home" cargo fetch
+)
 cp "$saved_lock" "${extracted_bin_pkg}/Cargo.lock"
 
 echo "isolated-install: assembling the isolated local registry"
