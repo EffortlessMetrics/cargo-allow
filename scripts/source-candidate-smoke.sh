@@ -564,16 +564,23 @@ printf 'pub fn second(value: Option<u8>) -> u8 { value.unwrap() }\n' >> "${consu
 step_second_finding_exit=0
 
 log "step targeted recheck after add (no-new passes for the receipted finding)"
-recheck_json="$("${cargo_bin}" check --root "${consumer_dir}" --config "${policy_path}" --kind panic --mode no-new --format json)"
+set +e
+recheck_json="$("${cargo_bin}" check --root "${consumer_dir}" --config "${policy_path}" --kind panic --mode no-new --format json 2>&1)"
+recheck_exit=$?
+full_check_json="$("${cargo_bin}" check --root "${consumer_dir}" --config "${policy_path}" --mode no-new --format json 2>&1)"
+full_check_exit=$?
+set -e
+if [ "$recheck_exit" -ne 0 ] || [ "$full_check_exit" -ne 0 ]; then
+    printf 'targeted recheck (exit %s):\n%s\n' "${recheck_exit}" "${recheck_json}" >&2
+    printf 'full check (exit %s):\n%s\n' "${full_check_exit}" "${full_check_json}" >&2
+    exit 1
+fi
 printf '%s\n' "${recheck_json}" | python3 -c '
 import json, sys
 report = json.load(sys.stdin)
 if report.get("status") != "passed":
     raise SystemExit(f"expected targeted recheck passed, got {report.get('status')!r}")
 '
-# The targeted recheck is not a repository proof; the full check must
-# also stay clean after the mutation chain.
-full_check_json="$("${cargo_bin}" check --root "${consumer_dir}" --config "${policy_path}" --mode no-new --format json)"
 printf '%s\n' "${full_check_json}" | python3 -c '
 import json, sys
 report = json.load(sys.stdin)
