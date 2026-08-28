@@ -1,6 +1,15 @@
 - id: cargo-allow
+  name: cargo-allow exact staged no-new source exception check
+  description: Reject new source-exception findings in the exact Git index candidate; unsupported staged adapters fail closed.
+  entry: cargo-allow check --staged --phase precommit --mode no-new
+  language: system
+  pass_filenames: false
+  always_run: true
+  stages: [pre-commit]
+
+- id: cargo-allow-worktree
   name: cargo-allow worktree no-new source exception check
-  description: Reject new source-tree exception findings in the tracked worktree; this is not an exact staged-index check.
+  description: Reject new source-tree exception findings in the tracked worktree; this is advisory for commit and push bytes.
   entry: cargo-allow check --mode no-new
   language: system
   pass_filenames: false
