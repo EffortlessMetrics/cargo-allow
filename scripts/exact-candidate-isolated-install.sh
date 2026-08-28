@@ -216,7 +216,8 @@ mkdir -p "$install_home"
     echo 'replace-with = "candidate-local-registry"'
     echo ''
     echo '[source.candidate-local-registry]'
-    echo "local-registry = \"$(python3 -c "import json;print(json.dumps(str('$registry').replace(chr(92), '/')))")\""
+    printf 'local-registry = '
+    python3 -c "import json;print(json.dumps(str('$registry').replace(chr(92), '/')))"
 } > "${install_home}/config.toml"
 set +e
 CARGO_HOME="$install_home" CARGO_TARGET_DIR="${offline_root}/target" \
