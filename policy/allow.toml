@@ -11140,8 +11140,8 @@ family = "configuration"
 path = ".pre-commit-hooks.yaml"
 owner = "core/devex"
 classification = "adoption_hook"
-reason = "Publishes the pre-commit framework entry point for the blocking cargo-allow no-new source-tree check."
-evidence = ["issue:2835", "test:precommit_hook_contract_has_no_new_debt_gate", "doc:docs/how-to/adopt-cargo-allow.md"]
+reason = "Publishes the exact staged pre-commit candidate check and the advisory tracked-worktree hook for the blocking cargo-allow no-new source-tree check."
+evidence = ["issue:2835", "test:precommit_hook_contract_has_exact_staged_and_worktree_paths", "doc:docs/how-to/adopt-cargo-allow.md"]
 created = "2026-07-28"
 review_after = "2026-11-01"
 
