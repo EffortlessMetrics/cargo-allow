@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/package-candidate-v2.schema.json",
+  "title": "cargo-allow PackageCandidatePayloadV2",
+  "description": "Typed topology-selected mixed-version package candidate for the cargo-allow 0.2 candidate. Identity and packaged-manifest expectations only; it does not authorize publication, installation, or registry construction.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id", "schema_version", "topology_id", "repository_commit", "repository_tree",
+    "cargo_lock_digest", "candidate_product_id", "root_logical_id", "root_package_name",
+    "root_package_version", "target_class", "feature_set_id", "rows", "known_exclusions",
+    "limitations", "claim_boundary"
+  ],
+  "properties": {
+    "schema_id": { "const": "cargo-allow.package-candidate.v2" },
+    "schema_version": { "const": 2 },
+    "topology_id": { "type": "string", "minLength": 1 },
+    "topology_digest": { "$ref": "#/$defs/digest" },
+    "repository_commit": { "type": "string", "minLength": 1 },
+    "repository_tree": { "type": "string", "minLength": 1 },
+    "cargo_lock_digest": { "$ref": "#/$defs/digest" },
+    "candidate_product_id": { "type": "string", "minLength": 1 },
+    "root_logical_id": { "type": "string", "minLength": 1 },
+    "root_package_name": { "type": "string", "minLength": 1 },
+    "root_package_version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-rc\\.[1-9][0-9]*)?$"
+    },
+    "target_class": { "type": "string", "minLength": 1 },
+    "feature_set_id": { "type": "string", "minLength": 1 },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/row" }
+    },
+    "known_exclusions": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "limitations": { "type": "array", "items": { "type": "string" } },
+    "claim_boundary": { "type": "string", "minLength": 1 }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "dependency_kind": {
+      "type": "string",
+      "enum": ["internal", "external"]
+    },
+    "product_family": {
+      "type": "string",
+      "enum": ["cargo-allow-0.2", "shared-0.1"]
+    },
+    "dependency_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["package_name", "package_version", "dependency_kind"],
+      "properties": {
+        "package_name": { "type": "string", "minLength": 1 },
+        "package_version": { "type": "string", "minLength": 1 },
+        "dependency_kind": { "$ref": "#/$defs/dependency_kind" }
+      }
+    },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logical_id", "cargo_package_name", "cargo_package_version", "rust_library_name",
+        "workspace_source_path", "product_family", "publication_state", "publish",
+        "support_tier", "release_order", "selected_features", "expected_manifest_identity",
+        "expected_dependency_rows", "required_assets"
+      ],
+      "properties": {
+        "logical_id": { "type": "string", "minLength": 1 },
+        "cargo_package_name": { "type": "string", "minLength": 1 },
+        "cargo_package_version": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-rc\\.[1-9][0-9]*)?$"
+        },
+        "rust_library_name": { "type": "string", "minLength": 1 },
+        "workspace_source_path": { "type": "string", "minLength": 1 },
+        "product_family": { "$ref": "#/$defs/product_family" },
+        "publication_state": { "type": "string", "minLength": 1 },
+        "publish": { "type": "boolean" },
+        "support_tier": { "type": "string", "minLength": 1 },
+        "release_order": { "type": "integer", "minimum": 1 },
+        "selected_features": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "expected_manifest_identity": { "type": "string", "minLength": 1 },
+        "expected_dependency_rows": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/dependency_row" }
+        },
+        "required_assets": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "crate_digest": { "$ref": "#/$defs/digest" },
+        "crate_size_bytes": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

@@ -10,6 +10,7 @@ mod final_evidence_graph_v1;
 mod frozen_candidate_custody_v1;
 mod list;
 mod migrate;
+mod package_candidate_v2;
 mod post_merge_qualification_v1;
 mod post_merge_reconciliation_v1;
 mod propose;
@@ -57,6 +58,13 @@ pub use frozen_candidate_custody_v1::{
 pub(crate) use list::truncate_with_ellipsis;
 pub use list::{ListColumn, ListFilters, ListRow};
 pub use migrate::MigrateReport;
+pub use package_candidate_v2::{
+    PACKAGE_CANDIDATE_V2_SCHEMA_ID, PACKAGE_CANDIDATE_V2_SCHEMA_VERSION,
+    PackageCandidateDependencyKindV2, PackageCandidateDependencyRowV2, PackageCandidateFamilyV2,
+    PackageCandidatePayloadV2, PackageCandidateResultV2, PackageCandidateRowV2,
+    PackageCandidateV2Validation, render_package_candidate_v2, render_package_candidate_v2_bytes,
+    validate_package_candidate_v2,
+};
 pub use post_merge_qualification_v1::{
     CargoAllowPostMergeQualificationV1, MergeMethodV1, MergedStateV1,
     PostMergeEquivalenceVerdictV1, PostMergeQualificationInitV1, ReviewedContextV1,

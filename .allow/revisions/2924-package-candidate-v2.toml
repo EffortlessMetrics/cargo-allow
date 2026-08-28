@@ -1,0 +1,31 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11181"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:a5fdd132953816a96b1d54a8eeb14585ae888443466acce595b30bdf901638ca"
+reason = "receipt for scripts/exact-candidate-package-candidate.py, the topology-selected candidate producer (#2924)"
+
+[[records]]
+allow_ids = ["allow-11182"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d5cf47b4d568f7196b7f6043c868abf2e97e2db407f498a3ca6cacb038eb39cf"
+reason = "receipt for scripts/test-exact-candidate-package-candidate.py, the producer negative controls (#2924)"
+
+[[records]]
+allow_ids = ["allow-11183"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d98f4be3f38484100195de4268512d474824cc410bd29475cd26d00552149dd4"
+reason = "receipt for docs/schemas/package-candidate-v2.schema.json, the candidate contract schema (#2924)"
+
+[[records]]
+allow_ids = ["allow-11184"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:739f039c073c655e06160321646b632e880a278ff5eabca698e86213d256842f"
+reason = "receipt for docs/dogfood/receipts/package-candidate-v2.example.json, the committed derivation example (#2924)"
+
+[[records]]
+allow_ids = ["allow-11185"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:3df9cd0b0825cfa00cdcc95b815df8fa33fc2c43cfdc0c18fee1b42e869a90f9"
+reason = "self-receipt for this revision note file, matching the #3792 precedent"

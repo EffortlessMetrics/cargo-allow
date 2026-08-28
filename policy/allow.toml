@@ -13525,3 +13525,113 @@ glob = ".allow/revisions/3915-root-bound-cache-receipts.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11181"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/exact-candidate-package-candidate.py"
+owner = "core/release"
+classification = "release_packaging_producer"
+reason = "Derives the typed topology-selected package candidate and verifies packaged crates for #2924."
+evidence = ["issue:2924"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/exact-candidate-package-candidate.py"
+target_fingerprint = "py"
+glob = "scripts/exact-candidate-package-candidate.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11182"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/test-exact-candidate-package-candidate.py"
+owner = "core/release"
+classification = "release_packaging_test"
+reason = "Negative controls for the package-candidate producer for #2924."
+evidence = ["issue:2924"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-exact-candidate-package-candidate.py"
+target_fingerprint = "py"
+glob = "scripts/test-exact-candidate-package-candidate.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11183"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/package-candidate-v2.schema.json"
+owner = "core/release"
+classification = "release_contract_schema"
+reason = "JSON schema for the typed package-candidate artifact contract for #2924."
+evidence = ["issue:2924"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/package-candidate-v2.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/package-candidate-v2.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11184"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/receipts/package-candidate-v2.example.json"
+owner = "core/release"
+classification = "dogfood_receipt_example"
+reason = "Committed example of the derived topology-selected package candidate for #2924."
+evidence = ["issue:2924"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/dogfood/receipts/package-candidate-v2.example.json"
+target_fingerprint = "json"
+glob = "docs/dogfood/receipts/package-candidate-v2.example.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11185"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/2924-package-candidate-v2.toml"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#2924 revision note authorizing the package-candidate receipts; covers the note file itself as tracked configuration."
+evidence = ["issue:2924", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/2924-package-candidate-v2.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/2924-package-candidate-v2.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

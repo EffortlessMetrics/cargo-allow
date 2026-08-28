@@ -128,7 +128,10 @@ pub use artifacts::{
     FederationDivergenceKindCount, FederationDivergenceRecordSummary, FederationDivergenceSummary,
     FederationReportContext, FileFamilyConflictSummary, FileFamilyRuleSummary,
     InventoryCompleteness, InventoryMode, LedgerContributorSummary, ListColumn, ListFilters,
-    ListRow, MigrateReport, PolicyState, ProposeReport, PruneCandidate, PruneModeContext,
+    ListRow, MigrateReport, PACKAGE_CANDIDATE_V2_SCHEMA_ID, PACKAGE_CANDIDATE_V2_SCHEMA_VERSION,
+    PackageCandidateDependencyKindV2, PackageCandidateDependencyRowV2, PackageCandidateFamilyV2,
+    PackageCandidatePayloadV2, PackageCandidateResultV2, PackageCandidateRowV2,
+    PackageCandidateV2Validation, PolicyState, ProposeReport, PruneCandidate, PruneModeContext,
     RELEASE_MANIFEST_V2_SCHEMA_ID, RELEASE_MANIFEST_V2_SCHEMA_VERSION, RefreshModeContext,
     RefreshReport, ReleaseChannelV1, ReleaseIdentityErrorV1, ReleaseIdentityV1,
     ReleaseManifestAuthenticationV2, ReleaseManifestEnvelopeV2, ReleaseManifestOperationV2,
@@ -136,9 +139,10 @@ pub use artifacts::{
     ReleaseManifestResultV2, ReleaseManifestSupportPostureV2, ReleaseManifestV2Validation,
     ReleaseVersionV1, WhyCandidateEntry, WhyProofPlan, WhyReport, WhyTargetScan,
     WhyTargetScanReport, WorklistFilters, WorklistItem, WritePosture, recommend_core_adoption_plan,
+    render_package_candidate_v2, render_package_candidate_v2_bytes,
     render_release_manifest_v2_envelope, render_release_manifest_v2_envelope_bytes,
     render_release_manifest_v2_payload, render_release_manifest_v2_payload_bytes,
-    validate_release_manifest_v2,
+    validate_package_candidate_v2, validate_release_manifest_v2,
 };
 
 pub use artifacts::{
