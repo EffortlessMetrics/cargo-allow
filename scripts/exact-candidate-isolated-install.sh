@@ -147,6 +147,7 @@ candidate_args=()
 python3 - target/exact-candidate-isolated-install/consumed-rows.json <<'PY' > target/exact-candidate-isolated-install/candidate-args.txt
 import json
 import sys
+from pathlib import Path
 rows = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 for row in rows:
     print(f"--candidate {row['cargo_package_name']}={row['cargo_package_version']}")
