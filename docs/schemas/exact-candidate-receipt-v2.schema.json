@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/exact-candidate-receipt-v2.schema.json",
+  "title": "cargo-allow ExactCandidatePayloadV2",
+  "description": "Typed qualification receipt binding the #2924 candidate artifact and #2925 isolated-install receipt to the complete supported first-hour/lifecycle journey run from the isolated installed binary. Portable identities only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id", "schema_version", "candidate_artifact_digest",
+    "isolated_install_receipt_digest", "repository_commit", "repository_tree",
+    "cargo_lock_digest", "installed_executable_digest", "installed_version_output",
+    "platform", "toolchain", "support_matrix_generation", "package_rows",
+    "journey_steps", "artifact_schema_results", "scanner_completeness",
+    "diff_base_identity", "limitations", "claim_boundary"
+  ],
+  "properties": {
+    "schema_id": { "const": "cargo-allow.exact-candidate.v2" },
+    "schema_version": { "const": 2 },
+    "candidate_artifact_digest": { "$ref": "#/$defs/digest" },
+    "isolated_install_receipt_digest": { "$ref": "#/$defs/digest" },
+    "repository_commit": { "type": "string", "minLength": 1 },
+    "repository_tree": { "type": "string", "minLength": 1 },
+    "cargo_lock_digest": { "$ref": "#/$defs/digest" },
+    "installed_executable_digest": { "$ref": "#/$defs/digest" },
+    "installed_version_output": { "type": "string", "minLength": 1 },
+    "platform": { "type": "string", "minLength": 1 },
+    "toolchain": { "type": "string", "minLength": 1 },
+    "support_matrix_generation": { "type": "string", "minLength": 1 },
+    "package_rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/row" }
+    },
+    "journey_steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/step" }
+    },
+    "artifact_schema_results": {
+      "type": "array",
+      "items": { "type": "string", "pattern": ": ok$" }
+    },
+    "scanner_completeness": { "type": "string", "minLength": 1 },
+    "diff_base_identity": { "type": "string", "minLength": 1 },
+    "limitations": { "type": "array", "items": { "type": "string" } },
+    "not_included": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "claim_boundary": { "type": "string", "minLength": 1 }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["logical_id", "package_name", "package_version", "crate_digest"],
+      "properties": {
+        "logical_id": { "type": "string", "minLength": 1 },
+        "package_name": { "type": "string", "minLength": 1 },
+        "package_version": { "type": "string", "minLength": 1 },
+        "crate_digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "exit_code"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "exit_code": { "type": "integer" },
+        "artifact_schema_id": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

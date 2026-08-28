@@ -524,6 +524,82 @@ if allow_id not in ids:
 '
 step_rollback_exit=0
 
+log "step second finding: why → plan → add --from-plan (stale-safe)"
+printf 'pub fn second(value: Option<u8>) -> u8 { value.unwrap() }\n' >> "${consumer_dir}/src/lib.rs"
+second_finding="$("${cargo_bin}" audit --root "${consumer_dir}" --kind panic --format json | python3 -c '
+import json, sys
+report = json.load(sys.stdin)
+findings = [
+    finding for finding in (report.get("findings") or [])
+    if finding.get("path") and finding.get("line") is not None
+]
+if not findings:
+    raise SystemExit("second audit produced no located findings")
+target = findings[-1]
+print(json.dumps({"path": target["path"], "line": target["line"]}))
+')"
+second_path="$(printf '%s' "${second_finding}" | python3 -c 'import json,sys;print(json.load(sys.stdin)["path"])')"
+second_line="$(printf '%s' "${second_finding}" | python3 -c 'import json,sys;print(json.load(sys.stdin)["line"])')"
+"${cargo_bin}" why --kind panic --path "${second_path}" --line "${second_line}" --root "${consumer_dir}" >/dev/null
+why_plan="${consumer_dir}/second-finding-plan.json"
+"${cargo_bin}" why --kind panic --path "${second_path}" --line "${second_line}" --root "${consumer_dir}" --plan "${why_plan}" >/dev/null
+[[ -f "${why_plan}" ]] || fail "why --plan did not write ${why_plan}"
+
+# The plan is stale once its finding moves; add --from-plan must reject it
+# and leave the ledger untouched instead of laundering the stale location.
+python3 - "${consumer_dir}/src/lib.rs" <<'PY'
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+del lines[-1]
+path.write_text("".join(lines), encoding="utf-8")
+PY
+if "${cargo_bin}" add --from-plan "${why_plan}" --root "${consumer_dir}" >/dev/null 2>&1; then
+    fail "stale why plan was accepted by add --from-plan"
+fi
+printf 'pub fn second(value: Option<u8>) -> u8 { value.unwrap() }\n' >> "${consumer_dir}/src/lib.rs"
+"${cargo_bin}" add --from-plan "${why_plan}" --update --root "${consumer_dir}" >/dev/null
+step_second_finding_exit=0
+
+log "step targeted recheck after add (no-new passes for the receipted finding)"
+recheck_json="$("${cargo_bin}" check --root "${consumer_dir}" --config "${policy_path}" --kind panic --mode no-new --format json)"
+printf '%s\n' "${recheck_json}" | python3 -c '
+import json, sys
+report = json.load(sys.stdin)
+if report.get("status") != "passed":
+    raise SystemExit(f"expected targeted recheck passed, got {report.get('status')!r}")
+'
+step_recheck_exit=0
+
+log "step list --wide projection"
+"${cargo_bin}" list --root "${consumer_dir}" --config "${policy_path}" --kind panic --format json --wide >/dev/null
+step_list_wide_exit=0
+
+log "step clean repository: init → audit → check --mode no-new"
+clean_dir="${consumer_dir}-clean"
+mkdir -p "${clean_dir}/src"
+printf 'pub fn ok() -> u8 { 7 }\n' > "${clean_dir}/src/lib.rs"
+"${cargo_bin}" init --root "${clean_dir}" >/dev/null
+clean_policy="${clean_dir}/policy/allow.toml"
+[[ -f "${clean_policy}" ]] || fail "init did not create ${clean_policy}"
+clean_audit="$("${cargo_bin}" audit --root "${clean_dir}" --kind panic --format json)"
+printf '%s\n' "${clean_audit}" | python3 -c '
+import json, sys
+report = json.load(sys.stdin)
+new = (report.get("summary") or {}).get("new")
+if new not in (0, None):
+    raise SystemExit(f"clean audit expected no new findings, got {new!r}")
+'
+clean_check="$("${cargo_bin}" check --root "${clean_dir}" --config "${clean_policy}" --kind panic --mode no-new --format json)"
+printf '%s\n' "${clean_check}" | python3 -c '
+import json, sys
+if json.load(sys.stdin).get("status") != "passed":
+    raise SystemExit("clean check --mode no-new did not pass")
+'
+step_clean_repo_exit=0
+
 negatives_json='[]'
 if [[ "${SKIP_NEGATIVES:-0}" != "1" ]]; then
   log "negative: omitted journey step cannot claim Passed"
@@ -541,6 +617,10 @@ expected = [
     "prune_stale_preview_write",
     "final_check_no_new",
     "policy_rollback_after_prune",
+    "second_finding_why_plan_add",
+    "targeted_recheck_after_add",
+    "list_wide_projection",
+    "clean_repo_init_audit_check",
 ]
 # Forge a Passed receipt that omits the refresh step.
 forged_executed = [
@@ -1074,6 +1154,10 @@ STEP_DIFF_EXIT="${step_diff_exit}" \
 STEP_PRUNE_EXIT="${step_prune_exit}" \
 STEP_FINAL_CHECK_EXIT="${step_final_check_exit}" \
 STEP_ROLLBACK_EXIT="${step_rollback_exit}" \
+STEP_SECOND_FINDING_EXIT="${step_second_finding_exit}" \
+STEP_RECHECK_EXIT="${step_recheck_exit}" \
+STEP_LIST_WIDE_EXIT="${step_list_wide_exit}" \
+STEP_CLEAN_REPO_EXIT="${step_clean_repo_exit}" \
 NEGATIVES_JSON="${negatives_json}" \
 python3 <<'PY'
 import json
@@ -1150,6 +1234,26 @@ steps_executed = [
         "id": "policy_rollback_after_prune",
         "exit_code": code("STEP_ROLLBACK_EXIT"),
         "artifact_schema_id": "cargo-allow.list.v1",
+    },
+    {
+        "id": "second_finding_why_plan_add",
+        "exit_code": code("STEP_SECOND_FINDING_EXIT"),
+        "artifact_schema_id": "cargo-allow.add.v1",
+    },
+    {
+        "id": "targeted_recheck_after_add",
+        "exit_code": code("STEP_RECHECK_EXIT"),
+        "artifact_schema_id": "cargo-allow.report.v1",
+    },
+    {
+        "id": "list_wide_projection",
+        "exit_code": code("STEP_LIST_WIDE_EXIT"),
+        "artifact_schema_id": "cargo-allow.list.v1",
+    },
+    {
+        "id": "clean_repo_init_audit_check",
+        "exit_code": code("STEP_CLEAN_REPO_EXIT"),
+        "artifact_schema_id": "cargo-allow.report.v1",
     },
 ]
 executed_ids = {step["id"] for step in steps_executed}

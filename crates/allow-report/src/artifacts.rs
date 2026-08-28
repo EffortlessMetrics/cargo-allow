@@ -4,6 +4,7 @@ mod add_plan_application;
 mod adoption_plan;
 mod diff;
 mod doctor;
+mod exact_candidate_receipt_v2;
 mod explain;
 pub(crate) mod federation;
 mod final_evidence_graph_v1;
@@ -65,6 +66,13 @@ pub use package_candidate_v2::{
     PackageCandidatePayloadV2, PackageCandidateResultV2, PackageCandidateRowV2,
     PackageCandidateV2Validation, render_package_candidate_v2, render_package_candidate_v2_bytes,
     validate_package_candidate_v2,
+};
+
+pub use exact_candidate_receipt_v2::{
+    EXACT_CANDIDATE_RECEIPT_V2_SCHEMA_ID, EXACT_CANDIDATE_RECEIPT_V2_SCHEMA_VERSION,
+    ExactCandidateJourneyStepV2, ExactCandidatePackageRowV2, ExactCandidatePayloadV2,
+    ExactCandidateResultV2, ExactCandidateV2Validation, render_exact_candidate_v2,
+    render_exact_candidate_v2_bytes, validate_exact_candidate_v2,
 };
 
 pub use isolated_install_receipt_v2::{

@@ -1,0 +1,19 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11191"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:9f78e7bdbfb52aba9e389c619d54bb8493bf59b63b0af229b80ef2ed24b36721"
+reason = "receipt for scripts/exact-candidate-qualification.sh, the supported-journey qualification stage (#2926)"
+
+[[records]]
+allow_ids = ["allow-11192"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:572577e22419c21a550e7302e81282835d6bede4c6f5600c0d66e5d18cb4d0d9"
+reason = "receipt for docs/schemas/exact-candidate-receipt-v2.schema.json, the qualification receipt contract (#2926)"
+
+[[records]]
+allow_ids = ["allow-11193"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:81b0b2ae4d4ad9c390ebcfec0668c088571604f34cbbcb9787929569ca50470c"
+reason = "self-receipt for this revision note file, matching the #3792 precedent"

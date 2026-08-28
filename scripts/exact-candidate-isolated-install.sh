@@ -506,3 +506,10 @@ if [ "$classification" != "Complete" ]; then
     exit 1
 fi
 echo "isolated-install: receipt Complete at ${OUTPUT_DIR}/isolated-install.receipt.json"
+
+# Durable copy of the exact installed binary for downstream consumers
+# (#2926 qualification, release rehearsal); the harness work dirs are
+# removed on cleanup.
+mkdir -p "${OUTPUT_DIR}/install/bin"
+cp "$installed_bin" "${OUTPUT_DIR}/install/bin/$(basename "$installed_bin")"
+echo "isolated-install: durable binary at ${OUTPUT_DIR}/install/bin/$(basename "$installed_bin")"

@@ -1,0 +1,26 @@
+kind: Added
+body: >-
+  Run the complete supported first-hour/lifecycle journey from the
+  isolated installed candidate and emit the typed qualification
+  receipt (#2926). The exact-candidate qualification stage consumes
+  the #2924 candidate artifact and #2925 isolated-install receipt
+  without recomputing semantic identity (predecessor digest binding,
+  Complete classification, source-checkout denial, and clean graph
+  comparison are all verified before anything runs), then drives the
+  supported journey from the isolated installed binary by absolute
+  path: version, doctor, audit, bootstrap, check no-new, why →
+  why --plan → add --from-plan --update with the stale-plan
+  rejection negative, targeted recheck, list and list --wide,
+  explain, worklist, diff against an exact base, refresh and prune
+  preview/write pairs, policy rollback recovery, and a clean-
+  repository init/audit/check path. The typed
+  cargo-allow.exact-candidate.v2 receipt binds both predecessor
+  digests, repository and lock identity, the installed executable
+  digest and version output, per-row package identity and crate
+  checksums, every journey step with its artifact schema, and the
+  artifact validation results; validation rejects failed or omitted
+  steps, stale or mismatched predecessors, private absolute paths,
+  and unknown generations. CI gains the qualification stage with a
+  receipt upload, and the ambient workspace-package smoke is demoted
+  from release authority to crate-byte producer for this lane.
+  Nothing is published and no sibling product is qualified.
