@@ -1,0 +1,5 @@
+kind: Fixed
+body: >-
+  Make the shipped pre-commit framework default evaluate the exact Git index
+  candidate, retain the tracked-worktree check as an explicit advisory hook,
+  and keep adoption guidance and drift tests aligned with both subjects.

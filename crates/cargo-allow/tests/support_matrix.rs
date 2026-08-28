@@ -191,51 +191,118 @@ fn getting_started_documents_all_canonical_evidence_prefixes() {
     }
 }
 
-/// The pre-commit definition must keep the adoption hook aligned with the
-/// blocking source-tree command it delegates to and must not overclaim an
-/// exact staged-index subject. This is a text-level contract check; it does not
-/// execute pre-commit or an installed cargo-allow binary.
+/// The pre-commit manifest must expose two distinct subjects:
+///
+/// - `cargo-allow` evaluates the exact Git index candidate at pre-commit;
+/// - `cargo-allow-worktree` retains the tracked-worktree advisory for local
+///   pre-commit and pre-push feedback.
+///
+/// This is a text-level contract check; staged runtime behavior is proved by
+/// the dedicated staged conformance suite.
 #[test]
-fn precommit_hook_contract_has_no_new_debt_gate() -> Result<(), String> {
+fn precommit_hook_contract_has_exact_staged_and_worktree_paths() -> Result<(), String> {
     validate_precommit_hook_contract(PRE_COMMIT_HOOK, ADOPTION_GUIDE)
+}
+
+fn hook_block(manifest: &str, id: &str) -> Result<String, String> {
+    let mut block = Vec::new();
+    let mut in_target = false;
+
+    for line in manifest.lines() {
+        if let Some(current_id) = line.strip_prefix("- id: ") {
+            if in_target {
+                break;
+            }
+            in_target = current_id.trim() == id;
+        }
+        if in_target {
+            block.push(line.trim());
+        }
+    }
+
+    if block.is_empty() {
+        return Err(format!("pre-commit manifest is missing hook `{id}`"));
+    }
+    Ok(block.join(" "))
+}
+
+fn validate_hook_fields(
+    block: &str,
+    hook_name: &str,
+    fields: &[(&str, &str)],
+) -> Result<(), String> {
+    for &(field, value) in fields {
+        if !block.contains(value) {
+            return Err(format!("{hook_name} hook is missing {field}: {value}"));
+        }
+    }
+    Ok(())
 }
 
 fn validate_precommit_hook_contract(
     pre_commit_hook: &str,
     adoption_guide: &str,
 ) -> Result<(), String> {
-    let hook = normalize_contract_text(pre_commit_hook);
+    let staged = hook_block(pre_commit_hook, "cargo-allow")?;
+    validate_hook_fields(
+        &staged,
+        "exact staged",
+        &[
+            (
+                "name",
+                "name: cargo-allow exact staged no-new source exception check",
+            ),
+            (
+                "description",
+                "exact Git index candidate; unsupported staged adapters fail closed",
+            ),
+            (
+                "entry",
+                "entry: cargo-allow check --staged --phase precommit --mode no-new",
+            ),
+            ("language", "language: system"),
+            ("filename forwarding", "pass_filenames: false"),
+            ("execution policy", "always_run: true"),
+            ("stage scope", "stages: [pre-commit]"),
+        ],
+    )?;
+    if staged.contains("pre-push") {
+        return Err("exact staged hook must not claim pre-push commit/tree evidence".into());
+    }
+
+    let worktree = hook_block(pre_commit_hook, "cargo-allow-worktree")?;
+    validate_hook_fields(
+        &worktree,
+        "worktree advisory",
+        &[
+            (
+                "name",
+                "name: cargo-allow worktree no-new source exception check",
+            ),
+            (
+                "description",
+                "tracked worktree; this is advisory for commit and push bytes",
+            ),
+            ("entry", "entry: cargo-allow check --mode no-new"),
+            ("language", "language: system"),
+            ("filename forwarding", "pass_filenames: false"),
+            ("execution policy", "always_run: true"),
+            ("stage scope", "stages: [pre-commit, pre-push]"),
+        ],
+    )?;
+    if worktree.contains("--staged") || worktree.contains("--phase precommit") {
+        return Err("worktree advisory hook must not claim exact staged-index evidence".into());
+    }
+
     let guide = normalize_contract_text(adoption_guide);
-    for (field, value) in [
-        ("hook id", "id: cargo-allow"),
-        (
-            "worktree name",
-            "name: cargo-allow worktree no-new source exception check",
-        ),
-        (
-            "worktree description",
-            "tracked worktree; this is not an exact staged-index check",
-        ),
-        ("entry", "entry: cargo-allow check --mode no-new"),
-        ("language", "language: system"),
-        ("filename forwarding", "pass_filenames: false"),
-        ("execution policy", "always_run: true"),
-        ("stage scope", "stages: [pre-commit, pre-push]"),
-    ] {
-        if !hook.contains(value) {
-            return Err(format!("pre-commit hook is missing {field}: {value}"));
-        }
-    }
-    if hook.contains("--staged") {
-        return Err(
-            "source-exception pre-commit hook must not claim staged-index evaluation".into(),
-        );
-    }
     for required in [
-        "source subject is the current tracked **worktree**, not the exact Git index candidate",
+        "default `cargo-allow` hook evaluates the exact Git index candidate",
+        "including partially staged files",
+        "registered only for the `pre-commit` stage",
+        "`cargo-allow-worktree`",
+        "may inspect unstaged bytes",
         "CI remains the authoritative merge backstop",
-        "do not add `--staged` to this entry",
-        "The published template is registered for both the `pre-commit` and `pre-push` stages",
+        "Use the worktree hook when exact staged evaluation fails closed",
     ] {
         if !guide.contains(required) {
             return Err(format!(
@@ -250,14 +317,63 @@ fn normalize_contract_text(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
+/// Apply one negative-control mutation to the manifest text. The manifest is
+/// embedded from the checkout working tree, so its line endings depend on the
+/// platform checkout settings (LF blobs can become CRLF working-tree bytes);
+/// normalize before matching, and require the mutation to land so a stale
+/// pattern fails loudly instead of leaving the negative control inert.
+fn mutated_hook(old: &str, new: &str) -> Result<String, String> {
+    let normalized = PRE_COMMIT_HOOK.replace("\r\n", "\n");
+    let mutated = normalized.replacen(old, new, 1);
+    if mutated == normalized {
+        return Err(format!("negative-control mutation did not apply: {old:?}"));
+    }
+    Ok(mutated)
+}
+
 #[test]
-fn precommit_hook_contract_rejects_staged_source_exception_claim() -> Result<(), String> {
-    let hook = format!("{PRE_COMMIT_HOOK}\nentry: cargo-allow check --mode no-new --staged");
+fn precommit_hook_contract_rejects_missing_staged_selector() -> Result<(), String> {
+    let hook = mutated_hook(
+        "entry: cargo-allow check --staged --phase precommit --mode no-new",
+        "entry: cargo-allow check --mode no-new",
+    )?;
     let error = validate_precommit_hook_contract(&hook, ADOPTION_GUIDE)
         .err()
-        .ok_or_else(|| "staged source-exception claim was accepted".to_string())?;
-    if !error.contains("must not claim staged-index") {
-        return Err(format!("unexpected staged-claim error: {error}"));
+        .ok_or_else(|| "staged hook without a staged selector was accepted".to_string())?;
+    if !error.contains("exact staged hook is missing entry") {
+        return Err(format!("unexpected staged-entry error: {error}"));
+    }
+    Ok(())
+}
+
+#[test]
+fn precommit_hook_contract_rejects_pre_push_for_exact_subject() -> Result<(), String> {
+    let hook = mutated_hook(
+        "stages: [pre-commit]\n\n- id: cargo-allow-worktree",
+        "stages: [pre-commit, pre-push]\n\n- id: cargo-allow-worktree",
+    )?;
+    let error = validate_precommit_hook_contract(&hook, ADOPTION_GUIDE)
+        .err()
+        .ok_or_else(|| "exact staged hook registered for pre-push was accepted".to_string())?;
+    if !error.contains("missing stage scope") && !error.contains("must not claim pre-push") {
+        return Err(format!("unexpected staged-scope error: {error}"));
+    }
+    Ok(())
+}
+
+#[test]
+fn precommit_hook_contract_rejects_worktree_exact_index_claim() -> Result<(), String> {
+    let hook = mutated_hook(
+        "entry: cargo-allow check --mode no-new\n  language: system\n  pass_filenames: false\n  always_run: true\n  stages: [pre-commit, pre-push]",
+        "entry: cargo-allow check --staged --phase precommit --mode no-new\n  language: system\n  pass_filenames: false\n  always_run: true\n  stages: [pre-commit, pre-push]",
+    )?;
+    let error = validate_precommit_hook_contract(&hook, ADOPTION_GUIDE)
+        .err()
+        .ok_or_else(|| "worktree hook claiming exact staged evidence was accepted".to_string())?;
+    if !error.contains("worktree advisory hook is missing entry")
+        && !error.contains("must not claim exact staged-index")
+    {
+        return Err(format!("unexpected worktree-claim error: {error}"));
     }
     Ok(())
 }
