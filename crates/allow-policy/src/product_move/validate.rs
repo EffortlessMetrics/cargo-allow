@@ -134,7 +134,11 @@ pub fn format_product_move_ledger_diagnostics(diagnostics: &[MoveLedgerDiagnosti
 }
 
 fn normalize_projection_text(text: &str) -> String {
-    text.replace("\r\n", "\n")
+    let mut normalized = text.replace("\r\n", "\n");
+    if !normalized.ends_with('\n') {
+        normalized.push('\n');
+    }
+    normalized
 }
 
 pub fn render_product_move_map(ledger: &ProductMoveLedger) -> String {
