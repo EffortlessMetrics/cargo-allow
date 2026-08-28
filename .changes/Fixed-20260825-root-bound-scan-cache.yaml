@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  Persistent Rust scan-cache targets now bind the existing repository root and
+  cache parent by underlying filesystem identity, accepting benign macOS
+  aliases before the root while retaining cold fallback for in-root
+  symlink/reparse movement or stale destination identity.

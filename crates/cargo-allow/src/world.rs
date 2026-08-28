@@ -35,6 +35,42 @@ fn inventory_options_with_tool_cache_ignore(mut options: InventoryOptions) -> In
     options
 }
 
+fn scan_rust_files_with_cache_mode(
+    root: &Path,
+    files: &[PathBuf],
+    persistent_cache: bool,
+) -> CargoAllowResult<allow_rust::RustScanResult> {
+    SCAN_CACHE.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        if persistent_cache {
+            match allow_rust::RootBoundScanCacheStore::open(
+                root,
+                allow_rust::scan_cache_generation(),
+            ) {
+                Ok(mut store) => {
+                    let result = allow_rust::scan_rust_files_cached_with_root_bound_store(
+                        root, files, &mut cache, &mut store,
+                    );
+                    if let Err(disposition) = store.flush_with_disposition() {
+                        eprintln!(
+                            "warning: persistent Rust scan cache disabled for this run ({})",
+                            disposition.as_str()
+                        );
+                    }
+                    return result;
+                }
+                Err(disposition) => {
+                    eprintln!(
+                        "warning: persistent Rust scan cache unavailable ({})",
+                        disposition.as_str()
+                    );
+                }
+            }
+        }
+        allow_rust::scan_rust_files_cached(root, files, &mut cache)
+    })
+}
+
 use crate::{
     EvidenceValidationMode, InventoryFacts, canonical_companion_findings, current_dir,
     evidence_inventory::{
@@ -411,24 +447,7 @@ pub(crate) fn load_world_with_evidence_mode_and_cache(
     // Durable scan-fact store (#2571): advisory on every failure path. The
     // store lives under target/ (never scanned) and is keyed by content
     // digest, so a stale or corrupt store can only cost a cold re-scan.
-    let rust_scan = if persistent_cache {
-        let mut store = allow_rust::ScanCacheStore::open(
-            &allow_rust::ScanCacheStore::default_dir(&root),
-            allow_rust::scan_cache_generation(),
-        );
-        let result = SCAN_CACHE.with(|cache| {
-            let mut cache = cache.borrow_mut();
-            allow_rust::scan_rust_files_cached_with_store(&root, &files, &mut cache, &mut store)
-        });
-        let _ = store.flush();
-        result
-    } else {
-        SCAN_CACHE.with(|cache| {
-            let mut cache = cache.borrow_mut();
-            allow_rust::scan_rust_files_cached(&root, &files, &mut cache)
-        })
-    };
-    let rust_scan = rust_scan?;
+    let rust_scan = scan_rust_files_with_cache_mode(&root, &files, persistent_cache)?;
     let rust_files_skipped = rust_scan.files_skipped;
     let rust_files_with_parse_errors = rust_scan.files_with_parse_errors;
     findings.extend(rust_scan.findings);
@@ -704,23 +723,7 @@ fn load_world_without_policy_and_cache(
     let inventory_facts = InventoryFacts::scanned_inventory(&inventory);
     let files = inventory.files;
     let mut findings = Vec::new();
-    let rust_scan = if persistent_cache {
-        let mut store = allow_rust::ScanCacheStore::open(
-            &allow_rust::ScanCacheStore::default_dir(root),
-            allow_rust::scan_cache_generation(),
-        );
-        let result = SCAN_CACHE.with(|cache| {
-            let mut cache = cache.borrow_mut();
-            allow_rust::scan_rust_files_cached_with_store(root, &files, &mut cache, &mut store)
-        })?;
-        let _ = store.flush();
-        result
-    } else {
-        SCAN_CACHE.with(|cache| {
-            let mut cache = cache.borrow_mut();
-            allow_rust::scan_rust_files_cached(root, &files, &mut cache)
-        })?
-    };
+    let rust_scan = scan_rust_files_with_cache_mode(root, &files, persistent_cache)?;
     let inventory_facts = inventory_facts
         .with_rust_files_considered(rust_scan.files_considered)
         .with_rust_files_skipped(rust_scan.files_skipped)
@@ -837,6 +840,43 @@ mod tests {
             return Err("disabled mode touched lock/temp cache files".to_string());
         }
         fs::remove_dir_all(root).map_err(|err| format!("remove fixture dir: {err}"))?;
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn persistent_cache_admission_failure_falls_back_without_outside_write() -> Result<(), String> {
+        use std::os::unix::fs::symlink;
+
+        let root = fixture_dir();
+        fs::create_dir_all(root.join("src")).map_err(|err| format!("src dir: {err}"))?;
+        fs::write(
+            root.join("src/lib.rs"),
+            "fn fallback(value: Result<(), ()>) { value.unwrap(); }\n",
+        )
+        .map_err(|err| format!("source: {err}"))?;
+        let outside = root.join("outside-target");
+        fs::create_dir_all(&outside).map_err(|err| format!("outside dir: {err}"))?;
+        symlink(&outside, root.join("target")).map_err(|err| format!("target alias: {err}"))?;
+        let files = vec![PathBuf::from("src/lib.rs")];
+
+        let persistent = scan_rust_files_with_cache_mode(&root, &files, true)
+            .map_err(|err| format!("persistent fallback scan: {err}"))?;
+        let ordinary = scan_rust_files_with_cache_mode(&root, &files, false)
+            .map_err(|err| format!("ordinary scan: {err}"))?;
+        if persistent.findings != ordinary.findings
+            || persistent.file_statuses != ordinary.file_statuses
+            || persistent.files_considered != ordinary.files_considered
+            || persistent.files_skipped != ordinary.files_skipped
+            || persistent.files_with_parse_errors != ordinary.files_with_parse_errors
+        {
+            return Err("cache admission failure changed scan semantics".to_string());
+        }
+        if outside.join("cargo-allow/cache/scan-cache.v2.bin").exists() {
+            return Err("cache admission failure wrote through in-root alias".to_string());
+        }
+        fs::remove_file(root.join("target")).map_err(|err| format!("remove alias: {err}"))?;
+        fs::remove_dir_all(root).map_err(|err| format!("remove fixture: {err}"))?;
         Ok(())
     }
 

@@ -22,6 +22,8 @@ mod line_panic_findings;
 mod line_scan;
 mod line_unsafe_findings;
 mod package;
+#[cfg(feature = "syntax")]
+mod root_bound_scan_cache;
 mod safety_comments;
 mod scan_cache;
 mod scan_cache_store;
@@ -42,6 +44,8 @@ use package::source_package_contexts;
 pub use package::{
     SourcePackageContext, apply_source_package_context, source_package_contexts_from_sources,
 };
+#[cfg(feature = "syntax")]
+pub use root_bound_scan_cache::{RootBoundScanCacheStore, ScanCacheTargetDispositionV1};
 pub use scan_cache::ScanCache;
 pub use scan_cache_store::ScanCacheStore;
 pub use scan_result::{RustFileScanOutcome, RustFileScanStatus, RustScanResult};
@@ -264,7 +268,7 @@ pub fn scan_rust_files_cached(
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "syntax"))]
 mod tests;
 
 /// Scanner generation binding persisted scan-fact stores (#2571): bumping the
@@ -349,6 +353,20 @@ pub fn scan_rust_files_cached_with_store(
         files_with_parse_errors,
         file_statuses,
     })
+}
+
+/// Scan Rust files through a root-bound durable store.
+///
+/// The wrapper keeps the underlying store private so callers cannot bypass
+/// root and destination identity rechecks at the persistence boundary.
+#[cfg(feature = "syntax")]
+pub fn scan_rust_files_cached_with_root_bound_store(
+    root: impl AsRef<Path>,
+    files: &[PathBuf],
+    cache: &mut ScanCache,
+    store: &mut RootBoundScanCacheStore,
+) -> CargoAllowResult<RustScanResult> {
+    scan_rust_files_cached_with_store(root, files, cache, store.inner_mut())
 }
 
 /// Heuristically detect whether a path is a test-only source file (#1798).

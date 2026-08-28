@@ -13375,3 +13375,153 @@ glob = ".allow/revisions/4014-precommit-hook-contract-rename.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-0633"
+kind = "unsafe"
+family = "unsafe_extern_block"
+path = "crates/allow-rust/src/root_bound_scan_cache.rs"
+owner = "core/rust-scanner"
+classification = "cache_root_identity"
+reason = "Reviewed 2026-08-28: required. The root-bound scan cache (#3915) must create and bind cache path components without symlink traversal; this raw call is the only std-reachable primitive for the no-follow guarantee, and every component is re-verified by identity before the store flushes."
+evidence = ["doc:docs/dogfood/root-bound-scan-cache-safety-analysis.md", "issue:3915", "test:root_bound_store_replaces_an_existing_destination_on_second_dirty_flush"]
+created = "2026-08-28"
+review_after = "2026-11-26"
+
+[allow.selector]
+ast_kind = "unsafe_extern_block"
+container = "extern \"C\""
+symbol = "extern \"C\":openat,mkdirat"
+normalized_snippet_hash = "fnv1a64:603b71ab5c0035d1"
+
+[allow.last_seen]
+line = 421
+column = 5
+
+[[allow]]
+id = "allow-0634"
+kind = "unsafe"
+family = "unsafe_block"
+path = "crates/allow-rust/src/root_bound_scan_cache.rs"
+owner = "core/rust-scanner"
+classification = "cache_root_identity"
+reason = "Reviewed 2026-08-28: required. The root-bound scan cache (#3915) must create and bind cache path components without symlink traversal; this raw call is the only std-reachable primitive for the no-follow guarantee, and every component is re-verified by identity before the store flushes."
+evidence = ["doc:docs/dogfood/root-bound-scan-cache-safety-analysis.md", "issue:3915", "test:root_bound_store_preserves_cached_and_uncached_scan_semantics"]
+created = "2026-08-28"
+review_after = "2026-11-26"
+
+[allow.selector]
+ast_kind = "unsafe_block"
+container = "ensure_owned_descendant"
+normalized_snippet_hash = "fnv1a64:cf4436add983ba68"
+
+[allow.last_seen]
+line = 436
+column = 22
+
+[[allow]]
+id = "allow-0635"
+kind = "unsafe"
+family = "unsafe_block"
+path = "crates/allow-rust/src/root_bound_scan_cache.rs"
+owner = "core/rust-scanner"
+classification = "cache_root_identity"
+reason = "Reviewed 2026-08-28: required. The root-bound scan cache (#3915) must create and bind cache path components without symlink traversal; this raw call is the only std-reachable primitive for the no-follow guarantee, and every component is re-verified by identity before the store flushes."
+evidence = ["doc:docs/dogfood/root-bound-scan-cache-safety-analysis.md", "issue:3915", "test:root_bound_store_replaces_an_existing_destination_on_second_dirty_flush"]
+created = "2026-08-28"
+review_after = "2026-11-26"
+
+[allow.selector]
+ast_kind = "unsafe_block"
+container = "ensure_owned_descendant"
+normalized_snippet_hash = "fnv1a64:0ac7ede4c146a522"
+
+[allow.last_seen]
+line = 449
+column = 16
+
+[[allow]]
+id = "allow-0636"
+kind = "unsafe"
+family = "unsafe_block"
+path = "crates/allow-rust/src/root_bound_scan_cache.rs"
+owner = "core/rust-scanner"
+classification = "cache_root_identity"
+reason = "Reviewed 2026-08-28: required. The root-bound scan cache (#3915) must create and bind cache path components without symlink traversal; this raw call is the only std-reachable primitive for the no-follow guarantee, and every component is re-verified by identity before the store flushes."
+evidence = ["doc:docs/dogfood/root-bound-scan-cache-safety-analysis.md", "issue:3915", "test:injected_temp_artifact_is_a_destination_change_not_an_instrument_failure"]
+created = "2026-08-28"
+review_after = "2026-11-26"
+
+[allow.selector]
+ast_kind = "unsafe_block"
+container = "ensure_owned_descendant"
+normalized_snippet_hash = "fnv1a64:83b83affd7c704eb"
+
+[allow.last_seen]
+line = 455
+column = 18
+
+[[allow]]
+id = "allow-0637"
+kind = "unsafe"
+family = "unsafe_block"
+path = "crates/allow-rust/src/root_bound_scan_cache.rs"
+owner = "core/rust-scanner"
+classification = "cache_root_identity"
+reason = "Reviewed 2026-08-28: required. The root-bound scan cache (#3915) must create and bind cache path components without symlink traversal; this raw call is the only std-reachable primitive for the no-follow guarantee, and every component is re-verified by identity before the store flushes."
+evidence = ["doc:docs/dogfood/root-bound-scan-cache-safety-analysis.md", "issue:3915", "test:root_bound_store_preserves_cached_and_uncached_scan_semantics"]
+created = "2026-08-28"
+review_after = "2026-11-26"
+
+[allow.selector]
+ast_kind = "unsafe_block"
+container = "ensure_owned_descendant"
+normalized_snippet_hash = "fnv1a64:9f3fe4ad38549e17"
+
+[allow.last_seen]
+line = 467
+column = 21
+
+[[allow]]
+id = "allow-0638"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/dogfood/root-bound-scan-cache-safety-analysis.md"
+owner = "core/rust-scanner"
+classification = "cache_root_identity"
+reason = "Safety analysis for the root-bound scan cache (#3915): documents the identity law, invariants, and negative controls of the openat/mkdirat unsafe surface receipted by the adjacent cache_root_identity entries."
+evidence = ["doc:docs/dogfood/root-bound-scan-cache-safety-analysis.md", "issue:3915", "test:persistent_cache_admission_failure_falls_back_without_outside_write"]
+created = "2026-08-28"
+review_after = "2026-11-26"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/dogfood/root-bound-scan-cache-safety-analysis.md"
+target_fingerprint = "md"
+glob = "docs/dogfood/root-bound-scan-cache-safety-analysis.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0639"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3915-root-bound-cache-receipts.toml"
+owner = "core/rust-scanner"
+classification = "ledger_change_note"
+reason = "Revision note receipting the root-bound scan-cache unsafe surface (#3915, #3939): authorizes the six added_allow transitions for the openat/mkdirat FFI receipts and the safety-analysis document."
+evidence = ["doc:docs/how-to/manage-an-exception.md", "issue:3915"]
+created = "2026-08-28"
+review_after = "2026-11-26"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3915-root-bound-cache-receipts.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3915-root-bound-cache-receipts.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

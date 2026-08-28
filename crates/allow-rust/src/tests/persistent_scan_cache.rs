@@ -13,7 +13,10 @@ fn temp_root(label: &str) -> PathBuf {
         .duration_since(SystemTime::UNIX_EPOCH)
         .map(|d| d.as_nanos())
         .unwrap_or(0);
-    let root = std::env::temp_dir().join(format!(
+    let temp_parent = std::env::temp_dir()
+        .canonicalize()
+        .unwrap_or_else(|_| std::env::temp_dir());
+    let root = temp_parent.join(format!(
         "allow-rust-scan-cache-{label}-{}-{stamp}-{id}",
         std::process::id()
     ));
