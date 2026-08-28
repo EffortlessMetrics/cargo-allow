@@ -12846,3 +12846,245 @@ line = 1
 column = 1
 
 
+
+[[allow]]
+id = "allow-11162"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/adr/CARGO-ALLOW-ADR-0004-source-syntax-only-scan.md"
+owner = "repo-infra"
+classification = "source_truth_adr"
+reason = "Records the source-syntax-only scanner boundary and the compiler/runtime claims cargo-allow deliberately does not make."
+evidence = ["issue:3997", "doc:docs/adr/CARGO-ALLOW-ADR-0004-source-syntax-only-scan.md"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/adr/CARGO-ALLOW-ADR-0004-source-syntax-only-scan.md"
+target_fingerprint = "md"
+glob = "docs/adr/CARGO-ALLOW-ADR-0004-source-syntax-only-scan.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11163"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/adr/CARGO-ALLOW-ADR-0005-baseline-debt-window.md"
+owner = "repo-infra"
+classification = "source_truth_adr"
+reason = "Records the bounded baseline-debt lifecycle and the conditions under which retained debt must be reviewed rather than silently absorbed."
+evidence = ["issue:3997", "doc:docs/adr/CARGO-ALLOW-ADR-0005-baseline-debt-window.md"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/adr/CARGO-ALLOW-ADR-0005-baseline-debt-window.md"
+target_fingerprint = "md"
+glob = "docs/adr/CARGO-ALLOW-ADR-0005-baseline-debt-window.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11164"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/adr/CARGO-ALLOW-ADR-0006-structural-identity-v1.md"
+owner = "repo-infra"
+classification = "source_truth_adr"
+reason = "Records the structural identity contract used to match findings without treating mutable source locations as durable authority."
+evidence = ["issue:3997", "doc:docs/adr/CARGO-ALLOW-ADR-0006-structural-identity-v1.md"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/adr/CARGO-ALLOW-ADR-0006-structural-identity-v1.md"
+target_fingerprint = "md"
+glob = "docs/adr/CARGO-ALLOW-ADR-0006-structural-identity-v1.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11165"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/adr/CARGO-ALLOW-ADR-0007-crate-namespace-policy.md"
+owner = "repo-infra"
+classification = "source_truth_adr"
+reason = "Records crate namespace ownership and the review boundary for adding or retaining public workspace crates."
+evidence = ["issue:3997", "doc:docs/adr/CARGO-ALLOW-ADR-0007-crate-namespace-policy.md"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/adr/CARGO-ALLOW-ADR-0007-crate-namespace-policy.md"
+target_fingerprint = "md"
+glob = "docs/adr/CARGO-ALLOW-ADR-0007-crate-namespace-policy.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11166"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/repository-metadata.md"
+owner = "repo-infra"
+classification = "repository_metadata_contract"
+reason = "Documents the repository metadata surfaces and their ownership so automation can distinguish declared authority from inferred state."
+evidence = ["issue:3991", "doc:docs/repository-metadata.md"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/repository-metadata.md"
+target_fingerprint = "md"
+glob = "docs/repository-metadata.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11167"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/check-toolchain-profile.sh"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Checks the declared toolchain profile and fails closed when release-relevant Rust channel or component policy drifts."
+evidence = ["issue:3454", "test:scripts/test-check-toolchain-profile.sh"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/check-toolchain-profile.sh"
+target_fingerprint = "sh"
+glob = "scripts/check-toolchain-profile.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11168"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/test-check-toolchain-profile.sh"
+owner = "core/release"
+classification = "release_automation_test"
+reason = "Exercises the toolchain-profile guard across accepted and rejected repository configurations."
+evidence = ["issue:3454", "test:scripts/test-check-toolchain-profile.sh"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-check-toolchain-profile.sh"
+target_fingerprint = "sh"
+glob = "scripts/test-check-toolchain-profile.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11169"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4010-release-gate-recovery.toml"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#4010 revision note authorizing the restored release-gate receipts; covers the note file itself as tracked configuration."
+evidence = ["issue:4010", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4010-release-gate-recovery.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4010-release-gate-recovery.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11170"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/exact_candidate_package_identity.py"
+owner = "core/release"
+classification = "release_script"
+reason = "Shared exact crate-version-from-filename projection preserving prerelease identity verbatim for #3968."
+evidence = ["issue:3968"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/exact_candidate_package_identity.py"
+target_fingerprint = "py"
+glob = "scripts/exact_candidate_package_identity.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11171"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/test-exact-candidate-package-identity.py"
+owner = "core/release"
+classification = "release_script_test"
+reason = "Negative controls for the exact crate filename identity projection for #3968."
+evidence = ["issue:3968"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-exact-candidate-package-identity.py"
+target_fingerprint = "py"
+glob = "scripts/test-exact-candidate-package-identity.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11172"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3968-prerelease-package-identity.toml"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3968 revision note authorizing the prerelease identity receipts; covers the note file itself as tracked configuration."
+evidence = ["issue:3968", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3968-prerelease-package-identity.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3968-prerelease-package-identity.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

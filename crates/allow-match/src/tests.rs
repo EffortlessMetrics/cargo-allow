@@ -5,6 +5,7 @@ use allow_core::{
 };
 use std::path::PathBuf;
 
+mod baseline_location_drift;
 mod evaluation;
 mod invalid_date_contract;
 mod lint;

@@ -15,7 +15,7 @@ fn temp_root(label: &str) -> PathBuf {
         std::process::id()
     ));
     fs::create_dir_all(&root)
-        .unwrap_or_else(|err| panic!("create temp root: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create temp root: {err}")));
     root
 }
 
@@ -24,15 +24,15 @@ fn scan_rust_files_skips_oversized_sources_without_aborting() {
     let root = temp_root("oversized-skip");
     let src = root.join("src");
     fs::create_dir_all(&src)
-        .unwrap_or_else(|err| panic!("mkdir src: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("mkdir src: {err}")));
     fs::write(src.join("ok.rs"), "fn ok() { let _ = Some(1).unwrap(); }\n")
-        .unwrap_or_else(|err| panic!("write ok.rs: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write ok.rs: {err}")));
 
     let oversized_path = src.join("huge.rs");
     // One byte over the documented production ceiling (#1916).
     let oversized_len = (SOURCE_FILE_READ_MAX_BYTES as usize).saturating_add(1);
     fs::write(&oversized_path, vec![b'a'; oversized_len])
-        .unwrap_or_else(|err| panic!("write huge.rs: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write huge.rs: {err}")));
 
     let err = read_text_file_capped(&oversized_path).unwrap_err();
     assert!(
@@ -44,7 +44,7 @@ fn scan_rust_files_skips_oversized_sources_without_aborting() {
         &root,
         &[PathBuf::from("src/ok.rs"), PathBuf::from("src/huge.rs")],
     )
-    .unwrap_or_else(|err| panic!("scan mixed: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("scan mixed: {err}")));
     assert!(
         !mixed.findings.is_empty(),
         "oversized sibling must not abort the scan"

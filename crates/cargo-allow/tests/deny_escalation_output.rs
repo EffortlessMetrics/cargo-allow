@@ -24,7 +24,7 @@ fn advisory_only_check_passes_without_deny() {
         .arg("--format")
         .arg("json")
         .output()
-        .unwrap_or_else(|err| panic!("run cargo-allow check: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow check: {err}")));
 
     assert_status("check", &result, true);
     assert_stderr_empty(
@@ -33,7 +33,7 @@ fn advisory_only_check_passes_without_deny() {
         "advisory-only check should stay quiet on stderr",
     );
     let report = serde_json::from_slice::<serde_json::Value>(&result.stdout)
-        .unwrap_or_else(|err| panic!("check stdout should be JSON: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("check stdout should be JSON: {err}")));
     assert_json_str(&report, "/status", "passed", "report status");
     assert_json_u64(
         &report,
@@ -61,7 +61,7 @@ fn advisory_only_check_fails_when_denied_status_count_is_positive() {
         .arg("--format")
         .arg("json")
         .output()
-        .unwrap_or_else(|err| panic!("run cargo-allow check: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow check: {err}")));
 
     assert_status("check", &result, false);
     assert_stderr_empty(
@@ -70,7 +70,7 @@ fn advisory_only_check_fails_when_denied_status_count_is_positive() {
         "deny escalation should surface in the report",
     );
     let report = serde_json::from_slice::<serde_json::Value>(&result.stdout)
-        .unwrap_or_else(|err| panic!("check stdout should be JSON: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("check stdout should be JSON: {err}")));
     assert_json_str(&report, "/status", "failed", "report status");
     assert_json_u64(
         &report,
@@ -99,7 +99,7 @@ fn check_receipt_records_advisory_count_used_by_deny() {
         .arg("--receipt")
         .arg(&receipt_output)
         .output()
-        .unwrap_or_else(|err| panic!("run cargo-allow check: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow check: {err}")));
 
     assert_status("check", &result, false);
     assert_stdout_empty(
@@ -145,7 +145,7 @@ fn advisory_only_check_fails_when_denied_occurrence_headroom_is_positive() {
         .arg("--receipt")
         .arg(&receipt_output)
         .output()
-        .unwrap_or_else(|err| panic!("run cargo-allow check: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow check: {err}")));
 
     assert_status("check", &result, false);
     assert_stdout_empty(
@@ -176,14 +176,14 @@ fn write_counted_headroom_fixture(root: &std::path::Path) {
     let review_after = today.add_days(30);
     let expires = today.add_days(90);
     std::fs::create_dir_all(root.join("crates/alpha"))
-        .unwrap_or_else(|err| panic!("create alpha dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create alpha dir: {err}")));
     std::fs::write(
         root.join("crates/alpha/Cargo.toml"),
         "[package]\nname = \"alpha\"\nversion = \"0.1.0\"\n",
     )
-    .unwrap_or_else(|err| panic!("write alpha manifest: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write alpha manifest: {err}")));
     std::fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
     std::fs::write(
         root.join("policy/allow.toml"),
         format!(
@@ -210,17 +210,17 @@ glob = "crates/*/Cargo.toml"
 "#
         ),
     )
-    .unwrap_or_else(|err| panic!("write policy: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
 }
 
 fn write_policy_missing_evidence_fixture(root: &std::path::Path) {
     let review_after = SimpleDate::today_utc_approx().add_days(30);
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
     fs::create_dir_all(root.join("docs"))
-        .unwrap_or_else(|err| panic!("create docs dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
     fs::write(root.join("docs/policy.md"), "# Policy\n")
-        .unwrap_or_else(|err| panic!("write doc fixture: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write doc fixture: {err}")));
     fs::write(
         root.join("policy/allow.toml"),
         format!(
@@ -263,5 +263,5 @@ glob = "docs/policy.md"
 "#
         ),
     )
-    .unwrap_or_else(|err| panic!("write policy: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
 }

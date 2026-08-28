@@ -100,21 +100,21 @@ fn syntax_unsafe_columns_are_character_based_after_unicode_prefixes() {
 fn temp_root(label: &str) -> PathBuf {
     let unique = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_else(|err| panic!("system clock: {err}"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("system clock: {err}")))
         .as_nanos();
     let root = std::env::temp_dir().join(format!(
         "cargo-allow-rust-{label}-{}-{unique}",
         std::process::id()
     ));
     fs::create_dir_all(&root)
-        .unwrap_or_else(|err| panic!("temp root: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("temp root: {err}")));
     root
 }
 
 fn char_column(line: &str, needle: &str) -> u32 {
     let byte_column = line
         .find(needle)
-        .unwrap_or_else(|| panic!("{needle} should exist in {line}"));
+        .unwrap_or_else(|| std::panic::panic_any(format!("{needle} should exist in {line}")));
     line.char_indices()
         .take_while(|(idx, _)| *idx < byte_column)
         .count() as u32

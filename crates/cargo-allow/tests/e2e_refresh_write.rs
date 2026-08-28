@@ -23,7 +23,7 @@ fn refresh_write_updates_last_seen_in_policy_toml() {
 
     // Verify the initial fixture has the stale last_seen line = 99
     let initial_policy = fs::read_to_string(&policy_path)
-        .unwrap_or_else(|err| panic!("read initial policy: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read initial policy: {err}")));
     assert!(
         initial_policy.contains("line = 99"),
         "fixture should start with last_seen line = 99:\n{initial_policy}"
@@ -47,7 +47,7 @@ fn refresh_write_updates_last_seen_in_policy_toml() {
         .arg("--output")
         .arg(&refresh_output)
         .output()
-        .unwrap_or_else(|err| panic!("run refresh --write: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run refresh --write: {err}")));
 
     assert_status("refresh --write", &refresh, true);
     assert_stdout_empty(
@@ -63,9 +63,9 @@ fn refresh_write_updates_last_seen_in_policy_toml() {
 
     let common: Value = serde_json::from_str(
         &fs::read_to_string(&common_summary)
-            .unwrap_or_else(|err| panic!("read common summary: {err}")),
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read common summary: {err}"))),
     )
-    .unwrap_or_else(|err| panic!("parse common summary: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("parse common summary: {err}")));
     assert_eq!(
         common.get("schema_id").and_then(Value::as_str),
         Some("cargo-allow.core-command-summary.v1")
@@ -121,7 +121,7 @@ fn refresh_write_updates_last_seen_in_policy_toml() {
 
     // The actual policy TOML should now have the updated last_seen line
     let updated_policy = fs::read_to_string(&policy_path)
-        .unwrap_or_else(|err| panic!("read updated policy: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read updated policy: {err}")));
     assert!(
         !updated_policy.contains("line = 99"),
         "stale last_seen line = 99 should be gone after refresh:\n{updated_policy}"
@@ -146,9 +146,9 @@ fn refresh_write_updates_last_seen_in_policy_toml() {
 
 fn write_drift_fixture(root: &Path) {
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| panic!("create src dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
 
     // The finding (unwrap call) is on line 3, but the policy records
     // last_seen line = 99, creating a location_drift.
@@ -156,7 +156,7 @@ fn write_drift_fixture(root: &Path) {
         root.join("src/lib.rs"),
         "// line 1\n// line 2\npub fn relocate(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| panic!("write source: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
 
     let policy = r#"schema_version = "0.1"
 policy = "cargo-allow"
@@ -197,7 +197,7 @@ line = 99
 column = 1
 "#;
     fs::write(root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| panic!("write policy: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
 
     git(root, &["init"]);
     git(
@@ -215,12 +215,12 @@ fn git(root: &Path, args: &[&str]) {
         .arg(root)
         .args(args)
         .output()
-        .unwrap_or_else(|err| panic!("git {args:?}: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
     if !output.status.success() {
-        panic!(
+        std::panic::panic_any(format!(
             "git {args:?} failed: stdout=`{}` stderr=`{}`",
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
-        );
+        ));
     }
 }

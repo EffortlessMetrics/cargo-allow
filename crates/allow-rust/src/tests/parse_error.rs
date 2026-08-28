@@ -14,7 +14,7 @@ fn temp_root(label: &str) -> PathBuf {
         std::process::id()
     ));
     fs::create_dir_all(&root)
-        .unwrap_or_else(|err| panic!("create temp root: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create temp root: {err}")));
     root
 }
 
@@ -33,20 +33,20 @@ fn scan_rust_files_counts_parse_errors_without_aborting() {
     let root = temp_root("workspace-parse-error");
     let src = root.join("src");
     fs::create_dir_all(&src)
-        .unwrap_or_else(|err| panic!("mkdir src: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("mkdir src: {err}")));
     fs::write(src.join("ok.rs"), "fn ok() { let _ = Some(1).unwrap(); }\n")
-        .unwrap_or_else(|err| panic!("write ok.rs: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write ok.rs: {err}")));
     fs::write(
         src.join("broken.rs"),
         "fn broken( {\n    let _ = Some(1).unwrap();\n}\n",
     )
-    .unwrap_or_else(|err| panic!("write broken.rs: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write broken.rs: {err}")));
 
     let mixed = scan_rust_files(
         &root,
         &[PathBuf::from("src/ok.rs"), PathBuf::from("src/broken.rs")],
     )
-    .unwrap_or_else(|err| panic!("scan mixed: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("scan mixed: {err}")));
 
     assert!(
         mixed.findings.iter().any(|f| f.path.ends_with("ok.rs")),

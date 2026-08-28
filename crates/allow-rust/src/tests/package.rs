@@ -11,17 +11,17 @@ fn scan_rust_files_adds_source_package_context_from_manifest() {
     let root = temp_root("source-package");
     let crate_dir = root.join("crates").join("parser");
     fs::create_dir_all(crate_dir.join("src"))
-        .unwrap_or_else(|err| panic!("crate dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("crate dir: {err}")));
     fs::write(
         crate_dir.join("Cargo.toml"),
         "[package]\nname = \"parser\"\nversion = \"0.1.0\"\n",
     )
-    .unwrap_or_else(|err| panic!("manifest write: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("manifest write: {err}")));
     fs::write(
         crate_dir.join("src").join("lib.rs"),
         "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| panic!("rust write: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("rust write: {err}")));
     let files = vec![
         PathBuf::from("crates/parser/Cargo.toml"),
         PathBuf::from("crates/parser/src/lib.rs"),
@@ -31,7 +31,7 @@ fn scan_rust_files_adds_source_package_context_from_manifest() {
         Some("parser".to_string())
     );
     let packages = source_package_contexts(&root, &files)
-        .unwrap_or_else(|err| panic!("package contexts: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("package contexts: {err}")));
     assert_eq!(
         packages,
         vec![SourcePackageContext {
@@ -42,7 +42,7 @@ fn scan_rust_files_adds_source_package_context_from_manifest() {
     assert!(source_package_for_path(&files[1], &packages).is_some());
 
     let scan_result = scan_rust_files(&root, &files)
-        .unwrap_or_else(|err| panic!("scan rust files: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("scan rust files: {err}")));
 
     let unwrap = scan_result
         .findings
@@ -50,7 +50,7 @@ fn scan_rust_files_adds_source_package_context_from_manifest() {
         .find(|finding| finding.family.as_deref() == Some("unwrap"))
         .unwrap_or_else(|| std::panic::panic_any("expected unwrap finding"));
     assert_eq!(unwrap.identity.crate_name.as_deref(), Some("parser"));
-    fs::remove_dir_all(root).unwrap_or_else(|err| panic!("cleanup: {err}"));
+    fs::remove_dir_all(root).unwrap_or_else(|err| std::panic::panic_any(format!("cleanup: {err}")));
 }
 
 #[test]
@@ -88,18 +88,18 @@ fn source_package_context_does_not_match_sibling_prefixes() {
 fn scan_rust_files_ignores_workspace_manifest_without_package_name() {
     let root = temp_root("workspace-manifest");
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| panic!("src dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("src dir: {err}")));
     fs::write(root.join("Cargo.toml"), "[workspace]\nmembers = []\n")
-        .unwrap_or_else(|err| panic!("manifest write: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("manifest write: {err}")));
     fs::write(
         root.join("src").join("lib.rs"),
         "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| panic!("rust write: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("rust write: {err}")));
     let files = vec![PathBuf::from("Cargo.toml"), PathBuf::from("src/lib.rs")];
 
     let scan_result = scan_rust_files(&root, &files)
-        .unwrap_or_else(|err| panic!("scan rust files: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("scan rust files: {err}")));
 
     let unwrap = scan_result
         .findings
@@ -107,30 +107,30 @@ fn scan_rust_files_ignores_workspace_manifest_without_package_name() {
         .find(|finding| finding.family.as_deref() == Some("unwrap"))
         .unwrap_or_else(|| std::panic::panic_any("expected unwrap finding"));
     assert_eq!(unwrap.identity.crate_name, None);
-    fs::remove_dir_all(root).unwrap_or_else(|err| panic!("cleanup: {err}"));
+    fs::remove_dir_all(root).unwrap_or_else(|err| std::panic::panic_any(format!("cleanup: {err}")));
 }
 
 #[test]
 fn scan_rust_files_preserves_input_order_after_parallel_scan() {
     let root = temp_root("parallel-order");
     fs::create_dir_all(&root)
-        .unwrap_or_else(|err| panic!("create root: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create root: {err}")));
     fs::write(
         root.join("first.rs"),
         "fn first(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| panic!("write first: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write first: {err}")));
     fs::write(
         root.join("second.rs"),
         "fn second(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| panic!("write second: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write second: {err}")));
 
     let result = scan_rust_files(
         &root,
         &[PathBuf::from("first.rs"), PathBuf::from("second.rs")],
     )
-    .unwrap_or_else(|err| panic!("scan files: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("scan files: {err}")));
 
     let paths = result
         .findings
@@ -148,18 +148,18 @@ fn scan_rust_files_preserves_input_order_after_parallel_scan() {
 fn scan_rust_files_ignores_invalid_manifest_source_text() {
     let root = temp_root("invalid-manifest");
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| panic!("src dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("src dir: {err}")));
     fs::write(root.join("Cargo.toml"), "[package\nname = \"broken\"\n")
-        .unwrap_or_else(|err| panic!("manifest write: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("manifest write: {err}")));
     fs::write(
         root.join("src").join("lib.rs"),
         "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| panic!("rust write: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("rust write: {err}")));
     let files = vec![PathBuf::from("Cargo.toml"), PathBuf::from("src/lib.rs")];
 
     let scan_result = scan_rust_files(&root, &files)
-        .unwrap_or_else(|err| panic!("scan rust files: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("scan rust files: {err}")));
 
     let unwrap = scan_result
         .findings
@@ -167,28 +167,28 @@ fn scan_rust_files_ignores_invalid_manifest_source_text() {
         .find(|finding| finding.family.as_deref() == Some("unwrap"))
         .unwrap_or_else(|| std::panic::panic_any("expected unwrap finding"));
     assert_eq!(unwrap.identity.crate_name, None);
-    fs::remove_dir_all(root).unwrap_or_else(|err| panic!("cleanup: {err}"));
+    fs::remove_dir_all(root).unwrap_or_else(|err| std::panic::panic_any(format!("cleanup: {err}")));
 }
 
 #[test]
 fn scan_rust_files_ignores_non_utf8_manifest_source_text() {
     let root = temp_root("non-utf8-manifest");
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| panic!("src dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("src dir: {err}")));
     fs::write(
         root.join("Cargo.toml"),
         b"[package]\nname = \"broken\"\n\xFF",
     )
-    .unwrap_or_else(|err| panic!("manifest write: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("manifest write: {err}")));
     fs::write(
         root.join("src").join("lib.rs"),
         "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| panic!("rust write: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("rust write: {err}")));
     let files = vec![PathBuf::from("Cargo.toml"), PathBuf::from("src/lib.rs")];
 
     let scan_result = scan_rust_files(&root, &files)
-        .unwrap_or_else(|err| panic!("scan rust files: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("scan rust files: {err}")));
 
     let unwrap = scan_result
         .findings
@@ -196,25 +196,25 @@ fn scan_rust_files_ignores_non_utf8_manifest_source_text() {
         .find(|finding| finding.family.as_deref() == Some("unwrap"))
         .unwrap_or_else(|| std::panic::panic_any("expected unwrap finding"));
     assert_eq!(unwrap.identity.crate_name, None);
-    fs::remove_dir_all(root).unwrap_or_else(|err| panic!("cleanup: {err}"));
+    fs::remove_dir_all(root).unwrap_or_else(|err| std::panic::panic_any(format!("cleanup: {err}")));
 }
 
 #[test]
 fn scan_rust_files_ignores_unreadable_manifest_context() {
     let root = temp_root("unreadable-manifest");
     fs::create_dir_all(root.join("Cargo.toml"))
-        .unwrap_or_else(|err| panic!("manifest dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("manifest dir: {err}")));
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| panic!("src dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("src dir: {err}")));
     fs::write(
         root.join("src").join("lib.rs"),
         "fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| panic!("rust write: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("rust write: {err}")));
     let files = vec![PathBuf::from("Cargo.toml"), PathBuf::from("src/lib.rs")];
 
     let scan_result = scan_rust_files(&root, &files)
-        .unwrap_or_else(|err| panic!("scan rust files: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("scan rust files: {err}")));
 
     let unwrap = scan_result
         .findings
@@ -222,5 +222,5 @@ fn scan_rust_files_ignores_unreadable_manifest_context() {
         .find(|finding| finding.family.as_deref() == Some("unwrap"))
         .unwrap_or_else(|| std::panic::panic_any("expected unwrap finding"));
     assert_eq!(unwrap.identity.crate_name, None);
-    fs::remove_dir_all(root).unwrap_or_else(|err| panic!("cleanup: {err}"));
+    fs::remove_dir_all(root).unwrap_or_else(|err| std::panic::panic_any(format!("cleanup: {err}")));
 }

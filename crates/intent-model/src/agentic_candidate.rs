@@ -267,9 +267,9 @@ mod tests {
     }
 
     #[test]
-    fn matching_active_writer_waits() {
+    fn matching_active_writer_waits() -> Result<(), String> {
         let mut set = observations();
-        let identity = set.claim.identity().unwrap();
+        let identity = set.claim.identity()?;
         set.candidates.push(CandidateObservationV1 {
             claim_identity: identity,
             base: set.claim.accepted_base.clone(),
@@ -279,13 +279,14 @@ mod tests {
             repository_matches: true,
         });
         assert_eq!(set.admit().disposition, CandidateDispositionV1::Wait);
+        Ok(())
     }
 
     #[test]
-    fn recoverable_candidate_resumes() {
+    fn recoverable_candidate_resumes() -> Result<(), String> {
         let mut set = observations();
         set.candidates.push(CandidateObservationV1 {
-            claim_identity: set.claim.identity().unwrap(),
+            claim_identity: set.claim.identity()?,
             base: set.claim.accepted_base.clone(),
             head: "fedcba9876543210fedcba9876543210fedcba98".into(),
             state: CandidateStateV1::Recoverable,
@@ -293,13 +294,14 @@ mod tests {
             repository_matches: true,
         });
         assert_eq!(set.admit().disposition, CandidateDispositionV1::Resume);
+        Ok(())
     }
 
     #[test]
-    fn conflicting_candidate_reconciles() {
+    fn conflicting_candidate_reconciles() -> Result<(), String> {
         let mut set = observations();
         set.candidates.push(CandidateObservationV1 {
-            claim_identity: set.claim.identity().unwrap(),
+            claim_identity: set.claim.identity()?,
             base: set.claim.accepted_base.clone(),
             head: "fedcba9876543210fedcba9876543210fedcba98".into(),
             state: CandidateStateV1::Conflicting,
@@ -307,12 +309,13 @@ mod tests {
             repository_matches: true,
         });
         assert_eq!(set.admit().disposition, CandidateDispositionV1::Reconcile);
+        Ok(())
     }
 
     #[test]
-    fn duplicate_matching_candidates_reconcile() {
+    fn duplicate_matching_candidates_reconcile() -> Result<(), String> {
         let mut set = observations();
-        let identity = set.claim.identity().unwrap();
+        let identity = set.claim.identity()?;
         let candidate = CandidateObservationV1 {
             claim_identity: identity,
             base: set.claim.accepted_base.clone(),
@@ -323,6 +326,7 @@ mod tests {
         };
         set.candidates = vec![candidate.clone(), candidate];
         assert_eq!(set.admit().disposition, CandidateDispositionV1::Reconcile);
+        Ok(())
     }
 
     #[test]
@@ -340,10 +344,11 @@ mod tests {
     }
 
     #[test]
-    fn identity_ignores_runtime_metadata() {
-        let first = claim().identity().unwrap();
+    fn identity_ignores_runtime_metadata() -> Result<(), String> {
+        let first = claim().identity()?;
         let mut second = claim();
         second.claim_boundary = "same semantic boundary".into();
-        assert_ne!(first, second.identity().unwrap());
+        assert_ne!(first, second.identity()?);
+        Ok(())
     }
 }
