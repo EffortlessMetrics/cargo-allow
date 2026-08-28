@@ -201,6 +201,7 @@ glob = "docs/schemas/operator-latency.v2.schema.json"
 line = 1
 column = 1
 
+
 [[allow]]
 id = "allow-11112"
 kind = "non_rust_file"
@@ -1416,6 +1417,7 @@ glob = "crates/effortless-repo-snapshot/src/git.rs"
 [allow.last_seen]
 line = 2
 column = 1
+
 
 [[allow]]
 id = "allow-9058"
@@ -12403,7 +12405,6 @@ glob = "release/authorize-v0.2.0.json"
 [allow.last_seen]
 line = 1
 column = 1
-
 [[allow]]
 id = "allow-11142"
 kind = "non_rust_file"
@@ -12844,6 +12845,8 @@ glob = ".allow/revisions/3792-release-rehearsal.toml"
 line = 1
 column = 1
 
+
+
 [[allow]]
 id = "allow-11162"
 kind = "non_rust_file"
@@ -13020,6 +13023,71 @@ glob = ".allow/revisions/4010-release-gate-recovery.toml"
 line = 1
 column = 1
 
+[[allow]]
+id = "allow-11170"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/exact_candidate_package_identity.py"
+owner = "core/release"
+classification = "release_script"
+reason = "Shared exact crate-version-from-filename projection preserving prerelease identity verbatim for #3968."
+evidence = ["issue:3968"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/exact_candidate_package_identity.py"
+target_fingerprint = "py"
+glob = "scripts/exact_candidate_package_identity.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11171"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/test-exact-candidate-package-identity.py"
+owner = "core/release"
+classification = "release_script_test"
+reason = "Negative controls for the exact crate filename identity projection for #3968."
+evidence = ["issue:3968"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-exact-candidate-package-identity.py"
+target_fingerprint = "py"
+glob = "scripts/test-exact-candidate-package-identity.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11172"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3968-prerelease-package-identity.toml"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3968 revision note authorizing the prerelease identity receipts; covers the note file itself as tracked configuration."
+evidence = ["issue:3968", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3968-prerelease-package-identity.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3968-prerelease-package-identity.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
 [[allow]]
 id = "allow-0617"
 kind = "panic"
