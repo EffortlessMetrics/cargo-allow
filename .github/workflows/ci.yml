@@ -28,11 +28,17 @@ jobs:
       # cache key, and the attested release-manifest MSRV all still match it.
       - name: MSRV consistency
         run: bash scripts/check-msrv-consistency.sh
+      # Keep installation profile and required components explicit before
+      # rustup resolves the toolchain.
+      - name: Toolchain installation profile
+        run: bash scripts/check-toolchain-profile.sh
       # Proves the guard above still fails closed on each drift site, so it
       # cannot be weakened into a no-op without CI noticing. No toolchain, no
       # cargo: runs in about a second.
       - name: MSRV consistency guard characterization
         run: bash scripts/test-check-msrv-consistency.sh
+      - name: Toolchain profile characterization
+        run: bash scripts/test-check-toolchain-profile.sh
       # Drives the resolved-toolchain guard with stub compilers, so its
       # fail-closed behaviour is proven without installing real toolchains.
       - name: MSRV resolved toolchain guard characterization

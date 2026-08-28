@@ -10,11 +10,16 @@
 
 extern crate self as allow_core;
 
+mod agentic_candidate;
 mod error;
 mod governance_v2;
 mod parity;
 mod spec_system;
 
+pub use agentic_candidate::{
+    CLAIM_REF_SCHEMA_V1, CandidateAdmissionDecisionV1, CandidateDispositionV1,
+    CandidateObservationSetV1, CandidateObservationV1, CandidateStateV1, ClaimRefV1,
+};
 pub use error::{
     IntentModelError, IntentModelErrorKind, IntentModelErrorLocation, IntentModelResult,
     normalize_path, read_text_file_capped, stable_hash_hex,

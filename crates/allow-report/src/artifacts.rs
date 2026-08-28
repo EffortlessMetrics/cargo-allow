@@ -11,6 +11,7 @@ mod frozen_candidate_custody_v1;
 mod list;
 mod migrate;
 mod post_merge_qualification_v1;
+mod post_merge_reconciliation_v1;
 mod propose;
 mod prune;
 mod refresh;
@@ -48,11 +49,7 @@ pub use federation::{
     FederationDivergenceKindCount, FederationDivergenceRecordSummary, FederationDivergenceSummary,
     FederationReportContext, LedgerContributorSummary,
 };
-pub use final_evidence_graph_v1::{
-    CargoAllowFinalEvidenceEdgeV1, CargoAllowFinalEvidenceEvaluationV1,
-    CargoAllowFinalEvidenceGraphV1, CargoAllowFinalEvidenceNodeV1, EvidenceEdgeKindV1,
-    EvidenceNodeClassV1, EvidenceResultClassV1, FinalEvidenceGraphInitV1,
-};
+pub use final_evidence_graph_v1::*;
 pub use frozen_candidate_custody_v1::{
     CandidateCustodyInitV1, CargoAllowFrozenCandidateCustodyV1, ConfidentialityClassV1,
     CustodyDispositionV1, CustodyFileV1, RetainedCustodyItemV1,
@@ -63,6 +60,10 @@ pub use migrate::MigrateReport;
 pub use post_merge_qualification_v1::{
     CargoAllowPostMergeQualificationV1, MergeMethodV1, MergedStateV1,
     PostMergeEquivalenceVerdictV1, PostMergeQualificationInitV1, ReviewedContextV1,
+};
+pub use post_merge_reconciliation_v1::{
+    LandedEffectStatusV1, LandedEffectV1, NextFrontierV1, PostMergeReconciliationRequestV1,
+    PostMergeReconciliationResultV1, ReconciliationDispositionV1,
 };
 pub use propose::ProposeReport;
 pub use prune::{PruneCandidate, PruneModeContext};
