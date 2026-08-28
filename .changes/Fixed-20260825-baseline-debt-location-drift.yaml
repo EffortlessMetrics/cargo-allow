@@ -1,0 +1,4 @@
+kind: Fixed
+body: >-
+  Baseline-debt findings in strict and release mode now retain per-finding
+  location-drift evidence without losing their blocking baseline posture.
