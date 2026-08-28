@@ -317,12 +317,26 @@ fn normalize_contract_text(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
+/// Apply one negative-control mutation to the manifest text. The manifest is
+/// embedded from the checkout working tree, so its line endings depend on the
+/// platform checkout settings (LF blobs can become CRLF working-tree bytes);
+/// normalize before matching, and require the mutation to land so a stale
+/// pattern fails loudly instead of leaving the negative control inert.
+fn mutated_hook(old: &str, new: &str) -> Result<String, String> {
+    let normalized = PRE_COMMIT_HOOK.replace("\r\n", "\n");
+    let mutated = normalized.replacen(old, new, 1);
+    if mutated == normalized {
+        return Err(format!("negative-control mutation did not apply: {old:?}"));
+    }
+    Ok(mutated)
+}
+
 #[test]
 fn precommit_hook_contract_rejects_missing_staged_selector() -> Result<(), String> {
-    let hook = PRE_COMMIT_HOOK.replace(
+    let hook = mutated_hook(
         "entry: cargo-allow check --staged --phase precommit --mode no-new",
         "entry: cargo-allow check --mode no-new",
-    );
+    )?;
     let error = validate_precommit_hook_contract(&hook, ADOPTION_GUIDE)
         .err()
         .ok_or_else(|| "staged hook without a staged selector was accepted".to_string())?;
@@ -334,10 +348,10 @@ fn precommit_hook_contract_rejects_missing_staged_selector() -> Result<(), Strin
 
 #[test]
 fn precommit_hook_contract_rejects_pre_push_for_exact_subject() -> Result<(), String> {
-    let hook = PRE_COMMIT_HOOK.replace(
+    let hook = mutated_hook(
         "stages: [pre-commit]\n\n- id: cargo-allow-worktree",
         "stages: [pre-commit, pre-push]\n\n- id: cargo-allow-worktree",
-    );
+    )?;
     let error = validate_precommit_hook_contract(&hook, ADOPTION_GUIDE)
         .err()
         .ok_or_else(|| "exact staged hook registered for pre-push was accepted".to_string())?;
@@ -349,10 +363,10 @@ fn precommit_hook_contract_rejects_pre_push_for_exact_subject() -> Result<(), St
 
 #[test]
 fn precommit_hook_contract_rejects_worktree_exact_index_claim() -> Result<(), String> {
-    let hook = PRE_COMMIT_HOOK.replace(
+    let hook = mutated_hook(
         "entry: cargo-allow check --mode no-new\n  language: system\n  pass_filenames: false\n  always_run: true\n  stages: [pre-commit, pre-push]",
         "entry: cargo-allow check --staged --phase precommit --mode no-new\n  language: system\n  pass_filenames: false\n  always_run: true\n  stages: [pre-commit, pre-push]",
-    );
+    )?;
     let error = validate_precommit_hook_contract(&hook, ADOPTION_GUIDE)
         .err()
         .ok_or_else(|| "worktree hook claiming exact staged evidence was accepted".to_string())?;
