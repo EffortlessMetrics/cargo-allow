@@ -18,6 +18,12 @@ CANDIDATE_ARTIFACT="${CANDIDATE_ARTIFACT:-target/exact-candidate-package-candida
 INSTALL_RECEIPT="${INSTALL_RECEIPT:-target/exact-candidate-isolated-install/isolated-install.receipt.json}"
 INSTALLED_BIN="${INSTALLED_BIN:-target/exact-candidate-isolated-install/install/bin/cargo-allow}"
 OUTPUT_DIR="${OUTPUT_DIR:-target/exact-candidate-qualification}"
+# The journey's --internal re-invocation resolves relative WORK_DIR against a
+# disposable snapshot root; everything downstream needs absolute paths.
+case "$OUTPUT_DIR" in
+    /*) ;;
+    *) OUTPUT_DIR="$ROOT/$OUTPUT_DIR" ;;
+esac
 
 cd "$ROOT"
 
