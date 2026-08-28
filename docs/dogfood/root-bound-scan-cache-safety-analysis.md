@@ -29,6 +29,23 @@ guarantee. On Windows the same function is implemented with
 existing final component, including a reparse point, instead of
 traversing it.
 
+## Prevention and detection boundary
+
+The Windows walk prevents traversal at creation time but cannot prevent a
+component being swapped for a reparse point after its verification and
+before the flush write; there the guarantee is detection, not prevention:
+the flush sequence's identity rebind, artifact snapshot validation, and
+the inner store's boundary re-checks refuse the flush (typed disposition,
+cold fallback, no content written). The worst case under an actively
+racing repo-local attacker is one outside empty-directory creation with
+no file content behind it. The same detect-after boundary applies on Unix
+to the root directory handle itself; the walked components below it are
+handle-bound, so no outside directory is created there.
+
+Cloud-placeholder directories (OneDrive and similar reparse-point-backed
+roots) carry the reparse attribute, so repositories rooted under them
+fail admission by design and scan cold with a warning.
+
 ## Invariants
 
 1. No path mutation before admission: the requested root and the deepest

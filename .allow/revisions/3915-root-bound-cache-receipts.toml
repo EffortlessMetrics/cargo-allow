@@ -3,57 +3,52 @@
 # The root-bound scan-cache module introduces the only unsafe code in the
 # persistent cache path: a Unix openat/mkdirat component walk that creates and
 # binds cache path components without symlink traversal, plus the safety
-# analysis document that receipts it. Each entry below is a new receipt for
+# analysis document that receipts it. Each record below is a new receipt for
 # source this PR itself adds; no existing entry is widened, no expiry is
 # extended, and no baseline_debt is created. Owners, classifications, and
 # evidence were applied through the documented why --plan / add --from-plan
 # route; the evidence arrays cite the safety analysis, #3915, and the
-# exercising tests by name.
-
-[[records]]
-allow_ids = ["allow-0632"]
-change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:5c7dc2decbcbf098f6ebaf8887375fe1147938d5c93cc0ece86b16e0330b75af"
-reason = "unsafe_extern_block receipt for the openat/mkdirat FFI declaration: the only std-reachable primitive set for no-follow component creation and binding relative to a verified parent directory handle."
+# exercising tests by name. IDs are bound to the merged main ledger tail
+# (after #4014 took allow-0632 for its own revision-note receipt).
 
 [[records]]
 allow_ids = ["allow-0633"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:20ab5fdd7c083046e9d4e50ef0e74e74dba5688aa9a694f3a5533dc03118c6ac"
-reason = "unsafe_block receipt for openat(O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC) opening each existing component relative to the verified parent, refusing traversal."
+after_fingerprint = "sha256:v1:25a2bcea002ba44432c626126f85104faba0b52780a2f9def1ff50d74b7e6a70"
+reason = "unsafe_extern_block receipt for the openat/mkdirat FFI declaration: the only std-reachable primitive set for no-follow component creation and binding relative to a verified parent directory handle."
 
 [[records]]
 allow_ids = ["allow-0634"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:fd79af1e5e6703e456d82c310a3db0e108e8552d41d32de775b3a26f718183b6"
-reason = "unsafe_block receipt for mkdirat(parent, name, 0o700): creates a missing cache component relative to the verified parent handle so no absolute or attacker-chosen path is ever named."
+after_fingerprint = "sha256:v1:a009de967d9e3966aecc0d634965ed77f994c2f770d0eb4e25e0a3f1fd058e8e"
+reason = "unsafe_block receipt for openat(O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC) opening each existing component relative to the verified parent, refusing traversal."
 
 [[records]]
 allow_ids = ["allow-0635"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:87139ac35db7519cdbb51c66dbc6e0f3eeb0a4729f9cb6c6c96acea634d2c8f2"
-reason = "unsafe_block receipt for the post-creation openat re-open that binds the newly created component before descending, keeping the walked chain handle-verified."
+after_fingerprint = "sha256:v1:7724331650dcee7631aa117f6d8c31bfdb15e3eed054aa63276716bebf467066"
+reason = "unsafe_block receipt for mkdirat(parent, name, 0o700): creates a missing cache component relative to the verified parent handle so no absolute or attacker-chosen path is ever named."
 
 [[records]]
 allow_ids = ["allow-0636"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:e9cc5a64b9b02bab3da85bf594a5110a98efb1ae168a3662922bc3c626de6d5a"
+after_fingerprint = "sha256:v1:e255cdd1738e436a4141027dcda1e86a8db51162e63dbc5ca71929e52f2f6e1a"
+reason = "unsafe_block receipt for the post-creation openat re-open that binds the newly created component before descending, keeping the walked chain handle-verified."
+
+[[records]]
+allow_ids = ["allow-0637"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:4a9df77646d98969f44080236f9af42e7e22d28c3d26fd6e7f02b6023562711f"
 reason = "unsafe_block receipt for adopting the returned descriptor as OwnedFd, transferring the verified component handle into the owned walk state."
-
-[[records]]
-allow_ids = ["allow-0637"]
-change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:7e090cbf1b9974c5759ca97588bf5889896bd0d9ad3e1934c1836f3119e617de"
-reason = "non_rust_file receipt for docs/dogfood/root-bound-scan-cache-safety-analysis.md, the verified local evidence document describing the identity law, invariants, and negative controls covering the unsafe entries above."
-
-[[records]]
-allow_ids = ["allow-0637"]
-change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:432b6d2bc422cea5315fa257cfaa0249544533a7e28ba6a4043020ef84154f51"
-reason = "Supersedes the earlier allow-0637 record after the entry reason was reworded to describe the safety-analysis document rather than the unsafe call sites; same subject, owner, and evidence."
 
 [[records]]
 allow_ids = ["allow-0638"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:9a321c268513be7d9f20fe3a0600eb3dfbbfaf78df2390b8cd7c0b37c54aaa1d"
+after_fingerprint = "sha256:v1:b5ece7fb57b99620951b4682bcd977829b9d93fc046fe272889e6e98adb3f1db"
+reason = "non_rust_file receipt for docs/dogfood/root-bound-scan-cache-safety-analysis.md, the verified local evidence document describing the identity law, invariants, and negative controls covering the unsafe entries above."
+
+[[records]]
+allow_ids = ["allow-0639"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:3031d7aca22c54724b231b33b5af56ea862dd8e4b7976e3f9f4d3641c042718c"
 reason = "self-receipt for this revision note file, matching the #3792 precedent: the note is a tracked non-rust file and its own ledger entry is part of the authorized transition."
