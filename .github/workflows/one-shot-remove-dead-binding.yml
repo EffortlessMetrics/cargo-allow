@@ -1,0 +1,54 @@
+name: One-shot evidence-graph Clippy repair
+
+on:
+  push:
+    branches:
+      - repair/main-release-readiness-4005
+
+permissions:
+  contents: write
+
+concurrency:
+  group: one-shot-evidence-graph-clippy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the exact recovery head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: repair/main-release-readiness-4005
+
+      - name: Remove the dead evaluator binding
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("crates/allow-report/src/artifacts/final_evidence_graph_v1/evaluate.rs")
+          source = path.read_text()
+          dead_binding = "        let edge_name = edge_name(edge);\n"
+          if source.count(dead_binding) != 1:
+              raise SystemExit("expected one dead edge_name binding")
+          path.write_text(source.replace(dead_binding, "", 1))
+          PY
+          rm .github/workflows/one-shot-remove-dead-binding.yml
+          cargo fmt --all
+          cargo fmt --all -- --check
+          cargo clippy -p allow-report --all-targets -- -D warnings
+          git diff --check
+
+      - name: Commit the verified repair
+        shell: bash
+        run: |
+          git config user.name "EffortlessSteven"
+          git config user.email "git@effortlesssteven.com"
+          git add \
+            crates/allow-report/src/artifacts/final_evidence_graph_v1/evaluate.rs \
+            .github/workflows/one-shot-remove-dead-binding.yml
+          git diff --cached --check
+          git commit -m "repair(main): remove dead evidence-graph binding"
+          git push origin HEAD:repair/main-release-readiness-4005
