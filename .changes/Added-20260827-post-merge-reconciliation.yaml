@@ -1,0 +1,5 @@
+kind: Added
+body: >-
+  Add a pure post-merge reconciliation contract that distinguishes exact,
+  partial, stale, contradictory, pending, external-action, not-proven, and
+  instrumentation-failure outcomes without mutating repository state.

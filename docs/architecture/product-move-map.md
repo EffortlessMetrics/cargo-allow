@@ -7,7 +7,7 @@
 ## Denominator
 
 - Ledger schema: `cargo-allow.three-product-move-ledger.v1` generation `1`
-- Entries: **108**
+- Entries: **109**
 - Topology authority: Issue **#2612**
 - Move/deletion owner: Issue **#2598**
 - Current posture: inventory and target ratification only; no implementation moved.
@@ -17,7 +17,7 @@
 - `CutoverCurrent`: **15**
 - `CutoverOutstanding`: **5**
 - `RepositoryDecisionRequired`: **1**
-- `TargetRatified`: **87**
+- `TargetRatified`: **88**
 
 ### Disposition counts
 
@@ -28,7 +28,7 @@
 - `MoveToCargoProofApp`: **2**
 - `MoveToIntentEdit`: **7**
 - `MoveToIntentEngine`: **12**
-- `MoveToIntentModel`: **11**
+- `MoveToIntentModel`: **12**
 - `MoveToIntentProtocol`: **4**
 - `MoveToProofAdapter`: **9**
 - `MoveToProofEngine`: **9**
@@ -50,6 +50,17 @@
 5. **#2582** — first real move: minimal `repo-protocol` envelope with parity evidence.
 
 ## Entries
+
+### `ADD-INTENT-MODEL-AGENTIC-CANDIDATE`
+
+- Current: Pure ClaimRef and candidate-admission contracts for one-writer repository work
+- Target: `cargo-intent / intent-model::agentic_candidate`
+- Disposition: `MoveToIntentModel`
+- Stage/status: `IntentModel` / `TargetRatified`
+- Old path: `OldPathStillReachable`
+- Removal: Retain while the agentic candidate contract is supported
+- Next: #3975 consumes Create eligibility through atomic reservation.
+- Deletion output: No compatibility deletion; this is a new intent-model contract.
 
 ### `INVENTORY-CARGO_INTENT-SRC`
 
