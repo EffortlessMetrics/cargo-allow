@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  `cargo-allow add --from-plan` no longer accepts `--dry-run`. The plan route
+  never consulted the flag, so an invocation documented as previewing "without
+  writing any file" applied the receipt to the live ledger. The combination is
+  now rejected as a usage error; `cargo-allow why --plan` remains the
+  non-mutating way to inspect the target, and `--dry-run` is unchanged on the
+  ordinary target-selector route.

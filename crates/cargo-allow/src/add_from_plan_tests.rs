@@ -39,7 +39,7 @@ fn base_from_plan_args() -> AddArgs {
 
 #[test]
 fn from_plan_flag_contract_errors_are_usage() {
-    let cases: [FlagCase; 5] = [
+    let cases: [FlagCase; 6] = [
         ("requires update", |_| {}, "requires --update"),
         (
             "write conflict",
@@ -56,6 +56,17 @@ fn from_plan_flag_contract_errors_are_usage() {
                 args.force = true;
             },
             "cannot be combined with --force",
+        ),
+        (
+            // `--dry-run` used to be accepted and ignored here, so a
+            // documented "without writing any file" invocation applied the
+            // receipt to the live ledger.
+            "dry-run conflict",
+            |args| {
+                args.update = true;
+                args.dry_run = true;
+            },
+            "cannot be combined with --dry-run",
         ),
         (
             "kind conflict",
