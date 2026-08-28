@@ -40,7 +40,7 @@ class FinalPackagedSurfaceTests(unittest.TestCase):
     def test_surface_binds_archive_digest_and_assets(self):
         with tempfile.TemporaryDirectory() as directory:
             archive, _ = self.make_crate(Path(directory))
-            row = surface.surface(archive, "0.2.0")
+            row = surface.surface(archive, "demo", "0.2.0")
             self.assertEqual(row["result"], "Complete")
             self.assertEqual(row["version"], "0.2.0")
             self.assertEqual(row["size_bytes"], archive.stat().st_size)
@@ -49,7 +49,7 @@ class FinalPackagedSurfaceTests(unittest.TestCase):
     def test_missing_declared_asset_is_incomplete(self):
         with tempfile.TemporaryDirectory() as directory:
             archive, _ = self.make_crate(Path(directory), readme=False)
-            row = surface.surface(archive, "0.2.0")
+            row = surface.surface(archive, "demo", "0.2.0")
             self.assertEqual(row["result"], "Incomplete")
             self.assertFalse(row["assets"]["readme"]["present"])
 
@@ -88,48 +88,36 @@ class FinalPackagedSurfaceTests(unittest.TestCase):
             self.assertTrue(archive.exists())
 
 
-class ArchiveIdentityTests(unittest.TestCase):
-    def test_preserves_prerelease_and_build_metadata(self):
-        self.assertEqual(
-            surface.archive_identity(
-                "allow-core-0.2.0-rc.1+build.7.crate",
-                expected_name="allow-core",
-            ),
-            ("allow-core", "0.2.0-rc.1+build.7"),
-        )
-
-    def test_preserves_hyphens_in_package_name(self):
-        self.assertEqual(
-            surface.archive_identity(
-                "allow-policy-legacy-0.2.0-rc.1.crate",
-                expected_name="allow-policy-legacy",
-            ),
-            ("allow-policy-legacy", "0.2.0-rc.1"),
-        )
-
-    def test_rejects_missing_suffix_or_prefix(self):
-        for filename in (
-            "allow-core-0.2.0-rc.1.tar.gz",
-            "other-crate-0.2.0-rc.1.crate",
-            "allow-core-.crate",
-        ):
-            with self.subTest(filename=filename):
-                with self.assertRaises(ValueError):
-                    surface.archive_identity(filename, expected_name="allow-core")
-
-    def test_expected_version_is_checked_as_a_complete_suffix(self):
-        self.assertEqual(
-            surface.archive_identity(
-                "allow-core-0.2.0-rc.1.crate",
-                expected_version="0.2.0-rc.1",
-            ),
-            ("allow-core", "0.2.0-rc.1"),
-        )
-        with self.assertRaises(ValueError):
-            surface.archive_identity(
-                "allow-core-0.2.0-rc.1.crate",
-                expected_version="rc.1",
+    def test_surface_preserves_prerelease_and_hyphenated_identity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            archive, _ = self.make_crate(
+                Path(directory),
+                name="effortless-repo-protocol",
+                version="1.2.3-alpha.1+build.7",
             )
+            row = surface.surface(
+                archive, "effortless-repo-protocol", "1.2.3-alpha.1+build.7"
+            )
+            self.assertEqual(row["name"], "effortless-repo-protocol")
+            self.assertEqual(row["version"], "1.2.3-alpha.1+build.7")
+
+    def test_surface_rejects_unexpected_archive(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            archive, packages = self.make_crate(root, version="0.2.0-rc.1")
+            package_set = root / "package-set.json"
+            package_set.write_text(
+                json.dumps(
+                    {"candidate": {}, "package_set": {"crates": [{"name": "demo", "version": "0.2.0"}]}}
+                )
+            )
+            result = subprocess.run(
+                ["python3", str(ROOT / "final-packaged-surface.py"), "--package-set-receipt", str(package_set), "--packages-dir", str(packages), "--output", str(root / "surface.json")],
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(f"unexpected packaged crate: {archive.name}", result.stderr)
 
 
 if __name__ == "__main__":
