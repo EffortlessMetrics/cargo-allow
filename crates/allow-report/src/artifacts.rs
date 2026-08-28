@@ -8,6 +8,7 @@ mod explain;
 pub(crate) mod federation;
 mod final_evidence_graph_v1;
 mod frozen_candidate_custody_v1;
+mod isolated_install_receipt_v2;
 mod list;
 mod migrate;
 mod package_candidate_v2;
@@ -64,6 +65,13 @@ pub use package_candidate_v2::{
     PackageCandidatePayloadV2, PackageCandidateResultV2, PackageCandidateRowV2,
     PackageCandidateV2Validation, render_package_candidate_v2, render_package_candidate_v2_bytes,
     validate_package_candidate_v2,
+};
+
+pub use isolated_install_receipt_v2::{
+    ISOLATED_INSTALL_RECEIPT_V2_SCHEMA_ID, ISOLATED_INSTALL_RECEIPT_V2_SCHEMA_VERSION,
+    IsolatedInstallGraphComparisonV2, IsolatedInstallPackageRowV2, IsolatedInstallPayloadV2,
+    IsolatedInstallResultV2, IsolatedInstallV2Validation, render_isolated_install_v2,
+    render_isolated_install_v2_bytes, validate_isolated_install_v2,
 };
 pub use post_merge_qualification_v1::{
     CargoAllowPostMergeQualificationV1, MergeMethodV1, MergedStateV1,

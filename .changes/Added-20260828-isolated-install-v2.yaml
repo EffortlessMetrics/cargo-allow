@@ -1,0 +1,26 @@
+kind: Added
+body: >-
+  Install the exact cargo-allow candidate from an isolated classic
+  local registry and verify the resolved graph (#2925). The new stage
+  consumes the typed package-candidate artifact from #2924, extracts
+  the selected crates outside the workspace, warms external
+  dependencies through a bounded patched fetch, assembles the
+  isolated registry index with lockfile-verified checksums, denies
+  the workspace crates/ tree, and installs cargo-allow --locked
+  --offline with a fresh Cargo home and source replacement. The
+  installed binary is invoked by absolute path and its --version
+  identity and executable digest are retained; the actual resolved
+  graph is compared against the candidate rows for exact
+  names/versions, absence of path sources, and absence of unselected
+  intent/proof packages. The typed cargo-allow.isolated-install.v2
+  receipt binds the candidate digest, repository and lock identity,
+  registry index digest, bounded external cache identity, portable
+  install-root and Cargo-home identities, and per-row crate and index
+  checksums; the validator rejects private absolute paths, missing
+  source-checkout denial, dirty graph comparisons, stale identity,
+  unknown generations, and duplicate rows. Negative controls mutate
+  registry copies (missing crate, mutated crate checksum, index
+  checksum mismatch, incomplete external input) and characterize the
+  sibling/version/path/ambient-shadow/redaction/fallback shapes
+  offline. The workspace source tree is restored on every exit path
+  and nothing is published.

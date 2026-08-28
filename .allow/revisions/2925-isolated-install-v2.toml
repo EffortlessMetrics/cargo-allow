@@ -1,0 +1,31 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11186"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:7f89b4f58e8b839a9f0f2ce4fa139e633197d0926d59d4229532794e1604d727"
+reason = "receipt for scripts/exact-candidate-isolated-install.sh, the isolated install stage (#2925)"
+
+[[records]]
+allow_ids = ["allow-11187"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:29fa970641b301d2f2bd89753220a3fec5fb80b52d349d49864b0b425d74f9f7"
+reason = "receipt for scripts/exact-candidate-isolated-install.py, the graph comparison and receipt assembler (#2925)"
+
+[[records]]
+allow_ids = ["allow-11188"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:f3c43ab4b16b58d7628efc6770f89178f151fa93acc554d40aa47c26debd396b"
+reason = "receipt for scripts/test-exact-candidate-isolated-install.py, the offline characterization suite (#2925)"
+
+[[records]]
+allow_ids = ["allow-11189"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:9c407af74f02e4074901298c14f169a9b365b61b9968748c1d6efea6ec844c6f"
+reason = "receipt for docs/schemas/isolated-install-receipt-v2.schema.json, the isolated install receipt contract (#2925)"
+
+[[records]]
+allow_ids = ["allow-11190"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:fa77c57ad4cae7a426e6c850e104d16fa9686572b1899bd7f52dd1c2ab7f945f"
+reason = "self-receipt for this revision note file, matching the #3792 precedent"

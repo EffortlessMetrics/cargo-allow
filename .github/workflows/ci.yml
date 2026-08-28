@@ -114,6 +114,10 @@ jobs:
             --baseline docs/dogfood/receipts/package-candidate-v2.example.json
       - name: Package candidate producer contract characterization (#2924)
         run: python3 scripts/test-exact-candidate-package-candidate.py
+      - name: Exact isolated local-registry install (#2925)
+        run: |
+          bash scripts/exact-candidate-isolated-install.sh
+          python3 scripts/exact-candidate-isolated-install.py --mode classify \n            --input-receipt target/exact-candidate-isolated-install/isolated-install.receipt.json
       - name: Cutover build receipts from package-set artifacts (#3469/#3552)
         run: |
           bash scripts/extraction-cutover-build-receipt.sh repo-snapshot
@@ -152,6 +156,13 @@ jobs:
         with:
           name: exact-candidate-package-candidate-receipt
           path: target/exact-candidate-package-candidate/package-candidate-v2.json
+          if-no-files-found: warn
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: exact-candidate-isolated-install-receipt
+          path: target/exact-candidate-isolated-install/isolated-install.receipt.json
           if-no-files-found: warn
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
