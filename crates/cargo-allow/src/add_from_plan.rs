@@ -351,6 +351,17 @@ fn reject_conflicting_from_plan_flags(args: &AddArgs) -> CargoAllowResult<()> {
             "--from-plan cannot be combined with --force",
         ));
     }
+    // The plan route has no preview mode: it reaches exactly one mutation
+    // point, and nothing here ever consulted `dry_run`. Accepting the flag
+    // meant a documented "without writing any file" invocation applied the
+    // receipt to the live ledger. Reject it rather than silently mutate;
+    // `why --plan` is the non-mutating way to inspect the target.
+    if args.dry_run {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            "--from-plan cannot be combined with --dry-run; the plan route applies to the live ledger and has no preview mode. Inspect the target with `cargo-allow why --plan` first",
+        ));
+    }
     if args.kind.is_some() {
         return Err(CargoAllowError::with_kind(
             CargoAllowErrorKind::Usage,

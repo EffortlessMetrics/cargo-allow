@@ -216,6 +216,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+      - name: Validate CI environment profiles (#3926)
+        run: python scripts/check-ci-environment-profiles.py
       - uses: dtolnay/rust-toolchain@stable
       - uses: ./.github/actions/rust-cache
         with:
@@ -318,6 +320,10 @@ jobs:
       - uses: ./.github/actions/rust-cache
         with:
           lane: release-set
+      - name: Evidence-surface inventory guard (#3810)
+        run: |
+          python3 scripts/test-verify-evidence-surface-inventory.py
+          python3 scripts/verify-evidence-surface-inventory.py
       - run: cargo fmt --all --check
       - name: cargo-allow release-set clippy (#3358)
         run: |

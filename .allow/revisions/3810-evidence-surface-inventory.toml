@@ -1,0 +1,25 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11173"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:9797c21ac1814046228bb08d51c6d53850788772f2634a9a210e07aee06dde76"
+reason = "receipt for policy/evidence-surface-inventory.toml, the checked evidence-strength classification (#3810)"
+
+[[records]]
+allow_ids = ["allow-11174"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:f8e37354b62cb300853ee58f5bf4412eeb81af65fa678f73de309af326d5be5a"
+reason = "receipt for scripts/verify-evidence-surface-inventory.py, the fail-closed inventory verifier (#3810)"
+
+[[records]]
+allow_ids = ["allow-11175"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ca10eb67d263482e96dd00ac03b0b20aaaa5c27cfdb1ef6ff6771a8fee77e1b7"
+reason = "receipt for scripts/test-verify-evidence-surface-inventory.py, the verifier negative controls (#3810)"
+
+[[records]]
+allow_ids = ["allow-11176"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:38a7634d1f05b92dbae57a5b5a61d7d8f91294af2641c4788701d2835b72636f"
+reason = "self-receipt for this revision note file, matching the #3792 precedent"
