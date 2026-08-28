@@ -1,0 +1,24 @@
+# Revision note for #4014: allow-0498 realigned with the two-subject pre-commit manifest.
+
+# This PR renames the contract test that receipts .pre-commit-hooks.yaml
+# (precommit_hook_contract_has_no_new_debt_gate is now
+# precommit_hook_contract_has_exact_staged_and_worktree_paths) and splits the
+# manifest into two subjects (exact staged at pre-commit, advisory
+# tracked-worktree at pre-commit/pre-push). The old test reference would be
+# dangling at head, so the entry's evidence pointer is replaced and its reason
+# re-authored to describe both subjects. No exception scope changes: same
+# subject file, same classification, same owner, identical occurrence posture.
+
+[[records]]
+allow_ids = ["allow-0498"]
+change_kinds = ["evidence_removed"]
+before_fingerprint = "sha256:v1:9490910ff7a17e784b63983f96c95b462489831f19ab1058cab4cf0046902f4d"
+after_fingerprint = "sha256:v1:a4c62e408c266ab276a87b4e12529e3d97fa9f4e978be695fcb5cfe724bc1e78"
+reason = "Replaces test:precommit_hook_contract_has_no_new_debt_gate, renamed by #4014 to precommit_hook_contract_has_exact_staged_and_worktree_paths, so the durable evidence pointer tracks the surviving contract test instead of dangling. The replacement reference is added to the same retained entry (evidence_added improvement in the same diff)."
+
+[[records]]
+allow_ids = ["allow-0498"]
+change_kinds = ["reason_changed"]
+before_fingerprint = "sha256:v1:9490910ff7a17e784b63983f96c95b462489831f19ab1058cab4cf0046902f4d"
+after_fingerprint = "sha256:v1:a4c62e408c266ab276a87b4e12529e3d97fa9f4e978be695fcb5cfe724bc1e78"
+reason = "Re-authors the reason so it describes both published hook subjects of the realigned manifest (exact staged pre-commit candidate check plus advisory tracked-worktree hook) instead of the single worktree subject it described before #4014."
