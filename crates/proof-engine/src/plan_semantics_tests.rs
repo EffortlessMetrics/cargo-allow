@@ -39,6 +39,7 @@ fn sample_envelope(
         sample_identity(),
         phase,
         vec![IntentPhaseObligationV1 {
+            handoff: None,
             obligation_id: "obl-1".to_string(),
             phase: phase.to_string(),
             kind: IntentPhaseObligationKindV1::EvidenceReview,

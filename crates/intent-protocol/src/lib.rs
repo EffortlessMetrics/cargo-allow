@@ -31,8 +31,10 @@ pub use diff::{
 pub use identity::{INTENT_IDENTITY_SCHEMA_ID, IntentArtifactKindV1, IntentIdentityEnvelopeV1};
 pub use obligation::{
     INTENT_OBLIGATION_PLAN_RESPONSE_SCHEMA_ID, INTENT_OBLIGATION_PLAN_SCHEMA_ID,
-    IntentObligationPlanEnvelopeV1, IntentObligationPlanResponseV1, IntentObligationPostureV1,
-    IntentPhaseObligationKindV1, IntentPhaseObligationV1,
+    IntentEvidenceIndependenceV1, IntentObligationHandoffV1, IntentObligationPlanEnvelopeV1,
+    IntentObligationPlanResponseV1, IntentObligationPostureV1, IntentPhaseObligationKindV1,
+    IntentPhaseObligationV1, IntentPlanEnrichmentV1, IntentProofHandoffDispositionV1,
+    IntentSubjectInventoryCompletenessV1, IntentSubjectPostureV1,
 };
 pub use packet::{
     INTENT_ENGINE_PACKET_SCHEMA_ID, IntentEnginePacketEnvelopeV1, IntentEnginePacketKindV1,

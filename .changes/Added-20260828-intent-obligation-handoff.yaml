@@ -1,0 +1,42 @@
+kind: Added
+body: >-
+  Enrich the canonical intent obligation-plan envelope with the PreTest
+  proof-handoff semantics (#3964 PR A, additive extension of the V1
+  family; no successor schema and no new obligation authority). Each
+  IntentPhaseObligationV1 row can now carry an optional handoff block:
+  one of the eight handoff dispositions (ReadyForProofPlanning through
+  PartialOrNotProven) with a reason, evidence-purpose and discriminator
+  references, forbidden-or-alternate observables, precondition /
+  operation / expected-observable and seam / owner-scope references,
+  requirement and target identities, subject selector reference and
+  exact / weak / ambiguous / missing / zero-subject posture, subject
+  inventory completeness with limitations, the requested evidence class
+  as a semantic requirement (never a provider capability observation),
+  minimum threshold, automated / manual-outstanding / native-outstanding
+  independence, what the evaluator established versus what remains
+  unproven, load-bearing currentness dimensions, retrieval references,
+  limitations, claim boundary, a row semantic digest, and the exact
+  source-subject identity (staged / worktree / committed stay distinct).
+  The envelope can carry plan-level enrichment: protocol generation,
+  guidance-result and resolved-config identities, a V2-capable
+  repository subject identity, prepared-change identity, the requested
+  semantic boundary, and compiler / query / policy / evaluation
+  generation references. All fields are optional and reference-only;
+  historical V1 artifacts read unchanged and absence is never
+  interpreted as ready. Validation fails closed: readiness requires
+  exact subject posture, an evidence purpose, a requested evidence
+  class, a subject selector, and no unproven items; manual or native
+  outstanding independence can never be ready; not-applicable requires
+  a reason; generation zero and blank references are rejected; and
+  provider, argv, receipt, and gate fields stay rejected by the
+  envelope contract. The obligation posture vocabulary gains the
+  decision disposition so a repository-gated obligation never has to
+  collapse into blocking or advisory. Fixtures cover the discriminating
+  evidence purposes, multi-requirement subjects, deterministic
+  serialization, distinct source-subject identities, affected-row
+  staleness with unaffected-row preservation, historical read-back
+  without fabrication, and the proof-field rejection shapes. The
+  proof-engine authority guard now also fails if any proof-family
+  source redeclares or aliases any intent obligation family type.
+  Seeded authority control per #3599; PR B wires the #3819 evaluator
+  production and ProofPlanV2 consumption.

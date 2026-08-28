@@ -152,6 +152,7 @@ fn planner_dry_run_and_execution_gate_pipeline() -> Result<(), String> {
         identity,
         "precommit",
         vec![IntentPhaseObligationV1 {
+            handoff: None,
             obligation_id: "obligation-1".to_string(),
             phase: "precommit".to_string(),
             kind: IntentPhaseObligationKindV1::EvidenceReview,

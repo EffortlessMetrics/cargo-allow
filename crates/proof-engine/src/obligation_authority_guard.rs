@@ -138,3 +138,95 @@ fn intent_protocol_is_the_sole_obligation_input_dependency() -> Result<(), Strin
     }
     Ok(())
 }
+
+/// Intent-protocol obligation-family type names (#3964 enrichment included)
+/// that proof-family sources must never redeclare, alias, or independently
+/// evolve. Importing them from intent-protocol is the only sanctioned use
+/// (#2936 one-authority law; seeded authority control on #3599).
+const INTENT_OBLIGATION_FAMILY_TYPES: &[&str] = &[
+    "IntentObligationPlanEnvelopeV1",
+    "IntentObligationPlanResponseV1",
+    "IntentPhaseObligationV1",
+    "IntentPhaseObligationKindV1",
+    "IntentObligationPostureV1",
+    "IntentObligationHandoffV1",
+    "IntentPlanEnrichmentV1",
+    "IntentProofHandoffDispositionV1",
+    "IntentSubjectPostureV1",
+    "IntentSubjectInventoryCompletenessV1",
+    "IntentEvidenceIndependenceV1",
+];
+
+fn flags_obligation_redeclaration(sample: &str) -> bool {
+    for name in INTENT_OBLIGATION_FAMILY_TYPES {
+        for keyword in ["struct ", "enum ", "type "] {
+            for prefix in ["", "pub "] {
+                if sample.contains(&format!("{keyword}{prefix}{name}")) {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+#[test]
+fn proof_family_never_redeclares_the_intent_obligation_family() -> Result<(), String> {
+    // Seeded self-check: the detector must flag a redeclared or aliased copy
+    // so the guard cannot rot into a no-op, and must never flag a sanctioned
+    // import.
+    for seeded in [
+        "struct IntentPhaseObligationV1 {".to_string(),
+        "pub enum IntentObligationPostureV1 {".to_string(),
+        "type IntentObligationHandoffV1 =".to_string(),
+        "struct IntentProofHandoffDispositionV1;".to_string(),
+    ] {
+        if !flags_obligation_redeclaration(&seeded) {
+            return Err(format!(
+                "authority detector missed a seeded redeclaration: {seeded}"
+            ));
+        }
+    }
+    if flags_obligation_redeclaration("use intent_protocol::IntentPhaseObligationV1;") {
+        return Err("authority detector flagged a sanctioned import".to_string());
+    }
+
+    let root = workspace_root();
+    let self_relative = file!().replace('\\', "/");
+    let mut sources = Vec::new();
+    for family in [
+        "crates/proof-engine/src",
+        "crates/proof-protocol/src",
+        "crates/cargo-proof/src",
+    ] {
+        collect_rust_sources(&root.join(family), &mut sources);
+    }
+    if sources.is_empty() {
+        return Err("expected proof-family sources to scan".into());
+    }
+    for path in &sources {
+        let relative = path
+            .strip_prefix(&root)
+            .ok()
+            .map(|rel| rel.to_string_lossy().replace('\\', "/"));
+        if relative.as_deref() == Some(self_relative.as_str()) {
+            continue;
+        }
+        let text = std::fs::read_to_string(path)
+            .map_err(|err| format!("read {}: {err}", path.display()))?;
+        for name in INTENT_OBLIGATION_FAMILY_TYPES {
+            for keyword in ["struct ", "enum ", "type "] {
+                if text.contains(&format!("{keyword}{name}"))
+                    || text.contains(&format!("{keyword}pub {name}"))
+                {
+                    return Err(format!(
+                        "{} redeclares the intent-protocol obligation family type `{name}`; \
+                         the canonical exchange stays intent-owned (#2936/#3964)",
+                        path.display()
+                    ));
+                }
+            }
+        }
+    }
+    Ok(())
+}
