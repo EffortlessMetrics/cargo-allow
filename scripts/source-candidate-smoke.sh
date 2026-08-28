@@ -563,11 +563,12 @@ printf 'pub fn second(value: Option<u8>) -> u8 { value.unwrap() }\n' >> "${consu
 "${cargo_bin}" add --from-plan "${why_plan}" --owner core --reason "second finding receipted through the why plan chain" --evidence "test:second_finding_why_plan_add" --update --root "${consumer_dir}" >/dev/null
 step_second_finding_exit=0
 
-log "step targeted recheck after add (no-new passes for the receipted finding)"
+log "step post-add recheck and full panic-scope check (the targeted recheck "
+    "is not a repository proof)"
 set +e
 recheck_json="$("${cargo_bin}" check --root "${consumer_dir}" --config "${policy_path}" --kind panic --mode no-new --format json 2>&1)"
 recheck_exit=$?
-full_check_json="$("${cargo_bin}" check --root "${consumer_dir}" --config "${policy_path}" --mode no-new --format json 2>&1)"
+full_check_json="$("${cargo_bin}" check --root "${consumer_dir}" --config "${policy_path}" --kind panic --mode no-new --format json 2>&1)"
 full_check_exit=$?
 set -e
 if [ "$recheck_exit" -ne 0 ] || [ "$full_check_exit" -ne 0 ]; then
