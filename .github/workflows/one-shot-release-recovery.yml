@@ -1,0 +1,269 @@
+name: One-shot release-gate recovery
+
+on:
+  push:
+    branches:
+      - repair/main-release-readiness-4005
+
+permissions:
+  contents: write
+
+concurrency:
+  group: one-shot-release-recovery-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the exact recovery head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: repair/main-release-readiness-4005
+
+      - name: Apply assertion-guarded source and ledger repairs
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def rewrite_result_test(text: str, name: str) -> str:
+              signature = f"    fn {name}() {{"
+              replacement = f"    fn {name}() -> Result<(), String> {{"
+              if text.count(signature) != 1:
+                  raise SystemExit(f"expected one signature for {name}")
+              text = text.replace(signature, replacement, 1)
+              start = text.index(replacement)
+              opening = text.index("{", start)
+              depth = 0
+              closing = None
+              for index in range(opening, len(text)):
+                  character = text[index]
+                  if character == "{":
+                      depth += 1
+                  elif character == "}":
+                      depth -= 1
+                      if depth == 0:
+                          closing = index
+                          break
+              if closing is None:
+                  raise SystemExit(f"could not find closing brace for {name}")
+              body = text[opening + 1 : closing]
+              if ".unwrap()" not in body:
+                  raise SystemExit(f"expected unwrap in {name}")
+              body = body.replace(".unwrap()", "?")
+              body = body.rstrip() + "\n        Ok(())\n    "
+              return text[: opening + 1] + body + text[closing:]
+
+          candidate_path = Path("crates/intent-model/src/agentic_candidate.rs")
+          candidate = candidate_path.read_text()
+          if candidate.count(".unwrap()") != 6:
+              raise SystemExit("agentic candidate unwrap surface changed")
+          for test_name in (
+              "matching_active_writer_waits",
+              "recoverable_candidate_resumes",
+              "conflicting_candidate_reconciles",
+              "duplicate_matching_candidates_reconcile",
+              "identity_ignores_runtime_metadata",
+          ):
+              candidate = rewrite_result_test(candidate, test_name)
+          if ".unwrap()" in candidate:
+              raise SystemExit("agentic candidate unwrap remained after rewrite")
+          candidate_path.write_text(candidate)
+
+          implementation_path = Path(
+              "crates/allow-report/src/artifacts/post_merge_reconciliation_v1.rs"
+          )
+          implementation = implementation_path.read_text()
+          old_duplicate_check = '''fn has_duplicate_effect_ids(effects: &[LandedEffectV1]) -> bool {
+              effects.iter().enumerate().any(|(index, effect)| {
+                  effects[..index]
+                      .iter()
+                      .any(|previous| previous.effect_id == effect.effect_id)
+              })
+          }
+          '''
+          new_duplicate_check = '''fn has_duplicate_effect_ids(effects: &[LandedEffectV1]) -> bool {
+              let mut effect_ids = std::collections::BTreeSet::new();
+              effects
+                  .iter()
+                  .any(|effect| !effect_ids.insert(effect.effect_id.as_str()))
+          }
+          '''
+          if implementation.count(old_duplicate_check) != 1:
+              raise SystemExit("duplicate-effect helper shape changed")
+          implementation_path.write_text(
+              implementation.replace(old_duplicate_check, new_duplicate_check, 1)
+          )
+
+          contract_path = Path(
+              "crates/allow-report/tests/post_merge_reconciliation_contract.rs"
+          )
+          contract = contract_path.read_text()
+          old_unknown = (
+              "    input.expected_effects[0].status = LandedEffectStatusV1::Unknown;\n"
+          )
+          new_unknown = '''    input.expected_effects = vec![LandedEffectV1 {
+              effect_id: "effect-001".to_string(),
+              status: LandedEffectStatusV1::Unknown,
+          }];
+          '''
+          old_duplicate = '''    duplicate
+              .expected_effects
+              .push(duplicate.expected_effects[0].clone());
+          '''
+          new_duplicate = '''    duplicate.expected_effects.push(LandedEffectV1 {
+              effect_id: "effect-001".to_string(),
+              status: LandedEffectStatusV1::Present,
+          });
+          '''
+          if contract.count(old_unknown) != 1 or contract.count(old_duplicate) != 1:
+              raise SystemExit("post-merge contract fixture shape changed")
+          contract = contract.replace(old_unknown, new_unknown, 1)
+          contract = contract.replace(old_duplicate, new_duplicate, 1)
+          contract_path.write_text(contract)
+
+          receipts = [
+              (
+                  "allow-11162",
+                  "documentation",
+                  "docs/adr/CARGO-ALLOW-ADR-0004-source-syntax-only-scan.md",
+                  "repo-infra",
+                  "source_truth_adr",
+                  "Records the source-syntax-only scanner boundary and the compiler/runtime claims cargo-allow deliberately does not make.",
+                  ["issue:3997", "doc:docs/adr/CARGO-ALLOW-ADR-0004-source-syntax-only-scan.md"],
+                  "md",
+              ),
+              (
+                  "allow-11163",
+                  "documentation",
+                  "docs/adr/CARGO-ALLOW-ADR-0005-baseline-debt-window.md",
+                  "repo-infra",
+                  "source_truth_adr",
+                  "Records the bounded baseline-debt lifecycle and the conditions under which retained debt must be reviewed rather than silently absorbed.",
+                  ["issue:3997", "doc:docs/adr/CARGO-ALLOW-ADR-0005-baseline-debt-window.md"],
+                  "md",
+              ),
+              (
+                  "allow-11164",
+                  "documentation",
+                  "docs/adr/CARGO-ALLOW-ADR-0006-structural-identity-v1.md",
+                  "repo-infra",
+                  "source_truth_adr",
+                  "Records the structural identity contract used to match findings without treating mutable source locations as durable authority.",
+                  ["issue:3997", "doc:docs/adr/CARGO-ALLOW-ADR-0006-structural-identity-v1.md"],
+                  "md",
+              ),
+              (
+                  "allow-11165",
+                  "documentation",
+                  "docs/adr/CARGO-ALLOW-ADR-0007-crate-namespace-policy.md",
+                  "repo-infra",
+                  "source_truth_adr",
+                  "Records crate namespace ownership and the review boundary for adding or retaining public workspace crates.",
+                  ["issue:3997", "doc:docs/adr/CARGO-ALLOW-ADR-0007-crate-namespace-policy.md"],
+                  "md",
+              ),
+              (
+                  "allow-11166",
+                  "documentation",
+                  "docs/repository-metadata.md",
+                  "repo-infra",
+                  "repository_metadata_contract",
+                  "Documents the repository metadata surfaces and their ownership so automation can distinguish declared authority from inferred state.",
+                  ["issue:3991", "doc:docs/repository-metadata.md"],
+                  "md",
+              ),
+              (
+                  "allow-11167",
+                  "shell_script",
+                  "scripts/check-toolchain-profile.sh",
+                  "core/release",
+                  "release_automation_script",
+                  "Checks the declared toolchain profile and fails closed when release-relevant Rust channel or component policy drifts.",
+                  ["issue:3454", "test:scripts/test-check-toolchain-profile.sh"],
+                  "sh",
+              ),
+              (
+                  "allow-11168",
+                  "shell_script",
+                  "scripts/test-check-toolchain-profile.sh",
+                  "core/release",
+                  "release_automation_test",
+                  "Exercises the toolchain-profile guard across accepted and rejected repository configurations.",
+                  ["issue:3454", "test:scripts/test-check-toolchain-profile.sh"],
+                  "sh",
+              ),
+          ]
+
+          policy_path = Path("policy/allow.toml")
+          policy = policy_path.read_bytes()
+          if b"\r\n" not in policy or policy.replace(b"\r\n", b"").find(b"\n") != -1:
+              raise SystemExit("policy line-ending contract changed")
+          policy_text = policy.decode("utf-8")
+          if "id = \"allow-11161\"" not in policy_text:
+              raise SystemExit("expected current policy tail identity is absent")
+          blocks = []
+          for allow_id, family, path, owner, classification, reason, evidence, fingerprint in receipts:
+              if f'id = "{allow_id}"' in policy_text or f'path = "{path}"' in policy_text:
+                  raise SystemExit(f"receipt already exists for {allow_id} or {path}")
+              evidence_text = ", ".join(f'"{item}"' for item in evidence)
+              blocks.append(
+                  f'''[[allow]]
+          id = "{allow_id}"
+          kind = "non_rust_file"
+          family = "{family}"
+          path = "{path}"
+          owner = "{owner}"
+          classification = "{classification}"
+          reason = "{reason}"
+          evidence = [{evidence_text}]
+          created = "2026-08-27"
+          review_after = "2027-02-27"
+
+          [allow.selector]
+          ast_kind = "tracked_file"
+          symbol = "{path}"
+          target_fingerprint = "{fingerprint}"
+          glob = "{path}"
+
+          [allow.last_seen]
+          line = 1
+          column = 1
+          '''
+              )
+          appendix = "\n" + "\n".join(blocks)
+          if not policy.endswith(b"\r\n"):
+              raise SystemExit("policy must end in CRLF before append")
+          policy_path.write_bytes(policy + appendix.replace("\n", "\r\n").encode("utf-8"))
+          PY
+
+      - name: Remove the one-shot workflow before policy inventory
+        run: rm .github/workflows/one-shot-release-recovery.yml
+
+      - name: Format and verify the affected crates
+        run: |
+          cargo fmt --all
+          cargo fmt --all -- --check
+          cargo clippy -p allow-report -p intent-model --all-targets -- -D warnings
+          cargo test -p allow-report -p intent-model --all-targets
+          git diff --check
+
+      - name: Prove the enforcing repository policy
+        run: cargo run -p cargo-allow -- check --mode no-new --config policy/allow.toml
+
+      - name: Commit the verified repair
+        shell: bash
+        run: |
+          git config user.name "EffortlessSteven"
+          git config user.email "git@effortlesssteven.com"
+          git add \
+            crates/intent-model/src/agentic_candidate.rs \
+            crates/allow-report/src/artifacts/post_merge_reconciliation_v1.rs \
+            crates/allow-report/tests/post_merge_reconciliation_contract.rs \
+            policy/allow.toml \
+            .github/workflows/one-shot-release-recovery.yml
+          git diff --cached --check
+          git commit -m "repair(main): close restored release-gate findings"
+          git push origin HEAD:repair/main-release-readiness-4005
