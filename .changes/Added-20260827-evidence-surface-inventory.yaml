@@ -1,0 +1,6 @@
+kind: Added
+body: >-
+  Add a checked evidence-surface inventory that keeps release and campaign
+  projection tests explicit about their evidence strength and prevents lexical
+  assertions from satisfying typed, production, external, or live-control
+  release claims on their own.
