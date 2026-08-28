@@ -13635,3 +13635,113 @@ glob = ".allow/revisions/2924-package-candidate-v2.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11186"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/exact-candidate-isolated-install.sh"
+owner = "core/release"
+classification = "release_packaging_producer"
+reason = "Isolated local-registry install stage for the exact cargo-allow candidate (#2925)."
+evidence = ["issue:2925"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/exact-candidate-isolated-install.sh"
+target_fingerprint = "sh"
+glob = "scripts/exact-candidate-isolated-install.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11187"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/exact-candidate-isolated-install.py"
+owner = "core/release"
+classification = "release_packaging_producer"
+reason = "Resolved-graph comparison and typed receipt assembly for the isolated install (#2925)."
+evidence = ["issue:2925"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/exact-candidate-isolated-install.py"
+target_fingerprint = "py"
+glob = "scripts/exact-candidate-isolated-install.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11188"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test-exact-candidate-isolated-install.py"
+owner = "core/release"
+classification = "release_packaging_test"
+reason = "Offline characterization for the isolated-install comparison and classification (#2925)."
+evidence = ["issue:2925"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-exact-candidate-isolated-install.py"
+target_fingerprint = "py"
+glob = "scripts/test-exact-candidate-isolated-install.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11189"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/isolated-install-receipt-v2.schema.json"
+owner = "core/release"
+classification = "release_contract_schema"
+reason = "JSON schema for the isolated install receipt contract for #2925."
+evidence = ["issue:2925"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/isolated-install-receipt-v2.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/isolated-install-receipt-v2.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11190"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/2925-isolated-install-v2.toml"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#2925 revision note authorizing the isolated-install receipts; covers the note file itself as tracked configuration."
+evidence = ["issue:2925", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/2925-isolated-install-v2.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/2925-isolated-install-v2.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
