@@ -45,3 +45,15 @@ allow_ids = ["allow-0637"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:7e090cbf1b9974c5759ca97588bf5889896bd0d9ad3e1934c1836f3119e617de"
 reason = "non_rust_file receipt for docs/dogfood/root-bound-scan-cache-safety-analysis.md, the verified local evidence document describing the identity law, invariants, and negative controls covering the unsafe entries above."
+
+[[records]]
+allow_ids = ["allow-0637"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:432b6d2bc422cea5315fa257cfaa0249544533a7e28ba6a4043020ef84154f51"
+reason = "Supersedes the earlier allow-0637 record after the entry reason was reworded to describe the safety-analysis document rather than the unsafe call sites; same subject, owner, and evidence."
+
+[[records]]
+allow_ids = ["allow-0638"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:9a321c268513be7d9f20fe3a0600eb3dfbbfaf78df2390b8cd7c0b37c54aaa1d"
+reason = "self-receipt for this revision note file, matching the #3792 precedent: the note is a tracked non-rust file and its own ledger entry is part of the authorized transition."
