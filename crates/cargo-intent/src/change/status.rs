@@ -308,6 +308,9 @@ fn engine_obligation_to_protocol(item: &PhaseObligationItemV1) -> IntentPhaseObl
             ObligationPostureV1::Advisory => IntentObligationPostureV1::Advisory,
         },
         evidence_refs: Vec::new(),
+        // PR B (#3964) wires the #3819 evaluator rows into this field; the
+        // current producer predates the enrichment and honestly emits none.
+        handoff: None,
     }
 }
 

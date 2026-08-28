@@ -128,6 +128,7 @@ mod tests {
             sample_identity(),
             "precommit",
             vec![IntentPhaseObligationV1 {
+                handoff: None,
                 obligation_id: "obl-1".to_string(),
                 phase: "precommit".to_string(),
                 kind: IntentPhaseObligationKindV1::EvidenceReview,
