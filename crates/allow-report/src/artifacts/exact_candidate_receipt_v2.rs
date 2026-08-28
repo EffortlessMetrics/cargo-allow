@@ -346,8 +346,7 @@ mod tests {
         let mut failing = payload();
         let second = failing
             .journey_steps
-            .iter_mut()
-            .nth(1)
+            .get_mut(1)
             .ok_or_else(|| "fixture lost its second journey step".to_string())?;
         second.exit_code = 3;
         let validation = validate_exact_candidate_v2(&failing);
