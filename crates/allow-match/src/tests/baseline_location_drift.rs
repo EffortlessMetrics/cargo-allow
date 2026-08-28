@@ -19,7 +19,11 @@ fn baseline_debt_location_drift_is_mode_aware() -> Result<(), String> {
         .ok_or_else(|| "no-new finding outcome should be present".to_string())?;
     assert_eq!(no_new_outcome.status, MatchStatus::LocationDrift);
     assert!(!CheckMode::NoNew.fails(no_new_outcome.status));
-    assert!(no_new_outcome.message.contains("last_seen changed from 7:12 to 50:12"));
+    assert!(
+        no_new_outcome
+            .message
+            .contains("last_seen changed from 7:12 to 50:12")
+    );
 
     for mode in [CheckMode::Strict, CheckMode::Release] {
         let outcomes = evaluate(&cfg, std::slice::from_ref(&finding), mode);
@@ -31,7 +35,11 @@ fn baseline_debt_location_drift_is_mode_aware() -> Result<(), String> {
         assert_eq!(outcome.status, MatchStatus::BaselineDebt);
         assert!(mode.fails(outcome.status));
         assert!(outcome.message.contains("is baseline debt"));
-        assert!(outcome.message.contains("last_seen changed from 7:12 to 50:12"));
+        assert!(
+            outcome
+                .message
+                .contains("last_seen changed from 7:12 to 50:12")
+        );
     }
 
     Ok(())
@@ -65,7 +73,11 @@ fn baseline_debt_location_drift_remains_per_finding() -> Result<(), String> {
     assert_eq!(moved_outcome.status, MatchStatus::BaselineDebt);
     assert_eq!(anchored_outcome.status, MatchStatus::BaselineDebt);
     assert!(moved_outcome.message.contains("is baseline debt"));
-    assert!(moved_outcome.message.contains("last_seen changed from 50:12 to 9:3"));
+    assert!(
+        moved_outcome
+            .message
+            .contains("last_seen changed from 50:12 to 9:3")
+    );
     assert!(anchored_outcome.message.contains("is baseline debt"));
     assert!(!anchored_outcome.message.contains("last_seen changed"));
 
