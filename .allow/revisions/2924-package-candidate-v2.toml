@@ -3,19 +3,19 @@ schema_version = 1
 [[records]]
 allow_ids = ["allow-11181"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:44f5adae63c0d216c5ab93c9f90ebfa2e87c30f40f59ed10888dd2c0e1c0606b"
+after_fingerprint = "sha256:v1:a5fdd132953816a96b1d54a8eeb14585ae888443466acce595b30bdf901638ca"
 reason = "receipt for scripts/exact-candidate-package-candidate.py, the topology-selected candidate producer (#2924)"
 
 [[records]]
 allow_ids = ["allow-11182"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:ce25a1fdadb8a4c63d6f9ee56a9f3b50bb483eeb9f6144fbc18c43d079e53e2c"
+after_fingerprint = "sha256:v1:d5cf47b4d568f7196b7f6043c868abf2e97e2db407f498a3ca6cacb038eb39cf"
 reason = "receipt for scripts/test-exact-candidate-package-candidate.py, the producer negative controls (#2924)"
 
 [[records]]
 allow_ids = ["allow-11183"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:68092298cff0a5c21f13b473d223251376f05a51b626de66fdaa81eb5f39d904"
+after_fingerprint = "sha256:v1:d98f4be3f38484100195de4268512d474824cc410bd29475cd26d00552149dd4"
 reason = "receipt for docs/schemas/package-candidate-v2.schema.json, the candidate contract schema (#2924)"
 
 [[records]]

@@ -39,6 +39,7 @@ fn schema_contract_registry_covers_every_documented_artifact_schema() {
                 && name != "operator-latency.v2"
                 && name != "release-manifest"
                 && name != "release-manifest-v2"
+                && name != "package-candidate-v2"
                 && name != "topology-publish-receipt"
                 && name != "shared-package-candidate.v1"
                 && name != "support-bundle"

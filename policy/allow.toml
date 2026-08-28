@@ -13529,7 +13529,7 @@ column = 1
 [[allow]]
 id = "allow-11181"
 kind = "non_rust_file"
-family = "python_tool"
+family = "release_script"
 path = "scripts/exact-candidate-package-candidate.py"
 owner = "core/release"
 classification = "release_packaging_producer"
@@ -13551,7 +13551,7 @@ column = 1
 [[allow]]
 id = "allow-11182"
 kind = "non_rust_file"
-family = "python_tool"
+family = "release_script"
 path = "scripts/test-exact-candidate-package-candidate.py"
 owner = "core/release"
 classification = "release_packaging_test"
@@ -13573,7 +13573,7 @@ column = 1
 [[allow]]
 id = "allow-11183"
 kind = "non_rust_file"
-family = "configuration"
+family = "documentation"
 path = "docs/schemas/package-candidate-v2.schema.json"
 owner = "core/release"
 classification = "release_contract_schema"

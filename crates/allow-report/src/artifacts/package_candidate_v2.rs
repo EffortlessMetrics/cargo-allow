@@ -471,15 +471,17 @@ mod tests {
     }
 
     #[test]
-    fn family_serialization_uses_the_documented_snake_case_names() {
-        assert_eq!(
-            serde_json::to_string(&PackageCandidateFamilyV2::CargoAllow02).unwrap(),
-            "\"cargo-allow-0.2\""
-        );
-        assert_eq!(
-            serde_json::to_string(&PackageCandidateFamilyV2::Shared01).unwrap(),
-            "\"shared-0.1\""
-        );
+    fn family_serialization_uses_the_documented_snake_case_names() -> Result<(), String> {
+        let cargo_allow = serde_json::to_string(&PackageCandidateFamilyV2::CargoAllow02)
+            .map_err(|error| error.to_string())?;
+        let shared = serde_json::to_string(&PackageCandidateFamilyV2::Shared01)
+            .map_err(|error| error.to_string())?;
+        if cargo_allow != "\"cargo-allow-0.2\"" || shared != "\"shared-0.1\"" {
+            return Err(format!(
+                "family serialization drifted: {cargo_allow} {shared}"
+            ));
+        }
+        Ok(())
     }
 
     #[test]

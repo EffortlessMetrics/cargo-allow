@@ -86,6 +86,7 @@ class CandidateProducerTests(unittest.TestCase):
             crate_root.mkdir()
             (crate_root / "Cargo.toml").write_text(
                 '[package]\nname = "allow-core"\nversion = "0.2.0-rc.1"\n'
+                '[lib]\npath = "src/lib.rs"\n'
                 '[dependencies]\nallow-policy = { version = "0.2.0-rc.1" }\n',
                 encoding="utf-8",
             )

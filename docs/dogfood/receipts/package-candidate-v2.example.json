@@ -3,8 +3,8 @@
   "schema_version": 2,
   "topology_id": "CARGO-ALLOW-PKG-TOPOLOGY-V2-0001",
   "topology_digest": "sha256:72d06a5883e2a35a136575ebd53e003649c89724a5fc2eba489f63eb66af2929",
-  "repository_commit": "e2ce45959522dedcc7b9b91c021e5bbb4403c04e",
-  "repository_tree": "5c23c9ca2d7d1d5793ea6d42a04f92f716854107",
+  "repository_commit": "dcacfa3ef36d691c1aebbd15e934f328cc84d2b7",
+  "repository_tree": "cb95f938a944fc4bf03ef442e5559d70d135c047",
   "cargo_lock_digest": "sha256:8ba457ab7287789b1ac003fae8019ac18b612c44a730ce73894b01d3df4b319a",
   "candidate_product_id": "cargo-allow-0.2",
   "root_logical_id": "cargo-allow",
@@ -56,7 +56,7 @@
       "expected_dependency_rows": [
         {
           "package_name": "allow-core",
-          "package_version": "workspace",
+          "package_version": "0.2.0-rc.1",
           "dependency_kind": "internal"
         },
         {
@@ -98,7 +98,7 @@
       "expected_dependency_rows": [
         {
           "package_name": "allow-core",
-          "package_version": "workspace",
+          "package_version": "0.2.0-rc.1",
           "dependency_kind": "internal"
         },
         {
@@ -125,7 +125,7 @@
       "expected_dependency_rows": [
         {
           "package_name": "allow-core",
-          "package_version": "workspace",
+          "package_version": "0.2.0-rc.1",
           "dependency_kind": "internal"
         },
         {
@@ -152,7 +152,7 @@
       "expected_dependency_rows": [
         {
           "package_name": "allow-core",
-          "package_version": "workspace",
+          "package_version": "0.2.0-rc.1",
           "dependency_kind": "internal"
         },
         {
@@ -199,7 +199,7 @@
       "expected_dependency_rows": [
         {
           "package_name": "allow-core",
-          "package_version": "workspace",
+          "package_version": "0.2.0-rc.1",
           "dependency_kind": "internal"
         }
       ],
@@ -221,12 +221,12 @@
       "expected_dependency_rows": [
         {
           "package_name": "allow-core",
-          "package_version": "workspace",
+          "package_version": "0.2.0-rc.1",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-policy",
-          "package_version": "workspace",
+          "package_version": "0.2.0-rc.1",
           "dependency_kind": "internal"
         },
         {
@@ -268,17 +268,17 @@
       "expected_dependency_rows": [
         {
           "package_name": "allow-core",
-          "package_version": "workspace",
+          "package_version": "0.2.0-rc.1",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-files",
-          "package_version": "workspace",
+          "package_version": "0.2.0-rc.1",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-policy",
-          "package_version": "workspace",
+          "package_version": "0.2.0-rc.1",
           "dependency_kind": "internal"
         },
         {
@@ -391,27 +391,27 @@
       "expected_dependency_rows": [
         {
           "package_name": "allow-core",
-          "package_version": "workspace",
+          "package_version": "0.2.0-rc.1",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-files",
-          "package_version": "workspace",
+          "package_version": "0.2.0-rc.1",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-policy",
-          "package_version": "workspace",
+          "package_version": "0.2.0-rc.1",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-rust",
-          "package_version": "workspace",
+          "package_version": "0.2.0-rc.1",
           "dependency_kind": "internal"
         },
         {
           "package_name": "effortless-repo-snapshot",
-          "package_version": "workspace",
+          "package_version": "0.1.0",
           "dependency_kind": "internal"
         },
         {
@@ -438,47 +438,47 @@
       "expected_dependency_rows": [
         {
           "package_name": "allow-core",
-          "package_version": "workspace",
+          "package_version": "0.2.0-rc.1",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-diff",
-          "package_version": "workspace",
+          "package_version": "0.2.0-rc.1",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-files",
-          "package_version": "workspace",
+          "package_version": "0.2.0-rc.1",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-inventory",
-          "package_version": "workspace",
+          "package_version": "0.2.0-rc.1",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-match",
-          "package_version": "workspace",
+          "package_version": "0.2.0-rc.1",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-policy",
-          "package_version": "workspace",
+          "package_version": "0.2.0-rc.1",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-policy-legacy",
-          "package_version": "workspace",
+          "package_version": "0.2.0-rc.1",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-report",
-          "package_version": "workspace",
+          "package_version": "0.2.0-rc.1",
           "dependency_kind": "internal"
         },
         {
           "package_name": "allow-rust",
-          "package_version": "workspace",
+          "package_version": "0.2.0-rc.1",
           "dependency_kind": "internal"
         },
         {
@@ -493,17 +493,17 @@
         },
         {
           "package_name": "effortless-repo-edit",
-          "package_version": "workspace",
+          "package_version": "0.1.0",
           "dependency_kind": "internal"
         },
         {
           "package_name": "effortless-repo-protocol",
-          "package_version": "workspace",
+          "package_version": "0.1.0",
           "dependency_kind": "internal"
         },
         {
           "package_name": "effortless-repo-snapshot",
-          "package_version": "workspace",
+          "package_version": "0.1.0",
           "dependency_kind": "internal"
         },
         {

@@ -99,6 +99,35 @@ def manifest_package_version(package: dict[str, Any], path: Path) -> str:
     return version
 
 
+def packaged_path_dependency(manifest_path: Path) -> str | None:
+    """Return the first dependency table entry carrying a `path` key.
+
+    Only dependency tables are inspected: cargo's own normalized `[lib]`
+    path points at in-crate sources and is not a dependency leak.
+    """
+    data = parse_toml(manifest_path)
+
+    def scan(table: dict[str, Any], section: str) -> str | None:
+        for name, spec in (table.get(section) or {}).items():
+            if isinstance(spec, dict) and "path" in spec:
+                return name
+        return None
+
+    for key, value in data.items():
+        if key in ("dependencies", "dev-dependencies", "build-dependencies"):
+            if isinstance(value, dict):
+                found = scan(data, key)
+                if found is not None:
+                    return found
+        elif key.startswith("target.") and isinstance(value, dict):
+            for section in ("dependencies", "dev-dependencies", "build-dependencies"):
+                if isinstance(value.get(section), dict):
+                    found = scan(value, section)
+                    if found is not None:
+                        return found
+    return None
+
+
 def selected_rows(topology: dict[str, Any]) -> list[dict[str, Any]]:
     rows = [
         row
@@ -116,6 +145,13 @@ def dependency_rows(
     internal_names: set[str],
     topology_by_name: dict[str, dict[str, Any]] | None = None,
 ) -> list[dict[str, str]]:
+    def declared_version(name: str, spec_version: str) -> str:
+        if name in internal_names and topology_by_name and name in topology_by_name:
+            exact = topology_by_name[name].get("package_version")
+            if isinstance(exact, str) and exact.strip():
+                return exact
+        return spec_version
+
     rows: list[dict[str, str]] = []
     for section in ("dependencies", "build-dependencies"):
         for name, spec in (manifest.get(section) or {}).items():
@@ -147,7 +183,7 @@ def dependency_rows(
             rows.append(
                 {
                     "package_name": name,
-                    "package_version": str(version).lstrip("="),
+                    "package_version": declared_version(name, str(version).lstrip("=")),
                     "dependency_kind": kind,
                 }
             )
@@ -283,10 +319,11 @@ def verify_packaged(payload: dict[str, Any], package_dir: Path) -> None:
                 raise ValueError(
                     f"crate {expected_file.name} did not unpack to its exact name-version root"
                 )
-            manifest_text = (unpacked / "Cargo.toml").read_text(encoding="utf-8")
-            if "path =" in manifest_text or "path=" in manifest_text:
+            leak = packaged_path_dependency(unpacked / "Cargo.toml")
+            if leak is not None:
                 raise ValueError(
-                    f"packaged manifest for {row['cargo_package_name']} leaks a path dependency"
+                    f"packaged manifest for {row['cargo_package_name']} leaks a "
+                    f"path dependency on {leak!r}"
                 )
             for asset in row["required_assets"]:
                 if not (unpacked / asset).exists():
@@ -299,7 +336,14 @@ def verify_packaged(payload: dict[str, Any], package_dir: Path) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--mode", choices=("derive", "verify-packaged", "check"), default="derive"
+        "--mode",
+        choices=("derive", "verify-packaged", "check", "baseline"),
+        default="derive",
+    )
+    parser.add_argument(
+        "--baseline",
+        type=Path,
+        default=Path("docs/dogfood/receipts/package-candidate-v2.example.json"),
     )
     parser.add_argument("--workspace-root", type=Path, default=Path.cwd())
     parser.add_argument(
@@ -325,6 +369,40 @@ def main() -> int:
     )
     payload = derive_payload(root, topology_path, identities_path)
 
+    if args.mode == "baseline":
+        if not args.baseline.is_file():
+            print(f"baseline missing at {args.baseline}", file=sys.stderr)
+            return 1
+        baseline = json.loads(
+            (args.baseline if args.baseline.is_absolute() else root / args.baseline)
+            .read_text(encoding="utf-8")
+        )
+        volatile = {
+            "repository_commit",
+            "repository_tree",
+            "crate_digest",
+            "crate_size_bytes",
+        }
+
+        def strip_volatile(node: Any) -> Any:
+            if isinstance(node, dict):
+                return {
+                    key: strip_volatile(value)
+                    for key, value in node.items()
+                    if key not in volatile
+                }
+            if isinstance(node, list):
+                return [strip_volatile(item) for item in node]
+            return node
+
+        if strip_volatile(payload) != strip_volatile(baseline):
+            print(
+                "candidate derivation drifted from the committed baseline",
+                file=sys.stderr,
+            )
+            return 1
+        print("candidate derivation matches the committed baseline")
+        return 0
     if args.mode in ("verify-packaged", "check"):
         if args.output.is_file():
             existing = json.loads(args.output.read_text(encoding="utf-8"))
@@ -346,7 +424,7 @@ def main() -> int:
         verify_packaged(payload, args.package_dir if args.package_dir.is_absolute() else root / args.package_dir)
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    args.output.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(f"candidate rows: {len(payload['rows'])} -> {args.output}")
     return 0
 

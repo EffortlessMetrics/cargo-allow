@@ -10,7 +10,6 @@ use allow_report::{
     PackageCandidateDependencyKindV2, PackageCandidateFamilyV2, PackageCandidatePayloadV2,
     PackageCandidateResultV2, render_package_candidate_v2_bytes, validate_package_candidate_v2,
 };
-use intent_model::parse_package_postures_v1;
 use std::path::PathBuf;
 
 fn repo_root() -> PathBuf {
@@ -26,18 +25,30 @@ fn example_payload() -> Result<PackageCandidatePayloadV2, String> {
 }
 
 fn derived_candidate_names() -> Result<Vec<String>, String> {
-    let read = |rel: &str| -> Result<String, String> {
-        std::fs::read_to_string(repo_root().join(rel)).map_err(|err| format!("read {rel}: {err}"))
-    };
-    let postures = parse_package_postures_v1(&read("policy/product-package-topology-v2.toml")?)
-        .map_err(|err| format!("parse topology: {err}"))?;
-    let mut names: Vec<String> = postures
+    // Plain toml parsing keeps this integration test decoupled from
+    // intent-model: the strict source-coupling guard forbids cargo-allow
+    // integration tests from consuming the cargo-intent-owned crate.
+    let text = std::fs::read_to_string(repo_root().join("policy/product-package-topology-v2.toml"))
+        .map_err(|err| format!("read topology: {err}"))?;
+    let topology: toml::Value =
+        toml::from_str(&text).map_err(|err| format!("parse topology: {err}"))?;
+    let mut names: Vec<String> = topology
+        .get("package")
+        .and_then(|value| value.as_array())
+        .ok_or_else(|| "topology has no package rows".to_string())?
         .iter()
-        .filter(|p| {
-            p.membership.candidate_inclusion
-                && (p.version_line == "cargo-allow-0.2" || p.version_line == "shared-0.1")
+        .filter(|row| {
+            row.get("candidate_inclusion").and_then(|v| v.as_bool()) == Some(true)
+                && matches!(
+                    row.get("version_line").and_then(|v| v.as_str()),
+                    Some("cargo-allow-0.2") | Some("shared-0.1")
+                )
         })
-        .map(|p| p.cargo_package_name.clone())
+        .filter_map(|row| {
+            row.get("cargo_package_name")
+                .and_then(|v| v.as_str())
+                .map(str::to_string)
+        })
         .collect();
     names.sort();
     Ok(names)
@@ -110,9 +121,12 @@ fn example_candidate_matches_the_live_topology_derivation() -> Result<(), String
 fn candidate_missing_a_required_row_is_rejected() -> Result<(), String> {
     let mut payload = example_payload()?;
     let expected = derived_candidate_names()?;
+    let first_expected = expected
+        .first()
+        .ok_or_else(|| "topology derivation is empty".to_string())?;
     payload
         .rows
-        .retain(|row| row.cargo_package_name != expected[0]);
+        .retain(|row| row.cargo_package_name != *first_expected);
     let validation = validate_package_candidate_v2(&payload);
     if validation.result == PackageCandidateResultV2::Complete {
         return Err("candidate missing a topology row validated".to_string());
