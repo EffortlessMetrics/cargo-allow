@@ -157,7 +157,7 @@ fn assert_evidence_repair_queue(value: &serde_json::Value, pointer: &str, label:
         .pointer(pointer)
         .and_then(serde_json::Value::as_array)
         .unwrap_or_else(|| {
-            panic!("{label} should route evidence repair queues")
+            std::panic::panic_any(format!("{label} should route evidence repair queues"))
         });
     assert!(
         queues.iter().any(|queue| {

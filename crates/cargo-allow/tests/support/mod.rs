@@ -41,11 +41,11 @@ pub fn assert_saved_json_artifact(
     expected_command: &str,
 ) -> Value {
     let contents = fs::read_to_string(path)
-        .unwrap_or_else(|err| panic!("read {}: {err}", path.display()));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read {}: {err}", path.display())));
     let value: Value = serde_json::from_str(&contents).unwrap_or_else(|err| {
-        panic!(
+        std::panic::panic_any(format!(
             "{name} saved artifact should parse as JSON: {err}\n{contents}"
-        )
+        ))
     });
     assert_eq!(
         value.get("schema_version").and_then(Value::as_u64),
@@ -103,21 +103,21 @@ fn expected_inventory_scanner(name: &str, expected_schema_id: &str) -> &'static 
     allow_report::artifact_contract_for_schema_id(expected_schema_id)
         .map(|contract| contract.inventory_scanner)
         .unwrap_or_else(|| {
-            panic!(
+            std::panic::panic_any(format!(
                 "{name} expected schema_id {expected_schema_id} has no registered inventory scanner"
-            )
+            ))
         })
 }
 
 fn assert_json_string_array_eq(value: &Value, field: &str, expected: &[&str], artifact: &str) {
     let Some(items) = value.get(field).and_then(Value::as_array) else {
-        panic!("{artifact} {field} should be an array");
+        std::panic::panic_any(format!("{artifact} {field} should be an array"));
     };
     let actual = items
         .iter()
         .map(|item| {
             item.as_str().unwrap_or_else(|| {
-                panic!("{artifact} {field} entries should be strings")
+                std::panic::panic_any(format!("{artifact} {field} entries should be strings"))
             })
         })
         .collect::<Vec<_>>();
@@ -127,14 +127,14 @@ fn assert_json_string_array_eq(value: &Value, field: &str, expected: &[&str], ar
 pub fn temp_root(label: &str) -> PathBuf {
     let unique = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_else(|err| panic!("system clock: {err}"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("system clock: {err}")))
         .as_nanos();
     let root = std::env::temp_dir().join(format!(
         "cargo-allow-{label}-{}-{unique}",
         std::process::id()
     ));
     fs::create_dir_all(&root)
-        .unwrap_or_else(|err| panic!("create temp root: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create temp root: {err}")));
     root
 }
 
@@ -142,6 +142,6 @@ pub fn remove_temp_root(root: PathBuf) {
     match fs::remove_dir_all(&root) {
         Ok(()) => {}
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
-        Err(err) => panic!("remove temp root {}: {err}", root.display()),
+        Err(err) => std::panic::panic_any(format!("remove temp root {}: {err}", root.display())),
     }
 }

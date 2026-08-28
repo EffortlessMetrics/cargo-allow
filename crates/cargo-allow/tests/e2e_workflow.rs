@@ -35,7 +35,7 @@ fn propose_list_and_check_round_trip_with_cargo_prefix() {
         .arg("--summary-output")
         .arg(&propose_summary)
         .output()
-        .unwrap_or_else(|err| panic!("run cargo-allow propose: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow propose: {err}")));
 
     assert_success_and_quiet("propose", &propose);
     let proposed = assert_saved_json_artifact(
@@ -79,7 +79,7 @@ fn propose_list_and_check_round_trip_with_cargo_prefix() {
         .arg("--output")
         .arg(&list_output)
         .output()
-        .unwrap_or_else(|err| panic!("run cargo-allow list: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow list: {err}")));
 
     assert_success_and_quiet("list", &list);
     let listed = assert_saved_json_artifact(&list_output, "list", "cargo-allow.list.v1", "list");
@@ -113,7 +113,7 @@ fn propose_list_and_check_round_trip_with_cargo_prefix() {
         .arg("--output")
         .arg(&check_output)
         .output()
-        .unwrap_or_else(|err| panic!("run cargo-allow check: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow check: {err}")));
 
     assert_success_and_quiet("check", &check);
     let checked =
@@ -148,7 +148,7 @@ fn check_reports_new_findings_after_policy_baseline_is_outdated() {
         .arg("--summary-output")
         .arg(&propose_summary)
         .output()
-        .unwrap_or_else(|err| panic!("run cargo-allow propose: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow propose: {err}")));
     assert_success_and_quiet("propose", &propose);
 
     write_panic_source(
@@ -175,7 +175,7 @@ fn check_reports_new_findings_after_policy_baseline_is_outdated() {
         .arg("--output")
         .arg(&check_output)
         .output()
-        .unwrap_or_else(|err| panic!("run cargo-allow check: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow check: {err}")));
 
     assert_status("check", &check, false);
     assert_stdout_empty(
@@ -256,7 +256,7 @@ safety_comment_required = false
         .arg(&audit_default_output)
         .output()
         .unwrap_or_else(|err| {
-            panic!("run cargo-allow check default mode: {err}")
+            std::panic::panic_any(format!("run cargo-allow check default mode: {err}"))
         });
 
     assert_success_and_quiet("check default audit mode", &audit_default);
@@ -296,7 +296,7 @@ safety_comment_required = false
         .arg(&no_new_output)
         .output()
         .unwrap_or_else(|err| {
-            panic!("run cargo-allow check explicit no-new mode: {err}")
+            std::panic::panic_any(format!("run cargo-allow check explicit no-new mode: {err}"))
         });
 
     assert_status("check explicit no-new mode", &no_new, false);
@@ -334,13 +334,13 @@ safety_comment_required = false
 
 fn write_panic_source(root: &std::path::Path, contents: &str) {
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| panic!("create source dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create source dir: {err}")));
     fs::write(root.join("src/lib.rs"), contents)
-        .unwrap_or_else(|err| panic!("write source fixture: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write source fixture: {err}")));
 }
 
 fn assert_file_contains(path: &std::path::Path, needle: &str, message: &str) {
     let contents = fs::read_to_string(path)
-        .unwrap_or_else(|err| panic!("read {}: {err}", path.display()));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read {}: {err}", path.display())));
     assert!(contents.contains(needle), "{message}");
 }

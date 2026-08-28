@@ -24,7 +24,7 @@ fn temp_root(label: &str) -> PathBuf {
         std::process::id()
     ));
     fs::create_dir_all(&root)
-        .unwrap_or_else(|err| panic!("create temp root: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create temp root: {err}")));
     root
 }
 
@@ -32,7 +32,7 @@ fn drop_root(root: PathBuf) {
     match fs::remove_dir_all(&root) {
         Ok(()) => {}
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
-        Err(err) => panic!("remove temp root {}: {err}", root.display()),
+        Err(err) => std::panic::panic_any(format!("remove temp root {}: {err}", root.display())),
     }
 }
 
@@ -42,7 +42,7 @@ fn git(root: &Path, args: &[&str]) {
         .arg(root)
         .args(args)
         .output()
-        .unwrap_or_else(|err| panic!("git {:?}: {err}", args));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("git {:?}: {err}", args)));
 }
 
 fn run(args: &[&str], root: &Path) -> std::process::Output {
@@ -52,7 +52,7 @@ fn run(args: &[&str], root: &Path) -> std::process::Output {
     }
     cmd.arg("--root").arg(root);
     cmd.output()
-        .unwrap_or_else(|err| panic!("run cargo-allow {:?}: {err}", args))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow {:?}: {err}", args)))
 }
 
 fn assert_pass(label: &str, output: &std::process::Output) {
@@ -78,12 +78,12 @@ fn small_clean_repo_bootstraps_and_passes_no_new() {
     let root = temp_root("small-clean");
     // Create a small Rust project with one unwrap.
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| panic!("create src: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src: {err}")));
     fs::write(
         root.join("src/lib.rs"),
         "pub fn parse(v: Option<u8>) -> u8 { v.unwrap() }\n",
     )
-    .unwrap_or_else(|err| panic!("write lib.rs: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write lib.rs: {err}")));
 
     git(&root, &["init"]);
     git(&root, &["config", "user.email", "test@example.com"]);
@@ -106,7 +106,7 @@ fn small_clean_repo_bootstraps_and_passes_no_new() {
         .arg("--write")
         .arg(&policy)
         .output()
-        .unwrap_or_else(|err| panic!("run propose: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run propose: {err}")));
     assert_pass("propose", &propose);
     assert!(policy.exists(), "policy should be written");
 
@@ -130,7 +130,7 @@ fn small_clean_repo_bootstraps_and_passes_no_new() {
         root.join("src/lib.rs"),
         "pub fn parse(v: Option<u8>) -> u8 { v.unwrap() }\nfn extra(v: Result<u8,()>) -> u8 { v.unwrap() }\n",
     )
-    .unwrap_or_else(|err| panic!("write lib.rs: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write lib.rs: {err}")));
     let check2 = run(
         &[
             "check",
@@ -154,26 +154,26 @@ fn small_clean_repo_bootstraps_and_passes_no_new() {
 fn larger_dirty_repo_bootstraps_and_ratchets() {
     let root = temp_root("larger-dirty");
     fs::create_dir_all(root.join("src/parser"))
-        .unwrap_or_else(|err| panic!("create src/parser: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src/parser: {err}")));
     fs::create_dir_all(root.join("src/writer"))
-        .unwrap_or_else(|err| panic!("create src/writer: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src/writer: {err}")));
 
     // Multiple panic sites across modules.
     fs::write(
         root.join("src/lib.rs"),
         "pub mod parser;\npub mod writer;\n",
     )
-    .unwrap_or_else(|err| panic!("write lib.rs: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write lib.rs: {err}")));
     fs::write(
         root.join("src/parser/mod.rs"),
         "pub fn parse(v: Option<u8>) -> u8 { v.unwrap() }\npub fn parse2(v: Option<u8>) -> u8 { v.unwrap() }\n",
     )
-    .unwrap_or_else(|err| panic!("write parser/mod.rs: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write parser/mod.rs: {err}")));
     fs::write(
         root.join("src/writer/mod.rs"),
         "pub fn write(v: Option<u8>) -> u8 { v.unwrap() }\n",
     )
-    .unwrap_or_else(|err| panic!("write writer/mod.rs: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write writer/mod.rs: {err}")));
 
     git(&root, &["init"]);
     git(&root, &["config", "user.email", "test@example.com"]);
@@ -196,7 +196,7 @@ fn larger_dirty_repo_bootstraps_and_ratchets() {
         .arg("--write")
         .arg(&policy)
         .output()
-        .unwrap_or_else(|err| panic!("run propose: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run propose: {err}")));
     assert_pass("propose", &propose);
     assert!(policy.exists(), "policy should be written");
 
@@ -220,7 +220,7 @@ fn larger_dirty_repo_bootstraps_and_ratchets() {
         root.join("src/writer/mod.rs"),
         "pub fn write(v: Option<u8>) -> u8 { v.unwrap() }\npub fn flush(v: Option<u8>) -> u8 { v.unwrap() }\n",
     )
-    .unwrap_or_else(|err| panic!("write writer/mod.rs: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write writer/mod.rs: {err}")));
     let check2 = run(
         &[
             "check",

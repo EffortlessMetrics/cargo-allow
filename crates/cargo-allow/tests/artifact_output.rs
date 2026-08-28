@@ -11,9 +11,9 @@ use support::{
 fn saved_json_artifact_commands_are_quiet() {
     let root = temp_root("artifact-output");
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
     fs::write(root.join("policy/allow.toml"), policy())
-        .unwrap_or_else(|err| panic!("write policy: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
 
     for command in [
         ArtifactCommand {
@@ -52,7 +52,7 @@ fn saved_json_artifact_commands_are_quiet() {
             .args(args)
             .output()
             .unwrap_or_else(|err| {
-                panic!("run cargo-allow {}: {err}", command.name)
+                std::panic::panic_any(format!("run cargo-allow {}: {err}", command.name))
             });
 
         assert_status(command.name, &result, true);
