@@ -1,0 +1,71 @@
+name: One-shot CRLF-aware diff proof repair
+
+on:
+  push:
+    branches:
+      - repair/main-release-readiness-4005
+
+permissions:
+  contents: write
+
+concurrency:
+  group: one-shot-crlf-diff-proof-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the recovery branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: repair/main-release-readiness-4005
+
+      - name: Narrow generic whitespace proof around the CRLF ledger
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path(".github/workflows/one-shot-release-recovery.yml")
+          workflow = path.read_text()
+          ordinary = "          git diff --check\n"
+          cached = "          git diff --cached --check\n"
+          if workflow.count(ordinary) != 1 or workflow.count(cached) != 1:
+              raise SystemExit("recovery diff-check surface changed")
+
+          policy_proof = '''          python - <<'POLICY_PY'
+          from pathlib import Path
+
+          policy = Path("policy/allow.toml").read_bytes()
+          if b"\\r\\n" not in policy or policy.replace(b"\\r\\n", b"").find(b"\\n") != -1:
+              raise SystemExit("policy line-ending contract changed")
+          if any(line.endswith((b" ", b"\\t")) for line in policy.split(b"\\r\\n")):
+              raise SystemExit("policy contains trailing spaces or tabs")
+          POLICY_PY
+          git diff --check -- ':(exclude)policy/allow.toml'
+'''
+          workflow = workflow.replace(ordinary, policy_proof, 1)
+          workflow = workflow.replace(
+              cached,
+              "          git diff --cached --check -- ':(exclude)policy/allow.toml'\n",
+              1,
+          )
+          path.write_text(workflow)
+          PY
+
+          rm .github/workflows/one-shot-fix-policy-diff-check.yml
+          git diff --check
+
+      - name: Commit the verifier repair
+        shell: bash
+        run: |
+          git config user.name "EffortlessSteven"
+          git config user.email "git@effortlesssteven.com"
+          git add \
+            .github/workflows/one-shot-release-recovery.yml \
+            .github/workflows/one-shot-fix-policy-diff-check.yml
+          git diff --cached --check
+          git commit -m "chore(recovery): make policy diff proof CRLF-aware"
+          git push origin HEAD:repair/main-release-readiness-4005
