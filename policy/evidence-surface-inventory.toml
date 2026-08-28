@@ -37,6 +37,25 @@ last_reconciled_commit = "main@current"
 claim_boundary = "The checked fixture contract is present; a hosted installation is not observed here."
 
 [[surfaces]]
+id = "exact-candidate-package-candidate"
+owner_issue = 2924
+semantic_authority = "exact package candidate contract"
+path = "crates/cargo-allow/tests/package_candidate_evidence_v2.rs"
+subject = "target/exact-candidate-package-candidate/package-candidate-v2.json"
+producer = "Rust integration test"
+consumer = "package smoke"
+claimed_acceptance_row = "topology-selected package candidate contract"
+assertion_mechanism = "source-text assertions and fixture inspection"
+evidence_class = "StructuredShapeValidation"
+disposition = "bounded fixture validation"
+required_stronger_owner = "#2925/#2926"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "The typed candidate artifact contract is present and structurally valid; packaged bytes are verified by the packaging stage and installation is not observed here."
+
+
+
+[[surfaces]]
 id = "exact-candidate-interop"
 owner_issue = 3357
 semantic_authority = "candidate interoperability"
