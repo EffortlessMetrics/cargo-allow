@@ -101,27 +101,31 @@ jobs:
               "crates/allow-report/tests/post_merge_reconciliation_contract.rs"
           )
           contract = contract_path.read_text()
-          old_unknown = (
-              "    input.expected_effects[0].status = LandedEffectStatusV1::Unknown;\n"
+          unknown_assignment = (
+              "input.expected_effects[0].status = LandedEffectStatusV1::Unknown;"
           )
-          new_unknown = '''    input.expected_effects = vec![LandedEffectV1 {
+          duplicate_expression = "duplicate.expected_effects[0].clone()"
+          if contract.count(unknown_assignment) != 1:
+              raise SystemExit("unknown-effect fixture shape changed")
+          if contract.count(duplicate_expression) != 1:
+              raise SystemExit("duplicate-effect fixture shape changed")
+          contract = contract.replace(
+              f"    {unknown_assignment}\n",
+              '''    input.expected_effects = vec![LandedEffectV1 {
               effect_id: "effect-001".to_string(),
               status: LandedEffectStatusV1::Unknown,
           }];
-          '''
-          old_duplicate = '''    duplicate
-              .expected_effects
-              .push(duplicate.expected_effects[0].clone());
-          '''
-          new_duplicate = '''    duplicate.expected_effects.push(LandedEffectV1 {
-              effect_id: "effect-001".to_string(),
-              status: LandedEffectStatusV1::Present,
-          });
-          '''
-          if contract.count(old_unknown) != 1 or contract.count(old_duplicate) != 1:
-              raise SystemExit("post-merge contract fixture shape changed")
-          contract = contract.replace(old_unknown, new_unknown, 1)
-          contract = contract.replace(old_duplicate, new_duplicate, 1)
+          ''',
+              1,
+          )
+          contract = contract.replace(
+              duplicate_expression,
+              '''LandedEffectV1 {
+                  effect_id: "effect-001".to_string(),
+                  status: LandedEffectStatusV1::Present,
+              }''',
+              1,
+          )
           contract_path.write_text(contract)
 
           receipts = [
