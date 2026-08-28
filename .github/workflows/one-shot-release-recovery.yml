@@ -240,11 +240,16 @@ jobs:
           appendix = "\n" + "\n".join(blocks)
           if not policy.endswith(b"\r\n"):
               raise SystemExit("policy must end in CRLF before append")
-          policy_path.write_bytes(policy + appendix.replace("\n", "\r\n").encode("utf-8"))
+          updated_policy = policy + appendix.replace("\n", "\r\n").encode("utf-8")
+          if any(line.endswith((b" ", b"\t")) for line in updated_policy.split(b"\r\n")):
+              raise SystemExit("policy contains trailing spaces or tabs")
+          policy_path.write_bytes(updated_policy)
           PY
 
-      - name: Remove the one-shot workflow before policy inventory
-        run: rm .github/workflows/one-shot-release-recovery.yml
+      - name: Remove one-shot recovery transport before policy inventory
+        run: |
+          rm .github/workflows/one-shot-release-recovery.yml
+          rm -f .github/workflows/one-shot-fix-policy-diff-check.yml
 
       - name: Format and verify the affected crates
         run: |
@@ -252,7 +257,8 @@ jobs:
           cargo fmt --all -- --check
           cargo clippy -p allow-report -p intent-model --all-targets -- -D warnings
           cargo test -p allow-report -p intent-model --all-targets
-          git diff --check
+          python -c 'from pathlib import Path; p = Path("policy/allow.toml").read_bytes(); assert b"\r\n" in p and b"\n" not in p.replace(b"\r\n", b""), "policy line-ending contract changed"; assert not any(line.endswith((b" ", b"\t")) for line in p.split(b"\r\n")), "policy contains trailing spaces or tabs"'
+          git diff --check -- ':(exclude)policy/allow.toml'
 
       - name: Prove the enforcing repository policy
         run: cargo run -p cargo-allow -- check --mode no-new --config policy/allow.toml
@@ -267,7 +273,8 @@ jobs:
             crates/allow-report/src/artifacts/post_merge_reconciliation_v1.rs \
             crates/allow-report/tests/post_merge_reconciliation_contract.rs \
             policy/allow.toml \
-            .github/workflows/one-shot-release-recovery.yml
-          git diff --cached --check
+            .github/workflows/one-shot-release-recovery.yml \
+            .github/workflows/one-shot-fix-policy-diff-check.yml
+          git diff --cached --check -- ':(exclude)policy/allow.toml'
           git commit -m "repair(main): close restored release-gate findings"
           git push origin HEAD:repair/main-release-readiness-4005
