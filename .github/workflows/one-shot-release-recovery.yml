@@ -260,8 +260,21 @@ jobs:
           python -c 'from pathlib import Path; p = Path("policy/allow.toml").read_bytes(); assert b"\r\n" in p and b"\n" not in p.replace(b"\r\n", b""), "policy line-ending contract changed"; assert not any(line.endswith((b" ", b"\t")) for line in p.split(b"\r\n")), "policy contains trailing spaces or tabs"'
           git diff --check -- ':(exclude)policy/allow.toml'
 
-      - name: Prove the enforcing repository policy
-        run: cargo run -p cargo-allow -- check --mode no-new --config policy/allow.toml
+      - name: Stage and prove the exact recovery candidate
+        shell: bash
+        run: |
+          git add \
+            crates/intent-model/src/agentic_candidate.rs \
+            crates/allow-report/src/artifacts/post_merge_reconciliation_v1.rs \
+            crates/allow-report/tests/post_merge_reconciliation_contract.rs \
+            policy/allow.toml \
+            .github/workflows/one-shot-release-recovery.yml \
+            .github/workflows/one-shot-fix-policy-diff-check.yml
+          cargo run -p cargo-allow -- check \
+            --mode no-new \
+            --config policy/allow.toml \
+            --staged \
+            --phase precommit
 
       - name: Commit the verified repair
         shell: bash
