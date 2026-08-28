@@ -1,0 +1,19 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11170"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:4d00b6ce4246a42821beb287eed4d22364472469dc5a09ec2e0c60bf751501ba"
+reason = "receipt for scripts/exact_candidate_package_identity.py, the shared exact identity projection (#3968)"
+
+[[records]]
+allow_ids = ["allow-11171"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6088addb544b8cd9477b7375cda909c4a92878a90b3a5296889053686a8e99ac"
+reason = "receipt for scripts/test-exact-candidate-package-identity.py, the identity projection negative controls (#3968)"
+
+[[records]]
+allow_ids = ["allow-11172"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:25419f9b1b76833aad74dae4444e76602005a6b4a154257710f049a1e0e3288f"
+reason = "self-receipt for this revision note file, matching the #3792 precedent"
