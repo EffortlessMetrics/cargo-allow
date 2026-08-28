@@ -17,22 +17,23 @@ no-new-debt enforcement path — the same path cargo-allow dogfoods on itself.
 
 ## Optional pre-commit integration
 
-cargo-allow also ships a pre-commit framework hook for a local, blocking
-no-new check. The hook deliberately uses `language: system`: install the
-`cargo-allow` binary in the environment that runs pre-commit, then pin the
-repository revision in the consumer's `.pre-commit-config.yaml`.
+cargo-allow ships two pre-commit framework hooks. Both deliberately use
+`language: system`: install the `cargo-allow` binary in the environment that
+runs pre-commit, then pin the repository revision in the consumer's
+`.pre-commit-config.yaml`.
 
-The hook's source subject is the current tracked **worktree**, not the exact
-Git index candidate. It can inspect unstaged bytes, so treat it as fast local
-feedback rather than proof of the bytes a commit will contain. CI remains the
-authoritative merge backstop. The shipped hook remains worktree-scoped; do not
-add `--staged` to this entry. For an exact source-exception candidate check,
-use the explicit staged command below.
-The published template is registered for both the `pre-commit` and `pre-push`
-stages. In either stage it remains a worktree advisory check, not a claim about
-the exact staged index or pushed commit/tree bytes. Use the pre-push stage for a
-last local reminder before sending commits, while keeping CI as the enforcing
-merge backstop.
+The default `cargo-allow` hook evaluates the exact Git index candidate,
+including partially staged files. It never falls back to dirty worktree bytes
+and is registered only for the `pre-commit` stage. The hook runs the supported
+closed command:
+
+```bash
+cargo-allow check --staged --phase precommit --mode no-new
+```
+
+It is a local blocking gate over the bytes currently staged for commit. A
+successful hook does not replace hosted enforcement: `--no-verify` can bypass a
+local hook, and CI remains the authoritative merge backstop.
 
 For the current unreleased candidate, use the source revision temporarily:
 
@@ -44,42 +45,63 @@ repos:
       - id: cargo-allow
 ```
 
-Replace `main` with the first release tag that contains this hook before
-adopting it as a stable consumer contract. The hook ignores filenames passed
-by pre-commit and scans the repository's tracked worktree, so it has the same
-source-tree scope as `cargo-allow check --mode no-new` in CI while retaining a
-different source subject. Run it manually with `pre-commit run cargo-allow
---all-files`.
+Replace `main` with the first release tag that contains these hooks before
+adopting them as a stable consumer contract. The exact hook ignores filenames
+passed by pre-commit because cargo-allow resolves and evaluates the Git index as
+one candidate. Run it manually with `pre-commit run cargo-allow --all-files`.
+
+The separate `cargo-allow-worktree` hook retains fast tracked-worktree
+feedback. It may inspect unstaged bytes, so it is advisory for the bytes a
+commit or push will contain. It is available at both `pre-commit` and
+`pre-push`:
+
+```yaml
+repos:
+  - repo: https://github.com/EffortlessMetrics/cargo-allow
+    rev: main
+    hooks:
+      - id: cargo-allow-worktree
+        stages: [pre-push]
+```
+
+Use the worktree hook when exact staged evaluation fails closed for a repository
+shape that is not yet supported, or as an additional pre-push reminder. Keep CI
+as the enforcing merge backstop rather than presenting worktree evidence as the
+staged or pushed commit/tree subject.
 
 If pre-commit is not part of the repository workflow, the equivalent local
-command is:
+commands are:
 
 ```bash
-# Subject: current tracked worktree, not the exact staged index.
+# Subject: exact Git index candidate.
+cargo-allow check --staged --phase precommit --mode no-new
+
+# Subject: current tracked worktree; advisory for commit/push bytes.
 cargo-allow check --mode no-new
 ```
 
-For an exact source-exception check of the Git index candidate, use the
-pre-commit phase explicitly. It reads staged bytes (including partial files),
-never falls back to dirty worktree bytes, and records the staged source
-identity in JSON reports and receipts:
+The exact source-exception path reads staged bytes, records the staged source
+identity in JSON reports and receipts, and can retain a machine-readable result
+when invoked directly:
 
 ```bash
 cargo-allow check --staged --phase precommit --mode no-new --format json \
   --receipt target/cargo-allow/staged-receipt.json
 ```
 
-This exact source-exception path currently fails closed when the policy uses
+Exact staged evaluation currently fails closed when the policy uses
 worktree-derived companion families such as workflow extraction, executable
 bits, or `.gitattributes` generated-file metadata. It also fails closed when
 federated `.allow` inputs are configured, or when `--mode no-new`/`strict`
 would require product-move ledger enforcement that is not yet staged-aware.
-Use the tracked-worktree check for those repositories until the corresponding
-staged adapters exist. It does not invoke the separate `spec-system`/cargo-intent
-compatibility profile or self-hosted tool-selection flags.
+Use the worktree hook for those repositories until the corresponding staged
+adapters exist. The staged source-exception path does not invoke the separate
+`spec-system`/cargo-intent compatibility profile or self-hosted tool-selection
+flags.
 
-Before adopting either checked stage, preview the machine-readable hook
-contract from the installed binary:
+The pre-commit framework hooks above are distinct from cargo-allow's direct
+managed Git-hook planner. Before adopting a direct managed hook, preview its
+machine-readable contract from the installed binary:
 
 ```bash
 cargo-allow hooks plan --stage pre-commit
@@ -91,8 +113,9 @@ The default plan is read-only and reports the exact `cargo-allow check
 ambient-PATH binary resolution. It is a worktree advisory: it does not prove
 exact staged-index or pushed-tree bytes, install or overwrite a hook, write a
 receipt, contact the network, or mutate policy. CI remains the enforcing merge
-backstop. Safe installation, rollback, and exact-index enforcement are separate
-capabilities and are not implied by this preview.
+backstop. Safe installation and rollback apply to this tracked-worktree plan;
+exact-index support for the direct managed-hook planner is a separate
+capability and is not implied by the pre-commit framework hook.
 
 When evaluating a direct hook's binary choice, verify an explicitly selected
 executable rather than relying on ambient PATH. The verifier invokes only the
@@ -190,8 +213,8 @@ unrelated bytes. Changed, malformed, unmanaged, or symbolic-link content is
 refused. It writes a separate
 `cargo-allow.local-hook-remove-receipt.v1`; the receipt records the exact
 recreate route through `hooks plan` and `hooks apply`. Existing hook
-composition and exact staged-index enforcement remain separate follow-up
-capabilities.
+composition remains supported; exact staged-index support for this direct
+managed-hook planner remains a separate follow-up capability.
 
 ## Optional reusable GitHub Action
 
