@@ -1,0 +1,30 @@
+kind: Added
+body: >-
+  Generate the topology-selected mixed-version package candidate
+  (#2924). A typed CargoAllowPackageCandidateV2 artifact in
+  allow-report carries the exact candidate law: per-row logical,
+  package, library, and workspace-path identity with publication and
+  support posture, release order, selected features, expected
+  packaged-manifest identity, expected internal/external dependency
+  rows, required assets, and crate digest/size; payload-level
+  topology identity and digest, repository commit/tree, Cargo.lock
+  digest, root identity, target class, feature-set id, known
+  exclusions, limitations, and claim boundary. Validation fails
+  closed on structural law: one version per family (no cargo-allow
+  substitution into shared rows), no sibling-product rows, manifest
+  identity agreement, internal dependencies that resolve inside the
+  candidate, strictly increasing release order that agrees with the
+  internal dependency graph, and present repository/lock identity.
+  The producer derives every and only candidate row from the V2
+  package topology's candidate_inclusion over the cargo-allow-0.2 and
+  shared-0.1 version lines (13 mixed-version rows today), rejects
+  topology/manifest version disagreement, rejects unpublished
+  topology packages that a candidate row depends on while excluded
+  from the candidate, verifies packaged .crate files by exact
+  name-version filename, rejects packaged path-dependency leakage and
+  missing required assets, records crate digests, and performs no
+  registry build, installation, tag, upload, or publication. The
+  package-smoke lane gains the candidate-artifact stage bound to the
+  Stage-A crate set; the committed example pins the current
+  derivation and the offline contract tests cover the negative
+  shapes.

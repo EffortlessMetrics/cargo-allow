@@ -1,0 +1,553 @@
+{
+  "schema_id": "cargo-allow.package-candidate.v2",
+  "schema_version": 2,
+  "topology_id": "CARGO-ALLOW-PKG-TOPOLOGY-V2-0001",
+  "topology_digest": "sha256:72d06a5883e2a35a136575ebd53e003649c89724a5fc2eba489f63eb66af2929",
+  "repository_commit": "e2ce45959522dedcc7b9b91c021e5bbb4403c04e",
+  "repository_tree": "5c23c9ca2d7d1d5793ea6d42a04f92f716854107",
+  "cargo_lock_digest": "sha256:8ba457ab7287789b1ac003fae8019ac18b612c44a730ce73894b01d3df4b319a",
+  "candidate_product_id": "cargo-allow-0.2",
+  "root_logical_id": "cargo-allow",
+  "root_package_name": "cargo-allow",
+  "root_package_version": "0.2.0-rc.1",
+  "target_class": "cargo-allow-0.2",
+  "feature_set_id": "default",
+  "rows": [
+    {
+      "logical_id": "allow-core",
+      "cargo_package_name": "allow-core",
+      "cargo_package_version": "0.2.0-rc.1",
+      "rust_library_name": "allow_core",
+      "workspace_source_path": "crates/allow-core",
+      "product_family": "cargo-allow-0.2",
+      "publication_state": "UnpublishedInternal",
+      "publish": true,
+      "support_tier": "supported",
+      "release_order": 10,
+      "selected_features": [],
+      "expected_manifest_identity": "allow-core:0.2.0-rc.1",
+      "expected_dependency_rows": [
+        {
+          "package_name": "sha2",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        },
+        {
+          "package_name": "unicode-normalization",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        }
+      ],
+      "required_assets": []
+    },
+    {
+      "logical_id": "allow-policy",
+      "cargo_package_name": "allow-policy",
+      "cargo_package_version": "0.2.0-rc.1",
+      "rust_library_name": "allow_policy",
+      "workspace_source_path": "crates/allow-policy",
+      "product_family": "cargo-allow-0.2",
+      "publication_state": "UnpublishedInternal",
+      "publish": true,
+      "support_tier": "supported",
+      "release_order": 20,
+      "selected_features": [],
+      "expected_manifest_identity": "allow-policy:0.2.0-rc.1",
+      "expected_dependency_rows": [
+        {
+          "package_name": "allow-core",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "serde",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        },
+        {
+          "package_name": "serde_json",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        },
+        {
+          "package_name": "sha2",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        },
+        {
+          "package_name": "toml",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        }
+      ],
+      "required_assets": []
+    },
+    {
+      "logical_id": "allow-inventory",
+      "cargo_package_name": "allow-inventory",
+      "cargo_package_version": "0.2.0-rc.1",
+      "rust_library_name": "allow_inventory",
+      "workspace_source_path": "crates/allow-inventory",
+      "product_family": "cargo-allow-0.2",
+      "publication_state": "UnpublishedInternal",
+      "publish": true,
+      "support_tier": "supported",
+      "release_order": 30,
+      "selected_features": [],
+      "expected_manifest_identity": "allow-inventory:0.2.0-rc.1",
+      "expected_dependency_rows": [
+        {
+          "package_name": "allow-core",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "rayon",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        }
+      ],
+      "required_assets": []
+    },
+    {
+      "logical_id": "allow-files",
+      "cargo_package_name": "allow-files",
+      "cargo_package_version": "0.2.0-rc.1",
+      "rust_library_name": "allow_files",
+      "workspace_source_path": "crates/allow-files",
+      "product_family": "cargo-allow-0.2",
+      "publication_state": "UnpublishedInternal",
+      "publish": true,
+      "support_tier": "supported",
+      "release_order": 40,
+      "selected_features": [],
+      "expected_manifest_identity": "allow-files:0.2.0-rc.1",
+      "expected_dependency_rows": [
+        {
+          "package_name": "allow-core",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "yaml-rust2",
+          "package_version": "0.11",
+          "dependency_kind": "external"
+        }
+      ],
+      "required_assets": []
+    },
+    {
+      "logical_id": "allow-rust",
+      "cargo_package_name": "allow-rust",
+      "cargo_package_version": "0.2.0-rc.1",
+      "rust_library_name": "allow_rust",
+      "workspace_source_path": "crates/allow-rust",
+      "product_family": "cargo-allow-0.2",
+      "publication_state": "UnpublishedInternal",
+      "publish": true,
+      "support_tier": "supported",
+      "release_order": 50,
+      "selected_features": [],
+      "expected_manifest_identity": "allow-rust:0.2.0-rc.1",
+      "expected_dependency_rows": [
+        {
+          "package_name": "allow-core",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "rayon",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        },
+        {
+          "package_name": "same-file",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        },
+        {
+          "package_name": "toml",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        },
+        {
+          "package_name": "tree-sitter",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        },
+        {
+          "package_name": "tree-sitter-rust",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        }
+      ],
+      "required_assets": []
+    },
+    {
+      "logical_id": "allow-match",
+      "cargo_package_name": "allow-match",
+      "cargo_package_version": "0.2.0-rc.1",
+      "rust_library_name": "allow_match",
+      "workspace_source_path": "crates/allow-match",
+      "product_family": "cargo-allow-0.2",
+      "publication_state": "UnpublishedInternal",
+      "publish": true,
+      "support_tier": "supported",
+      "release_order": 60,
+      "selected_features": [],
+      "expected_manifest_identity": "allow-match:0.2.0-rc.1",
+      "expected_dependency_rows": [
+        {
+          "package_name": "allow-core",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        }
+      ],
+      "required_assets": []
+    },
+    {
+      "logical_id": "allow-report",
+      "cargo_package_name": "allow-report",
+      "cargo_package_version": "0.2.0-rc.1",
+      "rust_library_name": "allow_report",
+      "workspace_source_path": "crates/allow-report",
+      "product_family": "cargo-allow-0.2",
+      "publication_state": "UnpublishedInternal",
+      "publish": true,
+      "support_tier": "supported",
+      "release_order": 70,
+      "selected_features": [],
+      "expected_manifest_identity": "allow-report:0.2.0-rc.1",
+      "expected_dependency_rows": [
+        {
+          "package_name": "allow-core",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "allow-policy",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "serde",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        },
+        {
+          "package_name": "serde_json",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        },
+        {
+          "package_name": "unicode-segmentation",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        },
+        {
+          "package_name": "unicode-width",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        }
+      ],
+      "required_assets": []
+    },
+    {
+      "logical_id": "allow-policy-legacy",
+      "cargo_package_name": "allow-policy-legacy",
+      "cargo_package_version": "0.2.0-rc.1",
+      "rust_library_name": "allow_policy_legacy",
+      "workspace_source_path": "crates/allow-policy-legacy",
+      "product_family": "cargo-allow-0.2",
+      "publication_state": "UnpublishedInternal",
+      "publish": true,
+      "support_tier": "supported",
+      "release_order": 75,
+      "selected_features": [],
+      "expected_manifest_identity": "allow-policy-legacy:0.2.0-rc.1",
+      "expected_dependency_rows": [
+        {
+          "package_name": "allow-core",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "allow-files",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "allow-policy",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "toml",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        }
+      ],
+      "required_assets": []
+    },
+    {
+      "logical_id": "repo-protocol",
+      "cargo_package_name": "effortless-repo-protocol",
+      "cargo_package_version": "0.1.0",
+      "rust_library_name": "effortless_repo_protocol",
+      "workspace_source_path": "crates/effortless-repo-protocol",
+      "product_family": "shared-0.1",
+      "publication_state": "UnpublishedInternal",
+      "publish": true,
+      "support_tier": "internal-stabilizing",
+      "release_order": 80,
+      "selected_features": [],
+      "expected_manifest_identity": "effortless-repo-protocol:0.1.0",
+      "expected_dependency_rows": [
+        {
+          "package_name": "serde",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        },
+        {
+          "package_name": "serde_json",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        },
+        {
+          "package_name": "sha2",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        }
+      ],
+      "required_assets": []
+    },
+    {
+      "logical_id": "repo-snapshot",
+      "cargo_package_name": "effortless-repo-snapshot",
+      "cargo_package_version": "0.1.0",
+      "rust_library_name": "effortless_repo_snapshot",
+      "workspace_source_path": "crates/effortless-repo-snapshot",
+      "product_family": "shared-0.1",
+      "publication_state": "UnpublishedInternal",
+      "publish": true,
+      "support_tier": "internal-stabilizing",
+      "release_order": 85,
+      "selected_features": [],
+      "expected_manifest_identity": "effortless-repo-snapshot:0.1.0",
+      "expected_dependency_rows": [
+        {
+          "package_name": "serde",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        },
+        {
+          "package_name": "sha2",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        },
+        {
+          "package_name": "toml",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        }
+      ],
+      "required_assets": []
+    },
+    {
+      "logical_id": "repo-edit",
+      "cargo_package_name": "effortless-repo-edit",
+      "cargo_package_version": "0.1.0",
+      "rust_library_name": "effortless_repo_edit",
+      "workspace_source_path": "crates/effortless-repo-edit",
+      "product_family": "shared-0.1",
+      "publication_state": "UnpublishedInternal",
+      "publish": true,
+      "support_tier": "internal-stabilizing",
+      "release_order": 90,
+      "selected_features": [],
+      "expected_manifest_identity": "effortless-repo-edit:0.1.0",
+      "expected_dependency_rows": [
+        {
+          "package_name": "sha2",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        }
+      ],
+      "required_assets": []
+    },
+    {
+      "logical_id": "allow-diff",
+      "cargo_package_name": "allow-diff",
+      "cargo_package_version": "0.2.0-rc.1",
+      "rust_library_name": "allow_diff",
+      "workspace_source_path": "crates/allow-diff",
+      "product_family": "cargo-allow-0.2",
+      "publication_state": "UnpublishedInternal",
+      "publish": true,
+      "support_tier": "supported",
+      "release_order": 95,
+      "selected_features": [],
+      "expected_manifest_identity": "allow-diff:0.2.0-rc.1",
+      "expected_dependency_rows": [
+        {
+          "package_name": "allow-core",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "allow-files",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "allow-policy",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "allow-rust",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "effortless-repo-snapshot",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "sha2",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        }
+      ],
+      "required_assets": []
+    },
+    {
+      "logical_id": "cargo-allow",
+      "cargo_package_name": "cargo-allow",
+      "cargo_package_version": "0.2.0-rc.1",
+      "rust_library_name": "cargo_allow",
+      "workspace_source_path": "crates/cargo-allow",
+      "product_family": "cargo-allow-0.2",
+      "publication_state": "UnpublishedInternal",
+      "publish": true,
+      "support_tier": "supported",
+      "release_order": 100,
+      "selected_features": [],
+      "expected_manifest_identity": "cargo-allow:0.2.0-rc.1",
+      "expected_dependency_rows": [
+        {
+          "package_name": "allow-core",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "allow-diff",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "allow-files",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "allow-inventory",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "allow-match",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "allow-policy",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "allow-policy-legacy",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "allow-report",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "allow-rust",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "clap",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        },
+        {
+          "package_name": "clap_complete",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        },
+        {
+          "package_name": "effortless-repo-edit",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "effortless-repo-protocol",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "effortless-repo-snapshot",
+          "package_version": "workspace",
+          "dependency_kind": "internal"
+        },
+        {
+          "package_name": "serde",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        },
+        {
+          "package_name": "serde_json",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        },
+        {
+          "package_name": "terminal_size",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        },
+        {
+          "package_name": "toml",
+          "package_version": "workspace",
+          "dependency_kind": "external"
+        }
+      ],
+      "required_assets": [
+        "docs/schemas",
+        "examples"
+      ]
+    }
+  ],
+  "known_exclusions": [
+    "cargo-intent: cargo-intent-0.1 is not selected for this candidate",
+    "cargo-proof: cargo-proof-0.1 is not selected for this candidate",
+    "intent-edit: cargo-intent-0.1 is not selected for this candidate",
+    "intent-engine: cargo-intent-0.1 is not selected for this candidate",
+    "intent-model: cargo-intent-0.1 is not selected for this candidate",
+    "intent-protocol: cargo-intent-0.1 is not selected for this candidate",
+    "proof-engine: cargo-proof-0.1 is not selected for this candidate",
+    "proof-protocol: cargo-proof-0.1 is not selected for this candidate",
+    "rust-source-index: shared-0.1 is not selected for this candidate"
+  ],
+  "limitations": [
+    "no registry is built and nothing is installed",
+    "no publication, tag, upload, or live-control change occurs",
+    "resolved installed-graph verification belongs to the next child"
+  ],
+  "claim_boundary": "Exact topology-selected mixed-version package identity for cargo-allow. Proves the selected source rows package independently; does not prove installation, runtime behavior, or publication."
+}

@@ -105,6 +105,15 @@ jobs:
           cp target/package-candidate-smoke/packages/*.crate \
             target/exact-candidate-package-set/packages/
           SKIP_PACKAGE=1 bash scripts/exact-candidate-package-set.sh
+      - name: Exact topology-selected package candidate artifact (#2924)
+        run: |
+          python3 scripts/exact-candidate-package-candidate.py --mode verify-packaged \
+            --package-dir target/exact-candidate-package-set/packages \
+            --output target/exact-candidate-package-candidate/package-candidate-v2.json
+          python3 scripts/exact-candidate-package-candidate.py --mode check \
+            --output target/exact-candidate-package-candidate/package-candidate-v2.json
+      - name: Package candidate producer contract characterization (#2924)
+        run: python3 scripts/test-exact-candidate-package-candidate.py
       - name: Cutover build receipts from package-set artifacts (#3469/#3552)
         run: |
           bash scripts/extraction-cutover-build-receipt.sh repo-snapshot
@@ -136,6 +145,13 @@ jobs:
         with:
           name: exact-candidate-package-set-receipt
           path: target/exact-candidate-package-set/exact-candidate-package-set.receipt.json
+          if-no-files-found: warn
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: exact-candidate-package-candidate-receipt
+          path: target/exact-candidate-package-candidate/package-candidate-v2.json
           if-no-files-found: warn
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
