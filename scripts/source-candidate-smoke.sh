@@ -541,7 +541,7 @@ print(json.dumps({"path": target["path"], "line": target["line"]}))
 second_path="$(printf '%s' "${second_finding}" | python3 -c 'import json,sys;print(json.load(sys.stdin)["path"])')"
 second_line="$(printf '%s' "${second_finding}" | python3 -c 'import json,sys;print(json.load(sys.stdin)["line"])')"
 "${cargo_bin}" why --kind panic --path "${second_path}" --line "${second_line}" --root "${consumer_dir}" >/dev/null
-why_plan="${consumer_dir}/second-finding-plan.json"
+why_plan="${WORK_DIR}/second-finding-plan.json"
 "${cargo_bin}" why --kind panic --path "${second_path}" --line "${second_line}" --root "${consumer_dir}" --plan "${why_plan}" >/dev/null
 [[ -f "${why_plan}" ]] || fail "why --plan did not write ${why_plan}"
 
