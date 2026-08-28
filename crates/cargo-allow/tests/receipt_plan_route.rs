@@ -20,7 +20,7 @@ fn run(root: &Path, args: &[&str]) -> Output {
         .current_dir(root)
         .args(args)
         .output()
-        .unwrap_or_else(|err| panic!("run cargo-allow {args:?}: {err}"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow {args:?}: {err}")))
 }
 
 fn git(root: &Path, args: &[&str]) {
@@ -28,16 +28,16 @@ fn git(root: &Path, args: &[&str]) {
         .current_dir(root)
         .args(args)
         .output()
-        .unwrap_or_else(|err| panic!("git {args:?}: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
     assert!(out.status.success(), "git {args:?} failed");
 }
 
 fn write(path: &Path, body: &str) {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
-            .unwrap_or_else(|err| panic!("create dir: {err}"));
+            .unwrap_or_else(|err| std::panic::panic_any(format!("create dir: {err}")));
     }
-    fs::write(path, body).unwrap_or_else(|err| panic!("write: {err}"));
+    fs::write(path, body).unwrap_or_else(|err| std::panic::panic_any(format!("write: {err}")));
 }
 
 fn fixture(label: &str) -> std::path::PathBuf {
@@ -51,7 +51,7 @@ fn fixture(label: &str) -> std::path::PathBuf {
     write(&root.join("docs/design.md"), "# design\n");
     write(&root.join(".gitignore"), "target/\n");
     fs::create_dir_all(root.join("target/cargo-allow"))
-        .unwrap_or_else(|err| panic!("create artifact dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create artifact dir: {err}")));
 
     git(&root, &["init"]);
     git(&root, &["config", "user.email", "t@example.invalid"]);

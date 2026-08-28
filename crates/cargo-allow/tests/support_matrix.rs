@@ -33,10 +33,10 @@ fn matrix_value(key: &str) -> String {
     let rest = MATRIX
         .find(&marker)
         .and_then(|start| MATRIX.get(start.saturating_add(marker.len())..))
-        .unwrap_or_else(|| panic!("support matrix missing `{key}`"));
+        .unwrap_or_else(|| std::panic::panic_any(format!("support matrix missing `{key}`")));
     rest.find('"')
         .and_then(|end| rest.get(..end))
-        .unwrap_or_else(|| panic!("support matrix `{key}` unterminated"))
+        .unwrap_or_else(|| std::panic::panic_any(format!("support matrix `{key}` unterminated")))
         .to_string()
 }
 
@@ -45,7 +45,7 @@ fn matrix_table_value(table: &str, key: &str) -> String {
     let start = MATRIX
         .find(&header)
         .and_then(|index| MATRIX.get(index.saturating_add(header.len())..))
-        .unwrap_or_else(|| panic!("support matrix missing `{table}`"));
+        .unwrap_or_else(|| std::panic::panic_any(format!("support matrix missing `{table}`")));
     let section = start
         .split_once("\n[")
         .map_or(start, |(section, _)| section);
@@ -54,12 +54,12 @@ fn matrix_table_value(table: &str, key: &str) -> String {
         .find(&marker)
         .and_then(|index| section.get(index.saturating_add(marker.len())..))
         .unwrap_or_else(|| {
-            panic!("support matrix `{table}` missing `{key}`")
+            std::panic::panic_any(format!("support matrix `{table}` missing `{key}`"))
         });
     rest.find('"')
         .and_then(|end| rest.get(..end))
         .unwrap_or_else(|| {
-            panic!("support matrix `{table}.{key}` is unterminated")
+            std::panic::panic_any(format!("support matrix `{table}.{key}` is unterminated"))
         })
         .to_string()
 }
@@ -83,10 +83,10 @@ fn source_string_constant(source: &str, name: &str) -> String {
     let rest = source
         .find(&marker)
         .and_then(|start| source.get(start.saturating_add(marker.len())..))
-        .unwrap_or_else(|| panic!("source is missing `{name}`"));
+        .unwrap_or_else(|| std::panic::panic_any(format!("source is missing `{name}`")));
     rest.find('"')
         .and_then(|end| rest.get(..end))
-        .unwrap_or_else(|| panic!("source `{name}` is unterminated"))
+        .unwrap_or_else(|| std::panic::panic_any(format!("source `{name}` is unterminated")))
         .to_string()
 }
 
@@ -430,7 +430,7 @@ fn every_ci_proven_platform_names_a_runner_that_exists() {
                 runner, "none",
                 "an unproven platform must not name a runner"
             ),
-            other => panic!("unknown platform tier `{other}`"),
+            other => std::panic::panic_any(format!("unknown platform tier `{other}`")),
         }
     }
 
