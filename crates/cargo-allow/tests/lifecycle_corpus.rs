@@ -32,7 +32,7 @@ fn policy_change_notes_pin_exact_transition_and_inverse_is_improvement() {
     let weakening_base = policy_with_occurrence_limit(1);
     git(&weakening_root, &["add", "policy/allow.toml"]);
     fs::write(weakening_root.join("policy/allow.toml"), &weakening_base)
-        .unwrap_or_else(|err| panic!("write weakening base policy: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write weakening base policy: {err}")));
     git(&weakening_root, &["add", "policy/allow.toml"]);
     git(
         &weakening_root,
@@ -40,7 +40,7 @@ fn policy_change_notes_pin_exact_transition_and_inverse_is_improvement() {
     );
     let weakening_head = policy_with_occurrence_limit(3);
     fs::write(weakening_root.join("policy/allow.toml"), &weakening_head)
-        .unwrap_or_else(|err| panic!("write weakening policy: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write weakening policy: {err}")));
 
     let missing_output = weakening_root.join("target/cargo-allow/weakening-missing.json");
     let missing = run_diff_with_note_requirement(
@@ -98,7 +98,7 @@ fn policy_change_notes_pin_exact_transition_and_inverse_is_improvement() {
     );
     assert_status("weakening template generation", &template, false);
     let template_text = fs::read_to_string(&template_path)
-        .unwrap_or_else(|err| panic!("read generated template: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read generated template: {err}")));
     assert!(template_text.contains("allow_ids = [\"allow-transition\"]"));
     assert!(template_text.contains(&before_fingerprint));
     assert!(template_text.contains(&after_fingerprint));
@@ -124,9 +124,9 @@ fn policy_change_notes_pin_exact_transition_and_inverse_is_improvement() {
             "stale_note": "blocked",
             "claim_boundary": "fixture-only exact weakening-note-repair journey"
         }))
-        .unwrap_or_else(|err| panic!("serialize dogfood receipt: {err}")),
+        .unwrap_or_else(|err| std::panic::panic_any(format!("serialize dogfood receipt: {err}"))),
     )
-    .unwrap_or_else(|err| panic!("write dogfood receipt: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write dogfood receipt: {err}")));
     write_revision_note(&weakening_root, &before_fingerprint, &after_fingerprint);
     let matching_output = weakening_root.join("target/cargo-allow/weakening-matching.json");
     let matching = run_diff_with_note_requirement(
@@ -144,7 +144,7 @@ fn policy_change_notes_pin_exact_transition_and_inverse_is_improvement() {
     );
     assert_eq!(policy_changes(&matching_output).len(), 1);
     fs::remove_file(&template_path).unwrap_or_else(|err| {
-        panic!("remove completed template fixture: {err}")
+        std::panic::panic_any(format!("remove completed template fixture: {err}"))
     });
 
     write_revision_note(&weakening_root, "sha256:v1:stale", &after_fingerprint);
@@ -170,7 +170,7 @@ fn policy_change_notes_pin_exact_transition_and_inverse_is_improvement() {
         improvement_root.join("policy/allow.toml"),
         &improvement_base,
     )
-    .unwrap_or_else(|err| panic!("write improvement base policy: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write improvement base policy: {err}")));
     git(&improvement_root, &["add", "policy/allow.toml"]);
     git(
         &improvement_root,
@@ -181,7 +181,7 @@ fn policy_change_notes_pin_exact_transition_and_inverse_is_improvement() {
         improvement_root.join("policy/allow.toml"),
         &improvement_head,
     )
-    .unwrap_or_else(|err| panic!("write improvement policy: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write improvement policy: {err}")));
     let improvement_output = improvement_root.join("target/cargo-allow/improvement.json");
     let improvement = run_diff(&improvement_root, &improvement_output, false);
     assert_status("policy improvement", &improvement, true);
@@ -209,7 +209,7 @@ fn policy_change_notes_pin_exact_transition_and_inverse_is_improvement() {
         "reason = \"fixture transition\"\n\n",
     );
     fs::write(formatting_root.join("policy/allow.toml"), formatting_policy)
-        .unwrap_or_else(|err| panic!("write formatting policy: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write formatting policy: {err}")));
     let formatting = run_diff(&formatting_root, &formatting_output, true);
     assert_status("formatting-only policy edit", &formatting, true);
     assert_eq!(policy_changes(&formatting_output).len(), 0);
@@ -230,7 +230,7 @@ fn policy_change_projections_agree_across_human_markdown_and_json() {
         weakening_root.join("policy/allow.toml"),
         policy_with_occurrence_limit(1),
     )
-    .unwrap_or_else(|err| panic!("write weakening base: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write weakening base: {err}")));
     git(&weakening_root, &["add", "policy/allow.toml"]);
     git(
         &weakening_root,
@@ -240,7 +240,7 @@ fn policy_change_projections_agree_across_human_markdown_and_json() {
         weakening_root.join("policy/allow.toml"),
         policy_with_occurrence_limit(3),
     )
-    .unwrap_or_else(|err| panic!("write weakening head: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write weakening head: {err}")));
 
     // json is the projection the corpus already trusts: exactly one worsened
     // occurrence_limit_loosened transition.
@@ -308,7 +308,7 @@ fn policy_change_projections_agree_across_human_markdown_and_json() {
         improvement_root.join("policy/allow.toml"),
         policy_with_occurrence_limit(3),
     )
-    .unwrap_or_else(|err| panic!("write improvement base: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write improvement base: {err}")));
     git(&improvement_root, &["add", "policy/allow.toml"]);
     git(
         &improvement_root,
@@ -318,7 +318,7 @@ fn policy_change_projections_agree_across_human_markdown_and_json() {
         improvement_root.join("policy/allow.toml"),
         policy_with_occurrence_limit(1),
     )
-    .unwrap_or_else(|err| panic!("write improvement head: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write improvement head: {err}")));
 
     let improvement_json = improvement_root.join("target/cargo-allow/projection-improvement.json");
     let improvement = run_diff(&improvement_root, &improvement_json, false);
@@ -589,9 +589,9 @@ fn stale_is_blocking_only_in_strict_while_location_drift_is_advisory() {
         root.join("src/lib.rs"),
         "pub fn relocate(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| panic!("write stale/drift source: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write stale/drift source: {err}")));
     fs::write(root.join("policy/allow.toml"), stale_drift_policy())
-        .unwrap_or_else(|err| panic!("write stale/drift policy: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write stale/drift policy: {err}")));
 
     let no_new_output = root.join("target/cargo-allow/no-new.json");
     let no_new = run_command(&root, &["check", "--mode", "no-new"], &no_new_output);
@@ -680,9 +680,9 @@ fn baseline_debt_is_advisory_in_no_new_and_blocking_in_strict() {
         root.join("src/lib.rs"),
         "pub fn baseline(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| panic!("write baseline source: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write baseline source: {err}")));
     fs::write(root.join("policy/allow.toml"), baseline_debt_policy())
-        .unwrap_or_else(|err| panic!("write baseline policy: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write baseline policy: {err}")));
 
     let no_new_output = root.join("target/cargo-allow/no-new.json");
     let no_new = run_command(&root, &["check", "--mode", "no-new"], &no_new_output);
@@ -827,18 +827,18 @@ fn mirror_divergence_projects_across_check_worklist_and_doctor() {
 fn create_fixture(label: &str, include_expired: bool) -> PathBuf {
     let root = temp_root(label);
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| panic!("create source directory: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create source directory: {err}")));
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| panic!("create policy directory: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy directory: {err}")));
     let source = if include_expired {
         "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\npub fn reload(value: Option<u8>) -> u8 { value.unwrap() }\npub fn relocate(value: Option<u8>) -> u8 { value.unwrap() }\npub fn reserve(value: Option<u8>) -> u8 { let first = value.unwrap(); first + value.unwrap() }\npub fn missing_evidence(value: Option<u8>) -> u8 { value.unwrap() }\npub fn broken_evidence(value: Option<u8>) -> u8 { value.unwrap() }\npub fn weak_evidence(value: Option<u8>) -> u8 { value.unwrap() }\npub fn baseline(value: Option<u8>) -> u8 { value.unwrap() }\n"
     } else {
         "pub fn reload(value: Option<u8>) -> u8 { value.unwrap() }\n"
     };
     fs::write(root.join("src/lib.rs"), source)
-        .unwrap_or_else(|err| panic!("write source fixture: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write source fixture: {err}")));
     fs::write(root.join("policy/allow.toml"), policy(include_expired))
-        .unwrap_or_else(|err| panic!("write policy fixture: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy fixture: {err}")));
 
     git(&root, &["init"]);
     git(
@@ -857,29 +857,29 @@ fn create_fixture(label: &str, include_expired: bool) -> PathBuf {
 fn create_mirror_divergence_fixture() -> PathBuf {
     let root = temp_root("mirror-divergence");
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| panic!("create source directory: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create source directory: {err}")));
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| panic!("create policy directory: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy directory: {err}")));
     fs::create_dir_all(root.join(".allow/mirror"))
-        .unwrap_or_else(|err| panic!("create mirror directory: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create mirror directory: {err}")));
     fs::write(
         root.join("src/lib.rs"),
         "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| panic!("write source fixture: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source fixture: {err}")));
     fs::write(root.join("policy/allow.toml"), mirror_canonical_policy())
-        .unwrap_or_else(|err| panic!("write canonical policy: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write canonical policy: {err}")));
     fs::write(
         root.join(MIRROR_LEDGER_PATH),
         "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\n",
     )
-    .unwrap_or_else(|err| panic!("write mirror policy: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write mirror policy: {err}")));
     fs::copy(
         Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../tests/fixtures/federation/canonical-mirror-drain-config.toml"),
         root.join(".allow/config.toml"),
     )
-    .unwrap_or_else(|err| panic!("copy federation config: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("copy federation config: {err}")));
 
     git(&root, &["init"]);
     git(
@@ -898,21 +898,21 @@ fn create_mirror_divergence_fixture() -> PathBuf {
 fn create_policy_change_fixture(label: &str, base_scope: &str) -> PathBuf {
     let root = temp_root(label);
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| panic!("create source directory: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create source directory: {err}")));
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| panic!("create policy directory: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy directory: {err}")));
     fs::write(
         root.join("src/lib.rs"),
         "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| panic!("write transition source: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write transition source: {err}")));
     let policy = if base_scope.contains('*') {
         policy_with_glob(base_scope)
     } else {
         policy_with_scope(base_scope)
     };
     fs::write(root.join("policy/allow.toml"), policy)
-        .unwrap_or_else(|err| panic!("write transition policy: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write transition policy: {err}")));
     git(&root, &["init"]);
     git(
         &root,
@@ -972,10 +972,10 @@ callee = "unwrap"
 
 fn transition_fingerprints(base_policy: &str, head_policy: &str) -> (String, String) {
     let base = allow_policy::parse_policy(base_policy).unwrap_or_else(|err| {
-        panic!("parse base transition policy: {err}")
+        std::panic::panic_any(format!("parse base transition policy: {err}"))
     });
     let head = allow_policy::parse_policy(head_policy).unwrap_or_else(|err| {
-        panic!("parse head transition policy: {err}")
+        std::panic::panic_any(format!("parse head transition policy: {err}"))
     });
     let base_entry = base
         .allow
@@ -1001,7 +1001,7 @@ after_fingerprint = "{after_fingerprint}"
 "#
     );
     fs::write(root.join(".allow/revisions/transition.toml"), note)
-        .unwrap_or_else(|err| panic!("write revision note: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write revision note: {err}")));
 }
 
 fn run_diff_with_note_requirement(
@@ -1038,7 +1038,7 @@ fn run_diff_with_template(
         .arg(template);
     command
         .output()
-        .unwrap_or_else(|err| panic!("run template diff: {err}"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run template diff: {err}")))
 }
 
 fn run_diff(root: &Path, output: &Path, require_change_note: bool) -> Output {
@@ -1058,7 +1058,7 @@ fn run_diff(root: &Path, output: &Path, require_change_note: bool) -> Output {
     }
     command
         .output()
-        .unwrap_or_else(|err| panic!("run transition diff: {err}"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run transition diff: {err}")))
 }
 
 /// Run `diff` in a non-JSON render format, capturing stdout. Unlike
@@ -1080,14 +1080,14 @@ fn run_diff_rendered(root: &Path, format: &str, require_change_note: bool) -> Ou
     }
     command
         .output()
-        .unwrap_or_else(|err| panic!("run {format} diff: {err}"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run {format} diff: {err}")))
 }
 
 fn policy_changes(output: &Path) -> Vec<Value> {
     let text = fs::read_to_string(output)
-        .unwrap_or_else(|err| panic!("read diff output: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read diff output: {err}")));
     let value: Value = serde_json::from_str(&text)
-        .unwrap_or_else(|err| panic!("parse diff output: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("parse diff output: {err}")));
     value
         .pointer("/diff/policy_changes")
         .and_then(Value::as_array)
@@ -1508,7 +1508,7 @@ fn run_report_with_common_summary(
         .arg("--output")
         .arg(&output)
         .output()
-        .unwrap_or_else(|err| panic!("run cargo-allow {args:?}: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow {args:?}: {err}")));
     (output, summary, result)
 }
 
@@ -1524,7 +1524,7 @@ fn run_command(root: &Path, args: &[&str], output: &Path) -> Output {
         .arg("--output")
         .arg(output)
         .output()
-        .unwrap_or_else(|err| panic!("run cargo-allow {args:?}: {err}"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow {args:?}: {err}")))
 }
 
 fn run_command_with_receipt(root: &Path, args: &[&str], output: &Path, receipt: &Path) -> Output {
@@ -1542,7 +1542,7 @@ fn run_command_with_receipt(root: &Path, args: &[&str], output: &Path, receipt: 
         .arg(receipt)
         .output()
         .unwrap_or_else(|err| {
-            panic!("run cargo-allow {args:?} with receipt: {err}")
+            std::panic::panic_any(format!("run cargo-allow {args:?} with receipt: {err}"))
         })
 }
 
@@ -1571,7 +1571,7 @@ fn assert_entry_status(value: &Value, collection_pointer: &str, allow_id: &str, 
         .pointer(collection_pointer)
         .and_then(Value::as_array)
         .unwrap_or_else(|| {
-            panic!("{collection_pointer} should be an array")
+            std::panic::panic_any(format!("{collection_pointer} should be an array"))
         });
     let entry = entries
         .iter()
@@ -1580,9 +1580,9 @@ fn assert_entry_status(value: &Value, collection_pointer: &str, allow_id: &str, 
                 || entry.get("id").and_then(Value::as_str) == Some(allow_id)
         })
         .unwrap_or_else(|| {
-            panic!(
+            std::panic::panic_any(format!(
                 "{allow_id} missing from {collection_pointer}: {entries:?}"
-            )
+            ))
         });
     assert_eq!(
         entry.get("status").and_then(Value::as_str),
@@ -1600,7 +1600,7 @@ fn assert_entry_matches(value: &Value, allow_id: &str, matches: u64) {
         .iter()
         .find(|entry| entry.get("id").and_then(Value::as_str) == Some(allow_id))
         .unwrap_or_else(|| {
-            panic!("{allow_id} missing from /allow_entries")
+            std::panic::panic_any(format!("{allow_id} missing from /allow_entries"))
         });
     assert_eq!(
         entry.get("matches").and_then(Value::as_u64),
@@ -1618,7 +1618,7 @@ fn assert_entry_count(value: &Value, allow_id: &str, field: &str, count: u64) {
         .iter()
         .find(|entry| entry.get("id").and_then(Value::as_str) == Some(allow_id))
         .unwrap_or_else(|| {
-            panic!("{allow_id} missing from /allow_entries")
+            std::panic::panic_any(format!("{allow_id} missing from /allow_entries"))
         });
     assert_eq!(
         entry.get(field).and_then(Value::as_u64),
@@ -1645,7 +1645,7 @@ fn assert_work_item_kind(value: &Value, allow_id: &str, kind: &str) {
     let item = items
         .iter()
         .find(|item| item.get("allow_id").and_then(Value::as_str) == Some(allow_id))
-        .unwrap_or_else(|| panic!("{allow_id} missing from /work_items"));
+        .unwrap_or_else(|| std::panic::panic_any(format!("{allow_id} missing from /work_items")));
     assert_eq!(
         item.get("kind").and_then(Value::as_str),
         Some(kind),
@@ -1669,7 +1669,7 @@ fn assert_work_item_ledger(
         .iter()
         .find(|item| item.get("kind").and_then(Value::as_str) == Some(kind))
         .unwrap_or_else(|| {
-            panic!("{kind} missing from /work_items: {items:?}")
+            std::panic::panic_any(format!("{kind} missing from /work_items: {items:?}"))
         });
     assert_eq!(
         item.get("ledger_id").and_then(Value::as_str),
@@ -1691,11 +1691,11 @@ fn assert_work_item_message(value: &Value, allow_id: &str, fragment: &str) {
     let item = items
         .iter()
         .find(|item| item.get("allow_id").and_then(Value::as_str) == Some(allow_id))
-        .unwrap_or_else(|| panic!("{allow_id} missing from /work_items"));
+        .unwrap_or_else(|| std::panic::panic_any(format!("{allow_id} missing from /work_items")));
     let message = item
         .get("message")
         .and_then(Value::as_str)
-        .unwrap_or_else(|| panic!("{allow_id} work item has no message"));
+        .unwrap_or_else(|| std::panic::panic_any(format!("{allow_id} work item has no message")));
     assert!(
         message.contains(fragment),
         "{allow_id} work item message should contain {fragment:?}: {message}"
@@ -1728,13 +1728,13 @@ fn git(root: &Path, args: &[&str]) {
         .arg(root)
         .args(args)
         .output()
-        .unwrap_or_else(|err| panic!("git {args:?}: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
     if !output.status.success() {
-        panic!(
+        std::panic::panic_any(format!(
             "git {args:?} failed: stdout=`{}` stderr=`{}`",
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
-        );
+        ));
     }
 }
 
@@ -1743,7 +1743,7 @@ fn repair_routes_converge_into_refresh_and_prune_mutation_previews() {
     let root = create_fixture("repair-route-convergence", true);
     let policy_path = root.join("policy/allow.toml");
     let policy_text = fs::read_to_string(&policy_path)
-        .unwrap_or_else(|err| panic!("read repair policy: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read repair policy: {err}")));
     fs::write(
         &policy_path,
         policy_text.replace(
@@ -1751,7 +1751,7 @@ fn repair_routes_converge_into_refresh_and_prune_mutation_previews() {
             "evidence = [\"test:lifecycle_corpus\"]",
         ),
     )
-    .unwrap_or_else(|err| panic!("prepare repair policy: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("prepare repair policy: {err}")));
 
     let (worklist_path, worklist_result) = run_report(&root, "repair-worklist", &["worklist"]);
     assert_status("repair route worklist", &worklist_result, true);
@@ -1878,10 +1878,10 @@ fn repair_routes_converge_into_refresh_and_prune_mutation_previews() {
 
     let prune_preview_summary: Value = serde_json::from_str(
         &fs::read_to_string(&prune_preview_summary_path).unwrap_or_else(|err| {
-            panic!("read prune preview summary: {err}")
+            std::panic::panic_any(format!("read prune preview summary: {err}"))
         }),
     )
-    .unwrap_or_else(|err| panic!("parse prune preview summary: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("parse prune preview summary: {err}")));
     assert_eq!(
         prune_preview_summary
             .get("schema_id")
@@ -1925,10 +1925,10 @@ fn repair_routes_converge_into_refresh_and_prune_mutation_previews() {
     );
     let prune_write_summary: Value = serde_json::from_str(
         &fs::read_to_string(&prune_write_summary_path).unwrap_or_else(|err| {
-            panic!("read prune write summary: {err}")
+            std::panic::panic_any(format!("read prune write summary: {err}"))
         }),
     )
-    .unwrap_or_else(|err| panic!("parse prune write summary: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("parse prune write summary: {err}")));
     assert_eq!(
         prune_write_summary
             .pointer("/posture")

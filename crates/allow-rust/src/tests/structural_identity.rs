@@ -14,10 +14,10 @@ fn fixture_root() -> PathBuf {
 fn read_fixture_pair(name: &str) -> (String, String) {
     let dir = fixture_root().join(name);
     let before = fs::read_to_string(dir.join("before.rs")).unwrap_or_else(|err| {
-        panic!("read {} before.rs: {err}", dir.display())
+        std::panic::panic_any(format!("read {} before.rs: {err}", dir.display()))
     });
     let after = fs::read_to_string(dir.join("after.rs")).unwrap_or_else(|err| {
-        panic!("read {} after.rs: {err}", dir.display())
+        std::panic::panic_any(format!("read {} after.rs: {err}", dir.display()))
     });
     (before, after)
 }
@@ -35,10 +35,10 @@ fn single_finding<'a>(findings: &'a [Finding], kind: FindingKind, family: &str) 
         .iter()
         .find(|finding| finding.kind == kind && finding.family.as_deref() == Some(family))
         .unwrap_or_else(|| {
-            panic!(
+            std::panic::panic_any(format!(
                 "expected one {kind} {family} finding among {} findings",
                 findings.len()
-            )
+            ))
         })
 }
 
@@ -50,7 +50,7 @@ fn single_unsafe_block<'a>(findings: &'a [Finding], container: &str) -> &'a Find
                 && finding.family.as_deref() == Some("unsafe_block")
                 && finding.identity.container.as_deref() == Some(container)
         })
-        .unwrap_or_else(|| panic!("missing unsafe_block in {container}"))
+        .unwrap_or_else(|| std::panic::panic_any(format!("missing unsafe_block in {container}")))
 }
 
 #[test]
