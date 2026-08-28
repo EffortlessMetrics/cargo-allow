@@ -620,7 +620,6 @@ fn validate_edges<'a>(
     let mut valid = Vec::new();
 
     for edge in edges {
-        let edge_name = edge_name(edge);
         let has_valid_shape = !edge.from.trim().is_empty()
             && !edge.to.trim().is_empty()
             && edge.schema_id == FINAL_EVIDENCE_EDGE_SCHEMA_ID
