@@ -1,0 +1,68 @@
+name: One-shot staged-index proof repair
+
+on:
+  push:
+    branches:
+      - repair/main-release-readiness-4005
+
+permissions:
+  contents: write
+
+concurrency:
+  group: one-shot-stage-index-proof-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the triggering recovery head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: repair/main-release-readiness-4005
+
+      - name: Bind the enforcing proof to the exact staged candidate
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path(".github/workflows/one-shot-release-recovery.yml")
+          text = path.read_text()
+          old = '''      - name: Prove the enforcing repository policy
+                  run: cargo run -p cargo-allow -- check --mode no-new --config policy/allow.toml
+          '''
+          new = '''      - name: Stage and prove the exact recovery candidate
+                  shell: bash
+                  run: |
+                    git add \\
+                      crates/intent-model/src/agentic_candidate.rs \\
+                      crates/allow-report/src/artifacts/post_merge_reconciliation_v1.rs \\
+                      crates/allow-report/tests/post_merge_reconciliation_contract.rs \\
+                      policy/allow.toml \\
+                      .github/workflows/one-shot-release-recovery.yml \\
+                      .github/workflows/one-shot-fix-policy-diff-check.yml
+                    cargo run -p cargo-allow -- check \\
+                      --mode no-new \\
+                      --config policy/allow.toml \\
+                      --staged \\
+                      --phase precommit
+          '''
+          if text.count(old) != 1:
+              raise SystemExit("expected one unpinned policy-proof step")
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+      - name: Commit the proof repair and remove this transport
+        shell: bash
+        run: |
+          rm .github/workflows/one-shot-stage-index-proof.yml
+          git config user.name "EffortlessSteven"
+          git config user.email "git@effortlesssteven.com"
+          git add \
+            .github/workflows/one-shot-release-recovery.yml \
+            .github/workflows/one-shot-stage-index-proof.yml
+          git diff --cached --check
+          git commit -m "chore(recovery): prove the exact staged candidate"
+          git push origin HEAD:repair/main-release-readiness-4005
