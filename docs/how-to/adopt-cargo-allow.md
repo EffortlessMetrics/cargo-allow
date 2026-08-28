@@ -22,6 +22,17 @@ cargo-allow ships two pre-commit framework hooks. Both deliberately use
 runs pre-commit, then pin the repository revision in the consumer's
 `.pre-commit-config.yaml`.
 
+The exact hook is a source-candidate surface and requires a matching
+source-candidate binary. When pinning `rev: main`, install the current checkout
+before running pre-commit:
+
+```bash
+cargo install --path crates/cargo-allow --locked
+```
+
+Use the `cargo-allow-worktree` hook with Published `0.1.11`, or until the exact
+staged hook reaches a tagged release.
+
 The default `cargo-allow` hook evaluates the exact Git index candidate,
 including partially staged files. It never falls back to dirty worktree bytes
 and is registered only for the `pre-commit` stage. The hook runs the supported
