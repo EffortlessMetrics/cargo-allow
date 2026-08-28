@@ -197,8 +197,7 @@ for row in rows:
     if key not in checksums:
         raise SystemExit(f"registry index has no row for {key[0]} {key[1]}")
     row["index_checksum"] = checksums[key]
-rows_path.write_text(json.dumps(rows, indent=2) + "
-", encoding="utf-8")
+rows_path.write_text(json.dumps(rows, indent=2) + "\n", encoding="utf-8")
 print(f"bound {len(rows)} index checksums")
 PY
 
