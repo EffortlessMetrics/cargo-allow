@@ -15,6 +15,8 @@ import tarfile
 import tomllib
 from pathlib import Path, PurePosixPath
 
+from exact_candidate_package_identity import crate_version_from_filename
+
 
 def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
@@ -25,34 +27,6 @@ def safe_member(name: str) -> bool:
     return not path.is_absolute() and ".." not in path.parts
 
 
-def archive_identity(
-    filename: str,
-    expected_name: str | None = None,
-    expected_version: str | None = None,
-) -> tuple[str, str]:
-    """Parse a Cargo archive using its exact package prefix and suffix."""
-    if not filename.endswith(".crate"):
-        raise ValueError(f"archive must end in .crate: {filename}")
-    stem = filename.removesuffix(".crate")
-    if expected_name is not None:
-        prefix = f"{expected_name}-"
-        if not stem.startswith(prefix):
-            raise ValueError(f"archive package prefix mismatch: {filename}")
-        name = expected_name
-        version = stem[len(prefix):]
-    else:
-        if expected_version is None or "-" not in stem:
-            raise ValueError(f"archive identity requires expected package and version: {filename}")
-        suffix = f"-{expected_version}"
-        if not stem.endswith(suffix):
-            raise ValueError(f"archive version suffix mismatch: {filename}")
-        name = stem[: -len(suffix)]
-        version = expected_version
-    if not name or not version or (expected_version is not None and version != expected_version):
-        raise ValueError(f"archive identity mismatch: {filename}")
-    return name, version
-
-
 def asset_record(files: dict[str, bytes], prefix: str, candidates: list[str]) -> dict[str, object]:
     for candidate in candidates:
         path = prefix + candidate
@@ -61,8 +35,11 @@ def asset_record(files: dict[str, bytes], prefix: str, candidates: list[str]) ->
     return {"path": None, "sha256": None, "present": False}
 
 
-def surface(crate: Path, expected_version: str) -> dict[str, object]:
-    stem, version = archive_identity(crate.name, expected_version=expected_version)
+def surface(crate: Path, expected_name: str, expected_version: str) -> dict[str, object]:
+    version = crate_version_from_filename(expected_name, crate.name)
+    if version != expected_version:
+        raise ValueError(f"archive identity mismatch: {crate.name}")
+    stem = expected_name
 
     with tarfile.open(crate, "r:gz") as archive:
         members = archive.getmembers()
@@ -147,16 +124,17 @@ def main() -> int:
     expected_rows = package_set["package_set"]["crates"]
     expected = [row["name"] for row in expected_rows]
     expected_versions = {row["name"]: row["version"] for row in expected_rows}
+    expected_by_file = {
+        f"{row['name']}-{row['version']}.crate": row["name"]
+        for row in expected_rows
+    }
     archives = sorted(args.packages_dir.glob("*.crate"))
     by_name = {}
     for archive in archives:
-        matching_name = next(
-            (name for name in expected if archive.name.startswith(f"{name}-")),
-            None,
-        )
-        if matching_name is None:
-            raise ValueError(f"archive package prefix is not in expected set: {archive.name}")
-        row = surface(archive, expected_versions[matching_name])
+        archive_name = expected_by_file.get(archive.name)
+        if archive_name is None:
+            raise ValueError(f"unexpected packaged crate: {archive.name}")
+        row = surface(archive, archive_name, expected_versions[archive_name])
         if row["name"] in by_name:
             raise ValueError(f"duplicate packaged crate: {row['name']}")
         by_name[row["name"]] = row
