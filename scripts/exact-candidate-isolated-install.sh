@@ -266,7 +266,7 @@ NEGATIVE_FAILURES=0
 
 # Negative: missing selected .crate (registry copy without the crate file)
 rm -rf "${work_parent}/registry-missing-crate" && cp -r "$registry" "${work_parent}/registry-missing-crate"
-missing_crate="$(find "${work_parent}/registry-missing-crate" -name "allow-core-${CANDIDATE_VERSION}.crate" | head -1)"
+missing_crate="$(find "${work_parent}/registry-missing-crate" -name "allow-core-${CANDIDATE_VERSION}.crate" -print -quit)"
 rm -f "$missing_crate"
 set +e
 CARGO_HOME="$install_home" cargo metadata --format-version 1 --offline \
@@ -283,7 +283,7 @@ fi
 
 # Negative: candidate checksum mutated
 rm -rf "${work_parent}/registry-mutated" && cp -r "$registry" "${work_parent}/registry-mutated"
-mutated_crate="$(find "${work_parent}/registry-mutated" -name "allow-core-${CANDIDATE_VERSION}.crate" | head -1)"
+mutated_crate="$(find "${work_parent}/registry-mutated" -name "allow-core-${CANDIDATE_VERSION}.crate" -print -quit)"
 printf 'x' >> "$mutated_crate"
 set +e
 CARGO_HOME="$install_home" cargo metadata --format-version 1 --offline \
@@ -300,7 +300,7 @@ fi
 
 # Negative: index checksum mismatch
 rm -rf "${work_parent}/registry-index" && cp -r "$registry" "${work_parent}/registry-index"
-index_row="$(find "${work_parent}/registry-index/index" -type f | head -1)"
+index_row="$(find "${work_parent}/registry-index/index" -type f -print -quit)"
 python3 - "$index_row" <<'PY'
 import json
 import sys
@@ -330,7 +330,7 @@ fi
 
 # Negative: offline external input incomplete
 rm -rf "${work_parent}/registry-external" && cp -r "$registry" "${work_parent}/registry-external"
-first_external="$(find "${work_parent}/registry-external" -name "*.crate" ! -name "allow-*" ! -name "effortless-*" ! -name "cargo-allow-*" | head -1)"
+first_external="$(find "${work_parent}/registry-external" -name "*.crate" ! -name "allow-*" ! -name "effortless-*" ! -name "cargo-allow-*" -print -quit)"
 if [ -n "$first_external" ]; then
     rm -f "$first_external"
     set +e
