@@ -57,7 +57,6 @@ print(f"consumed {len(out)} candidate rows with digest agreement")
 PY
 
 CANDIDATE_VERSION="$(python3 -c "import json;print(json.load(open('$CANDIDATE_ARTIFACT'))['root_package_version'])")"
-CANDIDATE_ARTIFACT_DIGEST="$(python3 scripts/exact-candidate-isolated-install.py --mode receipt --candidate-artifact "$CANDIDATE_ARTIFACT" --input-receipt "$CANDIDATE_ARTIFACT" >/dev/null && python3 -c "import hashlib;print('sha256:'+hashlib.sha256(open('$CANDIDATE_ARTIFACT','rb').read()).hexdigest())")"
 
 lifecycle="scripts/candidate-harness-owned-dir.py"
 test_root_json="$(python3 "$lifecycle" allocate --root "${TMPDIR:-/tmp}" --purpose exact-candidate-isolated-install-test-root)"
@@ -169,6 +168,33 @@ for path in sorted((registry / "index").rglob("*")):
 print("sha256:" + hashlib.sha256(lines).hexdigest())
 PY
 )"
+echo "isolated-install: binding registry index checksums to the consumed rows"
+python3 - "$registry" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+registry = Path(sys.argv[1])
+rows_path = Path("target/exact-candidate-isolated-install/consumed-rows.json")
+rows = json.loads(rows_path.read_text(encoding="utf-8"))
+checksums = {}
+for path in sorted((registry / "index").rglob("*")):
+    if not path.is_file():
+        continue
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        entry = json.loads(line)
+        checksums[(entry["name"], entry["vers"])] = entry["cksum"]
+for row in rows:
+    key = (row["cargo_package_name"], row["cargo_package_version"])
+    if key not in checksums:
+        raise SystemExit(f"registry index has no row for {key[0]} {key[1]}")
+    row["index_checksum"] = checksums[key]
+rows_path.write_text(json.dumps(rows, indent=2) + "
+", encoding="utf-8")
+print(f"bound {len(rows)} index checksums")
+PY
 
 echo "isolated-install: denying the workspace source checkout"
 mv "$crates_path" "$crates_stash"
@@ -197,7 +223,7 @@ mv "$crates_stash" "$crates_path"
 source_restored=1
 source_denied=0
 if [ -d "$crates_path" ] && [ ! -d "$crates_stash" ]; then
-    source_restored_checked=1
+    :
 else
     echo "workspace source checkout was not restored" >&2
     exit 1
@@ -231,10 +257,6 @@ comparison_digest_input="${offline_root}/graph-comparison.json"
 
 echo "isolated-install: negative controls"
 NEGATIVE_FAILURES=0
-record_negative() {
-    local id="$1" expectation="$2"
-    echo "isolated-install: negative ${id} (${expectation})"
-}
 
 # Negative: missing selected .crate (registry copy without the crate file)
 rm -rf "${work_parent}/registry-missing-crate" && cp -r "$registry" "${work_parent}/registry-missing-crate"

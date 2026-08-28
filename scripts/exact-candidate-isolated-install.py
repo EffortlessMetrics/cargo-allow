@@ -58,13 +58,6 @@ def compare_resolution(
         manifest_path = str(package.get("manifest_path", "")).replace("\\", "/")
         if "/crates/" in manifest_path:
             path_sources.append(name)
-    for pkg in metadata.get("workspace_members", []):
-        # workspace_members are package ids like
-        # `name version (path+file:///...)`; any presence means the
-        # workspace leaked into resolution.
-        if "path+file" in str(pkg):
-            path_sources.append(str(pkg).split()[0])
-
     unexpected: list[str] = []
     missing: list[str] = []
     mismatches: list[str] = []
@@ -77,6 +70,10 @@ def compare_resolution(
             missing.append(f"{name} {expected_version}")
         elif expected_version in versions:
             matched += 1
+            for extra in sorted(versions - {expected_version}):
+                mismatches.append(
+                    f"{name} expected {expected_version} also resolved {extra}"
+                )
         else:
             mismatches.append(
                 f"{name} expected {expected_version} resolved {sorted(versions)}"
@@ -183,6 +180,8 @@ def redaction_scan(payload: dict[str, Any]) -> list[str]:
 
 def classify(payload: dict[str, Any]) -> str:
     """Offline classification mirroring the Rust validator's top levels."""
+    if redaction_scan(payload):
+        return "PathLeakInReceipt"
     if not payload.get("source_checkout_denied", False):
         return "SourceFallbackDetected"
     graph = payload.get("graph_comparison") or {}
@@ -195,8 +194,6 @@ def classify(payload: dict[str, Any]) -> str:
         or graph.get("path_sources")
     ):
         return "GraphMismatch"
-    if redaction_scan(payload):
-        return "PathLeakInReceipt"
     for field in (
         "candidate_artifact_digest",
         "cargo_lock_digest",
