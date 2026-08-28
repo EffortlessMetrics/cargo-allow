@@ -335,6 +335,7 @@ fn collect_structural_diagnostics(ledger: &ProductMoveLedger) -> Vec<MoveLedgerD
         "MoveToCargoProofApp",
         "MoveToProofAdapter",
         "RemainCargoAllowCore",
+        "RemainCargoIntent",
         "RemainProviderOwned",
         "CompatibilityAdapter",
         "HistoricalReaderOnly",
