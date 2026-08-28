@@ -41,6 +41,7 @@ fn schema_contract_registry_covers_every_documented_artifact_schema() {
                 && name != "release-manifest-v2"
                 && name != "package-candidate-v2"
                 && name != "isolated-install-receipt-v2"
+                && name != "exact-candidate-receipt-v2"
                 && name != "topology-publish-receipt"
                 && name != "shared-package-candidate.v1"
                 && name != "support-bundle"

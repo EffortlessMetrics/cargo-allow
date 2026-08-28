@@ -13745,3 +13745,69 @@ glob = ".allow/revisions/2925-isolated-install-v2.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11191"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/exact-candidate-qualification.sh"
+owner = "core/release"
+classification = "release_packaging_producer"
+reason = "Qualification stage running the supported journey from the isolated installed candidate (#2926)."
+evidence = ["issue:2926"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/exact-candidate-qualification.sh"
+target_fingerprint = "sh"
+glob = "scripts/exact-candidate-qualification.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11192"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/exact-candidate-receipt-v2.schema.json"
+owner = "core/release"
+classification = "release_contract_schema"
+reason = "JSON schema for the exact-candidate qualification receipt contract for #2926."
+evidence = ["issue:2926"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/exact-candidate-receipt-v2.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/exact-candidate-receipt-v2.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11193"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/2926-exact-candidate-v2.toml"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#2926 revision note authorizing the qualification receipts; covers the note file itself as tracked configuration."
+evidence = ["issue:2926", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/2926-exact-candidate-v2.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/2926-exact-candidate-v2.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
