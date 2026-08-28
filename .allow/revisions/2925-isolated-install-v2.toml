@@ -3,19 +3,19 @@ schema_version = 1
 [[records]]
 allow_ids = ["allow-11186"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:7f89b4f58e8b839a9f0f2ce4fa139e633197d0926d59d4229532794e1604d727"
+after_fingerprint = "sha256:v1:04ce8be4f03b0faf9950b52ae2abafe11217a7e007331d8c0544fb9781cf7ef5"
 reason = "receipt for scripts/exact-candidate-isolated-install.sh, the isolated install stage (#2925)"
 
 [[records]]
 allow_ids = ["allow-11187"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:29fa970641b301d2f2bd89753220a3fec5fb80b52d349d49864b0b425d74f9f7"
+after_fingerprint = "sha256:v1:eade72b7a3a79f024eb53c6a3c07ff6c03e64ab4b419338b6b7fcd1f36ee1a47"
 reason = "receipt for scripts/exact-candidate-isolated-install.py, the graph comparison and receipt assembler (#2925)"
 
 [[records]]
 allow_ids = ["allow-11188"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:f3c43ab4b16b58d7628efc6770f89178f151fa93acc554d40aa47c26debd396b"
+after_fingerprint = "sha256:v1:54a45103583c2ba182af6ffa1589cee1b0a5755c37c250eb4993217fd11492cb"
 reason = "receipt for scripts/test-exact-candidate-isolated-install.py, the offline characterization suite (#2925)"
 
 [[records]]

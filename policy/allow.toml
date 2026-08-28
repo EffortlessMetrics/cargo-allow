@@ -13639,7 +13639,7 @@ column = 1
 [[allow]]
 id = "allow-11186"
 kind = "non_rust_file"
-family = "release_script"
+family = "shell_script"
 path = "scripts/exact-candidate-isolated-install.sh"
 owner = "core/release"
 classification = "release_packaging_producer"
@@ -13661,7 +13661,7 @@ column = 1
 [[allow]]
 id = "allow-11187"
 kind = "non_rust_file"
-family = "release_script"
+family = "python_tool"
 path = "scripts/exact-candidate-isolated-install.py"
 owner = "core/release"
 classification = "release_packaging_producer"
@@ -13683,7 +13683,7 @@ column = 1
 [[allow]]
 id = "allow-11188"
 kind = "non_rust_file"
-family = "release_script"
+family = "python_tool"
 path = "scripts/test-exact-candidate-isolated-install.py"
 owner = "core/release"
 classification = "release_packaging_test"
