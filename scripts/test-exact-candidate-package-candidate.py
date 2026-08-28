@@ -86,9 +86,13 @@ class CandidateProducerTests(unittest.TestCase):
             crate_root.mkdir()
             (crate_root / "Cargo.toml").write_text(
                 '[package]\nname = "allow-core"\nversion = "0.2.0-rc.1"\n'
+                'readme = "README.md"\n'
                 '[lib]\npath = "src/lib.rs"\n'
                 '[dependencies]\nallow-policy = { version = "0.2.0-rc.1" }\n',
                 encoding="utf-8",
+            )
+            (crate_root / "README.md").write_text(
+                "candidate crate readme\n", encoding="utf-8"
             )
             crate_path = package_dir / "allow-core-0.2.0-rc.1.crate"
             with tarfile.open(crate_path, "w:gz") as archive:
@@ -127,6 +131,21 @@ class CandidateProducerTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 candidate.verify_packaged(payload, package_dir)
             wrong.rename(crate_path)
+
+            # A declared readme missing from the packaged crate must fail,
+            # and restoring it must make the same crate verify clean.
+            readme_file = crate_root / "README.md"
+            readme_file.unlink()
+            crate_path.unlink()
+            with tarfile.open(crate_path, "w:gz") as archive:
+                archive.add(crate_root, arcname="allow-core-0.2.0-rc.1")
+            with self.assertRaises(ValueError):
+                candidate.verify_packaged(payload, package_dir)
+            readme_file.write_text("candidate crate readme\n", encoding="utf-8")
+            crate_path.unlink()
+            with tarfile.open(crate_path, "w:gz") as archive:
+                archive.add(crate_root, arcname="allow-core-0.2.0-rc.1")
+            candidate.verify_packaged(payload, package_dir)
 
             # A packaged path dependency must fail the packaging law.
             leak_root = Path(directory) / "leaky"

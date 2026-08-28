@@ -270,6 +270,18 @@ def derive_payload(
     if root_row is None:
         raise ValueError("candidate is missing its root package row")
 
+    # Topology asset_roots are workspace directories the package owns for
+    # release-asset qualification; they must exist in the source tree. They
+    # are not asserted inside the .crate, which cargo builds from the crate
+    # directory alone.
+    for row in rendered_rows:
+        for asset in row["required_assets"]:
+            if not (root / asset).exists():
+                raise ValueError(
+                    f"required asset root {asset} is missing from the workspace "
+                    f"for {row['cargo_package_name']}"
+                )
+
     known_exclusions = sorted(
         f"{row['logical_id']}: {row['version_line']} is not selected for this candidate"
         for row in topology.get("package", [])
@@ -325,11 +337,14 @@ def verify_packaged(payload: dict[str, Any], package_dir: Path) -> None:
                     f"packaged manifest for {row['cargo_package_name']} leaks a "
                     f"path dependency on {leak!r}"
                 )
-            for asset in row["required_assets"]:
-                if not (unpacked / asset).exists():
+            packaged_manifest = parse_toml(unpacked / "Cargo.toml")
+            package_table = packaged_manifest.get("package") or {}
+            readme = package_table.get("readme")
+            if isinstance(readme, str) and readme.strip():
+                if not (unpacked / readme).is_file():
                     raise ValueError(
-                        f"required asset {asset} is missing from the packaged crate "
-                        f"{row['cargo_package_name']}"
+                        f"packaged crate {row['cargo_package_name']} is missing "
+                        f"its declared readme {readme!r}"
                     )
 
 
