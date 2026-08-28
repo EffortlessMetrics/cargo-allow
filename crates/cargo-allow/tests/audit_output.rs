@@ -13,7 +13,7 @@ use support::{
 fn audit_with_output_file_does_not_emit_human_status_to_stderr() {
     let root = temp_root("audit-output");
     fs::write(root.join("tracked.txt"), "tracked\n")
-        .unwrap_or_else(|err| panic!("write tracked file: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write tracked file: {err}")));
     let output = root.join("audit.json");
 
     let result = cargo_allow_command()
@@ -25,7 +25,7 @@ fn audit_with_output_file_does_not_emit_human_status_to_stderr() {
         .arg("--output")
         .arg(&output)
         .output()
-        .unwrap_or_else(|err| panic!("run cargo-allow audit: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow audit: {err}")));
 
     assert_status("audit", &result, true);
     assert_stdout_empty(
@@ -47,12 +47,12 @@ fn audit_with_output_file_does_not_emit_human_status_to_stderr() {
 fn audit_with_broken_evidence_writes_saved_report_counts() {
     let root = temp_root("audit-broken-evidence-output");
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
     fs::write(
         root.join("policy/allow.toml"),
         policy_with_broken_evidence(),
     )
-    .unwrap_or_else(|err| panic!("write policy: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     let output = root.join("audit.json");
 
     let result = cargo_allow_command()
@@ -64,7 +64,7 @@ fn audit_with_broken_evidence_writes_saved_report_counts() {
         .arg("--output")
         .arg(&output)
         .output()
-        .unwrap_or_else(|err| panic!("run cargo-allow audit: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow audit: {err}")));
 
     assert_status("audit", &result, true);
     assert_stdout_empty(
@@ -98,16 +98,16 @@ fn audit_with_broken_evidence_writes_saved_report_counts() {
 fn audit_reports_policy_missing_evidence_counts() {
     let root = temp_root("audit-policy-missing-evidence");
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
     fs::create_dir_all(root.join("docs"))
-        .unwrap_or_else(|err| panic!("create docs dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
     fs::write(root.join("docs/policy.md"), "# Policy\n")
-        .unwrap_or_else(|err| panic!("write doc fixture: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write doc fixture: {err}")));
     fs::write(
         root.join("policy/allow.toml"),
         policy_with_missing_evidence(),
     )
-    .unwrap_or_else(|err| panic!("write policy: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     let output = root.join("audit.json");
 
     let result = cargo_allow_command()
@@ -119,7 +119,7 @@ fn audit_reports_policy_missing_evidence_counts() {
         .arg("--output")
         .arg(&output)
         .output()
-        .unwrap_or_else(|err| panic!("run cargo-allow audit: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow audit: {err}")));
 
     assert_status("audit", &result, true);
     assert_stdout_empty(
@@ -153,13 +153,13 @@ fn audit_reports_policy_missing_evidence_counts() {
 fn audit_reports_policy_baseline_debt_counts() {
     let root = temp_root("audit-policy-baseline-debt");
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
     fs::create_dir_all(root.join("docs"))
-        .unwrap_or_else(|err| panic!("create docs dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
     fs::write(root.join("docs/baseline.md"), "# Baseline\n")
-        .unwrap_or_else(|err| panic!("write baseline doc: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write baseline doc: {err}")));
     fs::write(root.join("policy/allow.toml"), policy_with_baseline_debt())
-        .unwrap_or_else(|err| panic!("write policy: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     let output = root.join("audit.json");
 
     let result = cargo_allow_command()
@@ -171,7 +171,7 @@ fn audit_reports_policy_baseline_debt_counts() {
         .arg("--output")
         .arg(&output)
         .output()
-        .unwrap_or_else(|err| panic!("run cargo-allow audit: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow audit: {err}")));
 
     assert_status("audit", &result, true);
     assert_stdout_empty(
@@ -211,17 +211,17 @@ fn audit_reports_policy_baseline_debt_counts() {
 fn audit_scans_rust_when_package_manifest_is_not_utf8() {
     let root = temp_root("audit-non-utf8-manifest");
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| panic!("create source dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create source dir: {err}")));
     fs::write(
         root.join("Cargo.toml"),
         b"[package]\nname = \"broken\"\n\xFF",
     )
-    .unwrap_or_else(|err| panic!("write non-utf8 manifest: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write non-utf8 manifest: {err}")));
     fs::write(
         root.join("src/lib.rs"),
         "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| panic!("write rust source: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write rust source: {err}")));
     let output = root.join("audit.json");
 
     let result = cargo_allow_command()
@@ -235,7 +235,7 @@ fn audit_scans_rust_when_package_manifest_is_not_utf8() {
         .arg("--output")
         .arg(&output)
         .output()
-        .unwrap_or_else(|err| panic!("run cargo-allow audit: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow audit: {err}")));
 
     assert_status("audit", &result, true);
     assert_stdout_empty(
@@ -274,14 +274,14 @@ fn audit_scans_rust_when_package_manifest_is_not_utf8() {
 fn audit_scans_rust_when_package_manifest_is_invalid_toml() {
     let root = temp_root("audit-invalid-manifest");
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| panic!("create source dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create source dir: {err}")));
     fs::write(root.join("Cargo.toml"), "[package\nname = \"broken\"\n")
-        .unwrap_or_else(|err| panic!("write invalid manifest: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write invalid manifest: {err}")));
     fs::write(
         root.join("src/lib.rs"),
         "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| panic!("write rust source: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write rust source: {err}")));
     let output = root.join("audit.json");
 
     let result = cargo_allow_command()
@@ -295,7 +295,7 @@ fn audit_scans_rust_when_package_manifest_is_invalid_toml() {
         .arg("--output")
         .arg(&output)
         .output()
-        .unwrap_or_else(|err| panic!("run cargo-allow audit: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow audit: {err}")));
 
     assert_status("audit", &result, true);
     assert_stdout_empty(
@@ -334,12 +334,12 @@ fn audit_scans_rust_when_package_manifest_is_invalid_toml() {
 fn audit_scans_invalid_rust_without_package_manifest() {
     let root = temp_root("audit-invalid-rust-no-manifest");
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| panic!("create source dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create source dir: {err}")));
     fs::write(
         root.join("src/lib.rs"),
         "pub fn load(value: Option<u8>) -> u8 { value.unwrap()",
     )
-    .unwrap_or_else(|err| panic!("write invalid rust source: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write invalid rust source: {err}")));
     let output = root.join("audit.json");
 
     let result = cargo_allow_command()
@@ -353,7 +353,7 @@ fn audit_scans_invalid_rust_without_package_manifest() {
         .arg("--output")
         .arg(&output)
         .output()
-        .unwrap_or_else(|err| panic!("run cargo-allow audit: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow audit: {err}")));
 
     assert_status("audit", &result, true);
     assert_stdout_empty(

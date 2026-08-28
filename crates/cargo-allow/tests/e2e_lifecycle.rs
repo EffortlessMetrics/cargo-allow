@@ -26,7 +26,7 @@ fn init_add_check_explain_and_prune_work_as_a_cli_lifecycle() {
         .arg("init")
         .arg("--strict")
         .output()
-        .unwrap_or_else(|err| panic!("run cargo-allow init: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow init: {err}")));
     assert_status("init", &init, true);
     assert_stderr_empty("init", &init, "should not emit errors on successful init");
     assert_stdout_contains(
@@ -56,7 +56,7 @@ fn init_add_check_explain_and_prune_work_as_a_cli_lifecycle() {
         .arg("json")
         .output()
         .unwrap_or_else(|err| {
-            panic!("run cargo-allow check before add: {err}")
+            std::panic::panic_any(format!("run cargo-allow check before add: {err}"))
         });
     assert_status("check before add", &failing_check, false);
     assert_stderr_empty(
@@ -109,7 +109,7 @@ fn init_add_check_explain_and_prune_work_as_a_cli_lifecycle() {
         .arg("--summary-output")
         .arg(&add_summary)
         .output()
-        .unwrap_or_else(|err| panic!("run cargo-allow add: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow add: {err}")));
     assert_status("add", &add, true);
     assert_stdout_empty(
         "add",
@@ -149,7 +149,7 @@ fn init_add_check_explain_and_prune_work_as_a_cli_lifecycle() {
         .arg("--receipt")
         .arg(&receipt_output)
         .output()
-        .unwrap_or_else(|err| panic!("run cargo-allow allow check: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow allow check: {err}")));
     assert_status("cargo allow check", &passing_check, true);
     assert_stdout_empty(
         "cargo allow check",
@@ -191,7 +191,7 @@ fn init_add_check_explain_and_prune_work_as_a_cli_lifecycle() {
         .arg("--output")
         .arg(&explain_output)
         .output()
-        .unwrap_or_else(|err| panic!("run cargo-allow explain: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow explain: {err}")));
     assert_status("explain", &explain, true);
     assert_stdout_empty(
         "explain",
@@ -221,7 +221,7 @@ fn init_add_check_explain_and_prune_work_as_a_cli_lifecycle() {
         root.join("src/lib.rs"),
         "pub fn load(value: Option<u8>) -> u8 { value.unwrap_or_default() }\n",
     )
-    .unwrap_or_else(|err| panic!("remove unwrap fixture: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("remove unwrap fixture: {err}")));
     git(&root, &["add", "src/lib.rs"]);
     git(&root, &["commit", "-m", "remove panic fixture"]);
 
@@ -236,7 +236,7 @@ fn init_add_check_explain_and_prune_work_as_a_cli_lifecycle() {
         .arg("--output")
         .arg(&prune_output)
         .output()
-        .unwrap_or_else(|err| panic!("run cargo-allow prune: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow prune: {err}")));
     assert_status("prune", &prune, true);
     assert_stdout_empty(
         "prune",
@@ -264,12 +264,12 @@ fn init_add_check_explain_and_prune_work_as_a_cli_lifecycle() {
 
 fn write_source_fixture(root: &Path) {
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| panic!("create source dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create source dir: {err}")));
     fs::write(
         root.join("src/lib.rs"),
         "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
     )
-    .unwrap_or_else(|err| panic!("write source fixture: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source fixture: {err}")));
 }
 
 fn git(root: &Path, args: &[&str]) {
@@ -278,22 +278,22 @@ fn git(root: &Path, args: &[&str]) {
         .arg(root)
         .args(args)
         .output()
-        .unwrap_or_else(|err| panic!("git {args:?}: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
     if !output.status.success() {
-        panic!(
+        std::panic::panic_any(format!(
             "git {args:?} failed: stdout=`{}` stderr=`{}`",
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
-        );
+        ));
     }
 }
 
 fn parse_stdout_json(command: &str, output: &std::process::Output) -> Value {
     serde_json::from_slice(&output.stdout).unwrap_or_else(|err| {
-        panic!(
+        std::panic::panic_any(format!(
             "{command} stdout should parse as JSON: {err}\n{}",
             String::from_utf8_lossy(&output.stdout)
-        )
+        ))
     })
 }
 
@@ -337,7 +337,7 @@ fn assert_stdout_contains(
 
 fn assert_file_contains(path: &Path, needle: &str, message: &str) {
     let contents = fs::read_to_string(path)
-        .unwrap_or_else(|err| panic!("read {}: {err}", path.display()));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read {}: {err}", path.display())));
     assert!(contents.contains(needle), "{message}");
 }
 

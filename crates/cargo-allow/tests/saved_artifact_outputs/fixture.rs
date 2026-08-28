@@ -21,13 +21,13 @@ fn git(root: &Path, args: &[&str]) {
         .arg(root)
         .args(args)
         .output()
-        .unwrap_or_else(|err| panic!("git {args:?}: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
     if !output.status.success() {
-        panic!(
+        std::panic::panic_any(format!(
             "git {args:?} failed: stdout=`{}` stderr=`{}`",
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
-        );
+        ));
     }
 }
 
@@ -40,11 +40,11 @@ impl SourceTreeFixture {
     pub(crate) fn new(prefix: &str) -> Self {
         let root = temp_root(prefix);
         fs::create_dir_all(root.join("policy"))
-            .unwrap_or_else(|err| panic!("create fixture: {err}"));
+            .unwrap_or_else(|err| std::panic::panic_any(format!("create fixture: {err}")));
         let root_arg = root
             .to_str()
             .unwrap_or_else(|| {
-                panic!("non-UTF-8 fixture path: {}", root.display())
+                std::panic::panic_any(format!("non-UTF-8 fixture path: {}", root.display()))
             })
             .to_string();
         Self { root, root_arg }
@@ -84,32 +84,32 @@ evidence_required = true
 safety_comment_required = false
 "#,
         )
-        .unwrap_or_else(|err| panic!("write policy: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     }
 
     pub(crate) fn write_panic_source(&self) {
         fs::create_dir_all(self.root.join("src"))
-            .unwrap_or_else(|err| panic!("create src dir: {err}"));
+            .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
         fs::write(
             self.root.join("src/lib.rs"),
             "pub fn load(value: Option<u8>) -> u8 { value.unwrap() }\n",
         )
-        .unwrap_or_else(|err| panic!("write source fixture: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write source fixture: {err}")));
     }
 
     pub(crate) fn write_unsafe_source(&self) {
         fs::create_dir_all(self.root.join("src"))
-            .unwrap_or_else(|err| panic!("create src dir: {err}"));
+            .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
         fs::write(
             self.root.join("src/lib.rs"),
             "pub fn load(ptr: *const u8) -> u8 { unsafe { *ptr } }\n",
         )
-        .unwrap_or_else(|err| panic!("write unsafe source: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write unsafe source: {err}")));
     }
 
     pub(crate) fn append_saved_artifact_allow_entries(&self) {
         let mut policy = fs::read_to_string(self.root.join("policy/allow.toml"))
-            .unwrap_or_else(|err| panic!("read policy: {err}"));
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
         policy.push_str(
             r#"
 
@@ -149,7 +149,7 @@ glob = "docs/missing.md"
 "#,
         );
         fs::write(self.root.join("policy/allow.toml"), policy)
-            .unwrap_or_else(|err| panic!("write policy: {err}"));
+            .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     }
 
     pub(crate) fn write_policy_with_broken_evidence(&self) {
@@ -179,7 +179,7 @@ glob = "docs/missing.md"
     pub(crate) fn write_policy_with_redundant_segment_link_scope(&self) {
         self.write_minimal_policy();
         let mut policy = fs::read_to_string(self.root.join("policy/allow.toml"))
-            .unwrap_or_else(|err| panic!("read policy: {err}"));
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
         policy.push_str(
             r#"
 
@@ -201,20 +201,20 @@ ast_kind = "unsafe_block"
 "#,
         );
         fs::write(self.root.join("policy/allow.toml"), policy)
-            .unwrap_or_else(|err| panic!("write policy: {err}"));
+            .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     }
 
     pub(crate) fn write_policy_with_missing_evidence_entry(&self) {
         self.write_minimal_policy();
         fs::create_dir_all(self.root.join("docs"))
-            .unwrap_or_else(|err| panic!("create docs dir: {err}"));
+            .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
         fs::write(
             self.root.join("docs/policy.md"),
             "# Policy\n\nFixture documentation surface.\n",
         )
-        .unwrap_or_else(|err| panic!("write docs fixture: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write docs fixture: {err}")));
         let mut policy = fs::read_to_string(self.root.join("policy/allow.toml"))
-            .unwrap_or_else(|err| panic!("read policy: {err}"));
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
         policy.push_str(
             r#"
 
@@ -237,14 +237,14 @@ glob = "docs/policy.md"
 "#,
         );
         fs::write(self.root.join("policy/allow.toml"), policy)
-            .unwrap_or_else(|err| panic!("write policy: {err}"));
+            .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     }
 
     pub(crate) fn write_policy_with_baseline_debt_entry(&self) {
         self.write_minimal_policy();
         self.write_panic_source();
         let mut policy = fs::read_to_string(self.root.join("policy/allow.toml"))
-            .unwrap_or_else(|err| panic!("read policy: {err}"));
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
         policy.push_str(
             r#"
 
@@ -266,14 +266,14 @@ callee = "unwrap"
 "#,
         );
         fs::write(self.root.join("policy/allow.toml"), policy)
-            .unwrap_or_else(|err| panic!("write policy: {err}"));
+            .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     }
 
     pub(crate) fn write_policy_with_unsafe_baseline_debt_entry(&self) {
         self.write_minimal_policy();
         self.write_unsafe_source();
         let mut policy = fs::read_to_string(self.root.join("policy/allow.toml"))
-            .unwrap_or_else(|err| panic!("read policy: {err}"));
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
         policy.push_str(
             r#"
 
@@ -294,13 +294,13 @@ ast_kind = "unsafe_block"
 "#,
         );
         fs::write(self.root.join("policy/allow.toml"), policy)
-            .unwrap_or_else(|err| panic!("write policy: {err}"));
+            .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     }
 
     pub(crate) fn write_policy_with_weak_evidence(&self) {
         self.write_minimal_policy();
         let mut policy = fs::read_to_string(self.root.join("policy/allow.toml"))
-            .unwrap_or_else(|err| panic!("read policy: {err}"));
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
         policy.push_str(
             r#"
 
@@ -322,27 +322,27 @@ callee = "unwrap"
 "#,
         );
         fs::write(self.root.join("policy/allow.toml"), policy)
-            .unwrap_or_else(|err| panic!("write policy: {err}"));
+            .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     }
 
     pub(crate) fn write_policy_with_present_and_traceability_evidence(&self) {
         self.write_minimal_policy();
         fs::create_dir_all(self.root.join("src"))
-            .unwrap_or_else(|err| panic!("create src dir: {err}"));
+            .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
         fs::write(
             self.root.join("src/lib.rs"),
             "pub fn load(ptr: *const u8) -> u8 { unsafe { *ptr } }\n",
         )
-        .unwrap_or_else(|err| panic!("write unsafe source: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write unsafe source: {err}")));
         fs::create_dir_all(self.root.join("docs/evidence"))
-            .unwrap_or_else(|err| panic!("create evidence dir: {err}"));
+            .unwrap_or_else(|err| std::panic::panic_any(format!("create evidence dir: {err}")));
         fs::write(
             self.root.join("docs/evidence/safety.md"),
             "# Safety evidence\n\nFixture evidence artifact.\n",
         )
-        .unwrap_or_else(|err| panic!("write evidence fixture: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write evidence fixture: {err}")));
         let mut policy = fs::read_to_string(self.root.join("policy/allow.toml"))
-            .unwrap_or_else(|err| panic!("read policy: {err}"));
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
         policy.push_str(
             r#"
 
@@ -366,13 +366,13 @@ ast_kind = "unsafe_block"
 "#,
         );
         fs::write(self.root.join("policy/allow.toml"), policy)
-            .unwrap_or_else(|err| panic!("write policy: {err}"));
+            .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     }
 
     fn write_policy_with_evidence(&self, id: &str, reason: &str, evidence: &str) {
         self.write_minimal_policy();
         let mut policy = fs::read_to_string(self.root.join("policy/allow.toml"))
-            .unwrap_or_else(|err| panic!("read policy: {err}"));
+            .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
         policy.push_str(&format!(
             r#"
 
@@ -393,7 +393,7 @@ ast_kind = "unsafe_block"
 "#,
         ));
         fs::write(self.root.join("policy/allow.toml"), policy)
-            .unwrap_or_else(|err| panic!("write policy: {err}"));
+            .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
     }
 }
 

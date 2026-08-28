@@ -16,14 +16,14 @@ use effortless_repo_snapshot::{
 fn temp_root(label: &str) -> PathBuf {
     let unique = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_else(|err| panic!("clock: {err}"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("clock: {err}")))
         .as_nanos();
     let root = std::env::temp_dir().join(format!(
         "cargo-allow-snapshot-consumer-{label}-{}-{unique}",
         std::process::id()
     ));
     let _ = fs::remove_dir_all(&root);
-    fs::create_dir_all(&root).unwrap_or_else(|err| panic!("mkdir: {err}"));
+    fs::create_dir_all(&root).unwrap_or_else(|err| std::panic::panic_any(format!("mkdir: {err}")));
     root
 }
 
@@ -33,7 +33,7 @@ fn git(root: &Path, args: &[&str]) {
         .arg(root)
         .args(args)
         .output()
-        .unwrap_or_else(|err| panic!("git {args:?}: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("git {args:?}: {err}")));
     assert!(
         output.status.success(),
         "git {args:?} failed: {}",
@@ -51,9 +51,9 @@ fn spec_snapshot_consumer_parity_reads_one_shared_identity() {
     );
     git(&root, &["config", "user.name", "cargo-allow test"]);
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| panic!("mkdir src: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("mkdir src: {err}")));
     fs::write(root.join("src/lib.rs"), "pub fn a() {}\n")
-        .unwrap_or_else(|err| panic!("write: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write: {err}")));
     git(&root, &["add", "-A"]);
     git(&root, &["commit", "-q", "-m", "one"]);
 
@@ -63,9 +63,9 @@ fn spec_snapshot_consumer_parity_reads_one_shared_identity() {
 
     // A consumer resolves the identity twice and must get the same object.
     let first = repository_snapshot(&root, &request)
-        .unwrap_or_else(|err| panic!("first snapshot: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("first snapshot: {err}")));
     let second = repository_snapshot(&root, &request)
-        .unwrap_or_else(|err| panic!("second snapshot: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("second snapshot: {err}")));
     assert_eq!(first, second, "snapshot identity must be deterministic");
 
     assert_eq!(first.kind, RepositorySnapshotKind::CommittedHead);
@@ -83,10 +83,10 @@ fn spec_snapshot_consumer_parity_reads_one_shared_identity() {
         .arg(&root)
         .arg(&clone_root)
         .status()
-        .unwrap_or_else(|err| panic!("clone: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("clone: {err}")));
     assert!(cloned.success(), "git clone should succeed");
     let clone_snapshot = repository_snapshot(&clone_root, &request)
-        .unwrap_or_else(|err| panic!("clone snapshot: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("clone snapshot: {err}")));
     assert_eq!(
         first, clone_snapshot,
         "the shared identity must be stable across checkout roots"

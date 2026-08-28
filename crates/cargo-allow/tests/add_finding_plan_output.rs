@@ -15,7 +15,7 @@ fn git(root: &Path, args: &[&str]) {
         .arg(root)
         .args(args)
         .output()
-        .unwrap_or_else(|error| panic!("git {args:?}: {error}"));
+        .unwrap_or_else(|error| std::panic::panic_any(format!("git {args:?}: {error}")));
     assert_status("git fixture", &output, true);
 }
 
@@ -23,19 +23,19 @@ fn git(root: &Path, args: &[&str]) {
 fn why_writes_a_new_only_bound_plan_without_overwriting_it() {
     let root = temp_root("add-finding-plan");
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|error| panic!("create source dir: {error}"));
+        .unwrap_or_else(|error| std::panic::panic_any(format!("create source dir: {error}")));
     git(&root, &["init"]);
     let init = cargo_allow_command()
         .args(["init", "--root"])
         .arg(&root)
         .output()
-        .unwrap_or_else(|error| panic!("init fixture: {error}"));
+        .unwrap_or_else(|error| std::panic::panic_any(format!("init fixture: {error}")));
     assert_status("init fixture", &init, true);
     fs::write(
         root.join("src/lib.rs"),
         "pub fn load() -> usize { Some(1).unwrap() }\n",
     )
-    .unwrap_or_else(|error| panic!("write source: {error}"));
+    .unwrap_or_else(|error| std::panic::panic_any(format!("write source: {error}")));
     git(&root, &["add", "policy/allow.toml", "src/lib.rs"]);
 
     let plan_path = root.join("add-plan.json");
@@ -50,7 +50,7 @@ fn why_writes_a_new_only_bound_plan_without_overwriting_it() {
         .arg("--plan")
         .arg(&plan_path)
         .output()
-        .unwrap_or_else(|error| panic!("why plan: {error}"));
+        .unwrap_or_else(|error| std::panic::panic_any(format!("why plan: {error}")));
     assert_status("why plan", &output, true);
     assert_stdout_empty("why plan", &output, "should save explanation output");
     assert_stderr_empty("why plan", &output, "should not emit diagnostics");
@@ -109,7 +109,7 @@ fn why_writes_a_new_only_bound_plan_without_overwriting_it() {
     }
 
     let original = fs::read(&plan_path)
-        .unwrap_or_else(|error| panic!("read plan: {error}"));
+        .unwrap_or_else(|error| std::panic::panic_any(format!("read plan: {error}")));
     let overwrite = cargo_allow_command()
         .args(["why", "--root"])
         .arg(&root)
@@ -117,11 +117,11 @@ fn why_writes_a_new_only_bound_plan_without_overwriting_it() {
         .arg("--plan")
         .arg(&plan_path)
         .output()
-        .unwrap_or_else(|error| panic!("repeat why plan: {error}"));
+        .unwrap_or_else(|error| std::panic::panic_any(format!("repeat why plan: {error}")));
     assert_status("repeat why plan", &overwrite, false);
     assert_eq!(
         fs::read(&plan_path)
-            .unwrap_or_else(|error| panic!("reread plan: {error}")),
+            .unwrap_or_else(|error| std::panic::panic_any(format!("reread plan: {error}"))),
         original
     );
 
@@ -134,7 +134,7 @@ fn why_writes_a_new_only_bound_plan_without_overwriting_it() {
         .arg("--output")
         .arg(root.join("./alias.json"))
         .output()
-        .unwrap_or_else(|error| panic!("alias why plan: {error}"));
+        .unwrap_or_else(|error| std::panic::panic_any(format!("alias why plan: {error}")));
     assert_status("alias why plan", &alias, false);
 
     let add = cargo_allow_command()
@@ -154,7 +154,7 @@ fn why_writes_a_new_only_bound_plan_without_overwriting_it() {
             "--update",
         ])
         .output()
-        .unwrap_or_else(|error| panic!("add fixture entry: {error}"));
+        .unwrap_or_else(|error| std::panic::panic_any(format!("add fixture entry: {error}")));
     assert_status("add fixture entry", &add, true);
     let matched_plan_path = root.join("matched-plan.json");
     let matched = cargo_allow_command()
@@ -164,7 +164,7 @@ fn why_writes_a_new_only_bound_plan_without_overwriting_it() {
         .arg("--plan")
         .arg(&matched_plan_path)
         .output()
-        .unwrap_or_else(|error| panic!("matched why plan: {error}"));
+        .unwrap_or_else(|error| std::panic::panic_any(format!("matched why plan: {error}")));
     assert_status("matched why plan", &matched, false);
     assert!(
         !matched_plan_path.exists(),

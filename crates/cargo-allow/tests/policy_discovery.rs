@@ -19,14 +19,14 @@ fn assert_status(command: &str, result: &Output, should_succeed: bool) {
 fn temp_root(label: &str) -> PathBuf {
     let unique = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_else(|err| panic!("system clock: {err}"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("system clock: {err}")))
         .as_nanos();
     let root = std::env::temp_dir().join(format!(
         "cargo-allow-{label}-{}-{unique}",
         std::process::id()
     ));
     fs::create_dir_all(&root)
-        .unwrap_or_else(|err| panic!("create temp root: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create temp root: {err}")));
     root
 }
 
@@ -34,13 +34,13 @@ fn remove_temp_root(root: PathBuf) {
     match fs::remove_dir_all(&root) {
         Ok(()) => {}
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
-        Err(err) => panic!("remove temp root {}: {err}", root.display()),
+        Err(err) => std::panic::panic_any(format!("remove temp root {}: {err}", root.display())),
     }
 }
 
 fn write_foreign_allow_toml(root: &std::path::Path) {
     fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
     fs::write(
         root.join("policy/allow.toml"),
         r#"
@@ -48,7 +48,7 @@ schema_version = "1"
 owner = "repo-policy"
 "#,
     )
-    .unwrap_or_else(|err| panic!("write foreign allow.toml: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write foreign allow.toml: {err}")));
 }
 
 fn write_native_ledger(root: &std::path::Path) {
@@ -59,7 +59,7 @@ schema_version = "0.1"
 policy = "cargo-allow"
 "#,
     )
-    .unwrap_or_else(|err| panic!("write native cargo-allow.toml: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write native cargo-allow.toml: {err}")));
 }
 
 #[test]
@@ -72,7 +72,7 @@ fn list_discovers_native_ledger_beside_foreign_allow_toml() {
         .current_dir(&root)
         .args(["list", "--format", "json"])
         .output()
-        .unwrap_or_else(|err| panic!("run list: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run list: {err}")));
 
     assert_status("list", &output, true);
     remove_temp_root(root);
@@ -87,7 +87,7 @@ fn list_reports_skipped_foreign_allow_toml_when_no_native_ledger_exists() {
         .current_dir(&root)
         .args(["list", "--format", "json"])
         .output()
-        .unwrap_or_else(|err| panic!("run list: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run list: {err}")));
 
     assert_status("list", &output, false);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -117,7 +117,7 @@ schema_version = "0.1"
 policy = "cargo-allow"
 "#,
     )
-    .unwrap_or_else(|err| panic!("write explicit policy: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write explicit policy: {err}")));
 
     let output = cargo_allow_command()
         .current_dir(&root)
@@ -129,7 +129,7 @@ policy = "cargo-allow"
             "policy/explicit.toml",
         ])
         .output()
-        .unwrap_or_else(|err| panic!("run list: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run list: {err}")));
 
     assert_status("list", &output, true);
     remove_temp_root(root);

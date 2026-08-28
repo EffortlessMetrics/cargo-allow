@@ -18,7 +18,7 @@ fn temp_root(label: &str) -> PathBuf {
         std::process::id()
     ));
     fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| panic!("create fixture: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create fixture: {err}")));
     root
 }
 
@@ -26,9 +26,9 @@ fn set_mtime(path: &Path, mtime: SystemTime) {
     let file = fs::OpenOptions::new()
         .write(true)
         .open(path)
-        .unwrap_or_else(|err| panic!("open {}: {err}", path.display()));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("open {}: {err}", path.display())));
     file.set_times(std::fs::FileTimes::new().set_modified(mtime))
-        .unwrap_or_else(|err| panic!("set mtime: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("set mtime: {err}")));
 }
 
 const CLEAN_SOURCE: &str = "fn f(value: Result<(), ()>) { let _ = value;      }\n";
@@ -41,7 +41,7 @@ fn persistent_store_round_trips_findings_across_instances() {
     let root = temp_root("round-trip");
     let source_path = root.join("src/lib.rs");
     fs::write(&source_path, UNWRAP_SOURCE)
-        .unwrap_or_else(|err| panic!("write: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write: {err}")));
     let dir = ScanCacheStore::default_dir(&root);
     let generation = scan_cache_generation();
 
@@ -49,7 +49,7 @@ fn persistent_store_round_trips_findings_across_instances() {
     let mut store = ScanCacheStore::open(&dir, &generation);
     let files = vec![PathBuf::from("src/lib.rs")];
     let first = scan_rust_files_cached_with_store(&root, &files, &mut cache, &mut store)
-        .unwrap_or_else(|err| panic!("cold scan: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("cold scan: {err}")));
     assert!(
         first
             .findings
@@ -64,7 +64,7 @@ fn persistent_store_round_trips_findings_across_instances() {
     let mut store2 = ScanCacheStore::open(&dir, &generation);
     assert!(!store2.is_empty(), "reopened store must load entries");
     let second = scan_rust_files_cached_with_store(&root, &files, &mut cache2, &mut store2)
-        .unwrap_or_else(|err| panic!("warm scan: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("warm scan: {err}")));
     assert_eq!(first.findings, second.findings);
     assert_eq!(first.file_statuses, second.file_statuses);
 
@@ -81,7 +81,7 @@ fn preserved_mtime_cannot_mask_changed_content() {
         "fixture premise: equal-size swap"
     );
     fs::write(&source_path, CLEAN_SOURCE)
-        .unwrap_or_else(|err| panic!("write: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write: {err}")));
     let dir = ScanCacheStore::default_dir(&root);
     let generation = scan_cache_generation();
     let files = vec![PathBuf::from("src/lib.rs")];
@@ -89,7 +89,7 @@ fn preserved_mtime_cannot_mask_changed_content() {
     let mut cache = ScanCache::new();
     let mut store = ScanCacheStore::open(&dir, &generation);
     let cold = scan_rust_files_cached_with_store(&root, &files, &mut cache, &mut store)
-        .unwrap_or_else(|err| panic!("cold scan: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("cold scan: {err}")));
     assert!(!cold.findings.iter().any(|f| f.kind == FindingKind::Panic));
     assert!(store.flush());
 
@@ -99,13 +99,13 @@ fn preserved_mtime_cannot_mask_changed_content() {
         .and_then(|m| m.modified())
         .unwrap_or(SystemTime::UNIX_EPOCH);
     fs::write(&source_path, UNWRAP_SOURCE)
-        .unwrap_or_else(|err| panic!("rewrite: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("rewrite: {err}")));
     set_mtime(&source_path, original_mtime);
 
     let mut cache2 = ScanCache::new();
     let mut store2 = ScanCacheStore::open(&dir, &generation);
     let warm = scan_rust_files_cached_with_store(&root, &files, &mut cache2, &mut store2)
-        .unwrap_or_else(|err| panic!("warm scan: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("warm scan: {err}")));
     assert!(
         warm.findings
             .iter()
@@ -121,7 +121,7 @@ fn mtime_churn_without_content_change_keeps_facts_valid() {
     let root = temp_root("mtime-churn");
     let source_path = root.join("src/lib.rs");
     fs::write(&source_path, UNWRAP_SOURCE)
-        .unwrap_or_else(|err| panic!("write: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write: {err}")));
     let dir = ScanCacheStore::default_dir(&root);
     let generation = scan_cache_generation();
     let files = vec![PathBuf::from("src/lib.rs")];
@@ -129,7 +129,7 @@ fn mtime_churn_without_content_change_keeps_facts_valid() {
     let mut cache = ScanCache::new();
     let mut store = ScanCacheStore::open(&dir, &generation);
     let cold = scan_rust_files_cached_with_store(&root, &files, &mut cache, &mut store)
-        .unwrap_or_else(|err| panic!("cold scan: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("cold scan: {err}")));
     assert!(store.flush());
     let persisted_digest_hit = {
         allow_core::read_text_file_capped(&source_path)
@@ -152,7 +152,7 @@ fn mtime_churn_without_content_change_keeps_facts_valid() {
     let mut cache2 = ScanCache::new();
     let mut store2 = ScanCacheStore::open(&dir, &generation);
     let warm = scan_rust_files_cached_with_store(&root, &files, &mut cache2, &mut store2)
-        .unwrap_or_else(|err| panic!("warm scan: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("warm scan: {err}")));
     assert_eq!(cold.findings, warm.findings);
 
     let _ = fs::remove_dir_all(&root);
@@ -162,14 +162,14 @@ fn mtime_churn_without_content_change_keeps_facts_valid() {
 fn scanner_generation_change_invalidates_every_entry() {
     let root = temp_root("generation");
     fs::write(root.join("src/lib.rs"), UNWRAP_SOURCE)
-        .unwrap_or_else(|err| panic!("write: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write: {err}")));
     let dir = ScanCacheStore::default_dir(&root);
     let files = vec![PathBuf::from("src/lib.rs")];
 
     let mut cache = ScanCache::new();
     let mut store = ScanCacheStore::open(&dir, "allow-rust:test-gen-a");
     let _ = scan_rust_files_cached_with_store(&root, &files, &mut cache, &mut store)
-        .unwrap_or_else(|err| panic!("gen-a scan: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("gen-a scan: {err}")));
     assert!(store.flush());
 
     let reopened = ScanCacheStore::open(&dir, "allow-rust:test-gen-b");
@@ -185,7 +185,7 @@ fn scanner_generation_change_invalidates_every_entry() {
 fn corrupt_store_degrades_to_cold_scan_with_identical_results() {
     let root = temp_root("corrupt-store");
     fs::write(root.join("src/lib.rs"), UNWRAP_SOURCE)
-        .unwrap_or_else(|err| panic!("write: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write: {err}")));
     let dir = ScanCacheStore::default_dir(&root);
     let generation = scan_cache_generation();
     let files = vec![PathBuf::from("src/lib.rs")];
@@ -193,7 +193,7 @@ fn corrupt_store_degrades_to_cold_scan_with_identical_results() {
     let mut cache = ScanCache::new();
     let mut store = ScanCacheStore::open(&dir, &generation);
     let cold = scan_rust_files_cached_with_store(&root, &files, &mut cache, &mut store)
-        .unwrap_or_else(|err| panic!("reference scan: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("reference scan: {err}")));
     assert!(store.flush());
     let store_path = dir.join("scan-cache.v2.bin");
 
@@ -203,7 +203,7 @@ fn corrupt_store_degrades_to_cold_scan_with_identical_results() {
         b"garbage-not-a-store".to_vec(),
     ] {
         fs::write(&store_path, &damaged)
-            .unwrap_or_else(|err| panic!("corrupt store: {err}"));
+            .unwrap_or_else(|err| std::panic::panic_any(format!("corrupt store: {err}")));
         let mut cache_damaged = ScanCache::new();
         let store_damaged = ScanCacheStore::open(&dir, &generation);
         assert!(
@@ -213,7 +213,7 @@ fn corrupt_store_degrades_to_cold_scan_with_identical_results() {
         let mut sink = ScanCacheStore::open(&dir, &generation);
         let rescanned =
             scan_rust_files_cached_with_store(&root, &files, &mut cache_damaged, &mut sink)
-                .unwrap_or_else(|err| panic!("post-corruption: {err}"));
+                .unwrap_or_else(|err| std::panic::panic_any(format!("post-corruption: {err}")));
         assert_eq!(cold.findings, rescanned.findings);
     }
 
@@ -226,10 +226,10 @@ fn skipped_files_are_never_persisted() {
     // Invalid UTF-8 makes read_text_file_capped fail -> skipped status.
     let bad = root.join("src/bad.rs");
     fs::write(&bad, [b'f', b'n', 0xFF, b'(', b')', b'{', b'}'])
-        .unwrap_or_else(|err| panic!("write non-utf8: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write non-utf8: {err}")));
     let good = root.join("src/good.rs");
     fs::write(&good, UNWRAP_SOURCE)
-        .unwrap_or_else(|err| panic!("write: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write: {err}")));
     let dir = ScanCacheStore::default_dir(&root);
     let generation = scan_cache_generation();
     let files = vec![PathBuf::from("src/bad.rs"), PathBuf::from("src/good.rs")];
@@ -237,7 +237,7 @@ fn skipped_files_are_never_persisted() {
     let mut cache = ScanCache::new();
     let mut store = ScanCacheStore::open(&dir, &generation);
     let result = scan_rust_files_cached_with_store(&root, &files, &mut cache, &mut store)
-        .unwrap_or_else(|err| panic!("scan: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("scan: {err}")));
     assert_eq!(
         result.files_skipped, 1,
         "the non-UTF-8 file must be skipped"
@@ -252,11 +252,11 @@ fn skipped_files_are_never_persisted() {
     );
 
     fs::write(&good, [b'f', b'n', 0xFF, b'(', b')', b'{', b'}'])
-        .unwrap_or_else(|err| panic!("rewrite non-utf8: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("rewrite non-utf8: {err}")));
     let mut cache2 = ScanCache::new();
     let mut store2 = ScanCacheStore::open(&dir, &generation);
     let _ = scan_rust_files_cached_with_store(&root, &files, &mut cache2, &mut store2)
-        .unwrap_or_else(|err| panic!("rescan skipped: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("rescan skipped: {err}")));
     assert!(store2.flush());
     let reopened_after_skip = ScanCacheStore::open(&dir, &generation);
     assert!(
