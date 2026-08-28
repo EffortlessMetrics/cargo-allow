@@ -201,7 +201,6 @@ glob = "docs/schemas/operator-latency.v2.schema.json"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-11112"
 kind = "non_rust_file"
@@ -1417,7 +1416,6 @@ glob = "crates/effortless-repo-snapshot/src/git.rs"
 [allow.last_seen]
 line = 2
 column = 1
-
 
 [[allow]]
 id = "allow-9058"
@@ -12405,6 +12403,7 @@ glob = "release/authorize-v0.2.0.json"
 [allow.last_seen]
 line = 1
 column = 1
+
 [[allow]]
 id = "allow-11142"
 kind = "non_rust_file"
@@ -12845,8 +12844,6 @@ glob = ".allow/revisions/3792-release-rehearsal.toml"
 line = 1
 column = 1
 
-
-
 [[allow]]
 id = "allow-11162"
 kind = "non_rust_file"
@@ -13018,6 +13015,98 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/4010-release-gate-recovery.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/4010-release-gate-recovery.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-0617"
+kind = "panic"
+family = "indexing"
+path = "crates/allow-files/tests/changie_yaml_short_document.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Watchdog test indexes diagnostics after asserting exactly one; assertion guards the index (#3745)."
+evidence = ["issue:3745"]
+created = "2026-08-28"
+review_after = "2026-11-26"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "assert_non_utf8_rejection"
+symbol = "diagnostics[0]"
+receiver_fingerprint = "param:1"
+target_fingerprint = "0"
+normalized_snippet_hash = "fnv1a64:12a1d631aab0a1b7"
+
+[allow.last_seen]
+line = 35
+column = 34
+
+[[allow]]
+id = "allow-0618"
+kind = "panic"
+family = "panic_macro"
+path = "crates/allow-files/tests/changie_yaml_short_document.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Watchdog fails loud when the yaml-rust2 issue #78 trigger exceeds the five-second child deadline (#3745)."
+evidence = ["issue:3745"]
+created = "2026-08-28"
+review_after = "2026-11-26"
+
+[allow.selector]
+ast_kind = "macro_call"
+container = "issue_78_trigger_is_bounded_and_classified_as_non_utf8"
+macro_name = "panic"
+target_fingerprint = "panic"
+normalized_snippet_hash = "fnv1a64:9b2e8e3a45bfc205"
+
+[allow.last_seen]
+line = 114
+column = 17
+
+[[allow]]
+id = "allow-0619"
+kind = "panic"
+family = "panic_macro"
+path = "crates/allow-files/tests/changie_yaml_short_document.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Watchdog fails loud when the issue #78 child cannot be polled (#3745)."
+evidence = ["issue:3745"]
+created = "2026-08-28"
+review_after = "2026-11-26"
+
+[allow.selector]
+ast_kind = "macro_call"
+container = "issue_78_trigger_is_bounded_and_classified_as_non_utf8"
+macro_name = "panic"
+target_fingerprint = "panic"
+normalized_snippet_hash = "fnv1a64:fda32c847eee4360"
+
+[allow.last_seen]
+line = 121
+column = 17
+
+[[allow]]
+id = "allow-0620"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3745-yaml-rust2-reachability.toml"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3745 revision note authorizing the changie reachability test receipts; covers the note file itself as tracked configuration."
+evidence = ["issue:3745", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3745-yaml-rust2-reachability.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3745-yaml-rust2-reachability.toml"
 
 [allow.last_seen]
 line = 1
