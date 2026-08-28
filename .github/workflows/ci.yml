@@ -118,6 +118,7 @@ jobs:
         run: |
           bash scripts/exact-candidate-isolated-install.sh
           python3 scripts/exact-candidate-isolated-install.py --mode classify \
+            --candidate-artifact target/exact-candidate-package-candidate/package-candidate-v2.json \
             --input-receipt target/exact-candidate-isolated-install/isolated-install.receipt.json
       - name: Cutover build receipts from package-set artifacts (#3469/#3552)
         run: |
