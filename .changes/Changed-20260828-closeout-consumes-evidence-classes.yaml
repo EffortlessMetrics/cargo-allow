@@ -1,0 +1,19 @@
+kind: Changed
+body: >-
+  The campaign closeout guard now consumes the checked evidence-surface
+  inventory (#3810 criterion 7, completing #4000's declared remainder).
+  A Complete closeout must declare the inventory surfaces that back its
+  acceptance rows; the guard rejects closure when a declared surface is
+  unknown, the list is missing, empty, duplicated, or contains blank or
+  non-string entries, or when no declared surface carries one of the
+  named sufficient evidence classes (StructuredShapeValidation,
+  TypedModelValidation, ProductionBehaviorValidation,
+  ExternalObservationValidation, LiveControlReadback) — the negative
+  control 12 shape where issue completion would otherwise be
+  manufactured by a lexical projection test alone. Classes outside the
+  sufficient set — including ones unknown to the guard — are treated as
+  insufficient, so an unrecognized class can never be assumed to prove
+  the named authority. A malformed inventory fails the closure as
+  instrument failure instead of silently passing. The closeout
+  contract docs and the negative-control test suite cover the new
+  shapes; non-Complete results are unchanged and read no inventory.
