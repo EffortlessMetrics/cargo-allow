@@ -16,15 +16,18 @@ MARKER = "<!-- cargo-allow:campaign-closeout.v1 -->"
 SCHEMA = "cargo-allow.campaign-issue-closeout.v1"
 ALLOWED_RESULTS = {"Complete", "NotPlanned", "Duplicate"}
 INVENTORY_SCHEMA = "cargo-allow.evidence-surface-inventory.v1"
-# Evidence classes that explicitly do not prove the named authority exists or
-# that production consumed it (#3810). A `Complete` closeout whose acceptance
-# backing consists only of these classes is rejected (criterion 7; negative
-# control 12 names the LexicalProjectionOnly shape).
-INSUFFICIENT_EVIDENCE_CLASSES = {
-    "LexicalProjectionOnly",
-    "HistoricalFixtureOnly",
-    "DeferredWithNamedOwner",
-    "UnsupportedOrMisclassified",
+# Evidence classes that name real evidence strength. A `Complete` closeout
+# whose acceptance backing carries none of these classes is rejected
+# (criterion 7; negative control 12 names the LexicalProjectionOnly shape).
+# Everything else — including classes unknown to this guard — is treated as
+# insufficient: an unrecognized class cannot be assumed to prove the named
+# authority.
+SUFFICIENT_EVIDENCE_CLASSES = {
+    "StructuredShapeValidation",
+    "TypedModelValidation",
+    "ProductionBehaviorValidation",
+    "ExternalObservationValidation",
+    "LiveControlReadback",
 }
 
 
@@ -119,6 +122,8 @@ def load_evidence_surfaces(path: Path) -> dict[str, str]:
         raise ValueError("evidence surface inventory schema mismatch")
     result: dict[str, str] = {}
     for surface in data.get("surfaces", []):
+        if not isinstance(surface, dict):
+            raise ValueError("evidence surface inventory contains a non-table row")
         surface_id = surface.get("id")
         evidence_class = surface.get("evidence_class")
         if not isinstance(surface_id, str) or not surface_id.strip():
@@ -135,8 +140,10 @@ def verify_acceptance_evidence(payload: dict[str, Any], surfaces: dict[str, str]
     """Reject `Complete` when the declared acceptance backing is insufficient.
 
     The closeout must name the inventory surfaces that back its acceptance
-    rows; every named surface must exist, and at least one must carry an
-    evidence class outside the insufficient set (#3810 criterion 7).
+    rows; every named surface must exist, and at least one must carry one of
+    the named sufficient evidence classes (#3810 criterion 7). Classes outside
+    the sufficient set — including unknown ones, which cannot be assumed to
+    prove the named authority — are treated as insufficient.
     """
     declared = payload.get("evidence_surfaces")
     if not isinstance(declared, list) or not declared:
@@ -148,7 +155,7 @@ def verify_acceptance_evidence(payload: dict[str, Any], surfaces: dict[str, str]
     if any(item not in surfaces for item in declared):
         return ["evidence_surface_unknown"]
     classes = {surfaces[item] for item in declared}
-    if classes <= INSUFFICIENT_EVIDENCE_CLASSES:
+    if not classes & SUFFICIENT_EVIDENCE_CLASSES:
         return ["insufficient_evidence_class"]
     return []
 
@@ -212,7 +219,7 @@ def handle(
         if not errors and payload and payload.get("result") == "Complete":
             errors.extend(verify_complete(api, payload, base_branch))
             errors.extend(verify_acceptance_evidence(payload, load_evidence_surfaces(inventory_path)))
-    except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, json.JSONDecodeError):
         errors = ["instrument_failure"]
     if not errors:
         return 0

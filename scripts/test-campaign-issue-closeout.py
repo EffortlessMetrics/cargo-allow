@@ -179,6 +179,43 @@ class CloseoutTests(unittest.TestCase):
                 self.assertTrue(any(call[1] == "PATCH" for call in api.calls), declared)
                 self.assertIn("evidence_surfaces_invalid", api.calls[-2][2]["body"], declared)
 
+    def test_complete_rejects_unknown_evidence_class_as_insufficient(self):
+        # A class this guard does not recognize cannot be assumed to prove
+        # the named authority; only the named sufficient classes back a
+        # Complete closeout.
+        with tempfile.TemporaryDirectory() as directory:
+            inventory = write_inventory(directory, [
+                ("typo", "TypedModelValidaton"),
+                ("lexical", "LexicalProjectionOnly"),
+                ("structured", "StructuredShapeValidation"),
+            ])
+            api = FakeApi(dict(MERGED_PR_RESPONSES))
+            closeout.handle(event(complete_body(["typo"])), api, {3846: ("Complete", {"Complete"})}, "main", inventory)
+            self.assertTrue(any(call[1] == "PATCH" for call in api.calls))
+            self.assertIn("insufficient_evidence_class", api.calls[-2][2]["body"])
+
+            api = FakeApi(dict(MERGED_PR_RESPONSES))
+            closeout.handle(event(complete_body(["typo", "lexical"])), api, {3846: ("Complete", {"Complete"})}, "main", inventory)
+            self.assertTrue(any(call[1] == "PATCH" for call in api.calls))
+            self.assertIn("insufficient_evidence_class", api.calls[-2][2]["body"])
+
+            api = FakeApi(dict(MERGED_PR_RESPONSES))
+            closeout.handle(event(complete_body(["typo", "structured"])), api, {3846: ("Complete", {"Complete"})}, "main", inventory)
+            self.assertFalse(any(call[1] == "PATCH" for call in api.calls))
+
+    def test_non_table_inventory_row_is_instrument_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            inventory = Path(directory) / "inventory.toml"
+            inventory.write_text(
+                'schema = "'
+                + closeout.INVENTORY_SCHEMA
+                + '"\n\n[[surfaces]]\n"bad"\n'
+            )
+            api = FakeApi(dict(MERGED_PR_RESPONSES))
+            closeout.handle(event(complete_body(["typed-surface"])), api, {3846: ("Complete", {"Complete"})}, "main", inventory)
+            self.assertTrue(any(call[1] == "PATCH" for call in api.calls))
+            self.assertIn("instrument_failure", api.calls[-2][2]["body"])
+
     def test_malformed_inventory_is_instrument_failure(self):
         with tempfile.TemporaryDirectory() as directory:
             inventory = Path(directory) / "inventory.toml"
