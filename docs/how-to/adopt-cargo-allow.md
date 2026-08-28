@@ -23,11 +23,12 @@ runs pre-commit, then pin the repository revision in the consumer's
 `.pre-commit-config.yaml`.
 
 The exact hook is a source-candidate surface and requires a matching
-source-candidate binary. When pinning `rev: main`, install the current checkout
-before running pre-commit:
+source-candidate binary. Select one reviewed immutable cargo-allow commit and
+use it for both the installed binary and the pre-commit manifest:
 
 ```bash
-cargo install --path crates/cargo-allow --locked
+cargo install --git https://github.com/EffortlessMetrics/cargo-allow \
+  --rev <reviewed-cargo-allow-commit> --locked cargo-allow
 ```
 
 Use the `cargo-allow-worktree` hook with Published `0.1.11`, or until the exact
@@ -46,20 +47,22 @@ It is a local blocking gate over the bytes currently staged for commit. A
 successful hook does not replace hosted enforcement: `--no-verify` can bypass a
 local hook, and CI remains the authoritative merge backstop.
 
-For the current unreleased candidate, use the source revision temporarily:
+For the current unreleased candidate, pin the same reviewed source commit in
+the consumer configuration:
 
 ```yaml
 repos:
   - repo: https://github.com/EffortlessMetrics/cargo-allow
-    rev: main
+    rev: <reviewed-cargo-allow-commit>
     hooks:
       - id: cargo-allow
 ```
 
-Replace `main` with the first release tag that contains these hooks before
-adopting them as a stable consumer contract. The exact hook ignores filenames
-passed by pre-commit because cargo-allow resolves and evaluates the Git index as
-one candidate. Run it manually with `pre-commit run cargo-allow --all-files`.
+Replace the source commit with the first release tag that contains these hooks
+before adopting them as a stable consumer contract. The exact hook ignores
+filenames passed by pre-commit because cargo-allow resolves and evaluates the
+Git index as one candidate. Run it manually with `pre-commit run cargo-allow
+--all-files`.
 
 The separate `cargo-allow-worktree` hook retains fast tracked-worktree
 feedback. It may inspect unstaged bytes, so it is advisory for the bytes a
@@ -69,7 +72,7 @@ commit or push will contain. It is available at both `pre-commit` and
 ```yaml
 repos:
   - repo: https://github.com/EffortlessMetrics/cargo-allow
-    rev: main
+    rev: <reviewed-cargo-allow-commit>
     hooks:
       - id: cargo-allow-worktree
         stages: [pre-push]
