@@ -400,10 +400,7 @@ fn bind_deepest_existing_parent(
 }
 
 #[cfg(unix)]
-fn ensure_owned_descendant(
-    root: &Path,
-    target: &Path,
-) -> Result<(), ScanCacheTargetDispositionV1> {
+fn ensure_owned_descendant(root: &Path, target: &Path) -> Result<(), ScanCacheTargetDispositionV1> {
     use std::ffi::CString;
     use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
     use std::os::unix::ffi::OsStrExt;
@@ -428,15 +425,22 @@ fn ensure_owned_descendant(
     let relative = target
         .strip_prefix(root)
         .map_err(|_| ScanCacheTargetDispositionV1::UnsupportedFilesystem)?;
-    let mut parent = std::fs::File::open(root)
-        .map_err(|_| ScanCacheTargetDispositionV1::InstrumentFailure)?;
+    let mut parent =
+        std::fs::File::open(root).map_err(|_| ScanCacheTargetDispositionV1::InstrumentFailure)?;
     for component in relative.components() {
         let Component::Normal(segment) = component else {
             return Err(ScanCacheTargetDispositionV1::UnsupportedFilesystem);
         };
         let name = CString::new(segment.as_bytes())
             .map_err(|_| ScanCacheTargetDispositionV1::UnsupportedFilesystem)?;
-        let mut fd = unsafe { openat(parent.as_raw_fd(), name.as_ptr(), O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC, 0) };
+        let mut fd = unsafe {
+            openat(
+                parent.as_raw_fd(),
+                name.as_ptr(),
+                O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC,
+                0,
+            )
+        };
         if fd < 0 {
             let errno = std::io::Error::last_os_error().raw_os_error().unwrap_or(-1);
             if errno != ENOENT {
@@ -448,7 +452,14 @@ fn ensure_owned_descendant(
                     return Err(ScanCacheTargetDispositionV1::InstrumentFailure);
                 }
             }
-            fd = unsafe { openat(parent.as_raw_fd(), name.as_ptr(), O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC, 0) };
+            fd = unsafe {
+                openat(
+                    parent.as_raw_fd(),
+                    name.as_ptr(),
+                    O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC,
+                    0,
+                )
+            };
         }
         if fd < 0 {
             return Err(ScanCacheTargetDispositionV1::DestinationAliasOrTypeChange);
@@ -460,16 +471,38 @@ fn ensure_owned_descendant(
 }
 
 #[cfg(windows)]
-fn ensure_owned_descendant(
-    root: &Path,
-    target: &Path,
-) -> Result<(), ScanCacheTargetDispositionV1> {
-    // Windows has no stable std-only handle-relative mkdir primitive. Refuse
-    // the first path mutation unless every component already exists; this
-    // preserves the fail-closed boundary rather than racing create_dir_all.
-    let _ = root;
-    let _ = fs::metadata(target)
-        .map_err(|_| ScanCacheTargetDispositionV1::InstrumentFailure)?;
+fn ensure_owned_descendant(root: &Path, target: &Path) -> Result<(), ScanCacheTargetDispositionV1> {
+    // Windows has no stable std-only handle-relative mkdir primitive, so the
+    // no-follow creation guarantee is rebuilt from ordered primitives:
+    // create_dir fails with AlreadyExists on any existing final component
+    // (including a reparse point) instead of traversing it, and each
+    // component is re-verified as a non-indirection directory immediately
+    // after creation. A component swapped after verification is still caught
+    // by the identity rebind and artifact validation that follow this call
+    // in the flush sequence.
+    let relative = target
+        .strip_prefix(root)
+        .map_err(|_| ScanCacheTargetDispositionV1::UnsupportedFilesystem)?;
+    let mut current = root.to_path_buf();
+    for component in relative.components() {
+        let Component::Normal(segment) = component else {
+            return Err(ScanCacheTargetDispositionV1::UnsupportedFilesystem);
+        };
+        current.push(segment);
+        match fs::create_dir(&current) {
+            Ok(()) => {}
+            Err(error) if error.kind() == ErrorKind::AlreadyExists => {}
+            Err(_) => return Err(ScanCacheTargetDispositionV1::InstrumentFailure),
+        }
+        let metadata = fs::symlink_metadata(&current)
+            .map_err(|_| ScanCacheTargetDispositionV1::InstrumentFailure)?;
+        if metadata_is_indirection(&metadata) {
+            return Err(ScanCacheTargetDispositionV1::InRootSymlinkOrReparseEscape);
+        }
+        if !metadata.is_dir() {
+            return Err(ScanCacheTargetDispositionV1::DestinationAliasOrTypeChange);
+        }
+    }
     Ok(())
 }
 

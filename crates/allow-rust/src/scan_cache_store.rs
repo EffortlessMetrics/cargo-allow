@@ -302,8 +302,7 @@ impl ScanCacheStore {
             use std::os::unix::fs::OpenOptionsExt;
             temp_options.custom_flags(no_follow_flag() | close_on_exec_flag());
         }
-        let mut temp_file = match temp_options.open(&tmp)
-        {
+        let mut temp_file = match temp_options.open(&tmp) {
             Ok(file) => file,
             Err(_) => return false,
         };
@@ -406,17 +405,25 @@ fn path_is_symlink(path: &Path) -> bool {
 #[cfg(unix)]
 const fn no_follow_flag() -> i32 {
     #[cfg(any(target_os = "linux", target_os = "android"))]
-    { 0o400000 }
+    {
+        0o400000
+    }
     #[cfg(any(target_os = "macos", target_os = "ios", target_os = "freebsd"))]
-    { 0x100 }
+    {
+        0x100
+    }
 }
 
 #[cfg(unix)]
 const fn close_on_exec_flag() -> i32 {
     #[cfg(any(target_os = "linux", target_os = "android"))]
-    { 0o2000000 }
+    {
+        0o2000000
+    }
     #[cfg(any(target_os = "macos", target_os = "ios", target_os = "freebsd"))]
-    { 0x1000000 }
+    {
+        0x1000000
+    }
 }
 
 fn path_is_reparse_point(path: &Path) -> bool {
@@ -466,9 +473,7 @@ impl WriterLock {
             use std::os::unix::fs::OpenOptionsExt;
             options.custom_flags(no_follow_flag() | close_on_exec_flag());
         }
-        let file = options
-            .open(&path)
-            .ok()?;
+        let file = options.open(&path).ok()?;
         let identity = bind_open_regular_file(&file)?;
         if !regular_file_identity_matches(&path, &identity) {
             return None;
