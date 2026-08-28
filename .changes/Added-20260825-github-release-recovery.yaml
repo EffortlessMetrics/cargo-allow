@@ -1,0 +1,3 @@
+kind: Added
+body: >-
+  Add deterministic GitHub Release recovery model and fault-injection state machine.

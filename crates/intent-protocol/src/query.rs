@@ -14,6 +14,7 @@ pub enum IntentQueryKindV1 {
     LoadArtifact,
     ValidateArtifact,
     ResolveLinks,
+    DomainQuery,
 }
 
 impl IntentQueryKindV1 {
@@ -22,6 +23,7 @@ impl IntentQueryKindV1 {
             Self::LoadArtifact => "load_artifact",
             Self::ValidateArtifact => "validate_artifact",
             Self::ResolveLinks => "resolve_links",
+            Self::DomainQuery => "domain_query",
         }
     }
 }

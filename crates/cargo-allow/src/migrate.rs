@@ -248,26 +248,7 @@ fn write_external_migrate_output(
     )
 }
 
-#[cfg(test)]
-fn write_external_migrate_output_with_test_hook(
-    held_target: &effortless_repo_edit::MutationTarget,
-    requested: &std::path::Path,
-    repository_root: &std::path::Path,
-    contents: &str,
-    force: bool,
-    hook: &mut dyn FnMut(),
-) -> CargoAllowResult<()> {
-    write_external_migrate_output_with_hook(
-        held_target,
-        requested,
-        repository_root,
-        contents,
-        force,
-        Some(hook),
-    )
-}
-
-fn write_external_migrate_output_with_hook(
+pub(crate) fn write_external_migrate_output_with_hook(
     held_target: &effortless_repo_edit::MutationTarget,
     requested: &std::path::Path,
     repository_root: &std::path::Path,

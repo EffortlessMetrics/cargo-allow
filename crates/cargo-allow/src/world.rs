@@ -1337,7 +1337,7 @@ mod tests {
         }
         fs::create_dir_all(&dir)
             .unwrap_or_else(|err| std::panic::panic_any(format!("fixture dir: {err}")));
-        dir
+        std::fs::canonicalize(&dir).unwrap_or(dir)
     }
 
     /// The scoped loader (`why`/`why --plan`) and the full loader

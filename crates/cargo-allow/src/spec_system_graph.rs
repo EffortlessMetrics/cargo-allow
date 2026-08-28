@@ -68,12 +68,34 @@ pub(super) fn federation_config_findings(root: &Path) -> Vec<SpecSystemFinding> 
             )
         })
         .map(|diagnostic| {
-            SpecSystemFinding::new(
+            SpecSystemFinding::new_typed(
                 "federation_config",
                 format!("{}: {}", diagnostic.kind.as_str(), diagnostic.message),
+                federation_diagnostic_kind(diagnostic.kind),
             )
         })
         .collect()
+}
+
+fn federation_diagnostic_kind(
+    kind: allow_policy::federation::FederationDiagnosticKind,
+) -> &'static str {
+    match kind {
+        allow_policy::federation::FederationDiagnosticKind::DuplicateId => "duplicate_id",
+        allow_policy::federation::FederationDiagnosticKind::DuplicatePath
+        | allow_policy::federation::FederationDiagnosticKind::DuplicateCanonicalLane
+        | allow_policy::federation::FederationDiagnosticKind::MirrorMissingTarget
+        | allow_policy::federation::FederationDiagnosticKind::UnknownMirrorTarget
+        | allow_policy::federation::FederationDiagnosticKind::UnknownDrainMirrorLedger
+        | allow_policy::federation::FederationDiagnosticKind::DrainWindowMissingField
+        | allow_policy::federation::FederationDiagnosticKind::DrainWindowInvalidDate
+        | allow_policy::federation::FederationDiagnosticKind::DrainWindowNotMirror
+        | allow_policy::federation::FederationDiagnosticKind::PriorityTie => {
+            "federation_config_invalid"
+        }
+        allow_policy::federation::FederationDiagnosticKind::DialectConflict => "dialect_conflict",
+        allow_policy::federation::FederationDiagnosticKind::DialectSkipped => "dialect_skipped",
+    }
 }
 
 pub(super) fn import_graph_findings(graph: &ImportGraph) -> Vec<SpecSystemFinding> {
@@ -306,5 +328,57 @@ mod tests {
             federation_config_findings(Path::new("target/absent-spec-system-root")).is_empty(),
             "missing federation config should remain non-fatal",
         )
+    }
+
+    #[test]
+    fn federation_findings_use_diagnostic_kinds_not_rendered_messages() -> Result<(), String> {
+        use allow_policy::federation::{FederationDiagnostic, FederationDiagnosticKind};
+
+        let config = std::env::temp_dir().join(format!(
+            "cargo-allow-federation-findings-{}",
+            std::process::id()
+        ));
+        if config.exists() {
+            std::fs::remove_dir_all(&config).map_err(|err| format!("stale temp dir: {err}"))?;
+        }
+        std::fs::create_dir_all(config.join(".allow"))
+            .map_err(|err| format!("allow dir: {err}"))?;
+        std::fs::write(
+            config.join(".allow/config.toml"),
+            "schema_version = \"1.0\"\n\n[[ledgers]]\nid = \"a\"\npath = \"policy/a.toml\"\ndialect = \"cargo-allow\"\nrole = \"canonical\"\nlanes = [\"source-exception\"]\npriority = 1\n\n[[ledgers]]\nid = \"b\"\npath = \"policy/b.toml\"\ndialect = \"cargo-allow\"\nrole = \"canonical\"\nlanes = [\"source-exception\"]\npriority = 1\n",
+        )
+        .map_err(|err| format!("config: {err}"))?;
+
+        let findings = federation_config_findings(&config);
+        check(
+            findings.len() == 2,
+            "expected duplicate-lane and priority-tie findings",
+        )?;
+        check(
+            findings.iter().all(|finding| finding.blocking_eligible),
+            "all blocking federation diagnostics must remain blocking",
+        )?;
+        check(
+            findings
+                .iter()
+                .all(|finding| finding.blocking_reason.is_some()),
+            "typed federation diagnostics must carry blocking reasons",
+        )?;
+
+        let synthetic = FederationDiagnostic {
+            kind: FederationDiagnosticKind::PriorityTie,
+            message: "renamed upstream wording".to_string(),
+            ledger_ids: vec!["a".to_string(), "b".to_string()],
+        };
+        let finding = SpecSystemFinding::new_typed(
+            "federation_config",
+            synthetic.message,
+            federation_diagnostic_kind(synthetic.kind),
+        );
+        check(
+            finding.blocking_reason == Some("federation_config_invalid"),
+            "priority ties must not depend on rendered message wording",
+        )?;
+        std::fs::remove_dir_all(config).map_err(|err| format!("cleanup temp dir: {err}"))
     }
 }

@@ -1,0 +1,6 @@
+kind: Added
+body: >-
+  Add a typed final-release evidence dependency graph that validates exact
+  producer and subject identity, excludes RC history from final authority,
+  propagates staleness transitively, and names the smallest requalification
+  roots without performing release operations.

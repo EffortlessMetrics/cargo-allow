@@ -94,14 +94,18 @@ pub(crate) fn classify_matched(
     if entry.classification == "baseline_debt"
         && matches!(mode, CheckMode::Strict | CheckMode::Release)
     {
-        return (
-            MatchStatus::BaselineDebt,
-            format!(
-                "{} is baseline debt and cannot pass {} mode",
-                entry.id,
-                mode.as_str()
-            ),
+        let primary_message = format!(
+            "{} is baseline debt and cannot pass {} mode",
+            entry.id,
+            mode.as_str()
         );
+        if let Some(drift_message) = last_seen_drift_message(entry, finding) {
+            return (
+                MatchStatus::BaselineDebt,
+                format!("{primary_message}; {drift_message}"),
+            );
+        }
+        return (MatchStatus::BaselineDebt, primary_message);
     }
     if let Some(message) = last_seen_drift_message(entry, finding) {
         return (MatchStatus::LocationDrift, message);
@@ -278,6 +282,25 @@ mod tests {
         assert_eq!(status, MatchStatus::LocationDrift);
         assert!(message.contains("last_seen changed from 7:12 to 50:12"));
         assert!(!CheckMode::NoNew.fails(status));
+    }
+
+    #[test]
+    fn classify_matched_retains_location_drift_when_baseline_debt_blocks_release() {
+        let cfg = AllowConfig::empty();
+        let finding = test_finding(FindingKind::Panic);
+        let mut baseline = entry(FindingKind::Panic);
+        baseline.classification = "baseline_debt".to_string();
+        baseline.last_seen = Some(LastSeen {
+            line: 7,
+            column: 12,
+        });
+
+        let (status, message) =
+            classify_matched(&baseline, &finding, 91, today(), &cfg, CheckMode::Release);
+
+        assert_eq!(status, MatchStatus::BaselineDebt);
+        assert!(message.contains("cannot pass release mode"));
+        assert!(message.contains("last_seen changed from 7:12 to 50:12"));
     }
 
     #[test]

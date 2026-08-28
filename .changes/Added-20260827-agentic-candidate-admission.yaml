@@ -1,0 +1,6 @@
+kind: Added
+body: >-
+  Add pure ClaimRefV1 and candidate-admission contracts for deterministic,
+  fail-closed one-writer repository work. The evaluator selects an existing
+  candidate or permits a later reservation attempt without performing any
+  repository, filesystem, GitHub, Cursor, or other mutation.

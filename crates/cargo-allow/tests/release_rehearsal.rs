@@ -1,0 +1,141 @@
+use std::error::Error;
+use std::io;
+use std::path::{Path, PathBuf};
+use std::process::Command;
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+struct ZeroMutationProof {
+    tag_mutation_prevented: bool,
+    token_read_prevented: bool,
+    cargo_publish_prevented: bool,
+    registry_mutation_prevented: bool,
+    github_release_mutation_prevented: bool,
+    live_setting_mutation_prevented: bool,
+    external_repository_mutation_prevented: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+struct ReleaseRehearsalReceiptV1 {
+    schema_version: String,
+    receipt_id: String,
+    commit_sha: String,
+    subject_lockfile_digest: String,
+    subject_topology_digest: String,
+    zero_mutation_proof: ZeroMutationProof,
+    phases: std::collections::BTreeMap<String, String>,
+    aggregate_status: String,
+    claim_boundary: String,
+}
+
+fn require(condition: bool, message: &str) -> Result<(), io::Error> {
+    if condition {
+        Ok(())
+    } else {
+        Err(io::Error::other(message))
+    }
+}
+
+fn repo_root() -> Result<PathBuf, Box<dyn Error>> {
+    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let crates_dir = manifest_dir
+        .parent()
+        .ok_or_else(|| io::Error::other("no crates dir parent"))?;
+    let root = crates_dir
+        .parent()
+        .ok_or_else(|| io::Error::other("no repo root"))?;
+    Ok(root.to_path_buf())
+}
+
+#[test]
+fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
+    let root = repo_root()?;
+    let script = root.join("scripts/release-rehearsal.py");
+    require(script.is_file(), "release rehearsal script is missing")?;
+
+    let output = Command::new("python")
+        .arg(&script)
+        .arg("--commit")
+        .arg("HEAD")
+        .current_dir(&root)
+        .output()?;
+
+    require(
+        output.status.code() == Some(1),
+        &format!(
+            "characterization must exit one, got {:?}: {}",
+            output.status.code(),
+            String::from_utf8_lossy(&output.stderr)
+        ),
+    )?;
+
+    let receipt: ReleaseRehearsalReceiptV1 = serde_json::from_slice(&output.stdout)?;
+    require(
+        receipt.schema_version == "1.0",
+        "schema version must be 1.0",
+    )?;
+    require(
+        receipt.receipt_id.starts_with("REHEARSAL-"),
+        "receipt ID must name the resolved commit",
+    )?;
+    require(
+        receipt.aggregate_status != "Complete",
+        "characterization must not report Complete",
+    )?;
+    require(
+        receipt.claim_boundary.contains("Characterization only"),
+        "claim boundary must retain the characterization limitation",
+    )?;
+    require(
+        receipt.subject_lockfile_digest.starts_with("sha256:v1:"),
+        "lockfile digest must use canonical SHA-256 text",
+    )?;
+    require(
+        receipt.subject_topology_digest.starts_with("sha256:v1:"),
+        "topology digest must use canonical SHA-256 text",
+    )?;
+    require(
+        matches!(receipt.commit_sha.len(), 40 | 64)
+            && receipt
+                .commit_sha
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)),
+        "commit identity must be canonical lowercase hexadecimal",
+    )?;
+
+    let proof = &receipt.zero_mutation_proof;
+    require(
+        [
+            proof.tag_mutation_prevented,
+            proof.token_read_prevented,
+            proof.cargo_publish_prevented,
+            proof.registry_mutation_prevented,
+            proof.github_release_mutation_prevented,
+            proof.live_setting_mutation_prevented,
+            proof.external_repository_mutation_prevented,
+        ]
+        .into_iter()
+        .all(|value| !value),
+        "unproven zero-mutation facts must remain false",
+    )?;
+
+    for required_phase in [
+        "release_identity",
+        "candidate_package_set",
+        "shared_prerequisites",
+        "publisher_state_machine",
+        "docs_and_support_identity",
+        "manifest_and_assets",
+        "authorization_boundary",
+        "workflow_graph_permissions",
+    ] {
+        require(
+            receipt
+                .phases
+                .get(required_phase)
+                .is_some_and(|status| status != "Complete"),
+            &format!("phase {required_phase} must exist and remain non-Complete"),
+        )?;
+    }
+
+    Ok(())
+}

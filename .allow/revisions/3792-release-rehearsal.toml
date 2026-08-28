@@ -1,0 +1,19 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11159"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:73e5061bcc4e65b6c22df822b51b28b7099986e4bc102626b71d7d444932cbc0"
+reason = "receipt for scripts/release-rehearsal.py (#3792)"
+
+[[records]]
+allow_ids = ["allow-11160"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:4da912f576481c6b55b3be05b5b1bd7f20a62c50d3e9531ccc19a90e552e54ce"
+reason = "receipt for scripts/test-release-rehearsal.py (#3792)"
+
+[[records]]
+allow_ids = ["allow-11161"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:7f7948a9b7882f00e85d189513cc0edbe40745ee69d08914a3e7961323b2be46"
+reason = "receipt for .allow/revisions/3792-release-rehearsal.toml (#3792)"

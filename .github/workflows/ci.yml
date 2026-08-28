@@ -28,11 +28,17 @@ jobs:
       # cache key, and the attested release-manifest MSRV all still match it.
       - name: MSRV consistency
         run: bash scripts/check-msrv-consistency.sh
+      # Keep installation profile and required components explicit before
+      # rustup resolves the toolchain.
+      - name: Toolchain installation profile
+        run: bash scripts/check-toolchain-profile.sh
       # Proves the guard above still fails closed on each drift site, so it
       # cannot be weakened into a no-op without CI noticing. No toolchain, no
       # cargo: runs in about a second.
       - name: MSRV consistency guard characterization
         run: bash scripts/test-check-msrv-consistency.sh
+      - name: Toolchain profile characterization
+        run: bash scripts/test-check-toolchain-profile.sh
       # Drives the resolved-toolchain guard with stub compilers, so its
       # fail-closed behaviour is proven without installing real toolchains.
       - name: MSRV resolved toolchain guard characterization
@@ -519,27 +525,18 @@ jobs:
           set -euo pipefail
           mkdir -p target/cross-platform
           {
-            printf 'commit=%s
-' '${{ github.sha }}'
-            printf 'run_id=%s
-' '${{ github.run_id }}'
-            printf 'platform=%s
-' '${{ matrix.os }}'
-            printf 'target=%s
-' '${{ matrix.target }}'
-            printf 'runner_os=%s
-' "${RUNNER_OS}"
-            printf 'toolchain_identity=
-'
+            printf 'commit=%s\n' '${{ github.sha }}'
+            printf 'run_id=%s\n' '${{ github.run_id }}'
+            printf 'platform=%s\n' '${{ matrix.os }}'
+            printf 'target=%s\n' '${{ matrix.target }}'
+            printf 'runner_os=%s\n' "${RUNNER_OS}"
+            printf 'toolchain_identity=\n'
             rustc -Vv | sed 's/^/  /'
-            printf 'proof=release-set,cross_platform_semantics
-'
+            printf 'proof=release-set,cross_platform_semantics\n'
             if [[ "${{ matrix.cache_scope }}" == "bounded" ]]; then
-              printf 'limitation=allow-rust persistent scan-cache tests excluded; macOS /var alias is not accepted by the cache path guard
-'
+              printf 'limitation=allow-rust persistent scan-cache tests excluded; macOS /var alias is not accepted by the cache path guard\n'
             fi
-            printf 'result=%s
-' '${{ job.status }}'
+            printf 'result=%s\n' '${{ job.status }}'
           } > target/cross-platform/${{ matrix.target }}.proof.txt
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
