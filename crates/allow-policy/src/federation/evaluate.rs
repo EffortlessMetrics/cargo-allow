@@ -7,10 +7,10 @@ use allow_core::{
 use super::FederationConfig;
 use super::config::{LedgerEntry, LedgerRole, ValidatedFederationConfig};
 use super::divergence::{FederationDivergenceRecord, detect_mirror_divergences};
-use super::load::{FEDERATION_CONFIG_REL_PATH, FederationLoadOutcome, load_federation_config};
+use super::load::{FederationLoadOutcome, load_federation_config};
 use super::precedence::ordered_ledgers_by_precedence;
 use crate::SkippedPolicyCandidate;
-use crate::{DISCOVERY_REL_PATHS, discover_config};
+use crate::discover_config;
 
 pub const FEDERATION_VERSION: &str = "1";
 pub const SOURCE_EXCEPTION_LANE: &str = "source-exception";
@@ -169,49 +169,6 @@ pub fn evaluate_source_exception_policy(
     ))
 }
 
-/// `true` when `root` carries a source-exception policy ledger, whether or
-/// not [`evaluate_source_exception_policy`] can currently use it.
-///
-/// This probes the same places [`evaluate_source_exception_policy`] looks —
-/// the federation registry at `root`, and the conventional ledger paths
-/// walking upward from `root` — but asks only whether the file is *there*,
-/// not whether it parses. A ledger that exists and a ledger that is readable
-/// are different questions, and only the first one is answered here. A
-/// registry that registers no source-exception ledger still counts: that tree
-/// has configured federation, so an empty-policy scan of it would be a
-/// misconfiguration to surface, not a first run to help along.
-///
-/// Callers that tolerate a missing ledger (`require_config = false`, the
-/// first-run adoption path) must consult this before falling back to an empty
-/// policy. Treating an unusable ledger as "no ledger" is fail-open: `audit`
-/// reports an advisory pass over receipts nobody could read, and `propose
-/// --write` replaces every one of them with a freshly generated policy
-/// (#1952).
-///
-/// Bounded deliberately to ledger paths. Discovery also probes `Cargo.toml`
-/// for a `[package.metadata.cargo-allow]` config path, but a manifest is not
-/// itself a ledger: a repository whose `Cargo.toml` merely fails to parse has
-/// no policy configuration to lose and must keep the adoption path open.
-pub fn source_exception_policy_configuration_present(root: &Path) -> bool {
-    if root.join(FEDERATION_CONFIG_REL_PATH).exists() {
-        return true;
-    }
-    let Ok(mut dir) = root.canonicalize() else {
-        return false;
-    };
-    loop {
-        if DISCOVERY_REL_PATHS
-            .iter()
-            .any(|relative| dir.join(relative).exists())
-        {
-            return true;
-        }
-        if !dir.pop() {
-            return false;
-        }
-    }
-}
-
 pub fn evaluate_spec_system_ledger(root: &Path) -> Option<FederationEvaluation> {
     let validated = load_validated_federation_config(root).ok()??;
     if !validated.valid {
@@ -305,7 +262,7 @@ fn missing_policy_config_error(skipped: &[SkippedPolicyCandidate]) -> CargoAllow
     CargoAllowError::with_kind(
         CargoAllowErrorKind::InvalidConfig,
         format!(
-            "no cargo-allow policy config found; skipped {} foreign-dialect candidate(s): {}; repair a candidate or pass --config",
+            "no cargo-allow policy config found; skipped {} foreign-dialect candidate(s): {}; run `cargo-allow init` or pass --config",
             skipped.len(),
             details
         ),
@@ -457,53 +414,6 @@ priority = 20
         assert_eq!(provenance.ledger_id, "doc-artifacts");
         assert_eq!(provenance.lane, SPEC_SYSTEM_LANE);
         assert_eq!(evaluation.ledger_contributors.len(), 2);
-        cleanup_fixture(&root);
-    }
-
-    #[test]
-    fn policy_configuration_absent_when_the_tree_has_no_candidate() {
-        let root = fixture_root("federation-absence-none");
-        assert!(!source_exception_policy_configuration_present(&root));
-        cleanup_fixture(&root);
-    }
-
-    #[test]
-    fn policy_configuration_present_for_a_candidate_discovery_rejects() {
-        let root = fixture_root("federation-absence-rejected");
-        fs::create_dir_all(root.join("policy"))
-            .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
-        fs::write(
-            root.join("policy/allow.toml"),
-            "this is not valid toml {{{\n",
-        )
-        .unwrap_or_else(|err| std::panic::panic_any(format!("policy write: {err}")));
-
-        // Discovery cannot select it, so `evaluate_source_exception_policy`
-        // fails — but the ledger is still there and must not be mistaken for
-        // an unconfigured tree (#1952).
-        assert!(evaluate_source_exception_policy(&root, None).is_err());
-        assert!(source_exception_policy_configuration_present(&root));
-        cleanup_fixture(&root);
-    }
-
-    #[test]
-    fn policy_configuration_present_for_a_federation_registry() {
-        let root = fixture_root("federation-absence-registry");
-        write_federation_config(&root, "this is not valid toml {{{\n");
-        assert!(source_exception_policy_configuration_present(&root));
-        cleanup_fixture(&root);
-    }
-
-    #[test]
-    fn policy_configuration_absent_for_an_unparseable_manifest_alone() {
-        let root = fixture_root("federation-absence-manifest");
-        fs::write(root.join("Cargo.toml"), "[package\n")
-            .unwrap_or_else(|err| std::panic::panic_any(format!("manifest write: {err}")));
-
-        // Discovery reports the manifest as a skipped candidate, but a
-        // manifest is not a ledger: this tree has no policy to lose, so the
-        // adoption path stays open.
-        assert!(!source_exception_policy_configuration_present(&root));
         cleanup_fixture(&root);
     }
 

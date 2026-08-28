@@ -201,6 +201,7 @@ glob = "docs/schemas/operator-latency.v2.schema.json"
 line = 1
 column = 1
 
+
 [[allow]]
 id = "allow-11112"
 kind = "non_rust_file"
@@ -1416,6 +1417,7 @@ glob = "crates/effortless-repo-snapshot/src/git.rs"
 [allow.last_seen]
 line = 2
 column = 1
+
 
 [[allow]]
 id = "allow-9058"
@@ -12403,7 +12405,6 @@ glob = "release/authorize-v0.2.0.json"
 [allow.last_seen]
 line = 1
 column = 1
-
 [[allow]]
 id = "allow-11142"
 kind = "non_rust_file"
@@ -12844,24 +12845,4 @@ glob = ".allow/revisions/3792-release-rehearsal.toml"
 line = 1
 column = 1
 
-[[allow]]
-id = "allow-0609"
-kind = "non_rust_file"
-family = "documentation"
-path = "docs/repository-metadata.md"
-owner = "core/docs"
-classification = "cargo_allow_product_documentation"
-reason = "Reviewed public repository metadata candidate recorded as an operator handoff surface for issue #3994; the file states the candidate values and their claim boundary and does not receipt live GitHub settings."
-evidence = ["issue:3994", "doc:docs/repository-metadata.md"]
-created = "2026-08-27"
-review_after = "2026-11-25"
 
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = "docs/repository-metadata.md"
-target_fingerprint = "md"
-glob = "docs/repository-metadata.md"
-
-[allow.last_seen]
-line = 1
-column = 1

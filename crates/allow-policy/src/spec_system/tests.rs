@@ -690,13 +690,12 @@ fn validates_current_repository_support_tier_claims() {
         return;
     };
 
-    assert_eq!(rows.len(), 15);
+    assert_eq!(rows.len(), 14);
     for (surface, tier) in [
         (
             "cargo-allow published source-exception ledger",
             SupportTierLevel::Stable,
         ),
-        ("Multi-ledger federation", SupportTierLevel::Advisory),
         (
             "cargo-allow 0.2 source candidate",
             SupportTierLevel::Stabilizing,

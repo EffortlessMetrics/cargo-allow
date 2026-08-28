@@ -25,7 +25,7 @@ pub use evaluate::{
     evaluate_source_exception_policy, evaluate_spec_system_ledger,
     federation_has_blocking_divergence, ledger_contributors_from_config,
     ledger_provenance_from_entry, mirror_divergence_advisory_count,
-    resolve_canonical_ledger_for_lane, source_exception_policy_configuration_present,
+    resolve_canonical_ledger_for_lane,
 };
 pub use load::{
     FEDERATION_CONFIG_REL_PATH, FederationLoadOutcome, FederationLoadResult, load_federation_config,

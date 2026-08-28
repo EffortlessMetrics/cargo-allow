@@ -172,7 +172,7 @@ fn missing_config_error(skipped: &[SkippedPolicyCandidate]) -> CargoAllowError {
     CargoAllowError::with_kind(
         CargoAllowErrorKind::InvalidConfig,
         format!(
-            "no cargo-allow policy config found; skipped {} foreign-dialect candidate(s): {}; repair a candidate or pass --config",
+            "no cargo-allow policy config found; skipped {} foreign-dialect candidate(s): {}; run `cargo-allow init` or pass --config",
             skipped.len(),
             details
         ),
