@@ -24,7 +24,7 @@ fn temp_root(label: &str) -> PathBuf {
         std::process::id()
     ));
     fs::create_dir_all(&root)
-        .unwrap_or_else(|err| panic!("create temp root: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create temp root: {err}")));
     root
 }
 
@@ -32,7 +32,7 @@ fn remove_temp_root(root: PathBuf) {
     match fs::remove_dir_all(&root) {
         Ok(()) => {}
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
-        Err(err) => panic!("remove temp root {}: {err}", root.display()),
+        Err(err) => std::panic::panic_any(format!("remove temp root {}: {err}", root.display())),
     }
 }
 
@@ -49,9 +49,9 @@ fn write_source(root: &std::path::Path, unwraps: usize) {
         .map(|i| format!("pub fn f{i}() -> u32 {{ let v: Option<u32> = None; v.unwrap() }}\n"))
         .collect::<String>();
     std::fs::create_dir_all(root.join("src"))
-        .unwrap_or_else(|err| panic!("create src dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
     std::fs::write(root.join("src/foo.rs"), body)
-        .unwrap_or_else(|err| panic!("write src/foo.rs: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write src/foo.rs: {err}")));
 }
 
 fn base_policy(root: &std::path::Path) {
@@ -59,7 +59,7 @@ fn base_policy(root: &std::path::Path) {
     // including the baselined output) and sets no occurrence pinning — the
     // broad baseline is added by `add --glob`.
     std::fs::create_dir_all(root.join("policy"))
-        .unwrap_or_else(|err| panic!("create policy dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
     std::fs::write(
         root.join("policy/allow.toml"),
         r#"schema_version = "0.1"
@@ -84,7 +84,7 @@ target_fingerprint = "toml"
 glob = "policy/*.toml"
 "#,
     )
-    .unwrap_or_else(|err| panic!("write policy: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
 }
 
 /// Baseline one unwrap via `add --glob`, then add a second unwrap in the same
@@ -127,7 +127,7 @@ fn add_glob_pins_count_and_blocks_new_in_scope_occurrence() {
         policy_with_baseline.to_str().unwrap_or_default(),
     ])
     .output()
-    .unwrap_or_else(|err| panic!("run add --glob: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("run add --glob: {err}")));
     assert!(
         add.status.success(),
         "add --glob should succeed; stderr=`{}`",
@@ -145,7 +145,7 @@ fn add_glob_pins_count_and_blocks_new_in_scope_occurrence() {
         "no-new",
     ])
     .output()
-    .unwrap_or_else(|err| panic!("run check: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("run check: {err}")));
     assert!(
         check_one.status.success(),
         "no-new should pass at the pinned baseline; stderr=`{}`",
@@ -166,7 +166,7 @@ fn add_glob_pins_count_and_blocks_new_in_scope_occurrence() {
         "no-new",
     ])
     .output()
-    .unwrap_or_else(|err| panic!("run check: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("run check: {err}")));
     assert!(
         !check_two.status.success(),
         "no-new should fail when an in-scope occurrence is added past the pinned count; stderr=`{}`",
@@ -218,7 +218,7 @@ fn add_glob_rejects_empty_scope_fail_closed() {
             .unwrap_or_default(),
     ])
     .output()
-    .unwrap_or_else(|err| panic!("run add --glob: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("run add --glob: {err}")));
 
     assert!(
         !add.status.success(),
@@ -272,7 +272,7 @@ fn add_glob_json_summary_includes_mutation_receipt() {
         root.join("add-summary.json").to_str().unwrap_or_default(),
     ])
     .output()
-    .unwrap_or_else(|err| panic!("run add --glob: {err}"));
+    .unwrap_or_else(|err| std::panic::panic_any(format!("run add --glob: {err}")));
     assert!(
         add.status.success(),
         "add --glob should succeed; stderr=`{}`",
@@ -280,7 +280,7 @@ fn add_glob_json_summary_includes_mutation_receipt() {
     );
 
     let summary = fs::read_to_string(root.join("add-summary.json"))
-        .unwrap_or_else(|err| panic!("read add summary: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read add summary: {err}")));
     assert!(
         summary.contains("\"mutation_receipt\":"),
         "add --glob JSON summary should carry the shared mutation_receipt envelope: `{summary}`"

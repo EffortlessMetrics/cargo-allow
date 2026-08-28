@@ -9,7 +9,7 @@ fn run(args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
         .args(args)
         .output()
-        .unwrap_or_else(|err| panic!("run cargo-allow {args:?}: {err}"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow {args:?}: {err}")))
 }
 
 fn stdout_of(result: &Output) -> String {

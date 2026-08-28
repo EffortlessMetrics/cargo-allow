@@ -72,7 +72,7 @@ fn quiet_keeps_blocking_outcomes_and_failure_reason() {
     // check. `.sh` rather than `.md` so it is genuinely unreceipted rather
     // than an occurrence-limit overflow on the fixture's `**/*.md` baseline.
     fs::write(root.join("run.sh"), "#!/usr/bin/env bash\necho hi\n")
-        .unwrap_or_else(|err| panic!("write run.sh: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write run.sh: {err}")));
     git(&root, &["add", "."]);
 
     let quiet = run_check_expecting(&root, true, false);
@@ -101,7 +101,7 @@ fn run_check_expecting(root: &Path, quiet: bool, should_succeed: bool) -> String
     }
     let output = command
         .output()
-        .unwrap_or_else(|err| panic!("run check: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run check: {err}")));
     assert_status("check", &output, should_succeed);
     String::from_utf8_lossy(&output.stdout).into_owned()
 }
@@ -110,13 +110,13 @@ fn run_check_expecting(root: &Path, quiet: bool, should_succeed: bool) -> String
 /// listing, all receipted so the default run passes.
 fn init_fixture_repo(root: &Path) {
     fs::create_dir_all(root.join("docs"))
-        .unwrap_or_else(|err| panic!("create docs dir: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
     for index in 0..3 {
         fs::write(
             root.join(format!("docs/guide-{index}.md")),
             format!("# guide {index}\n"),
         )
-        .unwrap_or_else(|err| panic!("write guide: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write guide: {err}")));
     }
 
     git(root, &["init"]);
@@ -131,7 +131,7 @@ fn init_fixture_repo(root: &Path) {
         .arg("--root")
         .arg(root)
         .output()
-        .unwrap_or_else(|err| panic!("run init: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run init: {err}")));
     assert_status("init", &init, true);
 
     git(root, &["add", "."]);
@@ -161,7 +161,7 @@ fn receipt_glob(root: &Path, glob: &str) {
         .arg("--reason")
         .arg("fixture file for quiet-output characterization")
         .output()
-        .unwrap_or_else(|err| panic!("run add {glob}: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run add {glob}: {err}")));
     assert_status("add", &added, true);
 }
 
@@ -170,7 +170,7 @@ fn git(root: &Path, args: &[&str]) {
         .current_dir(root)
         .args(args)
         .output()
-        .unwrap_or_else(|err| panic!("run git {args:?}: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run git {args:?}: {err}")));
     assert!(
         output.status.success(),
         "git {args:?} failed: {}",

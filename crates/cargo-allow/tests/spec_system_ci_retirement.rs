@@ -10,7 +10,7 @@ const CI_WORKFLOW: &str = include_str!("../../../.github/workflows/ci.yml");
 #[test]
 fn example_spec_system_cutover_matches_schema_constants() {
     let example: serde_json::Value = serde_json::from_str(EXAMPLE_RECEIPT)
-        .unwrap_or_else(|err| panic!("example receipt json: {err}"));
+        .unwrap_or_else(|err| std::panic::panic_any(format!("example receipt json: {err}")));
     assert_eq!(
         example.get("schema_id").and_then(serde_json::Value::as_str),
         Some(SCHEMA_ID)
