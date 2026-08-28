@@ -13024,6 +13024,249 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-11170"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/exact_candidate_package_identity.py"
+owner = "core/release"
+classification = "release_script"
+reason = "Shared exact crate-version-from-filename projection preserving prerelease identity verbatim for #3968."
+evidence = ["issue:3968"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/exact_candidate_package_identity.py"
+target_fingerprint = "py"
+glob = "scripts/exact_candidate_package_identity.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11171"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/test-exact-candidate-package-identity.py"
+owner = "core/release"
+classification = "release_script_test"
+reason = "Negative controls for the exact crate filename identity projection for #3968."
+evidence = ["issue:3968"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-exact-candidate-package-identity.py"
+target_fingerprint = "py"
+glob = "scripts/test-exact-candidate-package-identity.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11172"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3968-prerelease-package-identity.toml"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3968 revision note authorizing the prerelease identity receipts; covers the note file itself as tracked configuration."
+evidence = ["issue:3968", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3968-prerelease-package-identity.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3968-prerelease-package-identity.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+[[allow]]
+id = "allow-0617"
+kind = "panic"
+family = "indexing"
+path = "crates/allow-files/tests/changie_yaml_short_document.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Watchdog test indexes diagnostics after asserting exactly one; assertion guards the index (#3745)."
+evidence = ["issue:3745"]
+created = "2026-08-28"
+review_after = "2026-11-26"
+
+[allow.selector]
+ast_kind = "index_expr"
+container = "assert_non_utf8_rejection"
+symbol = "diagnostics[0]"
+receiver_fingerprint = "param:1"
+target_fingerprint = "0"
+normalized_snippet_hash = "fnv1a64:12a1d631aab0a1b7"
+
+[allow.last_seen]
+line = 35
+column = 34
+
+[[allow]]
+id = "allow-0618"
+kind = "panic"
+family = "panic_macro"
+path = "crates/allow-files/tests/changie_yaml_short_document.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Watchdog fails loud when the yaml-rust2 issue #78 trigger exceeds the five-second child deadline (#3745)."
+evidence = ["issue:3745"]
+created = "2026-08-28"
+review_after = "2026-11-26"
+
+[allow.selector]
+ast_kind = "macro_call"
+container = "issue_78_trigger_is_bounded_and_classified_as_non_utf8"
+macro_name = "panic"
+target_fingerprint = "panic"
+normalized_snippet_hash = "fnv1a64:9b2e8e3a45bfc205"
+
+[allow.last_seen]
+line = 114
+column = 17
+
+[[allow]]
+id = "allow-0619"
+kind = "panic"
+family = "panic_macro"
+path = "crates/allow-files/tests/changie_yaml_short_document.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Watchdog fails loud when the issue #78 child cannot be polled (#3745)."
+evidence = ["issue:3745"]
+created = "2026-08-28"
+review_after = "2026-11-26"
+
+[allow.selector]
+ast_kind = "macro_call"
+container = "issue_78_trigger_is_bounded_and_classified_as_non_utf8"
+macro_name = "panic"
+target_fingerprint = "panic"
+normalized_snippet_hash = "fnv1a64:fda32c847eee4360"
+
+[allow.last_seen]
+line = 121
+column = 17
+
+[[allow]]
+id = "allow-0620"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3745-yaml-rust2-reachability.toml"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3745 revision note authorizing the changie reachability test receipts; covers the note file itself as tracked configuration."
+evidence = ["issue:3745", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3745-yaml-rust2-reachability.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3745-yaml-rust2-reachability.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+[[allow]]
+id = "allow-11173"
+kind = "non_rust_file"
+family = "configuration"
+path = "policy/evidence-surface-inventory.toml"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "Checked classification of lexical/fixture-projection test evidence strength for #3810."
+evidence = ["issue:3810"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "policy/evidence-surface-inventory.toml"
+target_fingerprint = "toml"
+glob = "policy/evidence-surface-inventory.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11174"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/verify-evidence-surface-inventory.py"
+owner = "core/governance"
+classification = "policy_guard_script"
+reason = "Fail-closed verifier binding the evidence-surface inventory to discovered load-bearing tests for #3810."
+evidence = ["issue:3810"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/verify-evidence-surface-inventory.py"
+target_fingerprint = "py"
+glob = "scripts/verify-evidence-surface-inventory.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11175"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test-verify-evidence-surface-inventory.py"
+owner = "core/governance"
+classification = "policy_guard_test"
+reason = "Negative controls for the evidence-surface inventory verifier for #3810."
+evidence = ["issue:3810"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-verify-evidence-surface-inventory.py"
+target_fingerprint = "py"
+glob = "scripts/test-verify-evidence-surface-inventory.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11176"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3810-evidence-surface-inventory.toml"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#3810 revision note authorizing the evidence-surface inventory receipts; covers the note file itself as tracked configuration."
+evidence = ["issue:3810", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-08-28"
+review_after = "2027-02-28"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3810-evidence-surface-inventory.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3810-evidence-surface-inventory.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+[[allow]]
 id = "allow-11177"
 kind = "non_rust_file"
 family = "documentation"

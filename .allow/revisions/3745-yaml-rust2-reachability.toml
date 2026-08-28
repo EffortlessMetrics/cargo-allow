@@ -1,0 +1,25 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-0617"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:03184341ff311e5dc917b6efce8ab3d125a75b99eb2efb3875b400f8b5f28937"
+reason = "receipt for the changie yaml-rust2 reachability watchdog test's guarded diagnostics index (#3745)"
+
+[[records]]
+allow_ids = ["allow-0618"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e58cf3b87a1fe6b91e3d3a1c9583f7f1896cfabfae10bc3198bc06e8d77370de"
+reason = "receipt for the reachability watchdog's fail-loud deadline panic (#3745)"
+
+[[records]]
+allow_ids = ["allow-0619"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:58e8e90c4ae4653d2e7c3b898b91e6987cb729319462490a06af5a82553ce925"
+reason = "receipt for the reachability watchdog's fail-loud poll-error panic (#3745)"
+
+[[records]]
+allow_ids = ["allow-0620"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:2d6b00e5b72727999e45e9dcc26135b336410832625fb6c0a8028acb9e0bd696"
+reason = "self-receipt for this revision note file, matching the #3792 precedent"
