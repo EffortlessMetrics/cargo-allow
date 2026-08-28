@@ -145,6 +145,21 @@ pub use artifacts::{
     LandedEffectStatusV1, LandedEffectV1, NextFrontierV1, PostMergeReconciliationRequestV1,
     PostMergeReconciliationResultV1, ReconciliationDispositionV1,
 };
+
+// Root re-exports for the four release-artifact modules that #4007 dropped
+// from `artifacts.rs` while switching `final_evidence_graph_v1` to a glob
+// export. The modules and their contents were never removed, only unwired,
+// so their consumers in `crates/cargo-allow/tests/` stopped resolving.
+pub use artifacts::{
+    ActualDownloadedFileV1, AggregateOperationStateV1, ArtifactTransferDispositionV1,
+    ArtifactTransferFileV1, ArtifactTransferInitV1, CandidateCustodyInitV1,
+    CargoAllowFrozenCandidateCustodyV1, CargoAllowPostMergeQualificationV1,
+    CargoAllowReleaseArtifactTransferV1, CargoAllowReleaseOperationV1, ConfidentialityClassV1,
+    ConsumerContextV1, CustodyDispositionV1, CustodyFileV1, MergeMethodV1, MergedStateV1,
+    OperationClassV1, OperationEventKindV1, OperationEventV1, PostMergeEquivalenceVerdictV1,
+    PostMergeQualificationInitV1, ProducerIdentityV1, RetainedCustodyItemV1, ReviewedContextV1,
+    TrustClassV1, UntrustedInputPostureV1,
+};
 pub use contracts::{
     ADD_FINDING_PLAN_CLAIM_BOUNDARY, ADD_FINDING_PLAN_SCHEMA_ID, ADD_FINDING_PLAN_SCHEMA_VERSION,
     ADD_PLAN_APPLICATION_CLAIM_BOUNDARY, ADD_PLAN_APPLICATION_SCHEMA_ID,
