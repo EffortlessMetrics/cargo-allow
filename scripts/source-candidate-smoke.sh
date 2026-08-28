@@ -556,11 +556,11 @@ lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
 del lines[-1]
 path.write_text("".join(lines), encoding="utf-8")
 PY
-if "${cargo_bin}" add --from-plan "${why_plan}" --root "${consumer_dir}" >/dev/null 2>&1; then
+if "${cargo_bin}" add --from-plan "${why_plan}" --owner core --reason "second finding receipted through the why plan chain" --evidence "test:second_finding_why_plan_add" --root "${consumer_dir}" >/dev/null 2>&1; then
     fail "stale why plan was accepted by add --from-plan"
 fi
 printf 'pub fn second(value: Option<u8>) -> u8 { value.unwrap() }\n' >> "${consumer_dir}/src/lib.rs"
-"${cargo_bin}" add --from-plan "${why_plan}" --update --root "${consumer_dir}" >/dev/null
+"${cargo_bin}" add --from-plan "${why_plan}" --owner core --reason "second finding receipted through the why plan chain" --evidence "test:second_finding_why_plan_add" --update --root "${consumer_dir}" >/dev/null
 step_second_finding_exit=0
 
 log "step targeted recheck after add (no-new passes for the receipted finding)"
@@ -570,6 +570,15 @@ import json, sys
 report = json.load(sys.stdin)
 if report.get("status") != "passed":
     raise SystemExit(f"expected targeted recheck passed, got {report.get('status')!r}")
+'
+# The targeted recheck is not a repository proof; the full check must
+# also stay clean after the mutation chain.
+full_check_json="$("${cargo_bin}" check --root "${consumer_dir}" --config "${policy_path}" --mode no-new --format json)"
+printf '%s\n' "${full_check_json}" | python3 -c '
+import json, sys
+report = json.load(sys.stdin)
+if report.get("status") != "passed":
+    raise SystemExit(f"expected full check after add passed, got {report.get('status')!r}")
 '
 step_recheck_exit=0
 

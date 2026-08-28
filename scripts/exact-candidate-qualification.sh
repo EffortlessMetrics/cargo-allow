@@ -70,11 +70,17 @@ PY
 mkdir -p "$OUTPUT_DIR"
 
 echo "exact-candidate-qualification: running the supported journey from the isolated binary"
+# Drive the journey implementation directly: the #3357 wrapper refuses
+# binaries outside its own #3357 install root, and this lane's binary comes
+# from the #2925 isolated install. CARGO_ALLOW_BIN must live below target/,
+# which the durable isolated-install copy does.
+journey_work_dir="${OUTPUT_DIR}/journey-work"
+rm -rf "$journey_work_dir"
 CARGO_ALLOW_BIN="$ROOT/$INSTALLED_BIN" \
-WORK_DIR="${OUTPUT_DIR}/journey" \
-bash scripts/exact-candidate-install-journey.sh
+WORK_DIR="$journey_work_dir" \
+bash scripts/source-candidate-smoke.sh
 
-journey_receipt="${OUTPUT_DIR}/journey/source-candidate-smoke.receipt.json"
+journey_receipt="$journey_work_dir/source-candidate-smoke.receipt.json"
 [ -f "$journey_receipt" ] || fail "journey did not emit ${journey_receipt}"
 
 echo "exact-candidate-qualification: assembling the typed receipt"
@@ -137,9 +143,14 @@ journey_steps = [
     }
     for step in journey["journey"]["steps_executed"]
 ]
+schema_key = "artifact_schema_id"
 schema_results = sorted(
-    f"{schema_id}: ok" for schema_id in set(journey["journey"].get("artifact_schema_ids") or [])
-) or ["cargo-allow.report.v1: ok"]
+    {
+        f"{step[schema_key]}: ok"
+        for step in journey["journey"]["steps_executed"]
+        if step.get(schema_key)
+    }
+)
 
 payload = {
     "schema_id": "cargo-allow.exact-candidate.v2",

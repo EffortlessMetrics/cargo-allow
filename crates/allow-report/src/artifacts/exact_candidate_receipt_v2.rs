@@ -344,7 +344,12 @@ mod tests {
     #[test]
     fn receipt_rejects_failed_or_omitted_journey_steps() -> Result<(), String> {
         let mut failing = payload();
-        failing.journey_steps[1].exit_code = 3;
+        let second = failing
+            .journey_steps
+            .iter_mut()
+            .nth(1)
+            .ok_or_else(|| "fixture lost its second journey step".to_string())?;
+        second.exit_code = 3;
         let validation = validate_exact_candidate_v2(&failing);
         if validation.result != ExactCandidateResultV2::Incomplete {
             return Err(format!("failing step was not classified: {validation:?}"));

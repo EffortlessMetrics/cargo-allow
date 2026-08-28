@@ -479,3 +479,13 @@ posture, successful crates.io uploads, and post-publish install smoke for the
 tagged commit. Install smoke verifies the published binary installs and exposes
 expected CLI help surfaces; it does not run repository checks, proof commands,
 or spec-system graph validation against a consumer repo.
+
+## Exact-candidate qualification authority
+
+The cargo-allow release-candidate qualification authority is the exact
+candidate chain (#2924 candidate artifact, #2925 isolated local-registry
+install, #2926 qualification journey; schema
+`cargo-allow.exact-candidate.v2`). The ambient workspace
+`cargo package --workspace` smoke (Stage A of package-smoke) is a
+crate-byte producer feeding that chain, not a qualification authority: a
+Stage-A pass alone does not qualify the release candidate.
