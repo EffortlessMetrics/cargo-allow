@@ -233,6 +233,38 @@ fn denominator_loads_with_canonical_identity() {
 }
 
 #[test]
+fn denominator_rows_carry_complete_attribution() {
+    let root = workspace_root();
+    let denominator = parse_denominator(&root);
+
+    let mut seen_ids = BTreeSet::new();
+    for row in &denominator.consumers {
+        assert!(
+            !row.id.is_empty() && !row.role.is_empty() && !row.claim_boundary.is_empty(),
+            "{} rows must carry a non-empty id, role, and claim boundary",
+            row.path
+        );
+        assert!(
+            seen_ids.insert(row.id.as_str()),
+            "duplicate denominator row id {}",
+            row.id
+        );
+        if matches!(
+            row.disposition,
+            ConsumerDisposition::DeferredWithNamedOwner
+                | ConsumerDisposition::SupersededParserToDelete
+        ) {
+            let owner = row.owner.as_deref().unwrap_or_default();
+            assert!(
+                owner.starts_with('#'),
+                "{} defers or deletes a parser without a named owning issue",
+                row.path
+            );
+        }
+    }
+}
+
+#[test]
 fn rust_authority_owns_release_channel_semantics() {
     let root = workspace_root();
     let authority = read_workspace_file(&root, RELEASE_IDENTITY_AUTHORITY);
