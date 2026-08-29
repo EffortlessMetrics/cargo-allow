@@ -12,6 +12,8 @@ fn cmd_diff_with_explicit_head_reports_missing_default_policy_config_with_exact_
     init_git_repo_without_policy(&root);
 
     let err = cmd_diff(&DiffArgs {
+        artifact_dir: None,
+        emit: None,
         root: RootArgs {
             root: Some(root.clone()),
         },
@@ -43,6 +45,8 @@ fn cmd_diff_with_explicit_head_rejects_missing_explicit_config_path_with_exact_e
     init_git_repo_with_policy(&root);
 
     let err = cmd_diff(&DiffArgs {
+        artifact_dir: None,
+        emit: None,
         root: RootArgs {
             root: Some(root.clone()),
         },
@@ -75,6 +79,8 @@ fn cmd_diff_writes_receipt_for_clean_in_process_run() {
     let receipt = root.join("target/cargo-allow/diff.receipt.json");
 
     cmd_diff(&DiffArgs {
+        artifact_dir: None,
+        emit: None,
         root: RootArgs {
             root: Some(root.clone()),
         },
