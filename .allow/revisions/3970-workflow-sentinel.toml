@@ -1,0 +1,13 @@
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11196"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:592581feeee7d8bc497d2159fd7e9fab8d0f2295ea58c34d40f836582005d5ca"
+reason = "receipt for .github/workflows/sentinel.yml, the workflow construction sentinel (#3970)"
+
+[[records]]
+allow_ids = ["allow-11197"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d796f60c357af7324b365f8545ce107d6d2de6d77a4288099620c9dc3bca0836"
+reason = "self-receipt for this revision note file, matching the #3792 precedent"
