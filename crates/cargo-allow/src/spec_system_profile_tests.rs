@@ -53,6 +53,8 @@ fn clap_parses_spec_system_profile_for_audit() {
     assert!(matches!(
         parsed.command,
         Some(CargoAllowCommand::Audit(audit::ReportArgs {
+            artifact_dir: None,
+            emit: None,
             profile: Some(ProfileArg::SpecSystem),
             ..
         }))
@@ -287,6 +289,8 @@ fn audit_spec_system_profile_does_not_require_allow_policy() {
     let output = root.join("audit.json");
 
     let result = audit::cmd_audit(&audit::ReportArgs {
+        artifact_dir: None,
+        emit: None,
         root: RootArgs {
             root: Some(root.clone()),
         },
