@@ -18,42 +18,22 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Install cargo-allow
         run: cargo install cargo-allow --version 0.1.11 --locked
-      - name: Run cargo-allow PR posture diff
+      - name: Run cargo-allow PR posture diff (single evaluation, multi-format)
         shell: bash
         run: |
           base_ref="origin/${GITHUB_BASE_REF:-main}"
           mkdir -p target/cargo-allow
-          set +e
           cargo-allow diff \
             --base "$base_ref" \
-            --format markdown \
-            --receipt target/cargo-allow/diff.receipt.json \
-            --output target/cargo-allow/pr-summary.md
-          markdown_status=$?
-          cargo-allow diff \
-            --base "$base_ref" \
-            --format json \
-            --output target/cargo-allow/diff.json
-          json_status=$?
-          cargo-allow diff \
-            --base "$base_ref" \
-            --format sarif \
-            --output target/cargo-allow/diff.sarif
-          sarif_status=$?
-          set -e
-          final_status=$markdown_status
-          if (( final_status == 0 && json_status != 0 )); then final_status=$json_status; fi
-          if (( final_status == 0 && sarif_status != 0 )); then final_status=$sarif_status; fi
-          if (( final_status != 0 )); then
-            echo "cargo-allow diff remained non-clean; uploading partial evidence" >&2
-            exit "$final_status"
-          fi
+            --artifact-dir target/cargo-allow \
+            --emit markdown,json,sarif,receipt
+          cp target/cargo-allow/diff-markdown.md target/cargo-allow/pr-summary.md
       - name: Publish cargo-allow summary
         if: always()
         shell: bash
         run: |
-          if [ -f target/cargo-allow/pr-summary.md ]; then
-            cat target/cargo-allow/pr-summary.md >> "$GITHUB_STEP_SUMMARY"
+          if [ -f target/cargo-allow/diff-markdown.md ]; then
+            cat target/cargo-allow/diff-markdown.md >> "$GITHUB_STEP_SUMMARY"
           fi
       - uses: actions/upload-artifact@v7.0.1
         if: always()

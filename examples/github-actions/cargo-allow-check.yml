@@ -16,30 +16,19 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Install cargo-allow
         run: cargo install cargo-allow --version 0.1.11 --locked
-      - name: Run cargo-allow mainline check
+      - name: Run cargo-allow check (single evaluation, multi-format)
         run: |
           mkdir -p target/cargo-allow
-          cargo-allow audit \
-            --format json \
-            --output target/cargo-allow/audit.json
-          cargo-allow audit \
-            --format html \
-            --output target/cargo-allow/audit.html
           cargo-allow check \
             --mode no-new \
-            --format markdown \
-            --receipt target/cargo-allow/check.receipt.json \
-            --output target/cargo-allow/check.md
-          cargo-allow check \
-            --mode no-new \
-            --format sarif \
-            --output target/cargo-allow/check.sarif
+            --artifact-dir target/cargo-allow \
+            --emit markdown,json,sarif,receipt
       - name: Publish cargo-allow summary
         if: always()
         shell: bash
         run: |
-          if [ -f target/cargo-allow/check.md ]; then
-            cat target/cargo-allow/check.md >> "$GITHUB_STEP_SUMMARY"
+          if [ -f target/cargo-allow/check-markdown.md ]; then
+            cat target/cargo-allow/check-markdown.md >> "$GITHUB_STEP_SUMMARY"
           fi
       - uses: actions/upload-artifact@v7.0.1
         if: always()

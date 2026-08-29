@@ -291,7 +291,7 @@ pub(crate) fn sample_worklist_json_for_contract_test() -> String {
         reason: Some("Generated baseline debt requires human review.".to_string()),
         created: Some("2026-05-29".to_string()),
         review_after: Some("2026-06-29".to_string()),
-        expires: Some("2026-08-29".to_string()),
+        expires: Some("2027-08-29".to_string()),
         evidence_count: Some(1),
         selector_precision: Some(7),
         risk: worklist_priority::RISK_MEDIUM,

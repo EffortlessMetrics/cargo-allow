@@ -6429,7 +6429,7 @@ reason = "Fixture keeps saved diff occurrence-limit posture details covered."
 evidence = ["test:saved_diff_output_covers_occurrence_limit_loosening_details"]
 occurrence_limit = {occurrence_limit}
 created = "2026-05-29"
-review_after = "2026-08-29"
+review_after = "2027-08-29"
 
 [allow.selector]
 ast_kind = "method_call"
@@ -6557,7 +6557,7 @@ classification = "reviewed_fixture"
 reason = "Fixture keeps saved diff added-allow posture details covered."
 evidence = ["test:saved_diff_output_covers_added_allow_details"]
 created = "2026-05-29"
-review_after = "2026-08-29"
+review_after = "2027-08-29"
 
 [allow.selector]
 ast_kind = "method_call"
@@ -6590,7 +6590,7 @@ classification = "reviewed_fixture"
 reason = "Fixture keeps saved diff policy-owner-removal posture details covered."
 evidence = ["test:saved_diff_output_covers_policy_owner_removal_details"]
 created = "2026-05-29"
-review_after = "2026-08-29"
+review_after = "2027-08-29"
 
 [allow.selector]
 ast_kind = "method_call"
@@ -6620,7 +6620,7 @@ classification = "reviewed_fixture"
 reason = "Fixture keeps saved diff policy-status weakening posture details covered."
 evidence = ["test:saved_diff_output_covers_policy_status_weakening_details"]
 created = "2026-05-29"
-review_after = "2026-08-29"
+review_after = "2027-08-29"
 
 [allow.selector]
 ast_kind = "method_call"
@@ -6653,7 +6653,7 @@ classification = "reviewed_fixture"
 reason = "Fixture keeps saved diff requirement-loosening posture details covered."
 evidence = ["test:saved_diff_output_covers_requirement_loosening_details"]
 created = "2026-05-29"
-review_after = "2026-08-29"
+review_after = "2027-08-29"
 
 [allow.selector]
 ast_kind = "method_call"
@@ -6691,7 +6691,7 @@ classification = "reviewed_fixture"
 reason = "Fixture keeps saved diff workspace-ignored posture details covered."
 evidence = ["test:saved_diff_output_covers_workspace_ignored_addition_details"]
 created = "2026-05-29"
-review_after = "2026-08-29"
+review_after = "2027-08-29"
 
 [allow.selector]
 ast_kind = "method_call"
@@ -6729,7 +6729,7 @@ classification = "reviewed_fixture"
 reason = "Fixture keeps saved diff workspace-generated posture details covered."
 evidence = ["test:saved_diff_output_covers_workspace_generated_addition_details"]
 created = "2026-05-29"
-review_after = "2026-08-29"
+review_after = "2027-08-29"
 
 [allow.selector]
 ast_kind = "method_call"
@@ -6761,7 +6761,7 @@ path = "src/lib.rs"
 reason = "Fixture keeps saved diff owner-removal posture details covered."
 evidence = ["test:saved_diff_output_covers_owner_removal_details"]
 created = "2026-05-29"
-review_after = "2026-08-29"
+review_after = "2027-08-29"
 
 [allow.selector]
 ast_kind = "method_call"
@@ -6793,7 +6793,7 @@ owner = "core/tests"
 classification = "reviewed_fixture"
 {reason}evidence = ["test:saved_diff_output_covers_reason_removal_details"]
 created = "2026-05-29"
-review_after = "2026-08-29"
+review_after = "2027-08-29"
 
 [allow.selector]
 ast_kind = "method_call"
@@ -6831,7 +6831,7 @@ owner = "core/tests"
 {classification}reason = "Fixture keeps saved diff classification-removal posture details covered."
 evidence = ["test:saved_diff_output_covers_classification_removal_details"]
 created = "2026-05-29"
-review_after = "2026-08-29"
+review_after = "2027-08-29"
 
 [allow.selector]
 ast_kind = "method_call"
@@ -6975,7 +6975,7 @@ owner = "core/tests"
 classification = "reviewed_fixture"
 reason = "Fixture keeps saved diff evidence removal details covered."
 {evidence}created = "2026-05-29"
-review_after = "2026-08-29"
+review_after = "2027-08-29"
 
 [allow.selector]
 ast_kind = "method_call"
@@ -7047,7 +7047,7 @@ owner = "core/tests"
 classification = "reviewed_fixture"
 reason = "Fixture keeps local evidence documents receipted while diffing evidence posture."
 created = "2026-05-29"
-review_after = "2026-08-29"
+review_after = "2027-08-29"
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -7094,7 +7094,7 @@ owner = "core/tests"
 classification = "reviewed_fixture"
 reason = "Fixture keeps saved diff weak evidence removal details covered."
 {evidence}created = "2026-05-29"
-review_after = "2026-08-29"
+review_after = "2027-08-29"
 
 [allow.selector]
 ast_kind = "method_call"
@@ -7168,7 +7168,7 @@ classification = "reviewed_fixture"
 reason = "Fixture keeps saved diff traceability link posture details covered."
 evidence = ["test:saved_diff_output_covers_traceability_link_change_details"]
 {links}created = "2026-05-29"
-review_after = "2026-08-29"
+review_after = "2027-08-29"
 
 [allow.selector]
 ast_kind = "method_call"
@@ -7209,7 +7209,7 @@ classification = "reviewed_fixture"
 reason = "Fixture keeps saved diff selector precision loss details covered."
 evidence = ["test:saved_diff_output_covers_selector_precision_decrease_details"]
 created = "2026-05-29"
-review_after = "2026-08-29"
+review_after = "2027-08-29"
 
 [allow.selector]
 ast_kind = "method_call"
@@ -7237,7 +7237,7 @@ classification = "reviewed_fixture"
 reason = "Fixture keeps saved diff selector identity change details covered."
 evidence = ["test:saved_diff_output_covers_selector_identity_change_details"]
 created = "2026-05-29"
-review_after = "2026-08-29"
+review_after = "2027-08-29"
 
 [allow.selector]
 ast_kind = "method_call"
@@ -7267,7 +7267,7 @@ classification = "reviewed_fixture"
 reason = "Fixture keeps saved diff exception identity change details covered."
 evidence = ["test:saved_diff_output_covers_exception_identity_change_details"]
 created = "2026-05-29"
-review_after = "2026-08-29"
+review_after = "2027-08-29"
 
 [allow.selector]
 ast_kind = "method_call"
@@ -7296,7 +7296,7 @@ classification = "reviewed_fixture"
 reason = "Fixture keeps saved diff scope-broadening posture details covered."
 evidence = ["test:saved_diff_output_covers_scope_broadening_details"]
 created = "2026-05-29"
-review_after = "2026-08-29"
+review_after = "2027-08-29"
 
 [allow.selector]
 ast_kind = "method_call"

@@ -213,6 +213,22 @@ fn committed_workflow_examples_parse_and_meet_semantic_contract() {
         DIFF_WORKFLOW.contains("target/cargo-allow/"),
         "PR example must write under target/cargo-allow/"
     );
+    assert!(
+        DIFF_WORKFLOW.contains("--artifact-dir"),
+        "PR example must use --artifact-dir for the artifact set"
+    );
+    assert!(
+        DIFF_WORKFLOW.contains("--emit"),
+        "PR example must use --emit for the renderer set"
+    );
+    assert!(
+        !DIFF_WORKFLOW.contains("markdown_status="),
+        "PR example must not manually arbitrate per-format exit codes"
+    );
+    assert!(
+        !DIFF_WORKFLOW.contains("sarif_status="),
+        "PR example must not manually arbitrate SARIF exit codes"
+    );
     for artifact in [
         "pr-summary.md",
         "diff.json",
@@ -220,25 +236,8 @@ fn committed_workflow_examples_parse_and_meet_semantic_contract() {
         "diff.sarif",
     ] {
         assert!(
-            DIFF_WORKFLOW.contains(artifact),
-            "PR example must retain `{artifact}` when diff is non-clean"
-        );
-        assert!(
             PARTIAL_DIFF_ARTIFACTS.contains(artifact),
             "partial workflow fixture must declare `{artifact}`"
-        );
-    }
-    for required in [
-        "set +e",
-        "markdown_status=$?",
-        "json_status=$?",
-        "sarif_status=$?",
-        "set -e",
-        "exit \"$final_status\"",
-    ] {
-        assert!(
-            DIFF_WORKFLOW.contains(required),
-            "PR example must preserve the blocking artifact sequence `{required}`"
         );
     }
     for required in [
