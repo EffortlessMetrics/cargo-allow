@@ -513,3 +513,158 @@ fn macos_temp_root_accepts_hosted_alias_when_present() -> Result<(), String> {
     );
     Ok(())
 }
+
+/// Prove the detect-after boundary the root-bound cache law documents: a
+/// cache-path component swapped for indirection between the flush walk's
+/// verification and the write must be refused, and no store bytes may move
+/// through the swap. The injection hook lands after the walk and before the
+/// write, exactly where prevention cannot reach and detection must.
+#[cfg(unix)]
+#[test]
+fn unix_mid_walk_component_swap_is_detected_and_refused() -> Result<(), String> {
+    let fixture = TempRoot::new("mid-walk-swap")?;
+    let root = fixture.0.join("repo");
+    let outside = fixture.0.join("outside");
+    fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+    fs::create_dir_all(&outside).map_err(|error| error.to_string())?;
+    let files = prepare_source(&root)?;
+
+    // First lifecycle: admit, scan, and flush so the cache directory exists
+    // and the second flush walks real components before the swap.
+    let mut store = RootBoundScanCacheStore::open(&root, "generation")
+        .map_err(|disposition| disposition.as_str().to_string())?;
+    let mut memory = ScanCache::new();
+    scan_rust_files_cached_with_root_bound_store(&root, &files, &mut memory, &mut store)
+        .map_err(|error| error.to_string())?;
+    store
+        .flush_with_disposition()
+        .map_err(|disposition| disposition.as_str().to_string())?;
+    drop(store);
+
+    let store_path = ScanCacheStore::default_dir(&root).join("scan-cache.v2.bin");
+    let bytes_before = fs::read(&store_path).map_err(|error| error.to_string())?;
+
+    // Second lifecycle with the injection: the hook renames the walked
+    // `target` component aside and points the original spelling at outside
+    // storage, so any write past this point would land outside the root.
+    let mut store = RootBoundScanCacheStore::open(&root, "generation")
+        .map_err(|disposition| disposition.as_str().to_string())?;
+    let mut memory = ScanCache::new();
+    fs::write(
+        root.join("src/lib.rs"),
+        "fn load(value: Result<(), ()>) { value.expect(\"changed\"); }\n",
+    )
+    .map_err(|error| error.to_string())?;
+    scan_rust_files_cached_with_root_bound_store(&root, &files, &mut memory, &mut store)
+        .map_err(|error| error.to_string())?;
+
+    let real_target = root.join("target.real");
+    let alias = root.join("target");
+    let result = store.flush_with_test_hook(&|_| {
+        fs::rename(&alias, &real_target).unwrap_or_else(|error| {
+            std::panic::panic_any(format!("rename {}: {error}", alias.display()))
+        });
+        std::os::unix::fs::symlink(&outside, &alias).unwrap_or_else(|error| {
+            std::panic::panic_any(format!("symlink {}: {error}", alias.display()))
+        });
+    });
+
+    // Detection: the flush is refused with the typed disposition from the
+    // post-swap identity validation rather than silently succeeding through
+    // the swap.
+    assert_eq!(
+        result,
+        Err(ScanCacheTargetDispositionV1::DestinationAliasOrTypeChange),
+        "swapped component flush must be refused as a destination change"
+    );
+    // No content escape: the store behind the renamed component is
+    // byte-identical to the last admitted flush, and the outside directory
+    // never received a cache artifact.
+    let bytes_after = fs::read(real_target.join("cargo-allow/cache/scan-cache.v2.bin"))
+        .map_err(|error| error.to_string())?;
+    assert_eq!(bytes_before, bytes_after, "store bytes must not change");
+    assert!(
+        !outside.join("cargo-allow").exists(),
+        "no cache artifact may be created through the swapped component"
+    );
+    Ok(())
+}
+
+/// Windows counterpart: the store's bound directory and lock handles pin
+/// the walked tree, so the component rename an attacker needs is refused by
+/// the filesystem itself before any indirection can be introduced. Assert
+/// that structural refusal and that nothing is written outside the root.
+#[cfg(windows)]
+#[test]
+fn windows_mid_walk_component_swap_is_structurally_refused() -> Result<(), String> {
+    use std::process::Command;
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    static SWAP_DENIED: AtomicBool = AtomicBool::new(false);
+
+    let fixture = TempRoot::new("mid-walk-swap")?;
+    let root = fixture.0.join("repo");
+    let outside = fixture.0.join("outside");
+    fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+    fs::create_dir_all(&outside).map_err(|error| error.to_string())?;
+    let files = prepare_source(&root)?;
+
+    let mut store = RootBoundScanCacheStore::open(&root, "generation")
+        .map_err(|disposition| disposition.as_str().to_string())?;
+    let mut memory = ScanCache::new();
+    scan_rust_files_cached_with_root_bound_store(&root, &files, &mut memory, &mut store)
+        .map_err(|error| error.to_string())?;
+    store
+        .flush_with_disposition()
+        .map_err(|disposition| disposition.as_str().to_string())?;
+    drop(store);
+
+    let mut store = RootBoundScanCacheStore::open(&root, "generation")
+        .map_err(|disposition| disposition.as_str().to_string())?;
+    let mut memory = ScanCache::new();
+    fs::write(
+        root.join("src/lib.rs"),
+        "fn load(value: Result<(), ()>) { value.expect(\"changed\"); }\n",
+    )
+    .map_err(|error| error.to_string())?;
+    scan_rust_files_cached_with_root_bound_store(&root, &files, &mut memory, &mut store)
+        .map_err(|error| error.to_string())?;
+
+    let real_target = root.join("target.real");
+    let alias = root.join("target");
+    // The flush result is intentionally discarded: the structural refusal
+    // under test is the failed rename itself (asserted via SWAP_DENIED),
+    // and whether the uncontended flush then succeeds is not this test's
+    // subject.
+    let _ = store.flush_with_test_hook(&|_| {
+        if fs::rename(&alias, &real_target).is_err() {
+            SWAP_DENIED.store(true, Ordering::SeqCst);
+            return;
+        }
+        let output = Command::new("cmd")
+            .arg("/C")
+            .arg("mklink")
+            .arg("/J")
+            .arg(&alias)
+            .arg(&outside)
+            .output()
+            .unwrap_or_else(|error| std::panic::panic_any(format!("mklink /J: {error}")));
+        if !output.status.success() {
+            std::panic::panic_any(format!(
+                "mklink /J failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            ));
+        }
+    });
+
+    assert!(
+        SWAP_DENIED.load(Ordering::SeqCst),
+        "windows must refuse renaming the walked cache tree while the store \
+         holds its bound handles"
+    );
+    assert!(
+        !outside.join("cargo-allow").exists(),
+        "no cache artifact may be created through the swapped component"
+    );
+    Ok(())
+}

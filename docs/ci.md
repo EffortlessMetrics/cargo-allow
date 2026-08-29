@@ -56,9 +56,10 @@ Required lanes (gate cargo-allow patch and release):
   candidate package set, cutover build receipts, install journey.
 - **`test`**: rustfmt (workspace-wide, repo hygiene), release-set Clippy,
   tests, doc tests, docs, audit, no-new check, cutover status chain.
-- **`test-core-platforms`**: release-set suite on Linux, Windows, Apple
-  Silicon macOS, and Intel macOS. The macOS rows retain the explicit
-  persistent-cache exclusion until #3915 restores the complete cache proof.
+- **`test-core-platforms`**: complete release-set suite on Linux, Windows,
+  Apple Silicon macOS, and Intel macOS, including allow-rust's persistent
+  scan-cache tests (#3915 PR C); a contract test drift-guards the rows
+  against reintroducing platform-wide cache exclusions.
 - **`compat-delegation`**: the staged precommit delegation e2e
   (#2601-B) — Linux against the exact installed cargo-intent
   candidate, Windows against a fresh build. Core lanes carry no
