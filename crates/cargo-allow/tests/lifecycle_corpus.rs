@@ -1172,6 +1172,13 @@ callee = "unwrap"
 }
 
 fn policy(include_expired: bool) -> String {
+    // The baseline_debt entry must stay live and matched in the corpus
+    // outcomes, so its lifecycle dates are computed relative to today
+    // instead of hardcoded calendar days the test would eventually sail
+    // past. baseline_debt expiry is validated against the 120-day window
+    // from creation, so created moves with the computed expiry.
+    let baseline_created = allow_core::SimpleDate::today_utc_approx().add_days(-30);
+    let baseline_expires = allow_core::SimpleDate::today_utc_approx().add_days(30);
     let expired = if include_expired {
         format!(
             r#"
@@ -1313,8 +1320,8 @@ path = "src/lib.rs"
 owner = "generated"
 classification = "baseline_debt"
 reason = "The fixture keeps generated baseline debt for human review."
-created = "2026-07-14"
-expires = "2026-10-01"
+created = "{baseline_created}"
+expires = "{baseline_expires}"
 
 [allow.selector]
 ast_kind = "method_call"
@@ -1441,6 +1448,12 @@ column = 1
 }
 
 fn baseline_debt_policy() -> String {
+    // The entry must stay live and advisory in no-new mode, so its lifecycle
+    // dates are computed relative to today; baseline_debt expiry is
+    // validated against the 120-day window from creation, so created moves
+    // with the computed expiry.
+    let created = allow_core::SimpleDate::today_utc_approx().add_days(-30);
+    let expires = allow_core::SimpleDate::today_utc_approx().add_days(30);
     format!(
         r#"schema_version = "0.1"
 policy = "cargo-allow"
@@ -1471,8 +1484,8 @@ path = "src/lib.rs"
 owner = "generated"
 classification = "baseline_debt"
 reason = "Generated baseline debt remains for human review."
-created = "2026-07-14"
-expires = "2026-10-01"
+created = "{created}"
+expires = "{expires}"
 
 [allow.selector]
 ast_kind = "method_call"

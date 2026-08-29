@@ -67,6 +67,18 @@ fn stage_advisory_drift_fixture() -> PathBuf {
     let source = migration_fixture_root().join("clippy-exceptions-advisory-drift.toml");
     let text = fs::read_to_string(&source)
         .unwrap_or_else(|err| std::panic::panic_any(format!("read advisory drift fixture: {err}")));
+    // The strict LocationDrift assertion requires the entry to still be
+    // Matched: a reached review_after demotes it to ReviewDue before drift
+    // classification, so the staged copy maps the fixture's review date to
+    // one relative to today instead of a hardcoded calendar date the suite
+    // would eventually sail past.
+    let review_after = allow_core::SimpleDate::today_utc_approx()
+        .add_days(30)
+        .to_string();
+    let text = text.replace(
+        "review_after = \"2026-09-09\"",
+        &format!("review_after = \"{review_after}\""),
+    );
     let path = dir.join("clippy-exceptions-advisory-drift.toml");
     fs::write(&path, text).unwrap_or_else(|err| {
         std::panic::panic_any(format!("stage advisory drift fixture: {err}"))

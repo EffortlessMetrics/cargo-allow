@@ -3360,9 +3360,24 @@ fn saved_diff_output_covers_typed_traceability_link_removal_review_details() {
 fn saved_diff_output_covers_lifecycle_extension_details() {
     let fixture = SourceTreeFixture::new("saved-diff-lifecycle-extended");
     fixture.write_panic_source();
-    write_policy_with_lifecycle(&fixture, "2026-08-29", "2026-07-29");
+    // Both entries must stay live on their side of the diff, so the
+    // lifecycle dates are computed relative to today instead of hardcoded
+    // calendar days the test would eventually sail past.
+    let base_expires = allow_core::SimpleDate::today_utc_approx()
+        .add_days(45)
+        .to_string();
+    let base_review_after = allow_core::SimpleDate::today_utc_approx()
+        .add_days(30)
+        .to_string();
+    let head_expires = allow_core::SimpleDate::today_utc_approx()
+        .add_days(90)
+        .to_string();
+    let head_review_after = allow_core::SimpleDate::today_utc_approx()
+        .add_days(60)
+        .to_string();
+    write_policy_with_lifecycle(&fixture, &base_expires, &base_review_after);
     commit_fixture_base(&fixture.root);
-    write_policy_with_lifecycle(&fixture, "2026-12-29", "2026-10-29");
+    write_policy_with_lifecycle(&fixture, &head_expires, &head_review_after);
 
     let artifact_dir = fixture.root.join("target/cargo-allow");
     let diff = artifact_dir.join("diff.json");
@@ -3407,16 +3422,16 @@ fn saved_diff_output_covers_lifecycle_extension_details() {
         "expiry_extended",
         "review",
         "expires",
-        "2026-08-29",
-        "2026-12-29",
+        &base_expires,
+        &head_expires,
     );
     assert_lifecycle_change(
         &value,
         "review_after_extended",
         "review",
         "review_after",
-        "2026-07-29",
-        "2026-10-29",
+        &base_review_after,
+        &head_review_after,
     );
 }
 
@@ -3424,9 +3439,24 @@ fn saved_diff_output_covers_lifecycle_extension_details() {
 fn saved_diff_output_covers_lifecycle_shortening_details() {
     let fixture = SourceTreeFixture::new("saved-diff-lifecycle-shortened");
     fixture.write_panic_source();
-    write_policy_with_lifecycle(&fixture, "2026-12-29", "2026-10-29");
+    // The head entry must stay live for the expected-success diff, so the
+    // shortened lifecycle dates are computed relative to today instead of
+    // hardcoded calendar days the test would eventually sail past.
+    let base_expires = allow_core::SimpleDate::today_utc_approx()
+        .add_days(90)
+        .to_string();
+    let base_review_after = allow_core::SimpleDate::today_utc_approx()
+        .add_days(60)
+        .to_string();
+    let head_expires = allow_core::SimpleDate::today_utc_approx()
+        .add_days(45)
+        .to_string();
+    let head_review_after = allow_core::SimpleDate::today_utc_approx()
+        .add_days(30)
+        .to_string();
+    write_policy_with_lifecycle(&fixture, &base_expires, &base_review_after);
     commit_fixture_base(&fixture.root);
-    write_policy_with_lifecycle(&fixture, "2026-08-29", "2026-07-29");
+    write_policy_with_lifecycle(&fixture, &head_expires, &head_review_after);
 
     let artifact_dir = fixture.root.join("target/cargo-allow");
     let diff = artifact_dir.join("diff.json");
@@ -3471,16 +3501,16 @@ fn saved_diff_output_covers_lifecycle_shortening_details() {
         "expiry_shortened",
         "improvement",
         "expires",
-        "2026-12-29",
-        "2026-08-29",
+        &base_expires,
+        &head_expires,
     );
     assert_lifecycle_change(
         &value,
         "review_after_shortened",
         "improvement",
         "review_after",
-        "2026-10-29",
-        "2026-07-29",
+        &base_review_after,
+        &head_review_after,
     );
 }
 
@@ -6448,6 +6478,9 @@ fn write_policy_with_optional_created(fixture: &SourceTreeFixture, created: Opti
     let created = created
         .map(|created| format!("created = \"{created}\"\n"))
         .unwrap_or_default();
+    // The entry must stay live for the expected-success diff, so the expiry
+    // is computed relative to today instead of a hardcoded calendar date.
+    let expires = allow_core::SimpleDate::today_utc_approx().add_days(60);
     policy.push_str(&format!(
         r#"
 
@@ -6460,7 +6493,7 @@ owner = "core/tests"
 classification = "reviewed_fixture"
 reason = "Fixture keeps saved diff created-date posture details covered."
 evidence = ["test:saved_diff_output_covers_created_removal_details"]
-{created}expires = "2026-08-29"
+{created}expires = "{expires}"
 review_after = "2026-07-29"
 
 [allow.selector]

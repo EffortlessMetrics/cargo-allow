@@ -37,7 +37,10 @@ fn migrates_clippy_exceptions_to_lint_policy_entries() {
         0,
         "clippy migration should not create synthetic weak lint: evidence"
     );
-    assert_eq!(entry.lifecycle.review_after.as_deref(), Some("2026-09-09"));
+    assert_eq!(
+        entry.lifecycle.review_after.as_deref(),
+        Some(crate::test_fixture_text::live_review_after().as_str())
+    );
 }
 
 #[test]

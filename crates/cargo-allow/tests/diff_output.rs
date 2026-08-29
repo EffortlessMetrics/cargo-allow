@@ -1245,10 +1245,19 @@ callee = "unwrap"
 #[test]
 fn diff_json_reports_lifecycle_extension_as_review_required() {
     let root = temp_root("diff-lifecycle-extended");
+    // The head entry is the side evaluated for failures and must stay live,
+    // so its lifecycle dates are computed relative to today instead of
+    // hardcoded calendar days the test would eventually sail past.
+    let head_expires = allow_core::SimpleDate::today_utc_approx()
+        .add_days(90)
+        .to_string();
+    let head_review_after = allow_core::SimpleDate::today_utc_approx()
+        .add_days(60)
+        .to_string();
     write_diff_fixture(
         &root,
         policy_with_lifecycle("2026-08-01", "2026-07-01"),
-        policy_with_lifecycle("2026-12-01", "2026-10-01"),
+        policy_with_lifecycle(&head_expires, &head_review_after),
     );
     let output = root.join("diff.json");
 
