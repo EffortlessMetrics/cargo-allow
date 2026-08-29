@@ -17,11 +17,21 @@ pub(crate) fn is_builtin_allowed(path: &Path) -> bool {
     matches!(
         lower.as_str(),
         "rust-toolchain.toml" | "rustfmt.toml" | "clippy.toml"
-    ) || lower.starts_with("crates/") && lower.ends_with("/readme.md")
+    ) || crate_root_builtin(&lower, "/readme.md")
+        || crate_root_builtin(&lower, "/license")
+        || crate_root_builtin(&lower, "/license-mit")
+        || crate_root_builtin(&lower, "/license-apache")
         || lower == "readme.md"
         || lower == "license"
         || lower == "license-mit"
         || lower == "license-apache"
+}
+
+/// Each published crate embeds its own license text so crates.io packaging
+/// carries it per package; those copies are packaging metadata, not
+/// policy-relevant content.
+fn crate_root_builtin(lower: &str, suffix: &str) -> bool {
+    lower.starts_with("crates/") && lower.ends_with(suffix)
 }
 
 pub(crate) fn is_generated_path(path: &Path, generated_patterns: &[String]) -> bool {
@@ -107,7 +117,7 @@ mod tests {
     }
 
     #[test]
-    fn is_builtin_allowed_matches_root_and_crate_readme_boundaries() {
+    fn is_builtin_allowed_matches_root_and_crate_readme_license_boundaries() {
         for path in [
             "rust-toolchain.toml",
             "rustfmt.toml",
@@ -117,6 +127,9 @@ mod tests {
             "LICENSE-MIT",
             "LICENSE-APACHE",
             "crates/allow-core/README.md",
+            "crates/allow-core/LICENSE",
+            "crates/allow-core/LICENSE-MIT",
+            "crates/allow-core/LICENSE-APACHE",
             // Case-insensitive on case-insensitive filesystems (#1822)
             "README.MD",
             "readme.md",
@@ -130,7 +143,9 @@ mod tests {
 
         for path in [
             "docs/README.md",
+            "docs/LICENSE-MIT",
             "crates/allow-core/guide.md",
+            "crates/allow-core/COPYING-MIT",
             "tools/clippy.toml",
         ] {
             assert!(
@@ -144,6 +159,9 @@ mod tests {
     fn is_builtin_allowed_normalizes_windows_separators() {
         assert!(is_builtin_allowed(Path::new(
             "crates\\allow-core\\README.md"
+        )));
+        assert!(is_builtin_allowed(Path::new(
+            "crates\\allow-core\\LICENSE-MIT"
         )));
     }
 

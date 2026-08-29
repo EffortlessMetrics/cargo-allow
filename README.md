@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/EffortlessMetrics/cargo-allow/actions/workflows/ci.yml"><img src="https://github.com/EffortlessMetrics/cargo-allow/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" /></a>
-  <a href="https://github.com/EffortlessMetrics/cargo-allow/releases/tag/v0.1.11"><img src="https://img.shields.io/github/v/release/EffortlessMetrics/cargo-allow?display_name=tag&include_prereleases=false" alt="GitHub release" /></a>
+  <a href="https://github.com/EffortlessMetrics/cargo-allow/releases"><img src="https://img.shields.io/github/v/release/EffortlessMetrics/cargo-allow?display_name=tag&include_prereleases=true" alt="GitHub release" /></a>
   <a href="https://crates.io/crates/cargo-allow"><img src="https://img.shields.io/crates/v/cargo-allow.svg" alt="crates.io" /></a>
   <a href="https://crates.io/crates/cargo-allow"><img src="https://img.shields.io/crates/d/cargo-allow.svg?label=crates.io%20downloads" alt="crates.io downloads" /></a>
   <a href="https://docs.rs/cargo-allow"><img src="https://docs.rs/cargo-allow/badge.svg" alt="docs.rs" /></a>
