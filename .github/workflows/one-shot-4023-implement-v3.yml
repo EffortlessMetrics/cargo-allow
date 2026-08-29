@@ -1,21 +1,23 @@
-name: One-shot 4023 relative lifecycle fixtures v2
+name: One-shot 4023 relative lifecycle fixtures v3
 
 on:
   push:
     branches:
       - fix/4023-relative-fixture-dates
+    paths:
+      - .github/workflows/one-shot-4023-implement-v3.yml
 
 permissions:
   contents: write
 
 concurrency:
-  group: one-shot-4023-implementation-v2-${{ github.ref }}
+  group: one-shot-4023-implementation-v3-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   implement:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - name: Check out the exact branch head
         uses: actions/checkout@v4
@@ -34,58 +36,80 @@ jobs:
           import textwrap
           from pathlib import Path
 
-          source_path = Path('.github/workflows/one-shot-4023-implement.yml')
-          source = source_path.read_text(encoding='utf-8')
+          source = subprocess.run(
+              [
+                  "git",
+                  "show",
+                  "HEAD^:.github/workflows/one-shot-4023-implement.yml",
+              ],
+              check=True,
+              capture_output=True,
+              text=True,
+          ).stdout
           start_marker = "          python - <<'PY'\n"
           end_marker = "\n          PY\n\n          rm .github/workflows/one-shot-4023-inventory.yml"
           start = source.find(start_marker)
           if start < 0:
-              raise SystemExit('implementation heredoc start missing')
+              raise SystemExit("implementation heredoc start missing")
           start += len(start_marker)
           end = source.find(end_marker, start)
           if end < 0:
-              raise SystemExit('implementation heredoc end missing')
+              raise SystemExit("implementation heredoc end missing")
           script = textwrap.dedent(source[start:end])
 
-          function_name = 'fn dated_resolves_every_live_fixture_token_relative_to_today() {{'
+          old_target_pattern = r'pattern = re.compile(rf"(?m)^fn {re.escape(name)}\b")'
+          new_target_pattern = r'pattern = re.compile(rf"(?m)^(?:pub(?:\([^)]*\))?\s+)?fn\s+{re.escape(name)}\b")'
+          if script.count(old_target_pattern) != 1:
+              raise SystemExit("function target matcher shape changed")
+          script = script.replace(old_target_pattern, new_target_pattern, 1)
+
+          old_next_pattern = r'next_match = re.search(r"(?m)^fn [A-Za-z_][A-Za-z0-9_]*\b", text[matches[0].end():])'
+          new_next_pattern = r'next_match = re.search(r"(?m)^(?:pub(?:\([^)]*\))?\s+)?fn\s+[A-Za-z_][A-Za-z0-9_]*\b", text[matches[0].end():])'
+          if script.count(old_next_pattern) != 1:
+              raise SystemExit("function next-boundary matcher shape changed")
+          script = script.replace(old_next_pattern, new_next_pattern, 1)
+
+          function_name = "fn dated_resolves_every_live_fixture_token_relative_to_today() {{"
           function_at = script.find(function_name)
           if function_at < 0:
-              raise SystemExit('generated fixture self-test missing')
-          block_start = script.rfind('#[test]\n', 0, function_at)
+              raise SystemExit("generated fixture self-test missing")
+          block_start = script.rfind("#[test]\n", 0, function_at)
           block_end = script.find("'''", function_at)
           if block_start < 0 or block_end < 0:
-              raise SystemExit('generated fixture self-test boundaries missing')
-          replacement = '\n'.join([
-              '          #[test]',
-              '          fn dated_resolves_every_live_fixture_token_relative_to_today() {{',
-              '              let rendered = dated(',
+              raise SystemExit("generated fixture self-test boundaries missing")
+          replacement = "\n".join([
+              "          #[test]",
+              "          fn dated_resolves_every_live_fixture_token_relative_to_today() {{",
+              "              let rendered = dated(",
               '                  r#"created = "{CREATED_TOKEN}"',
               '          review_after = "{REVIEW_TOKEN}"',
               '          expires = "{EXPIRES_TOKEN}"',
               '          "#,',
-              '              );',
+              "              );",
               '              assert!(rendered.contains(&format!(r#"created = "{{}}""#, fixture_created())));',
-              '              assert!(rendered.contains(&format!(',
+              "              assert!(rendered.contains(&format!(",
               '                  r#"review_after = "{{}}""#,',
-              '                  fixture_review_after()',
-              '              )));',
+              "                  fixture_review_after()",
+              "              )));",
               '              assert!(rendered.contains(&format!(r#"expires = "{{}}""#, fixture_expires())));',
               '              assert!(!rendered.contains("__CARGO_ALLOW_FIXTURE_"));',
-              '          }}',
-              '',
+              "          }}",
+              "",
           ])
           script = script[:block_start] + replacement + script[block_end:]
-          horizon_type = 'const HORIZON_DAYS: i32 = 120;'
+
+          horizon_type = "const HORIZON_DAYS: i32 = 120;"
           if script.count(horizon_type) != 1:
-              raise SystemExit('lifecycle guard horizon declaration changed')
+              raise SystemExit("lifecycle guard horizon declaration changed")
           script = script.replace(
               horizon_type,
-              'const HORIZON_DAYS: i64 = 120;',
+              "const HORIZON_DAYS: i64 = 120;",
               1,
           )
-          compile(script, '<one-shot-4023-implementation>', 'exec')
-          script_path = Path('/tmp/one-shot-4023-implementation.py')
-          script_path.write_text(script, encoding='utf-8')
+
+          compile(script, "<one-shot-4023-implementation>", "exec")
+          script_path = Path("/tmp/one-shot-4023-implementation.py")
+          script_path.write_text(script, encoding="utf-8")
           subprocess.run([sys.executable, str(script_path)], check=True)
           PY
 
@@ -127,3 +151,11 @@ jobs:
           git diff --cached --check
           git commit -m "test: make live lifecycle fixtures today-relative"
           git push origin HEAD:fix/4023-relative-fixture-dates
+
+      - name: Retain failure diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          git status --short
+          git diff --stat
+          git diff -- crates/cargo-allow/tests
