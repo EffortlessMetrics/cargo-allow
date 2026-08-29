@@ -40,6 +40,12 @@ pub(crate) struct CheckArgs {
     /// Write machine-readable receipt to a file.
     #[arg(long)]
     pub(crate) receipt: Option<PathBuf>,
+    /// Emit multi-format artifacts into this directory.
+    #[arg(long, value_name = "DIR")]
+    pub(crate) artifact_dir: Option<PathBuf>,
+    /// Comma-separated renderer formats to emit (markdown,json,sarif,receipt).
+    #[arg(long, value_name = "FORMATS", value_delimiter = ',')]
+    pub(crate) emit: Option<String>,
     /// Check mode [possible values: no-new, audit, strict, release].
     ///   no-new   Fail on new/expired/ambiguous/invalid_selector/
     ///            missing_required_field/evidence_missing (CI gate)
