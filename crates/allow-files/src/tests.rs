@@ -324,6 +324,8 @@ fn builtin_license_readme_and_tool_config_files_are_not_findings() {
         "rustfmt.toml",
         "clippy.toml",
         "crates/allow-files/README.md",
+        "crates/allow-files/LICENSE-MIT",
+        "crates/allow-files/LICENSE-APACHE",
         "README.md",
         "LICENSE",
         "LICENSE-MIT",

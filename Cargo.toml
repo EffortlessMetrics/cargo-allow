@@ -59,9 +59,9 @@ allow-rust = { path = "crates/allow-rust", version = "=0.2.0-rc.1" }
 allow-match = { path = "crates/allow-match", version = "=0.2.0-rc.1" }
 allow-report = { path = "crates/allow-report", version = "=0.2.0-rc.1" }
 allow-diff = { path = "crates/allow-diff", version = "=0.2.0-rc.1" }
-effortless-repo-protocol = { path = "crates/effortless-repo-protocol", version = "=0.1.0" }
-effortless-repo-snapshot = { path = "crates/effortless-repo-snapshot", version = "=0.1.0" }
-effortless-repo-edit = { path = "crates/effortless-repo-edit", version = "=0.1.0" }
+effortless-repo-protocol = { path = "crates/effortless-repo-protocol", version = "0.1.0" }
+effortless-repo-snapshot = { path = "crates/effortless-repo-snapshot", version = "0.1.0" }
+effortless-repo-edit = { path = "crates/effortless-repo-edit", version = "0.1.0" }
 effortless-rust-source-index = { path = "crates/effortless-rust-source-index", version = "0.1.0" }
 intent-model = { path = "crates/intent-model", version = "0.1.0" }
 intent-protocol = { path = "crates/intent-protocol", version = "0.1.0" }
