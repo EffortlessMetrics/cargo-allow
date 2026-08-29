@@ -55,10 +55,9 @@ fn test_release_workflow_structure() -> Result<(), Box<dyn Error>> {
 fn test_ci_workflow_runs_the_full_cache_suite_on_every_platform() -> Result<(), Box<dyn Error>> {
     let root = repo_root()?;
     let ci_path = root.join(".github/workflows/ci.yml");
-    if !ci_path.exists() {
-        return Ok(());
-    }
-
+    // ci.yml is a checked-in repository asset: its absence means this
+    // contract cannot be evaluated, so the guard fails closed.
+    require(ci_path.exists(), ".github/workflows/ci.yml must exist")?;
     let content = fs::read_to_string(&ci_path)?;
 
     for skipped in [
@@ -72,19 +71,41 @@ fn test_ci_workflow_runs_the_full_cache_suite_on_every_platform() -> Result<(), 
         )?;
     }
 
+    let block = test_core_platforms_job_block(&content)
+        .ok_or_else(|| io::Error::other("test-core-platforms job missing from ci.yml"))?;
     require(
-        content.contains("-p allow-rust"),
-        "ci.yml must keep the allow-rust release-set suite",
+        block.contains("-p allow-inventory -p allow-files -p allow-rust"),
+        "the test-core-platforms suite must include allow-rust (the \
+         persistent scan-cache tests run on every platform row)",
     )?;
 
     let lanes_path = root.join("docs/ci-lanes.toml");
-    if lanes_path.exists() {
-        let lanes = fs::read_to_string(&lanes_path)?;
-        require(
-            !lanes.contains("cache exclusions remain bounded"),
-            "ci-lanes.toml must not re-describe the cache suite as bounded",
-        )?;
-    }
+    require(lanes_path.exists(), "docs/ci-lanes.toml must exist")?;
+    let lanes = fs::read_to_string(&lanes_path)?;
+    require(
+        !lanes.contains("cache exclusions remain bounded"),
+        "ci-lanes.toml must not re-describe the cache suite as bounded",
+    )?;
 
     Ok(())
+}
+
+/// Extract one job's block (its header line through the last line before the
+/// next same-indent job key) so assertions bind to that job only.
+fn test_core_platforms_job_block(content: &str) -> Option<String> {
+    let lines: Vec<&str> = content.lines().collect();
+    let mut start = None;
+    let mut end = lines.len();
+    for (idx, line) in lines.iter().enumerate() {
+        if start.is_none() {
+            if *line == "  test-core-platforms:" {
+                start = Some(idx);
+            }
+        } else if line.starts_with("  ") && !line.starts_with("    ") && line.ends_with(':') {
+            end = idx;
+            break;
+        }
+    }
+    let start = start?;
+    Some(lines[start..end].join("\n"))
 }

@@ -569,9 +569,14 @@ fn unix_mid_walk_component_swap_is_detected_and_refused() -> Result<(), String> 
         });
     });
 
-    // Detection: the flush is refused with a typed disposition rather than
-    // silently succeeding through the swap.
-    assert!(result.is_err(), "swapped component flush must be refused");
+    // Detection: the flush is refused with the typed disposition from the
+    // post-swap identity validation rather than silently succeeding through
+    // the swap.
+    assert_eq!(
+        result,
+        Err(ScanCacheTargetDispositionV1::DestinationAliasOrTypeChange),
+        "swapped component flush must be refused as a destination change"
+    );
     // No content escape: the store behind the renamed component is
     // byte-identical to the last admitted flush, and the outside directory
     // never received a cache artifact.
@@ -627,7 +632,7 @@ fn windows_mid_walk_component_swap_is_structurally_refused() -> Result<(), Strin
 
     let real_target = root.join("target.real");
     let alias = root.join("target");
-    let result = store.flush_with_test_hook(&|_| {
+    store.flush_with_test_hook(&|_| {
         if fs::rename(&alias, &real_target).is_err() {
             SWAP_DENIED.store(true, Ordering::SeqCst);
             return;
@@ -653,14 +658,6 @@ fn windows_mid_walk_component_swap_is_structurally_refused() -> Result<(), Strin
         "windows must refuse renaming the walked cache tree while the store \
          holds its bound handles"
     );
-    if let Err(disposition) = result {
-        // If a platform ever permits the swap, detection must still refuse.
-        assert_ne!(
-            disposition.as_str(),
-            "",
-            "refused swap must carry a typed disposition"
-        );
-    }
     assert!(
         !outside.join("cargo-allow").exists(),
         "no cache artifact may be created through the swapped component"
