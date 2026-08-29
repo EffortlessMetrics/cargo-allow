@@ -9,6 +9,7 @@ mod explain;
 pub(crate) mod federation;
 mod final_evidence_graph_v1;
 mod frozen_candidate_custody_v1;
+mod github_pr_check_v1;
 mod isolated_install_receipt_v2;
 mod list;
 mod migrate;
@@ -73,6 +74,14 @@ pub use exact_candidate_receipt_v2::{
     ExactCandidateJourneyStepV2, ExactCandidatePackageRowV2, ExactCandidatePayloadV2,
     ExactCandidateResultV2, ExactCandidateV2Validation, render_exact_candidate_v2,
     render_exact_candidate_v2_bytes, validate_exact_candidate_v2,
+};
+
+pub use github_pr_check_v1::{
+    BaseScanCompletenessV1, CargoAllowGitHubPrAnnotationV1, CargoAllowGitHubPrCheckReceiptV1,
+    CargoAllowGitHubPrCheckV1, GITHUB_PR_CHECK_V1_SCHEMA_ID, GITHUB_PR_CHECK_V1_SCHEMA_VERSION,
+    GitHubPrAnnotationClassV1, GitHubPrCheckResultV1, GitHubPrCheckSubjectV1,
+    GitHubPrDiffReportViewV1, GitHubPrDiffViewV1, GitHubPrFindingChangeRowViewV1,
+    GitHubPrInventoryViewV1, project_github_pr_check, validate_github_pr_check_v1,
 };
 
 pub use isolated_install_receipt_v2::{

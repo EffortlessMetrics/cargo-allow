@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/github-pr-check-v1.schema.json",
+  "title": "cargo-allow GitHubPrCheckV1",
+  "description": "Bounded exact-head GitHub check projection over one cargo-allow diff evaluation. Advisory only; no merge or release authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id", "schema_version", "subject", "result", "base_scan_completeness",
+    "net_posture", "introduced_count", "worsened_count", "persisting_touched_count",
+    "resolved_count", "persisting_unaffected_count", "unknown_count",
+    "annotated_count", "omitted_count", "annotations", "artifact_reference",
+    "limitations", "claim_boundary"
+  ],
+  "properties": {
+    "schema_id": { "const": "cargo-allow.github-pr-check.v1" },
+    "schema_version": { "const": 1 },
+    "subject": { "$ref": "#/$defs/subject" },
+    "result": {
+      "type": "string",
+      "enum": ["passed", "findings_blocking", "findings_advisory", "partial",
+               "unknown_attribution", "stale", "unsupported",
+               "provider_unavailable", "instrument_failure"]
+    },
+    "base_scan_completeness": {
+      "type": "string",
+      "enum": ["complete", "base_partial", "head_partial", "both_partial", "missing_base"]
+    },
+    "net_posture": { "type": "string" },
+    "introduced_count": { "type": "integer", "minimum": 0 },
+    "worsened_count": { "type": "integer", "minimum": 0 },
+    "persisting_touched_count": { "type": "integer", "minimum": 0 },
+    "resolved_count": { "type": "integer", "minimum": 0 },
+    "persisting_unaffected_count": { "type": "integer", "minimum": 0 },
+    "unknown_count": { "type": "integer", "minimum": 0 },
+    "annotated_count": { "type": "integer", "minimum": 0 },
+    "omitted_count": { "type": "integer", "minimum": 0 },
+    "annotations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/annotation" }
+    },
+    "artifact_reference": { "type": "string", "minLength": 1 },
+    "limitations": { "type": "array", "items": { "type": "string" } },
+    "claim_boundary": { "type": "string", "minLength": 1 }
+  },
+  "$defs": {
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "pr_number", "base", "merge_base", "head"],
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "pr_number": { "type": "integer", "minimum": 1 },
+        "base": { "type": "string", "minLength": 1 },
+        "merge_base": { "type": "string", "minLength": 1 },
+        "head": { "type": "string", "minLength": 1 }
+      }
+    },
+    "annotation_class": {
+      "type": "string",
+      "enum": ["introduced", "worsened", "persisting_touched", "persisting_unaffected",
+               "resolved", "reclassified", "unknown_attribution"]
+    },
+    "annotation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["annotation_id", "classification", "kind", "path", "start_line", "end_line", "message"],
+      "properties": {
+        "annotation_id": { "type": "string", "minLength": 1 },
+        "classification": { "$ref": "#/$defs/annotation_class" },
+        "kind": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "start_line": { "type": "integer", "minimum": 1 },
+        "end_line": { "type": "integer", "minimum": 1 },
+        "message": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
