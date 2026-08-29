@@ -75,6 +75,14 @@ jobs:
               '',
           ])
           script = script[:block_start] + replacement + script[block_end:]
+          horizon_type = 'const HORIZON_DAYS: i32 = 120;'
+          if script.count(horizon_type) != 1:
+              raise SystemExit('lifecycle guard horizon declaration changed')
+          script = script.replace(
+              horizon_type,
+              'const HORIZON_DAYS: i64 = 120;',
+              1,
+          )
           compile(script, '<one-shot-4023-implementation>', 'exec')
           script_path = Path('/tmp/one-shot-4023-implementation.py')
           script_path.write_text(script, encoding='utf-8')
