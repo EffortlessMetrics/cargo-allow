@@ -97,6 +97,41 @@ fn partial_base_keeps_rows_unknown_but_visible() -> Result<(), String> {
 }
 
 #[test]
+fn removed_rows_under_partial_coverage_stay_unknown() -> Result<(), String> {
+    let mut partial_removed = partial_report();
+    partial_removed
+        .diff
+        .as_mut()
+        .ok_or_else(|| "fixture lost its diff".to_string())?
+        .finding_changes = vec![GitHubPrFindingChangeRowViewV1 {
+        change: "removed".to_string(),
+        movement: "removed".to_string(),
+        posture_delta: "improved".to_string(),
+        changed_in_diff: true,
+        key: "panic:removed-under-partial".to_string(),
+        kind: "panic".to_string(),
+        path: "src/gone.rs".to_string(),
+        line: Some(9),
+    }];
+    let check = project_github_pr_check(
+        &partial_removed,
+        &subject(),
+        BaseScanCompletenessV1::HeadPartial,
+        10,
+        "artifact-set-partial-removed",
+    );
+    if check.result != GitHubPrCheckResultV1::Partial {
+        return Err(format!("partial removed projected {check:?}"));
+    }
+    if check.resolved_count != 0 || check.unknown_count != 1 {
+        return Err(format!(
+            "removed row under partial coverage earned an ordinary resolved label: {check:?}"
+        ));
+    }
+    Ok(())
+}
+
+#[test]
 fn complete_coverage_is_the_only_clean_projection() -> Result<(), String> {
     let check = project_github_pr_check(
         &partial_report(),

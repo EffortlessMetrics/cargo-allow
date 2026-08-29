@@ -376,8 +376,11 @@ fn classify_row(
     row: &GitHubPrFindingChangeRowViewV1,
     partial_coverage: bool,
 ) -> GitHubPrAnnotationClassV1 {
-    if partial_coverage && row.movement == "introduced" {
-        // Partial coverage cannot earn ordinary introduced/resolved labels.
+    if partial_coverage
+        && (row.movement == "introduced" || row.movement == "removed" || row.change == "removed")
+    {
+        // Partial coverage cannot earn ordinary introduced/resolved labels
+        // with false confidence.
         return GitHubPrAnnotationClassV1::UnknownAttribution;
     }
     if row.change == "removed" || row.movement == "removed" {
