@@ -25,6 +25,12 @@ pub(crate) struct DiffArgs {
     /// Write a machine-readable diff receipt to a file.
     #[arg(long)]
     pub(crate) receipt: Option<PathBuf>,
+    /// Emit multi-format artifacts into this directory.
+    #[arg(long, value_name = "DIR")]
+    pub(crate) artifact_dir: Option<PathBuf>,
+    /// Comma-separated renderer formats to emit (markdown,json,sarif,receipt).
+    #[arg(long, value_name = "FORMATS", value_delimiter = ',')]
+    pub(crate) emit: Option<String>,
     /// Base Git revision; resolves to an exact commit before comparison.
     /// When omitted, auto-detects the merge-base of HEAD and its upstream
     /// (@{u}). If no upstream is configured, the command fails with an

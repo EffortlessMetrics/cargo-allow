@@ -26,6 +26,7 @@ use diff_render::{
     render_policy_changes_human,
 };
 
+use crate::artifact_emit;
 use crate::{
     EvidenceReportSummary, EvidenceValidationMode, InventoryFacts, OutputFormat,
     SourceTreeReportContext, assert_path_within_root, current_dir, emit_text,
@@ -424,6 +425,44 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         );
         write_file(path, &receipt)
             .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+    }
+    if let (Some(artifact_dir), Some(emit_raw)) = (&args.artifact_dir, &args.emit) {
+        let formats = match artifact_emit::parse_emit_formats(emit_raw) {
+            Ok(formats) => formats,
+            Err(error) => {
+                eprintln!("cargo-allow diff: {error}");
+                process::exit(1);
+            }
+        };
+        let emit_ctx = artifact_emit::ArtifactEmitContext {
+            command: "diff",
+            findings: &findings_for_report,
+            outcomes: &projected_outcomes,
+            failed,
+            report_context: &receipt_context,
+            receipt_context: Some(&receipt_context),
+        };
+        if let Err(error) = artifact_emit::emit_artifact_set(
+            artifact_dir,
+            &artifact_emit::EmitConfig {
+                operation: "diff",
+                formats: &formats,
+                result_class: if failed {
+                    allow_report::EvaluationResultClassV2::Blocking
+                } else {
+                    allow_report::EvaluationResultClassV2::Passed
+                },
+                blocking: failed,
+                resolved_config_identity: &report_inventory_facts
+                    .policy_digest_text()
+                    .unwrap_or_default(),
+                source_subject: &format!("diff:{}", args.base.as_deref().unwrap_or("HEAD")),
+            },
+            &emit_ctx,
+        ) {
+            eprintln!("cargo-allow diff: artifact emit: {error}");
+            process::exit(1);
+        }
     }
     if failed {
         process::exit(1);
