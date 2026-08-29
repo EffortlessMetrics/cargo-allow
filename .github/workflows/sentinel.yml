@@ -1,0 +1,82 @@
+name: Workflow construction sentinel
+
+# #3970: this sentinel survives when the primary workflow (ci.yml) is
+# malformed because GitHub parses each workflow file independently. It
+# validates the complete workflow tree from the trusted base branch using
+# stdlib Python YAML parsing. No PR-head code executes; no secrets are
+# available; permissions are read-only.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workflow-sentinel-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sentinel:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - name: Parse and validate all workflow and action manifests
+        run: |
+          python3 - <<'CHECK'
+          from pathlib import Path
+          import sys
+
+          try:
+              import yaml
+          except ImportError:
+              print("PyYAML not available; sentinel cannot validate")
+              sys.exit(1)
+
+          failures = []
+          checked = 0
+
+          for pattern in (".github/workflows/*.yml", ".github/workflows/*.yaml"):
+              for path in sorted(Path(".").glob(pattern)):
+                  checked += 1
+                  try:
+                      data = yaml.safe_load(path.read_text(encoding="utf-8"))
+                  except Exception as exc:
+                      failures.append(f"{path}: YAML parse error: {exc}")
+                      continue
+                  if not isinstance(data, dict):
+                      failures.append(f"{path}: expected a mapping")
+                      continue
+                  if "on" not in data and True not in data:
+                      failures.append(f"{path}: missing `on` trigger key")
+                  if "jobs" not in data:
+                      failures.append(f"{path}: missing `jobs` key")
+
+          for pattern in (".github/actions/**/action.yml", ".github/actions/**/action.yaml"):
+              for path in sorted(Path(".").glob(pattern)):
+                  checked += 1
+                  try:
+                      data = yaml.safe_load(path.read_text(encoding="utf-8"))
+                  except Exception as exc:
+                      failures.append(f"{path}: YAML parse error: {exc}")
+                      continue
+                  if not isinstance(data, dict):
+                      failures.append(f"{path}: expected a mapping")
+                      continue
+                  if "name" not in data:
+                      failures.append(f"{path}: missing `name`")
+                  if "runs" not in data:
+                      failures.append(f"{path}: missing `runs`")
+
+          for failure in failures:
+              print(f"FAIL: {failure}", file=sys.stderr)
+          if failures:
+              sys.exit(1)
+          print(f"sentinel: {checked} manifests validated, 0 failures")
+          CHECK
+      - name: Sentinel passed
+        run: echo "workflow construction sentinel passed"
